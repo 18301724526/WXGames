@@ -163,9 +163,9 @@ class BuildingRenderer {
             gameInstance.log?.(`❌ ${result.message}`);
           } else {
             gameInstance.log?.(`✅ ${d.name} 升级成功`);
-            const stateData = await gameInstance.apiGet?.('/game/state');
-            if (stateData?.gameState) {
-              gameInstance.syncFromServer?.(stateData.gameState, stateData.gameState?.eventQueue, stateData.gameState?.offlineEventLog);
+            const stateData = await gameInstance.apiGet('/game/state');
+            if (stateData.gameState) {
+              gameInstance.syncFromServer(stateData.gameState, stateData.gameState?.eventQueue, stateData.gameState?.offlineEventLog);
             }
           }
         });
@@ -186,6 +186,10 @@ class BuildingRenderer {
       const card = this.container.querySelector(`#${d.id}Card`);
       const btn = this.container.querySelector(`#btnBuild${d.id.charAt(0).toUpperCase() + d.id.slice(1)}`);
       if (!card || !btn) continue;
+
+      // 更新等级数字
+      const levelSpan = card.querySelector(`#${d.id}Level`) || card.querySelector(`#${d.id}Count`);
+      if (levelSpan) levelSpan.textContent = d.currentCount;
 
       // 更新成本显示
       const costFoodSpan = btn.querySelector(`#${d.id}CostFood`);
