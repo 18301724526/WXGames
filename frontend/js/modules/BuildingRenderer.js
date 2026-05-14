@@ -139,6 +139,66 @@ class BuildingRenderer {
     };
     return labels[category] || category;
   }
+
+  /**
+   * 绑定建筑按钮事件（适配现有 DOM 结构）
+   * @param {HTMLElement} container - 建筑面板容器
+   */
+  bindEvents(container) {
+    if (container) this.container = container;
+    if (!this.container) return;
+    const displays = this.manager.getAllBuildingDisplays();
+    for (const d of displays) {
+      const btn = this.container.querySelector(`#btnBuild${d.id.charAt(0).toUpperCase() + d.id.slice(1)}`);
+      if (btn && !btn._buildingBound) {
+        btn._buildingBound = true;
+        btn.addEventListener('click', () => this.manager.build(d.id));
+      }
+    }
+  }
+
+  /**
+   * 渲染建筑面板（适配现有 DOM 结构，增量更新）
+   * @param {HTMLElement} container - 建筑面板容器
+   */
+  renderBuildings(container) {
+    if (container) this.container = container;
+    if (!this.container) return;
+
+    const displays = this.manager.getAllBuildingDisplays();
+    for (const d of displays) {
+      const card = this.container.querySelector(`#${d.id}Card`);
+      const btn = this.container.querySelector(`#btnBuild${d.id.charAt(0).toUpperCase() + d.id.slice(1)}`);
+      if (!card || !btn) continue;
+
+      // 更新成本显示
+      const costFoodSpan = btn.querySelector(`#${d.id}CostFood`);
+      const costKnowledgeSpan = btn.querySelector(`#${d.id}CostKnowledge`);
+      if (costFoodSpan) costFoodSpan.textContent = d.cost?.food || 0;
+      if (costKnowledgeSpan) costKnowledgeSpan.textContent = d.cost?.knowledge || '';
+
+      // 更新按钮状态
+      if (d.isUnlocked && d.canAfford) {
+        card.classList.add('can-build');
+        card.classList.remove('locked', 'cannot-build');
+        btn.disabled = false;
+        const labelText = btn.querySelector('.build-label');
+        if (labelText) labelText.textContent = '建造';
+      } else if (!d.isUnlocked) {
+        card.classList.add('locked');
+        card.classList.remove('can-build', 'cannot-build');
+        btn.disabled = true;
+        const lockText = btn.querySelector('.build-label');
+        if (lockText) lockText.textContent = '锁定';
+      } else {
+        card.classList.add('cannot-build');
+        card.classList.remove('can-build', 'locked');
+        btn.disabled = true;
+        const labelText = btn.querySelector('.build-label');
+        if (labelText) labelText.textContent = '资源不足';
+      }
+    }
+  }
 }
 
 // 兼容浏览器全局挂载

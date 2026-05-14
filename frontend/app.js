@@ -3,6 +3,55 @@
 // 建筑系统模块已解耦至 js/modules/（全局挂载，无需 require）
 
 const Game = {
+    // --- 建筑配置（硬编码，后续可改为 fetch 加载 shared/buildingConfig.json）---
+    buildingConfig: {
+        version: '1.0',
+        buildings: {
+            farm: {
+                id: 'farm', name: '农田', category: 'production',
+                cost: { food: 50 }, costMultiplier: 1.5, unlockEra: 0, maxLevel: 1,
+                effects: { perBuilding: { foodOutputMultiplier: 0.5 } },
+                ui: { icon: '🚜', color: '#27ae60', description: '每座提升食物产出' }
+            },
+            house: {
+                id: 'house', name: '民居', category: 'housing',
+                cost: { food: 150 }, costMultiplier: 1.5, unlockEra: 0, maxLevel: 1,
+                effects: { perBuilding: { maxPopulation: 3, happiness: 5 } },
+                ui: { icon: '🏠', color: '#e67e22', description: '增加人口上限' }
+            },
+            workshop: {
+                id: 'workshop', name: '工坊', category: 'production',
+                cost: { food: 150, knowledge: 40 }, costMultiplier: 1.5, unlockEra: 1, maxLevel: 1,
+                effects: { perBuilding: { craftsmanOutputMultiplier: 0.5 } },
+                ui: { icon: '⚒️', color: '#7f8c8d', description: '每座提升工匠产出' }
+            },
+            academy: {
+                id: 'academy', name: '学院', category: 'research',
+                cost: { food: 200, knowledge: 80 }, costMultiplier: 1.5, unlockEra: 0, maxLevel: 1,
+                effects: { perBuilding: { scholarOutputMultiplier: 0.5 } },
+                ui: { icon: '🏛️', color: '#9b59b6', description: '每座提升学者产出' }
+            },
+            barracks: {
+                id: 'barracks', name: '兵营', category: 'military',
+                cost: { food: 250, knowledge: 60 }, costMultiplier: 1.5, unlockEra: 2, maxLevel: 1,
+                effects: { perBuilding: { defense: 1 } },
+                ui: { icon: '⚔️', color: '#c0392b', description: '提供防御能力' }
+            },
+            temple: {
+                id: 'temple', name: '神庙', category: 'special',
+                cost: { food: 300, knowledge: 100 }, costMultiplier: 1.5, unlockEra: 3, maxLevel: 1,
+                effects: { perBuilding: { offlineEfficiency: 0.05 } },
+                ui: { icon: '⛪', color: '#f39c12', description: '提升离线收益效率' }
+            }
+        },
+        categories: {
+            production: { label: '生产', order: 1 },
+            housing: { label: '居住', order: 2 },
+            research: { label: '科研', order: 3 },
+            military: { label: '军事', order: 4 },
+            special: { label: '特殊', order: 5 }
+        }
+    },
     // --- 游戏状态 ---
     state: {
         food: 100,
@@ -60,58 +109,10 @@ const Game = {
         // 人口增长由服务端驱动，前端不配置
     },
 
-    // --- 建筑数据 ---
-    buildings: {
-        farm: {
-            id: 'farm',
-            name: '农田',
-            icon: '🚜',
-            unlockEra: 0,
-            effect: '食物产出 +{val}%',
-            valFormat: (count) => count * 20
-        },
-        house: {
-            id: 'house',
-            name: '民居',
-            icon: '🏠',
-            unlockEra: 0,
-            effect: '人口上限+{val}，幸福度+5%',
-            valFormat: (count) => 2 + count
-        },
-        workshop: {
-            id: 'workshop',
-            name: '工坊',
-            icon: '⚒️',
-            unlockEra: 0,
-            effect: '解锁工匠；工匠产出×{val}',
-            valFormat: (count) => count > 0 ? (1 + count * 0.5).toFixed(1) : '1.0'
-        },
-        academy: {
-            id: 'academy',
-            name: '学院',
-            icon: '🏛️',
-            unlockEra: 0,
-            effect: '学者产出×{val}',
-            valFormat: (count) => count > 0 ? (1 + count * 0.5).toFixed(1) : '1.0'
-        },
-        barracks: {
-            id: 'barracks',
-            name: '兵营',
-            icon: '⚔️',
-            unlockEra: 1,
-            effect: '全产出+{val}%（入侵防御开发中）',
-            valFormat: (count) => count * 10
-        },
-        temple: {
-            id: 'temple',
-            name: '神庙',
-            icon: '⛪',
-            unlockEra: 1,
-            effect: '幸福度+{val}%；离线收益+{val2}%',
-            valFormat: (count) => count * 15,
-            val2Format: (count) => count * 5
-        }
-    },
+    // --- 建筑系统（已由新模块接管）---
+    buildingAPI: null,
+    buildingManager: null,
+    buildingRenderer: null,
 
     // --- 科技树数据 ---
     techs: {
@@ -560,6 +561,13 @@ const Game = {
         this.playerId = localStorage.getItem('cf_playerId') || null;
         this.load();
         this.applyTechEffects();
+
+        // 初始化建筑系统新模块（P1-2）
+        this.buildingAPI = new BuildingAPI(this.config.apiUrl, this.token);
+        this.buildingManager = new BuildingManager(this.buildingAPI, this.buildingConfig);
+        this.buildingRenderer = new BuildingRenderer(this.buildingManager);
+        this.buildingManager.init(this.state);
+        this.buildingRenderer.bindContainer('.building-grid');
         // this.calculateOffline(); // 离线收益由服务器计算
         if (window.mountAuthMethods) window.mountAuthMethods(this);
         if (window.mountLogMethods) window.mountLogMethods(this);
@@ -845,54 +853,6 @@ const Game = {
         this.save();
     },
 
-    // --- 建造系统 ---
-    async build(buildingId) {
-        const s = this.state;
-        const b = this.buildings[buildingId];
-        if (!b) return;
-
-        // 前端不再预估成本，真实校验在后端（P1-1）
-        // const cost = this.getBuildingCost(buildingId);
-        // if (s.food < cost.food || s.knowledge < cost.knowledge) {
-        //     this.shakeCard(buildingId);
-        //     return;
-        // }
-
-        try {
-            const result = await this.apiPost('/api/game/action', { action: 'build', target: buildingId });
-            if (result.success) {
-                // 从后端拉取最新状态（权威来源）
-                const stateData = await this.apiGet('/api/game/state');
-                if (stateData.gameState) {
-                    this.syncFromServer(stateData.gameState, stateData.gameState?.eventQueue, stateData.gameState?.offlineEventLog);
-                }
-
-                // UI 反馈
-                this.showParticles(b.icon, `#${buildingId}Card`, 12);
-                this.showFloatingText(`${b.name}建造完成！`, `#${buildingId}Card`, '#4ecca3');
-                const displayCount = buildingId === 'farm' ? s.farmLevel : s[`${buildingId}Count`];
-                this.log(`${b.icon} ${b.name} 建造完成！当前${buildingId === 'farm' ? '等级' : '数量'}：${displayCount}`);
-                this.triggerScreenFlash();
-
-                const countId = buildingId === 'farm' ? 'farmLevel' : `${buildingId}Count`;
-                this.animateNumberBump(countId);
-                this.animateNumberBump('foodValue');
-                this.animateNumberBump('knowledgeValue');
-
-                this.render();
-                this.save();
-            } else {
-                this.log(`❌ 建造失败: ${result.message}`);
-                this.shakeCard(buildingId);
-            }
-        } catch (e) {
-            this.log(`❌ 建造请求失败: ${e.message}`);
-            this.shakeCard(buildingId);
-        }
-    },
-
-
-
     // --- 时代进阶 ---
     canAdvanceEra() {
         const nextEraIdx = this.state.era;
@@ -983,7 +943,7 @@ const Game = {
         let specificBldText = '';
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
             const actualCount = bldKey === 'farm' ? s.farmLevel : (s[`${bldKey}Count`] || 0);
-            const bldName = this.buildings[bldKey]?.name || bldKey;
+            const bldName = this.buildingNames[bldKey] || bldKey;
             if (actualCount < requiredCount) {
                 buildingMet = false;
                 buildingPct = Math.min(buildingPct, 0.8);
@@ -1355,13 +1315,6 @@ const Game = {
         this.setText('barracksCount', s.barracksCount);
         this.setText('templeCount', s.templeCount);
 
-        // 建筑造价已由后端计算并通过 sanitizeGameState.buildingCosts 提供（P1-1）
-        // for (const key of Object.keys(this.buildings)) {
-        //     const cost = this.getBuildingCost(key);
-        //     this.setText(`${key}CostFood`, cost.food);
-        //     this.setText(`${key}CostKnowledge`, cost.knowledge);
-        // }
-
         // 时代
         const era = this.eras[s.era];
         this.setText('eraName', era.name);
@@ -1498,42 +1451,9 @@ const Game = {
     renderUI() {
         const s = this.state;
 
-        // 建筑卡片状态
-        for (const [key, b] of Object.entries(this.buildings)) {
-            const card = document.getElementById(`${key}Card`);
-            const btn = document.getElementById(`btnBuild${key.charAt(0).toUpperCase() + key.slice(1)}`);
-            if (!card || !btn) continue;
-
-            // 成本已由后端计算（P1-1）
-            // const cost = this.getBuildingCost(key);
-            const buildingCostData = s.buildingCosts?.[key] || {};
-            const canAfford = s.food >= (buildingCostData.food || 0) && s.knowledge >= (buildingCostData.knowledge || 0);
-            const isUnlocked = s.era >= b.unlockEra;
-
-            const costFoodSpan = btn.querySelector(`#${key}CostFood`);
-            const costKnowledgeSpan = btn.querySelector(`#${key}CostKnowledge`);
-            if (costFoodSpan) costFoodSpan.textContent = buildingCostData.food || 0;
-            if (costKnowledgeSpan) costKnowledgeSpan.textContent = buildingCostData.knowledge || 0;
-
-            if (!isUnlocked) {
-                card.classList.add('locked');
-                card.classList.remove('can-build', 'cannot-build');
-                btn.disabled = true;
-                const lockText = btn.querySelector('.build-label');
-                if (lockText) lockText.textContent = '🔒 锁定';
-            } else if (canAfford) {
-                card.classList.add('can-build');
-                card.classList.remove('locked', 'cannot-build');
-                btn.disabled = false;
-                const labelText = btn.querySelector('.build-label');
-                if (labelText) labelText.textContent = '建造';
-            } else {
-                card.classList.add('cannot-build');
-                card.classList.remove('can-build', 'locked');
-                btn.disabled = true;
-                const labelText = btn.querySelector('.build-label');
-                if (labelText) labelText.textContent = '资源不足';
-            }
+        // 建筑卡片状态 —— 由新模块 BuildingRenderer 接管（P1-2）
+        if (this.buildingRenderer) {
+            this.buildingRenderer.renderBuildings(document.querySelector('.building-grid'));
         }
 
         // 时代进阶按钮
@@ -1744,9 +1664,10 @@ const Game = {
 
         // 特定建筑需求
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
-            const bld = this.buildings[bldKey];
-            if (bld) {
-                previewItems.push({ icon: bld.icon, text: `需要${bld.name}×${requiredCount}` });
+            const bldName = this.buildingNames[bldKey];
+            const bldIcon = this.buildingIcons[bldKey];
+            if (bldName) {
+                previewItems.push({ icon: bldIcon, text: `需要${bldName}×${requiredCount}` });
             }
         }
 
@@ -1820,13 +1741,9 @@ const Game = {
         // 人口事件
         this.bindPopulationEvents();
 
-        // 建造按钮
-        for (const key of Object.keys(this.buildings)) {
-            const btnId = `btnBuild${key.charAt(0).toUpperCase() + key.slice(1)}`;
-            const btn = document.getElementById(btnId);
-            if (btn) {
-                btn.addEventListener('click', () => this.build(key));
-            }
+        // 建造按钮 —— 由新模块 BuildingRenderer 接管（P1-2）
+        if (this.buildingRenderer) {
+            this.buildingRenderer.bindEvents(document.querySelector('.building-grid'));
         }
 
         // 时代进阶
