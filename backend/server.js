@@ -941,6 +941,9 @@ app.get('/api/health', (req, res) => {
 // 辅助函数：清理游戏状态（移除敏感字段）
 function sanitizeGameState(gameState) {
   const output = calculateResourceOutput(gameState);
+  // 食物净产出 = 毛产出 - 人口消耗（与 tickPlayer 逻辑一致）
+  const foodConsumption = (gameState.population.total || 0) * 0.2;
+  const foodNetPerSecond = output.food - foodConsumption;
   const baseMax = (gameState.buildings.house || 0) * 4;
   const techBonus = (gameState.techEffects?.houseCapacity || 0);
   const maxPop = baseMax + techBonus;
@@ -949,7 +952,7 @@ function sanitizeGameState(gameState) {
     playerId: gameState.playerId,
     resources: {
       ...gameState.resources,
-      foodPerSecond: Math.round(output.food * 10) / 10,
+      foodPerSecond: Math.round(foodNetPerSecond * 10) / 10,
       knowledgePerSecond: Math.round(output.knowledge * 10) / 10,
       woodPerSecond: Math.round(output.wood * 10) / 10,
     },
