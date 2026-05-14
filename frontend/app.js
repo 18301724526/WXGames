@@ -942,8 +942,9 @@ const Game = {
         // 检查特定建筑
         let specificBldText = '';
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
-            const actualCount = bldKey === 'farm' ? s.farmLevel : (s[`${bldKey}Count`] || 0);
-            const bldName = this.buildingNames[bldKey] || bldKey;
+            const actualCount = s.buildings?.[bldKey] || 0;
+            const bldDef = this.buildingConfig.buildings[bldKey];
+            const bldName = bldDef?.name || bldKey;
             if (actualCount < requiredCount) {
                 buildingMet = false;
                 buildingPct = Math.min(buildingPct, 0.8);
@@ -1664,8 +1665,9 @@ const Game = {
 
         // 特定建筑需求
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
-            const bldName = this.buildingNames[bldKey];
-            const bldIcon = this.buildingIcons[bldKey];
+            const bldDef = this.buildingConfig.buildings[bldKey];
+            const bldName = bldDef?.name || bldKey;
+            const bldIcon = bldDef?.ui?.icon || '?';
             if (bldName) {
                 previewItems.push({ icon: bldIcon, text: `需要${bldName}×${requiredCount}` });
             }
