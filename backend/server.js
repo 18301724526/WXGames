@@ -658,6 +658,16 @@ app.post('/api/game/action', authMiddleware, (req, res) => {
         break;
       }
 
+      // 职业字段映射（前端 singular -> 后端 plural）
+      const professionKeyMap = {
+        farmer: 'farmers',
+        scholar: 'scholars',
+        craftsman: 'craftsmen',
+        warrior: 'warriors',
+        merchant: 'merchants'
+      };
+      const popKey = professionKeyMap[profession];
+
       // 数量校验
       if (!Number.isFinite(amount) || amount === 0) {
         result = { success: false, message: 'Invalid amount' };
@@ -671,16 +681,16 @@ app.post('/api/game/action', authMiddleware, (req, res) => {
           break;
         }
         pop.unassigned -= amount;
-        pop[profession] = (pop[profession] || 0) + amount;
+        pop[popKey] = (pop[popKey] || 0) + amount;
         result = { success: true, message: `Assigned ${amount} to ${profession}` };
       } else {
         // 取消分配人口
         const absAmount = Math.abs(amount);
-        if ((pop[profession] || 0) < absAmount) {
+        if ((pop[popKey] || 0) < absAmount) {
           result = { success: false, message: `Not enough ${profession}s` };
           break;
         }
-        pop[profession] -= absAmount;
+        pop[popKey] -= absAmount;
         pop.unassigned = (pop.unassigned || 0) + absAmount;
         result = { success: true, message: `Unassigned ${absAmount} from ${profession}` };
       }
