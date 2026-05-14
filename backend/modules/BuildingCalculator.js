@@ -1,4 +1,4 @@
-const buildingConfig = require('../../shared/buildingConfig.json');
+const buildingConfig = require('../shared/buildingConfig.json');
 
 /**
  * 建筑计算器 - 负责成本计算、资源操作
