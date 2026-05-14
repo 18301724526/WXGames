@@ -32,9 +32,10 @@ class BuildingManager {
    */
   getAllBuildingDisplays() {
     if (!this.state) return [];
+    const buildings = this.state.buildings || {};
 
     return Object.values(this.config.buildings).map(config => {
-      const currentCount = this.state.buildings[config.id] || 0;
+      const currentCount = buildings[config.id] || 0;
       const cost = this.state.buildingCosts?.[config.id] || config.cost;
       const isUnlocked = this.state.currentEra >= config.unlockEra;
 
@@ -72,11 +73,12 @@ class BuildingManager {
    */
   getTooltipInfo(buildingId) {
     if (!this.state) return null;
+    const buildings = this.state.buildings || {};
 
     const config = this.config.buildings[buildingId];
     if (!config) return null;
 
-    const currentCount = this.state.buildings[buildingId] || 0;
+    const currentCount = buildings[buildingId] || 0;
     const cost = this.state.buildingCosts?.[config.id] || config.cost;
     const isUnlocked = this.state.currentEra >= config.unlockEra;
 
