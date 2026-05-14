@@ -88,7 +88,8 @@
       "maxLevel": 1,
       "effects": {
         "perBuilding": {
-          "defense": 1
+          "defense": 1,
+          "globalOutputMultiplier": 0.10
         }
       },
       "ui": {
@@ -107,7 +108,8 @@
       "maxLevel": 1,
       "effects": {
         "perBuilding": {
-          "offlineEfficiency": 0.05
+          "offlineEfficiency": 0.05,
+          "happiness": 15
         }
       },
       "ui": {
@@ -123,5 +125,27 @@
     "research": { "label": "科研", "order": 3 },
     "military": { "label": "军事", "order": 4 },
     "special": { "label": "特殊", "order": 5 }
+  },
+  "eraConditions": {
+    "1": {
+      "knowledge": 100,
+      "requiredBuildings": { "farm": 3 },
+      "techCount": 0,
+      "requiredTechs": []
+    },
+    "2": {
+      "food": 2000,
+      "knowledge": 500,
+      "requiredBuildings": { "workshop": 1, "farm": 3 },
+      "techCount": 2,
+      "requiredTechs": ["钻木取火", "文字"]
+    },
+    "3": {
+      "food": 4000,
+      "knowledge": 1200,
+      "requiredBuildings": { "academy": 1, "workshop": 1 },
+      "techCount": 4,
+      "requiredTechs": ["钻木取火", "文字", "农业", "冶金"]
+    }
   }
 }
