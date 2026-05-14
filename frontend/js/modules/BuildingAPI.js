@@ -33,11 +33,13 @@ class BuildingAPI {
   }
 
   /**
-   * 获取所有建筑信息
-   * @returns {Promise<{buildings: BuildingInfo[]}>}
+   * 获取所有建筑信息（从 /api/game/state 提取）
+   * @returns {Promise<{buildings: object}>}
    */
   getAllBuildings() {
-    return this._request('GET', '/api/buildings');
+    return this._request('GET', '/api/game/state').then(data => ({
+      buildings: data.gameState?.buildings || {}
+    }));
   }
 
   /**
@@ -46,15 +48,30 @@ class BuildingAPI {
    * @returns {Promise<{success: boolean, message: string, cost?}>}
    */
   build(buildingType) {
-    return this._request('POST', '/api/buildings/build', { buildingType });
+    return this._request('POST', '/api/game/action', {
+      action: 'build',
+      target: buildingType
+    });
   }
 
   /**
-   * 获取当前建筑效果汇总
+   * 获取当前建筑效果汇总（从 /api/game/state 提取）
    * @returns {Promise<{effects: object}>}
    */
   getEffects() {
-    return this._request('GET', '/api/buildings/effects');
+    return this._request('GET', '/api/game/state').then(data => {
+      const gs = data.gameState;
+      const buildings = gs?.buildings || {};
+      const templeCount = buildings.temple || 0;
+      return {
+        effects: {
+          farmBonus: 1 + (buildings.farm || 0) * 0.5,
+          academyBonus: 1 + (buildings.academy || 0) * 0.5,
+          offlineEfficiencyBonus: templeCount * 0.05,
+          defenseLevel: buildings.barracks || 0
+        }
+      };
+    });
   }
 }
 
