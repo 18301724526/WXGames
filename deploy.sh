@@ -16,15 +16,21 @@ echo "[Deploy] 拉取最新代码..."
 cd "$REPO_DIR"
 git pull origin main
 
-# 2. 同步 shared/ 到后端目录（通过符号链接）
+# 2. 同步 shared/ 到后端目录（符号链接 + 兜底复制）
 echo "[Deploy] 同步 shared/ 目录..."
+# 先尝试创建符号链接
 if [ ! -L "$SHARED_LINK" ]; then
-    # 如果存在旧的普通目录，备份后删除
     if [ -d "$SHARED_LINK" ] && [ ! -L "$SHARED_LINK" ]; then
         mv "$SHARED_LINK" "${SHARED_LINK}.bak.$(date +%Y%m%d_%H%M%S)"
     fi
     ln -sf "$REPO_DIR/shared" "$SHARED_LINK"
     echo "[Deploy] 已创建符号链接: $SHARED_LINK -> $REPO_DIR/shared"
+fi
+# 兜底：确保 shared/ 目录内容是最新的
+if [ ! -f "$SHARED_LINK/buildingConfig.json" ]; then
+    echo "[Deploy] 符号链接失效，直接复制 shared/ 目录..."
+    mkdir -p "$SHARED_LINK"
+    cp -r "$REPO_DIR/shared"/* "$SHARED_LINK/"
 fi
 
 # 3. 同步 backend/ 到后端运行目录（如果需要的话）
