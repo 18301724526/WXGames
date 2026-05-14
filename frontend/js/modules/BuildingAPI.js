@@ -1,6 +1,6 @@
 /**
  * 建筑 API 封装 - 统一调用后端建筑接口
- * 基于微信小程序 wx.request
+ * 基于标准浏览器 fetch API
  */
 class BuildingAPI {
   constructor(baseUrl, token) {
@@ -13,24 +13,22 @@ class BuildingAPI {
   }
 
   _request(method, url, data = {}) {
-    return new Promise((resolve, reject) => {
-      wx.request({
-        url: `${this.baseUrl}${url}`,
-        method,
-        header: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json'
-        },
-        data,
-        success: (res) => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(res.data);
-          } else {
-            reject(new Error(res.data?.error || `HTTP ${res.statusCode}`));
-          }
-        },
-        fail: reject
-      });
+    return fetch(`${this.baseUrl}${url}`, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: method !== 'GET' ? JSON.stringify(data) : undefined
+    }).then(res => {
+      if (!res.ok) {
+        return res.json().then(err => {
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }).catch(() => {
+          throw new Error(`HTTP ${res.status}`);
+        });
+      }
+      return res.json();
     });
   }
 
