@@ -1,4 +1,4 @@
-const buildingConfig = require('../shared/buildingConfig.json');
+const buildingConfig = require('../../shared/buildingConfig.json');
 
 /**
  * 建筑效果计算器 - 统一计算建筑对游戏机制的影响

@@ -1,5 +1,5 @@
 const BuildingCalculator = require('./BuildingCalculator');
-const buildingConfig = require('../shared/buildingConfig.json');
+const buildingConfig = require('../../shared/buildingConfig.json');
 
 const ERA_NAMES = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
 
