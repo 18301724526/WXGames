@@ -433,6 +433,10 @@ const Game = {
     },
 
     syncFromServer(serverState, eventQueue, offlineEventLog) {
+        if (!serverState) {
+            console.warn('[syncFromServer] called without serverState, skipping');
+            return;
+        }
         const s = this.state;
 
         // Record old values for floating text detection
