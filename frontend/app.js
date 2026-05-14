@@ -1745,7 +1745,7 @@ const Game = {
 
         // 建造按钮 —— 由新模块 BuildingRenderer 接管（P1-2）
         if (this.buildingRenderer) {
-            this.buildingRenderer.bindEvents(document.querySelector('.building-grid'));
+            this.buildingRenderer.bindEvents(document.querySelector('.building-grid'), this);
         }
 
         // 时代进阶

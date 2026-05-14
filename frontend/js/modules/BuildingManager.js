@@ -36,7 +36,6 @@ class BuildingManager {
     return Object.values(this.config.buildings).map(config => {
       const currentCount = this.state.buildings[config.id] || 0;
       const cost = this.state.buildingCosts?.[config.id] || config.cost;
-      const canAfford = this.checkCanAfford(cost);
       const isUnlocked = this.state.currentEra >= config.unlockEra;
 
       return {
@@ -48,7 +47,6 @@ class BuildingManager {
         category: config.category,
         currentCount,
         cost,
-        canAfford,
         isUnlocked,
         unlockEra: config.unlockEra,
         effects: config.effects?.perBuilding || {}
@@ -62,7 +60,7 @@ class BuildingManager {
    * @returns {Promise<object>}
    */
   async build(buildingId) {
-    // 前端只做预估显示，不执行真实校验；权威校验在后端
+    // 前端不做任何校验，直接发请求给后端（P1-3）
     const result = await this.api.build(buildingId);
     return result;
   }
@@ -80,7 +78,6 @@ class BuildingManager {
 
     const currentCount = this.state.buildings[buildingId] || 0;
     const cost = this.state.buildingCosts?.[config.id] || config.cost;
-    const canAfford = this.checkCanAfford(cost);
     const isUnlocked = this.state.currentEra >= config.unlockEra;
 
     return {
@@ -89,7 +86,6 @@ class BuildingManager {
       icon: config.ui?.icon || '',
       currentCount,
       nextCost: cost,
-      canAfford,
       isUnlocked,
       unlockRequirement: config.unlockEra > 0
         ? `需要时代: ${this.getEraName(config.unlockEra)}`
@@ -99,14 +95,6 @@ class BuildingManager {
   }
 
   // ===== 私有辅助方法 =====
-
-  checkCanAfford(cost) {
-    if (!this.state || !this.state.resources) return false;
-    for (const [resource, amount] of Object.entries(cost)) {
-      if ((this.state.resources[resource] || 0) < amount) return false;
-    }
-    return true;
-  }
 
   getEraName(eraIndex) {
     const names = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
