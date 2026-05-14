@@ -585,7 +585,7 @@ app.post('/api/game/action', authMiddleware, (req, res) => {
   switch (action) {
     case 'build': {
       const buildingType = target;
-      const result = buildingSystem.build(buildingType, gameState);
+      result = buildingSystem.build(buildingType, gameState);
       break;
     }
 

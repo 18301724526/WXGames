@@ -39,6 +39,7 @@ window.mountAuthMethods = function(game) {
       if (data.token) {
         this.token = data.token; this.playerId = data.playerId;
         localStorage.setItem('cf_token', data.token); localStorage.setItem('cf_deviceId', deviceId);
+        if (this.buildingAPI) this.buildingAPI.setToken(data.token);
         document.getElementById('loginPanel').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         this.startHeartbeat();

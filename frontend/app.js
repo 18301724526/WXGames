@@ -9,37 +9,37 @@ const Game = {
         buildings: {
             farm: {
                 id: 'farm', name: '农田', category: 'production',
-                cost: { food: 50 }, costMultiplier: 1.5, unlockEra: 0, maxLevel: 1,
+                 unlockEra: 0, 
                 effects: { perBuilding: { foodOutputMultiplier: 0.5 } },
                 ui: { icon: '🚜', color: '#27ae60', description: '每座提升食物产出' }
             },
             house: {
                 id: 'house', name: '民居', category: 'housing',
-                cost: { food: 150 }, costMultiplier: 1.5, unlockEra: 0, maxLevel: 1,
+                 unlockEra: 0, 
                 effects: { perBuilding: { maxPopulation: 3, happiness: 5 } },
                 ui: { icon: '🏠', color: '#e67e22', description: '增加人口上限' }
             },
             workshop: {
                 id: 'workshop', name: '工坊', category: 'production',
-                cost: { food: 150, knowledge: 40 }, costMultiplier: 1.5, unlockEra: 1, maxLevel: 1,
+                 unlockEra: 1, 
                 effects: { perBuilding: { craftsmanOutputMultiplier: 0.5 } },
                 ui: { icon: '⚒️', color: '#7f8c8d', description: '每座提升工匠产出' }
             },
             academy: {
                 id: 'academy', name: '学院', category: 'research',
-                cost: { food: 200, knowledge: 80 }, costMultiplier: 1.5, unlockEra: 0, maxLevel: 1,
+                 unlockEra: 0, 
                 effects: { perBuilding: { scholarOutputMultiplier: 0.5 } },
                 ui: { icon: '🏛️', color: '#9b59b6', description: '每座提升学者产出' }
             },
             barracks: {
                 id: 'barracks', name: '兵营', category: 'military',
-                cost: { food: 250, knowledge: 60 }, costMultiplier: 1.5, unlockEra: 2, maxLevel: 1,
+                 unlockEra: 2, 
                 effects: { perBuilding: { defense: 1 } },
                 ui: { icon: '⚔️', color: '#c0392b', description: '提供防御能力' }
             },
             temple: {
                 id: 'temple', name: '神庙', category: 'special',
-                cost: { food: 300, knowledge: 100 }, costMultiplier: 1.5, unlockEra: 3, maxLevel: 1,
+                 unlockEra: 3, 
                 effects: { perBuilding: { offlineEfficiency: 0.05 } },
                 ui: { icon: '⛪', color: '#f39c12', description: '提升离线收益效率' }
             }
@@ -70,13 +70,7 @@ const Game = {
             unassigned: 0,
             growthProgress: 0
         },
-        // 建筑计数（旧字段，兼容用）
-        farmLevel: 0,
-        houseCount: 1,
-        workshopCount: 0,
-        academyCount: 0,
-        barracksCount: 0,
-        templeCount: 0,
+        // 建筑对象（后端同步）
         // 建筑对象（新模块 BuildingManager 使用）
         buildings: {
             farm: 0,
@@ -112,7 +106,6 @@ const Game = {
         knowledgePerScholar: 1,
         knowledgePerCraftsman: 1,
         farmBonusPerLevel: 20,
-        costMultiplier: 1.5,
         eraThreshold: 1000,
         maxOfflineHours: 8,
         offlineEfficiencyBase: 0.5,
@@ -433,6 +426,10 @@ const Game = {
     },
 
     syncFromServer(serverState, eventQueue, offlineEventLog) {
+        if (!serverState) {
+            console.warn('[syncFromServer] called without serverState, skipping');
+            return;
+        }
         const s = this.state;
 
         // Record old values for floating text detection
@@ -455,23 +452,13 @@ const Game = {
             this.showFloatingText('\ud83d\udcda +' + Math.floor(knowledgeDelta), '.knowledge-card');
         }
 
-        // 建筑
-        s.farmLevel = serverState.buildings?.farm || 0;
-        s.houseCount = serverState.buildings?.house || 0;
-        s.workshopCount = serverState.buildings?.workshop || 0;
-        s.academyCount = serverState.buildings?.academy || 0;
-        s.barracksCount = serverState.buildings?.barracks || 0;
-        s.templeCount = serverState.buildings?.temple || 0;
-
-        // 同步 buildings 对象（新模块 BuildingManager 使用）
-        s.buildings = {
-            farm: s.farmLevel,
-            house: s.houseCount,
-            workshop: s.workshopCount,
-            academy: s.academyCount,
-            barracks: s.barracksCount,
-            temple: s.templeCount
+        // 建筑（后端同步，前端不做映射）
+        s.buildings = serverState.buildings || {
+            farm: 0, house: 1, workshop: 0, academy: 0, barracks: 0, temple: 0
         };
+
+        // 同步建筑成本（后端计算，前端展示用）
+        s.buildingCosts = serverState.buildingCosts || {};
 
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
@@ -583,7 +570,7 @@ const Game = {
         this.applyTechEffects();
 
         // 初始化建筑系统新模块（P1-2）
-        this.buildingAPI = new BuildingAPI(this.config.apiUrl, this.token);
+        this.buildingAPI = new BuildingAPI(this.apiBase, this.token);
         this.buildingManager = new BuildingManager(this.buildingAPI, this.buildingConfig);
         this.buildingRenderer = new BuildingRenderer(this.buildingManager);
         this.buildingManager.init(this.state);
@@ -698,25 +685,25 @@ const Game = {
         const ts = s.techState;
 
         // 农田倍率
-        let farmBonus = s.farmLevel * this.config.farmBonusPerLevel / 100;
+        let farmBonus = s.buildings.farm * this.config.farmBonusPerLevel / 100;
         const farmMultiplier = 1 + farmBonus;
 
         // 学者倍率（学院加成 × 科技加成）
-        let scholarBase = s.academyCount > 0 ? (1 + s.academyCount * 0.5) : 1;
+        let scholarBase = s.buildings.academy > 0 ? (1 + s.buildings.academy * 0.5) : 1;
         if (ts?.writing?.status === 'completed') scholarBase *= 1.2;
         if (ts?.geometry?.status === 'completed') scholarBase *= 1.3;
         const scholarMultiplier = scholarBase;
 
         // 工匠倍率（工坊加成 × 科技加成）
-        let craftsmanBase = s.workshopCount > 0 ? (1 + s.workshopCount * 0.5) : 1;
+        let craftsmanBase = s.buildings.workshop > 0 ? (1 + s.buildings.workshop * 0.5) : 1;
         if (ts?.pottery?.status === 'completed') craftsmanBase *= 1.2;
         const craftsmanMultiplier = craftsmanBase;
 
         // 兵营全局加成
-        const barracksMultiplier = 1 + (s.barracksCount * 0.1);
+        const barracksMultiplier = 1 + (s.buildings.barracks * 0.1);
 
         // 幸福度加成
-        const happiness = 100 + s.houseCount * 5 + s.templeCount * 15;
+        const happiness = 100 + s.buildings.house * 5 + s.buildings.temple * 15;
         s.happiness = happiness;
         const happinessMultiplier = happiness / 100;
 
@@ -889,13 +876,12 @@ const Game = {
         if (s.knowledge < conditions.knowledge) return false;
 
         // 检查建筑总数
-        const totalBuildings = s.farmLevel + s.houseCount + s.workshopCount
-                               + s.academyCount + s.barracksCount + s.templeCount;
+        const totalBuildings = Object.values(s.buildings || {}).reduce((a, b) => a + b, 0);
         if (totalBuildings < conditions.buildingTotal) return false;
 
         // 检查特定建筑
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
-            const actualCount = bldKey === 'farm' ? s.farmLevel : (s[`${bldKey}Count`] || 0);
+            const actualCount = s.buildings[bldKey] || 0;
             if (actualCount < requiredCount) return false;
         }
 
@@ -920,8 +906,7 @@ const Game = {
 
         const s = this.state;
         const ts = s.techState;
-        const totalBuildings = s.farmLevel + s.houseCount + s.workshopCount
-                               + s.academyCount + s.barracksCount + s.templeCount;
+        const totalBuildings = Object.values(s.buildings || {}).reduce((a, b) => a + b, 0);
         const completedTechs = Object.values(ts).filter(t => t.status === 'completed').length;
 
         const conds = [];
@@ -1213,7 +1198,7 @@ const Game = {
 
         const s = this.state;
         const cfg = this.config;
-        const offlineEfficiency = cfg.offlineEfficiencyBase + s.templeCount * 0.05;
+        const offlineEfficiency = cfg.offlineEfficiencyBase + s.buildings.temple * 0.05;
         const effectiveHours = Math.min(diffHours, cfg.maxOfflineHours);
 
         const multipliers = this.calculateMultipliers();
@@ -1327,14 +1312,7 @@ const Game = {
         // 幸福度
         this.setText('happinessValue', s.happiness);
 
-        // 建筑
-        this.setText('farmLevel', s.farmLevel);
-        this.setText('farmBonus', s.farmLevel * this.config.farmBonusPerLevel);
-        this.setText('houseCount', s.houseCount);
-        this.setText('workshopCount', s.workshopCount);
-        this.setText('academyCount', s.academyCount);
-        this.setText('barracksCount', s.barracksCount);
-        this.setText('templeCount', s.templeCount);
+        // 建筑显示由 BuildingRenderer 接管
 
         // 时代
         const era = this.eras[s.era];
@@ -1342,7 +1320,7 @@ const Game = {
         this.setText('currentEra', `${era.icon} ${era.name}`);
 
         // 文明概览
-        const totalBuildings = s.farmLevel + s.houseCount + s.workshopCount + s.academyCount + s.barracksCount + s.templeCount;
+        const totalBuildings = Object.values(s.buildings || {}).reduce((a, b) => a + b, 0);
         const completedTechs = Object.values(s.techState).filter(t => t.status === 'completed').length;
         this.setText('civOverviewEraIcon', era.icon);
         this.setText('civOverviewEraName', era.name);
