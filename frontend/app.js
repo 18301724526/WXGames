@@ -66,8 +66,6 @@ const Game = {
             id: 'farm',
             name: '农田',
             icon: '🚜',
-            baseFood: 100,
-            baseKnowledge: 0,
             unlockEra: 0,
             effect: '食物产出 +{val}%',
             valFormat: (count) => count * 20
@@ -76,7 +74,6 @@ const Game = {
             id: 'house',
             name: '民居',
             icon: '🏠',
-            baseFood: 150,
             unlockEra: 0,
             effect: '人口上限+{val}，幸福度+5%',
             valFormat: (count) => 2 + count
@@ -85,8 +82,6 @@ const Game = {
             id: 'workshop',
             name: '工坊',
             icon: '⚒️',
-            baseFood: 150,
-            baseKnowledge: 40,
             unlockEra: 0,
             effect: '解锁工匠；工匠产出×{val}',
             valFormat: (count) => count > 0 ? (1 + count * 0.5).toFixed(1) : '1.0'
@@ -95,8 +90,6 @@ const Game = {
             id: 'academy',
             name: '学院',
             icon: '🏛️',
-            baseFood: 200,
-            baseKnowledge: 80,
             unlockEra: 0,
             effect: '学者产出×{val}',
             valFormat: (count) => count > 0 ? (1 + count * 0.5).toFixed(1) : '1.0'
@@ -105,8 +98,6 @@ const Game = {
             id: 'barracks',
             name: '兵营',
             icon: '⚔️',
-            baseFood: 250,
-            baseKnowledge: 60,
             unlockEra: 1,
             effect: '全产出+{val}%（入侵防御开发中）',
             valFormat: (count) => count * 10
@@ -115,8 +106,6 @@ const Game = {
             id: 'temple',
             name: '神庙',
             icon: '⛪',
-            baseFood: 300,
-            baseKnowledge: 100,
             unlockEra: 1,
             effect: '幸福度+{val}%；离线收益+{val2}%',
             valFormat: (count) => count * 15,
@@ -862,12 +851,12 @@ const Game = {
         const b = this.buildings[buildingId];
         if (!b) return;
 
-        // 前端预估成本（仅用于 UI 提示，真实校验在后端）
-        const cost = this.getBuildingCost(buildingId);
-        if (s.food < cost.food || s.knowledge < cost.knowledge) {
-            this.shakeCard(buildingId);
-            return;
-        }
+        // 前端不再预估成本，真实校验在后端（P1-1）
+        // const cost = this.getBuildingCost(buildingId);
+        // if (s.food < cost.food || s.knowledge < cost.knowledge) {
+        //     this.shakeCard(buildingId);
+        //     return;
+        // }
 
         try {
             const result = await this.apiPost('/api/game/action', { action: 'build', target: buildingId });
@@ -902,14 +891,7 @@ const Game = {
         }
     },
 
-    getBuildingCost(buildingId) {
-        const b = this.buildings[buildingId];
-        const count = buildingId === 'farm' ? this.state.farmLevel : (this.state[`${buildingId}Count`] || 0);
-        return {
-            food: Math.floor(b.baseFood * Math.pow(this.config.costMultiplier, count)),
-            knowledge: Math.floor(b.baseKnowledge * Math.pow(this.config.costMultiplier, count))
-        };
-    },
+
 
     // --- 时代进阶 ---
     canAdvanceEra() {
@@ -1373,12 +1355,12 @@ const Game = {
         this.setText('barracksCount', s.barracksCount);
         this.setText('templeCount', s.templeCount);
 
-        // 建筑造价
-        for (const key of Object.keys(this.buildings)) {
-            const cost = this.getBuildingCost(key);
-            this.setText(`${key}CostFood`, cost.food);
-            this.setText(`${key}CostKnowledge`, cost.knowledge);
-        }
+        // 建筑造价已由后端计算并通过 sanitizeGameState.buildingCosts 提供（P1-1）
+        // for (const key of Object.keys(this.buildings)) {
+        //     const cost = this.getBuildingCost(key);
+        //     this.setText(`${key}CostFood`, cost.food);
+        //     this.setText(`${key}CostKnowledge`, cost.knowledge);
+        // }
 
         // 时代
         const era = this.eras[s.era];
@@ -1522,14 +1504,16 @@ const Game = {
             const btn = document.getElementById(`btnBuild${key.charAt(0).toUpperCase() + key.slice(1)}`);
             if (!card || !btn) continue;
 
-            const cost = this.getBuildingCost(key);
-            const canAfford = s.food >= cost.food && s.knowledge >= cost.knowledge;
+            // 成本已由后端计算（P1-1）
+            // const cost = this.getBuildingCost(key);
+            const buildingCostData = s.buildingCosts?.[key] || {};
+            const canAfford = s.food >= (buildingCostData.food || 0) && s.knowledge >= (buildingCostData.knowledge || 0);
             const isUnlocked = s.era >= b.unlockEra;
 
             const costFoodSpan = btn.querySelector(`#${key}CostFood`);
             const costKnowledgeSpan = btn.querySelector(`#${key}CostKnowledge`);
-            if (costFoodSpan) costFoodSpan.textContent = cost.food;
-            if (costKnowledgeSpan) costKnowledgeSpan.textContent = cost.knowledge;
+            if (costFoodSpan) costFoodSpan.textContent = buildingCostData.food || 0;
+            if (costKnowledgeSpan) costKnowledgeSpan.textContent = buildingCostData.knowledge || 0;
 
             if (!isUnlocked) {
                 card.classList.add('locked');
