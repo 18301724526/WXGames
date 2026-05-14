@@ -11,6 +11,15 @@ const Game = {
         farmers: 3,
         scholars: 0,
         craftsmen: 0,
+        population: {
+            total: 3,
+            max: 5,
+            farmers: 3,
+            scholars: 0,
+            craftsmen: 0,
+            unassigned: 0,
+            growthProgress: 0
+        },
         farmLevel: 0,
         houseCount: 1,
         workshopCount: 0,
@@ -454,12 +463,25 @@ const Game = {
         s.barracksCount = serverState.buildings?.barracks || 0;
         s.templeCount = serverState.buildings?.temple || 0;
 
-        // 人口
-        s.totalPop = serverState.population?.total || 2;
-        s.maxPop = serverState.population?.max || 2;
-        s.farmers = serverState.population?.farmers || 0;
-        s.scholars = serverState.population?.scholars || 0;
-        s.craftsmen = serverState.population?.craftsmen || 0;
+        // 人口 —— 关键修正：完整同步后端 population 对象
+        const serverPop = serverState.population || {};
+        s.totalPop = serverPop.total ?? 3;
+        s.maxPop = serverPop.maxPop ?? serverPop.max ?? 5;
+        s.farmers = serverPop.farmers ?? 0;
+        s.scholars = serverPop.scholars ?? 0;
+        s.craftsmen = serverPop.craftsmen ?? 0;
+
+        // 把后端完整 population 对象存下来，供 renderPopulation 优先读取
+        s.population = {
+            total: s.totalPop,
+            max: s.maxPop,
+            maxPop: s.maxPop,
+            farmers: s.farmers,
+            scholars: s.scholars,
+            craftsmen: s.craftsmen,
+            unassigned: serverPop.unassigned ?? (s.totalPop - s.farmers - s.scholars - s.craftsmen),
+            growthProgress: serverPop.growthProgress ?? 0
+        };
 
         // 时代 / 幸福度 / 天数
         s.era = serverState.currentEra || 0;

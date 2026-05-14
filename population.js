@@ -1,19 +1,55 @@
-// ==================== 人口管理系统 ====================
-// 解耦提取：所有人口逻辑独立为可复用模块
-// 由 app.js init() 调用 window.mountPopulationMethods(game) 挂载
+// ==================== 人口管理系统 v3.0 ====================
+// 设计原则：前端只显示，后端是唯一真相源
+// app.js 只调用 mountPopulationMethods(game)，不深入内部
 
 window.mountPopulationMethods = function(game) {
-    // --- 人口上限计算 ---
-    game.applyHouseCapacity = function() {
-        const ts = this.state.techState;
-        const techBonus = ts?.cityState?.status === 'completed' ? 1 : 0;
-        this.state.maxPop = this.state.houseCount * (4 + techBonus);
+    
+    // --- 人口渲染（只读，不计算）---
+    game.renderPopulation = function() {
+        const s = this.state;
+        const pop = s.population || {}; // 优先读取后端同步的完整对象
+        
+        // 人口数字
+        this.setText('totalPop', pop.total ?? s.totalPop ?? 0);
+        this.setText('maxPop', pop.maxPop ?? s.maxPop ?? 0);
+        this.setText('unassignedPop', pop.unassigned ?? 0);
+        this.setText('farmerCount', pop.farmers ?? s.farmers ?? 0);
+        this.setText('scholarCount', pop.scholars ?? s.scholars ?? 0);
+        this.setText('craftsmanCount', pop.craftsmen ?? s.craftsmen ?? 0);
     };
 
-    // --- 职业分配 ---
+    // --- 人口按钮状态更新 ---
+    game.updatePopulationButtons = function() {
+        const s = this.state;
+        const pop = s.population || {};
+        const unassigned = pop.unassigned ?? 0;
+        
+        // + 按钮：有未分配人口时才可点
+        document.querySelectorAll('.job-controls .btn-plus').forEach(btn => {
+            btn.disabled = unassigned <= 0;
+        });
+        
+        // - 按钮：该职业有人时才可点
+        document.querySelectorAll('.job-controls .btn-minus').forEach(btn => {
+            const job = btn.dataset.job;
+            // 后端字段名为复数形式：farmers, scholars, craftsmen
+            const jobKey = job + 's';
+            const count = pop[jobKey] ?? s[jobKey] ?? 0;
+            btn.disabled = count <= 0;
+        });
+        
+        // 工匠卡片显隐（有工坊才显示）
+        const craftsmanCard = document.getElementById('craftsmanCard');
+        if (craftsmanCard) {
+            const workshopCount = s.workshopCount ?? 0;
+            craftsmanCard.style.display = workshopCount > 0 ? '' : 'none';
+        }
+    };
+
+    // --- 人口分配 API 调用（无本地回退）---
     game.assignJob = async function(job, delta) {
         if (!this.token) {
-            this.assignJobLocal(job, delta);
+            this.log('❌ 请先登录');
             return;
         }
 
@@ -25,47 +61,38 @@ window.mountPopulationMethods = function(game) {
             });
 
             if (result.success) {
+                // API 成功 → 立即拉取最新状态同步
                 const data = await this.apiGet('/game/state');
-                if (data.gameState) this.syncFromServer(data.gameState, data.gameState?.eventQueue, data.gameState?.offlineEventLog);
-                if (data.offlineIncome && (data.offlineIncome.food > 0 || data.offlineIncome.knowledge > 0)) {
+                if (data.gameState) {
+                    this.syncFromServer(data.gameState, data.gameState?.eventQueue, data.gameState?.offlineEventLog);
+                }
+                if (data.offlineIncome?.food > 0 || data.offlineIncome?.knowledge > 0) {
                     this.showOfflineModal(data.offlineIncome, data.offlineEventLog);
                 }
-                this.log(`👥 +${delta} ${job}`);
+                this.log(`👥 ${delta > 0 ? '+' : ''}${delta} ${job}`);
             } else {
-                this.log(`❌ 分配失败：${result.message}`);
-                this.assignJobLocal(job, delta);
+                this.log(`❌ ${result.message}`);
+                // 失败时拉一次状态，确保前端显示与后端一致
+                const data = await this.apiGet('/game/state');
+                if (data.gameState) this.syncFromServer(data.gameState);
             }
         } catch (e) {
             console.error('assignJob API error:', e);
-            this.assignJobLocal(job, delta);
+            this.log('❌ 网络错误，人口分配失败');
+            // 网络错误也拉状态对齐
+            try {
+                const data = await this.apiGet('/game/state');
+                if (data.gameState) this.syncFromServer(data.gameState);
+            } catch (_) {}
         }
     };
 
-    game.assignJobLocal = function(job, delta) {
-        const s = this.state;
-        const unassigned = s.totalPop - s.farmers - s.scholars - s.craftsmen;
-
-        if (job === 'farmer') {
-            if (delta > 0 && unassigned > 0) s.farmers++;
-            else if (delta < 0 && s.farmers > 0) s.farmers--;
-        } else if (job === 'scholar') {
-            if (delta > 0 && unassigned > 0) s.scholars++;
-            else if (delta < 0 && s.scholars > 0) s.scholars--;
-        } else if (job === 'craftsman') {
-            if (delta > 0 && unassigned > 0) s.craftsmen++;
-            else if (delta < 0 && s.craftsmen > 0) s.craftsmen--;
-        }
-
-        this.render();
-        this.save();
-    };
-
-    // --- 人口事件绑定 ---
+    // --- 事件绑定（防重复）---
     game.bindPopulationEvents = function() {
         if (game._populationEventsBound) return;
         game._populationEventsBound = true;
+        
         document.querySelectorAll('.job-controls button').forEach(btn => {
-            // 防重复绑定：已绑定的按钮跳过
             if (btn.dataset._popBound === 'true') return;
             btn.dataset._popBound = 'true';
             
@@ -77,43 +104,5 @@ window.mountPopulationMethods = function(game) {
         });
     };
 
-    // --- 人口渲染 ---
-    game.renderPopulation = function() {
-        const s = this.state;
-        const unassigned = s.totalPop - s.farmers - s.scholars - s.craftsmen;
-
-        this.setText('totalPop', s.totalPop);
-        this.setText('maxPop', s.maxPop);
-        this.setText('unassignedPop', unassigned >= 0 ? unassigned : 0);
-        this.setText('farmerCount', s.farmers);
-        this.setText('scholarCount', s.scholars);
-        this.setText('craftsmanCount', s.craftsmen);
-    };
-
-    // --- 人口按钮状态更新 ---
-    game.updatePopulationButtons = function() {
-        const s = this.state;
-        const unassigned = s.totalPop - s.farmers - s.scholars - s.craftsmen;
-
-        document.querySelectorAll('.btn-plus').forEach(btn => {
-            btn.disabled = unassigned <= 0;
-        });
-
-        const farmerMinus = document.querySelector('[data-job="farmer"].btn-minus');
-        if (farmerMinus) farmerMinus.disabled = s.farmers <= 0;
-
-        const scholarMinus = document.querySelector('[data-job="scholar"].btn-minus');
-        if (scholarMinus) scholarMinus.disabled = s.scholars <= 0;
-
-        const craftsmanMinus = document.querySelector('[data-job="craftsman"].btn-minus');
-        if (craftsmanMinus) craftsmanMinus.disabled = s.craftsmen <= 0;
-
-        // 工匠卡片显隐
-        const craftsmanCard = document.getElementById('craftsmanCard');
-        if (craftsmanCard) {
-            craftsmanCard.style.display = s.workshopCount > 0 ? '' : 'none';
-        }
-    };
-
-    console.log('[population.js] 人口管理模块已挂载');
+    console.log('[population.js] 人口管理模块 v3.0 已挂载');
 };
