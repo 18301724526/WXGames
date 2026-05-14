@@ -472,6 +472,9 @@ const Game = {
             temple: s.templeCount
         };
 
+        // 同步建筑成本（后端计算，前端展示用）
+        s.buildingCosts = serverState.buildingCosts || {};
+
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
         s.totalPop = serverPop.total ?? 3;
