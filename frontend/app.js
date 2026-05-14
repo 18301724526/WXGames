@@ -70,12 +70,22 @@ const Game = {
             unassigned: 0,
             growthProgress: 0
         },
+        // 建筑计数（旧字段，兼容用）
         farmLevel: 0,
         houseCount: 1,
         workshopCount: 0,
         academyCount: 0,
         barracksCount: 0,
         templeCount: 0,
+        // 建筑对象（新模块 BuildingManager 使用）
+        buildings: {
+            farm: 0,
+            house: 1,
+            workshop: 0,
+            academy: 0,
+            barracks: 0,
+            temple: 0
+        },
         happiness: 100,
         era: 0,
         day: 1,
@@ -452,6 +462,16 @@ const Game = {
         s.academyCount = serverState.buildings?.academy || 0;
         s.barracksCount = serverState.buildings?.barracks || 0;
         s.templeCount = serverState.buildings?.temple || 0;
+
+        // 同步 buildings 对象（新模块 BuildingManager 使用）
+        s.buildings = {
+            farm: s.farmLevel,
+            house: s.houseCount,
+            workshop: s.workshopCount,
+            academy: s.academyCount,
+            barracks: s.barracksCount,
+            temple: s.templeCount
+        };
 
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
@@ -942,8 +962,9 @@ const Game = {
         // 检查特定建筑
         let specificBldText = '';
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
-            const actualCount = bldKey === 'farm' ? s.farmLevel : (s[`${bldKey}Count`] || 0);
-            const bldName = this.buildingNames[bldKey] || bldKey;
+            const actualCount = s.buildings?.[bldKey] || 0;
+            const bldDef = this.buildingConfig.buildings[bldKey];
+            const bldName = bldDef?.name || bldKey;
             if (actualCount < requiredCount) {
                 buildingMet = false;
                 buildingPct = Math.min(buildingPct, 0.8);
@@ -1664,8 +1685,9 @@ const Game = {
 
         // 特定建筑需求
         for (const [bldKey, requiredCount] of Object.entries(conditions.requiredBuildings)) {
-            const bldName = this.buildingNames[bldKey];
-            const bldIcon = this.buildingIcons[bldKey];
+            const bldDef = this.buildingConfig.buildings[bldKey];
+            const bldName = bldDef?.name || bldKey;
+            const bldIcon = bldDef?.ui?.icon || '?';
             if (bldName) {
                 previewItems.push({ icon: bldIcon, text: `需要${bldName}×${requiredCount}` });
             }
@@ -1743,7 +1765,7 @@ const Game = {
 
         // 建造按钮 —— 由新模块 BuildingRenderer 接管（P1-2）
         if (this.buildingRenderer) {
-            this.buildingRenderer.bindEvents(document.querySelector('.building-grid'));
+            this.buildingRenderer.bindEvents(document.querySelector('.building-grid'), this);
         }
 
         // 时代进阶

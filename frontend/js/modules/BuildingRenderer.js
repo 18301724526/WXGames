@@ -6,6 +6,7 @@ class BuildingRenderer {
   constructor(buildingManager) {
     this.manager = buildingManager;
     this.container = null;
+    this.onBuildFail = null; // 回调：建造失败时调用 (buildingId) => {}
   }
 
   /**
@@ -48,7 +49,8 @@ class BuildingRenderer {
    * @returns {string}
    */
   renderBuildingCard(b) {
-    const disabled = !b.isUnlocked || !b.canAfford ? 'disabled' : '';
+    // P1-3：前端不根据资源禁用按钮，只检查是否解锁；资源校验交给后端
+    const disabled = !b.isUnlocked ? 'disabled' : '';
     const lockedClass = !b.isUnlocked ? 'locked' : '';
     const costText = Object.entries(b.cost)
       .map(([r, a]) => `${r}:${a}`)
@@ -78,7 +80,8 @@ class BuildingRenderer {
     for (const b of displays) {
       const btn = this.container.querySelector ? this.container.querySelector(`[data-building="${b.id}"]`) : null;
       if (btn) {
-        if (b.isUnlocked && b.canAfford) {
+        // P1-3：前端不根据资源禁用按钮，只检查是否解锁
+        if (b.isUnlocked) {
           btn.disabled = false;
           btn.classList.remove('disabled');
         } else {
@@ -143,8 +146,9 @@ class BuildingRenderer {
   /**
    * 绑定建筑按钮事件（适配现有 DOM 结构）
    * @param {HTMLElement} container - 建筑面板容器
+   * @param {object} gameInstance - app.js 实例，用于 UI 反馈
    */
-  bindEvents(container) {
+  bindEvents(container, gameInstance) {
     if (container) this.container = container;
     if (!this.container) return;
     const displays = this.manager.getAllBuildingDisplays();
@@ -152,7 +156,13 @@ class BuildingRenderer {
       const btn = this.container.querySelector(`#btnBuild${d.id.charAt(0).toUpperCase() + d.id.slice(1)}`);
       if (btn && !btn._buildingBound) {
         btn._buildingBound = true;
-        btn.addEventListener('click', () => this.manager.build(d.id));
+        btn.addEventListener('click', async () => {
+          const result = await this.manager.build(d.id);
+          if (!result.success) {
+            gameInstance.shakeCard?.(d.id);
+            gameInstance.log?.(`❌ ${result.message}`);
+          }
+        });
       }
     }
   }
@@ -177,25 +187,20 @@ class BuildingRenderer {
       if (costFoodSpan) costFoodSpan.textContent = d.cost?.food || 0;
       if (costKnowledgeSpan) costKnowledgeSpan.textContent = d.cost?.knowledge || '';
 
-      // 更新按钮状态
-      if (d.isUnlocked && d.canAfford) {
-        card.classList.add('can-build');
-        card.classList.remove('locked', 'cannot-build');
-        btn.disabled = false;
-        const labelText = btn.querySelector('.build-label');
-        if (labelText) labelText.textContent = '建造';
-      } else if (!d.isUnlocked) {
+      // P1-3：前端不预检查资源，按钮始终可点击（除非锁定），后端才是权威
+      if (!d.isUnlocked) {
         card.classList.add('locked');
         card.classList.remove('can-build', 'cannot-build');
         btn.disabled = true;
         const lockText = btn.querySelector('.build-label');
-        if (lockText) lockText.textContent = '锁定';
+        if (lockText) lockText.textContent = '🔒 锁定';
       } else {
-        card.classList.add('cannot-build');
-        card.classList.remove('can-build', 'locked');
-        btn.disabled = true;
+        // 资源不足也不禁用按钮，让用户点击后由后端判断
+        card.classList.remove('locked', 'cannot-build');
+        card.classList.add('can-build');
+        btn.disabled = false;
         const labelText = btn.querySelector('.build-label');
-        if (labelText) labelText.textContent = '资源不足';
+        if (labelText) labelText.textContent = '建造';
       }
     }
   }
