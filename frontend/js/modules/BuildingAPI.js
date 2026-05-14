@@ -37,7 +37,7 @@ class BuildingAPI {
    * @returns {Promise<{buildings: object}>}
    */
   getAllBuildings() {
-    return this._request('GET', '/api/game/state').then(data => ({
+    return this._request('GET', '/game/state').then(data => ({
       buildings: data.gameState?.buildings || {}
     }));
   }
@@ -48,7 +48,7 @@ class BuildingAPI {
    * @returns {Promise<{success: boolean, message: string, cost?}>}
    */
   build(buildingType) {
-    return this._request('POST', '/api/game/action', {
+    return this._request('POST', '/game/action', {
       action: 'build',
       target: buildingType
     });
@@ -59,7 +59,7 @@ class BuildingAPI {
    * @returns {Promise<{effects: object}>}
    */
   getEffects() {
-    return this._request('GET', '/api/game/state').then(data => {
+    return this._request('GET', '/game/state').then(data => {
       const gs = data.gameState;
       const buildings = gs?.buildings || {};
       const templeCount = buildings.temple || 0;

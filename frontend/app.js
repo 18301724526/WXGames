@@ -583,7 +583,7 @@ const Game = {
         this.applyTechEffects();
 
         // 初始化建筑系统新模块（P1-2）
-        this.buildingAPI = new BuildingAPI(this.config.apiUrl, this.token);
+        this.buildingAPI = new BuildingAPI(this.apiBase, this.token);
         this.buildingManager = new BuildingManager(this.buildingAPI, this.buildingConfig);
         this.buildingRenderer = new BuildingRenderer(this.buildingManager);
         this.buildingManager.init(this.state);
