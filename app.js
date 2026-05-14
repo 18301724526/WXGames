@@ -1468,7 +1468,7 @@ const Game = {
         const count = s.eventState?.pendingEvents?.length || 0;
         const tabs = document.querySelectorAll('.tab-btn');
         tabs.forEach(tab => {
-            if (tab.dataset.tab === 'events') {
+            if (tab.dataset.tab === 'events' || tab.dataset.tab === 'civilization') {
                 let badge = tab.querySelector('.tab-badge');
                 if (count > 0) {
                     if (!badge) {
@@ -1906,3 +1906,5 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) Game.save();
 });
+
+
