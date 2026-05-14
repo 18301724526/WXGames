@@ -1,0 +1,127 @@
+{
+  "version": "1.0",
+  "buildings": {
+    "farm": {
+      "id": "farm",
+      "name": "农田",
+      "category": "production",
+      "cost": { "food": 50 },
+      "costMultiplier": 1.5,
+      "unlockEra": 0,
+      "maxLevel": 1,
+      "effects": {
+        "perBuilding": {
+          "foodOutputMultiplier": 0.5
+        }
+      },
+      "ui": {
+        "icon": "🌾",
+        "color": "#27ae60",
+        "description": "每座提升食物产出"
+      }
+    },
+    "house": {
+      "id": "house",
+      "name": "民居",
+      "category": "housing",
+      "cost": { "food": 150 },
+      "costMultiplier": 1.5,
+      "unlockEra": 0,
+      "maxLevel": 1,
+      "effects": {
+        "perBuilding": {
+          "maxPopulation": 3,
+          "happiness": 5
+        }
+      },
+      "ui": {
+        "icon": "🏠",
+        "color": "#e67e22",
+        "description": "增加人口上限"
+      }
+    },
+    "workshop": {
+      "id": "workshop",
+      "name": "工坊",
+      "category": "production",
+      "cost": { "food": 150, "knowledge": 40 },
+      "costMultiplier": 1.5,
+      "unlockEra": 1,
+      "maxLevel": 1,
+      "effects": {
+        "perBuilding": {
+          "craftsmanOutputMultiplier": 0.5
+        }
+      },
+      "ui": {
+        "icon": "⚒️",
+        "color": "#7f8c8d",
+        "description": "每座提升工匠产出"
+      }
+    },
+    "academy": {
+      "id": "academy",
+      "name": "学院",
+      "category": "research",
+      "cost": { "food": 200, "knowledge": 80 },
+      "costMultiplier": 1.5,
+      "unlockEra": 0,
+      "maxLevel": 1,
+      "effects": {
+        "perBuilding": {
+          "scholarOutputMultiplier": 0.5
+        }
+      },
+      "ui": {
+        "icon": "📚",
+        "color": "#9b59b6",
+        "description": "每座提升学者产出"
+      }
+    },
+    "barracks": {
+      "id": "barracks",
+      "name": "兵营",
+      "category": "military",
+      "cost": { "food": 250, "knowledge": 60 },
+      "costMultiplier": 1.5,
+      "unlockEra": 2,
+      "maxLevel": 1,
+      "effects": {
+        "perBuilding": {
+          "defense": 1
+        }
+      },
+      "ui": {
+        "icon": "🛡️",
+        "color": "#c0392b",
+        "description": "提供防御能力"
+      }
+    },
+    "temple": {
+      "id": "temple",
+      "name": "神庙",
+      "category": "special",
+      "cost": { "food": 300, "knowledge": 100 },
+      "costMultiplier": 1.5,
+      "unlockEra": 3,
+      "maxLevel": 1,
+      "effects": {
+        "perBuilding": {
+          "offlineEfficiency": 0.05
+        }
+      },
+      "ui": {
+        "icon": "⛪",
+        "color": "#f39c12",
+        "description": "提升离线收益效率"
+      }
+    }
+  },
+  "categories": {
+    "production": { "label": "生产", "order": 1 },
+    "housing": { "label": "居住", "order": 2 },
+    "research": { "label": "科研", "order": 3 },
+    "military": { "label": "军事", "order": 4 },
+    "special": { "label": "特殊", "order": 5 }
+  }
+}

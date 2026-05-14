@@ -4,6 +4,8 @@ const sqlite3 = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const AuthService = require('./services/authService');
 const LogService = require('./services/logService');
+const BuildingSystem = require('./modules/BuildingSystem');
+const BuildingEffects = require('./modules/BuildingEffects');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
@@ -54,6 +56,8 @@ initTables();
 const authService = new AuthService(db, JWT_SECRET);
 const logService = new LogService(db);
 const authMiddleware = (req, res, next) => authService.authMiddleware(req, res, next);
+const buildingSystem = new BuildingSystem();
+const buildingEffects = new BuildingEffects();
 
 // ==================== 科技定义（完整版） ====================
 
@@ -399,17 +403,16 @@ function getDefaultGameState(playerId) {
 
 function calculateResourceOutput(gameState) {
   const pop = gameState.population;
-  const buildings = gameState.buildings;
   const techEffects = gameState.techEffects || {};
   const happiness = gameState.happiness || 80;
 
-  const farmBonus = 1 + (buildings.farm * 0.5);
+  const farmBonus = buildingEffects.getFoodOutputMultiplier(gameState);
   const techFoodBonus = 1 + (techEffects.farmerOutput || 0) + (techEffects.farmMultiplier || 0);
   const happinessBonus = happiness / 100;
   // 农民产出 1.0 食物/秒（Step 1：0.5→1.0）
   const foodOutput = (pop.farmers || 0) * 1.0 * farmBonus * techFoodBonus * happinessBonus;
 
-  const academyBonus = 1 + (buildings.academy * 0.5);
+  const academyBonus = buildingEffects.getKnowledgeOutputMultiplier(gameState);
   const techKnowledgeBonus = 1 + (techEffects.craftsmanOutput || 0) + (techEffects.academyMultiplier || 0);
   // 学者产出 0.5 知识/秒（Step 2：0.2→0.5）
   const scholarKnowledgeOutput = (pop.scholars || 0) * 0.5 * academyBonus * techKnowledgeBonus;
@@ -430,11 +433,7 @@ function calculateOfflineIncome(gameState, offlineSeconds) {
   const actualOffline = Math.min(offlineSeconds, maxOfflineSeconds);
 
   const output = calculateResourceOutput(gameState);
-  let offlineEfficiency = 0.8;
-
-  if (gameState.buildings.temple > 0) {
-    offlineEfficiency += 0.05;
-  }
+  let offlineEfficiency = 0.8 + buildingEffects.getOfflineEfficiencyBonus(gameState);
 
   const foodIncome = output.food * actualOffline * offlineEfficiency;
   const knowledgeIncome = output.knowledge * actualOffline * offlineEfficiency;
@@ -501,44 +500,8 @@ function saveGameState(gameState) {
 }
 
 // ==================== 建筑成本 ====================
-
-const BUILDING_DEFS = {
-  farm: { cost: { food: 50 }, unlockEra: 0 },
-  house: { cost: { food: 100, wood: 20 }, unlockEra: 0 },
-  workshop: { cost: { food: 150, knowledge: 40 }, unlockEra: 1 },
-  academy: { cost: { food: 200, knowledge: 80 }, unlockEra: 0 },
-  barracks: { cost: { food: 250, knowledge: 60 }, unlockEra: 2 },
-  temple: { cost: { food: 300, knowledge: 100 }, unlockEra: 3 }
-};
-
-function getBuildingCost(buildingType, currentCount) {
-  const def = BUILDING_DEFS[buildingType];
-  if (!def) return null;
-
-  const multiplier = Math.pow(1.5, currentCount);
-  const cost = {};
-  for (const [resource, amount] of Object.entries(def.cost)) {
-    cost[resource] = Math.floor(amount * multiplier);
-  }
-  return cost;
-}
-
-function getBuildingUnlockEra(buildingType) {
-  return BUILDING_DEFS[buildingType]?.unlockEra ?? 0;
-}
-
-function canAfford(resources, cost) {
-  for (const [resource, amount] of Object.entries(cost)) {
-    if ((resources[resource] || 0) < amount) return false;
-  }
-  return true;
-}
-
-function deductResources(resources, cost) {
-  for (const [resource, amount] of Object.entries(cost)) {
-    resources[resource] -= amount;
-  }
-}
+// 已迁移至 modules/BuildingCalculator.js 和 shared/buildingConfig.json
+// 通过 buildingSystem / buildingEffects 实例调用
 
 // ==================== API路由 ====================
 
@@ -620,29 +583,7 @@ app.post('/api/game/action', authMiddleware, (req, res) => {
   switch (action) {
     case 'build': {
       const buildingType = target;
-      const currentCount = gameState.buildings[buildingType] || 0;
-      const cost = getBuildingCost(buildingType, currentCount);
-
-      if (!cost) {
-        result = { success: false, message: 'Invalid building type' };
-        break;
-      }
-
-      const requiredEra = getBuildingUnlockEra(buildingType);
-      if (gameState.currentEra < requiredEra) {
-        result = { success: false, message: `Requires ${ERA_NAMES[requiredEra]} era` };
-        break;
-      }
-
-      if (!canAfford(gameState.resources, cost)) {
-        result = { success: false, message: 'Insufficient resources' };
-        break;
-      }
-
-      deductResources(gameState.resources, cost);
-      gameState.buildings[buildingType] = currentCount + 1;
-
-      result = { success: true, message: `Built ${buildingType}`, cost };
+      const result = buildingSystem.build(buildingType, gameState);
       break;
     }
 
@@ -847,7 +788,7 @@ function applyEventEffects(gameState, eventId, optionKey) {
 
   // 兵营判定（野兽袭击选项A）
   if (eventId === 'beastAttack' && optionKey === 'A') {
-    const barracksCount = gs.buildings.barracks || 0;
+    const defenseLevel = buildingEffects.getDefenseLevel(gs);
     if (barracksCount >= 1) {
       effects.message = '\u5175\u8425\u6210\u529F\u9632\u5FA1\uFF01\u65CF\u7FA4\u65E0\u635F';
       effects.food = 0;
@@ -1285,6 +1226,10 @@ setInterval(() => {
 }, 1000);
 
 console.log('Tick system started: 1s interval, all active players');
+
+// ==================== 建筑路由 ====================
+const registerBuildingRoutes = require('./routes/buildingRoutes');
+registerBuildingRoutes(app, { authMiddleware, getGameState, saveGameState });
 
 // ==================== 启动 ====================
 

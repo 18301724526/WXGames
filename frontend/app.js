@@ -1,5 +1,6 @@
 // ========== 文明火种 H5 - 第二阶段：科技树8节点 ==========
 // 核心游戏引擎
+// 建筑系统模块已解耦至 js/modules/（全局挂载，无需 require）
 
 const Game = {
     // --- 游戏状态 ---
@@ -75,8 +76,7 @@ const Game = {
             id: 'house',
             name: '民居',
             icon: '🏠',
-            baseFood: 100,
-            baseKnowledge: 0,
+            baseFood: 150,
             unlockEra: 0,
             effect: '人口上限+{val}，幸福度+5%',
             valFormat: (count) => 2 + count
@@ -857,41 +857,47 @@ const Game = {
     },
 
     // --- 建造系统 ---
-    build(buildingId) {
+    async build(buildingId) {
         const s = this.state;
         const b = this.buildings[buildingId];
         if (!b) return;
 
+        // 前端预估成本（仅用于 UI 提示，真实校验在后端）
         const cost = this.getBuildingCost(buildingId);
+        if (s.food < cost.food || s.knowledge < cost.knowledge) {
+            this.shakeCard(buildingId);
+            return;
+        }
 
-        if (s.food >= cost.food && s.knowledge >= cost.knowledge) {
-            s.food -= cost.food;
-            s.knowledge -= cost.knowledge;
+        try {
+            const result = await this.apiPost('/api/game/action', { action: 'build', target: buildingId });
+            if (result.success) {
+                // 从后端拉取最新状态（权威来源）
+                const stateData = await this.apiGet('/api/game/state');
+                if (stateData.gameState) {
+                    this.syncFromServer(stateData.gameState, stateData.gameState?.eventQueue, stateData.gameState?.offlineEventLog);
+                }
 
-            if (buildingId === 'farm') {
-                s.farmLevel++;
+                // UI 反馈
+                this.showParticles(b.icon, `#${buildingId}Card`, 12);
+                this.showFloatingText(`${b.name}建造完成！`, `#${buildingId}Card`, '#4ecca3');
+                const displayCount = buildingId === 'farm' ? s.farmLevel : s[`${buildingId}Count`];
+                this.log(`${b.icon} ${b.name} 建造完成！当前${buildingId === 'farm' ? '等级' : '数量'}：${displayCount}`);
+                this.triggerScreenFlash();
+
+                const countId = buildingId === 'farm' ? 'farmLevel' : `${buildingId}Count`;
+                this.animateNumberBump(countId);
+                this.animateNumberBump('foodValue');
+                this.animateNumberBump('knowledgeValue');
+
+                this.render();
+                this.save();
             } else {
-                s[`${buildingId}Count`]++;
+                this.log(`❌ 建造失败: ${result.message}`);
+                this.shakeCard(buildingId);
             }
-
-            if (buildingId === 'house') {
-                // 民居容量由后端同步
-            }
-
-            this.showParticles(b.icon, `#${buildingId}Card`, 12);
-            this.showFloatingText(`${b.name}建造完成！`, `#${buildingId}Card`, '#4ecca3');
-            const displayCount = buildingId === 'farm' ? s.farmLevel : s[`${buildingId}Count`];
-            this.log(`${b.icon} ${b.name} 建造完成！当前${buildingId === 'farm' ? '等级' : '数量'}：${displayCount}`);
-            this.triggerScreenFlash();
-
-            const countId = buildingId === 'farm' ? 'farmLevel' : `${buildingId}Count`;
-            this.animateNumberBump(countId);
-            this.animateNumberBump('foodValue');
-            this.animateNumberBump('knowledgeValue');
-
-            this.render();
-            this.save();
-        } else {
+        } catch (e) {
+            this.log(`❌ 建造请求失败: ${e.message}`);
             this.shakeCard(buildingId);
         }
     },
