@@ -70,12 +70,22 @@ const Game = {
             unassigned: 0,
             growthProgress: 0
         },
+        // 建筑计数（旧字段，兼容用）
         farmLevel: 0,
         houseCount: 1,
         workshopCount: 0,
         academyCount: 0,
         barracksCount: 0,
         templeCount: 0,
+        // 建筑对象（新模块 BuildingManager 使用）
+        buildings: {
+            farm: 0,
+            house: 1,
+            workshop: 0,
+            academy: 0,
+            barracks: 0,
+            temple: 0
+        },
         happiness: 100,
         era: 0,
         day: 1,
@@ -452,6 +462,16 @@ const Game = {
         s.academyCount = serverState.buildings?.academy || 0;
         s.barracksCount = serverState.buildings?.barracks || 0;
         s.templeCount = serverState.buildings?.temple || 0;
+
+        // 同步 buildings 对象（新模块 BuildingManager 使用）
+        s.buildings = {
+            farm: s.farmLevel,
+            house: s.houseCount,
+            workshop: s.workshopCount,
+            academy: s.academyCount,
+            barracks: s.barracksCount,
+            temple: s.templeCount
+        };
 
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
