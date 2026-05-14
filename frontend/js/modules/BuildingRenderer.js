@@ -49,7 +49,8 @@ class BuildingRenderer {
    * @returns {string}
    */
   renderBuildingCard(b) {
-    const disabled = !b.isUnlocked || !b.canAfford ? 'disabled' : '';
+    // P1-3：前端不根据资源禁用按钮，只检查是否解锁；资源校验交给后端
+    const disabled = !b.isUnlocked ? 'disabled' : '';
     const lockedClass = !b.isUnlocked ? 'locked' : '';
     const costText = Object.entries(b.cost)
       .map(([r, a]) => `${r}:${a}`)
@@ -79,7 +80,8 @@ class BuildingRenderer {
     for (const b of displays) {
       const btn = this.container.querySelector ? this.container.querySelector(`[data-building="${b.id}"]`) : null;
       if (btn) {
-        if (b.isUnlocked && b.canAfford) {
+        // P1-3：前端不根据资源禁用按钮，只检查是否解锁
+        if (b.isUnlocked) {
           btn.disabled = false;
           btn.classList.remove('disabled');
         } else {
