@@ -163,7 +163,7 @@ class BuildingRenderer {
             gameInstance.log?.(`❌ ${result.message}`);
           } else {
             gameInstance.log?.(`✅ ${d.name} 升级成功`);
-            const stateData = await gameInstance.apiGet('/api/game/state');
+            const stateData = await gameInstance.apiGet('/game/state');
             if (stateData.gameState) {
               gameInstance.syncFromServer(stateData.gameState, stateData.gameState?.eventQueue, stateData.gameState?.offlineEventLog);
             }
