@@ -4,8 +4,10 @@ const sqlite3 = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const AuthService = require('./services/authService');
 const LogService = require('./services/logService');
+const buildingConfig = require('../shared/buildingConfig.json');
 const BuildingSystem = require('./modules/BuildingSystem');
 const BuildingEffects = require('./modules/BuildingEffects');
+const BuildingCalculator = require('./modules/BuildingCalculator');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
@@ -889,6 +891,14 @@ function sanitizeGameState(gameState) {
   const techBonus = (gameState.techEffects?.houseCapacity || 0);
   const maxPop = baseMax + techBonus;
 
+  // 计算所有建筑的当前成本
+  const buildingCosts = {};
+  const buildingTypes = BuildingCalculator.getAllBuildingTypes();
+  for (const type of buildingTypes) {
+    const count = gameState.buildings[type] || 0;
+    buildingCosts[type] = BuildingCalculator.getBuildingCost(type, count);
+  }
+
   return {
     playerId: gameState.playerId,
     resources: {
@@ -898,6 +908,7 @@ function sanitizeGameState(gameState) {
       woodPerSecond: Math.round(output.wood * 10) / 10,
     },
     buildings: gameState.buildings,
+    buildingCosts,
     population: {
       ...gameState.population,
       maxPop: maxPop,

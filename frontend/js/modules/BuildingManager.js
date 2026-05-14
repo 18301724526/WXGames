@@ -35,7 +35,7 @@ class BuildingManager {
 
     return Object.values(this.config.buildings).map(config => {
       const currentCount = this.state.buildings[config.id] || 0;
-      const cost = this.calculateDisplayCost(config, currentCount);
+      const cost = this.state.buildingCosts?.[config.id] || config.cost;
       const canAfford = this.checkCanAfford(cost);
       const isUnlocked = this.state.currentEra >= config.unlockEra;
 
@@ -79,7 +79,7 @@ class BuildingManager {
     if (!config) return null;
 
     const currentCount = this.state.buildings[buildingId] || 0;
-    const cost = this.calculateDisplayCost(config, currentCount);
+    const cost = this.state.buildingCosts?.[config.id] || config.cost;
     const canAfford = this.checkCanAfford(cost);
     const isUnlocked = this.state.currentEra >= config.unlockEra;
 
@@ -99,15 +99,6 @@ class BuildingManager {
   }
 
   // ===== 私有辅助方法 =====
-
-  calculateDisplayCost(config, count) {
-    const multiplier = Math.pow(config.costMultiplier, count);
-    const cost = {};
-    for (const [resource, amount] of Object.entries(config.cost)) {
-      cost[resource] = Math.floor(amount * multiplier);
-    }
-    return cost;
-  }
 
   checkCanAfford(cost) {
     if (!this.state || !this.state.resources) return false;
