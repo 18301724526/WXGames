@@ -377,7 +377,7 @@ function getDefaultGameState(playerId) {
     playerId,
     resources: { food: 100, wood: 100, stone: 100, metal: 100, knowledge: 0 },
     buildings: { farm: 0, house: 1, workshop: 0, academy: 0, barracks: 0, temple: 0 },
-    population: { total: 3, max: 5, farmers: 2, craftsmen: 0, scholars: 0, unassigned: 1, growthProgress: 0 },
+    population: { total: 3, max: 5, farmers: 3, craftsmen: 0, scholars: 0, unassigned: 0, growthProgress: 0 },
     techs: {},
     techEffects: {},
     currentEra: 0,
@@ -726,21 +726,6 @@ app.post('/api/game/action', authMiddleware, (req, res) => {
       gameState.happiness = Math.min(100, gameState.happiness + 10);
 
       result = { success: true, message: `Advanced to ${ERA_NAMES[targetEra]} era` };
-      break;
-    }
-
-    case 'recruit': {
-      const recruitCost = { food: 50 };
-      if (!canAfford(gameState.resources, recruitCost)) {
-        result = { success: false, message: 'Insufficient food' };
-        break;
-      }
-
-      deductResources(gameState.resources, recruitCost);
-      gameState.population.total += 1;
-      gameState.population.unassigned = (gameState.population.unassigned || 0) + 1;
-
-      result = { success: true, message: 'Recruited 1 population' };
       break;
     }
 
