@@ -162,7 +162,6 @@ class BuildingRenderer {
             gameInstance.shakeCard?.(d.id);
             gameInstance.log?.(`❌ ${result.message}`);
           } else {
-            // 建造成功：立即拉取最新状态刷新UI
             gameInstance.log?.(`✅ ${d.name} 升级成功`);
             const stateData = await gameInstance.apiGet?.('/game/state');
             if (stateData?.gameState) {
