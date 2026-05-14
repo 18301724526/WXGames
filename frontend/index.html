@@ -160,7 +160,7 @@
                     <h2 class="panel-title">🏗️ 建筑</h2>
                     <div class="building-grid">
                         <!-- 农田 -->
-                        <div class="building-card" id="farmCard">
+                        <div class="building-card" id="farmCard" data-building-id="farm">
                             <div class="building-header">
                                 <div class="building-icon">🚜</div>
                                 <div class="building-title">
@@ -169,7 +169,7 @@
                                 </div>
                             </div>
                             <div class="building-effect">食物产出 +<span id="farmBonus">0</span>%</div>
-                            <button class="btn-build" id="btnBuildFarm">
+                            <button class="btn-build" id="btnBuildFarm" data-building-id="farm">
                                 <span class="build-cost cost-food">🌾 <span id="farmCostFood">100</span></span>
                                 <span class="build-cost cost-knowledge" id="farmCostKnowledge"></span>
                                 <span class="build-label">建造</span>
@@ -177,7 +177,7 @@
                         </div>
 
                         <!-- 民居 -->
-                        <div class="building-card" id="houseCard">
+                        <div class="building-card" id="houseCard" data-building-id="house">
                             <div class="building-header">
                                 <div class="building-icon">🏠</div>
                                 <div class="building-title">
@@ -186,7 +186,7 @@
                                 </div>
                             </div>
                             <div class="building-effect">人口上限+2，幸福度+5%</div>
-                            <button class="btn-build" id="btnBuildHouse">
+                            <button class="btn-build" id="btnBuildHouse" data-building-id="house">
                                 <span class="build-cost cost-food">🌾 <span id="houseCostFood">100</span></span>
                                 <span class="build-cost cost-knowledge" id="houseCostKnowledge"></span>
                                 <span class="build-label">建造</span>
@@ -194,7 +194,7 @@
                         </div>
 
                         <!-- 工坊 -->
-                        <div class="building-card" id="workshopCard">
+                        <div class="building-card" id="workshopCard" data-building-id="workshop">
                             <div class="building-header">
                                 <div class="building-icon">⚒️</div>
                                 <div class="building-title">
@@ -203,7 +203,7 @@
                                 </div>
                             </div>
                             <div class="building-effect">解锁工匠；工匠产出×<span id="workshopBonus">1.5</span></div>
-                            <button class="btn-build" id="btnBuildWorkshop">
+                            <button class="btn-build" id="btnBuildWorkshop" data-building-id="workshop">
                                 <span class="build-cost cost-food">🌾 <span id="workshopCostFood">150</span></span>
                                 <span class="build-cost cost-knowledge">📚 <span id="workshopCostKnowledge">40</span></span>
                                 <span class="build-label">建造</span>
@@ -211,7 +211,7 @@
                         </div>
 
                         <!-- 学院 -->
-                        <div class="building-card" id="academyCard">
+                        <div class="building-card" id="academyCard" data-building-id="academy">
                             <div class="building-header">
                                 <div class="building-icon">🏛️</div>
                                 <div class="building-title">
@@ -220,7 +220,7 @@
                                 </div>
                             </div>
                             <div class="building-effect">学者产出×<span id="academyBonus">1.5</span></div>
-                            <button class="btn-build" id="btnBuildAcademy">
+                            <button class="btn-build" id="btnBuildAcademy" data-building-id="academy">
                                 <span class="build-cost cost-food">🌾 <span id="academyCostFood">200</span></span>
                                 <span class="build-cost cost-knowledge">📚 <span id="academyCostKnowledge">80</span></span>
                                 <span class="build-label">建造</span>
@@ -228,7 +228,7 @@
                         </div>
 
                         <!-- 兵营 -->
-                        <div class="building-card" id="barracksCard">
+                        <div class="building-card" id="barracksCard" data-building-id="barracks">
                             <div class="building-header">
                                 <div class="building-icon">⚔️</div>
                                 <div class="building-title">
@@ -237,7 +237,7 @@
                                 </div>
                             </div>
                             <div class="building-effect">全产出+<span id="barracksBonus">10</span>%</div>
-                            <button class="btn-build" id="btnBuildBarracks">
+                            <button class="btn-build" id="btnBuildBarracks" data-building-id="barracks">
                                 <span class="build-cost cost-food">🌾 <span id="barracksCostFood">250</span></span>
                                 <span class="build-cost cost-knowledge">📚 <span id="barracksCostKnowledge">60</span></span>
                                 <span class="build-label">建造</span>
@@ -245,7 +245,7 @@
                         </div>
 
                         <!-- 神庙 -->
-                        <div class="building-card" id="templeCard">
+                        <div class="building-card" id="templeCard" data-building-id="temple">
                             <div class="building-header">
                                 <div class="building-icon">⛪</div>
                                 <div class="building-title">
@@ -254,7 +254,7 @@
                                 </div>
                             </div>
                             <div class="building-effect">幸福度+15%；离线收益+5%</div>
-                            <button class="btn-build" id="btnBuildTemple">
+                            <button class="btn-build" id="btnBuildTemple" data-building-id="temple">
                                 <span class="build-cost cost-food">🌾 <span id="templeCostFood">300</span></span>
                                 <span class="build-cost cost-knowledge">📚 <span id="templeCostKnowledge">100</span></span>
                                 <span class="build-label">建造</span>
