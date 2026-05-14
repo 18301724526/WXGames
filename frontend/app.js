@@ -112,7 +112,6 @@ const Game = {
         knowledgePerScholar: 1,
         knowledgePerCraftsman: 1,
         farmBonusPerLevel: 20,
-        costMultiplier: 1.5,
         eraThreshold: 1000,
         maxOfflineHours: 8,
         offlineEfficiencyBase: 0.5,
