@@ -8,7 +8,7 @@
       "cost": { "food": 50 },
       "costMultiplier": 1.5,
       "unlockEra": 0,
-      "maxLevel": 1,
+      "maxLevel": 99,
       "effects": {
         "perBuilding": {
           "foodOutputMultiplier": 0.5
@@ -27,7 +27,7 @@
       "cost": { "food": 150 },
       "costMultiplier": 1.5,
       "unlockEra": 0,
-      "maxLevel": 1,
+      "maxLevel": 99,
       "effects": {
         "perBuilding": {
           "maxPopulation": 3,
@@ -47,7 +47,7 @@
       "cost": { "food": 150, "knowledge": 40 },
       "costMultiplier": 1.5,
       "unlockEra": 1,
-      "maxLevel": 1,
+      "maxLevel": 99,
       "effects": {
         "perBuilding": {
           "craftsmanOutputMultiplier": 0.5
@@ -66,7 +66,7 @@
       "cost": { "food": 200, "knowledge": 80 },
       "costMultiplier": 1.5,
       "unlockEra": 0,
-      "maxLevel": 1,
+      "maxLevel": 99,
       "effects": {
         "perBuilding": {
           "scholarOutputMultiplier": 0.5
@@ -85,7 +85,7 @@
       "cost": { "food": 250, "knowledge": 60 },
       "costMultiplier": 1.5,
       "unlockEra": 2,
-      "maxLevel": 1,
+      "maxLevel": 99,
       "effects": {
         "perBuilding": {
           "defense": 1
@@ -104,7 +104,7 @@
       "cost": { "food": 300, "knowledge": 100 },
       "costMultiplier": 1.5,
       "unlockEra": 3,
-      "maxLevel": 1,
+      "maxLevel": 99,
       "effects": {
         "perBuilding": {
           "offlineEfficiency": 0.05
