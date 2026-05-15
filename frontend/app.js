@@ -692,7 +692,6 @@ const Game = {
     },
     },
 
-    // --- 科技效果应用 ---
     applyTechEffects() {
         const ts = this.state.techState;
         // 重置基础配置
