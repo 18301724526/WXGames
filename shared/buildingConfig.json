@@ -21,7 +21,10 @@
       },
       "ui": {
         "color": "#27ae60",
-        "description": "每级提升食物产出"
+        "description": "每级提升食物产出",
+        "effectText": [
+          { "field": "foodOutputBonus", "label": "食物产出", "format": "percent" }
+        ]
       }
     },
     "house": {
@@ -44,7 +47,11 @@
       },
       "ui": {
         "color": "#e67e22",
-        "description": "每级增加人口上限与幸福度"
+        "description": "每级增加人口上限与幸福度",
+        "effectText": [
+          { "field": "populationCapBonus", "label": "人口上限", "format": "number" },
+          { "field": "happinessBonus", "label": "幸福度", "format": "number" }
+        ]
       }
     },
     "workshop": {
@@ -66,7 +73,10 @@
       },
       "ui": {
         "color": "#7f8c8d",
-        "description": "提升工匠产出"
+        "description": "提升工匠产出",
+        "effectText": [
+          { "field": "craftsmanOutputBonus", "label": "工匠产出", "format": "percent" }
+        ]
       }
     },
     "academy": {
@@ -88,7 +98,10 @@
       },
       "ui": {
         "color": "#9b59b6",
-        "description": "提升知识产出"
+        "description": "提升知识产出",
+        "effectText": [
+          { "field": "knowledgeOutputBonus", "label": "知识产出", "format": "percent" }
+        ]
       }
     },
     "barracks": {
@@ -110,7 +123,11 @@
       },
       "ui": {
         "color": "#c0392b",
-        "description": "提供防御与少量全局加成"
+        "description": "提供防御与少量全局加成",
+        "effectText": [
+          { "field": "defenseLevel", "label": "防御等级", "format": "number" },
+          { "field": "globalOutputBonus", "label": "全产出", "format": "percent" }
+        ]
       }
     },
     "temple": {
@@ -132,7 +149,11 @@
       },
       "ui": {
         "color": "#f39c12",
-        "description": "提升离线收益效率与幸福度"
+        "description": "提升离线收益效率与幸福度",
+        "effectText": [
+          { "field": "happinessBonus", "label": "幸福度", "format": "number" },
+          { "field": "offlineEfficiencyBonus", "label": "离线收益", "format": "percent" }
+        ]
       }
     }
   },

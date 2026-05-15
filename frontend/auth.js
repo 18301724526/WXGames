@@ -2,6 +2,21 @@
 // 挂载函数 — 由 app.js init() 调用，避免 IIFE 的竞态问题
 
 window.mountAuthMethods = function(game) {
+  function setLoginMessage(message) {
+    const el = document.getElementById('loginMessage');
+    if (el) el.textContent = message;
+  }
+
+  async function parseResponsePayload(resp) {
+    const text = await resp.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return { message: text.trim() || null };
+    }
+  }
+
   game.handleAuthError = function(data) {
     console.error('Auth error:', data);
     this.token = null;
@@ -22,7 +37,7 @@ window.mountAuthMethods = function(game) {
 
   game.handleLogin = function() {
     const deviceId = document.getElementById('loginDeviceId')?.value.trim();
-    if (!deviceId) { document.getElementById('loginMessage').textContent = '请输入设备ID'; return; }
+    if (!deviceId) { setLoginMessage('请输入设备ID'); return; }
     this.loginOrRegister(deviceId, 'login');
   };
 
@@ -35,12 +50,11 @@ window.mountAuthMethods = function(game) {
     try {
       const url = mode === 'login' ? `${this.apiBase}/player/login` : `${this.apiBase}/player/register`;
       const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId }) });
+      const data = await parseResponsePayload(resp);
       if (!resp.ok) {
-        const el = document.getElementById('loginMessage');
-        if (el) el.textContent = `服务器错误 (${resp.status})，请稍后再试`;
+        setLoginMessage(data.message || `服务器错误 (${resp.status})，请稍后再试`);
         return;
       }
-      const data = await resp.json();
       if (data.token) {
         this.token = data.token; this.playerId = data.playerId;
         localStorage.setItem('cf_token', data.token); localStorage.setItem('cf_deviceId', deviceId);
@@ -53,10 +67,10 @@ window.mountAuthMethods = function(game) {
         }
         this.startHeartbeat();
       } else {
-        const el = document.getElementById('loginMessage'); if (el) el.textContent = data.message || '登录失败';
+        setLoginMessage(data.message || '登录失败');
       }
     } catch (e) {
-      const el = document.getElementById('loginMessage'); if (el) el.textContent = '网络错误：' + e.message;
+      setLoginMessage('网络错误：' + e.message);
     }
   };
 

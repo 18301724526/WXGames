@@ -1,7 +1,18 @@
+const TUTORIAL_STEPS = Object.freeze({
+  initial: 0,
+  tutorialStarted: 1,
+  civilizationTabOpened: 2,
+  civilizationPrepReserved: 3,
+  eraAdvanced: 4,
+  buildingsTabOpened: 5,
+  farmPrepReserved: 6,
+  completed: 7,
+});
+
 function createInitialTutorialState() {
   return {
     completed: false,
-    currentStep: 0,
+    currentStep: TUTORIAL_STEPS.initial,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -10,7 +21,7 @@ function normalizeTutorialState(raw) {
   if (!raw || typeof raw !== 'object') return createInitialTutorialState();
   return {
     completed: Boolean(raw.completed),
-    currentStep: Number.isFinite(raw.currentStep) ? raw.currentStep : 0,
+    currentStep: Number.isFinite(raw.currentStep) ? raw.currentStep : TUTORIAL_STEPS.initial,
     updatedAt: raw.updatedAt || new Date().toISOString(),
   };
 }
@@ -18,10 +29,12 @@ function normalizeTutorialState(raw) {
 function canAccessTab(tutorialState, tabKey) {
   if (tutorialState.completed) return true;
   const step = tutorialState.currentStep;
-  if (step <= 1) return ['resources', 'civilization'].includes(tabKey);
-  if (step <= 3) return tabKey === 'civilization';
-  if (step === 4) return ['civilization', 'buildings'].includes(tabKey);
-  if (step <= 6) return tabKey === 'buildings';
+  if (step <= TUTORIAL_STEPS.tutorialStarted) return ['resources', 'civilization'].includes(tabKey);
+  // Step 3 is intentionally reserved for future civilization-side guidance.
+  if (step <= TUTORIAL_STEPS.civilizationPrepReserved) return tabKey === 'civilization';
+  if (step === TUTORIAL_STEPS.eraAdvanced) return ['civilization', 'buildings'].includes(tabKey);
+  // Step 6 is intentionally reserved for future farm/building guidance.
+  if (step <= TUTORIAL_STEPS.farmPrepReserved) return tabKey === 'buildings';
   return true;
 }
 
@@ -56,7 +69,7 @@ function manualAdvance(tutorialState, nextStep) {
   return {
     ...normalized,
     currentStep: step,
-    completed: step >= 7,
+    completed: step >= TUTORIAL_STEPS.completed,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -64,11 +77,11 @@ function manualAdvance(tutorialState, nextStep) {
 function advanceTutorial(tutorialState, eventName) {
   const normalized = normalizeTutorialState(tutorialState);
   const map = {
-    tutorialStarted: 1,
-    civilizationTabOpened: 2,
-    eraAdvanced: 4,
-    buildingsTabOpened: 5,
-    farmBuilt: 7,
+    tutorialStarted: TUTORIAL_STEPS.tutorialStarted,
+    civilizationTabOpened: TUTORIAL_STEPS.civilizationTabOpened,
+    eraAdvanced: TUTORIAL_STEPS.eraAdvanced,
+    buildingsTabOpened: TUTORIAL_STEPS.buildingsTabOpened,
+    farmBuilt: TUTORIAL_STEPS.completed,
   };
   const nextStep = map[eventName];
   if (!nextStep) return normalized;
@@ -76,6 +89,7 @@ function advanceTutorial(tutorialState, eventName) {
 }
 
 module.exports = {
+  TUTORIAL_STEPS,
   createInitialTutorialState,
   normalizeTutorialState,
   canAccessTab,

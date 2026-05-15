@@ -67,7 +67,7 @@ fi
 
 echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do
-    if curl -fsS "http://127.0.0.1:${API_PORT}/api/health"; then
+    if curl -fsS "http://localhost:${API_PORT}/api/health"; then
         echo
         echo "[Deploy] 部署完成"
         echo "[Deploy] 前端: http://47.116.32.216/h5/"

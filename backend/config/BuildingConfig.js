@@ -1,6 +1,10 @@
 const path = require('path');
 const config = require(path.join(__dirname, '..', '..', 'shared', 'buildingConfig.json'));
 
+function cloneConfig(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function getAllBuildings() {
   return config.buildings;
 }
@@ -28,7 +32,7 @@ function getMaxLevel(buildingId) {
 }
 
 module.exports = {
-  raw: config,
+  raw: () => cloneConfig(config),
   getAllBuildings,
   getBuilding,
   hasBuilding,

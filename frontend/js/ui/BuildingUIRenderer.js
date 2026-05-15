@@ -41,7 +41,7 @@
         const disabledByTutorial = tutorial && !tutorial.completed && tutorial.currentStep === 5 && id !== 'farm';
         const isMax = actionLabel === '已满级';
         const disabled = disabledByTutorial || isMax;
-        const effectText = this.getEffectText(id, state.buildingEffects);
+        const effectText = this.getEffectText(config, state.buildingEffects);
         const descText = this.getDescription(id, state.buildings);
         const art = config.art
           ? `<img class="building-art" src="${config.art}" alt="${config.name}" loading="lazy">`
@@ -66,36 +66,23 @@
       }).join('');
     }
 
-    getEffectText(id, buildingEffects) {
-      const effect = buildingEffects?.byBuilding?.[id] || {};
-      switch (id) {
-        case 'farm':
-          return `食物产出 +${Math.round((effect.foodOutputBonus || 0) * 100)}%`;
-        case 'house': {
-          const parts = [];
-          if (typeof effect.populationCapBonus === 'number') parts.push(`人口上限 +${effect.populationCapBonus}`);
-          if (typeof effect.happinessBonus === 'number') parts.push(`幸福度 +${effect.happinessBonus}`);
-          return parts.join('，') || '提升人口上限';
-        }
-        case 'workshop':
-          return `工匠产出 +${Math.round((effect.craftsmanOutputBonus || 0) * 100)}%`;
-        case 'academy':
-          return `知识产出 +${Math.round((effect.knowledgeOutputBonus || 0) * 100)}%`;
-        case 'barracks': {
-          const parts = [];
-          if (typeof effect.defenseLevel === 'number') parts.push(`防御等级 +${effect.defenseLevel}`);
-          if (typeof effect.globalOutputBonus === 'number') parts.push(`全产出 +${Math.round(effect.globalOutputBonus * 100)}%`);
-          return parts.join('，') || '提升防御与全局产出';
-        }
-        case 'temple': {
-          const parts = [];
-          if (typeof effect.happinessBonus === 'number') parts.push(`幸福度 +${effect.happinessBonus}`);
-          if (typeof effect.offlineEfficiencyBonus === 'number') parts.push(`离线收益 +${Math.round(effect.offlineEfficiencyBonus * 100)}%`);
-          return parts.join('，') || '提升幸福度与离线收益';
-        }
-        default:
-          return '效果由后端计算';
+    formatEffectPart(template, effect) {
+      if (!template?.field || !template?.label) return '';
+      const value = effect?.[template.field];
+      if (typeof value !== 'number') return '';
+      if (template.format === 'percent') {
+        return `${template.label} +${Math.round(value * 100)}%`;
       }
+      return `${template.label} +${value}`;
+    }
+
+    getEffectText(config, buildingEffects) {
+      const effect = buildingEffects?.byBuilding?.[config?.id] || {};
+      const templates = config?.ui?.effectText || [];
+      const parts = templates
+        .map((template) => this.formatEffectPart(template, effect))
+        .filter(Boolean);
+      return parts.join('，') || '效果由后端计算';
     }
 
     getDescription(id, buildings) {

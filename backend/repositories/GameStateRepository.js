@@ -66,7 +66,11 @@ class GameStateRepository {
   }
 
   findAll() {
-    const rows = this.db.prepare('SELECT playerId FROM game_states').all();
+    const rows = this.db.prepare(`
+      SELECT game_states.playerId
+      FROM game_states
+      INNER JOIN players ON players.playerId = game_states.playerId
+    `).all();
     return rows.map((row) => this.findByPlayerId(row.playerId)).filter(Boolean);
   }
 
