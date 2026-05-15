@@ -10,9 +10,9 @@
     return getLevel(buildings, id) > 0;
   }
 
-  function getActionLabel(buildingConfig, level) {
+  function getActionLabel(nextCost, level) {
     if (!level) return '建造';
-    if (level >= (buildingConfig.maxLevel || 1)) return '已满级';
+    if (nextCost === null) return '已满级';
     return '升级';
   }
 

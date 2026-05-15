@@ -7,6 +7,7 @@ const BuildingUnlockService = require('./BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 const { getAdvanceConfig, getEraName } = require('../config/EraConfig');
 const BuildingConfig = require('../config/BuildingConfig');
+const GameConfig = require('../config/GameConfig');
 
 function createInitialGameState(playerId) {
   const buildings = BuildingState.createInitialBuildingState();
@@ -112,6 +113,9 @@ function getClientGameState(gameState) {
     playerId: normalized.playerId,
     resources: {
       ...normalized.resources,
+      foodOutputPerSecond: Math.round(outputs.foodOutputPerSecond * 10) / 10,
+      foodConsumptionPerSecond: Math.round(outputs.foodConsumptionPerSecond * 10) / 10,
+      foodNetPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
       foodPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
       knowledgePerSecond: Math.round(outputs.knowledgePerSecond * 10) / 10,
     },
@@ -140,8 +144,8 @@ function getClientGameState(gameState) {
 function calculateOfflineIncome(gameState, offlineSeconds) {
   const normalized = normalizeState(gameState);
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
-  const actualOffline = Math.min(Math.max(0, offlineSeconds), 8 * 3600);
-  const efficiency = 0.8 + (normalized.buildingEffects.offlineEfficiencyBonus || 0);
+  const actualOffline = Math.min(Math.max(0, offlineSeconds), GameConfig.resources.maxOfflineHours * 3600);
+  const efficiency = GameConfig.resources.offlineBaseEfficiency + (normalized.buildingEffects.offlineEfficiencyBonus || 0);
   return {
     food: Math.max(0, Math.floor(outputs.foodPerSecond * actualOffline * efficiency)),
     knowledge: Math.max(0, Math.floor(outputs.knowledgePerSecond * actualOffline * efficiency)),

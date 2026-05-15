@@ -206,12 +206,29 @@ const Game = {
 
   renderResources() {
     const resources = this.state.resources || {};
+    const foodOutput = Number(resources.foodOutputPerSecond || 0);
+    const foodConsumption = Number(resources.foodConsumptionPerSecond || 0);
+    const foodNet = Number(
+      Object.prototype.hasOwnProperty.call(resources, 'foodNetPerSecond')
+        ? resources.foodNetPerSecond
+        : resources.foodPerSecond || 0,
+    );
+
     this.setText('foodValue', Math.floor(resources.food || 0));
     this.setText('knowledgeValue', Math.floor(resources.knowledge || 0));
-    this.setText('foodRate', `${resources.foodPerSecond >= 0 ? '+' : ''}${resources.foodPerSecond || 0}/s`);
+    this.setText('foodRate', `${foodNet >= 0 ? '+' : ''}${foodNet}/s`);
+    this.setText('foodOutputRate', `+${foodOutput}/s`);
+    this.setText('foodConsumptionRate', `-${foodConsumption}/s`);
+    this.setText('foodNetRate', `${foodNet >= 0 ? '+' : ''}${foodNet}/s`);
     this.setText('knowledgeRate', `${resources.knowledgePerSecond >= 0 ? '+' : ''}${resources.knowledgePerSecond || 0}/s`);
     this.setText('happinessValue', this.state.happiness || 100);
     this.setText('gameTime', `第 ${this.state.gameDay || 1} 天`);
+
+    const netEl = document.getElementById('foodNetRate');
+    if (netEl) {
+      netEl.classList.toggle('is-positive', foodNet >= 0);
+      netEl.classList.toggle('is-negative', foodNet < 0);
+    }
   },
 
   renderBuildings() {

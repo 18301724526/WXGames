@@ -242,6 +242,37 @@ body {
     margin-top: 2px;
 }
 
+.resource-breakdown {
+    margin-top: 8px;
+    display: grid;
+    gap: 4px;
+}
+
+.resource-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.resource-breakdown-label {
+    color: var(--text-secondary);
+}
+
+.resource-breakdown-value {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.resource-breakdown-value.is-positive {
+    color: var(--success);
+}
+
+.resource-breakdown-value.is-negative {
+    color: var(--danger);
+}
+
 /* ===== 面板标题 ===== */
 .panel-title {
     font-size: 15px;
