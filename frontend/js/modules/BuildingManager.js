@@ -30,48 +30,33 @@ class BuildingManager {
    * 获取所有建筑的展示信息
    * @returns {BuildingDisplayInfo[]}
    */
-  getAllBuildingDisplays() {
+    getAllBuildingDisplays() {
     if (!this.state) return [];
     const buildings = this.state.buildings || {};
 
-    return Object.values(this.config.buildings).map(config => {
-      const currentCount = buildings[config.id] || 0;
-      const cost = this.state.buildingCosts?.[config.id];
-      const isUnlocked = (this.state.era || 0) >= config.unlockEra;
+    return Object.values(this.config.buildings || this.config)
+      .filter(config => config && config.id && config.name)
+      .map(config => {
+        const currentCount = buildings[config.id] || 0;
+        const cost = this.state.buildingCosts?.[config.id];
+        const isUnlocked = (this.state.era || 0) >= config.unlockEra;
 
-      return {
-        id: config.id,
-        name: config.name,
-        description: config.ui?.description || config.description || '',
-        icon: config.ui?.icon || '',
-        color: config.ui?.color || '',
-        category: config.category,
-        currentCount,
-        cost,
-        isUnlocked,
-        unlockEra: config.unlockEra,
-        effects: config.effects?.perBuilding || {}
-      };
-    });
+        return {
+          id: config.id,
+          name: config.name,
+          description: config.ui?.description || config.description || '',
+          icon: config.ui?.icon || '',
+          color: config.ui?.color || '',
+          category: config.category,
+          currentCount,
+          cost,
+          isUnlocked,
+          unlockEra: config.unlockEra,
+          effects: config.effects?.perBuilding || {}
+        };
+      });
   }
-
-  /**
-   * 发起建造请求
-   * @param {string} buildingId 
-   * @returns {Promise<object>}
-   */
-  async build(buildingId) {
-    // 前端不做任何校验，直接发请求给后端（P1-3）
-    const result = await this.api.build(buildingId);
-    return result;
-  }
-
-  /**
-   * 获取建筑提示信息
-   * @param {string} buildingId 
-   * @returns {object}
-   */
-  getTooltipInfo(buildingId) {
+getTooltipInfo(buildingId) {
     if (!this.state) return null;
     const buildings = this.state.buildings || {};
 

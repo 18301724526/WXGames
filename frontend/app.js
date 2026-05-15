@@ -3,45 +3,26 @@
 // 建筑系统模块已解耦至 js/modules/（全局挂载，无需 require）
 
 const Game = {
-    // --- 建筑配置（硬编码，后续可改为 fetch 加载 shared/buildingConfig.json）---
+    // --- 建筑配置（名称和图标，效果由后端计算）---
     buildingConfig: {
-        version: '1.0',
         buildings: {
             farm: {
                 id: 'farm', name: '农田', category: 'production',
-                 unlockEra: 0, 
-                effects: { perBuilding: { foodOutputMultiplier: 0.5 } },
-                ui: { icon: '🚜', color: '#27ae60', description: '每座提升食物产出' }
             },
             house: {
                 id: 'house', name: '民居', category: 'housing',
-                 unlockEra: 0, 
-                effects: { perBuilding: { maxPopulation: 3, happiness: 5 } },
-                ui: { icon: '🏠', color: '#e67e22', description: '增加人口上限' }
             },
             workshop: {
                 id: 'workshop', name: '工坊', category: 'production',
-                 unlockEra: 1, 
-                effects: { perBuilding: { craftsmanOutputMultiplier: 0.5 } },
-                ui: { icon: '⚒️', color: '#7f8c8d', description: '每座提升工匠产出' }
             },
             academy: {
                 id: 'academy', name: '学院', category: 'research',
-                 unlockEra: 0, 
-                effects: { perBuilding: { scholarOutputMultiplier: 0.5 } },
-                ui: { icon: '🏛️', color: '#9b59b6', description: '每座提升学者产出' }
             },
             barracks: {
                 id: 'barracks', name: '兵营', category: 'military',
-                 unlockEra: 2, 
-                effects: { perBuilding: { defense: 1 } },
-                ui: { icon: '⚔️', color: '#c0392b', description: '提供防御能力' }
             },
             temple: {
                 id: 'temple', name: '神庙', category: 'special',
-                 unlockEra: 3, 
-                effects: { perBuilding: { offlineEfficiency: 0.05 } },
-                ui: { icon: '⛪', color: '#f39c12', description: '提升离线收益效率' }
             }
         },
         categories: {
@@ -105,7 +86,6 @@ const Game = {
         foodPerFarmer: 2,
         knowledgePerScholar: 1,
         knowledgePerCraftsman: 1,
-        farmBonusPerLevel: 20,
         eraThreshold: 1000,
         maxOfflineHours: 8,
         offlineEfficiencyBase: 0.5,
@@ -147,7 +127,7 @@ const Game = {
             era: 0,
             prereq: 'writing',
             effect: '农田产出+30%',
-            apply: () => { Game.config.farmBonusPerLevel = 30; }
+            apply: () => { } // effect computed by backend
         },
         animalHusbandry: {
             id: 'animalHusbandry',
@@ -460,6 +440,12 @@ const Game = {
         // 同步建筑成本（后端计算，前端展示用）
         s.buildingCosts = serverState.buildingCosts || {};
 
+        // 同步建筑效果（后端计算，前端展示用）
+        s.buildingEffects = serverState.buildingEffects || {};
+
+        // 同步时代进阶条件（后端配置）
+        s.eraConditions = serverState.eraConditions || {};
+
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
         s.totalPop = serverPop.total ?? 3;
@@ -524,36 +510,23 @@ const Game = {
     },
 
 
-    // --- 时代进阶条件 ---
-    eraConditions: [
-        {
-            // 原始 → 农耕
-            food: 100,
-            knowledge: 100,
-            buildingTotal: 3,
-            requiredBuildings: { farm: 3 },
-            techCount: 0,
-            requiredTechs: []
-        },
-        {
-            // 农耕 → 青铜
-            food: 2000,
-            knowledge: 500,
-            buildingTotal: 5,
-            requiredBuildings: { workshop: 1, farm: 3 },
-            techCount: 2,
-            requiredTechs: ['fireMaking', 'writing']
-        },
-        {
-            // 青铜 → 古典
-            food: 4000,
-            knowledge: 1200,
-            buildingTotal: 7,
-            requiredBuildings: { academy: 1, workshop: 1 },
-            techCount: 4,
-            requiredTechs: ['writing', 'agriculture', 'animalHusbandry', 'metallurgy']
+    // --- 时代进阶条件（从后端配置读取）---
+    getEraConditions(nextEraIdx) {
+        // 优先从后端同步的数据读取
+        if (this.state.eraConditions && this.state.eraConditions[nextEraIdx]) {
+            return this.state.eraConditions[nextEraIdx];
         }
-    ],
+        // fallback 到本地配置（buildingConfig.json）
+        const config = this.buildingConfig?.eraConditions;
+        if (config && config[nextEraIdx]) {
+            return config[nextEraIdx];
+        }
+        // 最终兜底
+        return {
+            food: 0, knowledge: 100, requiredBuildings: { farm: 3 },
+            techCount: 0, requiredTechs: []
+        };
+    },
     eras: [
         { id: 0, name: '原始时代', icon: '🔥', nextName: '农耕时代', nextIcon: '🌾', threshold: 1000 },
         { id: 1, name: '农耕时代', icon: '🌾', nextName: '青铜器时代', nextIcon: '⚔️', threshold: 3000 },
@@ -682,34 +655,33 @@ const Game = {
     // --- 倍率计算 ---
     calculateMultipliers() {
         const s = this.state;
+
+        // 建筑效果由后端计算，前端只读取
+        const effects = s.buildingEffects || {};
         const ts = s.techState;
 
-        // 农田倍率
-        let farmBonus = s.buildings.farm * this.config.farmBonusPerLevel / 100;
-        const farmMultiplier = 1 + farmBonus;
+        // 基础倍率（后端 buildingEffects）
+        let farmMultiplier = effects.foodOutputMultiplier || 1;
+        let scholarMultiplier = effects.knowledgeOutputMultiplier || 1;
+        let craftsmanMultiplier = effects.craftsmanOutputMultiplier || 1;
+        let globalMultiplier = effects.globalOutputMultiplier || 1;
+        const happinessBonus = effects.happinessBonus || 0;
 
-        // 学者倍率（学院加成 × 科技加成）
-        let scholarBase = s.buildings.academy > 0 ? (1 + s.buildings.academy * 0.5) : 1;
-        if (ts?.writing?.status === 'completed') scholarBase *= 1.2;
-        if (ts?.geometry?.status === 'completed') scholarBase *= 1.3;
-        const scholarMultiplier = scholarBase;
+        // 科技加成（前端保留，因为 techState 已同步）
+        if (ts?.writing?.status === 'completed') scholarMultiplier *= 1.2;
+        if (ts?.geometry?.status === 'completed') scholarMultiplier *= 1.3;
+        if (ts?.pottery?.status === 'completed') craftsmanMultiplier *= 1.2;
 
-        // 工匠倍率（工坊加成 × 科技加成）
-        let craftsmanBase = s.buildings.workshop > 0 ? (1 + s.buildings.workshop * 0.5) : 1;
-        if (ts?.pottery?.status === 'completed') craftsmanBase *= 1.2;
-        const craftsmanMultiplier = craftsmanBase;
+        // 钻木取火加成
+        if (ts?.fireMaking?.status === 'completed') farmMultiplier *= 1.2;
 
-        // 兵营全局加成
-        const barracksMultiplier = 1 + (s.buildings.barracks * 0.1);
-
-        // 幸福度加成
-        const happiness = 100 + s.buildings.house * 5 + s.buildings.temple * 15;
+        // 幸福度 = 基础100 + 建筑加成 + 科技加成
+        const happiness = 100 + happinessBonus + (ts?.philosophy?.status === 'completed' ? 10 : 0);
         s.happiness = happiness;
         const happinessMultiplier = happiness / 100;
 
-        // 钻木取火加成已在 config.foodPerFarmer 中
-        // 全局倍率 = 兵营 × 幸福度
-        const globalMultiplier = barracksMultiplier * happinessMultiplier;
+        // 全局倍率 = 兵营全局 × 幸福度
+        globalMultiplier *= happinessMultiplier;
 
         return {
             farm: farmMultiplier,
@@ -717,18 +689,16 @@ const Game = {
             craftsman: craftsmanMultiplier,
             global: globalMultiplier,
             happiness: happinessMultiplier,
-            barracks: barracksMultiplier
+            barracks: effects.globalOutputMultiplier || 1
         };
     },
-
-    // --- 科技效果应用 ---
     applyTechEffects() {
+
         const ts = this.state.techState;
         // 重置基础配置
         this.config.foodPerFarmer = 2;
         this.config.knowledgePerScholar = 1;
         this.config.knowledgePerCraftsman = 1;
-        this.config.farmBonusPerLevel = 20;
         // 人口增长由服务端驱动，前端不配置
 
         // 应用已完成的科技效果（按顺序）
@@ -736,7 +706,6 @@ const Game = {
             this.config.foodPerFarmer *= 1.2;
         }
         if (ts?.irrigation?.status === 'completed') {
-            this.config.farmBonusPerLevel = 30;
         }
         if (ts?.animalHusbandry?.status === 'completed') {
             // 人口增长由服务端驱动，前端不干预
@@ -863,7 +832,7 @@ const Game = {
     // --- 时代进阶 ---
     canAdvanceEra() {
         const nextEraIdx = this.state.era;
-        const conditions = this.eraConditions[nextEraIdx];
+        const conditions = this.getEraConditions(nextEraIdx);
         if (!conditions) return false;
 
         const s = this.state;
@@ -899,7 +868,7 @@ const Game = {
 
     calculateEraProgress() {
         const nextEraIdx = this.state.era;
-        const conditions = this.eraConditions[nextEraIdx];
+        const conditions = this.getEraConditions(nextEraIdx);
         if (!conditions) {
             return { percentage: 100, conditions: [], allMet: true };
         }
@@ -1040,7 +1009,7 @@ const Game = {
 
         const s = this.state;
         const nextEraIdx = s.era + 1;
-        const conditions = this.eraConditions[s.era];
+        const conditions = this.getEraConditions(s.era);
         const nextEra = this.eras[nextEraIdx];
 
         if (!nextEra || !conditions) return;
@@ -1198,7 +1167,7 @@ const Game = {
 
         const s = this.state;
         const cfg = this.config;
-        const offlineEfficiency = cfg.offlineEfficiencyBase + s.buildings.temple * 0.05;
+        const offlineEfficiency = cfg.offlineEfficiencyBase + (s.buildingEffects?.offlineEfficiencyBonus || 0);
         const effectiveHours = Math.min(diffHours, cfg.maxOfflineHours);
 
         const multipliers = this.calculateMultipliers();
@@ -1646,7 +1615,7 @@ const Game = {
 
         const nextEraIdx = this.state.era + 1;
         const nextEra = this.eras[nextEraIdx];
-        const conditions = this.eraConditions[this.state.era];
+        const conditions = this.getEraConditions(this.state.era);
 
         if (!nextEra || !conditions) {
             panel.style.display = 'none';

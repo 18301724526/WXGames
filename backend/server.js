@@ -285,35 +285,11 @@ function applyTechEffect(gameState, techName) {
 const ERA_NAMES = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
 
 function getEraConditions(targetEra) {
-  const conditions = {
-    1: {
-      food: 0,
-      knowledge: 100,
-      buildingCount: 3,
-      requiredBuildings: { farm: 3 },
-      techCount: 0,
-      requiredTechs: []
-    },
-    2: {
-      food: 2000,
-      knowledge: 500,
-      buildingCount: 5,
-      requiredBuildings: { workshop: 1, farm: 3 },
-      techCount: 2,
-      requiredTechs: ['钻木取火', '文字']
-    },
-    3: {
-      food: 4000,
-      knowledge: 1200,
-      buildingCount: 7,
-      requiredBuildings: { academy: 1, workshop: 1 },
-      techCount: 4,
-      requiredTechs: ['钻木取火', '文字', '农业', '冶金']
-    }
+  const config = require('../shared/buildingConfig.json');
+  return config.eraConditions?.[targetEra] || config.eraConditions?.['1'] || {
+    food: 0, knowledge: 100, requiredBuildings: { farm: 3 }, techCount: 0, requiredTechs: []
   };
-  return conditions[targetEra] || null;
 }
-
 function calculateEraProgress(gameState, targetEra) {
   const conditions = getEraConditions(targetEra);
   if (!conditions) return { percentage: 0, canAdvance: false, details: [] };
@@ -922,6 +898,7 @@ function sanitizeGameState(gameState) {
     eventQueue: gameState.eventQueue || [],
     eventHistory: gameState.eventHistory || [],
     offlineSnapshot: gameState.offlineSnapshot || {},
+    buildingEffects: buildingEffects.getAllEffects(gameState),
     updatedAt: gameState.updatedAt,
   };
 }
