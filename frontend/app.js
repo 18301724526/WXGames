@@ -10,39 +10,21 @@ const Game = {
             farm: {
                 id: 'farm', name: '农田', category: 'production',
                  unlockEra: 0, 
-                effects: { perBuilding: { foodOutputMultiplier: 0.5 } },
-                ui: { icon: '🚜', color: '#27ae60', description: '每座提升食物产出' }
-            },
             house: {
                 id: 'house', name: '民居', category: 'housing',
                  unlockEra: 0, 
-                effects: { perBuilding: { maxPopulation: 3, happiness: 5 } },
-                ui: { icon: '🏠', color: '#e67e22', description: '增加人口上限' }
-            },
             workshop: {
                 id: 'workshop', name: '工坊', category: 'production',
                  unlockEra: 1, 
-                effects: { perBuilding: { craftsmanOutputMultiplier: 0.5 } },
-                ui: { icon: '⚒️', color: '#7f8c8d', description: '每座提升工匠产出' }
-            },
             academy: {
                 id: 'academy', name: '学院', category: 'research',
                  unlockEra: 0, 
-                effects: { perBuilding: { scholarOutputMultiplier: 0.5 } },
-                ui: { icon: '🏛️', color: '#9b59b6', description: '每座提升学者产出' }
-            },
             barracks: {
                 id: 'barracks', name: '兵营', category: 'military',
                  unlockEra: 2, 
-                effects: { perBuilding: { defense: 1 } },
-                ui: { icon: '⚔️', color: '#c0392b', description: '提供防御能力' }
-            },
             temple: {
                 id: 'temple', name: '神庙', category: 'special',
                  unlockEra: 3, 
-                effects: { perBuilding: { offlineEfficiency: 0.05 } },
-                ui: { icon: '⛪', color: '#f39c12', description: '提升离线收益效率' }
-            }
         },
         categories: {
             production: { label: '生产', order: 1 },
@@ -462,6 +444,9 @@ const Game = {
         // 同步建筑效果（后端计算，前端展示用）
         s.buildingEffects = serverState.buildingEffects || {};
 
+        // 同步时代进阶条件（后端配置）
+        s.eraConditions = serverState.eraConditions || {};
+
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
         s.totalPop = serverPop.total ?? 3;
@@ -526,36 +511,23 @@ const Game = {
     },
 
 
-    // --- 时代进阶条件 ---
-    eraConditions: [
-        {
-            // 原始 → 农耕
-            food: 100,
-            knowledge: 100,
-            buildingTotal: 3,
-            requiredBuildings: { farm: 3 },
-            techCount: 0,
-            requiredTechs: []
-        },
-        {
-            // 农耕 → 青铜
-            food: 2000,
-            knowledge: 500,
-            buildingTotal: 5,
-            requiredBuildings: { workshop: 1, farm: 3 },
-            techCount: 2,
-            requiredTechs: ['fireMaking', 'writing']
-        },
-        {
-            // 青铜 → 古典
-            food: 4000,
-            knowledge: 1200,
-            buildingTotal: 7,
-            requiredBuildings: { academy: 1, workshop: 1 },
-            techCount: 4,
-            requiredTechs: ['writing', 'agriculture', 'animalHusbandry', 'metallurgy']
+    // --- 时代进阶条件（从后端配置读取）---
+    getEraConditions(nextEraIdx) {
+        // 优先从后端同步的数据读取
+        if (this.state.eraConditions && this.state.eraConditions[nextEraIdx]) {
+            return this.state.eraConditions[nextEraIdx];
         }
-    ],
+        // fallback 到本地配置（buildingConfig.json）
+        const config = this.buildingConfig?.eraConditions;
+        if (config && config[nextEraIdx]) {
+            return config[nextEraIdx];
+        }
+        // 最终兜底
+        return {
+            food: 0, knowledge: 100, requiredBuildings: { farm: 3 },
+            techCount: 0, requiredTechs: []
+        };
+    },
     eras: [
         { id: 0, name: '原始时代', icon: '🔥', nextName: '农耕时代', nextIcon: '🌾', threshold: 1000 },
         { id: 1, name: '农耕时代', icon: '🌾', nextName: '青铜器时代', nextIcon: '⚔️', threshold: 3000 },
@@ -737,7 +709,6 @@ const Game = {
             this.config.foodPerFarmer *= 1.2;
         }
         if (ts?.irrigation?.status === 'completed') {
-            this.config.farmBonusPerLevel = 30;
         }
         if (ts?.animalHusbandry?.status === 'completed') {
             // 人口增长由服务端驱动，前端不干预
@@ -864,7 +835,7 @@ const Game = {
     // --- 时代进阶 ---
     canAdvanceEra() {
         const nextEraIdx = this.state.era;
-        const conditions = this.eraConditions[nextEraIdx];
+        const conditions = this.getEraConditions(nextEraIdx);
         if (!conditions) return false;
 
         const s = this.state;
@@ -900,7 +871,7 @@ const Game = {
 
     calculateEraProgress() {
         const nextEraIdx = this.state.era;
-        const conditions = this.eraConditions[nextEraIdx];
+        const conditions = this.getEraConditions(nextEraIdx);
         if (!conditions) {
             return { percentage: 100, conditions: [], allMet: true };
         }
@@ -1041,7 +1012,7 @@ const Game = {
 
         const s = this.state;
         const nextEraIdx = s.era + 1;
-        const conditions = this.eraConditions[s.era];
+        const conditions = this.getEraConditions(s.era);
         const nextEra = this.eras[nextEraIdx];
 
         if (!nextEra || !conditions) return;
@@ -1647,7 +1618,7 @@ const Game = {
 
         const nextEraIdx = this.state.era + 1;
         const nextEra = this.eras[nextEraIdx];
-        const conditions = this.eraConditions[this.state.era];
+        const conditions = this.getEraConditions(this.state.era);
 
         if (!nextEra || !conditions) {
             panel.style.display = 'none';
