@@ -5,23 +5,25 @@
 const Game = {
     // --- 建筑配置（名称和图标，效果由后端计算）---
     buildingConfig: {
-        farm: {
-            id: 'farm', name: '农田', category: 'production',
-        },
-        house: {
-            id: 'house', name: '民居', category: 'housing',
-        },
-        workshop: {
-            id: 'workshop', name: '工坊', category: 'production',
-        },
-        academy: {
-            id: 'academy', name: '学院', category: 'research',
-        },
-        barracks: {
-            id: 'barracks', name: '兵营', category: 'military',
-        },
-        temple: {
-            id: 'temple', name: '神庙', category: 'special',
+        buildings: {
+            farm: {
+                id: 'farm', name: '农田', category: 'production',
+            },
+            house: {
+                id: 'house', name: '民居', category: 'housing',
+            },
+            workshop: {
+                id: 'workshop', name: '工坊', category: 'production',
+            },
+            academy: {
+                id: 'academy', name: '学院', category: 'research',
+            },
+            barracks: {
+                id: 'barracks', name: '兵营', category: 'military',
+            },
+            temple: {
+                id: 'temple', name: '神庙', category: 'special',
+            }
         },
         categories: {
             production: { label: '生产', order: 1 },
