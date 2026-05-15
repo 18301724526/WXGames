@@ -43,10 +43,13 @@
         const disabled = disabledByTutorial || isMax;
         const effectText = this.getEffectText(id, state.buildingEffects);
         const descText = this.getDescription(id, state.buildings);
+        const art = config.art
+          ? `<img class="building-art" src="${config.art}" alt="${config.name}" loading="lazy">`
+          : config.icon;
         return `
           <div class="building-card ${disabledByTutorial ? 'is-muted' : ''}" data-building-id="${id}" id="card-${id}">
             <div class="building-header">
-              <div class="building-icon">${config.icon}</div>
+              <div class="building-icon">${art}</div>
               <div class="building-title">
                 <div class="building-name">${config.name}</div>
                 <div class="building-level">等级 ${level}</div>
