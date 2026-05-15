@@ -285,7 +285,7 @@ function applyTechEffect(gameState, techName) {
 const ERA_NAMES = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
 
 function getEraConditions(targetEra) {
-  const config = require('../../shared/buildingConfig.json');
+  const config = require('../shared/buildingConfig.json');
   return config.eraConditions?.[targetEra] || config.eraConditions?.['1'] || {
     food: 0, knowledge: 100, requiredBuildings: { farm: 3 }, techCount: 0, requiredTechs: []
   };
