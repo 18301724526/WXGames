@@ -19,13 +19,37 @@ require_command() {
     fi
 }
 
+sanitize_git_env() {
+    unset GIT_DIR
+    unset GIT_WORK_TREE
+    unset GIT_INDEX_FILE
+    unset GIT_PREFIX
+    unset GIT_OBJECT_DIRECTORY
+    unset GIT_ALTERNATE_OBJECT_DIRECTORIES
+    unset GIT_COMMON_DIR
+    unset GIT_IMPLICIT_WORK_TREE
+    unset GIT_NAMESPACE
+}
+
+normalize_path() {
+    local input_path="$1"
+    if [ -z "$input_path" ]; then
+        return 1
+    fi
+    (cd "$input_path" 2>/dev/null && pwd -P)
+}
+
 resolve_git_dir() {
     if [ -n "${REPO_GIT_DIR:-}" ]; then
-        echo "$REPO_GIT_DIR"
+        normalize_path "$REPO_GIT_DIR"
         return
     fi
-    if [ -e "$WORK_TREE/.git" ]; then
-        echo "$WORK_TREE/.git"
+    if [ -d "$WORK_TREE/.git" ]; then
+        normalize_path "$WORK_TREE/.git"
+        return
+    fi
+    if git -C "$WORK_TREE" rev-parse --absolute-git-dir >/dev/null 2>&1; then
+        git -C "$WORK_TREE" rev-parse --absolute-git-dir
         return
     fi
     if git rev-parse --absolute-git-dir >/dev/null 2>&1; then
@@ -92,6 +116,8 @@ verify_runtime_config() {
 }
 
 echo "[Deploy] 开始部署..."
+
+sanitize_git_env
 
 require_command git
 require_command node

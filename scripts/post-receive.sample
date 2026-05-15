@@ -2,9 +2,15 @@
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-BARE_REPO_DIR="$(cd "$HOOK_DIR/.." && pwd)"
+BARE_REPO_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
 WORK_TREE="/www/wwwroot/h5"
 BRANCH="main"
+
+clear_git_local_env() {
+    while IFS= read -r var_name; do
+        unset "$var_name"
+    done < <(git rev-parse --local-env-vars)
+}
 
 while read -r _oldrev _newrev refname; do
     current_branch="${refname#refs/heads/}"
@@ -12,7 +18,8 @@ while read -r _oldrev _newrev refname; do
         continue
     fi
 
+    clear_git_local_env
     mkdir -p "$WORK_TREE"
     git --git-dir="$BARE_REPO_DIR" --work-tree="$WORK_TREE" checkout -f "$BRANCH"
-    REPO_GIT_DIR="$BARE_REPO_DIR" WORK_TREE="$WORK_TREE" "$WORK_TREE/deploy.sh" "$BRANCH"
+    REPO_GIT_DIR="$BARE_REPO_DIR" WORK_TREE="$WORK_TREE" bash "$WORK_TREE/deploy.sh" "$BRANCH"
 done
