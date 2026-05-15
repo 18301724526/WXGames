@@ -2,6 +2,12 @@
 // 挂载函数 — 由 app.js init() 调用，避免 IIFE 的竞态问题
 
 window.mountAuthMethods = function(game) {
+  function clearTutorialStorage() {
+    localStorage.removeItem('tutorialAutoStarted');
+    localStorage.removeItem('tutorialStep');
+    localStorage.removeItem('tutorialCompleted');
+  }
+
   function setLoginMessage(message) {
     const el = document.getElementById('loginMessage');
     if (el) el.textContent = message;
@@ -24,6 +30,7 @@ window.mountAuthMethods = function(game) {
     localStorage.removeItem('cf_token');
     localStorage.removeItem('cf_deviceId');
     localStorage.removeItem('civilizationFirePhase2');
+    clearTutorialStorage();
     this.showLoginPanel(data?.message || '登录已过期，请重新登录');
   };
 
@@ -80,6 +87,7 @@ window.mountAuthMethods = function(game) {
     localStorage.removeItem('cf_token');
     localStorage.removeItem('cf_deviceId');
     localStorage.removeItem('civilizationFirePhase2');
+    clearTutorialStorage();
     location.reload();
   };
 

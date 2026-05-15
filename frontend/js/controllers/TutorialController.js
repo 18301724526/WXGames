@@ -9,15 +9,35 @@
       this.autoStarted = localStorage.getItem('tutorialAutoStarted') === 'true';
     }
 
-    setState(tutorial) {
-      this.state = tutorial || { completed: false, currentStep: 0 };
+    syncLocalProgress() {
       localStorage.setItem('tutorialCompleted', this.state.completed ? 'true' : 'false');
       localStorage.setItem('tutorialStep', String(this.state.currentStep));
+    }
+
+    syncAutoStartedFlag() {
+      if (this.state.completed || this.state.currentStep > 0) {
+        this.autoStarted = true;
+        localStorage.setItem('tutorialAutoStarted', 'true');
+        return;
+      }
+      // 服务端返回 step 0 时，以服务端为准重新允许自动启动。
+      this.autoStarted = false;
+      localStorage.removeItem('tutorialAutoStarted');
+    }
+
+    setState(tutorial) {
+      this.state = tutorial || { completed: false, currentStep: 0 };
+      this.syncLocalProgress();
+      this.syncAutoStartedFlag();
       this.render();
       if (!this.state.completed && this.state.currentStep === 0 && !this.autoStarted) {
         this.autoStarted = true;
         localStorage.setItem('tutorialAutoStarted', 'true');
-        setTimeout(() => this.advanceTo(1).catch(() => {}), global.GameConfig.TUTORIAL_START_DELAY_MS);
+        setTimeout(() => this.advanceTo(1).catch((error) => {
+          console.warn('[tutorial] auto start failed:', error);
+          this.autoStarted = false;
+          localStorage.removeItem('tutorialAutoStarted');
+        }), global.GameConfig.TUTORIAL_START_DELAY_MS);
       }
     }
 
@@ -25,8 +45,8 @@
       if (this.state.completed || step <= this.state.currentStep) return;
       const data = await this.api.advanceTutorial(step);
       this.state = data.tutorial || { completed: step >= 7, currentStep: step };
-      localStorage.setItem('tutorialStep', String(this.state.currentStep));
-      localStorage.setItem('tutorialCompleted', this.state.completed ? 'true' : 'false');
+      this.syncLocalProgress();
+      this.syncAutoStartedFlag();
       this.render();
     }
 
@@ -48,8 +68,8 @@
 
     notifyFarmBuilt(remoteTutorial) {
       this.state = remoteTutorial || { completed: true, currentStep: 7 };
-      localStorage.setItem('tutorialCompleted', this.state.completed ? 'true' : 'false');
-      localStorage.setItem('tutorialStep', String(this.state.currentStep));
+      this.syncLocalProgress();
+      this.syncAutoStartedFlag();
       this.render();
     }
 
