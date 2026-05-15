@@ -34,7 +34,7 @@ class BuildingManager {
     if (!this.state) return [];
     const buildings = this.state.buildings || {};
 
-    return Object.values(this.config.buildings).map(config => {
+    return Object.values(this.config.buildings || this.config).map(config => {
       const currentCount = buildings[config.id] || 0;
       const cost = this.state.buildingCosts?.[config.id];
       const isUnlocked = (this.state.era || 0) >= config.unlockEra;
