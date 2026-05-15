@@ -3,38 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>文明火种 - Tab导航版</title>
+    <title>文明火种</title>
     <link rel="stylesheet" href="style.css">
-<style>
-    /* 登录面板 */
-    .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
-    .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
-    .login-panel h2 { margin-bottom:8px; font-size:24px; }
-    .login-panel .login-msg { color:#e94560; font-size:14px; margin-bottom:16px; min-height:20px; }
-    .login-panel input { width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); margin-bottom:12px; font-size:14px; }
-    .login-panel .login-btns { display:flex; gap:8px; }
-    .login-panel .login-btns button { flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; font-size:14px; font-weight:bold; }
-    .btn-login { background:var(--accent); color:#fff; }
-    .btn-register { background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border) !important; }
-
-    /* 设置按钮 */
-    .settings-btn { position:fixed; top:8px; right:8px; z-index:100; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:8px; padding:6px 10px; color:var(--text-secondary); font-size:13px; cursor:pointer; }
-    .settings-menu { position:fixed; top:44px; right:8px; z-index:101; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:8px; min-width:160px; display:none; }
-    .settings-menu.active { display:block; }
-    .settings-menu button { display:block; width:100%; text-align:left; padding:10px 12px; border:none; background:none; color:var(--text-primary); font-size:13px; cursor:pointer; border-radius:6px; }
-    .settings-menu button:hover { background:rgba(255,255,255,0.05); }
-    .settings-menu .menu-sep { border-top:1px solid var(--border); margin:4px 0; }
-
-    /* 日志弹窗 */
-    .log-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:20px; }
-    .log-modal-overlay.active { display:flex; }
-    .log-modal-content { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:20px; width:100%; max-width:560px; max-height:80vh; overflow:auto; }
-    .log-modal-content h3 { margin-bottom:12px; font-size:16px; }
-    .log-modal-close { float:right; background:none; border:none; color:var(--text-secondary); font-size:18px; cursor:pointer; }
-</style>
+    <style>
+        .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+        .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
+        .login-panel h2 { margin-bottom:8px; font-size:24px; }
+        .login-panel .login-msg { color:#e94560; font-size:14px; margin-bottom:16px; min-height:20px; }
+        .login-panel input { width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); margin-bottom:12px; font-size:14px; }
+        .login-panel .login-btns { display:flex; gap:8px; }
+        .login-panel .login-btns button { flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; font-size:14px; font-weight:bold; }
+        .btn-login { background:var(--accent); color:#fff; }
+        .btn-register { background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border) !important; }
+        .settings-btn { position:fixed; top:8px; right:8px; z-index:100; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:8px; padding:6px 10px; color:var(--text-secondary); font-size:13px; cursor:pointer; }
+        .settings-menu { position:fixed; top:44px; right:8px; z-index:101; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:8px; min-width:160px; display:none; }
+        .settings-menu.active { display:block; }
+        .settings-menu button { display:block; width:100%; text-align:left; padding:10px 12px; border:none; background:none; color:var(--text-primary); font-size:13px; cursor:pointer; border-radius:6px; }
+        .settings-menu button:hover { background:rgba(255,255,255,0.05); }
+        .settings-menu .menu-sep { border-top:1px solid var(--border); margin:4px 0; }
+        .log-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:20px; }
+        .log-modal-overlay.active { display:flex; }
+        .log-modal-content { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:20px; width:100%; max-width:560px; max-height:80vh; overflow:auto; }
+        .log-modal-close { float:right; background:none; border:none; color:var(--text-secondary); font-size:18px; cursor:pointer; }
+    </style>
 </head>
 <body>
-    <!-- 登录/注册面板 -->
     <div class="login-panel" id="loginPanel">
         <div class="login-box">
             <div style="font-size:48px;margin-bottom:8px;">🔥</div>
@@ -48,7 +41,6 @@
         </div>
     </div>
 
-    <!-- 设置菜单 -->
     <button class="settings-btn" id="settingsBtn" onclick="Game.toggleSettings()">⚙️ 设置</button>
     <div class="settings-menu" id="settingsMenu">
         <button onclick="Game.showRequestLogs(); Game.toggleSettings();">📜 请求日志</button>
@@ -57,7 +49,6 @@
         <button onclick="Game.logout(); Game.toggleSettings();">🚪 退出登录</button>
     </div>
 
-    <!-- 请求日志弹窗 -->
     <div class="log-modal-overlay" id="logModal" onclick="if(event.target===this){this.classList.remove('active');this.style.display='none';}">
         <div class="log-modal-content">
             <button class="log-modal-close" onclick="document.getElementById('logModal').classList.remove('active');document.getElementById('logModal').style.display='none';">✕</button>
@@ -65,8 +56,8 @@
             <div id="logModalContent"></div>
         </div>
     </div>
+
     <div id="app">
-        <!-- ===== 顶部常驻：时代标签 ===== -->
         <header class="top-bar">
             <div class="era-badge" id="eraBadge">
                 <span class="era-icon">🔥</span>
@@ -75,12 +66,9 @@
             <div class="game-time" id="gameTime">第 1 天</div>
         </header>
 
-        <!-- ===== 页面容器 ===== -->
         <div class="page-container">
-            <!-- 页面1：资源 -->
             <section class="page page-resources active" data-page="resources">
-                <!-- 资源面板 -->
-                <section class="resource-panel">
+                <section class="resource-panel" id="resourcePanel">
                     <div class="resource-card food-card">
                         <div class="resource-icon">🌾</div>
                         <div class="resource-info">
@@ -99,32 +87,19 @@
                     </div>
                 </section>
 
-                <!-- 人口管理 -->
                 <section class="population-panel">
                     <h2 class="panel-title">👥 人口管理</h2>
                     <div class="pop-stats">
-                        <div class="pop-total">
-                            <span>总人口: </span>
-                            <span id="totalPop">2</span>
-                            <span>/</span>
-                            <span id="maxPop">2</span>
-                        </div>
-                        <div class="pop-unassigned">
-                            <span>待分配: </span>
-                            <span id="unassignedPop">0</span>
-                        </div>
-                        <div class="pop-happiness">
-                            <span>幸福度: </span>
-                            <span id="happinessValue">100</span>
-                            <span>%</span>
-                        </div>
+                        <div class="pop-total"><span>总人口: </span><span id="totalPop">3</span>/<span id="maxPop">3</span></div>
+                        <div class="pop-unassigned"><span>待分配: </span><span id="unassignedPop">0</span></div>
+                        <div class="pop-happiness"><span>幸福度: </span><span id="happinessValue">100</span>%</div>
                     </div>
                     <div class="job-slots">
                         <div class="job-card">
                             <div class="job-icon">👨‍🌾</div>
                             <div class="job-name">农民</div>
                             <div class="job-desc">生产食物</div>
-                            <div class="job-count" id="farmerCount">2</div>
+                            <div class="job-count" id="farmerCount">3</div>
                             <div class="job-controls">
                                 <button class="btn-minus" data-job="farmer">−</button>
                                 <button class="btn-plus" data-job="farmer">+</button>
@@ -133,7 +108,7 @@
                         <div class="job-card">
                             <div class="job-icon">👨‍🏫</div>
                             <div class="job-name">学者</div>
-                            <div class="job-desc">研究知识</div>
+                            <div class="job-desc">口耳相传</div>
                             <div class="job-count" id="scholarCount">0</div>
                             <div class="job-controls">
                                 <button class="btn-minus" data-job="scholar">−</button>
@@ -154,119 +129,14 @@
                 </section>
             </section>
 
-            <!-- 页面2：建造 -->
             <section class="page page-buildings" data-page="buildings">
                 <section class="building-panel">
                     <h2 class="panel-title">🏗️ 建筑</h2>
-                    <div class="building-grid">
-                        <!-- 农田 -->
-                        <div class="building-card" id="farmCard" data-building-id="farm">
-                            <div class="building-header">
-                                <div class="building-icon">🚜</div>
-                                <div class="building-title">
-                                    <div class="building-name">农田</div>
-                                    <div class="building-level">等级 <span class="building-count" id="farmLevel">0</span></div>
-                                </div>
-                            </div>
-                            <div class="building-effect">食物产出 +<span id="farmBonus">0</span>%</div>
-                            <button class="btn-build" id="btnBuildFarm" data-building-id="farm">
-                                <span class="build-cost cost-food">🌾 <span id="farmCostFood">100</span></span>
-                                <span class="build-cost cost-knowledge" id="farmCostKnowledge"></span>
-                                <span class="build-label">建造</span>
-                            </button>
-                        </div>
-
-                        <!-- 民居 -->
-                        <div class="building-card" id="houseCard" data-building-id="house">
-                            <div class="building-header">
-                                <div class="building-icon">🏠</div>
-                                <div class="building-title">
-                                    <div class="building-name">民居</div>
-                                    <div class="building-level">等级 <span class="building-count" id="houseCount">0</span></div>
-                                </div>
-                            </div>
-                            <div class="building-effect">人口上限+2，幸福度+5%</div>
-                            <button class="btn-build" id="btnBuildHouse" data-building-id="house">
-                                <span class="build-cost cost-food">🌾 <span id="houseCostFood">100</span></span>
-                                <span class="build-cost cost-knowledge" id="houseCostKnowledge"></span>
-                                <span class="build-label">建造</span>
-                            </button>
-                        </div>
-
-                        <!-- 工坊 -->
-                        <div class="building-card" id="workshopCard" data-building-id="workshop">
-                            <div class="building-header">
-                                <div class="building-icon">⚒️</div>
-                                <div class="building-title">
-                                    <div class="building-name">工坊</div>
-                                    <div class="building-level">等级 <span class="building-count" id="workshopCount">0</span></div>
-                                </div>
-                            </div>
-                            <div class="building-effect">解锁工匠；工匠产出×<span id="workshopBonus">1.5</span></div>
-                            <button class="btn-build" id="btnBuildWorkshop" data-building-id="workshop">
-                                <span class="build-cost cost-food">🌾 <span id="workshopCostFood">150</span></span>
-                                <span class="build-cost cost-knowledge">📚 <span id="workshopCostKnowledge">40</span></span>
-                                <span class="build-label">建造</span>
-                            </button>
-                        </div>
-
-                        <!-- 学院 -->
-                        <div class="building-card" id="academyCard" data-building-id="academy">
-                            <div class="building-header">
-                                <div class="building-icon">🏛️</div>
-                                <div class="building-title">
-                                    <div class="building-name">学院</div>
-                                    <div class="building-level">等级 <span class="building-count" id="academyCount">0</span></div>
-                                </div>
-                            </div>
-                            <div class="building-effect">学者产出×<span id="academyBonus">1.5</span></div>
-                            <button class="btn-build" id="btnBuildAcademy" data-building-id="academy">
-                                <span class="build-cost cost-food">🌾 <span id="academyCostFood">200</span></span>
-                                <span class="build-cost cost-knowledge">📚 <span id="academyCostKnowledge">80</span></span>
-                                <span class="build-label">建造</span>
-                            </button>
-                        </div>
-
-                        <!-- 兵营 -->
-                        <div class="building-card" id="barracksCard" data-building-id="barracks">
-                            <div class="building-header">
-                                <div class="building-icon">⚔️</div>
-                                <div class="building-title">
-                                    <div class="building-name">兵营</div>
-                                    <div class="building-level">等级 <span class="building-count" id="barracksCount">0</span></div>
-                                </div>
-                            </div>
-                            <div class="building-effect">全产出+<span id="barracksBonus">10</span>%</div>
-                            <button class="btn-build" id="btnBuildBarracks" data-building-id="barracks">
-                                <span class="build-cost cost-food">🌾 <span id="barracksCostFood">250</span></span>
-                                <span class="build-cost cost-knowledge">📚 <span id="barracksCostKnowledge">60</span></span>
-                                <span class="build-label">建造</span>
-                            </button>
-                        </div>
-
-                        <!-- 神庙 -->
-                        <div class="building-card" id="templeCard" data-building-id="temple">
-                            <div class="building-header">
-                                <div class="building-icon">⛪</div>
-                                <div class="building-title">
-                                    <div class="building-name">神庙</div>
-                                    <div class="building-level">等级 <span class="building-count" id="templeCount">0</span></div>
-                                </div>
-                            </div>
-                            <div class="building-effect">幸福度+15%；离线收益+5%</div>
-                            <button class="btn-build" id="btnBuildTemple" data-building-id="temple">
-                                <span class="build-cost cost-food">🌾 <span id="templeCostFood">300</span></span>
-                                <span class="build-cost cost-knowledge">📚 <span id="templeCostKnowledge">100</span></span>
-                                <span class="build-label">建造</span>
-                            </button>
-                        </div>
-                    </div>
+                    <div class="building-grid" id="buildingGrid"></div>
                 </section>
             </section>
 
-            <!-- 页面3：科技 -->
             <section class="page page-tech" data-page="tech">
-                <!-- 科技页顶部知识产出 -->
                 <section class="tech-header-panel">
                     <div class="tech-header-icon">📚</div>
                     <div class="tech-header-info">
@@ -274,340 +144,104 @@
                         <div class="tech-header-value" id="techKnowledgeRate">0/s</div>
                     </div>
                 </section>
-
                 <section class="tech-panel">
                     <h2 class="panel-title">🔬 科技树</h2>
                     <div class="tech-list">
-                        <!-- 原始时代 -->
-                        <div class="tech-card" id="techCard_fireMaking">
-                            <div class="tech-header">
-                                <div class="tech-icon">🔥</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">钻木取火</div>
-                                    <div class="tech-era">原始时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">农民食物产出+20%</div>
-                            <div class="tech-status available" id="techStatus_fireMaking">📚 80 知识</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_fireMaking" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_fireMaking">
-                                <span class="research-label">研发</span>
-                            </button>
-                        </div>
-
-                        <div class="tech-card" id="techCard_pottery">
-                            <div class="tech-header">
-                                <div class="tech-icon">🏺</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">陶器烧制</div>
-                                    <div class="tech-era">原始时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">工坊效率+20%</div>
-                            <div class="tech-status locked" id="techStatus_pottery">🔒 需钻木取火</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_pottery" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_pottery">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
-
-                        <!-- 农耕时代 -->
-                        <div class="tech-card" id="techCard_irrigation">
-                            <div class="tech-header">
-                                <div class="tech-icon">💧</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">灌溉农业</div>
-                                    <div class="tech-era">农耕时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">农田加成+30%</div>
-                            <div class="tech-status locked" id="techStatus_irrigation">🔒 需农耕时代</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_irrigation" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_irrigation">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
-
-                        <div class="tech-card" id="techCard_animalHusbandry">
-                            <div class="tech-header">
-                                <div class="tech-icon">🐄</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">畜牧驯养</div>
-                                    <div class="tech-era">农耕时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">人口增长间隔-20秒</div>
-                            <div class="tech-status locked" id="techStatus_animalHusbandry">🔒 需灌溉农业</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_animalHusbandry" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_animalHusbandry">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
-
-                        <!-- 青铜器时代 -->
-                        <div class="tech-card" id="techCard_bronzeSmelting">
-                            <div class="tech-header">
-                                <div class="tech-icon">⚔️</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">青铜器冶炼</div>
-                                    <div class="tech-era">青铜器时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">工匠知识产出+25%</div>
-                            <div class="tech-status locked" id="techStatus_bronzeSmelting">🔒 需青铜器时代</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_bronzeSmelting" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_bronzeSmelting">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
-
-                        <div class="tech-card" id="techCard_writing">
-                            <div class="tech-header">
-                                <div class="tech-icon">📜</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">文字记录</div>
-                                    <div class="tech-era">青铜器时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">学院效率+20%</div>
-                            <div class="tech-status locked" id="techStatus_writing">🔒 需青铜器冶炼</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_writing" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_writing">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
-
-                        <!-- 古典时代 -->
-                        <div class="tech-card" id="techCard_geometry">
-                            <div class="tech-header">
-                                <div class="tech-icon">📐</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">几何数学</div>
-                                    <div class="tech-era">古典时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">学院加成+30%</div>
-                            <div class="tech-status locked" id="techStatus_geometry">🔒 需古典时代</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_geometry" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_geometry">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
-
-                        <div class="tech-card" id="techCard_cityState">
-                            <div class="tech-header">
-                                <div class="tech-icon">🏛️</div>
-                                <div class="tech-title">
-                                    <div class="tech-name">城邦制度</div>
-                                    <div class="tech-era">古典时代</div>
-                                </div>
-                            </div>
-                            <div class="tech-effect">民居容量+1</div>
-                            <div class="tech-status locked" id="techStatus_cityState">🔒 需几何数学</div>
-                            <div class="tech-progress-wrapper" style="display:none">
-                                <div class="tech-progress-bar">
-                                    <div class="tech-progress-fill" id="techProgress_cityState" style="width:0%"></div>
-                                </div>
-                            </div>
-                            <button class="btn-research" id="btnResearch_cityState">
-                                <span class="research-label">锁定</span>
-                            </button>
-                        </div>
+                        <div class="tech-card"><div class="tech-name">首期暂不重构科技系统</div></div>
                     </div>
                 </section>
             </section>
 
-            <!-- 页面4：事件 -->
             <section class="page page-events" data-page="events">
                 <section class="events-panel">
                     <h2 class="panel-title">📜 待处理事件</h2>
-                    <div id="pendingEventsContainer">
-                        <div class="pending-events-empty">暂无待处理事件</div>
-                    </div>
+                    <div id="pendingEventsContainer"><div class="pending-events-empty">暂无待处理事件</div></div>
                 </section>
                 <section class="event-history-panel">
                     <h2 class="panel-title">📜 最近事件</h2>
-                    <div class="event-history-list" id="eventHistoryList">
-                        <div class="event-history-empty">暂无事件记录</div>
-                    </div>
+                    <div class="event-history-list" id="eventHistoryList"><div class="event-history-empty">暂无事件记录</div></div>
                 </section>
             </section>
 
-            <!-- 页面5：文明 -->
             <section class="page page-civilization" data-page="civilization">
-                <!-- 顶部文明概览 -->
                 <section class="civ-overview-panel">
                     <div class="civ-overview-header">
-                        <div class="civ-overview-era">
-                            <span id="civOverviewEraIcon">🔥</span>
-                            <span id="civOverviewEraName">原始时代</span>
-                        </div>
+                        <div class="civ-overview-era"><span id="civOverviewEraIcon">🔥</span><span id="civOverviewEraName">原始时代</span></div>
                         <div class="civ-overview-day" id="civOverviewDay">第 1 天</div>
                     </div>
                     <div class="civ-overview-stats">
-                        <div class="civ-overview-item">
-                            <span class="civ-overview-icon">👥</span>
-                            <span class="civ-overview-label">总人口</span>
-                            <span class="civ-overview-value" id="civOverviewPop">2</span>
-                        </div>
-                        <div class="civ-overview-item">
-                            <span class="civ-overview-icon">🏠</span>
-                            <span class="civ-overview-label">建筑</span>
-                            <span class="civ-overview-value" id="civOverviewBuildings">0</span>
-                        </div>
-                        <div class="civ-overview-item">
-                            <span class="civ-overview-icon">🔬</span>
-                            <span class="civ-overview-label">科技</span>
-                            <span class="civ-overview-value" id="civOverviewTechs">0/8</span>
-                        </div>
-                        <div class="civ-overview-item">
-                            <span class="civ-overview-icon">😊</span>
-                            <span class="civ-overview-label">幸福度</span>
-                            <span class="civ-overview-value" id="civOverviewHappiness">100%</span>
-                        </div>
+                        <div class="civ-overview-item"><span class="civ-overview-icon">👥</span><span class="civ-overview-label">总人口</span><span class="civ-overview-value" id="civOverviewPop">3</span></div>
+                        <div class="civ-overview-item"><span class="civ-overview-icon">🏠</span><span class="civ-overview-label">建筑</span><span class="civ-overview-value" id="civOverviewBuildings">0</span></div>
+                        <div class="civ-overview-item"><span class="civ-overview-icon">🔬</span><span class="civ-overview-label">科技</span><span class="civ-overview-value" id="civOverviewTechs">0/0</span></div>
+                        <div class="civ-overview-item"><span class="civ-overview-icon">😊</span><span class="civ-overview-label">幸福度</span><span class="civ-overview-value" id="civOverviewHappiness">100%</span></div>
                     </div>
                 </section>
 
-                <!-- 时代进阶面板 -->
                 <section class="era-panel">
                     <h2 class="panel-title">🏛️ 时代进阶</h2>
-                    
-                    <div class="era-target">
-                        <span id="eraTargetIcon">🌾</span>
-                        <span id="eraTargetName">农耕时代</span>
-                    </div>
-                    
+                    <div class="era-target"><span id="eraTargetIcon">🌾</span><span id="eraTargetName">农耕时代</span></div>
                     <div class="era-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="eraProgress" style="width: 0%"></div>
-                        </div>
+                        <div class="progress-bar"><div class="progress-fill" id="eraProgress" style="width: 0%"></div></div>
                         <div class="progress-label" id="eraProgressText">总进度: 0%</div>
                     </div>
-                    
-                    <div class="era-conditions" id="eraConditions">
-                        <!-- 条件清单由JS动态生成 -->
-                    </div>
-                    
+                    <div class="era-conditions" id="eraConditions"></div>
                     <button class="btn-era" id="btnAdvanceEra" disabled>
-                        <span class="btn-era-label" id="btnEraLabel">条件不足，无法进阶</span>
+                        <span class="btn-era-label" id="btnEraLabel">进阶（消耗 80 🌾）</span>
                     </button>
                 </section>
 
-                <!-- 已解锁特性 -->
                 <section class="civ-features-panel">
                     <h2 class="panel-title">✨ 当前时代特性</h2>
-                    <div class="civ-features-list" id="civCurrentFeatures">
-                        <!-- 由JS生成 -->
-                    </div>
-                </section>
-
-                <!-- 下个时代预览 -->
-                <section class="civ-preview-panel" id="civNextPreview">
-                    <h2 class="panel-title">🔮 下个时代预览</h2>
-                    <div class="civ-preview-list" id="civPreviewList">
-                        <!-- 由JS生成 -->
-                    </div>
-                </section>
-
-                <!-- 事件历史 -->
-                <section class="event-history-panel">
-                    <h2 class="panel-title">📜 最近事件</h2>
-                    <div class="event-history-list" id="eventHistoryList">
-                        <div class="event-history-empty">暂无事件记录</div>
-                    </div>
+                    <div class="civ-features-list"><div class="civ-feature-item">原始时代：口耳相传，等待迈入农耕时代。</div></div>
                 </section>
             </section>
         </div>
 
         <nav class="tab-bar">
-            <button class="tab-btn active" data-tab="resources">
-                <span class="tab-icon">🌾</span>
-                <span class="tab-label">资源</span>
-            </button>
-            <button class="tab-btn" data-tab="buildings">
-                <span class="tab-icon">🔨</span>
-                <span class="tab-label">建造</span>
-            </button>
-            <button class="tab-btn" data-tab="tech">
-                <span class="tab-icon">🔬</span>
-                <span class="tab-label">科技</span>
-            </button>
-            <button class="tab-btn" data-tab="events">
-                <span class="tab-icon">📜</span>
-                <span class="tab-label">事件</span>
-            </button>
-            <button class="tab-btn" data-tab="civilization">
-                <span class="tab-icon">🏛️</span>
-                <span class="tab-label">文明</span>
-            </button>
+            <button class="tab-btn active" id="tabResources" data-tab="resources"><span class="tab-icon">🌾</span><span class="tab-label">资源</span></button>
+            <button class="tab-btn" id="tabBuildings" data-tab="buildings"><span class="tab-icon">🏗️</span><span class="tab-label">建造</span></button>
+            <button class="tab-btn" id="tabTech" data-tab="tech"><span class="tab-icon">🔬</span><span class="tab-label">科技</span></button>
+            <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span></button>
+            <button class="tab-btn" id="tabCivilization" data-tab="civilization"><span class="tab-icon">🔥</span><span class="tab-label">文明</span></button>
         </nav>
 
-        <!-- ===== 离线收益弹窗 ===== -->
         <div class="modal-overlay" id="offlineModal">
             <div class="modal-content">
                 <div class="modal-icon">⏰</div>
                 <h3>离线收益</h3>
                 <p>你离开了 <span id="offlineTime">0</span></p>
                 <div class="offline-rewards">
-                    <div class="reward-item">
-                        <span>🌾</span>
-                        <span id="offlineFood">0</span>
-                    </div>
-                    <div class="reward-item">
-                        <span>📚</span>
-                        <span id="offlineKnowledge">0</span>
-                    </div>
+                    <div class="reward-item"><span>🌾</span><span id="offlineFood">0</span></div>
+                    <div class="reward-item"><span>📚</span><span id="offlineKnowledge">0</span></div>
                 </div>
-                <div class="offline-efficiency" id="offlineEfficiency">效率: 50%</div>
-                <div class="offline-narrative" id="offlineNarrative">💬 你离开的期间，族人一切平安，世界在缓慢运转</div>
+                <div class="offline-efficiency" id="offlineEfficiency">效率: 80%</div>
+                <div class="offline-narrative" id="offlineNarrative">族人安稳度过了你离开的时间。</div>
                 <button class="btn-claim" id="btnClaimOffline">领取收益</button>
             </div>
         </div>
 
-        <!-- ===== 特效层 ===== -->
         <div class="fx-layer" id="fxLayer"></div>
+        <div class="tutorial-overlay" id="tutorialOverlay"></div>
+        <div class="tutorial-bubble" id="tutorialBubble"></div>
+        <div class="tutorial-pointer" id="tutorialPointer">👇</div>
 
-        <!-- ===== 底部日志 ===== -->
-        <section class="log-panel">
-            <div class="log-content" id="logContent"></div>
-        </section>
+        <section class="log-panel"><div class="log-content" id="logContent"></div></section>
     </div>
 
     <script src="floating-text.js"></script>
     <script src="population.js"></script>
-    <script src="js/modules/BuildingAPI.js"></script>
-    <script src="js/modules/BuildingManager.js"></script>
-    <script src="js/modules/BuildingRenderer.js"></script>
+    <script src="js/config/GameConfig.js"></script>
+    <script src="js/domain/BuildingState.js"></script>
+    <script src="js/domain/GameState.js"></script>
+    <script src="js/api/GameAPI.js"></script>
+    <script src="js/services/GameStateSync.js"></script>
+    <script src="js/ui/BuildingUIRenderer.js"></script>
+    <script src="js/ui/TutorialUIRenderer.js"></script>
+    <script src="js/controllers/BuildingController.js"></script>
+    <script src="js/controllers/TutorialController.js"></script>
+    <script src="js/utils/DOMHelper.js"></script>
     <script src="app.js"></script>
-<script src="auth.js"></script>
-<script src="logs.js"></script>
+    <script src="auth.js"></script>
+    <script src="logs.js"></script>
 </body>
 </html>

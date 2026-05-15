@@ -1,0 +1,36 @@
+(function (global) {
+  function normalizeTutorialState(apiResponse) {
+    const tutorial = apiResponse && apiResponse.tutorial;
+    return {
+      completed: Boolean(tutorial && tutorial.completed),
+      currentStep: Number.isFinite(tutorial && tutorial.currentStep) ? tutorial.currentStep : 0,
+    };
+  }
+
+  function normalizeGameState(apiResponse) {
+    const gameState = (apiResponse && apiResponse.gameState) || {};
+    return {
+      resources: gameState.resources || {},
+      buildings: gameState.buildings || {},
+      buildingCosts: gameState.buildingCosts || {},
+      buildingEffects: gameState.buildingEffects || {},
+      unlockedBuildings: gameState.unlockedBuildings || [],
+      currentEra: Number.isFinite(gameState.currentEra) ? gameState.currentEra : 0,
+      currentEraName: gameState.currentEraName || '原始时代',
+      population: gameState.population || {},
+      happiness: Number.isFinite(gameState.happiness) ? gameState.happiness : 100,
+      techs: gameState.techs || {},
+      techEffects: gameState.techEffects || {},
+      gameDay: gameState.gameDay || 1,
+      totalBuildings: gameState.totalBuildings || 0,
+      eraHistory: gameState.eraHistory || [],
+      eventQueue: gameState.eventQueue || [],
+      eventHistory: gameState.eventHistory || [],
+      eraProgress: (apiResponse && apiResponse.eraProgress) || { percentage: 0, canAdvance: false, conditions: [] },
+    };
+  }
+
+  const api = { normalizeGameState, normalizeTutorialState };
+  global.FrontendGameState = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);

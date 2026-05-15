@@ -1524,3 +1524,98 @@ body {
     font-weight: bold;
     pointer-events: none;
 }
+
+
+/* ===== Dynamic Building + Tutorial ===== */
+.building-empty {
+  padding: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.building-card.is-muted {
+  opacity: 0.55;
+}
+
+.building-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.btn-build.is-loading {
+  opacity: 0.7;
+}
+
+.tab-btn.is-locked {
+  opacity: 0.45;
+}
+
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 180;
+  display: none;
+  pointer-events: none;
+}
+
+.tutorial-overlay.active {
+  display: block;
+}
+
+.tutorial-bubble {
+  position: fixed;
+  max-width: 220px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff7d6;
+  color: #3b2f00;
+  font-size: 13px;
+  line-height: 1.5;
+  z-index: 182;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.tutorial-bubble.active {
+  display: block;
+}
+
+.tutorial-pointer {
+  position: fixed;
+  z-index: 182;
+  display: none;
+  font-size: 24px;
+  animation: tutorial-bounce 1s infinite;
+}
+
+.tutorial-pointer.active {
+  display: block;
+}
+
+.tutorial-highlight {
+  position: relative;
+  z-index: 181 !important;
+  box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.95), 0 0 0 9999px rgba(0, 0, 0, 0.001);
+  border-radius: 14px;
+}
+
+.era-condition-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.era-condition-item.met {
+  border-color: rgba(78, 204, 163, 0.5);
+}
+
+@keyframes tutorial-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}

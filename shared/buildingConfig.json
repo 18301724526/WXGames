@@ -1,121 +1,138 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "buildings": {
     "farm": {
       "id": "farm",
       "name": "农田",
+      "icon": "🌾",
       "category": "production",
-      "cost": { "food": 50 },
-      "costMultiplier": 1.5,
-      "unlockEra": 0,
-      "maxLevel": 99,
+      "unlockEra": 1,
+      "maxLevel": 4,
+      "buildCost": { "food": 0 },
+      "upgradeCosts": [
+        { "food": 50 },
+        { "food": 120 },
+        { "food": 300 }
+      ],
       "effects": {
-        "perBuilding": {
+        "perLevel": {
           "foodOutputMultiplier": 0.5
         }
       },
       "ui": {
-        "icon": "🌾",
         "color": "#27ae60",
-        "description": "每座提升食物产出"
+        "description": "每级提升食物产出"
       }
     },
     "house": {
       "id": "house",
       "name": "民居",
+      "icon": "🏠",
       "category": "housing",
-      "cost": { "food": 150 },
-      "costMultiplier": 1.5,
-      "unlockEra": 0,
-      "maxLevel": 99,
+      "unlockEra": 1,
+      "maxLevel": 3,
+      "buildCost": { "food": 30 },
+      "upgradeCosts": [
+        { "food": 80 },
+        { "food": 200 }
+      ],
       "effects": {
-        "perBuilding": {
-          "maxPopulation": 3,
+        "perLevel": {
+          "populationCap": 3,
           "happiness": 5
         }
       },
       "ui": {
-        "icon": "🏠",
         "color": "#e67e22",
-        "description": "增加人口上限"
+        "description": "每级增加人口上限与幸福度"
       }
     },
     "workshop": {
       "id": "workshop",
       "name": "工坊",
+      "icon": "⚒️",
       "category": "production",
-      "cost": { "food": 150, "knowledge": 40 },
-      "costMultiplier": 1.5,
-      "unlockEra": 1,
-      "maxLevel": 99,
+      "unlockEra": 2,
+      "maxLevel": 3,
+      "buildCost": { "food": 120, "knowledge": 40 },
+      "upgradeCosts": [
+        { "food": 200, "knowledge": 100 },
+        { "food": 320, "knowledge": 180 }
+      ],
       "effects": {
-        "perBuilding": {
-          "craftsmanOutputMultiplier": 0.5
+        "perLevel": {
+          "craftsmanOutputMultiplier": 0.25
         }
       },
       "ui": {
-        "icon": "⚒️",
         "color": "#7f8c8d",
-        "description": "每座提升工匠产出"
+        "description": "提升工匠产出"
       }
     },
     "academy": {
       "id": "academy",
       "name": "学院",
+      "icon": "📚",
       "category": "research",
-      "cost": { "food": 200, "knowledge": 80 },
-      "costMultiplier": 1.5,
-      "unlockEra": 0,
-      "maxLevel": 99,
+      "unlockEra": 2,
+      "maxLevel": 3,
+      "buildCost": { "food": 180, "knowledge": 120 },
+      "upgradeCosts": [
+        { "food": 260, "knowledge": 180 },
+        { "food": 360, "knowledge": 260 }
+      ],
       "effects": {
-        "perBuilding": {
-          "scholarOutputMultiplier": 0.5
+        "perLevel": {
+          "knowledgeOutputMultiplier": 0.2
         }
       },
       "ui": {
-        "icon": "📚",
         "color": "#9b59b6",
-        "description": "每座提升学者产出"
+        "description": "提升知识产出"
       }
     },
     "barracks": {
       "id": "barracks",
       "name": "兵营",
+      "icon": "🛡️",
       "category": "military",
-      "cost": { "food": 250, "knowledge": 60 },
-      "costMultiplier": 1.5,
-      "unlockEra": 2,
-      "maxLevel": 99,
+      "unlockEra": 3,
+      "maxLevel": 2,
+      "buildCost": { "food": 260, "knowledge": 80 },
+      "upgradeCosts": [
+        { "food": 420, "knowledge": 160 }
+      ],
       "effects": {
-        "perBuilding": {
+        "perLevel": {
           "defense": 1,
-          "globalOutputMultiplier": 0.10
+          "globalOutputMultiplier": 0.1
         }
       },
       "ui": {
-        "icon": "🛡️",
         "color": "#c0392b",
-        "description": "提供防御能力"
+        "description": "提供防御与少量全局加成"
       }
     },
     "temple": {
       "id": "temple",
       "name": "神庙",
+      "icon": "⛪",
       "category": "special",
-      "cost": { "food": 300, "knowledge": 100 },
-      "costMultiplier": 1.5,
-      "unlockEra": 3,
-      "maxLevel": 99,
+      "unlockEra": 4,
+      "maxLevel": 2,
+      "buildCost": { "food": 320, "knowledge": 120 },
+      "upgradeCosts": [
+        { "food": 500, "knowledge": 220 }
+      ],
       "effects": {
-        "perBuilding": {
+        "perLevel": {
           "offlineEfficiency": 0.05,
-          "happiness": 15
+          "happiness": 10
         }
       },
       "ui": {
-        "icon": "⛪",
         "color": "#f39c12",
-        "description": "提升离线收益效率"
+        "description": "提升离线收益效率与幸福度"
       }
     }
   },
@@ -125,27 +142,5 @@
     "research": { "label": "科研", "order": 3 },
     "military": { "label": "军事", "order": 4 },
     "special": { "label": "特殊", "order": 5 }
-  },
-  "eraConditions": {
-    "1": {
-      "knowledge": 100,
-      "requiredBuildings": { "farm": 3 },
-      "techCount": 0,
-      "requiredTechs": []
-    },
-    "2": {
-      "food": 2000,
-      "knowledge": 500,
-      "requiredBuildings": { "workshop": 1, "farm": 3 },
-      "techCount": 2,
-      "requiredTechs": ["钻木取火", "文字"]
-    },
-    "3": {
-      "food": 4000,
-      "knowledge": 1200,
-      "requiredBuildings": { "academy": 1, "workshop": 1 },
-      "techCount": 4,
-      "requiredTechs": ["钻木取火", "文字", "农业", "冶金"]
-    }
   }
 }
