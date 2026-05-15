@@ -13,6 +13,7 @@ const registerGameRoutes = require('./routes/gameRoutes');
 const registerBuildingRoutes = require('./routes/buildingRoutes');
 const gameStateService = require('./services/GameStateService');
 const ResourceTickCalculator = require('./calculators/ResourceTickCalculator');
+const BuildingConfig = require('./config/BuildingConfig');
 
 const app = express();
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
@@ -62,7 +63,12 @@ registerGameRoutes(app, { authMiddleware, repository, gameStateService });
 registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    buildingConfigVersion: BuildingConfig.getVersion(),
+    buildingConfigPath: BuildingConfig.getSourcePath(),
+  });
 });
 
 setInterval(() => {

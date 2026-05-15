@@ -1,4 +1,11 @@
-const buildingConfig = require('../../shared/buildingConfig.json');
+const BuildingConfig = require('../config/BuildingConfig');
+const BuildingState = require('../domain/BuildingState');
+
+function normalizeLevel(value) {
+  if (typeof value === 'number') return value;
+  if (value && typeof value === 'object') return value.level || 0;
+  return 0;
+}
 
 /**
  * 建筑计算器 - 负责成本计算、资源操作
@@ -10,25 +17,19 @@ class BuildingCalculator {
    * @returns {object|null}
    */
   static getBuildingDef(buildingType) {
-    return buildingConfig.buildings[buildingType] || null;
+    return BuildingConfig.getBuilding(buildingType);
   }
 
   /**
-   * 计算建筑成本（含指数增长）
+   * 计算建筑下一步成本
    * @param {string} buildingType 
-   * @param {number} currentCount 
+   * @param {number|object} currentCount 
    * @returns {object|null} { food: xxx, knowledge: xxx }
    */
   static getBuildingCost(buildingType, currentCount) {
-    const def = this.getBuildingDef(buildingType);
-    if (!def) return null;
-
-    const multiplier = Math.pow(def.costMultiplier, currentCount);
-    const cost = {};
-    for (const [resource, amount] of Object.entries(def.cost)) {
-      cost[resource] = Math.floor(amount * multiplier);
-    }
-    return cost;
+    const currentLevel = normalizeLevel(currentCount);
+    if (currentLevel <= 0) return BuildingConfig.getBuildCost(buildingType);
+    return BuildingConfig.getUpgradeCost(buildingType, currentLevel);
   }
 
   /**
@@ -47,6 +48,7 @@ class BuildingCalculator {
    * @returns {boolean}
    */
   static canAfford(resources, cost) {
+    if (!cost) return false;
     for (const [resource, amount] of Object.entries(cost)) {
       if ((resources[resource] || 0) < amount) return false;
     }
@@ -69,7 +71,11 @@ class BuildingCalculator {
    * @returns {string[]}
    */
   static getAllBuildingTypes() {
-    return Object.keys(buildingConfig.buildings);
+    return Object.keys(BuildingConfig.getAllBuildings());
+  }
+
+  static getCurrentLevel(buildings, buildingType) {
+    return BuildingState.getLevel(buildings, buildingType);
   }
 }
 

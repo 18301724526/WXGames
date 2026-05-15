@@ -1,5 +1,5 @@
 const BuildingCalculator = require('./BuildingCalculator');
-const buildingConfig = require('../../shared/buildingConfig.json');
+const BuildingState = require('../domain/BuildingState');
 
 const ERA_NAMES = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
 
@@ -23,7 +23,7 @@ class BuildingValidator {
       return { valid: false, errors, cost: null };
     }
 
-    const currentCount = gameState.buildings[buildingType] || 0;
+    const currentCount = BuildingState.getLevel(gameState.buildings, buildingType);
 
     // 2. 时代解锁检查
     const requiredEra = BuildingCalculator.getBuildingUnlockEra(buildingType);

@@ -1,11 +1,12 @@
-const buildingConfig = require('../../shared/buildingConfig.json');
+const BuildingConfig = require('../config/BuildingConfig');
+const BuildingState = require('../domain/BuildingState');
 
 /**
  * 建筑效果计算器 - 从配置读取倍率，不再硬编码
  */
 class BuildingEffects {
   constructor() {
-    this.config = buildingConfig;
+    this.config = BuildingConfig.getAllBuildings();
   }
 
   /**
@@ -13,8 +14,8 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 farm 的 foodOutputMultiplier
    */
   getFoodOutputMultiplier(gameState) {
-    const farmCount = gameState.buildings?.farm || 0;
-    const multiplier = this.config.buildings.farm?.effects?.perBuilding?.foodOutputMultiplier || 0;
+    const farmCount = BuildingState.getLevel(gameState.buildings, 'farm');
+    const multiplier = this.config.farm?.effects?.perLevel?.foodOutputMultiplier || 0;
     return 1 + (farmCount * multiplier);
   }
 
@@ -23,8 +24,8 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 academy 的 scholarOutputMultiplier
    */
   getKnowledgeOutputMultiplier(gameState) {
-    const academyCount = gameState.buildings?.academy || 0;
-    const multiplier = this.config.buildings.academy?.effects?.perBuilding?.scholarOutputMultiplier || 0;
+    const academyCount = BuildingState.getLevel(gameState.buildings, 'academy');
+    const multiplier = this.config.academy?.effects?.perLevel?.knowledgeOutputMultiplier || 0;
     return 1 + (academyCount * multiplier);
   }
 
@@ -33,8 +34,8 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 workshop 的 craftsmanOutputMultiplier
    */
   getCraftsmanOutputMultiplier(gameState) {
-    const workshopCount = gameState.buildings?.workshop || 0;
-    const multiplier = this.config.buildings.workshop?.effects?.perBuilding?.craftsmanOutputMultiplier || 0;
+    const workshopCount = BuildingState.getLevel(gameState.buildings, 'workshop');
+    const multiplier = this.config.workshop?.effects?.perLevel?.craftsmanOutputMultiplier || 0;
     return 1 + (workshopCount * multiplier);
   }
 
@@ -43,8 +44,8 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 barracks 的 globalOutputMultiplier
    */
   getGlobalOutputMultiplier(gameState) {
-    const barracksCount = gameState.buildings?.barracks || 0;
-    const multiplier = this.config.buildings.barracks?.effects?.perBuilding?.globalOutputMultiplier || 0;
+    const barracksCount = BuildingState.getLevel(gameState.buildings, 'barracks');
+    const multiplier = this.config.barracks?.effects?.perLevel?.globalOutputMultiplier || 0;
     return 1 + (barracksCount * multiplier);
   }
 
@@ -53,8 +54,8 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 temple 的 offlineEfficiency
    */
   getOfflineEfficiencyBonus(gameState) {
-    const templeCount = gameState.buildings?.temple || 0;
-    const efficiency = this.config.buildings.temple?.effects?.perBuilding?.offlineEfficiency || 0;
+    const templeCount = BuildingState.getLevel(gameState.buildings, 'temple');
+    const efficiency = this.config.temple?.effects?.perLevel?.offlineEfficiency || 0;
     return templeCount * efficiency;
   }
 
@@ -63,10 +64,10 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 house 和 temple 的 happiness
    */
   getHappinessBonus(gameState) {
-    const houseCount = gameState.buildings?.house || 0;
-    const templeCount = gameState.buildings?.temple || 0;
-    const houseHappiness = this.config.buildings.house?.effects?.perBuilding?.happiness || 0;
-    const templeHappiness = this.config.buildings.temple?.effects?.perBuilding?.happiness || 0;
+    const houseCount = BuildingState.getLevel(gameState.buildings, 'house');
+    const templeCount = BuildingState.getLevel(gameState.buildings, 'temple');
+    const houseHappiness = this.config.house?.effects?.perLevel?.happiness || 0;
+    const templeHappiness = this.config.temple?.effects?.perLevel?.happiness || 0;
     return (houseCount * houseHappiness) + (templeCount * templeHappiness);
   }
 
@@ -75,8 +76,8 @@ class BuildingEffects {
    * 从 buildingConfig.json 读取 barracks 的 defense
    */
   getDefenseLevel(gameState) {
-    const barracksCount = gameState.buildings?.barracks || 0;
-    const defensePerLevel = this.config.buildings.barracks?.effects?.perBuilding?.defense || 0;
+    const barracksCount = BuildingState.getLevel(gameState.buildings, 'barracks');
+    const defensePerLevel = this.config.barracks?.effects?.perLevel?.defense || 0;
     return barracksCount * defensePerLevel;
   }
 

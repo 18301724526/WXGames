@@ -1,6 +1,7 @@
 const BuildingCalculator = require('./BuildingCalculator');
 const BuildingValidator = require('./BuildingValidator');
 const BuildingEffects = require('./BuildingEffects');
+const BuildingState = require('../domain/BuildingState');
 
 /**
  * 建筑系统核心 - 整合校验、建造、效果计算
@@ -28,14 +29,15 @@ class BuildingSystem {
 
     const cost = validation.cost;
     BuildingCalculator.deductResources(gameState.resources, cost);
-    gameState.buildings[buildingType] = (gameState.buildings[buildingType] || 0) + 1;
+    gameState.buildings = BuildingState.normalizeLegacyBuildingState(gameState.buildings);
+    gameState.buildings = BuildingState.build(gameState.buildings, buildingType);
 
     return {
       success: true,
       message: `建造了 ${buildingType}`,
       cost,
       buildingType,
-      newCount: gameState.buildings[buildingType]
+      newCount: BuildingState.getLevel(gameState.buildings, buildingType)
     };
   }
 
@@ -49,7 +51,7 @@ class BuildingSystem {
     const def = BuildingCalculator.getBuildingDef(buildingType);
     if (!def) return null;
 
-    const currentCount = gameState.buildings[buildingType] || 0;
+    const currentCount = BuildingState.getLevel(gameState.buildings, buildingType);
     const cost = BuildingCalculator.getBuildingCost(buildingType, currentCount);
     const isUnlocked = gameState.currentEra >= BuildingCalculator.getBuildingUnlockEra(buildingType);
     const canAfford = BuildingCalculator.canAfford(gameState.resources, cost);
@@ -67,7 +69,7 @@ class BuildingSystem {
       canAfford,
       unlockEra: def.unlockEra,
       maxLevel: def.maxLevel || 1,
-      effects: def.effects?.perBuilding || {}
+      effects: def.effects?.perLevel || {}
     };
   }
 
@@ -100,11 +102,14 @@ class BuildingSystem {
     const eraConditions = this.getEraConditionsConfig(targetEra);
     if (!eraConditions) return null;
 
-    const totalBuildings = Object.values(gameState.buildings).reduce((sum, count) => sum + count, 0);
+    const totalBuildings = Object.keys(gameState.buildings || {}).reduce(
+      (sum, id) => sum + BuildingState.getLevel(gameState.buildings, id),
+      0,
+    );
     let specificMet = true;
 
     for (const [bType, required] of Object.entries(eraConditions.requiredBuildings || {})) {
-      if ((gameState.buildings[bType] || 0) < required) {
+      if (BuildingState.getLevel(gameState.buildings, bType) < required) {
         specificMet = false;
       }
     }

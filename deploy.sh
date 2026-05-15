@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-REPO_DIR="/www/wwwroot/h5"
+WORK_TREE="${WORK_TREE:-/www/wwwroot/h5}"
 BACKEND_DIR="/opt/wxgame-workspace/backend"
 SHARED_LINK="/opt/wxgame-workspace/shared"
 BRANCH="${1:-main}"
@@ -19,23 +19,116 @@ require_command() {
     fi
 }
 
+resolve_git_dir() {
+    if [ -n "${REPO_GIT_DIR:-}" ]; then
+        echo "$REPO_GIT_DIR"
+        return
+    fi
+    if [ -e "$WORK_TREE/.git" ]; then
+        echo "$WORK_TREE/.git"
+        return
+    fi
+    if git rev-parse --absolute-git-dir >/dev/null 2>&1; then
+        git rev-parse --absolute-git-dir
+        return
+    fi
+    return 1
+}
+
+git_repo() {
+    git --git-dir="$GIT_DIR_PATH" --work-tree="$WORK_TREE" "$@"
+}
+
+read_config_version() {
+    local config_path="$1"
+    node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(String(data.version || 'unknown'));" "$config_path"
+}
+
+verify_shared_sync() {
+    local work_tree_config="$WORK_TREE/shared/buildingConfig.json"
+    local shared_config="$SHARED_LINK/buildingConfig.json"
+    local resolved_shared
+
+    if [ ! -f "$work_tree_config" ]; then
+        echo "[Deploy] 缺少配置文件: $work_tree_config" >&2
+        exit 1
+    fi
+    if [ ! -L "$SHARED_LINK" ]; then
+        echo "[Deploy] shared 链接不存在或不是符号链接: $SHARED_LINK" >&2
+        exit 1
+    fi
+    if [ ! -f "$shared_config" ]; then
+        echo "[Deploy] shared 配置文件不存在: $shared_config" >&2
+        exit 1
+    fi
+
+    resolved_shared="$(readlink -f "$SHARED_LINK")"
+    if [ "$resolved_shared" != "$(readlink -f "$WORK_TREE/shared")" ]; then
+        echo "[Deploy] shared 链接目标不正确: $resolved_shared" >&2
+        exit 1
+    fi
+    if ! cmp -s "$work_tree_config" "$shared_config"; then
+        echo "[Deploy] shared/buildingConfig.json 内容不一致" >&2
+        exit 1
+    fi
+
+    echo "[Deploy] shared 配置版本: $(read_config_version "$work_tree_config")"
+}
+
+verify_runtime_config() {
+    local health_payload="$1"
+    local expected_version
+    local runtime_version
+
+    expected_version="$(read_config_version "$WORK_TREE/shared/buildingConfig.json")"
+    runtime_version="$(printf '%s' "$health_payload" | node -e "let input=''; process.stdin.on('data', (chunk) => input += chunk); process.stdin.on('end', () => { const data = JSON.parse(input || '{}'); process.stdout.write(String(data.buildingConfigVersion || 'unknown')); });")"
+
+    if [ "$runtime_version" != "$expected_version" ]; then
+        echo "[Deploy] 运行时配置版本不匹配: expected=$expected_version actual=$runtime_version" >&2
+        exit 1
+    fi
+
+    echo "[Deploy] 运行时配置版本已确认: $runtime_version"
+}
+
 echo "[Deploy] 开始部署..."
 
 require_command git
+require_command node
 require_command npm
 require_command pm2
 require_command rsync
 require_command curl
 
-echo "[Deploy] 强制对齐仓库到 origin/$BRANCH ..."
-cd "$REPO_DIR"
-git fetch origin "$BRANCH"
-git reset --hard "origin/$BRANCH"
-git clean -fd
+mkdir -p "$WORK_TREE"
+GIT_DIR_PATH="$(resolve_git_dir)" || {
+    echo "[Deploy] 未找到 Git 仓库，请设置 REPO_GIT_DIR 或确保 $WORK_TREE/.git 存在" >&2
+    exit 1
+}
+IS_BARE_REPO="$(git --git-dir="$GIT_DIR_PATH" rev-parse --is-bare-repository)"
+
+echo "[Deploy] 使用工作目录: $WORK_TREE"
+echo "[Deploy] 使用 Git 目录: $GIT_DIR_PATH"
+
+if [ "$IS_BARE_REPO" = "true" ]; then
+    echo "[Deploy] 检测到 bare repo，直接检出分支 $BRANCH ..."
+    if ! git --git-dir="$GIT_DIR_PATH" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+        echo "[Deploy] bare repo 中不存在分支 $BRANCH" >&2
+        exit 1
+    fi
+    git_repo checkout -f "$BRANCH"
+    git_repo clean -fd
+else
+    echo "[Deploy] 检测到普通仓库，强制对齐到 origin/$BRANCH ..."
+    git_repo fetch origin "$BRANCH"
+    git_repo reset --hard "origin/$BRANCH"
+    git_repo clean -fd
+fi
 
 echo "[Deploy] 同步 shared/ 目录..."
 mkdir -p "$(dirname "$SHARED_LINK")"
-ln -sfn "$REPO_DIR/shared" "$SHARED_LINK"
+ln -sfn "$WORK_TREE/shared" "$SHARED_LINK"
+verify_shared_sync
 
 echo "[Deploy] 同步 backend/ 到运行目录..."
 mkdir -p "$BACKEND_DIR"
@@ -52,7 +145,7 @@ rsync -a --delete \
     --exclude '*.backup' \
     --exclude '*.backup.*' \
     --exclude '*.pre-tick' \
-    "$REPO_DIR/backend/" "$BACKEND_DIR/"
+    "$WORK_TREE/backend/" "$BACKEND_DIR/"
 
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
@@ -67,7 +160,9 @@ fi
 
 echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do
-    if curl -fsS "http://localhost:${API_PORT}/api/health"; then
+    if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then
+        verify_runtime_config "$health_payload"
+        printf '%s\n' "$health_payload"
         echo
         echo "[Deploy] 部署完成"
         echo "[Deploy] 前端: http://47.116.32.216/h5/"
