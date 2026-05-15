@@ -9,6 +9,8 @@
     }
 
     async fetchNow() {
+      if (this.fetching) return;
+      this.fetching = true;
       try {
         const data = await this.api.getState();
         if (this.onState) this.onState(data);
@@ -16,6 +18,8 @@
       } catch (error) {
         if (this.onError) this.onError(error);
         throw error;
+      } finally {
+        this.fetching = false;
       }
     }
 

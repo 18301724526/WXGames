@@ -77,10 +77,14 @@ const Game = {
 
   async startHeartbeat() {
     this.gameAPI.setToken(this.token);
-    await this.syncService.fetchNow().catch((error) => {
-      if (error.payload && error.payload.error && this.handleAuthError) this.handleAuthError(error.payload);
-    });
-    this.syncService.start();
+    try {
+      await this.syncService.fetchNow();
+      this.syncService.start();
+    } catch (error) {
+      if (error.payload && error.payload.error && this.handleAuthError) {
+        this.handleAuthError(error.payload);
+      }
+    }
   },
 
   stopHeartbeat() {

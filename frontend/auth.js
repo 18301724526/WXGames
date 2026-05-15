@@ -52,8 +52,13 @@ window.mountAuthMethods = function(game) {
     }
   };
 
-  game.logout = function() { this.token = null; this.playerId = null; localStorage.removeItem('cf_token'); localStorage.removeItem('cf_deviceId'); location.reload(); };
-        localStorage.removeItem('civilizationFirePhase2');
+    this.token = null;
+    this.playerId = null;
+    localStorage.removeItem('cf_token');
+    localStorage.removeItem('cf_deviceId');
+    localStorage.removeItem('civilizationFirePhase2');
+    location.reload();
+  };
 
   game.resetGame = async function() {
     if (!confirm('⚠️ 确定重置游戏？\n所有进度将清空。')) return;
@@ -69,6 +74,9 @@ window.mountAuthMethods = function(game) {
     if (panel) panel.style.display = 'none';
     if (appEl) appEl.style.display = 'block';
     game.startHeartbeat();
+  } else {
+    // 无 token：显示登录面板
+    game.showLoginPanel();
   }
 
   console.log('[auth.js] 账号管理模块已挂载');

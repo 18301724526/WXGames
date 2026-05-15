@@ -42,7 +42,7 @@
         const isMax = actionLabel === '已满级';
         const disabled = disabledByTutorial || isMax;
         const effectText = this.getEffectText(id, state.buildingEffects);
-        const descText = this.getDescription(id, state.buildingEffects);
+        const descText = this.getDescription(id, state.buildings);
         return `
           <div class="building-card ${disabledByTutorial ? 'is-muted' : ''}" data-building-id="${id}" id="card-${id}">
             <div class="building-header">
@@ -95,9 +95,9 @@
       }
     }
 
-    getDescription(id, buildingEffects) {
-      const effect = buildingEffects?.byBuilding?.[id] || {};
-      if (effect.level > 0) return '当前效果已按后端最新建筑等级计算';
+    getDescription(id, buildings) {
+      const level = global.FrontendBuildingState.getLevel(buildings, id);
+      if (level > 0) return '当前效果已按后端最新建筑等级计算';
       return '建造后由后端实时计算效果与升级成本';
     }
   }
