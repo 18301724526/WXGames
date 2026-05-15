@@ -6,7 +6,7 @@
       this.getTarget = options.getTarget;
       this.onTabLockChange = options.onTabLockChange;
       this.state = { completed: false, currentStep: 0 };
-      this.autoStarted = false;
+      this.autoStarted = localStorage.getItem('tutorialAutoStarted') === 'true';
     }
 
     setState(tutorial) {
@@ -16,6 +16,7 @@
       this.render();
       if (!this.state.completed && this.state.currentStep === 0 && !this.autoStarted) {
         this.autoStarted = true;
+        localStorage.setItem('tutorialAutoStarted', 'true');
         setTimeout(() => this.advanceTo(1).catch(() => {}), global.GameConfig.TUTORIAL_START_DELAY_MS);
       }
     }

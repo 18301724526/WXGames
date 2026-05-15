@@ -8,7 +8,7 @@ window.mountAuthMethods = function(game) {
     this.playerId = null;
     localStorage.removeItem('cf_token');
     localStorage.removeItem('cf_deviceId');
-        localStorage.removeItem('civilizationFirePhase2');
+    localStorage.removeItem('civilizationFirePhase2');
     this.showLoginPanel(data?.message || '登录已过期，请重新登录');
   };
 
@@ -35,6 +35,11 @@ window.mountAuthMethods = function(game) {
     try {
       const url = mode === 'login' ? `${this.apiBase}/player/login` : `${this.apiBase}/player/register`;
       const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId }) });
+      if (!resp.ok) {
+        const el = document.getElementById('loginMessage');
+        if (el) el.textContent = `服务器错误 (${resp.status})，请稍后再试`;
+        return;
+      }
       const data = await resp.json();
       if (data.token) {
         this.token = data.token; this.playerId = data.playerId;
@@ -42,8 +47,11 @@ window.mountAuthMethods = function(game) {
         if (this.buildingAPI) this.buildingAPI.setToken(data.token);
         document.getElementById('loginPanel').style.display = 'none';
         document.getElementById('app').style.display = 'block';
+        // 注册时后端返回 gameState，直接同步
+        if (data.gameState) {
+          this.syncFromServer(data.gameState, data.tutorial, data.eraProgress);
+        }
         this.startHeartbeat();
-        // init由app.js自动流程接管
       } else {
         const el = document.getElementById('loginMessage'); if (el) el.textContent = data.message || '登录失败';
       }
@@ -52,6 +60,7 @@ window.mountAuthMethods = function(game) {
     }
   };
 
+  game.logout = function() {
     this.token = null;
     this.playerId = null;
     localStorage.removeItem('cf_token');
@@ -81,4 +90,3 @@ window.mountAuthMethods = function(game) {
 
   console.log('[auth.js] 账号管理模块已挂载');
 };
-

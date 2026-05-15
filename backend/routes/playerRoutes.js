@@ -11,7 +11,16 @@ function registerPlayerRoutes(app, deps) {
       (playerId) => gameStateService.createInitialGameState(playerId),
       (gameState) => repository.save(gameState),
     );
-    return res.json(player);
+    const rawState = repository.findByPlayerId(player.playerId);
+    const gameState = rawState ? gameStateService.getClientGameState(rawState) : null;
+    return res.json({
+      playerId: player.playerId,
+      deviceId: player.deviceId,
+      token: player.token,
+      gameState,
+      tutorial: rawState?.tutorial || gameStateService.createInitialGameState(player.playerId).tutorial,
+      eraProgress: rawState ? gameStateService.calculateEraProgress(rawState) : { percentage: 0, canAdvance: false, conditions: [] },
+    });
   });
 
   app.post('/api/player/login', (req, res) => {
