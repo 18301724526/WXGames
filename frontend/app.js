@@ -105,7 +105,6 @@ const Game = {
         foodPerFarmer: 2,
         knowledgePerScholar: 1,
         knowledgePerCraftsman: 1,
-        farmBonusPerLevel: 20,
         eraThreshold: 1000,
         maxOfflineHours: 8,
         offlineEfficiencyBase: 0.5,
@@ -147,7 +146,7 @@ const Game = {
             era: 0,
             prereq: 'writing',
             effect: '农田产出+30%',
-            apply: () => { Game.config.farmBonusPerLevel = 30; }
+            apply: () => { } // effect computed by backend
         },
         animalHusbandry: {
             id: 'animalHusbandry',
@@ -460,6 +459,9 @@ const Game = {
         // 同步建筑成本（后端计算，前端展示用）
         s.buildingCosts = serverState.buildingCosts || {};
 
+        // 同步建筑效果（后端计算，前端展示用）
+        s.buildingEffects = serverState.buildingEffects || {};
+
         // 人口 —— 关键修正：完整同步后端 population 对象
         const serverPop = serverState.population || {};
         s.totalPop = serverPop.total ?? 3;
@@ -682,34 +684,33 @@ const Game = {
     // --- 倍率计算 ---
     calculateMultipliers() {
         const s = this.state;
+
+        // 建筑效果由后端计算，前端只读取
+        const effects = s.buildingEffects || {};
         const ts = s.techState;
 
-        // 农田倍率
-        let farmBonus = s.buildings.farm * this.config.farmBonusPerLevel / 100;
-        const farmMultiplier = 1 + farmBonus;
+        // 基础倍率（后端 buildingEffects）
+        let farmMultiplier = effects.foodOutputMultiplier || 1;
+        let scholarMultiplier = effects.knowledgeOutputMultiplier || 1;
+        let craftsmanMultiplier = effects.craftsmanOutputMultiplier || 1;
+        let globalMultiplier = effects.globalOutputMultiplier || 1;
+        const happinessBonus = effects.happinessBonus || 0;
 
-        // 学者倍率（学院加成 × 科技加成）
-        let scholarBase = s.buildings.academy > 0 ? (1 + s.buildings.academy * 0.5) : 1;
-        if (ts?.writing?.status === 'completed') scholarBase *= 1.2;
-        if (ts?.geometry?.status === 'completed') scholarBase *= 1.3;
-        const scholarMultiplier = scholarBase;
+        // 科技加成（前端保留，因为 techState 已同步）
+        if (ts?.writing?.status === 'completed') scholarMultiplier *= 1.2;
+        if (ts?.geometry?.status === 'completed') scholarMultiplier *= 1.3;
+        if (ts?.pottery?.status === 'completed') craftsmanMultiplier *= 1.2;
 
-        // 工匠倍率（工坊加成 × 科技加成）
-        let craftsmanBase = s.buildings.workshop > 0 ? (1 + s.buildings.workshop * 0.5) : 1;
-        if (ts?.pottery?.status === 'completed') craftsmanBase *= 1.2;
-        const craftsmanMultiplier = craftsmanBase;
+        // 钻木取火加成
+        if (ts?.fireMaking?.status === 'completed') farmMultiplier *= 1.2;
 
-        // 兵营全局加成
-        const barracksMultiplier = 1 + (s.buildings.barracks * 0.1);
-
-        // 幸福度加成
-        const happiness = 100 + s.buildings.house * 5 + s.buildings.temple * 15;
+        // 幸福度 = 基础100 + 建筑加成 + 科技加成
+        const happiness = 100 + happinessBonus + (ts?.philosophy?.status === 'completed' ? 10 : 0);
         s.happiness = happiness;
         const happinessMultiplier = happiness / 100;
 
-        // 钻木取火加成已在 config.foodPerFarmer 中
-        // 全局倍率 = 兵营 × 幸福度
-        const globalMultiplier = barracksMultiplier * happinessMultiplier;
+        // 全局倍率 = 兵营全局 × 幸福度
+        globalMultiplier *= happinessMultiplier;
 
         return {
             farm: farmMultiplier,
@@ -717,8 +718,9 @@ const Game = {
             craftsman: craftsmanMultiplier,
             global: globalMultiplier,
             happiness: happinessMultiplier,
-            barracks: barracksMultiplier
+            barracks: effects.globalOutputMultiplier || 1
         };
+    },
     },
 
     // --- 科技效果应用 ---
@@ -728,7 +730,6 @@ const Game = {
         this.config.foodPerFarmer = 2;
         this.config.knowledgePerScholar = 1;
         this.config.knowledgePerCraftsman = 1;
-        this.config.farmBonusPerLevel = 20;
         // 人口增长由服务端驱动，前端不配置
 
         // 应用已完成的科技效果（按顺序）
