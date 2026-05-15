@@ -1,49 +1,82 @@
 #!/bin/bash
 # 文明火种 - 部署脚本
 # 位置：仓库根目录 deploy.sh
-# 用法：在服务器上执行 ./deploy.sh
+# 用法：在服务器上执行 ./deploy.sh [branch]
 
-set -e
+set -euo pipefail
 
 REPO_DIR="/www/wwwroot/h5"
 BACKEND_DIR="/opt/wxgame-workspace/backend"
 SHARED_LINK="/opt/wxgame-workspace/shared"
+BRANCH="${1:-main}"
+PM2_APP_NAME="server"
+API_PORT="${PORT:-3000}"
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "[Deploy] 缺少命令: $1" >&2
+        exit 1
+    fi
+}
 
 echo "[Deploy] 开始部署..."
 
-# 1. 拉取最新代码
-echo "[Deploy] 拉取最新代码..."
+require_command git
+require_command npm
+require_command pm2
+require_command rsync
+require_command curl
+
+echo "[Deploy] 强制对齐仓库到 origin/$BRANCH ..."
 cd "$REPO_DIR"
-git pull origin main
+git fetch origin "$BRANCH"
+git reset --hard "origin/$BRANCH"
+git clean -fd
 
-# 2. 同步 shared/ 到后端目录（符号链接 + 兜底复制）
 echo "[Deploy] 同步 shared/ 目录..."
-# 先尝试创建符号链接
-if [ ! -L "$SHARED_LINK" ]; then
-    if [ -d "$SHARED_LINK" ] && [ ! -L "$SHARED_LINK" ]; then
-        mv "$SHARED_LINK" "${SHARED_LINK}.bak.$(date +%Y%m%d_%H%M%S)"
-    fi
-    ln -sf "$REPO_DIR/shared" "$SHARED_LINK"
-    echo "[Deploy] 已创建符号链接: $SHARED_LINK -> $REPO_DIR/shared"
-fi
-# 兜底：确保 shared/ 目录内容是最新的
-if [ ! -f "$SHARED_LINK/buildingConfig.json" ]; then
-    echo "[Deploy] 符号链接失效，直接复制 shared/ 目录..."
-    mkdir -p "$SHARED_LINK"
-    cp -r "$REPO_DIR/shared"/* "$SHARED_LINK/"
-fi
+mkdir -p "$(dirname "$SHARED_LINK")"
+ln -sfn "$REPO_DIR/shared" "$SHARED_LINK"
 
-# 3. 同步 backend/ 到后端运行目录（如果需要的话）
-# 当前 PM2 从 /opt/wxgame-workspace/backend/ 运行
-# 如果仓库 backend/ 和运行目录不同步，需要额外同步
-# 这里假设运行目录本身就是 git 工作区的一部分，或者通过符号链接
+echo "[Deploy] 同步 backend/ 到运行目录..."
+mkdir -p "$BACKEND_DIR"
+rsync -a --delete \
+    --exclude '.env' \
+    --exclude '.env.*' \
+    --exclude 'node_modules' \
+    --exclude 'logs' \
+    --exclude '*.db' \
+    --exclude '*.db-shm' \
+    --exclude '*.db-wal' \
+    --exclude '*.bak' \
+    --exclude '*.bak.*' \
+    --exclude '*.backup' \
+    --exclude '*.backup.*' \
+    --exclude '*.pre-tick' \
+    "$REPO_DIR/backend/" "$BACKEND_DIR/"
 
-# 4. 重启后端服务
-echo "[Deploy] 重启后端服务..."
+echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
-pm install --production 2>/dev/null || true
-pm2 restart server --update-env
+npm install --omit=dev --no-audit --no-fund
 
-echo "[Deploy] 部署完成 ✅"
-echo "[Deploy] 前端: http://47.116.32.216/h5/"
-echo "[Deploy] API: http://47.116.32.216:3000/api/health"
+echo "[Deploy] 重启 PM2 服务..."
+if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
+    pm2 restart "$PM2_APP_NAME" --update-env
+else
+    pm2 start server.js --name "$PM2_APP_NAME" --update-env
+fi
+
+echo "[Deploy] 校验健康接口..."
+for attempt in 1 2 3 4 5; do
+    if curl -fsS "http://127.0.0.1:${API_PORT}/api/health"; then
+        echo
+        echo "[Deploy] 部署完成"
+        echo "[Deploy] 前端: http://47.116.32.216/h5/"
+        echo "[Deploy] API: http://47.116.32.216:${API_PORT}/api/health"
+        exit 0
+    fi
+    sleep 2
+done
+
+echo "[Deploy] 健康检查失败，最近的 PM2 状态如下:" >&2
+pm2 show "$PM2_APP_NAME" >&2 || true
+exit 1

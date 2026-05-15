@@ -27,6 +27,34 @@ class LogService {
     });
   }
 
+  logApi(playerId, deviceId, method, path, body, statusCode, response, duration) {
+    const bodyStr = body ? JSON.stringify(body).slice(0, 2000) : '';
+    const responseStr = response ? JSON.stringify(response).slice(0, 1000) : '';
+    this.db.prepare(
+      `INSERT INTO api_logs (
+        playerId,
+        deviceId,
+        method,
+        path,
+        body,
+        statusCode,
+        response,
+        duration,
+        timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      playerId || null,
+      deviceId || null,
+      method,
+      path,
+      bodyStr,
+      statusCode,
+      responseStr,
+      duration,
+      new Date().toISOString(),
+    );
+  }
+
   getPlayerLogs(playerId, limit=20) {
     return this.db.prepare(`SELECT method, path, body, statusCode, response, duration, timestamp FROM api_logs WHERE playerId = ? ORDER BY timestamp DESC LIMIT ?`).all(playerId, limit);
   }
