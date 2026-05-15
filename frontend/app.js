@@ -3,28 +3,25 @@
 // 建筑系统模块已解耦至 js/modules/（全局挂载，无需 require）
 
 const Game = {
-    // --- 建筑配置（硬编码，后续可改为 fetch 加载 shared/buildingConfig.json）---
+    // --- 建筑配置（名称和图标，效果由后端计算）---
     buildingConfig: {
-        version: '1.0',
-        buildings: {
-            farm: {
-                id: 'farm', name: '农田', category: 'production',
-                 unlockEra: 0, 
-            house: {
-                id: 'house', name: '民居', category: 'housing',
-                 unlockEra: 0, 
-            workshop: {
-                id: 'workshop', name: '工坊', category: 'production',
-                 unlockEra: 1, 
-            academy: {
-                id: 'academy', name: '学院', category: 'research',
-                 unlockEra: 0, 
-            barracks: {
-                id: 'barracks', name: '兵营', category: 'military',
-                 unlockEra: 2, 
-            temple: {
-                id: 'temple', name: '神庙', category: 'special',
-                 unlockEra: 3, 
+        farm: {
+            id: 'farm', name: '农田', category: 'production',
+        },
+        house: {
+            id: 'house', name: '民居', category: 'housing',
+        },
+        workshop: {
+            id: 'workshop', name: '工坊', category: 'production',
+        },
+        academy: {
+            id: 'academy', name: '学院', category: 'research',
+        },
+        barracks: {
+            id: 'barracks', name: '兵营', category: 'military',
+        },
+        temple: {
+            id: 'temple', name: '神庙', category: 'special',
         },
         categories: {
             production: { label: '生产', order: 1 },
