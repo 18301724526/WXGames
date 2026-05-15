@@ -690,9 +690,8 @@ const Game = {
             barracks: effects.globalOutputMultiplier || 1
         };
     },
-    },
-
     applyTechEffects() {
+
         const ts = this.state.techState;
         // 重置基础配置
         this.config.foodPerFarmer = 2;
