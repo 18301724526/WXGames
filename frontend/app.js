@@ -1170,7 +1170,7 @@ const Game = {
 
         const s = this.state;
         const cfg = this.config;
-        const offlineEfficiency = cfg.offlineEfficiencyBase + s.buildings.temple * 0.05;
+        const offlineEfficiency = cfg.offlineEfficiencyBase + (s.buildingEffects?.offlineEfficiencyBonus || 0);
         const effectiveHours = Math.min(diffHours, cfg.maxOfflineHours);
 
         const multipliers = this.calculateMultipliers();
