@@ -28,6 +28,14 @@
       this.timer = setInterval(() => this.fetchNow().catch(() => {}), this.intervalMs);
     }
 
+    setIntervalMs(intervalMs) {
+      const nextInterval = Number(intervalMs) || this.intervalMs;
+      if (nextInterval === this.intervalMs) return;
+      const wasRunning = Boolean(this.timer);
+      this.intervalMs = nextInterval;
+      if (wasRunning) this.start();
+    }
+
     stop() {
       if (this.timer) {
         clearInterval(this.timer);

@@ -161,7 +161,20 @@ const Game = {
     this.state = this.stateManager.sync(serverState, eraProgress);
     if (tutorial) this.tutorialController.setState(tutorial);
     else this.tutorialController.setState(this.tutorial);
+    this.updateSyncInterval();
     this.render();
+  },
+
+  getSyncInterval() {
+    const step = this.tutorialController?.state?.currentStep ?? this.tutorial?.currentStep;
+    if (step === 8) return window.GameConfig.TUTORIAL_WAIT_SYNC_INTERVAL_MS || 500;
+    return window.GameConfig.SYNC_INTERVAL_MS;
+  },
+
+  updateSyncInterval() {
+    if (this.syncService && typeof this.syncService.setIntervalMs === 'function') {
+      this.syncService.setIntervalMs(this.getSyncInterval());
+    }
   },
 
   async handleBuildingSuccess(result, action, buildingId) {

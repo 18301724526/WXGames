@@ -6,6 +6,7 @@ function createWindowStub() {
     GameConfig: {
       API_BASE: '/api',
       SYNC_INTERVAL_MS: 2000,
+      TUTORIAL_WAIT_SYNC_INTERVAL_MS: 500,
       TUTORIAL_START_DELAY_MS: 0,
       BUILDINGS: {},
       ERAS: [],
@@ -62,6 +63,44 @@ test('app 会映射所有教程高亮目标，包括民居卡片', () => {
     for (const [key, id] of Object.entries(expected)) {
       assert.equal(global.window.Game.getTutorialTarget(key), elements.get(id));
     }
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('app uses faster polling while waiting for era2 readiness', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.tutorial = { completed: false, currentStep: 0 };
+    Game.tutorialController = { state: { completed: false, currentStep: 8 } };
+    assert.equal(Game.getSyncInterval(), 500);
+
+    Game.tutorialController.state.currentStep = 9;
+    assert.equal(Game.getSyncInterval(), 2000);
+
+    const intervals = [];
+    Game.tutorialController.state.currentStep = 8;
+    Game.syncService = { setIntervalMs(intervalMs) { intervals.push(intervalMs); } };
+    Game.updateSyncInterval();
+    assert.deepEqual(intervals, [500]);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
