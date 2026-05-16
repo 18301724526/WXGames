@@ -169,6 +169,9 @@ const Game = {
     if (buildingId === 'farm' && action === 'build') {
       this.tutorialController.notifyFarmBuilt(result.tutorial);
       this.showFloatingText('农田建成！');
+    } else if (buildingId === 'house' && action === 'build') {
+      this.tutorialController.notifyHouseBuilt(result.tutorial);
+      this.showFloatingText('民居建成！');
     } else if (buildingId === 'lumbermill' && action === 'build') {
       this.tutorialController.notifyLumbermillBuilt(result.tutorial);
       this.showFloatingText('伐木场建成！');

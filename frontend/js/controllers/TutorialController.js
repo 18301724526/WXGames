@@ -1,6 +1,6 @@
 (function (global) {
-  const PHASE_COMPLETE_STEP = 7;
-  const FINAL_STEP = 14;
+  const PHASE_COMPLETE_STEP = 8;
+  const FINAL_STEP = 15;
 
   function createFallbackState(step = 0) {
     return {
@@ -34,7 +34,7 @@
     }
 
     isSoftGuideStep() {
-      return this.state.currentStep === 12 && !this.canAffordLumbermill();
+      return this.state.currentStep === 13 && !this.canAffordLumbermill();
     }
 
     syncLocalProgress() {
@@ -85,12 +85,12 @@
         await this.advanceTo(2);
       } else if (this.state.currentStep === 4 && tabId === 'buildings') {
         await this.advanceTo(5);
-      } else if (this.state.currentStep === 8 && tabId === 'civilization') {
+      } else if (this.state.currentStep === 9 && tabId === 'civilization') {
         this.render();
-      } else if (this.state.currentStep === 9 && tabId === 'events') {
-        await this.advanceTo(10);
-      } else if (this.state.currentStep === 11 && tabId === 'buildings') {
-        await this.advanceTo(12);
+      } else if (this.state.currentStep === 10 && tabId === 'events') {
+        await this.advanceTo(11);
+      } else if (this.state.currentStep === 12 && tabId === 'buildings') {
+        await this.advanceTo(13);
       }
       return true;
     }
@@ -107,20 +107,27 @@
       this.render();
     }
 
+    notifyHouseBuilt(remoteTutorial) {
+      this.state = remoteTutorial || createFallbackState(8);
+      this.syncLocalProgress();
+      this.syncAutoStartedFlag();
+      this.render();
+    }
+
     notifySpecialEventClaimed(remoteTutorial) {
-      this.state = remoteTutorial || createFallbackState(11);
+      this.state = remoteTutorial || createFallbackState(12);
       this.syncLocalProgress();
       this.render();
     }
 
     notifyLumbermillBuilt(remoteTutorial) {
-      this.state = remoteTutorial || createFallbackState(13);
+      this.state = remoteTutorial || createFallbackState(14);
       this.syncLocalProgress();
       this.render();
     }
 
     notifyCraftsmanAssigned(remoteTutorial) {
-      this.state = remoteTutorial || createFallbackState(14);
+      this.state = remoteTutorial || createFallbackState(15);
       this.syncLocalProgress();
       this.syncAutoStartedFlag();
       this.render();
@@ -130,17 +137,16 @@
       if (this.state.completed) return true;
       if (this.isSoftGuideStep()) return true;
       const step = this.state.currentStep;
-      if (this.state.phaseCompleted?.newbie && !this.state.phaseCompleted?.era2 && step === 7) return true;
       if (step <= 1) return ['resources', 'civilization'].includes(tabId);
       if (step <= 3) return tabId === 'civilization';
       if (step === 4) return ['civilization', 'buildings'].includes(tabId);
-      if (step <= 7) return tabId === 'buildings';
-      if (step === 8) return tabId === 'civilization';
-      if (step === 9) return ['civilization', 'events'].includes(tabId);
-      if (step === 10) return tabId === 'events';
-      if (step === 11) return ['events', 'buildings'].includes(tabId);
-      if (step === 12) return ['buildings', 'resources'].includes(tabId);
+      if (step <= 8) return tabId === 'buildings';
+      if (step === 9) return tabId === 'civilization';
+      if (step === 10) return ['civilization', 'events'].includes(tabId);
+      if (step === 11) return tabId === 'events';
+      if (step === 12) return ['events', 'buildings'].includes(tabId);
       if (step === 13) return ['buildings', 'resources'].includes(tabId);
+      if (step === 14) return ['buildings', 'resources'].includes(tabId);
       return true;
     }
 
@@ -151,15 +157,16 @@
       if (step === 2) return '食物足够了！进阶到农耕时代';
       if (step === 4) return '新时代解锁了建筑！';
       if (step === 5) return '建造第一座农田';
-      if (step === 8) return currentTab === 'civilization'
+      if (step === 7 || step === 8) return '人口在增长，先建造民居为新居民腾出空间';
+      if (step === 9) return currentTab === 'civilization'
         ? '条件已满足，点击进阶进入聚落时代'
         : '资源已满足，先打开文明页面查看时代进阶';
-      if (step === 9) return '森林里似乎有什么发现...';
-      if (step === 10) return this.isEventModalOpen()
+      if (step === 10) return '森林里似乎有什么发现...';
+      if (step === 11) return this.isEventModalOpen()
         ? '点击按钮领取木材奖励'
         : '打开森林低语，领取你的第一批木材';
-      if (step === 11) return '用新发现的木材建造伐木场';
-      if (step === 12) {
+      if (step === 12) return '用新发现的木材建造伐木场';
+      if (step === 13) {
         if (!this.canAffordLumbermill()) {
           return currentTab === 'resources'
             ? '食物还不够，先积累到 50 食物再建造伐木场'
@@ -169,10 +176,10 @@
           ? '伐木场产出木材，先把它建起来'
           : '资源已满足，回到建筑页面建造伐木场';
       }
-      if (step === 13) return currentTab === 'resources'
+      if (step === 14) return currentTab === 'resources'
         ? '分配 1 名工匠去伐木场工作'
         : '伐木场建好了，回到资源页面分配工匠';
-      if (step === 14) return '聚落时代开启！继续建设吧';
+      if (step === 15) return '聚落时代开启！继续建设吧';
       return '';
     }
 
@@ -183,15 +190,16 @@
       if (step === 2) return 'btn-advance-era';
       if (step === 4) return 'tab-buildings';
       if (step === 5) return 'card-farm';
-      if (step === 8) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
-      if (step === 9) return 'tab-events';
-      if (step === 10) return this.isEventModalOpen() ? 'btn-claim-event' : 'event-card-special';
-      if (step === 11) return 'tab-buildings';
-      if (step === 12) {
+      if (step === 7 || step === 8) return 'card-house';
+      if (step === 9) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
+      if (step === 10) return 'tab-events';
+      if (step === 11) return this.isEventModalOpen() ? 'btn-claim-event' : 'event-card-special';
+      if (step === 12) return 'tab-buildings';
+      if (step === 13) {
         if (!this.canAffordLumbermill()) return currentTab === 'resources' ? 'food-value' : 'tab-resources';
         return currentTab === 'buildings' ? 'card-lumbermill' : 'tab-buildings';
       }
-      if (step === 13) return currentTab === 'resources' ? 'card-craftsman' : 'tab-resources';
+      if (step === 14) return currentTab === 'resources' ? 'card-craftsman' : 'tab-resources';
       return null;
     }
 

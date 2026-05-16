@@ -28,7 +28,8 @@ function build(gameState, tutorialState, buildingId) {
   gameState.resources = deductResources(gameState.resources, validation.cost);
   gameState.buildings = BuildingState.build(gameState.buildings, buildingId, now);
   const effects = applyDerivedStats(gameState);
-  const nextTutorial = TutorialService.advanceTutorial(tutorialState, buildingId === 'farm' ? 'farmBuilt' : null);
+  const tutorialEvent = buildingId === 'farm' ? 'farmBuilt' : buildingId === 'house' ? 'houseBuilt' : null;
+  const nextTutorial = TutorialService.advanceTutorial(tutorialState, tutorialEvent);
   return {
     success: true,
     message: `建造了${buildingId}`,

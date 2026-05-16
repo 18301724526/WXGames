@@ -7,14 +7,15 @@ const TUTORIAL_STEPS = Object.freeze({
   buildingsTabOpened: 5,
   farmPrepReserved: 6,
   farmBuilt: 7,
-  era2AdvanceReady: 8,
-  eraAdvancedTo2: 9,
-  specialEventTabOpened: 10,
-  specialEventClaimed: 11,
-  buildingsTabOpenedForLumbermill: 12,
-  lumbermillBuilt: 13,
-  craftsmanAssigned: 14,
-  completed: 14,
+  houseBuilt: 8,
+  era2AdvanceReady: 9,
+  eraAdvancedTo2: 10,
+  specialEventTabOpened: 11,
+  specialEventClaimed: 12,
+  buildingsTabOpenedForLumbermill: 13,
+  lumbermillBuilt: 14,
+  craftsmanAssigned: 15,
+  completed: 15,
 });
 
 function canAffordLumbermill(gameState) {
@@ -22,10 +23,24 @@ function canAffordLumbermill(gameState) {
   return (resources.food || 0) >= 50 && (resources.wood || 0) >= 15;
 }
 
+function getBuildingLevel(gameState, buildingId) {
+  const entry = gameState?.buildings?.[buildingId];
+  if (!entry) return 0;
+  return typeof entry === 'object' ? entry.level || 0 : Number(entry) || 0;
+}
+
+function hasBuiltHouse(gameState) {
+  return getBuildingLevel(gameState, 'house') > 0;
+}
+
+function hasGrownPastStartingPopulation(gameState) {
+  return (gameState?.population?.total || 0) > 3;
+}
+
 function createPhaseCompleted(currentStep) {
   const step = Number.isFinite(currentStep) ? currentStep : TUTORIAL_STEPS.initial;
   return {
-    newbie: step >= TUTORIAL_STEPS.farmBuilt,
+    newbie: step >= TUTORIAL_STEPS.houseBuilt,
     era2: step >= TUTORIAL_STEPS.completed,
   };
 }
@@ -46,7 +61,7 @@ function normalizeTutorialState(raw) {
     completed: Boolean(raw.completed),
     currentStep,
     phaseCompleted: {
-      newbie: Boolean(raw.phaseCompleted?.newbie || currentStep >= TUTORIAL_STEPS.farmBuilt),
+      newbie: Boolean(raw.phaseCompleted?.newbie || currentStep >= TUTORIAL_STEPS.houseBuilt),
       era2: Boolean(raw.phaseCompleted?.era2 || currentStep >= TUTORIAL_STEPS.completed),
     },
     updatedAt: raw.updatedAt || new Date().toISOString(),
@@ -58,13 +73,11 @@ function canAccessTab(tutorialState, tabKey) {
   if (tutorial.completed) return true;
   const step = tutorial.currentStep;
 
-  if (tutorial.phaseCompleted.newbie && !tutorial.phaseCompleted.era2 && step === TUTORIAL_STEPS.farmBuilt) {
-    return true;
-  }
   if (step <= TUTORIAL_STEPS.tutorialStarted) return ['resources', 'civilization'].includes(tabKey);
   if (step <= TUTORIAL_STEPS.civilizationPrepReserved) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo1) return ['civilization', 'buildings'].includes(tabKey);
   if (step <= TUTORIAL_STEPS.farmBuilt) return tabKey === 'buildings';
+  if (step === TUTORIAL_STEPS.houseBuilt) return tabKey === 'buildings';
   if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo2) return ['civilization', 'events'].includes(tabKey);
   if (step === TUTORIAL_STEPS.specialEventTabOpened) return tabKey === 'events';
@@ -85,21 +98,45 @@ function validateAction(tutorialState, action, payload, gameState) {
 
   if (!tutorial.phaseCompleted.newbie) {
     if (action === 'advanceEra') {
+      if (gameState.currentEra === 1 && step >= TUTORIAL_STEPS.farmBuilt) {
+        return blocked('人口在增长，先建造民居为新居民腾出空间');
+      }
       if (step < TUTORIAL_STEPS.civilizationTabOpened || gameState.currentEra !== 0) {
         return blocked('请先按照引导进入文明并执行时代进阶');
       }
     }
 
     if (action === 'build') {
-      if (payload?.target !== 'farm' || step < TUTORIAL_STEPS.buildingsTabOpened || gameState.currentEra < 1) {
+      if (step < TUTORIAL_STEPS.buildingsTabOpened || gameState.currentEra < 1) {
         return blocked('当前只能按照引导建造第一座农田');
+      }
+      if (step < TUTORIAL_STEPS.farmBuilt && payload?.target !== 'farm') {
+        return blocked('当前只能按照引导建造第一座农田');
+      }
+      if (step === TUTORIAL_STEPS.farmBuilt && !['farm', 'house'].includes(payload?.target)) {
+        return blocked('人口在增长，先建造民居为新居民腾出空间');
       }
     }
 
-    if (['research', 'upgrade', 'claimEvent'].includes(action) && step < TUTORIAL_STEPS.farmBuilt) {
+    if (['research', 'upgrade', 'claimEvent'].includes(action) && step < TUTORIAL_STEPS.houseBuilt) {
       return blocked('请先完成新手引导');
     }
     return { allowed: true };
+  }
+
+  if (!tutorial.phaseCompleted.era2 && step < TUTORIAL_STEPS.era2AdvanceReady) {
+    if (action === 'build') {
+      if (payload?.target !== 'house') {
+        return blocked('人口在增长，先建造民居为新居民腾出空间');
+      }
+      return { allowed: true };
+    }
+    if (action === 'advanceEra') {
+      return blocked('请先等待人口增长并完成民居引导');
+    }
+    if (['assign', 'upgrade', 'research', 'claimEvent'].includes(action)) {
+      return blocked('请先完成新手引导');
+    }
   }
 
   if (!tutorial.phaseCompleted.era2 && step >= TUTORIAL_STEPS.era2AdvanceReady) {
@@ -162,9 +199,20 @@ function manualAdvance(tutorialState, nextStep) {
 }
 
 function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
-  const tutorial = normalizeTutorialState(tutorialState);
-  if (tutorial.phaseCompleted.era2 || !tutorial.phaseCompleted.newbie) return tutorial;
-  if (gameState.currentEra === 1 && eraProgress?.canAdvance && tutorial.currentStep < TUTORIAL_STEPS.era2AdvanceReady) {
+  let tutorial = normalizeTutorialState(tutorialState);
+  if (tutorial.phaseCompleted.era2) return tutorial;
+  if (gameState.currentEra >= 2 && tutorial.currentStep < TUTORIAL_STEPS.eraAdvancedTo2) {
+    return manualAdvance(tutorial, TUTORIAL_STEPS.eraAdvancedTo2);
+  }
+  if (hasBuiltHouse(gameState) && tutorial.currentStep < TUTORIAL_STEPS.houseBuilt) {
+    tutorial = manualAdvance(tutorial, TUTORIAL_STEPS.houseBuilt);
+  }
+  if (!tutorial.phaseCompleted.newbie) return tutorial;
+  const readyForEra2 = gameState.currentEra === 1
+    && eraProgress?.canAdvance
+    && hasBuiltHouse(gameState)
+    && hasGrownPastStartingPopulation(gameState);
+  if (readyForEra2 && tutorial.currentStep < TUTORIAL_STEPS.era2AdvanceReady) {
     return manualAdvance(tutorial, TUTORIAL_STEPS.era2AdvanceReady);
   }
   return tutorial;
@@ -179,6 +227,7 @@ function advanceTutorial(tutorialState, eventName) {
     eraAdvancedTo2: TUTORIAL_STEPS.eraAdvancedTo2,
     buildingsTabOpened: TUTORIAL_STEPS.buildingsTabOpened,
     farmBuilt: TUTORIAL_STEPS.farmBuilt,
+    houseBuilt: TUTORIAL_STEPS.houseBuilt,
     era2AdvanceReady: TUTORIAL_STEPS.era2AdvanceReady,
     specialEventTabOpened: TUTORIAL_STEPS.specialEventTabOpened,
     specialEventClaimed: TUTORIAL_STEPS.specialEventClaimed,

@@ -41,7 +41,10 @@
         const actionLabel = global.FrontendBuildingState.getActionLabel(cost, level);
         const disabledByTutorial = Boolean(tutorial && !tutorial.completed && (
           (tutorial.currentStep === 5 && id !== 'farm')
-          || (tutorial.currentStep >= 12 && tutorial.currentStep <= 13 && id !== 'lumbermill')
+          || (tutorial.currentStep === 7 && id !== 'house')
+          || (tutorial.currentStep === 8 && level > 0)
+          || (tutorial.currentStep === 8 && id !== 'house')
+          || (tutorial.currentStep >= 13 && tutorial.currentStep <= 14 && id !== 'lumbermill')
         ));
         const isMax = actionLabel === '已满级';
         const disabled = disabledByTutorial || isMax;

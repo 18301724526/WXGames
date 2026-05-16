@@ -4,7 +4,7 @@ const gameStateService = require('../services/GameStateService');
 const BuildingActionService = require('../services/BuildingActionService');
 const TutorialService = require('../services/TutorialService');
 
-test('farm 首次建造免费并推进教程完成', () => {
+test('farm 首次建造免费并推进到民居引导', () => {
   const state = gameStateService.createInitialGameState('p1');
   state.currentEra = 1;
   state.tutorial = TutorialService.manualAdvance(state.tutorial, 5);
@@ -12,8 +12,9 @@ test('farm 首次建造免费并推进教程完成', () => {
   assert.equal(result.success, true);
   assert.equal(result.cost.food, 0);
   assert.equal(state.buildings.farm.level, 1);
-  assert.equal(result.tutorial.phaseCompleted.newbie, true);
+  assert.equal(result.tutorial.phaseCompleted.newbie, false);
   assert.equal(result.tutorial.completed, false);
+  assert.equal(result.tutorial.currentStep, 7);
 });
 
 test('house 建造会提升人口上限和幸福度', () => {
