@@ -394,6 +394,39 @@ test('时代2可进阶时先引导进入文明页，再引导点击进阶按钮'
   }
 });
 
+test('时代2可进阶时如果已在文明页会直接高亮进阶按钮', () => {
+  const originalLocalStorage = global.localStorage;
+  try {
+    global.localStorage = createStorage();
+    delete require.cache[require.resolve('../js/controllers/TutorialController')];
+    const TutorialController = require('../js/controllers/TutorialController');
+    let showTarget = null;
+    let showMessage = null;
+    const controller = new TutorialController({
+      api: { async advanceTutorial(step) { return { tutorial: { completed: false, currentStep: step, phaseCompleted: { newbie: true, era2: false } } }; } },
+      renderer: {
+        hide() {},
+        show(target, message) {
+          showTarget = target;
+          showMessage = message;
+        },
+      },
+      getTarget: (key) => key,
+      getCurrentTab: () => 'civilization',
+      onTabLockChange: () => {},
+    });
+
+    controller.setState({ completed: false, currentStep: 9, phaseCompleted: { newbie: true, era2: false } });
+
+    assert.equal(controller.getTargetKey(), 'btn-advance-era');
+    assert.equal(controller.getMessage(), '条件已满足，点击进阶进入聚落时代');
+    assert.equal(showTarget, 'btn-advance-era');
+    assert.equal(showMessage, '条件已满足，点击进阶进入聚落时代');
+  } finally {
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('事件弹窗会切换 show 类而不是失效的 active 类', () => {
   const originalDocument = global.document;
   try {
