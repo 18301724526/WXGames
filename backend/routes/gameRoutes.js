@@ -17,6 +17,7 @@ function registerGameRoutes(app, deps) {
     const eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
+    TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     repository.touchPlayerActiveAt(req.playerId);
     repository.save(gameState);
     return res.json({
@@ -71,6 +72,7 @@ function registerGameRoutes(app, deps) {
     eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
+    TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     repository.save(gameState);
     const clientState = gameStateService.getClientGameState(gameState);
     eraProgress = gameStateService.calculateEraProgress(gameState);

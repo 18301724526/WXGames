@@ -139,6 +139,37 @@ test('伐木场资源不足时允许自由进行普通操作', () => {
   assert.equal(assignScholar.allowed, true);
 });
 
+test('领取森林事件后会补齐伐木场建造所需资源', () => {
+  const state = gameStateService.createInitialGameState('lumbermill-guide-resources');
+  state.currentEra = 2;
+  state.resources.food = 20;
+  state.resources.wood = 0;
+  state.buildingCosts = { lumbermill: { food: 50, wood: 15 } };
+  let tutorial = TutorialService.manualAdvance(state.tutorial, 12);
+
+  const changed = TutorialService.ensureLumbermillGuideResources(tutorial, state);
+
+  assert.equal(changed, true);
+  assert.equal(state.resources.food, 50);
+  assert.equal(state.resources.wood, 15);
+});
+
+test('伐木场已建成后不会再补齐伐木场资源', () => {
+  const state = gameStateService.createInitialGameState('lumbermill-built-resources');
+  state.currentEra = 2;
+  state.resources.food = 20;
+  state.resources.wood = 0;
+  state.buildingCosts = { lumbermill: { food: 50, wood: 15 } };
+  state.buildings.lumbermill = { level: 1 };
+  let tutorial = TutorialService.manualAdvance(state.tutorial, 14);
+
+  const changed = TutorialService.ensureLumbermillGuideResources(tutorial, state);
+
+  assert.equal(changed, false);
+  assert.equal(state.resources.food, 20);
+  assert.equal(state.resources.wood, 0);
+});
+
 test('时代2进阶完成后的事件引导步骤允许点击事件标签', () => {
   let tutorial = TutorialService.createInitialTutorialState();
   tutorial = TutorialService.manualAdvance(tutorial, 10);

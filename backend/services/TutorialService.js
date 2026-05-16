@@ -23,6 +23,10 @@ function canAffordLumbermill(gameState) {
   return (resources.food || 0) >= 50 && (resources.wood || 0) >= 15;
 }
 
+function getLumbermillBuildCost(gameState) {
+  return gameState?.buildingCosts?.lumbermill || { food: 50, wood: 15 };
+}
+
 function getBuildingLevel(gameState, buildingId) {
   const entry = gameState?.buildings?.[buildingId];
   if (!entry) return 0;
@@ -31,6 +35,10 @@ function getBuildingLevel(gameState, buildingId) {
 
 function hasBuiltHouse(gameState) {
   return getBuildingLevel(gameState, 'house') > 0;
+}
+
+function hasBuiltLumbermill(gameState) {
+  return getBuildingLevel(gameState, 'lumbermill') > 0;
 }
 
 function createPhaseCompleted(currentStep) {
@@ -205,6 +213,26 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
   return tutorial;
 }
 
+function ensureLumbermillGuideResources(tutorialState, gameState) {
+  const tutorial = normalizeTutorialState(tutorialState);
+  if (tutorial.phaseCompleted.era2) return false;
+  if (tutorial.currentStep < TUTORIAL_STEPS.specialEventClaimed) return false;
+  if (tutorial.currentStep > TUTORIAL_STEPS.lumbermillBuilt) return false;
+  if (hasBuiltLumbermill(gameState)) return false;
+
+  const cost = getLumbermillBuildCost(gameState);
+  const resources = gameState.resources || {};
+  let changed = false;
+  Object.entries(cost).forEach(([key, required]) => {
+    if ((resources[key] || 0) < required) {
+      resources[key] = required;
+      changed = true;
+    }
+  });
+  gameState.resources = resources;
+  return changed;
+}
+
 function advanceTutorial(tutorialState, eventName) {
   const normalized = normalizeTutorialState(tutorialState);
   const map = {
@@ -235,5 +263,6 @@ module.exports = {
   validateAction,
   manualAdvance,
   maybeActivateEra2Tutorial,
+  ensureLumbermillGuideResources,
   advanceTutorial,
 };

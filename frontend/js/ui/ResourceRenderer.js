@@ -22,6 +22,7 @@
       if (woodCard) {
         woodCard.hidden = !hasWoodLayout;
         woodCard.classList.toggle('is-hidden', !hasWoodLayout);
+        woodCard.style.display = hasWoodLayout ? '' : 'none';
       }
 
       this.setText('foodValue', Math.floor(resources.food || 0));
