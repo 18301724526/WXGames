@@ -43,7 +43,7 @@ test('农田建成后必须先建造民居，不能直接进阶聚落', () => {
   assert.equal(buildLumbermill.allowed, false);
 });
 
-test('民居建成后要等人口增长且资源达标才进入聚落进阶引导', () => {
+test('民居建成后资源达标就进入聚落进阶引导，不再等待人口增长', () => {
   const state = gameStateService.createInitialGameState('era2-ready-player');
   state.currentEra = 1;
   state.resources.food = 120;
@@ -52,12 +52,21 @@ test('民居建成后要等人口增长且资源达标才进入聚落进阶引�
   state.buildings.house = { level: 1 };
   let tutorial = TutorialService.manualAdvance(state.tutorial, 8);
 
-  tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, state, { canAdvance: true });
-  assert.equal(tutorial.currentStep, 8);
-
-  state.population.total = 4;
-  tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, state, { canAdvance: true });
+  tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, state, gameStateService.calculateEraProgress(state));
   assert.equal(tutorial.currentStep, 9);
+});
+
+test('民居建成后资源不足时仍停留在等待阶段', () => {
+  const state = gameStateService.createInitialGameState('era2-not-ready-player');
+  state.currentEra = 1;
+  state.resources.food = 119;
+  state.resources.knowledge = 5;
+  state.population.total = 3;
+  state.buildings.house = { level: 1 };
+  let tutorial = TutorialService.manualAdvance(state.tutorial, 8);
+
+  tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, state, gameStateService.calculateEraProgress(state));
+  assert.equal(tutorial.currentStep, 8);
 });
 
 test('民居建成等待阶段是软引导，允许自由操作但不能提前进阶', () => {

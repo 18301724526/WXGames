@@ -22,6 +22,19 @@ function applyEraKnowledgeBonus(gameState, nextEra) {
   }
 }
 
+function welcomeSettlementResident(gameState, nextEra) {
+  if (nextEra !== 2) return;
+  const population = gameState.population || {};
+  const maxPopulation = population.max || population.maxPop || 0;
+  if ((population.unassigned || 0) > 0) return;
+  if ((population.total || 0) >= maxPopulation) return;
+  population.total = (population.total || 0) + 1;
+  population.unassigned = (population.unassigned || 0) + 1;
+  population.max = maxPopulation;
+  population.maxPop = maxPopulation;
+  gameState.population = population;
+}
+
 function execute(gameState, tutorial) {
   const config = getAdvanceConfig(gameState.currentEra);
   if (!config) {
@@ -34,6 +47,7 @@ function execute(gameState, tutorial) {
   gameState.resources = deductResources(gameState.resources, config.cost);
   gameState.currentEra = config.nextEra;
   applyEraKnowledgeBonus(gameState, config.nextEra);
+  welcomeSettlementResident(gameState, config.nextEra);
   gameState.eraHistory.push({ era: config.nextEra, advancedAt: new Date().toISOString() });
 
   let nextTutorial = tutorial;

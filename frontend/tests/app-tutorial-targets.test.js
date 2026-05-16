@@ -287,7 +287,7 @@ test('initial era advance also stays locked before the tutorial reaches the adva
   }
 });
 
-test('syncFromServer locally promotes step8 to step9 when era2 requirements are already met', () => {
+test('syncFromServer locally promotes step8 to step9 when era2 resource requirements are already met', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
@@ -334,7 +334,7 @@ test('syncFromServer locally promotes step8 to step9 when era2 requirements are 
       {
         currentEra: 1,
         buildings: { house: { level: 1 } },
-        population: { total: 4 },
+        population: { total: 3 },
       },
       { completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } },
       { percentage: 100, canAdvance: true, conditions: [] },

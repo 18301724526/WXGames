@@ -147,7 +147,7 @@ test('农田建成后会锁在建筑页并高亮民居', () => {
     assert.equal(controller.canOpenTab('events'), true);
     assert.equal(controller.canOpenTab('civilization'), true);
     assert.equal(controller.getTargetKey(), 'tab-resources');
-    assert.equal(controller.getMessage(), '民居已建好，回到资源页面等待新居民入住');
+    assert.equal(controller.getMessage(), '民居已建好，可以继续积累进阶所需资源');
   } finally {
     global.localStorage = originalLocalStorage;
   }
@@ -169,7 +169,7 @@ test('民居建成后在资源页显示等待人口增长的软目标', () => {
 
     controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
     assert.equal(controller.getTargetKey(), 'food-value');
-    assert.equal(controller.getMessage(), '民居已建好，等待新居民入住，并积累进阶所需食物');
+    assert.equal(controller.getMessage(), '民居已建好，继续积累进阶所需食物和知识');
   } finally {
     global.localStorage = originalLocalStorage;
   }
@@ -204,7 +204,7 @@ test('民居建成等待阶段使用软引导，不阻止普通游玩', () => {
     assert.equal(controller.canOpenTab('resources'), true);
     assert.equal(controller.canOpenTab('civilization'), true);
     assert.equal(controller.canOpenTab('events'), true);
-    assert.equal(renderer.softMessage, '民居已建好，等待新居民入住，并积累进阶所需食物');
+    assert.equal(renderer.softMessage, '民居已建好，继续积累进阶所需食物和知识');
   } finally {
     global.localStorage = originalLocalStorage;
   }

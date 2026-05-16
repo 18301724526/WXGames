@@ -33,10 +33,6 @@ function hasBuiltHouse(gameState) {
   return getBuildingLevel(gameState, 'house') > 0;
 }
 
-function hasGrownPastStartingPopulation(gameState) {
-  return (gameState?.population?.total || 0) > 3;
-}
-
 function createPhaseCompleted(currentStep) {
   const step = Number.isFinite(currentStep) ? currentStep : TUTORIAL_STEPS.initial;
   return {
@@ -202,8 +198,7 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
   if (!tutorial.phaseCompleted.newbie) return tutorial;
   const readyForEra2 = gameState.currentEra === 1
     && eraProgress?.canAdvance
-    && hasBuiltHouse(gameState)
-    && hasGrownPastStartingPopulation(gameState);
+    && hasBuiltHouse(gameState);
   if (readyForEra2 && tutorial.currentStep < TUTORIAL_STEPS.era2AdvanceReady) {
     return manualAdvance(tutorial, TUTORIAL_STEPS.era2AdvanceReady);
   }

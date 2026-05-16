@@ -187,8 +187,7 @@ const Game = {
   isEra2AdvanceReady(progress = this.state.eraProgress) {
     return this.state.currentEra === 1
       && Boolean(progress?.canAdvance)
-      && this.getBuildingLevel('house') > 0
-      && (this.state.population?.total || 0) > 3;
+      && this.getBuildingLevel('house') > 0;
   },
 
   getEffectiveTutorialState(tutorial) {
