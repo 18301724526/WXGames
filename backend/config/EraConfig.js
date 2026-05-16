@@ -18,20 +18,20 @@ const ERA_ADVANCEMENT = {
   1: {
     nextEra: 2,
     name: '聚落时代',
-    cost: { food: 150, knowledge: 15 },
+    cost: { food: 120, knowledge: 5 },
     conditions: [
-      { key: 'food', label: '食物', required: 150 },
-      { key: 'knowledge', label: '知识', required: 15 },
+      { key: 'food', label: '食物', required: 120 },
+      { key: 'knowledge', label: '知识', required: 5 },
     ],
   },
   2: {
     nextEra: 3,
     name: '青铜时代',
-    cost: { food: 300, wood: 100, knowledge: 40 },
+    cost: { food: 300, wood: 100, knowledge: 50 },
     conditions: [
       { key: 'food', label: '食物', required: 300 },
       { key: 'wood', label: '木材', required: 100 },
-      { key: 'knowledge', label: '知识', required: 40 },
+      { key: 'knowledge', label: '知识', required: 50 },
     ],
   },
 };

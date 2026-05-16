@@ -30,11 +30,17 @@ function calculateFoodPerSecond(population, buildings, effects, happiness) {
 }
 
 function calculateKnowledgePerSecond(population, effects) {
+  const totalPopulation = population?.total || 0;
   const scholars = population?.scholars || 0;
-  return scholars
+  const globalMultiplier = effects?.globalOutputMultiplier || 1;
+  const baseOutput = totalPopulation
     * GameConfig.resources.baseKnowledgePerPerson
+    * globalMultiplier;
+  const scholarBonus = scholars
+    * GameConfig.resources.scholarKnowledgeBonus
     * (effects?.knowledgeOutputMultiplier || 1)
-    * (effects?.globalOutputMultiplier || 1);
+    * globalMultiplier;
+  return baseOutput + scholarBonus;
 }
 
 function calculateWoodPerSecond(gameState, effects) {

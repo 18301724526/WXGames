@@ -14,6 +14,14 @@ function hasEnoughResources(resources, cost) {
   return Object.entries(cost || {}).every(([key, value]) => (resources?.[key] || 0) >= value);
 }
 
+function applyEraKnowledgeBonus(gameState, nextEra) {
+  const eraKnowledgeBonus = { 1: 5 };
+  const bonus = eraKnowledgeBonus[nextEra] || 0;
+  if (bonus > 0) {
+    gameState.resources.knowledge = (gameState.resources.knowledge || 0) + bonus;
+  }
+}
+
 function execute(gameState, tutorial) {
   const config = getAdvanceConfig(gameState.currentEra);
   if (!config) {
@@ -25,6 +33,7 @@ function execute(gameState, tutorial) {
 
   gameState.resources = deductResources(gameState.resources, config.cost);
   gameState.currentEra = config.nextEra;
+  applyEraKnowledgeBonus(gameState, config.nextEra);
   gameState.eraHistory.push({ era: config.nextEra, advancedAt: new Date().toISOString() });
 
   let nextTutorial = tutorial;

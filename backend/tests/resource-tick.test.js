@@ -4,6 +4,30 @@ const assert = require('node:assert/strict');
 const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const gameStateService = require('../services/GameStateService');
 
+function assertAlmostEqual(actual, expected) {
+  assert.equal(Math.round(actual * 100) / 100, expected);
+}
+
+test('知识产出由全民基础产出和学者额外加成组成', () => {
+  assertAlmostEqual(
+    ResourceTickCalculator.calculateKnowledgePerSecond({ total: 3, scholars: 0 }, {}),
+    0.15,
+  );
+  assertAlmostEqual(
+    ResourceTickCalculator.calculateKnowledgePerSecond({ total: 3, scholars: 1 }, {}),
+    0.3,
+  );
+});
+
+test('学院知识加成只放大学者额外产出', () => {
+  const result = ResourceTickCalculator.calculateKnowledgePerSecond(
+    { total: 3, scholars: 1 },
+    { knowledgeOutputMultiplier: 1.2 },
+  );
+
+  assertAlmostEqual(result, 0.33);
+});
+
 test('人口自然增长在食物充足且未达上限时生效', () => {
   const state = gameStateService.createInitialGameState('growth-player');
   state.resources.food = 100;
@@ -32,7 +56,7 @@ test('客户端状态返回食物产出/消耗/净增长拆解', () => {
   assert.equal(clientState.resources.foodConsumptionPerSecond, 0.6);
   assert.equal(clientState.resources.foodNetPerSecond, 1.4);
   assert.equal(clientState.resources.foodPerSecond, 1.4);
-  assert.equal(clientState.resources.knowledgePerSecond, 0.1);
+  assert.equal(clientState.resources.knowledgePerSecond, 0.3);
 });
 
 test('伐木场与工匠会产出木材并计入离线收益', () => {
