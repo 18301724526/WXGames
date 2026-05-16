@@ -225,6 +225,7 @@ const Game = {
     if (key === 'btn-claim-event') return document.getElementById('btnClaimEvent');
     if (key === 'food-value') return document.getElementById('foodValue');
     if (key === 'card-farm') return document.getElementById('card-farm');
+    if (key === 'card-house') return document.getElementById('card-house');
     if (key === 'event-card-special') return document.getElementById('event-card-special');
     if (key === 'card-lumbermill') return document.getElementById('card-lumbermill');
     if (key === 'card-craftsman') return document.getElementById('craftsmanCard');
