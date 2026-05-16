@@ -42,8 +42,6 @@
         const disabledByTutorial = Boolean(tutorial && !tutorial.completed && (
           (tutorial.currentStep === 5 && id !== 'farm')
           || (tutorial.currentStep === 7 && id !== 'house')
-          || (tutorial.currentStep === 8 && level > 0)
-          || (tutorial.currentStep === 8 && id !== 'house')
           || (tutorial.currentStep >= 13 && tutorial.currentStep <= 14 && id !== 'lumbermill')
         ));
         const isMax = actionLabel === '已满级';

@@ -51,7 +51,7 @@ test('木材成本会显示在建筑按钮文案中', () => {
   assert.equal(renderer.formatCost({ food: 50, wood: 15 }), '🌾 50 🪵 15');
 });
 
-test('民居引导阶段只放行未建造的民居按钮', () => {
+test('民居引导阶段只放行未建造的民居按钮，民居建成等待阶段恢复普通操作', () => {
   const container = { innerHTML: '' };
   const renderer = new BuildingUIRenderer(container, {
     farm: { id: 'farm', name: '农田', icon: '🌾', ui: { effectText: [] } },
@@ -75,5 +75,6 @@ test('民居引导阶段只放行未建造的民居按钮', () => {
     buildingEffects: {},
   }, { completed: false, currentStep: 8 });
 
-  assert.match(getCardMarkup(container.innerHTML, 'house'), /disabled/);
+  assert.doesNotMatch(getCardMarkup(container.innerHTML, 'house'), /引导中锁定/);
+  assert.doesNotMatch(getCardMarkup(container.innerHTML, 'house'), /disabled/);
 });
