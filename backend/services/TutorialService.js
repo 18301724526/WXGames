@@ -73,11 +73,11 @@ function canAccessTab(tutorialState, tabKey) {
   if (tutorial.completed) return true;
   const step = tutorial.currentStep;
 
+  if (step === TUTORIAL_STEPS.houseBuilt) return true;
   if (step <= TUTORIAL_STEPS.tutorialStarted) return ['resources', 'civilization'].includes(tabKey);
   if (step <= TUTORIAL_STEPS.civilizationPrepReserved) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo1) return ['civilization', 'buildings'].includes(tabKey);
   if (step <= TUTORIAL_STEPS.farmBuilt) return tabKey === 'buildings';
-  if (step === TUTORIAL_STEPS.houseBuilt) return ['buildings', 'resources'].includes(tabKey);
   if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo2) return ['civilization', 'events'].includes(tabKey);
   if (step === TUTORIAL_STEPS.specialEventTabOpened) return tabKey === 'events';
@@ -124,19 +124,11 @@ function validateAction(tutorialState, action, payload, gameState) {
     return { allowed: true };
   }
 
-  if (!tutorial.phaseCompleted.era2 && step < TUTORIAL_STEPS.era2AdvanceReady) {
-    if (action === 'build') {
-      if (payload?.target !== 'house') {
-        return blocked('人口在增长，先建造民居为新居民腾出空间');
-      }
-      return { allowed: true };
-    }
+  if (!tutorial.phaseCompleted.era2 && step === TUTORIAL_STEPS.houseBuilt) {
     if (action === 'advanceEra') {
       return blocked('请先等待人口增长并完成民居引导');
     }
-    if (['assign', 'upgrade', 'research', 'claimEvent'].includes(action)) {
-      return blocked('请先完成新手引导');
-    }
+    return { allowed: true };
   }
 
   if (!tutorial.phaseCompleted.era2 && step >= TUTORIAL_STEPS.era2AdvanceReady) {

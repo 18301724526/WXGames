@@ -34,7 +34,7 @@
     }
 
     isSoftGuideStep() {
-      return this.state.currentStep === 13 && !this.canAffordLumbermill();
+      return this.state.currentStep === 8 || (this.state.currentStep === 13 && !this.canAffordLumbermill());
     }
 
     syncLocalProgress() {
@@ -141,7 +141,7 @@
       if (step <= 3) return tabId === 'civilization';
       if (step === 4) return ['civilization', 'buildings'].includes(tabId);
       if (step <= 7) return tabId === 'buildings';
-      if (step === 8) return ['buildings', 'resources'].includes(tabId);
+      if (step === 8) return true;
       if (step === 9) return tabId === 'civilization';
       if (step === 10) return ['civilization', 'events'].includes(tabId);
       if (step === 11) return tabId === 'events';

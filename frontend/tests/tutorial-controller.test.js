@@ -144,7 +144,8 @@ test('农田建成后会锁在建筑页并高亮民居', () => {
     controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
     assert.equal(controller.canOpenTab('buildings'), true);
     assert.equal(controller.canOpenTab('resources'), true);
-    assert.equal(controller.canOpenTab('civilization'), false);
+    assert.equal(controller.canOpenTab('events'), true);
+    assert.equal(controller.canOpenTab('civilization'), true);
     assert.equal(controller.getTargetKey(), 'tab-resources');
     assert.equal(controller.getMessage(), '民居已建好，回到资源页面等待新居民入住');
   } finally {
@@ -169,6 +170,41 @@ test('民居建成后在资源页显示等待人口增长的软目标', () => {
     controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
     assert.equal(controller.getTargetKey(), 'food-value');
     assert.equal(controller.getMessage(), '民居已建好，等待新居民入住，并积累进阶所需食物');
+  } finally {
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('民居建成等待阶段使用软引导，不阻止普通游玩', () => {
+  const originalLocalStorage = global.localStorage;
+  try {
+    global.localStorage = createStorage();
+    delete require.cache[require.resolve('../js/controllers/TutorialController')];
+    const TutorialController = require('../js/controllers/TutorialController');
+    const renderer = {
+      softMessage: '',
+      showSoft(message) {
+        this.softMessage = message;
+      },
+      show() {
+        throw new Error('should not show hard guide');
+      },
+      hide() {},
+    };
+    const controller = new TutorialController({
+      api: { async advanceTutorial(step) { return { tutorial: { completed: false, currentStep: step } }; } },
+      renderer,
+      getTarget: () => null,
+      getCurrentTab: () => 'resources',
+      onTabLockChange: () => {},
+    });
+
+    controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
+
+    assert.equal(controller.canOpenTab('resources'), true);
+    assert.equal(controller.canOpenTab('civilization'), true);
+    assert.equal(controller.canOpenTab('events'), true);
+    assert.equal(renderer.softMessage, '民居已建好，等待新居民入住，并积累进阶所需食物');
   } finally {
     global.localStorage = originalLocalStorage;
   }
