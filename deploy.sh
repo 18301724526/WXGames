@@ -6,6 +6,7 @@
 set -euo pipefail
 
 WORK_TREE="${WORK_TREE:-/www/wwwroot/h5}"
+FRONTEND_PUBLIC_DIR="${FRONTEND_PUBLIC_DIR:-${WEB_ROOT:-$WORK_TREE}}"
 BACKEND_DIR="/opt/wxgame-workspace/backend"
 SHARED_LINK="/opt/wxgame-workspace/shared"
 BRANCH="${1:-main}"
@@ -115,6 +116,40 @@ verify_runtime_config() {
     echo "[Deploy] 运行时配置版本已确认: $runtime_version"
 }
 
+publish_frontend_assets() {
+    local frontend_source="$WORK_TREE/frontend"
+    local resolved_source
+    local resolved_public
+    local resolved_work_tree
+
+    if [ ! -d "$frontend_source" ]; then
+        echo "[Deploy] 缺少前端目录: $frontend_source" >&2
+        exit 1
+    fi
+
+    mkdir -p "$FRONTEND_PUBLIC_DIR"
+    resolved_source="$(readlink -f "$frontend_source")"
+    resolved_public="$(readlink -f "$FRONTEND_PUBLIC_DIR")"
+    resolved_work_tree="$(readlink -f "$WORK_TREE")"
+
+    if [ "$resolved_source" = "$resolved_public" ]; then
+        echo "[Deploy] 前端目录已作为网站根目录: $FRONTEND_PUBLIC_DIR"
+    elif [ "$resolved_public" = "$resolved_work_tree" ]; then
+        echo "[Deploy] 发布 frontend/ 到仓库工作目录根: $FRONTEND_PUBLIC_DIR"
+        rsync -a "$frontend_source/" "$FRONTEND_PUBLIC_DIR/"
+    else
+        echo "[Deploy] 发布 frontend/ 到网站根目录: $FRONTEND_PUBLIC_DIR"
+        rsync -a --delete "$frontend_source/" "$FRONTEND_PUBLIC_DIR/"
+    fi
+
+    for required_file in index.html style.css app.js js/config/GameConfig.js js/state/GameStateManager.js; do
+        if [ ! -f "$FRONTEND_PUBLIC_DIR/$required_file" ]; then
+            echo "[Deploy] 前端发布校验失败，缺少: $FRONTEND_PUBLIC_DIR/$required_file" >&2
+            exit 1
+        fi
+    done
+}
+
 echo "[Deploy] 开始部署..."
 
 sanitize_git_env
@@ -134,6 +169,7 @@ GIT_DIR_PATH="$(resolve_git_dir)" || {
 IS_BARE_REPO="$(git --git-dir="$GIT_DIR_PATH" rev-parse --is-bare-repository)"
 
 echo "[Deploy] 使用工作目录: $WORK_TREE"
+echo "[Deploy] 使用前端网站目录: $FRONTEND_PUBLIC_DIR"
 echo "[Deploy] 使用 Git 目录: $GIT_DIR_PATH"
 
 if [ "$IS_BARE_REPO" = "true" ]; then
@@ -150,6 +186,9 @@ else
     git_repo reset --hard "origin/$BRANCH"
     git_repo clean -fd
 fi
+
+echo "[Deploy] 发布前端静态文件..."
+publish_frontend_assets
 
 echo "[Deploy] 同步 shared/ 目录..."
 mkdir -p "$(dirname "$SHARED_LINK")"
@@ -191,7 +230,7 @@ for attempt in 1 2 3 4 5; do
         printf '%s\n' "$health_payload"
         echo
         echo "[Deploy] 部署完成"
-        echo "[Deploy] 前端: http://47.116.32.216/h5/"
+        echo "[Deploy] 前端静态目录: $FRONTEND_PUBLIC_DIR"
         echo "[Deploy] API: http://47.116.32.216:${API_PORT}/api/health"
         exit 0
     fi
