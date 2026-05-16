@@ -20,20 +20,36 @@ const Game = {
     eventQueue: [],
     eventHistory: [],
   },
-  tutorial: { completed: false, currentStep: 0 },
+  tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
+  activeEventId: null,
   requestLogs: [],
 
   init() {
     this.gameAPI = new window.GameAPI(this.apiBase, this.token);
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
     this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS);
+    this.stateManager = new window.GameStateManager(this.state);
+    this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), window.GameConfig.BUILDINGS);
+    this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.tutorialRenderer = new window.TutorialUIRenderer();
     this.tutorialController = new window.TutorialController({
       api: this.gameAPI,
       renderer: this.tutorialRenderer,
       getTarget: (key) => this.getTutorialTarget(key),
+      getCurrentTab: () => this.state.currentTab,
+      isEventModalOpen: () => document.getElementById('eventModal')?.classList.contains('show') || false,
+      getState: () => this.state,
       onTabLockChange: () => this.updateTabLocks(),
+    });
+    this.eventController = new window.EventController({
+      api: this.gameAPI,
+      renderer: this.eventRenderer,
+      getState: () => this.state,
+      onStateApplied: (result) => this.applyApiState(result),
+      onTutorialUpdated: (tutorial) => this.tutorialController.notifySpecialEventClaimed(tutorial),
+      onFloatingText: (message) => this.showFloatingText(message),
+      onLog: (message) => this.log(message),
     });
     this.buildingController = new window.BuildingController({
       container: document.getElementById('buildingGrid'),
@@ -52,6 +68,7 @@ const Game = {
     };
 
     this.bindBaseEvents();
+    if (this.bindPopulationEvents) this.bindPopulationEvents();
     this.buildingController.bind();
     this.render();
   },
@@ -72,6 +89,25 @@ const Game = {
     const advanceButton = document.getElementById('btnAdvanceEra');
     if (advanceButton) {
       advanceButton.addEventListener('click', () => this.advanceEra());
+    }
+
+    const pendingEvents = document.getElementById('pendingEventsContainer');
+    if (pendingEvents) {
+      pendingEvents.addEventListener('click', (event) => {
+        const card = event.target.closest('[data-event-id]');
+        if (!card) return;
+        this.eventController.open(card.dataset.eventId);
+      });
+    }
+
+    const claimButton = document.getElementById('btnClaimEvent');
+    if (claimButton) {
+      claimButton.addEventListener('click', () => this.eventController.claimActive());
+    }
+
+    const closeButton = document.getElementById('btnCloseEventModal');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => this.eventController.close());
     }
   },
 
@@ -122,22 +158,7 @@ const Game = {
   },
 
   syncFromServer(serverState, tutorial, eraProgress) {
-    this.state = {
-      ...this.state,
-      ...serverState,
-      currentEra: serverState.currentEra,
-      currentEraName: serverState.currentEraName,
-      eraProgress: eraProgress || serverState.eraProgress || { percentage: 0, canAdvance: false, conditions: [] },
-      currentTab: this.state.currentTab,
-    };
-    this.state.era = this.state.currentEra;
-    this.state.food = this.state.resources.food || 0;
-    this.state.knowledge = this.state.resources.knowledge || 0;
-    this.state.workshopCount = window.FrontendBuildingState.getLevel(this.state.buildings, 'workshop');
-    this.state.population = {
-      ...this.state.population,
-      maxPop: this.state.population.max || this.state.population.maxPop || 3,
-    };
+    this.state = this.stateManager.sync(serverState, eraProgress);
     if (tutorial) this.tutorialController.setState(tutorial);
     else this.tutorialController.setState(this.tutorial);
     this.render();
@@ -148,6 +169,9 @@ const Game = {
     if (buildingId === 'farm' && action === 'build') {
       this.tutorialController.notifyFarmBuilt(result.tutorial);
       this.showFloatingText('农田建成！');
+    } else if (buildingId === 'lumbermill' && action === 'build') {
+      this.tutorialController.notifyLumbermillBuilt(result.tutorial);
+      this.showFloatingText('伐木场建成！');
     } else {
       this.showFloatingText(action === 'upgrade' ? '升级成功！' : '建造成功！');
     }
@@ -162,7 +186,7 @@ const Game = {
       this.applyApiState(result);
       this.tutorialController.notifyEraAdvanced(result.tutorial);
       this.log(`🏛️ ${result.message}`);
-      this.showFloatingText('进入农耕时代');
+      this.showFloatingText(`进入${this.state.currentEraName}`);
     } catch (error) {
       this.log(`❌ ${error.payload?.message || error.message}`);
     } finally {
@@ -190,10 +214,17 @@ const Game = {
   },
 
   getTutorialTarget(key) {
+    if (key === 'tab-resources') return document.getElementById('tabResources');
     if (key === 'tab-civilization') return document.getElementById('tabCivilization');
     if (key === 'tab-buildings') return document.getElementById('tabBuildings');
+    if (key === 'tab-events') return document.getElementById('tabEvents');
     if (key === 'btn-advance-era') return document.getElementById('btnAdvanceEra');
+    if (key === 'btn-claim-event') return document.getElementById('btnClaimEvent');
+    if (key === 'food-value') return document.getElementById('foodValue');
     if (key === 'card-farm') return document.getElementById('card-farm');
+    if (key === 'event-card-special') return document.getElementById('event-card-special');
+    if (key === 'card-lumbermill') return document.getElementById('card-lumbermill');
+    if (key === 'card-craftsman') return document.getElementById('craftsmanCard');
     return null;
   },
 
@@ -205,39 +236,16 @@ const Game = {
     }
     this.renderBuildings();
     this.renderCivilization();
-    this.renderTechAndEventPlaceholders();
+    this.renderEvents();
+    this.tutorialController.render();
   },
 
   renderResources() {
-    const resources = this.state.resources || {};
-    const foodOutput = Number(resources.foodOutputPerSecond || 0);
-    const foodConsumption = Number(resources.foodConsumptionPerSecond || 0);
-    const foodNet = Number(
-      Object.prototype.hasOwnProperty.call(resources, 'foodNetPerSecond')
-        ? resources.foodNetPerSecond
-        : resources.foodPerSecond || 0,
-    );
-
-    this.setText('foodValue', Math.floor(resources.food || 0));
-    this.setText('knowledgeValue', Math.floor(resources.knowledge || 0));
-    this.setText('foodRate', `${foodNet >= 0 ? '+' : ''}${foodNet}/s`);
-    this.setText('foodOutputRate', `+${foodOutput}/s`);
-    this.setText('foodConsumptionRate', `-${foodConsumption}/s`);
-    this.setText('foodNetRate', `${foodNet >= 0 ? '+' : ''}${foodNet}/s`);
-    this.setText('knowledgeRate', `${resources.knowledgePerSecond >= 0 ? '+' : ''}${resources.knowledgePerSecond || 0}/s`);
-    this.setText('happinessValue', this.state.happiness || 100);
-    this.setText('gameTime', `第 ${this.state.gameDay || 1} 天`);
-
-    const netEl = document.getElementById('foodNetRate');
-    if (netEl) {
-      netEl.classList.toggle('is-positive', foodNet >= 0);
-      netEl.classList.toggle('is-negative', foodNet < 0);
-    }
+    this.resourceRenderer.render(this.state);
   },
 
   renderBuildings() {
     this.buildingRenderer.render(this.state, this.tutorialController.state);
-    this.tutorialController.render();
   },
 
   renderCivilization() {
@@ -281,13 +289,8 @@ const Game = {
     `).join('');
   },
 
-  renderTechAndEventPlaceholders() {
-    this.setText('techKnowledgeRate', `${this.state.resources.knowledgePerSecond || 0}/s`);
-    const pending = document.getElementById('pendingEventsContainer');
-    if (pending && !this.state.eventQueue.length) pending.innerHTML = '<div class="pending-events-empty">首期暂未开放事件重构</div>';
-    document.querySelectorAll('#eventHistoryList').forEach((element) => {
-      if (!this.state.eventHistory.length) element.innerHTML = '<div class="event-history-empty">暂无事件记录</div>';
-    });
+  renderEvents() {
+    this.eventRenderer.render(this.state);
   },
 
   showFloatingText(message) {

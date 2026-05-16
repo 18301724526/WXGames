@@ -1,12 +1,40 @@
 (function (global) {
+  const PHASE_COMPLETE_STEP = 7;
+  const FINAL_STEP = 14;
+
+  function createFallbackState(step = 0) {
+    return {
+      completed: step >= FINAL_STEP,
+      currentStep: step,
+      phaseCompleted: {
+        newbie: step >= PHASE_COMPLETE_STEP,
+        era2: step >= FINAL_STEP,
+      },
+    };
+  }
+
   class TutorialController {
     constructor(options) {
       this.api = options.api;
       this.renderer = options.renderer;
       this.getTarget = options.getTarget;
+      this.getCurrentTab = options.getCurrentTab || (() => 'resources');
+      this.isEventModalOpen = options.isEventModalOpen || (() => false);
+      this.getState = options.getState || (() => ({}));
       this.onTabLockChange = options.onTabLockChange;
-      this.state = { completed: false, currentStep: 0 };
+      this.state = createFallbackState(0);
       this.autoStarted = localStorage.getItem('tutorialAutoStarted') === 'true';
+    }
+
+    canAffordLumbermill() {
+      const state = this.getState() || {};
+      const resources = state.resources || {};
+      const cost = state.buildingCosts?.lumbermill || { food: 50, wood: 15 };
+      return Object.entries(cost).every(([key, value]) => (resources[key] || 0) >= value);
+    }
+
+    isSoftGuideStep() {
+      return this.state.currentStep === 12 && !this.canAffordLumbermill();
     }
 
     syncLocalProgress() {
@@ -26,7 +54,7 @@
     }
 
     setState(tutorial) {
-      this.state = tutorial || { completed: false, currentStep: 0 };
+      this.state = tutorial || createFallbackState(0);
       this.syncLocalProgress();
       this.syncAutoStartedFlag();
       this.render();
@@ -44,7 +72,7 @@
     async advanceTo(step) {
       if (this.state.completed || step <= this.state.currentStep) return;
       const data = await this.api.advanceTutorial(step);
-      this.state = data.tutorial || { completed: step >= 7, currentStep: step };
+      this.state = data.tutorial || createFallbackState(step);
       this.syncLocalProgress();
       this.syncAutoStartedFlag();
       this.render();
@@ -57,17 +85,42 @@
         await this.advanceTo(2);
       } else if (this.state.currentStep === 4 && tabId === 'buildings') {
         await this.advanceTo(5);
+      } else if (this.state.currentStep === 8 && tabId === 'civilization') {
+        this.render();
+      } else if (this.state.currentStep === 9 && tabId === 'events') {
+        await this.advanceTo(10);
+      } else if (this.state.currentStep === 11 && tabId === 'buildings') {
+        await this.advanceTo(12);
       }
       return true;
     }
 
     notifyEraAdvanced(remoteTutorial) {
-      this.state = remoteTutorial || { completed: false, currentStep: 4 };
+      this.state = remoteTutorial || createFallbackState(4);
       this.render();
     }
 
     notifyFarmBuilt(remoteTutorial) {
-      this.state = remoteTutorial || { completed: true, currentStep: 7 };
+      this.state = remoteTutorial || createFallbackState(7);
+      this.syncLocalProgress();
+      this.syncAutoStartedFlag();
+      this.render();
+    }
+
+    notifySpecialEventClaimed(remoteTutorial) {
+      this.state = remoteTutorial || createFallbackState(11);
+      this.syncLocalProgress();
+      this.render();
+    }
+
+    notifyLumbermillBuilt(remoteTutorial) {
+      this.state = remoteTutorial || createFallbackState(13);
+      this.syncLocalProgress();
+      this.render();
+    }
+
+    notifyCraftsmanAssigned(remoteTutorial) {
+      this.state = remoteTutorial || createFallbackState(14);
       this.syncLocalProgress();
       this.syncAutoStartedFlag();
       this.render();
@@ -75,30 +128,70 @@
 
     canOpenTab(tabId) {
       if (this.state.completed) return true;
+      if (this.isSoftGuideStep()) return true;
       const step = this.state.currentStep;
+      if (this.state.phaseCompleted?.newbie && !this.state.phaseCompleted?.era2 && step === 7) return true;
       if (step <= 1) return ['resources', 'civilization'].includes(tabId);
       if (step <= 3) return tabId === 'civilization';
       if (step === 4) return ['civilization', 'buildings'].includes(tabId);
-      if (step <= 6) return tabId === 'buildings';
+      if (step <= 7) return tabId === 'buildings';
+      if (step === 8) return tabId === 'civilization';
+      if (step === 9) return ['civilization', 'events'].includes(tabId);
+      if (step === 10) return tabId === 'events';
+      if (step === 11) return ['events', 'buildings'].includes(tabId);
+      if (step === 12) return ['buildings', 'resources'].includes(tabId);
+      if (step === 13) return ['buildings', 'resources'].includes(tabId);
       return true;
     }
 
     getMessage() {
       const step = this.state.currentStep;
+      const currentTab = this.getCurrentTab();
       if (step === 1) return '点击这里，查看文明进展';
       if (step === 2) return '食物足够了！进阶到农耕时代';
       if (step === 4) return '新时代解锁了建筑！';
       if (step === 5) return '建造第一座农田';
-      if (step === 7) return '引导完成！自由发展吧';
+      if (step === 8) return currentTab === 'civilization'
+        ? '条件已满足，点击进阶进入聚落时代'
+        : '资源已满足，先打开文明页面查看时代进阶';
+      if (step === 9) return '森林里似乎有什么发现...';
+      if (step === 10) return this.isEventModalOpen()
+        ? '点击按钮领取木材奖励'
+        : '打开森林低语，领取你的第一批木材';
+      if (step === 11) return '用新发现的木材建造伐木场';
+      if (step === 12) {
+        if (!this.canAffordLumbermill()) {
+          return currentTab === 'resources'
+            ? '食物还不够，先积累到 50 食物再建造伐木场'
+            : '建造伐木场还缺食物，先回资源页面积累';
+        }
+        return currentTab === 'buildings'
+          ? '伐木场产出木材，先把它建起来'
+          : '资源已满足，回到建筑页面建造伐木场';
+      }
+      if (step === 13) return currentTab === 'resources'
+        ? '分配 1 名工匠去伐木场工作'
+        : '伐木场建好了，回到资源页面分配工匠';
+      if (step === 14) return '聚落时代开启！继续建设吧';
       return '';
     }
 
     getTargetKey() {
       const step = this.state.currentStep;
+      const currentTab = this.getCurrentTab();
       if (step === 1) return 'tab-civilization';
       if (step === 2) return 'btn-advance-era';
       if (step === 4) return 'tab-buildings';
       if (step === 5) return 'card-farm';
+      if (step === 8) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
+      if (step === 9) return 'tab-events';
+      if (step === 10) return this.isEventModalOpen() ? 'btn-claim-event' : 'event-card-special';
+      if (step === 11) return 'tab-buildings';
+      if (step === 12) {
+        if (!this.canAffordLumbermill()) return currentTab === 'resources' ? 'food-value' : 'tab-resources';
+        return currentTab === 'buildings' ? 'card-lumbermill' : 'tab-buildings';
+      }
+      if (step === 13) return currentTab === 'resources' ? 'card-craftsman' : 'tab-resources';
       return null;
     }
 
@@ -106,6 +199,11 @@
       this.onTabLockChange && this.onTabLockChange();
       if (this.state.completed || this.state.currentStep === 0) {
         this.renderer.hide();
+        return;
+      }
+      if (this.isSoftGuideStep()) {
+        if (typeof this.renderer.showSoft === 'function') this.renderer.showSoft(this.getMessage());
+        else this.renderer.hide && this.renderer.hide();
         return;
       }
       const targetKey = this.getTargetKey();

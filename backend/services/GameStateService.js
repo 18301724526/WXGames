@@ -118,6 +118,7 @@ function getClientGameState(gameState) {
       foodNetPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
       foodPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
       knowledgePerSecond: Math.round(outputs.knowledgePerSecond * 10) / 10,
+      woodPerSecond: Math.round(outputs.woodPerSecond * 10) / 10,
     },
     buildings: normalized.buildings,
     buildingCosts: getBuildingCosts(normalized.buildings),
@@ -149,6 +150,7 @@ function calculateOfflineIncome(gameState, offlineSeconds) {
   return {
     food: Math.max(0, Math.floor(outputs.foodPerSecond * actualOffline * efficiency)),
     knowledge: Math.max(0, Math.floor(outputs.knowledgePerSecond * actualOffline * efficiency)),
+    wood: Math.max(0, Math.floor(outputs.woodPerSecond * actualOffline * efficiency)),
     offlineHours: Math.floor((actualOffline / 3600) * 100) / 100,
     efficiency,
   };

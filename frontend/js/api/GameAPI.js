@@ -30,6 +30,7 @@
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
+    claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     advanceTutorial(step) { return this.request('POST', '/game/action', { action: 'tutorialAdvance', step }); }
   }
 

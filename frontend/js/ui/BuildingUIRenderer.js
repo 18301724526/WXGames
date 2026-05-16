@@ -10,6 +10,7 @@
       if (cost === null) return '已满级';
       if (!cost) return '免费建造';
       if (cost.food) parts.push(`🌾 ${cost.food}`);
+      if (cost.wood) parts.push(`🪵 ${cost.wood}`);
       if (cost.knowledge) parts.push(`📚 ${cost.knowledge}`);
       return parts.length ? parts.join(' ') : '免费建造';
     }
@@ -38,7 +39,10 @@
           ? state.buildingCosts[id]
           : undefined;
         const actionLabel = global.FrontendBuildingState.getActionLabel(cost, level);
-        const disabledByTutorial = tutorial && !tutorial.completed && tutorial.currentStep === 5 && id !== 'farm';
+        const disabledByTutorial = Boolean(tutorial && !tutorial.completed && (
+          (tutorial.currentStep === 5 && id !== 'farm')
+          || (tutorial.currentStep >= 12 && tutorial.currentStep <= 13 && id !== 'lumbermill')
+        ));
         const isMax = actionLabel === '已满级';
         const disabled = disabledByTutorial || isMax;
         const effectText = this.getEffectText(config, state.buildingEffects);

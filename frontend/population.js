@@ -38,11 +38,10 @@ window.mountPopulationMethods = function(game) {
             btn.disabled = count <= 0;
         });
         
-        // 工匠卡片显隐（有工坊才显示）
+        // 聚落时代开始显示工匠卡片。
         const craftsmanCard = document.getElementById('craftsmanCard');
         if (craftsmanCard) {
-            const workshopCount = s.workshopCount ?? 0;
-            craftsmanCard.style.display = workshopCount > 0 ? '' : 'none';
+            craftsmanCard.style.display = (s.currentEra ?? 0) >= 2 ? '' : 'none';
         }
     };
 
@@ -61,28 +60,22 @@ window.mountPopulationMethods = function(game) {
             });
 
             if (result.success) {
-                // API 成功 → 立即拉取最新状态同步
-                const data = await this.apiGet('/game/state');
-                if (data.gameState) {
-                    this.syncFromServer(data.gameState, data.gameState?.eventQueue, data.gameState?.offlineEventLog);
-                }
-                if (data.offlineIncome?.food > 0 || data.offlineIncome?.knowledge > 0) {
-                    this.showOfflineModal(data.offlineIncome, data.offlineEventLog);
+                this.applyApiState(result);
+                if (job === 'craftsman' && delta > 0 && this.tutorialController) {
+                    this.tutorialController.notifyCraftsmanAssigned(result.tutorial);
                 }
                 this.log(`👥 ${delta > 0 ? '+' : ''}${delta} ${job}`);
             } else {
                 this.log(`❌ ${result.message}`);
-                // 失败时拉一次状态，确保前端显示与后端一致
                 const data = await this.apiGet('/game/state');
-                if (data.gameState) this.syncFromServer(data.gameState);
+                if (data.gameState) this.applyApiState(data);
             }
         } catch (e) {
             console.error('assignJob API error:', e);
             this.log('❌ 网络错误，人口分配失败');
-            // 网络错误也拉状态对齐
             try {
                 const data = await this.apiGet('/game/state');
-                if (data.gameState) this.syncFromServer(data.gameState);
+                if (data.gameState) this.applyApiState(data);
             } catch (_) {}
         }
     };

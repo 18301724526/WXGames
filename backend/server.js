@@ -78,6 +78,7 @@ setInterval(() => {
     const outputs = ResourceTickCalculator.calculateOutputs(gameState, gameState.buildingEffects);
     gameState.resources.food = Math.max(0, (gameState.resources.food || 0) + outputs.foodPerSecond);
     gameState.resources.knowledge = Math.max(0, (gameState.resources.knowledge || 0) + outputs.knowledgePerSecond);
+    gameState.resources.wood = Math.max(0, (gameState.resources.wood || 0) + outputs.woodPerSecond);
     ResourceTickCalculator.applyPopulationGrowth(gameState, 1);
     gameState.updatedAt = new Date().toISOString();
     repository.save(gameState);

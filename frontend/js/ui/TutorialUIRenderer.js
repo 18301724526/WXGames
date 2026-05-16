@@ -21,6 +21,16 @@
       this.activeMessage = '';
     }
 
+    positionSoftBubble() {
+      if (!this.bubble) return;
+      const bubbleWidth = Math.min(320, Math.max(220, global.innerWidth - 32));
+      const top = 16;
+      const left = Math.max(12, Math.round((global.innerWidth - bubbleWidth) / 2));
+      this.bubble.style.top = `${top}px`;
+      this.bubble.style.left = `${left}px`;
+      this.bubble.style.maxWidth = `${bubbleWidth}px`;
+    }
+
     schedulePositionUpdate() {
       if (!this.activeTarget) return;
       if (this.rafId && global.cancelAnimationFrame) global.cancelAnimationFrame(this.rafId);
@@ -128,9 +138,11 @@
       }
       if (this.bubble) {
         this.bubble.classList.remove('active');
+        this.bubble.classList.remove('soft');
         this.bubble.textContent = '';
         this.bubble.style.top = '';
         this.bubble.style.left = '';
+        this.bubble.style.maxWidth = '';
       }
       if (this.pointer) {
         this.pointer.classList.remove('active');
@@ -154,6 +166,20 @@
       }
       if (this.pointer) this.pointer.classList.add('active');
       this.schedulePositionUpdate();
+    }
+
+    showSoft(message) {
+      if (this.rafId && global.cancelAnimationFrame) global.cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+      this.clearHighlight();
+      if (this.overlay) this.overlay.classList.remove('active');
+      if (this.pointer) this.pointer.classList.remove('active');
+      if (this.bubble) {
+        this.bubble.textContent = message;
+        this.bubble.classList.add('active');
+        this.bubble.classList.add('soft');
+        this.positionSoftBubble();
+      }
     }
   }
 

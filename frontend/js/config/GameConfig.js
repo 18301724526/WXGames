@@ -11,7 +11,7 @@
       events: 'events',
       civilization: 'civilization',
     },
-    ERAS: ['原始时代', '农耕时代', '青铜时代', '古典时代', '中世纪'],
+    ERAS: ['原始时代', '农耕时代', '聚落时代', '青铜时代', '古典时代', '中世纪'],
     BUILDINGS: {
       farm: {
         id: 'farm',
@@ -45,6 +45,12 @@
         icon: '📚',
         art: 'assets/art/building-academy-cutout.png',
         ui: { effectText: [{ field: 'knowledgeOutputBonus', label: '知识产出', format: 'percent' }] },
+      },
+      lumbermill: {
+        id: 'lumbermill',
+        name: '伐木场',
+        icon: '🪵',
+        ui: { effectText: [{ field: 'woodOutputBase', label: '基础木材', format: 'number' }] },
       },
       barracks: {
         id: 'barracks',

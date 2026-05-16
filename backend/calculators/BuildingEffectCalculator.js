@@ -8,6 +8,7 @@ function calculate(buildings) {
     happinessBonus: 0,
     knowledgeOutputMultiplier: 1,
     craftsmanOutputMultiplier: 1,
+    woodOutputBase: 0,
     offlineEfficiencyBonus: 0,
     defenseLevel: 0,
     globalOutputMultiplier: 1,
@@ -46,6 +47,11 @@ function calculate(buildings) {
       effects.craftsmanOutputMultiplier += bonus;
       summary.craftsmanOutputMultiplier = 1 + bonus;
       summary.craftsmanOutputBonus = bonus;
+    }
+    if (perLevel.woodOutputBase) {
+      const bonus = level * perLevel.woodOutputBase;
+      effects.woodOutputBase += bonus;
+      summary.woodOutputBase = bonus;
     }
     if (perLevel.offlineEfficiency) {
       const bonus = level * perLevel.offlineEfficiency;

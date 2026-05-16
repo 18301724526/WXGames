@@ -163,3 +163,51 @@ test('教程隐藏时会清理 spotlight 与提示位置', () => {
     global.document = originalDocument;
   }
 });
+
+test('软引导只显示提示气泡，不显示黑屏和手指', () => {
+  const overlay = createElement();
+  const bubble = createElement();
+  const pointer = createElement();
+
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+
+  try {
+    global.window = {
+      innerWidth: 390,
+      innerHeight: 844,
+      addEventListener() {},
+      requestAnimationFrame(callback) {
+        callback();
+        return 1;
+      },
+      cancelAnimationFrame() {},
+    };
+    global.document = {
+      getElementById(id) {
+        if (id === 'tutorialOverlay') return overlay;
+        if (id === 'tutorialBubble') return bubble;
+        if (id === 'tutorialPointer') return pointer;
+        return null;
+      },
+      querySelector() {
+        return null;
+      },
+    };
+
+    delete require.cache[require.resolve('../js/ui/TutorialUIRenderer')];
+    const TutorialUIRenderer = require('../js/ui/TutorialUIRenderer');
+    const renderer = new TutorialUIRenderer();
+
+    renderer.showSoft('食物还不够，先积累到 50 食物再建造伐木场');
+
+    assert.equal(overlay.classList.contains('active'), false);
+    assert.equal(pointer.classList.contains('active'), false);
+    assert.equal(bubble.classList.contains('active'), true);
+    assert.equal(bubble.classList.contains('soft'), true);
+    assert.equal(bubble.textContent, '食物还不够，先积累到 50 食物再建造伐木场');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+  }
+});

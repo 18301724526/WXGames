@@ -4,6 +4,12 @@
     return {
       completed: Boolean(tutorial && tutorial.completed),
       currentStep: Number.isFinite(tutorial && tutorial.currentStep) ? tutorial.currentStep : 0,
+      phaseCompleted: tutorial && tutorial.phaseCompleted
+        ? {
+          newbie: Boolean(tutorial.phaseCompleted.newbie),
+          era2: Boolean(tutorial.phaseCompleted.era2),
+        }
+        : { newbie: false, era2: false },
     };
   }
 

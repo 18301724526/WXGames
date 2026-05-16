@@ -61,7 +61,7 @@
       "category": "production",
       "unlockEra": 2,
       "maxLevel": 3,
-      "buildCost": { "food": 120, "knowledge": 40 },
+      "buildCost": { "food": 120, "wood": 40 },
       "upgradeCosts": [
         { "food": 200, "knowledge": 100 },
         { "food": 320, "knowledge": 180 }
@@ -86,7 +86,7 @@
       "category": "research",
       "unlockEra": 2,
       "maxLevel": 3,
-      "buildCost": { "food": 180, "knowledge": 120 },
+      "buildCost": { "food": 180, "wood": 60, "knowledge": 30 },
       "upgradeCosts": [
         { "food": 260, "knowledge": 180 },
         { "food": 360, "knowledge": 260 }
@@ -101,6 +101,31 @@
         "description": "提升知识产出",
         "effectText": [
           { "field": "knowledgeOutputBonus", "label": "知识产出", "format": "percent" }
+        ]
+      }
+    },
+    "lumbermill": {
+      "id": "lumbermill",
+      "name": "伐木场",
+      "icon": "🪵",
+      "category": "production",
+      "unlockEra": 2,
+      "maxLevel": 3,
+      "buildCost": { "food": 50, "wood": 15 },
+      "upgradeCosts": [
+        { "food": 80, "wood": 30 },
+        { "food": 150, "wood": 60 }
+      ],
+      "effects": {
+        "perLevel": {
+          "woodOutputBase": 2
+        }
+      },
+      "ui": {
+        "color": "#8e6e53",
+        "description": "提供伐木基础产能，工匠越多产量越高",
+        "effectText": [
+          { "field": "woodOutputBase", "label": "基础木材", "format": "number" }
         ]
       }
     },

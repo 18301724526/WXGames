@@ -12,7 +12,8 @@ test('farm 首次建造免费并推进教程完成', () => {
   assert.equal(result.success, true);
   assert.equal(result.cost.food, 0);
   assert.equal(state.buildings.farm.level, 1);
-  assert.equal(result.tutorial.completed, true);
+  assert.equal(result.tutorial.phaseCompleted.newbie, true);
+  assert.equal(result.tutorial.completed, false);
 });
 
 test('house 建造会提升人口上限和幸福度', () => {

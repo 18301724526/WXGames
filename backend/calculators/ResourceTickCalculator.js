@@ -30,10 +30,21 @@ function calculateFoodPerSecond(population, buildings, effects, happiness) {
 }
 
 function calculateKnowledgePerSecond(population, effects) {
-  const total = population?.total || 0;
-  return total
+  const scholars = population?.scholars || 0;
+  return scholars
     * GameConfig.resources.baseKnowledgePerPerson
     * (effects?.knowledgeOutputMultiplier || 1)
+    * (effects?.globalOutputMultiplier || 1);
+}
+
+function calculateWoodPerSecond(gameState, effects) {
+  const craftsmen = gameState?.population?.craftsmen || 0;
+  const baseWood = effects?.woodOutputBase || 0;
+  if (!craftsmen || !baseWood) return 0;
+  return craftsmen
+    * GameConfig.resources.baseWoodPerCraftsman
+    * baseWood
+    * (effects?.craftsmanOutputMultiplier || 1)
     * (effects?.globalOutputMultiplier || 1);
 }
 
@@ -52,6 +63,7 @@ function calculateOutputs(gameState, effects) {
     foodOutputPerSecond: food.outputPerSecond,
     foodConsumptionPerSecond: food.consumptionPerSecond,
     knowledgePerSecond: calculateKnowledgePerSecond(gameState.population, effects),
+    woodPerSecond: calculateWoodPerSecond(gameState, effects),
   };
 }
 
@@ -88,6 +100,7 @@ module.exports = {
   calculateFoodBreakdown,
   calculateFoodPerSecond,
   calculateKnowledgePerSecond,
+  calculateWoodPerSecond,
   calculatePopulationCap,
   calculateHappiness,
   calculateOutputs,

@@ -63,6 +63,7 @@ class AuthService {
       offlineIncome = calculateOfflineIncome(gameState, offlineSeconds);
       gameState.resources.food += offlineIncome.food;
       gameState.resources.knowledge += offlineIncome.knowledge;
+      gameState.resources.wood += offlineIncome.wood;
       gameState.offlineSnapshot = { timestamp: now.toISOString(), offlineSeconds, income: offlineIncome };
       saveGameState(gameState);
     }

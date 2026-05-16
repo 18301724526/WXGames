@@ -35,3 +35,8 @@ test('缺少模板或数值时回退到默认文案', () => {
 
   assert.equal(text, '效果由后端计算');
 });
+
+test('木材成本会显示在建筑按钮文案中', () => {
+  const renderer = new BuildingUIRenderer(null, {});
+  assert.equal(renderer.formatCost({ food: 50, wood: 15 }), '🌾 50 🪵 15');
+});
