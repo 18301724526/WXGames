@@ -131,6 +131,7 @@ test('农田建成后会锁在建筑页并高亮民居', () => {
       api: { async advanceTutorial(step) { return { tutorial: { completed: false, currentStep: step } }; } },
       renderer: { hide() {}, show() {} },
       getTarget: (key) => key,
+      getCurrentTab: () => 'buildings',
       onTabLockChange: () => {},
     });
 
@@ -142,8 +143,32 @@ test('农田建成后会锁在建筑页并高亮民居', () => {
 
     controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
     assert.equal(controller.canOpenTab('buildings'), true);
+    assert.equal(controller.canOpenTab('resources'), true);
     assert.equal(controller.canOpenTab('civilization'), false);
-    assert.equal(controller.getTargetKey(), 'card-house');
+    assert.equal(controller.getTargetKey(), 'tab-resources');
+    assert.equal(controller.getMessage(), '民居已建好，回到资源页面等待新居民入住');
+  } finally {
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('民居建成后在资源页显示等待人口增长的软目标', () => {
+  const originalLocalStorage = global.localStorage;
+  try {
+    global.localStorage = createStorage();
+    delete require.cache[require.resolve('../js/controllers/TutorialController')];
+    const TutorialController = require('../js/controllers/TutorialController');
+    const controller = new TutorialController({
+      api: { async advanceTutorial(step) { return { tutorial: { completed: false, currentStep: step } }; } },
+      renderer: { hide() {}, show() {} },
+      getTarget: (key) => key,
+      getCurrentTab: () => 'resources',
+      onTabLockChange: () => {},
+    });
+
+    controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
+    assert.equal(controller.getTargetKey(), 'food-value');
+    assert.equal(controller.getMessage(), '民居已建好，等待新居民入住，并积累进阶所需食物');
   } finally {
     global.localStorage = originalLocalStorage;
   }

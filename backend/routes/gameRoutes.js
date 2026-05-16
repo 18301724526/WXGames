@@ -68,6 +68,9 @@ function registerGameRoutes(app, deps) {
       result = { success: false, error: 'NOT_IMPLEMENTED', message: '首期未重构科技研发，请稍后再试' };
     }
     gameState.tutorial = tutorial;
+    eraProgress = gameStateService.calculateEraProgress(gameState);
+    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+    gameState.tutorial = tutorial;
     repository.save(gameState);
     const clientState = gameStateService.getClientGameState(gameState);
     eraProgress = gameStateService.calculateEraProgress(gameState);

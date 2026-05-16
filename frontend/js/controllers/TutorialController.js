@@ -140,7 +140,8 @@
       if (step <= 1) return ['resources', 'civilization'].includes(tabId);
       if (step <= 3) return tabId === 'civilization';
       if (step === 4) return ['civilization', 'buildings'].includes(tabId);
-      if (step <= 8) return tabId === 'buildings';
+      if (step <= 7) return tabId === 'buildings';
+      if (step === 8) return ['buildings', 'resources'].includes(tabId);
       if (step === 9) return tabId === 'civilization';
       if (step === 10) return ['civilization', 'events'].includes(tabId);
       if (step === 11) return tabId === 'events';
@@ -157,7 +158,10 @@
       if (step === 2) return '食物足够了！进阶到农耕时代';
       if (step === 4) return '新时代解锁了建筑！';
       if (step === 5) return '建造第一座农田';
-      if (step === 7 || step === 8) return '人口在增长，先建造民居为新居民腾出空间';
+      if (step === 7) return '人口在增长，先建造民居为新居民腾出空间';
+      if (step === 8) return currentTab === 'resources'
+        ? '民居已建好，等待新居民入住，并积累进阶所需食物'
+        : '民居已建好，回到资源页面等待新居民入住';
       if (step === 9) return currentTab === 'civilization'
         ? '条件已满足，点击进阶进入聚落时代'
         : '资源已满足，先打开文明页面查看时代进阶';
@@ -190,7 +194,8 @@
       if (step === 2) return 'btn-advance-era';
       if (step === 4) return 'tab-buildings';
       if (step === 5) return 'card-farm';
-      if (step === 7 || step === 8) return 'card-house';
+      if (step === 7) return 'card-house';
+      if (step === 8) return currentTab === 'resources' ? 'food-value' : 'tab-resources';
       if (step === 9) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
       if (step === 10) return 'tab-events';
       if (step === 11) return this.isEventModalOpen() ? 'btn-claim-event' : 'event-card-special';

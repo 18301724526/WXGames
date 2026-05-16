@@ -77,7 +77,7 @@ function canAccessTab(tutorialState, tabKey) {
   if (step <= TUTORIAL_STEPS.civilizationPrepReserved) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo1) return ['civilization', 'buildings'].includes(tabKey);
   if (step <= TUTORIAL_STEPS.farmBuilt) return tabKey === 'buildings';
-  if (step === TUTORIAL_STEPS.houseBuilt) return tabKey === 'buildings';
+  if (step === TUTORIAL_STEPS.houseBuilt) return ['buildings', 'resources'].includes(tabKey);
   if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo2) return ['civilization', 'events'].includes(tabKey);
   if (step === TUTORIAL_STEPS.specialEventTabOpened) return tabKey === 'events';
