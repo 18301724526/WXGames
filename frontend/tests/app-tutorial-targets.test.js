@@ -107,3 +107,182 @@ test('app uses faster polling while waiting for era2 readiness', () => {
     global.localStorage = originalLocalStorage;
   }
 });
+
+test('era advance button stays locked until tutorial unlocks the advance step', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const elements = new Map();
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        if (!elements.has(id)) {
+          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
+        }
+        return elements.get(id);
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state = {
+      currentEra: 1,
+      currentEraName: '农耕时代',
+      gameDay: 1,
+      population: { total: 4 },
+      totalBuildings: 2,
+      techs: {},
+      happiness: 100,
+      eraProgress: {
+        percentage: 100,
+        canAdvance: true,
+        targetEraName: '聚落时代',
+        conditions: [],
+      },
+    };
+    Game.tutorialController = {
+      state: { completed: false, currentStep: 8 },
+      canOpenTab(tabId) { return tabId === 'civilization'; },
+    };
+
+    Game.renderCivilization();
+    assert.equal(elements.get('btnAdvanceEra').disabled, true);
+    assert.equal(elements.get('btnEraLabel').textContent, '引导未解锁');
+
+    Game.tutorialController.state.currentStep = 9;
+    Game.renderCivilization();
+    assert.equal(elements.get('btnAdvanceEra').disabled, false);
+    assert.equal(elements.get('btnEraLabel').textContent, '满足条件，可进阶');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('advanceEra does not call the API before tutorial unlocks the advance step', async () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const elements = new Map();
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        if (!elements.has(id)) {
+          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
+        }
+        return elements.get(id);
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    let called = false;
+    const logs = [];
+    Game.gameAPI = {
+      async advanceEra() {
+        called = true;
+        return {};
+      },
+    };
+    Game.log = (message) => logs.push(message);
+    Game.state = {
+      currentEra: 1,
+      currentEraName: '农耕时代',
+      gameDay: 1,
+      population: { total: 4 },
+      totalBuildings: 2,
+      techs: {},
+      happiness: 100,
+      eraProgress: {
+        percentage: 100,
+        canAdvance: true,
+        targetEraName: '聚落时代',
+        conditions: [],
+      },
+    };
+    Game.tutorialController = {
+      state: { completed: false, currentStep: 8 },
+      canOpenTab(tabId) { return tabId === 'civilization'; },
+    };
+
+    await Game.advanceEra();
+
+    assert.equal(called, false);
+    assert.deepEqual(logs, ['引导未解锁，先完成当前引导']);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('initial era advance also stays locked before the tutorial reaches the advance step', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const elements = new Map();
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        if (!elements.has(id)) {
+          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
+        }
+        return elements.get(id);
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state = {
+      currentEra: 0,
+      currentEraName: '原始时代',
+      gameDay: 1,
+      population: { total: 3 },
+      totalBuildings: 0,
+      techs: {},
+      happiness: 100,
+      eraProgress: {
+        percentage: 100,
+        canAdvance: true,
+        targetEraName: '农耕时代',
+        conditions: [],
+      },
+    };
+    Game.tutorialController = {
+      state: { completed: false, currentStep: 1 },
+      canOpenTab(tabId) { return tabId === 'civilization'; },
+    };
+
+    Game.renderCivilization();
+    assert.equal(elements.get('btnAdvanceEra').disabled, true);
+    assert.equal(elements.get('btnEraLabel').textContent, '引导未解锁');
+
+    Game.tutorialController.state.currentStep = 2;
+    Game.renderCivilization();
+    assert.equal(elements.get('btnAdvanceEra').disabled, false);
+    assert.equal(elements.get('btnEraLabel').textContent, '进阶（消耗 80 🌾）');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});

@@ -177,6 +177,21 @@ const Game = {
     }
   },
 
+  canAdvanceEraByTutorial() {
+    const tutorial = this.tutorialController?.state || this.tutorial || {};
+    if (tutorial.completed) return true;
+    const step = Number(tutorial.currentStep) || 0;
+    if (this.state.currentEra === 0) return step >= 2;
+    if (this.state.currentEra === 1) return step >= 9;
+    return true;
+  },
+
+  canAdvanceEraNow(progress = this.state.eraProgress) {
+    return Boolean(progress?.canAdvance)
+      && this.canAdvanceEraByTutorial()
+      && (!this.tutorialController || this.tutorialController.canOpenTab('civilization'));
+  },
+
   async handleBuildingSuccess(result, action, buildingId) {
     this.applyApiState(result);
     if (buildingId === 'farm' && action === 'build') {
@@ -197,6 +212,11 @@ const Game = {
   async advanceEra() {
     const button = document.getElementById('btnAdvanceEra');
     if (button) button.disabled = true;
+    if (!this.canAdvanceEraNow()) {
+      this.log(this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
+      this.renderCivilization();
+      return;
+    }
     try {
       const result = await this.gameAPI.advanceEra();
       this.applyApiState(result);
@@ -285,12 +305,14 @@ const Game = {
 
     const button = document.getElementById('btnAdvanceEra');
     const label = document.getElementById('btnEraLabel');
+    const canAdvanceByTutorial = this.canAdvanceEraByTutorial();
+    const canAdvance = this.canAdvanceEraNow(progress);
     if (button) {
-      const canAdvance = Boolean(progress.canAdvance) && this.tutorialController.canOpenTab('civilization');
       button.disabled = !canAdvance;
     }
     if (label) {
-      if (this.state.currentEra === 0) label.textContent = '进阶（消耗 80 🌾）';
+      if (progress.canAdvance && !canAdvanceByTutorial) label.textContent = '引导未解锁';
+      else if (this.state.currentEra === 0) label.textContent = '进阶（消耗 80 🌾）';
       else label.textContent = progress.canAdvance ? '满足条件，可进阶' : '条件不足，无法进阶';
     }
   },
