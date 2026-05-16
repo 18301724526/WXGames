@@ -163,6 +163,8 @@
       if (this.bubble) {
         this.bubble.textContent = message;
         this.bubble.classList.add('active');
+        this.bubble.classList.remove('soft');
+        this.bubble.style.maxWidth = '';
       }
       if (this.pointer) this.pointer.classList.add('active');
       this.schedulePositionUpdate();

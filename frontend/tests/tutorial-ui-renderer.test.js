@@ -211,3 +211,66 @@ test('软引导只显示提示气泡，不显示黑屏和手指', () => {
     global.document = originalDocument;
   }
 });
+
+test('软引导切回强引导时会清理 soft 样式并恢复高亮', () => {
+  const overlay = createElement();
+  const bubble = createElement();
+  const pointer = createElement();
+
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+
+  try {
+    global.window = {
+      innerWidth: 390,
+      innerHeight: 844,
+      addEventListener() {},
+      requestAnimationFrame(callback) {
+        callback();
+        return 1;
+      },
+      cancelAnimationFrame() {},
+    };
+    global.document = {
+      getElementById(id) {
+        if (id === 'tutorialOverlay') return overlay;
+        if (id === 'tutorialBubble') return bubble;
+        if (id === 'tutorialPointer') return pointer;
+        return null;
+      },
+      querySelector() {
+        return null;
+      },
+    };
+
+    delete require.cache[require.resolve('../js/ui/TutorialUIRenderer')];
+    const TutorialUIRenderer = require('../js/ui/TutorialUIRenderer');
+    const renderer = new TutorialUIRenderer();
+    const target = {
+      getBoundingClientRect() {
+        return {
+          top: 120,
+          left: 40,
+          width: 180,
+          height: 48,
+          bottom: 168,
+          right: 220,
+        };
+      },
+      scrollIntoView() {},
+    };
+
+    renderer.showSoft('等待资源和人口满足进阶条件');
+    renderer.show(target, '条件已满足，点击进阶进入聚落时代');
+
+    assert.equal(overlay.classList.contains('active'), true);
+    assert.equal(pointer.classList.contains('active'), true);
+    assert.equal(bubble.classList.contains('active'), true);
+    assert.equal(bubble.classList.contains('soft'), false);
+    assert.equal(bubble.style.maxWidth, '');
+    assert.equal(bubble.textContent, '条件已满足，点击进阶进入聚落时代');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+  }
+});

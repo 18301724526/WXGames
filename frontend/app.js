@@ -159,8 +159,9 @@ const Game = {
 
   syncFromServer(serverState, tutorial, eraProgress) {
     this.state = this.stateManager.sync(serverState, eraProgress);
-    if (tutorial) this.tutorialController.setState(tutorial);
-    else this.tutorialController.setState(this.tutorial);
+    const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial);
+    this.tutorial = nextTutorial;
+    this.tutorialController.setState(nextTutorial);
     this.updateSyncInterval();
     this.render();
   },
@@ -175,6 +176,34 @@ const Game = {
     if (this.syncService && typeof this.syncService.setIntervalMs === 'function') {
       this.syncService.setIntervalMs(this.getSyncInterval());
     }
+  },
+
+  getBuildingLevel(buildingId) {
+    const entry = this.state.buildings?.[buildingId];
+    if (!entry) return 0;
+    return typeof entry === 'object' ? entry.level || 0 : Number(entry) || 0;
+  },
+
+  isEra2AdvanceReady(progress = this.state.eraProgress) {
+    return this.state.currentEra === 1
+      && Boolean(progress?.canAdvance)
+      && this.getBuildingLevel('house') > 0
+      && (this.state.population?.total || 0) > 3;
+  },
+
+  getEffectiveTutorialState(tutorial) {
+    const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
+    if (!nextTutorial.completed && nextTutorial.currentStep === 8 && this.isEra2AdvanceReady()) {
+      return {
+        ...nextTutorial,
+        currentStep: 9,
+        phaseCompleted: {
+          ...nextTutorial.phaseCompleted,
+          newbie: true,
+        },
+      };
+    }
+    return nextTutorial;
   },
 
   canAdvanceEraByTutorial() {

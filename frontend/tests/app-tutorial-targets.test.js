@@ -286,3 +286,65 @@ test('initial era advance also stays locked before the tutorial reaches the adva
     global.localStorage = originalLocalStorage;
   }
 });
+
+test('syncFromServer locally promotes step8 to step9 when era2 requirements are already met', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id, style: {}, textContent: '', innerHTML: '', disabled: false };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    let tutorialState = null;
+    Game.stateManager = {
+      sync(serverState, eraProgress) {
+        return {
+          ...serverState,
+          eraProgress,
+          currentTab: 'resources',
+        };
+      },
+    };
+    Game.tutorialController = {
+      state: { completed: false, currentStep: 8 },
+      setState(tutorial) {
+        tutorialState = tutorial;
+        this.state = tutorial;
+      },
+      canOpenTab() {
+        return true;
+      },
+      render() {},
+    };
+    Game.syncService = { setIntervalMs() {} };
+    Game.render = () => {};
+
+    Game.syncFromServer(
+      {
+        currentEra: 1,
+        buildings: { house: { level: 1 } },
+        population: { total: 4 },
+      },
+      { completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } },
+      { percentage: 100, canAdvance: true, conditions: [] },
+    );
+
+    assert.equal(tutorialState.currentStep, 9);
+    assert.equal(tutorialState.phaseCompleted.newbie, true);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
