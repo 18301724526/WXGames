@@ -5,7 +5,7 @@ const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculato
 const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const BuildingUnlockService = require('./BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
-const { getAdvanceConfig, getEraName } = require('../config/EraConfig');
+const { getAdvanceConfig, getEraName, getEraDescription } = require('../config/EraConfig');
 const BuildingConfig = require('../config/BuildingConfig');
 const GameConfig = require('../config/GameConfig');
 
@@ -31,6 +31,7 @@ function createInitialGameState(playerId) {
     negativeStreak: 0,
     lastEventAt: 0,
     tutorial: TutorialService.createInitialTutorialState(),
+    softGuideState: {},
     updatedAt: new Date().toISOString(),
   };
 }
@@ -62,6 +63,7 @@ function normalizeState(rawState) {
   state.offlineSnapshot = state.offlineSnapshot || {};
   state.offlineEventLog = state.offlineEventLog || [];
   state.tutorial = TutorialService.normalizeTutorialState(state.tutorial);
+  state.softGuideState = state.softGuideState && typeof state.softGuideState === 'object' ? state.softGuideState : {};
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
@@ -105,6 +107,10 @@ function getBuildingCosts(buildings) {
   return costs;
 }
 
+function getBuildingDefinitions() {
+  return BuildingConfig.raw().buildings || {};
+}
+
 function getClientGameState(gameState) {
   const normalized = normalizeState(gameState);
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
@@ -122,10 +128,12 @@ function getClientGameState(gameState) {
     },
     buildings: normalized.buildings,
     buildingCosts: getBuildingCosts(normalized.buildings),
+    buildingDefinitions: getBuildingDefinitions(),
     buildingEffects: normalized.buildingEffects,
     unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra),
     currentEra: normalized.currentEra,
     currentEraName: getEraName(normalized.currentEra),
+    currentEraDescription: getEraDescription(normalized.currentEra),
     population: {
       ...normalized.population,
       max: normalized.population.max,

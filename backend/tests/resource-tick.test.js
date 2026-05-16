@@ -57,6 +57,10 @@ test('客户端状态返回食物产出/消耗/净增长拆解', () => {
   assert.equal(clientState.resources.foodNetPerSecond, 1.4);
   assert.equal(clientState.resources.foodPerSecond, 1.4);
   assert.equal(clientState.resources.knowledgePerSecond, 0.3);
+  assert.equal(clientState.currentEraName, '原始时代');
+  assert.ok(clientState.currentEraDescription);
+  assert.equal(clientState.buildingDefinitions.farm.name, '农田');
+  assert.equal(clientState.buildingDefinitions.farm.art, 'assets/art/building-farm-cutout.png');
 });
 
 test('伐木场与工匠会产出木材并计入离线收益', () => {

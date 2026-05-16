@@ -215,7 +215,7 @@ function renderGameState(gameState) {
   }
 
   // 更新时代
-  const eraNames = ['原始时代', '农耕时代', '青铜时代', '古典时代'];
+  const eraNames = ['原始时代', '农耕时代', '聚落时代', '城邦时代'];
   document.getElementById('era-display').textContent = eraNames[gameState.currentEra] || '未知时代';
 
   // 更新幸福度

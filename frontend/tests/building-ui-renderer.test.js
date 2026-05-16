@@ -51,6 +51,34 @@ test('木材成本会显示在建筑按钮文案中', () => {
   assert.equal(renderer.formatCost({ food: 50, wood: 15 }), '🌾 50 🪵 15');
 });
 
+test('优先使用服务端下发的建筑定义渲染卡片', () => {
+  const container = { innerHTML: '' };
+  const renderer = new BuildingUIRenderer(container, {
+    barracks: { id: 'barracks', name: '旧兵营', icon: 'X', ui: { effectText: [] } },
+  });
+
+  renderer.render({
+    unlockedBuildings: ['barracks'],
+    buildingDefinitions: {
+      barracks: {
+        id: 'barracks',
+        name: '兵营',
+        icon: '🛡️',
+        art: 'assets/art/building-barracks-cutout.png',
+        ui: { effectText: [{ field: 'defenseLevel', label: '防御等级', format: 'number' }] },
+      },
+    },
+    buildings: { barracks: null },
+    buildingCosts: { barracks: { food: 260, knowledge: 80 } },
+    buildingEffects: { byBuilding: { barracks: { defenseLevel: 0 } } },
+  }, { completed: true, currentStep: 15 });
+
+  assert.match(container.innerHTML, /兵营/);
+  assert.doesNotMatch(container.innerHTML, /旧兵营/);
+  assert.match(container.innerHTML, /assets\/art\/building-barracks-cutout\.png/);
+  assert.match(container.innerHTML, /🌾 260 📚 80/);
+});
+
 test('民居引导阶段只放行未建造的民居按钮，民居建成等待阶段恢复普通操作', () => {
   const container = { innerHTML: '' };
   const renderer = new BuildingUIRenderer(container, {

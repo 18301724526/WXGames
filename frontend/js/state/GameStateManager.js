@@ -17,6 +17,7 @@
       this.state.food = this.state.resources.food || 0;
       this.state.knowledge = this.state.resources.knowledge || 0;
       this.state.wood = this.state.resources.wood || 0;
+      this.state.softGuide = serverState.softGuide || null;
       this.state.workshopCount = global.FrontendBuildingState.getLevel(this.state.buildings, 'workshop');
       this.state.lumbermillCount = global.FrontendBuildingState.getLevel(this.state.buildings, 'lumbermill');
       this.state.population = {

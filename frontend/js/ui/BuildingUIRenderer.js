@@ -32,7 +32,7 @@
       }
 
       this.container.innerHTML = ids.map((id) => {
-        const config = this.buildingConfig[id];
+        const config = state.buildingDefinitions?.[id] || this.buildingConfig[id];
         if (!config) return '';
         const level = global.FrontendBuildingState.getLevel(state.buildings, id);
         const cost = state.buildingCosts && Object.prototype.hasOwnProperty.call(state.buildingCosts, id)

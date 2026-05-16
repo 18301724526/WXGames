@@ -84,7 +84,7 @@ getTooltipInfo(buildingId) {
   // ===== 私有辅助方法 =====
 
   getEraName(eraIndex) {
-    const names = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
+    const names = ['原始', '农耕', '聚落', '城邦', '古典', '中世纪', '帝国'];
     return names[eraIndex] || `时代${eraIndex}`;
   }
 }

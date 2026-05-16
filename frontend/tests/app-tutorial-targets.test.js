@@ -279,7 +279,7 @@ test('initial era advance also stays locked before the tutorial reaches the adva
     Game.tutorialController.state.currentStep = 2;
     Game.renderCivilization();
     assert.equal(elements.get('btnAdvanceEra').disabled, false);
-    assert.equal(elements.get('btnEraLabel').textContent, '进阶（消耗 80 🌾）');
+    assert.equal(elements.get('btnEraLabel').textContent, '满足条件，可进阶');
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

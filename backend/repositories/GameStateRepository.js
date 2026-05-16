@@ -30,6 +30,7 @@ class GameStateRepository {
         negativeStreak INTEGER,
         lastEventAt TEXT,
         tutorial TEXT,
+        softGuideState TEXT,
         updatedAt TEXT
       );
     `);
@@ -37,6 +38,9 @@ class GameStateRepository {
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
     if (!columns.some((column) => column.name === 'tutorial')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN tutorial TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'softGuideState')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN softGuideState TEXT').run();
     }
   }
 
@@ -61,6 +65,7 @@ class GameStateRepository {
       negativeStreak: row.negativeStreak || 0,
       lastEventAt: row.lastEventAt ? Number(row.lastEventAt) || 0 : 0,
       tutorial: row.tutorial ? JSON.parse(row.tutorial) : null,
+      softGuideState: row.softGuideState ? JSON.parse(row.softGuideState) : null,
       updatedAt: row.updatedAt,
     };
   }
@@ -79,8 +84,8 @@ class GameStateRepository {
       INSERT OR REPLACE INTO game_states (
         playerId, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
-        offlineEventLog, negativeStreak, lastEventAt, tutorial, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -99,6 +104,7 @@ class GameStateRepository {
       gameState.negativeStreak || 0,
       gameState.lastEventAt || 0,
       JSON.stringify(gameState.tutorial || {}),
+      JSON.stringify(gameState.softGuideState || {}),
       new Date().toISOString(),
     );
   }

@@ -6,10 +6,12 @@ const Game = {
     resources: {},
     buildings: {},
     buildingCosts: {},
+    buildingDefinitions: {},
     buildingEffects: {},
     unlockedBuildings: [],
     currentEra: 0,
     currentEraName: '原始时代',
+    currentEraDescription: '',
     population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
     happiness: 100,
     gameDay: 1,
@@ -19,6 +21,7 @@ const Game = {
     techs: {},
     eventQueue: [],
     eventHistory: [],
+    softGuide: null,
   },
   tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
   activeEventId: null,
@@ -30,7 +33,7 @@ const Game = {
     this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS);
     this.stateManager = new window.GameStateManager(this.state);
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
-    this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), window.GameConfig.BUILDINGS);
+    this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.tutorialRenderer = new window.TutorialUIRenderer();
     this.tutorialController = new window.TutorialController({
@@ -289,6 +292,7 @@ const Game = {
     if (key === 'card-house') return document.getElementById('card-house');
     if (key === 'event-card-special') return document.getElementById('event-card-special');
     if (key === 'card-lumbermill') return document.getElementById('card-lumbermill');
+    if (key === 'card-barracks') return document.getElementById('card-barracks');
     if (key === 'card-craftsman') return document.getElementById('craftsmanCard');
     return null;
   },
@@ -303,6 +307,7 @@ const Game = {
     this.renderCivilization();
     this.renderEvents();
     this.tutorialController.render();
+    this.renderSoftGuide();
   },
 
   renderResources() {
@@ -314,7 +319,7 @@ const Game = {
   },
 
   renderCivilization() {
-    const eraName = this.state.currentEraName || window.GameConfig.ERAS[this.state.currentEra] || '原始时代';
+    const eraName = this.state.currentEraName || '原始时代';
     this.setText('eraName', eraName);
     this.setText('civOverviewEraName', eraName);
     this.setText('civOverviewDay', `第 ${this.state.gameDay || 1} 天`);
@@ -327,7 +332,7 @@ const Game = {
     const bar = document.getElementById('eraProgress');
     if (bar) bar.style.width = `${progress.percentage || 0}%`;
     this.setText('eraProgressText', `总进度: ${progress.percentage || 0}%`);
-    const targetEraName = progress.targetEraName || '青铜时代';
+    const targetEraName = progress.targetEraName || '时代未开放';
     this.setText('eraTargetName', targetEraName);
     this.renderEraConditions(progress.conditions || []);
 
@@ -340,8 +345,25 @@ const Game = {
     }
     if (label) {
       if (progress.canAdvance && !canAdvanceByTutorial) label.textContent = '引导未解锁';
-      else if (this.state.currentEra === 0) label.textContent = '进阶（消耗 80 🌾）';
-      else label.textContent = progress.canAdvance ? '满足条件，可进阶' : '条件不足，无法进阶';
+      else if (progress.canAdvance) label.textContent = '满足条件，可进阶';
+      else label.textContent = '条件不足，无法进阶';
+    }
+
+    const features = typeof document.querySelector === 'function'
+      ? document.querySelector('.civ-features-list')
+      : null;
+    if (features) {
+      const description = this.state.currentEraDescription || `${eraName}：继续建设你的文明。`;
+      features.innerHTML = `<div class="civ-feature-item">${description}</div>`;
+    }
+  },
+
+  renderSoftGuide() {
+    const guide = this.state.softGuide;
+    if (!guide || !guide.message) return;
+    if (!this.tutorialController?.state?.completed && this.tutorialController?.state?.currentStep > 0) return;
+    if (this.tutorialRenderer && typeof this.tutorialRenderer.showSoft === 'function') {
+      this.tutorialRenderer.showSoft(guide.message);
     }
   },
 

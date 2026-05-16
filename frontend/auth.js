@@ -70,7 +70,7 @@ window.mountAuthMethods = function(game) {
         document.getElementById('app').style.display = 'block';
         // 注册时后端返回 gameState，直接同步
         if (data.gameState) {
-          this.syncFromServer(data.gameState, data.tutorial, data.eraProgress);
+          this.applyApiState(data);
         }
         this.startHeartbeat();
       } else {

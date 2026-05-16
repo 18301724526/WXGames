@@ -1,7 +1,7 @@
 const BuildingCalculator = require('./BuildingCalculator');
 const BuildingState = require('../domain/BuildingState');
 
-const ERA_NAMES = ['原始', '农耕', '青铜', '古典', '中世纪', '文艺复兴', '工业'];
+const ERA_NAMES = ['原始', '农耕', '聚落', '城邦', '古典', '中世纪', '帝国'];
 
 /**
  * 建筑校验器 - 负责所有建造前置条件校验
