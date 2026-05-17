@@ -93,12 +93,12 @@
         <div class="world-map-shell">
           <button class="world-reset" type="button" data-world-reset>回到本城</button>
           <div class="world-radar" data-world-radar aria-label="已知世界地图">
+            <span class="radar-bearing bearing-n">N</span>
+            <span class="radar-bearing bearing-e">E</span>
+            <span class="radar-bearing bearing-s">S</span>
+            <span class="radar-bearing bearing-w">W</span>
+            <span class="radar-sweep"></span>
             <div class="world-radar-pan" data-world-pan style="--world-pan-x:${panX}px;--world-pan-y:${panY}px">
-              <span class="radar-bearing bearing-n">N</span>
-              <span class="radar-bearing bearing-e">E</span>
-              <span class="radar-bearing bearing-s">S</span>
-              <span class="radar-bearing bearing-w">W</span>
-              <span class="radar-sweep"></span>
               <span class="radar-origin"></span>
               ${sites}
             </div>
