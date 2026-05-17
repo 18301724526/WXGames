@@ -303,6 +303,7 @@ const Game = {
     if (!this.canAdvanceEraNow()) {
       this.log(this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
       this.renderCivilization();
+      this.renderMilitary();
       return;
     }
     try {
@@ -315,6 +316,7 @@ const Game = {
       this.log(`❌ ${error.payload?.message || error.message}`);
     } finally {
       this.renderCivilization();
+      this.renderMilitary();
     }
   },
 
@@ -342,6 +344,7 @@ const Game = {
     if (key === 'tab-civilization') return document.getElementById('tabCivilization');
     if (key === 'tab-buildings') return document.getElementById('tabBuildings');
     if (key === 'tab-events') return document.getElementById('tabEvents');
+    if (key === 'tab-military') return document.getElementById('tabMilitary');
     if (key === 'btn-advance-era') return document.getElementById('btnAdvanceEra');
     if (key === 'btn-claim-event') return document.getElementById('btnClaimEvent');
     if (key === 'food-value') return document.getElementById('foodValue');
@@ -362,6 +365,7 @@ const Game = {
     }
     this.renderBuildings();
     this.renderCivilization();
+    this.renderMilitary();
     this.renderEvents();
     this.tutorialController.render();
     this.renderSoftGuide();
@@ -418,8 +422,6 @@ const Game = {
       else if (progress.canAdvance) label.textContent = '满足条件，可进阶';
       else label.textContent = '条件不足，无法进阶';
     }
-    this.renderMilitary();
-
     const features = typeof document.querySelector === 'function'
       ? document.querySelector('.civ-features-list')
       : null;
@@ -438,11 +440,6 @@ const Game = {
     const defense = Math.floor(military.defense || 0);
     const interval = Math.floor(military.trainingIntervalSeconds || 0);
     const progress = Math.floor(military.trainingProgress || 0);
-    const shouldShow = cap > 0 || soldiers > 0 || this.state.currentEra >= 3;
-    panel.hidden = !shouldShow;
-    if (panel.classList) panel.classList.toggle('is-hidden', !shouldShow);
-    if (!shouldShow) return;
-
     this.setText('soldierCount', `${soldiers}/${cap}`);
     this.setText('militaryDefense', defense);
 

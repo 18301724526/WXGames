@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=update-check-v1">
+    <link rel="stylesheet" href="style.css?v=military-tab-wood-icon-v1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -199,7 +199,14 @@
                     </button>
                 </section>
 
-                <section class="military-panel" id="militaryPanel" hidden>
+                <section class="civ-features-panel">
+                    <h2 class="panel-title">✨ 当前时代特性</h2>
+                    <div class="civ-features-list"><div class="civ-feature-item">原始时代：口耳相传，等待迈入农耕时代。</div></div>
+                </section>
+            </section>
+
+            <section class="page page-military" data-page="military">
+                <section class="military-panel" id="militaryPanel">
                     <h2 class="panel-title">🛡️ 军事</h2>
                     <div class="military-status">
                         <div class="military-unit-art"></div>
@@ -213,11 +220,6 @@
                         </div>
                     </div>
                 </section>
-
-                <section class="civ-features-panel">
-                    <h2 class="panel-title">✨ 当前时代特性</h2>
-                    <div class="civ-features-list"><div class="civ-feature-item">原始时代：口耳相传，等待迈入农耕时代。</div></div>
-                </section>
             </section>
         </div>
 
@@ -227,6 +229,7 @@
             <button class="tab-btn" id="tabTech" data-tab="tech"><span class="tab-icon">🔬</span><span class="tab-label">科技</span></button>
             <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span><span class="tab-badge" id="eventsBadge" hidden>1</span></button>
             <button class="tab-btn" id="tabCivilization" data-tab="civilization"><span class="tab-icon">🔥</span><span class="tab-label">文明</span></button>
+            <button class="tab-btn" id="tabMilitary" data-tab="military"><span class="tab-icon">🛡️</span><span class="tab-label">军事</span></button>
         </nav>
 
         <div class="modal-overlay" id="eventModal">
@@ -323,7 +326,7 @@
 
     <script src="floating-text.js?v=settlement-era2-fix2"></script>
     <script src="population.js?v=settlement-era2-fix2"></script>
-    <script src="js/config/GameConfig.js?v=update-check-v1"></script>
+    <script src="js/config/GameConfig.js?v=military-tab-wood-icon-v1"></script>
     <script src="js/domain/BuildingState.js?v=settlement-era2-fix2"></script>
     <script src="js/domain/GameState.js?v=military-v1"></script>
     <script src="js/state/GameStateManager.js?v=military-v1"></script>
@@ -338,7 +341,7 @@
     <script src="js/controllers/EventController.js?v=settlement-era2-fix2"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=update-check-v1"></script>
+    <script src="app.js?v=military-tab-wood-icon-v1"></script>
     <script src="auth.js?v=city-era-fix1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

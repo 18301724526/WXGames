@@ -12,6 +12,7 @@
       tech: 'tech',
       events: 'events',
       civilization: 'civilization',
+      military: 'military',
     },
   };
 

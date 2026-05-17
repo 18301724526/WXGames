@@ -55,6 +55,7 @@ test('app 会映射所有教程高亮目标，包括民居卡片', () => {
       'tab-civilization': 'tabCivilization',
       'tab-buildings': 'tabBuildings',
       'tab-events': 'tabEvents',
+      'tab-military': 'tabMilitary',
       'btn-advance-era': 'btnAdvanceEra',
       'btn-claim-event': 'btnClaimEvent',
       'food-value': 'foodValue',
@@ -354,7 +355,7 @@ test('syncFromServer locally promotes step8 to step9 when era2 resource requirem
   }
 });
 
-test('renderCivilization displays backend-provided military state', () => {
+test('renderMilitary displays backend-provided military state', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
@@ -421,7 +422,7 @@ test('renderCivilization displays backend-provided military state', () => {
       canOpenTab() { return true; },
     };
 
-    Game.renderCivilization();
+    Game.renderMilitary();
 
     assert.equal(elements.get('militaryPanel').hidden, false);
     assert.equal(elements.get('soldierCount').textContent, '2/5');
