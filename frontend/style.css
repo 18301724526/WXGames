@@ -1950,6 +1950,29 @@ body {
   border-radius: 10px;
 }
 
+.world-map-shell {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.world-reset {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(240, 180, 91, 0.3);
+  border-radius: 999px;
+  background: rgba(18, 16, 13, 0.74);
+  color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
 .world-radar {
   position: relative;
   width: min(100%, 430px);
@@ -1965,6 +1988,24 @@ body {
     linear-gradient(90deg, transparent calc(50% - 1px), rgba(240, 180, 91, 0.16) 50%, transparent calc(50% + 1px)),
     radial-gradient(circle at center, rgba(34, 46, 34, 0.78), rgba(14, 20, 17, 0.92));
   box-shadow: inset 0 0 42px rgba(0, 0, 0, 0.42), 0 16px 30px rgba(0, 0, 0, 0.24);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.world-radar.is-dragging {
+  cursor: grabbing;
+}
+
+.world-radar-pan {
+  position: absolute;
+  inset: 0;
+  transform: translate(var(--world-pan-x), var(--world-pan-y));
+  transition: transform 0.12s ease-out;
+}
+
+.world-radar.is-dragging .world-radar-pan {
+  transition: none;
 }
 
 .world-radar::before {
@@ -2041,6 +2082,7 @@ body {
   padding: 0;
   cursor: pointer;
   transform: translate(-50%, -50%);
+  touch-action: manipulation;
 }
 
 .world-site-pulse {
@@ -2107,14 +2149,36 @@ body {
   margin-top: 4px;
 }
 
-.territory-card {
+.world-site-modal-content {
+  max-width: 380px;
+  text-align: left;
+}
+
+.world-site-modal-content h3 {
+  padding-right: 30px;
+}
+
+.world-site-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.world-site-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.world-detail-head {
   display: grid;
   grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-card);
+}
+
+.world-detail-title {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .territory-art-wrap {

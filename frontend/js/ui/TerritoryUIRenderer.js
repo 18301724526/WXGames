@@ -73,6 +73,8 @@
     }
 
     renderMap(territories) {
+      const panX = Number(this.container?.dataset.worldPanX || 0);
+      const panY = Number(this.container?.dataset.worldPanY || 0);
       const maxDistance = Math.max(
         1,
         ...territories.map((site) => Math.hypot(Number(site.x || 0), Number(site.y || 0))),
@@ -88,40 +90,59 @@
         `;
       }).join('');
       return `
-        <div class="world-radar" aria-label="已知世界地图">
-          <span class="radar-bearing bearing-n">N</span>
-          <span class="radar-bearing bearing-e">E</span>
-          <span class="radar-bearing bearing-s">S</span>
-          <span class="radar-bearing bearing-w">W</span>
-          <span class="radar-sweep"></span>
-          <span class="radar-origin"></span>
-          ${sites}
+        <div class="world-map-shell">
+          <button class="world-reset" type="button" data-world-reset>回到本城</button>
+          <div class="world-radar" data-world-radar aria-label="已知世界地图">
+            <div class="world-radar-pan" data-world-pan style="--world-pan-x:${panX}px;--world-pan-y:${panY}px">
+              <span class="radar-bearing bearing-n">N</span>
+              <span class="radar-bearing bearing-e">E</span>
+              <span class="radar-bearing bearing-s">S</span>
+              <span class="radar-bearing bearing-w">W</span>
+              <span class="radar-sweep"></span>
+              <span class="radar-origin"></span>
+              ${sites}
+            </div>
+          </div>
         </div>
       `;
     }
 
-    renderSiteCard(site, state) {
-      return `
-        <div class="territory-card territory-${this.escapeHtml(site.status)}" data-territory-id="${this.escapeHtml(site.id)}">
-          <div class="territory-art-wrap">
-            <img class="territory-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
+    renderSiteDialog(territories, state) {
+      const sites = territories.map((site) => `
+        <article class="world-site-detail" data-site-detail="${this.escapeHtml(site.id)}" hidden>
+          <div class="world-detail-head">
+            <div class="territory-art-wrap">
+              <img class="territory-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
+            </div>
+            <div class="world-detail-title">
+              <div class="territory-topline">
+                <span class="territory-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
+                <span class="territory-status">${this.escapeHtml(this.formatStatus(site))}</span>
+              </div>
+              <div class="territory-natural">${this.escapeHtml(this.formatOwner(site))} · 坐标 ${site.x},${site.y} · 距离 ${site.distance || 0}</div>
+            </div>
           </div>
-          <div class="territory-body">
-            <div class="territory-topline">
-              <span class="territory-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
-              <span class="territory-status">${this.escapeHtml(this.formatStatus(site))}</span>
+          <div class="territory-meta">
+            <span>类型 ${this.escapeHtml(site.type || '未知')}</span>
+            <span>规模 ${site.scale || 1}</span>
+            <span>威胁 ${site.threat || 0}</span>
+            <span>防御 ${site.defense || 0}</span>
+            <span>建议 ${site.recommendedSoldiers || 0} 士兵</span>
+          </div>
+          <div class="territory-effect">${this.escapeHtml(this.formatEffect(site.effects))}</div>
+          ${site.summary ? `<div class="territory-battle">${this.escapeHtml(site.summary)}</div>` : ''}
+          ${site.lastBattle ? `<div class="territory-battle">${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵</div>` : ''}
+          ${this.getAction(site, state)}
+        </article>
+      `).join('');
+      return `
+        <div class="modal-overlay" id="worldSiteModal" data-world-site-modal>
+          <div class="modal-content world-site-modal-content" role="dialog" aria-modal="true" aria-labelledby="worldSiteTitle">
+            <button class="modal-close" type="button" data-world-site-close aria-label="关闭">✕</button>
+            <h3 id="worldSiteTitle">地点详情</h3>
+            <div class="world-site-detail-list">
+              ${sites}
             </div>
-            <div class="territory-natural">${this.escapeHtml(this.formatOwner(site))} · 坐标 ${site.x},${site.y} · 距离 ${site.distance || 0}</div>
-            <div class="territory-meta">
-              <span>规模 ${site.scale || 1}</span>
-              <span>威胁 ${site.threat || 0}</span>
-              <span>防御 ${site.defense || 0}</span>
-              <span>建议 ${site.recommendedSoldiers || 0} 士兵</span>
-            </div>
-            <div class="territory-effect">${this.escapeHtml(this.formatEffect(site.effects))}</div>
-            ${site.summary ? `<div class="territory-battle">${this.escapeHtml(site.summary)}</div>` : ''}
-            ${site.lastBattle ? `<div class="territory-battle">${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵</div>` : ''}
-            ${this.getAction(site, state)}
           </div>
         </div>
       `;
@@ -149,10 +170,7 @@
       const territories = territoryState.territories || [];
       this.container.innerHTML = `
         ${this.renderMap(territories)}
-        <div class="territory-section-title">已知地点</div>
-        <div class="territory-site-list">
-          ${territories.map((site) => this.renderSiteCard(site, territoryState)).join('')}
-        </div>
+        ${this.renderSiteDialog(territories, territoryState)}
         <div class="territory-section-title">侦察报告</div>
         <div class="scout-report-list">${this.renderReports(territoryState.scoutReports || [])}</div>
       `;

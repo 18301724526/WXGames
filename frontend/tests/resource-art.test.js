@@ -72,8 +72,17 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /id="scoutDirectionGrid"/);
   assert.match(css, /\.scout-compass/);
   assert.match(css, /\.world-radar/);
+  assert.match(css, /\.world-radar-pan/);
+  assert.match(css, /\.world-reset/);
+  assert.match(css, /\.world-site-modal-content/);
   assert.match(renderer, /class="world-radar"/);
+  assert.match(renderer, /data-world-pan/);
+  assert.match(renderer, /data-world-reset/);
+  assert.match(renderer, /data-world-site-modal/);
+  assert.match(renderer, /data-site-detail/);
+  assert.doesNotMatch(renderer, /territory-site-list/);
   assert.doesNotMatch(renderer, /world-cell-unknown/);
+  assert.match(html, /TerritoryController\.js\?v=world-map-dialog-v1/);
   assert.match(renderer, /scoutReports/);
   assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
 });

@@ -8,18 +8,36 @@
       this.onStateApplied = options.onStateApplied || (() => {});
       this.onFloatingText = options.onFloatingText || (() => {});
       this.onLog = options.onLog || (() => {});
+      this.dragState = null;
     }
 
     bind() {
       if (this.container && this.container.dataset.bound !== 'true') {
         this.container.dataset.bound = 'true';
         this.container.addEventListener('click', (event) => {
+          const siteButton = event.target.closest('[data-site-id]');
+          if (siteButton) {
+            this.openSiteDialog(siteButton.dataset.siteId);
+            return;
+          }
+          if (event.target.closest('[data-world-site-close]') || event.target.matches('[data-world-site-modal]')) {
+            this.closeSiteDialog();
+            return;
+          }
+          if (event.target.closest('[data-world-reset]')) {
+            this.resetWorldPan();
+            return;
+          }
           const button = event.target.closest('[data-territory-action]');
           if (!button || button.disabled) return;
           this.handleAction(button).catch((error) => {
             this.onLog(`❌ ${error.payload?.message || error.message}`);
           });
         });
+        this.container.addEventListener('pointerdown', (event) => this.startWorldDrag(event));
+        this.container.addEventListener('pointermove', (event) => this.moveWorldDrag(event));
+        this.container.addEventListener('pointerup', (event) => this.endWorldDrag(event));
+        this.container.addEventListener('pointercancel', (event) => this.endWorldDrag(event));
       }
       if (this.scoutContainer && this.scoutContainer.dataset.bound !== 'true') {
         this.scoutContainer.dataset.bound = 'true';
@@ -31,6 +49,77 @@
           });
         });
       }
+    }
+
+    getWorldPan() {
+      return {
+        x: Number(this.container?.dataset.worldPanX || 0),
+        y: Number(this.container?.dataset.worldPanY || 0),
+      };
+    }
+
+    setWorldPan(x, y) {
+      if (!this.container) return;
+      const clamp = (value) => Math.max(-160, Math.min(160, value));
+      const nextX = clamp(Number(x) || 0);
+      const nextY = clamp(Number(y) || 0);
+      this.container.dataset.worldPanX = String(nextX);
+      this.container.dataset.worldPanY = String(nextY);
+      const pan = this.container.querySelector('[data-world-pan]');
+      if (pan) {
+        pan.style.setProperty('--world-pan-x', `${nextX}px`);
+        pan.style.setProperty('--world-pan-y', `${nextY}px`);
+      }
+    }
+
+    resetWorldPan() {
+      this.setWorldPan(0, 0);
+    }
+
+    startWorldDrag(event) {
+      const radar = event.target.closest('[data-world-radar]');
+      if (!radar || event.target.closest('button')) return;
+      const current = this.getWorldPan();
+      this.dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        panX: current.x,
+        panY: current.y,
+      };
+      radar.setPointerCapture?.(event.pointerId);
+      radar.classList.add('is-dragging');
+    }
+
+    moveWorldDrag(event) {
+      if (!this.dragState || this.dragState.pointerId !== event.pointerId) return;
+      this.setWorldPan(
+        this.dragState.panX + event.clientX - this.dragState.startX,
+        this.dragState.panY + event.clientY - this.dragState.startY,
+      );
+    }
+
+    endWorldDrag(event) {
+      if (!this.dragState || this.dragState.pointerId !== event.pointerId) return;
+      const radar = event.target.closest('[data-world-radar]') || this.container.querySelector('[data-world-radar]');
+      radar?.releasePointerCapture?.(event.pointerId);
+      radar?.classList.remove('is-dragging');
+      this.dragState = null;
+    }
+
+    openSiteDialog(siteId) {
+      const modal = this.container?.querySelector('[data-world-site-modal]');
+      if (!modal) return;
+      modal.querySelectorAll('[data-site-detail]').forEach((detail) => {
+        detail.hidden = detail.dataset.siteDetail !== siteId;
+      });
+      modal.classList.add('show');
+    }
+
+    closeSiteDialog() {
+      const modal = this.container?.querySelector('[data-world-site-modal]');
+      if (!modal) return;
+      modal.classList.remove('show');
     }
 
     async runButton(button, callback) {
