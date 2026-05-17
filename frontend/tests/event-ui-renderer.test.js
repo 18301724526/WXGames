@@ -12,13 +12,24 @@ function createClassList() {
   };
 }
 
+function createButtonStub(dataset = {}) {
+  return {
+    _dataset: dataset,
+    textContent: '',
+    hidden: false,
+    get dataset() {
+      return this._dataset;
+    },
+  };
+}
+
 test('事件弹窗会渲染后端下发的多个选项', () => {
   const originalDocument = global.document;
   try {
     const elements = new Map([
       ['eventModal', { classList: createClassList() }],
       ['eventModalOptions', { innerHTML: '' }],
-      ['btnClaimEvent', { dataset: {}, textContent: '', hidden: false }],
+      ['btnClaimEvent', createButtonStub()],
     ]);
     global.document = {
       getElementById(id) {
@@ -54,7 +65,7 @@ test('单选项事件保留主领取按钮用于教程高亮', () => {
     const elements = new Map([
       ['eventModal', { classList: createClassList() }],
       ['eventModalOptions', { innerHTML: '' }],
-      ['btnClaimEvent', { dataset: {}, textContent: '', hidden: true }],
+      ['btnClaimEvent', createButtonStub()],
     ]);
     global.document = {
       getElementById(id) {
@@ -90,7 +101,7 @@ test('威胁事件卡片会带 threat 样式并显示后端预览', () => {
       ['eventHistoryList', { innerHTML: '' }],
       ['eventModal', { classList: createClassList() }],
       ['eventModalOptions', { innerHTML: '' }],
-      ['btnClaimEvent', { dataset: {}, textContent: '', hidden: false }],
+      ['btnClaimEvent', createButtonStub()],
     ]);
     global.document = {
       getElementById(id) {

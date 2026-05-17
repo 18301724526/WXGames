@@ -86,8 +86,8 @@
 
       if (claimButton) {
         const firstOption = options[0];
-        claimButton.dataset = claimButton.dataset || {};
-        claimButton.dataset.optionId = firstOption?.id || '';
+        if (claimButton.dataset) claimButton.dataset.optionId = firstOption?.id || '';
+        else if (claimButton.setAttribute) claimButton.setAttribute('data-option-id', firstOption?.id || '');
         claimButton.textContent = firstOption?.label || '处理事件';
         claimButton.hidden = options.length !== 1;
       }
