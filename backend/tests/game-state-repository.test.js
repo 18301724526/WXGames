@@ -155,7 +155,8 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
     military: {},
     polity: { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' },
     territories: [{ id: 'capital', cityName: '火种城', status: 'occupied' }],
-    warMissions: [{ id: 'mission-x', territoryId: 'river_plain', soldiersCommitted: 4, status: 'active' }],
+    warMissions: [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }],
+    scoutReports: [{ id: 'report-x', siteId: 'site_1_0', title: '东方报告', text: '发现村镇', direction: 'e' }],
   });
 
   const result = repository.findByPlayerId('player-events');
@@ -184,7 +185,8 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
   ]);
   assert.deepEqual(result.polity, { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' });
   assert.deepEqual(result.territories, [{ id: 'capital', cityName: '火种城', status: 'occupied' }]);
-  assert.deepEqual(result.warMissions, [{ id: 'mission-x', territoryId: 'river_plain', soldiersCommitted: 4, status: 'active' }]);
+  assert.deepEqual(result.warMissions, [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }]);
+  assert.deepEqual(result.scoutReports, [{ id: 'report-x', siteId: 'site_1_0', title: '东方报告', text: '发现村镇', direction: 'e' }]);
 
   db.close();
 });

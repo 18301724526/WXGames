@@ -47,3 +47,25 @@ test('military has its own tab and page outside the civilization page', () => {
   assert.match(html, /class="page page-military" data-page="military"/);
   assert.equal(html.slice(civStart, militaryStart).includes('id="militaryPanel"'), false);
 });
+
+test('world scouting uses dedicated site icons and military scout controls', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
+  const renderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'TerritoryUIRenderer.js'), 'utf8');
+  const assets = [
+    'world-site-outpost-cutout.png',
+    'world-site-town-cutout.png',
+    'world-site-city-cutout.png',
+    'world-site-camp-cutout.png',
+    'world-site-ruins-cutout.png',
+  ];
+
+  for (const asset of assets) {
+    assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
+  }
+  assert.match(html, /id="scoutDirectionGrid"/);
+  assert.match(css, /#tabTerritory \.tab-icon \{ background-image: url\('assets\/art\/world-site-town-cutout\.png'\); \}/);
+  assert.match(renderer, /class="world-map"/);
+  assert.match(renderer, /scoutReports/);
+  assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
+});

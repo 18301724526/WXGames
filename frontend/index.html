@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=border-era-v1">
+    <link rel="stylesheet" href="style.css?v=world-scout-v1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -225,6 +225,11 @@
                     <div class="military-row"><span>可用士兵</span><strong id="availableSoldierCount">0</strong></div>
                     <div class="military-row"><span>出征中</span><strong id="soldiersOnMission">0</strong></div>
                 </section>
+                <section class="military-panel scout-panel">
+                    <h2 class="panel-title">🧭 侦察</h2>
+                    <div class="scout-status" id="scoutStatus">进入古典时代后可派出侦察队。</div>
+                    <div class="scout-direction-grid" id="scoutDirectionGrid"></div>
+                </section>
             </section>
 
             <section class="page page-territory" data-page="territory">
@@ -359,22 +364,22 @@
     <script src="population.js?v=settlement-era2-fix2"></script>
     <script src="js/config/GameConfig.js?v=military-tab-wood-icon-v1"></script>
     <script src="js/domain/BuildingState.js?v=settlement-era2-fix2"></script>
-    <script src="js/domain/GameState.js?v=classical-territory-v1"></script>
-    <script src="js/state/GameStateManager.js?v=classical-territory-v1"></script>
-    <script src="js/api/GameAPI.js?v=classical-territory-v1"></script>
+    <script src="js/domain/GameState.js?v=world-scout-v1"></script>
+    <script src="js/state/GameStateManager.js?v=world-scout-v1"></script>
+    <script src="js/api/GameAPI.js?v=world-scout-v1"></script>
     <script src="js/services/GameStateSync.js?v=settlement-era2-fix3"></script>
     <script src="js/services/UpdateChecker.js?v=update-check-v1"></script>
     <script src="js/ui/ResourceRenderer.js?v=resource-topbar-fix1"></script>
     <script src="js/ui/BuildingUIRenderer.js?v=border-era-v1"></script>
     <script src="js/ui/EventUIRenderer.js?v=threat-events-v1"></script>
-    <script src="js/ui/TerritoryUIRenderer.js?v=classical-territory-v1"></script>
+    <script src="js/ui/TerritoryUIRenderer.js?v=world-scout-v1"></script>
     <script src="js/ui/TutorialUIRenderer.js?v=settlement-era2-fix4"></script>
     <script src="js/controllers/BuildingController.js?v=settlement-era2-fix2"></script>
     <script src="js/controllers/EventController.js?v=regular-events-v1"></script>
-    <script src="js/controllers/TerritoryController.js?v=classical-territory-v1"></script>
+    <script src="js/controllers/TerritoryController.js?v=world-scout-v1"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=classical-territory-v1"></script>
+    <script src="app.js?v=world-scout-v1"></script>
     <script src="auth.js?v=city-era-fix1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

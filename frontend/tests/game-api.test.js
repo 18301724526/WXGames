@@ -27,3 +27,31 @@ test('getVersion requests the public version endpoint', async () => {
     global.fetch = originalFetch;
   }
 });
+
+test('scoutTerritory posts a direction and claimScout posts a mission id', async () => {
+  const originalFetch = global.fetch;
+  try {
+    const requests = [];
+    global.fetch = async (url, options) => {
+      requests.push({ url, options, body: JSON.parse(options.body) });
+      return {
+        ok: true,
+        async json() {
+          return { success: true };
+        },
+      };
+    };
+
+    const api = new GameAPI('/api', 'token-x');
+    await api.scoutTerritory('ne');
+    await api.claimScout('scout-ne-1');
+
+    assert.deepEqual(requests.map((item) => item.body), [
+      { action: 'scoutTerritory', direction: 'ne' },
+      { action: 'claimScout', missionId: 'scout-ne-1' },
+    ]);
+    assert.equal(requests[0].options.headers.Authorization, 'Bearer token-x');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});

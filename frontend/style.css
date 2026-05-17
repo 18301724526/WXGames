@@ -213,7 +213,7 @@ body {
 #tabEvents .tab-icon { background-image: url('assets/art/icon-event-cutout.webp'); }
 #tabCivilization .tab-icon { background-image: url('assets/art/icon-fire-cutout.webp'); }
 #tabMilitary .tab-icon { background-image: url('assets/art/icon-soldier-cutout.webp'); }
-#tabTerritory .tab-icon { background-image: url('assets/art/territory-plains-cutout.png'); }
+#tabTerritory .tab-icon { background-image: url('assets/art/world-site-town-cutout.png'); }
 
 .tab-btn:active {
     opacity: 0.7;
@@ -1895,7 +1895,9 @@ body {
   font-size: 12px;
 }
 
-.territory-grid {
+.territory-grid,
+.territory-site-list,
+.scout-report-list {
   display: grid;
   gap: 10px;
 }
@@ -1906,9 +1908,90 @@ body {
   text-align: center;
 }
 
+.territory-empty.compact {
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+.world-map {
+  --cell-size: clamp(54px, 15vw, 82px);
+  display: grid;
+  grid-template-columns: repeat(var(--world-cols), var(--cell-size));
+  grid-auto-rows: var(--cell-size);
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid rgba(240, 180, 91, 0.2);
+  border-radius: 12px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(240, 180, 91, 0.1), rgba(0, 0, 0, 0.12));
+  background-size: var(--cell-size) var(--cell-size), var(--cell-size) var(--cell-size), 100% 100%;
+}
+
+.world-cell {
+  min-width: 0;
+  border-radius: 10px;
+}
+
+.world-cell-unknown {
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.world-site {
+  position: relative;
+  border: 1px solid rgba(240, 180, 91, 0.28);
+  background: rgba(19, 17, 14, 0.7);
+  padding: 2px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.world-site.owner-player {
+  box-shadow: 0 0 0 2px rgba(217, 164, 65, 0.32), 0 0 18px rgba(217, 164, 65, 0.3);
+}
+
+.world-site.owner-tribe {
+  box-shadow: 0 0 0 2px rgba(185, 88, 58, 0.28);
+}
+
+.world-site img {
+  width: 100%;
+  height: 76%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.36));
+}
+
+.world-site-name {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 3px;
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.territory-section-title {
+  color: var(--accent-light);
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
 .territory-card {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: 82px minmax(0, 1fr);
   gap: 10px;
   padding: 10px;
   border: 1px solid var(--border);
@@ -1916,21 +1999,17 @@ body {
   background: var(--bg-card);
 }
 
-.territory-card.territory-locked {
-  opacity: 0.58;
-}
-
 .territory-art-wrap {
-  width: 88px;
-  height: 88px;
+  width: 82px;
+  height: 82px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .territory-art {
-  max-width: 92px;
-  max-height: 92px;
+  max-width: 88px;
+  max-height: 88px;
   object-fit: contain;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.32));
 }
@@ -1998,6 +2077,67 @@ body {
 .btn-territory:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.scout-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.scout-status {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.scout-direction-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.btn-scout {
+  min-height: 46px;
+  border: 1px solid rgba(240, 180, 91, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-scout span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.btn-scout:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.scout-report {
+  padding: 10px;
+  border: 1px solid rgba(240, 180, 91, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.scout-report-title {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.scout-report-text {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .naming-modal-content {

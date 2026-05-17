@@ -2,7 +2,10 @@ const TerritoryService = require('../services/TerritoryService');
 
 function execute(action, gameState, payload = {}) {
   if (action === 'scoutTerritory') {
-    return TerritoryService.scoutTerritory(gameState, payload.territoryId);
+    return TerritoryService.scoutTerritory(gameState, payload.direction || payload.territoryId);
+  }
+  if (action === 'claimScout') {
+    return TerritoryService.claimScout(gameState, payload.missionId);
   }
   if (action === 'startConquest') {
     return TerritoryService.startConquest(gameState, payload.territoryId, payload.soldiers);

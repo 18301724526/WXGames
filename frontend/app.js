@@ -73,6 +73,7 @@ const Game = {
     });
     this.territoryController = new window.TerritoryController({
       container: document.getElementById('territoryGrid'),
+      scoutContainer: document.getElementById('scoutDirectionGrid'),
       api: this.gameAPI,
       getState: () => this.state,
       onStateApplied: (result) => this.applyApiState(result),
@@ -481,6 +482,7 @@ const Game = {
     this.setText('militaryDefense', defense);
     this.setText('availableSoldierCount', Math.floor(this.state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers));
     this.setText('soldiersOnMission', Math.floor(this.state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0));
+    this.renderScoutControls();
 
     const progressBar = document.getElementById('soldierTrainingProgress');
     if (soldiers >= cap && cap > 0) {
@@ -503,8 +505,34 @@ const Game = {
     const territoryState = this.state.territoryState || {};
     const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
     this.setText('territoryPolityName', polityName);
-    this.setText('territoryCount', `${territoryState.occupiedCount || 0} 领土`);
+    this.setText('territoryCount', `${territoryState.occupiedCount || 0}/${territoryState.discoveredCount || 0} 已控制`);
     if (this.territoryRenderer) this.territoryRenderer.render(this.state);
+  },
+
+  renderScoutControls() {
+    const container = document.getElementById('scoutDirectionGrid');
+    if (!container) return;
+    const territoryState = this.state.territoryState || {};
+    if ((this.state.currentEra || 0) < 5) {
+      this.setText('scoutStatus', '进入古典时代后可派出侦察队。');
+      container.innerHTML = '';
+      return;
+    }
+    const directions = territoryState.directions || [];
+    const scoutMissions = territoryState.scoutMissions || [];
+    const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
+    const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
+    this.setText('scoutStatus', readyCount > 0 ? `${readyCount} 支侦察队已返回` : '选择方向，派出侦察队探索城市之外的世界。');
+    container.innerHTML = directions.map((direction) => {
+      const mission = activeByDirection.get(direction.id);
+      if (mission?.status === 'ready') {
+        return `<button class="btn-scout direction-${direction.id}" data-scout-claim="${mission.id}">${direction.label}<span>领取报告</span></button>`;
+      }
+      if (mission) {
+        return `<button class="btn-scout direction-${direction.id}" disabled>${direction.label}<span>侦察中</span></button>`;
+      }
+      return `<button class="btn-scout direction-${direction.id}" data-scout-direction="${direction.id}">${direction.label}<span>派出</span></button>`;
+    }).join('');
   },
 
   maybeShowNamingPrompt() {

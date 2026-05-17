@@ -32,7 +32,8 @@
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
-    scoutTerritory(territoryId) { return this.request('POST', '/game/action', { action: 'scoutTerritory', territoryId }); }
+    scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
+    claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }
     startConquest(territoryId, soldiers) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, soldiers }); }
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
     renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }

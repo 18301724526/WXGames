@@ -38,6 +38,7 @@ class GameStateRepository {
         polity TEXT,
         territories TEXT,
         warMissions TEXT,
+        scoutReports TEXT,
         updatedAt TEXT
       );
     `);
@@ -70,6 +71,9 @@ class GameStateRepository {
     if (!columns.some((column) => column.name === 'warMissions')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN warMissions TEXT').run();
     }
+    if (!columns.some((column) => column.name === 'scoutReports')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutReports TEXT').run();
+    }
   }
 
   findByPlayerId(playerId) {
@@ -101,6 +105,7 @@ class GameStateRepository {
       polity: row.polity ? JSON.parse(row.polity) : null,
       territories: row.territories ? JSON.parse(row.territories) : null,
       warMissions: row.warMissions ? JSON.parse(row.warMissions) : null,
+      scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
       updatedAt: row.updatedAt,
     };
   }
@@ -120,8 +125,8 @@ class GameStateRepository {
         playerId, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, military,
-        regularEventState, threatEventState, activeBuffs, polity, territories, warMissions, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        regularEventState, threatEventState, activeBuffs, polity, territories, warMissions, scoutReports, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -148,6 +153,7 @@ class GameStateRepository {
       JSON.stringify(gameState.polity || {}),
       JSON.stringify(gameState.territories || []),
       JSON.stringify(gameState.warMissions || []),
+      JSON.stringify(gameState.scoutReports || []),
       new Date().toISOString(),
     );
   }

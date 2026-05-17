@@ -23,68 +23,143 @@
       return parts.join('，') || '无';
     }
 
-    formatStatus(territory) {
+    formatStatus(site) {
       const labels = {
-        locked: '未发现',
-        scoutable: '可侦察',
-        scouted: '可占领',
+        discovered: '已发现',
         contested: '出征中',
-        occupied: '已占领',
+        occupied: '已控制',
       };
-      return labels[territory.status] || territory.status;
+      return labels[site.status] || site.status;
     }
 
-    getAction(territory, state) {
-      const mission = territory.mission;
-      if (territory.status === 'scoutable') {
-        return `<button class="btn-territory" data-territory-action="scout" data-territory-id="${territory.id}">侦察</button>`;
-      }
-      if (territory.status === 'scouted') {
-        const soldiers = territory.recommendedSoldiers || territory.defense || 1;
+    formatOwner(site) {
+      const labels = {
+        player: '我方',
+        neutral: '中立',
+        tribe: '部落',
+      };
+      return labels[site.owner] || site.owner || '未知';
+    }
+
+    getAction(site, state) {
+      const mission = site.mission;
+      if (site.status === 'discovered') {
+        const soldiers = site.recommendedSoldiers || site.defense || 1;
         const disabled = (state.availableSoldiers || 0) < soldiers;
-        return `<button class="btn-territory" data-territory-action="conquer" data-territory-id="${territory.id}" data-soldiers="${soldiers}" ${disabled ? 'disabled' : ''}>派 ${soldiers} 士兵占领</button>`;
+        return `<button class="btn-territory" data-territory-action="conquer" data-territory-id="${this.escapeHtml(site.id)}" data-soldiers="${soldiers}" ${disabled ? 'disabled' : ''}>派 ${soldiers} 士兵占领</button>`;
       }
-      if (territory.status === 'contested' && mission?.status === 'ready') {
-        return `<button class="btn-territory" data-territory-action="claim" data-territory-id="${territory.id}">完成占领</button>`;
+      if (site.status === 'contested' && mission?.status === 'ready') {
+        return `<button class="btn-territory" data-territory-action="claim" data-territory-id="${this.escapeHtml(site.id)}">完成占领</button>`;
       }
-      if (territory.status === 'contested') {
-        return `<button class="btn-territory" disabled>行军中</button>`;
+      if (site.status === 'contested') {
+        return '<button class="btn-territory" disabled>行军中</button>';
       }
-      if (territory.status === 'occupied') {
-        return `<button class="btn-territory secondary" data-territory-action="rename-city" data-territory-id="${territory.id}">改名</button>`;
+      if (site.status === 'occupied') {
+        return `<button class="btn-territory secondary" data-territory-action="rename-city" data-territory-id="${this.escapeHtml(site.id)}">改名</button>`;
       }
-      return '<button class="btn-territory" disabled>未发现</button>';
+      return '<button class="btn-territory" disabled>等待侦察</button>';
+    }
+
+    getBounds(territories) {
+      const xs = territories.map((site) => site.x || 0);
+      const ys = territories.map((site) => site.y || 0);
+      return {
+        minX: Math.min(0, ...xs),
+        maxX: Math.max(0, ...xs),
+        minY: Math.min(0, ...ys),
+        maxY: Math.max(0, ...ys),
+      };
+    }
+
+    renderMap(territories) {
+      const bounds = this.getBounds(territories);
+      const padding = 1;
+      const minX = bounds.minX - padding;
+      const maxX = bounds.maxX + padding;
+      const minY = bounds.minY - padding;
+      const maxY = bounds.maxY + padding;
+      const columns = maxX - minX + 1;
+      const rows = maxY - minY + 1;
+      const byCoordinate = new Map(territories.map((site) => [`${site.x},${site.y}`, site]));
+      const cells = [];
+      for (let y = minY; y <= maxY; y += 1) {
+        for (let x = minX; x <= maxX; x += 1) {
+          const site = byCoordinate.get(`${x},${y}`);
+          if (!site) {
+            cells.push('<div class="world-cell world-cell-unknown"></div>');
+            continue;
+          }
+          cells.push(`
+            <button class="world-cell world-site world-site-${this.escapeHtml(site.status)} owner-${this.escapeHtml(site.owner)}" type="button" data-site-id="${this.escapeHtml(site.id)}" title="${this.escapeHtml(site.naturalName)}">
+              <img src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}">
+              <span class="world-site-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
+            </button>
+          `);
+        }
+      }
+      return `
+        <div class="world-map" style="--world-cols:${columns};--world-rows:${rows}">
+          ${cells.join('')}
+        </div>
+      `;
+    }
+
+    renderSiteCard(site, state) {
+      return `
+        <div class="territory-card territory-${this.escapeHtml(site.status)}" data-territory-id="${this.escapeHtml(site.id)}">
+          <div class="territory-art-wrap">
+            <img class="territory-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
+          </div>
+          <div class="territory-body">
+            <div class="territory-topline">
+              <span class="territory-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
+              <span class="territory-status">${this.escapeHtml(this.formatStatus(site))}</span>
+            </div>
+            <div class="territory-natural">${this.escapeHtml(this.formatOwner(site))} · 坐标 ${site.x},${site.y} · 距离 ${site.distance || 0}</div>
+            <div class="territory-meta">
+              <span>规模 ${site.scale || 1}</span>
+              <span>威胁 ${site.threat || 0}</span>
+              <span>防御 ${site.defense || 0}</span>
+              <span>建议 ${site.recommendedSoldiers || 0} 士兵</span>
+            </div>
+            <div class="territory-effect">${this.escapeHtml(this.formatEffect(site.effects))}</div>
+            ${site.summary ? `<div class="territory-battle">${this.escapeHtml(site.summary)}</div>` : ''}
+            ${site.lastBattle ? `<div class="territory-battle">${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵</div>` : ''}
+            ${this.getAction(site, state)}
+          </div>
+        </div>
+      `;
+    }
+
+    renderReports(reports = []) {
+      if (!reports.length) {
+        return '<div class="territory-empty compact">暂无侦察报告。派出侦察队后，外部世界会从这里开始显现。</div>';
+      }
+      return reports.slice().reverse().map((report) => `
+        <article class="scout-report">
+          <div class="scout-report-title">${this.escapeHtml(report.title)}</div>
+          <div class="scout-report-text">${this.escapeHtml(report.text)}</div>
+        </article>
+      `).join('');
     }
 
     render(state) {
       if (!this.container) return;
       if ((state.currentEra || 0) < 5) {
-        this.container.innerHTML = '<div class="territory-empty">进入古典时代后，疆域扩张将在这里展开。</div>';
+        this.container.innerHTML = '<div class="territory-empty">进入古典时代后，外部世界将在这里逐步显现。</div>';
         return;
       }
       const territoryState = state.territoryState || {};
       const territories = territoryState.territories || [];
-      this.container.innerHTML = territories.map((territory) => `
-        <div class="territory-card territory-${this.escapeHtml(territory.status)}" data-territory-id="${this.escapeHtml(territory.id)}">
-          <div class="territory-art-wrap">
-            <img class="territory-art" src="${this.escapeHtml(territory.art)}" alt="${this.escapeHtml(territory.naturalName)}" loading="lazy">
-          </div>
-          <div class="territory-body">
-            <div class="territory-topline">
-              <span class="territory-name">${this.escapeHtml(territory.cityName || territory.naturalName)}</span>
-              <span class="territory-status">${this.escapeHtml(this.formatStatus(territory))}</span>
-            </div>
-            <div class="territory-natural">${this.escapeHtml(territory.naturalName)}</div>
-            <div class="territory-meta">
-              <span>防御 ${territory.defense || 0}</span>
-              <span>建议 ${territory.recommendedSoldiers || 0} 士兵</span>
-            </div>
-            <div class="territory-effect">${this.escapeHtml(this.formatEffect(territory.effects))}</div>
-            ${territory.lastBattle ? `<div class="territory-battle">${territory.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${territory.lastBattle.casualties} 士兵</div>` : ''}
-            ${this.getAction(territory, territoryState)}
-          </div>
+      this.container.innerHTML = `
+        ${this.renderMap(territories)}
+        <div class="territory-section-title">已知地点</div>
+        <div class="territory-site-list">
+          ${territories.map((site) => this.renderSiteCard(site, territoryState)).join('')}
         </div>
-      `).join('');
+        <div class="territory-section-title">侦察报告</div>
+        <div class="scout-report-list">${this.renderReports(territoryState.scoutReports || [])}</div>
+      `;
     }
   }
 

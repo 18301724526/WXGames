@@ -120,8 +120,8 @@ function getSoftGuide(gameState, eraProgress) {
     if (gameState.currentEra >= 5) {
       return {
         id: 'territory_open',
-        message: '古典时代已经到来，打开疆域页侦察并占领新的土地。',
-        target: 'tab-territory',
+        message: '古典时代已经到来，在军事页派出侦察队，让外部世界逐步显现。',
+        target: 'tab-military',
       };
     }
     return {

@@ -33,9 +33,13 @@
         polity: { name: null, capitalCityName: '首都', namePrompted: false },
         territories: [],
         warMissions: [],
+        scoutMissions: [],
+        scoutReports: [],
+        directions: [],
         availableSoldiers: this.state.military.availableSoldiers || 0,
         soldiersOnMission: this.state.military.soldiersOnMission || 0,
         occupiedCount: 0,
+        discoveredCount: 0,
         namingPrompt: null,
         ...(this.state.territoryState || {}),
       };
