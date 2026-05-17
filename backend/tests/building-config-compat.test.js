@@ -49,3 +49,10 @@ test('遗留 BuildingValidator 与 BuildingSystem 兼容对象式建筑状态', 
   assert.equal(BuildingState.getLevel(gameState.buildings, 'farm'), 1);
   assert.equal(system.getBuildingInfo('farm', gameState).maxLevel, BuildingConfig.getMaxLevel('farm'));
 });
+
+test('遗留 BuildingSystem 进阶建筑条件不再引用工坊和学院', () => {
+  const system = new BuildingSystem();
+
+  assert.deepEqual(system.getEraConditionsConfig(3).requiredBuildings, { lumbermill: 1 });
+  assert.deepEqual(system.getEraConditionsConfig(4).requiredBuildings, { barracks: 1 });
+});

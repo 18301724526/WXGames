@@ -24,16 +24,27 @@
         woodCard.classList.toggle('is-hidden', !hasWoodLayout);
         woodCard.style.display = hasWoodLayout ? '' : 'none';
       }
+      const woodDetailCard = document.getElementById('woodDetailCard');
+      if (woodDetailCard) {
+        woodDetailCard.hidden = !hasWoodLayout;
+        woodDetailCard.classList.toggle('is-hidden', !hasWoodLayout);
+        woodDetailCard.style.display = hasWoodLayout ? '' : 'none';
+      }
 
       this.setText('foodValue', Math.floor(resources.food || 0));
       this.setText('knowledgeValue', Math.floor(resources.knowledge || 0));
       this.setText('woodValue', hasWoodLayout ? Math.floor(resources.wood || 0) : 0);
+      this.setText('foodDetailValue', Math.floor(resources.food || 0));
+      this.setText('knowledgeDetailValue', Math.floor(resources.knowledge || 0));
+      this.setText('woodDetailValue', hasWoodLayout ? Math.floor(resources.wood || 0) : 0);
       this.setText('foodRate', `${foodNet >= 0 ? '+' : ''}${foodNet}/s`);
       this.setText('foodOutputRate', `+${foodOutput}/s`);
       this.setText('foodConsumptionRate', `-${foodConsumption}/s`);
       this.setText('foodNetRate', `${foodNet >= 0 ? '+' : ''}${foodNet}/s`);
       this.setText('knowledgeRate', `${knowledgeRate >= 0 ? '+' : ''}${knowledgeRate}/s`);
       this.setText('woodRate', hasWoodLayout ? `${woodRate >= 0 ? '+' : ''}${woodRate}/s` : '+0/s');
+      this.setText('knowledgeDetailRate', `${knowledgeRate >= 0 ? '+' : ''}${knowledgeRate}/s`);
+      this.setText('woodDetailRate', hasWoodLayout ? `${woodRate >= 0 ? '+' : ''}${woodRate}/s` : '+0/s');
       this.setText('happinessValue', state.happiness || 100);
       this.setText('gameTime', `第 ${state.gameDay || 1} 天`);
 

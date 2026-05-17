@@ -132,10 +132,10 @@ test('伐木场资源不足时允许自由进行普通操作', () => {
   state.resources.wood = 20;
   state.tutorial = TutorialService.manualAdvance(state.tutorial, 13);
 
-  const buildWorkshop = TutorialService.validateAction(state.tutorial, 'build', { target: 'workshop' }, state);
+  const upgradeFarm = TutorialService.validateAction(state.tutorial, 'upgrade', { target: 'farm' }, state);
   const assignScholar = TutorialService.validateAction(state.tutorial, 'assign', { target: 'scholar', count: 1 }, state);
 
-  assert.equal(buildWorkshop.allowed, true);
+  assert.equal(upgradeFarm.allowed, true);
   assert.equal(assignScholar.allowed, true);
 });
 

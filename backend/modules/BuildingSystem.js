@@ -135,16 +135,16 @@ class BuildingSystem {
         requiredBuildings: { farm: 3 }
       },
       2: {
-        buildingCount: 5,
-        requiredBuildings: { workshop: 1, farm: 3 }
+        buildingCount: 2,
+        requiredBuildings: { farm: 1, house: 1 }
       },
       3: {
-        buildingCount: 7,
-        requiredBuildings: { academy: 1, workshop: 1 }
+        buildingCount: 3,
+        requiredBuildings: { lumbermill: 1 }
       },
       4: {
-        buildingCount: 10,
-        requiredBuildings: { barracks: 1, academy: 1, workshop: 1 }
+        buildingCount: 4,
+        requiredBuildings: { barracks: 1 }
       },
       5: {
         buildingCount: 15,

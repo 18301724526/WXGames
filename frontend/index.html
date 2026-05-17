@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=settlement-era2-fix6">
+    <link rel="stylesheet" href="style.css?v=resource-topbar-fix1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -59,56 +59,43 @@
 
     <div id="app">
         <header class="top-bar">
-            <div class="era-badge" id="eraBadge">
-                <span class="era-icon">🔥</span>
-                <span class="era-name" id="eraName">原始时代</span>
+            <div class="top-status-row">
+                <div class="era-badge" id="eraBadge">
+                    <span class="era-icon">🔥</span>
+                    <span class="era-name" id="eraName">原始时代</span>
+                </div>
+                <div class="game-time" id="gameTime">第 1 天</div>
             </div>
-            <div class="game-time" id="gameTime">第 1 天</div>
+            <button class="resource-panel resource-strip" id="resourcePanel" type="button" aria-haspopup="dialog" aria-controls="resourceDetailModal">
+                <span class="resource-card food-card">
+                    <span class="resource-icon"></span>
+                    <span class="resource-info">
+                        <span class="resource-label">食物</span>
+                        <span class="resource-value" id="foodValue">0</span>
+                        <span class="resource-rate" id="foodRate">+0/s</span>
+                    </span>
+                </span>
+                <span class="resource-card knowledge-card">
+                    <span class="resource-icon"></span>
+                    <span class="resource-info">
+                        <span class="resource-label">知识</span>
+                        <span class="resource-value" id="knowledgeValue">0</span>
+                        <span class="resource-rate" id="knowledgeRate">+0/s</span>
+                    </span>
+                </span>
+                <span class="resource-card wood-card is-hidden" id="woodCard" hidden style="display:none">
+                    <span class="resource-icon"></span>
+                    <span class="resource-info">
+                        <span class="resource-label">木材</span>
+                        <span class="resource-value" id="woodValue">0</span>
+                        <span class="resource-rate" id="woodRate">+0/s</span>
+                    </span>
+                </span>
+            </button>
         </header>
 
         <div class="page-container">
             <section class="page page-resources active" data-page="resources">
-                <section class="resource-panel" id="resourcePanel">
-                    <div class="resource-card food-card">
-                        <div class="resource-icon">🌾</div>
-                        <div class="resource-info">
-                            <div class="resource-label">食物</div>
-                            <div class="resource-value" id="foodValue">0</div>
-                            <div class="resource-rate" id="foodRate">+0/s</div>
-                            <div class="resource-breakdown">
-                                <div class="resource-breakdown-row">
-                                    <span class="resource-breakdown-label">产出</span>
-                                    <span class="resource-breakdown-value is-positive" id="foodOutputRate">+0/s</span>
-                                </div>
-                                <div class="resource-breakdown-row">
-                                    <span class="resource-breakdown-label">消耗</span>
-                                    <span class="resource-breakdown-value is-negative" id="foodConsumptionRate">-0/s</span>
-                                </div>
-                                <div class="resource-breakdown-row">
-                                    <span class="resource-breakdown-label">净增长</span>
-                                    <span class="resource-breakdown-value" id="foodNetRate">+0/s</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resource-card knowledge-card">
-                        <div class="resource-icon">📚</div>
-                        <div class="resource-info">
-                            <div class="resource-label">知识</div>
-                            <div class="resource-value" id="knowledgeValue">0</div>
-                            <div class="resource-rate" id="knowledgeRate">+0/s</div>
-                        </div>
-                    </div>
-                    <div class="resource-card wood-card is-hidden" id="woodCard" hidden style="display:none">
-                        <div class="resource-icon">🪵</div>
-                        <div class="resource-info">
-                            <div class="resource-label">木材</div>
-                            <div class="resource-value" id="woodValue">0</div>
-                            <div class="resource-rate" id="woodRate">+0/s</div>
-                        </div>
-                    </div>
-                </section>
-
                 <section class="population-panel">
                     <h2 class="panel-title">👥 人口管理</h2>
                     <div class="pop-stats">
@@ -240,6 +227,62 @@
             </div>
         </div>
 
+        <div class="modal-overlay" id="resourceDetailModal">
+            <div class="modal-content resource-detail-content" role="dialog" aria-modal="true" aria-labelledby="resourceDetailTitle">
+                <button class="modal-close" id="btnCloseResourceDetail" type="button" aria-label="关闭">✕</button>
+                <h3 id="resourceDetailTitle">资源详情</h3>
+                <div class="resource-detail-list">
+                    <div class="resource-detail-card">
+                        <div class="resource-detail-head">
+                            <span class="resource-detail-icon resource-detail-food"></span>
+                            <span class="resource-detail-name">食物</span>
+                            <span class="resource-detail-total" id="foodDetailValue">0</span>
+                        </div>
+                        <div class="resource-breakdown">
+                            <div class="resource-breakdown-row">
+                                <span class="resource-breakdown-label">产出</span>
+                                <span class="resource-breakdown-value is-positive" id="foodOutputRate">+0/s</span>
+                            </div>
+                            <div class="resource-breakdown-row">
+                                <span class="resource-breakdown-label">消耗</span>
+                                <span class="resource-breakdown-value is-negative" id="foodConsumptionRate">-0/s</span>
+                            </div>
+                            <div class="resource-breakdown-row">
+                                <span class="resource-breakdown-label">净增长</span>
+                                <span class="resource-breakdown-value" id="foodNetRate">+0/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="resource-detail-card">
+                        <div class="resource-detail-head">
+                            <span class="resource-detail-icon resource-detail-knowledge"></span>
+                            <span class="resource-detail-name">知识</span>
+                            <span class="resource-detail-total" id="knowledgeDetailValue">0</span>
+                        </div>
+                        <div class="resource-breakdown">
+                            <div class="resource-breakdown-row">
+                                <span class="resource-breakdown-label">产出</span>
+                                <span class="resource-breakdown-value is-positive" id="knowledgeDetailRate">+0/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="resource-detail-card is-hidden" id="woodDetailCard" hidden>
+                        <div class="resource-detail-head">
+                            <span class="resource-detail-icon resource-detail-wood"></span>
+                            <span class="resource-detail-name">木材</span>
+                            <span class="resource-detail-total" id="woodDetailValue">0</span>
+                        </div>
+                        <div class="resource-breakdown">
+                            <div class="resource-breakdown-row">
+                                <span class="resource-breakdown-label">产出</span>
+                                <span class="resource-breakdown-value is-positive" id="woodDetailRate">+0/s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="offlineModal">
             <div class="modal-content">
                 <div class="modal-icon">⏰</div>
@@ -271,7 +314,7 @@
     <script src="js/state/GameStateManager.js?v=city-era-fix1"></script>
     <script src="js/api/GameAPI.js?v=settlement-era2-fix2"></script>
     <script src="js/services/GameStateSync.js?v=settlement-era2-fix3"></script>
-    <script src="js/ui/ResourceRenderer.js?v=settlement-era2-fix3"></script>
+    <script src="js/ui/ResourceRenderer.js?v=resource-topbar-fix1"></script>
     <script src="js/ui/BuildingUIRenderer.js?v=city-era-fix1"></script>
     <script src="js/ui/EventUIRenderer.js?v=settlement-era2-fix5"></script>
     <script src="js/ui/TutorialUIRenderer.js?v=settlement-era2-fix4"></script>
@@ -279,7 +322,7 @@
     <script src="js/controllers/EventController.js?v=settlement-era2-fix2"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=city-era-fix1"></script>
+    <script src="app.js?v=resource-topbar-fix1"></script>
     <script src="auth.js?v=city-era-fix1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

@@ -112,6 +112,23 @@ const Game = {
     if (closeButton) {
       closeButton.addEventListener('click', () => this.eventController.close());
     }
+
+    const resourcePanel = document.getElementById('resourcePanel');
+    if (resourcePanel) {
+      resourcePanel.addEventListener('click', () => this.openResourceDetails());
+    }
+
+    const resourceModal = document.getElementById('resourceDetailModal');
+    if (resourceModal) {
+      resourceModal.addEventListener('click', (event) => {
+        if (event.target === resourceModal) this.closeResourceDetails();
+      });
+    }
+
+    const closeResourceButton = document.getElementById('btnCloseResourceDetail');
+    if (closeResourceButton) {
+      closeResourceButton.addEventListener('click', () => this.closeResourceDetails());
+    }
   },
 
   async startHeartbeat() {
@@ -312,6 +329,19 @@ const Game = {
 
   renderResources() {
     this.resourceRenderer.render(this.state);
+  },
+
+  openResourceDetails() {
+    const modal = document.getElementById('resourceDetailModal');
+    if (!modal) return;
+    this.renderResources();
+    modal.classList.add('show');
+  },
+
+  closeResourceDetails() {
+    const modal = document.getElementById('resourceDetailModal');
+    if (!modal) return;
+    modal.classList.remove('show');
   },
 
   renderBuildings() {

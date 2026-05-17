@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const gameStateService = require('../services/GameStateService');
+const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
 
 test('原始时代不能建造 farm', () => {
@@ -18,4 +19,37 @@ test('未完成教程时不能升级建筑', () => {
   const result = BuildingActionValidator.validateUpgrade(state, state.tutorial, 'farm');
   assert.equal(result.allowed, false);
   assert.equal(result.code, 'TUTORIAL_BLOCKED');
+});
+
+test('城邦时代之前不会解锁工坊和学院', () => {
+  assert.deepEqual(BuildingUnlockService.getUnlockedBuildings(2), ['farm', 'house', 'lumbermill']);
+  assert.deepEqual(BuildingUnlockService.getUnlockedBuildings(3), ['farm', 'house', 'lumbermill', 'barracks']);
+});
+
+test('客户端城邦时代建筑列表只包含农田民居伐木场兵营', () => {
+  const state = gameStateService.createInitialGameState('city-unlocks-player');
+  state.currentEra = 3;
+  state.tutorial.completed = true;
+
+  const clientState = gameStateService.getClientGameState(state);
+
+  assert.deepEqual(clientState.unlockedBuildings, ['farm', 'house', 'lumbermill', 'barracks']);
+  assert.equal(clientState.unlockedBuildings.includes('workshop'), false);
+  assert.equal(clientState.unlockedBuildings.includes('academy'), false);
+});
+
+test('聚落和城邦时代不能建造工坊或学院', () => {
+  for (const era of [2, 3]) {
+    for (const buildingId of ['workshop', 'academy']) {
+      const state = gameStateService.createInitialGameState(`${buildingId}-era-${era}`);
+      state.currentEra = era;
+      state.tutorial.completed = true;
+      state.resources = { food: 999, knowledge: 999, wood: 999, stone: 0, metal: 0 };
+
+      const result = BuildingActionValidator.validateBuild(state, state.tutorial, buildingId);
+
+      assert.equal(result.allowed, false);
+      assert.equal(result.code, 'ERA_NOT_UNLOCKED');
+    }
+  }
 });

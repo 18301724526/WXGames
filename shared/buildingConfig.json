@@ -62,7 +62,7 @@
       "icon": "⚒️",
       "art": "assets/art/building-workshop-cutout.png",
       "category": "production",
-      "unlockEra": 2,
+      "unlockEra": 4,
       "maxLevel": 3,
       "buildCost": { "food": 120, "wood": 40 },
       "upgradeCosts": [
@@ -88,7 +88,7 @@
       "icon": "📚",
       "art": "assets/art/building-academy-cutout.png",
       "category": "research",
-      "unlockEra": 2,
+      "unlockEra": 4,
       "maxLevel": 3,
       "buildCost": { "food": 180, "wood": 60, "knowledge": 30 },
       "upgradeCosts": [
