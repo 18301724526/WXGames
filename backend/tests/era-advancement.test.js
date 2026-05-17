@@ -71,8 +71,8 @@ test('聚落到城邦需要 500 食物、200 木材和 100 知识', () => {
   assert.equal(state.resources.knowledge, 0);
 });
 
-test('城邦到古典需要资源和至少 3 名士兵，士兵不会被扣除', () => {
-  let state = gameStateService.createInitialGameState('classical-cost-player');
+test('城邦到边境需要资源和至少 3 名士兵，士兵不会被扣除', () => {
+  let state = gameStateService.createInitialGameState('border-cost-player');
   state.currentEra = 3;
   state.resources.food = 900;
   state.resources.wood = 500;

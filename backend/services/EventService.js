@@ -1,6 +1,7 @@
 const EventDomain = require('../domain/Event');
 const EventRewardCalculator = require('../calculators/EventRewardCalculator');
 const MilitaryService = require('./MilitaryService');
+const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
 
 const REGULAR_EVENT_INTERVAL_MS = 4 * 60 * 1000;
 const THREAT_EVENT_INTERVAL_MS = 6 * 60 * 1000;
@@ -234,7 +235,10 @@ function applyEffects(gameState, event, option, now = new Date()) {
 
 function meetsRequirements(gameState, requirements = {}) {
   const military = MilitaryService.normalizeMilitaryState(gameState.military, gameState);
-  if (Number.isFinite(requirements.defense) && military.defense < requirements.defense) return false;
+  const buildingEffects = BuildingEffectCalculator.calculate(gameState.buildings || {});
+  const threatDefense = Math.max(0, buildingEffects.threatDefense || 0);
+  const totalDefense = (military.defense || 0) + threatDefense;
+  if (Number.isFinite(requirements.defense) && totalDefense < requirements.defense) return false;
   if (Number.isFinite(requirements.soldiers) && military.soldiers < requirements.soldiers) return false;
   return true;
 }

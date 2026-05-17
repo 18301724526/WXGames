@@ -78,8 +78,8 @@ test('兵营建成后不再补齐兵营资源', () => {
   assert.equal(SoftGuideService.getSoftGuide(state, gameStateService.calculateEraProgress(state)).id, 'barracks_built');
 });
 
-test('城邦后段软引导补齐古典时代资源但不补士兵', () => {
-  const state = gameStateService.createInitialGameState('classical-guide-resources');
+test('城邦后段软引导补齐边境时代资源但不补士兵', () => {
+  const state = gameStateService.createInitialGameState('border-guide-resources');
   completeTutorial(state);
   state.currentEra = 3;
   state.buildings.barracks = { level: 1 };
@@ -99,13 +99,31 @@ test('城邦后段软引导补齐古典时代资源但不补士兵', () => {
   assert.equal(state.resources.knowledge, 260);
   assert.equal(state.military.soldiers, 3);
   assert.equal(progress.canAdvance, true);
-  assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'classical_advance_ready');
+  assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'border_advance_ready');
 });
 
-test('古典时代后软引导提示查看威胁事件', () => {
+test('进入边境时代后软引导补齐瞭望台建造资源', () => {
+  const state = gameStateService.createInitialGameState('watchtower-guide-resources');
+  completeTutorial(state);
+  state.currentEra = 4;
+  state.resources.food = 0;
+  state.resources.wood = 0;
+  state.resources.knowledge = 0;
+
+  const changed = SoftGuideService.apply(state, gameStateService.calculateEraProgress(state));
+
+  assert.equal(changed, true);
+  assert.equal(state.resources.food, 180);
+  assert.equal(state.resources.wood, 120);
+  assert.equal(state.resources.knowledge, 60);
+  assert.equal(SoftGuideService.getSoftGuide(state, gameStateService.calculateEraProgress(state)).id, 'watchtower_unlocked');
+});
+
+test('瞭望台建成后软引导提示查看威胁事件', () => {
   const state = gameStateService.createInitialGameState('threat-guide');
   completeTutorial(state);
   state.currentEra = 4;
+  state.buildings.watchtower = { level: 1 };
 
   const guide = SoftGuideService.getSoftGuide(state, gameStateService.calculateEraProgress(state));
 

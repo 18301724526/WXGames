@@ -24,6 +24,7 @@ test('遗留 BuildingEffects 按新版 perLevel 配置计算效果', () => {
       workshop: null,
       academy: null,
       barracks: null,
+      watchtower: null,
       temple: null,
     },
   };
@@ -55,4 +56,5 @@ test('遗留 BuildingSystem 进阶建筑条件不再引用工坊和学院', () =
 
   assert.deepEqual(system.getEraConditionsConfig(3).requiredBuildings, { lumbermill: 1 });
   assert.deepEqual(system.getEraConditionsConfig(4).requiredBuildings, { barracks: 1 });
+  assert.deepEqual(system.getEraConditionsConfig(5).requiredBuildings, { watchtower: 1 });
 });

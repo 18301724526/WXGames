@@ -416,6 +416,9 @@ test('renderMilitary displays backend-provided military state', () => {
         trainingIntervalSeconds: 30,
         defense: 2,
       },
+      buildingEffects: {
+        threatDefense: 2,
+      },
     };
     Game.tutorialController = {
       state: { completed: true, currentStep: 99 },
@@ -426,7 +429,7 @@ test('renderMilitary displays backend-provided military state', () => {
 
     assert.equal(elements.get('militaryPanel').hidden, false);
     assert.equal(elements.get('soldierCount').textContent, '2/5');
-    assert.equal(elements.get('militaryDefense').textContent, 2);
+    assert.equal(elements.get('militaryDefense').textContent, 4);
     assert.equal(elements.get('soldierTrainingText').textContent, '下一名 15/30 秒');
     assert.equal(elements.get('soldierTrainingProgress').style.width, '50%');
   } finally {

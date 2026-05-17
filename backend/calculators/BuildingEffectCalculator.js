@@ -11,6 +11,7 @@ function calculate(buildings) {
     woodOutputBase: 0,
     offlineEfficiencyBonus: 0,
     defenseLevel: 0,
+    threatDefense: 0,
     globalOutputMultiplier: 1,
     byBuilding: {},
   };
@@ -62,6 +63,11 @@ function calculate(buildings) {
       const bonus = level * perLevel.defense;
       effects.defenseLevel += bonus;
       summary.defenseLevel = bonus;
+    }
+    if (perLevel.threatDefense) {
+      const bonus = level * perLevel.threatDefense;
+      effects.threatDefense += bonus;
+      summary.threatDefenseBonus = bonus;
     }
     if (perLevel.globalOutputMultiplier) {
       const bonus = level * perLevel.globalOutputMultiplier;

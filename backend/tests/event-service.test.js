@@ -117,7 +117,7 @@ test('过期 buff 会被清理', () => {
   assert.deepEqual(state.activeBuffs.map((buff) => buff.id), ['buff-active']);
 });
 
-test('威胁事件只在古典时代后按独立节奏生成', () => {
+test('威胁事件只在边境时代后按独立节奏生成', () => {
   const state = gameStateService.createInitialGameState('threat-event-player');
   const now = new Date('2026-05-17T08:00:00.000Z');
   state.currentEra = 3;
@@ -167,6 +167,24 @@ test('威胁事件成功时按防御要求发放奖励', () => {
   assert.equal(state.resources.knowledge, 8);
   assert.equal(state.eventHistory[0].outcome, 'success');
   assert.match(state.eventHistory[0].resultSummary, /应对成功/);
+});
+
+test('瞭望台提供的边境防御会参与威胁事件检定', () => {
+  const state = gameStateService.createInitialGameState('threat-event-watchtower-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  const event = EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES.find((item) => item.id === 'border_probe'), now, 0);
+  state.currentEra = 4;
+  state.buildings.watchtower = { level: 1 };
+  state.military = { soldiers: 0 };
+  state.eventQueue = [event];
+  gameStateService.normalizeState(state);
+
+  const result = EventService.claimEvent(state, event.id, 'show_patrol');
+
+  assert.equal(result.success, true);
+  assert.equal(state.eventHistory[0].outcome, 'success');
+  assert.equal(state.resources.food, 130);
+  assert.equal(state.resources.knowledge, 8);
 });
 
 test('威胁事件失败时惩罚会按 0 下限扣减并完成事件', () => {

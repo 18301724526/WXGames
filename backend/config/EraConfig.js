@@ -1,12 +1,12 @@
-const ERA_NAMES = ['原始时代', '农耕时代', '聚落时代', '城邦时代', '古典时代', '中世纪'];
+const ERA_NAMES = ['原始时代', '农耕时代', '聚落时代', '城邦时代', '边境时代', '古典时代'];
 
 const ERA_DESCRIPTIONS = [
   '原始时代：口耳相传，等待迈入农耕时代。',
   '农耕时代：农田与民居让族人第一次稳定下来。',
   '聚落时代：伐木场与工匠分工让资源生产变得多样。',
   '远方传来了陌生的鼓声。你的聚落已经太大，不可能再隐藏于森林之中。其他部落的猎人在边界游荡，眼神不再友善。建造兵营，训练守卫，让你的城邦在黑暗中亮起第一盏防御的灯火。',
-  '古典时代：更复杂的制度、信仰与外部冲突正在成形。',
-  '中世纪：更大的版图与更深的组织能力仍在等待实现。',
+  '边境时代：边界不再安静，瞭望台与士兵共同守住城邦的第一圈安全线。',
+  '古典时代：真正的战争、制度与远征仍在后续版本中展开。',
 ];
 
 const ERA_BUILDING_UNLOCKS = {
@@ -14,7 +14,7 @@ const ERA_BUILDING_UNLOCKS = {
   1: ['farm', 'house'],
   2: ['lumbermill'],
   3: ['barracks'],
-  4: ['temple', 'workshop', 'academy'],
+  4: ['watchtower'],
 };
 
 const ERA_ADVANCEMENT = {
@@ -45,7 +45,7 @@ const ERA_ADVANCEMENT = {
   },
   3: {
     nextEra: 4,
-    name: '古典时代',
+    name: '边境时代',
     cost: { food: 900, wood: 500, knowledge: 260 },
     conditions: [
       { key: 'food', label: '食物', required: 900 },

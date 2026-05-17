@@ -52,7 +52,7 @@
         const disabled = disabledByTutorial || isMax;
         const effectText = this.getEffectText(config, state.buildingEffects);
         const descText = this.getDescription(config);
-        const militaryText = this.getMilitaryText(id, state.military);
+        const militaryText = this.getMilitaryText(id, state.military, state.buildingEffects);
         const art = config.art
           ? `<img class="building-art" src="${config.art}" alt="${config.name}" loading="lazy">`
           : config.icon;
@@ -96,13 +96,13 @@
       return parts.join('，');
     }
 
-    getMilitaryText(id, military) {
+    getMilitaryText(id, military, buildingEffects) {
       if (id !== 'barracks' || !military || !military.soldierCap) return '';
       const soldiers = Math.floor(military.soldiers || 0);
       const cap = Math.floor(military.soldierCap || 0);
       const progress = Math.floor(military.trainingProgress || 0);
       const interval = Math.floor(military.trainingIntervalSeconds || 0);
-      const defense = Math.floor(military.defense || 0);
+      const defense = Math.floor((military.defense || 0) + (buildingEffects?.threatDefense || 0));
       const progressText = soldiers >= cap ? '训练已满' : `下一名 ${progress}/${interval}秒`;
       return `士兵 ${soldiers}/${cap} · 防御 ${defense}<br>${progressText}`;
     }

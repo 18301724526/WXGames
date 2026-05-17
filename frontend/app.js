@@ -449,7 +449,7 @@ const Game = {
     if (!panel) return;
     const soldiers = Math.floor(military.soldiers || 0);
     const cap = Math.floor(military.soldierCap || 0);
-    const defense = Math.floor(military.defense || 0);
+    const defense = Math.floor((military.defense || 0) + (this.state.buildingEffects?.threatDefense || 0));
     const interval = Math.floor(military.trainingIntervalSeconds || 0);
     const progress = Math.floor(military.trainingProgress || 0);
     this.setText('soldierCount', `${soldiers}/${cap}`);

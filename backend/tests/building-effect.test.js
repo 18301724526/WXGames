@@ -9,6 +9,7 @@ test('farm 和 house 等级效果计算正确', () => {
     workshop: null,
     academy: null,
     barracks: null,
+    watchtower: null,
     temple: null,
   });
   assert.equal(effects.foodOutputMultiplier, 2);
@@ -26,6 +27,7 @@ test('barracks does not grant output bonus or building defense level', () => {
     academy: null,
     lumbermill: null,
     barracks: { level: 1 },
+    watchtower: null,
     temple: null,
   });
 
@@ -33,4 +35,20 @@ test('barracks does not grant output bonus or building defense level', () => {
   assert.equal(effects.defenseLevel, 0);
   assert.equal(effects.byBuilding.barracks.globalOutputBonus, undefined);
   assert.equal(effects.byBuilding.barracks.defenseLevel, undefined);
+});
+
+test('watchtower grants threat defense for event checks', () => {
+  const effects = BuildingEffectCalculator.calculate({
+    farm: null,
+    house: null,
+    workshop: null,
+    academy: null,
+    lumbermill: null,
+    barracks: null,
+    watchtower: { level: 2 },
+    temple: null,
+  });
+
+  assert.equal(effects.threatDefense, 4);
+  assert.equal(effects.byBuilding.watchtower.threatDefenseBonus, 4);
 });

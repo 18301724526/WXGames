@@ -32,7 +32,7 @@ function ensureBarracksResources(gameState) {
   return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('barracks'));
 }
 
-function ensureClassicalAdvanceResources(gameState, eraProgress) {
+function ensureBorderAdvanceResources(gameState, eraProgress) {
   if (!isTutorialDone(gameState)) return false;
   if (gameState.currentEra !== 3) return false;
   const config = getAdvanceConfig(3);
@@ -41,11 +41,19 @@ function ensureClassicalAdvanceResources(gameState, eraProgress) {
   return ensureAtLeast(gameState.resources, config.cost);
 }
 
+function ensureWatchtowerResources(gameState) {
+  if (!isTutorialDone(gameState)) return false;
+  if (gameState.currentEra !== 4) return false;
+  if (BuildingState.isBuilt(gameState.buildings, 'watchtower')) return false;
+  return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('watchtower'));
+}
+
 function apply(gameState, eraProgress) {
   let changed = false;
   changed = ensureCityAdvanceResources(gameState, eraProgress) || changed;
   changed = ensureBarracksResources(gameState) || changed;
-  changed = ensureClassicalAdvanceResources(gameState, eraProgress) || changed;
+  changed = ensureBorderAdvanceResources(gameState, eraProgress) || changed;
+  changed = ensureWatchtowerResources(gameState) || changed;
   gameState.softGuideState = gameState.softGuideState || {};
   if (gameState.currentEra === 3 && BuildingState.isBuilt(gameState.buildings, 'barracks')) {
     gameState.softGuideState.barracksUnlockedSeen = true;
@@ -79,8 +87,8 @@ function getSoftGuide(gameState, eraProgress) {
   if (gameState.currentEra === 3) {
     if (eraProgress?.canAdvance) {
       return {
-        id: 'classical_advance_ready',
-        message: '士兵与资源已就绪，点击进阶进入古典时代。',
+        id: 'border_advance_ready',
+        message: '士兵与资源已就绪，点击进阶进入边境时代。',
         target: 'btn-advance-era',
       };
     }
@@ -91,20 +99,27 @@ function getSoftGuide(gameState, eraProgress) {
       };
       return {
         id: 'barracks_built',
-        message: '防御等级+1。你的城邦第一次有了守卫。',
+        message: '兵营开始训练士兵。你的城邦第一次有了防御力量。',
         target: null,
       };
     }
     return {
-      id: 'classical_preparation',
-      message: '训练至少 3 名士兵，并继续积累食物、木材与知识，为古典时代做准备。',
+      id: 'border_preparation',
+      message: '训练至少 3 名士兵，并继续积累食物、木材与知识，为边境时代做准备。',
       target: null,
+    };
+  }
+  if (gameState.currentEra === 4 && !BuildingState.isBuilt(gameState.buildings, 'watchtower')) {
+    return {
+      id: 'watchtower_unlocked',
+      message: '边境时代解锁了瞭望台！建造它来提升威胁事件中的边境防御。',
+      target: 'card-watchtower',
     };
   }
   if (gameState.currentEra >= 4) {
     return {
       id: 'threat_events_open',
-      message: '外部威胁已经出现，留意事件页红点并用士兵守住边界。',
+      message: '外部威胁已经出现，留意事件页红点，并用士兵与瞭望台守住边界。',
       target: 'tab-events',
     };
   }
@@ -116,5 +131,6 @@ module.exports = {
   getSoftGuide,
   ensureCityAdvanceResources,
   ensureBarracksResources,
-  ensureClassicalAdvanceResources,
+  ensureBorderAdvanceResources,
+  ensureWatchtowerResources,
 };

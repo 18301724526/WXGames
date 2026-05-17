@@ -148,7 +148,7 @@ class BuildingSystem {
       },
       5: {
         buildingCount: 15,
-        requiredBuildings: { temple: 1, barracks: 1, academy: 1 }
+        requiredBuildings: { watchtower: 1 }
       },
       6: {
         buildingCount: 20,

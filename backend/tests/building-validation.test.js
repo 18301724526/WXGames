@@ -54,19 +54,23 @@ test('聚落和城邦时代不能建造工坊或学院', () => {
   }
 });
 
-test('古典时代解锁工坊学院和神庙', () => {
+test('边境时代只新增瞭望台，后续建筑不会提前解锁', () => {
   assert.deepEqual(
     BuildingUnlockService.getUnlockedBuildings(4),
-    ['farm', 'house', 'lumbermill', 'barracks', 'temple', 'workshop', 'academy'],
+    ['farm', 'house', 'lumbermill', 'barracks', 'watchtower'],
   );
 
-  const state = gameStateService.createInitialGameState('classical-unlocks-player');
+  const state = gameStateService.createInitialGameState('border-unlocks-player');
   state.currentEra = 4;
   state.tutorial.completed = true;
   state.resources = { food: 999, knowledge: 999, wood: 999, stone: 0, metal: 0 };
 
+  const watchtower = BuildingActionValidator.validateBuild(state, state.tutorial, 'watchtower');
+  assert.equal(watchtower.allowed, true);
+
   for (const buildingId of ['workshop', 'academy', 'temple']) {
     const result = BuildingActionValidator.validateBuild(state, state.tutorial, buildingId);
-    assert.equal(result.allowed, true, `${buildingId} should be unlocked`);
+    assert.equal(result.allowed, false, `${buildingId} should remain locked`);
+    assert.equal(result.code, 'ERA_NOT_UNLOCKED');
   }
 });

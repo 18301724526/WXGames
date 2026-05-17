@@ -1,5 +1,5 @@
 {
-  "version": "2.0",
+  "version": "2.1",
   "buildings": {
     "farm": {
       "id": "farm",
@@ -62,7 +62,7 @@
       "icon": "⚒️",
       "art": "assets/art/building-workshop-cutout.png",
       "category": "production",
-      "unlockEra": 4,
+      "unlockEra": 5,
       "maxLevel": 3,
       "buildCost": { "food": 120, "wood": 40 },
       "upgradeCosts": [
@@ -88,7 +88,7 @@
       "icon": "📚",
       "art": "assets/art/building-academy-cutout.png",
       "category": "research",
-      "unlockEra": 4,
+      "unlockEra": 5,
       "maxLevel": 3,
       "buildCost": { "food": 180, "wood": 60, "knowledge": 30 },
       "upgradeCosts": [
@@ -160,13 +160,38 @@
         "effectText": []
       }
     },
+    "watchtower": {
+      "id": "watchtower",
+      "name": "瞭望台",
+      "icon": "🗼",
+      "art": "assets/art/building-watchtower-cutout.png",
+      "category": "military",
+      "unlockEra": 4,
+      "maxLevel": 2,
+      "buildCost": { "food": 180, "wood": 120, "knowledge": 60 },
+      "upgradeCosts": [
+        { "food": 260, "wood": 180, "knowledge": 120 }
+      ],
+      "effects": {
+        "perLevel": {
+          "threatDefense": 2
+        }
+      },
+      "ui": {
+        "color": "#8e6e53",
+        "description": "提升边境防御，帮助城邦应对威胁事件",
+        "effectText": [
+          { "field": "threatDefenseBonus", "label": "边境防御", "format": "number" }
+        ]
+      }
+    },
     "temple": {
       "id": "temple",
       "name": "神庙",
       "icon": "⛪",
       "art": "assets/art/building-temple-cutout.png",
       "category": "special",
-      "unlockEra": 4,
+      "unlockEra": 5,
       "maxLevel": 2,
       "buildCost": { "food": 320, "knowledge": 120 },
       "upgradeCosts": [

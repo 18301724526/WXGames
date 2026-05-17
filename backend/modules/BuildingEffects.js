@@ -73,12 +73,12 @@ class BuildingEffects {
 
   /**
    * 获取防御等级（用于事件判定）
-   * 从 buildingConfig.json 读取 barracks 的 defense
+   * 从 buildingConfig.json 读取 watchtower 的 threatDefense
    */
   getDefenseLevel(gameState) {
-    const barracksCount = BuildingState.getLevel(gameState.buildings, 'barracks');
-    const defensePerLevel = this.config.barracks?.effects?.perLevel?.defense || 0;
-    return barracksCount * defensePerLevel;
+    const watchtowerCount = BuildingState.getLevel(gameState.buildings, 'watchtower');
+    const defensePerLevel = this.config.watchtower?.effects?.perLevel?.threatDefense || 0;
+    return watchtowerCount * defensePerLevel;
   }
 
   /**
