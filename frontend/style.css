@@ -81,6 +81,7 @@ body {
     align-items: center;
     gap: 12px;
     min-width: 0;
+    position: relative;
 }
 
 .era-badge {
@@ -114,24 +115,35 @@ body {
     color: var(--text-secondary);
 }
 
+.top-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+    position: relative;
+}
+
+.hud-btn,
 .advisor-btn {
-    position: fixed;
-    right: 8px;
-    top: 52px;
-    z-index: 100;
     min-height: 36px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px 6px 7px;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 9px;
     border: 1px solid rgba(240, 180, 91, 0.32);
     border-radius: 999px;
     background: linear-gradient(135deg, rgba(64, 43, 25, 0.94), rgba(25, 20, 14, 0.94));
-    color: var(--accent-light);
-    font-size: 13px;
+    color: var(--text-primary);
+    font-size: 12px;
     font-weight: 800;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.advisor-btn {
+    color: var(--accent-light);
 }
 
 .advisor-btn[hidden] {
@@ -155,6 +167,46 @@ body {
     border-radius: 50%;
     background: var(--number);
     box-shadow: 0 0 10px var(--number-glow);
+}
+
+.settings-menu {
+    position: absolute;
+    top: calc(100% + 7px);
+    right: 0;
+    z-index: 120;
+    min-width: 136px;
+    display: none;
+    padding: 7px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(30, 24, 18, 0.96);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+.settings-menu.active {
+    display: block;
+}
+
+.settings-menu button {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.settings-menu button:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-menu .menu-sep {
+    border-top: 1px solid var(--border);
+    margin: 4px 0;
 }
 
 /* ===== 椤甸潰瀹瑰櫒 ===== */
@@ -259,6 +311,19 @@ body {
 
 .tab-btn:active {
     opacity: 0.7;
+}
+
+.tab-btn:disabled,
+.tab-btn.is-locked {
+    opacity: 0.38;
+    cursor: not-allowed;
+    filter: grayscale(0.45);
+}
+
+.tab-btn:disabled .tab-icon,
+.tab-btn.is-locked .tab-icon {
+    transform: none;
+    filter: grayscale(0.7) brightness(0.7);
 }
 
 /* ===== 璧勬簮闈㈡澘 ===== */
@@ -1653,22 +1718,11 @@ body {
 
 /* ===== 鏃ュ織闈㈡澘 ===== */
 .log-panel {
-    position: fixed;
-    bottom: 56px; /* above tab bar */
-    left: 0;
-    right: 0;
-    max-width: 480px;
-    margin: 0 auto;
-    background: linear-gradient(to top, rgba(26, 26, 46, 0.95), transparent);
-    padding: 12px;
-    pointer-events: none;
-    z-index: 50;
+    display: none;
 }
 
 .log-content {
-    font-size: 12px;
-    color: var(--text-secondary);
-    min-height: 20px;
+    display: none;
 }
 
 .log-entry {
@@ -1866,6 +1920,13 @@ body {
   color: #fff;
   background: linear-gradient(135deg, rgba(215, 131, 50, 0.96), rgba(173, 91, 47, 0.96));
   box-shadow: 0 8px 18px rgba(215, 131, 50, 0.18), inset 0 1px 0 rgba(255, 238, 202, 0.22);
+}
+
+.military-subtab:disabled,
+.military-subtab.is-locked {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
 }
 
 .military-subpage {

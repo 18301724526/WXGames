@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=advisor-site-card-v1">
+    <link rel="stylesheet" href="style.css?v=hud-polish-v1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -15,12 +15,6 @@
         .login-panel .login-btns button { flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; font-size:14px; font-weight:bold; }
         .btn-login { background:var(--accent); color:#fff; }
         .btn-register { background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border) !important; }
-        .settings-btn { position:fixed; top:8px; right:8px; z-index:100; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:8px; padding:6px 10px; color:var(--text-secondary); font-size:13px; cursor:pointer; }
-        .settings-menu { position:fixed; top:44px; right:8px; z-index:101; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:8px; min-width:160px; display:none; }
-        .settings-menu.active { display:block; }
-        .settings-menu button { display:block; width:100%; text-align:left; padding:10px 12px; border:none; background:none; color:var(--text-primary); font-size:13px; cursor:pointer; border-radius:6px; }
-        .settings-menu button:hover { background:rgba(255,255,255,0.05); }
-        .settings-menu .menu-sep { border-top:1px solid var(--border); margin:4px 0; }
         .log-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:20px; }
         .log-modal-overlay.active { display:flex; }
         .log-modal-content { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:20px; width:100%; max-width:560px; max-height:80vh; overflow:auto; }
@@ -40,20 +34,6 @@
             </div>
         </div>
     </div>
-
-    <button class="settings-btn" id="settingsBtn" onclick="Game.toggleSettings()">⚙️ 设置</button>
-    <div class="settings-menu" id="settingsMenu">
-        <button onclick="Game.showRequestLogs(); Game.toggleSettings();">📜 请求日志</button>
-        <button onclick="Game.resetGame(); Game.toggleSettings();">🗑️ 重置游戏</button>
-        <div class="menu-sep"></div>
-        <button onclick="Game.logout(); Game.toggleSettings();">🚪 退出登录</button>
-    </div>
-    <button class="advisor-btn" id="advisorBtn" type="button" hidden>
-        <span class="advisor-btn-icon">谋</span>
-        <span>顾问</span>
-        <span class="advisor-dot" aria-hidden="true"></span>
-    </button>
-
     <div class="log-modal-overlay" id="logModal" onclick="if(event.target===this){this.classList.remove('active');this.style.display='none';}">
         <div class="log-modal-content">
             <button class="log-modal-close" onclick="document.getElementById('logModal').classList.remove('active');document.getElementById('logModal').style.display='none';">✕</button>
@@ -69,7 +49,20 @@
                     <span class="era-icon">🔥</span>
                     <span class="era-name" id="eraName">原始时代</span>
                 </div>
-                <div class="game-time" id="gameTime">第 1 天</div>
+                <div class="top-actions">
+                    <button class="advisor-btn" id="advisorBtn" type="button" hidden>
+                        <span class="advisor-btn-icon">谋</span>
+                        <span>顾问</span>
+                        <span class="advisor-dot" aria-hidden="true"></span>
+                    </button>
+                    <button class="hud-btn" id="logButton" type="button" aria-label="查看日志">日志</button>
+                    <button class="hud-btn settings-btn" id="settingsBtn" type="button" aria-label="设置">设置</button>
+                    <div class="settings-menu" id="settingsMenu">
+                        <button onclick="Game.resetGame(); Game.toggleSettings();">重置游戏</button>
+                        <div class="menu-sep"></div>
+                        <button onclick="Game.logout(); Game.toggleSettings();">退出登录</button>
+                    </div>
+                </div>
             </div>
             <button class="resource-panel resource-strip" id="resourcePanel" type="button" aria-haspopup="dialog" aria-controls="resourceDetailModal">
                 <span class="resource-card food-card">
@@ -385,7 +378,7 @@
         <div class="tutorial-bubble" id="tutorialBubble"></div>
         <div class="tutorial-pointer" id="tutorialPointer">👇</div>
 
-        <section class="log-panel"><div class="log-content" id="logContent"></div></section>
+        <section class="log-panel" hidden><div class="log-content" id="logContent"></div></section>
     </div>
 
     <script src="floating-text.js?v=settlement-era2-fix2"></script>
@@ -400,14 +393,14 @@
     <script src="js/ui/ResourceRenderer.js?v=resource-topbar-fix1"></script>
     <script src="js/ui/BuildingUIRenderer.js?v=border-era-v1"></script>
     <script src="js/ui/EventUIRenderer.js?v=threat-events-v1"></script>
-    <script src="js/ui/TerritoryUIRenderer.js?v=advisor-site-card-v1"></script>
-    <script src="js/ui/TutorialUIRenderer.js?v=advisor-site-card-v1"></script>
+    <script src="js/ui/TerritoryUIRenderer.js?v=hud-polish-v1"></script>
+    <script src="js/ui/TutorialUIRenderer.js?v=hud-polish-v1"></script>
     <script src="js/controllers/BuildingController.js?v=settlement-era2-fix2"></script>
     <script src="js/controllers/EventController.js?v=regular-events-v1"></script>
-    <script src="js/controllers/TerritoryController.js?v=world-map-dialog-v1"></script>
+    <script src="js/controllers/TerritoryController.js?v=hud-polish-v1"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=advisor-site-card-v1"></script>
+    <script src="app.js?v=hud-polish-v1"></script>
     <script src="auth.js?v=city-era-fix1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

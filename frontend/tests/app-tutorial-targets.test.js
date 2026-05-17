@@ -549,3 +549,54 @@ test('renderSoftGuide exposes backend advice through the advisor panel', () => {
     global.localStorage = originalLocalStorage;
   }
 });
+
+test('military scout and world subviews stay disabled before classical era', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const buttons = [
+      { dataset: { militaryView: 'army' }, disabled: false, classList: { toggle() {} }, setAttribute() {} },
+      { dataset: { militaryView: 'scout' }, disabled: false, classList: { toggle() {} }, setAttribute() {} },
+      { dataset: { militaryView: 'world' }, disabled: false, classList: { toggle() {} }, setAttribute() {} },
+    ];
+    const pages = [
+      { dataset: { militaryPage: 'army' }, classList: { toggle() {} } },
+      { dataset: { militaryPage: 'scout' }, classList: { toggle() {} } },
+      { dataset: { militaryPage: 'world' }, classList: { toggle() {} } },
+    ];
+
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+      querySelectorAll(selector) {
+        if (selector === '[data-military-view]') return buttons;
+        if (selector === '[data-military-page]') return pages;
+        return [];
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state.currentEra = 4;
+    Game.state.militaryView = 'world';
+
+    Game.renderMilitaryView();
+
+    assert.equal(Game.state.militaryView, 'army');
+    assert.equal(buttons[0].disabled, false);
+    assert.equal(buttons[1].disabled, true);
+    assert.equal(buttons[2].disabled, true);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});

@@ -103,6 +103,7 @@ const Game = {
   bindBaseEvents() {
     document.querySelectorAll('.tab-btn').forEach((button) => {
       button.addEventListener('click', async (event) => {
+        if (event.currentTarget.disabled) return;
         const tabId = event.currentTarget.dataset.tab;
         const allowed = await this.tutorialController.onTabClicked(tabId).catch(() => false);
         if (!allowed) {
@@ -182,6 +183,10 @@ const Game = {
 
     const advisorButton = document.getElementById('advisorBtn');
     if (advisorButton) advisorButton.addEventListener('click', () => this.openAdvisor());
+    const logButton = document.getElementById('logButton');
+    if (logButton) logButton.addEventListener('click', () => this.showRecentLogs());
+    const settingsButton = document.getElementById('settingsBtn');
+    if (settingsButton) settingsButton.addEventListener('click', () => this.toggleSettings());
     const advisorModal = document.getElementById('advisorModal');
     if (advisorModal) {
       advisorModal.addEventListener('click', (event) => {
@@ -414,6 +419,7 @@ const Game = {
   },
 
   renderMilitaryView() {
+    this.updateMilitaryViewLocks();
     const activeView = this.state.militaryView || 'army';
     document.querySelectorAll('[data-military-page]').forEach((page) => {
       page.classList.toggle('active', page.dataset.militaryPage === activeView);
@@ -425,11 +431,25 @@ const Game = {
     });
   },
 
+  updateMilitaryViewLocks() {
+    const locked = (this.state.currentEra || 0) < 5;
+    if (locked && this.state.militaryView !== 'army') this.state.militaryView = 'army';
+    if (typeof document.querySelectorAll !== 'function') return;
+    document.querySelectorAll('[data-military-view]').forEach((button) => {
+      const view = button.dataset.militaryView;
+      const disabled = locked && view !== 'army';
+      button.disabled = disabled;
+      button.classList.toggle('is-locked', disabled);
+      button.title = disabled ? '进入古典时代后解锁' : '';
+    });
+  },
+
   updateTabLocks() {
     document.querySelectorAll('.tab-btn').forEach((button) => {
       const tabId = button.dataset.tab;
       const allowed = this.tutorialController.canOpenTab(tabId);
       button.classList.toggle('is-locked', !allowed);
+      button.disabled = !allowed;
     });
   },
 
@@ -542,6 +562,7 @@ const Game = {
     this.setText('availableSoldierCount', Math.floor(this.state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers));
     this.setText('soldiersOnMission', Math.floor(this.state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0));
     this.renderScoutControls();
+    this.updateMilitaryViewLocks();
 
     const progressBar = document.getElementById('soldierTrainingProgress');
     if (soldiers >= cap && cap > 0) {
@@ -693,6 +714,22 @@ const Game = {
       this.switchTab(target.slice(4));
     }
     this.closeAdvisor();
+  },
+
+  showRecentLogs() {
+    const modal = document.getElementById('logModal');
+    const content = document.getElementById('logModalContent');
+    if (!modal || !content) return;
+    const entries = Array.from(document.querySelectorAll('#logContent .log-item')).slice(0, 20);
+    if (!entries.length) {
+      content.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无日志</div>';
+    } else {
+      content.innerHTML = `<div style="display:grid;gap:8px;max-height:60vh;overflow:auto;">${entries.map((entry) => (
+        `<div style="padding:8px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ddd;background:rgba(255,255,255,0.04);font-size:12px;line-height:1.4;">${entry.textContent}</div>`
+      )).join('')}</div>`;
+    }
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
   },
 
   renderEraConditions(conditions) {
