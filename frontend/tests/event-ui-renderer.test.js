@@ -1,0 +1,82 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const EventUIRenderer = require('../js/ui/EventUIRenderer');
+
+function createClassList() {
+  return {
+    values: new Set(),
+    add(name) { this.values.add(name); },
+    remove(name) { this.values.delete(name); },
+    contains(name) { return this.values.has(name); },
+  };
+}
+
+test('事件弹窗会渲染后端下发的多个选项', () => {
+  const originalDocument = global.document;
+  try {
+    const elements = new Map([
+      ['eventModal', { classList: createClassList() }],
+      ['eventModalOptions', { innerHTML: '' }],
+      ['btnClaimEvent', { dataset: {}, textContent: '', hidden: false }],
+    ]);
+    global.document = {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
+        return elements.get(id);
+      },
+    };
+    const texts = new Map();
+    const renderer = new EventUIRenderer((id, value) => texts.set(id, value));
+
+    renderer.open({
+      title: '丰收的预兆',
+      description: 'desc',
+      options: [
+        { id: 'store_food', label: '储备粮食', preview: '获得 40 食物' },
+        { id: 'hold_festival', label: '小型庆祝', preview: '消耗 20 食物，5 分钟内食物产出 +20%' },
+      ],
+    });
+
+    assert.equal(texts.get('eventModalReward'), '选择一种处理方式');
+    assert.match(elements.get('eventModalOptions').innerHTML, /data-option-id="store_food"/);
+    assert.match(elements.get('eventModalOptions').innerHTML, /小型庆祝/);
+    assert.equal(elements.get('btnClaimEvent').hidden, true);
+    assert.equal(elements.get('eventModal').classList.contains('show'), true);
+  } finally {
+    global.document = originalDocument;
+  }
+});
+
+test('单选项事件保留主领取按钮用于教程高亮', () => {
+  const originalDocument = global.document;
+  try {
+    const elements = new Map([
+      ['eventModal', { classList: createClassList() }],
+      ['eventModalOptions', { innerHTML: '' }],
+      ['btnClaimEvent', { dataset: {}, textContent: '', hidden: true }],
+    ]);
+    global.document = {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
+        return elements.get(id);
+      },
+    };
+    const texts = new Map();
+    const renderer = new EventUIRenderer((id, value) => texts.set(id, value));
+
+    renderer.open({
+      title: '森林低语',
+      description: 'desc',
+      options: [{ id: 'opt_collect_wood', label: '收集木材', reward: { wood: 20 } }],
+    });
+
+    assert.equal(texts.get('eventModalReward'), '🪵 +20');
+    assert.equal(elements.get('eventModalOptions').innerHTML, '');
+    assert.equal(elements.get('btnClaimEvent').hidden, false);
+    assert.equal(elements.get('btnClaimEvent').dataset.optionId, 'opt_collect_wood');
+    assert.equal(elements.get('btnClaimEvent').textContent, '收集木材');
+  } finally {
+    global.document = originalDocument;
+  }
+});

@@ -112,7 +112,16 @@ const Game = {
 
     const claimButton = document.getElementById('btnClaimEvent');
     if (claimButton) {
-      claimButton.addEventListener('click', () => this.eventController.claimActive());
+      claimButton.addEventListener('click', (event) => this.eventController.claimActive(event.currentTarget.dataset.optionId));
+    }
+
+    const eventModalOptions = document.getElementById('eventModalOptions');
+    if (eventModalOptions) {
+      eventModalOptions.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-option-id]');
+        if (!button) return;
+        this.eventController.claimActive(button.dataset.optionId);
+      });
     }
 
     const closeButton = document.getElementById('btnCloseEventModal');

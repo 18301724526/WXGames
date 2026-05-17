@@ -14,9 +14,22 @@ function calculateFoodOutputPerSecond(population, effects, happiness) {
     * (effects?.globalOutputMultiplier || 1);
 }
 
+function getBuffBonus(gameState, type, target = null) {
+  return (gameState?.activeBuffs || []).reduce((sum, buff) => {
+    if (buff.type !== type) return sum;
+    if (target && buff.target !== target) return sum;
+    return sum + (Number.isFinite(buff.value) ? buff.value : 0);
+  }, 0);
+}
+
+function withBuffMultiplier(gameState, resourceKey) {
+  return 1 + getBuffBonus(gameState, 'resourceMultiplier', resourceKey);
+}
+
 function calculateFoodBreakdown(gameState, effects) {
   const total = gameState?.population?.total || 0;
-  const foodOutput = calculateFoodOutputPerSecond(gameState?.population, effects, gameState?.happiness);
+  const foodOutput = calculateFoodOutputPerSecond(gameState?.population, effects, gameState?.happiness)
+    * withBuffMultiplier(gameState, 'food');
   const foodConsumption = calculateFoodConsumption(total);
   return {
     outputPerSecond: foodOutput,
@@ -29,7 +42,7 @@ function calculateFoodPerSecond(population, buildings, effects, happiness) {
   return calculateFoodBreakdown({ population, buildings, happiness }, effects).netPerSecond;
 }
 
-function calculateKnowledgePerSecond(population, effects) {
+function calculateKnowledgePerSecond(population, effects, gameState = null) {
   const totalPopulation = population?.total || 0;
   const scholars = population?.scholars || 0;
   const globalMultiplier = effects?.globalOutputMultiplier || 1;
@@ -40,7 +53,7 @@ function calculateKnowledgePerSecond(population, effects) {
     * GameConfig.resources.scholarKnowledgeBonus
     * (effects?.knowledgeOutputMultiplier || 1)
     * globalMultiplier;
-  return baseOutput + scholarBonus;
+  return (baseOutput + scholarBonus) * withBuffMultiplier(gameState, 'knowledge');
 }
 
 function calculateWoodPerSecond(gameState, effects) {
@@ -51,7 +64,8 @@ function calculateWoodPerSecond(gameState, effects) {
     * GameConfig.resources.baseWoodPerCraftsman
     * baseWood
     * (effects?.craftsmanOutputMultiplier || 1)
-    * (effects?.globalOutputMultiplier || 1);
+    * (effects?.globalOutputMultiplier || 1)
+    * withBuffMultiplier(gameState, 'wood');
 }
 
 function calculatePopulationCap(effects) {
@@ -62,13 +76,21 @@ function calculateHappiness(effects) {
   return 100 + (effects?.happinessBonus || 0);
 }
 
+function calculateBuffedHappiness(effects, gameState) {
+  return calculateHappiness(effects) + getBuffBonus(gameState, 'happinessFlat');
+}
+
+function calculateOfflineEfficiencyBonus(gameState) {
+  return getBuffBonus(gameState, 'offlineEfficiencyBonus');
+}
+
 function calculateOutputs(gameState, effects) {
   const food = calculateFoodBreakdown(gameState, effects);
   return {
     foodPerSecond: food.netPerSecond,
     foodOutputPerSecond: food.outputPerSecond,
     foodConsumptionPerSecond: food.consumptionPerSecond,
-    knowledgePerSecond: calculateKnowledgePerSecond(gameState.population, effects),
+    knowledgePerSecond: calculateKnowledgePerSecond(gameState.population, effects, gameState),
     woodPerSecond: calculateWoodPerSecond(gameState, effects),
   };
 }
@@ -109,6 +131,8 @@ module.exports = {
   calculateWoodPerSecond,
   calculatePopulationCap,
   calculateHappiness,
+  calculateBuffedHappiness,
+  calculateOfflineEfficiencyBonus,
   calculateOutputs,
   applyPopulationGrowth,
 };

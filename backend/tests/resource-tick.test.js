@@ -78,3 +78,23 @@ test('伐木场与工匠会产出木材并计入离线收益', () => {
   assert.equal(outputs.woodPerSecond, 2);
   assert.equal(offline.wood, Math.floor(2 * 600 * 0.8));
 });
+
+test('常规事件 buff 会影响资源产出、幸福度和离线效率', () => {
+  const state = gameStateService.createInitialGameState('regular-event-buff-output-player');
+  state.population.farmers = 2;
+  state.population.scholars = 1;
+  state.activeBuffs = [
+    { id: 'food-buff', type: 'resourceMultiplier', target: 'food', value: 0.2 },
+    { id: 'knowledge-buff', type: 'resourceMultiplier', target: 'knowledge', value: 0.5 },
+    { id: 'offline-buff', type: 'offlineEfficiencyBonus', value: 0.1 },
+    { id: 'happiness-buff', type: 'happinessFlat', value: 5 },
+  ];
+
+  const outputs = ResourceTickCalculator.calculateOutputs(state, state.buildingEffects);
+  const offline = gameStateService.calculateOfflineIncome(state, 600);
+
+  assert.equal(Math.round(outputs.foodOutputPerSecond * 10) / 10, 2.4);
+  assert.equal(Math.round(outputs.knowledgePerSecond * 100) / 100, 0.45);
+  assert.equal(ResourceTickCalculator.calculateBuffedHappiness(state.buildingEffects, state), 105);
+  assert.equal(offline.efficiency, 0.9);
+});

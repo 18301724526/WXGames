@@ -18,7 +18,7 @@ function applyDerivedStats(gameState) {
   gameState.buildingEffects = effects;
   gameState.population.max = ResourceTickCalculator.calculatePopulationCap(effects);
   gameState.population.maxPop = gameState.population.max;
-  gameState.happiness = ResourceTickCalculator.calculateHappiness(effects);
+  gameState.happiness = ResourceTickCalculator.calculateBuffedHappiness(effects, gameState);
   gameState.military = MilitaryService.normalizeMilitaryState(gameState.military, gameState);
   return effects;
 }

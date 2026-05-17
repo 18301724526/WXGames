@@ -1,5 +1,6 @@
 const TutorialService = require('../services/TutorialService');
 const SoftGuideService = require('../services/SoftGuideService');
+const EventService = require('../services/EventService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
@@ -19,6 +20,7 @@ function registerGameRoutes(app, deps) {
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
     TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
+    EventService.maybeGenerateRegularEvent(gameState);
     if (SoftGuideService.apply(gameState, eraProgress)) {
       eraProgress = gameStateService.calculateEraProgress(gameState);
     }
@@ -54,11 +56,12 @@ function registerGameRoutes(app, deps) {
 
     let eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+    gameState.tutorial = tutorial;
     TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
+    EventService.maybeGenerateRegularEvent(gameState);
     if (SoftGuideService.apply(gameState, eraProgress)) {
       eraProgress = gameStateService.calculateEraProgress(gameState);
     }
-    gameState.tutorial = tutorial;
     const tutorialCheck = TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
     if (!tutorialCheck.allowed) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
@@ -84,6 +87,7 @@ function registerGameRoutes(app, deps) {
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
     TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
+    EventService.maybeGenerateRegularEvent(gameState);
     if (SoftGuideService.apply(gameState, eraProgress)) {
       eraProgress = gameStateService.calculateEraProgress(gameState);
     }

@@ -13,6 +13,20 @@
       return parts.join(' ') || '事件已完成';
     }
 
+    escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    getOptionPreview(option) {
+      if (option?.preview) return option.preview;
+      return this.formatReward(option?.reward);
+    }
+
     render(state) {
       this.setText('techKnowledgeRate', `${state.resources.knowledgePerSecond || 0}/s`);
       const pending = document.getElementById('pendingEventsContainer');
@@ -46,7 +60,7 @@
               <div class="event-history-emoji">${event.icon || '📜'}</div>
               <div class="event-history-info">
                 <div class="event-history-title">${event.title}</div>
-                <div class="event-history-result">${this.formatReward(event.selectedOptionId ? event.options?.find((item) => item.id === event.selectedOptionId)?.reward : null)}</div>
+                <div class="event-history-result">${this.escapeHtml(event.resultSummary || this.formatReward(event.selectedOptionId ? event.options?.find((item) => item.id === event.selectedOptionId)?.reward : null))}</div>
               </div>
             </div>
           `).join('');
@@ -57,7 +71,28 @@
     open(eventData) {
       this.setText('eventModalTitle', `${eventData.icon || '📜'} ${eventData.title}`);
       this.setText('eventModalDescription', eventData.description || '');
-      this.setText('eventModalReward', this.formatReward(eventData.options?.[0]?.reward));
+      const options = eventData.options || [];
+      const optionsContainer = document.getElementById('eventModalOptions');
+      const claimButton = document.getElementById('btnClaimEvent');
+
+      if (optionsContainer) {
+        optionsContainer.innerHTML = options.length > 1 ? options.map((option) => `
+          <button class="event-option-btn" type="button" data-option-id="${this.escapeHtml(option.id)}">
+            <span class="event-option-label">${this.escapeHtml(option.label || '处理事件')}</span>
+            <span class="event-option-preview">${this.escapeHtml(this.getOptionPreview(option))}</span>
+          </button>
+        `).join('') : '';
+      }
+
+      if (claimButton) {
+        const firstOption = options[0];
+        claimButton.dataset = claimButton.dataset || {};
+        claimButton.dataset.optionId = firstOption?.id || '';
+        claimButton.textContent = firstOption?.label || '处理事件';
+        claimButton.hidden = options.length !== 1;
+      }
+
+      this.setText('eventModalReward', options.length === 1 ? this.getOptionPreview(options[0]) : '选择一种处理方式');
       const modal = document.getElementById('eventModal');
       if (modal) modal.classList.add('show');
     }

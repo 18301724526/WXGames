@@ -9,6 +9,7 @@ const { getAdvanceConfig, getEraName, getEraDescription } = require('../config/E
 const BuildingConfig = require('../config/BuildingConfig');
 const GameConfig = require('../config/GameConfig');
 const MilitaryService = require('./MilitaryService');
+const EventService = require('./EventService');
 
 function createInitialGameState(playerId) {
   const buildings = BuildingState.createInitialBuildingState();
@@ -27,6 +28,8 @@ function createInitialGameState(playerId) {
     gameDay: 1,
     eventQueue: [],
     eventHistory: [],
+    regularEventState: EventService.normalizeRegularEventState(null),
+    activeBuffs: [],
     offlineSnapshot: {},
     offlineEventLog: [],
     negativeStreak: 0,
@@ -62,6 +65,7 @@ function normalizeState(rawState) {
   state.techEffects = state.techEffects || {};
   state.eventQueue = state.eventQueue || [];
   state.eventHistory = state.eventHistory || [];
+  EventService.cleanupRuntimeState(state);
   state.offlineSnapshot = state.offlineSnapshot || {};
   state.offlineEventLog = state.offlineEventLog || [];
   state.tutorial = TutorialService.normalizeTutorialState(state.tutorial);
@@ -150,6 +154,8 @@ function getClientGameState(gameState) {
     eraHistory: normalized.eraHistory,
     eventQueue: normalized.eventQueue,
     eventHistory: normalized.eventHistory,
+    regularEventState: normalized.regularEventState,
+    activeBuffs: normalized.activeBuffs,
     totalBuildings,
   };
 }
@@ -158,7 +164,9 @@ function calculateOfflineIncome(gameState, offlineSeconds) {
   const normalized = normalizeState(gameState);
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
   const actualOffline = Math.min(Math.max(0, offlineSeconds), GameConfig.resources.maxOfflineHours * 3600);
-  const efficiency = GameConfig.resources.offlineBaseEfficiency + (normalized.buildingEffects.offlineEfficiencyBonus || 0);
+  const efficiency = GameConfig.resources.offlineBaseEfficiency
+    + (normalized.buildingEffects.offlineEfficiencyBonus || 0)
+    + ResourceTickCalculator.calculateOfflineEfficiencyBonus(normalized);
   return {
     food: Math.max(0, Math.floor(outputs.foodPerSecond * actualOffline * efficiency)),
     knowledge: Math.max(0, Math.floor(outputs.knowledgePerSecond * actualOffline * efficiency)),

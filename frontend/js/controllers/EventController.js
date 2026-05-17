@@ -23,11 +23,13 @@
       this.renderer.close();
     }
 
-    async claimActive() {
+    async claimActive(optionId = null) {
       if (!this.activeEventId) return;
       const state = this.getState();
       const eventData = (state.eventQueue || []).find((item) => item.id === this.activeEventId);
-      const option = eventData?.options?.[0];
+      const option = optionId
+        ? eventData?.options?.find((item) => item.id === optionId)
+        : eventData?.options?.[0];
       if (!eventData || !option) return;
       try {
         const result = await this.api.claimEvent(this.activeEventId, option.id);

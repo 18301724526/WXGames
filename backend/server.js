@@ -16,6 +16,7 @@ const ResourceTickCalculator = require('./calculators/ResourceTickCalculator');
 const MilitaryService = require('./services/MilitaryService');
 const BuildingConfig = require('./config/BuildingConfig');
 const VersionService = require('./services/VersionService');
+const EventService = require('./services/EventService');
 
 const app = express();
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
@@ -90,6 +91,8 @@ setInterval(() => {
     gameState.resources.wood = Math.max(0, (gameState.resources.wood || 0) + outputs.woodPerSecond);
     ResourceTickCalculator.applyPopulationGrowth(gameState, 1);
     MilitaryService.advanceTraining(gameState, 1);
+    EventService.cleanupRuntimeState(gameState);
+    EventService.maybeGenerateRegularEvent(gameState);
     gameState.updatedAt = new Date().toISOString();
     repository.save(gameState);
   }

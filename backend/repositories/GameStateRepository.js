@@ -25,6 +25,8 @@ class GameStateRepository {
         gameDay INTEGER,
         eventQueue TEXT,
         eventHistory TEXT,
+        regularEventState TEXT,
+        activeBuffs TEXT,
         offlineSnapshot TEXT,
         offlineEventLog TEXT,
         negativeStreak INTEGER,
@@ -46,6 +48,12 @@ class GameStateRepository {
     if (!columns.some((column) => column.name === 'military')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN military TEXT').run();
     }
+    if (!columns.some((column) => column.name === 'regularEventState')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN regularEventState TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'activeBuffs')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN activeBuffs TEXT').run();
+    }
   }
 
   findByPlayerId(playerId) {
@@ -64,6 +72,8 @@ class GameStateRepository {
       gameDay: row.gameDay || 1,
       eventQueue: JSON.parse(row.eventQueue || '[]'),
       eventHistory: JSON.parse(row.eventHistory || '[]'),
+      regularEventState: row.regularEventState ? JSON.parse(row.regularEventState) : null,
+      activeBuffs: JSON.parse(row.activeBuffs || '[]'),
       offlineSnapshot: JSON.parse(row.offlineSnapshot || '{}'),
       offlineEventLog: JSON.parse(row.offlineEventLog || '[]'),
       negativeStreak: row.negativeStreak || 0,
@@ -89,8 +99,9 @@ class GameStateRepository {
       INSERT OR REPLACE INTO game_states (
         playerId, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
-        offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, military, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, military,
+        regularEventState, activeBuffs, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -111,6 +122,8 @@ class GameStateRepository {
       JSON.stringify(gameState.tutorial || {}),
       JSON.stringify(gameState.softGuideState || {}),
       JSON.stringify(gameState.military || {}),
+      JSON.stringify(gameState.regularEventState || {}),
+      JSON.stringify(gameState.activeBuffs || []),
       new Date().toISOString(),
     );
   }

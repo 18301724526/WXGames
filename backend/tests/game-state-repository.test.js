@@ -104,3 +104,69 @@ test('save and findByPlayerId round-trip military state', () => {
 
   db.close();
 });
+
+test('save and findByPlayerId round-trip regular event state and active buffs', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  insertPlayer(db, 'player-events', 'device-events');
+  repository.save({
+    playerId: 'player-events',
+    resources: {},
+    buildings: {},
+    population: {},
+    techs: {},
+    techEffects: {},
+    currentEra: 2,
+    eraHistory: [],
+    happiness: 100,
+    gameDay: 1,
+    eventQueue: [],
+    eventHistory: [],
+    regularEventState: {
+      nextAt: '2026-05-17T08:04:00.000Z',
+      lastGeneratedAt: '2026-05-17T08:00:00.000Z',
+      generatedCount: 2,
+      recentTemplateIds: ['harvest_sign'],
+    },
+    activeBuffs: [
+      {
+        id: 'buff-food',
+        type: 'resourceMultiplier',
+        target: 'food',
+        value: 0.2,
+        expiresAt: '2026-05-17T08:05:00.000Z',
+        label: '丰收庆祝',
+      },
+    ],
+    offlineSnapshot: {},
+    offlineEventLog: [],
+    negativeStreak: 0,
+    lastEventAt: 0,
+    tutorial: { completed: true, currentStep: 15 },
+    softGuideState: {},
+    military: {},
+  });
+
+  const result = repository.findByPlayerId('player-events');
+
+  assert.deepEqual(result.regularEventState, {
+    nextAt: '2026-05-17T08:04:00.000Z',
+    lastGeneratedAt: '2026-05-17T08:00:00.000Z',
+    generatedCount: 2,
+    recentTemplateIds: ['harvest_sign'],
+  });
+  assert.deepEqual(result.activeBuffs, [
+    {
+      id: 'buff-food',
+      type: 'resourceMultiplier',
+      target: 'food',
+      value: 0.2,
+      expiresAt: '2026-05-17T08:05:00.000Z',
+      label: '丰收庆祝',
+    },
+  ]);
+
+  db.close();
+});
