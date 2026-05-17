@@ -18,6 +18,7 @@ const Game = {
     totalBuildings: 0,
     eraProgress: { percentage: 0, canAdvance: false, conditions: [] },
     currentTab: 'resources',
+    militaryView: 'army',
     techs: {},
     eventQueue: [],
     eventHistory: [],
@@ -108,6 +109,12 @@ const Game = {
           return;
         }
         this.switchTab(tabId);
+      });
+    });
+
+    document.querySelectorAll('[data-military-view]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        this.switchMilitaryView(event.currentTarget.dataset.militaryView);
       });
     });
 
@@ -356,14 +363,50 @@ const Game = {
   },
 
   switchTab(tabId) {
-    this.state.currentTab = tabId;
+    const nextTabId = tabId === 'territory' ? 'military' : tabId;
+    const preferredMilitaryView = this.getPreferredMilitaryView(tabId);
+    if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
+    this.state.currentTab = nextTabId;
     document.querySelectorAll('.page').forEach((page) => {
-      page.classList.toggle('active', page.dataset.page === tabId);
+      page.classList.toggle('active', page.dataset.page === nextTabId);
     });
     document.querySelectorAll('.tab-btn').forEach((button) => {
-      button.classList.toggle('active', button.dataset.tab === tabId);
+      button.classList.toggle('active', button.dataset.tab === nextTabId);
     });
+    this.renderMilitaryView();
     this.tutorialController.render();
+  },
+
+  getPreferredMilitaryView(tabId) {
+    if (tabId === 'territory') return 'world';
+    if (tabId !== 'military') return null;
+    const guide = this.state.softGuide || {};
+    const target = guide.target || '';
+    const message = String(guide.message || '');
+    if (target === 'tab-territory') return 'world';
+    if (target !== 'tab-military') return null;
+    if (/侦察|探索/.test(message)) return 'scout';
+    if (/领土|疆域|世界|占领/.test(message)) return 'world';
+    return null;
+  },
+
+  switchMilitaryView(view) {
+    const allowed = ['army', 'scout', 'world'];
+    this.state.militaryView = allowed.includes(view) ? view : 'army';
+    this.renderMilitaryView();
+    this.tutorialController.render();
+  },
+
+  renderMilitaryView() {
+    const activeView = this.state.militaryView || 'army';
+    document.querySelectorAll('[data-military-page]').forEach((page) => {
+      page.classList.toggle('active', page.dataset.militaryPage === activeView);
+    });
+    document.querySelectorAll('[data-military-view]').forEach((button) => {
+      const isActive = button.dataset.militaryView === activeView;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', String(isActive));
+    });
   },
 
   updateTabLocks() {
@@ -380,7 +423,7 @@ const Game = {
     if (key === 'tab-buildings') return document.getElementById('tabBuildings');
     if (key === 'tab-events') return document.getElementById('tabEvents');
     if (key === 'tab-military') return document.getElementById('tabMilitary');
-    if (key === 'tab-territory') return document.getElementById('tabTerritory');
+    if (key === 'tab-territory') return document.getElementById('tabMilitary');
     if (key === 'btn-advance-era') return document.getElementById('btnAdvanceEra');
     if (key === 'btn-claim-event') return document.getElementById('btnClaimEvent');
     if (key === 'food-value') return document.getElementById('foodValue');
@@ -523,15 +566,26 @@ const Game = {
     const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
     const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
     this.setText('scoutStatus', readyCount > 0 ? `${readyCount} 支侦察队已返回` : '选择方向，派出侦察队探索城市之外的世界。');
-    container.innerHTML = directions.map((direction) => {
-      const mission = activeByDirection.get(direction.id);
+    const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
+    const order = [
+      ['nw', '西北'], ['n', '北'], ['ne', '东北'],
+      ['w', '西'], ['center', '本城'], ['e', '东'],
+      ['sw', '西南'], ['s', '南'], ['se', '东南'],
+    ];
+    container.innerHTML = order.map(([id, fallbackLabel]) => {
+      if (id === 'center') {
+        return '<div class="scout-center" aria-hidden="true"><span>城</span><small>本城</small></div>';
+      }
+      if (!labels.has(id)) return '';
+      const label = labels.get(id) || fallbackLabel;
+      const mission = activeByDirection.get(id);
       if (mission?.status === 'ready') {
-        return `<button class="btn-scout direction-${direction.id}" data-scout-claim="${mission.id}">${direction.label}<span>领取报告</span></button>`;
+        return `<button class="btn-scout direction-${id} status-ready" data-scout-claim="${mission.id}" aria-label="${label}侦察报告"><span class="scout-direction-label">${label}</span><span class="scout-action">报告</span></button>`;
       }
       if (mission) {
-        return `<button class="btn-scout direction-${direction.id}" disabled>${direction.label}<span>侦察中</span></button>`;
+        return `<button class="btn-scout direction-${id} status-active" disabled aria-label="${label}侦察中"><span class="scout-direction-label">${label}</span><span class="scout-action">途中</span></button>`;
       }
-      return `<button class="btn-scout direction-${direction.id}" data-scout-direction="${direction.id}">${direction.label}<span>派出</span></button>`;
+      return `<button class="btn-scout direction-${id} status-available" data-scout-direction="${id}" aria-label="向${label}派出侦察"><span class="scout-direction-label">${label}</span><span class="scout-action">派出</span></button>`;
     }).join('');
   },
 
@@ -589,6 +643,10 @@ const Game = {
   renderSoftGuide() {
     const guide = this.state.softGuide;
     if (!guide || !guide.message) return;
+    if ((guide.target === 'tab-military' || guide.target === 'tab-territory') && this.state.currentTab === 'military') {
+      const nextView = this.getPreferredMilitaryView(guide.target === 'tab-territory' ? 'territory' : 'military');
+      if (nextView && this.state.militaryView !== nextView) this.switchMilitaryView(nextView);
+    }
     if (!this.tutorialController?.state?.completed && this.tutorialController?.state?.currentStep > 0) return;
     if (this.tutorialRenderer && typeof this.tutorialRenderer.showSoft === 'function') {
       this.tutorialRenderer.showSoft(guide.message);

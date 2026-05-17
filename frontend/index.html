@@ -206,43 +206,54 @@
             </section>
 
             <section class="page page-military" data-page="military">
-                <section class="military-panel" id="militaryPanel">
-                    <h2 class="panel-title">🛡️ 军事</h2>
-                    <div class="military-status">
-                        <div class="military-unit-art"></div>
-                        <div class="military-info">
-                            <div class="military-row"><span>士兵</span><strong id="soldierCount">0/0</strong></div>
-                            <div class="military-row"><span>防御</span><strong id="militaryDefense">0</strong></div>
-                            <div class="military-progress">
-                                <div class="military-progress-label" id="soldierTrainingText">等待兵营</div>
-                                <div class="progress-bar"><div class="progress-fill" id="soldierTrainingProgress" style="width:0%"></div></div>
+                <div class="military-subtabs" id="militarySubTabs" role="tablist" aria-label="军事视图">
+                    <button class="military-subtab active" type="button" data-military-view="army" aria-selected="true">军队</button>
+                    <button class="military-subtab" type="button" data-military-view="scout" aria-selected="false">侦察</button>
+                    <button class="military-subtab" type="button" data-military-view="world" aria-selected="false">世界</button>
+                </div>
+
+                <div class="military-subpage active" data-military-page="army">
+                    <section class="military-panel" id="militaryPanel">
+                        <h2 class="panel-title">🛡️ 军事</h2>
+                        <div class="military-status">
+                            <div class="military-unit-art"></div>
+                            <div class="military-info">
+                                <div class="military-row"><span>士兵</span><strong id="soldierCount">0/0</strong></div>
+                                <div class="military-row"><span>防御</span><strong id="militaryDefense">0</strong></div>
+                                <div class="military-progress">
+                                    <div class="military-progress-label" id="soldierTrainingText">等待兵营</div>
+                                    <div class="progress-bar"><div class="progress-fill" id="soldierTrainingProgress" style="width:0%"></div></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </section>
-                <section class="military-panel territory-summary-panel">
-                    <h2 class="panel-title">🧭 出征状态</h2>
-                    <div class="military-row"><span>可用士兵</span><strong id="availableSoldierCount">0</strong></div>
-                    <div class="military-row"><span>出征中</span><strong id="soldiersOnMission">0</strong></div>
-                </section>
-                <section class="military-panel scout-panel">
-                    <h2 class="panel-title">🧭 侦察</h2>
-                    <div class="scout-status" id="scoutStatus">进入古典时代后可派出侦察队。</div>
-                    <div class="scout-direction-grid" id="scoutDirectionGrid"></div>
-                </section>
-            </section>
+                    </section>
+                    <section class="military-panel territory-summary-panel">
+                        <h2 class="panel-title">🧭 出征状态</h2>
+                        <div class="military-row"><span>可用士兵</span><strong id="availableSoldierCount">0</strong></div>
+                        <div class="military-row"><span>出征中</span><strong id="soldiersOnMission">0</strong></div>
+                    </section>
+                </div>
 
-            <section class="page page-territory" data-page="territory">
-                <section class="territory-panel">
-                    <div class="territory-header">
-                        <div>
-                            <h2 class="panel-title">🗺️ 疆域</h2>
-                            <div class="territory-polity" id="territoryPolityName">未命名势力</div>
+                <div class="military-subpage" data-military-page="scout">
+                    <section class="military-panel scout-panel">
+                        <h2 class="panel-title">🧭 侦察</h2>
+                        <div class="scout-status" id="scoutStatus">进入古典时代后可派出侦察队。</div>
+                        <div class="scout-compass" id="scoutDirectionGrid"></div>
+                    </section>
+                </div>
+
+                <div class="military-subpage" data-military-page="world">
+                    <section class="territory-panel">
+                        <div class="territory-header">
+                            <div>
+                                <h2 class="panel-title">🗺️ 世界</h2>
+                                <div class="territory-polity" id="territoryPolityName">未命名势力</div>
+                            </div>
+                            <div class="territory-count" id="territoryCount">0 领土</div>
                         </div>
-                        <div class="territory-count" id="territoryCount">0 领土</div>
-                    </div>
-                    <div class="territory-grid" id="territoryGrid"></div>
-                </section>
+                        <div class="territory-grid" id="territoryGrid"></div>
+                    </section>
+                </div>
             </section>
         </div>
 
@@ -253,7 +264,6 @@
             <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span><span class="tab-badge" id="eventsBadge" hidden>1</span></button>
             <button class="tab-btn" id="tabCivilization" data-tab="civilization"><span class="tab-icon">🔥</span><span class="tab-label">文明</span></button>
             <button class="tab-btn" id="tabMilitary" data-tab="military"><span class="tab-icon">🛡️</span><span class="tab-label">军事</span></button>
-            <button class="tab-btn" id="tabTerritory" data-tab="territory"><span class="tab-icon">🗺️</span><span class="tab-label">疆域</span></button>
         </nav>
 
         <div class="modal-overlay" id="eventModal">

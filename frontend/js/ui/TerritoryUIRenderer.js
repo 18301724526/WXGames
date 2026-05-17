@@ -60,46 +60,42 @@
       return '<button class="btn-territory" disabled>等待侦察</button>';
     }
 
-    getBounds(territories) {
-      const xs = territories.map((site) => site.x || 0);
-      const ys = territories.map((site) => site.y || 0);
+    getRadarPosition(site, maxDistance) {
+      const x = Number(site.x || 0);
+      const y = Number(site.y || 0);
+      const scale = 39 / Math.max(1, maxDistance);
+      const left = Math.max(8, Math.min(92, 50 + x * scale));
+      const top = Math.max(8, Math.min(92, 50 + y * scale));
       return {
-        minX: Math.min(0, ...xs),
-        maxX: Math.max(0, ...xs),
-        minY: Math.min(0, ...ys),
-        maxY: Math.max(0, ...ys),
+        left: left.toFixed(2),
+        top: top.toFixed(2),
       };
     }
 
     renderMap(territories) {
-      const bounds = this.getBounds(territories);
-      const padding = 1;
-      const minX = bounds.minX - padding;
-      const maxX = bounds.maxX + padding;
-      const minY = bounds.minY - padding;
-      const maxY = bounds.maxY + padding;
-      const columns = maxX - minX + 1;
-      const rows = maxY - minY + 1;
-      const byCoordinate = new Map(territories.map((site) => [`${site.x},${site.y}`, site]));
-      const cells = [];
-      for (let y = minY; y <= maxY; y += 1) {
-        for (let x = minX; x <= maxX; x += 1) {
-          const site = byCoordinate.get(`${x},${y}`);
-          if (!site) {
-            cells.push('<div class="world-cell world-cell-unknown"></div>');
-            continue;
-          }
-          cells.push(`
-            <button class="world-cell world-site world-site-${this.escapeHtml(site.status)} owner-${this.escapeHtml(site.owner)}" type="button" data-site-id="${this.escapeHtml(site.id)}" title="${this.escapeHtml(site.naturalName)}">
-              <img src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}">
-              <span class="world-site-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
-            </button>
-          `);
-        }
-      }
+      const maxDistance = Math.max(
+        1,
+        ...territories.map((site) => Math.hypot(Number(site.x || 0), Number(site.y || 0))),
+      );
+      const sites = territories.map((site) => {
+        const position = this.getRadarPosition(site, maxDistance);
+        return `
+          <button class="world-site world-site-${this.escapeHtml(site.status)} owner-${this.escapeHtml(site.owner)} type-${this.escapeHtml(site.type)}" type="button" data-site-id="${this.escapeHtml(site.id)}" title="${this.escapeHtml(site.naturalName)}" style="--site-x:${position.left}%;--site-y:${position.top}%">
+            <span class="world-site-pulse"></span>
+            <img src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}">
+            <span class="world-site-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
+          </button>
+        `;
+      }).join('');
       return `
-        <div class="world-map" style="--world-cols:${columns};--world-rows:${rows}">
-          ${cells.join('')}
+        <div class="world-radar" aria-label="已知世界地图">
+          <span class="radar-bearing bearing-n">N</span>
+          <span class="radar-bearing bearing-e">E</span>
+          <span class="radar-bearing bearing-s">S</span>
+          <span class="radar-bearing bearing-w">W</span>
+          <span class="radar-sweep"></span>
+          <span class="radar-origin"></span>
+          ${sites}
         </div>
       `;
     }

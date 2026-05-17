@@ -63,9 +63,17 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   for (const asset of assets) {
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
   }
+  assert.doesNotMatch(html, /id="tabTerritory"/);
+  assert.doesNotMatch(html, /data-tab="territory"/);
+  assert.match(html, /id="militarySubTabs"/);
+  assert.match(html, /data-military-view="army"/);
+  assert.match(html, /data-military-view="scout"/);
+  assert.match(html, /data-military-view="world"/);
   assert.match(html, /id="scoutDirectionGrid"/);
-  assert.match(css, /#tabTerritory \.tab-icon \{ background-image: url\('assets\/art\/world-site-town-cutout\.png'\); \}/);
-  assert.match(renderer, /class="world-map"/);
+  assert.match(css, /\.scout-compass/);
+  assert.match(css, /\.world-radar/);
+  assert.match(renderer, /class="world-radar"/);
+  assert.doesNotMatch(renderer, /world-cell-unknown/);
   assert.match(renderer, /scoutReports/);
   assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
 });
