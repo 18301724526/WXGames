@@ -5,13 +5,27 @@ const test = require('node:test');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
-test('wood resource uses its own transparent icon asset', () => {
-  const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
-  const assetPath = path.join(projectRoot, 'frontend', 'assets', 'art', 'icon-wood-cutout.webp');
+function iconUrlPattern(assetName) {
+  return `assets/art/${assetName}(?:\\?v=[^']+)?`;
+}
 
-  assert.equal(fs.existsSync(assetPath), true);
-  assert.match(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-wood-cutout\.webp'\); \}/);
-  assert.match(css, /\.resource-detail-wood \{ background-image: url\('assets\/art\/icon-wood-cutout\.webp'\); \}/);
+test('resource strip uses dedicated resource icon assets', () => {
+  const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
+  const assets = [
+    'icon-food-cutout.webp',
+    'icon-knowledge-cutout.webp',
+    'icon-wood-cutout.webp',
+  ];
+
+  for (const asset of assets) {
+    assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
+  }
+  assert.match(css, new RegExp(`\\.food-card \\.resource-icon \\{ background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\); \\}`));
+  assert.match(css, new RegExp(`\\.knowledge-card \\.resource-icon \\{ background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\); \\}`));
+  assert.match(css, new RegExp(`\\.wood-card \\.resource-icon \\{ background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\); \\}`));
+  assert.match(css, new RegExp(`\\.resource-detail-food \\{ background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\); \\}`));
+  assert.match(css, new RegExp(`\\.resource-detail-knowledge \\{ background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\); \\}`));
+  assert.match(css, new RegExp(`\\.resource-detail-wood \\{ background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\); \\}`));
   assert.doesNotMatch(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
   assert.doesNotMatch(css, /\.resource-detail-wood \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
 });
