@@ -1,5 +1,6 @@
 const BuildingConfig = require('../config/BuildingConfig');
 const BuildingState = require('../domain/BuildingState');
+const TerritoryService = require('./TerritoryService');
 
 function getBarracksLevel(buildings) {
   return BuildingState.getLevel(buildings, 'barracks');
@@ -46,6 +47,11 @@ function normalizeMilitaryState(rawMilitary, gameState) {
   return {
     soldiers,
     soldierCap: cap,
+    soldiersOnMission: TerritoryService.countSoldiersOnMission(gameState || {}),
+    availableSoldiers: TerritoryService.getAvailableSoldiers({
+      ...(gameState || {}),
+      military: { soldiers },
+    }),
     trainingProgress,
     trainingIntervalSeconds: interval,
     defensePerSoldier,

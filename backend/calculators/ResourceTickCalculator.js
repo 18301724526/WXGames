@@ -10,6 +10,7 @@ function calculateFoodOutputPerSecond(population, effects, happiness) {
   return farmers
     * GameConfig.resources.baseFoodPerFarmer
     * (effects?.foodOutputMultiplier || 1)
+    * (1 + (effects?.territoryFoodOutputBonus || 0))
     * happinessFactor
     * (effects?.globalOutputMultiplier || 1);
 }
@@ -52,6 +53,7 @@ function calculateKnowledgePerSecond(population, effects, gameState = null) {
   const scholarBonus = scholars
     * GameConfig.resources.scholarKnowledgeBonus
     * (effects?.knowledgeOutputMultiplier || 1)
+    * (1 + (effects?.territoryKnowledgeOutputBonus || 0))
     * globalMultiplier;
   return (baseOutput + scholarBonus) * withBuffMultiplier(gameState, 'knowledge');
 }
@@ -64,6 +66,7 @@ function calculateWoodPerSecond(gameState, effects) {
     * GameConfig.resources.baseWoodPerCraftsman
     * baseWood
     * (effects?.craftsmanOutputMultiplier || 1)
+    * (1 + (effects?.territoryWoodOutputBonus || 0))
     * (effects?.globalOutputMultiplier || 1)
     * withBuffMultiplier(gameState, 'wood');
 }

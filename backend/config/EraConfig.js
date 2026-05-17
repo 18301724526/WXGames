@@ -15,6 +15,7 @@ const ERA_BUILDING_UNLOCKS = {
   2: ['lumbermill'],
   3: ['barracks'],
   4: ['watchtower'],
+  5: [],
 };
 
 const ERA_ADVANCEMENT = {
@@ -52,6 +53,18 @@ const ERA_ADVANCEMENT = {
       { key: 'wood', label: '木材', required: 500 },
       { key: 'knowledge', label: '知识', required: 260 },
       { key: 'soldiers', label: '士兵', required: 3, source: 'military' },
+    ],
+  },
+  4: {
+    nextEra: 5,
+    name: '古典时代',
+    cost: { food: 1400, wood: 900, knowledge: 520 },
+    conditions: [
+      { key: 'food', label: '食物', required: 1400 },
+      { key: 'wood', label: '木材', required: 900 },
+      { key: 'knowledge', label: '知识', required: 520 },
+      { key: 'soldiers', label: '士兵', required: 6, source: 'military' },
+      { key: 'watchtower', label: '瞭望台', required: 1, source: 'building' },
     ],
   },
 };

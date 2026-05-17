@@ -1,6 +1,7 @@
 const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
 const { getAdvanceConfig, getEraName } = require('../config/EraConfig');
+const BuildingState = require('../domain/BuildingState');
 
 function deductResources(resources, cost) {
   const next = { ...resources };
@@ -18,6 +19,9 @@ function meetsConditions(gameState, conditions) {
   return (conditions || []).every((condition) => {
     if ((condition.source || 'resources') === 'military') {
       return (gameState.military?.[condition.key] || 0) >= condition.required;
+    }
+    if ((condition.source || 'resources') === 'building') {
+      return BuildingState.getLevel(gameState.buildings, condition.key) >= condition.required;
     }
     return (gameState.resources?.[condition.key] || 0) >= condition.required;
   });

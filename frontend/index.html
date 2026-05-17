@@ -220,6 +220,24 @@
                         </div>
                     </div>
                 </section>
+                <section class="military-panel territory-summary-panel">
+                    <h2 class="panel-title">🧭 出征状态</h2>
+                    <div class="military-row"><span>可用士兵</span><strong id="availableSoldierCount">0</strong></div>
+                    <div class="military-row"><span>出征中</span><strong id="soldiersOnMission">0</strong></div>
+                </section>
+            </section>
+
+            <section class="page page-territory" data-page="territory">
+                <section class="territory-panel">
+                    <div class="territory-header">
+                        <div>
+                            <h2 class="panel-title">🗺️ 疆域</h2>
+                            <div class="territory-polity" id="territoryPolityName">未命名势力</div>
+                        </div>
+                        <div class="territory-count" id="territoryCount">0 领土</div>
+                    </div>
+                    <div class="territory-grid" id="territoryGrid"></div>
+                </section>
             </section>
         </div>
 
@@ -230,6 +248,7 @@
             <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span><span class="tab-badge" id="eventsBadge" hidden>1</span></button>
             <button class="tab-btn" id="tabCivilization" data-tab="civilization"><span class="tab-icon">🔥</span><span class="tab-label">文明</span></button>
             <button class="tab-btn" id="tabMilitary" data-tab="military"><span class="tab-icon">🛡️</span><span class="tab-label">军事</span></button>
+            <button class="tab-btn" id="tabTerritory" data-tab="territory"><span class="tab-icon">🗺️</span><span class="tab-label">疆域</span></button>
         </nav>
 
         <div class="modal-overlay" id="eventModal">
@@ -302,6 +321,17 @@
             </div>
         </div>
 
+        <div class="modal-overlay" id="namingModal">
+            <div class="modal-content naming-modal-content" role="dialog" aria-modal="true" aria-labelledby="namingTitle">
+                <button class="modal-close" id="btnCloseNamingModal" type="button" aria-label="关闭">✕</button>
+                <div class="modal-icon">🏛️</div>
+                <h3 id="namingTitle">命名</h3>
+                <p class="naming-message" id="namingMessage"></p>
+                <input class="naming-input" id="namingInput" maxlength="12" />
+                <button class="btn-claim" id="btnSubmitNaming">确定</button>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="offlineModal">
             <div class="modal-content">
                 <div class="modal-icon">⏰</div>
@@ -329,20 +359,22 @@
     <script src="population.js?v=settlement-era2-fix2"></script>
     <script src="js/config/GameConfig.js?v=military-tab-wood-icon-v1"></script>
     <script src="js/domain/BuildingState.js?v=settlement-era2-fix2"></script>
-    <script src="js/domain/GameState.js?v=threat-events-v1"></script>
-    <script src="js/state/GameStateManager.js?v=military-v1"></script>
-    <script src="js/api/GameAPI.js?v=update-check-v1"></script>
+    <script src="js/domain/GameState.js?v=classical-territory-v1"></script>
+    <script src="js/state/GameStateManager.js?v=classical-territory-v1"></script>
+    <script src="js/api/GameAPI.js?v=classical-territory-v1"></script>
     <script src="js/services/GameStateSync.js?v=settlement-era2-fix3"></script>
     <script src="js/services/UpdateChecker.js?v=update-check-v1"></script>
     <script src="js/ui/ResourceRenderer.js?v=resource-topbar-fix1"></script>
     <script src="js/ui/BuildingUIRenderer.js?v=border-era-v1"></script>
     <script src="js/ui/EventUIRenderer.js?v=threat-events-v1"></script>
+    <script src="js/ui/TerritoryUIRenderer.js?v=classical-territory-v1"></script>
     <script src="js/ui/TutorialUIRenderer.js?v=settlement-era2-fix4"></script>
     <script src="js/controllers/BuildingController.js?v=settlement-era2-fix2"></script>
     <script src="js/controllers/EventController.js?v=regular-events-v1"></script>
+    <script src="js/controllers/TerritoryController.js?v=classical-territory-v1"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=border-era-v1"></script>
+    <script src="app.js?v=classical-territory-v1"></script>
     <script src="auth.js?v=city-era-fix1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

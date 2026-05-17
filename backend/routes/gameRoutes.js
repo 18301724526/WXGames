@@ -5,6 +5,7 @@ const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
 const ClaimEventAction = require('../actions/ClaimEventAction');
+const TerritoryAction = require('../actions/TerritoryAction');
 
 function registerGameRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService } = deps;
@@ -45,7 +46,7 @@ function registerGameRoutes(app, deps) {
 
     const gameState = gameStateService.normalizeState(rawState);
     let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-    const { action, target, count, step, eventId, optionId } = req.body || {};
+    const { action, target, count, step, eventId, optionId, territoryId, soldiers, name } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
     if (action === 'tutorialAdvance') {
@@ -81,6 +82,8 @@ function registerGameRoutes(app, deps) {
     } else if (action === 'assign') {
       result = AssignPopulationAction.execute(gameState, tutorial, { target, count });
       tutorial = result.tutorial || tutorial;
+    } else if (['scoutTerritory', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity'].includes(action)) {
+      result = TerritoryAction.execute(action, gameState, { territoryId, soldiers, name });
     } else if (action === 'research') {
       result = { success: false, error: 'NOT_IMPLEMENTED', message: '首期未重构科技研发，请稍后再试' };
     }

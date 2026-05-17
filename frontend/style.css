@@ -213,6 +213,7 @@ body {
 #tabEvents .tab-icon { background-image: url('assets/art/icon-event-cutout.webp'); }
 #tabCivilization .tab-icon { background-image: url('assets/art/icon-fire-cutout.webp'); }
 #tabMilitary .tab-icon { background-image: url('assets/art/icon-soldier-cutout.webp'); }
+#tabTerritory .tab-icon { background-image: url('assets/art/territory-plains-cutout.png'); }
 
 .tab-btn:active {
     opacity: 0.7;
@@ -1861,6 +1862,164 @@ body {
 .military-progress-label {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.territory-panel {
+  background: linear-gradient(145deg, rgba(42, 38, 28, 0.92), rgba(23, 26, 20, 0.92));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 231, 184, 0.08);
+}
+
+.territory-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.territory-polity {
+  color: var(--accent-light);
+  font-size: 13px;
+}
+
+.territory-count {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid rgba(240, 180, 91, 0.24);
+  border-radius: 10px;
+  color: var(--number);
+  background: rgba(25, 20, 14, 0.44);
+  font-size: 12px;
+}
+
+.territory-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.territory-empty {
+  padding: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.territory-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.territory-card.territory-locked {
+  opacity: 0.58;
+}
+
+.territory-art-wrap {
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.territory-art {
+  max-width: 92px;
+  max-height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.32));
+}
+
+.territory-body {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.territory-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.territory-name {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.territory-status {
+  flex: 0 0 auto;
+  color: var(--accent-light);
+  font-size: 11px;
+}
+
+.territory-natural,
+.territory-meta,
+.territory-effect,
+.territory-battle {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.territory-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-territory {
+  width: 100%;
+  min-height: 32px;
+  border: none;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-territory.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-territory:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.naming-modal-content {
+  max-width: 360px;
+}
+
+.naming-message {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.naming-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 15px;
+  margin-bottom: 12px;
 }
 
 .btn-build.is-loading {

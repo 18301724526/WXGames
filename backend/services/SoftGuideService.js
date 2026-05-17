@@ -117,6 +117,13 @@ function getSoftGuide(gameState, eraProgress) {
     };
   }
   if (gameState.currentEra >= 4) {
+    if (gameState.currentEra >= 5) {
+      return {
+        id: 'territory_open',
+        message: '古典时代已经到来，打开疆域页侦察并占领新的土地。',
+        target: 'tab-territory',
+      };
+    }
     return {
       id: 'threat_events_open',
       message: '外部威胁已经出现，留意事件页红点，并用士兵与瞭望台守住边界。',

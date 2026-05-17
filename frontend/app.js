@@ -25,6 +25,7 @@ const Game = {
     threatEventState: null,
     activeBuffs: [],
     military: {},
+    territoryState: {},
     softGuide: null,
   },
   tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
@@ -44,6 +45,7 @@ const Game = {
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
+    this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'));
     this.tutorialRenderer = new window.TutorialUIRenderer();
     this.tutorialController = new window.TutorialController({
       api: this.gameAPI,
@@ -69,6 +71,14 @@ const Game = {
       onSuccess: (result, action, buildingId) => this.handleBuildingSuccess(result, action, buildingId),
       onError: (error) => this.log(`❌ ${error.payload?.message || error.message}`),
     });
+    this.territoryController = new window.TerritoryController({
+      container: document.getElementById('territoryGrid'),
+      api: this.gameAPI,
+      getState: () => this.state,
+      onStateApplied: (result) => this.applyApiState(result),
+      onFloatingText: (message) => this.showFloatingText(message),
+      onLog: (message) => this.log(message),
+    });
 
     if (window.mountAuthMethods) window.mountAuthMethods(this);
     if (window.mountPopulationMethods) window.mountPopulationMethods(this);
@@ -82,6 +92,7 @@ const Game = {
     this.bindBaseEvents();
     if (this.bindPopulationEvents) this.bindPopulationEvents();
     this.buildingController.bind();
+    this.territoryController.bind();
     this.updateChecker.start();
     this.render();
   },
@@ -148,6 +159,17 @@ const Game = {
     if (closeResourceButton) {
       closeResourceButton.addEventListener('click', () => this.closeResourceDetails());
     }
+
+    const namingModal = document.getElementById('namingModal');
+    if (namingModal) {
+      namingModal.addEventListener('click', (event) => {
+        if (event.target === namingModal) this.closeNamingModal();
+      });
+    }
+    const closeNamingButton = document.getElementById('btnCloseNamingModal');
+    if (closeNamingButton) closeNamingButton.addEventListener('click', () => this.closeNamingModal());
+    const submitNamingButton = document.getElementById('btnSubmitNaming');
+    if (submitNamingButton) submitNamingButton.addEventListener('click', () => this.submitNaming());
   },
 
   async startHeartbeat() {
@@ -357,6 +379,7 @@ const Game = {
     if (key === 'tab-buildings') return document.getElementById('tabBuildings');
     if (key === 'tab-events') return document.getElementById('tabEvents');
     if (key === 'tab-military') return document.getElementById('tabMilitary');
+    if (key === 'tab-territory') return document.getElementById('tabTerritory');
     if (key === 'btn-advance-era') return document.getElementById('btnAdvanceEra');
     if (key === 'btn-claim-event') return document.getElementById('btnClaimEvent');
     if (key === 'food-value') return document.getElementById('foodValue');
@@ -378,9 +401,11 @@ const Game = {
     this.renderBuildings();
     this.renderCivilization();
     this.renderMilitary();
+    this.renderTerritory();
     this.renderEvents();
     this.tutorialController.render();
     this.renderSoftGuide();
+    this.maybeShowNamingPrompt();
   },
 
   renderResources() {
@@ -454,6 +479,8 @@ const Game = {
     const progress = Math.floor(military.trainingProgress || 0);
     this.setText('soldierCount', `${soldiers}/${cap}`);
     this.setText('militaryDefense', defense);
+    this.setText('availableSoldierCount', Math.floor(this.state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers));
+    this.setText('soldiersOnMission', Math.floor(this.state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0));
 
     const progressBar = document.getElementById('soldierTrainingProgress');
     if (soldiers >= cap && cap > 0) {
@@ -470,6 +497,65 @@ const Game = {
     const percentage = Math.max(0, Math.min(100, Math.floor((progress / interval) * 100)));
     this.setText('soldierTrainingText', `下一名 ${progress}/${interval} 秒`);
     if (progressBar) progressBar.style.width = `${percentage}%`;
+  },
+
+  renderTerritory() {
+    const territoryState = this.state.territoryState || {};
+    const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
+    this.setText('territoryPolityName', polityName);
+    this.setText('territoryCount', `${territoryState.occupiedCount || 0} 领土`);
+    if (this.territoryRenderer) this.territoryRenderer.render(this.state);
+  },
+
+  maybeShowNamingPrompt() {
+    const prompt = this.state.territoryState?.namingPrompt;
+    if (!prompt || this.activeNamingPromptKey === `${prompt.type}:${prompt.territoryId || 'polity'}`) return;
+    this.openNamingModal(prompt);
+  },
+
+  openNamingModal(prompt) {
+    const modal = document.getElementById('namingModal');
+    const title = document.getElementById('namingTitle');
+    const message = document.getElementById('namingMessage');
+    const input = document.getElementById('namingInput');
+    if (!modal || !input) return;
+    this.activeNamingPrompt = prompt;
+    this.activeNamingPromptKey = `${prompt.type}:${prompt.territoryId || 'polity'}`;
+    if (title) title.textContent = prompt.title || '命名';
+    if (message) message.textContent = prompt.message || '';
+    input.value = '';
+    input.placeholder = prompt.type === 'polity' ? '例如：赤火联盟' : '例如：河湾城';
+    modal.classList.add('show');
+    input.focus();
+  },
+
+  closeNamingModal() {
+    const modal = document.getElementById('namingModal');
+    if (modal) modal.classList.remove('show');
+  },
+
+  async submitNaming() {
+    const prompt = this.activeNamingPrompt;
+    const input = document.getElementById('namingInput');
+    const button = document.getElementById('btnSubmitNaming');
+    const name = input?.value?.trim();
+    if (!prompt || !name) return;
+    if (button) button.disabled = true;
+    try {
+      const result = prompt.type === 'polity'
+        ? await this.gameAPI.renamePolity(name)
+        : await this.gameAPI.renameCity(prompt.territoryId, name);
+      this.closeNamingModal();
+      this.activeNamingPrompt = null;
+      this.activeNamingPromptKey = null;
+      this.applyApiState(result);
+      this.showFloatingText(result.message);
+      this.log(`✅ ${result.message}`);
+    } catch (error) {
+      this.log(`❌ ${error.payload?.message || error.message}`);
+    } finally {
+      if (button) button.disabled = false;
+    }
   },
 
   renderSoftGuide() {

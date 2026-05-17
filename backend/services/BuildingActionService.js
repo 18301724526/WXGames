@@ -4,6 +4,7 @@ const TutorialService = require('./TutorialService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
 const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const MilitaryService = require('./MilitaryService');
+const TerritoryService = require('./TerritoryService');
 
 function deductResources(resources, cost) {
   const next = { ...resources };
@@ -15,6 +16,11 @@ function deductResources(resources, cost) {
 
 function applyDerivedStats(gameState) {
   const effects = BuildingEffectCalculator.calculate(gameState.buildings);
+  const territoryEffects = TerritoryService.getTerritoryEffects(gameState);
+  effects.territoryFoodOutputBonus = territoryEffects.foodOutputMultiplier;
+  effects.territoryWoodOutputBonus = territoryEffects.woodOutputMultiplier;
+  effects.territoryKnowledgeOutputBonus = territoryEffects.knowledgeOutputMultiplier;
+  effects.threatDefense += territoryEffects.threatDefense;
   gameState.buildingEffects = effects;
   gameState.population.max = ResourceTickCalculator.calculatePopulationCap(effects);
   gameState.population.maxPop = gameState.population.max;

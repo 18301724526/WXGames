@@ -153,6 +153,9 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
     tutorial: { completed: true, currentStep: 15 },
     softGuideState: {},
     military: {},
+    polity: { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' },
+    territories: [{ id: 'capital', cityName: '火种城', status: 'occupied' }],
+    warMissions: [{ id: 'mission-x', territoryId: 'river_plain', soldiersCommitted: 4, status: 'active' }],
   });
 
   const result = repository.findByPlayerId('player-events');
@@ -179,6 +182,9 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
       label: '丰收庆祝',
     },
   ]);
+  assert.deepEqual(result.polity, { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' });
+  assert.deepEqual(result.territories, [{ id: 'capital', cityName: '火种城', status: 'occupied' }]);
+  assert.deepEqual(result.warMissions, [{ id: 'mission-x', territoryId: 'river_plain', soldiersCommitted: 4, status: 'active' }]);
 
   db.close();
 });

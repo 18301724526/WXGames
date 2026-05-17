@@ -10,6 +10,11 @@ const BuildingConfig = require('../config/BuildingConfig');
 const GameConfig = require('../config/GameConfig');
 const MilitaryService = require('./MilitaryService');
 const EventService = require('./EventService');
+const TerritoryService = require('./TerritoryService');
+
+function getBuildingLevel(buildings, buildingId) {
+  return BuildingState.getLevel(buildings, buildingId);
+}
 
 function createInitialGameState(playerId) {
   const buildings = BuildingState.createInitialBuildingState();
@@ -38,6 +43,9 @@ function createInitialGameState(playerId) {
     tutorial: TutorialService.createInitialTutorialState(),
     softGuideState: {},
     military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
+    polity: TerritoryService.createInitialPolity(),
+    territories: TerritoryService.createInitialTerritories(),
+    warMissions: [],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -73,6 +81,7 @@ function normalizeState(rawState) {
   state.softGuideState = state.softGuideState && typeof state.softGuideState === 'object' ? state.softGuideState : {};
   state.military = MilitaryService.normalizeMilitaryState(state.military, state);
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
+  TerritoryService.normalizeTerritoryState(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
   state.happiness = state.happiness || 100;
@@ -87,9 +96,9 @@ function calculateEraProgress(gameState) {
   if (!advanceConfig) return { percentage: 100, canAdvance: false, conditions: [] };
   const conditions = advanceConfig.conditions.map((condition) => {
     const source = condition.source || 'resources';
-    const rawCurrent = source === 'military'
-      ? gameState.military?.[condition.key]
-      : gameState.resources?.[condition.key];
+    let rawCurrent = gameState.resources?.[condition.key];
+    if (source === 'military') rawCurrent = gameState.military?.[condition.key];
+    if (source === 'building') rawCurrent = getBuildingLevel(gameState.buildings, condition.key);
     const current = Math.floor(rawCurrent || 0);
     const progress = Math.min(100, Math.floor((current / condition.required) * 100));
     return {
@@ -164,6 +173,7 @@ function getClientGameState(gameState) {
     regularEventState: normalized.regularEventState,
     threatEventState: normalized.threatEventState,
     activeBuffs: normalized.activeBuffs,
+    territoryState: TerritoryService.getClientTerritoryState(normalized),
     totalBuildings,
   };
 }

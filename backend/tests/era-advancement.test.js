@@ -96,3 +96,26 @@ test('城邦到边境需要资源和至少 3 名士兵，士兵不会被扣除',
   assert.equal(state.resources.knowledge, 0);
   assert.equal(state.military.soldiers, 3);
 });
+
+test('边境到古典需要资源、士兵和瞭望台', () => {
+  let state = gameStateService.createInitialGameState('classical-expansion-player');
+  state.currentEra = 4;
+  state.resources.food = 1400;
+  state.resources.wood = 900;
+  state.resources.knowledge = 520;
+  state.buildings.barracks = { level: 2 };
+  state.military = { soldiers: 6 };
+  state = gameStateService.normalizeState(state);
+
+  const blocked = AdvanceEraAction.execute(state, state.tutorial);
+  assert.equal(blocked.success, false);
+  assert.equal(state.currentEra, 4);
+
+  state.buildings.watchtower = { level: 1 };
+  state = gameStateService.normalizeState(state);
+  const success = AdvanceEraAction.execute(state, state.tutorial);
+
+  assert.equal(success.success, true);
+  assert.equal(state.currentEra, 5);
+  assert.equal(success.message, '已进入古典时代');
+});

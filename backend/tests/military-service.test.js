@@ -25,6 +25,8 @@ test('no barracks keeps military training disabled', () => {
   assert.deepEqual(state.military, {
     soldiers: 0,
     soldierCap: 0,
+    soldiersOnMission: 0,
+    availableSoldiers: 0,
     trainingProgress: 0,
     trainingIntervalSeconds: 0,
     defensePerSoldier: 1,
@@ -72,6 +74,8 @@ test('client state exposes backend-normalized military fields', () => {
   assert.deepEqual(clientState.military, {
     soldiers: 3,
     soldierCap: 5,
+    soldiersOnMission: 0,
+    availableSoldiers: 3,
     trainingProgress: 12,
     trainingIntervalSeconds: 30,
     defensePerSoldier: 1,
