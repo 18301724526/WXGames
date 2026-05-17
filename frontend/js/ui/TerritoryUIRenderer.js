@@ -108,8 +108,9 @@
     }
 
     renderSiteDialog(territories, state) {
+      const selectedSiteId = this.container?.dataset.selectedSiteId || '';
       const sites = territories.map((site) => `
-        <article class="world-site-detail" data-site-detail="${this.escapeHtml(site.id)}" hidden>
+        <article class="world-site-detail" data-site-detail="${this.escapeHtml(site.id)}" ${site.id === selectedSiteId ? '' : 'hidden'}>
           <div class="site-card-hero">
             <img class="site-card-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
             <div class="site-card-title">
@@ -132,8 +133,9 @@
           ${this.getAction(site, state)}
         </article>
       `).join('');
+      const hasSelectedSite = territories.some((site) => site.id === selectedSiteId);
       return `
-        <div class="modal-overlay" id="worldSiteModal" data-world-site-modal>
+        <div class="modal-overlay ${hasSelectedSite ? 'show' : ''}" id="worldSiteModal" data-world-site-modal>
           <div class="modal-content world-site-modal-content" role="dialog" aria-modal="true" aria-labelledby="worldSiteTitle">
             <button class="modal-close" type="button" data-world-site-close aria-label="关闭">✕</button>
             <h3 id="worldSiteTitle">地点</h3>

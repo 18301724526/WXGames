@@ -75,11 +75,15 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(css, /\.world-radar-pan/);
   assert.match(css, /\.world-reset/);
   assert.match(css, /\.world-site-modal-content/);
+  assert.match(css, /@keyframes radarSweep/);
+  assert.match(css, /@keyframes radarNeedle/);
+  assert.match(css, /\.world-site-detail\[hidden\] \{\s*display: none !important;/);
   assert.match(renderer, /class="world-radar"/);
   assert.match(renderer, /data-world-pan/);
   assert.match(renderer, /data-world-reset/);
   assert.match(renderer, /data-world-site-modal/);
   assert.match(renderer, /data-site-detail/);
+  assert.match(renderer, /selectedSiteId/);
   assert.match(renderer, /site-card-hero/);
   assert.match(renderer, /site-card-art/);
   assert.match(renderer, /site-card-summary/);

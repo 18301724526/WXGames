@@ -51,6 +51,7 @@ test('world site click opens the matching detail dialog', () => {
   });
 
   assert.equal(modal.classList.contains('show'), true);
+  assert.equal(container.dataset.selectedSiteId, 'site-east');
   assert.equal(details[0].hidden, true);
   assert.equal(details[1].hidden, false);
 });
@@ -79,4 +80,22 @@ test('world reset recenters the radar pan', () => {
   assert.equal(container.dataset.worldPanY, '0');
   assert.equal(panStyle.get('--world-pan-x'), '0px');
   assert.equal(panStyle.get('--world-pan-y'), '0px');
+});
+
+test('world site dialog close clears the persisted selected site', () => {
+  const modal = { classList: createClassList() };
+  modal.classList.add('show');
+  const container = {
+    dataset: { selectedSiteId: 'site-east' },
+    querySelector(selector) {
+      if (selector === '[data-world-site-modal]') return modal;
+      return null;
+    },
+  };
+
+  const controller = new TerritoryController({ container });
+  controller.closeSiteDialog();
+
+  assert.equal(container.dataset.selectedSiteId, undefined);
+  assert.equal(modal.classList.contains('show'), false);
 });

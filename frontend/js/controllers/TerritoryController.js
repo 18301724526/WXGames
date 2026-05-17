@@ -110,6 +110,7 @@
     openSiteDialog(siteId) {
       const modal = this.container?.querySelector('[data-world-site-modal]');
       if (!modal) return;
+      this.container.dataset.selectedSiteId = siteId;
       modal.querySelectorAll('[data-site-detail]').forEach((detail) => {
         detail.hidden = detail.dataset.siteDetail !== siteId;
       });
@@ -119,6 +120,7 @@
     closeSiteDialog() {
       const modal = this.container?.querySelector('[data-world-site-modal]');
       if (!modal) return;
+      if (this.container?.dataset) delete this.container.dataset.selectedSiteId;
       modal.classList.remove('show');
     }
 

@@ -2129,6 +2129,7 @@ body {
   background: conic-gradient(from -24deg, rgba(116, 211, 160, 0.2), transparent 42deg, transparent 360deg);
   opacity: 0.75;
   pointer-events: none;
+  animation: radarSweep 8s linear infinite;
 }
 
 .radar-sweep {
@@ -2141,6 +2142,17 @@ body {
   background: linear-gradient(90deg, rgba(116, 211, 160, 0.7), transparent);
   box-shadow: 0 0 12px rgba(116, 211, 160, 0.35);
   pointer-events: none;
+  animation: radarNeedle 8s linear infinite;
+}
+
+@keyframes radarSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes radarNeedle {
+  from { transform: rotate(-24deg); }
+  to { transform: rotate(336deg); }
 }
 
 .radar-origin {
@@ -2270,6 +2282,10 @@ body {
 .world-site-detail {
   display: grid;
   gap: 10px;
+}
+
+.world-site-detail[hidden] {
+  display: none !important;
 }
 
 .site-card-hero {
