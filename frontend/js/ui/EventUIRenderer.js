@@ -41,7 +41,7 @@
           pending.innerHTML = '<div class="pending-events-empty">暂无待处理事件</div>';
         } else {
           pending.innerHTML = state.eventQueue.map((event) => `
-            <div class="pending-event-card ${event.type === 'special' ? 'is-special' : ''}" data-event-id="${event.id}" id="${event.id === 'evt_settlement_forest_001' ? 'event-card-special' : ''}">
+            <div class="pending-event-card ${event.type === 'special' ? 'is-special' : ''} ${event.type === 'threat' ? 'is-threat' : ''}" data-event-id="${event.id}" id="${event.id === 'evt_settlement_forest_001' ? 'event-card-special' : ''}">
               <div class="pending-event-header">${event.icon || '📜'} ${event.title}</div>
               <div class="pending-event-desc">${event.description}</div>
               <div class="pending-event-hint">点击查看详情</div>
@@ -56,7 +56,7 @@
           history.innerHTML = '<div class="event-history-empty">暂无事件记录</div>';
         } else {
           history.innerHTML = state.eventHistory.map((event) => `
-            <div class="event-history-item positive">
+            <div class="event-history-item ${event.type === 'threat' ? 'threat' : 'positive'}">
               <div class="event-history-emoji">${event.icon || '📜'}</div>
               <div class="event-history-info">
                 <div class="event-history-title">${event.title}</div>

@@ -26,6 +26,7 @@ class GameStateRepository {
         eventQueue TEXT,
         eventHistory TEXT,
         regularEventState TEXT,
+        threatEventState TEXT,
         activeBuffs TEXT,
         offlineSnapshot TEXT,
         offlineEventLog TEXT,
@@ -54,6 +55,9 @@ class GameStateRepository {
     if (!columns.some((column) => column.name === 'activeBuffs')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN activeBuffs TEXT').run();
     }
+    if (!columns.some((column) => column.name === 'threatEventState')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN threatEventState TEXT').run();
+    }
   }
 
   findByPlayerId(playerId) {
@@ -73,6 +77,7 @@ class GameStateRepository {
       eventQueue: JSON.parse(row.eventQueue || '[]'),
       eventHistory: JSON.parse(row.eventHistory || '[]'),
       regularEventState: row.regularEventState ? JSON.parse(row.regularEventState) : null,
+      threatEventState: row.threatEventState ? JSON.parse(row.threatEventState) : null,
       activeBuffs: JSON.parse(row.activeBuffs || '[]'),
       offlineSnapshot: JSON.parse(row.offlineSnapshot || '{}'),
       offlineEventLog: JSON.parse(row.offlineEventLog || '[]'),
@@ -100,8 +105,8 @@ class GameStateRepository {
         playerId, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, military,
-        regularEventState, activeBuffs, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        regularEventState, threatEventState, activeBuffs, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -123,6 +128,7 @@ class GameStateRepository {
       JSON.stringify(gameState.softGuideState || {}),
       JSON.stringify(gameState.military || {}),
       JSON.stringify(gameState.regularEventState || {}),
+      JSON.stringify(gameState.threatEventState || {}),
       JSON.stringify(gameState.activeBuffs || []),
       new Date().toISOString(),
     );

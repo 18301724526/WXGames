@@ -1,9 +1,13 @@
 const EventDomain = require('../domain/Event');
 const EventRewardCalculator = require('../calculators/EventRewardCalculator');
+const MilitaryService = require('./MilitaryService');
 
 const REGULAR_EVENT_INTERVAL_MS = 4 * 60 * 1000;
+const THREAT_EVENT_INTERVAL_MS = 6 * 60 * 1000;
 const REGULAR_EVENT_QUEUE_LIMIT = 3;
+const THREAT_EVENT_QUEUE_LIMIT = 2;
 const RECENT_TEMPLATE_LIMIT = 3;
+const RECENT_THREAT_TEMPLATE_LIMIT = 2;
 const RESOURCE_KEYS = new Set(['food', 'knowledge', 'wood']);
 const BUFF_TYPES = new Set(['resourceMultiplier', 'offlineEfficiencyBonus', 'happinessFlat']);
 
@@ -27,6 +31,17 @@ function normalizeRegularEventState(state, now = new Date()) {
   };
 }
 
+function normalizeThreatEventState(state, now = new Date()) {
+  const raw = state && typeof state === 'object' ? state : {};
+  const nextAt = raw.nextAt || new Date(now.getTime() + THREAT_EVENT_INTERVAL_MS).toISOString();
+  return {
+    nextAt,
+    lastGeneratedAt: raw.lastGeneratedAt || null,
+    generatedCount: Number.isFinite(raw.generatedCount) ? raw.generatedCount : 0,
+    recentTemplateIds: Array.isArray(raw.recentTemplateIds) ? raw.recentTemplateIds.slice(0, RECENT_THREAT_TEMPLATE_LIMIT) : [],
+  };
+}
+
 function normalizeActiveBuffs(activeBuffs, now = new Date()) {
   const nowMs = now.getTime();
   return (activeBuffs || []).filter((buff) => {
@@ -40,6 +55,7 @@ function normalizeActiveBuffs(activeBuffs, now = new Date()) {
 
 function cleanupRuntimeState(gameState, now = new Date()) {
   gameState.regularEventState = normalizeRegularEventState(gameState.regularEventState, now);
+  gameState.threatEventState = normalizeThreatEventState(gameState.threatEventState, now);
   gameState.activeBuffs = normalizeActiveBuffs(gameState.activeBuffs, now);
   return gameState;
 }
@@ -48,9 +64,22 @@ function countRegularEvents(gameState) {
   return (gameState.eventQueue || []).filter((event) => event.type === 'regular' && event.status !== 'claimed').length;
 }
 
+function countThreatEvents(gameState) {
+  return (gameState.eventQueue || []).filter((event) => event.type === 'threat' && event.status !== 'claimed').length;
+}
+
 function selectTemplate(gameState) {
   const state = normalizeRegularEventState(gameState.regularEventState);
   const available = EventDomain.REGULAR_EVENT_TEMPLATES.filter((template) => (gameState.currentEra || 0) >= template.minEra);
+  if (!available.length) return null;
+  const fresh = available.filter((template) => !state.recentTemplateIds.includes(template.id));
+  const pool = fresh.length ? fresh : available;
+  return pool[state.generatedCount % pool.length];
+}
+
+function selectThreatTemplate(gameState) {
+  const state = normalizeThreatEventState(gameState.threatEventState);
+  const available = EventDomain.THREAT_EVENT_TEMPLATES.filter((template) => (gameState.currentEra || 0) >= template.minEra);
   if (!available.length) return null;
   const fresh = available.filter((template) => !state.recentTemplateIds.includes(template.id));
   const pool = fresh.length ? fresh : available;
@@ -87,6 +116,28 @@ function maybeGenerateRegularEvent(gameState, now = new Date()) {
   return event;
 }
 
+function maybeGenerateThreatEvent(gameState, now = new Date()) {
+  cleanupRuntimeState(gameState, now);
+  if ((gameState.currentEra || 0) < 4) return null;
+  if (countThreatEvents(gameState) >= THREAT_EVENT_QUEUE_LIMIT) return null;
+
+  const state = gameState.threatEventState;
+  if (new Date(state.nextAt).getTime() > now.getTime()) return null;
+
+  const template = selectThreatTemplate(gameState);
+  if (!template) return null;
+
+  const event = EventDomain.createThreatEvent(template, now, state.generatedCount);
+  gameState.eventQueue = [...(gameState.eventQueue || []), event];
+  gameState.threatEventState = {
+    nextAt: new Date(now.getTime() + THREAT_EVENT_INTERVAL_MS).toISOString(),
+    lastGeneratedAt: now.toISOString(),
+    generatedCount: state.generatedCount + 1,
+    recentTemplateIds: [template.id, ...state.recentTemplateIds.filter((id) => id !== template.id)].slice(0, RECENT_THREAT_TEMPLATE_LIMIT),
+  };
+  return event;
+}
+
 function generateSpecialEvent(gameState, toEra) {
   if (toEra !== 2 || hasPendingEvent(gameState, EventDomain.SETTLEMENT_EVENT_ID)) {
     return null;
@@ -107,12 +158,35 @@ function validateResourceEffects(gameState, effects) {
   return { success: true };
 }
 
-function summarizeEffects(effects, reward) {
+function validateEffects(gameState, effects, options = {}) {
+  if (!options.allowPenaltyClamp) {
+    const resourceValidation = validateResourceEffects(gameState, effects);
+    if (!resourceValidation.success) return resourceValidation;
+  }
+  for (const effect of effects || []) {
+    if (effect.type !== 'soldiers' || effect.value >= 0) continue;
+    if (options.allowPenaltyClamp) continue;
+    if ((gameState.military?.soldiers || 0) < Math.abs(effect.value)) {
+      return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '士兵不足，无法选择该事件选项' };
+    }
+  }
+  return { success: true };
+}
+
+function summarizeEffects(effects, reward, outcome = null) {
   const parts = [];
+  if (outcome === 'success') parts.push('应对成功');
+  if (outcome === 'failure') parts.push('应对受挫');
   (effects || []).forEach((effect) => {
     if (effect.type === 'resource' && effect.value < 0) {
       const label = { food: '食物', knowledge: '知识', wood: '木材' }[effect.key] || effect.key;
       parts.push(`消耗 ${Math.abs(effect.value)} ${label}`);
+    }
+    if (effect.type === 'soldiers' && effect.value < 0) {
+      parts.push(`损失 ${Math.abs(effect.value)} 士兵`);
+    }
+    if (effect.type === 'soldiers' && effect.value > 0) {
+      parts.push(`获得 ${effect.value} 士兵`);
     }
     if (effect.type === 'buff') {
       parts.push(effect.label ? `获得 ${effect.label}` : '获得临时加成');
@@ -148,7 +222,30 @@ function applyEffects(gameState, event, option, now = new Date()) {
     if (effect.type === 'buff' && BUFF_TYPES.has(effect.buffType)) {
       gameState.activeBuffs = [...(gameState.activeBuffs || []), createBuff(event, effect, now)];
     }
+    if (effect.type === 'soldiers') {
+      const current = gameState.military?.soldiers || 0;
+      gameState.military = MilitaryService.normalizeMilitaryState({
+        ...(gameState.military || {}),
+        soldiers: Math.max(0, current + effect.value),
+      }, gameState);
+    }
   });
+}
+
+function meetsRequirements(gameState, requirements = {}) {
+  const military = MilitaryService.normalizeMilitaryState(gameState.military, gameState);
+  if (Number.isFinite(requirements.defense) && military.defense < requirements.defense) return false;
+  if (Number.isFinite(requirements.soldiers) && military.soldiers < requirements.soldiers) return false;
+  return true;
+}
+
+function getOptionEffects(gameState, option) {
+  if (!option.requirements) return { effects: option.effects || [], outcome: null };
+  const success = meetsRequirements(gameState, option.requirements);
+  return {
+    effects: success ? option.successEffects || [] : option.failureEffects || [],
+    outcome: success ? 'success' : 'failure',
+  };
 }
 
 function claimEvent(gameState, eventId, optionId) {
@@ -166,11 +263,12 @@ function claimEvent(gameState, eventId, optionId) {
     return { success: false, error: 'OPTION_NOT_FOUND', message: '事件选项不存在' };
   }
 
-  const validation = validateResourceEffects(gameState, option.effects || []);
+  const optionResult = getOptionEffects(gameState, option);
+  const validation = validateEffects(gameState, optionResult.effects, { allowPenaltyClamp: optionResult.outcome === 'failure' });
   if (!validation.success) return validation;
 
-  const reward = EventRewardCalculator.calculateReward(option);
-  if (option.effects) applyEffects(gameState, event, option, now);
+  const reward = EventRewardCalculator.calculateReward({ ...option, effects: optionResult.effects });
+  if (option.effects || option.requirements) applyEffects(gameState, event, { ...option, effects: optionResult.effects }, now);
   else {
     Object.entries(reward).forEach(([key, value]) => {
       gameState.resources[key] = (gameState.resources[key] || 0) + value;
@@ -182,7 +280,8 @@ function claimEvent(gameState, eventId, optionId) {
     status: 'claimed',
     claimedAt: now.toISOString(),
     selectedOptionId: optionId,
-    resultSummary: summarizeEffects(option.effects || [], reward),
+    resultSummary: summarizeEffects(optionResult.effects, reward, optionResult.outcome),
+    outcome: optionResult.outcome,
   };
   queue.splice(index, 1);
   gameState.eventQueue = queue;
@@ -192,7 +291,7 @@ function claimEvent(gameState, eventId, optionId) {
     success: true,
     message: claimedEvent.resultSummary,
     reward,
-    effects: option.effects || [],
+    effects: optionResult.effects,
     event: claimedEvent,
   };
 }
@@ -201,11 +300,15 @@ module.exports = {
   SETTLEMENT_EVENT_ID: EventDomain.SETTLEMENT_EVENT_ID,
   SETTLEMENT_OPTION_ID: EventDomain.SETTLEMENT_OPTION_ID,
   REGULAR_EVENT_INTERVAL_MS,
+  THREAT_EVENT_INTERVAL_MS,
   REGULAR_EVENT_QUEUE_LIMIT,
+  THREAT_EVENT_QUEUE_LIMIT,
   normalizeRegularEventState,
+  normalizeThreatEventState,
   normalizeActiveBuffs,
   cleanupRuntimeState,
   maybeGenerateRegularEvent,
+  maybeGenerateThreatEvent,
   scheduleNextRegularEvent,
   generateSpecialEvent,
   claimEvent,

@@ -32,10 +32,20 @@ function ensureBarracksResources(gameState) {
   return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('barracks'));
 }
 
+function ensureClassicalAdvanceResources(gameState, eraProgress) {
+  if (!isTutorialDone(gameState)) return false;
+  if (gameState.currentEra !== 3) return false;
+  const config = getAdvanceConfig(3);
+  if (!config) return false;
+  if ((eraProgress?.percentage || 0) < 60) return false;
+  return ensureAtLeast(gameState.resources, config.cost);
+}
+
 function apply(gameState, eraProgress) {
   let changed = false;
   changed = ensureCityAdvanceResources(gameState, eraProgress) || changed;
   changed = ensureBarracksResources(gameState) || changed;
+  changed = ensureClassicalAdvanceResources(gameState, eraProgress) || changed;
   gameState.softGuideState = gameState.softGuideState || {};
   if (gameState.currentEra === 3 && BuildingState.isBuilt(gameState.buildings, 'barracks')) {
     gameState.softGuideState.barracksUnlockedSeen = true;
@@ -66,19 +76,36 @@ function getSoftGuide(gameState, eraProgress) {
       target: 'card-barracks',
     };
   }
-  if (
-    gameState.currentEra === 3
-    && BuildingState.isBuilt(gameState.buildings, 'barracks')
-    && !gameState.softGuideState?.barracksBuiltSeen
-  ) {
-    gameState.softGuideState = {
-      ...(gameState.softGuideState || {}),
-      barracksBuiltSeen: true,
-    };
+  if (gameState.currentEra === 3) {
+    if (eraProgress?.canAdvance) {
+      return {
+        id: 'classical_advance_ready',
+        message: '士兵与资源已就绪，点击进阶进入古典时代。',
+        target: 'btn-advance-era',
+      };
+    }
+    if (BuildingState.isBuilt(gameState.buildings, 'barracks') && !gameState.softGuideState?.barracksBuiltSeen) {
+      gameState.softGuideState = {
+        ...(gameState.softGuideState || {}),
+        barracksBuiltSeen: true,
+      };
+      return {
+        id: 'barracks_built',
+        message: '防御等级+1。你的城邦第一次有了守卫。',
+        target: null,
+      };
+    }
     return {
-      id: 'barracks_built',
-      message: '防御等级+1。你的城邦第一次有了守卫。',
+      id: 'classical_preparation',
+      message: '训练至少 3 名士兵，并继续积累食物、木材与知识，为古典时代做准备。',
       target: null,
+    };
+  }
+  if (gameState.currentEra >= 4) {
+    return {
+      id: 'threat_events_open',
+      message: '外部威胁已经出现，留意事件页红点并用士兵守住边界。',
+      target: 'tab-events',
     };
   }
   return null;
@@ -89,4 +116,5 @@ module.exports = {
   getSoftGuide,
   ensureCityAdvanceResources,
   ensureBarracksResources,
+  ensureClassicalAdvanceResources,
 };

@@ -1,6 +1,90 @@
 const SETTLEMENT_EVENT_ID = 'evt_settlement_forest_001';
 const SETTLEMENT_OPTION_ID = 'opt_collect_wood';
 
+const THREAT_EVENT_TEMPLATES = [
+  {
+    id: 'border_probe',
+    title: '边境试探',
+    description: '几名陌生猎人在边界徘徊，故意留下脚印和折断的枝条。族人们希望士兵出面，让他们明白这里已经有人守望。',
+    icon: '🛡️',
+    minEra: 4,
+    options: [
+      {
+        id: 'show_patrol',
+        label: '派士兵巡边',
+        preview: '需要防御 2。成功获得 30 食物、8 知识；不足则损失 30 食物',
+        requirements: { defense: 2 },
+        successEffects: [
+          { type: 'resource', key: 'food', value: 30 },
+          { type: 'resource', key: 'knowledge', value: 8 },
+        ],
+        failureEffects: [{ type: 'resource', key: 'food', value: -30 }],
+      },
+      {
+        id: 'tighten_watch',
+        label: '加强哨戒',
+        preview: '5 分钟内食物产出 +10%',
+        effects: [{ type: 'buff', buffType: 'resourceMultiplier', target: 'food', value: 0.1, durationSeconds: 300, label: '边境哨戒' }],
+      },
+    ],
+  },
+  {
+    id: 'night_fire',
+    title: '夜间火光',
+    description: '夜色里，远处林间升起了几簇火光。它们没有靠近，但足以让城邦里的孩子们睡不安稳。',
+    icon: '🔥',
+    minEra: 4,
+    options: [
+      {
+        id: 'secure_road',
+        label: '保护道路',
+        preview: '需要防御 4。成功获得 25 木材、10 知识；不足则损失 1 士兵、20 木材',
+        requirements: { defense: 4 },
+        successEffects: [
+          { type: 'resource', key: 'wood', value: 25 },
+          { type: 'resource', key: 'knowledge', value: 10 },
+        ],
+        failureEffects: [
+          { type: 'soldiers', value: -1 },
+          { type: 'resource', key: 'wood', value: -20 },
+        ],
+      },
+      {
+        id: 'stay_inside',
+        label: '收拢人手',
+        preview: '消耗 15 食物，获得 15 木材',
+        effects: [
+          { type: 'resource', key: 'food', value: -15 },
+          { type: 'resource', key: 'wood', value: 15 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'bandit_ransom',
+    title: '盗匪勒索',
+    description: '一伙盗匪托人带来粗糙的木牌，要求城邦交出粮食。兵营里的士兵们等待命令。',
+    icon: '⚔️',
+    minEra: 4,
+    options: [
+      {
+        id: 'drive_away',
+        label: '驱赶盗匪',
+        preview: '需要 3 名士兵。成功获得 60 食物；不足则损失 45 食物',
+        requirements: { soldiers: 3 },
+        successEffects: [{ type: 'resource', key: 'food', value: 60 }],
+        failureEffects: [{ type: 'resource', key: 'food', value: -45 }],
+      },
+      {
+        id: 'pay_food',
+        label: '交付粮食',
+        preview: '消耗 25 食物，直接化解',
+        effects: [{ type: 'resource', key: 'food', value: -25 }],
+      },
+    ],
+  },
+];
+
 const REGULAR_EVENT_TEMPLATES = [
   {
     id: 'harvest_sign',
@@ -188,6 +272,22 @@ function createRegularEvent(template, now = new Date(), sequence = 0) {
   };
 }
 
+function createThreatEvent(template, now = new Date(), sequence = 0) {
+  const createdAt = now.toISOString();
+  return {
+    id: `evt_threat_${template.id}_${now.getTime()}_${sequence}`,
+    type: 'threat',
+    status: 'pending',
+    templateId: template.id,
+    title: template.title,
+    description: template.description,
+    icon: template.icon,
+    options: template.options.map((option) => ({ ...option })),
+    expiresAt: null,
+    createdAt,
+  };
+}
+
 function findEvent(eventQueue, eventId) {
   return (eventQueue || []).find((event) => event.id === eventId) || null;
 }
@@ -195,8 +295,10 @@ function findEvent(eventQueue, eventId) {
 module.exports = {
   SETTLEMENT_EVENT_ID,
   SETTLEMENT_OPTION_ID,
+  THREAT_EVENT_TEMPLATES,
   REGULAR_EVENT_TEMPLATES,
   createSettlementEvent,
   createRegularEvent,
+  createThreatEvent,
   findEvent,
 };

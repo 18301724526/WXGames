@@ -29,6 +29,7 @@ function createInitialGameState(playerId) {
     eventQueue: [],
     eventHistory: [],
     regularEventState: EventService.normalizeRegularEventState(null),
+    threatEventState: EventService.normalizeThreatEventState(null),
     activeBuffs: [],
     offlineSnapshot: {},
     offlineEventLog: [],
@@ -85,10 +86,16 @@ function calculateEraProgress(gameState) {
   const advanceConfig = getAdvanceConfig(gameState.currentEra);
   if (!advanceConfig) return { percentage: 100, canAdvance: false, conditions: [] };
   const conditions = advanceConfig.conditions.map((condition) => {
-    const current = Math.floor(gameState.resources?.[condition.key] || 0);
+    const source = condition.source || 'resources';
+    const rawCurrent = source === 'military'
+      ? gameState.military?.[condition.key]
+      : gameState.resources?.[condition.key];
+    const current = Math.floor(rawCurrent || 0);
     const progress = Math.min(100, Math.floor((current / condition.required) * 100));
     return {
       name: condition.label,
+      key: condition.key,
+      source,
       required: condition.required,
       current,
       met: current >= condition.required,
@@ -155,6 +162,7 @@ function getClientGameState(gameState) {
     eventQueue: normalized.eventQueue,
     eventHistory: normalized.eventHistory,
     regularEventState: normalized.regularEventState,
+    threatEventState: normalized.threatEventState,
     activeBuffs: normalized.activeBuffs,
     totalBuildings,
   };

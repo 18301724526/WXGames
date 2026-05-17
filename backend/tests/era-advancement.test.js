@@ -70,3 +70,29 @@ test('聚落到城邦需要 500 食物、200 木材和 100 知识', () => {
   assert.equal(state.resources.wood, 0);
   assert.equal(state.resources.knowledge, 0);
 });
+
+test('城邦到古典需要资源和至少 3 名士兵，士兵不会被扣除', () => {
+  let state = gameStateService.createInitialGameState('classical-cost-player');
+  state.currentEra = 3;
+  state.resources.food = 900;
+  state.resources.wood = 500;
+  state.resources.knowledge = 260;
+  state.buildings.barracks = { level: 1 };
+  state.military = { soldiers: 2 };
+  state = gameStateService.normalizeState(state);
+
+  const blocked = AdvanceEraAction.execute(state, state.tutorial);
+  assert.equal(blocked.success, false);
+  assert.equal(blocked.error, 'INSUFFICIENT_RESOURCES');
+  assert.equal(state.currentEra, 3);
+
+  state.military.soldiers = 3;
+  const success = AdvanceEraAction.execute(state, state.tutorial);
+
+  assert.equal(success.success, true);
+  assert.equal(state.currentEra, 4);
+  assert.equal(state.resources.food, 0);
+  assert.equal(state.resources.wood, 0);
+  assert.equal(state.resources.knowledge, 0);
+  assert.equal(state.military.soldiers, 3);
+});

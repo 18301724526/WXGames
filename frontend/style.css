@@ -1688,9 +1688,14 @@ body {
     cursor: pointer;
 }
 .pending-event-card.is-special {
-    border-color: rgba(255, 215, 0, 0.52);
-    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.12), 0 10px 24px rgba(0, 0, 0, 0.22);
-}
+      border-color: rgba(255, 215, 0, 0.52);
+      box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.12), 0 10px 24px rgba(0, 0, 0, 0.22);
+  }
+
+.pending-event-card.is-threat {
+      border-color: rgba(233, 69, 96, 0.58);
+      box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.14), 0 10px 24px rgba(0, 0, 0, 0.24);
+  }
 .pending-event-header {
     font-size: 16px;
     font-weight: bold;

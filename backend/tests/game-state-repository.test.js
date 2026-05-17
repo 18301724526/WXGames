@@ -130,6 +130,12 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
       generatedCount: 2,
       recentTemplateIds: ['harvest_sign'],
     },
+    threatEventState: {
+      nextAt: '2026-05-17T08:06:00.000Z',
+      lastGeneratedAt: '2026-05-17T08:00:00.000Z',
+      generatedCount: 1,
+      recentTemplateIds: ['border_probe'],
+    },
     activeBuffs: [
       {
         id: 'buff-food',
@@ -156,6 +162,12 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
     lastGeneratedAt: '2026-05-17T08:00:00.000Z',
     generatedCount: 2,
     recentTemplateIds: ['harvest_sign'],
+  });
+  assert.deepEqual(result.threatEventState, {
+    nextAt: '2026-05-17T08:06:00.000Z',
+    lastGeneratedAt: '2026-05-17T08:00:00.000Z',
+    generatedCount: 1,
+    recentTemplateIds: ['border_probe'],
   });
   assert.deepEqual(result.activeBuffs, [
     {

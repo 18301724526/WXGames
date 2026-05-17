@@ -37,6 +37,7 @@
       eventQueue: gameState.eventQueue || [],
       eventHistory: gameState.eventHistory || [],
       regularEventState: gameState.regularEventState || null,
+      threatEventState: gameState.threatEventState || null,
       activeBuffs: gameState.activeBuffs || [],
       eraProgress: (apiResponse && apiResponse.eraProgress) || { percentage: 0, canAdvance: false, conditions: [] },
     };

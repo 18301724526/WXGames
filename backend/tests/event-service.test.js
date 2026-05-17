@@ -116,3 +116,92 @@ test('过期 buff 会被清理', () => {
 
   assert.deepEqual(state.activeBuffs.map((buff) => buff.id), ['buff-active']);
 });
+
+test('威胁事件只在古典时代后按独立节奏生成', () => {
+  const state = gameStateService.createInitialGameState('threat-event-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.currentEra = 3;
+  state.threatEventState = EventService.normalizeThreatEventState({ nextAt: now.toISOString() }, now);
+
+  const blocked = EventService.maybeGenerateThreatEvent(state, now);
+  assert.equal(blocked, null);
+
+  state.currentEra = 4;
+  const created = EventService.maybeGenerateThreatEvent(state, now);
+
+  assert.equal(created.type, 'threat');
+  assert.equal(state.eventQueue.length, 1);
+  assert.equal(state.threatEventState.generatedCount, 1);
+});
+
+test('威胁事件队列满 2 个后不再生成', () => {
+  const state = gameStateService.createInitialGameState('threat-event-cap-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.currentEra = 4;
+  state.eventQueue = [
+    EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES[0], now, 0),
+    EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES[1], now, 1),
+  ];
+  state.threatEventState = EventService.normalizeThreatEventState({ nextAt: now.toISOString() }, now);
+
+  const created = EventService.maybeGenerateThreatEvent(state, now);
+
+  assert.equal(created, null);
+  assert.equal(state.eventQueue.length, 2);
+});
+
+test('威胁事件成功时按防御要求发放奖励', () => {
+  const state = gameStateService.createInitialGameState('threat-event-success-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  const event = EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES.find((item) => item.id === 'border_probe'), now, 0);
+  state.currentEra = 4;
+  state.buildings.barracks = { level: 1 };
+  state.military = { soldiers: 2 };
+  state.eventQueue = [event];
+  gameStateService.normalizeState(state);
+
+  const result = EventService.claimEvent(state, event.id, 'show_patrol');
+
+  assert.equal(result.success, true);
+  assert.equal(state.resources.food, 130);
+  assert.equal(state.resources.knowledge, 8);
+  assert.equal(state.eventHistory[0].outcome, 'success');
+  assert.match(state.eventHistory[0].resultSummary, /应对成功/);
+});
+
+test('威胁事件失败时惩罚会按 0 下限扣减并完成事件', () => {
+  const state = gameStateService.createInitialGameState('threat-event-failure-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  const event = EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES.find((item) => item.id === 'night_fire'), now, 0);
+  state.currentEra = 4;
+  state.buildings.barracks = { level: 1 };
+  state.military = { soldiers: 0 };
+  state.resources.wood = 5;
+  state.eventQueue = [event];
+  gameStateService.normalizeState(state);
+
+  const result = EventService.claimEvent(state, event.id, 'secure_road');
+
+  assert.equal(result.success, true);
+  assert.equal(state.resources.wood, 0);
+  assert.equal(state.military.soldiers, 0);
+  assert.equal(state.eventQueue.length, 0);
+  assert.equal(state.eventHistory[0].outcome, 'failure');
+  assert.match(state.eventHistory[0].resultSummary, /应对受挫/);
+});
+
+test('威胁事件主动成本选项仍会校验资源是否足够', () => {
+  const state = gameStateService.createInitialGameState('threat-event-cost-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  const event = EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES.find((item) => item.id === 'bandit_ransom'), now, 0);
+  state.currentEra = 4;
+  state.resources.food = 10;
+  state.eventQueue = [event];
+
+  const result = EventService.claimEvent(state, event.id, 'pay_food');
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, 'INSUFFICIENT_RESOURCES');
+  assert.equal(state.resources.food, 10);
+  assert.equal(state.eventQueue.length, 1);
+});

@@ -21,6 +21,7 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
     if (SoftGuideService.apply(gameState, eraProgress)) {
       eraProgress = gameStateService.calculateEraProgress(gameState);
     }
@@ -59,6 +60,7 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
     if (SoftGuideService.apply(gameState, eraProgress)) {
       eraProgress = gameStateService.calculateEraProgress(gameState);
     }
@@ -88,6 +90,7 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
     if (SoftGuideService.apply(gameState, eraProgress)) {
       eraProgress = gameStateService.calculateEraProgress(gameState);
     }

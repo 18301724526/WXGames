@@ -53,3 +53,20 @@ test('聚落和城邦时代不能建造工坊或学院', () => {
     }
   }
 });
+
+test('古典时代解锁工坊学院和神庙', () => {
+  assert.deepEqual(
+    BuildingUnlockService.getUnlockedBuildings(4),
+    ['farm', 'house', 'lumbermill', 'barracks', 'temple', 'workshop', 'academy'],
+  );
+
+  const state = gameStateService.createInitialGameState('classical-unlocks-player');
+  state.currentEra = 4;
+  state.tutorial.completed = true;
+  state.resources = { food: 999, knowledge: 999, wood: 999, stone: 0, metal: 0 };
+
+  for (const buildingId of ['workshop', 'academy', 'temple']) {
+    const result = BuildingActionValidator.validateBuild(state, state.tutorial, buildingId);
+    assert.equal(result.allowed, true, `${buildingId} should be unlocked`);
+  }
+});

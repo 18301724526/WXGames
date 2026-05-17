@@ -80,3 +80,50 @@ test('单选项事件保留主领取按钮用于教程高亮', () => {
     global.document = originalDocument;
   }
 });
+
+test('威胁事件卡片会带 threat 样式并显示后端预览', () => {
+  const originalDocument = global.document;
+  try {
+    const elements = new Map([
+      ['pendingEventsContainer', { innerHTML: '' }],
+      ['eventsBadge', { hidden: true, textContent: '' }],
+      ['eventHistoryList', { innerHTML: '' }],
+      ['eventModal', { classList: createClassList() }],
+      ['eventModalOptions', { innerHTML: '' }],
+      ['btnClaimEvent', { dataset: {}, textContent: '', hidden: false }],
+    ]);
+    global.document = {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
+        return elements.get(id);
+      },
+    };
+    const renderer = new EventUIRenderer(() => {});
+    const event = {
+      id: 'evt_threat_border_probe',
+      type: 'threat',
+      title: '边境试探',
+      description: 'desc',
+      icon: '🛡️',
+      options: [
+        { id: 'show_patrol', label: '派士兵巡边', preview: '需要防御 2。成功获得 30 食物' },
+        { id: 'tighten_watch', label: '加强哨戒', preview: '5 分钟内食物产出 +10%' },
+      ],
+    };
+
+    renderer.render({
+      resources: { knowledgePerSecond: 0 },
+      eventQueue: [event],
+      eventHistory: [],
+    });
+    renderer.open(event);
+
+    assert.match(elements.get('pendingEventsContainer').innerHTML, /is-threat/);
+    assert.equal(elements.get('eventsBadge').hidden, false);
+    assert.equal(elements.get('eventsBadge').textContent, '1');
+    assert.match(elements.get('eventModalOptions').innerHTML, /需要防御 2/);
+    assert.equal(elements.get('btnClaimEvent').hidden, true);
+  } finally {
+    global.document = originalDocument;
+  }
+});

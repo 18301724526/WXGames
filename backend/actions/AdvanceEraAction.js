@@ -14,6 +14,15 @@ function hasEnoughResources(resources, cost) {
   return Object.entries(cost || {}).every(([key, value]) => (resources?.[key] || 0) >= value);
 }
 
+function meetsConditions(gameState, conditions) {
+  return (conditions || []).every((condition) => {
+    if ((condition.source || 'resources') === 'military') {
+      return (gameState.military?.[condition.key] || 0) >= condition.required;
+    }
+    return (gameState.resources?.[condition.key] || 0) >= condition.required;
+  });
+}
+
 function applyEraKnowledgeBonus(gameState, nextEra) {
   const eraKnowledgeBonus = { 1: 5 };
   const bonus = eraKnowledgeBonus[nextEra] || 0;
@@ -40,7 +49,7 @@ function execute(gameState, tutorial) {
   if (!config) {
     return { success: false, error: 'ERA_MAX_REACHED', message: '已达到当前版本最高时代', tutorial };
   }
-  if (!hasEnoughResources(gameState.resources, config.cost)) {
+  if (!hasEnoughResources(gameState.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
     return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进阶', tutorial };
   }
 

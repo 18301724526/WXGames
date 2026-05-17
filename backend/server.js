@@ -93,6 +93,7 @@ setInterval(() => {
     MilitaryService.advanceTraining(gameState, 1);
     EventService.cleanupRuntimeState(gameState);
     EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
     gameState.updatedAt = new Date().toISOString();
     repository.save(gameState);
   }
