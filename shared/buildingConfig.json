@@ -112,6 +112,7 @@
       "id": "lumbermill",
       "name": "伐木场",
       "icon": "🪵",
+      "art": "assets/art/building-lumbermill-cutout.png",
       "category": "production",
       "unlockEra": 2,
       "maxLevel": 3,

@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const BuildingConfig = require('../config/BuildingConfig');
 
@@ -14,4 +16,13 @@ test('工坊和学院预留到城邦时代之后', () => {
   assert.equal(BuildingConfig.getBuilding('academy').unlockEra, 4);
   assert.equal(BuildingConfig.getBuilding('lumbermill').unlockEra, 2);
   assert.equal(BuildingConfig.getBuilding('barracks').unlockEra, 3);
+});
+
+test('所有建筑配置都有存在的美术资源', () => {
+  const projectRoot = path.join(__dirname, '..', '..');
+  for (const building of Object.values(BuildingConfig.getAllBuildings())) {
+    assert.ok(building.art, `${building.id} missing art`);
+    const assetPath = path.join(projectRoot, 'frontend', building.art);
+    assert.equal(fs.existsSync(assetPath), true, `${building.id} art not found: ${building.art}`);
+  }
 });
