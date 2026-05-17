@@ -6,6 +6,7 @@ function createWindowStub() {
     GameConfig: {
       API_BASE: '/api',
       SYNC_INTERVAL_MS: 2000,
+      UPDATE_CHECK_INTERVAL_MS: 30000,
       TUTORIAL_WAIT_SYNC_INTERVAL_MS: 500,
       TUTORIAL_START_DELAY_MS: 0,
       BUILDINGS: {},
@@ -13,6 +14,10 @@ function createWindowStub() {
     },
     GameAPI: class {},
     GameStateSync: class {},
+    UpdateChecker: class {
+      start() {}
+      stop() {}
+    },
     GameStateManager: class {},
     ResourceRenderer: class {},
     BuildingUIRenderer: class {},
@@ -342,6 +347,87 @@ test('syncFromServer locally promotes step8 to step9 when era2 resource requirem
 
     assert.equal(tutorialState.currentStep, 9);
     assert.equal(tutorialState.phaseCompleted.newbie, true);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('renderCivilization displays backend-provided military state', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const elements = new Map();
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        if (!elements.has(id)) {
+          elements.set(id, {
+            id,
+            style: {},
+            textContent: '',
+            innerHTML: '',
+            disabled: false,
+            hidden: false,
+            classList: { toggle() {} },
+          });
+        }
+        return elements.get(id);
+      },
+      querySelector() {
+        return { innerHTML: '' };
+      },
+    };
+    global.window.DOMHelper = {
+      setText(id, value) {
+        global.document.getElementById(id).textContent = value;
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state = {
+      currentEra: 3,
+      currentEraName: '城邦时代',
+      currentEraDescription: '城邦时代',
+      gameDay: 1,
+      population: { total: 6 },
+      totalBuildings: 4,
+      techs: {},
+      happiness: 100,
+      eraProgress: {
+        percentage: 0,
+        canAdvance: false,
+        targetEraName: '时代未开放',
+        conditions: [],
+      },
+      military: {
+        soldiers: 2,
+        soldierCap: 5,
+        trainingProgress: 15,
+        trainingIntervalSeconds: 30,
+        defense: 2,
+      },
+    };
+    Game.tutorialController = {
+      state: { completed: true, currentStep: 99 },
+      canOpenTab() { return true; },
+    };
+
+    Game.renderCivilization();
+
+    assert.equal(elements.get('militaryPanel').hidden, false);
+    assert.equal(elements.get('soldierCount').textContent, '2/5');
+    assert.equal(elements.get('militaryDefense').textContent, 2);
+    assert.equal(elements.get('soldierTrainingText').textContent, '下一名 15/30 秒');
+    assert.equal(elements.get('soldierTrainingProgress').style.width, '50%');
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

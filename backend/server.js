@@ -13,7 +13,9 @@ const registerGameRoutes = require('./routes/gameRoutes');
 const registerBuildingRoutes = require('./routes/buildingRoutes');
 const gameStateService = require('./services/GameStateService');
 const ResourceTickCalculator = require('./calculators/ResourceTickCalculator');
+const MilitaryService = require('./services/MilitaryService');
 const BuildingConfig = require('./config/BuildingConfig');
+const VersionService = require('./services/VersionService');
 
 const app = express();
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
@@ -27,6 +29,7 @@ const authService = new AuthService(db, jwtSecret);
 const logService = new LogService(db);
 logService.initLogTable();
 const authMiddleware = createAuthMiddleware(authService);
+const versionService = new VersionService();
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json());
@@ -68,7 +71,13 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     buildingConfigVersion: BuildingConfig.getVersion(),
     buildingConfigPath: BuildingConfig.getSourcePath(),
+    appVersion: versionService.getVersionInfo(),
   });
+});
+
+app.get('/api/version', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.json(versionService.getVersionInfo());
 });
 
 setInterval(() => {
@@ -80,6 +89,7 @@ setInterval(() => {
     gameState.resources.knowledge = Math.max(0, (gameState.resources.knowledge || 0) + outputs.knowledgePerSecond);
     gameState.resources.wood = Math.max(0, (gameState.resources.wood || 0) + outputs.woodPerSecond);
     ResourceTickCalculator.applyPopulationGrowth(gameState, 1);
+    MilitaryService.advanceTraining(gameState, 1);
     gameState.updatedAt = new Date().toISOString();
     repository.save(gameState);
   }

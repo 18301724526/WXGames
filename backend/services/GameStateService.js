@@ -8,6 +8,7 @@ const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 const { getAdvanceConfig, getEraName, getEraDescription } = require('../config/EraConfig');
 const BuildingConfig = require('../config/BuildingConfig');
 const GameConfig = require('../config/GameConfig');
+const MilitaryService = require('./MilitaryService');
 
 function createInitialGameState(playerId) {
   const buildings = BuildingState.createInitialBuildingState();
@@ -32,6 +33,7 @@ function createInitialGameState(playerId) {
     lastEventAt: 0,
     tutorial: TutorialService.createInitialTutorialState(),
     softGuideState: {},
+    military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
     updatedAt: new Date().toISOString(),
   };
 }
@@ -64,6 +66,7 @@ function normalizeState(rawState) {
   state.offlineEventLog = state.offlineEventLog || [];
   state.tutorial = TutorialService.normalizeTutorialState(state.tutorial);
   state.softGuideState = state.softGuideState && typeof state.softGuideState === 'object' ? state.softGuideState : {};
+  state.military = MilitaryService.normalizeMilitaryState(state.military, state);
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
@@ -130,6 +133,7 @@ function getClientGameState(gameState) {
     buildingCosts: getBuildingCosts(normalized.buildings),
     buildingDefinitions: getBuildingDefinitions(),
     buildingEffects: normalized.buildingEffects,
+    military: normalized.military,
     unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra),
     currentEra: normalized.currentEra,
     currentEraName: getEraName(normalized.currentEra),

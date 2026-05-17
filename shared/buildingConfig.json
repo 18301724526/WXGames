@@ -152,6 +152,11 @@
           "globalOutputMultiplier": 0.1
         }
       },
+      "military": {
+        "trainingIntervalSecondsByLevel": [0, 30, 20],
+        "soldierCapByLevel": [0, 5, 10],
+        "defensePerSoldier": 1
+      },
       "ui": {
         "color": "#c0392b",
         "description": "提供防御与少量全局加成",

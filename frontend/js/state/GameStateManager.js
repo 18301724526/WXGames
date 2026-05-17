@@ -20,6 +20,15 @@
       this.state.softGuide = serverState.softGuide || null;
       this.state.workshopCount = global.FrontendBuildingState.getLevel(this.state.buildings, 'workshop');
       this.state.lumbermillCount = global.FrontendBuildingState.getLevel(this.state.buildings, 'lumbermill');
+      this.state.military = {
+        soldiers: 0,
+        soldierCap: 0,
+        trainingProgress: 0,
+        trainingIntervalSeconds: 0,
+        defensePerSoldier: 1,
+        defense: 0,
+        ...(this.state.military || {}),
+      };
       this.state.population = {
         ...this.state.population,
         maxPop: this.state.population.max || this.state.population.maxPop || 3,

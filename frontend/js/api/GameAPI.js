@@ -27,6 +27,7 @@
     }
 
     getState() { return this.request('GET', '/game/state'); }
+    getVersion() { return this.request('GET', '/version'); }
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }

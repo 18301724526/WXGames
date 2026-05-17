@@ -21,6 +21,7 @@ const Game = {
     techs: {},
     eventQueue: [],
     eventHistory: [],
+    military: {},
     softGuide: null,
   },
   tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
@@ -31,6 +32,11 @@ const Game = {
     this.gameAPI = new window.GameAPI(this.apiBase, this.token);
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
     this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS);
+    this.updateChecker = new window.UpdateChecker({
+      api: this.gameAPI,
+      intervalMs: window.GameConfig.UPDATE_CHECK_INTERVAL_MS,
+      onUpdate: (version) => this.showUpdatePrompt(version),
+    });
     this.stateManager = new window.GameStateManager(this.state);
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
@@ -73,6 +79,7 @@ const Game = {
     this.bindBaseEvents();
     if (this.bindPopulationEvents) this.bindPopulationEvents();
     this.buildingController.bind();
+    this.updateChecker.start();
     this.render();
   },
 
@@ -145,6 +152,39 @@ const Game = {
 
   stopHeartbeat() {
     if (this.syncService) this.syncService.stop();
+    if (this.updateChecker) this.updateChecker.stop();
+  },
+
+  showUpdatePrompt(version) {
+    const message = `游戏有更新，需要重启后继续。${version?.version ? `\n版本：${version.version}` : ''}`;
+    const confirmed = window.confirm(message);
+    if (confirmed) {
+      this.forceReloadForUpdate();
+      return;
+    }
+    this.forceReloadForUpdate();
+  },
+
+  async clearRuntimeCaches() {
+    if (window.caches?.keys) {
+      const keys = await window.caches.keys();
+      await Promise.all(keys.map((key) => window.caches.delete(key)));
+    }
+    if (navigator.serviceWorker?.getRegistrations) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+  },
+
+  forceReloadForUpdate() {
+    this.stopHeartbeat();
+    this.clearRuntimeCaches()
+      .catch(() => {})
+      .finally(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('reload', Date.now().toString());
+        window.location.replace(url.toString());
+      });
   },
 
   async apiGet(path) {
@@ -378,6 +418,7 @@ const Game = {
       else if (progress.canAdvance) label.textContent = '满足条件，可进阶';
       else label.textContent = '条件不足，无法进阶';
     }
+    this.renderMilitary();
 
     const features = typeof document.querySelector === 'function'
       ? document.querySelector('.civ-features-list')
@@ -386,6 +427,40 @@ const Game = {
       const description = this.state.currentEraDescription || `${eraName}：继续建设你的文明。`;
       features.innerHTML = `<div class="civ-feature-item">${description}</div>`;
     }
+  },
+
+  renderMilitary() {
+    const military = this.state.military || {};
+    const panel = document.getElementById('militaryPanel');
+    if (!panel) return;
+    const soldiers = Math.floor(military.soldiers || 0);
+    const cap = Math.floor(military.soldierCap || 0);
+    const defense = Math.floor(military.defense || 0);
+    const interval = Math.floor(military.trainingIntervalSeconds || 0);
+    const progress = Math.floor(military.trainingProgress || 0);
+    const shouldShow = cap > 0 || soldiers > 0 || this.state.currentEra >= 3;
+    panel.hidden = !shouldShow;
+    if (panel.classList) panel.classList.toggle('is-hidden', !shouldShow);
+    if (!shouldShow) return;
+
+    this.setText('soldierCount', `${soldiers}/${cap}`);
+    this.setText('militaryDefense', defense);
+
+    const progressBar = document.getElementById('soldierTrainingProgress');
+    if (soldiers >= cap && cap > 0) {
+      this.setText('soldierTrainingText', '训练已满');
+      if (progressBar) progressBar.style.width = '100%';
+      return;
+    }
+    if (cap <= 0 || interval <= 0) {
+      this.setText('soldierTrainingText', '等待兵营');
+      if (progressBar) progressBar.style.width = '0%';
+      return;
+    }
+
+    const percentage = Math.max(0, Math.min(100, Math.floor((progress / interval) * 100)));
+    this.setText('soldierTrainingText', `下一名 ${progress}/${interval} 秒`);
+    if (progressBar) progressBar.style.width = `${percentage}%`;
   },
 
   renderSoftGuide() {

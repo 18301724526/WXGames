@@ -1749,6 +1749,83 @@ body {
   margin-bottom: 8px;
 }
 
+.building-military {
+  padding: 8px 10px;
+  border: 1px solid rgba(240, 180, 91, 0.22);
+  border-radius: 10px;
+  background: rgba(23, 18, 13, 0.34);
+  color: var(--accent-light);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.military-panel {
+  background:
+    linear-gradient(145deg, rgba(54, 40, 28, 0.9), rgba(28, 22, 17, 0.9));
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 231, 184, 0.09);
+  backdrop-filter: blur(8px);
+}
+
+.military-panel[hidden],
+.military-panel.is-hidden {
+  display: none !important;
+}
+
+.military-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.military-unit-art {
+  width: 70px;
+  height: 86px;
+  flex: 0 0 70px;
+  background: url('assets/art/icon-soldier-cutout.webp') center bottom / contain no-repeat;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.32));
+}
+
+.military-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.military-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.military-row strong {
+  color: var(--number);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.military-progress {
+  display: grid;
+  gap: 6px;
+}
+
+.military-progress-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .btn-build.is-loading {
   opacity: 0.7;
 }

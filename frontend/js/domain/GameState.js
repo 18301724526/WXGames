@@ -21,6 +21,7 @@
       buildingCosts: gameState.buildingCosts || {},
       buildingDefinitions: gameState.buildingDefinitions || {},
       buildingEffects: gameState.buildingEffects || {},
+      military: gameState.military || {},
       unlockedBuildings: gameState.unlockedBuildings || [],
       currentEra: Number.isFinite(gameState.currentEra) ? gameState.currentEra : 0,
       currentEraName: gameState.currentEraName || '原始时代',

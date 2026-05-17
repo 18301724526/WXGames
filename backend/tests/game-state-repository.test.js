@@ -55,3 +55,52 @@ test('findAll 只返回仍存在于 players 表中的玩家状态', () => {
 
   db.close();
 });
+
+test('save and findByPlayerId round-trip military state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  insertPlayer(db, 'player-military', 'device-military');
+  repository.save({
+    playerId: 'player-military',
+    resources: {},
+    buildings: {},
+    population: {},
+    techs: {},
+    techEffects: {},
+    currentEra: 3,
+    eraHistory: [],
+    happiness: 100,
+    gameDay: 1,
+    eventQueue: [],
+    eventHistory: [],
+    offlineSnapshot: {},
+    offlineEventLog: [],
+    negativeStreak: 0,
+    lastEventAt: 0,
+    tutorial: { completed: true, currentStep: 0 },
+    softGuideState: {},
+    military: {
+      soldiers: 2,
+      soldierCap: 5,
+      trainingProgress: 12,
+      trainingIntervalSeconds: 30,
+      defensePerSoldier: 1,
+      defense: 2,
+    },
+  });
+
+  const result = repository.findByPlayerId('player-military');
+
+  assert.deepEqual(result.military, {
+    soldiers: 2,
+    soldierCap: 5,
+    trainingProgress: 12,
+    trainingIntervalSeconds: 30,
+    defensePerSoldier: 1,
+    defense: 2,
+  });
+
+  db.close();
+});

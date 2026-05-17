@@ -3,6 +3,7 @@ const BuildingActionValidator = require('../validators/BuildingActionValidator')
 const TutorialService = require('./TutorialService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
 const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
+const MilitaryService = require('./MilitaryService');
 
 function deductResources(resources, cost) {
   const next = { ...resources };
@@ -18,6 +19,7 @@ function applyDerivedStats(gameState) {
   gameState.population.max = ResourceTickCalculator.calculatePopulationCap(effects);
   gameState.population.maxPop = gameState.population.max;
   gameState.happiness = ResourceTickCalculator.calculateHappiness(effects);
+  gameState.military = MilitaryService.normalizeMilitaryState(gameState.military, gameState);
   return effects;
 }
 

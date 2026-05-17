@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const MilitaryService = require('./MilitaryService');
 
 class AuthService {
   constructor(db, jwtSecret) {
@@ -64,6 +65,7 @@ class AuthService {
       gameState.resources.food += offlineIncome.food;
       gameState.resources.knowledge += offlineIncome.knowledge;
       gameState.resources.wood += offlineIncome.wood;
+      MilitaryService.advanceTraining(gameState, offlineSeconds);
       gameState.offlineSnapshot = { timestamp: now.toISOString(), offlineSeconds, income: offlineIncome };
       saveGameState(gameState);
     }
