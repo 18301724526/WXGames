@@ -9,10 +9,14 @@
       const parts = [];
       if (cost === null) return '已满级';
       if (!cost) return '免费建造';
-      if (cost.food) parts.push(`🌾 ${cost.food}`);
-      if (cost.wood) parts.push(`🪵 ${cost.wood}`);
-      if (cost.knowledge) parts.push(`📚 ${cost.knowledge}`);
+      if (cost.food) parts.push(this.formatCostPart('food', cost.food));
+      if (cost.wood) parts.push(this.formatCostPart('wood', cost.wood));
+      if (cost.knowledge) parts.push(this.formatCostPart('knowledge', cost.knowledge));
       return parts.length ? parts.join(' ') : '免费建造';
+    }
+
+    formatCostPart(resource, value) {
+      return `<span class="cost-item cost-${resource}"><span class="cost-icon" aria-hidden="true"></span><span class="cost-value">${value}</span></span>`;
     }
 
     getVisibleIds(state, tutorial) {

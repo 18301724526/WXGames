@@ -13,6 +13,7 @@ test('resource strip uses dedicated resource icon assets', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const assets = [
     'icon-food-cutout.webp',
+    'icon-happiness-cutout.webp',
     'icon-knowledge-cutout.webp',
     'icon-wood-cutout.webp',
   ];
@@ -26,8 +27,13 @@ test('resource strip uses dedicated resource icon assets', () => {
   assert.match(css, new RegExp(`\\.resource-detail-food \\{ background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\); \\}`));
   assert.match(css, new RegExp(`\\.resource-detail-knowledge \\{ background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\); \\}`));
   assert.match(css, new RegExp(`\\.resource-detail-wood \\{ background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\); \\}`));
+  assert.match(css, new RegExp(`\\.cost-food \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\);\\s*\\}`));
+  assert.match(css, new RegExp(`\\.cost-knowledge \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\);\\s*\\}`));
+  assert.match(css, new RegExp(`\\.cost-wood \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\);\\s*\\}`));
+  assert.match(css, new RegExp(`\\.civ-overview-item:nth-child\\(4\\) \\.civ-overview-icon \\{ background-image: url\\('${iconUrlPattern('icon-happiness-cutout.webp')}'\\); \\}`));
   assert.doesNotMatch(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
   assert.doesNotMatch(css, /\.resource-detail-wood \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
+  assert.doesNotMatch(css, /\.civ-overview-item:nth-child\(4\) \.civ-overview-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
 });
 
 test('military has its own tab and page outside the civilization page', () => {

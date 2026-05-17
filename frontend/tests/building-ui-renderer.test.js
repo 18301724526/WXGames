@@ -46,9 +46,15 @@ test('缺少模板或数值时回退到默认文案', () => {
   assert.equal(text, '');
 });
 
-test('木材成本会显示在建筑按钮文案中', () => {
+test('木材成本会用资源贴图显示在建筑按钮中', () => {
   const renderer = new BuildingUIRenderer(null, {});
-  assert.equal(renderer.formatCost({ food: 50, wood: 15 }), '🌾 50 🪵 15');
+  const html = renderer.formatCost({ food: 50, wood: 15 });
+
+  assert.match(html, /cost-item cost-food/);
+  assert.match(html, /cost-item cost-wood/);
+  assert.match(html, /<span class="cost-value">50<\/span>/);
+  assert.match(html, /<span class="cost-value">15<\/span>/);
+  assert.doesNotMatch(html, /🌾|🪵|📚/);
 });
 
 test('优先使用服务端下发的建筑定义渲染卡片', () => {
@@ -76,7 +82,11 @@ test('优先使用服务端下发的建筑定义渲染卡片', () => {
   assert.match(container.innerHTML, /兵营/);
   assert.doesNotMatch(container.innerHTML, /旧兵营/);
   assert.match(container.innerHTML, /assets\/art\/building-barracks-cutout\.png/);
-  assert.match(container.innerHTML, /🌾 260 📚 80/);
+  assert.match(container.innerHTML, /cost-item cost-food/);
+  assert.match(container.innerHTML, /cost-item cost-knowledge/);
+  assert.match(container.innerHTML, /<span class="cost-value">260<\/span>/);
+  assert.match(container.innerHTML, /<span class="cost-value">80<\/span>/);
+  assert.doesNotMatch(container.innerHTML, /🌾 260 📚 80/);
 });
 
 test('民居引导阶段只放行未建造的民居按钮，民居建成等待阶段恢复普通操作', () => {

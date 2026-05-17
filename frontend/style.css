@@ -207,7 +207,7 @@ body {
     border-radius: 0 0 3px 3px;
 }
 
-#tabResources .tab-icon { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v2'); }
+#tabResources .tab-icon { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3'); }
 #tabBuildings .tab-icon { background-image: url('assets/art/building-house-cutout.png'); }
 #tabTech .tab-icon { background-image: url('assets/art/icon-science-cutout.webp'); }
 #tabEvents .tab-icon { background-image: url('assets/art/icon-event-cutout.webp'); }
@@ -271,9 +271,9 @@ body {
     filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.32));
 }
 
-.food-card .resource-icon { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v2'); }
-.knowledge-card .resource-icon { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v2'); }
-.wood-card .resource-icon { background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v2'); }
+.food-card .resource-icon { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3'); }
+.knowledge-card .resource-icon { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3'); }
+.wood-card .resource-icon { background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v3'); }
 
 @keyframes iconFloat {
     0%, 100% { transform: translateY(0); }
@@ -646,16 +646,46 @@ body {
     font-size: 11px;
     display: flex;
     align-items: center;
-    gap: 2px;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px 7px;
+    min-height: 18px;
 }
 
-.cost-food {
-    color: #f9ca24;
+.cost-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    line-height: 1;
+    white-space: nowrap;
+    color: #fff5d7;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
-.cost-knowledge {
-    color: #74b9ff;
-    font-size: 10px;
+.cost-icon {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+    background: center / contain no-repeat;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28));
+}
+
+.cost-food .cost-icon {
+    background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3');
+}
+
+.cost-wood .cost-icon {
+    background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v3');
+}
+
+.cost-knowledge .cost-icon {
+    background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3');
+}
+
+.cost-value {
+    font-size: 11px;
 }
 
 .build-label {
@@ -927,8 +957,8 @@ body {
     filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
 }
 
-.reward-item:nth-child(1) span:first-child { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v2'); }
-.reward-item:nth-child(2) span:first-child { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v2'); }
+.reward-item:nth-child(1) span:first-child { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3'); }
+.reward-item:nth-child(2) span:first-child { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3'); }
 
 .reward-item span:last-child {
     font-size: 20px;
@@ -1103,7 +1133,7 @@ body {
 .civ-overview-item:nth-child(1) .civ-overview-icon { background-image: url('assets/art/icon-population-cutout.webp'); }
 .civ-overview-item:nth-child(2) .civ-overview-icon { background-image: url('assets/art/building-house-cutout.png'); }
 .civ-overview-item:nth-child(3) .civ-overview-icon { background-image: url('assets/art/icon-science-cutout.webp'); }
-.civ-overview-item:nth-child(4) .civ-overview-icon { background-image: url('assets/art/icon-fire-cutout.webp'); }
+.civ-overview-item:nth-child(4) .civ-overview-icon { background-image: url('assets/art/icon-happiness-cutout.webp?v=resource-icons-v3'); }
 
 .civ-overview-label {
     font-size: 10px;
@@ -1142,7 +1172,7 @@ body {
     width: 40px;
     height: 40px;
     font-size: 0;
-    background: url('assets/art/icon-food-cutout.webp?v=resource-icons-v2') center / contain no-repeat;
+    background: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3') center / contain no-repeat;
     filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
 }
 
@@ -1327,7 +1357,7 @@ body {
     width: 58px;
     height: 58px;
     font-size: 0;
-    background: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v2') center / contain no-repeat;
+    background: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3') center / contain no-repeat;
     filter: drop-shadow(0 7px 10px rgba(0, 0, 0, 0.3));
     animation: iconFloat 3s ease-in-out infinite;
 }
@@ -1976,9 +2006,9 @@ body {
   filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
 }
 
-.resource-detail-food { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v2'); }
-.resource-detail-knowledge { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v2'); }
-.resource-detail-wood { background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v2'); }
+.resource-detail-food { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3'); }
+.resource-detail-knowledge { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3'); }
+.resource-detail-wood { background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v3'); }
 
 .resource-detail-name {
   flex: 1;
