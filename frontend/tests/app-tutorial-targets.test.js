@@ -438,3 +438,48 @@ test('renderMilitary displays backend-provided military state', () => {
     global.localStorage = originalLocalStorage;
   }
 });
+
+test('soft guide does not repeatedly force the military sub view after manual selection', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state.currentTab = 'military';
+    Game.state.militaryView = 'world';
+    Game.state.softGuide = {
+      target: 'tab-military',
+      message: '派出侦察队探索城市之外的世界。',
+    };
+    Game.tutorialController = {
+      state: { completed: true, currentStep: 99 },
+    };
+    Game.tutorialRenderer = {
+      showSoft() {},
+    };
+    Game.switchMilitaryView = () => {
+      throw new Error('renderSoftGuide should not force a military sub view');
+    };
+
+    Game.renderSoftGuide();
+
+    assert.equal(Game.state.militaryView, 'world');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});

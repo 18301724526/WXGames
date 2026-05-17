@@ -643,10 +643,6 @@ const Game = {
   renderSoftGuide() {
     const guide = this.state.softGuide;
     if (!guide || !guide.message) return;
-    if ((guide.target === 'tab-military' || guide.target === 'tab-territory') && this.state.currentTab === 'military') {
-      const nextView = this.getPreferredMilitaryView(guide.target === 'tab-territory' ? 'territory' : 'military');
-      if (nextView && this.state.militaryView !== nextView) this.switchMilitaryView(nextView);
-    }
     if (!this.tutorialController?.state?.completed && this.tutorialController?.state?.currentStep > 0) return;
     if (this.tutorialRenderer && typeof this.tutorialRenderer.showSoft === 'function') {
       this.tutorialRenderer.showSoft(guide.message);
