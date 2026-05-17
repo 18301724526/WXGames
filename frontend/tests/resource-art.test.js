@@ -80,9 +80,17 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(renderer, /data-world-reset/);
   assert.match(renderer, /data-world-site-modal/);
   assert.match(renderer, /data-site-detail/);
+  assert.match(renderer, /site-card-hero/);
+  assert.match(renderer, /site-card-art/);
+  assert.match(renderer, /site-card-summary/);
   assert.doesNotMatch(renderer, /territory-site-list/);
   assert.doesNotMatch(renderer, /world-cell-unknown/);
   assert.match(html, /TerritoryController\.js\?v=world-map-dialog-v1/);
+  assert.match(html, /id="advisorBtn"/);
+  assert.match(html, /id="advisorModal"/);
+  assert.match(css, /\.advisor-btn/);
+  assert.match(css, /\.advisor-modal-content/);
+  assert.match(css, /\.site-card-hero/);
   assert.match(renderer, /scoutReports/);
   assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
 });

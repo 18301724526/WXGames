@@ -483,3 +483,69 @@ test('soft guide does not repeatedly force the military sub view after manual se
     global.localStorage = originalLocalStorage;
   }
 });
+
+test('renderSoftGuide exposes backend advice through the advisor panel', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const elements = new Map();
+    function getElement(id) {
+      if (!elements.has(id)) {
+        elements.set(id, {
+          id,
+          hidden: false,
+          disabled: false,
+          textContent: '',
+          classList: {
+            values: new Set(),
+            add(value) { this.values.add(value); },
+            remove(value) { this.values.delete(value); },
+            contains(value) { return this.values.has(value); },
+          },
+        });
+      }
+      return elements.get(id);
+    }
+
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById: getElement,
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state.softGuide = {
+      target: 'tab-military',
+      message: '派出侦察队探索城市之外的世界。',
+    };
+    Game.tutorialController = {
+      state: { completed: true, currentStep: 99 },
+    };
+
+    Game.renderSoftGuide();
+
+    assert.equal(getElement('advisorBtn').hidden, false);
+    assert.equal(getElement('advisorMessage').textContent, '派出侦察队探索城市之外的世界。');
+    assert.equal(getElement('btnAdvisorGo').disabled, false);
+
+    Game.openAdvisor();
+    assert.equal(getElement('advisorModal').classList.contains('show'), true);
+
+    const switched = [];
+    Game.switchTab = (tabId) => switched.push(tabId);
+    Game.goToAdvisorTarget();
+
+    assert.deepEqual(switched, ['military']);
+    assert.equal(getElement('advisorModal').classList.contains('show'), false);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});

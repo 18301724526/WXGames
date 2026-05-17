@@ -5,6 +5,7 @@
       this.bubble = document.getElementById('tutorialBubble');
       this.pointer = document.getElementById('tutorialPointer');
       this.scrollContainer = document.querySelector('.page-container');
+      this.onSoftGuide = null;
       this.activeTarget = null;
       this.activeMessage = '';
       this.rafId = null;
@@ -177,11 +178,14 @@
       if (this.overlay) this.overlay.classList.remove('active');
       if (this.pointer) this.pointer.classList.remove('active');
       if (this.bubble) {
-        this.bubble.textContent = message;
-        this.bubble.classList.add('active');
-        this.bubble.classList.add('soft');
-        this.positionSoftBubble();
+        this.bubble.textContent = '';
+        this.bubble.classList.remove('active');
+        this.bubble.classList.remove('soft');
+        this.bubble.style.top = '';
+        this.bubble.style.left = '';
+        this.bubble.style.maxWidth = '';
       }
+      if (typeof this.onSoftGuide === 'function') this.onSoftGuide(message);
     }
   }
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=world-map-dialog-v1">
+    <link rel="stylesheet" href="style.css?v=advisor-site-card-v1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -48,6 +48,11 @@
         <div class="menu-sep"></div>
         <button onclick="Game.logout(); Game.toggleSettings();">🚪 退出登录</button>
     </div>
+    <button class="advisor-btn" id="advisorBtn" type="button" hidden>
+        <span class="advisor-btn-icon">谋</span>
+        <span>顾问</span>
+        <span class="advisor-dot" aria-hidden="true"></span>
+    </button>
 
     <div class="log-modal-overlay" id="logModal" onclick="if(event.target===this){this.classList.remove('active');this.style.display='none';}">
         <div class="log-modal-content">
@@ -347,6 +352,19 @@
             </div>
         </div>
 
+        <div class="modal-overlay" id="advisorModal">
+            <div class="modal-content advisor-modal-content" role="dialog" aria-modal="true" aria-labelledby="advisorTitle">
+                <button class="modal-close" id="btnCloseAdvisor" type="button" aria-label="关闭">✕</button>
+                <div class="advisor-portrait">谋</div>
+                <h3 id="advisorTitle">顾问建议</h3>
+                <p class="advisor-message" id="advisorMessage">暂无建议。</p>
+                <div class="advisor-actions">
+                    <button class="btn-claim" id="btnAdvisorGo" type="button">前往处理</button>
+                    <button class="btn-secondary" id="btnAdvisorDismiss" type="button">稍后再说</button>
+                </div>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="offlineModal">
             <div class="modal-content">
                 <div class="modal-icon">⏰</div>
@@ -382,14 +400,14 @@
     <script src="js/ui/ResourceRenderer.js?v=resource-topbar-fix1"></script>
     <script src="js/ui/BuildingUIRenderer.js?v=border-era-v1"></script>
     <script src="js/ui/EventUIRenderer.js?v=threat-events-v1"></script>
-    <script src="js/ui/TerritoryUIRenderer.js?v=world-map-dialog-v1"></script>
-    <script src="js/ui/TutorialUIRenderer.js?v=settlement-era2-fix4"></script>
+    <script src="js/ui/TerritoryUIRenderer.js?v=advisor-site-card-v1"></script>
+    <script src="js/ui/TutorialUIRenderer.js?v=advisor-site-card-v1"></script>
     <script src="js/controllers/BuildingController.js?v=settlement-era2-fix2"></script>
     <script src="js/controllers/EventController.js?v=regular-events-v1"></script>
     <script src="js/controllers/TerritoryController.js?v=world-map-dialog-v1"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=world-map-dialog-v1"></script>
+    <script src="app.js?v=advisor-site-card-v1"></script>
     <script src="auth.js?v=city-era-fix1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

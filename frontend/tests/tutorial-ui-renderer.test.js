@@ -164,7 +164,7 @@ test('教程隐藏时会清理 spotlight 与提示位置', () => {
   }
 });
 
-test('软引导只显示提示气泡，不显示黑屏和手指', () => {
+test('软引导只更新顾问建议，不显示黑屏、手指或常驻气泡', () => {
   const overlay = createElement();
   const bubble = createElement();
   const pointer = createElement();
@@ -198,14 +198,19 @@ test('软引导只显示提示气泡，不显示黑屏和手指', () => {
     delete require.cache[require.resolve('../js/ui/TutorialUIRenderer')];
     const TutorialUIRenderer = require('../js/ui/TutorialUIRenderer');
     const renderer = new TutorialUIRenderer();
+    let advisorMessage = '';
+    renderer.onSoftGuide = (message) => {
+      advisorMessage = message;
+    };
 
     renderer.showSoft('食物还不够，先积累到 50 食物再建造伐木场');
 
     assert.equal(overlay.classList.contains('active'), false);
     assert.equal(pointer.classList.contains('active'), false);
-    assert.equal(bubble.classList.contains('active'), true);
-    assert.equal(bubble.classList.contains('soft'), true);
-    assert.equal(bubble.textContent, '食物还不够，先积累到 50 食物再建造伐木场');
+    assert.equal(bubble.classList.contains('active'), false);
+    assert.equal(bubble.classList.contains('soft'), false);
+    assert.equal(bubble.textContent, '');
+    assert.equal(advisorMessage, '食物还不够，先积累到 50 食物再建造伐木场');
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

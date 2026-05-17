@@ -110,28 +110,25 @@
     renderSiteDialog(territories, state) {
       const sites = territories.map((site) => `
         <article class="world-site-detail" data-site-detail="${this.escapeHtml(site.id)}" hidden>
-          <div class="world-detail-head">
-            <div class="territory-art-wrap">
-              <img class="territory-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
-            </div>
-            <div class="world-detail-title">
-              <div class="territory-topline">
-                <span class="territory-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
-                <span class="territory-status">${this.escapeHtml(this.formatStatus(site))}</span>
-              </div>
-              <div class="territory-natural">${this.escapeHtml(this.formatOwner(site))} · 坐标 ${site.x},${site.y} · 距离 ${site.distance || 0}</div>
+          <div class="site-card-hero">
+            <img class="site-card-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
+            <div class="site-card-title">
+              <span class="site-card-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
+              <span class="site-card-status">${this.escapeHtml(this.formatStatus(site))}</span>
             </div>
           </div>
-          <div class="territory-meta">
-            <span>类型 ${this.escapeHtml(site.type || '未知')}</span>
+          <div class="site-card-meta">
+            <span>${this.escapeHtml(this.formatOwner(site))}</span>
+            <span>距 ${site.distance || 0}</span>
             <span>规模 ${site.scale || 1}</span>
             <span>威胁 ${site.threat || 0}</span>
+          </div>
+          <p class="site-card-summary">${this.escapeHtml(site.summary || this.formatEffect(site.effects))}</p>
+          <div class="site-card-stats">
             <span>防御 ${site.defense || 0}</span>
             <span>建议 ${site.recommendedSoldiers || 0} 士兵</span>
           </div>
-          <div class="territory-effect">${this.escapeHtml(this.formatEffect(site.effects))}</div>
-          ${site.summary ? `<div class="territory-battle">${this.escapeHtml(site.summary)}</div>` : ''}
-          ${site.lastBattle ? `<div class="territory-battle">${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵</div>` : ''}
+          ${site.lastBattle ? `<div class="site-card-note">${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵</div>` : ''}
           ${this.getAction(site, state)}
         </article>
       `).join('');
@@ -139,7 +136,7 @@
         <div class="modal-overlay" id="worldSiteModal" data-world-site-modal>
           <div class="modal-content world-site-modal-content" role="dialog" aria-modal="true" aria-labelledby="worldSiteTitle">
             <button class="modal-close" type="button" data-world-site-close aria-label="关闭">✕</button>
-            <h3 id="worldSiteTitle">地点详情</h3>
+            <h3 id="worldSiteTitle">地点</h3>
             <div class="world-site-detail-list">
               ${sites}
             </div>

@@ -48,6 +48,7 @@ const Game = {
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'));
     this.tutorialRenderer = new window.TutorialUIRenderer();
+    this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
     this.tutorialController = new window.TutorialController({
       api: this.gameAPI,
       renderer: this.tutorialRenderer,
@@ -178,6 +179,21 @@ const Game = {
     if (closeNamingButton) closeNamingButton.addEventListener('click', () => this.closeNamingModal());
     const submitNamingButton = document.getElementById('btnSubmitNaming');
     if (submitNamingButton) submitNamingButton.addEventListener('click', () => this.submitNaming());
+
+    const advisorButton = document.getElementById('advisorBtn');
+    if (advisorButton) advisorButton.addEventListener('click', () => this.openAdvisor());
+    const advisorModal = document.getElementById('advisorModal');
+    if (advisorModal) {
+      advisorModal.addEventListener('click', (event) => {
+        if (event.target === advisorModal) this.closeAdvisor();
+      });
+    }
+    const closeAdvisorButton = document.getElementById('btnCloseAdvisor');
+    if (closeAdvisorButton) closeAdvisorButton.addEventListener('click', () => this.closeAdvisor());
+    const dismissAdvisorButton = document.getElementById('btnAdvisorDismiss');
+    if (dismissAdvisorButton) dismissAdvisorButton.addEventListener('click', () => this.closeAdvisor());
+    const advisorGoButton = document.getElementById('btnAdvisorGo');
+    if (advisorGoButton) advisorGoButton.addEventListener('click', () => this.goToAdvisorTarget());
   },
 
   async startHeartbeat() {
@@ -642,11 +658,41 @@ const Game = {
 
   renderSoftGuide() {
     const guide = this.state.softGuide;
-    if (!guide || !guide.message) return;
-    if (!this.tutorialController?.state?.completed && this.tutorialController?.state?.currentStep > 0) return;
-    if (this.tutorialRenderer && typeof this.tutorialRenderer.showSoft === 'function') {
-      this.tutorialRenderer.showSoft(guide.message);
+    this.updateAdvisor(guide);
+  },
+
+  updateAdvisor(guide) {
+    const message = guide?.message || '';
+    const button = document.getElementById('advisorBtn');
+    const modal = document.getElementById('advisorModal');
+    const messageElement = document.getElementById('advisorMessage');
+    const goButton = document.getElementById('btnAdvisorGo');
+    if (button) button.hidden = !message;
+    if (messageElement) messageElement.textContent = message || '暂无建议。';
+    this.activeAdvisor = message ? { message, target: guide?.target || null } : null;
+    if (goButton) goButton.disabled = !this.activeAdvisor?.target;
+    if (!message && modal) modal.classList.remove('show');
+  },
+
+  openAdvisor() {
+    if (!this.activeAdvisor?.message) return;
+    const modal = document.getElementById('advisorModal');
+    if (modal) modal.classList.add('show');
+  },
+
+  closeAdvisor() {
+    const modal = document.getElementById('advisorModal');
+    if (modal) modal.classList.remove('show');
+  },
+
+  goToAdvisorTarget() {
+    const target = this.activeAdvisor?.target;
+    if (target === 'tab-territory') {
+      this.switchTab('territory');
+    } else if (target?.startsWith('tab-')) {
+      this.switchTab(target.slice(4));
     }
+    this.closeAdvisor();
   },
 
   renderEraConditions(conditions) {
