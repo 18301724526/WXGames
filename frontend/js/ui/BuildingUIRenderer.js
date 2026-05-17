@@ -47,7 +47,7 @@
         const isMax = actionLabel === '已满级';
         const disabled = disabledByTutorial || isMax;
         const effectText = this.getEffectText(config, state.buildingEffects);
-        const descText = this.getDescription(id, state.buildings);
+        const descText = this.getDescription(config);
         const militaryText = this.getMilitaryText(id, state.military);
         const art = config.art
           ? `<img class="building-art" src="${config.art}" alt="${config.name}" loading="lazy">`
@@ -61,9 +61,9 @@
                 <div class="building-level">等级 ${level}</div>
               </div>
             </div>
-            <div class="building-effect">${effectText}</div>
+            ${effectText ? `<div class="building-effect">${effectText}</div>` : ''}
             ${militaryText ? `<div class="building-military">${militaryText}</div>` : ''}
-            <div class="building-desc">${descText}</div>
+            ${descText ? `<div class="building-desc">${descText}</div>` : ''}
             <button class="btn-build" data-action="${level ? 'upgrade' : 'build'}" data-building-id="${id}" ${disabled ? 'disabled' : ''}>
               <span class="build-cost">${this.formatCost(cost)}</span>
               <span class="build-label">${disabledByTutorial ? '引导中锁定' : actionLabel}</span>
@@ -89,7 +89,7 @@
       const parts = templates
         .map((template) => this.formatEffectPart(template, effect))
         .filter(Boolean);
-      return parts.join('，') || '效果由后端计算';
+      return parts.join('，');
     }
 
     getMilitaryText(id, military) {
@@ -103,10 +103,8 @@
       return `士兵 ${soldiers}/${cap} · 防御 ${defense}<br>${progressText}`;
     }
 
-    getDescription(id, buildings) {
-      const level = global.FrontendBuildingState.getLevel(buildings, id);
-      if (level > 0) return '当前效果已按后端最新建筑等级计算';
-      return '建造后由后端实时计算效果与升级成本';
+    getDescription(config) {
+      return config?.ui?.description || '';
     }
   }
 

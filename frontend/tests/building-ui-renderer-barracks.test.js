@@ -62,3 +62,30 @@ test('barracks card does not render legacy output or defense-level effect fields
   assert.doesNotMatch(container.innerHTML, /Legacy output/);
   assert.match(container.innerHTML, /Barracks/);
 });
+
+test('building card hides developer fallback effect and description text', () => {
+  const container = { innerHTML: '' };
+  const renderer = new BuildingUIRenderer(container, {
+    temple: {
+      id: 'temple',
+      name: 'Temple',
+      icon: 'T',
+      ui: {
+        effectText: [{ field: 'missingEffect', label: 'Missing', format: 'number' }],
+      },
+    },
+  });
+
+  renderer.render({
+    unlockedBuildings: ['temple'],
+    buildings: { temple: null },
+    buildingCosts: { temple: { food: 320, knowledge: 120 } },
+    buildingEffects: { byBuilding: { temple: {} } },
+  }, { completed: true, currentStep: 15 });
+
+  assert.doesNotMatch(container.innerHTML, /backend/i);
+  assert.doesNotMatch(container.innerHTML, /developer/i);
+  assert.doesNotMatch(container.innerHTML, /Missing/);
+  assert.doesNotMatch(container.innerHTML, /building-effect/);
+  assert.doesNotMatch(container.innerHTML, /building-desc/);
+});

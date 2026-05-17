@@ -43,7 +43,7 @@ test('缺少模板或数值时回退到默认文案', () => {
 
   const text = renderer.getEffectText(config, { byBuilding: { temple: {} } });
 
-  assert.equal(text, '效果由后端计算');
+  assert.equal(text, '');
 });
 
 test('木材成本会显示在建筑按钮文案中', () => {
