@@ -593,7 +593,6 @@ const Game = {
       if ((this.state.currentEra || 0) < 5) return;
       if (this.state.currentTab !== 'military') return;
       this.renderScoutControls();
-      this.territoryController?.updateRadarPhase?.();
     }, 1000);
   },
 
@@ -619,7 +618,6 @@ const Game = {
     const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
     this.setText('territoryPolityName', polityName);
     this.setText('territoryCount', `${territoryState.occupiedCount || 0}/${territoryState.discoveredCount || 0} 已控制`);
-    this.territoryController?.updateRadarPhase?.();
     if (this.territoryRenderer) this.territoryRenderer.render(this.state);
   },
 

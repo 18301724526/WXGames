@@ -76,7 +76,6 @@
     renderMap(territories) {
       const panX = Number(this.container?.dataset.worldPanX || 0);
       const panY = Number(this.container?.dataset.worldPanY || 0);
-      const radarPhase = Number(this.container?.dataset.radarPhase || 0);
       const maxDistance = Math.max(
         1,
         ...territories.map((site) => Math.hypot(
@@ -97,7 +96,7 @@
       return `
         <div class="world-map-shell">
           <button class="world-reset" type="button" data-world-reset>回到本城</button>
-          <div class="world-radar" data-world-radar aria-label="已知世界地图" style="--radar-phase:${radarPhase}ms">
+          <div class="world-radar" data-world-radar aria-label="已知世界地图">
             <span class="radar-bearing bearing-n">N</span>
             <span class="radar-bearing bearing-e">E</span>
             <span class="radar-bearing bearing-s">S</span>
@@ -110,6 +109,20 @@
           </div>
         </div>
       `;
+    }
+
+    getMapSignature(territories) {
+      return JSON.stringify((territories || []).map((site) => ({
+        id: site.id,
+        x: site.x,
+        y: site.y,
+        visualOffset: site.visualOffset || null,
+        status: site.status,
+        owner: site.owner,
+        type: site.type,
+        art: site.art,
+        name: site.cityName || site.naturalName,
+      })));
     }
 
     renderSiteDialog(territories, state) {
@@ -172,12 +185,24 @@
       }
       const territoryState = state.territoryState || {};
       const territories = territoryState.territories || [];
-      this.container.innerHTML = `
-        ${this.renderMap(territories)}
-        ${this.renderSiteDialog(territories, territoryState)}
-        <div class="territory-section-title">侦察报告</div>
-        <div class="scout-report-list">${this.renderReports(territoryState.scoutReports || [])}</div>
-      `;
+      if (!this.container.querySelector('[data-world-map-host]')) {
+        this.container.innerHTML = '<div data-world-map-host></div><div data-world-dynamic-host></div>';
+      }
+
+      const mapHost = this.container.querySelector('[data-world-map-host]');
+      const dynamicHost = this.container.querySelector('[data-world-dynamic-host]');
+      const mapSignature = this.getMapSignature(territories);
+      if (mapHost && mapHost.dataset.mapSignature !== mapSignature) {
+        mapHost.innerHTML = this.renderMap(territories);
+        mapHost.dataset.mapSignature = mapSignature;
+      }
+      if (dynamicHost) {
+        dynamicHost.innerHTML = `
+          ${this.renderSiteDialog(territories, territoryState)}
+          <div class="territory-section-title">侦察报告</div>
+          <div class="scout-report-list">${this.renderReports(territoryState.scoutReports || [])}</div>
+        `;
+      }
     }
   }
 

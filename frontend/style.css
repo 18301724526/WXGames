@@ -2130,7 +2130,6 @@ body {
   opacity: 0.75;
   pointer-events: none;
   animation: radarSweep 8s linear infinite;
-  animation-delay: var(--radar-phase, 0ms);
 }
 
 .radar-sweep {
@@ -2144,7 +2143,6 @@ body {
   box-shadow: 0 0 12px rgba(116, 211, 160, 0.35);
   pointer-events: none;
   animation: radarNeedle 8s linear infinite;
-  animation-delay: var(--radar-phase, 0ms);
 }
 
 @keyframes radarSweep {
