@@ -147,10 +147,7 @@
         { "food": 420, "knowledge": 160 }
       ],
       "effects": {
-        "perLevel": {
-          "defense": 1,
-          "globalOutputMultiplier": 0.1
-        }
+        "perLevel": {}
       },
       "military": {
         "trainingIntervalSecondsByLevel": [0, 30, 20],
@@ -159,11 +156,8 @@
       },
       "ui": {
         "color": "#c0392b",
-        "description": "提供防御与少量全局加成",
-        "effectText": [
-          { "field": "defenseLevel", "label": "防御等级", "format": "number" },
-          { "field": "globalOutputBonus", "label": "全产出", "format": "percent" }
-        ]
+        "description": "自动训练士兵，士兵提供防御",
+        "effectText": []
       }
     },
     "temple": {

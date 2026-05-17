@@ -26,3 +26,12 @@ test('所有建筑配置都有存在的美术资源', () => {
     assert.equal(fs.existsSync(assetPath), true, `${building.id} art not found: ${building.art}`);
   }
 });
+
+test('barracks config only exposes soldier training, not output or defense-level bonuses', () => {
+  const barracks = BuildingConfig.getBuilding('barracks');
+
+  assert.deepEqual(barracks.effects.perLevel, {});
+  assert.deepEqual(barracks.ui.effectText, []);
+  assert.equal(barracks.military.trainingIntervalSecondsByLevel[1], 30);
+  assert.equal(barracks.military.soldierCapByLevel[1], 5);
+});

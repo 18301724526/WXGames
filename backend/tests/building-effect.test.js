@@ -17,3 +17,20 @@ test('farm 和 house 等级效果计算正确', () => {
   assert.equal(effects.byBuilding.farm.foodOutputBonus, 1);
   assert.equal(effects.byBuilding.house.populationCapBonus, 3);
 });
+
+test('barracks does not grant output bonus or building defense level', () => {
+  const effects = BuildingEffectCalculator.calculate({
+    farm: null,
+    house: null,
+    workshop: null,
+    academy: null,
+    lumbermill: null,
+    barracks: { level: 1 },
+    temple: null,
+  });
+
+  assert.equal(effects.globalOutputMultiplier, 1);
+  assert.equal(effects.defenseLevel, 0);
+  assert.equal(effects.byBuilding.barracks.globalOutputBonus, undefined);
+  assert.equal(effects.byBuilding.barracks.defenseLevel, undefined);
+});
