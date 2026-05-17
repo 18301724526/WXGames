@@ -61,8 +61,9 @@
     }
 
     getRadarPosition(site, maxDistance) {
-      const x = Number(site.x || 0);
-      const y = Number(site.y || 0);
+      const visualOffset = site.visualOffset || {};
+      const x = Number(site.x || 0) + (Number(visualOffset.x) || 0);
+      const y = Number(site.y || 0) + (Number(visualOffset.y) || 0);
       const scale = 39 / Math.max(1, maxDistance);
       const left = Math.max(8, Math.min(92, 50 + x * scale));
       const top = Math.max(8, Math.min(92, 50 + y * scale));
@@ -75,9 +76,13 @@
     renderMap(territories) {
       const panX = Number(this.container?.dataset.worldPanX || 0);
       const panY = Number(this.container?.dataset.worldPanY || 0);
+      const radarPhase = Number(this.container?.dataset.radarPhase || 0);
       const maxDistance = Math.max(
         1,
-        ...territories.map((site) => Math.hypot(Number(site.x || 0), Number(site.y || 0))),
+        ...territories.map((site) => Math.hypot(
+          Number(site.x || 0) + (Number(site.visualOffset?.x) || 0),
+          Number(site.y || 0) + (Number(site.visualOffset?.y) || 0),
+        )),
       );
       const sites = territories.map((site) => {
         const position = this.getRadarPosition(site, maxDistance);
@@ -92,7 +97,7 @@
       return `
         <div class="world-map-shell">
           <button class="world-reset" type="button" data-world-reset>回到本城</button>
-          <div class="world-radar" data-world-radar aria-label="已知世界地图">
+          <div class="world-radar" data-world-radar aria-label="已知世界地图" style="--radar-phase:${radarPhase}ms">
             <span class="radar-bearing bearing-n">N</span>
             <span class="radar-bearing bearing-e">E</span>
             <span class="radar-bearing bearing-s">S</span>

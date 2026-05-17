@@ -57,6 +57,42 @@ test('常规事件队列满 3 个后不再生成', () => {
   assert.equal(state.eventQueue.length, 3);
 });
 
+test('特殊事件不计入常规事件 3 条上限', () => {
+  const state = gameStateService.createInitialGameState('regular-event-special-cap-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.currentEra = 2;
+  state.tutorial = { completed: true, currentStep: 15, phaseCompleted: { newbie: true, era2: true } };
+  state.eventQueue = [
+    EventDomain.createRegularEvent(EventDomain.REGULAR_EVENT_TEMPLATES[0], now, 0),
+    EventDomain.createRegularEvent(EventDomain.REGULAR_EVENT_TEMPLATES[1], now, 1),
+    EventDomain.createSettlementEvent(),
+  ];
+  state.regularEventState = EventService.normalizeRegularEventState({ nextAt: now.toISOString() }, now);
+
+  const created = EventService.maybeGenerateRegularEvent(state, now);
+
+  assert.equal(created.type, 'regular');
+  assert.equal(state.eventQueue.filter((event) => event.type === 'regular').length, 3);
+  assert.equal(state.eventQueue.filter((event) => event.type === 'special').length, 1);
+});
+
+test('常规事件满 3 条时特殊事件仍然可以生成', () => {
+  const state = gameStateService.createInitialGameState('special-event-regular-cap-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.currentEra = 2;
+  state.eventQueue = [
+    EventDomain.createRegularEvent(EventDomain.REGULAR_EVENT_TEMPLATES[0], now, 0),
+    EventDomain.createRegularEvent(EventDomain.REGULAR_EVENT_TEMPLATES[1], now, 1),
+    EventDomain.createRegularEvent(EventDomain.REGULAR_EVENT_TEMPLATES[2], now, 2),
+  ];
+
+  const created = EventService.generateSpecialEvent(state, 2);
+
+  assert.equal(created.type, 'special');
+  assert.equal(state.eventQueue.length, 4);
+  assert.equal(state.eventQueue.filter((event) => event.type === 'regular').length, 3);
+});
+
 test('事件选项资源不足时不会扣减或完成事件', () => {
   const state = gameStateService.createInitialGameState('regular-event-cost-player');
   const now = new Date('2026-05-17T08:00:00.000Z');

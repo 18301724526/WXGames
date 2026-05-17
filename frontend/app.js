@@ -31,6 +31,7 @@ const Game = {
   },
   tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
   activeEventId: null,
+  scoutCountdownTimer: null,
   requestLogs: [],
 
   init() {
@@ -96,6 +97,7 @@ const Game = {
     if (this.bindPopulationEvents) this.bindPopulationEvents();
     this.buildingController.bind();
     this.territoryController.bind();
+    this.startScoutCountdownTimer();
     this.updateChecker.start();
     this.render();
   },
@@ -216,6 +218,10 @@ const Game = {
   stopHeartbeat() {
     if (this.syncService) this.syncService.stop();
     if (this.updateChecker) this.updateChecker.stop();
+    if (this.scoutCountdownTimer) {
+      clearInterval(this.scoutCountdownTimer);
+      this.scoutCountdownTimer = null;
+    }
   },
 
   showUpdatePrompt(version) {
@@ -581,11 +587,39 @@ const Game = {
     if (progressBar) progressBar.style.width = `${percentage}%`;
   },
 
+  startScoutCountdownTimer() {
+    if (this.scoutCountdownTimer) return;
+    this.scoutCountdownTimer = setInterval(() => {
+      if ((this.state.currentEra || 0) < 5) return;
+      if (this.state.currentTab !== 'military') return;
+      this.renderScoutControls();
+      this.territoryController?.updateRadarPhase?.();
+    }, 1000);
+  },
+
+  getMissionRemainingSeconds(mission) {
+    if (!mission) return 0;
+    if (mission.status === 'ready') return 0;
+    const completesAtMs = new Date(mission.completesAt).getTime();
+    if (Number.isFinite(completesAtMs)) {
+      return Math.max(0, Math.ceil((completesAtMs - Date.now()) / 1000));
+    }
+    return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
+  },
+
+  formatScoutCountdown(seconds) {
+    const value = Math.max(0, Math.ceil(Number(seconds) || 0));
+    const minutes = Math.floor(value / 60);
+    const rest = value % 60;
+    return `${minutes}:${String(rest).padStart(2, '0')}`;
+  },
+
   renderTerritory() {
     const territoryState = this.state.territoryState || {};
     const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
     this.setText('territoryPolityName', polityName);
     this.setText('territoryCount', `${territoryState.occupiedCount || 0}/${territoryState.discoveredCount || 0} 已控制`);
+    this.territoryController?.updateRadarPhase?.();
     if (this.territoryRenderer) this.territoryRenderer.render(this.state);
   },
 
@@ -601,8 +635,16 @@ const Game = {
     const directions = territoryState.directions || [];
     const scoutMissions = territoryState.scoutMissions || [];
     const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
+    const activeScout = scoutMissions.find((mission) => mission.status === 'active');
     const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
-    this.setText('scoutStatus', readyCount > 0 ? `${readyCount} 支侦察队已返回` : '选择方向，派出侦察队探索城市之外的世界。');
+    if (readyCount > 0) {
+      this.setText('scoutStatus', `${readyCount} 支侦察队已返回，先查看报告后再派出新的侦察。`);
+    } else if (activeScout) {
+      const label = directions.find((direction) => direction.id === activeScout.direction)?.label || '外部';
+      this.setText('scoutStatus', `${label}侦察中，预计 ${this.formatScoutCountdown(this.getMissionRemainingSeconds(activeScout))} 后返回。`);
+    } else {
+      this.setText('scoutStatus', '选择一个方向派出侦察队；同一时间只能有一支侦察队在外。');
+    }
     const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
     const order = [
       ['nw', '西北'], ['n', '北'], ['ne', '东北'],
@@ -620,7 +662,10 @@ const Game = {
         return `<button class="btn-scout direction-${id} status-ready" data-scout-claim="${mission.id}" aria-label="${label}侦察报告"><span class="scout-direction-label">${label}</span><span class="scout-action">报告</span></button>`;
       }
       if (mission) {
-        return `<button class="btn-scout direction-${id} status-active" disabled aria-label="${label}侦察中"><span class="scout-direction-label">${label}</span><span class="scout-action">途中</span></button>`;
+        return `<button class="btn-scout direction-${id} status-active" disabled aria-label="${label}侦察中"><span class="scout-direction-label">${label}</span><span class="scout-action">${this.formatScoutCountdown(this.getMissionRemainingSeconds(mission))}</span></button>`;
+      }
+      if (scoutMissions.length > 0) {
+        return `<button class="btn-scout direction-${id} status-locked" disabled aria-label="${label}侦察暂不可用"><span class="scout-direction-label">${label}</span><span class="scout-action">等待</span></button>`;
       }
       return `<button class="btn-scout direction-${id} status-available" data-scout-direction="${id}" aria-label="向${label}派出侦察"><span class="scout-direction-label">${label}</span><span class="scout-action">派出</span></button>`;
     }).join('');

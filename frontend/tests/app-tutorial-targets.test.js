@@ -600,3 +600,69 @@ test('military scout and world subviews stay disabled before classical era', () 
     global.localStorage = originalLocalStorage;
   }
 });
+
+test('scout controls show countdown and lock other directions while one scout is active', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+  const originalNow = Date.now;
+
+  try {
+    const text = new Map();
+    const container = { innerHTML: '' };
+    Date.now = () => new Date('2026-05-17T08:00:30.000Z').getTime();
+    global.window = createWindowStub();
+    global.window.DOMHelper = {
+      setText(id, value) {
+        text.set(id, value);
+      },
+    };
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        if (id === 'scoutDirectionGrid') return container;
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state.currentEra = 5;
+    Game.state.territoryState = {
+      directions: [
+        { id: 'n', label: '北方' },
+        { id: 'ne', label: '东北' },
+        { id: 'e', label: '东方' },
+        { id: 'se', label: '东南' },
+        { id: 's', label: '南方' },
+        { id: 'sw', label: '西南' },
+        { id: 'w', label: '西方' },
+        { id: 'nw', label: '西北' },
+      ],
+      scoutMissions: [{
+        id: 'scout_n_1',
+        kind: 'scout',
+        direction: 'n',
+        startedAt: '2026-05-17T08:00:00.000Z',
+        completesAt: '2026-05-17T08:01:00.000Z',
+        status: 'active',
+      }],
+    };
+
+    Game.renderScoutControls();
+
+    assert.match(text.get('scoutStatus'), /北方侦察中，预计 0:30 后返回/);
+    assert.match(container.innerHTML, /direction-n status-active/);
+    assert.match(container.innerHTML, /<span class="scout-action">0:30<\/span>/);
+    assert.match(container.innerHTML, /direction-e status-locked/);
+    assert.doesNotMatch(container.innerHTML, /data-scout-direction="e"/);
+  } finally {
+    Date.now = originalNow;
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});

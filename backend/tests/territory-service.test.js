@@ -44,6 +44,8 @@ test('八方向侦察完成后会在对应坐标生成世界点和报告', () =>
   assert.equal(claim.site.x, 1);
   assert.equal(claim.site.y, -1);
   assert.equal(claim.site.status, 'discovered');
+  assert.ok(Number.isFinite(claim.site.visualOffset.x));
+  assert.ok(Number.isFinite(claim.site.visualOffset.y));
   assert.equal(state.scoutReports.length, 1);
   assert.equal(state.scoutReports[0].siteId, claim.site.id);
   assert.match(state.scoutReports[0].text, /东北/);
@@ -62,6 +64,35 @@ test('同一方向重复侦察会继续向更远坐标扩展', () => {
   assert.equal(start.success, true);
   assert.equal(start.mission.targetX, 2);
   assert.equal(start.mission.targetY, 0);
+});
+
+test('侦察队一次只能派出一个方向，返回前会锁住其他方向', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const first = TerritoryService.startScout(state, 'n', now);
+  const second = TerritoryService.startScout(state, 'e', now);
+  const territoryState = TerritoryService.getClientTerritoryState(state, now);
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, false);
+  assert.equal(second.error, 'SCOUT_IN_PROGRESS');
+  assert.equal(territoryState.scoutMissions.length, 1);
+  assert.equal(territoryState.activeScoutMission.direction, 'n');
+  assert.equal(territoryState.scoutMissions[0].status, 'active');
+  assert.equal(territoryState.scoutMissions[0].completesAt, new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString());
+});
+
+test('旧存档里的多个侦察任务会收敛为一个待处理任务', () => {
+  const state = createClassicalState();
+  state.warMissions = [
+    { id: 'scout-n', kind: 'scout', direction: 'n', targetX: 0, targetY: -1, startedAt: '2026-05-17T08:00:00.000Z', completesAt: '2026-05-17T08:02:00.000Z', status: 'active' },
+    { id: 'scout-e', kind: 'scout', direction: 'e', targetX: 1, targetY: 0, startedAt: '2026-05-17T08:01:00.000Z', completesAt: '2026-05-17T08:02:00.000Z', status: 'active' },
+  ];
+
+  TerritoryService.normalizeTerritoryState(state, new Date('2026-05-17T08:01:30.000Z'));
+
+  assert.deepEqual(state.warMissions.map((mission) => mission.id), ['scout-n']);
 });
 
 test('旧版固定节点只迁移已有进度，不再默认铺满地图', () => {

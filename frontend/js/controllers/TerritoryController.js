@@ -9,9 +9,22 @@
       this.onFloatingText = options.onFloatingText || (() => {});
       this.onLog = options.onLog || (() => {});
       this.dragState = null;
+      if (this.container && !this.container.dataset.radarStartedAt) {
+        this.container.dataset.radarStartedAt = String(Date.now());
+      }
+    }
+
+    updateRadarPhase() {
+      if (!this.container) return;
+      const startedAt = Number(this.container.dataset.radarStartedAt || Date.now());
+      const phase = -Math.max(0, (Date.now() - startedAt) % 8000);
+      this.container.dataset.radarPhase = String(phase);
+      const radar = this.container.querySelector?.('[data-world-radar]');
+      if (radar) radar.style.setProperty('--radar-phase', `${phase}ms`);
     }
 
     bind() {
+      this.updateRadarPhase();
       if (this.container && this.container.dataset.bound !== 'true') {
         this.container.dataset.bound = 'true';
         this.container.addEventListener('click', (event) => {

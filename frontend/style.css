@@ -2130,6 +2130,7 @@ body {
   opacity: 0.75;
   pointer-events: none;
   animation: radarSweep 8s linear infinite;
+  animation-delay: var(--radar-phase, 0ms);
 }
 
 .radar-sweep {
@@ -2143,6 +2144,7 @@ body {
   box-shadow: 0 0 12px rgba(116, 211, 160, 0.35);
   pointer-events: none;
   animation: radarNeedle 8s linear infinite;
+  animation-delay: var(--radar-phase, 0ms);
 }
 
 @keyframes radarSweep {
@@ -2550,6 +2552,12 @@ body {
   border-color: rgba(240, 180, 91, 0.22);
   background:
     repeating-linear-gradient(135deg, rgba(240, 180, 91, 0.08) 0 6px, rgba(255, 255, 255, 0.04) 6px 12px);
+}
+
+.btn-scout.status-locked {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  filter: grayscale(0.35);
 }
 
 .scout-direction-label {

@@ -22,6 +22,42 @@ const SITE_ART = {
   ruins: 'assets/art/world-site-ruins-cutout.png',
 };
 
+function roundOffset(value) {
+  return Math.round(value * 100) / 100;
+}
+
+function seededNoise(seed) {
+  const value = Math.sin(seed) * 10000;
+  return value - Math.floor(value);
+}
+
+function createVisualOffset(x, y, seedHint = '') {
+  if (x === 0 && y === 0) return { x: 0, y: 0 };
+  const seed = Math.abs((x * 92821) + (y * 68917) + String(seedHint).length * 131);
+  const distance = Math.max(1, Math.max(Math.abs(x), Math.abs(y)));
+  const lateralX = (seededNoise(seed + 11) - 0.5) * 0.44;
+  const lateralY = (seededNoise(seed + 23) - 0.5) * 0.44;
+  const radial = (seededNoise(seed + 37) - 0.5) * 0.22;
+  return {
+    x: roundOffset(lateralX + (x / distance) * radial),
+    y: roundOffset(lateralY + (y / distance) * radial),
+  };
+}
+
+function normalizeVisualOffset(rawOffset, x, y, seedHint = '') {
+  if (rawOffset && typeof rawOffset === 'object') {
+    const offsetX = Number(rawOffset.x);
+    const offsetY = Number(rawOffset.y);
+    if (Number.isFinite(offsetX) && Number.isFinite(offsetY)) {
+      return {
+        x: roundOffset(Math.max(-0.55, Math.min(0.55, offsetX))),
+        y: roundOffset(Math.max(-0.55, Math.min(0.55, offsetY))),
+      };
+    }
+  }
+  return createVisualOffset(x, y, seedHint);
+}
+
 const SITE_TEMPLATES = [
   {
     type: 'outpost',
@@ -120,6 +156,7 @@ function createCapital(now = new Date().toISOString()) {
     defense: 0,
     recommendedSoldiers: 0,
     art: SITE_ART.capital,
+    visualOffset: { x: 0, y: 0 },
     discoveredAt: now,
     occupiedAt: now,
     effects: {},
@@ -221,6 +258,7 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
     defense,
     recommendedSoldiers: Math.max(1, toInteger(rawTerritory.recommendedSoldiers, defense)),
     art: rawTerritory.art || SITE_ART[type],
+    visualOffset: normalizeVisualOffset(rawTerritory.visualOffset, x, y, rawTerritory.id || rawTerritory.naturalName || type),
     discoveredAt: rawTerritory.discoveredAt || rawTerritory.scoutedAt || now,
     occupiedAt: status === 'occupied' ? rawTerritory.occupiedAt || now : rawTerritory.occupiedAt || null,
     effects: clone(rawTerritory.effects || {}),
@@ -291,6 +329,7 @@ function normalizeTerritoryState(gameState, now = new Date()) {
   gameState.warMissions = normalizeWarMissions(gameState.warMissions);
   gameState.scoutReports = normalizeScoutReports(gameState.scoutReports);
   updateMissionReadiness(gameState, now);
+  enforceSingleScoutMission(gameState);
   return gameState;
 }
 
@@ -305,6 +344,10 @@ function getTerritory(gameState, territoryId) {
 
 function getMissionKind(mission) {
   return mission.kind === 'scout' ? 'scout' : 'conquest';
+}
+
+function getActiveScoutMission(gameState) {
+  return (gameState.warMissions || []).find((mission) => getMissionKind(mission) === 'scout' && ['active', 'ready'].includes(mission.status)) || null;
 }
 
 function getActiveMissionForTerritory(gameState, territoryId) {
@@ -329,6 +372,20 @@ function updateMissionReadiness(gameState, now = new Date()) {
       mission.status = 'ready';
     }
   }
+  return gameState.warMissions;
+}
+
+function enforceSingleScoutMission(gameState) {
+  const missions = gameState.warMissions || [];
+  const activeScouts = missions
+    .filter((mission) => getMissionKind(mission) === 'scout' && ['active', 'ready'].includes(mission.status))
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'ready' ? -1 : 1;
+      return new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime();
+    });
+  if (activeScouts.length <= 1) return missions;
+  const keepId = activeScouts[0].id;
+  gameState.warMissions = missions.filter((mission) => getMissionKind(mission) !== 'scout' || !['active', 'ready'].includes(mission.status) || mission.id === keepId);
   return gameState.warMissions;
 }
 
@@ -437,6 +494,7 @@ function createSiteFromScout(gameState, mission, now = new Date()) {
     defense,
     recommendedSoldiers: Math.max(defense, template.recommendedSoldiers + Math.max(0, distance - 1)),
     art: SITE_ART[template.type],
+    visualOffset: createVisualOffset(x, y, `${template.type}_${naturalName}_${discoveredCount}`),
     discoveredAt: now.toISOString(),
     occupiedAt: null,
     effects: getSiteEffects(template, distance),
@@ -459,6 +517,8 @@ function startScout(gameState, direction, now = new Date()) {
   if ((gameState.currentEra || 0) < 5) return { success: false, error: 'ERA_NOT_UNLOCKED', message: '古典时代后才能侦察外部世界' };
   const normalizedDirection = normalizeDirection(direction);
   if (!normalizedDirection) return { success: false, error: 'INVALID_DIRECTION', message: '请选择有效侦察方向' };
+  const activeScout = getActiveScoutMission(gameState);
+  if (activeScout) return { success: false, error: 'SCOUT_IN_PROGRESS', message: '已有侦察队在外，请等待返回后再派出新的侦察' };
   const existing = (gameState.warMissions || []).find((mission) => getMissionKind(mission) === 'scout' && mission.direction === normalizedDirection && ['active', 'ready'].includes(mission.status));
   if (existing) return { success: false, error: 'SCOUT_EXISTS', message: `${DIRECTIONS[normalizedDirection].label}已有侦察任务` };
   const target = findNextCoordinate(gameState, normalizedDirection);
@@ -604,8 +664,8 @@ function getMapBounds(territories) {
   };
 }
 
-function getClientTerritoryState(gameState) {
-  updateMissionReadiness(gameState);
+function getClientTerritoryState(gameState, now = new Date()) {
+  updateMissionReadiness(gameState, now);
   const missionsByTerritory = Object.fromEntries((gameState.warMissions || [])
     .filter((mission) => getMissionKind(mission) === 'conquest')
     .map((mission) => [mission.territoryId, mission]));
@@ -615,11 +675,16 @@ function getClientTerritoryState(gameState) {
     mission: missionsByTerritory[territory.id] || null,
   }));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => getMissionKind(mission) === 'scout');
+  const nowMs = now.getTime();
   return {
     polity: gameState.polity || createInitialPolity(),
     territories,
     warMissions: gameState.warMissions || [],
-    scoutMissions,
+    scoutMissions: scoutMissions.map((mission) => ({
+      ...mission,
+      remainingSeconds: Math.max(0, Math.ceil((new Date(mission.completesAt).getTime() - nowMs) / 1000)),
+    })),
+    activeScoutMission: getActiveScoutMission(gameState),
     scoutReports: gameState.scoutReports || [],
     directions: Object.entries(DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
     availableSoldiers: getAvailableSoldiers(gameState),
@@ -648,6 +713,7 @@ module.exports = {
   getAvailableSoldiers,
   countSoldiersOnMission,
   getClientTerritoryState,
+  getActiveScoutMission,
   startScout,
   claimScout,
   scoutTerritory,

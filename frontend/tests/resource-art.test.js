@@ -77,6 +77,8 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(css, /\.world-site-modal-content/);
   assert.match(css, /@keyframes radarSweep/);
   assert.match(css, /@keyframes radarNeedle/);
+  assert.match(css, /animation-delay: var\(--radar-phase, 0ms\)/);
+  assert.match(css, /\.btn-scout\.status-locked/);
   assert.match(css, /\.world-site-detail\[hidden\] \{\s*display: none !important;/);
   assert.match(renderer, /class="world-radar"/);
   assert.match(renderer, /data-world-pan/);
@@ -84,12 +86,16 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(renderer, /data-world-site-modal/);
   assert.match(renderer, /data-site-detail/);
   assert.match(renderer, /selectedSiteId/);
+  assert.match(renderer, /visualOffset/);
+  assert.match(renderer, /--radar-phase/);
   assert.match(renderer, /site-card-hero/);
   assert.match(renderer, /site-card-art/);
   assert.match(renderer, /site-card-summary/);
   assert.doesNotMatch(renderer, /territory-site-list/);
   assert.doesNotMatch(renderer, /world-cell-unknown/);
-  assert.match(html, /TerritoryController\.js\?v=hud-polish-v1/);
+  assert.match(html, /TerritoryController\.js\?v=scout-flow-v1/);
+  assert.match(html, /TerritoryUIRenderer\.js\?v=scout-flow-v1/);
+  assert.match(html, /app\.js\?v=scout-flow-v1/);
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
   assert.match(html, /id="logButton"/);

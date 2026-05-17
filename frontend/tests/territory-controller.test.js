@@ -99,3 +99,36 @@ test('world site dialog close clears the persisted selected site', () => {
   assert.equal(container.dataset.selectedSiteId, undefined);
   assert.equal(modal.classList.contains('show'), false);
 });
+
+test('radar animation phase is persisted across rerenders', () => {
+  const originalNow = Date.now;
+  let now = 100000;
+  Date.now = () => now;
+  const styleValues = new Map();
+  const radar = {
+    style: {
+      setProperty(name, value) {
+        styleValues.set(name, value);
+      },
+    },
+  };
+  const container = {
+    dataset: {},
+    querySelector(selector) {
+      if (selector === '[data-world-radar]') return radar;
+      return null;
+    },
+  };
+
+  try {
+    const controller = new TerritoryController({ container });
+    now = 103250;
+    controller.updateRadarPhase();
+
+    assert.equal(container.dataset.radarStartedAt, '100000');
+    assert.equal(container.dataset.radarPhase, '-3250');
+    assert.equal(styleValues.get('--radar-phase'), '-3250ms');
+  } finally {
+    Date.now = originalNow;
+  }
+});
