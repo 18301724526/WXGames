@@ -4,8 +4,9 @@ const MAX_NAME_LENGTH = 12;
 const MAX_REPORTS = 12;
 const MAX_SCOUT_DISTANCE = 24;
 const MAX_ACTIVE_SCOUTS = 2;
-const SCOUT_EMPTY_CHANCE = 0.35;
-const SCOUT_EMPTY_STREAK_GUARANTEE = 2;
+const SCOUT_SITE_BASE_CHANCE = 0.32;
+const SCOUT_SITE_CHANCE_STEP = 0.14;
+const SCOUT_SITE_GUARANTEE_AFTER = 4;
 
 const DIRECTIONS = {
   n: { label: '北方', dx: 0, dy: -1 },
@@ -563,11 +564,13 @@ function findNextCoordinate(gameState, direction) {
 
 function rollScoutOutcome(gameState, randomSource = Math.random) {
   gameState.scoutState = normalizeScoutState(gameState.scoutState);
-  if ((gameState.scoutState.emptyStreak || 0) >= SCOUT_EMPTY_STREAK_GUARANTEE) {
+  const emptyStreak = Math.max(0, Number(gameState.scoutState.emptyStreak) || 0);
+  if (emptyStreak >= SCOUT_SITE_GUARANTEE_AFTER) {
     return 'site';
   }
   const roll = Math.max(0, Math.min(1, Number(typeof randomSource === 'function' ? randomSource() : Math.random()) || 0));
-  return roll < SCOUT_EMPTY_CHANCE ? 'empty' : 'site';
+  const siteChance = Math.min(1, SCOUT_SITE_BASE_CHANCE + emptyStreak * SCOUT_SITE_CHANCE_STEP);
+  return roll < siteChance ? 'site' : 'empty';
 }
 
 function recordScoutOutcome(gameState, outcome) {
