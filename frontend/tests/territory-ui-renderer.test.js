@@ -205,3 +205,20 @@ test('territory renderer formats new owner tiers and map classes', () => {
   assert.match(html, /owner-city_state/);
   assert.match(html, /type-city/);
 });
+
+test('territory radar spreads near sites away from the center when outer rings exist', () => {
+  const renderer = new TerritoryUIRenderer({ dataset: {} });
+  const near = renderer.getRadarPosition({
+    x: 1,
+    y: 0,
+    visualOffset: { x: 0, y: 0 },
+  }, 6);
+  const far = renderer.getRadarPosition({
+    x: 6,
+    y: 0,
+    visualOffset: { x: 0, y: 0 },
+  }, 6);
+
+  assert.ok(Number(near.left) > 60);
+  assert.ok(Number(far.left) > Number(near.left));
+});

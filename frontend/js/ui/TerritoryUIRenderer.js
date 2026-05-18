@@ -145,9 +145,12 @@
       const visualOffset = site.visualOffset || {};
       const x = Number(site.x || 0) + (Number(visualOffset.x) || 0);
       const y = Number(site.y || 0) + (Number(visualOffset.y) || 0);
-      const scale = 39 / Math.max(1, maxDistance);
-      const left = Math.max(8, Math.min(92, 50 + x * scale));
-      const top = Math.max(8, Math.min(92, 50 + y * scale));
+      const distance = Math.max(0, Math.hypot(x, y));
+      const normalized = Math.sqrt(Math.min(1, distance / Math.max(1, maxDistance)));
+      const radius = distance > 0 ? 12 + normalized * 30 : 0;
+      const angle = Math.atan2(y, x || 0.0001);
+      const left = Math.max(8, Math.min(92, 50 + Math.cos(angle) * radius));
+      const top = Math.max(8, Math.min(92, 50 + Math.sin(angle) * radius));
       return {
         left: left.toFixed(2),
         top: top.toFixed(2),

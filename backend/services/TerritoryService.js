@@ -370,6 +370,7 @@ function normalizeScoutState(rawState) {
   const raw = rawState && typeof rawState === 'object' ? rawState : {};
   return {
     emptyStreak: Math.max(0, toInteger(raw.emptyStreak, 0)),
+    neutralSiteStreak: Math.max(0, toInteger(raw.neutralSiteStreak, 0)),
   };
 }
 
@@ -577,6 +578,14 @@ function recordScoutOutcome(gameState, outcome) {
   return gameState.scoutState.emptyStreak;
 }
 
+function recordDiscoveredSiteOwnership(gameState, owner) {
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
+  gameState.scoutState.neutralSiteStreak = owner === 'neutral'
+    ? (gameState.scoutState.neutralSiteStreak || 0) + 1
+    : 0;
+  return gameState.scoutState.neutralSiteStreak;
+}
+
 function pickText(items, seed) {
   return items[Math.abs(seed) % items.length];
 }
@@ -585,13 +594,18 @@ function rollUnit(randomSource = Math.random) {
   return Math.max(0, Math.min(0.999999, Number(typeof randomSource === 'function' ? randomSource() : Math.random()) || 0));
 }
 
-function getOwnedSiteChance(distance) {
-  if (distance <= 1) return 0.12;
-  if (distance === 2) return 0.4;
-  return Math.min(0.78, 0.55 + Math.max(0, distance - 3) * 0.08);
+function getOwnedSiteChance(distance, neutralSiteStreak = 0) {
+  const streak = Math.max(0, Number(neutralSiteStreak) || 0);
+  const base = distance <= 1
+    ? 0.24
+    : distance === 2
+      ? 0.58
+      : Math.min(0.88, 0.72 + Math.max(0, distance - 3) * 0.06);
+  if (streak >= 3) return 1;
+  return Math.min(1, base + streak * 0.12);
 }
 
-function pickTemplateByDistance(distance, randomSource = Math.random) {
+function pickTemplateByDistance(distance, neutralSiteStreak = 0, randomSource = Math.random) {
   const neutralPool = distance <= 1
     ? [SITE_TEMPLATES[0], SITE_TEMPLATES[1], SITE_TEMPLATES[1]]
     : distance === 2
@@ -602,7 +616,7 @@ function pickTemplateByDistance(distance, randomSource = Math.random) {
     : distance === 2
       ? [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[4]]
       : [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[3], SITE_TEMPLATES[4], SITE_TEMPLATES[4]];
-  const isOwned = rollUnit(randomSource) < getOwnedSiteChance(distance);
+  const isOwned = rollUnit(randomSource) < getOwnedSiteChance(distance, neutralSiteStreak);
   const pool = isOwned ? ownedPool : neutralPool;
   const index = Math.min(pool.length - 1, Math.floor(rollUnit(randomSource) * pool.length));
   return pool[index];
@@ -623,7 +637,7 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
   const y = toInteger(mission.targetY, 0);
   const distance = getDistance(x, y);
   const discoveredCount = (gameState.territories || []).length;
-  const template = pickTemplateByDistance(distance, randomSource);
+  const template = pickTemplateByDistance(distance, gameState.scoutState?.neutralSiteStreak || 0, randomSource);
   const seed = Math.abs(x * 31 + y * 17 + discoveredCount * 13 + Object.keys(DIRECTIONS).indexOf(direction));
   const naturalName = pickText(template.naturalNames, seed);
   const title = pickText(template.reportTitles, seed + 1);
@@ -744,6 +758,7 @@ function claimScout(gameState, missionId, now = new Date(), randomSource = Math.
       site = created.site;
       report = created.report;
       gameState.territories.push(site);
+      recordDiscoveredSiteOwnership(gameState, site.owner);
       upsertScoutCoordinateRecord(gameState, {
         x: site.x,
         y: site.y,
