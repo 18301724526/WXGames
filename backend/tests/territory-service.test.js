@@ -38,7 +38,7 @@ test('八方向侦察完成后会在有地点的坐标生成世界点和报告',
 
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
-  const claim = TerritoryService.claimScout(state, state.warMissions[0].id, now);
+  const claim = TerritoryService.claimScout(state, state.warMissions[0].id, now, () => 0.9);
 
   assert.equal(claim.success, true);
   assert.equal(claim.site.x, 1);
@@ -65,7 +65,7 @@ test('侦察到空地后会标记坐标并跳过该坐标', () => {
   let start = TerritoryService.startScout(state, 'w', now);
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
-  const firstClaim = TerritoryService.claimScout(state, start.mission.id, now);
+  const firstClaim = TerritoryService.claimScout(state, start.mission.id, now, () => 0.1);
 
   assert.equal(firstClaim.success, true);
   assert.equal(firstClaim.site, null);
@@ -84,33 +84,35 @@ test('侦察到空地后会标记坐标并跳过该坐标', () => {
   assert.equal(start.mission.targetY, 0);
 });
 
-test('侦察队一次只能派出一个方向，返回前会锁住其他方向', () => {
+test('侦察队同一时间最多可派出两支，第三支会被拒绝', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
   const first = TerritoryService.startScout(state, 'n', now);
   const second = TerritoryService.startScout(state, 'e', now);
+  const third = TerritoryService.startScout(state, 'w', now);
   const territoryState = TerritoryService.getClientTerritoryState(state, now);
 
   assert.equal(first.success, true);
-  assert.equal(second.success, false);
-  assert.equal(second.error, 'SCOUT_IN_PROGRESS');
-  assert.equal(territoryState.scoutMissions.length, 1);
+  assert.equal(second.success, true);
+  assert.equal(third.success, false);
+  assert.equal(third.error, 'SCOUT_LIMIT_REACHED');
+  assert.equal(territoryState.scoutMissions.length, 2);
   assert.equal(territoryState.activeScoutMission.direction, 'n');
-  assert.equal(territoryState.scoutMissions[0].status, 'active');
-  assert.equal(territoryState.scoutMissions[0].completesAt, new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString());
+  assert.deepEqual(territoryState.scoutMissions.map((mission) => mission.direction), ['n', 'e']);
 });
 
-test('旧存档里的多个侦察任务会收敛为一个待处理任务', () => {
+test('旧存档里的多个侦察任务会收敛为两个待处理任务', () => {
   const state = createClassicalState();
   state.warMissions = [
     { id: 'scout-n', kind: 'scout', direction: 'n', targetX: 0, targetY: -1, startedAt: '2026-05-17T08:00:00.000Z', completesAt: '2026-05-17T08:02:00.000Z', status: 'active' },
     { id: 'scout-e', kind: 'scout', direction: 'e', targetX: 1, targetY: 0, startedAt: '2026-05-17T08:01:00.000Z', completesAt: '2026-05-17T08:02:00.000Z', status: 'active' },
+    { id: 'scout-w', kind: 'scout', direction: 'w', targetX: -1, targetY: 0, startedAt: '2026-05-17T08:01:30.000Z', completesAt: '2026-05-17T08:02:00.000Z', status: 'active' },
   ];
 
   TerritoryService.normalizeTerritoryState(state, new Date('2026-05-17T08:01:30.000Z'));
 
-  assert.deepEqual(state.warMissions.map((mission) => mission.id), ['scout-n']);
+  assert.deepEqual(state.warMissions.map((mission) => mission.id), ['scout-n', 'scout-e']);
 });
 
 test('旧版固定节点只迁移已有进度，不再默认铺满地图', () => {
@@ -144,7 +146,7 @@ test('侦察、出征、完成占领会产生待命名城市', () => {
   const scout = TerritoryService.startScout(state, 'e', now);
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
-  const discovered = TerritoryService.claimScout(state, scout.mission.id, now).site;
+  const discovered = TerritoryService.claimScout(state, scout.mission.id, now, () => 0.9).site;
 
   const start = TerritoryService.startConquest(state, discovered.id, discovered.recommendedSoldiers, now);
   assert.equal(start.success, true);
@@ -167,7 +169,7 @@ test('城市命名后第二块领土会提示命名势力', () => {
   const scout = TerritoryService.startScout(state, 'e', now);
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
-  const site = TerritoryService.claimScout(state, scout.mission.id, now).site;
+  const site = TerritoryService.claimScout(state, scout.mission.id, now, () => 0.9).site;
   TerritoryService.startConquest(state, site.id, site.recommendedSoldiers, now);
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
@@ -207,4 +209,33 @@ test('占领世界点效果会汇总到资源和防御加成', () => {
   assert.equal(normalized.buildingEffects.territoryWoodOutputBonus, 0.08);
   assert.equal(normalized.buildingEffects.territoryKnowledgeOutputBonus, 0.06);
   assert.equal(normalized.buildingEffects.threatDefense, 4);
+});
+
+test('侦察结果会在结算时随机决定，并在连续两次空地后触发保底', () => {
+  const state = createClassicalState();
+  const baseTime = new Date('2026-05-17T08:00:00.000Z');
+
+  const first = TerritoryService.startScout(state, 'n', baseTime);
+  state.warMissions.find((mission) => mission.id === first.mission.id).completesAt = baseTime.toISOString();
+  TerritoryService.updateMissionReadiness(state, baseTime);
+  const firstClaim = TerritoryService.claimScout(state, first.mission.id, baseTime, () => 0.1);
+  assert.equal(firstClaim.site, null);
+  assert.equal(state.scoutState.emptyStreak, 1);
+
+  const secondAt = new Date('2026-05-17T08:02:00.000Z');
+  const second = TerritoryService.startScout(state, 'e', secondAt);
+  state.warMissions.find((mission) => mission.id === second.mission.id).completesAt = secondAt.toISOString();
+  TerritoryService.updateMissionReadiness(state, secondAt);
+  const secondClaim = TerritoryService.claimScout(state, second.mission.id, secondAt, () => 0.1);
+  assert.equal(secondClaim.site, null);
+  assert.equal(state.scoutState.emptyStreak, 2);
+
+  const thirdAt = new Date('2026-05-17T08:04:00.000Z');
+  const third = TerritoryService.startScout(state, 's', thirdAt);
+  state.warMissions.find((mission) => mission.id === third.mission.id).completesAt = thirdAt.toISOString();
+  TerritoryService.updateMissionReadiness(state, thirdAt);
+  const thirdClaim = TerritoryService.claimScout(state, third.mission.id, thirdAt, () => 0.01);
+  assert.equal(thirdClaim.success, true);
+  assert.ok(thirdClaim.site);
+  assert.equal(state.scoutState.emptyStreak, 0);
 });

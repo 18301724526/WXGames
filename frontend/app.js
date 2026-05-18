@@ -633,15 +633,21 @@ const Game = {
     const directions = territoryState.directions || [];
     const scoutMissions = territoryState.scoutMissions || [];
     const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
-    const activeScout = scoutMissions.find((mission) => mission.status === 'active');
+    const activeScouts = scoutMissions.filter((mission) => mission.status === 'active');
+    const activeScout = activeScouts[0];
     const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
-    if (readyCount > 0) {
-      this.setText('scoutStatus', `${readyCount} 支侦察队已返回，先查看报告后再派出新的侦察。`);
+    const maxActiveScouts = Math.max(1, Math.floor(territoryState.maxActiveScouts || 1));
+    if (readyCount > 0 && activeScouts.length > 0) {
+      this.setText('scoutStatus', `${readyCount} 份报告待查看，另有 ${activeScouts.length} 支侦察队仍在外。`);
+    } else if (readyCount > 0) {
+      this.setText('scoutStatus', `${readyCount} 份侦察报告待查看，你仍可继续派出侦察队。`);
+    } else if (activeScouts.length > 1) {
+      this.setText('scoutStatus', `${activeScouts.length} 支侦察队在外行动，最早一支约 ${this.formatScoutCountdown(this.getMissionRemainingSeconds(activeScout))} 后返回。`);
     } else if (activeScout) {
       const label = directions.find((direction) => direction.id === activeScout.direction)?.label || '外部';
       this.setText('scoutStatus', `${label}侦察中，预计 ${this.formatScoutCountdown(this.getMissionRemainingSeconds(activeScout))} 后返回。`);
     } else {
-      this.setText('scoutStatus', '选择一个方向派出侦察队；同一时间只能有一支侦察队在外。');
+      this.setText('scoutStatus', `选择方向派出侦察队；同一时间最多可有 ${maxActiveScouts} 支侦察队在外。`);
     }
     const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
     const order = [
@@ -662,7 +668,10 @@ const Game = {
       if (mission) {
         return `<button class="btn-scout direction-${id} status-active" disabled aria-label="${label}侦察中"><span class="scout-direction-label">${label}</span><span class="scout-action">${this.formatScoutCountdown(this.getMissionRemainingSeconds(mission))}</span></button>`;
       }
-      if (scoutMissions.length > 0) {
+      if (activeByDirection.has(id)) {
+        return '';
+      }
+      if (activeScouts.length >= maxActiveScouts) {
         return `<button class="btn-scout direction-${id} status-locked" disabled aria-label="${label}侦察暂不可用"><span class="scout-direction-label">${label}</span><span class="scout-action">等待</span></button>`;
       }
       return `<button class="btn-scout direction-${id} status-available" data-scout-direction="${id}" aria-label="向${label}派出侦察"><span class="scout-direction-label">${label}</span><span class="scout-action">派出</span></button>`;

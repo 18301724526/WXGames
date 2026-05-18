@@ -3,6 +3,9 @@ const CONQUEST_DURATION_MS = 2 * 60 * 1000;
 const MAX_NAME_LENGTH = 12;
 const MAX_REPORTS = 12;
 const MAX_SCOUT_DISTANCE = 24;
+const MAX_ACTIVE_SCOUTS = 2;
+const SCOUT_EMPTY_CHANCE = 0.35;
+const SCOUT_EMPTY_STREAK_GUARANTEE = 2;
 
 const DIRECTIONS = {
   n: { label: '北方', dx: 0, dy: -1 },
@@ -337,6 +340,13 @@ function normalizeScoutCoordinates(rawCoordinates) {
   return [...known.values()].sort((a, b) => getDistance(a.x, a.y) - getDistance(b.x, b.y));
 }
 
+function normalizeScoutState(rawState) {
+  const raw = rawState && typeof rawState === 'object' ? rawState : {};
+  return {
+    emptyStreak: Math.max(0, toInteger(raw.emptyStreak, 0)),
+  };
+}
+
 function getScoutCoordinateRecord(gameState, x, y) {
   return (gameState.scoutedCoordinates || []).find((coordinate) => coordinate.x === x && coordinate.y === y) || null;
 }
@@ -375,9 +385,10 @@ function normalizeTerritoryState(gameState, now = new Date()) {
   gameState.warMissions = normalizeWarMissions(gameState.warMissions);
   gameState.scoutReports = normalizeScoutReports(gameState.scoutReports);
   gameState.scoutedCoordinates = normalizeScoutCoordinates(gameState.scoutedCoordinates);
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
   syncScoutCoordinatesWithTerritories(gameState, isoNow);
   updateMissionReadiness(gameState, now);
-  enforceSingleScoutMission(gameState);
+  enforceScoutMissionLimit(gameState);
   return gameState;
 }
 
@@ -394,8 +405,16 @@ function getMissionKind(mission) {
   return mission.kind === 'scout' ? 'scout' : 'conquest';
 }
 
+function getScoutMissions(gameState) {
+  return (gameState.warMissions || []).filter((mission) => getMissionKind(mission) === 'scout');
+}
+
 function getActiveScoutMission(gameState) {
-  return (gameState.warMissions || []).find((mission) => getMissionKind(mission) === 'scout' && ['active', 'ready'].includes(mission.status)) || null;
+  return getScoutMissions(gameState).find((mission) => mission.status === 'active') || null;
+}
+
+function countActiveScoutMissions(gameState) {
+  return getScoutMissions(gameState).filter((mission) => mission.status === 'active').length;
 }
 
 function getActiveMissionForTerritory(gameState, territoryId) {
@@ -423,17 +442,14 @@ function updateMissionReadiness(gameState, now = new Date()) {
   return gameState.warMissions;
 }
 
-function enforceSingleScoutMission(gameState) {
+function enforceScoutMissionLimit(gameState) {
   const missions = gameState.warMissions || [];
   const activeScouts = missions
-    .filter((mission) => getMissionKind(mission) === 'scout' && ['active', 'ready'].includes(mission.status))
-    .sort((a, b) => {
-      if (a.status !== b.status) return a.status === 'ready' ? -1 : 1;
-      return new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime();
-    });
-  if (activeScouts.length <= 1) return missions;
-  const keepId = activeScouts[0].id;
-  gameState.warMissions = missions.filter((mission) => getMissionKind(mission) !== 'scout' || !['active', 'ready'].includes(mission.status) || mission.id === keepId);
+    .filter((mission) => getMissionKind(mission) === 'scout' && mission.status === 'active')
+    .sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
+  if (activeScouts.length <= MAX_ACTIVE_SCOUTS) return missions;
+  const keepIds = new Set(activeScouts.slice(0, MAX_ACTIVE_SCOUTS).map((mission) => mission.id));
+  gameState.warMissions = missions.filter((mission) => getMissionKind(mission) !== 'scout' || mission.status !== 'active' || keepIds.has(mission.id));
   return gameState.warMissions;
 }
 
@@ -498,10 +514,21 @@ function findNextCoordinate(gameState, direction) {
   return null;
 }
 
-function getScoutOutcome(x, y) {
-  const distance = getDistance(x, y);
-  const signature = Math.abs((x * 17) + (y * 31) + (distance * distance * 7) + (x * y * 3));
-  return signature % 5 === 0 ? 'empty' : 'site';
+function rollScoutOutcome(gameState, randomSource = Math.random) {
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
+  if ((gameState.scoutState.emptyStreak || 0) >= SCOUT_EMPTY_STREAK_GUARANTEE) {
+    return 'site';
+  }
+  const roll = Math.max(0, Math.min(1, Number(typeof randomSource === 'function' ? randomSource() : Math.random()) || 0));
+  return roll < SCOUT_EMPTY_CHANCE ? 'empty' : 'site';
+}
+
+function recordScoutOutcome(gameState, outcome) {
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
+  gameState.scoutState.emptyStreak = outcome === 'empty'
+    ? (gameState.scoutState.emptyStreak || 0) + 1
+    : 0;
+  return gameState.scoutState.emptyStreak;
 }
 
 function pickTemplate(direction, distance, discoveredCount) {
@@ -591,9 +618,10 @@ function startScout(gameState, direction, now = new Date()) {
   if ((gameState.currentEra || 0) < 5) return { success: false, error: 'ERA_NOT_UNLOCKED', message: '古典时代后才能侦察外部世界' };
   const normalizedDirection = normalizeDirection(direction);
   if (!normalizedDirection) return { success: false, error: 'INVALID_DIRECTION', message: '请选择有效侦察方向' };
-  const activeScout = getActiveScoutMission(gameState);
-  if (activeScout) return { success: false, error: 'SCOUT_IN_PROGRESS', message: '已有侦察队在外，请等待返回后再派出新的侦察' };
-  const existing = (gameState.warMissions || []).find((mission) => getMissionKind(mission) === 'scout' && mission.direction === normalizedDirection && ['active', 'ready'].includes(mission.status));
+  if (countActiveScoutMissions(gameState) >= MAX_ACTIVE_SCOUTS) {
+    return { success: false, error: 'SCOUT_LIMIT_REACHED', message: `最多同时派出 ${MAX_ACTIVE_SCOUTS} 支侦察队` };
+  }
+  const existing = getScoutMissions(gameState).find((mission) => mission.direction === normalizedDirection && ['active', 'ready'].includes(mission.status));
   if (existing) return { success: false, error: 'SCOUT_EXISTS', message: `${DIRECTIONS[normalizedDirection].label}已有侦察任务` };
   const target = findNextCoordinate(gameState, normalizedDirection);
   if (!target) return { success: false, error: 'NO_SCOUT_TARGET', message: '该方向暂时没有可侦察区域' };
@@ -611,7 +639,7 @@ function startScout(gameState, direction, now = new Date()) {
   return { success: true, message: `侦察队已向${DIRECTIONS[normalizedDirection].label}出发`, mission };
 }
 
-function claimScout(gameState, missionId, now = new Date()) {
+function claimScout(gameState, missionId, now = new Date(), randomSource = Math.random) {
   normalizeTerritoryState(gameState, now);
   const mission = (gameState.warMissions || []).find((item) => item.id === missionId && getMissionKind(item) === 'scout');
   if (!mission) return { success: false, error: 'MISSION_NOT_FOUND', message: '没有找到侦察任务' };
@@ -633,8 +661,9 @@ function claimScout(gameState, missionId, now = new Date()) {
   } else if (coordinateRecord?.result === 'empty') {
     report = createEmptyScoutReport(mission, now, true);
   } else {
-    const outcome = coordinateRecord?.result || getScoutOutcome(mission.targetX, mission.targetY);
+    const outcome = coordinateRecord?.result || rollScoutOutcome(gameState, randomSource);
     if (outcome === 'empty') {
+      recordScoutOutcome(gameState, 'empty');
       upsertScoutCoordinateRecord(gameState, {
         x: mission.targetX,
         y: mission.targetY,
@@ -644,6 +673,7 @@ function claimScout(gameState, missionId, now = new Date()) {
       });
       report = createEmptyScoutReport(mission, now);
     } else {
+      recordScoutOutcome(gameState, 'site');
       const created = createSiteFromScout(gameState, mission, now);
       site = created.site;
       report = created.report;
@@ -792,6 +822,7 @@ function getClientTerritoryState(gameState, now = new Date()) {
     activeScoutMission: getActiveScoutMission(gameState),
     scoutReports: gameState.scoutReports || [],
     directions: Object.entries(DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
+    maxActiveScouts: MAX_ACTIVE_SCOUTS,
     availableSoldiers: getAvailableSoldiers(gameState),
     soldiersOnMission: countSoldiersOnMission(gameState),
     occupiedCount: getOccupiedCount(gameState),
@@ -819,6 +850,7 @@ module.exports = {
   countSoldiersOnMission,
   getClientTerritoryState,
   getActiveScoutMission,
+  getScoutMissions,
   startScout,
   claimScout,
   scoutTerritory,
