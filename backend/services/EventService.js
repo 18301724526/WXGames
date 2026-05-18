@@ -54,10 +54,85 @@ function normalizeActiveBuffs(activeBuffs, now = new Date()) {
   });
 }
 
+function getTimeoutOptionEffects(option) {
+  if (!option || typeof option !== 'object') return { effects: [], outcome: 'failure' };
+  if (Array.isArray(option.timeoutEffects)) return { effects: option.timeoutEffects, outcome: 'failure' };
+  if (option.requirements) return { effects: option.failureEffects || [], outcome: 'failure' };
+  return { effects: option.effects || [], outcome: null };
+}
+
+function scoreTimeoutEffects(effects) {
+  return (effects || []).reduce((score, effect) => {
+    if (effect.type === 'soldiers') {
+      if (effect.value < 0) return score + (Math.abs(effect.value) * 100);
+      if (effect.value > 0) return score - (effect.value * 50);
+    }
+    if (effect.type === 'resource') {
+      if (effect.value < 0) return score + Math.abs(effect.value);
+      if (effect.value > 0) return score - effect.value;
+    }
+    if (effect.type === 'buff') {
+      return score - 25;
+    }
+    return score;
+  }, 0);
+}
+
+function getWorstThreatOption(event) {
+  const options = Array.isArray(event?.options) ? event.options : [];
+  if (!options.length) return null;
+  if (event?.timeoutOptionId) {
+    const matched = options.find((option) => option.id === event.timeoutOptionId);
+    if (matched) return matched;
+  }
+  return options.reduce((worst, option) => {
+    if (!worst) return option;
+    const worstScore = scoreTimeoutEffects(getTimeoutOptionEffects(worst).effects);
+    const nextScore = scoreTimeoutEffects(getTimeoutOptionEffects(option).effects);
+    return nextScore > worstScore ? option : worst;
+  }, null);
+}
+
+function resolveExpiredThreatEvents(gameState, now = new Date()) {
+  const nowMs = now.getTime();
+  const nextQueue = [];
+  (gameState.eventQueue || []).forEach((event) => {
+    const expiresAtMs = new Date(event?.expiresAt).getTime();
+    const isExpiredThreat = event?.type === 'threat'
+      && event?.status !== 'claimed'
+      && event?.status !== 'expired'
+      && Number.isFinite(expiresAtMs)
+      && expiresAtMs <= nowMs;
+    if (!isExpiredThreat) {
+      nextQueue.push(event);
+      return;
+    }
+
+    const worstOption = getWorstThreatOption(event);
+    const optionResult = getTimeoutOptionEffects(worstOption);
+    const reward = EventRewardCalculator.calculateReward({ ...worstOption, effects: optionResult.effects });
+    if (worstOption) {
+      applyEffects(gameState, event, { ...worstOption, effects: optionResult.effects }, now);
+    }
+    const expiredEvent = {
+      ...event,
+      status: 'expired',
+      claimedAt: now.toISOString(),
+      expiredAt: now.toISOString(),
+      selectedOptionId: worstOption?.id || null,
+      resultSummary: summarizeEffects(optionResult.effects, reward, 'timeout'),
+      outcome: 'timeout',
+    };
+    gameState.eventHistory = [expiredEvent, ...(gameState.eventHistory || [])].slice(0, 20);
+  });
+  gameState.eventQueue = nextQueue;
+}
+
 function cleanupRuntimeState(gameState, now = new Date()) {
   gameState.regularEventState = normalizeRegularEventState(gameState.regularEventState, now);
   gameState.threatEventState = normalizeThreatEventState(gameState.threatEventState, now);
   gameState.activeBuffs = normalizeActiveBuffs(gameState.activeBuffs, now);
+  resolveExpiredThreatEvents(gameState, now);
   return gameState;
 }
 
@@ -178,6 +253,7 @@ function summarizeEffects(effects, reward, outcome = null) {
   const parts = [];
   if (outcome === 'success') parts.push('应对成功');
   if (outcome === 'failure') parts.push('应对受挫');
+  if (outcome === 'timeout') parts.push('未及时处理，局势恶化');
   (effects || []).forEach((effect) => {
     if (effect.type === 'resource' && effect.value < 0) {
       const label = { food: '食物', knowledge: '知识', wood: '木材' }[effect.key] || effect.key;
@@ -252,8 +328,7 @@ function getOptionEffects(gameState, option) {
   };
 }
 
-function claimEvent(gameState, eventId, optionId) {
-  const now = new Date();
+function claimEvent(gameState, eventId, optionId, now = new Date()) {
   cleanupRuntimeState(gameState, now);
   const queue = [...(gameState.eventQueue || [])];
   const index = queue.findIndex((event) => event.id === eventId);
@@ -310,6 +385,7 @@ module.exports = {
   normalizeRegularEventState,
   normalizeThreatEventState,
   normalizeActiveBuffs,
+  resolveExpiredThreatEvents,
   cleanupRuntimeState,
   maybeGenerateRegularEvent,
   maybeGenerateThreatEvent,

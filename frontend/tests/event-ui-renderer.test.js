@@ -92,9 +92,11 @@ test('单选项事件保留主领取按钮用于教程高亮', () => {
   }
 });
 
-test('威胁事件卡片会带 threat 样式并显示后端预览', () => {
+test('威胁事件卡片会带 threat 样式并显示倒计时单选按钮', () => {
   const originalDocument = global.document;
+  const originalDateNow = Date.now;
   try {
+    Date.now = () => new Date('2026-05-17T08:01:00.000Z').getTime();
     const elements = new Map([
       ['pendingEventsContainer', { innerHTML: '' }],
       ['eventsBadge', { hidden: true, textContent: '' }],
@@ -116,9 +118,9 @@ test('威胁事件卡片会带 threat 样式并显示后端预览', () => {
       title: '边境试探',
       description: 'desc',
       icon: '🛡️',
+      expiresAt: '2026-05-17T08:05:00.000Z',
       options: [
         { id: 'show_patrol', label: '派士兵巡边', preview: '需要防御 2。成功获得 30 食物' },
-        { id: 'tighten_watch', label: '加强哨戒', preview: '5 分钟内食物产出 +10%' },
       ],
     };
 
@@ -130,11 +132,15 @@ test('威胁事件卡片会带 threat 样式并显示后端预览', () => {
     renderer.open(event);
 
     assert.match(elements.get('pendingEventsContainer').innerHTML, /is-threat/);
+    assert.match(elements.get('pendingEventsContainer').innerHTML, /剩余 4:00/);
     assert.equal(elements.get('eventsBadge').hidden, false);
     assert.equal(elements.get('eventsBadge').textContent, '1');
-    assert.match(elements.get('eventModalOptions').innerHTML, /需要防御 2/);
-    assert.equal(elements.get('btnClaimEvent').hidden, true);
+    assert.equal(elements.get('eventModalOptions').innerHTML, '');
+    assert.equal(elements.get('btnClaimEvent').hidden, false);
+    assert.equal(elements.get('btnClaimEvent').dataset.optionId, 'show_patrol');
+    assert.match(elements.get('btnClaimEvent').textContent, /派士兵巡边/);
   } finally {
+    Date.now = originalDateNow;
     global.document = originalDocument;
   }
 });

@@ -27,6 +27,27 @@
       return this.formatReward(option?.reward);
     }
 
+    getRemainingSeconds(expiresAt) {
+      const expiresAtMs = new Date(expiresAt).getTime();
+      if (!Number.isFinite(expiresAtMs)) return null;
+      return Math.max(0, Math.ceil((expiresAtMs - Date.now()) / 1000));
+    }
+
+    formatRemainingTime(expiresAt) {
+      const seconds = this.getRemainingSeconds(expiresAt);
+      if (seconds === null) return '';
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      return `${minutes}:${String(rest).padStart(2, '0')}`;
+    }
+
+    getEventHint(event) {
+      if (event?.type !== 'threat') return '点击查看详情';
+      const remaining = this.formatRemainingTime(event.expiresAt);
+      if (!remaining) return '超时将按失败处理';
+      return `剩余 ${remaining}，超时将按失败处理`;
+    }
+
     render(state) {
       this.setText('techKnowledgeRate', `${state.resources.knowledgePerSecond || 0}/s`);
       const pending = document.getElementById('pendingEventsContainer');
@@ -44,7 +65,7 @@
             <div class="pending-event-card ${event.type === 'special' ? 'is-special' : ''} ${event.type === 'threat' ? 'is-threat' : ''}" data-event-id="${event.id}" id="${event.id === 'evt_settlement_forest_001' ? 'event-card-special' : ''}">
               <div class="pending-event-header">${event.icon || '📜'} ${event.title}</div>
               <div class="pending-event-desc">${event.description}</div>
-              <div class="pending-event-hint">点击查看详情</div>
+              <div class="pending-event-hint">${this.escapeHtml(this.getEventHint(event))}</div>
             </div>
           `).join('');
         }
@@ -92,7 +113,9 @@
         claimButton.hidden = options.length !== 1;
       }
 
-      this.setText('eventModalReward', options.length === 1 ? this.getOptionPreview(options[0]) : '选择一种处理方式');
+      const singleOptionPreview = options.length === 1 ? this.getOptionPreview(options[0]) : '选择一种处理方式';
+      const expiryHint = eventData?.type === 'threat' ? this.getEventHint(eventData) : '';
+      this.setText('eventModalReward', expiryHint && options.length === 1 ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview);
       const modal = document.getElementById('eventModal');
       if (modal) modal.classList.add('show');
     }
