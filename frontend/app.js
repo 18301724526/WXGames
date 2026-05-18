@@ -591,8 +591,14 @@ const Game = {
     if (this.scoutCountdownTimer) return;
     this.scoutCountdownTimer = setInterval(() => {
       if ((this.state.currentEra || 0) < 5) return;
-      if (this.state.currentTab !== 'military') return;
-      this.renderScoutControls();
+      if (this.state.currentTab === 'military') {
+        this.renderScoutControls();
+      }
+      if (this.state.currentTab === 'territory') {
+        const territories = this.state.territoryState?.territories || [];
+        const hasConquestMission = territories.some((site) => site.mission?.status === 'active');
+        if (hasConquestMission) this.renderTerritory();
+      }
     }, 1000);
   },
 

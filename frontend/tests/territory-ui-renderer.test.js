@@ -25,12 +25,49 @@ function createHost() {
           },
         };
         const dynamicHost = {
+          dataset: {},
           html: '',
           set innerHTML(next) {
             this.html = next;
+            this.renderCount = (this.renderCount || 0) + 1;
+            if (next.includes('data-world-dialog-host')) {
+              const dialogHost = {
+                dataset: {},
+                html: '',
+                set innerHTML(content) {
+                  this.html = content;
+                  this.renderCount = (this.renderCount || 0) + 1;
+                },
+                get innerHTML() {
+                  return this.html;
+                },
+                querySelector() {
+                  return null;
+                },
+                querySelectorAll() {
+                  return [];
+                },
+              };
+              const reportHost = {
+                dataset: {},
+                html: '',
+                set innerHTML(content) {
+                  this.html = content;
+                  this.renderCount = (this.renderCount || 0) + 1;
+                },
+                get innerHTML() {
+                  return this.html;
+                },
+              };
+              elements.set('[data-world-dialog-host]', dialogHost);
+              elements.set('[data-world-report-host]', reportHost);
+            }
           },
           get innerHTML() {
             return this.html;
+          },
+          querySelector(selector) {
+            return elements.get(selector) || null;
           },
         };
         elements.set('[data-world-map-host]', mapHost);
@@ -42,6 +79,12 @@ function createHost() {
     },
     getMapHost() {
       return elements.get('[data-world-map-host]');
+    },
+    getDialogHost() {
+      return elements.get('[data-world-dialog-host]');
+    },
+    getReportHost() {
+      return elements.get('[data-world-report-host]');
     },
   };
 }
@@ -82,4 +125,21 @@ test('territory renderer keeps the radar map DOM when only reports change', () =
 
   assert.equal(host.getMapHost(), mapHost);
   assert.equal(mapHost.renderCount, 1);
+});
+
+test('territory renderer keeps the site dialog skeleton when only reports change', () => {
+  const host = createHost();
+  const renderer = new TerritoryUIRenderer(host);
+
+  renderer.render(createState('第一份报告'));
+  const dialogHost = host.getDialogHost();
+  const reportHost = host.getReportHost();
+  assert.equal(dialogHost.renderCount, 1);
+  assert.equal(reportHost.renderCount, 1);
+
+  renderer.render(createState('第二份报告'));
+
+  assert.equal(host.getDialogHost(), dialogHost);
+  assert.equal(dialogHost.renderCount, 1);
+  assert.equal(reportHost.renderCount, 2);
 });

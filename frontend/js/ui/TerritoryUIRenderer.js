@@ -41,6 +41,29 @@
       return labels[site.owner] || site.owner || '未知';
     }
 
+    formatDuration(seconds) {
+      const value = Math.max(0, Math.ceil(Number(seconds) || 0));
+      const minutes = Math.floor(value / 60);
+      const rest = value % 60;
+      return `${minutes}:${String(rest).padStart(2, '0')}`;
+    }
+
+    getMarchInfo(site, state) {
+      const mission = site.mission || null;
+      const totalSeconds = Math.max(0, Math.floor(mission?.durationSeconds || state.missionDurationSeconds || 0));
+      if (site.status === 'contested' && mission?.status === 'ready') {
+        return totalSeconds > 0 ? `行军耗时 ${this.formatDuration(totalSeconds)}，已抵达待接管` : '已抵达待接管';
+      }
+      if (site.status === 'contested') {
+        const remaining = this.formatDuration(mission?.remainingSeconds || 0);
+        return totalSeconds > 0 ? `行军耗时 ${this.formatDuration(totalSeconds)}，剩余 ${remaining}` : `剩余 ${remaining}`;
+      }
+      if (site.status === 'discovered' && totalSeconds > 0) {
+        return `行军耗时 ${this.formatDuration(totalSeconds)}`;
+      }
+      return '';
+    }
+
     getAction(site, state) {
       const mission = site.mission;
       if (site.status === 'discovered') {
@@ -125,35 +148,70 @@
       })));
     }
 
-    renderSiteDialog(territories, state) {
+    getDialogStructureSignature(territories) {
+      return JSON.stringify((territories || []).map((site) => ({
+        id: site.id,
+        art: site.art,
+      })));
+    }
+
+    getDialogContentSignature(territories, state) {
+      return JSON.stringify({
+        selectedSiteId: this.container?.dataset.selectedSiteId || '',
+        missionDurationSeconds: state.missionDurationSeconds || 0,
+        availableSoldiers: state.availableSoldiers || 0,
+        territories: (territories || []).map((site) => ({
+          id: site.id,
+          cityName: site.cityName || '',
+          naturalName: site.naturalName || '',
+          status: site.status,
+          owner: site.owner,
+          distance: site.distance || 0,
+          scale: site.scale || 0,
+          threat: site.threat || 0,
+          summary: site.summary || '',
+          effects: this.formatEffect(site.effects),
+          defense: site.defense || 0,
+          recommendedSoldiers: site.recommendedSoldiers || 0,
+          missionStatus: site.mission?.status || '',
+          missionRemaining: site.mission?.remainingSeconds || 0,
+          missionDuration: site.mission?.durationSeconds || 0,
+          lastBattleResolvedAt: site.lastBattle?.resolvedAt || '',
+          lastBattleSuccess: !!site.lastBattle?.success,
+          lastBattleCasualties: site.lastBattle?.casualties || 0,
+        })),
+      });
+    }
+
+    renderSiteDialogSkeleton(territories) {
       const selectedSiteId = this.container?.dataset.selectedSiteId || '';
       const sites = territories.map((site) => `
         <article class="world-site-detail" data-site-detail="${this.escapeHtml(site.id)}" ${site.id === selectedSiteId ? '' : 'hidden'}>
           <div class="site-card-hero">
             <img class="site-card-art" src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}" loading="lazy">
             <div class="site-card-title">
-              <span class="site-card-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
-              <span class="site-card-status">${this.escapeHtml(this.formatStatus(site))}</span>
+              <span class="site-card-name" data-site-name></span>
+              <span class="site-card-status" data-site-status></span>
             </div>
           </div>
           <div class="site-card-meta">
-            <span>${this.escapeHtml(this.formatOwner(site))}</span>
-            <span>距 ${site.distance || 0}</span>
-            <span>规模 ${site.scale || 1}</span>
-            <span>威胁 ${site.threat || 0}</span>
+            <span data-site-owner></span>
+            <span data-site-distance></span>
+            <span data-site-scale></span>
+            <span data-site-threat></span>
           </div>
-          <p class="site-card-summary">${this.escapeHtml(site.summary || this.formatEffect(site.effects))}</p>
+          <div class="site-card-march" data-site-march hidden></div>
+          <p class="site-card-summary" data-site-summary></p>
           <div class="site-card-stats">
-            <span>防御 ${site.defense || 0}</span>
-            <span>建议 ${site.recommendedSoldiers || 0} 士兵</span>
+            <span data-site-defense></span>
+            <span data-site-soldiers></span>
           </div>
-          ${site.lastBattle ? `<div class="site-card-note">${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵</div>` : ''}
-          ${this.getAction(site, state)}
+          <div class="site-card-note" data-site-note hidden></div>
+          <div data-site-action></div>
         </article>
       `).join('');
-      const hasSelectedSite = territories.some((site) => site.id === selectedSiteId);
       return `
-        <div class="modal-overlay ${hasSelectedSite ? 'show' : ''}" id="worldSiteModal" data-world-site-modal>
+        <div class="modal-overlay" id="worldSiteModal" data-world-site-modal>
           <div class="modal-content world-site-modal-content" role="dialog" aria-modal="true" aria-labelledby="worldSiteTitle">
             <button class="modal-close" type="button" data-world-site-close aria-label="关闭">✕</button>
             <h3 id="worldSiteTitle">地点</h3>
@@ -162,6 +220,60 @@
             </div>
           </div>
         </div>
+      `;
+    }
+
+    updateSiteDialogContent(dialogHost, territories, state) {
+      if (!dialogHost || typeof dialogHost.querySelector !== 'function' || typeof dialogHost.querySelectorAll !== 'function') return;
+      const selectedSiteId = this.container?.dataset.selectedSiteId || '';
+      const modal = dialogHost.querySelector('[data-world-site-modal]');
+      if (modal) modal.classList.toggle('show', territories.some((site) => site.id === selectedSiteId));
+      territories.forEach((site) => {
+        const detail = dialogHost.querySelector(`[data-site-detail="${site.id}"]`);
+        if (!detail) return;
+        detail.hidden = site.id !== selectedSiteId;
+        const setText = (selector, value) => {
+          const element = detail.querySelector(selector);
+          if (element) element.textContent = value;
+        };
+        setText('[data-site-name]', site.cityName || site.naturalName);
+        setText('[data-site-status]', this.formatStatus(site));
+        setText('[data-site-owner]', this.formatOwner(site));
+        setText('[data-site-distance]', `距 ${site.distance || 0}`);
+        setText('[data-site-scale]', `规模 ${site.scale || 1}`);
+        setText('[data-site-threat]', `威胁 ${site.threat || 0}`);
+        setText('[data-site-summary]', site.summary || this.formatEffect(site.effects));
+        setText('[data-site-defense]', `防御 ${site.defense || 0}`);
+        setText('[data-site-soldiers]', `建议 ${site.recommendedSoldiers || 0} 士兵`);
+        const march = detail.querySelector('[data-site-march]');
+        if (march) {
+          const marchInfo = this.getMarchInfo(site, state);
+          march.hidden = !marchInfo;
+          march.textContent = marchInfo;
+        }
+        const note = detail.querySelector('[data-site-note]');
+        if (note) {
+          const noteText = site.lastBattle ? `${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵` : '';
+          note.hidden = !noteText;
+          note.textContent = noteText;
+        }
+        const action = detail.querySelector('[data-site-action]');
+        if (action) action.innerHTML = this.getAction(site, state);
+      });
+    }
+
+    getReportsSignature(reports = []) {
+      return JSON.stringify((reports || []).map((report) => ({
+        id: report.id,
+        title: report.title,
+        text: report.text,
+      })));
+    }
+
+    renderReportsSection(reports = []) {
+      return `
+        <div class="territory-section-title">侦察报告</div>
+        <div class="scout-report-list">${this.renderReports(reports)}</div>
       `;
     }
 
@@ -197,11 +309,27 @@
         mapHost.dataset.mapSignature = mapSignature;
       }
       if (dynamicHost) {
-        dynamicHost.innerHTML = `
-          ${this.renderSiteDialog(territories, territoryState)}
-          <div class="territory-section-title">侦察报告</div>
-          <div class="scout-report-list">${this.renderReports(territoryState.scoutReports || [])}</div>
-        `;
+        if (!dynamicHost.querySelector || !dynamicHost.querySelector('[data-world-dialog-host]')) {
+          dynamicHost.innerHTML = '<div data-world-dialog-host></div><div data-world-report-host></div>';
+        }
+        const dialogHost = typeof dynamicHost.querySelector === 'function' ? dynamicHost.querySelector('[data-world-dialog-host]') : null;
+        const reportHost = typeof dynamicHost.querySelector === 'function' ? dynamicHost.querySelector('[data-world-report-host]') : null;
+        const dialogStructureSignature = this.getDialogStructureSignature(territories);
+        if (dialogHost && dialogHost.dataset.dialogStructureSignature !== dialogStructureSignature) {
+          dialogHost.innerHTML = this.renderSiteDialogSkeleton(territories);
+          dialogHost.dataset.dialogStructureSignature = dialogStructureSignature;
+          if (dialogHost.dataset) delete dialogHost.dataset.dialogContentSignature;
+        }
+        const dialogContentSignature = this.getDialogContentSignature(territories, territoryState);
+        if (dialogHost && dialogHost.dataset.dialogContentSignature !== dialogContentSignature) {
+          this.updateSiteDialogContent(dialogHost, territories, territoryState);
+          dialogHost.dataset.dialogContentSignature = dialogContentSignature;
+        }
+        const reportsSignature = this.getReportsSignature(territoryState.scoutReports || []);
+        if (reportHost && reportHost.dataset.reportsSignature !== reportsSignature) {
+          reportHost.innerHTML = this.renderReportsSection(territoryState.scoutReports || []);
+          reportHost.dataset.reportsSignature = reportsSignature;
+        }
       }
     }
   }

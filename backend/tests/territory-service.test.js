@@ -163,6 +163,24 @@ test('侦察、出征、完成占领会产生待命名城市', () => {
   assert.equal(state.territories.find((item) => item.id === discovered.id).status, 'occupied');
 });
 
+test('占领任务会向前端提供行军总时长和剩余时间', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const scout = TerritoryService.startScout(state, 'e', now);
+  state.warMissions[0].completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const discovered = TerritoryService.claimScout(state, scout.mission.id, now, () => 0.9).site;
+
+  const conquest = TerritoryService.startConquest(state, discovered.id, discovered.recommendedSoldiers, now);
+  const territoryState = TerritoryService.getClientTerritoryState(state, new Date(now.getTime() + 30 * 1000));
+  const mission = territoryState.territories.find((item) => item.id === discovered.id).mission;
+
+  assert.equal(conquest.success, true);
+  assert.equal(mission.durationSeconds, 120);
+  assert.equal(mission.remainingSeconds, 90);
+});
+
 test('城市命名后第二块领土会提示命名势力', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');

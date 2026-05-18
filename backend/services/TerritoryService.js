@@ -801,16 +801,20 @@ function getMapBounds(territories) {
 
 function getClientTerritoryState(gameState, now = new Date()) {
   updateMissionReadiness(gameState, now);
+  const nowMs = now.getTime();
   const missionsByTerritory = Object.fromEntries((gameState.warMissions || [])
     .filter((mission) => getMissionKind(mission) === 'conquest')
-    .map((mission) => [mission.territoryId, mission]));
+    .map((mission) => [mission.territoryId, {
+      ...mission,
+      remainingSeconds: Math.max(0, Math.ceil((new Date(mission.completesAt).getTime() - nowMs) / 1000)),
+      durationSeconds: Math.floor(CONQUEST_DURATION_MS / 1000),
+    }]));
   const territories = (gameState.territories || []).map((territory) => ({
     ...territory,
     distance: getDistance(territory.x, territory.y),
     mission: missionsByTerritory[territory.id] || null,
   }));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => getMissionKind(mission) === 'scout');
-  const nowMs = now.getTime();
   return {
     polity: gameState.polity || createInitialPolity(),
     territories,
