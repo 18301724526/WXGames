@@ -820,7 +820,7 @@ body {
     border-radius: 8px;
     padding: 9px;
     display: grid;
-    grid-template-columns: 46px minmax(0, 1fr) 36px auto;
+    grid-template-columns: 46px minmax(0, 1fr) 38px auto;
     align-items: center;
     gap: 9px;
     text-align: left;
@@ -885,8 +885,8 @@ body {
 }
 
 .job-count {
-    min-width: 34px;
-    padding: 5px 6px;
+    min-width: 36px;
+    padding: 6px 7px;
     border: 1px solid rgba(116, 211, 160, 0.24);
     border-radius: 8px;
     background: rgba(11, 18, 14, 0.38);
@@ -901,15 +901,15 @@ body {
 
 .job-controls {
     display: flex;
-    gap: 6px;
+    gap: 7px;
     justify-content: flex-end;
 }
 
 .job-controls button {
     position: relative;
-    width: 34px;
-    height: 34px;
-    flex: 0 0 34px;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
     border-radius: 8px;
     border: 1px solid rgba(255, 226, 177, 0.16);
     color: transparent;
@@ -928,31 +928,38 @@ body {
 .job-controls button::after {
     content: '';
     position: absolute;
-    left: 10px;
-    right: 10px;
+    left: 9px;
+    right: 9px;
     top: 50%;
-    height: 3px;
+    height: 4px;
     border-radius: 3px;
     background: currentColor;
     transform: translateY(-50%);
+    box-shadow: 0 0 8px currentColor;
 }
 
 .job-controls .btn-plus::after {
     left: 50%;
     right: auto;
-    width: 3px;
-    height: 14px;
+    width: 4px;
+    height: 18px;
     transform: translate(-50%, -50%);
 }
 
-.btn-minus {
+.job-controls .btn-minus {
     background: linear-gradient(145deg, rgba(91, 39, 44, 0.94), rgba(31, 22, 19, 0.94));
-    color: var(--danger);
+    border-color: rgba(233, 69, 96, 0.38);
+    color: #ff7f92;
 }
 
-.btn-plus {
+.job-controls .btn-minus::after {
+    display: none;
+}
+
+.job-controls .btn-plus {
     background: linear-gradient(145deg, rgba(36, 91, 69, 0.94), rgba(19, 31, 25, 0.94));
-    color: var(--success);
+    border-color: rgba(78, 204, 163, 0.38);
+    color: #74d3a0;
 }
 
 .job-controls button:active {

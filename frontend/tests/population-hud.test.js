@@ -24,6 +24,8 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(css, /url\('assets\/art\/icon-craftsman-cutout\.webp'\)/);
   assert.match(css, /\.job-controls button::before/);
   assert.match(css, /\.job-controls \.btn-plus::after/);
+  assert.match(css, /\.job-controls \.btn-minus \{[\s\S]*?color: #ff7f92;/);
+  assert.match(css, /\.job-controls \.btn-plus \{[\s\S]*?color: #74d3a0;/);
 });
 
 test('population click handler reads the closest custom button', () => {
