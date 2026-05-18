@@ -37,6 +37,8 @@ class GameStateRepository {
         military TEXT,
         polity TEXT,
         territories TEXT,
+        scoutedCoordinates TEXT,
+        scoutState TEXT,
         warMissions TEXT,
         scoutReports TEXT,
         updatedAt TEXT
@@ -67,6 +69,12 @@ class GameStateRepository {
     }
     if (!columns.some((column) => column.name === 'territories')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN territories TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'scoutedCoordinates')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutedCoordinates TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'scoutState')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutState TEXT').run();
     }
     if (!columns.some((column) => column.name === 'warMissions')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN warMissions TEXT').run();
@@ -104,6 +112,8 @@ class GameStateRepository {
       military: row.military ? JSON.parse(row.military) : null,
       polity: row.polity ? JSON.parse(row.polity) : null,
       territories: row.territories ? JSON.parse(row.territories) : null,
+      scoutedCoordinates: row.scoutedCoordinates ? JSON.parse(row.scoutedCoordinates) : null,
+      scoutState: row.scoutState ? JSON.parse(row.scoutState) : null,
       warMissions: row.warMissions ? JSON.parse(row.warMissions) : null,
       scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
       updatedAt: row.updatedAt,
@@ -125,8 +135,9 @@ class GameStateRepository {
         playerId, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, military,
-        regularEventState, threatEventState, activeBuffs, polity, territories, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        regularEventState, threatEventState, activeBuffs, polity, territories, scoutedCoordinates,
+        scoutState, warMissions, scoutReports, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -152,6 +163,8 @@ class GameStateRepository {
       JSON.stringify(gameState.activeBuffs || []),
       JSON.stringify(gameState.polity || {}),
       JSON.stringify(gameState.territories || []),
+      JSON.stringify(gameState.scoutedCoordinates || []),
+      JSON.stringify(gameState.scoutState || {}),
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
       new Date().toISOString(),
