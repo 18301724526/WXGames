@@ -37,6 +37,8 @@
       if (site.owner === 'neutral') return '无主';
       const labels = {
         tribe: '部落',
+        city_state: '城邦',
+        ruin_guardians: '遗迹守军',
       };
       const ownerLabel = labels[site.owner] || site.owner || '未知势力';
       return `有主 · ${ownerLabel}`;

@@ -14,6 +14,15 @@ function createClassicalState() {
   return gameStateService.normalizeState(state);
 }
 
+function createSequenceRandom(values) {
+  let index = 0;
+  return () => {
+    const value = values[Math.min(index, values.length - 1)];
+    index += 1;
+    return value;
+  };
+}
+
 test('古典时代只默认显示首都和八方向侦察入口', () => {
   const state = createClassicalState();
   const territoryState = TerritoryService.getClientTerritoryState(state);
@@ -336,4 +345,63 @@ test('侦察结果会在结算时随机决定，并在连续两次空地后触�
   assert.equal(thirdClaim.success, true);
   assert.ok(thirdClaim.site);
   assert.equal(state.scoutState.emptyStreak, 0);
+});
+
+test('距离首都 1 格时也有小概率直接发现有主的部落营地', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const scout = TerritoryService.startScout(state, 'n', now);
+  state.warMissions[0].completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimScout(state, scout.mission.id, now, createSequenceRandom([0.9, 0.05, 0.1]));
+
+  assert.equal(claim.success, true);
+  assert.ok(claim.site);
+  assert.equal(claim.site.owner, 'tribe');
+  assert.equal(claim.site.type, 'camp');
+});
+
+test('距离越远越容易刷出有主地点', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const nearScout = TerritoryService.startScout(state, 'e', now);
+  state.warMissions[0].completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const nearClaim = TerritoryService.claimScout(state, nearScout.mission.id, now, createSequenceRandom([0.9, 0.2, 0.3]));
+
+  assert.equal(nearClaim.site.owner, 'neutral');
+
+  state.scoutedCoordinates.push({ x: 2, y: 0, result: 'empty', siteId: null, scoutedAt: now.toISOString() });
+  const farTime = new Date('2026-05-17T08:03:00.000Z');
+  const farScout = TerritoryService.startScout(state, 'e', farTime);
+  const farMission = state.warMissions.find((mission) => mission.id === farScout.mission.id);
+  farMission.completesAt = farTime.toISOString();
+  TerritoryService.updateMissionReadiness(state, farTime);
+  const farClaim = TerritoryService.claimScout(state, farScout.mission.id, farTime, createSequenceRandom([0.9, 0.2, 0.5]));
+
+  assert.equal(farScout.mission.targetX, 3);
+  assert.equal(farClaim.site.owner, 'city_state');
+  assert.equal(farClaim.site.type, 'city');
+});
+
+test('有主地点会细分为部落、城邦和遗迹守军', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const tribeMission = { id: 'scout_tribe', kind: 'scout', direction: 'n', targetX: 0, targetY: -1, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
+  const cityMission = { id: 'scout_city', kind: 'scout', direction: 'e', targetX: 3, targetY: 0, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
+  const ruinsMission = { id: 'scout_ruins', kind: 'scout', direction: 's', targetX: 0, targetY: 3, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
+
+  state.warMissions.push(tribeMission, cityMission, ruinsMission);
+
+  const tribe = TerritoryService.claimScout(state, 'scout_tribe', now, createSequenceRandom([0.9, 0.01, 0.01])).site;
+  const city = TerritoryService.claimScout(state, 'scout_city', now, createSequenceRandom([0.9, 0.2, 0.3])).site;
+  const ruins = TerritoryService.claimScout(state, 'scout_ruins', now, createSequenceRandom([0.9, 0.2, 0.95])).site;
+
+  assert.equal(tribe.owner, 'tribe');
+  assert.equal(city.owner, 'city_state');
+  assert.equal(ruins.owner, 'ruin_guardians');
+  assert.equal(ruins.type, 'ruins');
 });

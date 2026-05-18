@@ -20,6 +20,7 @@ const DIRECTIONS = {
 
 const SITE_ART = {
   capital: 'assets/art/world-site-city-cutout.png',
+  city: 'assets/art/world-site-city-cutout.png',
   outpost: 'assets/art/world-site-outpost-cutout.png',
   town: 'assets/art/world-site-town-cutout.png',
   camp: 'assets/art/world-site-camp-cutout.png',
@@ -109,19 +110,34 @@ const SITE_TEMPLATES = [
     effects: { woodOutputMultiplier: 0.08 },
   },
   {
-    type: 'ruins',
-    owner: 'neutral',
-    scale: 1,
+    type: 'city',
+    owner: 'city_state',
+    scale: 3,
     threat: 5,
     defense: 6,
     recommendedSoldiers: 6,
+    naturalNames: ['河湾城邦', '高墙城邑', '石桥城邦', '山口自治城'],
+    summaries: [
+      '整齐城墙与旗帜表明这里已经形成稳定政权，哨兵正在城门上来回巡查。',
+      '这里不是松散村镇，而是一座有组织的城邦，贸然靠近会被立刻警惕。',
+    ],
+    reportTitles: ['城墙上的陌生旗帜', '石门后响起的号令'],
+    effects: { foodOutputMultiplier: 0.06, knowledgeOutputMultiplier: 0.03 },
+  },
+  {
+    type: 'ruins',
+    owner: 'ruin_guardians',
+    scale: 2,
+    threat: 5,
+    defense: 7,
+    recommendedSoldiers: 7,
     naturalNames: ['旧日遗迹', '断柱废墟', '沉默神殿', '古道残垣'],
     summaries: [
-      '破碎石柱间刻着陌生纹路，那里可能藏着旧时代的知识。',
-      '废墟周围很安静，但侦察队认为这里并不安全。',
+      '破碎石柱之间仍有守卫巡逻，显然这里的遗迹并非无主空壳。',
+      '废墟回廊里传来兵器碰撞声，侦察队判断此地存在遗迹守军。',
     ],
-    reportTitles: ['断柱下的古老刻痕', '沉默废墟中的回声'],
-    effects: { knowledgeOutputMultiplier: 0.06 },
+    reportTitles: ['断柱间的守望者', '沉默废墟中的兵影'],
+    effects: { knowledgeOutputMultiplier: 0.08 },
   },
 ];
 
@@ -561,15 +577,35 @@ function recordScoutOutcome(gameState, outcome) {
   return gameState.scoutState.emptyStreak;
 }
 
-function pickTemplate(direction, distance, discoveredCount) {
-  const index = (Object.keys(DIRECTIONS).indexOf(direction) + distance + discoveredCount) % SITE_TEMPLATES.length;
-  if (distance <= 1) return SITE_TEMPLATES[index % 2];
-  if (distance === 2) return SITE_TEMPLATES[(index % 3) + 1];
-  return SITE_TEMPLATES[(index % 3) + 1];
-}
-
 function pickText(items, seed) {
   return items[Math.abs(seed) % items.length];
+}
+
+function rollUnit(randomSource = Math.random) {
+  return Math.max(0, Math.min(0.999999, Number(typeof randomSource === 'function' ? randomSource() : Math.random()) || 0));
+}
+
+function getOwnedSiteChance(distance) {
+  if (distance <= 1) return 0.12;
+  if (distance === 2) return 0.4;
+  return Math.min(0.78, 0.55 + Math.max(0, distance - 3) * 0.08);
+}
+
+function pickTemplateByDistance(distance, randomSource = Math.random) {
+  const neutralPool = distance <= 1
+    ? [SITE_TEMPLATES[0], SITE_TEMPLATES[1], SITE_TEMPLATES[1]]
+    : distance === 2
+      ? [SITE_TEMPLATES[1], SITE_TEMPLATES[1], SITE_TEMPLATES[0]]
+      : [SITE_TEMPLATES[1], SITE_TEMPLATES[0]];
+  const ownedPool = distance <= 1
+    ? [SITE_TEMPLATES[2]]
+    : distance === 2
+      ? [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[4]]
+      : [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[3], SITE_TEMPLATES[4], SITE_TEMPLATES[4]];
+  const isOwned = rollUnit(randomSource) < getOwnedSiteChance(distance);
+  const pool = isOwned ? ownedPool : neutralPool;
+  const index = Math.min(pool.length - 1, Math.floor(rollUnit(randomSource) * pool.length));
+  return pool[index];
 }
 
 function getSiteEffects(template, distance) {
@@ -581,13 +617,13 @@ function getSiteEffects(template, distance) {
   return effects;
 }
 
-function createSiteFromScout(gameState, mission, now = new Date()) {
+function createSiteFromScout(gameState, mission, now = new Date(), randomSource = Math.random) {
   const direction = mission.direction;
   const x = toInteger(mission.targetX, 0);
   const y = toInteger(mission.targetY, 0);
   const distance = getDistance(x, y);
   const discoveredCount = (gameState.territories || []).length;
-  const template = pickTemplate(direction, distance, discoveredCount);
+  const template = pickTemplateByDistance(distance, randomSource);
   const seed = Math.abs(x * 31 + y * 17 + discoveredCount * 13 + Object.keys(DIRECTIONS).indexOf(direction));
   const naturalName = pickText(template.naturalNames, seed);
   const title = pickText(template.reportTitles, seed + 1);
@@ -704,7 +740,7 @@ function claimScout(gameState, missionId, now = new Date(), randomSource = Math.
       report = createEmptyScoutReport(mission, now);
     } else {
       recordScoutOutcome(gameState, 'site');
-      const created = createSiteFromScout(gameState, mission, now);
+      const created = createSiteFromScout(gameState, mission, now, randomSource);
       site = created.site;
       report = created.report;
       gameState.territories.push(site);

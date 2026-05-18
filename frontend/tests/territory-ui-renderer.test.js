@@ -188,3 +188,20 @@ test('territory renderer shows expedition config for owned sites when expanded',
   assert.match(html, /data-expedition-field="soldiers"/);
   assert.match(html, /data-territory-action="launch-expedition"/);
 });
+
+test('territory renderer formats new owner tiers and map classes', () => {
+  const host = createHost();
+  const renderer = new TerritoryUIRenderer(host);
+
+  assert.equal(renderer.formatOwner({ owner: 'city_state' }), '有主 · 城邦');
+  assert.equal(renderer.formatOwner({ owner: 'ruin_guardians' }), '有主 · 遗迹守军');
+
+  const html = renderer.renderMap([
+    { id: 'neutral_site', x: 1, y: 0, visualOffset: { x: 0, y: 0 }, owner: 'neutral', status: 'discovered', type: 'town', art: 'assets/art/world-site-town-cutout.png', naturalName: '河湾村镇' },
+    { id: 'city_site', x: 2, y: 0, visualOffset: { x: 0, y: 0 }, owner: 'city_state', status: 'discovered', type: 'city', art: 'assets/art/world-site-city-cutout.png', naturalName: '石桥城邦' },
+  ]);
+
+  assert.match(html, /owner-neutral/);
+  assert.match(html, /owner-city_state/);
+  assert.match(html, /type-city/);
+});
