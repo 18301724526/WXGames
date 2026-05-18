@@ -810,19 +810,19 @@ body {
 
 .job-slots {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
 .job-card {
     position: relative;
     background:
         linear-gradient(135deg, rgba(74, 52, 34, 0.86), rgba(28, 22, 16, 0.84));
-    border-radius: 8px;
-    padding: 9px;
+    border-radius: 7px;
+    padding: 7px 8px;
     display: grid;
-    grid-template-columns: 50px minmax(0, 1fr) auto;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     text-align: left;
     border: 1px solid rgba(255, 226, 177, 0.14);
     min-width: 0;
@@ -837,8 +837,8 @@ body {
 }
 
 .job-icon {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     margin: 0;
     border: 0;
     border-radius: 0;
@@ -866,26 +866,26 @@ body {
 
 .job-name {
     color: #fff1cf;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     line-height: 1.2;
 }
 
 .job-desc {
-    font-size: 11px;
+    font-size: 10px;
     color: rgba(234, 234, 234, 0.58);
     line-height: 1.2;
 }
 
 .job-count {
-    min-width: 38px;
-    padding: 6px 7px;
+    min-width: 32px;
+    padding: 4px 6px;
     border: 1px solid rgba(116, 211, 160, 0.24);
     border-radius: 8px;
     background: rgba(11, 18, 14, 0.38);
     color: var(--number);
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 900;
     line-height: 1;
     text-align: center;
@@ -895,18 +895,18 @@ body {
 
 .job-controls {
     display: grid;
-    grid-template-columns: 36px minmax(38px, auto) 36px;
-    gap: 7px;
+    grid-template-columns: 28px minmax(32px, auto) 28px;
+    gap: 5px;
     align-items: center;
     justify-content: flex-end;
 }
 
 .job-controls button {
     position: relative;
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 7px;
     border: 1px solid rgba(255, 226, 177, 0.16);
     color: transparent;
     font-size: 0;
@@ -916,29 +916,29 @@ body {
     align-items: center;
     justify-content: center;
     box-shadow:
-        inset 0 1px 0 rgba(255, 238, 203, 0.16),
-        inset 0 -2px 0 rgba(14, 10, 8, 0.45);
+        inset 0 1px 0 rgba(255, 238, 203, 0.14),
+        inset 0 -1px 0 rgba(14, 10, 8, 0.42);
 }
 
 .job-controls button::before,
 .job-controls button::after {
     content: '';
     position: absolute;
-    left: 9px;
-    right: 9px;
+    left: 8px;
+    right: 8px;
     top: 50%;
-    height: 4px;
+    height: 3px;
     border-radius: 3px;
     background: currentColor;
     transform: translateY(-50%);
-    box-shadow: 0 0 8px currentColor;
+    box-shadow: 0 0 5px currentColor;
 }
 
 .job-controls .btn-plus::after {
     left: 50%;
     right: auto;
-    width: 4px;
-    height: 18px;
+    width: 3px;
+    height: 12px;
     transform: translate(-50%, -50%);
 }
 

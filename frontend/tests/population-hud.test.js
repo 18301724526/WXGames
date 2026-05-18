@@ -22,8 +22,9 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(css, /url\('assets\/art\/icon-farmer-cutout\.webp'\)/);
   assert.match(css, /url\('assets\/art\/icon-scholar-cutout\.webp'\)/);
   assert.match(css, /url\('assets\/art\/icon-craftsman-cutout\.webp'\)/);
-  assert.match(css, /\.job-icon \{[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
-  assert.match(css, /\.job-controls \{[\s\S]*?grid-template-columns: 36px minmax\(38px, auto\) 36px;/);
+  assert.match(css, /\.job-icon \{[\s\S]*?width: 40px;[\s\S]*?height: 40px;[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
+  assert.match(css, /\.job-controls \{[\s\S]*?grid-template-columns: 28px minmax\(32px, auto\) 28px;/);
+  assert.match(css, /\.job-controls button \{[\s\S]*?width: 28px;[\s\S]*?height: 28px;/);
   assert.match(css, /\.job-controls button::before/);
   assert.match(css, /\.job-controls \.btn-plus::after/);
   assert.match(css, /\.job-controls \.btn-minus \{[\s\S]*?color: #ff7f92;/);
