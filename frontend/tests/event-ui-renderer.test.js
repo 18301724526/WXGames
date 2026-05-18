@@ -144,3 +144,53 @@ test('威胁事件卡片会带 threat 样式并显示倒计时单选按钮', () 
     global.document = originalDocument;
   }
 });
+
+test('普通事件也会显示剩余时间提示', () => {
+  const originalDocument = global.document;
+  const originalDateNow = Date.now;
+  try {
+    Date.now = () => new Date('2026-05-17T08:01:00.000Z').getTime();
+    const elements = new Map([
+      ['pendingEventsContainer', { innerHTML: '' }],
+      ['eventsBadge', { hidden: true, textContent: '' }],
+      ['eventHistoryList', { innerHTML: '' }],
+      ['eventModal', { classList: createClassList() }],
+      ['eventModalOptions', { innerHTML: '' }],
+      ['btnClaimEvent', createButtonStub()],
+    ]);
+    global.document = {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
+        return elements.get(id);
+      },
+    };
+    const texts = new Map();
+    const renderer = new EventUIRenderer((id, value) => texts.set(id, value));
+    const event = {
+      id: 'evt_regular_harvest_sign',
+      type: 'regular',
+      title: '丰收的预兆',
+      description: 'desc',
+      icon: '🌾',
+      expiresAt: '2026-05-17T08:05:00.000Z',
+      options: [
+        { id: 'store_food', label: '储备粮食', preview: '获得 40 食物' },
+        { id: 'hold_festival', label: '小型庆祝', preview: '消耗 20 食物，5 分钟内食物产出 +20%' },
+      ],
+    };
+
+    renderer.render({
+      resources: { knowledgePerSecond: 0 },
+      eventQueue: [event],
+      eventHistory: [],
+    });
+    renderer.open(event);
+
+    assert.match(elements.get('pendingEventsContainer').innerHTML, /剩余 4:00/);
+    assert.match(elements.get('pendingEventsContainer').innerHTML, /超时将自动失效/);
+    assert.match(texts.get('eventModalReward'), /剩余 4:00/);
+  } finally {
+    Date.now = originalDateNow;
+    global.document = originalDocument;
+  }
+});

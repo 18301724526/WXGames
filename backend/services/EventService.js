@@ -128,10 +128,40 @@ function resolveExpiredThreatEvents(gameState, now = new Date()) {
   gameState.eventQueue = nextQueue;
 }
 
+function resolveExpiredRegularEvents(gameState, now = new Date()) {
+  const nowMs = now.getTime();
+  const nextQueue = [];
+  (gameState.eventQueue || []).forEach((event) => {
+    const expiresAtMs = new Date(event?.expiresAt).getTime();
+    const isExpiredRegular = event?.type === 'regular'
+      && event?.status !== 'claimed'
+      && event?.status !== 'expired'
+      && Number.isFinite(expiresAtMs)
+      && expiresAtMs <= nowMs;
+    if (!isExpiredRegular) {
+      nextQueue.push(event);
+      return;
+    }
+
+    const expiredEvent = {
+      ...event,
+      status: 'expired',
+      claimedAt: now.toISOString(),
+      expiredAt: now.toISOString(),
+      selectedOptionId: null,
+      resultSummary: '错过了处理时机',
+      outcome: 'timeout',
+    };
+    gameState.eventHistory = [expiredEvent, ...(gameState.eventHistory || [])].slice(0, 20);
+  });
+  gameState.eventQueue = nextQueue;
+}
+
 function cleanupRuntimeState(gameState, now = new Date()) {
   gameState.regularEventState = normalizeRegularEventState(gameState.regularEventState, now);
   gameState.threatEventState = normalizeThreatEventState(gameState.threatEventState, now);
   gameState.activeBuffs = normalizeActiveBuffs(gameState.activeBuffs, now);
+  resolveExpiredRegularEvents(gameState, now);
   resolveExpiredThreatEvents(gameState, now);
   return gameState;
 }
@@ -385,6 +415,7 @@ module.exports = {
   normalizeRegularEventState,
   normalizeThreatEventState,
   normalizeActiveBuffs,
+  resolveExpiredRegularEvents,
   resolveExpiredThreatEvents,
   cleanupRuntimeState,
   maybeGenerateRegularEvent,

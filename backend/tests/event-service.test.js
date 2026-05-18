@@ -38,6 +38,7 @@ test('常规事件只在聚落教程闭环完成后按时间生成', () => {
   assert.equal(created.type, 'regular');
   assert.equal(state.eventQueue.length, 1);
   assert.equal(state.regularEventState.generatedCount, 1);
+  assert.equal(new Date(created.expiresAt).getTime(), now.getTime() + (5 * 60 * 1000));
 });
 
 test('常规事件队列满 3 个后不再生成', () => {
@@ -152,6 +153,21 @@ test('过期 buff 会被清理', () => {
   EventService.cleanupRuntimeState(state, new Date('2026-05-17T08:00:00.000Z'));
 
   assert.deepEqual(state.activeBuffs.map((buff) => buff.id), ['buff-active']);
+});
+
+test('普通事件超时后会自动失效并移出队列', () => {
+  const state = gameStateService.createInitialGameState('regular-event-timeout-player');
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  const event = EventDomain.createRegularEvent(EventDomain.REGULAR_EVENT_TEMPLATES.find((item) => item.id === 'harvest_sign'), now, 0);
+  state.currentEra = 2;
+  state.eventQueue = [event];
+
+  EventService.cleanupRuntimeState(state, new Date('2026-05-17T08:05:00.000Z'));
+
+  assert.equal(state.eventQueue.length, 0);
+  assert.equal(state.eventHistory[0].status, 'expired');
+  assert.equal(state.eventHistory[0].outcome, 'timeout');
+  assert.equal(state.eventHistory[0].resultSummary, '错过了处理时机');
 });
 
 test('威胁事件只在边境时代后按独立节奏生成', () => {

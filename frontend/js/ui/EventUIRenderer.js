@@ -42,10 +42,16 @@
     }
 
     getEventHint(event) {
-      if (event?.type !== 'threat') return '点击查看详情';
       const remaining = this.formatRemainingTime(event.expiresAt);
-      if (!remaining) return '超时将按失败处理';
-      return `剩余 ${remaining}，超时将按失败处理`;
+      if (event?.type === 'threat') {
+        if (!remaining) return '超时将按失败处理';
+        return `剩余 ${remaining}，超时将按失败处理`;
+      }
+      if (event?.type === 'regular') {
+        if (!remaining) return '超时将自动失效';
+        return `剩余 ${remaining}，超时将自动失效`;
+      }
+      return '点击查看详情';
     }
 
     render(state) {
@@ -114,8 +120,8 @@
       }
 
       const singleOptionPreview = options.length === 1 ? this.getOptionPreview(options[0]) : '选择一种处理方式';
-      const expiryHint = eventData?.type === 'threat' ? this.getEventHint(eventData) : '';
-      this.setText('eventModalReward', expiryHint && options.length === 1 ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview);
+      const expiryHint = ['threat', 'regular'].includes(eventData?.type) ? this.getEventHint(eventData) : '';
+      this.setText('eventModalReward', expiryHint ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview);
       const modal = document.getElementById('eventModal');
       if (modal) modal.classList.add('show');
     }

@@ -1,5 +1,7 @@
 const SETTLEMENT_EVENT_ID = 'evt_settlement_forest_001';
 const SETTLEMENT_OPTION_ID = 'opt_collect_wood';
+const REGULAR_EVENT_EXPIRATION_MS = 5 * 60 * 1000;
+const THREAT_EVENT_EXPIRATION_MS = 5 * 60 * 1000;
 
 const THREAT_EVENT_TEMPLATES = [
   {
@@ -12,19 +14,13 @@ const THREAT_EVENT_TEMPLATES = [
       {
         id: 'show_patrol',
         label: '派士兵巡边',
-        preview: '需要防御 2。成功获得 30 食物、8 知识；不足则损失 30 食物',
+        preview: '需要防御 2。成功获得 30 食物、8 知识；不足或超时则损失 30 食物',
         requirements: { defense: 2 },
         successEffects: [
           { type: 'resource', key: 'food', value: 30 },
           { type: 'resource', key: 'knowledge', value: 8 },
         ],
         failureEffects: [{ type: 'resource', key: 'food', value: -30 }],
-      },
-      {
-        id: 'tighten_watch',
-        label: '加强哨戒',
-        preview: '5 分钟内食物产出 +10%',
-        effects: [{ type: 'buff', buffType: 'resourceMultiplier', target: 'food', value: 0.1, durationSeconds: 300, label: '边境哨戒' }],
       },
     ],
   },
@@ -38,7 +34,7 @@ const THREAT_EVENT_TEMPLATES = [
       {
         id: 'secure_road',
         label: '保护道路',
-        preview: '需要防御 4。成功获得 25 木材、10 知识；不足则损失 1 士兵、20 木材',
+        preview: '需要防御 4。成功获得 25 木材、10 知识；不足或超时则损失 1 士兵、20 木材',
         requirements: { defense: 4 },
         successEffects: [
           { type: 'resource', key: 'wood', value: 25 },
@@ -47,15 +43,6 @@ const THREAT_EVENT_TEMPLATES = [
         failureEffects: [
           { type: 'soldiers', value: -1 },
           { type: 'resource', key: 'wood', value: -20 },
-        ],
-      },
-      {
-        id: 'stay_inside',
-        label: '收拢人手',
-        preview: '消耗 15 食物，获得 15 木材',
-        effects: [
-          { type: 'resource', key: 'food', value: -15 },
-          { type: 'resource', key: 'wood', value: 15 },
         ],
       },
     ],
@@ -70,16 +57,10 @@ const THREAT_EVENT_TEMPLATES = [
       {
         id: 'drive_away',
         label: '驱赶盗匪',
-        preview: '需要 3 名士兵。成功获得 60 食物；不足则损失 45 食物',
+        preview: '需要 3 名士兵。成功获得 60 食物；不足或超时则损失 45 食物',
         requirements: { soldiers: 3 },
         successEffects: [{ type: 'resource', key: 'food', value: 60 }],
         failureEffects: [{ type: 'resource', key: 'food', value: -45 }],
-      },
-      {
-        id: 'pay_food',
-        label: '交付粮食',
-        preview: '消耗 25 食物，直接化解',
-        effects: [{ type: 'resource', key: 'food', value: -25 }],
       },
     ],
   },
@@ -267,7 +248,7 @@ function createRegularEvent(template, now = new Date(), sequence = 0) {
     description: template.description,
     icon: template.icon,
     options: template.options.map((option) => ({ ...option })),
-    expiresAt: null,
+    expiresAt: new Date(now.getTime() + REGULAR_EVENT_EXPIRATION_MS).toISOString(),
     createdAt,
   };
 }
@@ -283,7 +264,7 @@ function createThreatEvent(template, now = new Date(), sequence = 0) {
     description: template.description,
     icon: template.icon,
     options: template.options.map((option) => ({ ...option })),
-    expiresAt: null,
+    expiresAt: new Date(now.getTime() + THREAT_EVENT_EXPIRATION_MS).toISOString(),
     createdAt,
   };
 }
@@ -295,6 +276,8 @@ function findEvent(eventQueue, eventId) {
 module.exports = {
   SETTLEMENT_EVENT_ID,
   SETTLEMENT_OPTION_ID,
+  REGULAR_EVENT_EXPIRATION_MS,
+  THREAT_EVENT_EXPIRATION_MS,
   THREAT_EVENT_TEMPLATES,
   REGULAR_EVENT_TEMPLATES,
   createSettlementEvent,
