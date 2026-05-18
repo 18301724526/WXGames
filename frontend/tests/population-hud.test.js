@@ -24,11 +24,12 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(css, /url\('assets\/art\/icon-craftsman-cutout\.webp'\)/);
   assert.match(css, /\.pop-stats \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
   assert.match(css, /\.pop-stat \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
-  assert.match(css, /\.job-card \{[\s\S]*?padding: 4px 7px;[\s\S]*?grid-template-columns: 32px minmax\(0, 1fr\) auto;/);
-  assert.match(css, /\.job-icon \{[\s\S]*?width: 32px;[\s\S]*?height: 32px;[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
+  assert.match(css, /\.job-card \{[\s\S]*?padding: 4px 7px;[\s\S]*?grid-template-columns: 26px minmax\(0, 1fr\) auto;/);
+  assert.match(css, /\.job-icon \{[\s\S]*?width: 26px;[\s\S]*?height: 26px;[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
   assert.match(css, /\.job-info \{[\s\S]*?justify-self: center;[\s\S]*?text-align: center;/);
-  assert.match(css, /\.job-controls \{[\s\S]*?grid-template-columns: 22px minmax\(30px, auto\) 22px;/);
-  assert.match(css, /\.job-controls button \{[\s\S]*?width: 22px;[\s\S]*?height: 22px;/);
+  assert.match(css, /\.job-count \{[\s\S]*?min-width: 34px;[\s\S]*?min-height: 26px;/);
+  assert.match(css, /\.job-controls \{[\s\S]*?grid-template-columns: 18px minmax\(34px, auto\) 18px;/);
+  assert.match(css, /\.job-controls button \{[\s\S]*?width: 18px;[\s\S]*?height: 18px;/);
   assert.match(css, /\.job-controls button::before/);
   assert.match(css, /\.job-controls \.btn-plus::after/);
   assert.match(css, /\.job-controls \.btn-minus \{[\s\S]*?color: #ff7f92;/);
