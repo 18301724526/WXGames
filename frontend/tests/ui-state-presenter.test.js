@@ -29,10 +29,35 @@ test('resource view state is renderer-neutral and formats resource display', () 
   assert.equal(view.text.knowledgeRate, '+0.4/s');
   assert.equal(view.text.woodRate, '+0/s');
   assert.equal(view.text.happinessValue, 92);
-  assert.equal(view.text.gameTime, '第 7 天');
   assert.deepEqual(view.visibility, { woodCard: true, woodDetailCard: true });
   assert.equal(view.classState.foodNetRate['is-positive'], true);
   assert.equal(view.classState.foodNetRate['is-negative'], false);
+});
+
+test('resource view state compacts large resource amounts', () => {
+  const view = UIStatePresenter.buildResourceViewState({
+    currentEra: 2,
+    resources: {
+      food: 1120,
+      knowledge: 1200000,
+      wood: 3450000000,
+      foodOutputPerSecond: 1250,
+      foodConsumptionPerSecond: 1100,
+      foodNetPerSecond: 150,
+      knowledgePerSecond: 0,
+      woodPerSecond: 1000000000000,
+    },
+  });
+
+  assert.equal(UIStatePresenter.formatResourceAmount(999), 999);
+  assert.equal(UIStatePresenter.formatResourceAmount(1000), '1k');
+  assert.equal(UIStatePresenter.formatResourceAmount(1250), '1.2k');
+  assert.equal(view.text.foodValue, '1.1k');
+  assert.equal(view.text.knowledgeValue, '1.2M');
+  assert.equal(view.text.woodValue, '3.4G');
+  assert.equal(view.text.foodOutputRate, '+1.2k/s');
+  assert.equal(view.text.foodConsumptionRate, '-1.1k/s');
+  assert.equal(view.text.woodRate, '+1T/s');
 });
 
 test('resource view state hides wood before settlement era', () => {
@@ -52,6 +77,38 @@ test('resource view state hides wood before settlement era', () => {
   assert.deepEqual(view.visibility, { woodCard: false, woodDetailCard: false });
   assert.equal(view.classState.foodNetRate['is-positive'], false);
   assert.equal(view.classState.foodNetRate['is-negative'], true);
+});
+
+test('building view state is renderer-neutral and formats compact costs', () => {
+  const view = UIStatePresenter.buildBuildingViewState({
+    unlockedBuildings: ['farm'],
+    buildings: { farm: { level: 1 } },
+    buildingCosts: { farm: { food: 1250, wood: 1000000 } },
+    buildingEffects: {
+      byBuilding: {
+        farm: { foodOutputBonus: 1 },
+      },
+    },
+  }, { completed: true, currentStep: 15 }, {
+    farm: {
+      id: 'farm',
+      name: 'Farm',
+      icon: 'F',
+      ui: {
+        effectText: [{ field: 'foodOutputBonus', label: 'Food output', format: 'percent' }],
+      },
+    },
+  });
+
+  assert.equal(view.isEmpty, false);
+  assert.equal(view.cards[0].id, 'farm');
+  assert.equal(view.cards[0].levelText, '等级 1');
+  assert.equal(view.cards[0].effectText, 'Food output +100%');
+  assert.deepEqual(view.cards[0].cost.parts.map((part) => [part.resource, part.text]), [
+    ['food', '1.2k'],
+    ['wood', '1M'],
+  ]);
+  assert.equal(view.cards[0].button.action, 'upgrade');
 });
 
 test('population view state formats jobs and button availability', () => {

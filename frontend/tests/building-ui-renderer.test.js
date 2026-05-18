@@ -11,6 +11,7 @@ global.FrontendBuildingState = {
   },
 };
 
+global.UIStatePresenter = require('../js/state/UIStatePresenter');
 const BuildingUIRenderer = require('../js/ui/BuildingUIRenderer');
 
 function getCardMarkup(html, id) {

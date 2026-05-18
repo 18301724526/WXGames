@@ -84,3 +84,39 @@ test('wood resource card becomes visible in settlement era despite initial inlin
     global.document = originalDocument;
   }
 });
+
+test('resource renderer receives compact resource amounts from view state', () => {
+  const originalDocument = global.document;
+  try {
+    const elements = new Map();
+    elements.set('resourcePanel', { classList: createClassList() });
+    elements.set('woodCard', { hidden: false, style: {}, classList: createClassList() });
+    elements.set('woodDetailCard', { hidden: false, style: {}, classList: createClassList() });
+    global.document = {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { classList: createClassList(), style: {}, textContent: '' });
+        return elements.get(id);
+      },
+    };
+
+    const texts = new Map();
+    const renderer = new ResourceRenderer((id, value) => texts.set(id, value));
+
+    renderer.render({
+      currentEra: 2,
+      resources: {
+        food: 1100,
+        knowledge: 1250000,
+        wood: 999,
+        foodNetPerSecond: 1200,
+      },
+    });
+
+    assert.equal(texts.get('foodValue'), '1.1k');
+    assert.equal(texts.get('knowledgeValue'), '1.2M');
+    assert.equal(texts.get('woodValue'), 999);
+    assert.equal(texts.get('foodRate'), '+1.2k/s');
+  } finally {
+    global.document = originalDocument;
+  }
+});

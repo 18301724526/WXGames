@@ -13,206 +13,147 @@
     }
 
     formatCost(cost) {
-      const parts = [];
-      if (cost === null) return '已满级';
-      if (!cost) return '免费建造';
-      if (cost.food) parts.push(this.formatCostPart('food', cost.food));
-      if (cost.wood) parts.push(this.formatCostPart('wood', cost.wood));
-      if (cost.knowledge) parts.push(this.formatCostPart('knowledge', cost.knowledge));
-      return parts.length ? parts.join(' ') : '免费建造';
+      return this.renderCost(global.UIStatePresenter.buildCostViewState(cost));
     }
 
     formatCostPart(resource, value) {
-      return `<span class="cost-item cost-${resource}"><span class="cost-icon" aria-hidden="true"></span><span class="cost-value">${value}</span></span>`;
+      return `<span class="cost-item cost-${resource}"><span class="cost-icon" aria-hidden="true"></span><span class="cost-value">${global.UIStatePresenter.formatResourceAmount(value)}</span></span>`;
     }
 
-    getVisibleIds(state, tutorial) {
-      const unlocked = Array.isArray(state.unlockedBuildings) ? state.unlockedBuildings : [];
-      const built = Object.entries(state.buildings || {})
-        .filter(([, entry]) => (entry && typeof entry === 'object' ? entry.level : entry) > 0)
-        .map(([id]) => id);
-      return Array.from(new Set([...unlocked, ...built]));
+    getVisibleIds(state) {
+      return global.UIStatePresenter.getVisibleBuildingIds(state);
     }
 
     getConfig(state, id) {
-      return state.buildingDefinitions?.[id] || this.buildingConfig[id];
+      return global.UIStatePresenter.getBuildingConfig(state, this.buildingConfig, id);
     }
 
-    getStructureSignature(state, ids) {
-      return JSON.stringify(ids.map((id) => {
-        const config = this.getConfig(state, id) || {};
-        return {
-          id,
-          name: config.name || '',
-          art: config.art || '',
-          icon: config.icon || '',
-        };
-      }));
+    getStructureSignature(state, ids, tutorial = {}) {
+      const view = global.UIStatePresenter.buildBuildingViewState(state, tutorial, this.buildingConfig);
+      if (!ids) return view.structureSignature;
+      const allowed = new Set(ids);
+      return JSON.stringify(view.cards
+        .filter((card) => allowed.has(card.id))
+        .map((card) => ({
+          id: card.id,
+          name: card.name,
+          art: card.art,
+          icon: card.icon,
+          structure: card.structure,
+        })));
     }
 
     getCardState(state, tutorial, id) {
-      const config = this.getConfig(state, id);
-      if (!config) return null;
-      const level = global.FrontendBuildingState.getLevel(state.buildings, id);
-      const cost = state.buildingCosts && Object.prototype.hasOwnProperty.call(state.buildingCosts, id)
-        ? state.buildingCosts[id]
-        : undefined;
-      const actionLabel = global.FrontendBuildingState.getActionLabel(cost, level);
-      const disabledByTutorial = Boolean(tutorial && !tutorial.completed && (
-        (tutorial.currentStep === 5 && id !== 'farm')
-        || (tutorial.currentStep === 7 && id !== 'house')
-        || (tutorial.currentStep >= 13 && tutorial.currentStep <= 14 && id !== 'lumbermill')
-      ));
-      const isMax = actionLabel === '已满级';
-      const disabled = disabledByTutorial || isMax;
-      return {
-        id,
-        config,
-        level,
-        cost,
-        actionLabel,
-        disabledByTutorial,
-        disabled,
-        effectText: this.getEffectText(config, state.buildingEffects),
-        descText: this.getDescription(config),
-        militaryText: this.getMilitaryText(id, state.military, state.buildingEffects),
-        buttonAction: level ? 'upgrade' : 'build',
-        costHtml: this.formatCost(cost),
-        buttonLabel: disabledByTutorial ? '引导中锁定' : actionLabel,
-      };
+      return global.UIStatePresenter.buildBuildingCardViewState(state, tutorial, this.buildingConfig, id);
+    }
+
+    renderCost(costState) {
+      if (!costState) return '';
+      if (costState.text) return costState.text;
+      return (costState.parts || [])
+        .map((part) => `<span class="cost-item cost-${part.resource}"><span class="cost-icon" aria-hidden="true"></span><span class="cost-value">${part.text}</span></span>`)
+        .join(' ');
     }
 
     buildCardMarkup(cardState) {
-      const {
-        id,
-        config,
-        level,
-        disabledByTutorial,
-        disabled,
-        effectText,
-        descText,
-        militaryText,
-        buttonAction,
-        costHtml,
-        buttonLabel,
-      } = cardState;
-      const art = config.art
-        ? `<img class="building-art" src="${config.art}" alt="${config.name}" loading="lazy">`
-        : config.icon;
+      const art = cardState.art
+        ? `<img class="building-art" src="${cardState.art}" alt="${cardState.name}" loading="lazy">`
+        : cardState.icon;
+      const militaryText = (cardState.militaryLines || []).join('<br>');
       return `
-          <div class="building-card ${disabledByTutorial ? 'is-muted' : ''}" data-building-id="${id}" id="card-${id}">
+          <div class="building-card ${cardState.isMuted ? 'is-muted' : ''}" data-building-id="${cardState.id}" id="card-${cardState.id}">
             <div class="building-header">
               <div class="building-icon">${art}</div>
               <div class="building-title">
-                <div class="building-name">${config.name}</div>
-                <div class="building-level" data-building-level>等级 ${level}</div>
+                <div class="building-name">${cardState.name}</div>
+                <div class="building-level" data-building-level>${cardState.levelText}</div>
               </div>
             </div>
-            ${effectText ? `<div class="building-effect" data-building-effect>${effectText}</div>` : ''}
+            ${cardState.effectText ? `<div class="building-effect" data-building-effect>${cardState.effectText}</div>` : ''}
             ${militaryText ? `<div class="building-military" data-building-military>${militaryText}</div>` : ''}
-            ${descText ? `<div class="building-desc" data-building-desc>${descText}</div>` : ''}
-            <button class="btn-build" data-building-button data-action="${buttonAction}" data-building-id="${id}" ${disabled ? 'disabled' : ''}>
-              <span class="build-cost" data-building-cost>${costHtml}</span>
-              <span class="build-label" data-building-label>${buttonLabel}</span>
+            ${cardState.descText ? `<div class="building-desc" data-building-desc>${cardState.descText}</div>` : ''}
+            <button class="btn-build" data-building-button data-action="${cardState.button.action}" data-building-id="${cardState.id}" ${cardState.button.disabled ? 'disabled' : ''}>
+              <span class="build-cost" data-building-cost>${this.renderCost(cardState.cost)}</span>
+              <span class="build-label" data-building-label>${cardState.button.label}</span>
             </button>
           </div>
         `;
     }
 
-    renderFull(state, tutorial, ids) {
-      this.container.innerHTML = ids.map((id) => {
-        const cardState = this.getCardState(state, tutorial, id);
-        if (!cardState) return '';
-        return this.buildCardMarkup(cardState);
-      }).join('');
+    renderFull(viewOrState, tutorial, ids) {
+      const view = viewOrState?.cards
+        ? viewOrState
+        : {
+          cards: (ids || this.getVisibleIds(viewOrState))
+            .map((id) => this.getCardState(viewOrState, tutorial, id))
+            .filter(Boolean),
+        };
+      this.container.innerHTML = view.cards.map((cardState) => this.buildCardMarkup(cardState)).join('');
     }
 
-    patchCardState(state, tutorial, id) {
-      const cardState = this.getCardState(state, tutorial, id);
+    patchCardState(cardStateOrState, tutorial, id) {
+      const cardState = cardStateOrState?.button
+        ? cardStateOrState
+        : this.getCardState(cardStateOrState, tutorial, id);
       if (!cardState) return;
-      const card = this.container.querySelector(`[data-building-id="${id}"]`);
+      const card = this.container.querySelector(`[data-building-id="${cardState.id}"]`);
       if (!card) return;
-      card.classList.toggle('is-muted', cardState.disabledByTutorial);
+      card.classList.toggle('is-muted', cardState.isMuted);
 
       const levelEl = card.querySelector('[data-building-level]');
-      if (levelEl) levelEl.textContent = `等级 ${cardState.level}`;
+      if (levelEl) levelEl.textContent = cardState.levelText;
 
       const effectEl = card.querySelector('[data-building-effect]');
-      if (effectEl) {
-        effectEl.innerHTML = cardState.effectText;
-      }
+      if (effectEl) effectEl.innerHTML = cardState.effectText;
 
       const militaryEl = card.querySelector('[data-building-military]');
-      if (militaryEl) {
-        militaryEl.innerHTML = cardState.militaryText;
-      }
+      if (militaryEl) militaryEl.innerHTML = (cardState.militaryLines || []).join('<br>');
 
       const descEl = card.querySelector('[data-building-desc]');
-      if (descEl) {
-        descEl.textContent = cardState.descText;
-      }
+      if (descEl) descEl.textContent = cardState.descText;
 
       const button = card.querySelector('[data-building-button]');
       if (button) {
-        button.dataset.action = cardState.buttonAction;
-        button.disabled = cardState.disabled;
+        button.dataset.action = cardState.button.action;
+        button.disabled = cardState.button.disabled;
       }
 
       const costEl = card.querySelector('[data-building-cost]');
-      if (costEl) costEl.innerHTML = cardState.costHtml;
+      if (costEl) costEl.innerHTML = this.renderCost(cardState.cost);
 
       const labelEl = card.querySelector('[data-building-label]');
-      if (labelEl) labelEl.textContent = cardState.buttonLabel;
+      if (labelEl) labelEl.textContent = cardState.button.label;
     }
 
     render(state, tutorial) {
       if (!this.container) return;
-      const ids = this.getVisibleIds(state, tutorial);
-      if (!ids.length) {
-        this.container.innerHTML = '<div class="building-empty">当前时代暂无可建造建筑</div>';
+      const view = global.UIStatePresenter.buildBuildingViewState(state, tutorial, this.buildingConfig);
+      if (view.isEmpty) {
+        this.container.innerHTML = `<div class="building-empty">${view.emptyText}</div>`;
         if (this.container.dataset) delete this.container.dataset.buildingStructureSignature;
         return;
       }
       if (!this.hasPatchableDom()) {
-        this.renderFull(state, tutorial, ids);
+        this.renderFull(view, tutorial, view.ids);
         return;
       }
-      const structureSignature = this.getStructureSignature(state, ids);
-      if (this.container.dataset.buildingStructureSignature !== structureSignature) {
-        this.renderFull(state, tutorial, ids);
-        this.container.dataset.buildingStructureSignature = structureSignature;
+      if (this.container.dataset.buildingStructureSignature !== view.structureSignature) {
+        this.renderFull(view, tutorial, view.ids);
+        this.container.dataset.buildingStructureSignature = view.structureSignature;
       }
-      ids.forEach((id) => this.patchCardState(state, tutorial, id));
+      view.cards.forEach((cardState) => this.patchCardState(cardState));
     }
 
     formatEffectPart(template, effect) {
-      if (!template?.field || !template?.label) return '';
-      const value = effect?.[template.field];
-      if (typeof value !== 'number') return '';
-      if (template.format === 'percent') {
-        return `${template.label} +${Math.round(value * 100)}%`;
-      }
-      return `${template.label} +${value}`;
+      return global.UIStatePresenter.formatEffectPart(template, effect);
     }
 
     getEffectText(config, buildingEffects) {
-      const effect = buildingEffects?.byBuilding?.[config?.id] || {};
-      const templates = config?.ui?.effectText || [];
-      const parts = templates
-        .map((template) => this.formatEffectPart(template, effect))
-        .filter(Boolean);
-      return parts.join('，');
+      return global.UIStatePresenter.getBuildingEffectText(config, buildingEffects);
     }
 
     getMilitaryText(id, military, buildingEffects) {
-      if (id !== 'barracks' || !military || !military.soldierCap) return '';
-      const soldiers = Math.floor(military.soldiers || 0);
-      const cap = Math.floor(military.soldierCap || 0);
-      const progress = Math.floor(military.trainingProgress || 0);
-      const interval = Math.floor(military.trainingIntervalSeconds || 0);
-      const defense = Math.floor((military.defense || 0) + (buildingEffects?.threatDefense || 0));
-      const progressText = soldiers >= cap ? '训练已满' : `下一名 ${progress}/${interval}秒`;
-      return `士兵 ${soldiers}/${cap} · 防御 ${defense}<br>${progressText}`;
+      return global.UIStatePresenter.getBuildingMilitaryLines(id, military, buildingEffects).join('<br>');
     }
 
     getDescription(config) {
