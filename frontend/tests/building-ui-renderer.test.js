@@ -19,6 +19,47 @@ function getCardMarkup(html, id) {
   return html.slice(start, next === -1 ? html.length : next);
 }
 
+function createPatchableCard() {
+  const children = {
+    '[data-building-level]': { textContent: '' },
+    '[data-building-effect]': { innerHTML: '', hidden: true },
+    '[data-building-military]': { innerHTML: '', hidden: true },
+    '[data-building-desc]': { textContent: '', hidden: true },
+    '[data-building-button]': { dataset: {}, disabled: false },
+    '[data-building-cost]': { innerHTML: '' },
+    '[data-building-label]': { textContent: '' },
+  };
+  return {
+    classList: {
+      values: new Set(),
+      toggle(name, enabled) {
+        if (enabled) this.values.add(name);
+        else this.values.delete(name);
+      },
+    },
+    querySelector(selector) {
+      return children[selector] || null;
+    },
+    children,
+  };
+}
+
+function createPatchableContainer() {
+  return {
+    dataset: {},
+    cards: new Map(),
+    innerHTML: '',
+    querySelector(selector) {
+      const match = selector.match(/^\[data-building-id="(.+)"\]$/);
+      if (!match) return null;
+      return this.cards.get(match[1]) || null;
+    },
+    querySelectorAll() {
+      return [...this.cards.values()];
+    },
+  };
+}
+
 test('根据配置模板渲染建筑效果文案', () => {
   const config = {
     id: 'farm',
@@ -139,4 +180,41 @@ test('兵营卡片显示服务端下发的士兵训练状态', () => {
 
   assert.match(container.innerHTML, /士兵 2\/5 · 防御 2/);
   assert.match(container.innerHTML, /下一名 12\/30秒/);
+});
+
+test('相同建筑结构在心跳更新时不会整块重绘图标区域', () => {
+  const container = createPatchableContainer();
+  const renderer = new BuildingUIRenderer(container, {
+    barracks: { id: 'barracks', name: '兵营', icon: '🛡️', art: 'assets/art/building-barracks-cutout.png', ui: { effectText: [] } },
+  });
+  let fullRenderCount = 0;
+
+  renderer.renderFull = (state, tutorial, ids) => {
+    fullRenderCount += 1;
+    ids.forEach((id) => {
+      if (!container.cards.has(id)) container.cards.set(id, createPatchableCard());
+    });
+  };
+
+  const state = {
+    unlockedBuildings: ['barracks'],
+    buildings: { barracks: { level: 1 } },
+    buildingCosts: { barracks: { food: 420, knowledge: 160 } },
+    buildingEffects: {},
+    military: {
+      soldiers: 2,
+      soldierCap: 5,
+      trainingProgress: 12,
+      trainingIntervalSeconds: 30,
+      defense: 2,
+    },
+  };
+
+  renderer.render(state, { completed: true, currentStep: 15 });
+  state.military.trainingProgress = 13;
+  renderer.render(state, { completed: true, currentStep: 15 });
+
+  const card = container.cards.get('barracks');
+  assert.equal(fullRenderCount, 1);
+  assert.equal(card.children['[data-building-military]'].innerHTML, '士兵 2/5 · 防御 2<br>下一名 13/30秒');
 });
