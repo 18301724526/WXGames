@@ -128,6 +128,11 @@ const Game = {
       advanceButton.addEventListener('click', () => this.advanceEra());
     }
 
+    const citySelect = document.getElementById('citySelect');
+    if (citySelect) {
+      citySelect.addEventListener('change', (event) => this.switchCity(event.currentTarget.value));
+    }
+
     const pendingEvents = document.getElementById('pendingEventsContainer');
     if (pendingEvents) {
       pendingEvents.addEventListener('click', (event) => {
@@ -346,6 +351,7 @@ const Game = {
 
   canAdvanceEraNow(progress = this.state.eraProgress) {
     return Boolean(progress?.canAdvance)
+      && this.state.isCapitalCity !== false
       && this.canAdvanceEraByTutorial()
       && (!this.tutorialController || this.tutorialController.canOpenTab('civilization'));
   },
@@ -371,7 +377,7 @@ const Game = {
     const button = document.getElementById('btnAdvanceEra');
     if (button) button.disabled = true;
     if (!this.canAdvanceEraNow()) {
-      this.log(this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
+      this.log(this.state.isCapitalCity === false ? '只有主城可以推动文明进阶' : this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
       this.renderCivilization();
       this.renderMilitary();
       return;
@@ -480,6 +486,7 @@ const Game = {
   },
 
   render() {
+    this.renderCitySwitcher();
     this.renderResources();
     if (this.renderPopulation) {
       this.renderPopulation();
@@ -497,6 +504,33 @@ const Game = {
 
   renderResources() {
     this.resourceRenderer.render(this.state);
+  },
+
+  renderCitySwitcher() {
+    const wrapper = document.getElementById('citySwitcher');
+    const select = document.getElementById('citySelect');
+    if (!wrapper || !select) return;
+    const cities = this.state.cityState?.cities || [];
+    wrapper.hidden = cities.length <= 1;
+    const options = cities.map((city) => `<option value="${city.id}" ${city.id === this.state.activeCityId ? 'selected' : ''}>${city.isCapital ? '主城 · ' : ''}${city.name}</option>`).join('');
+    if (select.dataset.optionsSignature !== options) {
+      select.innerHTML = options;
+      select.dataset.optionsSignature = options;
+    }
+    select.value = this.state.activeCityId || 'capital';
+  },
+
+  async switchCity(cityId) {
+    if (!cityId || cityId === this.state.activeCityId) return;
+    try {
+      const result = await this.gameAPI.switchCity(cityId);
+      this.applyApiState(result);
+      this.showFloatingText(result.message || '城市已切换');
+      this.log(`🏛️ ${result.message || '城市已切换'}`);
+    } catch (error) {
+      this.log(`❌ ${error.payload?.message || error.message}`);
+      this.renderCitySwitcher();
+    }
   },
 
   openResourceDetails() {
@@ -542,7 +576,8 @@ const Game = {
       button.disabled = !canAdvance;
     }
     if (label) {
-      if (progress.canAdvance && !canAdvanceByTutorial) label.textContent = '引导未解锁';
+      if (this.state.isCapitalCity === false) label.textContent = '分城跟随主城时代';
+      else if (progress.canAdvance && !canAdvanceByTutorial) label.textContent = '引导未解锁';
       else if (progress.canAdvance) label.textContent = '满足条件，可进阶';
       else label.textContent = '条件不足，无法进阶';
     }

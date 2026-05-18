@@ -314,6 +314,7 @@ function normalizeWarMissions(rawMissions) {
         kind: 'conquest',
         territoryId: mission.territoryId,
         mode: mission.mode === 'settlement' ? 'settlement' : 'conquest',
+        sourceCityId: mission.sourceCityId || 'capital',
         soldiersCommitted: Math.max(0, Math.floor(Number(mission.soldiersCommitted) || 0)),
         expedition: {
           troopType: typeof mission.expedition?.troopType === 'string' && mission.expedition.troopType.trim()
@@ -469,9 +470,11 @@ function getActiveMissionForTerritory(gameState, territoryId) {
   return (gameState.warMissions || []).find((mission) => getMissionKind(mission) === 'conquest' && mission.territoryId === territoryId && ['active', 'ready'].includes(mission.status)) || null;
 }
 
-function countSoldiersOnMission(gameState) {
+function countSoldiersOnMission(gameState, cityId = gameState?.activeCityId || 'capital') {
+  const sourceCityId = cityId || 'capital';
   return (gameState.warMissions || []).reduce((sum, mission) => {
     if (getMissionKind(mission) !== 'conquest' || !['active', 'ready'].includes(mission.status)) return sum;
+    if ((mission.sourceCityId || 'capital') !== sourceCityId) return sum;
     return sum + (mission.soldiersCommitted || 0);
   }, 0);
 }
@@ -806,6 +809,7 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
     kind: 'conquest',
     territoryId,
     mode: occupationMode,
+    sourceCityId: gameState.activeCityId || 'capital',
     soldiersCommitted: committed,
     expedition: {
       ...expedition,
@@ -845,7 +849,12 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
   const casualties = success
     ? Math.min(Math.max(0, mission.soldiersCommitted - 1), Math.floor(territory.defense / 3))
     : Math.ceil(mission.soldiersCommitted / 2);
-  gameState.military.soldiers = Math.max(0, Math.floor(gameState.military?.soldiers || 0) - casualties);
+  const sourceCityId = mission.sourceCityId || 'capital';
+  const sourceCity = gameState.cities?.[sourceCityId] || null;
+  const military = sourceCity?.military || gameState.military || {};
+  military.soldiers = Math.max(0, Math.floor(military.soldiers || 0) - casualties);
+  if (sourceCity) sourceCity.military = military;
+  else gameState.military = military;
   territory.lastBattle = {
     resolvedAt: now.toISOString(),
     soldiersCommitted: mission.soldiersCommitted,
@@ -918,6 +927,7 @@ function getMapBounds(territories) {
 function getClientTerritoryState(gameState, now = new Date()) {
   updateMissionReadiness(gameState, now);
   const nowMs = now.getTime();
+  const activeCityId = gameState.activeCityId || 'capital';
   const missionsByTerritory = Object.fromEntries((gameState.warMissions || [])
     .filter((mission) => getMissionKind(mission) === 'conquest')
     .map((mission) => [mission.territoryId, {
@@ -945,7 +955,7 @@ function getClientTerritoryState(gameState, now = new Date()) {
     directions: Object.entries(DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
     maxActiveScouts: MAX_ACTIVE_SCOUTS,
     availableSoldiers: getAvailableSoldiers(gameState),
-    soldiersOnMission: countSoldiersOnMission(gameState),
+    soldiersOnMission: countSoldiersOnMission(gameState, activeCityId),
     occupiedCount: getOccupiedCount(gameState),
     discoveredCount: territories.length,
     mapBounds: getMapBounds(territories),

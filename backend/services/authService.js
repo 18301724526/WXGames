@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const MilitaryService = require('./MilitaryService');
 
 const ACCOUNT_WHITELIST = Object.freeze({
   test1: '123456',
@@ -97,13 +96,9 @@ class AuthService {
     let offlineIncome = null;
     if (offlineSeconds > 60) {
       offlineIncome = calculateOfflineIncome(gameState, offlineSeconds);
-      gameState.resources.food += offlineIncome.food;
-      gameState.resources.knowledge += offlineIncome.knowledge;
-      gameState.resources.wood += offlineIncome.wood;
-      MilitaryService.advanceTraining(gameState, offlineSeconds);
       gameState.offlineSnapshot = { timestamp: now.toISOString(), offlineSeconds, income: offlineIncome };
-      saveGameState(gameState);
     }
+    saveGameState(gameState);
     this.db.prepare('UPDATE players SET lastActiveAt = ? WHERE playerId = ?').run(now.toISOString(), player.playerId);
     return { playerId: player.playerId, username, token: player.token, gameState, offlineIncome };
   }

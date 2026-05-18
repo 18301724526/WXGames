@@ -155,6 +155,11 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
     military: {},
     polity: { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' },
     territories: [{ id: 'capital', cityName: '火种城', status: 'occupied' }],
+    activeCityId: 'site_1_0',
+    cities: {
+      capital: { id: 'capital', name: '火种城' },
+      site_1_0: { id: 'site_1_0', name: '河湾城' },
+    },
     scoutedCoordinates: [{ x: 1, y: 0, result: 'empty', siteId: null, scoutedAt: '2026-05-17T08:01:00.000Z' }],
     scoutState: { emptyStreak: 1 },
     warMissions: [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }],
@@ -187,6 +192,11 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
   ]);
   assert.deepEqual(result.polity, { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' });
   assert.deepEqual(result.territories, [{ id: 'capital', cityName: '火种城', status: 'occupied' }]);
+  assert.equal(result.activeCityId, 'site_1_0');
+  assert.deepEqual(result.cities, {
+    capital: { id: 'capital', name: '火种城' },
+    site_1_0: { id: 'site_1_0', name: '河湾城' },
+  });
   assert.deepEqual(result.scoutedCoordinates, [{ x: 1, y: 0, result: 'empty', siteId: null, scoutedAt: '2026-05-17T08:01:00.000Z' }]);
   assert.deepEqual(result.scoutState, { emptyStreak: 1 });
   assert.deepEqual(result.warMissions, [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }]);

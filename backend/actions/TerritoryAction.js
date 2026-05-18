@@ -1,4 +1,5 @@
 const TerritoryService = require('../services/TerritoryService');
+const CityService = require('../services/CityService');
 
 function execute(action, gameState, payload = {}) {
   if (action === 'scoutTerritory') {
@@ -11,13 +12,20 @@ function execute(action, gameState, payload = {}) {
     return TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);
   }
   if (action === 'claimConquest') {
-    return TerritoryService.claimConquest(gameState, payload.territoryId);
+    const result = TerritoryService.claimConquest(gameState, payload.territoryId);
+    if (result.success && result.outcome === 'success') CityService.normalizeCities(gameState);
+    return result;
   }
   if (action === 'renameCity') {
-    return TerritoryService.renameCity(gameState, payload.territoryId, payload.name);
+    const result = TerritoryService.renameCity(gameState, payload.territoryId, payload.name);
+    if (result.success) CityService.updateCityName(gameState, payload.territoryId, result.territory.cityName);
+    return result;
   }
   if (action === 'renamePolity') {
     return TerritoryService.renamePolity(gameState, payload.name);
+  }
+  if (action === 'switchCity') {
+    return CityService.setActiveCity(gameState, payload.territoryId || payload.cityId || CityService.CAPITAL_CITY_ID);
   }
   return { success: false, error: 'UNKNOWN_TERRITORY_ACTION', message: '未知疆域操作' };
 }

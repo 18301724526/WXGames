@@ -1,10 +1,7 @@
 const BuildingState = require('../domain/BuildingState');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
 const TutorialService = require('./TutorialService');
-const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
-const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
-const MilitaryService = require('./MilitaryService');
-const TerritoryService = require('./TerritoryService');
+const CityService = require('./CityService');
 
 function deductResources(resources, cost) {
   const next = { ...resources };
@@ -15,26 +12,23 @@ function deductResources(resources, cost) {
 }
 
 function applyDerivedStats(gameState) {
-  const effects = BuildingEffectCalculator.calculate(gameState.buildings);
-  const territoryEffects = TerritoryService.getTerritoryEffects(gameState);
-  effects.territoryFoodOutputBonus = territoryEffects.foodOutputMultiplier;
-  effects.territoryWoodOutputBonus = territoryEffects.woodOutputMultiplier;
-  effects.territoryKnowledgeOutputBonus = territoryEffects.knowledgeOutputMultiplier;
-  effects.threatDefense += territoryEffects.threatDefense;
-  gameState.buildingEffects = effects;
-  gameState.population.max = ResourceTickCalculator.calculatePopulationCap(effects);
-  gameState.population.maxPop = gameState.population.max;
-  gameState.happiness = ResourceTickCalculator.calculateBuffedHappiness(effects, gameState);
-  gameState.military = MilitaryService.normalizeMilitaryState(gameState.military, gameState);
+  CityService.normalizeCities(gameState);
+  const city = CityService.getActiveCity(gameState);
+  const effects = CityService.applyDerivedStatsToCity(city, gameState);
+  CityService.syncActiveCityToLegacyFields(gameState);
   return effects;
 }
 
 function build(gameState, tutorialState, buildingId) {
+  CityService.normalizeCities(gameState);
   const validation = BuildingActionValidator.validateBuild(gameState, tutorialState, buildingId);
   if (!validation.allowed) return { success: false, error: validation.code, message: validation.message };
   const now = new Date().toISOString();
-  gameState.resources = deductResources(gameState.resources, validation.cost);
-  gameState.buildings = BuildingState.build(gameState.buildings, buildingId, now);
+  const city = CityService.getActiveCity(gameState);
+  city.resources = deductResources(city.resources, validation.cost);
+  city.buildings = BuildingState.build(city.buildings, buildingId, now);
+  CityService.applyDerivedStatsToCity(city, gameState);
+  CityService.syncActiveCityToLegacyFields(gameState);
   const effects = applyDerivedStats(gameState);
   const tutorialEvent = buildingId === 'farm' ? 'farmBuilt' : buildingId === 'house' ? 'houseBuilt' : null;
   const nextTutorial = TutorialService.advanceTutorial(tutorialState, tutorialEvent);
@@ -50,11 +44,15 @@ function build(gameState, tutorialState, buildingId) {
 }
 
 function upgrade(gameState, tutorialState, buildingId) {
+  CityService.normalizeCities(gameState);
   const validation = BuildingActionValidator.validateUpgrade(gameState, tutorialState, buildingId);
   if (!validation.allowed) return { success: false, error: validation.code, message: validation.message };
   const now = new Date().toISOString();
-  gameState.resources = deductResources(gameState.resources, validation.cost);
-  gameState.buildings = BuildingState.upgrade(gameState.buildings, buildingId, now);
+  const city = CityService.getActiveCity(gameState);
+  city.resources = deductResources(city.resources, validation.cost);
+  city.buildings = BuildingState.upgrade(city.buildings, buildingId, now);
+  CityService.applyDerivedStatsToCity(city, gameState);
+  CityService.syncActiveCityToLegacyFields(gameState);
   const effects = applyDerivedStats(gameState);
   return {
     success: true,

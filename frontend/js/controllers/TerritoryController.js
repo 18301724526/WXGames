@@ -245,6 +245,11 @@
           this.clearExpeditionDraft();
           return this.api.claimConquest(territoryId);
         }
+        if (action === 'manage-city') {
+          const result = await this.api.switchCity(territoryId);
+          this.closeSiteDialog();
+          return result;
+        }
         if (action === 'rename-city') {
           const territory = (this.getState().territoryState?.territories || []).find((item) => item.id === territoryId);
           const name = global.prompt('为这座城市命名', territory?.cityName || territory?.naturalName || '');

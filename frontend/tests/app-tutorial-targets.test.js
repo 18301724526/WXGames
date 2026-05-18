@@ -172,6 +172,62 @@ test('era advance button stays locked until tutorial unlocks the advance step', 
   }
 });
 
+test('subcity keeps era advance button disabled even when conditions are met', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    const elements = new Map();
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        if (!elements.has(id)) {
+          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
+        }
+        return elements.get(id);
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state = {
+      currentEra: 5,
+      currentEraName: '古典时代',
+      gameDay: 1,
+      population: { total: 4 },
+      totalBuildings: 1,
+      techs: {},
+      happiness: 100,
+      isCapitalCity: false,
+      eraProgress: {
+        percentage: 100,
+        canAdvance: true,
+        targetEraName: '后续时代',
+        conditions: [],
+      },
+    };
+    Game.tutorialController = {
+      state: { completed: true, currentStep: 99 },
+      canOpenTab() { return true; },
+    };
+
+    Game.renderCivilization();
+
+    assert.equal(Game.canAdvanceEraNow(), false);
+    assert.equal(elements.get('btnAdvanceEra').disabled, true);
+    assert.equal(elements.get('btnEraLabel').textContent, '分城跟随主城时代');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('advanceEra does not call the API before tutorial unlocks the advance step', async () => {
   const originalWindow = global.window;
   const originalDocument = global.document;

@@ -2,6 +2,7 @@ const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
 const { getAdvanceConfig, getEraName } = require('../config/EraConfig');
 const BuildingState = require('../domain/BuildingState');
+const CityService = require('../services/CityService');
 
 function deductResources(resources, cost) {
   const next = { ...resources };
@@ -16,28 +17,32 @@ function hasEnoughResources(resources, cost) {
 }
 
 function meetsConditions(gameState, conditions) {
+  const capital = CityService.getCapitalCity(gameState);
   return (conditions || []).every((condition) => {
     if ((condition.source || 'resources') === 'military') {
-      return (gameState.military?.[condition.key] || 0) >= condition.required;
+      return (capital.military?.[condition.key] || 0) >= condition.required;
     }
     if ((condition.source || 'resources') === 'building') {
-      return BuildingState.getLevel(gameState.buildings, condition.key) >= condition.required;
+      return BuildingState.getLevel(capital.buildings, condition.key) >= condition.required;
     }
-    return (gameState.resources?.[condition.key] || 0) >= condition.required;
+    return (capital.resources?.[condition.key] || 0) >= condition.required;
   });
 }
 
 function applyEraKnowledgeBonus(gameState, nextEra) {
+  const capital = CityService.getCapitalCity(gameState);
   const eraKnowledgeBonus = { 1: 5 };
   const bonus = eraKnowledgeBonus[nextEra] || 0;
   if (bonus > 0) {
-    gameState.resources.knowledge = (gameState.resources.knowledge || 0) + bonus;
+    capital.resources.knowledge = (capital.resources.knowledge || 0) + bonus;
+    CityService.syncActiveCityToLegacyFields(gameState);
   }
 }
 
 function welcomeSettlementResident(gameState, nextEra) {
   if (nextEra !== 2) return;
-  const population = gameState.population || {};
+  const capital = CityService.getCapitalCity(gameState);
+  const population = capital.population || {};
   const maxPopulation = population.max || population.maxPop || 0;
   if ((population.unassigned || 0) > 0) return;
   if ((population.total || 0) >= maxPopulation) return;
@@ -45,19 +50,26 @@ function welcomeSettlementResident(gameState, nextEra) {
   population.unassigned = (population.unassigned || 0) + 1;
   population.max = maxPopulation;
   population.maxPop = maxPopulation;
-  gameState.population = population;
+  capital.population = population;
+  CityService.syncActiveCityToLegacyFields(gameState);
 }
 
 function execute(gameState, tutorial) {
+  CityService.normalizeCities(gameState);
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) {
+    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '只有主城可以推动文明进阶', tutorial };
+  }
+  const capital = CityService.getCapitalCity(gameState);
   const config = getAdvanceConfig(gameState.currentEra);
   if (!config) {
     return { success: false, error: 'ERA_MAX_REACHED', message: '已达到当前版本最高时代', tutorial };
   }
-  if (!hasEnoughResources(gameState.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
+  if (!hasEnoughResources(capital.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
     return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进阶', tutorial };
   }
 
-  gameState.resources = deductResources(gameState.resources, config.cost);
+  capital.resources = deductResources(capital.resources, config.cost);
+  CityService.syncActiveCityToLegacyFields(gameState);
   gameState.currentEra = config.nextEra;
   applyEraKnowledgeBonus(gameState, config.nextEra);
   welcomeSettlementResident(gameState, config.nextEra);

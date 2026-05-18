@@ -2,6 +2,7 @@ const EventDomain = require('../domain/Event');
 const EventRewardCalculator = require('../calculators/EventRewardCalculator');
 const MilitaryService = require('./MilitaryService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
+const CityService = require('./CityService');
 
 const REGULAR_EVENT_INTERVAL_MS = 4 * 60 * 1000;
 const THREAT_EVENT_INTERVAL_MS = 6 * 60 * 1000;
@@ -158,6 +159,7 @@ function resolveExpiredRegularEvents(gameState, now = new Date()) {
 }
 
 function cleanupRuntimeState(gameState, now = new Date()) {
+  CityService.normalizeCities(gameState);
   gameState.regularEventState = normalizeRegularEventState(gameState.regularEventState, now);
   gameState.threatEventState = normalizeThreatEventState(gameState.threatEventState, now);
   gameState.activeBuffs = normalizeActiveBuffs(gameState.activeBuffs, now);
@@ -254,10 +256,11 @@ function generateSpecialEvent(gameState, toEra) {
 }
 
 function validateResourceEffects(gameState, effects) {
+  const city = CityService.getActiveCity(gameState);
   for (const effect of effects || []) {
     if (effect.type !== 'resource' || effect.value >= 0) continue;
     if (!RESOURCE_KEYS.has(effect.key)) return { success: false, error: 'INVALID_EFFECT', message: '事件效果无效' };
-    if ((gameState.resources?.[effect.key] || 0) < Math.abs(effect.value)) {
+    if ((city.resources?.[effect.key] || 0) < Math.abs(effect.value)) {
       return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法选择该事件选项' };
     }
   }
@@ -269,10 +272,11 @@ function validateEffects(gameState, effects, options = {}) {
     const resourceValidation = validateResourceEffects(gameState, effects);
     if (!resourceValidation.success) return resourceValidation;
   }
+  const city = CityService.getActiveCity(gameState);
   for (const effect of effects || []) {
     if (effect.type !== 'soldiers' || effect.value >= 0) continue;
     if (options.allowPenaltyClamp) continue;
-    if ((gameState.military?.soldiers || 0) < Math.abs(effect.value)) {
+    if ((city.military?.soldiers || 0) < Math.abs(effect.value)) {
       return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '士兵不足，无法选择该事件选项' };
     }
   }
@@ -321,27 +325,36 @@ function createBuff(event, effect, now = new Date()) {
 
 function applyEffects(gameState, event, option, now = new Date()) {
   const effects = option.effects || [];
-  gameState.resources = gameState.resources || {};
+  const city = CityService.getActiveCity(gameState);
+  city.resources = city.resources || {};
   effects.forEach((effect) => {
     if (effect.type === 'resource' && RESOURCE_KEYS.has(effect.key)) {
-      gameState.resources[effect.key] = Math.max(0, (gameState.resources[effect.key] || 0) + effect.value);
+      city.resources[effect.key] = Math.max(0, (city.resources[effect.key] || 0) + effect.value);
     }
     if (effect.type === 'buff' && BUFF_TYPES.has(effect.buffType)) {
       gameState.activeBuffs = [...(gameState.activeBuffs || []), createBuff(event, effect, now)];
     }
     if (effect.type === 'soldiers') {
-      const current = gameState.military?.soldiers || 0;
-      gameState.military = MilitaryService.normalizeMilitaryState({
-        ...(gameState.military || {}),
+      const current = city.military?.soldiers || 0;
+      city.military = MilitaryService.normalizeMilitaryState({
+        ...(city.military || {}),
         soldiers: Math.max(0, current + effect.value),
-      }, gameState);
+      }, { ...gameState, activeCityId: city.id, buildings: city.buildings, military: city.military });
     }
   });
+  CityService.applyDerivedStatsToCity(city, gameState);
+  CityService.syncActiveCityToLegacyFields(gameState);
 }
 
 function meetsRequirements(gameState, requirements = {}) {
-  const military = MilitaryService.normalizeMilitaryState(gameState.military, gameState);
-  const buildingEffects = BuildingEffectCalculator.calculate(gameState.buildings || {});
+  const city = CityService.getActiveCity(gameState);
+  const military = MilitaryService.normalizeMilitaryState(city.military, {
+    ...gameState,
+    activeCityId: city.id,
+    buildings: city.buildings,
+    military: city.military,
+  });
+  const buildingEffects = BuildingEffectCalculator.calculate(city.buildings || {});
   const threatDefense = Math.max(0, buildingEffects.threatDefense || 0);
   const totalDefense = (military.defense || 0) + threatDefense;
   if (Number.isFinite(requirements.defense) && totalDefense < requirements.defense) return false;
@@ -359,6 +372,7 @@ function getOptionEffects(gameState, option) {
 }
 
 function claimEvent(gameState, eventId, optionId, now = new Date()) {
+  CityService.normalizeCities(gameState);
   cleanupRuntimeState(gameState, now);
   const queue = [...(gameState.eventQueue || [])];
   const index = queue.findIndex((event) => event.id === eventId);
@@ -379,9 +393,12 @@ function claimEvent(gameState, eventId, optionId, now = new Date()) {
   const reward = EventRewardCalculator.calculateReward({ ...option, effects: optionResult.effects });
   if (option.effects || option.requirements) applyEffects(gameState, event, { ...option, effects: optionResult.effects }, now);
   else {
+    const city = CityService.getActiveCity(gameState);
+    city.resources = city.resources || {};
     Object.entries(reward).forEach(([key, value]) => {
-      gameState.resources[key] = (gameState.resources[key] || 0) + value;
+      city.resources[key] = (city.resources[key] || 0) + value;
     });
+    CityService.syncActiveCityToLegacyFields(gameState);
   }
 
   const claimedEvent = {

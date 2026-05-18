@@ -12,12 +12,11 @@ const registerPlayerRoutes = require('./routes/playerRoutes');
 const registerGameRoutes = require('./routes/gameRoutes');
 const registerBuildingRoutes = require('./routes/buildingRoutes');
 const gameStateService = require('./services/GameStateService');
-const ResourceTickCalculator = require('./calculators/ResourceTickCalculator');
-const MilitaryService = require('./services/MilitaryService');
 const BuildingConfig = require('./config/BuildingConfig');
 const VersionService = require('./services/VersionService');
 const EventService = require('./services/EventService');
 const TerritoryService = require('./services/TerritoryService');
+const CityService = require('./services/CityService');
 
 const app = express();
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
@@ -86,12 +85,7 @@ setInterval(() => {
   const gameStates = repository.findAll();
   for (const rawState of gameStates) {
     const gameState = gameStateService.normalizeState(rawState);
-    const outputs = ResourceTickCalculator.calculateOutputs(gameState, gameState.buildingEffects);
-    gameState.resources.food = Math.max(0, (gameState.resources.food || 0) + outputs.foodPerSecond);
-    gameState.resources.knowledge = Math.max(0, (gameState.resources.knowledge || 0) + outputs.knowledgePerSecond);
-    gameState.resources.wood = Math.max(0, (gameState.resources.wood || 0) + outputs.woodPerSecond);
-    ResourceTickCalculator.applyPopulationGrowth(gameState, 1);
-    MilitaryService.advanceTraining(gameState, 1);
+    CityService.advanceAllCities(gameState, 1);
     TerritoryService.updateMissionReadiness(gameState);
     EventService.cleanupRuntimeState(gameState);
     EventService.maybeGenerateRegularEvent(gameState);

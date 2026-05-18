@@ -43,6 +43,14 @@
         namingPrompt: null,
         ...(this.state.territoryState || {}),
       };
+      this.state.cityState = {
+        activeCityId: this.state.activeCityId || 'capital',
+        capitalCityId: 'capital',
+        cities: [],
+        ...(this.state.cityState || {}),
+      };
+      this.state.activeCityId = this.state.cityState.activeCityId || this.state.activeCityId || 'capital';
+      this.state.isCapitalCity = this.state.activeCityId === (this.state.cityState.capitalCityId || 'capital');
       this.state.population = {
         ...this.state.population,
         maxPop: this.state.population.max || this.state.population.maxPop || 3,

@@ -136,7 +136,12 @@
         return '<button class="btn-territory" disabled>行军中</button>';
       }
       if (site.status === 'occupied') {
-        return `<button class="btn-territory secondary" data-territory-action="rename-city" data-territory-id="${this.escapeHtml(site.id)}">改名</button>`;
+        return `
+          <div class="site-action-row">
+            <button class="btn-territory" data-territory-action="manage-city" data-territory-id="${this.escapeHtml(site.id)}">管理</button>
+            <button class="btn-territory secondary" data-territory-action="rename-city" data-territory-id="${this.escapeHtml(site.id)}">改名</button>
+          </div>
+        `;
       }
       return '<button class="btn-territory" disabled>等待侦察</button>';
     }

@@ -38,6 +38,7 @@
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
     renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }
     renamePolity(name) { return this.request('POST', '/game/action', { action: 'renamePolity', name }); }
+    switchCity(cityId) { return this.request('POST', '/game/action', { action: 'switchCity', cityId }); }
     advanceTutorial(step) { return this.request('POST', '/game/action', { action: 'tutorialAdvance', step }); }
   }
 

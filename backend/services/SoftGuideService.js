@@ -1,6 +1,7 @@
 const BuildingConfig = require('../config/BuildingConfig');
 const { getAdvanceConfig } = require('../config/EraConfig');
 const BuildingState = require('../domain/BuildingState');
+const CityService = require('./CityService');
 
 function ensureAtLeast(resources, cost) {
   let changed = false;
@@ -20,6 +21,7 @@ function isTutorialDone(gameState) {
 function ensureCityAdvanceResources(gameState, eraProgress) {
   if (!isTutorialDone(gameState)) return false;
   if (gameState.currentEra !== 2) return false;
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
   const config = getAdvanceConfig(2);
   if (!config) return false;
   if ((eraProgress?.percentage || 0) < 50) return false;
@@ -28,6 +30,7 @@ function ensureCityAdvanceResources(gameState, eraProgress) {
 
 function ensureBarracksResources(gameState) {
   if (gameState.currentEra !== 3) return false;
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
   if (BuildingState.isBuilt(gameState.buildings, 'barracks')) return false;
   return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('barracks'));
 }
@@ -35,6 +38,7 @@ function ensureBarracksResources(gameState) {
 function ensureBorderAdvanceResources(gameState, eraProgress) {
   if (!isTutorialDone(gameState)) return false;
   if (gameState.currentEra !== 3) return false;
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
   const config = getAdvanceConfig(3);
   if (!config) return false;
   if ((eraProgress?.percentage || 0) < 60) return false;
@@ -44,11 +48,14 @@ function ensureBorderAdvanceResources(gameState, eraProgress) {
 function ensureWatchtowerResources(gameState) {
   if (!isTutorialDone(gameState)) return false;
   if (gameState.currentEra !== 4) return false;
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
   if (BuildingState.isBuilt(gameState.buildings, 'watchtower')) return false;
   return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('watchtower'));
 }
 
 function apply(gameState, eraProgress) {
+  CityService.normalizeCities(gameState);
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
   let changed = false;
   changed = ensureCityAdvanceResources(gameState, eraProgress) || changed;
   changed = ensureBarracksResources(gameState) || changed;
@@ -58,11 +65,19 @@ function apply(gameState, eraProgress) {
   if (gameState.currentEra === 3 && BuildingState.isBuilt(gameState.buildings, 'barracks')) {
     gameState.softGuideState.barracksUnlockedSeen = true;
   }
+  if (changed) CityService.persistLegacyFieldsToActiveCity(gameState);
   return changed;
 }
 
 function getSoftGuide(gameState, eraProgress) {
   if (!isTutorialDone(gameState)) return null;
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) {
+    return {
+      id: 'subcity_management',
+      message: '当前正在管理分城。分城可以独立建设与生产，时代进阶由主城统一推动。',
+      target: null,
+    };
+  }
   if (gameState.currentEra === 2) {
     if (eraProgress?.canAdvance) {
       return {

@@ -292,7 +292,7 @@ test('城市命名后第二块领土会提示命名势力', () => {
   assert.equal(TerritoryService.getClientTerritoryState(state).namingPrompt, null);
 });
 
-test('占领世界点效果会汇总到资源和防御加成', () => {
+test('占领世界点效果只作用于对应分城，不再汇总到主城', () => {
   const state = createClassicalState();
   state.territories.push({
     id: 'site_food',
@@ -312,10 +312,15 @@ test('占领世界点效果会汇总到资源和防御加成', () => {
 
   const normalized = gameStateService.normalizeState(state);
 
-  assert.equal(normalized.buildingEffects.territoryFoodOutputBonus, 0.05);
-  assert.equal(normalized.buildingEffects.territoryWoodOutputBonus, 0.08);
-  assert.equal(normalized.buildingEffects.territoryKnowledgeOutputBonus, 0.06);
-  assert.equal(normalized.buildingEffects.threatDefense, 4);
+  assert.equal(normalized.activeCityId, 'capital');
+  assert.equal(normalized.buildingEffects.territoryFoodOutputBonus, 0);
+  assert.equal(normalized.buildingEffects.territoryWoodOutputBonus, 0);
+  assert.equal(normalized.buildingEffects.territoryKnowledgeOutputBonus, 0);
+  assert.equal(normalized.buildingEffects.threatDefense, 2);
+  assert.equal(normalized.cities.site_food.buildingEffects.territoryFoodOutputBonus, 0.05);
+  assert.equal(normalized.cities.site_food.buildingEffects.territoryWoodOutputBonus, 0.08);
+  assert.equal(normalized.cities.site_food.buildingEffects.territoryKnowledgeOutputBonus, 0.06);
+  assert.equal(normalized.cities.site_food.buildingEffects.threatDefense, 2);
 });
 
 test('侦察结果会在连续落空时逐步提高出地点概率', () => {

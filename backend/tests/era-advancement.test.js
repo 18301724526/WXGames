@@ -32,14 +32,14 @@ test('农耕到聚落使用调优后的食物和知识门槛', () => {
 });
 
 test('提前进入聚落时代时会补一名待分配人口避免工匠引导卡住', () => {
-  const state = gameStateService.createInitialGameState('settlement-resident-player');
+  let state = gameStateService.createInitialGameState('settlement-resident-player');
   state.currentEra = 1;
   state.resources.food = 120;
   state.resources.knowledge = 5;
   state.population.total = 3;
   state.population.unassigned = 0;
-  state.population.max = 6;
-  state.population.maxPop = 6;
+  state.buildings.house = { level: 1 };
+  state = gameStateService.normalizeState(state);
 
   const result = AdvanceEraAction.execute(state, state.tutorial);
 

@@ -11,6 +11,7 @@ const GameConfig = require('../config/GameConfig');
 const MilitaryService = require('./MilitaryService');
 const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
+const CityService = require('./CityService');
 
 function getBuildingLevel(buildings, buildingId) {
   return BuildingState.getLevel(buildings, buildingId);
@@ -45,6 +46,8 @@ function createInitialGameState(playerId) {
     military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
     polity: TerritoryService.createInitialPolity(),
     territories: TerritoryService.createInitialTerritories(),
+    activeCityId: CityService.CAPITAL_CITY_ID,
+    cities: {},
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0 },
     warMissions: [],
@@ -85,23 +88,27 @@ function normalizeState(rawState) {
   state.military = MilitaryService.normalizeMilitaryState(state.military, state);
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
   TerritoryService.normalizeTerritoryState(state);
+  CityService.normalizeCities(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
   state.happiness = state.happiness || 100;
   state.updatedAt = state.updatedAt || new Date().toISOString();
   BuildingActionService.applyDerivedStats(state);
+  CityService.persistLegacyFieldsToActiveCity(state);
   if (state.population.total > state.population.max) state.population.total = state.population.max;
   return state;
 }
 
 function calculateEraProgress(gameState) {
-  const advanceConfig = getAdvanceConfig(gameState.currentEra);
+  const normalized = normalizeState(gameState);
+  const capital = CityService.getCapitalCity(normalized);
+  const advanceConfig = getAdvanceConfig(normalized.currentEra);
   if (!advanceConfig) return { percentage: 100, canAdvance: false, conditions: [] };
   const conditions = advanceConfig.conditions.map((condition) => {
     const source = condition.source || 'resources';
-    let rawCurrent = gameState.resources?.[condition.key];
-    if (source === 'military') rawCurrent = gameState.military?.[condition.key];
-    if (source === 'building') rawCurrent = getBuildingLevel(gameState.buildings, condition.key);
+    let rawCurrent = capital.resources?.[condition.key];
+    if (source === 'military') rawCurrent = capital.military?.[condition.key];
+    if (source === 'building') rawCurrent = getBuildingLevel(capital.buildings, condition.key);
     const current = Math.floor(rawCurrent || 0);
     const progress = Math.min(100, Math.floor((current / condition.required) * 100));
     return {
@@ -157,6 +164,9 @@ function getClientGameState(gameState) {
     buildingDefinitions: getBuildingDefinitions(),
     buildingEffects: normalized.buildingEffects,
     military: normalized.military,
+    cityState: CityService.getClientCityState(normalized),
+    activeCityId: normalized.activeCityId,
+    isCapitalCity: normalized.activeCityId === CityService.CAPITAL_CITY_ID,
     unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra),
     currentEra: normalized.currentEra,
     currentEraName: getEraName(normalized.currentEra),
@@ -183,17 +193,12 @@ function getClientGameState(gameState) {
 
 function calculateOfflineIncome(gameState, offlineSeconds) {
   const normalized = normalizeState(gameState);
-  const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
   const actualOffline = Math.min(Math.max(0, offlineSeconds), GameConfig.resources.maxOfflineHours * 3600);
-  const efficiency = GameConfig.resources.offlineBaseEfficiency
-    + (normalized.buildingEffects.offlineEfficiencyBonus || 0)
-    + ResourceTickCalculator.calculateOfflineEfficiencyBonus(normalized);
+  const result = CityService.calculateOfflineIncomeForAllCities(normalized, actualOffline, GameConfig.resources.offlineBaseEfficiency);
   return {
-    food: Math.max(0, Math.floor(outputs.foodPerSecond * actualOffline * efficiency)),
-    knowledge: Math.max(0, Math.floor(outputs.knowledgePerSecond * actualOffline * efficiency)),
-    wood: Math.max(0, Math.floor(outputs.woodPerSecond * actualOffline * efficiency)),
-    offlineHours: Math.floor((actualOffline / 3600) * 100) / 100,
-    efficiency,
+    ...(result.totalIncome || result.activeIncome || { food: 0, knowledge: 0, wood: 0, offlineHours: 0, efficiency: GameConfig.resources.offlineBaseEfficiency }),
+    activeCity: result.activeIncome,
+    byCity: result.incomeByCity,
   };
 }
 

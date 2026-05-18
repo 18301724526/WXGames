@@ -90,6 +90,43 @@ body {
     gap: 6px;
 }
 
+.city-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(20, 24, 32, 0.72);
+}
+
+.city-switcher[hidden] {
+  display: none;
+}
+
+.city-switcher-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.city-switcher select {
+  max-width: 128px;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.city-switcher option {
+  background: #171b24;
+  color: #f4ead7;
+}
+
 .era-icon {
     width: 30px;
     height: 30px;

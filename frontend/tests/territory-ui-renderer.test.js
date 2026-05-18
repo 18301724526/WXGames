@@ -189,6 +189,19 @@ test('territory renderer shows expedition config for owned sites when expanded',
   assert.match(html, /data-territory-action="launch-expedition"/);
 });
 
+test('territory renderer shows manage action for occupied cities', () => {
+  const renderer = new TerritoryUIRenderer({ dataset: {} });
+  const html = renderer.getAction({
+    id: 'site_harbor',
+    status: 'occupied',
+    owner: 'player',
+  }, {});
+
+  assert.match(html, /data-territory-action="manage-city"/);
+  assert.match(html, /管理/);
+  assert.match(html, /data-territory-action="rename-city"/);
+});
+
 test('territory renderer formats new owner tiers and map classes', () => {
   const host = createHost();
   const renderer = new TerritoryUIRenderer(host);
