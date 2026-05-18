@@ -25,6 +25,7 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(css, /\.pop-stats \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
   assert.match(css, /\.pop-stat \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
   assert.match(html, /style\.css\?v=population-hud-v2/);
+  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=ui-state-v1/);
   assert.match(css, /\.job-card \{[\s\S]*?padding: 4px 7px;[\s\S]*?grid-template-columns: 24px minmax\(0, 1fr\) auto;/);
   assert.match(css, /\.job-icon \{[\s\S]*?width: 24px;[\s\S]*?height: 24px;[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
   assert.doesNotMatch(css, /@media \(min-width: 481px\) \{[\s\S]*?\.job-icon \{[\s\S]*?(?:width|height): 64px;/);
@@ -43,6 +44,7 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
 
 test('population click handler reads the closest custom button', () => {
   const populationJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'population.js'), 'utf8');
-  assert.match(populationJs, /e\.target\.closest\('button\[data-job\]'\)/);
-  assert.match(populationJs, /button\.classList\.contains\('btn-plus'\)/);
+  assert.match(populationJs, /UIStatePresenter\.buildPopulationViewState/);
+  assert.match(populationJs, /\.target\.closest\('button\[data-job\]'\)/);
+  assert.match(populationJs, /\.classList\.contains\('btn-plus'\)/);
 });

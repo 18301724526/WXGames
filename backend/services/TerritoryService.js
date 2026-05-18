@@ -211,6 +211,10 @@ function getDistance(x, y) {
   return Math.max(Math.abs(x), Math.abs(y));
 }
 
+function getRelativeDistance(fromX, fromY, toX, toY) {
+  return Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY));
+}
+
 function getCoordinateKey(x, y) {
   return `${x},${y}`;
 }
@@ -297,12 +301,22 @@ function normalizeWarMissions(rawMissions) {
       if (kind === 'scout') {
         const direction = normalizeDirection(mission.direction);
         if (!direction) return null;
+        const targetX = toInteger(mission.targetX, 0);
+        const targetY = toInteger(mission.targetY, 0);
+        const originX = toInteger(mission.originX, 0);
+        const originY = toInteger(mission.originY, 0);
         return {
           id: mission.id || `scout_${direction}_${Date.now()}`,
           kind: 'scout',
           direction,
-          targetX: toInteger(mission.targetX, 0),
-          targetY: toInteger(mission.targetY, 0),
+          sourceCityId: typeof mission.sourceCityId === 'string' && mission.sourceCityId ? mission.sourceCityId : 'capital',
+          originTerritoryId: typeof mission.originTerritoryId === 'string' && mission.originTerritoryId ? mission.originTerritoryId : 'capital',
+          originName: typeof mission.originName === 'string' && mission.originName ? mission.originName : '',
+          originX,
+          originY,
+          targetX,
+          targetY,
+          scoutDistance: Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, targetX, targetY))),
           startedAt: mission.startedAt || new Date().toISOString(),
           completesAt: mission.completesAt || new Date().toISOString(),
           status,
@@ -315,6 +329,7 @@ function normalizeWarMissions(rawMissions) {
         territoryId: mission.territoryId,
         mode: mission.mode === 'settlement' ? 'settlement' : 'conquest',
         sourceCityId: mission.sourceCityId || 'capital',
+        soldierAllocations: getMissionSoldierAllocations(mission),
         soldiersCommitted: Math.max(0, Math.floor(Number(mission.soldiersCommitted) || 0)),
         expedition: {
           troopType: typeof mission.expedition?.troopType === 'string' && mission.expedition.troopType.trim()
@@ -430,6 +445,34 @@ function getTerritory(gameState, territoryId) {
   return (gameState.territories || []).find((territory) => territory.id === territoryId) || null;
 }
 
+function getCapitalTerritory(gameState) {
+  return getTerritory(gameState, 'capital') || { id: 'capital', x: 0, y: 0, cityName: '棣栭兘', naturalName: '棣栭兘', status: 'occupied' };
+}
+
+function getTerritoryForCity(gameState, cityId = gameState?.activeCityId || 'capital') {
+  const normalizedCityId = cityId || 'capital';
+  const city = gameState?.cities?.[normalizedCityId] || null;
+  const territoryId = city?.territoryId || normalizedCityId;
+  const territory = (gameState?.territories || []).find((item) => (
+    item.id === territoryId || item.id === normalizedCityId
+  ));
+  if (territory && territory.status === 'occupied') return territory;
+  return getCapitalTerritory(gameState);
+}
+
+function getScoutOrigin(gameState) {
+  const activeCityId = gameState?.activeCityId || 'capital';
+  const city = gameState?.cities?.[activeCityId] || null;
+  const territory = getTerritoryForCity(gameState, activeCityId);
+  return {
+    cityId: city?.id || activeCityId,
+    territoryId: territory.id || 'capital',
+    name: city?.name || territory.cityName || territory.naturalName || '棣栭兘',
+    x: toInteger(territory.x, 0),
+    y: toInteger(territory.y, 0),
+  };
+}
+
 function getMissionKind(mission) {
   return mission.kind === 'scout' ? 'scout' : 'conquest';
 }
@@ -470,17 +513,93 @@ function getActiveMissionForTerritory(gameState, territoryId) {
   return (gameState.warMissions || []).find((mission) => getMissionKind(mission) === 'conquest' && mission.territoryId === territoryId && ['active', 'ready'].includes(mission.status)) || null;
 }
 
+function getMissionSoldierAllocations(mission) {
+  if (Array.isArray(mission?.soldierAllocations) && mission.soldierAllocations.length) {
+    return mission.soldierAllocations
+      .map((allocation) => ({
+        cityId: allocation?.cityId || mission.sourceCityId || 'capital',
+        soldiers: Math.max(0, Math.floor(Number(allocation?.soldiers) || 0)),
+      }))
+      .filter((allocation) => allocation.soldiers > 0);
+  }
+  return [{
+    cityId: mission?.sourceCityId || 'capital',
+    soldiers: Math.max(0, Math.floor(Number(mission?.soldiersCommitted) || 0)),
+  }];
+}
+
 function countSoldiersOnMission(gameState, cityId = gameState?.activeCityId || 'capital') {
   const sourceCityId = cityId || 'capital';
   return (gameState.warMissions || []).reduce((sum, mission) => {
     if (getMissionKind(mission) !== 'conquest' || !['active', 'ready'].includes(mission.status)) return sum;
-    if ((mission.sourceCityId || 'capital') !== sourceCityId) return sum;
+    const allocation = getMissionSoldierAllocations(mission).find((item) => item.cityId === sourceCityId);
+    return sum + (allocation?.soldiers || 0);
+  }, 0);
+}
+
+function countTotalSoldiersOnMission(gameState) {
+  return (gameState.warMissions || []).reduce((sum, mission) => {
+    if (getMissionKind(mission) !== 'conquest' || !['active', 'ready'].includes(mission.status)) return sum;
     return sum + (mission.soldiersCommitted || 0);
   }, 0);
 }
 
+function getCitySoldierEntries(gameState) {
+  const activeCityId = gameState?.activeCityId || 'capital';
+  const cities = gameState?.cities && typeof gameState.cities === 'object'
+    ? Object.values(gameState.cities).filter((city) => city && typeof city === 'object')
+    : [];
+  if (!cities.length) {
+    return [{
+      id: activeCityId,
+      soldiers: Math.max(0, Math.floor(Number(gameState?.military?.soldiers) || 0)),
+    }];
+  }
+  return cities.map((city) => {
+    const id = city.id || city.territoryId || 'capital';
+    const military = id === activeCityId && gameState?.military ? gameState.military : city.military;
+    return {
+      id,
+      soldiers: Math.max(0, Math.floor(Number(military?.soldiers) || 0)),
+    };
+  });
+}
+
+function getTotalSoldiers(gameState) {
+  return getCitySoldierEntries(gameState).reduce((sum, entry) => sum + entry.soldiers, 0);
+}
+
 function getAvailableSoldiers(gameState) {
-  return Math.max(0, Math.floor(gameState.military?.soldiers || 0) - countSoldiersOnMission(gameState));
+  return Math.max(0, getTotalSoldiers(gameState) - countTotalSoldiersOnMission(gameState));
+}
+
+function getAvailableSoldiersForCity(gameState, cityId) {
+  const entry = getCitySoldierEntries(gameState).find((item) => item.id === (cityId || 'capital'));
+  return Math.max(0, (entry?.soldiers || 0) - countSoldiersOnMission(gameState, cityId || 'capital'));
+}
+
+function allocateSoldiersForMission(gameState, requiredSoldiers) {
+  const required = Math.max(1, Math.floor(Number(requiredSoldiers) || 1));
+  if (getAvailableSoldiers(gameState) < required) return null;
+  const activeCityId = gameState?.activeCityId || 'capital';
+  const entries = getCitySoldierEntries(gameState)
+    .map((entry, index) => ({
+      ...entry,
+      available: getAvailableSoldiersForCity(gameState, entry.id),
+      priority: entry.id === activeCityId ? 0 : entry.id === 'capital' ? 1 : index + 2,
+    }))
+    .filter((entry) => entry.available > 0)
+    .sort((a, b) => a.priority - b.priority || String(a.id).localeCompare(String(b.id)));
+  const allocations = [];
+  let remaining = required;
+  for (const entry of entries) {
+    if (remaining <= 0) break;
+    const soldiers = Math.min(entry.available, remaining);
+    allocations.push({ cityId: entry.id, soldiers });
+    remaining -= soldiers;
+  }
+  if (remaining > 0) return null;
+  return allocations;
 }
 
 function updateMissionReadiness(gameState, now = new Date()) {
@@ -551,14 +670,16 @@ function sanitizeName(name) {
   return value.slice(0, MAX_NAME_LENGTH);
 }
 
-function findNextCoordinate(gameState, direction) {
+function findNextCoordinate(gameState, direction, origin = getScoutOrigin(gameState)) {
   const dir = DIRECTIONS[direction];
   if (!dir) return null;
+  const originX = toInteger(origin?.x, 0);
+  const originY = toInteger(origin?.y, 0);
   const occupied = new Set((gameState.territories || []).map((territory) => getCoordinateKey(territory.x, territory.y)));
   const scouted = new Set((gameState.scoutedCoordinates || []).map((coordinate) => getCoordinateKey(coordinate.x, coordinate.y)));
   for (let distance = 1; distance <= MAX_SCOUT_DISTANCE; distance += 1) {
-    const x = dir.dx * distance;
-    const y = dir.dy * distance;
+    const x = originX + dir.dx * distance;
+    const y = originY + dir.dy * distance;
     const key = getCoordinateKey(x, y);
     if (!occupied.has(key) && !scouted.has(key)) return { x, y, distance };
   }
@@ -641,7 +762,10 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
   const direction = mission.direction;
   const x = toInteger(mission.targetX, 0);
   const y = toInteger(mission.targetY, 0);
-  const distance = getDistance(x, y);
+  const originX = toInteger(mission.originX, 0);
+  const originY = toInteger(mission.originY, 0);
+  const distance = Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, x, y)));
+  const originName = mission.originName || '出发城市';
   const discoveredCount = (gameState.territories || []).length;
   const template = pickTemplateByDistance(distance, gameState.scoutState?.neutralSiteStreak || 0, randomSource);
   const seed = Math.abs(x * 31 + y * 17 + discoveredCount * 13 + Object.keys(DIRECTIONS).indexOf(direction));
@@ -678,6 +802,7 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
     direction,
     createdAt: now.toISOString(),
   };
+  report.text = `侦察队从${originName}向${DIRECTIONS[direction].label}推进，在距离出发城市 ${distance} 格的位置发现了${naturalName}。${summary}`;
   return { site, report };
 }
 
@@ -685,9 +810,12 @@ function createEmptyScoutReport(mission, now = new Date(), repeated = false) {
   const direction = mission.direction;
   const x = toInteger(mission.targetX, 0);
   const y = toInteger(mission.targetY, 0);
-  const distance = getDistance(x, y);
+  const originX = toInteger(mission.originX, 0);
+  const originY = toInteger(mission.originY, 0);
+  const distance = Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, x, y)));
+  const originName = mission.originName || '出发城市';
   const label = DIRECTIONS[direction]?.label || '远方';
-  return {
+  const report = {
     id: `report_empty_${x}_${y}_${now.getTime()}`,
     siteId: null,
     title: repeated ? '重复侦察确认空地' : '空地侦察报告',
@@ -697,6 +825,10 @@ function createEmptyScoutReport(mission, now = new Date(), repeated = false) {
     direction,
     createdAt: now.toISOString(),
   };
+  report.text = repeated
+    ? `侦察队再次确认${originName}${label}方向、距离出发城市 ${distance} 格的位置暂无可占领地点。`
+    : `侦察队从${originName}向${label}推进，在距离出发城市 ${distance} 格的位置未发现可建立据点或占领的目标。`;
+  return report;
 }
 
 function startScout(gameState, direction, now = new Date()) {
@@ -709,14 +841,21 @@ function startScout(gameState, direction, now = new Date()) {
   }
   const existing = getScoutMissions(gameState).find((mission) => mission.direction === normalizedDirection && ['active', 'ready'].includes(mission.status));
   if (existing) return { success: false, error: 'SCOUT_EXISTS', message: `${DIRECTIONS[normalizedDirection].label}已有侦察任务` };
-  const target = findNextCoordinate(gameState, normalizedDirection);
+  const origin = getScoutOrigin(gameState);
+  const target = findNextCoordinate(gameState, normalizedDirection, origin);
   if (!target) return { success: false, error: 'NO_SCOUT_TARGET', message: '该方向暂时没有可侦察区域' };
   const mission = {
     id: `scout_${normalizedDirection}_${now.getTime()}`,
     kind: 'scout',
     direction: normalizedDirection,
+    sourceCityId: origin.cityId,
+    originTerritoryId: origin.territoryId,
+    originName: origin.name,
+    originX: origin.x,
+    originY: origin.y,
     targetX: target.x,
     targetY: target.y,
+    scoutDistance: target.distance,
     startedAt: now.toISOString(),
     completesAt: new Date(now.getTime() + SCOUT_DURATION_MS).toISOString(),
     status: 'active',
@@ -804,12 +943,15 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
   );
   const committed = occupationMode === 'settlement' ? 1 : expedition.soldiers;
   if (committed > getAvailableSoldiers(gameState)) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
+  const soldierAllocations = allocateSoldiersForMission(gameState, committed);
+  if (!soldierAllocations) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
   const mission = {
     id: `conquest_${territoryId}_${now.getTime()}`,
     kind: 'conquest',
     territoryId,
     mode: occupationMode,
-    sourceCityId: gameState.activeCityId || 'capital',
+    sourceCityId: soldierAllocations[0]?.cityId || gameState.activeCityId || 'capital',
+    soldierAllocations,
     soldiersCommitted: committed,
     expedition: {
       ...expedition,
@@ -849,12 +991,21 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
   const casualties = success
     ? Math.min(Math.max(0, mission.soldiersCommitted - 1), Math.floor(territory.defense / 3))
     : Math.ceil(mission.soldiersCommitted / 2);
-  const sourceCityId = mission.sourceCityId || 'capital';
-  const sourceCity = gameState.cities?.[sourceCityId] || null;
-  const military = sourceCity?.military || gameState.military || {};
-  military.soldiers = Math.max(0, Math.floor(military.soldiers || 0) - casualties);
-  if (sourceCity) sourceCity.military = military;
-  else gameState.military = military;
+  let remainingCasualties = casualties;
+  for (const allocation of getMissionSoldierAllocations(mission)) {
+    if (remainingCasualties <= 0) break;
+    const proportionalCasualties = Math.min(
+      allocation.soldiers,
+      Math.ceil((casualties * allocation.soldiers) / Math.max(1, mission.soldiersCommitted)),
+      remainingCasualties,
+    );
+    const sourceCity = gameState.cities?.[allocation.cityId] || null;
+    const military = sourceCity?.military || gameState.military || {};
+    military.soldiers = Math.max(0, Math.floor(military.soldiers || 0) - proportionalCasualties);
+    if (sourceCity) sourceCity.military = military;
+    else gameState.military = military;
+    remainingCasualties -= proportionalCasualties;
+  }
   territory.lastBattle = {
     resolvedAt: now.toISOString(),
     soldiersCommitted: mission.soldiersCommitted,
@@ -927,7 +1078,7 @@ function getMapBounds(territories) {
 function getClientTerritoryState(gameState, now = new Date()) {
   updateMissionReadiness(gameState, now);
   const nowMs = now.getTime();
-  const activeCityId = gameState.activeCityId || 'capital';
+  const scoutOrigin = getScoutOrigin(gameState);
   const missionsByTerritory = Object.fromEntries((gameState.warMissions || [])
     .filter((mission) => getMissionKind(mission) === 'conquest')
     .map((mission) => [mission.territoryId, {
@@ -938,6 +1089,9 @@ function getClientTerritoryState(gameState, now = new Date()) {
   const territories = (gameState.territories || []).map((territory) => ({
     ...territory,
     distance: getDistance(territory.x, territory.y),
+    originDistance: getRelativeDistance(scoutOrigin.x, scoutOrigin.y, territory.x, territory.y),
+    relativeX: territory.x - scoutOrigin.x,
+    relativeY: territory.y - scoutOrigin.y,
     occupationMode: getOccupationMode(territory),
     mission: missionsByTerritory[territory.id] || null,
   }));
@@ -952,10 +1106,11 @@ function getClientTerritoryState(gameState, now = new Date()) {
     })),
     activeScoutMission: getActiveScoutMission(gameState),
     scoutReports: gameState.scoutReports || [],
+    scoutOrigin,
     directions: Object.entries(DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
     maxActiveScouts: MAX_ACTIVE_SCOUTS,
     availableSoldiers: getAvailableSoldiers(gameState),
-    soldiersOnMission: countSoldiersOnMission(gameState, activeCityId),
+    soldiersOnMission: countTotalSoldiersOnMission(gameState),
     occupiedCount: getOccupiedCount(gameState),
     discoveredCount: territories.length,
     mapBounds: getMapBounds(territories),

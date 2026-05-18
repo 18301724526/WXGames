@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const gameStateService = require('../services/GameStateService');
+const CityService = require('../services/CityService');
 const TerritoryService = require('../services/TerritoryService');
 
 function createClassicalState() {
@@ -21,6 +22,51 @@ function createSequenceRandom(values) {
     index += 1;
     return value;
   };
+}
+
+function addOccupiedSubCity(state, options = {}) {
+  state.territories.push({
+    id: options.id || 'site_east',
+    x: Number.isFinite(options.x) ? options.x : 2,
+    y: Number.isFinite(options.y) ? options.y : 0,
+    naturalName: options.naturalName || '东境据点',
+    cityName: options.cityName || '东境城',
+    type: 'town',
+    owner: 'player',
+    status: 'occupied',
+    scale: 2,
+    threat: 2,
+    defense: 4,
+    recommendedSoldiers: 4,
+    art: 'assets/art/world-site-town-cutout.png',
+    effects: {},
+    discoveredAt: '2026-05-17T08:00:00.000Z',
+    occupiedAt: '2026-05-17T08:02:00.000Z',
+  });
+}
+
+function addDiscoveredTribeSite(state, options = {}) {
+  state.territories.push({
+    id: options.id || 'tribe_target',
+    x: Number.isFinite(options.x) ? options.x : 3,
+    y: Number.isFinite(options.y) ? options.y : 0,
+    naturalName: options.naturalName || '东境营地',
+    cityName: null,
+    type: 'camp',
+    owner: 'tribe',
+    status: 'discovered',
+    scale: 2,
+    threat: 4,
+    defense: 5,
+    recommendedSoldiers: 5,
+    art: 'assets/art/world-site-camp-cutout.png',
+    visualOffset: { x: 0, y: 0 },
+    discoveredAt: '2026-05-17T08:04:00.000Z',
+    occupiedAt: null,
+    effects: { woodOutputMultiplier: 0.08 },
+    summary: '东境外的部落营地。',
+    lastBattle: null,
+  });
 }
 
 test('古典时代只默认显示首都和八方向侦察入口', () => {
@@ -91,6 +137,28 @@ test('侦察到空地后会标记坐标并跳过该坐标', () => {
   assert.equal(start.success, true);
   assert.equal(start.mission.targetX, -2);
   assert.equal(start.mission.targetY, 0);
+});
+
+test('分城侦察会以当前分城坐标作为出发原点', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addOccupiedSubCity(state, { x: 2, y: 0 });
+  const normalized = gameStateService.normalizeState(state);
+  CityService.setActiveCity(normalized, 'site_east');
+
+  const start = TerritoryService.startScout(normalized, 'e', now);
+  const territoryState = TerritoryService.getClientTerritoryState(normalized, now);
+  const subCityOnMap = territoryState.territories.find((item) => item.id === 'site_east');
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.sourceCityId, 'site_east');
+  assert.equal(start.mission.originX, 2);
+  assert.equal(start.mission.originY, 0);
+  assert.equal(start.mission.targetX, 3);
+  assert.equal(start.mission.targetY, 0);
+  assert.equal(territoryState.scoutOrigin.territoryId, 'site_east');
+  assert.equal(subCityOnMap.relativeX, 0);
+  assert.equal(subCityOnMap.relativeY, 0);
 });
 
 test('侦察队同一时间最多可派出两支，第三支会被拒绝', () => {
@@ -249,6 +317,28 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   assert.equal(claim.outcome, 'success');
   assert.equal(claim.casualties, 1);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
+});
+
+test('分城可以对共享情报目标发起军事行动并使用全势力兵力', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addOccupiedSubCity(state, { x: 2, y: 0 });
+  addDiscoveredTribeSite(state, { x: -1, y: 0 });
+  const normalized = gameStateService.normalizeState(state);
+  normalized.cities.capital.military.soldiers = 6;
+  normalized.cities.site_east.military.soldiers = 0;
+  CityService.setActiveCity(normalized, 'site_east');
+
+  const start = TerritoryService.startConquest(normalized, 'tribe_target', { soldiers: 5 }, now);
+  const territoryState = TerritoryService.getClientTerritoryState(normalized, now);
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.sourceCityId, 'capital');
+  assert.deepEqual(start.mission.soldierAllocations, [{ cityId: 'capital', soldiers: 5 }]);
+  assert.equal(TerritoryService.getAvailableSoldiers(normalized), 1);
+  assert.equal(territoryState.availableSoldiers, 1);
+  assert.equal(territoryState.soldiersOnMission, 5);
+  assert.equal(territoryState.territories.find((item) => item.id === 'tribe_target').mission.sourceCityId, 'capital');
 });
 
 test('占领任务会向前端提供行军总时长和剩余时间', () => {

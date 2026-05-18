@@ -148,8 +148,8 @@
 
     getRadarPosition(site, maxDistance) {
       const visualOffset = site.visualOffset || {};
-      const x = Number(site.x || 0) + (Number(visualOffset.x) || 0);
-      const y = Number(site.y || 0) + (Number(visualOffset.y) || 0);
+      const x = Number(site.relativeX ?? site.x ?? 0) + (Number(visualOffset.x) || 0);
+      const y = Number(site.relativeY ?? site.y ?? 0) + (Number(visualOffset.y) || 0);
       const distance = Math.max(0, Math.hypot(x, y));
       const normalized = Math.sqrt(Math.min(1, distance / Math.max(1, maxDistance)));
       const radius = distance > 0 ? 12 + normalized * 30 : 0;
@@ -205,8 +205,8 @@
       const maxDistance = Math.max(
         1,
         ...territories.map((site) => Math.hypot(
-          Number(site.x || 0) + (Number(site.visualOffset?.x) || 0),
-          Number(site.y || 0) + (Number(site.visualOffset?.y) || 0),
+          Number(site.relativeX ?? site.x ?? 0) + (Number(site.visualOffset?.x) || 0),
+          Number(site.relativeY ?? site.y ?? 0) + (Number(site.visualOffset?.y) || 0),
         )),
       );
       const sorted = [...territories].sort((a, b) => {
@@ -274,6 +274,8 @@
         id: site.id,
         x: site.x,
         y: site.y,
+        relativeX: site.relativeX ?? null,
+        relativeY: site.relativeY ?? null,
         visualOffset: site.visualOffset || null,
         status: site.status,
         owner: site.owner,
@@ -292,6 +294,7 @@
 
     getDialogContentSignature(territories, state) {
       return JSON.stringify({
+        scoutOriginId: state.scoutOrigin?.territoryId || '',
         selectedSiteId: this.container?.dataset.selectedSiteId || '',
         expeditionConfigSiteId: this.container?.dataset.expeditionConfigSiteId || '',
         expeditionTroopType: this.container?.dataset.expeditionTroopType || '',
@@ -306,6 +309,7 @@
           status: site.status,
           owner: site.owner,
           distance: site.distance || 0,
+          originDistance: site.originDistance || 0,
           scale: site.scale || 0,
           threat: site.threat || 0,
           summary: site.summary || '',
@@ -380,7 +384,7 @@
         setText('[data-site-name]', site.cityName || site.naturalName);
         setText('[data-site-status]', this.formatStatus(site));
         setText('[data-site-owner]', this.formatOwner(site));
-        setText('[data-site-distance]', `距 ${site.distance || 0}`);
+        setText('[data-site-distance]', `距 ${site.originDistance ?? site.distance ?? 0}`);
         setText('[data-site-scale]', `规模 ${site.scale || 1}`);
         setText('[data-site-threat]', `威胁 ${site.threat || 0}`);
         setText('[data-site-summary]', site.summary || this.formatEffect(site.effects));

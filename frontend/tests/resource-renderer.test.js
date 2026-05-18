@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+global.UIStatePresenter = require('../js/state/UIStatePresenter');
 const ResourceRenderer = require('../js/ui/ResourceRenderer');
 
 function createClassList() {

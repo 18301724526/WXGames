@@ -48,10 +48,7 @@ function normalizeMilitaryState(rawMilitary, gameState) {
     soldiers,
     soldierCap: cap,
     soldiersOnMission: TerritoryService.countSoldiersOnMission(gameState || {}),
-    availableSoldiers: TerritoryService.getAvailableSoldiers({
-      ...(gameState || {}),
-      military: { soldiers },
-    }),
+    availableSoldiers: TerritoryService.getAvailableSoldiers(gameState || {}),
     trainingProgress,
     trainingIntervalSeconds: interval,
     defensePerSoldier,
