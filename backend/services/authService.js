@@ -1,10 +1,28 @@
 const jwt = require('jsonwebtoken');
 const MilitaryService = require('./MilitaryService');
 
+const ACCOUNT_WHITELIST = Object.freeze({
+  test1: '123456',
+  test2: '123456',
+  test3: '123456',
+});
+
 class AuthService {
   constructor(db, jwtSecret) {
     this.db = db;
     this.JWT_SECRET = jwtSecret;
+  }
+
+  normalizeUsername(username) {
+    return String(username || '').trim().toLowerCase();
+  }
+
+  isWhitelisted(username) {
+    return Object.prototype.hasOwnProperty.call(ACCOUNT_WHITELIST, username);
+  }
+
+  isPasswordValid(username, password) {
+    return this.isWhitelisted(username) && ACCOUNT_WHITELIST[username] === String(password || '');
   }
 
   authMiddleware(req, res, next) {
@@ -13,13 +31,18 @@ class AuthService {
     if (!token) return res.status(401).json({ error: 'Unauthorized', message: 'Token missing' });
     try {
       const decoded = jwt.verify(token, this.JWT_SECRET, { clockTolerance: 60 });
+      const username = this.normalizeUsername(decoded.username || decoded.playerId);
+      if (!this.isWhitelisted(username)) {
+        return res.status(401).json({ error: 'AccountNotAllowed', message: '该账号不在白名单中' });
+      }
       // 校验token合法后，再确认玩家是否还存在
       const player = this.db.prepare('SELECT playerId FROM players WHERE playerId = ?').get(decoded.playerId);
       if (!player) {
-        return res.status(401).json({ error: 'AccountInvalid', message: '账号已失效，请重新注册' });
+        return res.status(401).json({ error: 'AccountInvalid', message: '账号已失效，请重新登录' });
       }
       req.playerId = decoded.playerId;
-      req.deviceId = decoded.deviceId;
+      req.username = username;
+      req.deviceId = username;
       next();
     } catch (err) {
       if (err.name === 'TokenExpiredError') return res.status(401).json({ error: 'TokenExpired', message: '登录已过期，请重新登录' });
@@ -28,32 +51,44 @@ class AuthService {
     }
   }
 
-  generateToken(playerId, deviceId) {
-    return jwt.sign({ playerId, deviceId }, this.JWT_SECRET, { expiresIn: '30d' });
+  generateToken(playerId, username) {
+    return jwt.sign({ playerId, username }, this.JWT_SECRET, { expiresIn: '30d' });
   }
 
-  getPlayerByDeviceId(deviceId) {
-    const row = this.db.prepare('SELECT playerId, deviceId, token FROM players WHERE deviceId = ?').get(deviceId);
+  getPlayerByPlayerId(playerId) {
+    const row = this.db.prepare('SELECT playerId, deviceId, token FROM players WHERE playerId = ?').get(playerId);
     return row || null;
   }
 
-  registerPlayer(deviceId, getDefaultGameState, saveGameState) {
-    let player = this.getPlayerByDeviceId(deviceId);
+  ensureWhitelistPlayer(username, getDefaultGameState, saveGameState) {
+    const playerId = username;
+    const deviceId = `whitelist:${username}`;
+    const token = this.generateToken(playerId, username);
+    const now = new Date().toISOString();
+    let player = this.getPlayerByPlayerId(playerId);
     if (!player) {
-      const playerId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      const token = this.generateToken(playerId, deviceId);
-      const now = new Date().toISOString();
       this.db.prepare('INSERT INTO players (playerId, deviceId, token, createdAt, lastActiveAt) VALUES (?, ?, ?, ?, ?)').run(playerId, deviceId, token, now, now);
-      const gameState = getDefaultGameState(playerId);
-      saveGameState(gameState);
+      saveGameState(getDefaultGameState(playerId));
       player = { playerId, deviceId, token };
+    } else {
+      this.db.prepare('UPDATE players SET deviceId = ?, token = ?, lastActiveAt = ? WHERE playerId = ?').run(deviceId, token, now, playerId);
+      player = { ...player, deviceId, token };
+      if (!this.db.prepare('SELECT playerId FROM game_states WHERE playerId = ?').get(playerId)) {
+        saveGameState(getDefaultGameState(playerId));
+      }
     }
     return player;
   }
 
-  loginPlayer(deviceId, getGameState, calculateOfflineIncome, saveGameState) {
-    const player = this.getPlayerByDeviceId(deviceId);
-    if (!player) return { error: 'Player not found' };
+  loginPlayer(usernameInput, password, getGameState, calculateOfflineIncome, saveGameState, getDefaultGameState) {
+    const username = this.normalizeUsername(usernameInput);
+    if (!this.isWhitelisted(username)) {
+      return { error: 'ACCOUNT_NOT_ALLOWED', message: '该账号不在白名单中' };
+    }
+    if (!this.isPasswordValid(username, password)) {
+      return { error: 'INVALID_CREDENTIALS', message: '用户名或密码错误' };
+    }
+    const player = this.ensureWhitelistPlayer(username, getDefaultGameState, saveGameState);
     const gameState = getGameState(player.playerId);
     if (!gameState) return { error: 'Game state not found' };
     const lastOnline = new Date(gameState.updatedAt);
@@ -70,14 +105,19 @@ class AuthService {
       saveGameState(gameState);
     }
     this.db.prepare('UPDATE players SET lastActiveAt = ? WHERE playerId = ?').run(now.toISOString(), player.playerId);
-    return { playerId: player.playerId, token: player.token, gameState, offlineIncome };
+    return { playerId: player.playerId, username, token: player.token, gameState, offlineIncome };
   }
 
-  resetPlayer(playerId) {
+  resetPlayer(playerId, getDefaultGameState, saveGameState) {
     this.db.prepare('DELETE FROM game_states WHERE playerId = ?').run(playerId);
-    this.db.prepare('DELETE FROM players WHERE playerId = ?').run(playerId);
-    console.log(`[Reset] Player ${playerId} data cleared`);
-    return { success: true, message: '游戏数据已清空，请重新注册' };
+    const gameState = getDefaultGameState(playerId);
+    saveGameState(gameState);
+    console.log(`[Reset] Player ${playerId} progress reset`);
+    return { success: true, message: '游戏进度已重置', gameState };
+  }
+
+  getAllowedUsernames() {
+    return Object.keys(ACCOUNT_WHITELIST);
   }
 }
 

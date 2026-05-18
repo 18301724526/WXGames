@@ -2,6 +2,12 @@
 // 挂载函数 — 由 app.js init() 调用，避免 IIFE 的竞态问题
 
 window.mountAuthMethods = function(game) {
+  const TOKEN_KEY = 'cf_token';
+  const USERNAME_KEY = 'cf_username';
+  const REMEMBER_ENABLED_KEY = 'cf_remember_enabled';
+  const REMEMBER_USERNAME_KEY = 'cf_remember_username';
+  const REMEMBER_PASSWORD_KEY = 'cf_remember_password';
+
   function clearTutorialStorage() {
     localStorage.removeItem('tutorialAutoStarted');
     localStorage.removeItem('tutorialStep');
@@ -11,6 +17,32 @@ window.mountAuthMethods = function(game) {
   function setLoginMessage(message) {
     const el = document.getElementById('loginMessage');
     if (el) el.textContent = message;
+  }
+
+  function persistRememberedCredentials(username, password, rememberPassword) {
+    if (rememberPassword) {
+      localStorage.setItem(REMEMBER_ENABLED_KEY, 'true');
+      localStorage.setItem(REMEMBER_USERNAME_KEY, username);
+      localStorage.setItem(REMEMBER_PASSWORD_KEY, password);
+      return;
+    }
+    localStorage.removeItem(REMEMBER_ENABLED_KEY);
+    localStorage.removeItem(REMEMBER_USERNAME_KEY);
+    localStorage.removeItem(REMEMBER_PASSWORD_KEY);
+  }
+
+  function fillRememberedCredentials() {
+    const usernameInput = document.getElementById('loginUsername');
+    const passwordInput = document.getElementById('loginPassword');
+    const rememberInput = document.getElementById('rememberPassword');
+    const rememberEnabled = localStorage.getItem(REMEMBER_ENABLED_KEY) === 'true';
+    if (rememberInput) rememberInput.checked = rememberEnabled;
+    if (usernameInput) {
+      usernameInput.value = localStorage.getItem(REMEMBER_USERNAME_KEY) || localStorage.getItem(USERNAME_KEY) || '';
+    }
+    if (passwordInput) {
+      passwordInput.value = rememberEnabled ? (localStorage.getItem(REMEMBER_PASSWORD_KEY) || '') : '';
+    }
   }
 
   async function parseResponsePayload(resp) {
@@ -27,8 +59,7 @@ window.mountAuthMethods = function(game) {
     console.error('Auth error:', data);
     this.token = null;
     this.playerId = null;
-    localStorage.removeItem('cf_token');
-    localStorage.removeItem('cf_deviceId');
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem('civilizationFirePhase2');
     clearTutorialStorage();
     this.showLoginPanel(data?.message || '登录已过期，请重新登录');
@@ -38,25 +69,24 @@ window.mountAuthMethods = function(game) {
     const panel = document.getElementById('loginPanel');
     const msgEl = document.getElementById('loginMessage');
     const appEl = document.getElementById('app');
+    fillRememberedCredentials();
     if (panel) { panel.style.display = 'flex'; if (msgEl) msgEl.textContent = message || ''; }
     if (appEl) appEl.style.display = 'none';
   };
 
   game.handleLogin = function() {
-    const deviceId = document.getElementById('loginDeviceId')?.value.trim();
-    if (!deviceId) { setLoginMessage('请输入设备ID'); return; }
-    this.loginOrRegister(deviceId, 'login');
+    const username = document.getElementById('loginUsername')?.value.trim().toLowerCase();
+    const password = document.getElementById('loginPassword')?.value || '';
+    const rememberPassword = Boolean(document.getElementById('rememberPassword')?.checked);
+    if (!username) { setLoginMessage('请输入用户名'); return; }
+    if (!password) { setLoginMessage('请输入密码'); return; }
+    return this.loginWithPassword(username, password, rememberPassword);
   };
 
-  game.handleRegister = function() {
-    const deviceId = document.getElementById('loginDeviceId')?.value.trim() || ('dev_' + Date.now());
-    this.loginOrRegister(deviceId, 'register');
-  };
-
-  game.loginOrRegister = async function(deviceId, mode) {
+  game.loginWithPassword = async function(username, password, rememberPassword) {
     try {
-      const url = mode === 'login' ? `${this.apiBase}/player/login` : `${this.apiBase}/player/register`;
-      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId }) });
+      const url = `${this.apiBase}/player/login`;
+      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
       const data = await parseResponsePayload(resp);
       if (!resp.ok) {
         setLoginMessage(data.message || `服务器错误 (${resp.status})，请稍后再试`);
@@ -64,11 +94,12 @@ window.mountAuthMethods = function(game) {
       }
       if (data.token) {
         this.token = data.token; this.playerId = data.playerId;
-        localStorage.setItem('cf_token', data.token); localStorage.setItem('cf_deviceId', deviceId);
+        localStorage.setItem(TOKEN_KEY, data.token);
+        localStorage.setItem(USERNAME_KEY, username);
+        persistRememberedCredentials(username, password, rememberPassword);
         if (this.buildingAPI) this.buildingAPI.setToken(data.token);
         document.getElementById('loginPanel').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        // 注册时后端返回 gameState，直接同步
         if (data.gameState) {
           this.applyApiState(data);
         }
@@ -84,16 +115,27 @@ window.mountAuthMethods = function(game) {
   game.logout = function() {
     this.token = null;
     this.playerId = null;
-    localStorage.removeItem('cf_token');
-    localStorage.removeItem('cf_deviceId');
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem('civilizationFirePhase2');
     clearTutorialStorage();
     location.reload();
   };
 
   game.resetGame = async function() {
-    if (!confirm('⚠️ 确定重置游戏？\n所有进度将清空。')) return;
-    try { const r = await this.apiPost('/player/reset', {}); if (r.success) this.logout(); else alert('重置失败'); } catch (e) { alert('请求失败'); }
+    if (!confirm('⚠️ 确定重置游戏进度？\n当前账号的所有发展将回到初始状态。')) return;
+    try {
+      const result = await this.apiPost('/player/reset', {});
+      if (!result.success) {
+        alert(result.message || '重置失败');
+        return;
+      }
+      this.applyApiState(result);
+      this.showFloatingText && this.showFloatingText(result.message || '进度已重置');
+      this.log && this.log(`✅ ${result.message || '进度已重置'}`);
+      alert(result.message || '进度已重置');
+    } catch (error) {
+      alert(error.payload?.message || '请求失败');
+    }
   };
 
   game.toggleSettings = function() { const m = document.getElementById('settingsMenu'); if (m) m.classList.toggle('active'); };
@@ -109,6 +151,13 @@ window.mountAuthMethods = function(game) {
     // 无 token：显示登录面板
     game.showLoginPanel();
   }
+
+  document.getElementById('loginPassword')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') game.handleLogin();
+  });
+  document.getElementById('loginUsername')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') game.handleLogin();
+  });
 
   console.log('[auth.js] 账号管理模块已挂载');
 };

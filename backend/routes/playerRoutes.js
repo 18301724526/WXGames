@@ -2,53 +2,62 @@ function registerPlayerRoutes(app, deps) {
   const { authMiddleware, authService, repository, gameStateService, logService } = deps;
 
   app.post('/api/player/register', (req, res) => {
-    const { deviceId } = req.body || {};
-    if (!deviceId) {
-      return res.status(400).json({ error: 'DEVICE_ID_REQUIRED', message: 'deviceId 必填' });
-    }
-    const player = authService.registerPlayer(
-      deviceId,
-      (playerId) => gameStateService.createInitialGameState(playerId),
-      (gameState) => repository.save(gameState),
-    );
-    const rawState = repository.findByPlayerId(player.playerId);
-    const gameState = rawState ? gameStateService.getClientGameState(rawState) : null;
-    return res.json({
-      playerId: player.playerId,
-      deviceId: player.deviceId,
-      token: player.token,
-      gameState,
-      tutorial: rawState?.tutorial || gameStateService.createInitialGameState(player.playerId).tutorial,
-      eraProgress: rawState ? gameStateService.calculateEraProgress(rawState) : { percentage: 0, canAdvance: false, conditions: [] },
+    return res.status(403).json({
+      error: 'REGISTER_DISABLED',
+      message: '当前版本仅开放白名单账号登录，不开放注册',
     });
   });
 
   app.post('/api/player/login', (req, res) => {
-    const { deviceId } = req.body || {};
-    if (!deviceId) {
-      return res.status(400).json({ error: 'DEVICE_ID_REQUIRED', message: 'deviceId 必填' });
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'CREDENTIALS_REQUIRED', message: '用户名和密码必填' });
     }
     const result = authService.loginPlayer(
-      deviceId,
+      username,
+      password,
       (playerId) => repository.findByPlayerId(playerId),
       (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
       (gameState) => repository.save(gameState),
+      (playerId) => gameStateService.createInitialGameState(playerId),
     );
     if (result.error) {
-      return res.status(404).json({ error: result.error, message: result.error });
+      return res.status(403).json({ error: result.error, message: result.message || result.error });
     }
     const gameState = gameStateService.getClientGameState(result.gameState);
     return res.json({
       playerId: result.playerId,
+      username: result.username,
       token: result.token,
       gameState,
       tutorial: result.gameState.tutorial,
+      eraProgress: gameStateService.calculateEraProgress(result.gameState),
       offlineIncome: result.offlineIncome,
     });
   });
 
   app.post('/api/player/reset', authMiddleware, (req, res) => {
-    res.json(authService.resetPlayer(req.playerId));
+    const result = authService.resetPlayer(
+      req.playerId,
+      (playerId) => gameStateService.createInitialGameState(playerId),
+      (gameState) => repository.save(gameState),
+    );
+    const rawState = repository.findByPlayerId(req.playerId);
+    return res.json({
+      ...result,
+      gameState: rawState ? gameStateService.getClientGameState(rawState) : gameStateService.getClientGameState(result.gameState),
+      tutorial: rawState?.tutorial || result.gameState.tutorial,
+      eraProgress: gameStateService.calculateEraProgress(rawState || result.gameState),
+    });
+  });
+
+  app.get('/api/player/whitelist', (req, res) => {
+    res.json({
+      success: true,
+      accounts: authService.getAllowedUsernames(),
+      registerEnabled: false,
+      message: '当前版本仅开放白名单账号登录',
+    });
   });
 
   app.get('/api/player/logs', authMiddleware, (req, res) => {

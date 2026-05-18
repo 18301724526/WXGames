@@ -14,7 +14,9 @@
         .login-panel .login-btns { display:flex; gap:8px; }
         .login-panel .login-btns button { flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; font-size:14px; font-weight:bold; }
         .btn-login { background:var(--accent); color:#fff; }
-        .btn-register { background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border) !important; }
+        .login-panel .login-tips { margin-top:14px; color:var(--text-secondary); font-size:13px; line-height:1.5; text-align:left; }
+        .login-panel .login-remember { display:flex; align-items:center; gap:8px; margin:4px 0 14px; color:var(--text-secondary); font-size:13px; }
+        .login-panel .login-remember input { width:auto; margin:0; }
         .log-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:20px; }
         .log-modal-overlay.active { display:flex; }
         .log-modal-content { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:20px; width:100%; max-width:560px; max-height:80vh; overflow:auto; }
@@ -27,10 +29,19 @@
             <div style="font-size:48px;margin-bottom:8px;">🔥</div>
             <h2>文明火种</h2>
             <div class="login-msg" id="loginMessage"></div>
-            <input type="text" id="loginDeviceId" placeholder="设备标识（留空自动生成）" />
+            <input type="text" id="loginUsername" placeholder="用户名" autocomplete="username" />
+            <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password" />
+            <label class="login-remember" for="rememberPassword">
+                <input type="checkbox" id="rememberPassword" />
+                <span>记住密码</span>
+            </label>
             <div class="login-btns">
-                <button class="btn-login" onclick="Game.handleLogin()">继续游戏</button>
-                <button class="btn-register" onclick="Game.handleRegister()">开始新游戏</button>
+                <button class="btn-login" onclick="Game.handleLogin()">登录</button>
+            </div>
+            <div class="login-tips">
+                白名单账号：test1、test2、test3
+                <br>
+                默认密码：123456
             </div>
         </div>
     </div>
@@ -401,7 +412,7 @@
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
     <script src="app.js?v=radar-css-v1"></script>
-    <script src="auth.js?v=city-era-fix1"></script>
+    <script src="auth.js?v=whitelist-login-v1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>
 </html>
