@@ -820,7 +820,7 @@ body {
     border-radius: 8px;
     padding: 9px;
     display: grid;
-    grid-template-columns: 46px minmax(0, 1fr) 38px auto;
+    grid-template-columns: 50px minmax(0, 1fr) auto;
     align-items: center;
     gap: 9px;
     text-align: left;
@@ -837,33 +837,27 @@ body {
 }
 
 .job-icon {
-    width: 46px;
-    height: 46px;
+    width: 50px;
+    height: 50px;
     margin: 0;
-    border: 1px solid rgba(255, 226, 177, 0.12);
-    border-radius: 8px;
+    border: 0;
+    border-radius: 0;
     font-size: 0;
-    background: center / 34px 34px no-repeat;
+    background: center / contain no-repeat;
     filter: drop-shadow(0 7px 10px rgba(0, 0, 0, 0.3));
-    box-shadow: inset 0 1px 0 rgba(255, 238, 203, 0.1);
+    box-shadow: none;
 }
 
 .job-farmer .job-icon {
-    background-image:
-        url('assets/art/icon-farmer-cutout.webp'),
-        linear-gradient(145deg, rgba(85, 80, 38, 0.48), rgba(24, 20, 14, 0.68));
+    background-image: url('assets/art/icon-farmer-cutout.webp');
 }
 
 .job-scholar .job-icon {
-    background-image:
-        url('assets/art/icon-scholar-cutout.webp'),
-        linear-gradient(145deg, rgba(57, 76, 88, 0.48), rgba(24, 20, 14, 0.68));
+    background-image: url('assets/art/icon-scholar-cutout.webp');
 }
 
 .job-craftsman .job-icon {
-    background-image:
-        url('assets/art/icon-craftsman-cutout.webp'),
-        linear-gradient(145deg, rgba(92, 60, 46, 0.48), rgba(24, 20, 14, 0.68));
+    background-image: url('assets/art/icon-craftsman-cutout.webp');
 }
 
 .job-info {
@@ -885,7 +879,7 @@ body {
 }
 
 .job-count {
-    min-width: 36px;
+    min-width: 38px;
     padding: 6px 7px;
     border: 1px solid rgba(116, 211, 160, 0.24);
     border-radius: 8px;
@@ -900,8 +894,10 @@ body {
 }
 
 .job-controls {
-    display: flex;
+    display: grid;
+    grid-template-columns: 36px minmax(38px, auto) 36px;
     gap: 7px;
+    align-items: center;
     justify-content: flex-end;
 }
 

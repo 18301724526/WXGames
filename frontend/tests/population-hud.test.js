@@ -13,7 +13,7 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(html, /class="pop-stat-icon pop-stat-population"/);
   assert.match(html, /class="pop-stat-icon pop-stat-happiness"/);
   assert.match(html, /class="job-card job-farmer"[\s\S]*class="job-icon" aria-hidden="true"/);
-  assert.match(html, /class="btn-minus" data-job="farmer" type="button" aria-label="减少农民"><span aria-hidden="true"><\/span><\/button>/);
+  assert.match(html, /class="btn-minus" data-job="farmer" type="button" aria-label="减少农民"><span aria-hidden="true"><\/span><\/button>\s*<div class="job-count" id="farmerCount">3<\/div>\s*<button class="btn-plus" data-job="farmer"/);
   assert.match(html, /class="btn-plus" data-job="craftsman" type="button" aria-label="增加工匠"><span aria-hidden="true"><\/span><\/button>/);
   assert.doesNotMatch(html, /<select[^>]*population/i);
 
@@ -22,10 +22,15 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(css, /url\('assets\/art\/icon-farmer-cutout\.webp'\)/);
   assert.match(css, /url\('assets\/art\/icon-scholar-cutout\.webp'\)/);
   assert.match(css, /url\('assets\/art\/icon-craftsman-cutout\.webp'\)/);
+  assert.match(css, /\.job-icon \{[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
+  assert.match(css, /\.job-controls \{[\s\S]*?grid-template-columns: 36px minmax\(38px, auto\) 36px;/);
   assert.match(css, /\.job-controls button::before/);
   assert.match(css, /\.job-controls \.btn-plus::after/);
   assert.match(css, /\.job-controls \.btn-minus \{[\s\S]*?color: #ff7f92;/);
   assert.match(css, /\.job-controls \.btn-plus \{[\s\S]*?color: #74d3a0;/);
+  assert.doesNotMatch(css, /\.job-farmer \.job-icon \{[^}]*linear-gradient/);
+  assert.doesNotMatch(css, /\.job-scholar \.job-icon \{[^}]*linear-gradient/);
+  assert.doesNotMatch(css, /\.job-craftsman \.job-icon \{[^}]*linear-gradient/);
 });
 
 test('population click handler reads the closest custom button', () => {
