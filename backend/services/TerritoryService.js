@@ -2,6 +2,7 @@ const SCOUT_DURATION_MS = 60 * 1000;
 const CONQUEST_DURATION_MS = 2 * 60 * 1000;
 const MAX_NAME_LENGTH = 12;
 const MAX_REPORTS = 12;
+const MAX_SCOUT_DISTANCE = 24;
 
 const DIRECTIONS = {
   n: { label: '北方', dx: 0, dy: -1 },
@@ -315,6 +316,51 @@ function normalizeScoutReports(rawReports) {
     }));
 }
 
+function normalizeScoutCoordinates(rawCoordinates) {
+  const known = new Map();
+  for (const coordinate of Array.isArray(rawCoordinates) ? rawCoordinates : []) {
+    if (!coordinate || typeof coordinate !== 'object') continue;
+    const x = toInteger(coordinate.x, 0);
+    const y = toInteger(coordinate.y, 0);
+    if (x === 0 && y === 0) continue;
+    const result = coordinate.result === 'site' ? 'site' : coordinate.result === 'empty' ? 'empty' : null;
+    if (!result) continue;
+    const key = getCoordinateKey(x, y);
+    known.set(key, {
+      x,
+      y,
+      result,
+      siteId: typeof coordinate.siteId === 'string' && coordinate.siteId ? coordinate.siteId : null,
+      scoutedAt: coordinate.scoutedAt || new Date().toISOString(),
+    });
+  }
+  return [...known.values()].sort((a, b) => getDistance(a.x, a.y) - getDistance(b.x, b.y));
+}
+
+function getScoutCoordinateRecord(gameState, x, y) {
+  return (gameState.scoutedCoordinates || []).find((coordinate) => coordinate.x === x && coordinate.y === y) || null;
+}
+
+function upsertScoutCoordinateRecord(gameState, record) {
+  const next = normalizeScoutCoordinates([...(gameState.scoutedCoordinates || []), record]);
+  gameState.scoutedCoordinates = next;
+  return getScoutCoordinateRecord(gameState, record.x, record.y);
+}
+
+function syncScoutCoordinatesWithTerritories(gameState, now = new Date().toISOString()) {
+  for (const territory of gameState.territories || []) {
+    if (territory.x === 0 && territory.y === 0) continue;
+    upsertScoutCoordinateRecord(gameState, {
+      x: territory.x,
+      y: territory.y,
+      result: 'site',
+      siteId: territory.id,
+      scoutedAt: territory.discoveredAt || now,
+    });
+  }
+  return gameState.scoutedCoordinates;
+}
+
 function normalizeTerritoryState(gameState, now = new Date()) {
   const isoNow = now.toISOString();
   const known = new Map();
@@ -328,6 +374,8 @@ function normalizeTerritoryState(gameState, now = new Date()) {
   gameState.polity = normalizePolity(gameState.polity);
   gameState.warMissions = normalizeWarMissions(gameState.warMissions);
   gameState.scoutReports = normalizeScoutReports(gameState.scoutReports);
+  gameState.scoutedCoordinates = normalizeScoutCoordinates(gameState.scoutedCoordinates);
+  syncScoutCoordinatesWithTerritories(gameState, isoNow);
   updateMissionReadiness(gameState, now);
   enforceSingleScoutMission(gameState);
   return gameState;
@@ -440,12 +488,20 @@ function findNextCoordinate(gameState, direction) {
   const dir = DIRECTIONS[direction];
   if (!dir) return null;
   const occupied = new Set((gameState.territories || []).map((territory) => getCoordinateKey(territory.x, territory.y)));
-  for (let distance = 1; distance <= 24; distance += 1) {
+  const scouted = new Set((gameState.scoutedCoordinates || []).map((coordinate) => getCoordinateKey(coordinate.x, coordinate.y)));
+  for (let distance = 1; distance <= MAX_SCOUT_DISTANCE; distance += 1) {
     const x = dir.dx * distance;
     const y = dir.dy * distance;
-    if (!occupied.has(getCoordinateKey(x, y))) return { x, y, distance };
+    const key = getCoordinateKey(x, y);
+    if (!occupied.has(key) && !scouted.has(key)) return { x, y, distance };
   }
   return null;
+}
+
+function getScoutOutcome(x, y) {
+  const distance = getDistance(x, y);
+  const signature = Math.abs((x * 17) + (y * 31) + (distance * distance * 7) + (x * y * 3));
+  return signature % 5 === 0 ? 'empty' : 'site';
 }
 
 function pickTemplate(direction, distance, discoveredCount) {
@@ -512,6 +568,24 @@ function createSiteFromScout(gameState, mission, now = new Date()) {
   return { site, report };
 }
 
+function createEmptyScoutReport(mission, now = new Date(), repeated = false) {
+  const direction = mission.direction;
+  const x = toInteger(mission.targetX, 0);
+  const y = toInteger(mission.targetY, 0);
+  const distance = getDistance(x, y);
+  const label = DIRECTIONS[direction]?.label || '远方';
+  return {
+    id: `report_empty_${x}_${y}_${now.getTime()}`,
+    siteId: null,
+    title: repeated ? '重复侦察确认空地' : '空地侦察报告',
+    text: repeated
+      ? `侦察队再次确认${label}距离首都 ${distance} 格的位置暂无可占领地点。`
+      : `侦察队向${label}推进，在距离首都 ${distance} 格的位置未发现可建立据点或占领的目标。`,
+    direction,
+    createdAt: now.toISOString(),
+  };
+}
+
 function startScout(gameState, direction, now = new Date()) {
   normalizeTerritoryState(gameState, now);
   if ((gameState.currentEra || 0) < 5) return { success: false, error: 'ERA_NOT_UNLOCKED', message: '古典时代后才能侦察外部世界' };
@@ -543,23 +617,54 @@ function claimScout(gameState, missionId, now = new Date()) {
   if (!mission) return { success: false, error: 'MISSION_NOT_FOUND', message: '没有找到侦察任务' };
   if (mission.status !== 'ready') return { success: false, error: 'MISSION_NOT_READY', message: '侦察队尚未返回' };
   const exists = (gameState.territories || []).find((territory) => territory.x === mission.targetX && territory.y === mission.targetY);
-  const { site, report } = exists
-    ? {
-      site: exists,
-      report: {
-        id: `report_${exists.id}_${now.getTime()}`,
-        siteId: exists.id,
-        title: '重复侦察',
-        text: `侦察队重新确认了${exists.naturalName}周边的道路。`,
-        direction: mission.direction,
-        createdAt: now.toISOString(),
-      },
+  const coordinateRecord = getScoutCoordinateRecord(gameState, mission.targetX, mission.targetY);
+  let site = exists;
+  let report;
+
+  if (exists) {
+    report = {
+      id: `report_${exists.id}_${now.getTime()}`,
+      siteId: exists.id,
+      title: '重复侦察',
+      text: `侦察队重新确认了${exists.naturalName}周边的道路。`,
+      direction: mission.direction,
+      createdAt: now.toISOString(),
+    };
+  } else if (coordinateRecord?.result === 'empty') {
+    report = createEmptyScoutReport(mission, now, true);
+  } else {
+    const outcome = coordinateRecord?.result || getScoutOutcome(mission.targetX, mission.targetY);
+    if (outcome === 'empty') {
+      upsertScoutCoordinateRecord(gameState, {
+        x: mission.targetX,
+        y: mission.targetY,
+        result: 'empty',
+        siteId: null,
+        scoutedAt: now.toISOString(),
+      });
+      report = createEmptyScoutReport(mission, now);
+    } else {
+      const created = createSiteFromScout(gameState, mission, now);
+      site = created.site;
+      report = created.report;
+      gameState.territories.push(site);
+      upsertScoutCoordinateRecord(gameState, {
+        x: site.x,
+        y: site.y,
+        result: 'site',
+        siteId: site.id,
+        scoutedAt: site.discoveredAt || now.toISOString(),
+      });
     }
-    : createSiteFromScout(gameState, mission, now);
-  if (!exists) gameState.territories.push(site);
+  }
   gameState.scoutReports = [...(gameState.scoutReports || []), report].slice(-MAX_REPORTS);
   gameState.warMissions = (gameState.warMissions || []).filter((item) => item.id !== mission.id);
-  return { success: true, message: `侦察发现：${site.naturalName}`, site, report };
+  return {
+    success: true,
+    message: site ? `侦察发现：${site.naturalName}` : '侦察结束：该处暂未发现可占领地点',
+    site: site || null,
+    report,
+  };
 }
 
 function scoutTerritory(gameState, direction, now = new Date()) {

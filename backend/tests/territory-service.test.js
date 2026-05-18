@@ -27,14 +27,14 @@ test('古典时代只默认显示首都和八方向侦察入口', () => {
   assert.deepEqual(territoryState.directions.map((item) => item.id), ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']);
 });
 
-test('八方向侦察完成后会在对应坐标生成世界点和报告', () => {
+test('八方向侦察完成后会在有地点的坐标生成世界点和报告', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const start = TerritoryService.startScout(state, 'ne', now);
+  const start = TerritoryService.startScout(state, 'e', now);
   assert.equal(start.success, true);
   assert.equal(start.mission.targetX, 1);
-  assert.equal(start.mission.targetY, -1);
+  assert.equal(start.mission.targetY, 0);
 
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
@@ -42,27 +42,45 @@ test('八方向侦察完成后会在对应坐标生成世界点和报告', () =>
 
   assert.equal(claim.success, true);
   assert.equal(claim.site.x, 1);
-  assert.equal(claim.site.y, -1);
+  assert.equal(claim.site.y, 0);
   assert.equal(claim.site.status, 'discovered');
   assert.ok(Number.isFinite(claim.site.visualOffset.x));
   assert.ok(Number.isFinite(claim.site.visualOffset.y));
   assert.equal(state.scoutReports.length, 1);
   assert.equal(state.scoutReports[0].siteId, claim.site.id);
-  assert.match(state.scoutReports[0].text, /东北/);
+  assert.match(state.scoutReports[0].text, /东方/);
+  assert.deepEqual(state.scoutedCoordinates.find((item) => item.x === 1 && item.y === 0), {
+    x: 1,
+    y: 0,
+    result: 'site',
+    siteId: claim.site.id,
+    scoutedAt: now.toISOString(),
+  });
 });
 
-test('同一方向重复侦察会继续向更远坐标扩展', () => {
+test('侦察到空地后会标记坐标并跳过该坐标', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  let start = TerritoryService.startScout(state, 'e', now);
+  let start = TerritoryService.startScout(state, 'w', now);
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
-  TerritoryService.claimScout(state, start.mission.id, now);
+  const firstClaim = TerritoryService.claimScout(state, start.mission.id, now);
 
-  start = TerritoryService.startScout(state, 'e', new Date('2026-05-17T08:02:00.000Z'));
+  assert.equal(firstClaim.success, true);
+  assert.equal(firstClaim.site, null);
+  assert.match(firstClaim.report.text, /未发现可建立据点或占领的目标/);
+  assert.deepEqual(state.scoutedCoordinates.find((item) => item.x === -1 && item.y === 0), {
+    x: -1,
+    y: 0,
+    result: 'empty',
+    siteId: null,
+    scoutedAt: now.toISOString(),
+  });
+
+  start = TerritoryService.startScout(state, 'w', new Date('2026-05-17T08:02:00.000Z'));
   assert.equal(start.success, true);
-  assert.equal(start.mission.targetX, 2);
+  assert.equal(start.mission.targetX, -2);
   assert.equal(start.mission.targetY, 0);
 });
 
@@ -110,6 +128,13 @@ test('旧版固定节点只迁移已有进度，不再默认铺满地图', () =>
   assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').status, 'occupied');
   assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').x, 1);
   assert.equal(territoryState.territories.some((item) => item.id === 'north_forest'), false);
+  assert.deepEqual(normalized.scoutedCoordinates.find((item) => item.x === 1 && item.y === 0), {
+    x: 1,
+    y: 0,
+    result: 'site',
+    siteId: 'river_plain',
+    scoutedAt: normalized.territories.find((item) => item.id === 'river_plain').discoveredAt,
+  });
 });
 
 test('侦察、出征、完成占领会产生待命名城市', () => {
