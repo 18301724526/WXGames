@@ -8,7 +8,7 @@ function execute(action, gameState, payload = {}) {
     return TerritoryService.claimScout(gameState, payload.missionId);
   }
   if (action === 'startConquest') {
-    return TerritoryService.startConquest(gameState, payload.territoryId, payload.soldiers);
+    return TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);
   }
   if (action === 'claimConquest') {
     return TerritoryService.claimConquest(gameState, payload.territoryId);

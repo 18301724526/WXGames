@@ -2451,6 +2451,68 @@ body {
   cursor: not-allowed;
 }
 
+.site-action-group {
+  display: grid;
+  gap: 8px;
+}
+
+.site-action-row,
+.site-expedition-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.site-expedition-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.site-action-hint,
+.site-expedition-note {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.site-expedition-form {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(240, 180, 91, 0.16);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.site-expedition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.site-expedition-field {
+  display: grid;
+  gap: 6px;
+}
+
+.site-expedition-label {
+  color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.site-expedition-select,
+.site-expedition-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
 .scout-panel {
   display: grid;
   gap: 10px;

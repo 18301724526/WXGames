@@ -46,6 +46,7 @@ function createInitialGameState(playerId) {
     polity: TerritoryService.createInitialPolity(),
     territories: TerritoryService.createInitialTerritories(),
     scoutedCoordinates: [],
+    scoutState: { emptyStreak: 0 },
     warMissions: [],
     scoutReports: [],
     updatedAt: new Date().toISOString(),

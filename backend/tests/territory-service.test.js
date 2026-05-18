@@ -150,7 +150,7 @@ test('侦察、出征、完成占领会产生待命名城市', () => {
 
   const start = TerritoryService.startConquest(state, discovered.id, discovered.recommendedSoldiers, now);
   assert.equal(start.success, true);
-  assert.equal(TerritoryService.getAvailableSoldiers(state), 8 - discovered.recommendedSoldiers);
+  assert.equal(TerritoryService.getAvailableSoldiers(state), 7);
 
   const mission = state.warMissions.find((item) => item.kind === 'conquest');
   mission.completesAt = now.toISOString();
@@ -161,6 +161,85 @@ test('侦察、出征、完成占领会产生待命名城市', () => {
   assert.equal(claim.outcome, 'success');
   assert.equal(claim.namingPrompt.type, 'city');
   assert.equal(state.territories.find((item) => item.id === discovered.id).status, 'occupied');
+});
+
+test('无主地区占领时会自动按一人建立据点处理', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const scout = TerritoryService.startScout(state, 'e', now);
+  state.warMissions[0].completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const discovered = TerritoryService.claimScout(state, scout.mission.id, now, () => 0.9).site;
+
+  assert.equal(discovered.owner, 'neutral');
+  assert.equal(discovered.occupationMode, undefined);
+
+  const start = TerritoryService.startConquest(state, discovered.id, { soldiers: 8 }, now);
+  assert.equal(start.success, true);
+  assert.equal(start.mission.mode, 'settlement');
+  assert.equal(start.mission.soldiersCommitted, 1);
+  assert.equal(start.message, `已派出 1 名士兵前往${discovered.naturalName}建立据点`);
+
+  const mission = state.warMissions.find((item) => item.kind === 'conquest');
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, discovered.id, now);
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.casualties, 0);
+  assert.equal(state.territories.find((item) => item.id === discovered.id).owner, 'player');
+  assert.equal(state.territories.find((item) => item.id === discovered.id).lastBattle.mode, 'settlement');
+});
+
+test('有主地区占领时会保留出征配置并按人数进行战斗结算', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.territories.push({
+    id: 'tribe_site',
+    x: 0,
+    y: -2,
+    naturalName: '北风营帐',
+    cityName: null,
+    type: 'camp',
+    owner: 'tribe',
+    status: 'discovered',
+    scale: 2,
+    threat: 4,
+    defense: 5,
+    recommendedSoldiers: 5,
+    art: 'assets/art/world-site-camp-cutout.png',
+    visualOffset: { x: 0, y: 0 },
+    discoveredAt: now.toISOString(),
+    occupiedAt: null,
+    effects: { woodOutputMultiplier: 0.08 },
+    summary: '北方部落已经在这里建立营帐。',
+    lastBattle: null,
+  });
+
+  const start = TerritoryService.startConquest(state, 'tribe_site', {
+    troopType: 'unavailable',
+    leader: 'unavailable',
+    soldiers: 6,
+  }, now);
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.mode, 'conquest');
+  assert.deepEqual(start.mission.expedition, {
+    troopType: 'unavailable',
+    leader: 'unavailable',
+    soldiers: 6,
+  });
+
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, 'tribe_site', now);
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.outcome, 'success');
+  assert.equal(claim.casualties, 1);
+  assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
 });
 
 test('占领任务会向前端提供行军总时长和剩余时间', () => {
@@ -179,6 +258,7 @@ test('占领任务会向前端提供行军总时长和剩余时间', () => {
   assert.equal(conquest.success, true);
   assert.equal(mission.durationSeconds, 120);
   assert.equal(mission.remainingSeconds, 90);
+  assert.equal(territoryState.territories.find((item) => item.id === discovered.id).occupationMode, 'settlement');
 });
 
 test('城市命名后第二块领土会提示命名势力', () => {

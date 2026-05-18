@@ -33,12 +33,13 @@
     }
 
     formatOwner(site) {
+      if (site.owner === 'player') return '我方';
+      if (site.owner === 'neutral') return '无主';
       const labels = {
-        player: '我方',
-        neutral: '中立',
         tribe: '部落',
       };
-      return labels[site.owner] || site.owner || '未知';
+      const ownerLabel = labels[site.owner] || site.owner || '未知势力';
+      return `有主 · ${ownerLabel}`;
     }
 
     formatDuration(seconds) {
@@ -64,12 +65,67 @@
       return '';
     }
 
+    getExpeditionDraft(site) {
+      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
+      return {
+        territoryId: this.container?.dataset.expeditionConfigSiteId || '',
+        troopType: this.container?.dataset.expeditionTroopType || 'unavailable',
+        leader: this.container?.dataset.expeditionLeader || 'unavailable',
+        soldiers: Math.max(1, Number(this.container?.dataset.expeditionSoldiers) || recommended),
+      };
+    }
+
+    getExpeditionConfig(site, state) {
+      const draft = this.getExpeditionDraft(site);
+      const disabled = (state.availableSoldiers || 0) < draft.soldiers;
+      return `
+        <div class="site-expedition-form">
+          <div class="site-expedition-grid">
+            <label class="site-expedition-field">
+              <span class="site-expedition-label">兵种</span>
+              <select class="site-expedition-select" data-expedition-field="troopType">
+                <option value="unavailable" ${draft.troopType === 'unavailable' ? 'selected' : ''}>暂未开放</option>
+              </select>
+              <span class="site-expedition-note">暂未开放</span>
+            </label>
+            <label class="site-expedition-field">
+              <span class="site-expedition-label">领队</span>
+              <select class="site-expedition-select" data-expedition-field="leader">
+                <option value="unavailable" ${draft.leader === 'unavailable' ? 'selected' : ''}>暂未开放</option>
+              </select>
+              <span class="site-expedition-note">暂未开放</span>
+            </label>
+          </div>
+          <label class="site-expedition-field">
+            <span class="site-expedition-label">出征数量</span>
+            <input class="site-expedition-input" type="number" min="1" step="1" value="${draft.soldiers}" data-expedition-field="soldiers">
+            <span class="site-expedition-note">建议 ${site.recommendedSoldiers || site.defense || 1} 人，当前可用 ${(state.availableSoldiers || 0)} 人</span>
+          </label>
+          <div class="site-expedition-actions">
+            <button class="btn-territory secondary" type="button" data-territory-action="close-expedition" data-territory-id="${this.escapeHtml(site.id)}">取消</button>
+            <button class="btn-territory" type="button" data-territory-action="launch-expedition" data-territory-id="${this.escapeHtml(site.id)}" ${disabled ? 'disabled' : ''}>出发</button>
+          </div>
+        </div>
+      `;
+    }
+
     getAction(site, state) {
       const mission = site.mission;
       if (site.status === 'discovered') {
-        const soldiers = site.recommendedSoldiers || site.defense || 1;
-        const disabled = (state.availableSoldiers || 0) < soldiers;
-        return `<button class="btn-territory" data-territory-action="conquer" data-territory-id="${this.escapeHtml(site.id)}" data-soldiers="${soldiers}" ${disabled ? 'disabled' : ''}>派 ${soldiers} 士兵占领</button>`;
+        const isOwnedTarget = site.occupationMode === 'conquest';
+        const expanded = this.container?.dataset.expeditionConfigSiteId === site.id;
+        const directDisabled = (state.availableSoldiers || 0) < 1;
+        return `
+          <div class="site-action-group">
+            <div class="site-action-row">
+              <button class="btn-territory secondary" type="button" disabled>交涉</button>
+              <button class="btn-territory secondary" type="button" disabled>掠夺</button>
+              <button class="btn-territory" type="button" data-territory-action="${isOwnedTarget ? 'open-expedition' : 'conquer'}" data-territory-id="${this.escapeHtml(site.id)}" ${!isOwnedTarget && directDisabled ? 'disabled' : ''}>占领</button>
+            </div>
+            <div class="site-action-hint">${isOwnedTarget ? '该地区已有势力，需要先配置出征队伍。' : '该地区无主，派 1 人即可建立据点。'}</div>
+            ${isOwnedTarget && expanded ? this.getExpeditionConfig(site, state) : ''}
+          </div>
+        `;
       }
       if (site.status === 'contested' && mission?.status === 'ready') {
         return `<button class="btn-territory" data-territory-action="claim" data-territory-id="${this.escapeHtml(site.id)}">完成占领</button>`;
@@ -158,6 +214,10 @@
     getDialogContentSignature(territories, state) {
       return JSON.stringify({
         selectedSiteId: this.container?.dataset.selectedSiteId || '',
+        expeditionConfigSiteId: this.container?.dataset.expeditionConfigSiteId || '',
+        expeditionTroopType: this.container?.dataset.expeditionTroopType || '',
+        expeditionLeader: this.container?.dataset.expeditionLeader || '',
+        expeditionSoldiers: this.container?.dataset.expeditionSoldiers || '',
         missionDurationSeconds: state.missionDurationSeconds || 0,
         availableSoldiers: state.availableSoldiers || 0,
         territories: (territories || []).map((site) => ({
@@ -179,6 +239,8 @@
           lastBattleResolvedAt: site.lastBattle?.resolvedAt || '',
           lastBattleSuccess: !!site.lastBattle?.success,
           lastBattleCasualties: site.lastBattle?.casualties || 0,
+          lastBattleMode: site.lastBattle?.mode || '',
+          occupationMode: site.occupationMode || '',
         })),
       });
     }
@@ -253,7 +315,11 @@
         }
         const note = detail.querySelector('[data-site-note]');
         if (note) {
-          const noteText = site.lastBattle ? `${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵` : '';
+          const noteText = site.lastBattle
+            ? site.lastBattle.mode === 'settlement'
+              ? '最近一次行动已顺利建立据点'
+              : `${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵`
+            : '';
           note.hidden = !noteText;
           note.textContent = noteText;
         }

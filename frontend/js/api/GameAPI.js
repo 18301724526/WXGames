@@ -34,7 +34,7 @@
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
     claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }
-    startConquest(territoryId, soldiers) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, soldiers }); }
+    startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
     renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }
     renamePolity(name) { return this.request('POST', '/game/action', { action: 'renamePolity', name }); }

@@ -143,3 +143,48 @@ test('territory renderer keeps the site dialog skeleton when only reports change
   assert.equal(dialogHost.renderCount, 1);
   assert.equal(reportHost.renderCount, 2);
 });
+
+test('territory renderer shows placeholder actions for unowned sites', () => {
+  const host = createHost();
+  const renderer = new TerritoryUIRenderer(host);
+  const html = renderer.getAction({
+    id: 'site_e_1',
+    status: 'discovered',
+    owner: 'neutral',
+    occupationMode: 'settlement',
+    recommendedSoldiers: 1,
+    defense: 3,
+  }, {
+    availableSoldiers: 4,
+  });
+
+  assert.match(html, /交涉/);
+  assert.match(html, /掠夺/);
+  assert.match(html, /data-territory-action="conquer"/);
+  assert.match(html, /无主，派 1 人即可建立据点/);
+});
+
+test('territory renderer shows expedition config for owned sites when expanded', () => {
+  const host = createHost();
+  host.dataset.selectedSiteId = 'tribe_site';
+  host.dataset.expeditionConfigSiteId = 'tribe_site';
+  host.dataset.expeditionSoldiers = '6';
+  const renderer = new TerritoryUIRenderer(host);
+  const html = renderer.getAction({
+    id: 'tribe_site',
+    status: 'discovered',
+    owner: 'tribe',
+    occupationMode: 'conquest',
+    recommendedSoldiers: 5,
+    defense: 5,
+  }, {
+    availableSoldiers: 8,
+  });
+
+  assert.match(html, /data-territory-action="open-expedition"/);
+  assert.match(html, /出征数量/);
+  assert.match(html, /data-expedition-field="troopType"/);
+  assert.match(html, /data-expedition-field="leader"/);
+  assert.match(html, /data-expedition-field="soldiers"/);
+  assert.match(html, /data-territory-action="launch-expedition"/);
+});

@@ -296,7 +296,17 @@ function normalizeWarMissions(rawMissions) {
         id: mission.id || `conquest_${mission.territoryId}_${Date.now()}`,
         kind: 'conquest',
         territoryId: mission.territoryId,
+        mode: mission.mode === 'settlement' ? 'settlement' : 'conquest',
         soldiersCommitted: Math.max(0, Math.floor(Number(mission.soldiersCommitted) || 0)),
+        expedition: {
+          troopType: typeof mission.expedition?.troopType === 'string' && mission.expedition.troopType.trim()
+            ? mission.expedition.troopType.trim()
+            : 'unavailable',
+          leader: typeof mission.expedition?.leader === 'string' && mission.expedition.leader.trim()
+            ? mission.expedition.leader.trim()
+            : 'unavailable',
+          soldiers: Math.max(1, Math.floor(Number(mission.expedition?.soldiers) || Number(mission.soldiersCommitted) || 1)),
+        },
         startedAt: mission.startedAt || new Date().toISOString(),
         completesAt: mission.completesAt || new Date().toISOString(),
         status,
@@ -403,6 +413,26 @@ function getTerritory(gameState, territoryId) {
 
 function getMissionKind(mission) {
   return mission.kind === 'scout' ? 'scout' : 'conquest';
+}
+
+function isUnownedTerritory(territory) {
+  return territory?.owner === 'neutral';
+}
+
+function getOccupationMode(territory) {
+  return isUnownedTerritory(territory) ? 'settlement' : 'conquest';
+}
+
+function normalizeExpeditionConfig(rawConfig, territory) {
+  const fallbackSoldiers = getOccupationMode(territory) === 'settlement'
+    ? 1
+    : Math.max(1, territory?.recommendedSoldiers || territory?.defense || 1);
+  const raw = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+  return {
+    troopType: typeof raw.troopType === 'string' && raw.troopType.trim() ? raw.troopType.trim() : 'unavailable',
+    leader: typeof raw.leader === 'string' && raw.leader.trim() ? raw.leader.trim() : 'unavailable',
+    soldiers: Math.max(1, Math.floor(Number(raw.soldiers) || fallbackSoldiers)),
+  };
 }
 
 function getScoutMissions(gameState) {
@@ -701,30 +731,62 @@ function scoutTerritory(gameState, direction, now = new Date()) {
   return startScout(gameState, direction, now);
 }
 
-function startConquest(gameState, territoryId, soldiers, now = new Date()) {
+function startConquest(gameState, territoryId, expeditionInput, now = new Date()) {
   normalizeTerritoryState(gameState, now);
   if ((gameState.currentEra || 0) < 5) return { success: false, error: 'ERA_NOT_UNLOCKED', message: '古典时代后才能发起占领' };
   const territory = getTerritory(gameState, territoryId);
   if (!territory) return { success: false, error: 'TERRITORY_NOT_FOUND', message: '地点不存在' };
   if (territory.status !== 'discovered') return { success: false, error: 'TERRITORY_NOT_DISCOVERED', message: '只能占领已发现且未控制的地点' };
   if (getActiveMissionForTerritory(gameState, territoryId)) return { success: false, error: 'MISSION_EXISTS', message: '该地点已有进行中的军事行动' };
-  const committed = Math.max(1, Math.floor(Number(soldiers) || territory.recommendedSoldiers || 1));
+  const occupationMode = getOccupationMode(territory);
+  const expedition = normalizeExpeditionConfig(
+    expeditionInput && typeof expeditionInput === 'object'
+      ? expeditionInput
+      : { soldiers: expeditionInput },
+    territory,
+  );
+  const committed = occupationMode === 'settlement' ? 1 : expedition.soldiers;
   if (committed > getAvailableSoldiers(gameState)) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
   const mission = {
     id: `conquest_${territoryId}_${now.getTime()}`,
     kind: 'conquest',
     territoryId,
+    mode: occupationMode,
     soldiersCommitted: committed,
+    expedition: {
+      ...expedition,
+      soldiers: committed,
+    },
     startedAt: now.toISOString(),
     completesAt: new Date(now.getTime() + CONQUEST_DURATION_MS).toISOString(),
     status: 'active',
   };
   gameState.warMissions = [...(gameState.warMissions || []), mission];
   territory.status = 'contested';
-  return { success: true, message: `已派出 ${committed} 名士兵前往${territory.naturalName}`, mission };
+  return {
+    success: true,
+    message: occupationMode === 'settlement'
+      ? `已派出 1 名士兵前往${territory.naturalName}建立据点`
+      : `已派出 ${committed} 名士兵前往${territory.naturalName}`,
+    mission,
+  };
 }
 
 function resolveMission(gameState, mission, territory, now = new Date()) {
+  if (mission.mode === 'settlement') {
+    territory.lastBattle = {
+      resolvedAt: now.toISOString(),
+      soldiersCommitted: mission.soldiersCommitted,
+      casualties: 0,
+      success: true,
+      mode: 'settlement',
+    };
+    territory.status = 'occupied';
+    territory.owner = 'player';
+    territory.occupiedAt = now.toISOString();
+    territory.cityName = null;
+    return { success: true, casualties: 0 };
+  }
   const success = mission.soldiersCommitted >= territory.defense;
   const casualties = success
     ? Math.min(Math.max(0, mission.soldiersCommitted - 1), Math.floor(territory.defense / 3))
@@ -812,6 +874,7 @@ function getClientTerritoryState(gameState, now = new Date()) {
   const territories = (gameState.territories || []).map((territory) => ({
     ...territory,
     distance: getDistance(territory.x, territory.y),
+    occupationMode: getOccupationMode(territory),
     mission: missionsByTerritory[territory.id] || null,
   }));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => getMissionKind(mission) === 'scout');

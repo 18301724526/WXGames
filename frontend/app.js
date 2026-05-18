@@ -79,6 +79,7 @@ const Game = {
       scoutContainer: document.getElementById('scoutDirectionGrid'),
       api: this.gameAPI,
       getState: () => this.state,
+      onRenderRequested: () => this.renderTerritory(),
       onStateApplied: (result) => this.applyApiState(result),
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
