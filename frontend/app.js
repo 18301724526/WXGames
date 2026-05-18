@@ -128,10 +128,29 @@ const Game = {
       advanceButton.addEventListener('click', () => this.advanceEra());
     }
 
-    const citySelect = document.getElementById('citySelect');
-    if (citySelect) {
-      citySelect.addEventListener('change', (event) => this.switchCity(event.currentTarget.value));
+    const citySwitcherTrigger = document.getElementById('citySwitcherTrigger');
+    if (citySwitcherTrigger) {
+      citySwitcherTrigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.toggleCitySwitcher();
+      });
     }
+    const citySwitcherMenu = document.getElementById('citySwitcherMenu');
+    if (citySwitcherMenu) {
+      citySwitcherMenu.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-city-id]');
+        if (!option || option.disabled) return;
+        event.stopPropagation();
+        this.switchCity(option.dataset.cityId);
+      });
+    }
+    document.addEventListener('click', (event) => {
+      const wrapper = document.getElementById('citySwitcher');
+      if (wrapper && !wrapper.contains(event.target)) this.closeCitySwitcher();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') this.closeCitySwitcher();
+    });
 
     const pendingEvents = document.getElementById('pendingEventsContainer');
     if (pendingEvents) {
@@ -508,21 +527,76 @@ const Game = {
 
   renderCitySwitcher() {
     const wrapper = document.getElementById('citySwitcher');
-    const select = document.getElementById('citySelect');
-    if (!wrapper || !select) return;
-    const cities = this.state.cityState?.cities || [];
+    const trigger = document.getElementById('citySwitcherTrigger');
+    const name = document.getElementById('citySwitcherName');
+    const menu = document.getElementById('citySwitcherMenu');
+    if (!wrapper || !trigger || !name || !menu) return;
+    const cityState = this.state.cityState || {};
+    const cities = Array.isArray(cityState.cities) ? cityState.cities : [];
     wrapper.hidden = cities.length <= 1;
-    const options = cities.map((city) => `<option value="${city.id}" ${city.id === this.state.activeCityId ? 'selected' : ''}>${city.isCapital ? '主城 · ' : ''}${city.name}</option>`).join('');
-    if (select.dataset.optionsSignature !== options) {
-      select.innerHTML = options;
-      select.dataset.optionsSignature = options;
+    if (wrapper.hidden) {
+      this.closeCitySwitcher();
+      return;
     }
-    select.value = this.state.activeCityId || 'capital';
+    const activeCityId = this.state.activeCityId || cityState.activeCityId || cityState.capitalCityId || 'capital';
+    const activeCity = cities.find((city) => city.id === activeCityId) || cities[0];
+    name.textContent = activeCity?.name || '首都';
+
+    const options = cities.map((city) => {
+      const isActive = city.id === activeCityId;
+      const population = city.population?.total ?? 0;
+      const buildings = city.totalBuildings ?? 0;
+      return `
+        <button class="city-switcher-option ${isActive ? 'active' : ''}" type="button" role="option" aria-selected="${isActive ? 'true' : 'false'}" data-city-id="${this.escapeHtml(city.id)}">
+          <span class="city-option-main">
+            <span class="city-option-name">${this.escapeHtml(city.name || '未命名城市')}</span>
+            <span class="city-option-tag">${city.isCapital ? '主城' : '分城'}</span>
+          </span>
+          <span class="city-option-meta">人口 ${this.escapeHtml(population)} · 建筑 ${this.escapeHtml(buildings)}</span>
+        </button>
+      `;
+    }).join('');
+    if (menu.dataset.optionsSignature !== options) {
+      menu.innerHTML = options;
+      menu.dataset.optionsSignature = options;
+    }
+    trigger.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+  },
+
+  toggleCitySwitcher() {
+    const wrapper = document.getElementById('citySwitcher');
+    const trigger = document.getElementById('citySwitcherTrigger');
+    const menu = document.getElementById('citySwitcherMenu');
+    if (!wrapper || !trigger || !menu || wrapper.hidden) return;
+    const nextOpen = menu.hidden;
+    menu.hidden = !nextOpen;
+    wrapper.classList.toggle('is-open', nextOpen);
+    trigger.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  },
+
+  closeCitySwitcher() {
+    const wrapper = document.getElementById('citySwitcher');
+    const trigger = document.getElementById('citySwitcherTrigger');
+    const menu = document.getElementById('citySwitcherMenu');
+    if (menu) menu.hidden = true;
+    if (wrapper) wrapper.classList.remove('is-open');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  },
+
+  escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
   },
 
   async switchCity(cityId) {
     if (!cityId || cityId === this.state.activeCityId) return;
     try {
+      this.closeCitySwitcher();
       const result = await this.gameAPI.switchCity(cityId);
       this.applyApiState(result);
       this.showFloatingText(result.message || '城市已切换');

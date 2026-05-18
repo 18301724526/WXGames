@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=territory-radar-v1">
+    <link rel="stylesheet" href="style.css?v=city-switcher-v1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -54,10 +54,6 @@
                     <span class="era-icon">🔥</span>
                     <span class="era-name" id="eraName">原始时代</span>
                 </div>
-                <div class="city-switcher" id="citySwitcher" hidden>
-                    <span class="city-switcher-label">城市</span>
-                    <select id="citySelect" aria-label="切换城市"></select>
-                </div>
                 <div class="top-actions">
                     <button class="advisor-btn" id="advisorBtn" type="button" hidden>
                         <span class="advisor-btn-icon">谋</span>
@@ -99,6 +95,13 @@
                     </span>
                 </span>
             </button>
+            <div class="city-switcher" id="citySwitcher" hidden>
+                <button class="city-switcher-trigger" id="citySwitcherTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="city-switcher-name" id="citySwitcherName">首都</span>
+                    <span class="city-switcher-arrow" aria-hidden="true"></span>
+                </button>
+                <div class="city-switcher-menu" id="citySwitcherMenu" role="listbox" hidden></div>
+            </div>
         </header>
 
         <div class="page-container">
@@ -409,7 +412,7 @@
     <script src="js/controllers/TerritoryController.js?v=territory-radar-v1"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=territory-radar-v1"></script>
+    <script src="app.js?v=city-switcher-v1"></script>
     <script src="auth.js?v=whitelist-login-v1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

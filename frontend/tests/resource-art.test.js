@@ -95,11 +95,11 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(renderer, /site-card-summary/);
   assert.doesNotMatch(renderer, /territory-site-list/);
   assert.doesNotMatch(renderer, /world-cell-unknown/);
-  assert.match(html, /style\.css\?v=territory-radar-v1/);
+  assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /GameAPI\.js\?v=territory-radar-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-radar-v1/);
   assert.match(html, /TerritoryUIRenderer\.js\?v=territory-radar-v1/);
-  assert.match(html, /app\.js\?v=territory-radar-v1/);
+  assert.match(html, /app\.js\?v=[^"]+/);
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
   assert.match(html, /id="logButton"/);
