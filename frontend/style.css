@@ -740,35 +740,40 @@ body {
 .pop-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-    margin-bottom: 12px;
-    padding: 8px;
-    border: 1px solid rgba(255, 226, 177, 0.1);
-    border-radius: 9px;
-    background: rgba(18, 14, 10, 0.32);
+    gap: 0;
+    margin-bottom: 9px;
+    padding: 2px 0 8px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 226, 177, 0.12);
+    border-radius: 0;
+    background: transparent;
 }
 
 .pop-stat {
     min-width: 0;
     display: grid;
-    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-columns: 18px minmax(0, 1fr);
     grid-template-areas:
         "icon label"
         "icon value";
-    column-gap: 6px;
+    column-gap: 5px;
     align-items: center;
-    padding: 7px 6px;
-    border: 1px solid rgba(255, 226, 177, 0.1);
-    border-radius: 8px;
-    background: linear-gradient(145deg, rgba(70, 49, 31, 0.64), rgba(28, 22, 16, 0.62));
+    padding: 0 7px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.pop-stat:not(:first-child) {
+    border-left: 1px solid rgba(255, 226, 177, 0.1);
 }
 
 .pop-stat-icon {
     grid-area: icon;
-    width: 26px;
-    height: 26px;
+    width: 18px;
+    height: 18px;
     background: center / contain no-repeat;
-    filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.28));
 }
 
 .pop-stat-population,
@@ -787,7 +792,7 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     color: rgba(234, 234, 234, 0.64);
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.2;
 }
 
@@ -798,7 +803,7 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--number);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
@@ -810,19 +815,19 @@ body {
 
 .job-slots {
     display: grid;
-    gap: 6px;
+    gap: 4px;
 }
 
 .job-card {
     position: relative;
     background:
         linear-gradient(135deg, rgba(74, 52, 34, 0.86), rgba(28, 22, 16, 0.84));
-    border-radius: 7px;
-    padding: 7px 8px;
+    border-radius: 6px;
+    padding: 4px 7px;
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     text-align: left;
     border: 1px solid rgba(255, 226, 177, 0.14);
     min-width: 0;
@@ -837,8 +842,8 @@ body {
 }
 
 .job-icon {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     margin: 0;
     border: 0;
     border-radius: 0;
@@ -862,30 +867,34 @@ body {
 
 .job-info {
     min-width: 0;
+    justify-self: center;
+    padding: 0 8px;
+    text-align: center;
 }
 
 .job-name {
     color: #fff1cf;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     line-height: 1.2;
 }
 
 .job-desc {
-    font-size: 10px;
+    font-size: 9px;
     color: rgba(234, 234, 234, 0.58);
     line-height: 1.2;
 }
 
 .job-count {
-    min-width: 32px;
+    min-width: 30px;
+    min-height: 24px;
     padding: 4px 6px;
     border: 1px solid rgba(116, 211, 160, 0.24);
     border-radius: 8px;
     background: rgba(11, 18, 14, 0.38);
     color: var(--number);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 900;
     line-height: 1;
     text-align: center;
@@ -895,18 +904,18 @@ body {
 
 .job-controls {
     display: grid;
-    grid-template-columns: 28px minmax(32px, auto) 28px;
-    gap: 5px;
+    grid-template-columns: 22px minmax(30px, auto) 22px;
+    gap: 4px;
     align-items: center;
     justify-content: flex-end;
 }
 
 .job-controls button {
     position: relative;
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    border-radius: 7px;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 226, 177, 0.16);
     color: transparent;
     font-size: 0;
@@ -924,21 +933,21 @@ body {
 .job-controls button::after {
     content: '';
     position: absolute;
-    left: 8px;
-    right: 8px;
+    left: 6px;
+    right: 6px;
     top: 50%;
-    height: 3px;
+    height: 2px;
     border-radius: 3px;
     background: currentColor;
     transform: translateY(-50%);
-    box-shadow: 0 0 5px currentColor;
+    box-shadow: 0 0 4px currentColor;
 }
 
 .job-controls .btn-plus::after {
     left: 50%;
     right: auto;
-    width: 3px;
-    height: 12px;
+    width: 2px;
+    height: 10px;
     transform: translate(-50%, -50%);
 }
 
