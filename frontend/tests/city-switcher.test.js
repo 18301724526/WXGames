@@ -61,10 +61,14 @@ function createElement(id) {
 
 test('city switcher is a custom HUD menu under the resource strip', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'style.css'), 'utf8');
   assert.match(indexHtml, /id="resourcePanel"[\s\S]*id="citySwitcher"/);
   assert.match(indexHtml, /id="citySwitcherTrigger"/);
   assert.match(indexHtml, /id="citySwitcherMenu"/);
   assert.doesNotMatch(indexHtml, /id="citySelect"/);
+  assert.match(css, /\.top-bar \{[\s\S]*?z-index: 220;/);
+  assert.match(css, /\.page-container \{[\s\S]*?z-index: 1;/);
+  assert.match(css, /\.city-switcher-menu \{[\s\S]*?z-index: 260;/);
 });
 
 test('renderCitySwitcher renders custom city options and toggles the menu', () => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
-    <link rel="stylesheet" href="style.css?v=city-switcher-v1">
+    <link rel="stylesheet" href="style.css?v=population-hud-v1">
     <style>
         .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
         .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
@@ -107,41 +107,65 @@
         <div class="page-container">
             <section class="page page-resources active" data-page="resources">
                 <section class="population-panel">
-                    <h2 class="panel-title">👥 人口管理</h2>
+                    <div class="population-header">
+                        <span class="population-title-icon" aria-hidden="true"></span>
+                        <div class="population-title-copy">
+                            <h2 class="panel-title population-title">人口管理</h2>
+                            <div class="population-subtitle">族人职责</div>
+                        </div>
+                    </div>
                     <div class="pop-stats">
-                        <div class="pop-total"><span>总人口: </span><span id="totalPop">3</span>/<span id="maxPop">3</span></div>
-                        <div class="pop-unassigned"><span>待分配: </span><span id="unassignedPop">0</span></div>
-                        <div class="pop-happiness"><span>幸福度: </span><span id="happinessValue">100</span>%</div>
+                        <div class="pop-stat pop-total">
+                            <span class="pop-stat-icon pop-stat-population" aria-hidden="true"></span>
+                            <span class="pop-stat-label">总人口</span>
+                            <span class="pop-stat-value"><span id="totalPop">3</span>/<span id="maxPop">3</span></span>
+                        </div>
+                        <div class="pop-stat pop-unassigned">
+                            <span class="pop-stat-icon pop-stat-unassigned" aria-hidden="true"></span>
+                            <span class="pop-stat-label">待分配</span>
+                            <span class="pop-stat-value" id="unassignedPop">0</span>
+                        </div>
+                        <div class="pop-stat pop-happiness">
+                            <span class="pop-stat-icon pop-stat-happiness" aria-hidden="true"></span>
+                            <span class="pop-stat-label">幸福度</span>
+                            <span class="pop-stat-value"><span id="happinessValue">100</span>%</span>
+                        </div>
                     </div>
                     <div class="job-slots">
                         <div class="job-card job-farmer">
-                            <div class="job-icon">👨‍🌾</div>
-                            <div class="job-name">农民</div>
-                            <div class="job-desc">生产食物</div>
+                            <div class="job-icon" aria-hidden="true"></div>
+                            <div class="job-info">
+                                <div class="job-name">农民</div>
+                                <div class="job-desc">生产食物</div>
+                            </div>
                             <div class="job-count" id="farmerCount">3</div>
                             <div class="job-controls">
-                                <button class="btn-minus" data-job="farmer">−</button>
-                                <button class="btn-plus" data-job="farmer">+</button>
+                                <button class="btn-minus" data-job="farmer" type="button" aria-label="减少农民"><span aria-hidden="true"></span></button>
+                                <button class="btn-plus" data-job="farmer" type="button" aria-label="增加农民"><span aria-hidden="true"></span></button>
                             </div>
                         </div>
                         <div class="job-card job-scholar">
-                            <div class="job-icon">👨‍🏫</div>
-                            <div class="job-name">学者</div>
-                            <div class="job-desc">口耳相传</div>
+                            <div class="job-icon" aria-hidden="true"></div>
+                            <div class="job-info">
+                                <div class="job-name">学者</div>
+                                <div class="job-desc">口耳相传</div>
+                            </div>
                             <div class="job-count" id="scholarCount">0</div>
                             <div class="job-controls">
-                                <button class="btn-minus" data-job="scholar">−</button>
-                                <button class="btn-plus" data-job="scholar">+</button>
+                                <button class="btn-minus" data-job="scholar" type="button" aria-label="减少学者"><span aria-hidden="true"></span></button>
+                                <button class="btn-plus" data-job="scholar" type="button" aria-label="增加学者"><span aria-hidden="true"></span></button>
                             </div>
                         </div>
                         <div class="job-card job-craftsman" id="craftsmanCard" style="display:none">
-                            <div class="job-icon">👨‍🔧</div>
-                            <div class="job-name">工匠</div>
-                            <div class="job-desc">钻研技艺</div>
+                            <div class="job-icon" aria-hidden="true"></div>
+                            <div class="job-info">
+                                <div class="job-name">工匠</div>
+                                <div class="job-desc">钻研技艺</div>
+                            </div>
                             <div class="job-count" id="craftsmanCount">0</div>
                             <div class="job-controls">
-                                <button class="btn-minus" data-job="craftsman">−</button>
-                                <button class="btn-plus" data-job="craftsman">+</button>
+                                <button class="btn-minus" data-job="craftsman" type="button" aria-label="减少工匠"><span aria-hidden="true"></span></button>
+                                <button class="btn-plus" data-job="craftsman" type="button" aria-label="增加工匠"><span aria-hidden="true"></span></button>
                             </div>
                         </div>
                     </div>
@@ -394,7 +418,7 @@
     </div>
 
     <script src="floating-text.js?v=settlement-era2-fix2"></script>
-    <script src="population.js?v=settlement-era2-fix2"></script>
+    <script src="population.js?v=population-hud-v1"></script>
     <script src="js/config/GameConfig.js?v=military-tab-wood-icon-v1"></script>
     <script src="js/domain/BuildingState.js?v=settlement-era2-fix2"></script>
     <script src="js/domain/GameState.js?v=world-scout-v1"></script>
@@ -412,7 +436,7 @@
     <script src="js/controllers/TerritoryController.js?v=territory-radar-v1"></script>
     <script src="js/controllers/TutorialController.js?v=settlement-era2-fix10"></script>
     <script src="js/utils/DOMHelper.js?v=settlement-era2-fix2"></script>
-    <script src="app.js?v=city-switcher-v1"></script>
+    <script src="app.js?v=population-hud-v1"></script>
     <script src="auth.js?v=whitelist-login-v1"></script>
     <script src="logs.js?v=settlement-era2-fix2"></script>
 </body>

@@ -90,8 +90,10 @@ window.mountPopulationMethods = function(game) {
             btn.dataset._popBound = 'true';
             
             btn.addEventListener('click', (e) => {
-                const job = e.target.dataset.job;
-                const delta = e.target.classList.contains('btn-plus') ? 1 : -1;
+                const button = e.target.closest('button[data-job]');
+                if (!button) return;
+                const job = button.dataset.job;
+                const delta = button.classList.contains('btn-plus') ? 1 : -1;
                 this.assignJob(job, delta);
             });
         });
