@@ -219,6 +219,29 @@ test('territory radar spreads near sites away from the center when outer rings e
     visualOffset: { x: 0, y: 0 },
   }, 6);
 
-  assert.ok(Number(near.left) > 60);
-  assert.ok(Number(far.left) > Number(near.left));
+  assert.ok(near.radius > 12);
+  assert.ok(far.radius > near.radius);
+});
+
+test('territory radar prevents overlapping placements for clustered outer sites', () => {
+  const renderer = new TerritoryUIRenderer({ dataset: {} });
+  const layout = renderer.buildRadarLayout([
+    { id: 'capital', x: 0, y: 0, visualOffset: { x: 0, y: 0 } },
+    { id: 'site_a', x: 4, y: 0, visualOffset: { x: 0, y: 0 } },
+    { id: 'site_b', x: 5, y: 0, visualOffset: { x: 0, y: 0 } },
+    { id: 'site_c', x: 6, y: 0, visualOffset: { x: 0, y: 0 } },
+    { id: 'site_d', x: 6, y: 1, visualOffset: { x: 0, y: 0 } },
+  ]);
+  const points = ['site_a', 'site_b', 'site_c', 'site_d'].map((id) => ({
+    id,
+    left: Number(layout.get(id).left),
+    top: Number(layout.get(id).top),
+  }));
+
+  for (let index = 0; index < points.length; index += 1) {
+    for (let nextIndex = index + 1; nextIndex < points.length; nextIndex += 1) {
+      const distance = Math.hypot(points[index].left - points[nextIndex].left, points[index].top - points[nextIndex].top);
+      assert.ok(distance >= 9.5, `${points[index].id} and ${points[nextIndex].id} overlap too closely: ${distance}`);
+    }
+  }
 });

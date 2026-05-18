@@ -149,17 +149,54 @@
       const normalized = Math.sqrt(Math.min(1, distance / Math.max(1, maxDistance)));
       const radius = distance > 0 ? 12 + normalized * 30 : 0;
       const angle = Math.atan2(y, x || 0.0001);
-      const left = Math.max(8, Math.min(92, 50 + Math.cos(angle) * radius));
-      const top = Math.max(8, Math.min(92, 50 + Math.sin(angle) * radius));
       return {
-        left: left.toFixed(2),
-        top: top.toFixed(2),
+        x,
+        y,
+        distance,
+        angle,
+        radius,
       };
     }
 
-    renderMap(territories) {
-      const panX = Number(this.container?.dataset.worldPanX || 0);
-      const panY = Number(this.container?.dataset.worldPanY || 0);
+    measureRadarSpacing(candidate, placed) {
+      if (!placed.length) return Infinity;
+      return placed.reduce((best, existing) => Math.min(
+        best,
+        Math.hypot(candidate.left - existing.left, candidate.top - existing.top),
+      ), Infinity);
+    }
+
+    resolveRadarPosition(anchor, placed) {
+      if (anchor.distance === 0) return { left: 50, top: 50 };
+      const angleOffsets = [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6];
+      const radiusOffsets = [0, 2.5, -2, 5, -3.5, 7];
+      const minSpacing = 9.5;
+      let bestCandidate = null;
+
+      for (const radiusOffset of radiusOffsets) {
+        for (const angleOffset of angleOffsets) {
+          const candidateAngle = anchor.angle + angleOffset * (Math.PI / 18);
+          const candidateRadius = Math.max(10, Math.min(40, anchor.radius + radiusOffset + Math.abs(angleOffset) * 0.2));
+          const candidate = {
+            left: 50 + Math.cos(candidateAngle) * candidateRadius,
+            top: 50 + Math.sin(candidateAngle) * candidateRadius,
+          };
+          if (candidate.left < 8 || candidate.left > 92 || candidate.top < 8 || candidate.top > 92) continue;
+          const spacing = this.measureRadarSpacing(candidate, placed);
+          if (spacing >= minSpacing) return candidate;
+          if (!bestCandidate || spacing > bestCandidate.spacing) {
+            bestCandidate = { ...candidate, spacing };
+          }
+        }
+      }
+
+      return bestCandidate || {
+        left: Math.max(8, Math.min(92, 50 + Math.cos(anchor.angle) * anchor.radius)),
+        top: Math.max(8, Math.min(92, 50 + Math.sin(anchor.angle) * anchor.radius)),
+      };
+    }
+
+    buildRadarLayout(territories) {
       const maxDistance = Math.max(
         1,
         ...territories.map((site) => Math.hypot(
@@ -167,8 +204,40 @@
           Number(site.y || 0) + (Number(site.visualOffset?.y) || 0),
         )),
       );
+      const sorted = [...territories].sort((a, b) => {
+        if (a.id === 'capital') return -1;
+        if (b.id === 'capital') return 1;
+        const aAnchor = this.getRadarPosition(a, maxDistance);
+        const bAnchor = this.getRadarPosition(b, maxDistance);
+        return aAnchor.distance - bAnchor.distance || aAnchor.angle - bAnchor.angle || String(a.id).localeCompare(String(b.id));
+      });
+      const placed = [];
+      const layout = new Map();
+
+      sorted.forEach((site) => {
+        const anchor = this.getRadarPosition(site, maxDistance);
+        const resolved = this.resolveRadarPosition(anchor, placed);
+        const position = {
+          left: resolved.left.toFixed(2),
+          top: resolved.top.toFixed(2),
+        };
+        placed.push({
+          id: site.id,
+          left: Number(position.left),
+          top: Number(position.top),
+        });
+        layout.set(site.id, position);
+      });
+
+      return layout;
+    }
+
+    renderMap(territories) {
+      const panX = Number(this.container?.dataset.worldPanX || 0);
+      const panY = Number(this.container?.dataset.worldPanY || 0);
+      const layout = this.buildRadarLayout(territories);
       const sites = territories.map((site) => {
-        const position = this.getRadarPosition(site, maxDistance);
+        const position = layout.get(site.id) || { left: '50.00', top: '50.00' };
         return `
           <button class="world-site world-site-${this.escapeHtml(site.status)} owner-${this.escapeHtml(site.owner)} type-${this.escapeHtml(site.type)}" type="button" data-site-id="${this.escapeHtml(site.id)}" title="${this.escapeHtml(site.naturalName)}" style="--site-x:${position.left}%;--site-y:${position.top}%">
             <span class="world-site-pulse"></span>
