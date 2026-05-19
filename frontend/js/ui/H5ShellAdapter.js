@@ -4,76 +4,79 @@
       Object.assign(this, parts);
     }
 
-    static fromDocument(doc, runtime = global, options = {}) {
+    static fromDocument(doc, runtime = null, options = {}) {
+      const runtimeHost = runtime || {};
+      const registry = options.registry || runtimeHost;
+      const presenter = options.presenter || registry.UIStatePresenter || null;
       const setText = options.setText || (() => {});
-      const buildingActions = global.BuildingActionAdapter?.fromDocument(doc);
-      const territoryActions = global.TerritoryActionAdapter?.fromDocument(doc);
-      const tutorialRenderer = global.TutorialUIRenderer?.fromDocument(doc, runtime, { presenter: global.UIStatePresenter });
-      const authRuntime = global.H5AuthRuntimeAdapter?.fromRuntime(runtime);
-      const authStorage = global.H5AuthStorageAdapter?.fromRuntime(runtime);
+      const buildingActions = registry.BuildingActionAdapter?.fromDocument(doc);
+      const territoryActions = registry.TerritoryActionAdapter?.fromDocument(doc);
+      const tutorialRenderer = registry.TutorialUIRenderer?.fromDocument(doc, runtimeHost, { presenter });
+      const authRuntime = registry.H5AuthRuntimeAdapter?.fromRuntime(runtimeHost);
+      const authStorage = registry.H5AuthStorageAdapter?.fromRuntime(runtimeHost);
       const moduleDeps = {
-        presenter: global.UIStatePresenter,
+        presenter,
         authRuntime,
         authStorage,
       };
       const scheduler = {
-        setInterval: runtime.setInterval?.bind(runtime),
-        clearInterval: runtime.clearInterval?.bind(runtime),
-        setTimeout: runtime.setTimeout?.bind(runtime),
-        clearTimeout: runtime.clearTimeout?.bind(runtime),
+        setInterval: runtimeHost.setInterval?.bind(runtimeHost),
+        clearInterval: runtimeHost.clearInterval?.bind(runtimeHost),
+        setTimeout: runtimeHost.setTimeout?.bind(runtimeHost),
+        clearTimeout: runtimeHost.clearTimeout?.bind(runtimeHost),
       };
       const gameModules = {
         mount(game) {
-          global.mountAuthMethods?.(game, moduleDeps);
-          global.mountPopulationMethods?.(game, moduleDeps);
-          global.mountLogMethods?.(game, moduleDeps);
+          registry.mountAuthMethods?.(game, moduleDeps);
+          registry.mountPopulationMethods?.(game, moduleDeps);
+          registry.mountLogMethods?.(game, moduleDeps);
         },
       };
 
       return new H5ShellAdapter({
-        config: global.GameConfig,
+        config: options.config || registry.GameConfig,
         gameModules,
-        presenter: global.UIStatePresenter,
-        buildingState: global.FrontendBuildingState,
-        runtimeConstructors: {
-          GameAPI: global.GameAPI,
-          GameStateSync: global.GameStateSync,
-          UpdateChecker: global.UpdateChecker,
-          GameStateManager: global.GameStateManager,
-          TutorialController: global.TutorialController,
-          EventController: global.EventController,
-          BuildingController: global.BuildingController,
-          TerritoryController: global.TerritoryController,
+        presenter,
+        buildingState: options.buildingState || registry.FrontendBuildingState,
+        runtimeConstructors: options.runtimeConstructors || {
+          GameAPI: registry.GameAPI,
+          GameStateSync: registry.GameStateSync,
+          UpdateChecker: registry.UpdateChecker,
+          GameStateManager: registry.GameStateManager,
+          TutorialController: registry.TutorialController,
+          EventController: registry.EventController,
+          BuildingController: registry.BuildingController,
+          TerritoryController: registry.TerritoryController,
         },
-        stateNormalizer: global.FrontendGameState,
+        stateNormalizer: options.stateNormalizer || registry.FrontendGameState,
         scheduler,
-        textAdapter: global.H5TextAdapter?.fromDocument(doc),
-        updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),
+        textAdapter: registry.H5TextAdapter?.fromDocument(doc),
+        updateRuntime: registry.H5UpdateRuntimeAdapter?.fromRuntime(runtimeHost),
         authRuntime,
         authStorage,
-        tutorialStorage: global.H5TutorialStorageAdapter?.fromRuntime(runtime),
-        floatingText: global.FloatingTextAdapter?.fromDocument(doc),
-        resourceRenderer: global.ResourceRenderer?.fromDocument(doc, setText, { presenter: global.UIStatePresenter }),
-        resourceDetailModal: global.ResourceDetailModalAdapter?.fromDocument(doc),
-        advisorPanel: global.AdvisorPanelAdapter?.fromDocument(doc),
-        namingModal: global.NamingModalAdapter?.fromDocument(doc),
-        authShell: global.AuthShellAdapter?.fromDocument(doc),
-        populationPanel: global.PopulationPanelAdapter?.fromDocument(doc),
-        citySwitcher: global.CitySwitcherAdapter?.fromDocument(doc),
-        navigationShell: global.NavigationShellAdapter?.fromDocument(doc),
-        tutorialTargets: global.TutorialTargetAdapter?.fromDocument(doc),
-        civilizationPanel: global.CivilizationPanelAdapter?.fromDocument(doc, { setText }),
-        militaryPanel: global.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
+        tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
+        floatingText: registry.FloatingTextAdapter?.fromDocument(doc),
+        resourceRenderer: registry.ResourceRenderer?.fromDocument(doc, setText, { presenter }),
+        resourceDetailModal: registry.ResourceDetailModalAdapter?.fromDocument(doc),
+        advisorPanel: registry.AdvisorPanelAdapter?.fromDocument(doc),
+        namingModal: registry.NamingModalAdapter?.fromDocument(doc),
+        authShell: registry.AuthShellAdapter?.fromDocument(doc),
+        populationPanel: registry.PopulationPanelAdapter?.fromDocument(doc),
+        citySwitcher: registry.CitySwitcherAdapter?.fromDocument(doc),
+        navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
+        tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
+        civilizationPanel: registry.CivilizationPanelAdapter?.fromDocument(doc, { setText }),
+        militaryPanel: registry.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
         buildingActions,
-        buildingRenderer: new global.BuildingUIRenderer(buildingActions?.getContainer?.(), {}, { presenter: global.UIStatePresenter }),
-        eventRenderer: new global.EventUIRenderer(setText, { document: doc, presenter: global.UIStatePresenter }),
-        logModal: global.LogModalAdapter?.fromDocument(doc),
-        runtimeLog: global.RuntimeLogAdapter?.fromDocument(doc),
+        buildingRenderer: registry.BuildingUIRenderer ? new registry.BuildingUIRenderer(buildingActions?.getContainer?.(), {}, { presenter }) : null,
+        eventRenderer: registry.EventUIRenderer ? new registry.EventUIRenderer(setText, { document: doc, presenter }) : null,
+        logModal: registry.LogModalAdapter?.fromDocument(doc),
+        runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),
         territoryActions,
-        territoryRenderer: new global.TerritoryUIRenderer(territoryActions?.getContainer?.(), {
+        territoryRenderer: registry.TerritoryUIRenderer ? new registry.TerritoryUIRenderer(territoryActions?.getContainer?.(), {
           getUiState: options.getTerritoryUiState || (() => ({})),
-          presenter: global.UIStatePresenter,
-        }),
+          presenter,
+        }) : null,
         tutorialRenderer,
       });
     }

@@ -44,7 +44,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     setTimeout() {},
     clearTimeout() {},
   };
-  const originalGlobals = {};
   const factories = {
     H5TextAdapter: makeFactory('text', calls),
     H5UpdateRuntimeAdapter: makeRuntimeFactory('updateRuntime', calls),
@@ -80,48 +79,39 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     RuntimeLogAdapter: makeFactory('runtimeLog', calls),
     TerritoryActionAdapter: makeFactory('territoryActions', calls, { name: 'territoryActions', getContainer: () => 'territory-grid' }),
     TutorialUIRenderer: makeDocumentFactory('tutorialRenderer', calls),
-  };
-
-  try {
-    for (const [key, value] of Object.entries(factories)) {
-      originalGlobals[key] = globalThis[key];
-      globalThis[key] = value;
-    }
-    originalGlobals.BuildingUIRenderer = globalThis.BuildingUIRenderer;
-    originalGlobals.EventUIRenderer = globalThis.EventUIRenderer;
-    originalGlobals.TerritoryUIRenderer = globalThis.TerritoryUIRenderer;
-    globalThis.BuildingUIRenderer = class {
+    BuildingUIRenderer: class {
       constructor(container, buildingConfig, options) {
         this.container = container;
         this.buildingConfig = buildingConfig;
         this.options = options;
       }
-    };
-    globalThis.EventUIRenderer = class {
+    },
+    EventUIRenderer: class {
       constructor(setText, options) {
         this.setText = setText;
         this.options = options;
       }
-    };
-    globalThis.TerritoryUIRenderer = class {
+    },
+    TerritoryUIRenderer: class {
       constructor(container, options) {
         this.container = container;
         this.options = options;
       }
-    };
-    originalGlobals.mountAuthMethods = globalThis.mountAuthMethods;
-    originalGlobals.mountPopulationMethods = globalThis.mountPopulationMethods;
-    originalGlobals.mountLogMethods = globalThis.mountLogMethods;
-    const mountedModules = [];
-    globalThis.mountAuthMethods = (game, deps) => mountedModules.push(['auth', game, deps]);
-    globalThis.mountPopulationMethods = (game, deps) => mountedModules.push(['population', game, deps]);
-    globalThis.mountLogMethods = (game, deps) => mountedModules.push(['logs', game, deps]);
+    },
+  };
+  const mountedModules = [];
+  const registry = {
+    ...factories,
+    mountAuthMethods: (game, deps) => mountedModules.push(['auth', game, deps]),
+    mountPopulationMethods: (game, deps) => mountedModules.push(['population', game, deps]),
+    mountLogMethods: (game, deps) => mountedModules.push(['logs', game, deps]),
+  };
 
-    const setText = () => {};
-    const getTerritoryUiState = () => ({ selectedSiteId: 'east' });
-    const shell = H5ShellAdapter.fromDocument(doc, runtime, { setText, getTerritoryUiState });
-    const game = { id: 'game' };
-    shell.gameModules.mount(game);
+  const setText = () => {};
+  const getTerritoryUiState = () => ({ selectedSiteId: 'east' });
+  const shell = H5ShellAdapter.fromDocument(doc, runtime, { registry, setText, getTerritoryUiState });
+  const game = { id: 'game' };
+  shell.gameModules.mount(game);
 
     assert.equal(mountedModules.length, 3);
     assert.deepEqual(mountedModules.map(([name, mountedGame]) => [name, mountedGame]), [['auth', game], ['population', game], ['logs', game]]);
@@ -180,21 +170,20 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
       && callRuntime === runtime
       && options.presenter === factories.UIStatePresenter
     )));
-  } finally {
-    for (const [key, value] of Object.entries(originalGlobals)) {
-      if (value === undefined) delete globalThis[key];
-      else globalThis[key] = value;
-    }
-  }
 });
 
 test('app receives H5 shell instead of assembling every document adapter itself', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=tutorial-presenter-v1/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=tutorial-presenter-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  const shellJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5ShellAdapter.js'), 'utf8');
+
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
+  assert.match(appJs, /registry: window/);
+  assert.match(shellJs, /const registry = options\.registry \|\| runtimeHost/);
+  assert.doesNotMatch(shellJs, /global\.(?:GameConfig|UIStatePresenter|FrontendBuildingState|GameAPI|GameStateSync|UpdateChecker|GameStateManager|TutorialController|EventController|BuildingController|TerritoryController|FrontendGameState|mountAuthMethods|mountPopulationMethods|mountLogMethods)/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(appJs, /window\.FrontendGameState/);
   assert.doesNotMatch(appJs, /window\.GameConfig/);

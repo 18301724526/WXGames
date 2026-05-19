@@ -40,6 +40,7 @@ const Game = {
 
   init() {
     const shell = window.H5ShellAdapter?.fromDocument(document, window, {
+      registry: window,
       setText: (id, value) => this.setText(id, value),
       getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });
