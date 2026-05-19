@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const UIStatePresenter = require('../js/state/UIStatePresenter');
 const AuthShellAdapter = require('../js/ui/AuthShellAdapter');
 const H5AuthStorageAdapter = require('../js/ui/H5AuthStorageAdapter');
+const H5AuthRuntimeAdapter = require('../js/ui/H5AuthRuntimeAdapter');
 
 function createStorage(initial = {}) {
   const store = new Map(Object.entries(initial));
@@ -69,7 +70,7 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
       loginPassword: createElement(),
       rememberPassword: createElement(),
     };
-    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter };
+    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter, H5AuthRuntimeAdapter };
     global.document = undefined;
     const storage = createStorage({
       cf_remember_enabled: 'true',
@@ -112,7 +113,7 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
       loginPassword: createElement(),
       rememberPassword: createElement(),
     };
-    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter };
+    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter, H5AuthRuntimeAdapter };
     global.document = undefined;
     const storage = createStorage();
     global.localStorage = undefined;

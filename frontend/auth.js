@@ -3,6 +3,7 @@
 
 window.mountAuthMethods = function(game) {
   const authStorage = game.authStorage || window.H5AuthStorageAdapter?.fromRuntime(window);
+  const authRuntime = game.authRuntime || window.H5AuthRuntimeAdapter?.fromRuntime(window);
 
   function clearTutorialStorage() {
     authStorage?.clearTutorialStorage?.();
@@ -97,23 +98,23 @@ window.mountAuthMethods = function(game) {
     this.token = null;
     this.playerId = null;
     authStorage?.clearSession?.();
-    location.reload();
+    authRuntime?.reload?.();
   };
 
   game.resetGame = async function() {
-    if (!confirm('⚠️ 确定重置游戏进度？\n当前账号的所有发展将回到初始状态。')) return;
+    if (!authRuntime?.confirmReset?.()) return;
     try {
       const result = await this.apiPost('/player/reset', {});
       if (!result.success) {
-        alert(result.message || '重置失败');
+        authRuntime?.alertMessage?.(result.message || '重置失败');
         return;
       }
       this.applyApiState(result);
       this.showFloatingText && this.showFloatingText(result.message || '进度已重置');
       this.log && this.log(`✅ ${result.message || '进度已重置'}`);
-      alert(result.message || '进度已重置');
+      authRuntime?.alertMessage?.(result.message || '进度已重置');
     } catch (error) {
-      alert(error.payload?.message || '请求失败');
+      authRuntime?.alertMessage?.(error.payload?.message || '请求失败');
     }
   };
 
