@@ -94,6 +94,7 @@ const Game = {
     if (window.mountAuthMethods) window.mountAuthMethods(this);
     if (window.mountPopulationMethods) window.mountPopulationMethods(this);
     if (window.mountLogMethods) window.mountLogMethods(this);
+    if (window.mountFloatingText) window.mountFloatingText(this);
 
     this.syncService.onState = (data) => this.applyApiState(data);
     this.syncService.onError = (error) => {
@@ -864,11 +865,8 @@ const Game = {
   },
 
   showFloatingText(message) {
-    if (window.showFloatingText) {
-      window.showFloatingText(message);
-      return;
-    }
-    this.log(message);
+    const shown = this.floatingText?.show(message);
+    if (!shown) this.log(message);
   },
 
   showOfflineModal() {},

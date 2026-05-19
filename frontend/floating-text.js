@@ -1,31 +1,37 @@
-// ==================== 飘字动画模块 ====================
-// 解耦提取：showFloatingText 独立为可复用模块
-// 由 app.js init() 调用 window.mountFloatingText(game) 挂载
+(function (global) {
+  class FloatingTextAdapter {
+    constructor(options = {}) {
+      this.layer = options.layer || null;
+      this.resolveTarget = options.resolveTarget || (() => null);
+      this.durationMs = options.durationMs || 1200;
+    }
 
-window.mountFloatingText = function(game) {
-    /**
-     * 在指定元素上方显示飘字动画
-     * @param {string} text - 飘字内容（如 '🌾 +10'）
-     * @param {string} selector - 目标元素的 CSS 选择器（如 '.food-card'）
-     * @param {string} color - 文字颜色，默认 '#4ecca3'
-     */
-    game.showFloatingText = function(text, selector, color = '#4ecca3') {
-        const container = document.querySelector(selector);
-        if (!container) return;
+    show(text, options = {}) {
+      const target = this.resolveTarget(options.selector || '.food-card');
+      if (!this.layer || !target || typeof target.getBoundingClientRect !== 'function') return false;
+      const rect = target.getBoundingClientRect();
+      const element = this.layer.ownerDocument
+        ? this.layer.ownerDocument.createElement('div')
+        : document.createElement('div');
+      element.className = 'floating-text';
+      element.textContent = text;
+      element.style.color = options.color || '#4ecca3';
+      element.style.left = `${rect.left + rect.width / 2}px`;
+      element.style.top = `${rect.top}px`;
+      this.layer.appendChild(element);
+      setTimeout(() => element.remove(), this.durationMs);
+      return true;
+    }
+  }
 
-        const rect = container.getBoundingClientRect();
-        const fxLayer = document.getElementById('fxLayer');
-        if (!fxLayer) return;
-
-        const el = document.createElement('div');
-        el.className = 'floating-text';
-        el.textContent = text;
-        el.style.color = color;
-        el.style.left = `${rect.left + rect.width / 2}px`;
-        el.style.top = `${rect.top}px`;
-        fxLayer.appendChild(el);
-        setTimeout(() => el.remove(), 1200);
-    };
-
+  global.FloatingTextAdapter = FloatingTextAdapter;
+  global.mountFloatingText = function mountFloatingText(game) {
+    game.floatingText = new FloatingTextAdapter({
+      layer: document.getElementById('fxLayer'),
+      resolveTarget: (selector) => document.querySelector(selector),
+    });
     console.log('[floating-text.js] 飘字动画模块已挂载');
-};
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = FloatingTextAdapter;
+})(typeof window !== 'undefined' ? window : globalThis);
