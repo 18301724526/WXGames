@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
-global.UIStatePresenter = require('../js/state/UIStatePresenter');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
 const EventUIRenderer = require('../js/ui/EventUIRenderer');
 
 function createClassList() {
@@ -43,40 +45,45 @@ function createElementStub(extra = {}) {
   };
 }
 
+function createDocumentStub(elements) {
+  return {
+    getElementById(id) {
+      if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
+      return elements.get(id);
+    },
+  };
+}
+
+function createRenderer(setText, elements) {
+  return new EventUIRenderer(setText, {
+    document: createDocumentStub(elements),
+    presenter: UIStatePresenter,
+  });
+}
+
 test('事件弹窗会渲染后端下发的多个选项', () => {
-  const originalDocument = global.document;
-  try {
-    const elements = new Map([
-      ['eventModal', { classList: createClassList() }],
-      ['eventModalOptions', { innerHTML: '' }],
-      ['btnClaimEvent', createButtonStub()],
-    ]);
-    global.document = {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
-        return elements.get(id);
-      },
-    };
-    const texts = new Map();
-    const renderer = new EventUIRenderer((id, value) => texts.set(id, value));
+  const elements = new Map([
+    ['eventModal', { classList: createClassList() }],
+    ['eventModalOptions', { innerHTML: '' }],
+    ['btnClaimEvent', createButtonStub()],
+  ]);
+  const texts = new Map();
+  const renderer = createRenderer((id, value) => texts.set(id, value), elements);
 
-    renderer.open({
-      title: '丰收的预兆',
-      description: 'desc',
-      options: [
-        { id: 'store_food', label: '储备粮食', preview: '获得 40 食物' },
-        { id: 'hold_festival', label: '小型庆祝', preview: '消耗 20 食物，5 分钟内食物产出 +20%' },
-      ],
-    });
+  renderer.open({
+    title: '丰收的预兆',
+    description: 'desc',
+    options: [
+      { id: 'store_food', label: '储备粮食', preview: '获得 40 食物' },
+      { id: 'hold_festival', label: '小型庆祝', preview: '消耗 20 食物，5 分钟内食物产出 +20%' },
+    ],
+  });
 
-    assert.equal(texts.get('eventModalReward'), '选择一种处理方式');
-    assert.match(elements.get('eventModalOptions').innerHTML, /data-option-id="store_food"/);
-    assert.match(elements.get('eventModalOptions').innerHTML, /小型庆祝/);
-    assert.equal(elements.get('btnClaimEvent').hidden, true);
-    assert.equal(elements.get('eventModal').classList.contains('show'), true);
-  } finally {
-    global.document = originalDocument;
-  }
+  assert.equal(texts.get('eventModalReward'), '选择一种处理方式');
+  assert.match(elements.get('eventModalOptions').innerHTML, /data-option-id="store_food"/);
+  assert.match(elements.get('eventModalOptions').innerHTML, /小型庆祝/);
+  assert.equal(elements.get('btnClaimEvent').hidden, true);
+  assert.equal(elements.get('eventModal').classList.contains('show'), true);
 });
 
 test('事件 renderer 绑定 H5 卡片、选项、领取和关闭事件', () => {
@@ -86,13 +93,7 @@ test('事件 renderer 绑定 H5 卡片、选项、领取和关闭事件', () => 
     ['btnClaimEvent', createButtonStub({ optionId: 'claim_main' })],
     ['btnCloseEventModal', createElementStub()],
   ]);
-  const renderer = new EventUIRenderer(() => {}, {
-    document: {
-      getElementById(id) {
-        return elements.get(id) || null;
-      },
-    },
-  });
+  const renderer = createRenderer(() => {}, elements);
   const calls = [];
 
   renderer.bind({
@@ -121,40 +122,28 @@ test('事件 renderer 绑定 H5 卡片、选项、领取和关闭事件', () => 
 });
 
 test('单选项事件保留主领取按钮用于教程高亮', () => {
-  const originalDocument = global.document;
-  try {
-    const elements = new Map([
-      ['eventModal', { classList: createClassList() }],
-      ['eventModalOptions', { innerHTML: '' }],
-      ['btnClaimEvent', createButtonStub()],
-    ]);
-    global.document = {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
-        return elements.get(id);
-      },
-    };
-    const texts = new Map();
-    const renderer = new EventUIRenderer((id, value) => texts.set(id, value));
+  const elements = new Map([
+    ['eventModal', { classList: createClassList() }],
+    ['eventModalOptions', { innerHTML: '' }],
+    ['btnClaimEvent', createButtonStub()],
+  ]);
+  const texts = new Map();
+  const renderer = createRenderer((id, value) => texts.set(id, value), elements);
 
-    renderer.open({
-      title: '森林低语',
-      description: 'desc',
-      options: [{ id: 'opt_collect_wood', label: '收集木材', reward: { wood: 20 } }],
-    });
+  renderer.open({
+    title: '森林低语',
+    description: 'desc',
+    options: [{ id: 'opt_collect_wood', label: '收集木材', reward: { wood: 20 } }],
+  });
 
-    assert.equal(texts.get('eventModalReward'), '🪵 +20');
-    assert.equal(elements.get('eventModalOptions').innerHTML, '');
-    assert.equal(elements.get('btnClaimEvent').hidden, false);
-    assert.equal(elements.get('btnClaimEvent').dataset.optionId, 'opt_collect_wood');
-    assert.equal(elements.get('btnClaimEvent').textContent, '收集木材');
-  } finally {
-    global.document = originalDocument;
-  }
+  assert.equal(texts.get('eventModalReward'), '🪵 +20');
+  assert.equal(elements.get('eventModalOptions').innerHTML, '');
+  assert.equal(elements.get('btnClaimEvent').hidden, false);
+  assert.equal(elements.get('btnClaimEvent').dataset.optionId, 'opt_collect_wood');
+  assert.equal(elements.get('btnClaimEvent').textContent, '收集木材');
 });
 
 test('威胁事件卡片会带 threat 样式并显示倒计时单选按钮', () => {
-  const originalDocument = global.document;
   const originalDateNow = Date.now;
   try {
     Date.now = () => new Date('2026-05-17T08:01:00.000Z').getTime();
@@ -166,13 +155,7 @@ test('威胁事件卡片会带 threat 样式并显示倒计时单选按钮', () 
       ['eventModalOptions', { innerHTML: '' }],
       ['btnClaimEvent', createButtonStub()],
     ]);
-    global.document = {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
-        return elements.get(id);
-      },
-    };
-    const renderer = new EventUIRenderer(() => {});
+    const renderer = createRenderer(() => {}, elements);
     const event = {
       id: 'evt_threat_border_probe',
       type: 'threat',
@@ -202,12 +185,10 @@ test('威胁事件卡片会带 threat 样式并显示倒计时单选按钮', () 
     assert.match(elements.get('btnClaimEvent').textContent, /派士兵巡边/);
   } finally {
     Date.now = originalDateNow;
-    global.document = originalDocument;
   }
 });
 
 test('普通事件也会显示剩余时间提示', () => {
-  const originalDocument = global.document;
   const originalDateNow = Date.now;
   try {
     Date.now = () => new Date('2026-05-17T08:01:00.000Z').getTime();
@@ -219,14 +200,8 @@ test('普通事件也会显示剩余时间提示', () => {
       ['eventModalOptions', { innerHTML: '' }],
       ['btnClaimEvent', createButtonStub()],
     ]);
-    global.document = {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { textContent: '', innerHTML: '', dataset: {}, classList: createClassList() });
-        return elements.get(id);
-      },
-    };
     const texts = new Map();
-    const renderer = new EventUIRenderer((id, value) => texts.set(id, value));
+    const renderer = createRenderer((id, value) => texts.set(id, value), elements);
     const event = {
       id: 'evt_regular_harvest_sign',
       type: 'regular',
@@ -252,6 +227,12 @@ test('普通事件也会显示剩余时间提示', () => {
     assert.match(texts.get('eventModalReward'), /剩余 4:00/);
   } finally {
     Date.now = originalDateNow;
-    global.document = originalDocument;
   }
+});
+
+test('event renderer source does not read global document or presenter', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'ui', 'EventUIRenderer.js'), 'utf8');
+
+  assert.match(source, /this\.presenter\.buildEventViewState/);
+  assert.doesNotMatch(source, /global\.document|typeof document|global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
 });

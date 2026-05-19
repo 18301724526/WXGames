@@ -2,7 +2,8 @@
   class EventUIRenderer {
     constructor(setText, options = {}) {
       this.setText = setText;
-      this.document = options.document || global.document || (typeof document !== 'undefined' ? document : null);
+      this.document = options.document || null;
+      this.presenter = options.presenter || null;
     }
 
     getElement(id) {
@@ -34,7 +35,7 @@
     }
 
     formatReward(reward) {
-      return global.UIStatePresenter.formatEventReward(reward);
+      return this.presenter.formatEventReward(reward);
     }
 
     escapeHtml(value) {
@@ -47,19 +48,19 @@
     }
 
     getOptionPreview(option) {
-      return global.UIStatePresenter.getEventOptionPreview(option);
+      return this.presenter.getEventOptionPreview(option);
     }
 
     getRemainingSeconds(expiresAt) {
-      return global.UIStatePresenter.getRemainingSeconds(expiresAt);
+      return this.presenter.getRemainingSeconds(expiresAt);
     }
 
     formatRemainingTime(expiresAt) {
-      return global.UIStatePresenter.formatRemainingTime(expiresAt);
+      return this.presenter.formatRemainingTime(expiresAt);
     }
 
     getEventHint(event) {
-      return global.UIStatePresenter.getEventHint(event);
+      return this.presenter.getEventHint(event);
     }
 
     getClassNames(classState = {}) {
@@ -103,7 +104,7 @@
     }
 
     render(state) {
-      const view = global.UIStatePresenter.buildEventViewState(state);
+      const view = this.presenter.buildEventViewState(state);
       this.setText('techKnowledgeRate', view.text.techKnowledgeRate);
       const pending = this.getElement('pendingEventsContainer');
       const badge = this.getElement('eventsBadge');
@@ -131,7 +132,7 @@
     }
 
     open(eventData) {
-      const view = global.UIStatePresenter.buildEventModalViewState(eventData);
+      const view = this.presenter.buildEventModalViewState(eventData);
       this.setText('eventModalTitle', view.text.title);
       this.setText('eventModalDescription', view.text.description);
       const optionsContainer = this.getElement('eventModalOptions');

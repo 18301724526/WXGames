@@ -442,35 +442,32 @@ test('时代2可进阶时如果已在文明页会直接高亮进阶按钮', () =
 });
 
 test('事件弹窗会切换 show 类而不是失效的 active 类', () => {
-  const originalDocument = global.document;
-  try {
-    const modal = {
-      classList: {
-        values: new Set(),
-        add(name) { this.values.add(name); },
-        remove(name) { this.values.delete(name); },
-        contains(name) { return this.values.has(name); },
-      },
-    };
-    global.document = {
-      getElementById(id) {
-        if (id === 'eventModal') return modal;
-        return { textContent: '' };
-      },
-    };
+  const modal = {
+    classList: {
+      values: new Set(),
+      add(name) { this.values.add(name); },
+      remove(name) { this.values.delete(name); },
+      contains(name) { return this.values.has(name); },
+    },
+  };
+  const documentStub = {
+    getElementById(id) {
+      if (id === 'eventModal') return modal;
+      return { textContent: '', dataset: {}, classList: { add() {}, remove() {} } };
+    },
+  };
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  const EventUIRenderer = require('../js/ui/EventUIRenderer');
+  const renderer = new EventUIRenderer(() => {}, {
+    document: documentStub,
+    presenter: UIStatePresenter,
+  });
 
-    global.UIStatePresenter = require('../js/state/UIStatePresenter');
-    delete require.cache[require.resolve('../js/ui/EventUIRenderer')];
-    const EventUIRenderer = require('../js/ui/EventUIRenderer');
-    const renderer = new EventUIRenderer(() => {});
-    renderer.open({ title: '森林低语', description: 'desc', options: [{ reward: { wood: 10 } }] });
-    assert.equal(modal.classList.contains('show'), true);
-    assert.equal(renderer.isOpen(), true);
+  renderer.open({ title: '森林低语', description: 'desc', options: [{ reward: { wood: 10 } }] });
+  assert.equal(modal.classList.contains('show'), true);
+  assert.equal(renderer.isOpen(), true);
 
-    renderer.close();
-    assert.equal(modal.classList.contains('show'), false);
-    assert.equal(renderer.isOpen(), false);
-  } finally {
-    global.document = originalDocument;
-  }
+  renderer.close();
+  assert.equal(modal.classList.contains('show'), false);
+  assert.equal(renderer.isOpen(), false);
 });

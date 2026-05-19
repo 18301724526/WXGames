@@ -98,8 +98,9 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
       }
     };
     globalThis.EventUIRenderer = class {
-      constructor(setText) {
+      constructor(setText, options) {
         this.setText = setText;
+        this.options = options;
       }
     };
     globalThis.TerritoryUIRenderer = class {
@@ -133,6 +134,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.deepEqual(shell.buildingRenderer.buildingConfig, {});
     assert.equal(shell.buildingRenderer.options.presenter, factories.UIStatePresenter);
     assert.equal(shell.eventRenderer.setText, setText);
+    assert.equal(shell.eventRenderer.options.document, doc);
+    assert.equal(shell.eventRenderer.options.presenter, factories.UIStatePresenter);
     assert.deepEqual(shell.updateRuntime, { name: 'updateRuntime' });
     assert.deepEqual(shell.authRuntime, { name: 'authRuntime' });
     assert.deepEqual(shell.authStorage, { name: 'authStorage' });
