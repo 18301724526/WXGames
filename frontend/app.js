@@ -45,7 +45,7 @@ const Game = {
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
     this.stateManager = new window.GameStateManager(this.state);
-    this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
+    this.resourceRenderer = window.ResourceRenderer.fromDocument(document, (id, value) => this.setText(id, value));
     this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
     this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
     this.namingModal = window.NamingModalAdapter?.fromDocument(document);

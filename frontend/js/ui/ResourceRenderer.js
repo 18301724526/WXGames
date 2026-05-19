@@ -1,24 +1,33 @@
 (function (global) {
   class ResourceRenderer {
-    constructor(setText) {
+    constructor(setText, elements = {}) {
       this.setText = setText;
+      this.panel = elements.panel || null;
+      this.woodCard = elements.woodCard || null;
+      this.woodDetailCard = elements.woodDetailCard || null;
+      this.foodNetRate = elements.foodNetRate || null;
+    }
+
+    static fromDocument(doc = document, setText = () => {}) {
+      return new ResourceRenderer(setText, {
+        panel: doc.getElementById('resourcePanel'),
+        woodCard: doc.getElementById('woodCard'),
+        woodDetailCard: doc.getElementById('woodDetailCard'),
+        foodNetRate: doc.getElementById('foodNetRate'),
+      });
     }
 
     render(state) {
       const view = global.UIStatePresenter.buildResourceViewState(state);
-      const panel = document.getElementById('resourcePanel');
-      const woodCard = document.getElementById('woodCard');
-      const woodDetailCard = document.getElementById('woodDetailCard');
 
-      if (panel) panel.classList.toggle('has-era-two', view.classState.resourcePanel['has-era-two']);
-      this.applyVisibility(woodCard, view.visibility.woodCard);
-      this.applyVisibility(woodDetailCard, view.visibility.woodDetailCard);
+      if (this.panel) this.panel.classList.toggle('has-era-two', view.classState.resourcePanel['has-era-two']);
+      this.applyVisibility(this.woodCard, view.visibility.woodCard);
+      this.applyVisibility(this.woodDetailCard, view.visibility.woodDetailCard);
       Object.entries(view.text).forEach(([id, value]) => this.setText(id, value));
 
-      const netEl = document.getElementById('foodNetRate');
-      if (netEl) {
-        netEl.classList.toggle('is-positive', view.classState.foodNetRate['is-positive']);
-        netEl.classList.toggle('is-negative', view.classState.foodNetRate['is-negative']);
+      if (this.foodNetRate) {
+        this.foodNetRate.classList.toggle('is-positive', view.classState.foodNetRate['is-positive']);
+        this.foodNetRate.classList.toggle('is-negative', view.classState.foodNetRate['is-negative']);
       }
     }
 

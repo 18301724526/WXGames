@@ -18,105 +18,92 @@ function createClassList() {
 }
 
 test('wood resource card becomes visible in settlement era despite initial inline display none', () => {
-  const originalDocument = global.document;
-  try {
-    const elements = new Map();
-    elements.set('resourcePanel', { classList: createClassList() });
-    elements.set('woodCard', {
-      hidden: true,
-      style: { display: 'none' },
-      classList: createClassList(),
-    });
-    elements.set('woodDetailCard', {
-      hidden: true,
-      style: { display: 'none' },
-      classList: createClassList(),
-    });
-    global.document = {
-      getElementById(id) {
-        if (!elements.has(id)) {
-          elements.set(id, { classList: createClassList(), style: {}, textContent: '' });
-        }
-        return elements.get(id);
-      },
-    };
+  const elements = new Map();
+  elements.set('resourcePanel', { classList: createClassList() });
+  elements.set('woodCard', {
+    hidden: true,
+    style: { display: 'none' },
+    classList: createClassList(),
+  });
+  elements.set('woodDetailCard', {
+    hidden: true,
+    style: { display: 'none' },
+    classList: createClassList(),
+  });
+  elements.set('foodNetRate', { classList: createClassList(), style: {}, textContent: '' });
 
-    const texts = new Map();
-    const renderer = new ResourceRenderer((id, value) => texts.set(id, value));
+  const texts = new Map();
+  const renderer = ResourceRenderer.fromDocument({
+    getElementById(id) {
+      return elements.get(id) || null;
+    },
+  }, (id, value) => texts.set(id, value));
 
-    renderer.render({
-      currentEra: 2,
-      resources: {
-        food: 10,
-        knowledge: 5,
-        wood: 20,
-        foodOutputPerSecond: 1,
-        foodConsumptionPerSecond: 0.2,
-        foodNetPerSecond: 0.8,
-        knowledgePerSecond: 0.5,
-        woodPerSecond: 0,
-      },
-      happiness: 100,
-      gameDay: 1,
-    });
+  renderer.render({
+    currentEra: 2,
+    resources: {
+      food: 10,
+      knowledge: 5,
+      wood: 20,
+      foodOutputPerSecond: 1,
+      foodConsumptionPerSecond: 0.2,
+      foodNetPerSecond: 0.8,
+      knowledgePerSecond: 0.5,
+      woodPerSecond: 0,
+    },
+    happiness: 100,
+    gameDay: 1,
+  });
 
-    const panel = elements.get('resourcePanel');
-    const woodCard = elements.get('woodCard');
-    const woodDetailCard = elements.get('woodDetailCard');
-    assert.equal(panel.classList.contains('has-era-two'), true);
-    assert.equal(woodCard.hidden, false);
-    assert.equal(woodCard.classList.contains('is-hidden'), false);
-    assert.equal(woodCard.style.display, '');
-    assert.equal(woodDetailCard.hidden, false);
-    assert.equal(woodDetailCard.classList.contains('is-hidden'), false);
-    assert.equal(woodDetailCard.style.display, '');
-    assert.equal(texts.get('woodValue'), 20);
-    assert.equal(texts.get('woodRate'), '+0/s');
-    assert.equal(texts.get('foodDetailValue'), 10);
-    assert.equal(texts.get('knowledgeDetailValue'), 5);
-    assert.equal(texts.get('woodDetailValue'), 20);
-    assert.equal(texts.get('foodOutputRate'), '+1/s');
-    assert.equal(texts.get('foodConsumptionRate'), '-0.2/s');
-    assert.equal(texts.get('foodNetRate'), '+0.8/s');
-    assert.equal(texts.get('knowledgeDetailRate'), '+0.5/s');
-    assert.equal(texts.get('woodDetailRate'), '+0/s');
-  } finally {
-    global.document = originalDocument;
-  }
+  const panel = elements.get('resourcePanel');
+  const woodCard = elements.get('woodCard');
+  const woodDetailCard = elements.get('woodDetailCard');
+  assert.equal(panel.classList.contains('has-era-two'), true);
+  assert.equal(woodCard.hidden, false);
+  assert.equal(woodCard.classList.contains('is-hidden'), false);
+  assert.equal(woodCard.style.display, '');
+  assert.equal(woodDetailCard.hidden, false);
+  assert.equal(woodDetailCard.classList.contains('is-hidden'), false);
+  assert.equal(woodDetailCard.style.display, '');
+  assert.equal(texts.get('woodValue'), 20);
+  assert.equal(texts.get('woodRate'), '+0/s');
+  assert.equal(texts.get('foodDetailValue'), 10);
+  assert.equal(texts.get('knowledgeDetailValue'), 5);
+  assert.equal(texts.get('woodDetailValue'), 20);
+  assert.equal(texts.get('foodOutputRate'), '+1/s');
+  assert.equal(texts.get('foodConsumptionRate'), '-0.2/s');
+  assert.equal(texts.get('foodNetRate'), '+0.8/s');
+  assert.equal(texts.get('knowledgeDetailRate'), '+0.5/s');
+  assert.equal(texts.get('woodDetailRate'), '+0/s');
 });
 
 test('resource renderer receives compact resource amounts from view state', () => {
-  const originalDocument = global.document;
-  try {
-    const elements = new Map();
-    elements.set('resourcePanel', { classList: createClassList() });
-    elements.set('woodCard', { hidden: false, style: {}, classList: createClassList() });
-    elements.set('woodDetailCard', { hidden: false, style: {}, classList: createClassList() });
-    global.document = {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { classList: createClassList(), style: {}, textContent: '' });
-        return elements.get(id);
-      },
-    };
+  const elements = new Map();
+  elements.set('resourcePanel', { classList: createClassList() });
+  elements.set('woodCard', { hidden: false, style: {}, classList: createClassList() });
+  elements.set('woodDetailCard', { hidden: false, style: {}, classList: createClassList() });
+  elements.set('foodNetRate', { classList: createClassList(), style: {}, textContent: '' });
 
-    const texts = new Map();
-    const renderer = new ResourceRenderer((id, value) => texts.set(id, value));
+  const texts = new Map();
+  const renderer = new ResourceRenderer((id, value) => texts.set(id, value), {
+    panel: elements.get('resourcePanel'),
+    woodCard: elements.get('woodCard'),
+    woodDetailCard: elements.get('woodDetailCard'),
+    foodNetRate: elements.get('foodNetRate'),
+  });
 
-    renderer.render({
-      currentEra: 2,
-      resources: {
-        food: 1100,
-        knowledge: 1250000,
-        wood: 999,
-        foodNetPerSecond: 1200,
-      },
-    });
+  renderer.render({
+    currentEra: 2,
+    resources: {
+      food: 1100,
+      knowledge: 1250000,
+      wood: 999,
+      foodNetPerSecond: 1200,
+    },
+  });
 
-    assert.equal(texts.get('foodValue'), '1.1k');
-    assert.equal(texts.get('knowledgeValue'), '1.2M');
-    assert.equal(texts.get('woodValue'), 999);
-    assert.equal(texts.get('foodRate'), '+1.2k/s');
-  } finally {
-    global.document = originalDocument;
-  }
+  assert.equal(texts.get('foodValue'), '1.1k');
+  assert.equal(texts.get('knowledgeValue'), '1.2M');
+  assert.equal(texts.get('woodValue'), 999);
+  assert.equal(texts.get('foodRate'), '+1.2k/s');
 });

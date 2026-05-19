@@ -104,6 +104,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v1/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
+  assert.match(html, /ResourceRenderer\.js\?v=resource-renderer-adapter-v1/);
   assert.match(html, /RuntimeLogAdapter\.js\?v=runtime-log-adapter-v2/);
   assert.match(html, /AuthShellAdapter\.js\?v=auth-shell-adapter-v1/);
   assert.match(html, /PopulationPanelAdapter\.js\?v=population-panel-adapter-v1/);
@@ -116,7 +117,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /TerritoryUIRenderer\.js\?v=territory-ui-state-v1/);
   assert.match(html, /TutorialUIRenderer\.js\?v=tutorial-viewstate-v1/);
   assert.match(html, /LogModalAdapter\.js\?v=log-modal-adapter-v2/);
-  assert.match(html, /app\.js\?v=log-runtime-adapter-v1/);
+  assert.match(html, /app\.js\?v=resource-renderer-adapter-v1/);
   assert.match(html, /auth\.js\?v=auth-shell-adapter-v1/);
   assert.match(html, /population\.js\?v=population-panel-adapter-v1/);
   assert.match(html, /id="advisorBtn"/);
