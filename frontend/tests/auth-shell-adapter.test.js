@@ -38,6 +38,9 @@ test('auth shell adapter owns login shell and credential H5 writes', () => {
   const rememberInput = createElement();
   const settingsMenu = createElement();
   const loginButton = createElement();
+  const settingsButton = createElement();
+  const resetButton = createElement();
+  const logoutButton = createElement();
   const adapter = new AuthShellAdapter({
     loginPanel,
     loginMessage,
@@ -47,6 +50,9 @@ test('auth shell adapter owns login shell and credential H5 writes', () => {
     rememberInput,
     settingsMenu,
     loginButton,
+    settingsButton,
+    resetButton,
+    logoutButton,
   });
 
   adapter.applyShell({ loginPanelVisible: true, appVisible: false, message: 'login' });
@@ -68,4 +74,15 @@ test('auth shell adapter owns login shell and credential H5 writes', () => {
   passwordInput.listeners.keydown({ key: 'Escape' });
   loginButton.listeners.click();
   assert.equal(loginCount, 2);
+
+  const settingsCalls = [];
+  adapter.bindSettingsEvents({
+    onToggleSettings: () => settingsCalls.push('settings'),
+    onReset: () => settingsCalls.push('reset'),
+    onLogout: () => settingsCalls.push('logout'),
+  });
+  settingsButton.listeners.click();
+  resetButton.listeners.click();
+  logoutButton.listeners.click();
+  assert.deepEqual(settingsCalls, ['settings', 'reset', 'logout']);
 });

@@ -9,6 +9,9 @@
       this.rememberInput = elements.rememberInput || null;
       this.settingsMenu = elements.settingsMenu || null;
       this.loginButton = elements.loginButton || null;
+      this.settingsButton = elements.settingsButton || null;
+      this.resetButton = elements.resetButton || null;
+      this.logoutButton = elements.logoutButton || null;
     }
 
     static fromDocument(doc = document) {
@@ -21,6 +24,9 @@
         rememberInput: doc.getElementById('rememberPassword'),
         settingsMenu: doc.getElementById('settingsMenu'),
         loginButton: doc.getElementById('btnLogin'),
+        settingsButton: doc.getElementById('settingsBtn'),
+        resetButton: doc.getElementById('btnResetGame'),
+        logoutButton: doc.getElementById('btnLogout'),
       });
     }
 
@@ -63,6 +69,12 @@
       this.passwordInput?.addEventListener?.('keydown', submitOnEnter);
       this.usernameInput?.addEventListener?.('keydown', submitOnEnter);
       this.loginButton?.addEventListener?.('click', () => onLogin());
+    }
+
+    bindSettingsEvents(handlers = {}) {
+      this.settingsButton?.addEventListener?.('click', () => handlers.onToggleSettings?.());
+      this.resetButton?.addEventListener?.('click', () => handlers.onReset?.());
+      this.logoutButton?.addEventListener?.('click', () => handlers.onLogout?.());
     }
   }
 

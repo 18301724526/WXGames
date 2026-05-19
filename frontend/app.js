@@ -212,22 +212,17 @@ const Game = {
     });
     const logButton = document.getElementById('logButton');
     if (logButton) logButton.addEventListener('click', () => this.showRecentLogs());
-    const settingsButton = document.getElementById('settingsBtn');
-    if (settingsButton) settingsButton.addEventListener('click', () => this.toggleSettings());
-    const resetButton = document.getElementById('btnResetGame');
-    if (resetButton) {
-      resetButton.addEventListener('click', async () => {
+    this.authShell?.bindSettingsEvents({
+      onToggleSettings: () => this.toggleSettings(),
+      onReset: async () => {
         await this.resetGame();
         this.closeSettings && this.closeSettings();
-      });
-    }
-    const logoutButton = document.getElementById('btnLogout');
-    if (logoutButton) {
-      logoutButton.addEventListener('click', () => {
+      },
+      onLogout: () => {
         this.closeSettings && this.closeSettings();
         this.logout();
-      });
-    }
+      },
+    });
     this.logModal?.bindClose(() => this.closeRequestLogs && this.closeRequestLogs());
   },
 
