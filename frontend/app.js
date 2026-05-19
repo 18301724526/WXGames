@@ -1,6 +1,7 @@
 const Game = {
   apiBase: null,
   config: null,
+  stateNormalizer: null,
   token: null,
   playerId: null,
   state: {
@@ -211,8 +212,8 @@ const Game = {
   },
 
   applyApiState(data) {
-    const nextState = window.FrontendGameState.normalizeGameState(data);
-    this.tutorial = window.FrontendGameState.normalizeTutorialState(data);
+    const nextState = this.stateNormalizer.normalizeGameState(data);
+    this.tutorial = this.stateNormalizer.normalizeTutorialState(data);
     this.syncFromServer(nextState, data.tutorial, data.eraProgress);
   },
 

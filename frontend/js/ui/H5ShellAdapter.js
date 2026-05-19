@@ -32,6 +32,7 @@
         config: global.GameConfig,
         gameModules,
         presenter: global.UIStatePresenter,
+        stateNormalizer: global.FrontendGameState,
         scheduler,
         textAdapter: global.H5TextAdapter?.fromDocument(doc),
         updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),
