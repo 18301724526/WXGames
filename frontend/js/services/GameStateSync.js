@@ -4,8 +4,8 @@
       this.api = api;
       this.intervalMs = intervalMs;
       this.scheduler = {
-        setInterval: scheduler.setInterval || global.setInterval?.bind(global),
-        clearInterval: scheduler.clearInterval || global.clearInterval?.bind(global),
+        setInterval: scheduler.setInterval || (() => ({ disabled: true })),
+        clearInterval: scheduler.clearInterval || (() => {}),
       };
       this.timer = null;
       this.onState = null;

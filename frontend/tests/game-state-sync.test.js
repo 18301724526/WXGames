@@ -78,6 +78,5 @@ test('app injects the shell scheduler into GameStateSync', () => {
   const serviceJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'services', 'GameStateSync.js'), 'utf8');
 
   assert.match(appJs, /new window\.GameStateSync\(this\.gameAPI, window\.GameConfig\.SYNC_INTERVAL_MS, this\.scheduler\)/);
-  assert.doesNotMatch(serviceJs, /[^.]setInterval\(/);
-  assert.doesNotMatch(serviceJs, /[^.]clearInterval\(/);
+  assert.doesNotMatch(serviceJs, /global\.setInterval|global\.clearInterval/);
 });
