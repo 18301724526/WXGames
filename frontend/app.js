@@ -48,6 +48,7 @@ const Game = {
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
     this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
+    this.namingModal = window.NamingModalAdapter?.fromDocument(document);
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -198,16 +199,10 @@ const Game = {
       onClose: () => this.closeResourceDetails(),
     });
 
-    const namingModal = document.getElementById('namingModal');
-    if (namingModal) {
-      namingModal.addEventListener('click', (event) => {
-        if (event.target === namingModal) this.closeNamingModal();
-      });
-    }
-    const closeNamingButton = document.getElementById('btnCloseNamingModal');
-    if (closeNamingButton) closeNamingButton.addEventListener('click', () => this.closeNamingModal());
-    const submitNamingButton = document.getElementById('btnSubmitNaming');
-    if (submitNamingButton) submitNamingButton.addEventListener('click', () => this.submitNaming());
+    this.namingModal?.bind({
+      onClose: () => this.closeNamingModal(),
+      onSubmit: () => this.submitNaming(),
+    });
 
     this.advisorPanel?.bind({
       onOpen: () => this.openAdvisor(),
@@ -735,34 +730,21 @@ const Game = {
   },
 
   openNamingModal(prompt) {
-    const modal = document.getElementById('namingModal');
-    const title = document.getElementById('namingTitle');
-    const message = document.getElementById('namingMessage');
-    const input = document.getElementById('namingInput');
-    if (!modal || !input) return;
     const view = window.UIStatePresenter.buildNamingPromptViewState(prompt);
     this.activeNamingPrompt = prompt;
     this.activeNamingPromptKey = view.key;
-    if (title) title.textContent = view.title;
-    if (message) message.textContent = view.message;
-    input.value = '';
-    input.placeholder = view.placeholder;
-    modal.classList.add('show');
-    input.focus();
+    this.namingModal?.open(view);
   },
 
   closeNamingModal() {
-    const modal = document.getElementById('namingModal');
-    if (modal) modal.classList.remove('show');
+    this.namingModal?.close();
   },
 
   async submitNaming() {
     const prompt = this.activeNamingPrompt;
-    const input = document.getElementById('namingInput');
-    const button = document.getElementById('btnSubmitNaming');
-    const name = input?.value?.trim();
+    const name = this.namingModal?.getName();
     if (!prompt || !name) return;
-    if (button) button.disabled = true;
+    this.namingModal?.setSubmitting(true);
     try {
       const result = prompt.type === 'polity'
         ? await this.gameAPI.renamePolity(name)
@@ -776,7 +758,7 @@ const Game = {
     } catch (error) {
       this.log(`❌ ${error.payload?.message || error.message}`);
     } finally {
-      if (button) button.disabled = false;
+      this.namingModal?.setSubmitting(false);
     }
   },
 

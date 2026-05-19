@@ -28,6 +28,7 @@ function createWindowStub() {
     EventController: class {},
     BuildingController: class {},
     AdvisorPanelAdapter: require('../js/ui/AdvisorPanelAdapter'),
+    NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     DOMHelper: { setText() {} },
   };
 }
