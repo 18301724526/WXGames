@@ -1,16 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-global.FrontendBuildingState = {
-  getLevel(buildings, id) {
-    return buildings?.[id]?.level || 0;
-  },
-  getActionLabel(cost, level) {
-    if (cost === null) return '已满级';
-    return level > 0 ? '升级' : '建造';
-  },
-};
-
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -232,4 +222,11 @@ test('building renderer source does not read global presenter', () => {
 
   assert.match(source, /this\.presenter\.buildBuildingViewState/);
   assert.doesNotMatch(source, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
+});
+
+test('presenter source does not read global building state helper', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'state', 'UIStatePresenter.js'), 'utf8');
+
+  assert.match(source, /static getBuildingLevel\(buildings, id\)/);
+  assert.doesNotMatch(source, /global\.FrontendBuildingState|globalThis\.FrontendBuildingState|window\.FrontendBuildingState/);
 });

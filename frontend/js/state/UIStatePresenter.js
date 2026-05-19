@@ -423,17 +423,11 @@
     }
 
     static getBuildingLevel(buildings, id) {
-      if (global.FrontendBuildingState?.getLevel) {
-        return global.FrontendBuildingState.getLevel(buildings, id);
-      }
       const entry = buildings?.[id];
       return entry && typeof entry === 'object' ? this.toInteger(entry.level) : this.toInteger(entry);
     }
 
     static getBuildingActionLabel(cost, level) {
-      if (global.FrontendBuildingState?.getActionLabel) {
-        return global.FrontendBuildingState.getActionLabel(cost, level);
-      }
       if (cost === null) return '已满级';
       return level > 0 ? '升级' : '建造';
     }

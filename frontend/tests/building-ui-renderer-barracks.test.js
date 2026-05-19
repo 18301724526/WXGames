@@ -1,16 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-global.FrontendBuildingState = {
-  getLevel(buildings, id) {
-    return buildings?.[id]?.level || 0;
-  },
-  getActionLabel(cost, level) {
-    if (cost === null) return 'max';
-    return level > 0 ? 'upgrade' : 'build';
-  },
-};
-
 const UIStatePresenter = require('../js/state/UIStatePresenter');
 const BuildingUIRenderer = require('../js/ui/BuildingUIRenderer');
 
