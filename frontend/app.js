@@ -52,6 +52,7 @@ const Game = {
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
+      trigger: document.getElementById('logButton'),
       modal: document.getElementById('logModal'),
       content: document.getElementById('logModalContent'),
       closeButton: document.getElementById('btnCloseLogModal'),
@@ -210,8 +211,7 @@ const Game = {
       onClose: () => this.closeAdvisor(),
       onGo: () => this.goToAdvisorTarget(),
     });
-    const logButton = document.getElementById('logButton');
-    if (logButton) logButton.addEventListener('click', () => this.showRecentLogs());
+    this.logModal?.bindOpen(() => this.showRecentLogs());
     this.authShell?.bindSettingsEvents({
       onToggleSettings: () => this.toggleSettings(),
       onReset: async () => {

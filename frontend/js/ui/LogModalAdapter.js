@@ -1,6 +1,7 @@
 (function (global) {
   class LogModalAdapter {
     constructor(options = {}) {
+      this.trigger = options.trigger || null;
       this.modal = options.modal || null;
       this.content = options.content || null;
       this.closeButton = options.closeButton || null;
@@ -29,6 +30,10 @@
         if (event.target === this.modal) onClose?.();
       });
       this.closeButton?.addEventListener?.('click', () => onClose?.());
+    }
+
+    bindOpen(onOpen) {
+      this.trigger?.addEventListener?.('click', () => onOpen?.());
     }
   }
 

@@ -16,7 +16,8 @@ test('log modal adapter owns H5 modal content and visibility writes', async () =
   const modal = { style: {}, classList: createClassList(), listeners: {}, addEventListener(type, handler) { this.listeners[type] = handler; } };
   const content = { innerHTML: '' };
   const closeButton = { listeners: {}, addEventListener(type, handler) { this.listeners[type] = handler; } };
-  const adapter = new LogModalAdapter({ modal, content, closeButton, activateDelayMs: 0 });
+  const trigger = { listeners: {}, addEventListener(type, handler) { this.listeners[type] = handler; } };
+  const adapter = new LogModalAdapter({ trigger, modal, content, closeButton, activateDelayMs: 0 });
 
   adapter.open('<div>日志</div>');
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -35,4 +36,8 @@ test('log modal adapter owns H5 modal content and visibility writes', async () =
   modal.listeners.click({ target: modal });
   closeButton.listeners.click();
   assert.deepEqual(calls, ['close', 'close']);
+
+  adapter.bindOpen(() => calls.push('open'));
+  trigger.listeners.click();
+  assert.deepEqual(calls, ['close', 'close', 'open']);
 });
