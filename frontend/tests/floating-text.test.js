@@ -36,12 +36,12 @@ test('floating text adapter owns H5 floating text node creation', () => {
     durationMs: 1,
   });
 
-  const shown = adapter.show('食物 +10', { selector: '.food-card', color: '#fff' });
+  const shown = adapter.show('food +10', { selector: '.food-card', color: '#fff' });
 
   assert.equal(shown, true);
   assert.equal(created.length, 1);
   assert.equal(appended[0].className, 'floating-text');
-  assert.equal(appended[0].textContent, '食物 +10');
+  assert.equal(appended[0].textContent, 'food +10');
   assert.equal(appended[0].style.color, '#fff');
   assert.equal(appended[0].style.left, '60px');
   assert.equal(appended[0].style.top, '40px');
@@ -53,5 +53,38 @@ test('floating text adapter returns false without a target or layer', () => {
     resolveTarget: () => null,
   });
 
-  assert.equal(adapter.show('隐藏'), false);
+  assert.equal(adapter.show('hidden'), false);
+});
+
+test('floating text adapter can collect H5 hooks from document without render-time document access', () => {
+  const created = [];
+  const appended = [];
+  const target = {
+    getBoundingClientRect() {
+      return { left: 4, top: 8, width: 12 };
+    },
+  };
+  const layer = {
+    appendChild(element) {
+      appended.push(element);
+    },
+  };
+  const adapter = FloatingTextAdapter.fromDocument({
+    getElementById(id) {
+      return id === 'fxLayer' ? layer : null;
+    },
+    querySelector(selector) {
+      return selector === '.food-card' ? target : null;
+    },
+    createElement(tag) {
+      const element = { tag, style: {}, remove() {} };
+      created.push(element);
+      return element;
+    },
+  }, { durationMs: 1 });
+
+  assert.equal(adapter.show('food +1'), true);
+  assert.equal(created[0].tag, 'div');
+  assert.equal(appended[0].style.left, '10px');
+  assert.equal(appended[0].style.top, '8px');
 });
