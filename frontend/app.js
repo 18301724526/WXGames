@@ -54,6 +54,7 @@ const Game = {
     this.logModal = new window.LogModalAdapter({
       modal: document.getElementById('logModal'),
       content: document.getElementById('logModalContent'),
+      closeButton: document.getElementById('btnCloseLogModal'),
     });
     this.runtimeLog = new window.RuntimeLogAdapter({
       content: document.getElementById('logContent'),
@@ -227,14 +228,7 @@ const Game = {
         this.logout();
       });
     }
-    const logModal = document.getElementById('logModal');
-    if (logModal) {
-      logModal.addEventListener('click', (event) => {
-        if (event.target === logModal) this.closeRequestLogs && this.closeRequestLogs();
-      });
-    }
-    const closeLogButton = document.getElementById('btnCloseLogModal');
-    if (closeLogButton) closeLogButton.addEventListener('click', () => this.closeRequestLogs && this.closeRequestLogs());
+    this.logModal?.bindClose(() => this.closeRequestLogs && this.closeRequestLogs());
   },
 
   async startHeartbeat() {

@@ -13,9 +13,10 @@ function createClassList() {
 }
 
 test('log modal adapter owns H5 modal content and visibility writes', async () => {
-  const modal = { style: {}, classList: createClassList() };
+  const modal = { style: {}, classList: createClassList(), listeners: {}, addEventListener(type, handler) { this.listeners[type] = handler; } };
   const content = { innerHTML: '' };
-  const adapter = new LogModalAdapter({ modal, content, activateDelayMs: 0 });
+  const closeButton = { listeners: {}, addEventListener(type, handler) { this.listeners[type] = handler; } };
+  const adapter = new LogModalAdapter({ modal, content, closeButton, activateDelayMs: 0 });
 
   adapter.open('<div>日志</div>');
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -28,4 +29,10 @@ test('log modal adapter owns H5 modal content and visibility writes', async () =
 
   assert.equal(modal.style.display, 'none');
   assert.equal(modal.classList.contains('active'), false);
+
+  const calls = [];
+  adapter.bindClose(() => calls.push('close'));
+  modal.listeners.click({ target: modal });
+  closeButton.listeners.click();
+  assert.deepEqual(calls, ['close', 'close']);
 });

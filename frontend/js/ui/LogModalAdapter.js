@@ -3,6 +3,7 @@
     constructor(options = {}) {
       this.modal = options.modal || null;
       this.content = options.content || null;
+      this.closeButton = options.closeButton || null;
       this.activateDelayMs = options.activateDelayMs ?? 10;
     }
 
@@ -21,6 +22,13 @@
       if (!this.modal) return;
       this.modal.classList.remove('active');
       this.modal.style.display = 'none';
+    }
+
+    bindClose(onClose) {
+      this.modal?.addEventListener?.('click', (event) => {
+        if (event.target === this.modal) onClose?.();
+      });
+      this.closeButton?.addEventListener?.('click', () => onClose?.());
     }
   }
 
