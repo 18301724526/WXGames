@@ -47,6 +47,10 @@ const Game = {
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
+    this.logModal = new window.LogModalAdapter({
+      modal: document.getElementById('logModal'),
+      content: document.getElementById('logModalContent'),
+    });
     this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'), {
       getUiState: () => this.territoryController?.getUiState?.() || {},
     });
@@ -839,14 +843,9 @@ const Game = {
   },
 
   showRecentLogs() {
-    const modal = document.getElementById('logModal');
-    const content = document.getElementById('logModalContent');
-    if (!modal || !content) return;
     const entries = Array.from(document.querySelectorAll('#logContent .log-item'));
     const view = window.UIStatePresenter.buildRecentLogViewState(entries);
-    content.innerHTML = this.renderRecentLogView(view);
-    modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('active'), 10);
+    this.logModal?.open(this.renderRecentLogView(view));
   },
 
   renderEraConditions(conditions) {

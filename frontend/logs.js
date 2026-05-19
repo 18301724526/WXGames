@@ -49,20 +49,12 @@ window.mountLogMethods = function(game) {
   };
 
   game.showRequestLogs = function() {
-    const modal = document.getElementById('logModal');
-    const content = document.getElementById('logModalContent');
-    if (!modal || !content) return;
     const view = window.UIStatePresenter.buildRequestLogViewState(this.requestLogs);
-    content.innerHTML = renderRequestLogs(view);
-    modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('active'), 10);
+    this.logModal?.open(renderRequestLogs(view));
   };
 
   game.closeRequestLogs = function() {
-    const modal = document.getElementById('logModal');
-    if (!modal) return;
-    modal.classList.remove('active');
-    modal.style.display = 'none';
+    this.logModal?.close();
   };
 
   console.log('[logs.js] 请求日志模块已挂载');
