@@ -70,7 +70,8 @@ const Game = {
     this.runtimeLog = new window.RuntimeLogAdapter({
       content: document.getElementById('logContent'),
     });
-    this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'), {
+    this.territoryActions = window.TerritoryActionAdapter?.fromDocument(document);
+    this.territoryRenderer = new window.TerritoryUIRenderer(this.territoryActions?.getContainer?.(), {
       getUiState: () => this.territoryController?.getUiState?.() || {},
     });
     this.tutorialRenderer = new window.TutorialUIRenderer();
@@ -100,8 +101,7 @@ const Game = {
       onError: (error) => this.log(`❌ ${error.payload?.message || error.message}`),
     });
     this.territoryController = new window.TerritoryController({
-      container: document.getElementById('territoryGrid'),
-      scoutContainer: document.getElementById('scoutDirectionGrid'),
+      actionAdapter: this.territoryActions,
       api: this.gameAPI,
       getState: () => this.state,
       onRenderRequested: () => this.renderTerritory(),
