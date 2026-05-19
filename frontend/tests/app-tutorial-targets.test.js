@@ -27,6 +27,7 @@ function createWindowStub() {
     TutorialController: class {},
     EventController: class {},
     BuildingController: class {},
+    AdvisorPanelAdapter: require('../js/ui/AdvisorPanelAdapter'),
     DOMHelper: { setText() {} },
   };
 }
@@ -577,6 +578,7 @@ test('renderSoftGuide exposes backend advice through the advisor panel', () => {
     require('../app');
 
     const { Game } = global.window;
+    Game.advisorPanel = global.window.AdvisorPanelAdapter.fromDocument(global.document);
     Game.state.softGuide = {
       target: 'tab-military',
       message: '派出侦察队探索城市之外的世界。',

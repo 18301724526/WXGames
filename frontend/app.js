@@ -47,6 +47,7 @@ const Game = {
     this.stateManager = new window.GameStateManager(this.state);
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
+    this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -208,8 +209,11 @@ const Game = {
     const submitNamingButton = document.getElementById('btnSubmitNaming');
     if (submitNamingButton) submitNamingButton.addEventListener('click', () => this.submitNaming());
 
-    const advisorButton = document.getElementById('advisorBtn');
-    if (advisorButton) advisorButton.addEventListener('click', () => this.openAdvisor());
+    this.advisorPanel?.bind({
+      onOpen: () => this.openAdvisor(),
+      onClose: () => this.closeAdvisor(),
+      onGo: () => this.goToAdvisorTarget(),
+    });
     const logButton = document.getElementById('logButton');
     if (logButton) logButton.addEventListener('click', () => this.showRecentLogs());
     const settingsButton = document.getElementById('settingsBtn');
@@ -236,18 +240,6 @@ const Game = {
     }
     const closeLogButton = document.getElementById('btnCloseLogModal');
     if (closeLogButton) closeLogButton.addEventListener('click', () => this.closeRequestLogs && this.closeRequestLogs());
-    const advisorModal = document.getElementById('advisorModal');
-    if (advisorModal) {
-      advisorModal.addEventListener('click', (event) => {
-        if (event.target === advisorModal) this.closeAdvisor();
-      });
-    }
-    const closeAdvisorButton = document.getElementById('btnCloseAdvisor');
-    if (closeAdvisorButton) closeAdvisorButton.addEventListener('click', () => this.closeAdvisor());
-    const dismissAdvisorButton = document.getElementById('btnAdvisorDismiss');
-    if (dismissAdvisorButton) dismissAdvisorButton.addEventListener('click', () => this.closeAdvisor());
-    const advisorGoButton = document.getElementById('btnAdvisorGo');
-    if (advisorGoButton) advisorGoButton.addEventListener('click', () => this.goToAdvisorTarget());
   },
 
   async startHeartbeat() {
@@ -795,26 +787,17 @@ const Game = {
 
   updateAdvisor(guide) {
     const view = window.UIStatePresenter.buildAdvisorViewState(guide);
-    const button = document.getElementById('advisorBtn');
-    const modal = document.getElementById('advisorModal');
-    const messageElement = document.getElementById('advisorMessage');
-    const goButton = document.getElementById('btnAdvisorGo');
-    if (button) button.hidden = view.hidden;
-    if (messageElement) messageElement.textContent = view.text.message;
     this.activeAdvisor = view.activeAdvisor;
-    if (goButton) goButton.disabled = view.goButton.disabled;
-    if (view.closeModal && modal) modal.classList.remove('show');
+    this.advisorPanel?.render(view);
   },
 
   openAdvisor() {
     if (!this.activeAdvisor?.message) return;
-    const modal = document.getElementById('advisorModal');
-    if (modal) modal.classList.add('show');
+    this.advisorPanel?.open();
   },
 
   closeAdvisor() {
-    const modal = document.getElementById('advisorModal');
-    if (modal) modal.classList.remove('show');
+    this.advisorPanel?.close();
   },
 
   goToAdvisorTarget() {
