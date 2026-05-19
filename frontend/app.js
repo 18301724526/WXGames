@@ -67,6 +67,8 @@ const Game = {
       getState: () => this.state,
       onTabLockChange: () => this.updateTabLocks(),
       storage: this.tutorialStorage,
+      startDelayMs: this.config?.TUTORIAL_START_DELAY_MS,
+      scheduler: this.scheduler,
     });
     this.eventController = new constructors.EventController({
       api: this.gameAPI,

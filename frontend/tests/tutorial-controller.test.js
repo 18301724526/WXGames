@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const H5TutorialStorageAdapter = require('../js/ui/H5TutorialStorageAdapter');
 
 function createStorage(initial = {}) {
@@ -28,22 +30,16 @@ test('step 0 时即使本地残留 autoStarted 也会重新触发自动引导', 
     show() {},
   };
   const warnings = [];
-  const originalGameConfig = global.GameConfig;
-  const originalSetTimeout = global.setTimeout;
   const originalConsoleWarn = console.warn;
 
   try {
-    global.GameConfig = { TUTORIAL_START_DELAY_MS: 0 };
-    global.setTimeout = (callback) => {
-      callback();
-      return 1;
-    };
     console.warn = (...args) => warnings.push(args.join(' '));
 
     delete require.cache[require.resolve('../js/controllers/TutorialController')];
     const TutorialController = require('../js/controllers/TutorialController');
 
     let advancedTo = null;
+    const scheduled = [];
     const controller = new TutorialController({
       api: {
         async advanceTutorial(step) {
@@ -55,9 +51,20 @@ test('step 0 时即使本地残留 autoStarted 也会重新触发自动引导', 
       getTarget: () => null,
       onTabLockChange: () => {},
       storage: tutorialStorage,
+      startDelayMs: 123,
+      scheduler: {
+        setTimeout(callback, delayMs) {
+          scheduled.push({ callback, delayMs });
+          return { callback, delayMs };
+        },
+      },
     });
 
     controller.setState({ completed: false, currentStep: 0 });
+    assert.equal(advancedTo, null);
+    assert.equal(scheduled.length, 1);
+    assert.equal(scheduled[0].delayMs, 123);
+    scheduled[0].callback();
     await Promise.resolve();
 
     assert.equal(advancedTo, 1);
@@ -66,10 +73,17 @@ test('step 0 时即使本地残留 autoStarted 也会重新触发自动引导', 
     assert.equal(renderer.hideCalls > 0, true);
     assert.equal(warnings.length, 0);
   } finally {
-    global.GameConfig = originalGameConfig;
-    global.setTimeout = originalSetTimeout;
     console.warn = originalConsoleWarn;
   }
+});
+
+test('tutorial controller auto start is driven by injected scheduler and config', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'controllers', 'TutorialController.js'), 'utf8');
+
+  assert.match(source, /this\.scheduler\.setTimeout/);
+  assert.match(source, /this\.startDelayMs/);
+  assert.doesNotMatch(source, /global\.GameConfig|GameConfig\.TUTORIAL_START_DELAY_MS/);
+  assert.doesNotMatch(source, /[^\w.]setTimeout\(/);
 });
 
 test('时代2引导步骤会按规则锁定标签页', () => {

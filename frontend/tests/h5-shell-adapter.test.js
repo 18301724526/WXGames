@@ -32,6 +32,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     id: 'runtime',
     setInterval() {},
     clearInterval() {},
+    setTimeout() {},
+    clearTimeout() {},
   };
   const originalGlobals = {};
   const factories = {
@@ -134,6 +136,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.deepEqual(shell.tutorialStorage, { name: 'tutorialStorage' });
     assert.equal(typeof shell.scheduler.setInterval, 'function');
     assert.equal(typeof shell.scheduler.clearInterval, 'function');
+    assert.equal(typeof shell.scheduler.setTimeout, 'function');
+    assert.equal(typeof shell.scheduler.clearTimeout, 'function');
     assert.deepEqual(shell.floatingText, { name: 'floatingText' });
     assert.equal(shell.territoryRenderer.container, 'territory-grid');
     assert.equal(shell.territoryRenderer.options.getUiState, getTerritoryUiState);
@@ -158,8 +162,8 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=explicit-doc-v1[\s\S]*app\.js\?v=territory-rename-adapter-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=tutorial-scheduler-v1/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=tutorial-scheduler-v1[\s\S]*app\.js\?v=tutorial-scheduler-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(appJs, /window\.FrontendGameState/);

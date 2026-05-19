@@ -19,6 +19,8 @@
       const scheduler = {
         setInterval: runtime.setInterval?.bind(runtime),
         clearInterval: runtime.clearInterval?.bind(runtime),
+        setTimeout: runtime.setTimeout?.bind(runtime),
+        clearTimeout: runtime.clearTimeout?.bind(runtime),
       };
       const gameModules = {
         mount(game) {

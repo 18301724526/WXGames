@@ -27,6 +27,14 @@
         setAutoStarted: () => {},
         setProgress: () => {},
       };
+      this.startDelayMs = Number(options.startDelayMs) || 0;
+      this.scheduler = {
+        setTimeout: (callback) => {
+          callback();
+          return null;
+        },
+        ...(options.scheduler || {}),
+      };
       this.state = createFallbackState(0);
       this.autoStarted = this.storage.isAutoStarted();
     }
@@ -65,11 +73,11 @@
       if (!this.state.completed && this.state.currentStep === 0 && !this.autoStarted) {
         this.autoStarted = true;
         this.storage.setAutoStarted(true);
-        setTimeout(() => this.advanceTo(1).catch((error) => {
+        this.scheduler.setTimeout(() => this.advanceTo(1).catch((error) => {
           console.warn('[tutorial] auto start failed:', error);
           this.autoStarted = false;
           this.storage.setAutoStarted(false);
-        }), global.GameConfig.TUTORIAL_START_DELAY_MS);
+        }), this.startDelayMs);
       }
     }
 
