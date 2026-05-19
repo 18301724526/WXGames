@@ -16,6 +16,10 @@
         authRuntime,
         authStorage,
       };
+      const scheduler = {
+        setInterval: runtime.setInterval?.bind(runtime),
+        clearInterval: runtime.clearInterval?.bind(runtime),
+      };
       const gameModules = {
         mount(game) {
           global.mountAuthMethods?.(game, moduleDeps);
@@ -26,6 +30,7 @@
 
       return new H5ShellAdapter({
         gameModules,
+        scheduler,
         textAdapter: global.H5TextAdapter?.fromDocument(doc),
         updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),
         authRuntime,

@@ -1,8 +1,12 @@
 (function (global) {
   class GameStateSync {
-    constructor(api, intervalMs) {
+    constructor(api, intervalMs, scheduler = {}) {
       this.api = api;
       this.intervalMs = intervalMs;
+      this.scheduler = {
+        setInterval: scheduler.setInterval || global.setInterval?.bind(global),
+        clearInterval: scheduler.clearInterval || global.clearInterval?.bind(global),
+      };
       this.timer = null;
       this.onState = null;
       this.onError = null;
@@ -25,7 +29,7 @@
 
     start() {
       this.stop();
-      this.timer = setInterval(() => this.fetchNow().catch(() => {}), this.intervalMs);
+      this.timer = this.scheduler.setInterval(() => this.fetchNow().catch(() => {}), this.intervalMs);
     }
 
     setIntervalMs(intervalMs) {
@@ -38,7 +42,7 @@
 
     stop() {
       if (this.timer) {
-        clearInterval(this.timer);
+        this.scheduler.clearInterval(this.timer);
         this.timer = null;
       }
     }

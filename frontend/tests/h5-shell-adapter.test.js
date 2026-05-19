@@ -28,7 +28,11 @@ function makeRuntimeFactory(name, calls, result = null) {
 test('H5 shell adapter collects H5 adapters in one place', () => {
   const calls = [];
   const doc = { id: 'doc' };
-  const runtime = { id: 'runtime' };
+  const runtime = {
+    id: 'runtime',
+    setInterval() {},
+    clearInterval() {},
+  };
   const originalGlobals = {};
   const factories = {
     H5TextAdapter: makeFactory('text', calls),
@@ -107,6 +111,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.deepEqual(shell.authRuntime, { name: 'authRuntime' });
     assert.deepEqual(shell.authStorage, { name: 'authStorage' });
     assert.deepEqual(shell.tutorialStorage, { name: 'tutorialStorage' });
+    assert.equal(typeof shell.scheduler.setInterval, 'function');
+    assert.equal(typeof shell.scheduler.clearInterval, 'function');
     assert.deepEqual(shell.floatingText, { name: 'floatingText' });
     assert.equal(shell.territoryRenderer.container, 'territory-grid');
     assert.equal(shell.territoryRenderer.options.getUiState, getTerritoryUiState);
@@ -131,8 +137,8 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-deps-v1/);
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-deps-v1[\s\S]*app\.js\?v=h5-module-deps-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=sync-scheduler-v1/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=sync-scheduler-v1[\s\S]*app\.js\?v=sync-scheduler-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.doesNotMatch(appJs, /window\.mountFloatingText/);
   assert.doesNotMatch(appJs, /window\.mount(?:AuthMethods|PopulationMethods|LogMethods)/);

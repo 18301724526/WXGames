@@ -44,7 +44,7 @@ const Game = {
     this.token = this.authStorage?.getToken?.() || null;
     this.gameAPI = new window.GameAPI(this.apiBase, this.token);
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
-    this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS);
+    this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS, this.scheduler);
     this.updateChecker = new window.UpdateChecker({
       api: this.gameAPI,
       intervalMs: window.GameConfig.UPDATE_CHECK_INTERVAL_MS,
