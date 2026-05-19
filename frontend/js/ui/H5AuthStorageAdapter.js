@@ -15,8 +15,8 @@
       this.storage = storage || null;
     }
 
-    static fromRuntime(runtime = global) {
-      return new H5AuthStorageAdapter(runtime?.localStorage || global.localStorage || null);
+    static fromRuntime(runtime = null) {
+      return new H5AuthStorageAdapter(runtime?.localStorage || null);
     }
 
     static fromStorage(storage) {

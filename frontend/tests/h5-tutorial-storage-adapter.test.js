@@ -43,13 +43,25 @@ test('H5 tutorial storage adapter owns local tutorial progress flags', () => {
   assert.equal(storage.getItem('tutorialCompleted'), null);
 });
 
+test('H5 tutorial storage adapter uses only the injected runtime storage', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5TutorialStorageAdapter.js'), 'utf8');
+  const storage = createStorage({ tutorialAutoStarted: 'true' });
+  const adapter = H5TutorialStorageAdapter.fromRuntime({ localStorage: storage });
+  const emptyAdapter = H5TutorialStorageAdapter.fromRuntime();
+
+  assert.equal(adapter.isAutoStarted(), true);
+  assert.equal(emptyAdapter.isAutoStarted(), false);
+  assert.match(source, /static fromRuntime\(runtime = null\)/);
+  assert.doesNotMatch(source, /global\.localStorage|runtime = global/);
+});
+
 test('tutorial controller and app delegate local storage to H5 tutorial storage adapter', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const controllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'controllers', 'TutorialController.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5TutorialStorageAdapter\.js\?v=h5-tutorial-storage-v1/);
-  assert.match(html, /H5TutorialStorageAdapter\.js\?v=h5-tutorial-storage-v1[\s\S]*H5ShellAdapter\.js\?v=state-manager-building-v1[\s\S]*TutorialController\.js\?v=tutorial-scheduler-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  assert.match(html, /js\/ui\/H5TutorialStorageAdapter\.js\?v=h5-storage-runtime-v1/);
+  assert.match(html, /H5TutorialStorageAdapter\.js\?v=h5-storage-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=state-manager-building-v1[\s\S]*TutorialController\.js\?v=tutorial-scheduler-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
   assert.match(appJs, /storage: this\.tutorialStorage/);
   assert.match(controllerJs, /this\.storage = options\.storage/);
   assert.doesNotMatch(controllerJs, /\blocalStorage\b|getItem\('tutorialAutoStarted'|setItem\('tutorial|removeItem\('tutorial/);

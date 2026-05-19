@@ -10,8 +10,8 @@
       this.storage = storage || null;
     }
 
-    static fromRuntime(runtime = global) {
-      return new H5TutorialStorageAdapter(runtime?.localStorage || global.localStorage || null);
+    static fromRuntime(runtime = null) {
+      return new H5TutorialStorageAdapter(runtime?.localStorage || null);
     }
 
     static fromStorage(storage) {

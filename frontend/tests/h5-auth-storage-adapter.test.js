@@ -63,13 +63,25 @@ test('H5 auth storage adapter owns account and remembered credential storage', (
   assert.equal(storage.getItem('tutorialCompleted'), null);
 });
 
+test('H5 auth storage adapter uses only the injected runtime storage', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5AuthStorageAdapter.js'), 'utf8');
+  const storage = createStorage({ cf_token: 'runtime-token' });
+  const adapter = H5AuthStorageAdapter.fromRuntime({ localStorage: storage });
+  const emptyAdapter = H5AuthStorageAdapter.fromRuntime();
+
+  assert.equal(adapter.getToken(), 'runtime-token');
+  assert.equal(emptyAdapter.getToken(), null);
+  assert.match(source, /static fromRuntime\(runtime = null\)/);
+  assert.doesNotMatch(source, /global\.localStorage|runtime = global/);
+});
+
 test('auth module and app delegate browser storage to H5 auth storage adapter', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const authJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'auth.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5AuthStorageAdapter\.js\?v=h5-auth-storage-v1/);
-  assert.match(html, /H5AuthStorageAdapter\.js\?v=h5-auth-storage-v1[\s\S]*H5ShellAdapter\.js\?v=state-manager-building-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  assert.match(html, /js\/ui\/H5AuthStorageAdapter\.js\?v=h5-storage-runtime-v1/);
+  assert.match(html, /H5AuthStorageAdapter\.js\?v=h5-storage-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=state-manager-building-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
   assert.match(appJs, /this\.token = this\.authStorage\?\.getToken\?\.\(\) \|\| null/);
   assert.match(authJs, /const authStorage = deps\.authStorage \|\| game\.authStorage/);
   assert.doesNotMatch(authJs, /H5AuthStorageAdapter\?\.fromRuntime\(window\)/);
