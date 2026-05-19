@@ -8,7 +8,7 @@
       this.durationMs = options.durationMs || 1200;
     }
 
-    static fromDocument(doc = global.document, options = {}) {
+    static fromDocument(doc, options = {}) {
       return new FloatingTextAdapter({
         layer: doc?.getElementById?.('fxLayer') || null,
         resolveTarget: (selector) => doc?.querySelector?.(selector) || null,
@@ -35,10 +35,6 @@
   }
 
   global.FloatingTextAdapter = FloatingTextAdapter;
-  global.mountFloatingText = function mountFloatingText(game, doc = global.document) {
-    game.floatingText = FloatingTextAdapter.fromDocument(doc);
-    console.log('[floating-text.js] floating text adapter mounted');
-  };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = FloatingTextAdapter;
 })(typeof window !== 'undefined' ? window : globalThis);

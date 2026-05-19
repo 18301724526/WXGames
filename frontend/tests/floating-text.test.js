@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const FloatingTextAdapter = require('../floating-text');
+const projectRoot = path.join(__dirname, '..', '..');
 
 test('floating text adapter owns H5 floating text node creation', () => {
   const removed = [];
@@ -87,4 +90,13 @@ test('floating text adapter can collect H5 hooks from document without render-ti
   assert.equal(created[0].tag, 'div');
   assert.equal(appended[0].style.left, '10px');
   assert.equal(appended[0].style.top, '8px');
+});
+
+test('floating text adapter is only mounted through explicit shell injection', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'floating-text.js'), 'utf8');
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
+
+  assert.doesNotMatch(source, /mountFloatingText/);
+  assert.doesNotMatch(source, /global\.document/);
+  assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
 });
