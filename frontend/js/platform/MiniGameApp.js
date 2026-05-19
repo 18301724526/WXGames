@@ -1,18 +1,23 @@
 (function (global) {
   class MiniGameApp {
     constructor(options = {}) {
-      this.runtime = options.runtime || new global.PlatformRuntime();
+      this.runtime = options.runtime || null;
+      if (!this.runtime) throw new Error('MiniGame runtime is required');
       this.presenter = options.presenter || null;
-      this.config = options.config || global.GameConfig || {};
-      this.api = options.api || new global.GameAPI(
+      this.config = options.config || {};
+      const ApiClass = options.apiClass || null;
+      const RendererClass = options.rendererClass || null;
+      this.api = options.api || (ApiClass ? new ApiClass(
         options.apiBase || this.config.API_BASE || '/api',
         this.runtime.getStorage('token'),
         { transport: this.runtime },
-      );
-      this.renderer = options.renderer || new global.MiniGameCanvasRenderer({
+      ) : null);
+      if (!this.api) throw new Error('MiniGame API is required');
+      this.renderer = options.renderer || (RendererClass ? new RendererClass({
         runtime: this.runtime,
         presenter: this.presenter,
-      });
+      }) : null);
+      if (!this.renderer) throw new Error('MiniGame renderer is required');
       this.syncIntervalMs = options.syncIntervalMs || this.config.SYNC_INTERVAL_MS || 2000;
       this.state = options.initialState || {
         resources: {},

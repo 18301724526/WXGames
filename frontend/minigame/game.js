@@ -9,6 +9,9 @@ const runtime = new globalThis.PlatformRuntime();
 const app = new globalThis.MiniGameApp({
   runtime,
   presenter: globalThis.UIStatePresenter,
+  config: globalThis.GameConfig,
+  apiClass: globalThis.GameAPI,
+  rendererClass: globalThis.MiniGameCanvasRenderer,
 });
 
 app.start();

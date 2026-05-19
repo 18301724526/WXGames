@@ -140,6 +140,7 @@ test('MiniGame app renders state and syncs through platform transport without do
     app = new MiniGameApp({
       runtime,
       api,
+      rendererClass: MiniGameCanvasRenderer,
       presenter: UIStatePresenter,
       config: GameConfig,
       initialState: {
@@ -169,15 +170,20 @@ test('minigame entry does not load H5 DOM adapters', () => {
     'MiniGameCanvasRenderer.js',
     'MiniGameApp.js',
   ].map((file) => fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', file), 'utf8')).join('\n');
+  const appSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'MiniGameApp.js'), 'utf8');
 
   assert.doesNotMatch(entry, /app\.js|auth\.js|population\.js|logs\.js|floating-text\.js|DOMHelper|document|getElementById|querySelector|innerHTML|classList/);
   assert.doesNotMatch(platformFiles, /document|getElementById|querySelector|innerHTML|classList/);
   assert.doesNotMatch(platformFiles, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
+  assert.doesNotMatch(appSource, /global\.GameConfig|global\.GameAPI|global\.MiniGameCanvasRenderer|global\.PlatformRuntime/);
   assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
   assert.match(entry, /MiniGameApp/);
   assert.match(entry, /presenter: globalThis\.UIStatePresenter/);
+  assert.match(entry, /config: globalThis\.GameConfig/);
+  assert.match(entry, /apiClass: globalThis\.GameAPI/);
+  assert.match(entry, /rendererClass: globalThis\.MiniGameCanvasRenderer/);
 });
 
 test('MiniGame app dispatches canvas taps to server actions without DOM controllers', async () => {
@@ -235,6 +241,7 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     app = new MiniGameApp({
       runtime,
       api,
+      rendererClass: MiniGameCanvasRenderer,
       presenter: UIStatePresenter,
       config: GameConfig,
       initialState: {
