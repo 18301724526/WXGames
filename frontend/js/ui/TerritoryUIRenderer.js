@@ -3,6 +3,7 @@
     constructor(container, options = {}) {
       this.container = container;
       this.getUiState = options.getUiState || (() => ({}));
+      this.presenter = options.presenter || null;
     }
 
     escapeHtml(value) {
@@ -16,27 +17,27 @@
     }
 
     formatEffect(effects = {}) {
-      return global.UIStatePresenter.formatWorldSiteEffect(effects);
+      return this.presenter.formatWorldSiteEffect(effects);
     }
 
     formatStatus(site) {
-      return global.UIStatePresenter.formatWorldSiteStatus(site);
+      return this.presenter.formatWorldSiteStatus(site);
     }
 
     formatOwner(site) {
-      return global.UIStatePresenter.formatWorldSiteOwner(site);
+      return this.presenter.formatWorldSiteOwner(site);
     }
 
     formatDuration(seconds) {
-      return global.UIStatePresenter.formatWorldDuration(seconds);
+      return this.presenter.formatWorldDuration(seconds);
     }
 
     getMarchInfo(site, state) {
-      return global.UIStatePresenter.getWorldSiteMarchInfo(site, state);
+      return this.presenter.getWorldSiteMarchInfo(site, state);
     }
 
     getExpeditionDraft(site) {
-      return global.UIStatePresenter.buildWorldExpeditionDraftViewState(site, this.getInteractionState());
+      return this.presenter.buildWorldExpeditionDraftViewState(site, this.getInteractionState());
     }
 
     getInteractionState() {
@@ -109,33 +110,33 @@
     }
 
     getExpeditionConfig(site, state) {
-      return this.renderExpeditionConfig(global.UIStatePresenter.buildWorldExpeditionConfigViewState(site, state, this.getInteractionState()));
+      return this.renderExpeditionConfig(this.presenter.buildWorldExpeditionConfigViewState(site, state, this.getInteractionState()));
     }
 
     getAction(site, state) {
-      const action = global.UIStatePresenter.buildWorldSiteActionViewState(site, state, this.getInteractionState());
+      const action = this.presenter.buildWorldSiteActionViewState(site, state, this.getInteractionState());
       return this.renderAction(action);
     }
 
     getRadarPosition(site, maxDistance) {
-      return global.UIStatePresenter.getWorldRadarPosition(site, maxDistance);
+      return this.presenter.getWorldRadarPosition(site, maxDistance);
     }
 
     measureRadarSpacing(candidate, placed) {
-      return global.UIStatePresenter.measureWorldRadarSpacing(candidate, placed);
+      return this.presenter.measureWorldRadarSpacing(candidate, placed);
     }
 
     resolveRadarPosition(anchor, placed) {
-      return global.UIStatePresenter.resolveWorldRadarPosition(anchor, placed);
+      return this.presenter.resolveWorldRadarPosition(anchor, placed);
     }
 
     buildRadarLayout(territories) {
-      return global.UIStatePresenter.buildWorldRadarLayout(territories);
+      return this.presenter.buildWorldRadarLayout(territories);
     }
 
     renderMap(viewOrTerritories) {
       const view = Array.isArray(viewOrTerritories)
-        ? global.UIStatePresenter.buildWorldRadarViewState(viewOrTerritories, {
+        ? this.presenter.buildWorldRadarViewState(viewOrTerritories, {
           panX: this.getInteractionState().worldPanX || 0,
           panY: this.getInteractionState().worldPanY || 0,
         })
@@ -166,7 +167,7 @@
     }
 
     getMapSignature(territories) {
-      return global.UIStatePresenter.getWorldMapSignature(territories);
+      return this.presenter.getWorldMapSignature(territories);
     }
 
     getDialogStructureSignature(territories) {
@@ -177,7 +178,7 @@
     }
 
     getDialogContentSignature(territories, state) {
-      return global.UIStatePresenter.getWorldSiteDialogContentSignature(territories, state, this.getInteractionState());
+      return this.presenter.getWorldSiteDialogContentSignature(territories, state, this.getInteractionState());
     }
 
     renderSiteDialogSkeleton(territories) {
@@ -222,7 +223,7 @@
 
     updateSiteDialogContent(dialogHost, territories, state) {
       if (!dialogHost || typeof dialogHost.querySelector !== 'function' || typeof dialogHost.querySelectorAll !== 'function') return;
-      const view = global.UIStatePresenter.buildWorldSiteDialogViewState(territories, state, this.getInteractionState());
+      const view = this.presenter.buildWorldSiteDialogViewState(territories, state, this.getInteractionState());
       const modal = dialogHost.querySelector('[data-world-site-modal]');
       if (modal) modal.classList.toggle('show', view.showModal);
       view.details.forEach((siteView) => {
@@ -298,7 +299,7 @@
 
       const mapHost = this.container.querySelector('[data-world-map-host]');
       const dynamicHost = this.container.querySelector('[data-world-dynamic-host]');
-      const mapView = global.UIStatePresenter.buildWorldRadarViewState(territories, {
+      const mapView = this.presenter.buildWorldRadarViewState(territories, {
         panX: this.getInteractionState().worldPanX || 0,
         panY: this.getInteractionState().worldPanY || 0,
       });

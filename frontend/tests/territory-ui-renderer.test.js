@@ -1,8 +1,18 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
 
-global.UIStatePresenter = require('../js/state/UIStatePresenter');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
 const TerritoryUIRenderer = require('../js/ui/TerritoryUIRenderer');
+const projectRoot = path.join(__dirname, '..', '..');
+
+function createRenderer(container, options = {}) {
+  return new TerritoryUIRenderer(container, {
+    ...options,
+    presenter: UIStatePresenter,
+  });
+}
 
 function createHost() {
   const elements = new Map();
@@ -116,7 +126,7 @@ function createState(reportText = '第一份报告') {
 
 test('territory renderer keeps the radar map DOM when only reports change', () => {
   const host = createHost();
-  const renderer = new TerritoryUIRenderer(host);
+  const renderer = createRenderer(host);
 
   renderer.render(createState('第一份报告'));
   const mapHost = host.getMapHost();
@@ -130,7 +140,7 @@ test('territory renderer keeps the radar map DOM when only reports change', () =
 
 test('territory renderer keeps the site dialog skeleton when only reports change', () => {
   const host = createHost();
-  const renderer = new TerritoryUIRenderer(host);
+  const renderer = createRenderer(host);
 
   renderer.render(createState('第一份报告'));
   const dialogHost = host.getDialogHost();
@@ -147,7 +157,7 @@ test('territory renderer keeps the site dialog skeleton when only reports change
 
 test('territory renderer shows placeholder actions for unowned sites', () => {
   const host = createHost();
-  const renderer = new TerritoryUIRenderer(host);
+  const renderer = createRenderer(host);
   const html = renderer.getAction({
     id: 'site_e_1',
     status: 'discovered',
@@ -167,7 +177,7 @@ test('territory renderer shows placeholder actions for unowned sites', () => {
 
 test('territory renderer shows expedition config for owned sites when expanded', () => {
   const host = createHost();
-  const renderer = new TerritoryUIRenderer(host, {
+  const renderer = createRenderer(host, {
     getUiState: () => ({
       selectedSiteId: 'tribe_site',
       expeditionConfigSiteId: 'tribe_site',
@@ -194,7 +204,7 @@ test('territory renderer shows expedition config for owned sites when expanded',
 });
 
 test('territory renderer shows manage action for occupied cities', () => {
-  const renderer = new TerritoryUIRenderer({ dataset: {} });
+  const renderer = createRenderer({ dataset: {} });
   const html = renderer.getAction({
     id: 'site_harbor',
     status: 'occupied',
@@ -208,7 +218,7 @@ test('territory renderer shows manage action for occupied cities', () => {
 
 test('territory renderer formats new owner tiers and map classes', () => {
   const host = createHost();
-  const renderer = new TerritoryUIRenderer(host);
+  const renderer = createRenderer(host);
 
   assert.equal(renderer.formatOwner({ owner: 'city_state' }), '有主 · 城邦');
   assert.equal(renderer.formatOwner({ owner: 'ruin_guardians' }), '有主 · 遗迹守军');
@@ -224,7 +234,7 @@ test('territory renderer formats new owner tiers and map classes', () => {
 });
 
 test('territory radar spreads near sites away from the center when outer rings exist', () => {
-  const renderer = new TerritoryUIRenderer({ dataset: {} });
+  const renderer = createRenderer({ dataset: {} });
   const near = renderer.getRadarPosition({
     x: 1,
     y: 0,
@@ -241,7 +251,7 @@ test('territory radar spreads near sites away from the center when outer rings e
 });
 
 test('territory radar prevents overlapping placements for clustered outer sites', () => {
-  const renderer = new TerritoryUIRenderer({ dataset: {} });
+  const renderer = createRenderer({ dataset: {} });
   const layout = renderer.buildRadarLayout([
     { id: 'capital', x: 0, y: 0, visualOffset: { x: 0, y: 0 } },
     { id: 'site_a', x: 4, y: 0, visualOffset: { x: 0, y: 0 } },
@@ -261,4 +271,11 @@ test('territory radar prevents overlapping placements for clustered outer sites'
       assert.ok(distance >= 9.5, `${points[index].id} and ${points[nextIndex].id} overlap too closely: ${distance}`);
     }
   }
+});
+
+test('territory renderer source does not read global presenter', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'TerritoryUIRenderer.js'), 'utf8');
+
+  assert.match(source, /this\.presenter\.buildWorldRadarViewState/);
+  assert.doesNotMatch(source, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
 });

@@ -72,6 +72,7 @@
         territoryActions,
         territoryRenderer: new global.TerritoryUIRenderer(territoryActions?.getContainer?.(), {
           getUiState: options.getTerritoryUiState || (() => ({})),
+          presenter: global.UIStatePresenter,
         }),
         tutorialRenderer,
       });
