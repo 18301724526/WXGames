@@ -4,7 +4,7 @@
       this.container = elements.container || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new BuildingActionAdapter({
         container: doc.getElementById('buildingGrid'),
       });

@@ -9,6 +9,18 @@ function iconUrlPattern(assetName) {
   return `assets/art/${assetName}(?:\\?v=[^']+)?`;
 }
 
+test('H5 document adapters require an explicit document argument', () => {
+  const uiDir = path.join(projectRoot, 'frontend', 'js', 'ui');
+  const files = fs.readdirSync(uiDir)
+    .filter((name) => name.endsWith('.js'))
+    .filter((name) => !['BuildingUIRenderer.js', 'EventUIRenderer.js', 'TerritoryUIRenderer.js'].includes(name));
+
+  for (const file of files) {
+    const source = fs.readFileSync(path.join(uiDir, file), 'utf8');
+    assert.doesNotMatch(source, /fromDocument\(doc\s*=\s*(?:document|global\.document)/, file);
+  }
+});
+
 test('resource strip uses dedicated resource icon assets', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const assets = [
@@ -104,29 +116,29 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
-  assert.match(html, /ResourceRenderer\.js\?v=resource-renderer-adapter-v1/);
-  assert.match(html, /RuntimeLogAdapter\.js\?v=runtime-log-adapter-v2/);
-  assert.match(html, /AuthShellAdapter\.js\?v=auth-shell-adapter-v1/);
-  assert.match(html, /PopulationPanelAdapter\.js\?v=population-panel-adapter-v1/);
-  assert.match(html, /ResourceDetailModalAdapter\.js\?v=resource-detail-modal-adapter-v1/);
-  assert.match(html, /AdvisorPanelAdapter\.js\?v=advisor-panel-adapter-v1/);
-  assert.match(html, /NamingModalAdapter\.js\?v=naming-modal-adapter-v1/);
+  assert.match(html, /ResourceRenderer\.js\?v=explicit-doc-v1/);
+  assert.match(html, /RuntimeLogAdapter\.js\?v=explicit-doc-v1/);
+  assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
+  assert.match(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
+  assert.match(html, /ResourceDetailModalAdapter\.js\?v=explicit-doc-v1/);
+  assert.match(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
+  assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /GameAPI\.js\?v=territory-radar-v1/);
-  assert.match(html, /TerritoryActionAdapter\.js\?v=territory-action-adapter-v1/);
+  assert.match(html, /TerritoryActionAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-action-adapter-v1/);
   assert.match(html, /TerritoryUIRenderer\.js\?v=territory-ui-state-v1/);
-  assert.match(html, /TutorialUIRenderer\.js\?v=tutorial-renderer-adapter-v1/);
-  assert.match(html, /LogModalAdapter\.js\?v=log-modal-adapter-v2/);
+  assert.match(html, /TutorialUIRenderer\.js\?v=explicit-doc-v1/);
+  assert.match(html, /LogModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /H5GameBootstrap\.js\?v=h5-bootstrap-v1/);
-  assert.match(html, /H5TextAdapter\.js\?v=h5-text-adapter-v1/);
+  assert.match(html, /H5TextAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /H5AuthRuntimeAdapter\.js\?v=h5-auth-runtime-v1/);
   assert.match(html, /H5AuthStorageAdapter\.js\?v=h5-auth-storage-v1/);
   assert.match(html, /H5TutorialStorageAdapter\.js\?v=h5-tutorial-storage-v1/);
   assert.match(html, /GameStateSync\.js\?v=sync-scheduler-v2/);
   assert.match(html, /UpdateChecker\.js\?v=update-scheduler-v1/);
-  assert.match(html, /H5ShellAdapter\.js\?v=runtime-constructors-v1/);
+  assert.match(html, /H5ShellAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
-  assert.match(html, /app\.js\?v=runtime-constructors-v1/);
+  assert.match(html, /app\.js\?v=explicit-doc-v1/);
   assert.match(html, /auth\.js\?v=h5-module-deps-v1/);
   assert.match(html, /population\.js\?v=h5-module-deps-v1/);
   assert.match(html, /logs\.js\?v=h5-module-deps-v1/);

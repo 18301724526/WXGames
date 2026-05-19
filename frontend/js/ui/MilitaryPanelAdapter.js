@@ -17,7 +17,7 @@
       this.scoutGrid = elements.scoutGrid || null;
     }
 
-    static fromDocument(doc = document, options = {}) {
+    static fromDocument(doc, options = {}) {
       return new MilitaryPanelAdapter({
         setText: options.setText,
         panel: doc.getElementById('militaryPanel'),

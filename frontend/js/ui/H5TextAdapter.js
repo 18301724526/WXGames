@@ -4,7 +4,7 @@
       this.getElementById = options.getElementById || (() => null);
     }
 
-    static fromDocument(doc = global.document) {
+    static fromDocument(doc) {
       return new H5TextAdapter({
         getElementById: (id) => doc?.getElementById?.(id) || null,
       });

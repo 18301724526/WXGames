@@ -4,7 +4,7 @@
       Object.assign(this, parts);
     }
 
-    static fromDocument(doc = global.document, runtime = global, options = {}) {
+    static fromDocument(doc, runtime = global, options = {}) {
       const setText = options.setText || (() => {});
       const buildingActions = global.BuildingActionAdapter?.fromDocument(doc);
       const territoryActions = global.TerritoryActionAdapter?.fromDocument(doc);

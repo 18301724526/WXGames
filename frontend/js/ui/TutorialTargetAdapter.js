@@ -4,7 +4,7 @@
       this.targets = targets;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       const byId = (id) => doc.getElementById(id);
       return new TutorialTargetAdapter({
         'tab-resources': byId('tabResources'),

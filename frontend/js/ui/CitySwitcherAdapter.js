@@ -18,7 +18,7 @@
       this.document = elements.document || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new CitySwitcherAdapter({
         wrapper: doc.getElementById('citySwitcher'),
         trigger: doc.getElementById('citySwitcherTrigger'),

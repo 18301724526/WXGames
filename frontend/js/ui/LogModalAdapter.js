@@ -8,7 +8,7 @@
       this.activateDelayMs = options.activateDelayMs ?? 10;
     }
 
-    static fromDocument(doc = document, options = {}) {
+    static fromDocument(doc, options = {}) {
       return new LogModalAdapter({
         trigger: doc.getElementById('logButton'),
         modal: doc.getElementById('logModal'),

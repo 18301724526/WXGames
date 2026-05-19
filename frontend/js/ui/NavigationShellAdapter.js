@@ -9,7 +9,7 @@
       this.advanceButton = elements.advanceButton || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new NavigationShellAdapter({
         document: doc,
         tabButtons: typeof doc.querySelectorAll === 'function'

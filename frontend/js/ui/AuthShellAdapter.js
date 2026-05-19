@@ -14,7 +14,7 @@
       this.logoutButton = elements.logoutButton || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new AuthShellAdapter({
         loginPanel: doc.getElementById('loginPanel'),
         loginMessage: doc.getElementById('loginMessage'),

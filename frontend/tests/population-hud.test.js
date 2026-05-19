@@ -50,6 +50,6 @@ test('population click handler reads the closest custom button', () => {
   assert.doesNotMatch(populationJs, /PopulationPanelAdapter/);
   assert.doesNotMatch(populationJs, /window\.UIStatePresenter/);
   assert.doesNotMatch(populationJs, /\bdocument\b|querySelectorAll|getElementById|classList\.contains/);
-  assert.match(html, /PopulationPanelAdapter\.js\?v=population-panel-adapter-v1/);
+  assert.match(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /population\.js\?v=h5-module-deps-v1/);
 });

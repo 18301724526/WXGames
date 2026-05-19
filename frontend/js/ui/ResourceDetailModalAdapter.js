@@ -6,7 +6,7 @@
       this.closeButton = elements.closeButton || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new ResourceDetailModalAdapter({
         trigger: doc.getElementById('resourcePanel'),
         modal: doc.getElementById('resourceDetailModal'),

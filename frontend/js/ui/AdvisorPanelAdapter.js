@@ -9,7 +9,7 @@
       this.dismissButton = elements.dismissButton || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new AdvisorPanelAdapter({
         button: doc.getElementById('advisorBtn'),
         modal: doc.getElementById('advisorModal'),

@@ -5,7 +5,7 @@
       this.scoutContainer = elements.scoutContainer || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new TerritoryActionAdapter({
         container: doc.getElementById('territoryGrid'),
         scoutContainer: doc.getElementById('scoutDirectionGrid'),

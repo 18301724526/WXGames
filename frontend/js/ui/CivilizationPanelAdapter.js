@@ -19,7 +19,7 @@
       this.conditions = elements.conditions || null;
     }
 
-    static fromDocument(doc = document, options = {}) {
+    static fromDocument(doc, options = {}) {
       return new CivilizationPanelAdapter({
         setText: options.setText,
         progressBar: doc.getElementById('eraProgress'),

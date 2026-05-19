@@ -9,7 +9,7 @@
       this.closeButton = elements.closeButton || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       return new NamingModalAdapter({
         modal: doc.getElementById('namingModal'),
         title: doc.getElementById('namingTitle'),

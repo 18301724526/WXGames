@@ -8,7 +8,7 @@
       this.foodNetRate = elements.foodNetRate || null;
     }
 
-    static fromDocument(doc = document, setText = () => {}) {
+    static fromDocument(doc, setText = () => {}) {
       return new ResourceRenderer(setText, {
         panel: doc.getElementById('resourcePanel'),
         woodCard: doc.getElementById('woodCard'),

@@ -15,7 +15,7 @@
       this.maxItems = options.maxItems || 30;
     }
 
-    static fromDocument(doc = document, options = {}) {
+    static fromDocument(doc, options = {}) {
       return new RuntimeLogAdapter({
         content: doc.getElementById('logContent'),
         ...options,

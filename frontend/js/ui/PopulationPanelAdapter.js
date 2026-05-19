@@ -5,7 +5,7 @@
       this.craftsmanCard = elements.craftsmanCard || null;
     }
 
-    static fromDocument(doc = document) {
+    static fromDocument(doc) {
       const jobButtons = typeof doc.querySelectorAll === 'function'
         ? Array.from(doc.querySelectorAll('.job-controls button'))
         : [];

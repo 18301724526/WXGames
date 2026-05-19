@@ -18,7 +18,7 @@
       }
     }
 
-    static fromDocument(doc = global.document, runtime = global) {
+    static fromDocument(doc, runtime = global) {
       return new TutorialUIRenderer({
         overlay: doc?.getElementById?.('tutorialOverlay') || null,
         bubble: doc?.getElementById?.('tutorialBubble') || null,

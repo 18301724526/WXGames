@@ -27,7 +27,7 @@ test('app uses H5TextAdapter instead of legacy DOMHelper', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5TextAdapter\.js\?v=h5-text-adapter-v1/);
+  assert.match(html, /js\/ui\/H5TextAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
   assert.match(appJs, /Object\.assign\(this, shell\)/);
   assert.match(appJs, /this\.textAdapter\?\.setText\(id, value\)/);
