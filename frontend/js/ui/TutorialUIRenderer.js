@@ -1,20 +1,30 @@
 (function (global) {
   class TutorialUIRenderer {
-    constructor() {
-      this.overlay = document.getElementById('tutorialOverlay');
-      this.bubble = document.getElementById('tutorialBubble');
-      this.pointer = document.getElementById('tutorialPointer');
-      this.scrollContainer = document.querySelector('.page-container');
+    constructor(elements = {}, runtime = global) {
+      this.runtime = runtime || global;
+      this.overlay = elements.overlay || null;
+      this.bubble = elements.bubble || null;
+      this.pointer = elements.pointer || null;
+      this.scrollContainer = elements.scrollContainer || null;
       this.onSoftGuide = null;
       this.activeTarget = null;
       this.activeMessage = '';
       this.rafId = null;
 
       this.handleViewportChange = () => this.schedulePositionUpdate();
-      global.addEventListener && global.addEventListener('resize', this.handleViewportChange);
+      this.runtime.addEventListener && this.runtime.addEventListener('resize', this.handleViewportChange);
       if (this.scrollContainer && this.scrollContainer.addEventListener) {
         this.scrollContainer.addEventListener('scroll', this.handleViewportChange, { passive: true });
       }
+    }
+
+    static fromDocument(doc = global.document, runtime = global) {
+      return new TutorialUIRenderer({
+        overlay: doc?.getElementById?.('tutorialOverlay') || null,
+        bubble: doc?.getElementById?.('tutorialBubble') || null,
+        pointer: doc?.getElementById?.('tutorialPointer') || null,
+        scrollContainer: doc?.querySelector?.('.page-container') || null,
+      }, runtime);
     }
 
     clearHighlight() {
@@ -35,16 +45,16 @@
     buildHighlightView(rect) {
       const presenter = this.getPresenter();
       return presenter.buildTutorialHighlightViewState(rect, {
-        innerWidth: global.innerWidth,
-        innerHeight: global.innerHeight,
+        innerWidth: this.runtime.innerWidth,
+        innerHeight: this.runtime.innerHeight,
       });
     }
 
     positionSoftBubble() {
       if (!this.bubble) return;
-      const bubbleWidth = Math.min(320, Math.max(220, global.innerWidth - 32));
+      const bubbleWidth = Math.min(320, Math.max(220, this.runtime.innerWidth - 32));
       const top = 16;
-      const left = Math.max(12, Math.round((global.innerWidth - bubbleWidth) / 2));
+      const left = Math.max(12, Math.round((this.runtime.innerWidth - bubbleWidth) / 2));
       this.bubble.style.top = `${top}px`;
       this.bubble.style.left = `${left}px`;
       this.bubble.style.maxWidth = `${bubbleWidth}px`;
@@ -52,13 +62,13 @@
 
     schedulePositionUpdate() {
       if (!this.activeTarget) return;
-      if (this.rafId && global.cancelAnimationFrame) global.cancelAnimationFrame(this.rafId);
+      if (this.rafId && this.runtime.cancelAnimationFrame) this.runtime.cancelAnimationFrame(this.rafId);
       const update = () => {
         this.rafId = null;
         this.positionElements();
       };
-      if (global.requestAnimationFrame) {
-        this.rafId = global.requestAnimationFrame(update);
+      if (this.runtime.requestAnimationFrame) {
+        this.rafId = this.runtime.requestAnimationFrame(update);
         return;
       }
       update();
@@ -70,9 +80,9 @@
       const viewportPadding = 24;
       const bottomPadding = 96;
       const outOfView = rect.top < viewportPadding
-        || rect.bottom > global.innerHeight - bottomPadding
+        || rect.bottom > this.runtime.innerHeight - bottomPadding
         || rect.left < 12
-        || rect.right > global.innerWidth - 12;
+        || rect.right > this.runtime.innerWidth - 12;
       if (!outOfView || typeof target.scrollIntoView !== 'function') return;
       target.scrollIntoView({
         behavior: 'auto',
@@ -121,7 +131,7 @@
     }
 
     hide() {
-      if (this.rafId && global.cancelAnimationFrame) global.cancelAnimationFrame(this.rafId);
+      if (this.rafId && this.runtime.cancelAnimationFrame) this.runtime.cancelAnimationFrame(this.rafId);
       this.rafId = null;
       this.clearHighlight();
       if (this.overlay) {
@@ -166,7 +176,7 @@
     }
 
     showSoft(message) {
-      if (this.rafId && global.cancelAnimationFrame) global.cancelAnimationFrame(this.rafId);
+      if (this.rafId && this.runtime.cancelAnimationFrame) this.runtime.cancelAnimationFrame(this.rafId);
       this.rafId = null;
       this.clearHighlight();
       if (this.overlay) this.overlay.classList.remove('active');

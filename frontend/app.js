@@ -67,7 +67,7 @@ const Game = {
     this.territoryRenderer = new window.TerritoryUIRenderer(this.territoryActions?.getContainer?.(), {
       getUiState: () => this.territoryController?.getUiState?.() || {},
     });
-    this.tutorialRenderer = new window.TutorialUIRenderer();
+    this.tutorialRenderer = window.TutorialUIRenderer.fromDocument(document, window);
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
     this.tutorialController = new window.TutorialController({
       api: this.gameAPI,
