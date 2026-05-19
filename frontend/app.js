@@ -58,7 +58,8 @@ const Game = {
     this.militaryPanel = window.MilitaryPanelAdapter?.fromDocument(document, {
       setText: (id, value) => this.setText(id, value),
     });
-    this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
+    this.buildingActions = window.BuildingActionAdapter?.fromDocument(document);
+    this.buildingRenderer = new window.BuildingUIRenderer(this.buildingActions?.getContainer?.(), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
       trigger: document.getElementById('logButton'),
@@ -93,7 +94,7 @@ const Game = {
       onLog: (message) => this.log(message),
     });
     this.buildingController = new window.BuildingController({
-      container: document.getElementById('buildingGrid'),
+      actionAdapter: this.buildingActions,
       api: this.gameAPI,
       onSuccess: (result, action, buildingId) => this.handleBuildingSuccess(result, action, buildingId),
       onError: (error) => this.log(`❌ ${error.payload?.message || error.message}`),

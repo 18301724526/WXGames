@@ -33,6 +33,7 @@ function createWindowStub() {
     CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
     MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
+    BuildingActionAdapter: require('../js/ui/BuildingActionAdapter'),
     DOMHelper: { setText() {} },
   };
 }

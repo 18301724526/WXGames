@@ -1,7 +1,7 @@
 (function (global) {
   class BuildingController {
     constructor(options) {
-      this.container = options.container;
+      this.actionAdapter = options.actionAdapter;
       this.api = options.api;
       this.onSuccess = options.onSuccess;
       this.onError = options.onError;
@@ -9,26 +9,22 @@
     }
 
     bind() {
-      if (!this.container || this.container.dataset.bound === 'true') return;
-      this.container.dataset.bound = 'true';
-      this.container.addEventListener('click', async (event) => {
-        const button = event.target.closest('button[data-building-id]');
-        if (!button || button.disabled) return;
-        const buildingId = button.dataset.buildingId;
-        const action = button.dataset.action;
-        button.disabled = true;
-        button.classList.add('is-loading');
-        this.onBusy && this.onBusy(true);
-        try {
-          const result = action === 'upgrade' ? await this.api.upgrade(buildingId) : await this.api.build(buildingId);
-          this.onSuccess && this.onSuccess(result, action, buildingId);
-        } catch (error) {
-          this.onError && this.onError(error, action, buildingId);
-        } finally {
-          button.classList.remove('is-loading');
-          this.onBusy && this.onBusy(false);
-        }
-      });
+      this.actionAdapter?.bindClick?.((action) => this.handleAction(action));
+    }
+
+    async handleAction({ buildingId, action, button }) {
+      if (!buildingId) return;
+      this.actionAdapter?.setLoading?.(button, true);
+      this.onBusy && this.onBusy(true);
+      try {
+        const result = action === 'upgrade' ? await this.api.upgrade(buildingId) : await this.api.build(buildingId);
+        this.onSuccess && this.onSuccess(result, action, buildingId);
+      } catch (error) {
+        this.onError && this.onError(error, action, buildingId);
+      } finally {
+        this.actionAdapter?.setLoading?.(button, false);
+        this.onBusy && this.onBusy(false);
+      }
     }
   }
 
