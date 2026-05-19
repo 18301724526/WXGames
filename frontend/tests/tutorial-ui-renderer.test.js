@@ -1,7 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const TutorialUIRenderer = require('../js/ui/TutorialUIRenderer');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
+
+const projectRoot = path.join(__dirname, '..', '..');
 
 function createElement() {
   return {
@@ -41,7 +46,7 @@ function createRenderer(options = {}) {
     bubble: options.bubble || createElement(),
     pointer: options.pointer || createElement(),
     scrollContainer: options.scrollContainer || null,
-  }, options.runtime || createRuntime());
+  }, options.runtime || createRuntime(), { presenter: options.presenter || UIStatePresenter });
 }
 
 test('tutorial highlight scrolls target into view and updates spotlight geometry', () => {
@@ -185,11 +190,19 @@ test('tutorial renderer can collect H5 nodes and viewport runtime from document'
     querySelector(selector) {
       return selector === '.page-container' ? scrollContainer : null;
     },
-  }, runtime);
+  }, runtime, { presenter: UIStatePresenter });
 
   assert.equal(renderer.overlay, overlay);
   assert.equal(renderer.bubble, bubble);
   assert.equal(renderer.pointer, pointer);
   assert.equal(renderer.scrollContainer, scrollContainer);
   assert.equal(renderer.runtime, runtime);
+  assert.equal(renderer.presenter, UIStatePresenter);
+});
+
+test('tutorial renderer source does not read global presenter', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'TutorialUIRenderer.js'), 'utf8');
+
+  assert.match(source, /this\.presenter\.buildTutorialHighlightViewState/);
+  assert.doesNotMatch(source, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
 });

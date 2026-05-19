@@ -8,7 +8,7 @@
       const setText = options.setText || (() => {});
       const buildingActions = global.BuildingActionAdapter?.fromDocument(doc);
       const territoryActions = global.TerritoryActionAdapter?.fromDocument(doc);
-      const tutorialRenderer = global.TutorialUIRenderer?.fromDocument(doc, runtime);
+      const tutorialRenderer = global.TutorialUIRenderer?.fromDocument(doc, runtime, { presenter: global.UIStatePresenter });
       const authRuntime = global.H5AuthRuntimeAdapter?.fromRuntime(runtime);
       const authStorage = global.H5AuthStorageAdapter?.fromRuntime(runtime);
       const moduleDeps = {

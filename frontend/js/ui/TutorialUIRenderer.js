@@ -1,7 +1,8 @@
 (function (global) {
   class TutorialUIRenderer {
-    constructor(elements = {}, runtime = global) {
+    constructor(elements = {}, runtime = global, options = {}) {
       this.runtime = runtime || global;
+      this.presenter = options.presenter || null;
       this.overlay = elements.overlay || null;
       this.bubble = elements.bubble || null;
       this.pointer = elements.pointer || null;
@@ -18,13 +19,13 @@
       }
     }
 
-    static fromDocument(doc, runtime = global) {
+    static fromDocument(doc, runtime = global, options = {}) {
       return new TutorialUIRenderer({
         overlay: doc?.getElementById?.('tutorialOverlay') || null,
         bubble: doc?.getElementById?.('tutorialBubble') || null,
         pointer: doc?.getElementById?.('tutorialPointer') || null,
         scrollContainer: doc?.querySelector?.('.page-container') || null,
-      }, runtime);
+      }, runtime, options);
     }
 
     clearHighlight() {
@@ -32,19 +33,8 @@
       this.activeMessage = '';
     }
 
-    getPresenter() {
-      if (global.UIStatePresenter || globalThis.UIStatePresenter) {
-        return global.UIStatePresenter || globalThis.UIStatePresenter;
-      }
-      if (typeof require === 'function') {
-        return require('../state/UIStatePresenter');
-      }
-      return null;
-    }
-
     buildHighlightView(rect) {
-      const presenter = this.getPresenter();
-      return presenter.buildTutorialHighlightViewState(rect, {
+      return this.presenter.buildTutorialHighlightViewState(rect, {
         innerWidth: this.runtime.innerWidth,
         innerHeight: this.runtime.innerHeight,
       });

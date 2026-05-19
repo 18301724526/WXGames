@@ -79,7 +79,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     LogModalAdapter: makeFactory('logModal', calls),
     RuntimeLogAdapter: makeFactory('runtimeLog', calls),
     TerritoryActionAdapter: makeFactory('territoryActions', calls, { name: 'territoryActions', getContainer: () => 'territory-grid' }),
-    TutorialUIRenderer: makeFactory('tutorialRenderer', calls),
+    TutorialUIRenderer: makeDocumentFactory('tutorialRenderer', calls),
   };
 
   try {
@@ -174,7 +174,12 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
       && options.presenter === factories.UIStatePresenter
     )));
     assert.ok(calls.some(([name, callDoc, options]) => name === 'civilization' && callDoc === doc && options.setText === setText));
-    assert.ok(calls.some(([name, callDoc]) => name === 'tutorialRenderer' && callDoc === doc));
+    assert.ok(calls.some(([name, callDoc, callRuntime, options]) => (
+      name === 'tutorialRenderer'
+      && callDoc === doc
+      && callRuntime === runtime
+      && options.presenter === factories.UIStatePresenter
+    )));
   } finally {
     for (const [key, value] of Object.entries(originalGlobals)) {
       if (value === undefined) delete globalThis[key];
@@ -187,8 +192,8 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=territory-presenter-v1/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=territory-presenter-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=tutorial-presenter-v1/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=tutorial-presenter-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(appJs, /window\.FrontendGameState/);
