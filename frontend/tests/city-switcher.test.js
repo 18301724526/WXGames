@@ -22,6 +22,7 @@ function createWindowStub() {
     },
     GameStateManager: class {},
     UIStatePresenter: require('../js/state/UIStatePresenter'),
+    CitySwitcherAdapter: require('../js/ui/CitySwitcherAdapter'),
     ResourceRenderer: class {},
     BuildingUIRenderer: class {},
     EventUIRenderer: class {},
@@ -42,6 +43,7 @@ function createElement(id) {
     innerHTML: '',
     dataset: {},
     attrs: {},
+    listeners: {},
     classList: {
       toggle(value, force) {
         if (force) classes.add(value);
@@ -56,6 +58,12 @@ function createElement(id) {
     },
     setAttribute(name, value) {
       this.attrs[name] = value;
+    },
+    addEventListener(type, handler) {
+      this.listeners[type] = handler;
+    },
+    contains(target) {
+      return target === this;
     },
   };
 }
@@ -82,7 +90,10 @@ test('renderCitySwitcher renders custom city options and toggles the menu', () =
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
     global.document = {
-      addEventListener() {},
+      listeners: {},
+      addEventListener(type, handler) {
+        this.listeners[type] = handler;
+      },
       getElementById(id) {
         if (!elements.has(id)) elements.set(id, createElement(id));
         return elements.get(id);
@@ -93,6 +104,7 @@ test('renderCitySwitcher renders custom city options and toggles the menu', () =
     require('../app');
 
     const { Game } = global.window;
+    Game.citySwitcher = global.window.CitySwitcherAdapter.fromDocument(global.document);
     Game.state.activeCityId = 'capital';
     Game.state.cityState = {
       activeCityId: 'capital',
@@ -117,6 +129,17 @@ test('renderCitySwitcher renders custom city options and toggles the menu', () =
     Game.closeCitySwitcher();
     assert.equal(elements.get('citySwitcherMenu').hidden, true);
     assert.equal(elements.get('citySwitcherTrigger').attrs['aria-expanded'], 'false');
+
+    const selected = [];
+    Game.switchCity = (cityId) => selected.push(cityId);
+    Game.citySwitcher.bind({ onSelect: (cityId) => Game.switchCity(cityId) });
+    elements.get('citySwitcherMenu').listeners.click({
+      target: {
+        closest: () => ({ disabled: false, dataset: { cityId: 'site_river' } }),
+      },
+      stopPropagation() {},
+    });
+    assert.deepEqual(selected, ['site_river']);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

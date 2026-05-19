@@ -49,6 +49,7 @@ const Game = {
     this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
     this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
     this.namingModal = window.NamingModalAdapter?.fromDocument(document);
+    this.citySwitcher = window.CitySwitcherAdapter?.fromDocument(document);
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -144,28 +145,8 @@ const Game = {
       advanceButton.addEventListener('click', () => this.advanceEra());
     }
 
-    const citySwitcherTrigger = document.getElementById('citySwitcherTrigger');
-    if (citySwitcherTrigger) {
-      citySwitcherTrigger.addEventListener('click', (event) => {
-        event.stopPropagation();
-        this.toggleCitySwitcher();
-      });
-    }
-    const citySwitcherMenu = document.getElementById('citySwitcherMenu');
-    if (citySwitcherMenu) {
-      citySwitcherMenu.addEventListener('click', (event) => {
-        const option = event.target.closest('[data-city-id]');
-        if (!option || option.disabled) return;
-        event.stopPropagation();
-        this.switchCity(option.dataset.cityId);
-      });
-    }
-    document.addEventListener('click', (event) => {
-      const wrapper = document.getElementById('citySwitcher');
-      if (wrapper && !wrapper.contains(event.target)) this.closeCitySwitcher();
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') this.closeCitySwitcher();
+    this.citySwitcher?.bind({
+      onSelect: (cityId) => this.switchCity(cityId),
     });
 
     const pendingEvents = document.getElementById('pendingEventsContainer');
@@ -525,55 +506,16 @@ const Game = {
   },
 
   renderCitySwitcher() {
-    const wrapper = document.getElementById('citySwitcher');
-    const trigger = document.getElementById('citySwitcherTrigger');
-    const name = document.getElementById('citySwitcherName');
-    const menu = document.getElementById('citySwitcherMenu');
-    if (!wrapper || !trigger || !name || !menu) return;
     const view = window.UIStatePresenter.buildCitySwitcherViewState(this.state);
-    wrapper.hidden = view.hidden;
-    if (wrapper.hidden) {
-      this.closeCitySwitcher();
-      return;
-    }
-    name.textContent = view.activeCityName;
-
-    const options = view.options.map((city) => {
-      return `
-        <button class="city-switcher-option ${city.isActive ? 'active' : ''}" type="button" role="option" aria-selected="${city.isActive ? 'true' : 'false'}" data-city-id="${this.escapeHtml(city.id)}">
-          <span class="city-option-main">
-            <span class="city-option-name">${this.escapeHtml(city.name || '未命名城市')}</span>
-            <span class="city-option-tag">${this.escapeHtml(city.tag)}</span>
-          </span>
-          <span class="city-option-meta">${this.escapeHtml(city.metaText)}</span>
-        </button>
-      `;
-    }).join('');
-    if (menu.dataset.optionsSignature !== view.signature) {
-      menu.innerHTML = options;
-      menu.dataset.optionsSignature = view.signature;
-    }
-    trigger.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+    this.citySwitcher?.render(view);
   },
 
   toggleCitySwitcher() {
-    const wrapper = document.getElementById('citySwitcher');
-    const trigger = document.getElementById('citySwitcherTrigger');
-    const menu = document.getElementById('citySwitcherMenu');
-    if (!wrapper || !trigger || !menu || wrapper.hidden) return;
-    const nextOpen = menu.hidden;
-    menu.hidden = !nextOpen;
-    wrapper.classList.toggle('is-open', nextOpen);
-    trigger.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+    this.citySwitcher?.toggle();
   },
 
   closeCitySwitcher() {
-    const wrapper = document.getElementById('citySwitcher');
-    const trigger = document.getElementById('citySwitcherTrigger');
-    const menu = document.getElementById('citySwitcherMenu');
-    if (menu) menu.hidden = true;
-    if (wrapper) wrapper.classList.remove('is-open');
-    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    this.citySwitcher?.close();
   },
 
   escapeHtml(value) {
