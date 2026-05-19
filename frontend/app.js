@@ -45,32 +45,11 @@ const Game = {
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
     this.stateManager = new window.GameStateManager(this.state);
-    this.textAdapter = window.H5TextAdapter?.fromDocument(document);
-    this.resourceRenderer = window.ResourceRenderer.fromDocument(document, (id, value) => this.setText(id, value));
-    this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
-    this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
-    this.namingModal = window.NamingModalAdapter?.fromDocument(document);
-    this.authShell = window.AuthShellAdapter?.fromDocument(document);
-    this.populationPanel = window.PopulationPanelAdapter?.fromDocument(document);
-    this.citySwitcher = window.CitySwitcherAdapter?.fromDocument(document);
-    this.navigationShell = window.NavigationShellAdapter?.fromDocument(document);
-    this.tutorialTargets = window.TutorialTargetAdapter?.fromDocument(document);
-    this.civilizationPanel = window.CivilizationPanelAdapter?.fromDocument(document, {
+    const shell = window.H5ShellAdapter?.fromDocument(document, window, {
       setText: (id, value) => this.setText(id, value),
+      getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });
-    this.militaryPanel = window.MilitaryPanelAdapter?.fromDocument(document, {
-      setText: (id, value) => this.setText(id, value),
-    });
-    this.buildingActions = window.BuildingActionAdapter?.fromDocument(document);
-    this.buildingRenderer = new window.BuildingUIRenderer(this.buildingActions?.getContainer?.(), {});
-    this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
-    this.logModal = window.LogModalAdapter?.fromDocument(document);
-    this.runtimeLog = window.RuntimeLogAdapter?.fromDocument(document);
-    this.territoryActions = window.TerritoryActionAdapter?.fromDocument(document);
-    this.territoryRenderer = new window.TerritoryUIRenderer(this.territoryActions?.getContainer?.(), {
-      getUiState: () => this.territoryController?.getUiState?.() || {},
-    });
-    this.tutorialRenderer = window.TutorialUIRenderer.fromDocument(document, window);
+    Object.assign(this, shell);
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
     this.tutorialController = new window.TutorialController({
       api: this.gameAPI,

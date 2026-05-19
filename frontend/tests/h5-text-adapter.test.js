@@ -29,7 +29,7 @@ test('app uses H5TextAdapter instead of legacy DOMHelper', () => {
 
   assert.match(html, /js\/ui\/H5TextAdapter\.js\?v=h5-text-adapter-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
-  assert.match(appJs, /this\.textAdapter = window\.H5TextAdapter\?\.fromDocument\(document\)/);
+  assert.match(appJs, /Object\.assign\(this, shell\)/);
   assert.match(appJs, /this\.textAdapter\?\.setText\(id, value\)/);
   assert.doesNotMatch(appJs, /DOMHelper/);
 });
