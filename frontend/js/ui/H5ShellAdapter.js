@@ -29,6 +29,7 @@
       };
 
       return new H5ShellAdapter({
+        config: global.GameConfig,
         gameModules,
         presenter: global.UIStatePresenter,
         scheduler,

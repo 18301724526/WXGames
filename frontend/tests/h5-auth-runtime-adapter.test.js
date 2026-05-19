@@ -41,7 +41,7 @@ test('auth module delegates browser runtime to H5 auth runtime adapter', () => {
   const authJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'auth.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5AuthRuntimeAdapter\.js\?v=h5-auth-runtime-v1/);
-  assert.match(html, /H5AuthRuntimeAdapter\.js\?v=h5-auth-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=presenter-injection-v1[\s\S]*auth\.js\?v=h5-module-deps-v1/);
+  assert.match(html, /H5AuthRuntimeAdapter\.js\?v=h5-auth-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=config-injection-v1[\s\S]*auth\.js\?v=h5-module-deps-v1/);
   assert.match(authJs, /const authRuntime = deps\.authRuntime \|\| game\.authRuntime/);
   assert.doesNotMatch(authJs, /H5AuthRuntimeAdapter\?\.fromRuntime\(window\)/);
   assert.doesNotMatch(authJs, /\bconfirm\(|\balert\(|location\.reload/);

@@ -1,5 +1,6 @@
 const Game = {
-  apiBase: window.GameConfig.API_BASE,
+  apiBase: null,
+  config: null,
   token: null,
   playerId: null,
   state: {
@@ -41,13 +42,14 @@ const Game = {
       getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });
     Object.assign(this, shell);
+    this.apiBase = this.config?.API_BASE || this.apiBase;
     this.token = this.authStorage?.getToken?.() || null;
     this.gameAPI = new window.GameAPI(this.apiBase, this.token);
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
-    this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS, this.scheduler);
+    this.syncService = new window.GameStateSync(this.gameAPI, this.config?.SYNC_INTERVAL_MS, this.scheduler);
     this.updateChecker = new window.UpdateChecker({
       api: this.gameAPI,
-      intervalMs: window.GameConfig.UPDATE_CHECK_INTERVAL_MS,
+      intervalMs: this.config?.UPDATE_CHECK_INTERVAL_MS,
       scheduler: this.scheduler,
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
@@ -225,8 +227,8 @@ const Game = {
 
   getSyncInterval() {
     const step = this.tutorialController?.state?.currentStep ?? this.tutorial?.currentStep;
-    if (step === 8) return window.GameConfig.TUTORIAL_WAIT_SYNC_INTERVAL_MS || 500;
-    return window.GameConfig.SYNC_INTERVAL_MS;
+    if (step === 8) return this.config?.TUTORIAL_WAIT_SYNC_INTERVAL_MS || 500;
+    return this.config?.SYNC_INTERVAL_MS;
   },
 
   updateSyncInterval() {

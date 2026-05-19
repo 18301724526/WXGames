@@ -40,6 +40,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     H5AuthRuntimeAdapter: makeRuntimeFactory('authRuntime', calls),
     H5AuthStorageAdapter: makeRuntimeFactory('authStorage', calls),
     H5TutorialStorageAdapter: makeRuntimeFactory('tutorialStorage', calls),
+    GameConfig: { API_BASE: '/api', SYNC_INTERVAL_MS: 2000 },
     UIStatePresenter: { name: 'presenter' },
     FloatingTextAdapter: makeFactory('floatingText', calls),
     ResourceRenderer: makeFactory('resource', calls),
@@ -110,6 +111,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.deepEqual(shell.updateRuntime, { name: 'updateRuntime' });
     assert.deepEqual(shell.authRuntime, { name: 'authRuntime' });
     assert.deepEqual(shell.authStorage, { name: 'authStorage' });
+    assert.equal(shell.config, factories.GameConfig);
     assert.equal(shell.presenter, factories.UIStatePresenter);
     assert.deepEqual(shell.tutorialStorage, { name: 'tutorialStorage' });
     assert.equal(typeof shell.scheduler.setInterval, 'function');
@@ -138,9 +140,10 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=presenter-injection-v1/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=presenter-injection-v1[\s\S]*app\.js\?v=presenter-injection-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=config-injection-v1/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=config-injection-v1[\s\S]*app\.js\?v=config-injection-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
+  assert.doesNotMatch(appJs, /window\.GameConfig/);
   assert.doesNotMatch(appJs, /window\.UIStatePresenter/);
   assert.doesNotMatch(appJs, /[^\w.]setInterval\(/);
   assert.doesNotMatch(appJs, /[^\w.]clearInterval\(/);

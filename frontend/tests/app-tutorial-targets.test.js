@@ -144,6 +144,7 @@ test('app uses faster polling while waiting for era2 readiness', () => {
     require('../app');
 
     const { Game } = global.window;
+    Game.config = global.window.GameConfig;
     Game.tutorial = { completed: false, currentStep: 0 };
     Game.tutorialController = { state: { completed: false, currentStep: 8 } };
     assert.equal(Game.getSyncInterval(), 500);
