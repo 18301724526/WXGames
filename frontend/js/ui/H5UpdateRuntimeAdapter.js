@@ -4,9 +4,9 @@
       this.runtime = runtime || {};
       this.confirm = options.confirm || this.runtime.confirm || (() => true);
       this.caches = options.caches || this.runtime.caches || null;
-      this.navigator = options.navigator || this.runtime.navigator || global.navigator || null;
+      this.navigator = options.navigator || this.runtime.navigator || null;
       this.location = options.location || this.runtime.location || null;
-      this.URLCtor = options.URL || this.runtime.URL || global.URL;
+      this.URLCtor = options.URL || this.runtime.URL || null;
       this.now = options.now || (() => Date.now());
     }
 
