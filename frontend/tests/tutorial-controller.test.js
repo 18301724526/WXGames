@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const H5TutorialStorageAdapter = require('../js/ui/H5TutorialStorageAdapter');
 
 function createStorage(initial = {}) {
   const store = new Map(Object.entries(initial));
@@ -17,7 +18,8 @@ function createStorage(initial = {}) {
 }
 
 test('step 0 时即使本地残留 autoStarted 也会重新触发自动引导', async () => {
-  const localStorage = createStorage({ tutorialAutoStarted: 'true' });
+  const storage = createStorage({ tutorialAutoStarted: 'true' });
+  const tutorialStorage = H5TutorialStorageAdapter.fromStorage(storage);
   const renderer = {
     hideCalls: 0,
     hide() {
@@ -26,13 +28,11 @@ test('step 0 时即使本地残留 autoStarted 也会重新触发自动引导', 
     show() {},
   };
   const warnings = [];
-  const originalLocalStorage = global.localStorage;
   const originalGameConfig = global.GameConfig;
   const originalSetTimeout = global.setTimeout;
   const originalConsoleWarn = console.warn;
 
   try {
-    global.localStorage = localStorage;
     global.GameConfig = { TUTORIAL_START_DELAY_MS: 0 };
     global.setTimeout = (callback) => {
       callback();
@@ -54,18 +54,18 @@ test('step 0 时即使本地残留 autoStarted 也会重新触发自动引导', 
       renderer,
       getTarget: () => null,
       onTabLockChange: () => {},
+      storage: tutorialStorage,
     });
 
     controller.setState({ completed: false, currentStep: 0 });
     await Promise.resolve();
 
     assert.equal(advancedTo, 1);
-    assert.equal(localStorage.getItem('tutorialAutoStarted'), 'true');
-    assert.equal(localStorage.getItem('tutorialStep'), '1');
+    assert.equal(storage.getItem('tutorialAutoStarted'), 'true');
+    assert.equal(storage.getItem('tutorialStep'), '1');
     assert.equal(renderer.hideCalls > 0, true);
     assert.equal(warnings.length, 0);
   } finally {
-    global.localStorage = originalLocalStorage;
     global.GameConfig = originalGameConfig;
     global.setTimeout = originalSetTimeout;
     console.warn = originalConsoleWarn;

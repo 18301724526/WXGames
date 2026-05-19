@@ -22,8 +22,13 @@
       this.isEventModalOpen = options.isEventModalOpen || (() => false);
       this.getState = options.getState || (() => ({}));
       this.onTabLockChange = options.onTabLockChange;
+      this.storage = options.storage || {
+        isAutoStarted: () => false,
+        setAutoStarted: () => {},
+        setProgress: () => {},
+      };
       this.state = createFallbackState(0);
-      this.autoStarted = localStorage.getItem('tutorialAutoStarted') === 'true';
+      this.autoStarted = this.storage.isAutoStarted();
     }
 
     canAffordLumbermill() {
@@ -38,19 +43,18 @@
     }
 
     syncLocalProgress() {
-      localStorage.setItem('tutorialCompleted', this.state.completed ? 'true' : 'false');
-      localStorage.setItem('tutorialStep', String(this.state.currentStep));
+      this.storage.setProgress(this.state);
     }
 
     syncAutoStartedFlag() {
       if (this.state.completed || this.state.currentStep > 0) {
         this.autoStarted = true;
-        localStorage.setItem('tutorialAutoStarted', 'true');
+        this.storage.setAutoStarted(true);
         return;
       }
       // 服务端返回 step 0 时，以服务端为准重新允许自动启动。
       this.autoStarted = false;
-      localStorage.removeItem('tutorialAutoStarted');
+      this.storage.setAutoStarted(false);
     }
 
     setState(tutorial) {
@@ -60,11 +64,11 @@
       this.render();
       if (!this.state.completed && this.state.currentStep === 0 && !this.autoStarted) {
         this.autoStarted = true;
-        localStorage.setItem('tutorialAutoStarted', 'true');
+        this.storage.setAutoStarted(true);
         setTimeout(() => this.advanceTo(1).catch((error) => {
           console.warn('[tutorial] auto start failed:', error);
           this.autoStarted = false;
-          localStorage.removeItem('tutorialAutoStarted');
+          this.storage.setAutoStarted(false);
         }), global.GameConfig.TUTORIAL_START_DELAY_MS);
       }
     }

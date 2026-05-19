@@ -60,6 +60,7 @@ const Game = {
       isEventModalOpen: () => this.eventRenderer?.isOpen?.() || false,
       getState: () => this.state,
       onTabLockChange: () => this.updateTabLocks(),
+      storage: this.tutorialStorage,
     });
     this.eventController = new window.EventController({
       api: this.gameAPI,
