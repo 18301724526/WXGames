@@ -610,5 +610,4 @@ const Game = {
   },
 };
 
-window.Game = Game;
-window.H5GameBootstrap?.mount(Game);
+window.H5GameBootstrap?.mount(Game, { document, runtime: window });

@@ -44,8 +44,15 @@ test('app delegates startup to H5GameBootstrap instead of binding document direc
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-v1/);
-  assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-v1[\s\S]*app\.js\?v=state-manager-building-v1/);
-  assert.match(appJs, /H5GameBootstrap\?\.mount\(Game\)/);
+  assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  assert.match(appJs, /H5GameBootstrap\?\.mount\(Game, \{ document, runtime: window \}\)/);
   assert.doesNotMatch(appJs, /document\.addEventListener\(['"]DOMContentLoaded/);
+});
+
+test('H5 game bootstrap requires an explicit document instead of reading globals', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5GameBootstrap.js'), 'utf8');
+
+  assert.match(source, /this\.doc = options\.document \|\| null/);
+  assert.doesNotMatch(source, /global\.document|typeof document/);
 });

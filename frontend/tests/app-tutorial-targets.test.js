@@ -37,20 +37,22 @@ function createWindowStub() {
     BuildingActionAdapter: require('../js/ui/BuildingActionAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
     H5GameBootstrap: {
-      mount(Game) {
-        Game.config = global.window.GameConfig;
-        Game.presenter = global.window.UIStatePresenter;
+      mount(Game, options = {}) {
+        const runtime = options.runtime || global.window;
+        runtime.Game = Game;
+        Game.config = runtime.GameConfig;
+        Game.presenter = runtime.UIStatePresenter;
         Game.runtimeConstructors = {
-          GameAPI: global.window.GameAPI,
-          GameStateSync: global.window.GameStateSync,
-          UpdateChecker: global.window.UpdateChecker,
-          GameStateManager: global.window.GameStateManager,
-          TutorialController: global.window.TutorialController,
-          EventController: global.window.EventController,
-          BuildingController: global.window.BuildingController,
-          TerritoryController: global.window.TerritoryController,
+          GameAPI: runtime.GameAPI,
+          GameStateSync: runtime.GameStateSync,
+          UpdateChecker: runtime.UpdateChecker,
+          GameStateManager: runtime.GameStateManager,
+          TutorialController: runtime.TutorialController,
+          EventController: runtime.EventController,
+          BuildingController: runtime.BuildingController,
+          TerritoryController: runtime.TerritoryController,
         };
-        Game.stateNormalizer = global.window.FrontendGameState;
+        Game.stateNormalizer = runtime.FrontendGameState;
       },
     },
   };

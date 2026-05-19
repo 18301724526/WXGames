@@ -1,7 +1,7 @@
 (function (global) {
   class H5GameBootstrap {
     constructor(options = {}) {
-      this.doc = options.document || global.document || null;
+      this.doc = options.document || null;
       this.runtime = options.runtime || global;
       this.started = false;
     }
