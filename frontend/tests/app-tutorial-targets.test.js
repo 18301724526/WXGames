@@ -158,6 +158,55 @@ test('app uses faster polling while waiting for era2 readiness', () => {
   }
 });
 
+test('app uses injected scheduler for scout countdown timer', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const scheduled = [];
+    const cleared = [];
+    const { Game } = global.window;
+    Game.scheduler = {
+      setInterval(callback, intervalMs) {
+        const timer = { callback, intervalMs };
+        scheduled.push(timer);
+        return timer;
+      },
+      clearInterval(timer) {
+        cleared.push(timer);
+      },
+    };
+    Game.syncService = { stop() {} };
+    Game.updateChecker = { stop() {} };
+
+    Game.startScoutCountdownTimer();
+    assert.equal(scheduled.length, 1);
+    assert.equal(scheduled[0].intervalMs, 1000);
+    assert.equal(Game.scoutCountdownTimer, scheduled[0]);
+
+    Game.stopHeartbeat();
+    assert.deepEqual(cleared, [scheduled[0]]);
+    assert.equal(Game.scoutCountdownTimer, null);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('era advance button stays locked until tutorial unlocks the advance step', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;

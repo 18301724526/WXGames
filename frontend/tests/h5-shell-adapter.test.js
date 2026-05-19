@@ -138,8 +138,10 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=sync-scheduler-v1/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=sync-scheduler-v1[\s\S]*app\.js\?v=sync-scheduler-v1/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=sync-scheduler-v1[\s\S]*app\.js\?v=scout-scheduler-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
+  assert.doesNotMatch(appJs, /[^\w.]setInterval\(/);
+  assert.doesNotMatch(appJs, /[^\w.]clearInterval\(/);
   assert.doesNotMatch(appJs, /window\.mountFloatingText/);
   assert.doesNotMatch(appJs, /window\.mount(?:AuthMethods|PopulationMethods|LogMethods)/);
   assert.match(appJs, /this\.gameModules\?\.mount\?\.\(this\)/);

@@ -173,7 +173,7 @@ const Game = {
     if (this.syncService) this.syncService.stop();
     if (this.updateChecker) this.updateChecker.stop();
     if (this.scoutCountdownTimer) {
-      clearInterval(this.scoutCountdownTimer);
+      this.scheduler?.clearInterval?.(this.scoutCountdownTimer);
       this.scoutCountdownTimer = null;
     }
   },
@@ -455,7 +455,7 @@ const Game = {
 
   startScoutCountdownTimer() {
     if (this.scoutCountdownTimer) return;
-    this.scoutCountdownTimer = setInterval(() => {
+    this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
       if ((this.state.currentEra || 0) < 5) return;
       if (this.state.currentTab === 'military') {
         this.renderScoutControls();
