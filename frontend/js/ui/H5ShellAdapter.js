@@ -65,7 +65,7 @@
         civilizationPanel: global.CivilizationPanelAdapter?.fromDocument(doc, { setText }),
         militaryPanel: global.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
         buildingActions,
-        buildingRenderer: new global.BuildingUIRenderer(buildingActions?.getContainer?.(), {}),
+        buildingRenderer: new global.BuildingUIRenderer(buildingActions?.getContainer?.(), {}, { presenter: global.UIStatePresenter }),
         eventRenderer: new global.EventUIRenderer(setText),
         logModal: global.LogModalAdapter?.fromDocument(doc),
         runtimeLog: global.RuntimeLogAdapter?.fromDocument(doc),

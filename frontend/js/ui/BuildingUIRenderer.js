@@ -1,8 +1,9 @@
 (function (global) {
   class BuildingUIRenderer {
-    constructor(container, buildingConfig) {
+    constructor(container, buildingConfig, options = {}) {
       this.container = container;
       this.buildingConfig = buildingConfig;
+      this.presenter = options.presenter || null;
     }
 
     hasPatchableDom() {
@@ -13,23 +14,23 @@
     }
 
     formatCost(cost) {
-      return this.renderCost(global.UIStatePresenter.buildCostViewState(cost));
+      return this.renderCost(this.presenter.buildCostViewState(cost));
     }
 
     formatCostPart(resource, value) {
-      return `<span class="cost-item cost-${resource}"><span class="cost-icon" aria-hidden="true"></span><span class="cost-value">${global.UIStatePresenter.formatResourceAmount(value)}</span></span>`;
+      return `<span class="cost-item cost-${resource}"><span class="cost-icon" aria-hidden="true"></span><span class="cost-value">${this.presenter.formatResourceAmount(value)}</span></span>`;
     }
 
     getVisibleIds(state) {
-      return global.UIStatePresenter.getVisibleBuildingIds(state);
+      return this.presenter.getVisibleBuildingIds(state);
     }
 
     getConfig(state, id) {
-      return global.UIStatePresenter.getBuildingConfig(state, this.buildingConfig, id);
+      return this.presenter.getBuildingConfig(state, this.buildingConfig, id);
     }
 
     getStructureSignature(state, ids, tutorial = {}) {
-      const view = global.UIStatePresenter.buildBuildingViewState(state, tutorial, this.buildingConfig);
+      const view = this.presenter.buildBuildingViewState(state, tutorial, this.buildingConfig);
       if (!ids) return view.structureSignature;
       const allowed = new Set(ids);
       return JSON.stringify(view.cards
@@ -44,7 +45,7 @@
     }
 
     getCardState(state, tutorial, id) {
-      return global.UIStatePresenter.buildBuildingCardViewState(state, tutorial, this.buildingConfig, id);
+      return this.presenter.buildBuildingCardViewState(state, tutorial, this.buildingConfig, id);
     }
 
     renderCost(costState) {
@@ -127,7 +128,7 @@
 
     render(state, tutorial) {
       if (!this.container) return;
-      const view = global.UIStatePresenter.buildBuildingViewState(state, tutorial, this.buildingConfig);
+      const view = this.presenter.buildBuildingViewState(state, tutorial, this.buildingConfig);
       if (view.isEmpty) {
         this.container.innerHTML = `<div class="building-empty">${view.emptyText}</div>`;
         if (this.container.dataset) delete this.container.dataset.buildingStructureSignature;
@@ -145,15 +146,15 @@
     }
 
     formatEffectPart(template, effect) {
-      return global.UIStatePresenter.formatEffectPart(template, effect);
+      return this.presenter.formatEffectPart(template, effect);
     }
 
     getEffectText(config, buildingEffects) {
-      return global.UIStatePresenter.getBuildingEffectText(config, buildingEffects);
+      return this.presenter.getBuildingEffectText(config, buildingEffects);
     }
 
     getMilitaryText(id, military, buildingEffects) {
-      return global.UIStatePresenter.getBuildingMilitaryLines(id, military, buildingEffects).join('<br>');
+      return this.presenter.getBuildingMilitaryLines(id, military, buildingEffects).join('<br>');
     }
 
     getDescription(config) {

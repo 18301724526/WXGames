@@ -11,12 +11,16 @@ global.FrontendBuildingState = {
   },
 };
 
-global.UIStatePresenter = require('../js/state/UIStatePresenter');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
 const BuildingUIRenderer = require('../js/ui/BuildingUIRenderer');
+
+function createRenderer(container, buildingConfig = {}) {
+  return new BuildingUIRenderer(container, buildingConfig, { presenter: UIStatePresenter });
+}
 
 test('barracks card does not render legacy output or defense-level effect fields', () => {
   const container = { innerHTML: '' };
-  const renderer = new BuildingUIRenderer(container, {
+  const renderer = createRenderer(container, {
     barracks: {
       id: 'barracks',
       name: 'Barracks',
@@ -66,7 +70,7 @@ test('barracks card does not render legacy output or defense-level effect fields
 
 test('building card hides developer fallback effect and description text', () => {
   const container = { innerHTML: '' };
-  const renderer = new BuildingUIRenderer(container, {
+  const renderer = createRenderer(container, {
     temple: {
       id: 'temple',
       name: 'Temple',
