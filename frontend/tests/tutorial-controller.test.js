@@ -445,6 +445,7 @@ test('事件弹窗会切换 show 类而不是失效的 active 类', () => {
       },
     };
 
+    global.UIStatePresenter = require('../js/state/UIStatePresenter');
     delete require.cache[require.resolve('../js/ui/EventUIRenderer')];
     const EventUIRenderer = require('../js/ui/EventUIRenderer');
     const renderer = new EventUIRenderer(() => {});

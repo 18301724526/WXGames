@@ -45,6 +45,115 @@
       return `-${this.formatCompactNumber(Math.abs(this.toNumber(value)), { floorSmall: false })}/s`;
     }
 
+    static buildAuthCredentialViewState(credentials = {}) {
+      const rememberPasswordChecked = Boolean(credentials.rememberEnabled);
+      return {
+        rememberPasswordChecked,
+        usernameValue: credentials.rememberedUsername || credentials.username || '',
+        passwordValue: rememberPasswordChecked ? (credentials.rememberedPassword || '') : '',
+      };
+    }
+
+    static buildAuthShellViewState(options = {}) {
+      const authenticated = Boolean(options.authenticated);
+      return {
+        loginPanelVisible: !authenticated,
+        appVisible: authenticated,
+        message: authenticated ? '' : (options.message || ''),
+      };
+    }
+
+    static buildTutorialHighlightViewState(rect = {}, viewport = {}) {
+      const innerWidth = Math.max(0, this.toNumber(viewport.innerWidth));
+      const innerHeight = Math.max(0, this.toNumber(viewport.innerHeight));
+      const target = {
+        top: this.toNumber(rect.top),
+        left: this.toNumber(rect.left),
+        width: this.toNumber(rect.width),
+        height: this.toNumber(rect.height),
+        bottom: this.toNumber(rect.bottom, this.toNumber(rect.top) + this.toNumber(rect.height)),
+      };
+
+      const overlayPadding = 8;
+      const overlayTop = Math.max(6, target.top - overlayPadding);
+      const overlayLeft = Math.max(6, target.left - overlayPadding);
+      const overlayWidth = Math.max(28, Math.min(innerWidth - overlayLeft - 6, target.width + overlayPadding * 2));
+      const overlayHeight = Math.max(28, Math.min(innerHeight - overlayTop - 6, target.height + overlayPadding * 2));
+
+      const bubbleWidth = 220;
+      const bubbleHeight = 72;
+      const horizontalPadding = 12;
+      const viewportTopPadding = 12;
+      const prefersBelow = target.top < bubbleHeight + 28;
+      const bubbleTop = prefersBelow
+        ? Math.min(innerHeight - bubbleHeight - viewportTopPadding, target.bottom + 14)
+        : Math.max(viewportTopPadding, target.top - bubbleHeight - 14);
+      const bubbleLeft = Math.max(
+        horizontalPadding,
+        Math.min(innerWidth - bubbleWidth - horizontalPadding, target.left + target.width / 2 - bubbleWidth / 2),
+      );
+
+      const pointerWidth = 24;
+      const pointerHeight = 28;
+      const pointerTop = Math.max(
+        12,
+        Math.min(innerHeight - pointerHeight - 12, target.bottom + 6),
+      );
+      const pointerLeft = Math.max(
+        12,
+        Math.min(innerWidth - pointerWidth - 12, target.left + target.width / 2 - pointerWidth / 2),
+      );
+
+      return {
+        overlay: {
+          top: `${overlayTop}px`,
+          left: `${overlayLeft}px`,
+          width: `${overlayWidth}px`,
+          height: `${overlayHeight}px`,
+        },
+        bubble: {
+          top: `${bubbleTop}px`,
+          left: `${bubbleLeft}px`,
+          maxWidth: '',
+        },
+        pointer: {
+          top: `${pointerTop}px`,
+          left: `${pointerLeft}px`,
+        },
+      };
+    }
+
+    static buildTabNavigationViewState(state = {}, options = {}) {
+      const requestedTab = options.requestedTab || state.currentTab || 'resources';
+      const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;
+      const tabs = ['resources', 'civilization', 'buildings', 'events', 'military'];
+      const pages = ['resources', 'civilization', 'buildings', 'events', 'military'];
+      return {
+        activeTab,
+        requestedTab,
+        tabs: tabs.map((id) => ({
+          id,
+          isActive: id === activeTab,
+        })),
+        pages: pages.map((id) => ({
+          id,
+          isActive: id === activeTab,
+        })),
+      };
+    }
+
+    static buildTabLockViewState(tabs = [], canOpenTab = () => true) {
+      return tabs.map((tab) => {
+        const id = tab.id || tab.tabId || '';
+        const allowed = Boolean(canOpenTab(id));
+        return {
+          id,
+          disabled: !allowed,
+          isLocked: !allowed,
+        };
+      });
+    }
+
     static buildResourceViewState(state = {}) {
       const resources = state.resources || {};
       const foodOutput = this.toNumber(resources.foodOutputPerSecond);
@@ -124,6 +233,191 @@
           farmerCount: counts.farmer,
           scholarCount: counts.scholar,
           craftsmanCount: counts.craftsman,
+        },
+      };
+    }
+
+    static buildCitySwitcherViewState(state = {}) {
+      const cityState = state.cityState || {};
+      const cities = Array.isArray(cityState.cities) ? cityState.cities : [];
+      const hidden = cities.length <= 1;
+      const activeCityId = state.activeCityId || cityState.activeCityId || cityState.capitalCityId || 'capital';
+      const activeCity = cities.find((city) => city.id === activeCityId) || cities[0] || null;
+      const options = cities.map((city) => {
+        const isActive = city.id === activeCityId;
+        const population = this.toInteger(city.population?.total);
+        const buildings = this.toInteger(city.totalBuildings);
+        return {
+          id: city.id || '',
+          name: city.name || '未命名城市',
+          tag: city.isCapital ? '主城' : '分城',
+          population,
+          buildings,
+          metaText: `人口 ${population} · 建筑 ${buildings}`,
+          isActive,
+        };
+      });
+
+      return {
+        hidden,
+        activeCityId,
+        activeCityName: activeCity?.name || '首都',
+        options,
+        signature: JSON.stringify(options),
+      };
+    }
+
+    static canAdvanceEraByTutorial(state = {}, tutorial = {}) {
+      if (tutorial.completed) return true;
+      const step = Number(tutorial.currentStep) || 0;
+      if (this.toNumber(state.currentEra) === 0) return step >= 2;
+      if (this.toNumber(state.currentEra) === 1) return step >= 9;
+      return true;
+    }
+
+    static buildEraConditionViewState(condition = {}) {
+      return {
+        name: condition.name || '',
+        met: Boolean(condition.met),
+        className: condition.met ? 'met' : 'unmet',
+        progressText: `${condition.current}/${condition.required}`,
+      };
+    }
+
+    static buildCivilizationViewState(state = {}, tutorial = {}, options = {}) {
+      const eraName = state.currentEraName || '原始时代';
+      const progress = state.eraProgress || { percentage: 0, canAdvance: false, conditions: [] };
+      const percentage = Math.max(0, Math.min(100, this.toNumber(progress.percentage)));
+      const canAdvanceByTutorial = this.canAdvanceEraByTutorial(state, tutorial);
+      const canOpenCivilizationTab = options.canOpenCivilizationTab !== false;
+      const canAdvance = Boolean(progress.canAdvance)
+        && state.isCapitalCity !== false
+        && canAdvanceByTutorial
+        && canOpenCivilizationTab;
+
+      let advanceLabel = '条件不足，无法进阶';
+      if (state.isCapitalCity === false) advanceLabel = '分城跟随主城时代';
+      else if (progress.canAdvance && !canAdvanceByTutorial) advanceLabel = '引导未解锁';
+      else if (progress.canAdvance) advanceLabel = '满足条件，可进阶';
+
+      return {
+        text: {
+          eraName,
+          civOverviewEraName: eraName,
+          civOverviewDay: `第 ${state.gameDay || 1} 天`,
+          civOverviewPop: this.toInteger(state.population?.total),
+          civOverviewBuildings: this.toInteger(state.totalBuildings),
+          civOverviewTechs: `${Object.keys(state.techs || {}).length}/0`,
+          civOverviewHappiness: `${state.happiness || 100}%`,
+          eraProgressText: `总进度: ${percentage}%`,
+          eraTargetName: progress.targetEraName || '时代未开放',
+          advanceLabel,
+          featureDescription: state.currentEraDescription || `${eraName}：继续建设你的文明。`,
+        },
+        progress: {
+          percentage,
+          width: `${percentage}%`,
+          canAdvance: Boolean(progress.canAdvance),
+        },
+        advanceButton: {
+          disabled: !canAdvance,
+          canAdvance,
+          canAdvanceByTutorial,
+          canOpenCivilizationTab,
+        },
+        conditions: (progress.conditions || []).map((condition) => this.buildEraConditionViewState(condition)),
+      };
+    }
+
+    static buildMilitaryNavigationViewState(state = {}) {
+      const locked = this.toNumber(state.currentEra) < 5;
+      const requestedView = ['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army';
+      const activeView = locked && requestedView !== 'army' ? 'army' : requestedView;
+      const views = ['army', 'scout', 'world'].map((id) => {
+        const disabled = locked && id !== 'army';
+        return {
+          id,
+          isActive: id === activeView,
+          disabled,
+          isLocked: disabled,
+          title: disabled ? '进入古典时代后解锁' : '',
+          ariaSelected: String(id === activeView),
+        };
+      });
+      return {
+        activeView,
+        locked,
+        views,
+      };
+    }
+
+    static buildAdvisorViewState(guide = {}) {
+      const message = guide?.message || '';
+      return {
+        hidden: !message,
+        activeAdvisor: message ? { message, target: guide?.target || null } : null,
+        text: {
+          message: message || '暂无建议。',
+        },
+        goButton: {
+          disabled: !message || !guide?.target,
+        },
+        closeModal: !message,
+      };
+    }
+
+    static getAdvisorTargetTab(target) {
+      if (target === 'tab-territory') return 'territory';
+      if (typeof target === 'string' && target.startsWith('tab-')) return target.slice(4);
+      return null;
+    }
+
+    static buildNamingPromptViewState(prompt = {}) {
+      const type = prompt?.type || '';
+      return {
+        title: prompt?.title || '命名',
+        message: prompt?.message || '',
+        placeholder: type === 'polity' ? '例如：赤火联盟' : '例如：河湾城',
+        key: `${type}:${prompt?.territoryId || 'polity'}`,
+        prompt: prompt || null,
+      };
+    }
+
+    static buildRecentLogViewState(entries = []) {
+      const items = (entries || []).slice(0, 20).map((entry) => ({
+        text: typeof entry === 'string' ? entry : entry?.textContent || '',
+      }));
+      return {
+        isEmpty: items.length === 0,
+        emptyText: '暂无日志',
+        items,
+      };
+    }
+
+    static buildRequestLogViewState(logs = []) {
+      const items = (logs || []).slice(0, 20).map((log) => {
+        const statusCode = this.toInteger(log.statusCode);
+        return {
+          timestamp: log.timestamp || '',
+          endpoint: `${log.method || ''} ${log.path || ''}`.trim(),
+          statusCode,
+          durationText: `${this.toInteger(log.duration)}ms`,
+          isError: statusCode >= 400 || statusCode === 0,
+        };
+      });
+      return {
+        isEmpty: items.length === 0,
+        emptyText: '暂无请求记录',
+        items,
+      };
+    }
+
+    static buildTerritorySummaryViewState(territoryState = {}) {
+      const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
+      return {
+        text: {
+          polityName,
+          territoryCount: `${territoryState.occupiedCount || 0}/${territoryState.discoveredCount || 0} 已控制`,
         },
       };
     }
@@ -266,6 +560,637 @@
           icon: card.icon,
           structure: card.structure,
         }))),
+      };
+    }
+
+    static formatEventReward(reward) {
+      if (!reward) return '事件已完成';
+      const parts = [];
+      if (reward.food) parts.push(`🌾 +${this.formatResourceAmount(reward.food)}`);
+      if (reward.knowledge) parts.push(`📚 +${this.formatResourceAmount(reward.knowledge)}`);
+      if (reward.wood) parts.push(`🪵 +${this.formatResourceAmount(reward.wood)}`);
+      return parts.join(' ') || '事件已完成';
+    }
+
+    static getEventOptionPreview(option) {
+      if (option?.preview) return option.preview;
+      return this.formatEventReward(option?.reward);
+    }
+
+    static getRemainingSeconds(expiresAt, nowMs = Date.now()) {
+      const expiresAtMs = new Date(expiresAt).getTime();
+      if (!Number.isFinite(expiresAtMs)) return null;
+      return Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));
+    }
+
+    static formatRemainingTime(expiresAt, nowMs = Date.now()) {
+      const seconds = this.getRemainingSeconds(expiresAt, nowMs);
+      if (seconds === null) return '';
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      return `${minutes}:${String(rest).padStart(2, '0')}`;
+    }
+
+    static getEventHint(event, nowMs = Date.now()) {
+      const remaining = this.formatRemainingTime(event?.expiresAt, nowMs);
+      if (event?.type === 'threat') {
+        if (!remaining) return '超时将按失败处理';
+        return `剩余 ${remaining}，超时将按失败处理`;
+      }
+      if (event?.type === 'regular') {
+        if (!remaining) return '超时将自动失效';
+        return `剩余 ${remaining}，超时将自动失效`;
+      }
+      return '点击查看详情';
+    }
+
+    static buildEventCardViewState(event = {}, nowMs = Date.now()) {
+      return {
+        id: event.id || '',
+        domId: event.id === 'evt_settlement_forest_001' ? 'event-card-special' : '',
+        icon: event.icon || '📜',
+        title: event.title || '',
+        description: event.description || '',
+        hint: this.getEventHint(event, nowMs),
+        classState: {
+          'is-special': event.type === 'special',
+          'is-threat': event.type === 'threat',
+        },
+      };
+    }
+
+    static buildEventHistoryItemViewState(event = {}) {
+      const selectedOption = event.selectedOptionId
+        ? event.options?.find((item) => item.id === event.selectedOptionId)
+        : null;
+      return {
+        icon: event.icon || '📜',
+        title: event.title || '',
+        result: event.resultSummary || this.formatEventReward(selectedOption?.reward),
+        className: event.type === 'threat' ? 'threat' : 'positive',
+      };
+    }
+
+    static buildEventViewState(state = {}, options = {}) {
+      const nowMs = options.nowMs ?? Date.now();
+      const eventQueue = Array.isArray(state.eventQueue) ? state.eventQueue : [];
+      const eventHistory = Array.isArray(state.eventHistory) ? state.eventHistory : [];
+      const pendingCards = eventQueue.map((event) => this.buildEventCardViewState(event, nowMs));
+      const historyItems = eventHistory.map((event) => this.buildEventHistoryItemViewState(event));
+      return {
+        text: {
+          techKnowledgeRate: `${this.toNumber(state.resources?.knowledgePerSecond)}/s`,
+        },
+        badge: {
+          hidden: !eventQueue.length,
+          text: eventQueue.length > 9 ? '9+' : String(eventQueue.length),
+        },
+        pending: {
+          isEmpty: !pendingCards.length,
+          emptyText: '暂无待处理事件',
+          cards: pendingCards,
+        },
+        history: {
+          isEmpty: !historyItems.length,
+          emptyText: '暂无事件记录',
+          items: historyItems,
+        },
+      };
+    }
+
+    static buildEventModalViewState(eventData = {}, options = {}) {
+      const nowMs = options.nowMs ?? Date.now();
+      const eventOptions = Array.isArray(eventData.options) ? eventData.options : [];
+      const optionViews = eventOptions.map((option) => ({
+        id: option.id || '',
+        label: option.label || '处理事件',
+        preview: this.getEventOptionPreview(option),
+      }));
+      const firstOption = optionViews[0];
+      const singleOptionPreview = optionViews.length === 1
+        ? optionViews[0].preview
+        : '选择一种处理方式';
+      const expiryHint = ['threat', 'regular'].includes(eventData?.type)
+        ? this.getEventHint(eventData, nowMs)
+        : '';
+
+      return {
+        text: {
+          title: `${eventData.icon || '📜'} ${eventData.title || ''}`,
+          description: eventData.description || '',
+          reward: expiryHint ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview,
+        },
+        options: optionViews,
+        claimButton: {
+          optionId: firstOption?.id || '',
+          label: firstOption?.label || '处理事件',
+          hidden: optionViews.length !== 1,
+        },
+        showModal: true,
+      };
+    }
+
+    static buildMilitaryViewState(state = {}) {
+      const military = state.military || {};
+      const soldiers = this.toInteger(military.soldiers);
+      const cap = this.toInteger(military.soldierCap);
+      const defense = this.toInteger((military.defense || 0) + (state.buildingEffects?.threatDefense || 0));
+      const interval = this.toInteger(military.trainingIntervalSeconds);
+      const progress = this.toInteger(military.trainingProgress);
+      const availableSoldiers = this.toInteger(state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers);
+      const soldiersOnMission = this.toInteger(state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0);
+
+      let trainingText = `下一名 ${progress}/${interval} 秒`;
+      let trainingProgressWidth = interval > 0
+        ? `${Math.max(0, Math.min(100, Math.floor((progress / interval) * 100)))}%`
+        : '0%';
+
+      if (soldiers >= cap && cap > 0) {
+        trainingText = '训练已满';
+        trainingProgressWidth = '100%';
+      } else if (cap <= 0 || interval <= 0) {
+        trainingText = '等待兵营';
+        trainingProgressWidth = '0%';
+      }
+
+      return {
+        text: {
+          soldierCount: `${soldiers}/${cap}`,
+          militaryDefense: defense,
+          availableSoldierCount: availableSoldiers,
+          soldiersOnMission,
+          soldierTrainingText: trainingText,
+        },
+        training: {
+          progressWidth: trainingProgressWidth,
+        },
+      };
+    }
+
+    static getScoutMissionRemainingSeconds(mission, nowMs = Date.now()) {
+      if (!mission) return 0;
+      if (mission.status === 'ready') return 0;
+      const completesAtMs = new Date(mission.completesAt).getTime();
+      if (Number.isFinite(completesAtMs)) {
+        return Math.max(0, Math.ceil((completesAtMs - nowMs) / 1000));
+      }
+      return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
+    }
+
+    static formatScoutCountdown(seconds) {
+      const value = Math.max(0, Math.ceil(Number(seconds) || 0));
+      const minutes = Math.floor(value / 60);
+      const rest = value % 60;
+      return `${minutes}:${String(rest).padStart(2, '0')}`;
+    }
+
+    static buildScoutControlViewState(state = {}, options = {}) {
+      const nowMs = options.nowMs ?? Date.now();
+      const territoryState = state.territoryState || {};
+      const currentEra = this.toNumber(state.currentEra);
+      if (currentEra < 5) {
+        return {
+          statusText: '进入古典时代后可派出侦察队。',
+          cells: [],
+        };
+      }
+
+      const directions = Array.isArray(territoryState.directions) ? territoryState.directions : [];
+      const scoutMissions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
+      const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
+      const activeScouts = scoutMissions.filter((mission) => mission.status === 'active');
+      const activeScout = activeScouts[0];
+      const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
+      const maxActiveScouts = Math.max(1, this.toInteger(territoryState.maxActiveScouts || 1));
+
+      let statusText = `选择方向派出侦察队；同一时间最多可有 ${maxActiveScouts} 支侦察队在外。`;
+      if (readyCount > 0 && activeScouts.length > 0) {
+        statusText = `${readyCount} 份报告待查看，另有 ${activeScouts.length} 支侦察队仍在外。`;
+      } else if (readyCount > 0) {
+        statusText = `${readyCount} 份侦察报告待查看，你仍可继续派出侦察队。`;
+      } else if (activeScouts.length > 1) {
+        statusText = `${activeScouts.length} 支侦察队在外行动，最早一支约 ${this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs))} 后返回。`;
+      } else if (activeScout) {
+        const label = directions.find((direction) => direction.id === activeScout.direction)?.label || '外部';
+        statusText = `${label}侦察中，预计 ${this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs))} 后返回。`;
+      }
+
+      const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
+      const order = [
+        ['nw', '西北'], ['n', '北'], ['ne', '东北'],
+        ['w', '西'], ['center', '本城'], ['e', '东'],
+        ['sw', '西南'], ['s', '南'], ['se', '东南'],
+      ];
+      const cells = order.map(([id, fallbackLabel]) => {
+        if (id === 'center') {
+          return {
+            type: 'center',
+            label: '城',
+            subLabel: '本城',
+          };
+        }
+        if (!labels.has(id)) return null;
+        const label = labels.get(id) || fallbackLabel;
+        const mission = activeByDirection.get(id);
+        if (mission?.status === 'ready') {
+          return {
+            type: 'button',
+            id,
+            className: `direction-${id} status-ready`,
+            disabled: false,
+            action: 'claim',
+            actionValue: mission.id,
+            ariaLabel: `${label}侦察报告`,
+            label,
+            actionText: '报告',
+          };
+        }
+        if (mission) {
+          return {
+            type: 'button',
+            id,
+            className: `direction-${id} status-active`,
+            disabled: true,
+            action: '',
+            actionValue: '',
+            ariaLabel: `${label}侦察中`,
+            label,
+            actionText: this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(mission, nowMs)),
+          };
+        }
+        if (activeScouts.length >= maxActiveScouts) {
+          return {
+            type: 'button',
+            id,
+            className: `direction-${id} status-locked`,
+            disabled: true,
+            action: '',
+            actionValue: '',
+            ariaLabel: `${label}侦察暂不可用`,
+            label,
+            actionText: '等待',
+          };
+        }
+        return {
+          type: 'button',
+          id,
+          className: `direction-${id} status-available`,
+          disabled: false,
+          action: 'scout',
+          actionValue: id,
+          ariaLabel: `向${label}派出侦察`,
+          label,
+          actionText: '派出',
+        };
+      }).filter(Boolean);
+
+      return {
+        statusText,
+        cells,
+      };
+    }
+
+    static getWorldRadarPosition(site, maxDistance) {
+      const visualOffset = site.visualOffset || {};
+      const x = Number(site.relativeX ?? site.x ?? 0) + (Number(visualOffset.x) || 0);
+      const y = Number(site.relativeY ?? site.y ?? 0) + (Number(visualOffset.y) || 0);
+      const distance = Math.max(0, Math.hypot(x, y));
+      const normalized = Math.sqrt(Math.min(1, distance / Math.max(1, maxDistance)));
+      const radius = distance > 0 ? 12 + normalized * 30 : 0;
+      const angle = Math.atan2(y, x || 0.0001);
+      return {
+        x,
+        y,
+        distance,
+        angle,
+        radius,
+      };
+    }
+
+    static measureWorldRadarSpacing(candidate, placed) {
+      if (!placed.length) return Infinity;
+      return placed.reduce((best, existing) => Math.min(
+        best,
+        Math.hypot(candidate.left - existing.left, candidate.top - existing.top),
+      ), Infinity);
+    }
+
+    static resolveWorldRadarPosition(anchor, placed) {
+      if (anchor.distance === 0) return { left: 50, top: 50 };
+      const angleOffsets = [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6];
+      const radiusOffsets = [0, 2.5, -2, 5, -3.5, 7];
+      const minSpacing = 9.5;
+      let bestCandidate = null;
+
+      for (const radiusOffset of radiusOffsets) {
+        for (const angleOffset of angleOffsets) {
+          const candidateAngle = anchor.angle + angleOffset * (Math.PI / 18);
+          const candidateRadius = Math.max(10, Math.min(40, anchor.radius + radiusOffset + Math.abs(angleOffset) * 0.2));
+          const candidate = {
+            left: 50 + Math.cos(candidateAngle) * candidateRadius,
+            top: 50 + Math.sin(candidateAngle) * candidateRadius,
+          };
+          if (candidate.left < 8 || candidate.left > 92 || candidate.top < 8 || candidate.top > 92) continue;
+          const spacing = this.measureWorldRadarSpacing(candidate, placed);
+          if (spacing >= minSpacing) return candidate;
+          if (!bestCandidate || spacing > bestCandidate.spacing) {
+            bestCandidate = { ...candidate, spacing };
+          }
+        }
+      }
+
+      return bestCandidate || {
+        left: Math.max(8, Math.min(92, 50 + Math.cos(anchor.angle) * anchor.radius)),
+        top: Math.max(8, Math.min(92, 50 + Math.sin(anchor.angle) * anchor.radius)),
+      };
+    }
+
+    static buildWorldRadarLayout(territories = []) {
+      const maxDistance = Math.max(
+        1,
+        ...territories.map((site) => Math.hypot(
+          Number(site.relativeX ?? site.x ?? 0) + (Number(site.visualOffset?.x) || 0),
+          Number(site.relativeY ?? site.y ?? 0) + (Number(site.visualOffset?.y) || 0),
+        )),
+      );
+      const sorted = [...territories].sort((a, b) => {
+        if (a.id === 'capital') return -1;
+        if (b.id === 'capital') return 1;
+        const aAnchor = this.getWorldRadarPosition(a, maxDistance);
+        const bAnchor = this.getWorldRadarPosition(b, maxDistance);
+        return aAnchor.distance - bAnchor.distance || aAnchor.angle - bAnchor.angle || String(a.id).localeCompare(String(b.id));
+      });
+      const placed = [];
+      const layout = new Map();
+
+      sorted.forEach((site) => {
+        const anchor = this.getWorldRadarPosition(site, maxDistance);
+        const resolved = this.resolveWorldRadarPosition(anchor, placed);
+        const position = {
+          left: resolved.left.toFixed(2),
+          top: resolved.top.toFixed(2),
+        };
+        placed.push({
+          id: site.id,
+          left: Number(position.left),
+          top: Number(position.top),
+        });
+        layout.set(site.id, position);
+      });
+
+      return layout;
+    }
+
+    static getWorldMapSignature(territories = []) {
+      return JSON.stringify((territories || []).map((site) => ({
+        id: site.id,
+        x: site.x,
+        y: site.y,
+        relativeX: site.relativeX ?? null,
+        relativeY: site.relativeY ?? null,
+        visualOffset: site.visualOffset || null,
+        status: site.status,
+        owner: site.owner,
+        type: site.type,
+        art: site.art,
+        name: site.cityName || site.naturalName,
+      })));
+    }
+
+    static formatWorldSiteEffect(effects = {}) {
+      const parts = [];
+      if (effects.foodOutputMultiplier) parts.push(`食物 +${Math.round(effects.foodOutputMultiplier * 100)}%`);
+      if (effects.woodOutputMultiplier) parts.push(`木材 +${Math.round(effects.woodOutputMultiplier * 100)}%`);
+      if (effects.knowledgeOutputMultiplier) parts.push(`知识 +${Math.round(effects.knowledgeOutputMultiplier * 100)}%`);
+      if (effects.threatDefense) parts.push(`边境防御 +${effects.threatDefense}`);
+      return parts.join('，') || '无';
+    }
+
+    static formatWorldSiteStatus(site = {}) {
+      const labels = {
+        discovered: '已发现',
+        contested: '出征中',
+        occupied: '已控制',
+      };
+      return labels[site.status] || site.status || '';
+    }
+
+    static formatWorldSiteOwner(site = {}) {
+      if (site.owner === 'player') return '我方';
+      if (site.owner === 'neutral') return '无主';
+      const labels = {
+        tribe: '部落',
+        city_state: '城邦',
+        ruin_guardians: '遗迹守军',
+      };
+      const ownerLabel = labels[site.owner] || site.owner || '未知势力';
+      return `有主 · ${ownerLabel}`;
+    }
+
+    static formatWorldDuration(seconds) {
+      const value = Math.max(0, Math.ceil(Number(seconds) || 0));
+      const minutes = Math.floor(value / 60);
+      const rest = value % 60;
+      return `${minutes}:${String(rest).padStart(2, '0')}`;
+    }
+
+    static getWorldSiteMarchInfo(site = {}, territoryState = {}) {
+      const mission = site.mission || null;
+      const totalSeconds = Math.max(0, Math.floor(mission?.durationSeconds || territoryState.missionDurationSeconds || 0));
+      if (site.status === 'contested' && mission?.status === 'ready') {
+        return totalSeconds > 0 ? `行军耗时 ${this.formatWorldDuration(totalSeconds)}，已抵达待接管` : '已抵达待接管';
+      }
+      if (site.status === 'contested') {
+        const remaining = this.formatWorldDuration(mission?.remainingSeconds || 0);
+        return totalSeconds > 0 ? `行军耗时 ${this.formatWorldDuration(totalSeconds)}，剩余 ${remaining}` : `剩余 ${remaining}`;
+      }
+      if (site.status === 'discovered' && totalSeconds > 0) {
+        return `行军耗时 ${this.formatWorldDuration(totalSeconds)}`;
+      }
+      return '';
+    }
+
+    static buildWorldExpeditionDraftViewState(site = {}, uiState = {}) {
+      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
+      return {
+        territoryId: uiState.expeditionConfigSiteId || '',
+        troopType: uiState.expeditionTroopType || 'unavailable',
+        leader: uiState.expeditionLeader || 'unavailable',
+        soldiers: Math.max(1, Number(uiState.expeditionSoldiers) || recommended),
+        recommended,
+      };
+    }
+
+    static buildWorldExpeditionConfigViewState(site = {}, territoryState = {}, uiState = {}) {
+      const draft = this.buildWorldExpeditionDraftViewState(site, uiState);
+      const availableSoldiers = this.toInteger(territoryState.availableSoldiers);
+      return {
+        siteId: site.id || '',
+        draft,
+        availableSoldiers,
+        disabled: availableSoldiers < draft.soldiers,
+        note: `建议 ${site.recommendedSoldiers || site.defense || 1} 人，当前可用 ${availableSoldiers} 人`,
+        fields: {
+          troopType: {
+            label: '兵种',
+            value: draft.troopType,
+            options: [{ value: 'unavailable', label: '暂未开放' }],
+            note: '暂未开放',
+          },
+          leader: {
+            label: '领队',
+            value: draft.leader,
+            options: [{ value: 'unavailable', label: '暂未开放' }],
+            note: '暂未开放',
+          },
+          soldiers: {
+            label: '出征数量',
+            value: draft.soldiers,
+            min: 1,
+            step: 1,
+          },
+        },
+        buttons: {
+          cancel: { label: '取消', action: 'close-expedition' },
+          launch: { label: '出发', action: 'launch-expedition' },
+        },
+      };
+    }
+
+    static makeWorldSiteActionButton(label, action, territoryId, options = {}) {
+      return {
+        label,
+        action: action || '',
+        territoryId: territoryId || '',
+        disabled: Boolean(options.disabled),
+        secondary: Boolean(options.secondary),
+      };
+    }
+
+    static buildWorldSiteActionViewState(site = {}, territoryState = {}, uiState = {}) {
+      const availableSoldiers = this.toInteger(territoryState.availableSoldiers);
+      const mission = site.mission || null;
+      if (site.status === 'discovered') {
+        const isOwnedTarget = site.occupationMode === 'conquest';
+        const expanded = uiState.expeditionConfigSiteId === site.id;
+        const directDisabled = availableSoldiers < 1;
+        return {
+          kind: 'group',
+          buttons: [
+            this.makeWorldSiteActionButton('交涉', '', site.id, { disabled: true, secondary: true }),
+            this.makeWorldSiteActionButton('掠夺', '', site.id, { disabled: true, secondary: true }),
+            this.makeWorldSiteActionButton('占领', isOwnedTarget ? 'open-expedition' : 'conquer', site.id, {
+              disabled: !isOwnedTarget && directDisabled,
+            }),
+          ],
+          hint: isOwnedTarget ? '该地区已有势力，需要先配置出征队伍。' : '该地区无主，派 1 人即可建立据点。',
+          expeditionConfig: isOwnedTarget && expanded
+            ? this.buildWorldExpeditionConfigViewState(site, territoryState, uiState)
+            : null,
+        };
+      }
+      if (site.status === 'contested' && mission?.status === 'ready') {
+        return {
+          kind: 'single',
+          buttons: [this.makeWorldSiteActionButton('完成占领', 'claim', site.id)],
+          hint: '',
+          expeditionConfig: null,
+        };
+      }
+      if (site.status === 'contested') {
+        return {
+          kind: 'single',
+          buttons: [this.makeWorldSiteActionButton('行军中', '', site.id, { disabled: true })],
+          hint: '',
+          expeditionConfig: null,
+        };
+      }
+      if (site.status === 'occupied') {
+        return {
+          kind: 'row',
+          buttons: [
+            this.makeWorldSiteActionButton('管理', 'manage-city', site.id),
+            this.makeWorldSiteActionButton('改名', 'rename-city', site.id, { secondary: true }),
+          ],
+          hint: '',
+          expeditionConfig: null,
+        };
+      }
+      return {
+        kind: 'single',
+        buttons: [this.makeWorldSiteActionButton('等待侦察', '', site.id, { disabled: true })],
+        hint: '',
+        expeditionConfig: null,
+      };
+    }
+
+    static getWorldSiteLastBattleNote(site = {}) {
+      if (!site.lastBattle) return '';
+      if (site.lastBattle.mode === 'settlement') return '最近一次行动已顺利建立据点';
+      const result = site.lastBattle.success ? '上次占领成功' : '上次占领失败';
+      return `${result} · 损失 ${site.lastBattle.casualties || 0} 士兵`;
+    }
+
+    static buildWorldSiteDetailViewState(site = {}, territoryState = {}, uiState = {}) {
+      const selectedSiteId = uiState.selectedSiteId || '';
+      return {
+        id: site.id || '',
+        visible: site.id === selectedSiteId,
+        text: {
+          name: site.cityName || site.naturalName || '',
+          status: this.formatWorldSiteStatus(site),
+          owner: this.formatWorldSiteOwner(site),
+          distance: `距 ${site.originDistance ?? site.distance ?? 0}`,
+          scale: `规模 ${site.scale || 1}`,
+          threat: `威胁 ${site.threat || 0}`,
+          summary: site.summary || this.formatWorldSiteEffect(site.effects),
+          defense: `防御 ${site.defense || 0}`,
+          soldiers: `建议 ${site.recommendedSoldiers || 0} 士兵`,
+          march: this.getWorldSiteMarchInfo(site, territoryState),
+          note: this.getWorldSiteLastBattleNote(site),
+        },
+        action: this.buildWorldSiteActionViewState(site, territoryState, uiState),
+      };
+    }
+
+    static buildWorldSiteDialogViewState(territories = [], territoryState = {}, uiState = {}) {
+      const selectedSiteId = uiState.selectedSiteId || '';
+      const details = (territories || []).map((site) => this.buildWorldSiteDetailViewState(site, territoryState, uiState));
+      const view = {
+        selectedSiteId,
+        showModal: details.some((detail) => detail.id === selectedSiteId),
+        details,
+      };
+      return {
+        ...view,
+        signature: JSON.stringify(view),
+      };
+    }
+
+    static getWorldSiteDialogContentSignature(territories = [], territoryState = {}, uiState = {}) {
+      return this.buildWorldSiteDialogViewState(territories, territoryState, uiState).signature;
+    }
+
+    static buildWorldRadarViewState(territories = [], options = {}) {
+      const layout = this.buildWorldRadarLayout(territories);
+      return {
+        signature: this.getWorldMapSignature(territories),
+        pan: {
+          x: this.toNumber(options.panX),
+          y: this.toNumber(options.panY),
+        },
+        sites: territories.map((site) => {
+          const position = layout.get(site.id) || { left: '50.00', top: '50.00' };
+          return {
+            id: site.id || '',
+            className: `world-site-${site.status} owner-${site.owner} type-${site.type}`,
+            title: site.naturalName || '',
+            art: site.art || '',
+            alt: site.naturalName || '',
+            name: site.cityName || site.naturalName || '',
+            position,
+          };
+        }),
       };
     }
   }

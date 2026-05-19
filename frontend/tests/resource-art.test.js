@@ -52,6 +52,8 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const renderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'TerritoryUIRenderer.js'), 'utf8');
+  const controller = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'controllers', 'TerritoryController.js'), 'utf8');
+  const presenter = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'state', 'UIStatePresenter.js'), 'utf8');
   const assets = [
     'world-site-outpost-cutout.png',
     'world-site-town-cutout.png',
@@ -86,7 +88,11 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(renderer, /data-world-site-modal/);
   assert.match(renderer, /data-site-detail/);
   assert.match(renderer, /selectedSiteId/);
-  assert.match(renderer, /visualOffset/);
+  assert.doesNotMatch(renderer, /dataset\.selectedSiteId|dataset\.worldPan|dataset\.expedition/);
+  assert.match(controller, /this\.uiState\.selectedSiteId/);
+  assert.match(controller, /getUiState\(\)/);
+  assert.match(presenter, /visualOffset/);
+  assert.match(presenter, /buildWorldRadarViewState/);
   assert.match(renderer, /data-world-map-host/);
   assert.match(renderer, /mapSignature/);
   assert.doesNotMatch(renderer, /radarPhase|--radar-phase/);
@@ -96,10 +102,13 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.doesNotMatch(renderer, /territory-site-list/);
   assert.doesNotMatch(renderer, /world-cell-unknown/);
   assert.match(html, /style\.css\?v=[^"]+/);
+  assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
   assert.match(html, /GameAPI\.js\?v=territory-radar-v1/);
-  assert.match(html, /TerritoryController\.js\?v=territory-radar-v1/);
-  assert.match(html, /TerritoryUIRenderer\.js\?v=territory-radar-v1/);
-  assert.match(html, /app\.js\?v=[^"]+/);
+  assert.match(html, /TerritoryController\.js\?v=territory-ui-state-v1/);
+  assert.match(html, /TerritoryUIRenderer\.js\?v=territory-ui-state-v1/);
+  assert.match(html, /TutorialUIRenderer\.js\?v=tutorial-viewstate-v1/);
+  assert.match(html, /app\.js\?v=tab-navigation-viewstate-v1/);
+  assert.match(html, /auth\.js\?v=auth-viewstate-v1/);
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
   assert.match(html, /id="logButton"/);

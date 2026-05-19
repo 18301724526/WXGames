@@ -14,28 +14,19 @@ function createClassList() {
 
 test('world site click opens the matching detail dialog', () => {
   const handlers = {};
-  const details = [
-    { dataset: { siteDetail: 'capital' }, hidden: true },
-    { dataset: { siteDetail: 'site-east' }, hidden: true },
-  ];
-  const modal = {
-    classList: createClassList(),
-    querySelectorAll(selector) {
-      return selector === '[data-site-detail]' ? details : [];
-    },
-  };
+  let renderCount = 0;
   const container = {
     dataset: {},
     addEventListener(type, handler) {
       handlers[type] = handler;
     },
-    querySelector(selector) {
-      if (selector === '[data-world-site-modal]') return modal;
-      return null;
-    },
+    querySelector() { return null; },
   };
 
-  const controller = new TerritoryController({ container });
+  const controller = new TerritoryController({
+    container,
+    onRenderRequested: () => { renderCount += 1; },
+  });
   controller.bind();
 
   handlers.click({
@@ -50,10 +41,9 @@ test('world site click opens the matching detail dialog', () => {
     },
   });
 
-  assert.equal(modal.classList.contains('show'), true);
-  assert.equal(container.dataset.selectedSiteId, 'site-east');
-  assert.equal(details[0].hidden, true);
-  assert.equal(details[1].hidden, false);
+  assert.equal(controller.getUiState().selectedSiteId, 'site-east');
+  assert.equal(container.dataset.selectedSiteId, undefined);
+  assert.equal(renderCount, 1);
 });
 
 test('world reset recenters the radar pan', () => {
@@ -66,36 +56,40 @@ test('world reset recenters the radar pan', () => {
     },
   };
   const container = {
-    dataset: { worldPanX: '80', worldPanY: '-30' },
+    dataset: {},
     querySelector(selector) {
       if (selector === '[data-world-pan]') return pan;
       return null;
     },
   };
 
-  const controller = new TerritoryController({ container });
+  const controller = new TerritoryController({ container, uiState: { worldPanX: 80, worldPanY: -30 } });
   controller.resetWorldPan();
 
-  assert.equal(container.dataset.worldPanX, '0');
-  assert.equal(container.dataset.worldPanY, '0');
+  assert.equal(controller.getUiState().worldPanX, 0);
+  assert.equal(controller.getUiState().worldPanY, 0);
+  assert.equal(container.dataset.worldPanX, undefined);
+  assert.equal(container.dataset.worldPanY, undefined);
   assert.equal(panStyle.get('--world-pan-x'), '0px');
   assert.equal(panStyle.get('--world-pan-y'), '0px');
 });
 
 test('world site dialog close clears the persisted selected site', () => {
-  const modal = { classList: createClassList() };
-  modal.classList.add('show');
+  let renderCount = 0;
   const container = {
-    dataset: { selectedSiteId: 'site-east' },
-    querySelector(selector) {
-      if (selector === '[data-world-site-modal]') return modal;
-      return null;
-    },
+    dataset: {},
+    querySelector() { return null; },
   };
 
-  const controller = new TerritoryController({ container });
+  const controller = new TerritoryController({
+    container,
+    uiState: { selectedSiteId: 'site-east', expeditionConfigSiteId: 'site-east', expeditionSoldiers: '4' },
+    onRenderRequested: () => { renderCount += 1; },
+  });
   controller.closeSiteDialog();
 
+  assert.equal(controller.getUiState().selectedSiteId, '');
+  assert.equal(controller.getUiState().expeditionConfigSiteId, '');
   assert.equal(container.dataset.selectedSiteId, undefined);
-  assert.equal(modal.classList.contains('show'), false);
+  assert.equal(renderCount, 1);
 });

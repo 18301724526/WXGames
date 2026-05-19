@@ -3,6 +3,39 @@
 
 window.mountLogMethods = function(game) {
   game.requestLogs = [];
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
+  function renderRequestLogs(view) {
+    if (view.isEmpty) {
+      return `<div class="request-log-empty">${escapeHtml(view.emptyText)}</div>`;
+    }
+    const rows = view.items.map((log) => `
+      <tr>
+        <td>${escapeHtml(log.timestamp)}</td>
+        <td>${escapeHtml(log.endpoint)}</td>
+        <td class="${log.isError ? 'is-error' : 'is-ok'}">${escapeHtml(log.statusCode)}</td>
+        <td>${escapeHtml(log.durationText)}</td>
+      </tr>
+    `).join('');
+    return `
+      <div class="request-log-table-wrap">
+        <table class="request-log-table">
+          <thead><tr><th>时间</th><th>API</th><th>状态</th><th>耗时</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
   game.cacheRequestLog = function(path, method, body, statusCode, response, duration) {
     this.requestLogs.unshift({
       path, method,
@@ -19,27 +52,8 @@ window.mountLogMethods = function(game) {
     const modal = document.getElementById('logModal');
     const content = document.getElementById('logModalContent');
     if (!modal || !content) return;
-    let html = '<div style="max-height:60vh;overflow-y:auto;">';
-    const logs = this.requestLogs.slice(0, 20);
-    if (logs.length === 0) {
-      html += '<div style="color:#888;text-align:center;padding:20px;">暂无请求记录</div>';
-    } else {
-      html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
-      html += '<tr style="color:#aaa;border-bottom:1px solid rgba(255,255,255,0.1);"><th style="text-align:left;padding:4px;">时间</th><th style="text-align:left;padding:4px;">API</th><th style="text-align:left;padding:4px;">状态</th><th style="text-align:left;padding:4px;">耗时</th></tr>';
-      for (const log of logs) {
-        const isError = log.statusCode >= 400 || log.statusCode === 0;
-        const color = isError ? '#e94560' : '#4ecca3';
-        html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-          <td style="padding:4px;color:#888;">${log.timestamp}</td>
-          <td style="padding:4px;color:#f1f1f1;">${log.method} ${log.path}</td>
-          <td style="padding:4px;color:${color};font-weight:bold;">${log.statusCode}</td>
-          <td style="padding:4px;color:#aaa;">${log.duration}ms</td>
-        </tr>`;
-      }
-      html += '</table>';
-    }
-    html += '</div>';
-    content.innerHTML = html;
+    const view = window.UIStatePresenter.buildRequestLogViewState(this.requestLogs);
+    content.innerHTML = renderRequestLogs(view);
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
   };

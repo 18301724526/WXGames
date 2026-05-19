@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
+global.UIStatePresenter = require('../js/state/UIStatePresenter');
 const TerritoryUIRenderer = require('../js/ui/TerritoryUIRenderer');
 
 function createHost() {
@@ -166,10 +167,13 @@ test('territory renderer shows placeholder actions for unowned sites', () => {
 
 test('territory renderer shows expedition config for owned sites when expanded', () => {
   const host = createHost();
-  host.dataset.selectedSiteId = 'tribe_site';
-  host.dataset.expeditionConfigSiteId = 'tribe_site';
-  host.dataset.expeditionSoldiers = '6';
-  const renderer = new TerritoryUIRenderer(host);
+  const renderer = new TerritoryUIRenderer(host, {
+    getUiState: () => ({
+      selectedSiteId: 'tribe_site',
+      expeditionConfigSiteId: 'tribe_site',
+      expeditionSoldiers: '6',
+    }),
+  });
   const html = renderer.getAction({
     id: 'tribe_site',
     status: 'discovered',

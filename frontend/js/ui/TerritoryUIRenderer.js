@@ -1,7 +1,8 @@
 (function (global) {
   class TerritoryUIRenderer {
-    constructor(container) {
+    constructor(container, options = {}) {
       this.container = container;
+      this.getUiState = options.getUiState || (() => ({}));
     }
 
     escapeHtml(value) {
@@ -15,242 +16,137 @@
     }
 
     formatEffect(effects = {}) {
-      const parts = [];
-      if (effects.foodOutputMultiplier) parts.push(`食物 +${Math.round(effects.foodOutputMultiplier * 100)}%`);
-      if (effects.woodOutputMultiplier) parts.push(`木材 +${Math.round(effects.woodOutputMultiplier * 100)}%`);
-      if (effects.knowledgeOutputMultiplier) parts.push(`知识 +${Math.round(effects.knowledgeOutputMultiplier * 100)}%`);
-      if (effects.threatDefense) parts.push(`边境防御 +${effects.threatDefense}`);
-      return parts.join('，') || '无';
+      return global.UIStatePresenter.formatWorldSiteEffect(effects);
     }
 
     formatStatus(site) {
-      const labels = {
-        discovered: '已发现',
-        contested: '出征中',
-        occupied: '已控制',
-      };
-      return labels[site.status] || site.status;
+      return global.UIStatePresenter.formatWorldSiteStatus(site);
     }
 
     formatOwner(site) {
-      if (site.owner === 'player') return '我方';
-      if (site.owner === 'neutral') return '无主';
-      const labels = {
-        tribe: '部落',
-        city_state: '城邦',
-        ruin_guardians: '遗迹守军',
-      };
-      const ownerLabel = labels[site.owner] || site.owner || '未知势力';
-      return `有主 · ${ownerLabel}`;
+      return global.UIStatePresenter.formatWorldSiteOwner(site);
     }
 
     formatDuration(seconds) {
-      const value = Math.max(0, Math.ceil(Number(seconds) || 0));
-      const minutes = Math.floor(value / 60);
-      const rest = value % 60;
-      return `${minutes}:${String(rest).padStart(2, '0')}`;
+      return global.UIStatePresenter.formatWorldDuration(seconds);
     }
 
     getMarchInfo(site, state) {
-      const mission = site.mission || null;
-      const totalSeconds = Math.max(0, Math.floor(mission?.durationSeconds || state.missionDurationSeconds || 0));
-      if (site.status === 'contested' && mission?.status === 'ready') {
-        return totalSeconds > 0 ? `行军耗时 ${this.formatDuration(totalSeconds)}，已抵达待接管` : '已抵达待接管';
-      }
-      if (site.status === 'contested') {
-        const remaining = this.formatDuration(mission?.remainingSeconds || 0);
-        return totalSeconds > 0 ? `行军耗时 ${this.formatDuration(totalSeconds)}，剩余 ${remaining}` : `剩余 ${remaining}`;
-      }
-      if (site.status === 'discovered' && totalSeconds > 0) {
-        return `行军耗时 ${this.formatDuration(totalSeconds)}`;
-      }
-      return '';
+      return global.UIStatePresenter.getWorldSiteMarchInfo(site, state);
     }
 
     getExpeditionDraft(site) {
-      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
-      return {
-        territoryId: this.container?.dataset.expeditionConfigSiteId || '',
-        troopType: this.container?.dataset.expeditionTroopType || 'unavailable',
-        leader: this.container?.dataset.expeditionLeader || 'unavailable',
-        soldiers: Math.max(1, Number(this.container?.dataset.expeditionSoldiers) || recommended),
-      };
+      return global.UIStatePresenter.buildWorldExpeditionDraftViewState(site, this.getInteractionState());
     }
 
-    getExpeditionConfig(site, state) {
-      const draft = this.getExpeditionDraft(site);
-      const disabled = (state.availableSoldiers || 0) < draft.soldiers;
+    getInteractionState() {
+      return this.getUiState() || {};
+    }
+
+    renderExpeditionSelect(fieldName, field) {
+      const options = (field.options || []).map((option) => (
+        `<option value="${this.escapeHtml(option.value)}" ${field.value === option.value ? 'selected' : ''}>${this.escapeHtml(option.label)}</option>`
+      )).join('');
+      return `
+            <label class="site-expedition-field">
+              <span class="site-expedition-label">${this.escapeHtml(field.label)}</span>
+              <select class="site-expedition-select" data-expedition-field="${this.escapeHtml(fieldName)}">
+                ${options}
+              </select>
+              <span class="site-expedition-note">${this.escapeHtml(field.note)}</span>
+            </label>
+      `;
+    }
+
+    renderExpeditionConfig(config) {
+      if (!config) return '';
       return `
         <div class="site-expedition-form">
           <div class="site-expedition-grid">
-            <label class="site-expedition-field">
-              <span class="site-expedition-label">兵种</span>
-              <select class="site-expedition-select" data-expedition-field="troopType">
-                <option value="unavailable" ${draft.troopType === 'unavailable' ? 'selected' : ''}>暂未开放</option>
-              </select>
-              <span class="site-expedition-note">暂未开放</span>
-            </label>
-            <label class="site-expedition-field">
-              <span class="site-expedition-label">领队</span>
-              <select class="site-expedition-select" data-expedition-field="leader">
-                <option value="unavailable" ${draft.leader === 'unavailable' ? 'selected' : ''}>暂未开放</option>
-              </select>
-              <span class="site-expedition-note">暂未开放</span>
-            </label>
+            ${this.renderExpeditionSelect('troopType', config.fields.troopType)}
+            ${this.renderExpeditionSelect('leader', config.fields.leader)}
           </div>
           <label class="site-expedition-field">
-            <span class="site-expedition-label">出征数量</span>
-            <input class="site-expedition-input" type="number" min="1" step="1" value="${draft.soldiers}" data-expedition-field="soldiers">
-            <span class="site-expedition-note">建议 ${site.recommendedSoldiers || site.defense || 1} 人，当前可用 ${(state.availableSoldiers || 0)} 人</span>
+            <span class="site-expedition-label">${this.escapeHtml(config.fields.soldiers.label)}</span>
+            <input class="site-expedition-input" type="number" min="${this.escapeHtml(config.fields.soldiers.min)}" step="${this.escapeHtml(config.fields.soldiers.step)}" value="${this.escapeHtml(config.fields.soldiers.value)}" data-expedition-field="soldiers">
+            <span class="site-expedition-note">${this.escapeHtml(config.note)}</span>
           </label>
           <div class="site-expedition-actions">
-            <button class="btn-territory secondary" type="button" data-territory-action="close-expedition" data-territory-id="${this.escapeHtml(site.id)}">取消</button>
-            <button class="btn-territory" type="button" data-territory-action="launch-expedition" data-territory-id="${this.escapeHtml(site.id)}" ${disabled ? 'disabled' : ''}>出发</button>
+            <button class="btn-territory secondary" type="button" data-territory-action="${this.escapeHtml(config.buttons.cancel.action)}" data-territory-id="${this.escapeHtml(config.siteId)}">${this.escapeHtml(config.buttons.cancel.label)}</button>
+            <button class="btn-territory" type="button" data-territory-action="${this.escapeHtml(config.buttons.launch.action)}" data-territory-id="${this.escapeHtml(config.siteId)}" ${config.disabled ? 'disabled' : ''}>${this.escapeHtml(config.buttons.launch.label)}</button>
           </div>
         </div>
       `;
     }
 
-    getAction(site, state) {
-      const mission = site.mission;
-      if (site.status === 'discovered') {
-        const isOwnedTarget = site.occupationMode === 'conquest';
-        const expanded = this.container?.dataset.expeditionConfigSiteId === site.id;
-        const directDisabled = (state.availableSoldiers || 0) < 1;
+    renderActionButton(button) {
+      const classes = button.secondary ? 'btn-territory secondary' : 'btn-territory';
+      const actionAttr = button.action ? ` data-territory-action="${this.escapeHtml(button.action)}"` : '';
+      return `<button class="${classes}" type="button"${actionAttr} data-territory-id="${this.escapeHtml(button.territoryId)}" ${button.disabled ? 'disabled' : ''}>${this.escapeHtml(button.label)}</button>`;
+    }
+
+    renderAction(action) {
+      if (!action) return '';
+      if (action.kind === 'group') {
         return `
           <div class="site-action-group">
             <div class="site-action-row">
-              <button class="btn-territory secondary" type="button" disabled>交涉</button>
-              <button class="btn-territory secondary" type="button" disabled>掠夺</button>
-              <button class="btn-territory" type="button" data-territory-action="${isOwnedTarget ? 'open-expedition' : 'conquer'}" data-territory-id="${this.escapeHtml(site.id)}" ${!isOwnedTarget && directDisabled ? 'disabled' : ''}>占领</button>
+              ${action.buttons.map((button) => this.renderActionButton(button)).join('')}
             </div>
-            <div class="site-action-hint">${isOwnedTarget ? '该地区已有势力，需要先配置出征队伍。' : '该地区无主，派 1 人即可建立据点。'}</div>
-            ${isOwnedTarget && expanded ? this.getExpeditionConfig(site, state) : ''}
+            <div class="site-action-hint">${this.escapeHtml(action.hint)}</div>
+            ${this.renderExpeditionConfig(action.expeditionConfig)}
           </div>
         `;
       }
-      if (site.status === 'contested' && mission?.status === 'ready') {
-        return `<button class="btn-territory" data-territory-action="claim" data-territory-id="${this.escapeHtml(site.id)}">完成占领</button>`;
-      }
-      if (site.status === 'contested') {
-        return '<button class="btn-territory" disabled>行军中</button>';
-      }
-      if (site.status === 'occupied') {
+      if (action.kind === 'row') {
         return `
           <div class="site-action-row">
-            <button class="btn-territory" data-territory-action="manage-city" data-territory-id="${this.escapeHtml(site.id)}">管理</button>
-            <button class="btn-territory secondary" data-territory-action="rename-city" data-territory-id="${this.escapeHtml(site.id)}">改名</button>
+            ${action.buttons.map((button) => this.renderActionButton(button)).join('')}
           </div>
         `;
       }
-      return '<button class="btn-territory" disabled>等待侦察</button>';
+      return action.buttons.map((button) => this.renderActionButton(button)).join('');
+    }
+
+    getExpeditionConfig(site, state) {
+      return this.renderExpeditionConfig(global.UIStatePresenter.buildWorldExpeditionConfigViewState(site, state, this.getInteractionState()));
+    }
+
+    getAction(site, state) {
+      const action = global.UIStatePresenter.buildWorldSiteActionViewState(site, state, this.getInteractionState());
+      return this.renderAction(action);
     }
 
     getRadarPosition(site, maxDistance) {
-      const visualOffset = site.visualOffset || {};
-      const x = Number(site.relativeX ?? site.x ?? 0) + (Number(visualOffset.x) || 0);
-      const y = Number(site.relativeY ?? site.y ?? 0) + (Number(visualOffset.y) || 0);
-      const distance = Math.max(0, Math.hypot(x, y));
-      const normalized = Math.sqrt(Math.min(1, distance / Math.max(1, maxDistance)));
-      const radius = distance > 0 ? 12 + normalized * 30 : 0;
-      const angle = Math.atan2(y, x || 0.0001);
-      return {
-        x,
-        y,
-        distance,
-        angle,
-        radius,
-      };
+      return global.UIStatePresenter.getWorldRadarPosition(site, maxDistance);
     }
 
     measureRadarSpacing(candidate, placed) {
-      if (!placed.length) return Infinity;
-      return placed.reduce((best, existing) => Math.min(
-        best,
-        Math.hypot(candidate.left - existing.left, candidate.top - existing.top),
-      ), Infinity);
+      return global.UIStatePresenter.measureWorldRadarSpacing(candidate, placed);
     }
 
     resolveRadarPosition(anchor, placed) {
-      if (anchor.distance === 0) return { left: 50, top: 50 };
-      const angleOffsets = [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6];
-      const radiusOffsets = [0, 2.5, -2, 5, -3.5, 7];
-      const minSpacing = 9.5;
-      let bestCandidate = null;
-
-      for (const radiusOffset of radiusOffsets) {
-        for (const angleOffset of angleOffsets) {
-          const candidateAngle = anchor.angle + angleOffset * (Math.PI / 18);
-          const candidateRadius = Math.max(10, Math.min(40, anchor.radius + radiusOffset + Math.abs(angleOffset) * 0.2));
-          const candidate = {
-            left: 50 + Math.cos(candidateAngle) * candidateRadius,
-            top: 50 + Math.sin(candidateAngle) * candidateRadius,
-          };
-          if (candidate.left < 8 || candidate.left > 92 || candidate.top < 8 || candidate.top > 92) continue;
-          const spacing = this.measureRadarSpacing(candidate, placed);
-          if (spacing >= minSpacing) return candidate;
-          if (!bestCandidate || spacing > bestCandidate.spacing) {
-            bestCandidate = { ...candidate, spacing };
-          }
-        }
-      }
-
-      return bestCandidate || {
-        left: Math.max(8, Math.min(92, 50 + Math.cos(anchor.angle) * anchor.radius)),
-        top: Math.max(8, Math.min(92, 50 + Math.sin(anchor.angle) * anchor.radius)),
-      };
+      return global.UIStatePresenter.resolveWorldRadarPosition(anchor, placed);
     }
 
     buildRadarLayout(territories) {
-      const maxDistance = Math.max(
-        1,
-        ...territories.map((site) => Math.hypot(
-          Number(site.relativeX ?? site.x ?? 0) + (Number(site.visualOffset?.x) || 0),
-          Number(site.relativeY ?? site.y ?? 0) + (Number(site.visualOffset?.y) || 0),
-        )),
-      );
-      const sorted = [...territories].sort((a, b) => {
-        if (a.id === 'capital') return -1;
-        if (b.id === 'capital') return 1;
-        const aAnchor = this.getRadarPosition(a, maxDistance);
-        const bAnchor = this.getRadarPosition(b, maxDistance);
-        return aAnchor.distance - bAnchor.distance || aAnchor.angle - bAnchor.angle || String(a.id).localeCompare(String(b.id));
-      });
-      const placed = [];
-      const layout = new Map();
-
-      sorted.forEach((site) => {
-        const anchor = this.getRadarPosition(site, maxDistance);
-        const resolved = this.resolveRadarPosition(anchor, placed);
-        const position = {
-          left: resolved.left.toFixed(2),
-          top: resolved.top.toFixed(2),
-        };
-        placed.push({
-          id: site.id,
-          left: Number(position.left),
-          top: Number(position.top),
-        });
-        layout.set(site.id, position);
-      });
-
-      return layout;
+      return global.UIStatePresenter.buildWorldRadarLayout(territories);
     }
 
-    renderMap(territories) {
-      const panX = Number(this.container?.dataset.worldPanX || 0);
-      const panY = Number(this.container?.dataset.worldPanY || 0);
-      const layout = this.buildRadarLayout(territories);
-      const sites = territories.map((site) => {
-        const position = layout.get(site.id) || { left: '50.00', top: '50.00' };
-        return `
-          <button class="world-site world-site-${this.escapeHtml(site.status)} owner-${this.escapeHtml(site.owner)} type-${this.escapeHtml(site.type)}" type="button" data-site-id="${this.escapeHtml(site.id)}" title="${this.escapeHtml(site.naturalName)}" style="--site-x:${position.left}%;--site-y:${position.top}%">
+    renderMap(viewOrTerritories) {
+      const view = Array.isArray(viewOrTerritories)
+        ? global.UIStatePresenter.buildWorldRadarViewState(viewOrTerritories, {
+          panX: this.getInteractionState().worldPanX || 0,
+          panY: this.getInteractionState().worldPanY || 0,
+        })
+        : viewOrTerritories;
+      const sites = view.sites.map((site) => `
+          <button class="world-site ${this.escapeHtml(site.className)}" type="button" data-site-id="${this.escapeHtml(site.id)}" title="${this.escapeHtml(site.title)}" style="--site-x:${site.position.left}%;--site-y:${site.position.top}%">
             <span class="world-site-pulse"></span>
-            <img src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.naturalName)}">
-            <span class="world-site-name">${this.escapeHtml(site.cityName || site.naturalName)}</span>
+            <img src="${this.escapeHtml(site.art)}" alt="${this.escapeHtml(site.alt)}">
+            <span class="world-site-name">${this.escapeHtml(site.name)}</span>
           </button>
-        `;
-      }).join('');
+        `).join('');
       return `
         <div class="world-map-shell">
           <button class="world-reset" type="button" data-world-reset>回到本城</button>
@@ -260,7 +156,7 @@
             <span class="radar-bearing bearing-s">S</span>
             <span class="radar-bearing bearing-w">W</span>
             <span class="radar-sweep"></span>
-            <div class="world-radar-pan" data-world-pan style="--world-pan-x:${panX}px;--world-pan-y:${panY}px">
+            <div class="world-radar-pan" data-world-pan style="--world-pan-x:${view.pan.x}px;--world-pan-y:${view.pan.y}px">
               <span class="radar-origin"></span>
               ${sites}
             </div>
@@ -270,19 +166,7 @@
     }
 
     getMapSignature(territories) {
-      return JSON.stringify((territories || []).map((site) => ({
-        id: site.id,
-        x: site.x,
-        y: site.y,
-        relativeX: site.relativeX ?? null,
-        relativeY: site.relativeY ?? null,
-        visualOffset: site.visualOffset || null,
-        status: site.status,
-        owner: site.owner,
-        type: site.type,
-        art: site.art,
-        name: site.cityName || site.naturalName,
-      })));
+      return global.UIStatePresenter.getWorldMapSignature(territories);
     }
 
     getDialogStructureSignature(territories) {
@@ -293,43 +177,11 @@
     }
 
     getDialogContentSignature(territories, state) {
-      return JSON.stringify({
-        scoutOriginId: state.scoutOrigin?.territoryId || '',
-        selectedSiteId: this.container?.dataset.selectedSiteId || '',
-        expeditionConfigSiteId: this.container?.dataset.expeditionConfigSiteId || '',
-        expeditionTroopType: this.container?.dataset.expeditionTroopType || '',
-        expeditionLeader: this.container?.dataset.expeditionLeader || '',
-        expeditionSoldiers: this.container?.dataset.expeditionSoldiers || '',
-        missionDurationSeconds: state.missionDurationSeconds || 0,
-        availableSoldiers: state.availableSoldiers || 0,
-        territories: (territories || []).map((site) => ({
-          id: site.id,
-          cityName: site.cityName || '',
-          naturalName: site.naturalName || '',
-          status: site.status,
-          owner: site.owner,
-          distance: site.distance || 0,
-          originDistance: site.originDistance || 0,
-          scale: site.scale || 0,
-          threat: site.threat || 0,
-          summary: site.summary || '',
-          effects: this.formatEffect(site.effects),
-          defense: site.defense || 0,
-          recommendedSoldiers: site.recommendedSoldiers || 0,
-          missionStatus: site.mission?.status || '',
-          missionRemaining: site.mission?.remainingSeconds || 0,
-          missionDuration: site.mission?.durationSeconds || 0,
-          lastBattleResolvedAt: site.lastBattle?.resolvedAt || '',
-          lastBattleSuccess: !!site.lastBattle?.success,
-          lastBattleCasualties: site.lastBattle?.casualties || 0,
-          lastBattleMode: site.lastBattle?.mode || '',
-          occupationMode: site.occupationMode || '',
-        })),
-      });
+      return global.UIStatePresenter.getWorldSiteDialogContentSignature(territories, state, this.getInteractionState());
     }
 
     renderSiteDialogSkeleton(territories) {
-      const selectedSiteId = this.container?.dataset.selectedSiteId || '';
+      const selectedSiteId = this.getInteractionState().selectedSiteId || '';
       const sites = territories.map((site) => `
         <article class="world-site-detail" data-site-detail="${this.escapeHtml(site.id)}" ${site.id === selectedSiteId ? '' : 'hidden'}>
           <div class="site-card-hero">
@@ -370,44 +222,38 @@
 
     updateSiteDialogContent(dialogHost, territories, state) {
       if (!dialogHost || typeof dialogHost.querySelector !== 'function' || typeof dialogHost.querySelectorAll !== 'function') return;
-      const selectedSiteId = this.container?.dataset.selectedSiteId || '';
+      const view = global.UIStatePresenter.buildWorldSiteDialogViewState(territories, state, this.getInteractionState());
       const modal = dialogHost.querySelector('[data-world-site-modal]');
-      if (modal) modal.classList.toggle('show', territories.some((site) => site.id === selectedSiteId));
-      territories.forEach((site) => {
-        const detail = dialogHost.querySelector(`[data-site-detail="${site.id}"]`);
+      if (modal) modal.classList.toggle('show', view.showModal);
+      view.details.forEach((siteView) => {
+        const detail = dialogHost.querySelector(`[data-site-detail="${siteView.id}"]`);
         if (!detail) return;
-        detail.hidden = site.id !== selectedSiteId;
+        detail.hidden = !siteView.visible;
         const setText = (selector, value) => {
           const element = detail.querySelector(selector);
           if (element) element.textContent = value;
         };
-        setText('[data-site-name]', site.cityName || site.naturalName);
-        setText('[data-site-status]', this.formatStatus(site));
-        setText('[data-site-owner]', this.formatOwner(site));
-        setText('[data-site-distance]', `距 ${site.originDistance ?? site.distance ?? 0}`);
-        setText('[data-site-scale]', `规模 ${site.scale || 1}`);
-        setText('[data-site-threat]', `威胁 ${site.threat || 0}`);
-        setText('[data-site-summary]', site.summary || this.formatEffect(site.effects));
-        setText('[data-site-defense]', `防御 ${site.defense || 0}`);
-        setText('[data-site-soldiers]', `建议 ${site.recommendedSoldiers || 0} 士兵`);
+        setText('[data-site-name]', siteView.text.name);
+        setText('[data-site-status]', siteView.text.status);
+        setText('[data-site-owner]', siteView.text.owner);
+        setText('[data-site-distance]', siteView.text.distance);
+        setText('[data-site-scale]', siteView.text.scale);
+        setText('[data-site-threat]', siteView.text.threat);
+        setText('[data-site-summary]', siteView.text.summary);
+        setText('[data-site-defense]', siteView.text.defense);
+        setText('[data-site-soldiers]', siteView.text.soldiers);
         const march = detail.querySelector('[data-site-march]');
         if (march) {
-          const marchInfo = this.getMarchInfo(site, state);
-          march.hidden = !marchInfo;
-          march.textContent = marchInfo;
+          march.hidden = !siteView.text.march;
+          march.textContent = siteView.text.march;
         }
         const note = detail.querySelector('[data-site-note]');
         if (note) {
-          const noteText = site.lastBattle
-            ? site.lastBattle.mode === 'settlement'
-              ? '最近一次行动已顺利建立据点'
-              : `${site.lastBattle.success ? '上次占领成功' : '上次占领失败'} · 损失 ${site.lastBattle.casualties} 士兵`
-            : '';
-          note.hidden = !noteText;
-          note.textContent = noteText;
+          note.hidden = !siteView.text.note;
+          note.textContent = siteView.text.note;
         }
         const action = detail.querySelector('[data-site-action]');
-        if (action) action.innerHTML = this.getAction(site, state);
+        if (action) action.innerHTML = this.renderAction(siteView.action);
       });
     }
 
@@ -452,9 +298,13 @@
 
       const mapHost = this.container.querySelector('[data-world-map-host]');
       const dynamicHost = this.container.querySelector('[data-world-dynamic-host]');
-      const mapSignature = this.getMapSignature(territories);
+      const mapView = global.UIStatePresenter.buildWorldRadarViewState(territories, {
+        panX: this.getInteractionState().worldPanX || 0,
+        panY: this.getInteractionState().worldPanY || 0,
+      });
+      const mapSignature = mapView.signature;
       if (mapHost && mapHost.dataset.mapSignature !== mapSignature) {
-        mapHost.innerHTML = this.renderMap(territories);
+        mapHost.innerHTML = this.renderMap(mapView);
         mapHost.dataset.mapSignature = mapSignature;
       }
       if (dynamicHost) {

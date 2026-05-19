@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 function createWindowStub() {
   return {
+    UIStatePresenter: require('../js/state/UIStatePresenter'),
     GameConfig: {
       API_BASE: '/api',
       SYNC_INTERVAL_MS: 2000,

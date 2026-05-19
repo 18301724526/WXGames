@@ -369,6 +369,76 @@ body {
     display: block;
 }
 
+.recent-log-empty {
+    color: #888;
+    text-align: center;
+    padding: 20px;
+}
+
+.recent-log-list {
+    display: grid;
+    gap: 8px;
+    max-height: 60vh;
+    overflow: auto;
+}
+
+.recent-log-item {
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: #ddd;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.request-log-empty {
+    color: #888;
+    text-align: center;
+    padding: 20px;
+}
+
+.request-log-table-wrap {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.request-log-table {
+    width: 100%;
+    font-size: 12px;
+    border-collapse: collapse;
+}
+
+.request-log-table th {
+    padding: 4px;
+    color: #aaa;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.request-log-table td {
+    padding: 4px;
+    color: #aaa;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.request-log-table td:nth-child(2) {
+    color: #f1f1f1;
+}
+
+.request-log-table .is-ok,
+.request-log-table .is-error {
+    font-weight: 700;
+}
+
+.request-log-table .is-ok {
+    color: var(--success);
+}
+
+.request-log-table .is-error {
+    color: var(--danger);
+}
+
 .settings-menu button {
     display: block;
     width: 100%;

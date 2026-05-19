@@ -19,6 +19,19 @@ window.mountAuthMethods = function(game) {
     if (el) el.textContent = message;
   }
 
+  function applyAuthShellView(view) {
+    const panel = document.getElementById('loginPanel');
+    const msgEl = document.getElementById('loginMessage');
+    const appEl = document.getElementById('app');
+    if (panel) panel.style.display = view.loginPanelVisible ? 'flex' : 'none';
+    if (msgEl) msgEl.textContent = view.message || '';
+    if (appEl) appEl.style.display = view.appVisible ? 'block' : 'none';
+  }
+
+  function showAuthenticatedShell() {
+    applyAuthShellView(window.UIStatePresenter.buildAuthShellViewState({ authenticated: true }));
+  }
+
   function persistRememberedCredentials(username, password, rememberPassword) {
     if (rememberPassword) {
       localStorage.setItem(REMEMBER_ENABLED_KEY, 'true');
@@ -35,14 +48,15 @@ window.mountAuthMethods = function(game) {
     const usernameInput = document.getElementById('loginUsername');
     const passwordInput = document.getElementById('loginPassword');
     const rememberInput = document.getElementById('rememberPassword');
-    const rememberEnabled = localStorage.getItem(REMEMBER_ENABLED_KEY) === 'true';
-    if (rememberInput) rememberInput.checked = rememberEnabled;
-    if (usernameInput) {
-      usernameInput.value = localStorage.getItem(REMEMBER_USERNAME_KEY) || localStorage.getItem(USERNAME_KEY) || '';
-    }
-    if (passwordInput) {
-      passwordInput.value = rememberEnabled ? (localStorage.getItem(REMEMBER_PASSWORD_KEY) || '') : '';
-    }
+    const view = window.UIStatePresenter.buildAuthCredentialViewState({
+      rememberEnabled: localStorage.getItem(REMEMBER_ENABLED_KEY) === 'true',
+      rememberedUsername: localStorage.getItem(REMEMBER_USERNAME_KEY),
+      rememberedPassword: localStorage.getItem(REMEMBER_PASSWORD_KEY),
+      username: localStorage.getItem(USERNAME_KEY),
+    });
+    if (rememberInput) rememberInput.checked = view.rememberPasswordChecked;
+    if (usernameInput) usernameInput.value = view.usernameValue;
+    if (passwordInput) passwordInput.value = view.passwordValue;
   }
 
   async function parseResponsePayload(resp) {
@@ -66,12 +80,11 @@ window.mountAuthMethods = function(game) {
   };
 
   game.showLoginPanel = function(message) {
-    const panel = document.getElementById('loginPanel');
-    const msgEl = document.getElementById('loginMessage');
-    const appEl = document.getElementById('app');
     fillRememberedCredentials();
-    if (panel) { panel.style.display = 'flex'; if (msgEl) msgEl.textContent = message || ''; }
-    if (appEl) appEl.style.display = 'none';
+    applyAuthShellView(window.UIStatePresenter.buildAuthShellViewState({
+      authenticated: false,
+      message,
+    }));
   };
 
   game.handleLogin = function() {
@@ -98,8 +111,7 @@ window.mountAuthMethods = function(game) {
         localStorage.setItem(USERNAME_KEY, username);
         persistRememberedCredentials(username, password, rememberPassword);
         if (this.buildingAPI) this.buildingAPI.setToken(data.token);
-        document.getElementById('loginPanel').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
+        showAuthenticatedShell();
         if (data.gameState) {
           this.applyApiState(data);
         }
@@ -142,10 +154,7 @@ window.mountAuthMethods = function(game) {
 
   // 已有 token 时自动启动 heartbeat（刷新页面无需重新登录）
   if (game.token) {
-    const panel = document.getElementById('loginPanel');
-    const appEl = document.getElementById('app');
-    if (panel) panel.style.display = 'none';
-    if (appEl) appEl.style.display = 'block';
+    showAuthenticatedShell();
     game.startHeartbeat();
   } else {
     // 无 token：显示登录面板

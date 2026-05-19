@@ -22,6 +22,24 @@
       this.activeMessage = '';
     }
 
+    getPresenter() {
+      if (global.UIStatePresenter || globalThis.UIStatePresenter) {
+        return global.UIStatePresenter || globalThis.UIStatePresenter;
+      }
+      if (typeof require === 'function') {
+        return require('../state/UIStatePresenter');
+      }
+      return null;
+    }
+
+    buildHighlightView(rect) {
+      const presenter = this.getPresenter();
+      return presenter.buildTutorialHighlightViewState(rect, {
+        innerWidth: global.innerWidth,
+        innerHeight: global.innerHeight,
+      });
+    }
+
     positionSoftBubble() {
       if (!this.bubble) return;
       const bubbleWidth = Math.min(320, Math.max(220, global.innerWidth - 32));
@@ -65,49 +83,25 @@
 
     positionBubble(rect) {
       if (!this.bubble) return;
-      const bubbleWidth = 220;
-      const bubbleHeight = 72;
-      const horizontalPadding = 12;
-      const viewportTopPadding = 12;
-      const prefersBelow = rect.top < bubbleHeight + 28;
-      const bubbleTop = prefersBelow
-        ? Math.min(global.innerHeight - bubbleHeight - viewportTopPadding, rect.bottom + 14)
-        : Math.max(viewportTopPadding, rect.top - bubbleHeight - 14);
-      const bubbleLeft = Math.max(
-        horizontalPadding,
-        Math.min(global.innerWidth - bubbleWidth - horizontalPadding, rect.left + rect.width / 2 - bubbleWidth / 2),
-      );
-      this.bubble.style.top = `${bubbleTop}px`;
-      this.bubble.style.left = `${bubbleLeft}px`;
+      const view = this.buildHighlightView(rect);
+      this.bubble.style.top = view.bubble.top;
+      this.bubble.style.left = view.bubble.left;
     }
 
     positionPointer(rect) {
       if (!this.pointer) return;
-      const pointerWidth = 24;
-      const pointerHeight = 28;
-      const top = Math.max(
-        12,
-        Math.min(global.innerHeight - pointerHeight - 12, rect.bottom + 6),
-      );
-      const left = Math.max(
-        12,
-        Math.min(global.innerWidth - pointerWidth - 12, rect.left + rect.width / 2 - pointerWidth / 2),
-      );
-      this.pointer.style.top = `${top}px`;
-      this.pointer.style.left = `${left}px`;
+      const view = this.buildHighlightView(rect);
+      this.pointer.style.top = view.pointer.top;
+      this.pointer.style.left = view.pointer.left;
     }
 
     positionOverlay(rect) {
       if (!this.overlay) return;
-      const padding = 8;
-      const top = Math.max(6, rect.top - padding);
-      const left = Math.max(6, rect.left - padding);
-      const width = Math.max(28, Math.min(global.innerWidth - left - 6, rect.width + padding * 2));
-      const height = Math.max(28, Math.min(global.innerHeight - top - 6, rect.height + padding * 2));
-      this.overlay.style.top = `${top}px`;
-      this.overlay.style.left = `${left}px`;
-      this.overlay.style.width = `${width}px`;
-      this.overlay.style.height = `${height}px`;
+      const view = this.buildHighlightView(rect);
+      this.overlay.style.top = view.overlay.top;
+      this.overlay.style.left = view.overlay.left;
+      this.overlay.style.width = view.overlay.width;
+      this.overlay.style.height = view.overlay.height;
     }
 
     positionElements() {

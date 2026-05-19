@@ -21,6 +21,7 @@ function createWindowStub() {
       stop() {}
     },
     GameStateManager: class {},
+    UIStatePresenter: require('../js/state/UIStatePresenter'),
     ResourceRenderer: class {},
     BuildingUIRenderer: class {},
     EventUIRenderer: class {},

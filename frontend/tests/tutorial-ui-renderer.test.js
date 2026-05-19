@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
 
 function createElement() {
   return {

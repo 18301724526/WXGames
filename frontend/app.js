@@ -47,7 +47,9 @@ const Game = {
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
-    this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'));
+    this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'), {
+      getUiState: () => this.territoryController?.getUiState?.() || {},
+    });
     this.tutorialRenderer = new window.TutorialUIRenderer();
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
     this.tutorialController = new window.TutorialController({
@@ -360,19 +362,16 @@ const Game = {
   },
 
   canAdvanceEraByTutorial() {
-    const tutorial = this.tutorialController?.state || this.tutorial || {};
-    if (tutorial.completed) return true;
-    const step = Number(tutorial.currentStep) || 0;
-    if (this.state.currentEra === 0) return step >= 2;
-    if (this.state.currentEra === 1) return step >= 9;
-    return true;
+    return window.UIStatePresenter.canAdvanceEraByTutorial(this.state, this.tutorialController?.state || this.tutorial || {});
   },
 
   canAdvanceEraNow(progress = this.state.eraProgress) {
-    return Boolean(progress?.canAdvance)
-      && this.state.isCapitalCity !== false
-      && this.canAdvanceEraByTutorial()
-      && (!this.tutorialController || this.tutorialController.canOpenTab('civilization'));
+    const view = window.UIStatePresenter.buildCivilizationViewState(
+      { ...this.state, eraProgress: progress },
+      this.tutorialController?.state || this.tutorial || {},
+      { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
+    );
+    return view.advanceButton.canAdvance;
   },
 
   async handleBuildingSuccess(result, action, buildingId) {
@@ -416,15 +415,18 @@ const Game = {
   },
 
   switchTab(tabId) {
-    const nextTabId = tabId === 'territory' ? 'military' : tabId;
+    const navigation = window.UIStatePresenter.buildTabNavigationViewState(this.state, { requestedTab: tabId });
+    const nextTabId = navigation.activeTab;
     const preferredMilitaryView = this.getPreferredMilitaryView(tabId);
     if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
     this.state.currentTab = nextTabId;
+    const pageById = new Map(navigation.pages.map((page) => [page.id, page]));
     document.querySelectorAll('.page').forEach((page) => {
-      page.classList.toggle('active', page.dataset.page === nextTabId);
+      page.classList.toggle('active', Boolean(pageById.get(page.dataset.page)?.isActive));
     });
+    const tabById = new Map(navigation.tabs.map((tab) => [tab.id, tab]));
     document.querySelectorAll('.tab-btn').forEach((button) => {
-      button.classList.toggle('active', button.dataset.tab === nextTabId);
+      button.classList.toggle('active', Boolean(tabById.get(button.dataset.tab)?.isActive));
     });
     this.renderMilitaryView();
     this.tutorialController.render();
@@ -451,37 +453,38 @@ const Game = {
   },
 
   renderMilitaryView() {
-    this.updateMilitaryViewLocks();
-    const activeView = this.state.militaryView || 'army';
+    const view = window.UIStatePresenter.buildMilitaryNavigationViewState(this.state);
+    this.state.militaryView = view.activeView;
+    if (typeof document.querySelectorAll !== 'function') return;
     document.querySelectorAll('[data-military-page]').forEach((page) => {
-      page.classList.toggle('active', page.dataset.militaryPage === activeView);
+      page.classList.toggle('active', page.dataset.militaryPage === view.activeView);
     });
+    const viewById = new Map(view.views.map((item) => [item.id, item]));
     document.querySelectorAll('[data-military-view]').forEach((button) => {
-      const isActive = button.dataset.militaryView === activeView;
-      button.classList.toggle('active', isActive);
-      button.setAttribute('aria-selected', String(isActive));
+      const buttonView = viewById.get(button.dataset.militaryView) || { isActive: false, disabled: false, isLocked: false, title: '', ariaSelected: 'false' };
+      button.disabled = buttonView.disabled;
+      button.classList.toggle('is-locked', buttonView.isLocked);
+      button.title = buttonView.title;
+      button.classList.toggle('active', buttonView.isActive);
+      button.setAttribute('aria-selected', buttonView.ariaSelected);
     });
   },
 
   updateMilitaryViewLocks() {
-    const locked = (this.state.currentEra || 0) < 5;
-    if (locked && this.state.militaryView !== 'army') this.state.militaryView = 'army';
-    if (typeof document.querySelectorAll !== 'function') return;
-    document.querySelectorAll('[data-military-view]').forEach((button) => {
-      const view = button.dataset.militaryView;
-      const disabled = locked && view !== 'army';
-      button.disabled = disabled;
-      button.classList.toggle('is-locked', disabled);
-      button.title = disabled ? '进入古典时代后解锁' : '';
-    });
+    this.renderMilitaryView();
   },
 
   updateTabLocks() {
-    document.querySelectorAll('.tab-btn').forEach((button) => {
-      const tabId = button.dataset.tab;
-      const allowed = this.tutorialController.canOpenTab(tabId);
-      button.classList.toggle('is-locked', !allowed);
-      button.disabled = !allowed;
+    const buttons = Array.from(document.querySelectorAll('.tab-btn'));
+    const view = window.UIStatePresenter.buildTabLockViewState(
+      buttons.map((button) => ({ id: button.dataset.tab })),
+      (tabId) => this.tutorialController.canOpenTab(tabId),
+    );
+    const lockById = new Map(view.map((item) => [item.id, item]));
+    buttons.forEach((button) => {
+      const tabView = lockById.get(button.dataset.tab) || { disabled: false, isLocked: false };
+      button.classList.toggle('is-locked', tabView.isLocked);
+      button.disabled = tabView.disabled;
     });
   },
 
@@ -531,34 +534,28 @@ const Game = {
     const name = document.getElementById('citySwitcherName');
     const menu = document.getElementById('citySwitcherMenu');
     if (!wrapper || !trigger || !name || !menu) return;
-    const cityState = this.state.cityState || {};
-    const cities = Array.isArray(cityState.cities) ? cityState.cities : [];
-    wrapper.hidden = cities.length <= 1;
+    const view = window.UIStatePresenter.buildCitySwitcherViewState(this.state);
+    wrapper.hidden = view.hidden;
     if (wrapper.hidden) {
       this.closeCitySwitcher();
       return;
     }
-    const activeCityId = this.state.activeCityId || cityState.activeCityId || cityState.capitalCityId || 'capital';
-    const activeCity = cities.find((city) => city.id === activeCityId) || cities[0];
-    name.textContent = activeCity?.name || '首都';
+    name.textContent = view.activeCityName;
 
-    const options = cities.map((city) => {
-      const isActive = city.id === activeCityId;
-      const population = city.population?.total ?? 0;
-      const buildings = city.totalBuildings ?? 0;
+    const options = view.options.map((city) => {
       return `
-        <button class="city-switcher-option ${isActive ? 'active' : ''}" type="button" role="option" aria-selected="${isActive ? 'true' : 'false'}" data-city-id="${this.escapeHtml(city.id)}">
+        <button class="city-switcher-option ${city.isActive ? 'active' : ''}" type="button" role="option" aria-selected="${city.isActive ? 'true' : 'false'}" data-city-id="${this.escapeHtml(city.id)}">
           <span class="city-option-main">
             <span class="city-option-name">${this.escapeHtml(city.name || '未命名城市')}</span>
-            <span class="city-option-tag">${city.isCapital ? '主城' : '分城'}</span>
+            <span class="city-option-tag">${this.escapeHtml(city.tag)}</span>
           </span>
-          <span class="city-option-meta">人口 ${this.escapeHtml(population)} · 建筑 ${this.escapeHtml(buildings)}</span>
+          <span class="city-option-meta">${this.escapeHtml(city.metaText)}</span>
         </button>
       `;
     }).join('');
-    if (menu.dataset.optionsSignature !== options) {
+    if (menu.dataset.optionsSignature !== view.signature) {
       menu.innerHTML = options;
-      menu.dataset.optionsSignature = options;
+      menu.dataset.optionsSignature = view.signature;
     }
     trigger.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
   },
@@ -625,76 +622,54 @@ const Game = {
   },
 
   renderCivilization() {
-    const eraName = this.state.currentEraName || '原始时代';
-    this.setText('eraName', eraName);
-    this.setText('civOverviewEraName', eraName);
-    this.setText('civOverviewDay', `第 ${this.state.gameDay || 1} 天`);
-    this.setText('civOverviewPop', this.state.population.total || 0);
-    this.setText('civOverviewBuildings', this.state.totalBuildings || 0);
-    this.setText('civOverviewTechs', `${Object.keys(this.state.techs || {}).length}/0`);
-    this.setText('civOverviewHappiness', `${this.state.happiness || 100}%`);
+    const view = window.UIStatePresenter.buildCivilizationViewState(
+      this.state,
+      this.tutorialController?.state || this.tutorial || {},
+      { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
+    );
+    this.setText('eraName', view.text.eraName);
+    this.setText('civOverviewEraName', view.text.civOverviewEraName);
+    this.setText('civOverviewDay', view.text.civOverviewDay);
+    this.setText('civOverviewPop', view.text.civOverviewPop);
+    this.setText('civOverviewBuildings', view.text.civOverviewBuildings);
+    this.setText('civOverviewTechs', view.text.civOverviewTechs);
+    this.setText('civOverviewHappiness', view.text.civOverviewHappiness);
 
-    const progress = this.state.eraProgress || { percentage: 0, canAdvance: false, conditions: [] };
     const bar = document.getElementById('eraProgress');
-    if (bar) bar.style.width = `${progress.percentage || 0}%`;
-    this.setText('eraProgressText', `总进度: ${progress.percentage || 0}%`);
-    const targetEraName = progress.targetEraName || '时代未开放';
-    this.setText('eraTargetName', targetEraName);
-    this.renderEraConditions(progress.conditions || []);
+    if (bar) bar.style.width = view.progress.width;
+    this.setText('eraProgressText', view.text.eraProgressText);
+    this.setText('eraTargetName', view.text.eraTargetName);
+    this.renderEraConditions(view.conditions);
 
     const button = document.getElementById('btnAdvanceEra');
     const label = document.getElementById('btnEraLabel');
-    const canAdvanceByTutorial = this.canAdvanceEraByTutorial();
-    const canAdvance = this.canAdvanceEraNow(progress);
     if (button) {
-      button.disabled = !canAdvance;
+      button.disabled = view.advanceButton.disabled;
     }
     if (label) {
-      if (this.state.isCapitalCity === false) label.textContent = '分城跟随主城时代';
-      else if (progress.canAdvance && !canAdvanceByTutorial) label.textContent = '引导未解锁';
-      else if (progress.canAdvance) label.textContent = '满足条件，可进阶';
-      else label.textContent = '条件不足，无法进阶';
+      label.textContent = view.text.advanceLabel;
     }
     const features = typeof document.querySelector === 'function'
       ? document.querySelector('.civ-features-list')
       : null;
     if (features) {
-      const description = this.state.currentEraDescription || `${eraName}：继续建设你的文明。`;
-      features.innerHTML = `<div class="civ-feature-item">${description}</div>`;
+      features.innerHTML = `<div class="civ-feature-item">${this.escapeHtml(view.text.featureDescription)}</div>`;
     }
   },
 
   renderMilitary() {
-    const military = this.state.military || {};
     const panel = document.getElementById('militaryPanel');
     if (!panel) return;
-    const soldiers = Math.floor(military.soldiers || 0);
-    const cap = Math.floor(military.soldierCap || 0);
-    const defense = Math.floor((military.defense || 0) + (this.state.buildingEffects?.threatDefense || 0));
-    const interval = Math.floor(military.trainingIntervalSeconds || 0);
-    const progress = Math.floor(military.trainingProgress || 0);
-    this.setText('soldierCount', `${soldiers}/${cap}`);
-    this.setText('militaryDefense', defense);
-    this.setText('availableSoldierCount', Math.floor(this.state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers));
-    this.setText('soldiersOnMission', Math.floor(this.state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0));
+    const view = window.UIStatePresenter.buildMilitaryViewState(this.state);
+    this.setText('soldierCount', view.text.soldierCount);
+    this.setText('militaryDefense', view.text.militaryDefense);
+    this.setText('availableSoldierCount', view.text.availableSoldierCount);
+    this.setText('soldiersOnMission', view.text.soldiersOnMission);
+    this.setText('soldierTrainingText', view.text.soldierTrainingText);
+    const progressBar = document.getElementById('soldierTrainingProgress');
+    if (progressBar) progressBar.style.width = view.training.progressWidth;
     this.renderScoutControls();
     this.updateMilitaryViewLocks();
-
-    const progressBar = document.getElementById('soldierTrainingProgress');
-    if (soldiers >= cap && cap > 0) {
-      this.setText('soldierTrainingText', '训练已满');
-      if (progressBar) progressBar.style.width = '100%';
-      return;
-    }
-    if (cap <= 0 || interval <= 0) {
-      this.setText('soldierTrainingText', '等待兵营');
-      if (progressBar) progressBar.style.width = '0%';
-      return;
-    }
-
-    const percentage = Math.max(0, Math.min(100, Math.floor((progress / interval) * 100)));
-    this.setText('soldierTrainingText', `下一名 ${progress}/${interval} 秒`);
-    if (progressBar) progressBar.style.width = `${percentage}%`;
   },
 
   startScoutCountdownTimer() {
@@ -713,84 +688,35 @@ const Game = {
   },
 
   getMissionRemainingSeconds(mission) {
-    if (!mission) return 0;
-    if (mission.status === 'ready') return 0;
-    const completesAtMs = new Date(mission.completesAt).getTime();
-    if (Number.isFinite(completesAtMs)) {
-      return Math.max(0, Math.ceil((completesAtMs - Date.now()) / 1000));
-    }
-    return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
+    return window.UIStatePresenter.getScoutMissionRemainingSeconds(mission);
   },
 
   formatScoutCountdown(seconds) {
-    const value = Math.max(0, Math.ceil(Number(seconds) || 0));
-    const minutes = Math.floor(value / 60);
-    const rest = value % 60;
-    return `${minutes}:${String(rest).padStart(2, '0')}`;
+    return window.UIStatePresenter.formatScoutCountdown(seconds);
   },
 
   renderTerritory() {
-    const territoryState = this.state.territoryState || {};
-    const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
-    this.setText('territoryPolityName', polityName);
-    this.setText('territoryCount', `${territoryState.occupiedCount || 0}/${territoryState.discoveredCount || 0} 已控制`);
+    const view = window.UIStatePresenter.buildTerritorySummaryViewState(this.state.territoryState || {});
+    this.setText('territoryPolityName', view.text.polityName);
+    this.setText('territoryCount', view.text.territoryCount);
     if (this.territoryRenderer) this.territoryRenderer.render(this.state);
   },
 
   renderScoutControls() {
     const container = document.getElementById('scoutDirectionGrid');
     if (!container) return;
-    const territoryState = this.state.territoryState || {};
-    if ((this.state.currentEra || 0) < 5) {
-      this.setText('scoutStatus', '进入古典时代后可派出侦察队。');
-      container.innerHTML = '';
-      return;
-    }
-    const directions = territoryState.directions || [];
-    const scoutMissions = territoryState.scoutMissions || [];
-    const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
-    const activeScouts = scoutMissions.filter((mission) => mission.status === 'active');
-    const activeScout = activeScouts[0];
-    const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
-    const maxActiveScouts = Math.max(1, Math.floor(territoryState.maxActiveScouts || 1));
-    if (readyCount > 0 && activeScouts.length > 0) {
-      this.setText('scoutStatus', `${readyCount} 份报告待查看，另有 ${activeScouts.length} 支侦察队仍在外。`);
-    } else if (readyCount > 0) {
-      this.setText('scoutStatus', `${readyCount} 份侦察报告待查看，你仍可继续派出侦察队。`);
-    } else if (activeScouts.length > 1) {
-      this.setText('scoutStatus', `${activeScouts.length} 支侦察队在外行动，最早一支约 ${this.formatScoutCountdown(this.getMissionRemainingSeconds(activeScout))} 后返回。`);
-    } else if (activeScout) {
-      const label = directions.find((direction) => direction.id === activeScout.direction)?.label || '外部';
-      this.setText('scoutStatus', `${label}侦察中，预计 ${this.formatScoutCountdown(this.getMissionRemainingSeconds(activeScout))} 后返回。`);
-    } else {
-      this.setText('scoutStatus', `选择方向派出侦察队；同一时间最多可有 ${maxActiveScouts} 支侦察队在外。`);
-    }
-    const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
-    const order = [
-      ['nw', '西北'], ['n', '北'], ['ne', '东北'],
-      ['w', '西'], ['center', '本城'], ['e', '东'],
-      ['sw', '西南'], ['s', '南'], ['se', '东南'],
-    ];
-    container.innerHTML = order.map(([id, fallbackLabel]) => {
-      if (id === 'center') {
-        return '<div class="scout-center" aria-hidden="true"><span>城</span><small>本城</small></div>';
+    const view = window.UIStatePresenter.buildScoutControlViewState(this.state);
+    this.setText('scoutStatus', view.statusText);
+    container.innerHTML = view.cells.map((cell) => {
+      if (cell.type === 'center') {
+        return `<div class="scout-center" aria-hidden="true"><span>${this.escapeHtml(cell.label)}</span><small>${this.escapeHtml(cell.subLabel)}</small></div>`;
       }
-      if (!labels.has(id)) return '';
-      const label = labels.get(id) || fallbackLabel;
-      const mission = activeByDirection.get(id);
-      if (mission?.status === 'ready') {
-        return `<button class="btn-scout direction-${id} status-ready" data-scout-claim="${mission.id}" aria-label="${label}侦察报告"><span class="scout-direction-label">${label}</span><span class="scout-action">报告</span></button>`;
-      }
-      if (mission) {
-        return `<button class="btn-scout direction-${id} status-active" disabled aria-label="${label}侦察中"><span class="scout-direction-label">${label}</span><span class="scout-action">${this.formatScoutCountdown(this.getMissionRemainingSeconds(mission))}</span></button>`;
-      }
-      if (activeByDirection.has(id)) {
-        return '';
-      }
-      if (activeScouts.length >= maxActiveScouts) {
-        return `<button class="btn-scout direction-${id} status-locked" disabled aria-label="${label}侦察暂不可用"><span class="scout-direction-label">${label}</span><span class="scout-action">等待</span></button>`;
-      }
-      return `<button class="btn-scout direction-${id} status-available" data-scout-direction="${id}" aria-label="向${label}派出侦察"><span class="scout-direction-label">${label}</span><span class="scout-action">派出</span></button>`;
+      const actionAttr = cell.action === 'claim'
+        ? ` data-scout-claim="${this.escapeHtml(cell.actionValue)}"`
+        : cell.action === 'scout'
+          ? ` data-scout-direction="${this.escapeHtml(cell.actionValue)}"`
+          : '';
+      return `<button class="btn-scout ${this.escapeHtml(cell.className)}" ${actionAttr} ${cell.disabled ? 'disabled' : ''} aria-label="${this.escapeHtml(cell.ariaLabel)}"><span class="scout-direction-label">${this.escapeHtml(cell.label)}</span><span class="scout-action">${this.escapeHtml(cell.actionText)}</span></button>`;
     }).join('');
   },
 
@@ -806,12 +732,13 @@ const Game = {
     const message = document.getElementById('namingMessage');
     const input = document.getElementById('namingInput');
     if (!modal || !input) return;
+    const view = window.UIStatePresenter.buildNamingPromptViewState(prompt);
     this.activeNamingPrompt = prompt;
-    this.activeNamingPromptKey = `${prompt.type}:${prompt.territoryId || 'polity'}`;
-    if (title) title.textContent = prompt.title || '命名';
-    if (message) message.textContent = prompt.message || '';
+    this.activeNamingPromptKey = view.key;
+    if (title) title.textContent = view.title;
+    if (message) message.textContent = view.message;
     input.value = '';
-    input.placeholder = prompt.type === 'polity' ? '例如：赤火联盟' : '例如：河湾城';
+    input.placeholder = view.placeholder;
     modal.classList.add('show');
     input.focus();
   },
@@ -851,16 +778,16 @@ const Game = {
   },
 
   updateAdvisor(guide) {
-    const message = guide?.message || '';
+    const view = window.UIStatePresenter.buildAdvisorViewState(guide);
     const button = document.getElementById('advisorBtn');
     const modal = document.getElementById('advisorModal');
     const messageElement = document.getElementById('advisorMessage');
     const goButton = document.getElementById('btnAdvisorGo');
-    if (button) button.hidden = !message;
-    if (messageElement) messageElement.textContent = message || '暂无建议。';
-    this.activeAdvisor = message ? { message, target: guide?.target || null } : null;
-    if (goButton) goButton.disabled = !this.activeAdvisor?.target;
-    if (!message && modal) modal.classList.remove('show');
+    if (button) button.hidden = view.hidden;
+    if (messageElement) messageElement.textContent = view.text.message;
+    this.activeAdvisor = view.activeAdvisor;
+    if (goButton) goButton.disabled = view.goButton.disabled;
+    if (view.closeModal && modal) modal.classList.remove('show');
   },
 
   openAdvisor() {
@@ -875,27 +802,27 @@ const Game = {
   },
 
   goToAdvisorTarget() {
-    const target = this.activeAdvisor?.target;
-    if (target === 'tab-territory') {
-      this.switchTab('territory');
-    } else if (target?.startsWith('tab-')) {
-      this.switchTab(target.slice(4));
-    }
+    const tabId = window.UIStatePresenter.getAdvisorTargetTab(this.activeAdvisor?.target);
+    if (tabId) this.switchTab(tabId);
     this.closeAdvisor();
+  },
+
+  renderRecentLogView(view) {
+    if (view.isEmpty) {
+      return `<div class="recent-log-empty">${this.escapeHtml(view.emptyText)}</div>`;
+    }
+    return `<div class="recent-log-list">${view.items.map((entry) => (
+      `<div class="recent-log-item">${this.escapeHtml(entry.text)}</div>`
+    )).join('')}</div>`;
   },
 
   showRecentLogs() {
     const modal = document.getElementById('logModal');
     const content = document.getElementById('logModalContent');
     if (!modal || !content) return;
-    const entries = Array.from(document.querySelectorAll('#logContent .log-item')).slice(0, 20);
-    if (!entries.length) {
-      content.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无日志</div>';
-    } else {
-      content.innerHTML = `<div style="display:grid;gap:8px;max-height:60vh;overflow:auto;">${entries.map((entry) => (
-        `<div style="padding:8px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ddd;background:rgba(255,255,255,0.04);font-size:12px;line-height:1.4;">${entry.textContent}</div>`
-      )).join('')}</div>`;
-    }
+    const entries = Array.from(document.querySelectorAll('#logContent .log-item'));
+    const view = window.UIStatePresenter.buildRecentLogViewState(entries);
+    content.innerHTML = this.renderRecentLogView(view);
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
   },
@@ -904,9 +831,9 @@ const Game = {
     const container = document.getElementById('eraConditions');
     if (!container) return;
     container.innerHTML = conditions.map((condition) => `
-      <div class="era-condition-item ${condition.met ? 'met' : 'unmet'}">
-        <div class="era-condition-name">${condition.name}</div>
-        <div class="era-condition-progress">${condition.current}/${condition.required}</div>
+      <div class="era-condition-item ${this.escapeHtml(condition.className)}">
+        <div class="era-condition-name">${this.escapeHtml(condition.name)}</div>
+        <div class="era-condition-progress">${this.escapeHtml(condition.progressText)}</div>
       </div>
     `).join('');
   },

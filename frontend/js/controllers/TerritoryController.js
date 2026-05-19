@@ -10,6 +10,16 @@
       this.onFloatingText = options.onFloatingText || (() => {});
       this.onLog = options.onLog || (() => {});
       this.dragState = null;
+      this.uiState = {
+        selectedSiteId: '',
+        worldPanX: 0,
+        worldPanY: 0,
+        expeditionConfigSiteId: '',
+        expeditionTroopType: '',
+        expeditionLeader: '',
+        expeditionSoldiers: '',
+        ...(options.uiState || {}),
+      };
     }
 
     bind() {
@@ -55,9 +65,13 @@
 
     getWorldPan() {
       return {
-        x: Number(this.container?.dataset.worldPanX || 0),
-        y: Number(this.container?.dataset.worldPanY || 0),
+        x: Number(this.uiState.worldPanX || 0),
+        y: Number(this.uiState.worldPanY || 0),
       };
+    }
+
+    getUiState() {
+      return { ...this.uiState };
     }
 
     setWorldPan(x, y) {
@@ -65,8 +79,8 @@
       const clamp = (value) => Math.max(-160, Math.min(160, value));
       const nextX = clamp(Number(x) || 0);
       const nextY = clamp(Number(y) || 0);
-      this.container.dataset.worldPanX = String(nextX);
-      this.container.dataset.worldPanY = String(nextY);
+      this.uiState.worldPanX = nextX;
+      this.uiState.worldPanY = nextY;
       const pan = this.container.querySelector('[data-world-pan]');
       if (pan) {
         pan.style.setProperty('--world-pan-x', `${nextX}px`);
@@ -110,54 +124,46 @@
     }
 
     openSiteDialog(siteId) {
-      const modal = this.container?.querySelector('[data-world-site-modal]');
-      if (!modal) return;
-      this.container.dataset.selectedSiteId = siteId;
-      modal.querySelectorAll('[data-site-detail]').forEach((detail) => {
-        detail.hidden = detail.dataset.siteDetail !== siteId;
-      });
-      modal.classList.add('show');
+      if (!siteId) return;
+      this.uiState.selectedSiteId = siteId;
+      this.onRenderRequested();
     }
 
     closeSiteDialog() {
-      const modal = this.container?.querySelector('[data-world-site-modal]');
-      if (!modal) return;
-      if (this.container?.dataset) delete this.container.dataset.selectedSiteId;
-      this.clearExpeditionDraft();
-      modal.classList.remove('show');
+      this.uiState.selectedSiteId = '';
+      this.clearExpeditionDraft({ render: false });
+      this.onRenderRequested();
     }
 
     getSelectedSite() {
-      const selectedSiteId = this.container?.dataset.selectedSiteId;
+      const selectedSiteId = this.uiState.selectedSiteId;
       return (this.getState().territoryState?.territories || []).find((item) => item.id === selectedSiteId) || null;
     }
 
     getExpeditionDraft(site = this.getSelectedSite()) {
       const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
       return {
-        territoryId: this.container?.dataset.expeditionConfigSiteId || '',
-        troopType: this.container?.dataset.expeditionTroopType || 'unavailable',
-        leader: this.container?.dataset.expeditionLeader || 'unavailable',
-        soldiers: Math.max(1, Number(this.container?.dataset.expeditionSoldiers) || recommended),
+        territoryId: this.uiState.expeditionConfigSiteId || '',
+        troopType: this.uiState.expeditionTroopType || 'unavailable',
+        leader: this.uiState.expeditionLeader || 'unavailable',
+        soldiers: Math.max(1, Number(this.uiState.expeditionSoldiers) || recommended),
       };
     }
 
     setExpeditionDraft(draft = {}) {
-      if (!this.container) return;
-      if (draft.territoryId) this.container.dataset.expeditionConfigSiteId = draft.territoryId;
-      if (draft.troopType) this.container.dataset.expeditionTroopType = draft.troopType;
-      if (draft.leader) this.container.dataset.expeditionLeader = draft.leader;
-      if (draft.soldiers) this.container.dataset.expeditionSoldiers = String(Math.max(1, Math.floor(Number(draft.soldiers) || 1)));
+      if (draft.territoryId) this.uiState.expeditionConfigSiteId = draft.territoryId;
+      if (draft.troopType) this.uiState.expeditionTroopType = draft.troopType;
+      if (draft.leader) this.uiState.expeditionLeader = draft.leader;
+      if (draft.soldiers) this.uiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(draft.soldiers) || 1)));
       this.onRenderRequested();
     }
 
-    clearExpeditionDraft() {
-      if (!this.container?.dataset) return;
-      delete this.container.dataset.expeditionConfigSiteId;
-      delete this.container.dataset.expeditionTroopType;
-      delete this.container.dataset.expeditionLeader;
-      delete this.container.dataset.expeditionSoldiers;
-      this.onRenderRequested();
+    clearExpeditionDraft(options = {}) {
+      this.uiState.expeditionConfigSiteId = '';
+      this.uiState.expeditionTroopType = '';
+      this.uiState.expeditionLeader = '';
+      this.uiState.expeditionSoldiers = '';
+      if (options.render !== false) this.onRenderRequested();
     }
 
     openExpeditionDraft(territoryId) {

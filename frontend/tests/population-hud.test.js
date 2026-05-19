@@ -24,7 +24,7 @@ test('population panel uses custom HUD controls and dedicated cutout icons', () 
   assert.match(css, /url\('assets\/art\/icon-craftsman-cutout\.webp'\)/);
   assert.match(css, /\.pop-stats \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
   assert.match(css, /\.pop-stat \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
-  assert.match(html, /style\.css\?v=population-hud-v2/);
+  assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /js\/state\/UIStatePresenter\.js\?v=ui-state-v\d+/);
   assert.match(css, /\.job-card \{[\s\S]*?padding: 4px 7px;[\s\S]*?grid-template-columns: 24px minmax\(0, 1fr\) auto;/);
   assert.match(css, /\.job-icon \{[\s\S]*?width: 24px;[\s\S]*?height: 24px;[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);

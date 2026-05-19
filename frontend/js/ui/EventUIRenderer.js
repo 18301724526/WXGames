@@ -5,12 +5,7 @@
     }
 
     formatReward(reward) {
-      if (!reward) return '事件已完成';
-      const parts = [];
-      if (reward.food) parts.push(`🌾 +${reward.food}`);
-      if (reward.knowledge) parts.push(`📚 +${reward.knowledge}`);
-      if (reward.wood) parts.push(`🪵 +${reward.wood}`);
-      return parts.join(' ') || '事件已完成';
+      return global.UIStatePresenter.formatEventReward(reward);
     }
 
     escapeHtml(value) {
@@ -23,107 +18,112 @@
     }
 
     getOptionPreview(option) {
-      if (option?.preview) return option.preview;
-      return this.formatReward(option?.reward);
+      return global.UIStatePresenter.getEventOptionPreview(option);
     }
 
     getRemainingSeconds(expiresAt) {
-      const expiresAtMs = new Date(expiresAt).getTime();
-      if (!Number.isFinite(expiresAtMs)) return null;
-      return Math.max(0, Math.ceil((expiresAtMs - Date.now()) / 1000));
+      return global.UIStatePresenter.getRemainingSeconds(expiresAt);
     }
 
     formatRemainingTime(expiresAt) {
-      const seconds = this.getRemainingSeconds(expiresAt);
-      if (seconds === null) return '';
-      const minutes = Math.floor(seconds / 60);
-      const rest = seconds % 60;
-      return `${minutes}:${String(rest).padStart(2, '0')}`;
+      return global.UIStatePresenter.formatRemainingTime(expiresAt);
     }
 
     getEventHint(event) {
-      const remaining = this.formatRemainingTime(event.expiresAt);
-      if (event?.type === 'threat') {
-        if (!remaining) return '超时将按失败处理';
-        return `剩余 ${remaining}，超时将按失败处理`;
-      }
-      if (event?.type === 'regular') {
-        if (!remaining) return '超时将自动失效';
-        return `剩余 ${remaining}，超时将自动失效`;
-      }
-      return '点击查看详情';
+      return global.UIStatePresenter.getEventHint(event);
+    }
+
+    getClassNames(classState = {}) {
+      return Object.entries(classState)
+        .filter(([, active]) => active)
+        .map(([name]) => name)
+        .join(' ');
+    }
+
+    renderPendingCard(card) {
+      const idAttr = card.domId ? ` id="${this.escapeHtml(card.domId)}"` : '';
+      const classNames = this.getClassNames(card.classState);
+      return `
+            <div class="pending-event-card ${classNames}" data-event-id="${this.escapeHtml(card.id)}"${idAttr}>
+              <div class="pending-event-header">${this.escapeHtml(card.icon)} ${this.escapeHtml(card.title)}</div>
+              <div class="pending-event-desc">${this.escapeHtml(card.description)}</div>
+              <div class="pending-event-hint">${this.escapeHtml(card.hint)}</div>
+            </div>
+          `;
+    }
+
+    renderHistoryItem(item) {
+      return `
+            <div class="event-history-item ${this.escapeHtml(item.className)}">
+              <div class="event-history-emoji">${this.escapeHtml(item.icon)}</div>
+              <div class="event-history-info">
+                <div class="event-history-title">${this.escapeHtml(item.title)}</div>
+                <div class="event-history-result">${this.escapeHtml(item.result)}</div>
+              </div>
+            </div>
+          `;
+    }
+
+    renderOption(option) {
+      return `
+          <button class="event-option-btn" type="button" data-option-id="${this.escapeHtml(option.id)}">
+            <span class="event-option-label">${this.escapeHtml(option.label)}</span>
+            <span class="event-option-preview">${this.escapeHtml(option.preview)}</span>
+          </button>
+        `;
     }
 
     render(state) {
-      this.setText('techKnowledgeRate', `${state.resources.knowledgePerSecond || 0}/s`);
+      const view = global.UIStatePresenter.buildEventViewState(state);
+      this.setText('techKnowledgeRate', view.text.techKnowledgeRate);
       const pending = document.getElementById('pendingEventsContainer');
       const badge = document.getElementById('eventsBadge');
       if (badge) {
-        badge.hidden = !state.eventQueue.length;
-        badge.textContent = state.eventQueue.length > 9 ? '9+' : String(state.eventQueue.length);
+        badge.hidden = view.badge.hidden;
+        badge.textContent = view.badge.text;
       }
 
       if (pending) {
-        if (!state.eventQueue.length) {
-          pending.innerHTML = '<div class="pending-events-empty">暂无待处理事件</div>';
+        if (view.pending.isEmpty) {
+          pending.innerHTML = `<div class="pending-events-empty">${view.pending.emptyText}</div>`;
         } else {
-          pending.innerHTML = state.eventQueue.map((event) => `
-            <div class="pending-event-card ${event.type === 'special' ? 'is-special' : ''} ${event.type === 'threat' ? 'is-threat' : ''}" data-event-id="${event.id}" id="${event.id === 'evt_settlement_forest_001' ? 'event-card-special' : ''}">
-              <div class="pending-event-header">${event.icon || '📜'} ${event.title}</div>
-              <div class="pending-event-desc">${event.description}</div>
-              <div class="pending-event-hint">${this.escapeHtml(this.getEventHint(event))}</div>
-            </div>
-          `).join('');
+          pending.innerHTML = view.pending.cards.map((card) => this.renderPendingCard(card)).join('');
         }
       }
 
       const history = document.getElementById('eventHistoryList');
       if (history) {
-        if (!state.eventHistory.length) {
-          history.innerHTML = '<div class="event-history-empty">暂无事件记录</div>';
+        if (view.history.isEmpty) {
+          history.innerHTML = `<div class="event-history-empty">${view.history.emptyText}</div>`;
         } else {
-          history.innerHTML = state.eventHistory.map((event) => `
-            <div class="event-history-item ${event.type === 'threat' ? 'threat' : 'positive'}">
-              <div class="event-history-emoji">${event.icon || '📜'}</div>
-              <div class="event-history-info">
-                <div class="event-history-title">${event.title}</div>
-                <div class="event-history-result">${this.escapeHtml(event.resultSummary || this.formatReward(event.selectedOptionId ? event.options?.find((item) => item.id === event.selectedOptionId)?.reward : null))}</div>
-              </div>
-            </div>
-          `).join('');
+          history.innerHTML = view.history.items.map((item) => this.renderHistoryItem(item)).join('');
         }
       }
     }
 
     open(eventData) {
-      this.setText('eventModalTitle', `${eventData.icon || '📜'} ${eventData.title}`);
-      this.setText('eventModalDescription', eventData.description || '');
-      const options = eventData.options || [];
+      const view = global.UIStatePresenter.buildEventModalViewState(eventData);
+      this.setText('eventModalTitle', view.text.title);
+      this.setText('eventModalDescription', view.text.description);
       const optionsContainer = document.getElementById('eventModalOptions');
       const claimButton = document.getElementById('btnClaimEvent');
 
       if (optionsContainer) {
-        optionsContainer.innerHTML = options.length > 1 ? options.map((option) => `
-          <button class="event-option-btn" type="button" data-option-id="${this.escapeHtml(option.id)}">
-            <span class="event-option-label">${this.escapeHtml(option.label || '处理事件')}</span>
-            <span class="event-option-preview">${this.escapeHtml(this.getOptionPreview(option))}</span>
-          </button>
-        `).join('') : '';
+        optionsContainer.innerHTML = view.options.length > 1
+          ? view.options.map((option) => this.renderOption(option)).join('')
+          : '';
       }
 
       if (claimButton) {
-        const firstOption = options[0];
-        if (claimButton.dataset) claimButton.dataset.optionId = firstOption?.id || '';
-        else if (claimButton.setAttribute) claimButton.setAttribute('data-option-id', firstOption?.id || '');
-        claimButton.textContent = firstOption?.label || '处理事件';
-        claimButton.hidden = options.length !== 1;
+        if (claimButton.dataset) claimButton.dataset.optionId = view.claimButton.optionId;
+        else if (claimButton.setAttribute) claimButton.setAttribute('data-option-id', view.claimButton.optionId);
+        claimButton.textContent = view.claimButton.label;
+        claimButton.hidden = view.claimButton.hidden;
       }
 
-      const singleOptionPreview = options.length === 1 ? this.getOptionPreview(options[0]) : '选择一种处理方式';
-      const expiryHint = ['threat', 'regular'].includes(eventData?.type) ? this.getEventHint(eventData) : '';
-      this.setText('eventModalReward', expiryHint ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview);
+      this.setText('eventModalReward', view.text.reward);
       const modal = document.getElementById('eventModal');
-      if (modal) modal.classList.add('show');
+      if (modal && view.showModal) modal.classList.add('show');
     }
 
     close() {
