@@ -1,9 +1,10 @@
 // ==================== 账号管理模块 ====================
 // 挂载函数 — 由 app.js init() 调用，避免 IIFE 的竞态问题
 
-window.mountAuthMethods = function(game) {
-  const authStorage = game.authStorage || window.H5AuthStorageAdapter?.fromRuntime(window);
-  const authRuntime = game.authRuntime || window.H5AuthRuntimeAdapter?.fromRuntime(window);
+window.mountAuthMethods = function(game, deps = {}) {
+  const presenter = deps.presenter;
+  const authStorage = deps.authStorage || game.authStorage;
+  const authRuntime = deps.authRuntime || game.authRuntime;
 
   function clearTutorialStorage() {
     authStorage?.clearTutorialStorage?.();
@@ -18,7 +19,7 @@ window.mountAuthMethods = function(game) {
   }
 
   function showAuthenticatedShell() {
-    applyAuthShellView(window.UIStatePresenter.buildAuthShellViewState({ authenticated: true }));
+    applyAuthShellView(presenter.buildAuthShellViewState({ authenticated: true }));
   }
 
   function persistRememberedCredentials(username, password, rememberPassword) {
@@ -26,7 +27,7 @@ window.mountAuthMethods = function(game) {
   }
 
   function fillRememberedCredentials() {
-    const view = window.UIStatePresenter.buildAuthCredentialViewState(authStorage?.getCredentialSnapshot?.() || {});
+    const view = presenter.buildAuthCredentialViewState(authStorage?.getCredentialSnapshot?.() || {});
     game.authShell?.applyCredentials(view);
   }
 
@@ -50,7 +51,7 @@ window.mountAuthMethods = function(game) {
 
   game.showLoginPanel = function(message) {
     fillRememberedCredentials();
-    applyAuthShellView(window.UIStatePresenter.buildAuthShellViewState({
+    applyAuthShellView(presenter.buildAuthShellViewState({
       authenticated: false,
       message,
     }));

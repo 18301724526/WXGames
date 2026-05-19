@@ -70,7 +70,7 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
       loginPassword: createElement(),
       rememberPassword: createElement(),
     };
-    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter, H5AuthRuntimeAdapter };
+    global.window = {};
     global.document = undefined;
     const storage = createStorage({
       cf_remember_enabled: 'true',
@@ -84,7 +84,11 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
     const game = createGame();
     game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
     game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
-    global.window.mountAuthMethods(game);
+    global.window.mountAuthMethods(game, {
+      presenter: UIStatePresenter,
+      authStorage: game.authStorage,
+      authRuntime: H5AuthRuntimeAdapter.fromRuntime({}),
+    });
     game.showLoginPanel();
 
     assert.equal(elements.loginUsername.value, 'test2');
@@ -113,7 +117,7 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
       loginPassword: createElement(),
       rememberPassword: createElement(),
     };
-    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter, H5AuthRuntimeAdapter };
+    global.window = {};
     global.document = undefined;
     const storage = createStorage();
     global.localStorage = undefined;
@@ -142,7 +146,11 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
     const game = createGame();
     game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
     game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
-    global.window.mountAuthMethods(game);
+    global.window.mountAuthMethods(game, {
+      presenter: UIStatePresenter,
+      authStorage: game.authStorage,
+      authRuntime: H5AuthRuntimeAdapter.fromRuntime({}),
+    });
     elements.loginUsername.value = 'test1';
     elements.loginPassword.value = '123456';
     elements.rememberPassword.checked = true;

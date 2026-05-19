@@ -36,6 +36,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     H5AuthRuntimeAdapter: makeRuntimeFactory('authRuntime', calls),
     H5AuthStorageAdapter: makeRuntimeFactory('authStorage', calls),
     H5TutorialStorageAdapter: makeRuntimeFactory('tutorialStorage', calls),
+    UIStatePresenter: { name: 'presenter' },
     FloatingTextAdapter: makeFactory('floatingText', calls),
     ResourceRenderer: makeFactory('resource', calls),
     ResourceDetailModalAdapter: makeFactory('resourceDetail', calls),
@@ -83,9 +84,9 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     originalGlobals.mountPopulationMethods = globalThis.mountPopulationMethods;
     originalGlobals.mountLogMethods = globalThis.mountLogMethods;
     const mountedModules = [];
-    globalThis.mountAuthMethods = (game) => mountedModules.push(['auth', game]);
-    globalThis.mountPopulationMethods = (game) => mountedModules.push(['population', game]);
-    globalThis.mountLogMethods = (game) => mountedModules.push(['logs', game]);
+    globalThis.mountAuthMethods = (game, deps) => mountedModules.push(['auth', game, deps]);
+    globalThis.mountPopulationMethods = (game, deps) => mountedModules.push(['population', game, deps]);
+    globalThis.mountLogMethods = (game, deps) => mountedModules.push(['logs', game, deps]);
 
     const setText = () => {};
     const getTerritoryUiState = () => ({ selectedSiteId: 'east' });
@@ -93,7 +94,13 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     const game = { id: 'game' };
     shell.gameModules.mount(game);
 
-    assert.deepEqual(mountedModules, [['auth', game], ['population', game], ['logs', game]]);
+    assert.equal(mountedModules.length, 3);
+    assert.deepEqual(mountedModules.map(([name, mountedGame]) => [name, mountedGame]), [['auth', game], ['population', game], ['logs', game]]);
+    for (const [, , deps] of mountedModules) {
+      assert.equal(deps.presenter, factories.UIStatePresenter);
+      assert.deepEqual(deps.authRuntime, { name: 'authRuntime' });
+      assert.deepEqual(deps.authStorage, { name: 'authStorage' });
+    }
     assert.equal(shell.buildingRenderer.container, 'building-grid');
     assert.equal(shell.eventRenderer.setText, setText);
     assert.deepEqual(shell.updateRuntime, { name: 'updateRuntime' });
@@ -124,8 +131,8 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-shell-v1/);
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-shell-v1[\s\S]*app\.js\?v=h5-module-shell-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-deps-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-deps-v1[\s\S]*app\.js\?v=h5-module-deps-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.doesNotMatch(appJs, /window\.mountFloatingText/);
   assert.doesNotMatch(appJs, /window\.mount(?:AuthMethods|PopulationMethods|LogMethods)/);

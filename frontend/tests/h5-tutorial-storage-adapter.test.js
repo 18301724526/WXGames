@@ -49,7 +49,7 @@ test('tutorial controller and app delegate local storage to H5 tutorial storage 
   const controllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'controllers', 'TutorialController.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5TutorialStorageAdapter\.js\?v=h5-tutorial-storage-v1/);
-  assert.match(html, /H5TutorialStorageAdapter\.js\?v=h5-tutorial-storage-v1[\s\S]*H5ShellAdapter\.js\?v=h5-module-shell-v1[\s\S]*TutorialController\.js\?v=h5-tutorial-storage-v1[\s\S]*app\.js\?v=h5-module-shell-v1/);
+  assert.match(html, /H5TutorialStorageAdapter\.js\?v=h5-tutorial-storage-v1[\s\S]*H5ShellAdapter\.js\?v=h5-module-deps-v1[\s\S]*TutorialController\.js\?v=h5-tutorial-storage-v1[\s\S]*app\.js\?v=h5-module-deps-v1/);
   assert.match(appJs, /storage: this\.tutorialStorage/);
   assert.match(controllerJs, /this\.storage = options\.storage/);
   assert.doesNotMatch(controllerJs, /\blocalStorage\b|getItem\('tutorialAutoStarted'|setItem\('tutorial|removeItem\('tutorial/);

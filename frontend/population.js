@@ -1,14 +1,16 @@
 // Population panel remains DOM-backed for now, but it consumes a renderer-neutral
 // view state so the same data can feed a future canvas or mini-game renderer.
-window.mountPopulationMethods = function mountPopulationMethods(game) {
+window.mountPopulationMethods = function mountPopulationMethods(game, deps = {}) {
+  const presenter = deps.presenter;
+
   game.renderPopulation = function renderPopulation() {
-    const view = window.UIStatePresenter.buildPopulationViewState(this.state);
+    const view = presenter.buildPopulationViewState(this.state);
     Object.entries(view.text).forEach(([id, value]) => this.setText(id, value));
     this.populationPanel?.render(view);
   };
 
   game.updatePopulationButtons = function updatePopulationButtons() {
-    const view = window.UIStatePresenter.buildPopulationViewState(this.state);
+    const view = presenter.buildPopulationViewState(this.state);
     this.populationPanel?.render(view);
   };
 

@@ -1,7 +1,8 @@
 // ==================== 请求日志模块 ====================
 // 挂载函数 — 由 app.js init() 调用
 
-window.mountLogMethods = function(game) {
+window.mountLogMethods = function(game, deps = {}) {
+  const presenter = deps.presenter;
   game.requestLogs = [];
 
   function escapeHtml(value) {
@@ -49,7 +50,7 @@ window.mountLogMethods = function(game) {
   };
 
   game.showRequestLogs = function() {
-    const view = window.UIStatePresenter.buildRequestLogViewState(this.requestLogs);
+    const view = presenter.buildRequestLogViewState(this.requestLogs);
     this.logModal?.open(renderRequestLogs(view));
   };
 

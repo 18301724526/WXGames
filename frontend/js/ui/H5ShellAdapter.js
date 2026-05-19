@@ -9,11 +9,18 @@
       const buildingActions = global.BuildingActionAdapter?.fromDocument(doc);
       const territoryActions = global.TerritoryActionAdapter?.fromDocument(doc);
       const tutorialRenderer = global.TutorialUIRenderer?.fromDocument(doc, runtime);
+      const authRuntime = global.H5AuthRuntimeAdapter?.fromRuntime(runtime);
+      const authStorage = global.H5AuthStorageAdapter?.fromRuntime(runtime);
+      const moduleDeps = {
+        presenter: global.UIStatePresenter,
+        authRuntime,
+        authStorage,
+      };
       const gameModules = {
         mount(game) {
-          global.mountAuthMethods?.(game);
-          global.mountPopulationMethods?.(game);
-          global.mountLogMethods?.(game);
+          global.mountAuthMethods?.(game, moduleDeps);
+          global.mountPopulationMethods?.(game, moduleDeps);
+          global.mountLogMethods?.(game, moduleDeps);
         },
       };
 
@@ -21,8 +28,8 @@
         gameModules,
         textAdapter: global.H5TextAdapter?.fromDocument(doc),
         updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),
-        authRuntime: global.H5AuthRuntimeAdapter?.fromRuntime(runtime),
-        authStorage: global.H5AuthStorageAdapter?.fromRuntime(runtime),
+        authRuntime,
+        authStorage,
         tutorialStorage: global.H5TutorialStorageAdapter?.fromRuntime(runtime),
         floatingText: global.FloatingTextAdapter?.fromDocument(doc),
         resourceRenderer: global.ResourceRenderer?.fromDocument(doc, setText),
