@@ -1,7 +1,36 @@
 (function (global) {
   class EventUIRenderer {
-    constructor(setText) {
+    constructor(setText, options = {}) {
       this.setText = setText;
+      this.document = options.document || global.document || (typeof document !== 'undefined' ? document : null);
+    }
+
+    getElement(id) {
+      return this.document?.getElementById?.(id) || null;
+    }
+
+    bind(handlers = {}) {
+      const pending = this.getElement('pendingEventsContainer');
+      pending?.addEventListener?.('click', (event) => {
+        const card = event.target?.closest?.('[data-event-id]');
+        if (!card) return;
+        handlers.onOpen?.(card.dataset?.eventId);
+      });
+
+      const claimButton = this.getElement('btnClaimEvent');
+      claimButton?.addEventListener?.('click', (event) => {
+        handlers.onClaim?.(event.currentTarget?.dataset?.optionId);
+      });
+
+      const optionsContainer = this.getElement('eventModalOptions');
+      optionsContainer?.addEventListener?.('click', (event) => {
+        const button = event.target?.closest?.('[data-option-id]');
+        if (!button) return;
+        handlers.onClaim?.(button.dataset?.optionId);
+      });
+
+      const closeButton = this.getElement('btnCloseEventModal');
+      closeButton?.addEventListener?.('click', () => handlers.onClose?.());
     }
 
     formatReward(reward) {
@@ -76,8 +105,8 @@
     render(state) {
       const view = global.UIStatePresenter.buildEventViewState(state);
       this.setText('techKnowledgeRate', view.text.techKnowledgeRate);
-      const pending = document.getElementById('pendingEventsContainer');
-      const badge = document.getElementById('eventsBadge');
+      const pending = this.getElement('pendingEventsContainer');
+      const badge = this.getElement('eventsBadge');
       if (badge) {
         badge.hidden = view.badge.hidden;
         badge.textContent = view.badge.text;
@@ -91,7 +120,7 @@
         }
       }
 
-      const history = document.getElementById('eventHistoryList');
+      const history = this.getElement('eventHistoryList');
       if (history) {
         if (view.history.isEmpty) {
           history.innerHTML = `<div class="event-history-empty">${view.history.emptyText}</div>`;
@@ -105,8 +134,8 @@
       const view = global.UIStatePresenter.buildEventModalViewState(eventData);
       this.setText('eventModalTitle', view.text.title);
       this.setText('eventModalDescription', view.text.description);
-      const optionsContainer = document.getElementById('eventModalOptions');
-      const claimButton = document.getElementById('btnClaimEvent');
+      const optionsContainer = this.getElement('eventModalOptions');
+      const claimButton = this.getElement('btnClaimEvent');
 
       if (optionsContainer) {
         optionsContainer.innerHTML = view.options.length > 1
@@ -122,13 +151,17 @@
       }
 
       this.setText('eventModalReward', view.text.reward);
-      const modal = document.getElementById('eventModal');
+      const modal = this.getElement('eventModal');
       if (modal && view.showModal) modal.classList.add('show');
     }
 
     close() {
-      const modal = document.getElementById('eventModal');
+      const modal = this.getElement('eventModal');
       if (modal) modal.classList.remove('show');
+    }
+
+    isOpen() {
+      return this.getElement('eventModal')?.classList?.contains?.('show') || false;
     }
   }
 

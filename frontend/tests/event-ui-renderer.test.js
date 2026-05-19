@@ -18,9 +18,28 @@ function createButtonStub(dataset = {}) {
     _dataset: dataset,
     textContent: '',
     hidden: false,
+    listeners: {},
+    addEventListener(type, handler) {
+      this.listeners[type] = handler;
+    },
     get dataset() {
       return this._dataset;
     },
+  };
+}
+
+function createElementStub(extra = {}) {
+  return {
+    textContent: '',
+    innerHTML: '',
+    hidden: false,
+    dataset: {},
+    classList: createClassList(),
+    listeners: {},
+    addEventListener(type, handler) {
+      this.listeners[type] = handler;
+    },
+    ...extra,
   };
 }
 
@@ -58,6 +77,47 @@ test('事件弹窗会渲染后端下发的多个选项', () => {
   } finally {
     global.document = originalDocument;
   }
+});
+
+test('事件 renderer 绑定 H5 卡片、选项、领取和关闭事件', () => {
+  const elements = new Map([
+    ['pendingEventsContainer', createElementStub()],
+    ['eventModalOptions', createElementStub()],
+    ['btnClaimEvent', createButtonStub({ optionId: 'claim_main' })],
+    ['btnCloseEventModal', createElementStub()],
+  ]);
+  const renderer = new EventUIRenderer(() => {}, {
+    document: {
+      getElementById(id) {
+        return elements.get(id) || null;
+      },
+    },
+  });
+  const calls = [];
+
+  renderer.bind({
+    onOpen: (eventId) => calls.push(['open', eventId]),
+    onClaim: (optionId) => calls.push(['claim', optionId]),
+    onClose: () => calls.push(['close']),
+  });
+
+  elements.get('pendingEventsContainer').listeners.click({
+    target: { closest: () => ({ dataset: { eventId: 'evt_a' } }) },
+  });
+  elements.get('btnClaimEvent').listeners.click({
+    currentTarget: { dataset: { optionId: 'claim_main' } },
+  });
+  elements.get('eventModalOptions').listeners.click({
+    target: { closest: () => ({ dataset: { optionId: 'claim_alt' } }) },
+  });
+  elements.get('btnCloseEventModal').listeners.click();
+
+  assert.deepEqual(calls, [
+    ['open', 'evt_a'],
+    ['claim', 'claim_main'],
+    ['claim', 'claim_alt'],
+    ['close'],
+  ]);
 });
 
 test('单选项事件保留主领取按钮用于教程高亮', () => {

@@ -71,7 +71,7 @@ const Game = {
       renderer: this.tutorialRenderer,
       getTarget: (key) => this.getTutorialTarget(key),
       getCurrentTab: () => this.state.currentTab,
-      isEventModalOpen: () => document.getElementById('eventModal')?.classList.contains('show') || false,
+      isEventModalOpen: () => this.eventRenderer?.isOpen?.() || false,
       getState: () => this.state,
       onTabLockChange: () => this.updateTabLocks(),
     });
@@ -149,33 +149,11 @@ const Game = {
       onSelect: (cityId) => this.switchCity(cityId),
     });
 
-    const pendingEvents = document.getElementById('pendingEventsContainer');
-    if (pendingEvents) {
-      pendingEvents.addEventListener('click', (event) => {
-        const card = event.target.closest('[data-event-id]');
-        if (!card) return;
-        this.eventController.open(card.dataset.eventId);
-      });
-    }
-
-    const claimButton = document.getElementById('btnClaimEvent');
-    if (claimButton) {
-      claimButton.addEventListener('click', (event) => this.eventController.claimActive(event.currentTarget.dataset.optionId));
-    }
-
-    const eventModalOptions = document.getElementById('eventModalOptions');
-    if (eventModalOptions) {
-      eventModalOptions.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-option-id]');
-        if (!button) return;
-        this.eventController.claimActive(button.dataset.optionId);
-      });
-    }
-
-    const closeButton = document.getElementById('btnCloseEventModal');
-    if (closeButton) {
-      closeButton.addEventListener('click', () => this.eventController.close());
-    }
+    this.eventRenderer?.bind({
+      onOpen: (eventId) => this.eventController.open(eventId),
+      onClaim: (optionId) => this.eventController.claimActive(optionId),
+      onClose: () => this.eventController.close(),
+    });
 
     this.resourceDetailModal?.bind({
       onOpen: () => this.openResourceDetails(),

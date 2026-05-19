@@ -451,9 +451,11 @@ test('事件弹窗会切换 show 类而不是失效的 active 类', () => {
     const renderer = new EventUIRenderer(() => {});
     renderer.open({ title: '森林低语', description: 'desc', options: [{ reward: { wood: 10 } }] });
     assert.equal(modal.classList.contains('show'), true);
+    assert.equal(renderer.isOpen(), true);
 
     renderer.close();
     assert.equal(modal.classList.contains('show'), false);
+    assert.equal(renderer.isOpen(), false);
   } finally {
     global.document = originalDocument;
   }
