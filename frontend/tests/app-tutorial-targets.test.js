@@ -30,8 +30,27 @@ function createWindowStub() {
     AdvisorPanelAdapter: require('../js/ui/AdvisorPanelAdapter'),
     NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
+    CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
     DOMHelper: { setText() {} },
   };
+}
+
+function attachCivilizationPanel(Game, elements) {
+  function getElement(id) {
+    if (!elements.has(id)) elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
+    return elements.get(id);
+  }
+
+  Game.civilizationPanel = new global.window.CivilizationPanelAdapter({
+    setText: (id, value) => {
+      getElement(id).textContent = value;
+    },
+    progressBar: getElement('eraProgress'),
+    advanceButton: getElement('btnAdvanceEra'),
+    advanceLabel: getElement('btnEraLabel'),
+    features: getElement('civFeaturesList'),
+    conditions: getElement('eraConditions'),
+  });
 }
 
 test('app 会映射所有教程高亮目标，包括民居卡片', () => {
@@ -141,6 +160,7 @@ test('era advance button stays locked until tutorial unlocks the advance step', 
     require('../app');
 
     const { Game } = global.window;
+    attachCivilizationPanel(Game, elements);
     Game.state = {
       currentEra: 1,
       currentEraName: '农耕时代',
@@ -199,6 +219,7 @@ test('subcity keeps era advance button disabled even when conditions are met', (
     require('../app');
 
     const { Game } = global.window;
+    attachCivilizationPanel(Game, elements);
     Game.state = {
       currentEra: 5,
       currentEraName: '古典时代',
@@ -318,6 +339,7 @@ test('initial era advance also stays locked before the tutorial reaches the adva
     require('../app');
 
     const { Game } = global.window;
+    attachCivilizationPanel(Game, elements);
     Game.state = {
       currentEra: 0,
       currentEraName: '原始时代',

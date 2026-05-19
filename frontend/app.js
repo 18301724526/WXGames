@@ -51,6 +51,9 @@ const Game = {
     this.namingModal = window.NamingModalAdapter?.fromDocument(document);
     this.citySwitcher = window.CitySwitcherAdapter?.fromDocument(document);
     this.navigationShell = window.NavigationShellAdapter?.fromDocument(document);
+    this.civilizationPanel = window.CivilizationPanelAdapter?.fromDocument(document, {
+      setText: (id, value) => this.setText(id, value),
+    });
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -504,34 +507,7 @@ const Game = {
       this.tutorialController?.state || this.tutorial || {},
       { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
     );
-    this.setText('eraName', view.text.eraName);
-    this.setText('civOverviewEraName', view.text.civOverviewEraName);
-    this.setText('civOverviewDay', view.text.civOverviewDay);
-    this.setText('civOverviewPop', view.text.civOverviewPop);
-    this.setText('civOverviewBuildings', view.text.civOverviewBuildings);
-    this.setText('civOverviewTechs', view.text.civOverviewTechs);
-    this.setText('civOverviewHappiness', view.text.civOverviewHappiness);
-
-    const bar = document.getElementById('eraProgress');
-    if (bar) bar.style.width = view.progress.width;
-    this.setText('eraProgressText', view.text.eraProgressText);
-    this.setText('eraTargetName', view.text.eraTargetName);
-    this.renderEraConditions(view.conditions);
-
-    const button = document.getElementById('btnAdvanceEra');
-    const label = document.getElementById('btnEraLabel');
-    if (button) {
-      button.disabled = view.advanceButton.disabled;
-    }
-    if (label) {
-      label.textContent = view.text.advanceLabel;
-    }
-    const features = typeof document.querySelector === 'function'
-      ? document.querySelector('.civ-features-list')
-      : null;
-    if (features) {
-      features.innerHTML = `<div class="civ-feature-item">${this.escapeHtml(view.text.featureDescription)}</div>`;
-    }
+    this.civilizationPanel?.render(view);
   },
 
   renderMilitary() {
@@ -674,17 +650,6 @@ const Game = {
   showRecentLogs() {
     const view = window.UIStatePresenter.buildRecentLogViewState(this.recentLogs);
     this.logModal?.open(this.renderRecentLogView(view));
-  },
-
-  renderEraConditions(conditions) {
-    const container = document.getElementById('eraConditions');
-    if (!container) return;
-    container.innerHTML = conditions.map((condition) => `
-      <div class="era-condition-item ${this.escapeHtml(condition.className)}">
-        <div class="era-condition-name">${this.escapeHtml(condition.name)}</div>
-        <div class="era-condition-progress">${this.escapeHtml(condition.progressText)}</div>
-      </div>
-    `).join('');
   },
 
   renderEvents() {
