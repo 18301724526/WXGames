@@ -1,27 +1,17 @@
 // Population panel remains DOM-backed for now, but it consumes a renderer-neutral
 // view state so the same data can feed a future canvas or mini-game renderer.
 window.mountPopulationMethods = function mountPopulationMethods(game) {
+  game.populationPanel = window.PopulationPanelAdapter?.fromDocument(document);
+
   game.renderPopulation = function renderPopulation() {
     const view = window.UIStatePresenter.buildPopulationViewState(this.state);
     Object.entries(view.text).forEach(([id, value]) => this.setText(id, value));
+    this.populationPanel?.render(view);
   };
 
   game.updatePopulationButtons = function updatePopulationButtons() {
     const view = window.UIStatePresenter.buildPopulationViewState(this.state);
-    const jobs = new Map(view.jobs.map((job) => [job.id, job]));
-
-    document.querySelectorAll('.job-controls .btn-plus').forEach((button) => {
-      const job = jobs.get(button.dataset.job);
-      button.disabled = !job || !job.canIncrease;
-    });
-
-    document.querySelectorAll('.job-controls .btn-minus').forEach((button) => {
-      const job = jobs.get(button.dataset.job);
-      button.disabled = !job || !job.canDecrease;
-    });
-
-    const craftsmanCard = document.getElementById('craftsmanCard');
-    if (craftsmanCard) craftsmanCard.style.display = view.showCraftsman ? '' : 'none';
+    this.populationPanel?.render(view);
   };
 
   game.assignJob = async function assignJob(job, delta) {
@@ -61,17 +51,6 @@ window.mountPopulationMethods = function mountPopulationMethods(game) {
   game.bindPopulationEvents = function bindPopulationEvents() {
     if (game._populationEventsBound) return;
     game._populationEventsBound = true;
-
-    document.querySelectorAll('.job-controls button').forEach((button) => {
-      if (button.dataset.popBound === 'true') return;
-      button.dataset.popBound = 'true';
-
-      button.addEventListener('click', (event) => {
-        const target = event.target.closest('button[data-job]');
-        if (!target) return;
-        const delta = target.classList.contains('btn-plus') ? 1 : -1;
-        this.assignJob(target.dataset.job, delta);
-      });
-    });
+    this.populationPanel?.bind((job, delta) => this.assignJob(job, delta));
   };
 };

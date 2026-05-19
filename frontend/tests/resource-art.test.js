@@ -106,6 +106,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
   assert.match(html, /RuntimeLogAdapter\.js\?v=runtime-log-adapter-v1/);
   assert.match(html, /AuthShellAdapter\.js\?v=auth-shell-adapter-v1/);
+  assert.match(html, /PopulationPanelAdapter\.js\?v=population-panel-adapter-v1/);
   assert.match(html, /GameAPI\.js\?v=territory-radar-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-ui-state-v1/);
   assert.match(html, /TerritoryUIRenderer\.js\?v=territory-ui-state-v1/);
@@ -113,6 +114,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /LogModalAdapter\.js\?v=log-modal-adapter-v1/);
   assert.match(html, /app\.js\?v=tab-navigation-viewstate-v1/);
   assert.match(html, /auth\.js\?v=auth-shell-adapter-v1/);
+  assert.match(html, /population\.js\?v=population-panel-adapter-v1/);
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
   assert.match(html, /id="logButton"/);
