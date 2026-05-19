@@ -29,6 +29,7 @@ function createWindowStub() {
     BuildingController: class {},
     AdvisorPanelAdapter: require('../js/ui/AdvisorPanelAdapter'),
     NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
+    NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
     DOMHelper: { setText() {} },
   };
 }
@@ -645,6 +646,10 @@ test('military scout and world subviews stay disabled before classical era', () 
     require('../app');
 
     const { Game } = global.window;
+    Game.navigationShell = new global.window.NavigationShellAdapter({
+      militaryButtons: buttons,
+      militaryPages: pages,
+    });
     Game.state.currentEra = 4;
     Game.state.militaryView = 'world';
 

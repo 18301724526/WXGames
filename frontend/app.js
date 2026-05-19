@@ -50,6 +50,7 @@ const Game = {
     this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
     this.namingModal = window.NamingModalAdapter?.fromDocument(document);
     this.citySwitcher = window.CitySwitcherAdapter?.fromDocument(document);
+    this.navigationShell = window.NavigationShellAdapter?.fromDocument(document);
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -121,29 +122,18 @@ const Game = {
   },
 
   bindBaseEvents() {
-    document.querySelectorAll('.tab-btn').forEach((button) => {
-      button.addEventListener('click', async (event) => {
-        if (event.currentTarget.disabled) return;
-        const tabId = event.currentTarget.dataset.tab;
+    this.navigationShell?.bind({
+      onTabClick: async (tabId) => {
         const allowed = await this.tutorialController.onTabClicked(tabId).catch(() => false);
         if (!allowed) {
           this.log('👉 请先完成当前引导步骤');
           return;
         }
         this.switchTab(tabId);
-      });
+      },
+      onMilitaryViewClick: (view) => this.switchMilitaryView(view),
+      onAdvanceEra: () => this.advanceEra(),
     });
-
-    document.querySelectorAll('[data-military-view]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        this.switchMilitaryView(event.currentTarget.dataset.militaryView);
-      });
-    });
-
-    const advanceButton = document.getElementById('btnAdvanceEra');
-    if (advanceButton) {
-      advanceButton.addEventListener('click', () => this.advanceEra());
-    }
 
     this.citySwitcher?.bind({
       onSelect: (cityId) => this.switchCity(cityId),
@@ -375,14 +365,7 @@ const Game = {
     const preferredMilitaryView = this.getPreferredMilitaryView(tabId);
     if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
     this.state.currentTab = nextTabId;
-    const pageById = new Map(navigation.pages.map((page) => [page.id, page]));
-    document.querySelectorAll('.page').forEach((page) => {
-      page.classList.toggle('active', Boolean(pageById.get(page.dataset.page)?.isActive));
-    });
-    const tabById = new Map(navigation.tabs.map((tab) => [tab.id, tab]));
-    document.querySelectorAll('.tab-btn').forEach((button) => {
-      button.classList.toggle('active', Boolean(tabById.get(button.dataset.tab)?.isActive));
-    });
+    this.navigationShell?.renderTabs(navigation);
     this.renderMilitaryView();
     this.tutorialController.render();
   },
@@ -410,19 +393,7 @@ const Game = {
   renderMilitaryView() {
     const view = window.UIStatePresenter.buildMilitaryNavigationViewState(this.state);
     this.state.militaryView = view.activeView;
-    if (typeof document.querySelectorAll !== 'function') return;
-    document.querySelectorAll('[data-military-page]').forEach((page) => {
-      page.classList.toggle('active', page.dataset.militaryPage === view.activeView);
-    });
-    const viewById = new Map(view.views.map((item) => [item.id, item]));
-    document.querySelectorAll('[data-military-view]').forEach((button) => {
-      const buttonView = viewById.get(button.dataset.militaryView) || { isActive: false, disabled: false, isLocked: false, title: '', ariaSelected: 'false' };
-      button.disabled = buttonView.disabled;
-      button.classList.toggle('is-locked', buttonView.isLocked);
-      button.title = buttonView.title;
-      button.classList.toggle('active', buttonView.isActive);
-      button.setAttribute('aria-selected', buttonView.ariaSelected);
-    });
+    this.navigationShell?.renderMilitaryView(view);
   },
 
   updateMilitaryViewLocks() {
@@ -430,17 +401,11 @@ const Game = {
   },
 
   updateTabLocks() {
-    const buttons = Array.from(document.querySelectorAll('.tab-btn'));
     const view = window.UIStatePresenter.buildTabLockViewState(
-      buttons.map((button) => ({ id: button.dataset.tab })),
+      this.navigationShell?.getTabDescriptors?.() || [],
       (tabId) => this.tutorialController.canOpenTab(tabId),
     );
-    const lockById = new Map(view.map((item) => [item.id, item]));
-    buttons.forEach((button) => {
-      const tabView = lockById.get(button.dataset.tab) || { disabled: false, isLocked: false };
-      button.classList.toggle('is-locked', tabView.isLocked);
-      button.disabled = tabView.disabled;
-    });
+    this.navigationShell?.renderTabLocks(view);
   },
 
   getTutorialTarget(key) {
