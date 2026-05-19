@@ -2,6 +2,7 @@ const Game = {
   apiBase: null,
   config: null,
   stateNormalizer: null,
+  runtimeConstructors: null,
   token: null,
   playerId: null,
   state: {
@@ -45,18 +46,19 @@ const Game = {
     Object.assign(this, shell);
     this.apiBase = this.config?.API_BASE || this.apiBase;
     this.token = this.authStorage?.getToken?.() || null;
-    this.gameAPI = new window.GameAPI(this.apiBase, this.token);
+    const constructors = this.runtimeConstructors || {};
+    this.gameAPI = new constructors.GameAPI(this.apiBase, this.token);
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
-    this.syncService = new window.GameStateSync(this.gameAPI, this.config?.SYNC_INTERVAL_MS, this.scheduler);
-    this.updateChecker = new window.UpdateChecker({
+    this.syncService = new constructors.GameStateSync(this.gameAPI, this.config?.SYNC_INTERVAL_MS, this.scheduler);
+    this.updateChecker = new constructors.UpdateChecker({
       api: this.gameAPI,
       intervalMs: this.config?.UPDATE_CHECK_INTERVAL_MS,
       scheduler: this.scheduler,
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
-    this.stateManager = new window.GameStateManager(this.state);
+    this.stateManager = new constructors.GameStateManager(this.state);
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
-    this.tutorialController = new window.TutorialController({
+    this.tutorialController = new constructors.TutorialController({
       api: this.gameAPI,
       renderer: this.tutorialRenderer,
       getTarget: (key) => this.getTutorialTarget(key),
@@ -66,7 +68,7 @@ const Game = {
       onTabLockChange: () => this.updateTabLocks(),
       storage: this.tutorialStorage,
     });
-    this.eventController = new window.EventController({
+    this.eventController = new constructors.EventController({
       api: this.gameAPI,
       renderer: this.eventRenderer,
       getState: () => this.state,
@@ -75,13 +77,13 @@ const Game = {
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
     });
-    this.buildingController = new window.BuildingController({
+    this.buildingController = new constructors.BuildingController({
       actionAdapter: this.buildingActions,
       api: this.gameAPI,
       onSuccess: (result, action, buildingId) => this.handleBuildingSuccess(result, action, buildingId),
       onError: (error) => this.log(`❌ ${error.payload?.message || error.message}`),
     });
-    this.territoryController = new window.TerritoryController({
+    this.territoryController = new constructors.TerritoryController({
       actionAdapter: this.territoryActions,
       api: this.gameAPI,
       getState: () => this.state,

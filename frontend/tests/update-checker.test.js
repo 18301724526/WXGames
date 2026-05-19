@@ -65,6 +65,7 @@ test('app injects scheduler into update checker', () => {
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const serviceJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'services', 'UpdateChecker.js'), 'utf8');
 
-  assert.match(appJs, /new window\.UpdateChecker\(\{[\s\S]*scheduler: this\.scheduler/);
+  assert.match(appJs, /new constructors\.UpdateChecker\(\{[\s\S]*scheduler: this\.scheduler/);
+  assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(serviceJs, /global\.setInterval|global\.clearInterval/);
 });

@@ -36,6 +36,16 @@ function createWindowStub() {
       mount(Game) {
         Game.config = global.window.GameConfig;
         Game.presenter = global.window.UIStatePresenter;
+        Game.runtimeConstructors = {
+          GameAPI: global.window.GameAPI,
+          GameStateSync: global.window.GameStateSync,
+          UpdateChecker: global.window.UpdateChecker,
+          GameStateManager: global.window.GameStateManager,
+          TutorialController: global.window.TutorialController,
+          EventController: global.window.EventController,
+          BuildingController: global.window.BuildingController,
+          TerritoryController: global.window.TerritoryController,
+        };
         Game.stateNormalizer = global.window.FrontendGameState;
       },
     },
