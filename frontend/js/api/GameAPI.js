@@ -1,8 +1,9 @@
 (function (global) {
   class GameAPI {
-    constructor(baseUrl, token) {
+    constructor(baseUrl, token, options = {}) {
       this.baseUrl = baseUrl;
       this.token = token || null;
+      this.transport = options.transport || null;
     }
 
     setToken(token) {
@@ -12,11 +13,19 @@
     async request(method, path, body) {
       const headers = { 'Content-Type': 'application/json' };
       if (this.token) headers.Authorization = `Bearer ${this.token}`;
-      const response = await fetch(`${this.baseUrl}${path}`, {
+      const requestPayload = {
+        url: `${this.baseUrl}${path}`,
         method,
         headers,
         body: method === 'GET' ? undefined : JSON.stringify(body || {}),
-      });
+      };
+      const response = this.transport && typeof this.transport.request === 'function'
+        ? await this.transport.request(requestPayload)
+        : await fetch(requestPayload.url, {
+          method: requestPayload.method,
+          headers: requestPayload.headers,
+          body: requestPayload.body,
+        });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         const error = new Error(data.message || data.error || `HTTP ${response.status}`);
@@ -30,6 +39,7 @@
     getVersion() { return this.request('GET', '/version'); }
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
+    assignJob(job, count) { return this.request('POST', '/game/action', { action: 'assign', target: job, count }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }

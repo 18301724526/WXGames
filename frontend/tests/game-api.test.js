@@ -55,3 +55,45 @@ test('scoutTerritory posts a direction and claimScout posts a mission id', async
     global.fetch = originalFetch;
   }
 });
+
+test('assignJob posts population reassignment through shared action API', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', null, {
+    transport: {
+      async request(options) {
+        requests.push(JSON.parse(options.body));
+        return {
+          ok: true,
+          async json() {
+            return { success: true };
+          },
+        };
+      },
+    },
+  });
+
+  await api.assignJob('craftsman', -1);
+
+  assert.deepEqual(requests, [{ action: 'assign', target: 'craftsman', count: -1 }]);
+});
+
+test('GameAPI can use platform transport without browser fetch', async () => {
+  const api = new GameAPI('https://server.example/api', 'token-y', {
+    transport: {
+      async request(options) {
+        assert.equal(options.url, 'https://server.example/api/game/state');
+        assert.equal(options.method, 'GET');
+        assert.equal(options.headers.Authorization, 'Bearer token-y');
+        return {
+          ok: true,
+          async json() {
+            return { gameState: { currentEra: 2 } };
+          },
+        };
+      },
+    },
+  });
+
+  const result = await api.getState();
+  assert.deepEqual(result, { gameState: { currentEra: 2 } });
+});
