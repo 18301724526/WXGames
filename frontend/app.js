@@ -180,35 +180,8 @@ const Game = {
   },
 
   showUpdatePrompt(version) {
-    const message = `游戏有更新，需要重启后继续。${version?.version ? `\n版本：${version.version}` : ''}`;
-    const confirmed = window.confirm(message);
-    if (confirmed) {
-      this.forceReloadForUpdate();
-      return;
-    }
-    this.forceReloadForUpdate();
-  },
-
-  async clearRuntimeCaches() {
-    if (window.caches?.keys) {
-      const keys = await window.caches.keys();
-      await Promise.all(keys.map((key) => window.caches.delete(key)));
-    }
-    if (navigator.serviceWorker?.getRegistrations) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    }
-  },
-
-  forceReloadForUpdate() {
     this.stopHeartbeat();
-    this.clearRuntimeCaches()
-      .catch(() => {})
-      .finally(() => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('reload', Date.now().toString());
-        window.location.replace(url.toString());
-      });
+    return this.updateRuntime?.promptAndReload(version);
   },
 
   async apiGet(path) {
