@@ -16,6 +16,7 @@
         authRuntime: global.H5AuthRuntimeAdapter?.fromRuntime(runtime),
         authStorage: global.H5AuthStorageAdapter?.fromRuntime(runtime),
         tutorialStorage: global.H5TutorialStorageAdapter?.fromRuntime(runtime),
+        floatingText: global.FloatingTextAdapter?.fromDocument(doc),
         resourceRenderer: global.ResourceRenderer?.fromDocument(doc, setText),
         resourceDetailModal: global.ResourceDetailModalAdapter?.fromDocument(doc),
         advisorPanel: global.AdvisorPanelAdapter?.fromDocument(doc),

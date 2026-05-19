@@ -90,7 +90,6 @@ const Game = {
     if (window.mountAuthMethods) window.mountAuthMethods(this);
     if (window.mountPopulationMethods) window.mountPopulationMethods(this);
     if (window.mountLogMethods) window.mountLogMethods(this);
-    if (window.mountFloatingText) window.mountFloatingText(this);
 
     this.syncService.onState = (data) => this.applyApiState(data);
     this.syncService.onError = (error) => {

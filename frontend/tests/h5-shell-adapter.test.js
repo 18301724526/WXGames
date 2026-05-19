@@ -36,6 +36,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     H5AuthRuntimeAdapter: makeRuntimeFactory('authRuntime', calls),
     H5AuthStorageAdapter: makeRuntimeFactory('authStorage', calls),
     H5TutorialStorageAdapter: makeRuntimeFactory('tutorialStorage', calls),
+    FloatingTextAdapter: makeFactory('floatingText', calls),
     ResourceRenderer: makeFactory('resource', calls),
     ResourceDetailModalAdapter: makeFactory('resourceDetail', calls),
     AdvisorPanelAdapter: makeFactory('advisor', calls),
@@ -89,6 +90,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.deepEqual(shell.authRuntime, { name: 'authRuntime' });
     assert.deepEqual(shell.authStorage, { name: 'authStorage' });
     assert.deepEqual(shell.tutorialStorage, { name: 'tutorialStorage' });
+    assert.deepEqual(shell.floatingText, { name: 'floatingText' });
     assert.equal(shell.territoryRenderer.container, 'territory-grid');
     assert.equal(shell.territoryRenderer.options.getUiState, getTerritoryUiState);
     assert.deepEqual(shell.territoryRenderer.options.getUiState(), { selectedSiteId: 'east' });
@@ -97,6 +99,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.ok(calls.some(([name, callRuntime]) => name === 'authRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authStorage' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'tutorialStorage' && callRuntime === runtime));
+    assert.ok(calls.some(([name, callDoc]) => name === 'floatingText' && callDoc === doc));
     assert.ok(calls.some(([name, callDoc, options]) => name === 'civilization' && callDoc === doc && options.setText === setText));
     assert.ok(calls.some(([name, callDoc]) => name === 'tutorialRenderer' && callDoc === doc));
   } finally {
@@ -111,9 +114,10 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-auth-runtime-v1/);
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-auth-runtime-v1[\s\S]*app\.js\?v=h5-auth-runtime-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-floating-shell-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-floating-shell-v1[\s\S]*app\.js\?v=h5-floating-shell-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
+  assert.doesNotMatch(appJs, /window\.mountFloatingText/);
   assert.doesNotMatch(appJs, /ResourceRenderer\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /AuthShellAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);
