@@ -54,6 +54,9 @@ const Game = {
     this.civilizationPanel = window.CivilizationPanelAdapter?.fromDocument(document, {
       setText: (id, value) => this.setText(id, value),
     });
+    this.militaryPanel = window.MilitaryPanelAdapter?.fromDocument(document, {
+      setText: (id, value) => this.setText(id, value),
+    });
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -511,16 +514,8 @@ const Game = {
   },
 
   renderMilitary() {
-    const panel = document.getElementById('militaryPanel');
-    if (!panel) return;
     const view = window.UIStatePresenter.buildMilitaryViewState(this.state);
-    this.setText('soldierCount', view.text.soldierCount);
-    this.setText('militaryDefense', view.text.militaryDefense);
-    this.setText('availableSoldierCount', view.text.availableSoldierCount);
-    this.setText('soldiersOnMission', view.text.soldiersOnMission);
-    this.setText('soldierTrainingText', view.text.soldierTrainingText);
-    const progressBar = document.getElementById('soldierTrainingProgress');
-    if (progressBar) progressBar.style.width = view.training.progressWidth;
+    if (!this.militaryPanel?.renderMilitary(view)) return;
     this.renderScoutControls();
     this.updateMilitaryViewLocks();
   },
@@ -556,21 +551,8 @@ const Game = {
   },
 
   renderScoutControls() {
-    const container = document.getElementById('scoutDirectionGrid');
-    if (!container) return;
     const view = window.UIStatePresenter.buildScoutControlViewState(this.state);
-    this.setText('scoutStatus', view.statusText);
-    container.innerHTML = view.cells.map((cell) => {
-      if (cell.type === 'center') {
-        return `<div class="scout-center" aria-hidden="true"><span>${this.escapeHtml(cell.label)}</span><small>${this.escapeHtml(cell.subLabel)}</small></div>`;
-      }
-      const actionAttr = cell.action === 'claim'
-        ? ` data-scout-claim="${this.escapeHtml(cell.actionValue)}"`
-        : cell.action === 'scout'
-          ? ` data-scout-direction="${this.escapeHtml(cell.actionValue)}"`
-          : '';
-      return `<button class="btn-scout ${this.escapeHtml(cell.className)}" ${actionAttr} ${cell.disabled ? 'disabled' : ''} aria-label="${this.escapeHtml(cell.ariaLabel)}"><span class="scout-direction-label">${this.escapeHtml(cell.label)}</span><span class="scout-action">${this.escapeHtml(cell.actionText)}</span></button>`;
-    }).join('');
+    this.militaryPanel?.renderScoutControls(view);
   },
 
   maybeShowNamingPrompt() {

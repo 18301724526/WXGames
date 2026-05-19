@@ -31,6 +31,7 @@ function createWindowStub() {
     NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
     CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
+    MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
     DOMHelper: { setText() {} },
   };
 }
@@ -50,6 +51,23 @@ function attachCivilizationPanel(Game, elements) {
     advanceLabel: getElement('btnEraLabel'),
     features: getElement('civFeaturesList'),
     conditions: getElement('eraConditions'),
+  });
+}
+
+function attachMilitaryPanel(Game, elements, textSink = null) {
+  function getElement(id) {
+    if (!elements.has(id)) elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false, hidden: false });
+    return elements.get(id);
+  }
+
+  Game.militaryPanel = new global.window.MilitaryPanelAdapter({
+    setText: (id, value) => {
+      if (textSink) textSink.set(id, value);
+      getElement(id).textContent = value;
+    },
+    panel: getElement('militaryPanel'),
+    trainingProgress: getElement('soldierTrainingProgress'),
+    scoutGrid: getElement('scoutDirectionGrid'),
   });
 }
 
@@ -476,6 +494,7 @@ test('renderMilitary displays backend-provided military state', () => {
     require('../app');
 
     const { Game } = global.window;
+    attachMilitaryPanel(Game, elements);
     Game.state = {
       currentEra: 3,
       currentEraName: '城邦时代',
@@ -696,7 +715,9 @@ test('scout controls show countdown and lock other directions while one scout is
 
   try {
     const text = new Map();
+    const elements = new Map();
     const container = { innerHTML: '' };
+    elements.set('scoutDirectionGrid', container);
     Date.now = () => new Date('2026-05-17T08:00:30.000Z').getTime();
     global.window = createWindowStub();
     global.window.DOMHelper = {
@@ -717,6 +738,7 @@ test('scout controls show countdown and lock other directions while one scout is
     require('../app');
 
     const { Game } = global.window;
+    attachMilitaryPanel(Game, elements, text);
     Game.state.currentEra = 5;
     Game.state.territoryState = {
       directions: [
