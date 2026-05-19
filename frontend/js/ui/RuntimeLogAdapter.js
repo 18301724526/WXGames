@@ -15,6 +15,13 @@
       this.maxItems = options.maxItems || 30;
     }
 
+    static fromDocument(doc = document, options = {}) {
+      return new RuntimeLogAdapter({
+        content: doc.getElementById('logContent'),
+        ...options,
+      });
+    }
+
     render(logs = []) {
       if (!this.content) return;
       const items = (logs || []).slice(0, this.maxItems);

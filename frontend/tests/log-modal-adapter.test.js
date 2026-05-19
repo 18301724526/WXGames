@@ -41,3 +41,23 @@ test('log modal adapter owns H5 modal content and visibility writes', async () =
   trigger.listeners.click();
   assert.deepEqual(calls, ['close', 'close', 'open']);
 });
+
+test('log modal adapter can collect its H5 nodes from document', () => {
+  const nodes = {
+    logButton: {},
+    logModal: { style: {}, classList: createClassList() },
+    logModalContent: { innerHTML: '' },
+    btnCloseLogModal: {},
+  };
+  const adapter = LogModalAdapter.fromDocument({
+    getElementById(id) {
+      return nodes[id];
+    },
+  }, { activateDelayMs: 0 });
+
+  assert.equal(adapter.trigger, nodes.logButton);
+  assert.equal(adapter.modal, nodes.logModal);
+  assert.equal(adapter.content, nodes.logModalContent);
+  assert.equal(adapter.closeButton, nodes.btnCloseLogModal);
+  assert.equal(adapter.activateDelayMs, 0);
+});

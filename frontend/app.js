@@ -61,15 +61,8 @@ const Game = {
     this.buildingActions = window.BuildingActionAdapter?.fromDocument(document);
     this.buildingRenderer = new window.BuildingUIRenderer(this.buildingActions?.getContainer?.(), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
-    this.logModal = new window.LogModalAdapter({
-      trigger: document.getElementById('logButton'),
-      modal: document.getElementById('logModal'),
-      content: document.getElementById('logModalContent'),
-      closeButton: document.getElementById('btnCloseLogModal'),
-    });
-    this.runtimeLog = new window.RuntimeLogAdapter({
-      content: document.getElementById('logContent'),
-    });
+    this.logModal = window.LogModalAdapter?.fromDocument(document);
+    this.runtimeLog = window.RuntimeLogAdapter?.fromDocument(document);
     this.territoryActions = window.TerritoryActionAdapter?.fromDocument(document);
     this.territoryRenderer = new window.TerritoryUIRenderer(this.territoryActions?.getContainer?.(), {
       getUiState: () => this.territoryController?.getUiState?.() || {},

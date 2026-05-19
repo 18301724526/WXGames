@@ -8,6 +8,16 @@
       this.activateDelayMs = options.activateDelayMs ?? 10;
     }
 
+    static fromDocument(doc = document, options = {}) {
+      return new LogModalAdapter({
+        trigger: doc.getElementById('logButton'),
+        modal: doc.getElementById('logModal'),
+        content: doc.getElementById('logModalContent'),
+        closeButton: doc.getElementById('btnCloseLogModal'),
+        ...options,
+      });
+    }
+
     setContent(markup) {
       if (this.content) this.content.innerHTML = markup || '';
     }
