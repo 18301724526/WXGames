@@ -79,11 +79,21 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
         this.options = options;
       }
     };
+    originalGlobals.mountAuthMethods = globalThis.mountAuthMethods;
+    originalGlobals.mountPopulationMethods = globalThis.mountPopulationMethods;
+    originalGlobals.mountLogMethods = globalThis.mountLogMethods;
+    const mountedModules = [];
+    globalThis.mountAuthMethods = (game) => mountedModules.push(['auth', game]);
+    globalThis.mountPopulationMethods = (game) => mountedModules.push(['population', game]);
+    globalThis.mountLogMethods = (game) => mountedModules.push(['logs', game]);
 
     const setText = () => {};
     const getTerritoryUiState = () => ({ selectedSiteId: 'east' });
     const shell = H5ShellAdapter.fromDocument(doc, runtime, { setText, getTerritoryUiState });
+    const game = { id: 'game' };
+    shell.gameModules.mount(game);
 
+    assert.deepEqual(mountedModules, [['auth', game], ['population', game], ['logs', game]]);
     assert.equal(shell.buildingRenderer.container, 'building-grid');
     assert.equal(shell.eventRenderer.setText, setText);
     assert.deepEqual(shell.updateRuntime, { name: 'updateRuntime' });
@@ -114,10 +124,12 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-floating-shell-v1/);
-  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-floating-shell-v1[\s\S]*app\.js\?v=h5-floating-shell-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-shell-v1/);
+  assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-module-shell-v1[\s\S]*app\.js\?v=h5-module-shell-v1/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.doesNotMatch(appJs, /window\.mountFloatingText/);
+  assert.doesNotMatch(appJs, /window\.mount(?:AuthMethods|PopulationMethods|LogMethods)/);
+  assert.match(appJs, /this\.gameModules\?\.mount\?\.\(this\)/);
   assert.doesNotMatch(appJs, /ResourceRenderer\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /AuthShellAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);

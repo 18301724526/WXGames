@@ -87,9 +87,7 @@ const Game = {
       onLog: (message) => this.log(message),
     });
 
-    if (window.mountAuthMethods) window.mountAuthMethods(this);
-    if (window.mountPopulationMethods) window.mountPopulationMethods(this);
-    if (window.mountLogMethods) window.mountLogMethods(this);
+    this.gameModules?.mount?.(this);
 
     this.syncService.onState = (data) => this.applyApiState(data);
     this.syncService.onError = (error) => {

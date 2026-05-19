@@ -9,8 +9,16 @@
       const buildingActions = global.BuildingActionAdapter?.fromDocument(doc);
       const territoryActions = global.TerritoryActionAdapter?.fromDocument(doc);
       const tutorialRenderer = global.TutorialUIRenderer?.fromDocument(doc, runtime);
+      const gameModules = {
+        mount(game) {
+          global.mountAuthMethods?.(game);
+          global.mountPopulationMethods?.(game);
+          global.mountLogMethods?.(game);
+        },
+      };
 
       return new H5ShellAdapter({
+        gameModules,
         textAdapter: global.H5TextAdapter?.fromDocument(doc),
         updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),
         authRuntime: global.H5AuthRuntimeAdapter?.fromRuntime(runtime),
