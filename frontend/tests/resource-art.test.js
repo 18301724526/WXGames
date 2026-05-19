@@ -116,7 +116,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
-  assert.match(html, /ResourceRenderer\.js\?v=explicit-doc-v1/);
+  assert.match(html, /ResourceRenderer\.js\?v=resource-presenter-v1/);
   assert.match(html, /RuntimeLogAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);

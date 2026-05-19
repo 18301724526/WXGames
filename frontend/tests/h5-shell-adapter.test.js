@@ -16,6 +16,15 @@ function makeFactory(name, calls, result = null) {
   };
 }
 
+function makeDocumentFactory(name, calls, result = null) {
+  return {
+    fromDocument(...args) {
+      calls.push([name, ...args]);
+      return result || { name };
+    },
+  };
+}
+
 function makeRuntimeFactory(name, calls, result = null) {
   return {
     fromRuntime(runtime, options) {
@@ -54,7 +63,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     BuildingController: class BuildingController {},
     TerritoryController: class TerritoryController {},
     FloatingTextAdapter: makeFactory('floatingText', calls),
-    ResourceRenderer: makeFactory('resource', calls),
+    ResourceRenderer: makeDocumentFactory('resource', calls),
     ResourceDetailModalAdapter: makeFactory('resourceDetail', calls),
     AdvisorPanelAdapter: makeFactory('advisor', calls),
     NamingModalAdapter: makeFactory('naming', calls),
@@ -148,6 +157,12 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.ok(calls.some(([name, callRuntime]) => name === 'authStorage' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'tutorialStorage' && callRuntime === runtime));
     assert.ok(calls.some(([name, callDoc]) => name === 'floatingText' && callDoc === doc));
+    assert.ok(calls.some(([name, callDoc, callSetText, options]) => (
+      name === 'resource'
+      && callDoc === doc
+      && callSetText === setText
+      && options.presenter === factories.UIStatePresenter
+    )));
     assert.ok(calls.some(([name, callDoc, options]) => name === 'civilization' && callDoc === doc && options.setText === setText));
     assert.ok(calls.some(([name, callDoc]) => name === 'tutorialRenderer' && callDoc === doc));
   } finally {

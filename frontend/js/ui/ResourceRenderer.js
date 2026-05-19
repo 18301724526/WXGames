@@ -1,24 +1,25 @@
 (function (global) {
   class ResourceRenderer {
-    constructor(setText, elements = {}) {
+    constructor(setText, elements = {}, options = {}) {
       this.setText = setText;
       this.panel = elements.panel || null;
       this.woodCard = elements.woodCard || null;
       this.woodDetailCard = elements.woodDetailCard || null;
       this.foodNetRate = elements.foodNetRate || null;
+      this.presenter = options.presenter || null;
     }
 
-    static fromDocument(doc, setText = () => {}) {
+    static fromDocument(doc, setText = () => {}, options = {}) {
       return new ResourceRenderer(setText, {
         panel: doc.getElementById('resourcePanel'),
         woodCard: doc.getElementById('woodCard'),
         woodDetailCard: doc.getElementById('woodDetailCard'),
         foodNetRate: doc.getElementById('foodNetRate'),
-      });
+      }, options);
     }
 
     render(state) {
-      const view = global.UIStatePresenter.buildResourceViewState(state);
+      const view = this.presenter.buildResourceViewState(state);
 
       if (this.panel) this.panel.classList.toggle('has-era-two', view.classState.resourcePanel['has-era-two']);
       this.applyVisibility(this.woodCard, view.visibility.woodCard);

@@ -52,7 +52,7 @@
         authStorage,
         tutorialStorage: global.H5TutorialStorageAdapter?.fromRuntime(runtime),
         floatingText: global.FloatingTextAdapter?.fromDocument(doc),
-        resourceRenderer: global.ResourceRenderer?.fromDocument(doc, setText),
+        resourceRenderer: global.ResourceRenderer?.fromDocument(doc, setText, { presenter: global.UIStatePresenter }),
         resourceDetailModal: global.ResourceDetailModalAdapter?.fromDocument(doc),
         advisorPanel: global.AdvisorPanelAdapter?.fromDocument(doc),
         namingModal: global.NamingModalAdapter?.fromDocument(doc),

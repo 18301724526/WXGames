@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
-global.UIStatePresenter = require('../js/state/UIStatePresenter');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
 const ResourceRenderer = require('../js/ui/ResourceRenderer');
 
 function createClassList() {
@@ -37,7 +39,7 @@ test('wood resource card becomes visible in settlement era despite initial inlin
     getElementById(id) {
       return elements.get(id) || null;
     },
-  }, (id, value) => texts.set(id, value));
+  }, (id, value) => texts.set(id, value), { presenter: UIStatePresenter });
 
   renderer.render({
     currentEra: 2,
@@ -90,7 +92,7 @@ test('resource renderer receives compact resource amounts from view state', () =
     woodCard: elements.get('woodCard'),
     woodDetailCard: elements.get('woodDetailCard'),
     foodNetRate: elements.get('foodNetRate'),
-  });
+  }, { presenter: UIStatePresenter });
 
   renderer.render({
     currentEra: 2,
@@ -106,4 +108,36 @@ test('resource renderer receives compact resource amounts from view state', () =
   assert.equal(texts.get('knowledgeValue'), '1.2M');
   assert.equal(texts.get('woodValue'), 999);
   assert.equal(texts.get('foodRate'), '+1.2k/s');
+});
+
+test('resource renderer uses injected presenter instead of global presenter', () => {
+  const calls = [];
+  const renderer = new ResourceRenderer(() => {}, {
+    panel: { classList: createClassList() },
+  }, {
+    presenter: {
+      buildResourceViewState(state) {
+        calls.push(state);
+        return {
+          classState: {
+            resourcePanel: { 'has-era-two': false },
+            foodNetRate: { 'is-positive': false, 'is-negative': false },
+          },
+          visibility: { woodCard: false, woodDetailCard: false },
+          text: {},
+        };
+      },
+    },
+  });
+
+  renderer.render({ currentEra: 1 });
+
+  assert.deepEqual(calls, [{ currentEra: 1 }]);
+});
+
+test('resource renderer source does not read global presenter', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'ui', 'ResourceRenderer.js'), 'utf8');
+
+  assert.match(source, /this\.presenter\.buildResourceViewState/);
+  assert.doesNotMatch(source, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
 });
