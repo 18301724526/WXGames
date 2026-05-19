@@ -46,6 +46,7 @@ const Game = {
     });
     this.stateManager = new window.GameStateManager(this.state);
     this.resourceRenderer = new window.ResourceRenderer((id, value) => this.setText(id, value));
+    this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
     this.buildingRenderer = new window.BuildingUIRenderer(document.getElementById('buildingGrid'), {});
     this.eventRenderer = new window.EventUIRenderer((id, value) => this.setText(id, value));
     this.logModal = new window.LogModalAdapter({
@@ -191,22 +192,10 @@ const Game = {
       closeButton.addEventListener('click', () => this.eventController.close());
     }
 
-    const resourcePanel = document.getElementById('resourcePanel');
-    if (resourcePanel) {
-      resourcePanel.addEventListener('click', () => this.openResourceDetails());
-    }
-
-    const resourceModal = document.getElementById('resourceDetailModal');
-    if (resourceModal) {
-      resourceModal.addEventListener('click', (event) => {
-        if (event.target === resourceModal) this.closeResourceDetails();
-      });
-    }
-
-    const closeResourceButton = document.getElementById('btnCloseResourceDetail');
-    if (closeResourceButton) {
-      closeResourceButton.addEventListener('click', () => this.closeResourceDetails());
-    }
+    this.resourceDetailModal?.bind({
+      onOpen: () => this.openResourceDetails(),
+      onClose: () => this.closeResourceDetails(),
+    });
 
     const namingModal = document.getElementById('namingModal');
     if (namingModal) {
@@ -636,16 +625,12 @@ const Game = {
   },
 
   openResourceDetails() {
-    const modal = document.getElementById('resourceDetailModal');
-    if (!modal) return;
     this.renderResources();
-    modal.classList.add('show');
+    this.resourceDetailModal?.open();
   },
 
   closeResourceDetails() {
-    const modal = document.getElementById('resourceDetailModal');
-    if (!modal) return;
-    modal.classList.remove('show');
+    this.resourceDetailModal?.close();
   },
 
   renderBuildings() {
