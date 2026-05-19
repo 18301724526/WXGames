@@ -7,6 +7,7 @@ window.mountAuthMethods = function(game) {
   const REMEMBER_ENABLED_KEY = 'cf_remember_enabled';
   const REMEMBER_USERNAME_KEY = 'cf_remember_username';
   const REMEMBER_PASSWORD_KEY = 'cf_remember_password';
+  game.authShell = window.AuthShellAdapter?.fromDocument(document);
 
   function clearTutorialStorage() {
     localStorage.removeItem('tutorialAutoStarted');
@@ -15,17 +16,11 @@ window.mountAuthMethods = function(game) {
   }
 
   function setLoginMessage(message) {
-    const el = document.getElementById('loginMessage');
-    if (el) el.textContent = message;
+    game.authShell?.setMessage(message);
   }
 
   function applyAuthShellView(view) {
-    const panel = document.getElementById('loginPanel');
-    const msgEl = document.getElementById('loginMessage');
-    const appEl = document.getElementById('app');
-    if (panel) panel.style.display = view.loginPanelVisible ? 'flex' : 'none';
-    if (msgEl) msgEl.textContent = view.message || '';
-    if (appEl) appEl.style.display = view.appVisible ? 'block' : 'none';
+    game.authShell?.applyShell(view);
   }
 
   function showAuthenticatedShell() {
@@ -45,18 +40,13 @@ window.mountAuthMethods = function(game) {
   }
 
   function fillRememberedCredentials() {
-    const usernameInput = document.getElementById('loginUsername');
-    const passwordInput = document.getElementById('loginPassword');
-    const rememberInput = document.getElementById('rememberPassword');
     const view = window.UIStatePresenter.buildAuthCredentialViewState({
       rememberEnabled: localStorage.getItem(REMEMBER_ENABLED_KEY) === 'true',
       rememberedUsername: localStorage.getItem(REMEMBER_USERNAME_KEY),
       rememberedPassword: localStorage.getItem(REMEMBER_PASSWORD_KEY),
       username: localStorage.getItem(USERNAME_KEY),
     });
-    if (rememberInput) rememberInput.checked = view.rememberPasswordChecked;
-    if (usernameInput) usernameInput.value = view.usernameValue;
-    if (passwordInput) passwordInput.value = view.passwordValue;
+    game.authShell?.applyCredentials(view);
   }
 
   async function parseResponsePayload(resp) {
@@ -88,9 +78,10 @@ window.mountAuthMethods = function(game) {
   };
 
   game.handleLogin = function() {
-    const username = document.getElementById('loginUsername')?.value.trim().toLowerCase();
-    const password = document.getElementById('loginPassword')?.value || '';
-    const rememberPassword = Boolean(document.getElementById('rememberPassword')?.checked);
+    const credentials = this.authShell?.readCredentials() || {};
+    const username = credentials.username;
+    const password = credentials.password;
+    const rememberPassword = credentials.rememberPassword;
     if (!username) { setLoginMessage('请输入用户名'); return; }
     if (!password) { setLoginMessage('请输入密码'); return; }
     return this.loginWithPassword(username, password, rememberPassword);
@@ -150,8 +141,8 @@ window.mountAuthMethods = function(game) {
     }
   };
 
-  game.toggleSettings = function() { const m = document.getElementById('settingsMenu'); if (m) m.classList.toggle('active'); };
-  game.closeSettings = function() { const m = document.getElementById('settingsMenu'); if (m) m.classList.remove('active'); };
+  game.toggleSettings = function() { this.authShell?.toggleSettings(); };
+  game.closeSettings = function() { this.authShell?.closeSettings(); };
 
   // 已有 token 时自动启动 heartbeat（刷新页面无需重新登录）
   if (game.token) {
@@ -162,13 +153,7 @@ window.mountAuthMethods = function(game) {
     game.showLoginPanel();
   }
 
-  document.getElementById('loginPassword')?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') game.handleLogin();
-  });
-  document.getElementById('loginUsername')?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') game.handleLogin();
-  });
-  document.getElementById('btnLogin')?.addEventListener('click', () => game.handleLogin());
+  game.authShell?.bindLoginEvents(() => game.handleLogin());
 
   console.log('[auth.js] 账号管理模块已挂载');
 };
