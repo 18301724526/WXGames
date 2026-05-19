@@ -33,6 +33,7 @@ const Game = {
   activeEventId: null,
   scoutCountdownTimer: null,
   requestLogs: [],
+  recentLogs: [],
 
   init() {
     this.gameAPI = new window.GameAPI(this.apiBase, this.token);
@@ -50,6 +51,9 @@ const Game = {
     this.logModal = new window.LogModalAdapter({
       modal: document.getElementById('logModal'),
       content: document.getElementById('logModalContent'),
+    });
+    this.runtimeLog = new window.RuntimeLogAdapter({
+      content: document.getElementById('logContent'),
     });
     this.territoryRenderer = new window.TerritoryUIRenderer(document.getElementById('territoryGrid'), {
       getUiState: () => this.territoryController?.getUiState?.() || {},
@@ -844,8 +848,7 @@ const Game = {
   },
 
   showRecentLogs() {
-    const entries = Array.from(document.querySelectorAll('#logContent .log-item'));
-    const view = window.UIStatePresenter.buildRecentLogViewState(entries);
+    const view = window.UIStatePresenter.buildRecentLogViewState(this.recentLogs);
     this.logModal?.open(this.renderRecentLogView(view));
   },
 
@@ -876,15 +879,10 @@ const Game = {
   },
 
   log(message) {
-    const content = document.getElementById('logContent');
-    if (!content) return;
-    const item = document.createElement('div');
-    item.className = 'log-item';
-    item.textContent = message;
-    content.prepend(item);
-    while (content.children.length > 30) {
-      content.removeChild(content.lastChild);
-    }
+    const entry = { text: String(message ?? ''), timestamp: Date.now() };
+    this.recentLogs.unshift(entry);
+    if (this.recentLogs.length > 30) this.recentLogs = this.recentLogs.slice(0, 30);
+    this.runtimeLog?.render(this.recentLogs);
   },
 };
 
