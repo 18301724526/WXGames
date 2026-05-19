@@ -175,9 +175,11 @@ test('minigame entry does not load H5 DOM adapters', () => {
 
   assert.doesNotMatch(entry, /app\.js|auth\.js|population\.js|logs\.js|floating-text\.js|DOMHelper|document|getElementById|querySelector|innerHTML|classList/);
   assert.doesNotMatch(platformFiles, /document|getElementById|querySelector|innerHTML|classList/);
+  assert.doesNotMatch(platformFiles, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
   assert.match(entry, /MiniGameApp/);
+  assert.match(entry, /presenter: globalThis\.UIStatePresenter/);
 });
 
 test('MiniGame app dispatches canvas taps to server actions without DOM controllers', async () => {

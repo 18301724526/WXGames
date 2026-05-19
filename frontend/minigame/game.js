@@ -6,7 +6,10 @@ require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/MiniGameApp');
 
 const runtime = new globalThis.PlatformRuntime();
-const app = new globalThis.MiniGameApp({ runtime });
+const app = new globalThis.MiniGameApp({
+  runtime,
+  presenter: globalThis.UIStatePresenter,
+});
 
 app.start();
 

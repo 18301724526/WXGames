@@ -2,7 +2,7 @@
   class MiniGameCanvasRenderer {
     constructor(options = {}) {
       this.runtime = options.runtime;
-      this.presenter = options.presenter || global.UIStatePresenter;
+      this.presenter = options.presenter || null;
       this.canvas = options.canvas || this.runtime.createCanvas();
       this.ctx = this.canvas.getContext('2d');
       this.systemInfo = this.runtime.getSystemInfo();

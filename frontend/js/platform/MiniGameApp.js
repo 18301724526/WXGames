@@ -2,7 +2,7 @@
   class MiniGameApp {
     constructor(options = {}) {
       this.runtime = options.runtime || new global.PlatformRuntime();
-      this.presenter = options.presenter || global.UIStatePresenter;
+      this.presenter = options.presenter || null;
       this.config = options.config || global.GameConfig || {};
       this.api = options.api || new global.GameAPI(
         options.apiBase || this.config.API_BASE || '/api',
