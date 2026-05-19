@@ -46,8 +46,9 @@ test('population click handler reads the closest custom button', () => {
   const populationJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'population.js'), 'utf8');
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   assert.match(populationJs, /UIStatePresenter\.buildPopulationViewState/);
-  assert.match(populationJs, /PopulationPanelAdapter/);
-  assert.doesNotMatch(populationJs, /document\.querySelectorAll|document\.getElementById|classList\.contains/);
+  assert.match(populationJs, /this\.populationPanel\?\.render\(view\)/);
+  assert.doesNotMatch(populationJs, /PopulationPanelAdapter/);
+  assert.doesNotMatch(populationJs, /\bdocument\b|querySelectorAll|getElementById|classList\.contains/);
   assert.match(html, /PopulationPanelAdapter\.js\?v=population-panel-adapter-v1/);
-  assert.match(html, /population\.js\?v=population-panel-adapter-v1/);
+  assert.match(html, /population\.js\?v=population-adapter-injection-v1/);
 });

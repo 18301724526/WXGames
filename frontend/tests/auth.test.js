@@ -69,7 +69,7 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
       rememberPassword: createElement(),
     };
     global.window = { UIStatePresenter, AuthShellAdapter };
-    global.document = createDocument(elements);
+    global.document = undefined;
     global.localStorage = createStorage({
       cf_remember_enabled: 'true',
       cf_remember_username: 'test2',
@@ -79,6 +79,7 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
     require('../auth');
 
     const game = createGame();
+    game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
     global.window.mountAuthMethods(game);
     game.showLoginPanel();
 
@@ -109,7 +110,7 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
       rememberPassword: createElement(),
     };
     global.window = { UIStatePresenter, AuthShellAdapter };
-    global.document = createDocument(elements);
+    global.document = undefined;
     global.localStorage = createStorage();
 
     let requestBody = null;
@@ -134,6 +135,7 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
     require('../auth');
 
     const game = createGame();
+    game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
     global.window.mountAuthMethods(game);
     elements.loginUsername.value = 'test1';
     elements.loginPassword.value = '123456';

@@ -7,7 +7,6 @@ window.mountAuthMethods = function(game) {
   const REMEMBER_ENABLED_KEY = 'cf_remember_enabled';
   const REMEMBER_USERNAME_KEY = 'cf_remember_username';
   const REMEMBER_PASSWORD_KEY = 'cf_remember_password';
-  game.authShell = window.AuthShellAdapter?.fromDocument(document);
 
   function clearTutorialStorage() {
     localStorage.removeItem('tutorialAutoStarted');

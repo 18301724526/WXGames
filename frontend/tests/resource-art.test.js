@@ -121,8 +121,8 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /H5TextAdapter\.js\?v=h5-text-adapter-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
   assert.match(html, /app\.js\?v=h5-text-adapter-v1/);
-  assert.match(html, /auth\.js\?v=auth-shell-adapter-v1/);
-  assert.match(html, /population\.js\?v=population-panel-adapter-v1/);
+  assert.match(html, /auth\.js\?v=auth-adapter-injection-v1/);
+  assert.match(html, /population\.js\?v=population-adapter-injection-v1/);
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
   assert.match(html, /id="logButton"/);
