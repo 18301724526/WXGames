@@ -91,6 +91,7 @@ const Game = {
       onStateApplied: (result) => this.applyApiState(result),
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
+      onCityRenameRequested: (prompt) => this.requestCityRename(prompt),
     });
 
     this.gameModules?.mount?.(this);
@@ -498,6 +499,17 @@ const Game = {
     const prompt = this.state.territoryState?.namingPrompt;
     if (!prompt || this.activeNamingPromptKey === `${prompt.type}:${prompt.territoryId || 'polity'}`) return;
     this.openNamingModal(prompt);
+  },
+
+  requestCityRename(prompt = {}) {
+    if (!prompt.territoryId) return null;
+    this.openNamingModal({
+      type: 'city',
+      territoryId: prompt.territoryId,
+      title: '为这座城市命名',
+      message: `当前名称：${prompt.currentName || '未命名城市'}`,
+    });
+    return null;
   },
 
   openNamingModal(prompt) {

@@ -8,6 +8,7 @@
       this.onStateApplied = options.onStateApplied || (() => {});
       this.onFloatingText = options.onFloatingText || (() => {});
       this.onLog = options.onLog || (() => {});
+      this.onCityRenameRequested = options.onCityRenameRequested || (() => null);
       this.dragState = null;
       this.uiState = {
         selectedSiteId: '',
@@ -219,9 +220,12 @@
         }
         if (action === 'rename-city') {
           const territory = (this.getState().territoryState?.territories || []).find((item) => item.id === territoryId);
-          const name = global.prompt('为这座城市命名', territory?.cityName || territory?.naturalName || '');
-          if (!name) return null;
-          return this.api.renameCity(territoryId, name);
+          return this.onCityRenameRequested({
+            type: 'city',
+            territoryId,
+            territory,
+            currentName: territory?.cityName || territory?.naturalName || '',
+          });
         }
         return null;
       });

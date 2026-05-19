@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const TerritoryController = require('../js/controllers/TerritoryController');
@@ -95,4 +97,39 @@ test('territory controller receives expedition draft changes as plain data', () 
   controller.handleDraftInput({ field: 'soldiers', value: '5' });
 
   assert.equal(controller.getUiState().expeditionSoldiers, '5');
+});
+
+test('rename city action delegates to injected naming handler', async () => {
+  const requests = [];
+  const apiCalls = [];
+  const controller = new TerritoryController({
+    api: {
+      async renameCity(territoryId, name) {
+        apiCalls.push({ territoryId, name });
+      },
+    },
+    getState: () => ({
+      territoryState: {
+        territories: [{ id: 'site-east', cityName: '河湾城', naturalName: '东岸' }],
+      },
+    }),
+    onCityRenameRequested(prompt) {
+      requests.push(prompt);
+      return null;
+    },
+  });
+
+  await controller.handleAction({ action: 'rename-city', territoryId: 'site-east' });
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].type, 'city');
+  assert.equal(requests[0].territoryId, 'site-east');
+  assert.equal(requests[0].currentName, '河湾城');
+  assert.deepEqual(apiCalls, []);
+});
+
+test('territory controller does not depend on browser prompt', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'controllers', 'TerritoryController.js'), 'utf8');
+
+  assert.doesNotMatch(source, /global\.prompt|\.prompt\(|\bprompt\(/);
 });

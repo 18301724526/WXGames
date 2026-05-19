@@ -125,7 +125,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /GameAPI\.js\?v=territory-radar-v1/);
   assert.match(html, /TerritoryActionAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /TerritoryController\.js\?v=territory-action-adapter-v1/);
+  assert.match(html, /TerritoryController\.js\?v=territory-rename-adapter-v1/);
   assert.match(html, /TerritoryUIRenderer\.js\?v=territory-ui-state-v1/);
   assert.match(html, /TutorialUIRenderer\.js\?v=explicit-doc-v1/);
   assert.match(html, /LogModalAdapter\.js\?v=explicit-doc-v1/);
@@ -138,7 +138,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /UpdateChecker\.js\?v=update-scheduler-v1/);
   assert.match(html, /H5ShellAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
-  assert.match(html, /app\.js\?v=explicit-doc-v1/);
+  assert.match(html, /app\.js\?v=territory-rename-adapter-v1/);
   assert.match(html, /auth\.js\?v=h5-module-deps-v1/);
   assert.match(html, /population\.js\?v=h5-module-deps-v1/);
   assert.match(html, /logs\.js\?v=h5-module-deps-v1/);
