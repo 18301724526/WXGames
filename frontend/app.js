@@ -637,4 +637,4 @@ const Game = {
 };
 
 window.Game = Game;
-document.addEventListener('DOMContentLoaded', () => Game.init());
+window.H5GameBootstrap?.mount(Game);
