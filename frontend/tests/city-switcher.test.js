@@ -31,6 +31,11 @@ function createWindowStub() {
     EventController: class {},
     BuildingController: class {},
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
+    H5GameBootstrap: {
+      mount(Game) {
+        Game.presenter = global.window.UIStatePresenter;
+      },
+    },
   };
 }
 

@@ -263,11 +263,11 @@ const Game = {
   },
 
   canAdvanceEraByTutorial() {
-    return window.UIStatePresenter.canAdvanceEraByTutorial(this.state, this.tutorialController?.state || this.tutorial || {});
+    return this.presenter.canAdvanceEraByTutorial(this.state, this.tutorialController?.state || this.tutorial || {});
   },
 
   canAdvanceEraNow(progress = this.state.eraProgress) {
-    const view = window.UIStatePresenter.buildCivilizationViewState(
+    const view = this.presenter.buildCivilizationViewState(
       { ...this.state, eraProgress: progress },
       this.tutorialController?.state || this.tutorial || {},
       { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
@@ -315,7 +315,7 @@ const Game = {
   },
 
   switchTab(tabId) {
-    const navigation = window.UIStatePresenter.buildTabNavigationViewState(this.state, { requestedTab: tabId });
+    const navigation = this.presenter.buildTabNavigationViewState(this.state, { requestedTab: tabId });
     const nextTabId = navigation.activeTab;
     const preferredMilitaryView = this.getPreferredMilitaryView(tabId);
     if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
@@ -346,7 +346,7 @@ const Game = {
   },
 
   renderMilitaryView() {
-    const view = window.UIStatePresenter.buildMilitaryNavigationViewState(this.state);
+    const view = this.presenter.buildMilitaryNavigationViewState(this.state);
     this.state.militaryView = view.activeView;
     this.navigationShell?.renderMilitaryView(view);
   },
@@ -356,7 +356,7 @@ const Game = {
   },
 
   updateTabLocks() {
-    const view = window.UIStatePresenter.buildTabLockViewState(
+    const view = this.presenter.buildTabLockViewState(
       this.navigationShell?.getTabDescriptors?.() || [],
       (tabId) => this.tutorialController.canOpenTab(tabId),
     );
@@ -389,7 +389,7 @@ const Game = {
   },
 
   renderCitySwitcher() {
-    const view = window.UIStatePresenter.buildCitySwitcherViewState(this.state);
+    const view = this.presenter.buildCitySwitcherViewState(this.state);
     this.citySwitcher?.render(view);
   },
 
@@ -439,7 +439,7 @@ const Game = {
   },
 
   renderCivilization() {
-    const view = window.UIStatePresenter.buildCivilizationViewState(
+    const view = this.presenter.buildCivilizationViewState(
       this.state,
       this.tutorialController?.state || this.tutorial || {},
       { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
@@ -448,7 +448,7 @@ const Game = {
   },
 
   renderMilitary() {
-    const view = window.UIStatePresenter.buildMilitaryViewState(this.state);
+    const view = this.presenter.buildMilitaryViewState(this.state);
     if (!this.militaryPanel?.renderMilitary(view)) return;
     this.renderScoutControls();
     this.updateMilitaryViewLocks();
@@ -470,22 +470,22 @@ const Game = {
   },
 
   getMissionRemainingSeconds(mission) {
-    return window.UIStatePresenter.getScoutMissionRemainingSeconds(mission);
+    return this.presenter.getScoutMissionRemainingSeconds(mission);
   },
 
   formatScoutCountdown(seconds) {
-    return window.UIStatePresenter.formatScoutCountdown(seconds);
+    return this.presenter.formatScoutCountdown(seconds);
   },
 
   renderTerritory() {
-    const view = window.UIStatePresenter.buildTerritorySummaryViewState(this.state.territoryState || {});
+    const view = this.presenter.buildTerritorySummaryViewState(this.state.territoryState || {});
     this.setText('territoryPolityName', view.text.polityName);
     this.setText('territoryCount', view.text.territoryCount);
     if (this.territoryRenderer) this.territoryRenderer.render(this.state);
   },
 
   renderScoutControls() {
-    const view = window.UIStatePresenter.buildScoutControlViewState(this.state);
+    const view = this.presenter.buildScoutControlViewState(this.state);
     this.militaryPanel?.renderScoutControls(view);
   },
 
@@ -496,7 +496,7 @@ const Game = {
   },
 
   openNamingModal(prompt) {
-    const view = window.UIStatePresenter.buildNamingPromptViewState(prompt);
+    const view = this.presenter.buildNamingPromptViewState(prompt);
     this.activeNamingPrompt = prompt;
     this.activeNamingPromptKey = view.key;
     this.namingModal?.open(view);
@@ -534,7 +534,7 @@ const Game = {
   },
 
   updateAdvisor(guide) {
-    const view = window.UIStatePresenter.buildAdvisorViewState(guide);
+    const view = this.presenter.buildAdvisorViewState(guide);
     this.activeAdvisor = view.activeAdvisor;
     this.advisorPanel?.render(view);
   },
@@ -549,7 +549,7 @@ const Game = {
   },
 
   goToAdvisorTarget() {
-    const tabId = window.UIStatePresenter.getAdvisorTargetTab(this.activeAdvisor?.target);
+    const tabId = this.presenter.getAdvisorTargetTab(this.activeAdvisor?.target);
     if (tabId) this.switchTab(tabId);
     this.closeAdvisor();
   },
@@ -564,7 +564,7 @@ const Game = {
   },
 
   showRecentLogs() {
-    const view = window.UIStatePresenter.buildRecentLogViewState(this.recentLogs);
+    const view = this.presenter.buildRecentLogViewState(this.recentLogs);
     this.logModal?.open(this.renderRecentLogView(view));
   },
 

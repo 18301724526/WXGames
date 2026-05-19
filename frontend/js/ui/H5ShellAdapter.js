@@ -30,6 +30,7 @@
 
       return new H5ShellAdapter({
         gameModules,
+        presenter: global.UIStatePresenter,
         scheduler,
         textAdapter: global.H5TextAdapter?.fromDocument(doc),
         updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),

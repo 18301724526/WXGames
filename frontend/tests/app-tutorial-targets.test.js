@@ -35,6 +35,11 @@ function createWindowStub() {
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     BuildingActionAdapter: require('../js/ui/BuildingActionAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
+    H5GameBootstrap: {
+      mount(Game) {
+        Game.presenter = global.window.UIStatePresenter;
+      },
+    },
   };
 }
 
