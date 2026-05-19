@@ -35,13 +35,13 @@
                 <span>记住密码</span>
             </label>
             <div class="login-btns">
-                <button class="btn-login" onclick="Game.handleLogin()">登录</button>
+                <button class="btn-login" id="btnLogin" type="button">登录</button>
             </div>
         </div>
     </div>
-    <div class="log-modal-overlay" id="logModal" onclick="if(event.target===this){this.classList.remove('active');this.style.display='none';}">
+    <div class="log-modal-overlay" id="logModal">
         <div class="log-modal-content">
-            <button class="log-modal-close" onclick="document.getElementById('logModal').classList.remove('active');document.getElementById('logModal').style.display='none';">✕</button>
+            <button class="log-modal-close" id="btnCloseLogModal" type="button">✕</button>
             <h3>📜 最近请求日志</h3>
             <div id="logModalContent"></div>
         </div>
@@ -63,9 +63,9 @@
                     <button class="hud-btn" id="logButton" type="button" aria-label="查看日志">日志</button>
                     <button class="hud-btn settings-btn" id="settingsBtn" type="button" aria-label="设置">设置</button>
                     <div class="settings-menu" id="settingsMenu">
-                        <button onclick="Game.resetGame(); Game.toggleSettings();">重置游戏</button>
+                        <button id="btnResetGame" type="button">重置游戏</button>
                         <div class="menu-sep"></div>
-                        <button onclick="Game.logout(); Game.toggleSettings();">退出登录</button>
+                        <button id="btnLogout" type="button">退出登录</button>
                     </div>
                 </div>
             </div>

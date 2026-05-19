@@ -112,8 +112,12 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
   assert.match(html, /id="logButton"/);
+  assert.match(html, /id="btnLogin"/);
+  assert.match(html, /id="btnCloseLogModal"/);
+  assert.match(html, /id="btnResetGame"/);
+  assert.match(html, /id="btnLogout"/);
   assert.doesNotMatch(html, /id="gameTime"/);
-  assert.doesNotMatch(html, /onclick="Game\.toggleSettings\(\)"/);
+  assert.doesNotMatch(html, /\son[a-z]+="/);
   assert.match(css, /\.advisor-btn/);
   assert.match(css, /\.advisor-modal-content/);
   assert.match(css, /\.top-actions/);

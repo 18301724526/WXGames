@@ -58,6 +58,13 @@ window.mountLogMethods = function(game) {
     setTimeout(() => modal.classList.add('active'), 10);
   };
 
+  game.closeRequestLogs = function() {
+    const modal = document.getElementById('logModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  };
+
   console.log('[logs.js] 请求日志模块已挂载');
 };
 

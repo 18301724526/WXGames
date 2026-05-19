@@ -216,6 +216,28 @@ const Game = {
     if (logButton) logButton.addEventListener('click', () => this.showRecentLogs());
     const settingsButton = document.getElementById('settingsBtn');
     if (settingsButton) settingsButton.addEventListener('click', () => this.toggleSettings());
+    const resetButton = document.getElementById('btnResetGame');
+    if (resetButton) {
+      resetButton.addEventListener('click', async () => {
+        await this.resetGame();
+        this.closeSettings && this.closeSettings();
+      });
+    }
+    const logoutButton = document.getElementById('btnLogout');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', () => {
+        this.closeSettings && this.closeSettings();
+        this.logout();
+      });
+    }
+    const logModal = document.getElementById('logModal');
+    if (logModal) {
+      logModal.addEventListener('click', (event) => {
+        if (event.target === logModal) this.closeRequestLogs && this.closeRequestLogs();
+      });
+    }
+    const closeLogButton = document.getElementById('btnCloseLogModal');
+    if (closeLogButton) closeLogButton.addEventListener('click', () => this.closeRequestLogs && this.closeRequestLogs());
     const advisorModal = document.getElementById('advisorModal');
     if (advisorModal) {
       advisorModal.addEventListener('click', (event) => {

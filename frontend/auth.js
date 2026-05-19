@@ -151,6 +151,7 @@ window.mountAuthMethods = function(game) {
   };
 
   game.toggleSettings = function() { const m = document.getElementById('settingsMenu'); if (m) m.classList.toggle('active'); };
+  game.closeSettings = function() { const m = document.getElementById('settingsMenu'); if (m) m.classList.remove('active'); };
 
   // 已有 token 时自动启动 heartbeat（刷新页面无需重新登录）
   if (game.token) {
@@ -167,6 +168,7 @@ window.mountAuthMethods = function(game) {
   document.getElementById('loginUsername')?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') game.handleLogin();
   });
+  document.getElementById('btnLogin')?.addEventListener('click', () => game.handleLogin());
 
   console.log('[auth.js] 账号管理模块已挂载');
 };
