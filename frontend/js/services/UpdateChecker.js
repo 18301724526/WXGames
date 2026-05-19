@@ -4,6 +4,10 @@
       this.api = options.api;
       this.intervalMs = options.intervalMs || 30000;
       this.onUpdate = options.onUpdate || (() => {});
+      this.scheduler = {
+        setInterval: options.scheduler?.setInterval || (() => ({ disabled: true })),
+        clearInterval: options.scheduler?.clearInterval || (() => {}),
+      };
       this.timer = null;
       this.currentDeploymentId = null;
       this.prompting = false;
@@ -17,14 +21,14 @@
     async start() {
       await this.check({ initialize: true }).catch(() => {});
       if (this.timer) return;
-      this.timer = global.setInterval(() => {
+      this.timer = this.scheduler.setInterval(() => {
         this.check().catch(() => {});
       }, this.intervalMs);
     }
 
     stop() {
       if (!this.timer) return;
-      global.clearInterval(this.timer);
+      this.scheduler.clearInterval(this.timer);
       this.timer = null;
     }
 

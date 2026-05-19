@@ -48,6 +48,7 @@ const Game = {
     this.updateChecker = new window.UpdateChecker({
       api: this.gameAPI,
       intervalMs: window.GameConfig.UPDATE_CHECK_INTERVAL_MS,
+      scheduler: this.scheduler,
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
     this.stateManager = new window.GameStateManager(this.state);
