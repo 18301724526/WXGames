@@ -56,7 +56,7 @@ const Game = {
       scheduler: this.scheduler,
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
-    this.stateManager = new constructors.GameStateManager(this.state);
+    this.stateManager = new constructors.GameStateManager(this.state, { buildingState: this.buildingState });
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
     this.tutorialController = new constructors.TutorialController({
       api: this.gameAPI,

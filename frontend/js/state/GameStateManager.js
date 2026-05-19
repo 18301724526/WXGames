@@ -1,7 +1,8 @@
 (function (global) {
   class GameStateManager {
-    constructor(initialState) {
+    constructor(initialState, options = {}) {
       this.state = initialState || {};
+      this.buildingState = options.buildingState || { getLevel: () => 0 };
     }
 
     sync(serverState, eraProgress) {
@@ -18,8 +19,8 @@
       this.state.knowledge = this.state.resources.knowledge || 0;
       this.state.wood = this.state.resources.wood || 0;
       this.state.softGuide = serverState.softGuide || null;
-      this.state.workshopCount = global.FrontendBuildingState.getLevel(this.state.buildings, 'workshop');
-      this.state.lumbermillCount = global.FrontendBuildingState.getLevel(this.state.buildings, 'lumbermill');
+      this.state.workshopCount = this.buildingState.getLevel(this.state.buildings, 'workshop');
+      this.state.lumbermillCount = this.buildingState.getLevel(this.state.buildings, 'lumbermill');
       this.state.military = {
         soldiers: 0,
         soldierCap: 0,

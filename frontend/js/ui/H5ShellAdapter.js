@@ -34,6 +34,7 @@
         config: global.GameConfig,
         gameModules,
         presenter: global.UIStatePresenter,
+        buildingState: global.FrontendBuildingState,
         runtimeConstructors: {
           GameAPI: global.GameAPI,
           GameStateSync: global.GameStateSync,
