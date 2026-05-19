@@ -30,7 +30,7 @@ function createWindowStub() {
     TutorialController: class {},
     EventController: class {},
     BuildingController: class {},
-    DOMHelper: { setText() {} },
+    H5TextAdapter: require('../js/ui/H5TextAdapter'),
   };
 }
 

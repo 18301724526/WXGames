@@ -45,6 +45,7 @@ const Game = {
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
     this.stateManager = new window.GameStateManager(this.state);
+    this.textAdapter = window.H5TextAdapter?.fromDocument(document);
     this.resourceRenderer = window.ResourceRenderer.fromDocument(document, (id, value) => this.setText(id, value));
     this.resourceDetailModal = window.ResourceDetailModalAdapter?.fromDocument(document);
     this.advisorPanel = window.AdvisorPanelAdapter?.fromDocument(document);
@@ -625,7 +626,7 @@ const Game = {
   showOfflineModal() {},
 
   setText(id, value) {
-    window.DOMHelper.setText(id, value);
+    this.textAdapter?.setText(id, value);
   },
 
   log(message) {

@@ -34,7 +34,7 @@ function createWindowStub() {
     MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     BuildingActionAdapter: require('../js/ui/BuildingActionAdapter'),
-    DOMHelper: { setText() {} },
+    H5TextAdapter: require('../js/ui/H5TextAdapter'),
   };
 }
 
@@ -488,12 +488,6 @@ test('renderMilitary displays backend-provided military state', () => {
         return { innerHTML: '' };
       },
     };
-    global.window.DOMHelper = {
-      setText(id, value) {
-        global.document.getElementById(id).textContent = value;
-      },
-    };
-
     delete require.cache[require.resolve('../app')];
     require('../app');
 
@@ -724,11 +718,6 @@ test('scout controls show countdown and lock other directions while one scout is
     elements.set('scoutDirectionGrid', container);
     Date.now = () => new Date('2026-05-17T08:00:30.000Z').getTime();
     global.window = createWindowStub();
-    global.window.DOMHelper = {
-      setText(id, value) {
-        text.set(id, value);
-      },
-    };
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
     global.document = {
       addEventListener() {},
