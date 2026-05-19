@@ -93,8 +93,6 @@ test('PlatformRuntime wraps wx style canvas, storage and request APIs without DO
 
 test('MiniGame app renders state and syncs through platform transport without document', async () => {
   const originalDocument = global.document;
-  const originalSetInterval = global.setInterval;
-  const originalClearInterval = global.clearInterval;
   const calls = [];
   const timers = [];
   const runtime = new PlatformRuntime({
@@ -106,6 +104,14 @@ test('MiniGame app renders state and syncs through platform transport without do
       getSystemInfoSync() {
         return { windowWidth: 360, windowHeight: 720, pixelRatio: 1 };
       },
+    },
+    scheduler: {
+      setInterval(callback, intervalMs) {
+        const timer = { callback, intervalMs };
+        timers.push(timer);
+        return timer;
+      },
+      clearInterval() {},
     },
   });
   const api = new GameAPI('/api', null, {
@@ -131,13 +137,6 @@ test('MiniGame app renders state and syncs through platform transport without do
 
   try {
     global.document = undefined;
-    global.setInterval = (callback, intervalMs) => {
-      const timer = { callback, intervalMs };
-      timers.push(timer);
-      return timer;
-    };
-    global.clearInterval = () => {};
-
     app = new MiniGameApp({
       runtime,
       api,
@@ -159,8 +158,6 @@ test('MiniGame app renders state and syncs through platform transport without do
   } finally {
     app?.stop?.();
     global.document = originalDocument;
-    global.setInterval = originalSetInterval;
-    global.clearInterval = originalClearInterval;
   }
 });
 
@@ -176,6 +173,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.doesNotMatch(entry, /app\.js|auth\.js|population\.js|logs\.js|floating-text\.js|DOMHelper|document|getElementById|querySelector|innerHTML|classList/);
   assert.doesNotMatch(platformFiles, /document|getElementById|querySelector|innerHTML|classList/);
   assert.doesNotMatch(platformFiles, /global\.UIStatePresenter|globalThis\.UIStatePresenter|window\.UIStatePresenter/);
+  assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
   assert.match(entry, /MiniGameApp/);
@@ -202,6 +200,13 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       offTouchEnd() {
         tapHandler = null;
       },
+    },
+    scheduler: {
+      setInterval() {
+        const timer = {};
+        return timer;
+      },
+      clearInterval() {},
     },
   });
   const api = new GameAPI('/api', null, {

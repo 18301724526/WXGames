@@ -5,6 +5,20 @@
       this.host = options.host || PlatformRuntime.detectHost(global);
       this.canvas = options.canvas || null;
       this.storagePrefix = options.storagePrefix || 'cf_';
+      this.systemInfo = options.systemInfo || null;
+      this.storage = options.storage || PlatformRuntime.detectStorage(global);
+      this.scheduler = options.scheduler || PlatformRuntime.detectScheduler(global);
+    }
+
+    static detectStorage(scope) {
+      return scope.localStorage || null;
+    }
+
+    static detectScheduler(scope) {
+      return {
+        setInterval: typeof scope.setInterval === 'function' ? scope.setInterval.bind(scope) : null,
+        clearInterval: typeof scope.clearInterval === 'function' ? scope.clearInterval.bind(scope) : null,
+      };
     }
 
     static detectHost(scope) {
@@ -36,11 +50,7 @@
       if (this.host && typeof this.host.getSystemInfoSync === 'function') {
         return this.host.getSystemInfoSync();
       }
-      return {
-        windowWidth: global.innerWidth || 390,
-        windowHeight: global.innerHeight || 844,
-        pixelRatio: global.devicePixelRatio || 1,
-      };
+      return this.systemInfo || { windowWidth: 390, windowHeight: 844, pixelRatio: 1 };
     }
 
     getStorage(key) {
@@ -48,7 +58,7 @@
       if (this.host && typeof this.host.getStorageSync === 'function') {
         return this.host.getStorageSync(namespacedKey) || null;
       }
-      if (global.localStorage) return global.localStorage.getItem(namespacedKey);
+      if (this.storage && typeof this.storage.getItem === 'function') return this.storage.getItem(namespacedKey);
       return null;
     }
 
@@ -58,7 +68,7 @@
         this.host.setStorageSync(namespacedKey, value);
         return;
       }
-      if (global.localStorage) global.localStorage.setItem(namespacedKey, value);
+      if (this.storage && typeof this.storage.setItem === 'function') this.storage.setItem(namespacedKey, value);
     }
 
     removeStorage(key) {
@@ -67,7 +77,7 @@
         this.host.removeStorageSync(namespacedKey);
         return;
       }
-      if (global.localStorage) global.localStorage.removeItem(namespacedKey);
+      if (this.storage && typeof this.storage.removeItem === 'function') this.storage.removeItem(namespacedKey);
     }
 
     request(options = {}) {
@@ -105,11 +115,12 @@
     }
 
     setInterval(callback, intervalMs) {
-      return global.setInterval(callback, intervalMs);
+      if (typeof this.scheduler.setInterval === 'function') return this.scheduler.setInterval(callback, intervalMs);
+      return null;
     }
 
     clearInterval(timer) {
-      global.clearInterval(timer);
+      if (timer && typeof this.scheduler.clearInterval === 'function') this.scheduler.clearInterval(timer);
     }
 
     onTouchStart(handler) {
