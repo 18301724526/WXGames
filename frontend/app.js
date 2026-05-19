@@ -1,6 +1,6 @@
 const Game = {
   apiBase: window.GameConfig.API_BASE,
-  token: localStorage.getItem('cf_token'),
+  token: null,
   playerId: null,
   state: {
     resources: {},
@@ -36,6 +36,12 @@ const Game = {
   recentLogs: [],
 
   init() {
+    const shell = window.H5ShellAdapter?.fromDocument(document, window, {
+      setText: (id, value) => this.setText(id, value),
+      getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
+    });
+    Object.assign(this, shell);
+    this.token = this.authStorage?.getToken?.() || null;
     this.gameAPI = new window.GameAPI(this.apiBase, this.token);
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
     this.syncService = new window.GameStateSync(this.gameAPI, window.GameConfig.SYNC_INTERVAL_MS);
@@ -45,11 +51,6 @@ const Game = {
       onUpdate: (version) => this.showUpdatePrompt(version),
     });
     this.stateManager = new window.GameStateManager(this.state);
-    const shell = window.H5ShellAdapter?.fromDocument(document, window, {
-      setText: (id, value) => this.setText(id, value),
-      getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
-    });
-    Object.assign(this, shell);
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
     this.tutorialController = new window.TutorialController({
       api: this.gameAPI,

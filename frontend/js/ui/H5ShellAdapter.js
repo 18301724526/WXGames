@@ -13,6 +13,7 @@
       return new H5ShellAdapter({
         textAdapter: global.H5TextAdapter?.fromDocument(doc),
         updateRuntime: global.H5UpdateRuntimeAdapter?.fromRuntime(runtime),
+        authStorage: global.H5AuthStorageAdapter?.fromRuntime(runtime),
         resourceRenderer: global.ResourceRenderer?.fromDocument(doc, setText),
         resourceDetailModal: global.ResourceDetailModalAdapter?.fromDocument(doc),
         advisorPanel: global.AdvisorPanelAdapter?.fromDocument(doc),

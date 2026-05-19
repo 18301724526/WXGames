@@ -2,16 +2,10 @@
 // 挂载函数 — 由 app.js init() 调用，避免 IIFE 的竞态问题
 
 window.mountAuthMethods = function(game) {
-  const TOKEN_KEY = 'cf_token';
-  const USERNAME_KEY = 'cf_username';
-  const REMEMBER_ENABLED_KEY = 'cf_remember_enabled';
-  const REMEMBER_USERNAME_KEY = 'cf_remember_username';
-  const REMEMBER_PASSWORD_KEY = 'cf_remember_password';
+  const authStorage = game.authStorage || window.H5AuthStorageAdapter?.fromRuntime(window);
 
   function clearTutorialStorage() {
-    localStorage.removeItem('tutorialAutoStarted');
-    localStorage.removeItem('tutorialStep');
-    localStorage.removeItem('tutorialCompleted');
+    authStorage?.clearTutorialStorage?.();
   }
 
   function setLoginMessage(message) {
@@ -27,24 +21,11 @@ window.mountAuthMethods = function(game) {
   }
 
   function persistRememberedCredentials(username, password, rememberPassword) {
-    if (rememberPassword) {
-      localStorage.setItem(REMEMBER_ENABLED_KEY, 'true');
-      localStorage.setItem(REMEMBER_USERNAME_KEY, username);
-      localStorage.setItem(REMEMBER_PASSWORD_KEY, password);
-      return;
-    }
-    localStorage.removeItem(REMEMBER_ENABLED_KEY);
-    localStorage.removeItem(REMEMBER_USERNAME_KEY);
-    localStorage.removeItem(REMEMBER_PASSWORD_KEY);
+    authStorage?.persistRememberedCredentials?.(username, password, rememberPassword);
   }
 
   function fillRememberedCredentials() {
-    const view = window.UIStatePresenter.buildAuthCredentialViewState({
-      rememberEnabled: localStorage.getItem(REMEMBER_ENABLED_KEY) === 'true',
-      rememberedUsername: localStorage.getItem(REMEMBER_USERNAME_KEY),
-      rememberedPassword: localStorage.getItem(REMEMBER_PASSWORD_KEY),
-      username: localStorage.getItem(USERNAME_KEY),
-    });
+    const view = window.UIStatePresenter.buildAuthCredentialViewState(authStorage?.getCredentialSnapshot?.() || {});
     game.authShell?.applyCredentials(view);
   }
 
@@ -62,9 +43,7 @@ window.mountAuthMethods = function(game) {
     console.error('Auth error:', data);
     this.token = null;
     this.playerId = null;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('civilizationFirePhase2');
-    clearTutorialStorage();
+    authStorage?.clearSession?.();
     this.showLoginPanel(data?.message || '登录已过期，请重新登录');
   };
 
@@ -97,8 +76,8 @@ window.mountAuthMethods = function(game) {
       }
       if (data.token) {
         this.token = data.token; this.playerId = data.playerId;
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(USERNAME_KEY, username);
+        authStorage?.setToken?.(data.token);
+        authStorage?.setUsername?.(username);
         persistRememberedCredentials(username, password, rememberPassword);
         if (this.buildingAPI) this.buildingAPI.setToken(data.token);
         showAuthenticatedShell();
@@ -117,9 +96,7 @@ window.mountAuthMethods = function(game) {
   game.logout = function() {
     this.token = null;
     this.playerId = null;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('civilizationFirePhase2');
-    clearTutorialStorage();
+    authStorage?.clearSession?.();
     location.reload();
   };
 

@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const UIStatePresenter = require('../js/state/UIStatePresenter');
 const AuthShellAdapter = require('../js/ui/AuthShellAdapter');
+const H5AuthStorageAdapter = require('../js/ui/H5AuthStorageAdapter');
 
 function createStorage(initial = {}) {
   const store = new Map(Object.entries(initial));
@@ -68,18 +69,20 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
       loginPassword: createElement(),
       rememberPassword: createElement(),
     };
-    global.window = { UIStatePresenter, AuthShellAdapter };
+    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter };
     global.document = undefined;
-    global.localStorage = createStorage({
+    const storage = createStorage({
       cf_remember_enabled: 'true',
       cf_remember_username: 'test2',
       cf_remember_password: '123456',
     });
+    global.localStorage = undefined;
 
     require('../auth');
 
     const game = createGame();
     game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
+    game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
     global.window.mountAuthMethods(game);
     game.showLoginPanel();
 
@@ -109,9 +112,10 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
       loginPassword: createElement(),
       rememberPassword: createElement(),
     };
-    global.window = { UIStatePresenter, AuthShellAdapter };
+    global.window = { UIStatePresenter, AuthShellAdapter, H5AuthStorageAdapter };
     global.document = undefined;
-    global.localStorage = createStorage();
+    const storage = createStorage();
+    global.localStorage = undefined;
 
     let requestBody = null;
     global.fetch = async (url, options) => {
@@ -136,6 +140,7 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
 
     const game = createGame();
     game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
+    game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
     global.window.mountAuthMethods(game);
     elements.loginUsername.value = 'test1';
     elements.loginPassword.value = '123456';
@@ -143,11 +148,11 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
     await game.handleLogin();
 
     assert.deepEqual(requestBody, { username: 'test1', password: '123456' });
-    assert.equal(global.localStorage.getItem('cf_token'), 'token-1');
-    assert.equal(global.localStorage.getItem('cf_username'), 'test1');
-    assert.equal(global.localStorage.getItem('cf_remember_enabled'), 'true');
-    assert.equal(global.localStorage.getItem('cf_remember_username'), 'test1');
-    assert.equal(global.localStorage.getItem('cf_remember_password'), '123456');
+    assert.equal(storage.getItem('cf_token'), 'token-1');
+    assert.equal(storage.getItem('cf_username'), 'test1');
+    assert.equal(storage.getItem('cf_remember_enabled'), 'true');
+    assert.equal(storage.getItem('cf_remember_username'), 'test1');
+    assert.equal(storage.getItem('cf_remember_password'), '123456');
     assert.equal(game.heartbeatStarted, true);
     assert.deepEqual(game.lastAppliedState.gameState, { currentEra: 0 });
   } finally {
