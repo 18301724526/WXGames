@@ -66,6 +66,10 @@
         </div>
       `).join('');
     }
+
+    setAdvanceDisabled(disabled) {
+      if (this.advanceButton) this.advanceButton.disabled = Boolean(disabled);
+    }
   }
 
   global.CivilizationPanelAdapter = CivilizationPanelAdapter;

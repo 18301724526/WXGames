@@ -51,6 +51,7 @@ const Game = {
     this.namingModal = window.NamingModalAdapter?.fromDocument(document);
     this.citySwitcher = window.CitySwitcherAdapter?.fromDocument(document);
     this.navigationShell = window.NavigationShellAdapter?.fromDocument(document);
+    this.tutorialTargets = window.TutorialTargetAdapter?.fromDocument(document);
     this.civilizationPanel = window.CivilizationPanelAdapter?.fromDocument(document, {
       setText: (id, value) => this.setText(id, value),
     });
@@ -343,8 +344,7 @@ const Game = {
   },
 
   async advanceEra() {
-    const button = document.getElementById('btnAdvanceEra');
-    if (button) button.disabled = true;
+    this.civilizationPanel?.setAdvanceDisabled(true);
     if (!this.canAdvanceEraNow()) {
       this.log(this.state.isCapitalCity === false ? '只有主城可以推动文明进阶' : this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
       this.renderCivilization();
@@ -415,22 +415,7 @@ const Game = {
   },
 
   getTutorialTarget(key) {
-    if (key === 'tab-resources') return document.getElementById('tabResources');
-    if (key === 'tab-civilization') return document.getElementById('tabCivilization');
-    if (key === 'tab-buildings') return document.getElementById('tabBuildings');
-    if (key === 'tab-events') return document.getElementById('tabEvents');
-    if (key === 'tab-military') return document.getElementById('tabMilitary');
-    if (key === 'tab-territory') return document.getElementById('tabMilitary');
-    if (key === 'btn-advance-era') return document.getElementById('btnAdvanceEra');
-    if (key === 'btn-claim-event') return document.getElementById('btnClaimEvent');
-    if (key === 'food-value') return document.getElementById('foodValue');
-    if (key === 'card-farm') return document.getElementById('card-farm');
-    if (key === 'card-house') return document.getElementById('card-house');
-    if (key === 'event-card-special') return document.getElementById('event-card-special');
-    if (key === 'card-lumbermill') return document.getElementById('card-lumbermill');
-    if (key === 'card-barracks') return document.getElementById('card-barracks');
-    if (key === 'card-craftsman') return document.getElementById('craftsmanCard');
-    return null;
+    return this.tutorialTargets?.getTarget(key) || null;
   },
 
   render() {

@@ -32,6 +32,7 @@ function createWindowStub() {
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
     CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
     MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
+    TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     DOMHelper: { setText() {} },
   };
 }
@@ -90,6 +91,7 @@ test('app 会映射所有教程高亮目标，包括民居卡片', () => {
 
     delete require.cache[require.resolve('../app')];
     require('../app');
+    global.window.Game.tutorialTargets = global.window.TutorialTargetAdapter.fromDocument(global.document);
 
     const expected = {
       'tab-resources': 'tabResources',
@@ -294,6 +296,7 @@ test('advanceEra does not call the API before tutorial unlocks the advance step'
     require('../app');
 
     const { Game } = global.window;
+    attachCivilizationPanel(Game, elements);
     let called = false;
     const logs = [];
     Game.gameAPI = {
