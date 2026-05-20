@@ -29,6 +29,7 @@
         softGuide: null,
       };
       this.activeTab = options.activeTab || 'resources';
+      this.showResourceDetails = false;
       this.log = options.log || (() => {});
       this.timer = null;
       this.tapDisposer = null;
@@ -44,7 +45,10 @@
     }
 
     render() {
-      this.renderer.render(this.state, { activeTab: this.activeTab });
+      this.renderer.render(this.state, {
+        activeTab: this.activeTab,
+        showResourceDetails: this.showResourceDetails,
+      });
     }
 
     async syncOnce() {
@@ -73,7 +77,21 @@
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
       if (action.type === 'switchTab') {
+        this.showResourceDetails = false;
         this.switchTab(action.tab);
+        return;
+      }
+      if (action.type === 'openResourceDetails') {
+        this.showResourceDetails = true;
+        this.render();
+        return;
+      }
+      if (action.type === 'closeResourceDetails') {
+        this.showResourceDetails = false;
+        this.render();
+        return;
+      }
+      if (action.type === 'blockCanvasModal') {
         return;
       }
       if (action.type === 'assignJob') {

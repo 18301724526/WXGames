@@ -13,6 +13,7 @@
       this.tapDisposer = null;
       this.showSettings = false;
       this.showLogs = false;
+      this.showResourceDetails = false;
     }
 
     createRenderer(canvas) {
@@ -66,6 +67,7 @@
       if (action.type === 'openSettings') {
         this.showSettings = true;
         this.showLogs = false;
+        this.showResourceDetails = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -77,6 +79,7 @@
       if (action.type === 'openLogs') {
         this.showLogs = true;
         this.showSettings = false;
+        this.showResourceDetails = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -85,9 +88,25 @@
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
+      if (action.type === 'openResourceDetails') {
+        this.showResourceDetails = true;
+        this.showSettings = false;
+        this.showLogs = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'closeResourceDetails') {
+        this.showResourceDetails = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'blockCanvasModal') {
+        return true;
+      }
       if (action.type === 'resetGame' || action.type === 'logout' || action.type === 'clearLogs') {
         this.showSettings = false;
         this.showLogs = false;
+        this.showResourceDetails = false;
       }
       if (this.onAction) return this.onAction(action, event) !== false;
       if (action.type === 'switchTab' && this.lastGame?.switchTab) {
@@ -116,7 +135,14 @@
 
     renderReadOnly(state, activeTab = 'resources') {
       if (!this.previewEnabled || !this.renderer || !state) return false;
-      this.renderer.render(state, { activeTab, mode: 'hud', showSettings: this.showSettings, showLogs: this.showLogs, logs: this.lastGame?.requestLogs || [] });
+      this.renderer.render(state, {
+        activeTab,
+        mode: 'hud',
+        showSettings: this.showSettings,
+        showLogs: this.showLogs,
+        showResourceDetails: this.showResourceDetails,
+        logs: this.lastGame?.requestLogs || [],
+      });
       return true;
     }
 

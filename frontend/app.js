@@ -149,10 +149,6 @@ const Game = {
           this.clearRequestLogs?.();
           return true;
         }
-        if (action?.type === 'openResourceDetails') {
-          this.openResourceDetails?.();
-          return true;
-        }
         if (action?.type === 'resetGame') {
           this.resetGame?.();
           return true;
@@ -193,11 +189,6 @@ const Game = {
       onOpen: (eventId) => this.eventController.open(eventId),
       onClaim: (optionId) => this.eventController.claimActive(optionId),
       onClose: () => this.eventController.close(),
-    });
-
-    this.resourceDetailModal?.bind({
-      onOpen: () => this.openResourceDetails(),
-      onClose: () => this.closeResourceDetails(),
     });
 
     this.namingModal?.bind({
@@ -439,7 +430,6 @@ const Game = {
 
   render() {
     this.renderCitySwitcher();
-    this.renderResources();
     if (this.renderPopulation) {
       this.renderPopulation();
       this.updatePopulationButtons();
@@ -455,10 +445,6 @@ const Game = {
     if (this.canvasShell?.previewEnabled) {
       this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
     }
-  },
-
-  renderResources() {
-    this.resourceRenderer.render(this.state);
   },
 
   renderCitySwitcher() {
@@ -496,15 +482,6 @@ const Game = {
       this.log(`❌ ${error.payload?.message || error.message}`);
       this.renderCitySwitcher();
     }
-  },
-
-  openResourceDetails() {
-    this.renderResources();
-    this.resourceDetailModal?.open();
-  },
-
-  closeResourceDetails() {
-    this.resourceDetailModal?.close();
   },
 
   renderBuildings() {

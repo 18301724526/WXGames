@@ -495,39 +495,7 @@ body {
     pointer-events: auto !important;
 }
 
-/* ===== 资源面板（Canvas HUD 已接管，DOM 资源条已删除） ===== */
-
-.resource-breakdown {
-    margin-top: 10px;
-    display: grid;
-    gap: 6px;
-}
-
-.resource-breakdown-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
-.resource-breakdown-label {
-    color: var(--text-secondary);
-}
-
-.resource-breakdown-value {
-    font-variant-numeric: tabular-nums;
-    color: var(--text-primary);
-}
-
-.resource-breakdown-value.is-positive {
-    color: var(--success);
-}
-
-.resource-breakdown-value.is-negative {
-    color: var(--danger);
-}
+/* ===== 资源栏与资源详情由 Canvas HUD 接管 ===== */
 
 /* ===== 闈㈡澘鏍囬 ===== */
 .panel-title {
@@ -1974,11 +1942,6 @@ body {
         padding: 20px;
         padding-bottom: 100px;
     }
-    
-    .resource-value {
-        font-size: 17px;
-    }
-    
 }
 
 /* ===== 婊氬姩鏉?===== */
@@ -3101,66 +3064,6 @@ body {
   cursor: pointer;
 }
 
-.resource-detail-content {
-  position: relative;
-  max-width: 360px;
-  text-align: left;
-}
-
-.resource-detail-content h3 {
-  padding-right: 44px;
-  margin-bottom: 14px;
-}
-
-.resource-detail-list {
-  display: grid;
-  gap: 10px;
-}
-
-.resource-detail-card {
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-card);
-}
-
-.resource-detail-card[hidden],
-.resource-detail-card.is-hidden {
-  display: none !important;
-}
-
-.resource-detail-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.resource-detail-icon {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  background: center / contain no-repeat;
-  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
-}
-
-.resource-detail-food { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3'); }
-.resource-detail-knowledge { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3'); }
-.resource-detail-wood { background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v3'); }
-
-.resource-detail-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.resource-detail-total {
-  color: var(--number);
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
 .btn-secondary {
   flex: 1;
   padding: 12px 16px;
@@ -3170,23 +3073,6 @@ body {
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
-}
-
-@media (max-width: 420px) {
-    .resource-panel.has-era-two .resource-value {
-        font-size: 15px;
-    }
-
-    .resource-card {
-        padding: 7px 6px;
-        gap: 5px;
-    }
-
-    .resource-icon {
-        width: 24px;
-        height: 24px;
-        flex-basis: 24px;
-    }
 }
 
 .tutorial-highlight {

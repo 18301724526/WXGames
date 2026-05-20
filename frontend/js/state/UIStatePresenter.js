@@ -190,15 +190,10 @@
           gameTime: `第 ${state.gameDay || 1} 天`,
         },
         classState: {
-          resourcePanel: { 'has-era-two': hasWood },
           foodNetRate: {
             'is-positive': foodNet >= 0,
             'is-negative': foodNet < 0,
           },
-        },
-        visibility: {
-          woodCard: hasWood,
-          woodDetailCard: hasWood,
         },
       };
     }

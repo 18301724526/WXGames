@@ -275,62 +275,6 @@
             </div>
         </div>
 
-        <div class="modal-overlay" id="resourceDetailModal">
-            <div class="modal-content resource-detail-content" role="dialog" aria-modal="true" aria-labelledby="resourceDetailTitle">
-                <button class="modal-close" id="btnCloseResourceDetail" type="button" aria-label="关闭">✕</button>
-                <h3 id="resourceDetailTitle">资源详情</h3>
-                <div class="resource-detail-list">
-                    <div class="resource-detail-card">
-                        <div class="resource-detail-head">
-                            <span class="resource-detail-icon resource-detail-food"></span>
-                            <span class="resource-detail-name">食物</span>
-                            <span class="resource-detail-total" id="foodDetailValue">0</span>
-                        </div>
-                        <div class="resource-breakdown">
-                            <div class="resource-breakdown-row">
-                                <span class="resource-breakdown-label">产出</span>
-                                <span class="resource-breakdown-value is-positive" id="foodOutputRate">+0/s</span>
-                            </div>
-                            <div class="resource-breakdown-row">
-                                <span class="resource-breakdown-label">消耗</span>
-                                <span class="resource-breakdown-value is-negative" id="foodConsumptionRate">-0/s</span>
-                            </div>
-                            <div class="resource-breakdown-row">
-                                <span class="resource-breakdown-label">净增长</span>
-                                <span class="resource-breakdown-value" id="foodNetRate">+0/s</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resource-detail-card">
-                        <div class="resource-detail-head">
-                            <span class="resource-detail-icon resource-detail-knowledge"></span>
-                            <span class="resource-detail-name">知识</span>
-                            <span class="resource-detail-total" id="knowledgeDetailValue">0</span>
-                        </div>
-                        <div class="resource-breakdown">
-                            <div class="resource-breakdown-row">
-                                <span class="resource-breakdown-label">产出</span>
-                                <span class="resource-breakdown-value is-positive" id="knowledgeDetailRate">+0/s</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resource-detail-card is-hidden" id="woodDetailCard" hidden>
-                        <div class="resource-detail-head">
-                            <span class="resource-detail-icon resource-detail-wood"></span>
-                            <span class="resource-detail-name">木材</span>
-                            <span class="resource-detail-total" id="woodDetailValue">0</span>
-                        </div>
-                        <div class="resource-breakdown">
-                            <div class="resource-breakdown-row">
-                                <span class="resource-breakdown-label">产出</span>
-                                <span class="resource-breakdown-value is-positive" id="woodDetailRate">+0/s</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="modal-overlay" id="namingModal">
             <div class="modal-content naming-modal-content" role="dialog" aria-modal="true" aria-labelledby="namingTitle">
                 <button class="modal-close" id="btnCloseNamingModal" type="button" aria-label="关闭">✕</button>
@@ -388,7 +332,6 @@
     <script src="js/platform/H5CanvasGameRenderer.js?v=h5-game-renderer-v1"></script>
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
-    <script src="js/ui/ResourceRenderer.js?v=resource-presenter-v1"></script>
     <script src="js/ui/BuildingUIRenderer.js?v=building-presenter-v1"></script>
     <script src="js/ui/EventUIRenderer.js?v=event-presenter-v1"></script>
     <script src="js/ui/TerritoryUIRenderer.js?v=territory-presenter-v1"></script>
@@ -397,7 +340,6 @@
     <script src="js/ui/RuntimeLogAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/AuthShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/PopulationPanelAdapter.js?v=explicit-doc-v1"></script>
-    <script src="js/ui/ResourceDetailModalAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/AdvisorPanelAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/NamingModalAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/CitySwitcherAdapter.js?v=explicit-doc-v1"></script>

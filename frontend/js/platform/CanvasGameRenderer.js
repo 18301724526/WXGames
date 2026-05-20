@@ -149,6 +149,13 @@
       this.ctx.textAlign = 'left';
     }
 
+    drawTextLines(lines = [], x, y, options = {}) {
+      const lineHeight = options.lineHeight || 18;
+      lines.forEach((line, index) => {
+        this.drawText(line, x, y + index * lineHeight, options);
+      });
+    }
+
     drawLine(x1, y1, x2, y2, options = {}) {
       if (!this.ctx) return;
       this.ctx.strokeStyle = options.color || 'rgba(232, 199, 128, 0.28)';
@@ -636,6 +643,9 @@
       this.clear();
       this.renderTopBar(state);
       this.renderTabs(activeTab);
+      if (options.showResourceDetails) {
+        this.renderResourceDetailsPanel(state);
+      }
       if (options.showSettings) {
         this.renderSettingsPanel();
       }
@@ -797,6 +807,91 @@
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeLogs', background: true });
     }
 
+    renderResourceDetailsPanel(state = {}) {
+      if (!this.presenter) return;
+      const view = this.presenter.buildResourceViewState(state);
+      const layout = this.getLayout();
+      const panelWidth = Math.min(360, layout.contentWidth - 24);
+      const resourceCount = view.hasWood ? 3 : 2;
+      const panelHeight = 92 + resourceCount * 86;
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(76, (this.height - panelHeight) / 2 - 20);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeResourceDetails' });
+
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(42, 35, 24, 0.97)',
+        stroke: 'rgba(255, 226, 177, 0.22)',
+        radius: 12,
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      this.drawText('资源详情', x + panelWidth / 2, y + 22, {
+        size: 16,
+        bold: true,
+        color: '#ffd98a',
+        align: 'center',
+      });
+
+      const closeBtnSize = 28;
+      const closeBtnX = x + panelWidth - closeBtnSize - 10;
+      const closeBtnY = y + 10;
+      this.drawButton(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, 'x', {
+        size: 14,
+        radius: 6,
+      });
+      this.addHitTarget({ x: closeBtnX, y: closeBtnY, width: closeBtnSize, height: closeBtnSize }, { type: 'closeResourceDetails' });
+
+      const cards = [
+        {
+          label: '食物',
+          icon: 'assets/art/icon-food-cutout.webp',
+          value: view.text.foodDetailValue,
+          lines: [
+            `产出 ${view.text.foodOutputRate}`,
+            `消耗 ${view.text.foodConsumptionRate}`,
+            `净增长 ${view.text.foodNetRate}`,
+          ],
+        },
+        {
+          label: '知识',
+          icon: 'assets/art/icon-knowledge-cutout.webp',
+          value: view.text.knowledgeDetailValue,
+          lines: [`产出 ${view.text.knowledgeDetailRate}`],
+        },
+      ];
+
+      if (view.hasWood) {
+        cards.push({
+          label: '木材',
+          icon: 'assets/art/icon-wood-cutout.webp',
+          value: view.text.woodDetailValue,
+          lines: [`产出 ${view.text.woodDetailRate}`],
+        });
+      }
+
+      const cardX = x + 12;
+      const cardWidth = panelWidth - 24;
+      cards.forEach((card, index) => {
+        const cardY = y + 56 + index * 86;
+        this.drawPanel(cardX, cardY, cardWidth, 74, {
+          fill: 'rgba(27, 22, 17, 0.74)',
+          stroke: 'rgba(255, 226, 177, 0.12)',
+          radius: 10,
+        });
+        this.drawAsset(card.icon, cardX + 12, cardY + 19, 34, 34);
+        this.drawText(card.label, cardX + 58, cardY + 12, { size: 13, bold: true, color: '#f6e8c8' });
+        this.drawText(String(card.value), cardX + cardWidth - 12, cardY + 12, {
+          size: 18,
+          bold: true,
+          color: '#74d3a0',
+          align: 'right',
+        });
+        this.drawTextLines(card.lines, cardX + 58, cardY + 36, { size: 11, color: '#aeb0b8', lineHeight: 16 });
+      });
+
+    }
+
     render(state = {}, options = {}) {
       if (options.mode === 'hud') {
         this.renderHudOverlay(state, options);
@@ -814,6 +909,7 @@
       if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight);
       this.renderAdvisor(state);
       this.renderTabs(activeTab);
+      if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
     }
   }
 

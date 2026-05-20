@@ -126,7 +126,17 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
   assert.equal(shell.previewEnabled, true);
   assert.equal(appended.length, 1);
   assert.equal(renderCalls.length, 1);
-  assert.deepEqual(renderCalls[0], { state, options: { activeTab: 'resources', mode: 'hud', showSettings: false, showLogs: false, logs: [] } });
+  assert.deepEqual(renderCalls[0], {
+    state,
+    options: {
+      activeTab: 'resources',
+      mode: 'hud',
+      showSettings: false,
+      showLogs: false,
+      showResourceDetails: false,
+      logs: [],
+    },
+  });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
   assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
   assert.equal(renderCalls.at(-1).options.mode, 'hud');
@@ -226,6 +236,29 @@ test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions'
   assert.deepEqual(switched, ['events']);
 });
 
+test('H5 canvas app shell owns resource details panel state without DOM adapter', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const actions = [{ type: 'openResourceDetails' }, { type: 'closeResourceDetails' }];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  H5CanvasAppShell.mount({ state: { currentTab: 'resources', resources: { food: 10 } } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  listeners['document:pointerup']({ clientX: 30, clientY: 100, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(renderCalls.at(-1).showResourceDetails, true);
+  listeners['document:pointerup']({ clientX: 350, clientY: 100, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(renderCalls.at(-1).showResourceDetails, false);
+});
+
 test('H5 canvas app shell dispatches every HUD hit action and consumes the event', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [];
@@ -270,6 +303,9 @@ test('stage 6 canvas HUD takeover hides only replaced controls and keeps menus c
   assert.doesNotMatch(css, /\.resource-strip/);
   assert.doesNotMatch(indexHtml, /resource-strip/);
   assert.doesNotMatch(indexHtml, /resourcePanel/);
+  assert.doesNotMatch(indexHtml, /resourceDetailModal/);
+  assert.doesNotMatch(indexHtml, /ResourceRenderer/);
+  assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });
 

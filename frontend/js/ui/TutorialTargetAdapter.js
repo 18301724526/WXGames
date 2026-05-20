@@ -15,7 +15,6 @@
         'tab-territory': byId('tabMilitary'),
         'btn-advance-era': byId('btnAdvanceEra'),
         'btn-claim-event': byId('btnClaimEvent'),
-        'food-value': byId('foodValue'),
         'card-farm': byId('card-farm'),
         'card-house': byId('card-house'),
         'event-card-special': byId('event-card-special'),

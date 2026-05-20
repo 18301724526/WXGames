@@ -21,7 +21,6 @@ function createWindowStub() {
       stop() {}
     },
     GameStateManager: class {},
-    ResourceRenderer: class {},
     BuildingUIRenderer: class {},
     EventUIRenderer: class {},
     TutorialUIRenderer: class {},
@@ -122,7 +121,6 @@ test('app 会映射所有教程高亮目标，包括民居卡片', () => {
       'tab-military': 'tabMilitary',
       'btn-advance-era': 'btnAdvanceEra',
       'btn-claim-event': 'btnClaimEvent',
-      'food-value': 'foodValue',
       'card-farm': 'card-farm',
       'card-house': 'card-house',
       'event-card-special': 'event-card-special',

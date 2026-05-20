@@ -207,13 +207,13 @@
       if (step === 4) return 'tab-buildings';
       if (step === 5) return 'card-farm';
       if (step === 7) return 'card-house';
-      if (step === 8) return currentTab === 'resources' ? 'food-value' : 'tab-resources';
+      if (step === 8) return 'tab-resources';
       if (step === 9) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
       if (step === 10) return 'tab-events';
       if (step === 11) return this.isEventModalOpen() ? 'btn-claim-event' : 'event-card-special';
       if (step === 12) return 'tab-buildings';
       if (step === 13) {
-        if (!this.canAffordLumbermill()) return currentTab === 'resources' ? 'food-value' : 'tab-resources';
+        if (!this.canAffordLumbermill()) return 'tab-resources';
         return currentTab === 'buildings' ? 'card-lumbermill' : 'tab-buildings';
       }
       if (step === 14) return currentTab === 'resources' ? 'card-craftsman' : 'tab-resources';

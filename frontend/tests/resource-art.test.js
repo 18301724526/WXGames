@@ -21,8 +21,9 @@ test('H5 document adapters require an explicit document argument', () => {
   }
 });
 
-test('resource strip uses dedicated resource icon assets', () => {
+test('canvas resource HUD uses dedicated resource icon assets without DOM resource detail styles', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
+  const canvasRenderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
   const assets = [
     'icon-food-cutout.webp',
     'icon-happiness-cutout.webp',
@@ -33,15 +34,16 @@ test('resource strip uses dedicated resource icon assets', () => {
   for (const asset of assets) {
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
   }
-  assert.match(css, new RegExp(`\\.resource-detail-food \\{ background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\); \\}`));
-  assert.match(css, new RegExp(`\\.resource-detail-knowledge \\{ background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\); \\}`));
-  assert.match(css, new RegExp(`\\.resource-detail-wood \\{ background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\); \\}`));
+  assert.match(canvasRenderer, /assets\/art\/icon-food-cutout\.webp/);
+  assert.match(canvasRenderer, /assets\/art\/icon-knowledge-cutout\.webp/);
+  assert.match(canvasRenderer, /assets\/art\/icon-wood-cutout\.webp/);
   assert.match(css, new RegExp(`\\.cost-food \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\);\\s*\\}`));
   assert.match(css, new RegExp(`\\.cost-knowledge \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\);\\s*\\}`));
   assert.match(css, new RegExp(`\\.cost-wood \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\);\\s*\\}`));
   assert.match(css, new RegExp(`\\.civ-overview-item:nth-child\\(4\\) \\.civ-overview-icon \\{ background-image: url\\('${iconUrlPattern('icon-happiness-cutout.webp')}'\\); \\}`));
   assert.doesNotMatch(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
-  assert.doesNotMatch(css, /\.resource-detail-wood \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
+  assert.doesNotMatch(css, /resource-detail/);
+  assert.doesNotMatch(css, /\.(?:resource-panel|resource-card|resource-icon|resource-value)\b/);
   assert.doesNotMatch(css, /\.civ-overview-item:nth-child\(4\) \.civ-overview-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
 });
 
@@ -113,13 +115,11 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
-  assert.match(html, /ResourceRenderer\.js\?v=resource-presenter-v1/);
   assert.match(html, /BuildingUIRenderer\.js\?v=building-presenter-v1/);
   assert.match(html, /EventUIRenderer\.js\?v=event-presenter-v1/);
   assert.match(html, /RuntimeLogAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /ResourceDetailModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
@@ -151,6 +151,9 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.doesNotMatch(html, /id="logModal"/);
   assert.doesNotMatch(html, /id="settingsBtn"/);
   assert.doesNotMatch(html, /id="settingsMenu"/);
+  assert.doesNotMatch(html, /id="resourcePanel"/);
+  assert.doesNotMatch(html, /id="resourceDetailModal"/);
+  assert.doesNotMatch(html, /ResourceRenderer|ResourceDetailModalAdapter/);
   assert.doesNotMatch(html, /id="gameTime"/);
   assert.doesNotMatch(html, /\son[a-z]+="/);
   assert.match(css, /\.advisor-btn/);

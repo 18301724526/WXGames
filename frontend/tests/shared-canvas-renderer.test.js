@@ -240,6 +240,86 @@ test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order 
   assert.deepEqual(renderer.getHitTarget({ x: 320, y: 804 }), { type: 'switchTab', tab: 'military' });
 });
 
+test('CanvasGameRenderer renders resource details panel from presenter view state', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '10',
+        foodRate: '+1/s',
+        foodDetailValue: '10',
+        foodOutputRate: '+1.2/s',
+        foodConsumptionRate: '-0.2/s',
+        foodNetRate: '+1/s',
+        knowledgeValue: '5',
+        knowledgeRate: '+0.1/s',
+        knowledgeDetailValue: '5',
+        knowledgeDetailRate: '+0.1/s',
+        woodValue: '2',
+        woodRate: '+0.3/s',
+        woodDetailValue: '2',
+        woodDetailRate: '+0.3/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+  });
+
+  renderer.render({ currentEraName: '聚落时代', currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showResourceDetails: true,
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源详情'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '净增长 +1/s'));
+  const closeTarget = renderer.hitTargets.find((target) => target.action?.type === 'closeResourceDetails' && target.width === 28);
+  assert.ok(closeTarget);
+  assert.deepEqual(renderer.getHitTarget({
+    x: closeTarget.x + closeTarget.width / 2,
+    y: closeTarget.y + closeTarget.height / 2,
+  }), { type: 'closeResourceDetails' });
+  assert.deepEqual(renderer.getHitTarget({ x: 40, y: 100 }), { type: 'closeResourceDetails' });
+});
+
+test('CanvasGameRenderer resource details panel hides wood before settlement era', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+1/s',
+        foodDetailValue: '10',
+        foodOutputRate: '+1/s',
+        foodConsumptionRate: '-0/s',
+        foodNetRate: '+1/s',
+        knowledgeValue: '5',
+        knowledgeRate: '+0.1/s',
+        knowledgeDetailValue: '5',
+        knowledgeDetailRate: '+0.1/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+        woodDetailValue: '0',
+        woodDetailRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+  });
+
+  renderer.render({ currentEraName: '农耕时代', currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showResourceDetails: true,
+  });
+
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'), false);
+});
+
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });
@@ -362,6 +442,7 @@ test('H5 entry does not replace existing DOM UI after renderer extraction', () =
   assert.match(html, /id="tabMilitary"/);
   assert.match(html, /id="tabEvents"/);
   assert.doesNotMatch(html, /id="resourcePanel"/);
+  assert.doesNotMatch(html, /id="resourceDetailModal"/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);

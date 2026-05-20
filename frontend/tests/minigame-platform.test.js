@@ -279,6 +279,23 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     });
     assert.equal(app.activeTab, 'buildings');
 
+    app.switchTab('resources');
+    const resourceTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openResourceDetails');
+    assert.ok(resourceTarget);
+    app.handleTap({
+      x: resourceTarget.x + resourceTarget.width / 2,
+      y: resourceTarget.y + resourceTarget.height / 2,
+    });
+    assert.equal(app.showResourceDetails, true);
+    assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '资源详情'), true);
+    const closeResourceTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'closeResourceDetails' && target.width === 28);
+    assert.ok(closeResourceTarget);
+    app.handleTap({
+      x: closeResourceTarget.x + closeResourceTarget.width / 2,
+      y: closeResourceTarget.y + closeResourceTarget.height / 2,
+    });
+    assert.equal(app.showResourceDetails, false);
+
     assert.deepEqual(requests.find((request) => request.action === 'assign'), {
       action: 'assign',
       target: 'farmer',

@@ -56,8 +56,6 @@
         authStorage,
         tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
         floatingText: registry.FloatingTextAdapter?.fromDocument(doc),
-        resourceRenderer: registry.ResourceRenderer?.fromDocument(doc, setText, { presenter }),
-        resourceDetailModal: registry.ResourceDetailModalAdapter?.fromDocument(doc),
         advisorPanel: registry.AdvisorPanelAdapter?.fromDocument(doc),
         namingModal: registry.NamingModalAdapter?.fromDocument(doc),
         authShell: registry.AuthShellAdapter?.fromDocument(doc),

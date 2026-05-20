@@ -63,8 +63,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     BuildingController: class BuildingController {},
     TerritoryController: class TerritoryController {},
     FloatingTextAdapter: makeFactory('floatingText', calls),
-    ResourceRenderer: makeDocumentFactory('resource', calls),
-    ResourceDetailModalAdapter: makeFactory('resourceDetail', calls),
     AdvisorPanelAdapter: makeFactory('advisor', calls),
     NamingModalAdapter: makeFactory('naming', calls),
     AuthShellAdapter: makeFactory('auth', calls),
@@ -157,12 +155,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.ok(calls.some(([name, callRuntime]) => name === 'authStorage' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'tutorialStorage' && callRuntime === runtime));
     assert.ok(calls.some(([name, callDoc]) => name === 'floatingText' && callDoc === doc));
-    assert.ok(calls.some(([name, callDoc, callSetText, options]) => (
-      name === 'resource'
-      && callDoc === doc
-      && callSetText === setText
-      && options.presenter === factories.UIStatePresenter
-    )));
     assert.ok(calls.some(([name, callDoc, options]) => name === 'civilization' && callDoc === doc && options.setText === setText));
     assert.ok(calls.some(([name, callDoc, callRuntime, options]) => (
       name === 'tutorialRenderer'
@@ -194,7 +186,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(appJs, /window\.mountFloatingText/);
   assert.doesNotMatch(appJs, /window\.mount(?:AuthMethods|PopulationMethods|LogMethods)/);
   assert.match(appJs, /this\.gameModules\?\.mount\?\.\(this\)/);
-  assert.doesNotMatch(appJs, /ResourceRenderer\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /AuthShellAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);
+  assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter/);
 });

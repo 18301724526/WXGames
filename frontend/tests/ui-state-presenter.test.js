@@ -100,7 +100,6 @@ test('resource view state is renderer-neutral and formats resource display', () 
   assert.equal(view.text.knowledgeRate, '+0.4/s');
   assert.equal(view.text.woodRate, '+0/s');
   assert.equal(view.text.happinessValue, 92);
-  assert.deepEqual(view.visibility, { woodCard: true, woodDetailCard: true });
   assert.equal(view.classState.foodNetRate['is-positive'], true);
   assert.equal(view.classState.foodNetRate['is-negative'], false);
 });
@@ -145,7 +144,6 @@ test('resource view state hides wood before settlement era', () => {
   assert.equal(view.hasWood, false);
   assert.equal(view.text.woodValue, 0);
   assert.equal(view.text.woodRate, '+0/s');
-  assert.deepEqual(view.visibility, { woodCard: false, woodDetailCard: false });
   assert.equal(view.classState.foodNetRate['is-positive'], false);
   assert.equal(view.classState.foodNetRate['is-negative'], true);
 });
