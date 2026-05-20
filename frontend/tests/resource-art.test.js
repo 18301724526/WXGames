@@ -125,7 +125,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /ResourceDetailModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /GameAPI\.js\?v=territory-radar-v1/);
+  assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
   assert.match(html, /TerritoryActionAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-rename-adapter-v1/);
   assert.match(html, /TerritoryUIRenderer\.js\?v=territory-presenter-v1/);
