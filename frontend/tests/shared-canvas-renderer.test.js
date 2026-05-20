@@ -127,7 +127,59 @@ test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constru
   }
 });
 
-test('CanvasGameRenderer layout keeps stage 5 overlay inset from viewport like 0.1.3', () => {
+test('CanvasGameRenderer HUD overlay matches measured mobile DOM baseline responsively', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '2.1M',
+        foodRate: '+11.4/s',
+        knowledgeValue: '249k',
+        knowledgeRate: '+1.4/s',
+        woodValue: '3.3M',
+        woodRate: '+18/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: false, activeCityName: '首都' }),
+    buildAdvisorViewState: () => ({ hidden: false }),
+  });
+
+  renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 12 && c[3] === 366 && c[4] === 180), 'top bar should match measured 366x180 DOM rect');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && Math.abs(c[1] - 26) < 0.2 && c[2] === 69 && Math.abs(c[3] - 107.33) < 0.2 && c[4] === 79), 'resource card should match DOM y=69 height=79 responsively');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 92 && c[2] === 153 && c[3] === 190 && c[4] === 34), 'city switcher should match measured 190x34 DOM rect');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 786 && c[3] === 366 && c[4] === 58), 'bottom tab bar should keep DOM app inset while matching measured 58px height');
+});
+
+test('CanvasGameRenderer HUD overlay keeps responsive desktop max width for tab bar and top content', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 1024, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+  });
+
+  renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 272 && c[3] === 480), 'top content should keep max 480px centered on desktop');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 272 && c[2] === 786 && c[3] === 480 && c[4] === 58), 'tab bar should keep max 480px centered on desktop');
+});
+
+test('CanvasGameRenderer layout keeps stage 5 overlay inset from viewport like DOM app padding', () => {
   const { ctx } = makeCtx();
   const mobileRenderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   assert.deepEqual(mobileRenderer.getLayout(), { contentX: 12, contentWidth: 366, contentRight: 378 });

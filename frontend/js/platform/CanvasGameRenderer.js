@@ -237,10 +237,17 @@
       const resourceView = this.presenter.buildResourceViewState(state);
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       const advisorView = this.presenter.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
-      const barHeight = cityView.hidden ? 118 : 154;
       const x = layout.contentX;
       const y = 12;
       const width = layout.contentWidth;
+      const barPaddingX = 14;
+      const statusTop = y + 10;
+      const statusHeight = 38;
+      const resourceTop = y + 57;
+      const resourceHeight = 79;
+      const cityTop = y + 141;
+      const cityHeight = 34;
+      const barHeight = cityView.hidden ? 138 : 180;
 
       this.drawPanel(x, y, width, barHeight, {
         fill: this.createGradient(
@@ -256,20 +263,20 @@
         inset: 'rgba(255, 232, 185, 0.12)',
       });
 
-      this.drawAsset('assets/art/icon-fire-cutout.webp', x + 12, y + 10, 30, 30);
-      this.drawText(state.currentEraName || '原始时代', x + 48, y + 15, { size: 14, bold: true, color: '#d78332' });
+      this.drawAsset('assets/art/icon-fire-cutout.webp', x + barPaddingX, statusTop + 4, 30, 30);
+      this.drawText(state.currentEraName || '原始时代', x + barPaddingX + 36, statusTop + 19, { size: 14, bold: true, color: '#d78332', baseline: 'middle' });
 
       const actionDefs = [];
       if (!advisorView.hidden) actionDefs.push({ label: '顾问', width: 62 });
-      actionDefs.push({ label: '日志', width: 52 });
-      actionDefs.push({ label: '设置', width: 52 });
-      let cursor = x + width - 12;
+      actionDefs.push({ label: '日志', width: 44 });
+      actionDefs.push({ label: '设置', width: 44 });
+      let cursor = x + width - barPaddingX;
       actionDefs.slice().reverse().forEach((action, index) => {
         cursor -= action.width;
-        this.drawButton(cursor, y + 8, action.width, 36, action.label, { size: 12, bold: true, active: false, radius: 18 });
+        this.drawButton(cursor, statusTop + 1, action.width, action.label === '顾问' ? statusHeight : 36, action.label, { size: 12, bold: true, active: false, radius: 18 });
         if (action.label === '顾问') {
-          this.drawText('谋', cursor + 14, y + 26, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
-          this.drawText('●', cursor + action.width - 10, y + 26, { size: 7, color: '#74d3a0', baseline: 'middle', align: 'center' });
+          this.drawText('谋', cursor + 14, statusTop + 20, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
+          this.drawText('●', cursor + action.width - 10, statusTop + 20, { size: 7, color: '#74d3a0', baseline: 'middle', align: 'center' });
         }
         if (index < actionDefs.length - 1) cursor -= 6;
       });
@@ -282,13 +289,15 @@
         resources.push({ label: '木材', value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' });
       }
       const gap = 8;
-      const cardWidth = (width - 28 - gap * (resources.length - 1)) / resources.length;
-      const cardY = y + 50;
+      const resourceX = x + barPaddingX;
+      const resourceWidth = width - barPaddingX * 2;
+      const cardWidth = (resourceWidth - gap * (resources.length - 1)) / resources.length;
+      const cardY = resourceTop;
       resources.forEach((resource, index) => {
-        const cardX = x + 14 + index * (cardWidth + gap);
-        this.drawPanel(cardX, cardY, cardWidth, 52, {
+        const cardX = resourceX + index * (cardWidth + gap);
+        this.drawPanel(cardX, cardY, cardWidth, resourceHeight, {
           fill: this.createGradient(
-            cardX, cardY, cardX + cardWidth, cardY + 52,
+            cardX, cardY, cardX + cardWidth, cardY + resourceHeight,
             [
               [0, 'rgba(68, 48, 31, 0.78)'],
               [1, 'rgba(28, 22, 17, 0.74)'],
@@ -299,22 +308,22 @@
           radius: 10,
           inset: 'rgba(255, 231, 184, 0.08)',
         });
-        this.drawAsset(resource.icon, cardX + 8, cardY + 11, 30, 30);
-        this.drawText(resource.label, cardX + 44, cardY + 8, { size: 10, color: '#a0a0a0' });
-        this.drawText(resource.value, cardX + 44, cardY + 20, { size: 17, bold: true, color: '#74d3a0' });
-        this.drawText(resource.rate, cardX + 44, cardY + 39, { size: 10, color: '#a0a0a0' });
+        this.drawAsset(resource.icon, cardX + 6, cardY + 24, 30, 30);
+        this.drawText(resource.label, cardX + 41, cardY + 16, { size: 10, color: '#a0a0a0' });
+        this.drawText(resource.value, cardX + 41, cardY + 34, { size: 17, bold: true, color: '#74d3a0' });
+        this.drawText(resource.rate, cardX + 41, cardY + 59, { size: 10, color: '#a0a0a0' });
       });
 
       if (!cityView.hidden) {
         const triggerWidth = Math.min(190, width * 0.64);
         const triggerX = x + Math.floor((width - triggerWidth) / 2) - 8;
-        const triggerY = y + barHeight - 43;
+        const triggerY = cityTop;
         this.drawPanel(triggerX, triggerY - 5, triggerWidth, 9, {
           fill: 'rgba(93, 63, 35, 0.88)',
           stroke: 'rgba(255, 225, 177, 0.14)',
           radius: 5,
         });
-        this.drawButton(triggerX, triggerY, triggerWidth, 34, cityView.activeCityName || '首都', { size: 13, bold: true, active: true, radius: 8 });
+        this.drawButton(triggerX, triggerY, triggerWidth, cityHeight, cityView.activeCityName || '首都', { size: 13, bold: true, active: true, radius: 8 });
         this.drawText('▾', triggerX + triggerWidth - 18, triggerY + 17, {
           size: 14,
           bold: true,
@@ -549,8 +558,8 @@
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
-      const y = this.height - 60 - this.bottomSafeArea;
-      const tabBarHeight = 60 + this.bottomSafeArea;
+      const tabBarHeight = 58;
+      const y = this.height - tabBarHeight;
       this.drawPanel(x, y, width, tabBarHeight, {
         fill: this.createGradient(
           x, y, x, y + tabBarHeight,
@@ -578,8 +587,8 @@
           );
           this.ctx.fillRect(tabX + tabWidth * 0.2, y, tabWidth * 0.6, 3);
         }
-        this.drawAsset(icon, tabX + tabWidth / 2 - (isActive ? 16 : 14), y + 10 - (isActive ? 2 : 0), isActive ? 32 : 28, isActive ? 32 : 28);
-        this.drawText(label, tabX + tabWidth / 2, y + 42, {
+        this.drawAsset(icon, tabX + tabWidth / 2 - (isActive ? 16 : 14), y + 7 - (isActive ? 2 : 0), isActive ? 32 : 28, isActive ? 32 : 28);
+        this.drawText(label, tabX + tabWidth / 2, y + 38, {
           size: 10,
           color: isActive ? '#d78332' : '#a0a0a0',
           align: 'center',
