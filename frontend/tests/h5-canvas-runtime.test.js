@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const H5CanvasRuntime = require('../js/platform/H5CanvasRuntime');
+global.H5CanvasRuntime = H5CanvasRuntime;
 const H5CanvasAppShell = require('../js/platform/H5CanvasAppShell');
 
 const projectRoot = path.join(__dirname, '..', '..');
@@ -93,7 +94,54 @@ test('H5 canvas app shell mounts runtime without requiring renderer', () => {
 
   assert.ok(shell);
   assert.equal(shell.mounted, true);
+  assert.equal(shell.previewEnabled, false);
   assert.equal(appended.length, 1);
+});
+
+test('H5 canvas app shell can render read-only HUD preview when explicitly enabled', () => {
+  const { document, runtime, appended } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    width: 0,
+    height: 0,
+    pixelRatio: 1,
+    render(state, options) {
+      renderCalls.push({ state, options });
+    },
+  };
+  const state = { currentTab: 'resources', resources: { food: 10, knowledge: 2 } };
+  const shell = H5CanvasAppShell.mount({ state }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+
+  assert.ok(shell);
+  assert.equal(shell.previewEnabled, true);
+  assert.equal(appended.length, 1);
+  assert.equal(renderCalls.length, 1);
+  assert.deepEqual(renderCalls[0], { state, options: { activeTab: 'resources' } });
+  assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
+  assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
+});
+
+test('H5 canvas app shell keeps preview disabled by default so existing DOM UI remains authoritative', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = { render: (...args) => renderCalls.push(args) };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+  });
+
+  assert.ok(shell);
+  assert.equal(shell.previewEnabled, false);
+  assert.equal(shell.renderReadOnly({ currentTab: 'events' }, 'events'), false);
+  assert.equal(renderCalls.length, 0);
 });
 
 test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
@@ -104,4 +152,7 @@ test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
   assert.match(html, /js\/platform\/H5CanvasAppShell\.js\?v=h5-canvas-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app">/);
   assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
+  assert.match(appJs, /presenter: this\.presenter/);
+  assert.match(appJs, /previewEnabled: false/);
+  assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });

@@ -127,6 +127,43 @@ test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constru
   }
 });
 
+test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view state', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0.2/s',
+        woodValue: '8',
+        woodRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildPopulationViewState: () => ({
+      text: { totalPop: '3', maxPop: '3', unassignedPop: '0' },
+      jobs: [
+        { id: 'farmer', visible: true, count: 3, canIncrease: false, canDecrease: false },
+        { id: 'scholar', visible: true, count: 0, canIncrease: false, canDecrease: false },
+      ],
+    }),
+  });
+
+  renderer.render({ currentEraName: '原始时代', currentTab: 'resources', happiness: 100 }, { activeTab: 'resources' });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '原始时代'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '食物'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '知识'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'));
+  assert.ok(renderer.getHitTarget({ x: 30, y: 800 })?.type === 'switchTab');
+});
+
 test('H5CanvasGameRenderer render calls drawing primitives with presenter guard', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new H5CanvasGameRenderer({ ctx, width: 390, height: 844 });

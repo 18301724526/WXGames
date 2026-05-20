@@ -125,6 +125,8 @@ const Game = {
     this.canvasShell = window.H5CanvasAppShell?.mount(this, {
       document,
       runtime: window,
+      presenter: this.presenter,
+      previewEnabled: false,
     });
     this.render();
   },
@@ -407,6 +409,9 @@ const Game = {
     this.tutorialController.render();
     this.renderSoftGuide();
     this.maybeShowNamingPrompt();
+    if (this.canvasShell?.previewEnabled) {
+      this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    }
   },
 
   renderResources() {
@@ -573,6 +578,9 @@ const Game = {
     const view = this.presenter.buildAdvisorViewState(guide);
     this.activeAdvisor = view.activeAdvisor;
     this.advisorPanel?.render(view);
+    if (this.canvasShell?.previewEnabled) {
+      this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    }
   },
 
   openAdvisor() {
