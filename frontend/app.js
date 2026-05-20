@@ -145,8 +145,12 @@ const Game = {
           this.openResourceDetails?.();
           return true;
         }
-        if (action?.type === 'openSettings') {
-          this.toggleSettingsMenu?.();
+        if (action?.type === 'resetGame') {
+          this.resetGame?.();
+          return true;
+        }
+        if (action?.type === 'logout') {
+          this.logout?.();
           return true;
         }
         if (action?.type === 'openCitySwitcher') {

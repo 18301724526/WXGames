@@ -93,6 +93,7 @@
     getHitTarget(point = {}) {
       const x = Number(point.x);
       const y = Number(point.y);
+      let backgroundAction = null;
       for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
         const target = this.hitTargets[index];
         if (
@@ -101,10 +102,14 @@
           && y >= target.y
           && y <= target.y + target.height
         ) {
-          return target.action;
+          if (target.action?.background) {
+            backgroundAction = target.action;
+          } else {
+            return target.action;
+          }
         }
       }
-      return null;
+      return backgroundAction;
     }
 
     setAssetsChangedHandler(handler) {
@@ -631,6 +636,64 @@
       this.clear();
       this.renderTopBar(state);
       this.renderTabs(activeTab);
+      if (options.showSettings) {
+        this.renderSettingsPanel();
+      }
+    }
+
+    renderSettingsPanel() {
+      const layout = this.getLayout();
+      const panelWidth = 200;
+      const panelHeight = 120;
+      const x = layout.contentRight - panelWidth - 8;
+      const y = 62;
+
+      // 绘制面板背景
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(42, 35, 24, 0.96)',
+        stroke: 'rgba(255, 226, 177, 0.2)',
+        radius: 10,
+      });
+
+      // 绘制标题
+      this.drawText('设置', x + panelWidth / 2, y + 18, {
+        size: 14,
+        bold: true,
+        color: '#ffd98a',
+        align: 'center',
+      });
+
+      // 绘制分隔线
+      if (this.ctx) {
+        this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + 10, y + 28);
+        this.ctx.lineTo(x + panelWidth - 10, y + 28);
+        this.ctx.stroke();
+      }
+
+      // 重置游戏按钮
+      const btnHeight = 36;
+      const btnY1 = y + 38;
+      this.drawButton(x + 10, btnY1, panelWidth - 20, btnHeight, '重置游戏', {
+        size: 12,
+        radius: 8,
+        active: false,
+      });
+      this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'resetGame' });
+
+      // 退出登录按钮
+      const btnY2 = btnY1 + btnHeight + 8;
+      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, '退出登录', {
+        size: 12,
+        radius: 8,
+        active: false,
+      });
+      this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'logout' });
+
+      // 面板外部点击关闭
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
     }
 
     render(state = {}, options = {}) {

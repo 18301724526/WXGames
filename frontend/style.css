@@ -583,7 +583,9 @@ body {
    弹出的菜单/弹窗保持 DOM 可见可点，避免 Canvas 层级挡住关闭按钮。 */
 #app > .top-bar > .top-status-row,
 #app > .top-bar > .city-switcher > .city-switcher-trigger,
-#app > .tab-bar {
+#app > .tab-bar,
+#app > .top-bar .settings-menu,
+#settingsBtn {
     opacity: 0;
     pointer-events: none;
     user-select: none;
@@ -591,19 +593,19 @@ body {
 
 #app > .top-bar > .top-status-row *,
 #app > .top-bar > .city-switcher > .city-switcher-trigger *,
-#app > .tab-bar * {
+#app > .tab-bar *,
+#app > .top-bar .settings-menu *,
+#settingsBtn * {
     pointer-events: none !important;
 }
 
 #app > .top-bar > .city-switcher,
-#app > .top-bar .city-switcher-menu,
-#app > .top-bar .settings-menu {
+#app > .top-bar .city-switcher-menu {
     opacity: 1;
     pointer-events: auto;
 }
 
-#app > .top-bar .city-switcher-menu *,
-#app > .top-bar .settings-menu * {
+#app > .top-bar .city-switcher-menu * {
     pointer-events: auto !important;
 }
 
