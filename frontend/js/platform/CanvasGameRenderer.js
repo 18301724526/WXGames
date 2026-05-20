@@ -21,8 +21,8 @@
     }
 
     getLayout() {
-      const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width - this.edgePadding * 2));
-      const contentX = Math.max(this.edgePadding, Math.floor((this.width - contentWidth) / 2));
+      const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width));
+      const contentX = Math.max(0, Math.floor((this.width - contentWidth) / 2));
       return {
         contentX,
         contentWidth,
@@ -237,9 +237,9 @@
       const resourceView = this.presenter.buildResourceViewState(state);
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       const advisorView = this.presenter.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
-      const barHeight = cityView.hidden ? 118 : 154;
+      const barHeight = cityView.hidden ? 116 : 154;
       const x = layout.contentX;
-      const y = 12;
+      const y = 0;
       const width = layout.contentWidth;
 
       this.drawPanel(x, y, width, barHeight, {
@@ -282,10 +282,10 @@
         resources.push({ label: '木材', value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' });
       }
       const gap = 8;
-      const cardWidth = (width - 24 - gap * (resources.length - 1)) / resources.length;
+      const cardWidth = (width - 28 - gap * (resources.length - 1)) / resources.length;
       const cardY = y + 50;
       resources.forEach((resource, index) => {
-        const cardX = x + index * (cardWidth + gap);
+        const cardX = x + 14 + index * (cardWidth + gap);
         this.drawPanel(cardX, cardY, cardWidth, 52, {
           fill: this.createGradient(
             cardX, cardY, cardX + cardWidth, cardY + 52,
@@ -308,8 +308,20 @@
       if (!cityView.hidden) {
         const triggerWidth = Math.min(190, width * 0.64);
         const triggerX = x + Math.floor((width - triggerWidth) / 2) - 8;
-        const triggerY = y + barHeight - 38;
-        this.drawButton(triggerX, triggerY, triggerWidth, 30, cityView.activeCityName || '首都', { size: 13, bold: true, active: true, radius: 8 });
+        const triggerY = y + barHeight - 43;
+        this.drawPanel(triggerX, triggerY - 5, triggerWidth, 9, {
+          fill: 'rgba(93, 63, 35, 0.88)',
+          stroke: 'rgba(255, 225, 177, 0.14)',
+          radius: 5,
+        });
+        this.drawButton(triggerX, triggerY, triggerWidth, 34, cityView.activeCityName || '首都', { size: 13, bold: true, active: true, radius: 8 });
+        this.drawText('▾', triggerX + triggerWidth - 18, triggerY + 17, {
+          size: 14,
+          bold: true,
+          color: '#ffd994',
+          baseline: 'middle',
+          align: 'center',
+        });
       }
 
       return y + barHeight + 12;
@@ -537,8 +549,8 @@
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
-      const y = this.height - 60 - this.bottomSafeArea;
-      const tabBarHeight = 60 + this.bottomSafeArea;
+      const y = this.height - 58 - this.bottomSafeArea;
+      const tabBarHeight = 58 + this.bottomSafeArea;
       this.drawPanel(x, y, width, tabBarHeight, {
         fill: this.createGradient(
           x, y, x, y + tabBarHeight,

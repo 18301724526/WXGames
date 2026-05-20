@@ -127,6 +127,40 @@ test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constru
   }
 });
 
+test('CanvasGameRenderer layout aligns HUD overlay with DOM app width', () => {
+  const { ctx } = makeCtx();
+  const mobileRenderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  assert.deepEqual(mobileRenderer.getLayout(), { contentX: 0, contentWidth: 390, contentRight: 390 });
+
+  const desktopRenderer = new CanvasGameRenderer({ ctx, width: 1024, height: 844, pixelRatio: 1 });
+  assert.deepEqual(desktopRenderer.getLayout(), { contentX: 272, contentWidth: 480, contentRight: 752 });
+});
+
+test('CanvasGameRenderer HUD overlay draws city dropdown arrow when city switcher is visible', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '2',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: false, activeCityName: '首都' }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+  });
+
+  renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '首都'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '▾'));
+});
+
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });
