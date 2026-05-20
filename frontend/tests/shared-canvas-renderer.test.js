@@ -673,6 +673,14 @@ test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view sta
         { id: 'scholar', visible: true, count: 0, canIncrease: false, canDecrease: false },
       ],
     }),
+    buildTechViewState: () => ({
+      text: {
+        knowledgeRate: '0.2/s',
+        title: '科技树',
+        placeholder: '首期暂不重构科技系统',
+        subtitle: '当前阶段先保留科技入口与知识产出展示',
+      },
+    }),
   });
 
   renderer.render({ currentEraName: '原始时代', currentTab: 'resources', happiness: 100 }, { activeTab: 'resources' });
@@ -684,6 +692,45 @@ test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view sta
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'));
   assert.ok(renderer.getHitTarget({ x: 30, y: 800 })?.type === 'switchTab');
+});
+
+test('CanvasGameRenderer draws tech placeholder page without DOM text writes', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0.2/s',
+        woodValue: '8',
+        woodRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildTechViewState: () => ({
+      text: {
+        knowledgeRate: '0.2/s',
+        title: '科技树',
+        placeholder: '首期暂不重构科技系统',
+        subtitle: '当前阶段先保留科技入口与知识产出展示',
+      },
+    }),
+  });
+
+  renderer.render({ currentEraName: '聚落时代', resources: { knowledgePerSecond: 0.2 } }, {
+    activeTab: 'tech',
+    mode: 'hud',
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '当前知识产出'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '首期暂不重构科技系统'));
 });
 
 test('H5CanvasGameRenderer render calls drawing primitives with presenter guard', () => {
@@ -726,12 +773,13 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   assert.doesNotMatch(html, /id="resourceDetailModal"/);
   assert.doesNotMatch(html, /id="buildingGrid"|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
   assert.doesNotMatch(html, /id="eventModal"|eventsBadge|pendingEventsContainer|eventHistoryList|EventUIRenderer/);
+  assert.doesNotMatch(html, /id="techKnowledgeRate"|tech-header-panel|tech-panel/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
   assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
   assert.match(appJs, /action\?\.type === 'claimEvent'/);
-  assert.match(appJs, /renderTech\(\)/);
+  assert.doesNotMatch(appJs, /renderTech\(\)|techKnowledgeRate/);
 });
 
 test('Canvas renderers are loaded in correct order in H5 index.html', () => {

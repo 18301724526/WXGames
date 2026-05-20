@@ -428,7 +428,6 @@ const Game = {
 
   render() {
     this.renderCivilization();
-    this.renderTech();
     this.renderMilitary();
     this.renderTerritory();
     this.tutorialController.render();
@@ -482,11 +481,6 @@ const Game = {
       { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
     );
     this.civilizationPanel?.render(view);
-  },
-
-  renderTech() {
-    const view = this.presenter.buildEventViewState(this.state);
-    this.setText('techKnowledgeRate', view.text.techKnowledgeRate);
   },
 
   renderMilitary() {

@@ -23,7 +23,7 @@ test('H5 text adapter owns id based text writes', () => {
   assert.equal(elements.get('eraName').textContent, '聚落时代');
 });
 
-test('app uses H5TextAdapter instead of legacy DOMHelper', () => {
+test('app keeps H5TextAdapter for pages not yet migrated to Canvas', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
@@ -31,5 +31,6 @@ test('app uses H5TextAdapter instead of legacy DOMHelper', () => {
   assert.doesNotMatch(html, /DOMHelper\.js/);
   assert.match(appJs, /Object\.assign\(this, shell\)/);
   assert.match(appJs, /this\.textAdapter\?\.setText\(id, value\)/);
+  assert.doesNotMatch(appJs, /renderTech\(\)|techKnowledgeRate/);
   assert.doesNotMatch(appJs, /DOMHelper/);
 });

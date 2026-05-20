@@ -348,7 +348,7 @@ test('event view state is renderer-neutral and formats cards, badge, and history
     ],
   }, { nowMs: new Date('2026-05-17T08:01:00.000Z').getTime() });
 
-  assert.equal(view.text.techKnowledgeRate, '1.25/s');
+  assert.equal(view.text, undefined);
   assert.deepEqual(view.badge, { hidden: false, text: '2' });
   assert.equal(view.pending.isEmpty, false);
   assert.equal(view.pending.cards[0].hint, '剩余 4:00，超时将自动失效');
@@ -356,6 +356,16 @@ test('event view state is renderer-neutral and formats cards, badge, and history
   assert.equal(view.pending.cards[1].hint, '剩余 5:00，超时将按失败处理');
   assert.equal(view.pending.cards[1].classState['is-threat'], true);
   assert.equal(view.history.items[0].result, '🌾 +1.2k');
+});
+
+test('tech view state formats knowledge rate for Canvas renderer', () => {
+  const view = UIStatePresenter.buildTechViewState({
+    resources: { knowledgePerSecond: 1.25 },
+  });
+
+  assert.equal(view.text.knowledgeRate, '1.25/s');
+  assert.equal(view.text.title, '科技树');
+  assert.equal(view.text.placeholder, '首期暂不重构科技系统');
 });
 
 test('event modal view state handles multiple and single event options', () => {

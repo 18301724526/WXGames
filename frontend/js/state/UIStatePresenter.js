@@ -745,9 +745,6 @@
       const pendingCards = eventQueue.map((event) => this.buildEventCardViewState(event, nowMs));
       const historyItems = eventHistory.map((event) => this.buildEventHistoryItemViewState(event));
       return {
-        text: {
-          techKnowledgeRate: `${this.toNumber(state.resources?.knowledgePerSecond)}/s`,
-        },
         badge: {
           hidden: !eventQueue.length,
           text: eventQueue.length > 9 ? '9+' : String(eventQueue.length),
@@ -761,6 +758,17 @@
           isEmpty: !historyItems.length,
           emptyText: '暂无事件记录',
           items: historyItems,
+        },
+      };
+    }
+
+    static buildTechViewState(state = {}) {
+      return {
+        text: {
+          knowledgeRate: `${this.toNumber(state.resources?.knowledgePerSecond)}/s`,
+          title: '科技树',
+          placeholder: '首期暂不重构科技系统',
+          subtitle: '当前阶段先保留科技入口与知识产出展示',
         },
       };
     }

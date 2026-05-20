@@ -1009,6 +1009,59 @@
       this.addHitTarget({ x: x + 14, y: startY + panelHeight - 40, width: width - 28, height: 34 }, { type: 'advanceEra', disabled: view.advanceButton.disabled });
     }
 
+    renderTech(state = {}, startY = 210, panelHeight = 250) {
+      if (!this.presenter || typeof this.presenter.buildTechViewState !== 'function') return;
+      const view = this.presenter.buildTechViewState(state);
+      const layout = this.getLayout();
+      const x = layout.contentX;
+      const width = layout.contentWidth;
+      this.drawPanel(x, startY, width, panelHeight, {
+        fill: 'rgba(37, 29, 21, 0.88)',
+        stroke: 'rgba(255, 226, 177, 0.14)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      const headerHeight = 72;
+      this.drawPanel(x + 12, startY + 12, width - 24, headerHeight, {
+        fill: 'rgba(45, 34, 24, 0.82)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      this.drawAsset('assets/art/icon-knowledge-cutout.webp', x + 28, startY + 27, 40, 40);
+      this.drawText('当前知识产出', x + 78, startY + 28, {
+        size: 12,
+        color: '#a0a0a0',
+      });
+      this.drawText(view.text.knowledgeRate, x + 78, startY + 48, {
+        size: 22,
+        bold: true,
+        color: '#74d3a0',
+      });
+
+      const panelY = startY + 96;
+      const panelBottom = startY + panelHeight - 14;
+      const panelH = Math.max(116, panelBottom - panelY);
+      this.drawPanel(x + 12, panelY, width - 24, panelH, {
+        fill: 'rgba(28, 22, 16, 0.74)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      this.renderSectionHeader(view.text.title, x + 28, panelY + 16, '🔬');
+      const centerY = panelY + Math.max(66, panelH / 2 + 6);
+      this.drawAsset('assets/art/icon-science-cutout.webp', x + width / 2 - 34, centerY - 52, 68, 68, 0.62);
+      this.drawText(view.text.placeholder, x + width / 2, centerY + 24, {
+        size: 15,
+        bold: true,
+        color: '#cbbd96',
+        align: 'center',
+      });
+      this.drawText(view.text.subtitle, x + width / 2, centerY + 48, {
+        size: 11,
+        color: 'rgba(234, 234, 234, 0.58)',
+        align: 'center',
+      });
+    }
+
     renderMilitary(state = {}, startY = 210, panelHeight = 310) {
       if (!this.presenter) return;
       const view = this.presenter.buildMilitaryViewState(state);
@@ -1047,6 +1100,7 @@
     renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
       if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, { offset: options.buildingOffset });
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
+      else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight);
       else if (activeTab === 'civilization') this.renderCivilization(state, startY, Math.min(availableHeight, 260));
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight);
     }
@@ -1253,6 +1307,10 @@
         const tabsTop = this.height - 60 - this.bottomSafeArea;
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderEvents(state, topBarBottom, availableHeight);
+      } else if (activeTab === 'tech') {
+        const tabsTop = this.height - 60 - this.bottomSafeArea;
+        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
+        this.renderTech(state, topBarBottom, availableHeight);
       }
       this.renderTabs(activeTab, state);
       if (options.showResourceDetails) {
