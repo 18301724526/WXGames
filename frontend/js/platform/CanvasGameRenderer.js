@@ -448,9 +448,12 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const y = startY;
-      this.drawPanel(x, y, width, 168, {
+      const panelHeight = 268;
+      const jobRowHeight = 42;
+      const jobRowGap = 8;
+      this.drawPanel(x, y, width, panelHeight, {
         fill: this.createGradient(
-          x, y, x + width, y + 168,
+          x, y, x + width, y + panelHeight,
           [
             [0, 'rgba(61, 43, 28, 0.94)'],
             [1, 'rgba(24, 19, 14, 0.94)'],
@@ -463,10 +466,11 @@
       });
 
       this.drawLine(x + 10, y + 6, x + width - 10, y + 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
-      this.drawLine(x + 10, y + 162, x + width - 10, y + 162, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
+      this.drawLine(x + 10, y + panelHeight - 6, x + width - 10, y + panelHeight - 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawIconCard(x + 14, y + 14, 38, 38, 'assets/art/icon-population-cutout.webp');
       this.drawText('人口管理', x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
       this.drawText('族人职责', x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 
       const stats = [
         { icon: 'assets/art/icon-population-cutout.webp', label: '总人口', value: `${view.text.total}/${view.text.max}`, color: '#74d3a0' },
@@ -476,7 +480,7 @@
       const statWidth = Math.floor((width - 28) / 3);
       stats.forEach((stat, index) => {
         const statX = x + 6 + index * statWidth;
-        const statY = y + 62;
+        const statY = y + 64;
         this.drawAsset(stat.icon, statX + 8, statY + 7, 18, 18);
         if (index > 0) this.drawLine(statX, statY + 4, statX, statY + 36, { color: 'rgba(255, 226, 177, 0.1)' });
         this.drawText(stat.label, statX + 30, statY + 4, { size: 10, color: 'rgba(234, 234, 234, 0.64)' });
@@ -485,13 +489,13 @@
 
       const jobs = view.jobs.filter((job) => job.visible);
       jobs.forEach((job, index) => {
-        const rowY = y + 108 + index * 18;
+        const rowY = y + 112 + index * (jobRowHeight + jobRowGap);
         const jobLabel = { farmer: '农民', scholar: '学者', craftsman: '工匠' }[job.id] || job.id;
         const desc = { farmer: '生产食物', scholar: '口耳相传', craftsman: '钻研技艺' }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];
-        this.drawPanel(x + 7, rowY, width - 14, 14, {
+        this.drawPanel(x + 7, rowY, width - 14, jobRowHeight, {
           fill: this.createGradient(
-            x + 7, rowY, x + width - 7, rowY + 14,
+            x + 7, rowY, x + width - 7, rowY + jobRowHeight,
             [
               [0, 'rgba(74, 52, 34, 0.86)'],
               [1, 'rgba(28, 22, 16, 0.84)'],
@@ -499,23 +503,24 @@
             'rgba(52, 38, 27, 0.84)',
           ),
           stroke: 'rgba(255, 226, 177, 0.14)',
-          radius: 6,
+          radius: 9,
           inset: 'rgba(255, 231, 184, 0.08)',
         });
-        this.drawAsset(icon, x + 12, rowY - 4, 24, 24);
-        this.drawText(jobLabel, x + 44, rowY + 2, { size: 12, bold: true, color: '#fff1cf' });
-        this.drawText(desc, x + 92, rowY + 4, { size: 9, color: 'rgba(234, 234, 234, 0.58)', align: 'center' });
+        this.drawAsset(icon, x + 15, rowY + 9, 24, 24);
+        this.drawText(jobLabel, x + 48, rowY + 8, { size: 13, bold: true, color: '#fff1cf' });
+        this.drawText(desc, x + 48, rowY + 26, { size: 10, color: 'rgba(234, 234, 234, 0.58)' });
         const minusX = x + width - 72;
         const countX = x + width - 52;
-        const plusX = x + width - 22;
-        this.drawButton(minusX, rowY - 1, 16, 16, '-', { disabled: !job.canDecrease, size: 12, radius: 4 });
-        this.drawPanel(countX, rowY - 3, 38, 20, { fill: 'rgba(11, 18, 14, 0.38)', stroke: 'rgba(116, 211, 160, 0.24)', radius: 8, inset: 'rgba(116, 211, 160, 0.08)' });
-        this.drawText(job.count, countX + 19, rowY + 7, { size: 14, bold: true, color: '#74d3a0', baseline: 'middle', align: 'center' });
-        this.drawButton(plusX, rowY - 1, 16, 16, '+', { disabled: !job.canIncrease, size: 12, radius: 4 });
-        this.addHitTarget({ x: minusX, y: rowY - 1, width: 16, height: 16 }, { type: 'assignJob', job: job.id, delta: -1, disabled: !job.canDecrease });
-        this.addHitTarget({ x: plusX, y: rowY - 1, width: 16, height: 16 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
+        const plusX = x + width - 24;
+        const controlY = rowY + 10;
+        this.drawButton(minusX, controlY, 20, 22, '-', { disabled: !job.canDecrease, size: 13, radius: 6 });
+        this.drawPanel(countX, rowY + 9, 40, 24, { fill: 'rgba(11, 18, 14, 0.38)', stroke: 'rgba(116, 211, 160, 0.24)', radius: 8, inset: 'rgba(116, 211, 160, 0.08)' });
+        this.drawText(job.count, countX + 20, rowY + 21, { size: 14, bold: true, color: '#74d3a0', baseline: 'middle', align: 'center' });
+        this.drawButton(plusX, controlY, 20, 22, '+', { disabled: !job.canIncrease, size: 13, radius: 6 });
+        this.addHitTarget({ x: minusX, y: controlY, width: 20, height: 22 }, { type: 'assignJob', job: job.id, delta: -1, disabled: !job.canDecrease });
+        this.addHitTarget({ x: plusX, y: controlY, width: 20, height: 22 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
       });
-      return y + 180;
+      return y + panelHeight + 12;
     }
 
     renderBuildings(state = {}, startY = 210, panelHeight = 310) {
