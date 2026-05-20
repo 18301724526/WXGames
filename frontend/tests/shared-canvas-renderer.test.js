@@ -127,6 +127,42 @@ test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constru
   }
 });
 
+test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });
+
+  assert.equal(renderer.pixelRatio, 3);
+  assert.deepEqual(ctx.transforms.at(-1), [1, 1]);
+});
+
+test('CanvasGameRenderer HUD overlay mode only draws top HUD and bottom tabs', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildPopulationViewState: () => {
+      throw new Error('HUD mode must not render population panel');
+    },
+  });
+
+  renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '食物'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
+});
+
 test('CanvasGameRenderer clear() does not draw full background for HUD overlay mode', () => {
   const { ctx, calls } = makeCtx();
   var renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

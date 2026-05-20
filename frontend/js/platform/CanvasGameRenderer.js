@@ -13,7 +13,7 @@
       this.assetCache = new Map();
       this.assetsChangedHandler = null;
       this.hitTargets = [];
-      if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(this.pixelRatio, this.pixelRatio);
+      if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
 
     setPresenter(presenter) {
@@ -594,7 +594,19 @@
       this.drawText(view.activeAdvisor.message, x + 64, y + 13, { color: '#f6e8c8', size: 12 });
     }
 
+    renderHudOverlay(state = {}, options = {}) {
+      const activeTab = options.activeTab || 'resources';
+      this.setHitTargets([]);
+      this.clear();
+      this.renderTopBar(state);
+      this.renderTabs(activeTab);
+    }
+
     render(state = {}, options = {}) {
+      if (options.mode === 'hud') {
+        this.renderHudOverlay(state, options);
+        return;
+      }
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
       this.clear();

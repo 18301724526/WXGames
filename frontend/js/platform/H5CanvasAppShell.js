@@ -88,7 +88,7 @@
 
     renderReadOnly(state, activeTab = 'resources') {
       if (!this.previewEnabled || !this.renderer || !state) return false;
-      this.renderer.render(state, { activeTab });
+      this.renderer.render(state, { activeTab, mode: 'hud' });
       return true;
     }
 

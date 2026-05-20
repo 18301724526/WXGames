@@ -124,9 +124,10 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
   assert.equal(shell.previewEnabled, true);
   assert.equal(appended.length, 1);
   assert.equal(renderCalls.length, 1);
-  assert.deepEqual(renderCalls[0], { state, options: { activeTab: 'resources' } });
+  assert.deepEqual(renderCalls[0], { state, options: { activeTab: 'resources', mode: 'hud' } });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
   assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
+  assert.equal(renderCalls.at(-1).options.mode, 'hud');
 });
 
 test('H5 canvas app shell keeps preview disabled by default so existing DOM UI remains authoritative', () => {
