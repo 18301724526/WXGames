@@ -179,7 +179,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   const shellJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5ShellAdapter.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v2[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v2/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v2[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.match(appJs, /registry: window/);
   assert.match(shellJs, /const registry = options\.registry \|\| runtimeHost/);

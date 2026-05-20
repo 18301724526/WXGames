@@ -122,6 +122,10 @@ const Game = {
     this.territoryController.bind();
     this.startScoutCountdownTimer();
     this.updateChecker.start();
+    this.canvasShell = window.H5CanvasAppShell?.mount(this, {
+      document,
+      runtime: window,
+    });
     this.render();
   },
 

@@ -1,0 +1,107 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const H5CanvasRuntime = require('../js/platform/H5CanvasRuntime');
+const H5CanvasAppShell = require('../js/platform/H5CanvasAppShell');
+
+const projectRoot = path.join(__dirname, '..', '..');
+
+function createCanvasHarness() {
+  const listeners = {};
+  const appended = [];
+  const ctx = {
+    transforms: [],
+    setTransform(...args) { this.transforms.push(args); },
+  };
+  const canvas = {
+    id: '',
+    width: 0,
+    height: 0,
+    style: {},
+    attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    getContext(type) {
+      assert.equal(type, '2d');
+      return ctx;
+    },
+    addEventListener(type, handler) { listeners[type] = handler; },
+    getBoundingClientRect() { return { left: 10, top: 20, width: 390, height: 844 }; },
+  };
+  const document = {
+    documentElement: { clientWidth: 390, clientHeight: 844 },
+    body: { appendChild(node) { appended.push(node); } },
+    createElement(tag) {
+      assert.equal(tag, 'canvas');
+      return canvas;
+    },
+  };
+  const runtime = {
+    innerWidth: 390,
+    innerHeight: 844,
+    devicePixelRatio: 2,
+    addEventListener(type, handler) { listeners[`window:${type}`] = handler; },
+  };
+  return { canvas, ctx, document, runtime, listeners, appended };
+}
+
+test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
+  const { canvas, ctx, document, runtime, appended } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+
+  const created = h5Runtime.ensureCanvas();
+
+  assert.equal(created, canvas);
+  assert.equal(appended.length, 1);
+  assert.equal(canvas.id, 'h5CanvasLayer');
+  assert.equal(canvas.attributes['aria-hidden'], 'true');
+  assert.equal(canvas.style.position, 'fixed');
+  assert.equal(canvas.style.pointerEvents, 'none');
+  assert.equal(canvas.style.background, 'transparent');
+  assert.equal(canvas.width, 780);
+  assert.equal(canvas.height, 1688);
+  assert.deepEqual(ctx.transforms.at(-1), [2, 0, 0, 2, 0, 0]);
+});
+
+test('H5 canvas runtime resizes and converts pointer coordinates', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+  const sizes = [];
+  const taps = [];
+
+  h5Runtime.onResize((size) => sizes.push(size));
+  h5Runtime.onTap((point) => taps.push(point));
+  h5Runtime.ensureCanvas();
+  runtime.innerWidth = 300;
+  runtime.innerHeight = 600;
+  runtime.devicePixelRatio = 3;
+  listeners['window:resize']();
+  listeners.pointerup({ clientX: 205, clientY: 442 });
+
+  assert.deepEqual(sizes.at(-1), { width: 300, height: 600, pixelRatio: 3 });
+  assert.deepEqual(taps.at(-1), { x: 150, y: 300 });
+});
+
+test('H5 canvas app shell mounts runtime without requiring renderer', () => {
+  const { document, runtime, appended } = createCanvasHarness();
+  const shell = H5CanvasAppShell.mount({ state: { resources: {} } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+  });
+
+  assert.ok(shell);
+  assert.equal(shell.mounted, true);
+  assert.equal(appended.length, 1);
+});
+
+test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
+  const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=h5-canvas-runtime-v1/);
+  assert.match(html, /js\/platform\/H5CanvasAppShell\.js\?v=h5-canvas-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /<div id="app">/);
+  assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
+});
