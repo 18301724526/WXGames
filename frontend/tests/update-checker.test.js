@@ -61,11 +61,60 @@ test('update checker polls through injected scheduler', async () => {
   assert.equal(scheduled[0].intervalMs, 1234);
 });
 
+test('update checker reports errors through onError and keeps polling alive', async () => {
+  const scheduled = [];
+  const errors = [];
+  const checker = new UpdateChecker({
+    api: {
+      async getVersion() {
+        throw new Error('network down');
+      },
+    },
+    scheduler: {
+      setInterval(callback, intervalMs) {
+        const timer = { callback, intervalMs };
+        scheduled.push(timer);
+        return timer;
+      },
+      clearInterval() {},
+    },
+    onError(error) { errors.push(error.message); },
+  });
+
+  await checker.start();
+  await checker.safeCheck();
+
+  assert.deepEqual(errors, ['network down', 'network down']);
+  assert.equal(scheduled.length, 1);
+  assert.ok(checker.timer);
+});
+
+test('update checker emits initialization and update logs', async () => {
+  const entries = [];
+  const versions = [{ deploymentId: 'a' }, { deploymentId: 'b' }];
+  const checker = new UpdateChecker({
+    api: { async getVersion() { return versions.shift(); } },
+    onLog(entry) { entries.push(entry); },
+    onUpdate() {},
+  });
+  checker.timer = { id: 1 };
+
+  await checker.check({ initialize: true });
+  await checker.check();
+
+  assert.deepEqual(entries, [
+    { type: 'initialized', version: { deploymentId: 'a' }, deploymentId: 'a' },
+    { type: 'updated', version: { deploymentId: 'b' }, deploymentId: 'b', previousDeploymentId: 'a' },
+  ]);
+});
+
 test('app injects scheduler into update checker', () => {
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const serviceJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'services', 'UpdateChecker.js'), 'utf8');
 
   assert.match(appJs, /new constructors\.UpdateChecker\(\{[\s\S]*scheduler: this\.scheduler/);
+  assert.match(appJs, /api:\s*\{\s*getVersion:\s*\(\)\s*=>\s*this\.apiGet\('\/version'\)\s*\}/);
+  assert.match(appJs, /onError:\s*\(error\)\s*=>/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(serviceJs, /global\.setInterval|global\.clearInterval/);
 });

@@ -52,10 +52,22 @@ const Game = {
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
     this.syncService = new constructors.GameStateSync(this.gameAPI, this.config?.SYNC_INTERVAL_MS, this.scheduler);
     this.updateChecker = new constructors.UpdateChecker({
-      api: this.gameAPI,
+      api: { getVersion: () => this.apiGet('/version') },
       intervalMs: this.config?.UPDATE_CHECK_INTERVAL_MS,
       scheduler: this.scheduler,
-      onUpdate: (version) => this.showUpdatePrompt(version),
+      onUpdate: (version, previousDeploymentId) => {
+        this.log(`🔄 检测到新版本：${previousDeploymentId} -> ${version.deploymentId}`);
+        return this.showUpdatePrompt(version);
+      },
+      onError: (error) => {
+        const message = error?.payload?.message || error?.message || '未知错误';
+        this.log(`⚠️ 版本检测失败：${message}`);
+      },
+      onLog: (entry) => {
+        if (entry?.type === 'initialized') {
+          this.log(`🛰️ 版本检测已启动：${entry.deploymentId}`);
+        }
+      },
     });
     this.stateManager = new constructors.GameStateManager(this.state, { buildingState: this.buildingState });
     this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
