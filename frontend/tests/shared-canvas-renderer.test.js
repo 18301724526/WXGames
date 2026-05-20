@@ -127,10 +127,10 @@ test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constru
   }
 });
 
-test('CanvasGameRenderer layout aligns HUD overlay with DOM app width', () => {
+test('CanvasGameRenderer layout keeps stage 5 overlay inset from viewport like 0.1.3', () => {
   const { ctx } = makeCtx();
   const mobileRenderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
-  assert.deepEqual(mobileRenderer.getLayout(), { contentX: 0, contentWidth: 390, contentRight: 390 });
+  assert.deepEqual(mobileRenderer.getLayout(), { contentX: 12, contentWidth: 366, contentRight: 378 });
 
   const desktopRenderer = new CanvasGameRenderer({ ctx, width: 1024, height: 844, pixelRatio: 1 });
   assert.deepEqual(desktopRenderer.getLayout(), { contentX: 272, contentWidth: 480, contentRight: 752 });

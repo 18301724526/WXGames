@@ -21,8 +21,8 @@
     }
 
     getLayout() {
-      const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width));
-      const contentX = Math.max(0, Math.floor((this.width - contentWidth) / 2));
+      const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width - this.edgePadding * 2));
+      const contentX = Math.max(this.edgePadding, Math.floor((this.width - contentWidth) / 2));
       return {
         contentX,
         contentWidth,
@@ -237,9 +237,9 @@
       const resourceView = this.presenter.buildResourceViewState(state);
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       const advisorView = this.presenter.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
-      const barHeight = cityView.hidden ? 116 : 154;
+      const barHeight = cityView.hidden ? 118 : 154;
       const x = layout.contentX;
-      const y = 0;
+      const y = 12;
       const width = layout.contentWidth;
 
       this.drawPanel(x, y, width, barHeight, {
@@ -549,8 +549,8 @@
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
-      const y = this.height - 58 - this.bottomSafeArea;
-      const tabBarHeight = 58 + this.bottomSafeArea;
+      const y = this.height - 60 - this.bottomSafeArea;
+      const tabBarHeight = 60 + this.bottomSafeArea;
       this.drawPanel(x, y, width, tabBarHeight, {
         fill: this.createGradient(
           x, y, x, y + tabBarHeight,
