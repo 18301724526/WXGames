@@ -769,9 +769,9 @@
       } else {
         displayLogs.forEach((log, index) => {
           const itemY = listY + 6 + index * itemHeight;
-          const time = log.time || '';
-          const method = log.method || '';
-          const status = log.status || '';
+          const time = log.timestamp || '';
+          const method = (log.method || '') + ' ' + (log.path || '');
+          const status = log.statusCode || 0;
           const isOk = status >= 200 && status < 300;
           const statusColor = isOk ? '#74d3a0' : '#ff6b6b';
 
