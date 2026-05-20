@@ -198,13 +198,18 @@
       ctx.fillRect(0, 0, viewport.width, viewport.height);
 
       const panelWidth = Math.min(420, viewport.width - 32);
-      const panelHeight = 270;
+      const panelHeight = Math.min(336, Math.max(260, viewport.height - 96));
       const panelX = Math.floor((viewport.width - panelWidth) / 2);
-      const panelY = Math.max(48, Math.floor((viewport.height - panelHeight) / 2));
-      const buttonWidth = Math.min(panelWidth - 32, 190);
+      const panelY = Math.max(24, Math.floor((viewport.height - panelHeight) / 2));
+      const contentX = panelX + panelWidth / 2;
+      const dividerY = panelY + 62;
+      const titleY = panelY + 82;
+      const bodyStartY = panelY + 128;
+      const buttonWidth = Math.min(panelWidth - 48, 190);
       const buttonHeight = 46;
       const buttonX = panelX + Math.floor((panelWidth - buttonWidth) / 2);
-      const buttonY = panelY + panelHeight - 74;
+      const buttonY = panelY + panelHeight - 76;
+      const noteY = buttonY - 34;
       this.promptButtonRect = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
 
       this.drawPanel(panelX, panelY, panelWidth, panelHeight, {
@@ -228,9 +233,9 @@
 
       ctx.fillStyle = this.createGradient(
         panelX + 20,
-        panelY + 18,
+        dividerY,
         panelX + panelWidth - 20,
-        panelY + 18,
+        dividerY,
         [
           [0, 'rgba(240, 180, 91, 0.05)'],
           [0.5, 'rgba(240, 180, 91, 0.32)'],
@@ -238,39 +243,41 @@
         ],
         'rgba(240, 180, 91, 0.12)',
       );
-      ctx.fillRect(panelX + 18, panelY + 56, panelWidth - 36, 1);
+      ctx.fillRect(panelX + 22, dividerY, panelWidth - 44, 1);
 
       ctx.fillStyle = 'rgba(240, 180, 91, 0.16)';
       ctx.beginPath();
-      ctx.arc(panelX + panelWidth / 2, panelY + 38, 18, 0, Math.PI * 2);
+      ctx.arc(contentX, panelY + 38, 18, 0, Math.PI * 2);
       ctx.fill();
-      this.drawText('更', panelX + panelWidth / 2, panelY + 22, {
+      this.drawText('更', contentX, panelY + 22, {
         size: 20,
         bold: true,
         color: '#f0b45b',
         align: 'center',
       });
 
-      this.drawText('发现新版本', panelX + panelWidth / 2, panelY + 68, {
+      this.drawText('发现新版本', contentX, titleY, {
         size: 22,
         bold: true,
         color: '#f6e8c8',
         align: 'center',
       });
 
-      const bodyLines = this.wrapText('游戏有更新，需要重新载入后继续。', panelWidth - 56, {
+      const bodyLines = this.wrapText('游戏有更新，需要重新载入后继续。', panelWidth - 64, {
         size: 15,
       });
       bodyLines.forEach((line, index) => {
-        this.drawText(line, panelX + panelWidth / 2, panelY + 112 + index * 24, {
+        this.drawText(line, contentX, bodyStartY + index * 24, {
           size: 15,
           color: '#d9c8a0',
           align: 'center',
         });
       });
 
+      const bodyEndY = bodyStartY + bodyLines.length * 24;
+      const versionY = bodyEndY + 14;
       if (version?.version) {
-        this.drawText(`版本 ${version.version}`, panelX + panelWidth / 2, panelY + 162, {
+        this.drawText(`版本 ${version.version}`, contentX, versionY, {
           size: 14,
           color: '#f0b45b',
           bold: true,
@@ -278,7 +285,7 @@
         });
       }
 
-      this.drawText('为保证资源与状态一致，点击按钮后立即重载。', panelX + panelWidth / 2, panelY + 190, {
+      this.drawText('为保证资源与状态一致，点击按钮后立即重载。', contentX, noteY, {
         size: 13,
         color: '#b9a98a',
         align: 'center',

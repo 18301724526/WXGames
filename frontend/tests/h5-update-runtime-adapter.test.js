@@ -166,6 +166,7 @@ test('H5 update runtime adapter renders a canvas prompt and waits for canvas cli
   assert.equal(confirmCalls, 0);
   assert.ok(draws.includes('发现新版本'));
   assert.ok(draws.includes('立即更新'));
+  assert.equal(adapter.promptButtonRect.y, 514);
   assert.equal(replaced.length, 0);
 
   const button = adapter.promptButtonRect;
