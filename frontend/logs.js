@@ -58,6 +58,11 @@ window.mountLogMethods = function(game, deps = {}) {
     this.logModal?.close();
   };
 
+  game.clearRequestLogs = function() {
+    this.requestLogs = [];
+    this.showRequestLogs?.();
+  };
+
   console.log('[logs.js] 请求日志模块已挂载');
 };
 

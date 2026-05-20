@@ -351,24 +351,6 @@ body {
     box-shadow: 0 0 10px var(--number-glow);
 }
 
-.settings-menu {
-    position: fixed;
-    top: 62px;
-    right: max(12px, calc((100vw - 480px) / 2 + 12px));
-    z-index: 120;
-    min-width: 136px;
-    display: none;
-    padding: 7px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: rgba(30, 24, 18, 0.96);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
-}
-
-.settings-menu.active {
-    display: block;
-}
-
 .recent-log-empty {
     color: #888;
     text-align: center;
@@ -437,28 +419,6 @@ body {
 
 .request-log-table .is-error {
     color: var(--danger);
-}
-
-.settings-menu button {
-    display: block;
-    width: 100%;
-    padding: 9px 10px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-primary);
-    font-size: 12px;
-    text-align: left;
-    cursor: pointer;
-}
-
-.settings-menu button:hover {
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.settings-menu .menu-sep {
-    border-top: 1px solid var(--border);
-    margin: 4px 0;
 }
 
 /* ===== 椤甸潰瀹瑰櫒 ===== */
@@ -584,8 +544,8 @@ body {
 #app > .top-bar > .top-status-row,
 #app > .top-bar > .city-switcher > .city-switcher-trigger,
 #app > .tab-bar,
-#app > .top-bar .settings-menu,
-#settingsBtn {
+#logButton,
+.log-modal-overlay {
     opacity: 0;
     pointer-events: none;
     user-select: none;
@@ -594,8 +554,8 @@ body {
 #app > .top-bar > .top-status-row *,
 #app > .top-bar > .city-switcher > .city-switcher-trigger *,
 #app > .tab-bar *,
-#app > .top-bar .settings-menu *,
-#settingsBtn * {
+#logButton *,
+.log-modal-overlay * {
     pointer-events: none !important;
 }
 

@@ -12,6 +12,7 @@
       this.resizeDisposer = null;
       this.tapDisposer = null;
       this.showSettings = false;
+      this.showLogs = false;
     }
 
     createRenderer(canvas) {
@@ -64,6 +65,7 @@
     handleAction(action, event) {
       if (action.type === 'openSettings') {
         this.showSettings = true;
+        this.showLogs = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -72,8 +74,20 @@
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
-      if (action.type === 'resetGame' || action.type === 'logout') {
+      if (action.type === 'openLogs') {
+        this.showLogs = true;
         this.showSettings = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'closeLogs') {
+        this.showLogs = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'resetGame' || action.type === 'logout' || action.type === 'clearLogs') {
+        this.showSettings = false;
+        this.showLogs = false;
       }
       if (this.onAction) return this.onAction(action, event) !== false;
       if (action.type === 'switchTab' && this.lastGame?.switchTab) {
@@ -102,7 +116,7 @@
 
     renderReadOnly(state, activeTab = 'resources') {
       if (!this.previewEnabled || !this.renderer || !state) return false;
-      this.renderer.render(state, { activeTab, mode: 'hud', showSettings: this.showSettings });
+      this.renderer.render(state, { activeTab, mode: 'hud', showSettings: this.showSettings, showLogs: this.showLogs, logs: this.lastGame?.requestLogs || [] });
       return true;
     }
 

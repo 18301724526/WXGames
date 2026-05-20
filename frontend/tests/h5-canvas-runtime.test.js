@@ -126,7 +126,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
   assert.equal(shell.previewEnabled, true);
   assert.equal(appended.length, 1);
   assert.equal(renderCalls.length, 1);
-  assert.deepEqual(renderCalls[0], { state, options: { activeTab: 'resources', mode: 'hud', showSettings: false } });
+  assert.deepEqual(renderCalls[0], { state, options: { activeTab: 'resources', mode: 'hud', showSettings: false, showLogs: false, logs: [] } });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
   assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
   assert.equal(renderCalls.at(-1).options.mode, 'hud');
@@ -264,7 +264,7 @@ test('stage 6 canvas HUD takeover hides only replaced controls and keeps menus c
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const indexHtml = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
 
-  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.top-bar > \.city-switcher > \.city-switcher-trigger,[\s\S]*#app > \.tab-bar,[\s\S]*#app > \.top-bar \.settings-menu,[\s\S]*#settingsBtn \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.top-bar > \.city-switcher > \.city-switcher-trigger,[\s\S]*#app > \.tab-bar,[\s\S]*#logButton,[\s\S]*\.log-modal-overlay \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
   assert.match(css, /#app > \.top-bar > \.city-switcher,[\s\S]*#app > \.top-bar \.city-switcher-menu \{[\s\S]*pointer-events: auto;/);
   assert.match(css, /\.city-switcher-menu \{[\s\S]*position: fixed;[\s\S]*top: 194px;/);
   assert.doesNotMatch(css, /\.resource-strip/);

@@ -137,8 +137,16 @@ const Game = {
           this.openAdvisor?.();
           return true;
         }
-        if (action?.type === 'openLog') {
-          this.openLog?.();
+        if (action?.type === 'openLogs') {
+          this.showRecentLogs?.();
+          return true;
+        }
+        if (action?.type === 'closeLogs') {
+          this.closeRequestLogs?.();
+          return true;
+        }
+        if (action?.type === 'clearLogs') {
+          this.clearRequestLogs?.();
           return true;
         }
         if (action?.type === 'openResourceDetails') {

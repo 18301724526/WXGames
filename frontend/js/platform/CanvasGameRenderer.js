@@ -639,6 +639,9 @@
       if (options.showSettings) {
         this.renderSettingsPanel();
       }
+      if (options.showLogs) {
+        this.renderLogsPanel(options.logs || []);
+      }
     }
 
     renderSettingsPanel() {
@@ -694,6 +697,104 @@
 
       // 面板外部点击关闭
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
+    }
+
+    renderLogsPanel(logs = []) {
+      const layout = this.getLayout();
+      const panelWidth = Math.min(360, layout.contentWidth - 24);
+      const panelHeight = 420;
+      const x = (this.width - panelWidth) / 2;
+      const y = (this.height - panelHeight) / 2;
+
+      // 绘制面板背景
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(42, 35, 24, 0.96)',
+        stroke: 'rgba(255, 226, 177, 0.2)',
+        radius: 12,
+      });
+
+      // 绘制标题
+      this.drawText('📜 最近请求日志', x + panelWidth / 2, y + 22, {
+        size: 16,
+        bold: true,
+        color: '#ffd98a',
+        align: 'center',
+      });
+
+      // 绘制关闭按钮
+      const closeBtnSize = 28;
+      const closeBtnX = x + panelWidth - closeBtnSize - 10;
+      const closeBtnY = y + 10;
+      this.drawButton(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, '✕', {
+        size: 14,
+        radius: 6,
+        active: false,
+      });
+      this.addHitTarget({ x: closeBtnX, y: closeBtnY, width: closeBtnSize, height: closeBtnSize }, { type: 'closeLogs' });
+
+      // 绘制分隔线
+      if (this.ctx) {
+        this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + 12, y + 42);
+        this.ctx.lineTo(x + panelWidth - 12, y + 42);
+        this.ctx.stroke();
+      }
+
+      // 日志列表区域
+      const listX = x + 12;
+      const listY = y + 52;
+      const listWidth = panelWidth - 24;
+      const listHeight = panelHeight - 110;
+
+      // 绘制日志列表背景
+      this.drawPanel(listX, listY, listWidth, listHeight, {
+        fill: 'rgba(0, 0, 0, 0.2)',
+        stroke: 'rgba(255, 255, 255, 0.05)',
+        radius: 8,
+      });
+
+      // 绘制日志条目
+      const itemHeight = 28;
+      const maxItems = Math.floor(listHeight / itemHeight);
+      const displayLogs = logs.slice(0, maxItems);
+
+      if (displayLogs.length === 0) {
+        this.drawText('暂无日志', listX + listWidth / 2, listY + listHeight / 2, {
+          size: 12,
+          color: '#888',
+          align: 'center',
+        });
+      } else {
+        displayLogs.forEach((log, index) => {
+          const itemY = listY + 6 + index * itemHeight;
+          const time = log.time || '';
+          const method = log.method || '';
+          const status = log.status || '';
+          const isOk = status >= 200 && status < 300;
+          const statusColor = isOk ? '#74d3a0' : '#ff6b6b';
+
+          // 时间
+          this.drawText(time, listX + 8, itemY + 10, { size: 10, color: '#aaa' });
+          // 方法
+          this.drawText(method, listX + 70, itemY + 10, { size: 10, color: '#f6e8c8' });
+          // 状态码
+          this.drawText(String(status), listX + listWidth - 40, itemY + 10, { size: 10, color: statusColor });
+        });
+      }
+
+      // 清空日志按钮
+      const clearBtnY = y + panelHeight - 48;
+      this.drawButton(x + 12, clearBtnY, panelWidth - 24, 36, '清空日志', {
+        size: 12,
+        radius: 8,
+        active: false,
+      });
+      this.addHitTarget({ x: x + 12, y: clearBtnY, width: panelWidth - 24, height: 36 }, { type: 'clearLogs' });
+
+      // 面板外部点击关闭
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeLogs', background: true });
     }
 
     render(state = {}, options = {}) {

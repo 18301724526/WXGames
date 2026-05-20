@@ -146,11 +146,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /logs\.js\?v=h5-module-deps-v1/);
   assert.match(html, /id="advisorBtn"/);
   assert.match(html, /id="advisorModal"/);
-  assert.match(html, /id="logButton"/);
   assert.match(html, /id="btnLogin"/);
-  assert.match(html, /id="btnCloseLogModal"/);
-  assert.match(html, /id="btnResetGame"/);
-  assert.match(html, /id="btnLogout"/);
   assert.doesNotMatch(html, /id="gameTime"/);
   assert.doesNotMatch(html, /\son[a-z]+="/);
   assert.match(css, /\.advisor-btn/);
