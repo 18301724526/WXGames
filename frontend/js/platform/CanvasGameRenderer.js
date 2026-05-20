@@ -123,20 +123,15 @@
 
     clear() {
       if (!this.ctx) return;
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      this.ctx.fillStyle = '#17120d';
-      this.ctx.fillRect(0, 0, this.width, this.height);
-      this.drawAsset('assets/art/civilization-bg.webp', 0, 0, this.width, this.height, 0.9);
-      this.ctx.fillStyle = this.createGradient(
-        0, 0, 0, this.height,
-        [
-          [0, 'rgba(23, 18, 13, 0.24)'],
-          [0.7, 'rgba(23, 18, 13, 0.88)'],
-          [1, 'rgba(18, 14, 10, 0.96)'],
-        ],
-        'rgba(23, 18, 13, 0.84)',
-      );
-      this.ctx.fillRect(0, 0, this.width, this.height);
+      // For HUD overlay mode: only clear the HUD regions we actually draw to.
+      // The DOM game UI shows through the transparent canvas background.
+      // Top bar: y 12 to y 170 approx
+      // Bottom tabs: y height-72 to height
+      const hudTopY = 0;
+      const hudBottomY = Math.max(0, this.height - 72);
+      this.ctx.clearRect(0, hudTopY, this.width, hudBottomY - hudTopY);
+      this.ctx.clearRect(0, hudBottomY, this.width, this.height - hudBottomY);
+      // Optional: draw a subtle top bar backing if needed, but keep transparent for DOM
     }
 
     drawText(text, x, y, options = {}) {

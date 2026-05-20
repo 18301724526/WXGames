@@ -28,7 +28,7 @@
       canvas.style.display = 'block';
       canvas.style.pointerEvents = 'none';
       canvas.style.touchAction = 'none';
-      canvas.style.zIndex = '0';
+      canvas.style.zIndex = '999';
       canvas.style.background = 'transparent';
       const host = this.container || this.document.body;
       host?.appendChild?.(canvas);

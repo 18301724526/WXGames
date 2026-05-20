@@ -59,6 +59,7 @@ test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
   assert.equal(canvas.attributes['aria-hidden'], 'true');
   assert.equal(canvas.style.position, 'fixed');
   assert.equal(canvas.style.pointerEvents, 'none');
+  assert.equal(canvas.style.zIndex, '999');
   assert.equal(canvas.style.background, 'transparent');
   assert.equal(canvas.width, 780);
   assert.equal(canvas.height, 1688);
@@ -213,7 +214,7 @@ test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
   assert.match(html, /<div id="app">/);
   assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
-  assert.match(appJs, /previewEnabled: false/);
+  assert.match(appJs, /previewEnabled: true/);
   assert.match(appJs, /inputEnabled: false/);
   assert.match(appJs, /action\?\.type === 'switchTab'/);
   assert.match(appJs, /this\.switchTab\(action\.tab\)/);

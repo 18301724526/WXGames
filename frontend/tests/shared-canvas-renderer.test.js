@@ -127,6 +127,16 @@ test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constru
   }
 });
 
+test('CanvasGameRenderer clear() does not draw full background for HUD overlay mode', () => {
+  const { ctx, calls } = makeCtx();
+  var renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.clear();
+
+  assert.ok(calls.some((c) => Array.isArray(c) && c[0] === 'clearRect'), `clearRect should be called, got: ${JSON.stringify(calls)}`);
+  var fullHeightFills = calls.filter((c) => Array.isArray(c) && c[0] === 'fillRect' && c[4] === 844);
+  assert.equal(fullHeightFills.length, 0, 'should not fill full viewport height');
+});
+
 test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view state', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

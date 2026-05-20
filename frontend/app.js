@@ -126,7 +126,7 @@ const Game = {
       document,
       runtime: window,
       presenter: this.presenter,
-      previewEnabled: false,
+      previewEnabled: true,
       inputEnabled: false,
       onAction: (action) => {
         if (action?.type === 'switchTab') {
