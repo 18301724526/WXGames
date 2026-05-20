@@ -176,9 +176,7 @@
         inset: 'rgba(255, 245, 218, 0.26)',
         radius: height / 2,
       });
-      ctx.fillStyle = 'rgba(86, 43, 16, 0.24)';
-      this.roundRectPath(x + 6, y + 6, width - 12, Math.max(8, height * 0.36), Math.max(8, height / 2 - 8));
-      ctx.fill();
+
       this.drawText(label, x + width / 2, y + height / 2, {
         size: 16,
         bold: true,
