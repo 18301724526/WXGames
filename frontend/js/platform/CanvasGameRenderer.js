@@ -180,6 +180,39 @@
       return lines;
     }
 
+    measureTextWidth(text, options = {}) {
+      const content = String(text ?? '');
+      if (!this.ctx || typeof this.ctx.measureText !== 'function') return content.length * (options.size || 14) * 0.55;
+      const previousFont = this.ctx.font;
+      this.ctx.font = `${options.bold ? '700 ' : ''}${options.size || 14}px ${options.fontFamily || 'sans-serif'}`;
+      const width = this.ctx.measureText(content).width;
+      this.ctx.font = previousFont;
+      return width;
+    }
+
+    truncateText(text, maxWidth, options = {}) {
+      const content = String(text ?? '');
+      if (!content || this.measureTextWidth(content, options) <= maxWidth) return content;
+      const ellipsis = '...';
+      let buffer = '';
+      Array.from(content).some((char) => {
+        const next = `${buffer}${char}`;
+        if (this.measureTextWidth(`${next}${ellipsis}`, options) > maxWidth) return true;
+        buffer = next;
+        return false;
+      });
+      return buffer ? `${buffer}${ellipsis}` : ellipsis;
+    }
+
+    wrapTextLimit(text, maxWidth, maxLines, options = {}) {
+      const limit = Math.max(1, Number(maxLines) || 1);
+      const lines = this.wrapText(text, maxWidth, options);
+      if (lines.length <= limit) return lines;
+      const visible = lines.slice(0, limit);
+      visible[visible.length - 1] = this.truncateText(`${visible[visible.length - 1]}...`, maxWidth, options);
+      return visible;
+    }
+
     drawLine(x1, y1, x2, y2, options = {}) {
       if (!this.ctx) return;
       this.ctx.strokeStyle = options.color || 'rgba(232, 199, 128, 0.28)';
@@ -672,6 +705,40 @@
       }[resource] || resource;
     }
 
+    eventRowColor(tone) {
+      return {
+        reward: '#74d3a0',
+        cost: '#f7d774',
+        penalty: '#ff9aa2',
+        requirement: '#ffd98a',
+        time: '#f7d774',
+        neutral: '#cbbd96',
+      }[tone] || '#cbbd96';
+    }
+
+    drawEventDetailRow(row, x, y, width, options = {}) {
+      if (!row) return 0;
+      const size = options.size || 11;
+      const lineHeight = options.lineHeight || 15;
+      const maxLines = options.maxLines || 1;
+      const labelWidth = options.labelWidth || 38;
+      const label = row.label ? `${row.label}:` : '';
+      this.drawText(label, x, y, {
+        size,
+        bold: true,
+        color: this.eventRowColor(row.tone),
+      });
+      const textX = x + labelWidth;
+      const textWidth = Math.max(24, width - labelWidth);
+      const lines = this.wrapTextLimit(row.text || '', textWidth, maxLines, { size });
+      this.drawTextLines(lines, textX, y, {
+        size,
+        color: options.color || '#cbbd96',
+        lineHeight,
+      });
+      return Math.max(lineHeight, lines.length * lineHeight);
+    }
+
     renderEvents(state = {}, startY = 210, panelHeight = 310) {
       if (!this.presenter) return;
       const view = this.presenter.buildEventViewState(state);
@@ -688,8 +755,10 @@
       const contentX = x + 12;
       const contentWidth = width - 24;
       const pendingTop = startY + 44;
-      const historyTitleY = Math.max(pendingTop + 74, Math.min(startY + panelHeight - 128, pendingTop + 236));
-      const maxPendingCards = Math.max(1, Math.floor((historyTitleY - pendingTop - 10) / 70));
+      const historyTitleY = Math.max(pendingTop + 92, Math.min(startY + panelHeight - 128, pendingTop + 250));
+      const cardHeight = 78;
+      const cardGap = 8;
+      const maxPendingCards = Math.max(1, Math.floor((historyTitleY - pendingTop - 10) / (cardHeight + cardGap)));
 
       if (view.pending.isEmpty) {
         this.drawPanel(contentX, pendingTop, contentWidth, 54, {
@@ -705,24 +774,33 @@
         });
       } else {
         view.pending.cards.slice(0, maxPendingCards).forEach((card, index) => {
-          const y = pendingTop + index * 70;
+          const y = pendingTop + index * (cardHeight + cardGap);
           const isThreat = Boolean(card.classState?.['is-threat']);
           const isSpecial = Boolean(card.classState?.['is-special']);
-          this.drawPanel(contentX, y, contentWidth, 60, {
+          this.drawPanel(contentX, y, contentWidth, cardHeight, {
             fill: isThreat ? 'rgba(58, 28, 28, 0.84)' : 'rgba(28, 22, 16, 0.84)',
             stroke: isThreat
               ? 'rgba(233, 69, 96, 0.5)'
               : (isSpecial ? 'rgba(247, 215, 116, 0.48)' : 'rgba(255, 226, 177, 0.12)'),
             radius: 8,
           });
-          this.drawText(`${card.icon} ${card.title}`, x + 26, y + 8, { size: 14, bold: true });
-          this.drawText(card.description, x + 26, y + 29, { color: '#aeb0b8', size: 11 });
-          this.drawText(card.hint, x + contentWidth + 10, y + 45, {
+          const textX = contentX + 12;
+          const textWidth = contentWidth - 24;
+          const title = this.truncateText(`${card.icon} ${card.title}`, textWidth, { size: 14, bold: true });
+          const descriptionLines = this.wrapTextLimit(card.description, textWidth, 2, { size: 11 });
+          const hint = this.truncateText(card.hint, textWidth, { size: 11 });
+          this.drawText(title, textX, y + 8, { size: 14, bold: true });
+          this.drawTextLines(descriptionLines, textX, y + 29, {
+            color: '#aeb0b8',
+            size: 11,
+            lineHeight: 15,
+          });
+          this.drawText(hint, contentX + contentWidth - 12, y + cardHeight - 18, {
             color: isThreat ? '#ff9aa2' : '#f7d774',
             size: 11,
             align: 'right',
           });
-          this.addHitTarget({ x: contentX, y, width: contentWidth, height: 60 }, { type: 'openEvent', eventId: card.id });
+          this.addHitTarget({ x: contentX, y, width: contentWidth, height: cardHeight }, { type: 'openEvent', eventId: card.id });
         });
         if (view.pending.cards.length > maxPendingCards) {
           this.drawText(`还有 ${view.pending.cards.length - maxPendingCards} 个事件`, x + width - 14, historyTitleY - 20, {
@@ -775,11 +853,17 @@
       }
 
       const layout = this.getLayout();
-      const panelWidth = Math.min(352, layout.contentWidth - 24);
-      const optionCount = Math.max(1, view.options.length);
-      const panelHeight = Math.min(this.height - 120, 240 + optionCount * 54);
+      const panelWidth = Math.min(360, layout.contentWidth - 16);
+      const options = view.options.length ? view.options : [{
+        id: view.claimButton.optionId,
+        label: view.claimButton.label,
+        preview: view.text.reward,
+        rows: [{ label: '奖励', text: view.text.reward, tone: 'reward' }],
+      }];
+      const optionCount = Math.max(1, options.length);
+      const panelHeight = Math.min(this.height - 96, Math.max(382, 270 + optionCount * 94));
       const x = (this.width - panelWidth) / 2;
-      const y = Math.max(76, (this.height - panelHeight) / 2 - 12);
+      const y = Math.max(48, (this.height - panelHeight) / 2 - 8);
       this.drawPanel(x, y, panelWidth, panelHeight, {
         fill: this.createGradient(
           x, y, x, y + panelHeight,
@@ -801,62 +885,84 @@
       this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeEvent' });
 
-      this.drawText(view.text.title, x + panelWidth / 2, y + 28, {
+      const descX = x + 18;
+      const descWidth = panelWidth - 36;
+      const titleWidth = panelWidth - 84;
+      const titleLines = this.wrapTextLimit(view.text.title, titleWidth, 2, { size: 17, bold: true });
+      const titleY = y + 22;
+      this.drawTextLines(titleLines, x + panelWidth / 2, titleY, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
         align: 'center',
+        lineHeight: 21,
       });
 
-      const descX = x + 18;
-      const descY = y + 58;
-      const descWidth = panelWidth - 36;
-      const descLines = this.wrapText(view.text.description, descWidth, { size: 13 }).slice(0, 3);
-      this.drawTextLines(descLines, descX, descY, {
+      const descY = titleY + Math.max(24, titleLines.length * 21) + 10;
+      const descHeight = 80;
+      const descLines = this.wrapTextLimit(view.text.description, descWidth - 24, 4, { size: 13 });
+      this.drawPanel(descX, descY, descWidth, descHeight, {
+        fill: 'rgba(23, 18, 13, 0.36)',
+        stroke: 'rgba(255, 226, 177, 0.1)',
+        radius: 9,
+      });
+      this.drawTextLines(descLines, descX + 12, descY + 10, {
         size: 13,
         color: '#cbbd96',
-        lineHeight: 19,
+        lineHeight: 16,
       });
 
-      const rewardY = descY + Math.max(44, descLines.length * 19) + 8;
-      const rewardLines = this.wrapText(view.text.reward, descWidth, { size: 12 }).slice(0, 2);
-      this.drawPanel(descX, rewardY, descWidth, 44, {
+      const metaRows = Array.isArray(view.metaRows) && view.metaRows.length
+        ? view.metaRows
+        : [{ label: optionCount > 1 ? '选项' : '奖励', text: view.text.reward, tone: optionCount > 1 ? 'neutral' : 'reward' }];
+      const metaY = descY + descHeight + 8;
+      const metaHeight = Math.min(54, 12 + metaRows.slice(0, 2).length * 18);
+      this.drawPanel(descX, metaY, descWidth, metaHeight, {
         fill: 'rgba(23, 18, 13, 0.48)',
         stroke: 'rgba(255, 226, 177, 0.12)',
         radius: 9,
       });
-      this.drawTextLines(rewardLines, descX + 12, rewardY + 9, {
-        size: 12,
-        bold: true,
-        color: '#74d3a0',
-        lineHeight: 16,
+      metaRows.slice(0, 2).forEach((row, index) => {
+        this.drawEventDetailRow(row, descX + 12, metaY + 8 + index * 18, descWidth - 24, {
+          size: 11,
+          lineHeight: 15,
+          labelWidth: 38,
+          maxLines: 1,
+        });
       });
 
-      const options = view.options.length ? view.options : [{
-        id: view.claimButton.optionId,
-        label: view.claimButton.label,
-        preview: view.text.reward,
-      }];
-      const optionTop = rewardY + 58;
-      const optionHeight = 46;
+      const laterY = y + panelHeight - 42;
+      const optionTop = metaY + metaHeight + 12;
       const optionGap = 8;
-      options.forEach((option, index) => {
+      const optionAreaHeight = Math.max(72, laterY - optionTop - 12);
+      const roomyHeight = optionCount >= 4 ? 76 : 92;
+      const optionHeight = Math.max(68, Math.min(roomyHeight, Math.floor((optionAreaHeight - (optionCount - 1) * optionGap) / optionCount)));
+      const visibleCount = Math.max(1, Math.min(optionCount, Math.floor((optionAreaHeight + optionGap) / (optionHeight + optionGap))));
+      options.slice(0, visibleCount).forEach((option, index) => {
         const optionY = optionTop + index * (optionHeight + optionGap);
-        if (optionY + optionHeight > y + panelHeight - 54) return;
         this.drawPanel(descX, optionY, descWidth, optionHeight, {
           fill: 'rgba(69, 48, 30, 0.92)',
           stroke: 'rgba(240, 180, 91, 0.34)',
           radius: 9,
           inset: 'rgba(255, 231, 184, 0.08)',
         });
-        this.drawText(option.label || '处理事件', descX + 12, optionY + 9, {
+        const label = this.truncateText(option.label || '处理事件', descWidth - 24, { size: 13, bold: true });
+        this.drawText(label, descX + 12, optionY + 9, {
           size: 13,
           bold: true,
           color: '#f6e8c8',
         });
-        this.drawText(option.preview || '', descX + 12, optionY + 27, {
-          size: 11,
-          color: '#aeb0b8',
+        const rows = Array.isArray(option.rows) && option.rows.length
+          ? option.rows
+          : [{ label: '结果', text: option.preview || '', tone: 'neutral' }];
+        const maxRows = Math.max(1, Math.floor((optionHeight - 30) / 14));
+        rows.slice(0, maxRows).forEach((row, rowIndex) => {
+          this.drawEventDetailRow(row, descX + 12, optionY + 30 + rowIndex * 14, descWidth - 24, {
+            size: 10,
+            lineHeight: 13,
+            labelWidth: 36,
+            maxLines: rows.length === 1 && maxRows > 1 ? 2 : 1,
+          });
         });
         this.addHitTarget({ x: descX, y: optionY, width: descWidth, height: optionHeight }, {
           type: 'claimEvent',
@@ -865,7 +971,13 @@
         });
       });
 
-      const laterY = y + panelHeight - 42;
+      if (visibleCount < optionCount) {
+        this.drawText(`还有 ${optionCount - visibleCount} 个选项未显示`, descX + descWidth - 2, laterY - 10, {
+          size: 10,
+          color: 'rgba(234, 234, 234, 0.56)',
+          align: 'right',
+        });
+      }
       this.drawButton(descX, laterY, descWidth, 30, '稍后查看', { size: 12, radius: 8 });
       this.addHitTarget({ x: descX, y: laterY, width: descWidth, height: 30 }, { type: 'closeEvent' });
     }

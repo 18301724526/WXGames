@@ -543,13 +543,34 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
     buildEventModalViewState: () => ({
       showModal: true,
       text: {
-        title: '🌲 森林低语',
-        description: '林间传来回声。',
+        title: '🌲 森林低语以及一段足够长的标题',
+        description: '林间传来很长很长的回声，需要在有限的弹窗区域里换行显示，不能盖住下面的选项。',
         reward: '选择一种处理方式',
       },
+      metaRows: [
+        { label: '时限', text: '剩余 4:00，超时将自动失效', tone: 'time' },
+        { label: '选项', text: '选择一种处理方式', tone: 'neutral' },
+      ],
       options: [
-        { id: 'collect_wood', label: '收集木材', preview: '🪵 +20' },
-        { id: 'study_trail', label: '研究路径', preview: '📚 +10' },
+        {
+          id: 'collect_wood',
+          label: '收集木材',
+          preview: '🪵 +20',
+          rows: [
+            { label: '奖励', text: '🪵 +20', tone: 'reward' },
+            { label: '时限', text: '立即完成', tone: 'time' },
+          ],
+        },
+        {
+          id: 'study_trail',
+          label: '研究路径',
+          preview: '📚 +10',
+          rows: [
+            { label: '需求', text: '知识 8', tone: 'requirement' },
+            { label: '奖励', text: '📚 +10', tone: 'reward' },
+            { label: '惩罚', text: '失败损失 20 食物', tone: 'penalty' },
+          ],
+        },
       ],
       claimButton: { optionId: '', label: '处理事件', hidden: true },
     }),
@@ -563,10 +584,15 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('待处理事件')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('最近事件')));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '🌲 森林低语'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('🌲 森林低语')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '收集木材'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('需求:')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('奖励:')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('惩罚:')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('时限:')));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openEvent' && target.action.eventId === 'evt_forest'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'collect_wood'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'study_trail'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeEvent'));
 });
 

@@ -373,7 +373,14 @@ test('event modal view state handles multiple and single event options', () => {
 
   assert.equal(multi.text.title, 'H Harvest Sign');
   assert.equal(multi.text.reward, '选择一种处理方式 | 剩余 4:00，超时将自动失效');
+  assert.deepEqual(multi.metaRows, [
+    { label: '时限', text: '剩余 4:00，超时将自动失效', tone: 'time' },
+    { label: '选项', text: '选择一种处理方式', tone: 'neutral' },
+  ]);
   assert.equal(multi.options[1].preview, '📚 +1.2k');
+  assert.deepEqual(multi.options[1].rows, [
+    { label: '奖励', text: '📚 +1.2k', tone: 'reward' },
+  ]);
   assert.equal(multi.claimButton.hidden, true);
 
   const single = UIStatePresenter.buildEventModalViewState({
@@ -383,6 +390,42 @@ test('event modal view state handles multiple and single event options', () => {
 
   assert.equal(single.text.reward, '🪵 +20');
   assert.deepEqual(single.claimButton, { optionId: 'collect', label: 'Collect', hidden: false });
+});
+
+test('event modal view state separates requirements rewards costs penalties and time', () => {
+  const view = UIStatePresenter.buildEventModalViewState({
+    type: 'threat',
+    title: 'Bandit Ransom',
+    description: 'Choose a response before the deadline.',
+    icon: 'B',
+    expiresAt: '2026-05-17T08:05:00.000Z',
+    options: [
+      {
+        id: 'drive_away',
+        label: 'Drive away the bandits',
+        requirements: { soldiers: 3, defense: 2 },
+        successEffects: [
+          { type: 'resource', key: 'food', value: 60 },
+          { type: 'resource', key: 'knowledge', value: -8 },
+        ],
+        failureEffects: [
+          { type: 'resource', key: 'food', value: -45 },
+          { type: 'soldiers', value: -1 },
+        ],
+      },
+    ],
+  }, { nowMs: new Date('2026-05-17T08:01:00.000Z').getTime() });
+
+  assert.deepEqual(view.metaRows, [
+    { label: '时限', text: '剩余 4:00，超时将按失败处理', tone: 'penalty' },
+  ]);
+  assert.deepEqual(view.options[0].rows, [
+    { label: '需求', text: '防御 2，士兵 3', tone: 'requirement' },
+    { label: '奖励', text: '🌾 +60', tone: 'reward' },
+    { label: '消耗', text: '📚 -8', tone: 'cost' },
+    { label: '惩罚', text: '🌾 -45 士兵 -1', tone: 'penalty' },
+  ]);
+  assert.equal(view.options[0].preview, '需求 防御 2，士兵 3；奖励 🌾 +60；消耗 📚 -8；惩罚 🌾 -45 士兵 -1');
 });
 
 test('military view state formats army counts and training progress', () => {

@@ -549,17 +549,139 @@
       };
     }
 
+    static getEventResourceLabel(resource) {
+      return {
+        food: '食物',
+        knowledge: '知识',
+        wood: '木材',
+      }[resource] || resource;
+    }
+
+    static getEventResourceIcon(resource) {
+      return {
+        food: '🌾',
+        knowledge: '📚',
+        wood: '🪵',
+      }[resource] || '';
+    }
+
+    static formatEventResourcePart(resource, value) {
+      const amount = this.toNumber(value);
+      if (!amount) return '';
+      const icon = this.getEventResourceIcon(resource);
+      const sign = amount > 0 ? '+' : '-';
+      return `${icon ? `${icon} ` : ''}${sign}${this.formatResourceAmount(Math.abs(amount))}`;
+    }
+
+    static formatEventDuration(seconds) {
+      const total = this.toInteger(seconds);
+      if (total <= 0) return '';
+      if (total < 60) return `${total}秒`;
+      const minutes = Math.floor(total / 60);
+      const rest = total % 60;
+      return rest ? `${minutes}分${rest}秒` : `${minutes}分钟`;
+    }
+
+    static formatEventBuffEffect(effect = {}) {
+      const value = this.toNumber(effect.value);
+      const duration = this.formatEventDuration(effect.durationSeconds);
+      const prefix = duration ? `${duration} ` : '';
+      if (effect.buffType === 'resourceMultiplier') {
+        return `${prefix}${this.getEventResourceLabel(effect.target)}产出 ${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`;
+      }
+      if (effect.buffType === 'offlineEfficiencyBonus') {
+        return `${prefix}离线收益效率 ${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`;
+      }
+      if (effect.buffType === 'happinessFlat') {
+        return `${prefix}幸福度 ${value >= 0 ? '+' : ''}${this.formatCompactNumber(value, { floorSmall: false })}`;
+      }
+      return effect.label ? `${prefix}${effect.label}` : `${prefix}临时加成`;
+    }
+
+    static formatEventEffect(effect = {}) {
+      const value = this.toNumber(effect.value);
+      if (effect.type === 'resource') return this.formatEventResourcePart(effect.key, value);
+      if (effect.type === 'soldiers') {
+        if (!value) return '';
+        return `士兵 ${value > 0 ? '+' : '-'}${this.formatResourceAmount(Math.abs(value))}`;
+      }
+      if (effect.type === 'buff') return this.formatEventBuffEffect(effect);
+      return '';
+    }
+
+    static formatEventEffects(effects = [], filter = 'all') {
+      return (effects || [])
+        .map((effect) => {
+          const value = this.toNumber(effect?.value);
+          const isBuff = effect?.type === 'buff';
+          const isPositive = isBuff ? value >= 0 : value > 0;
+          const isNegative = value < 0;
+          if (filter === 'positive' && !isPositive) return '';
+          if (filter === 'negative' && !isNegative) return '';
+          return this.formatEventEffect(effect);
+        })
+        .filter(Boolean)
+        .join(' ');
+    }
+
+    static formatEventRequirements(requirements = {}) {
+      if (!requirements || typeof requirements !== 'object') return '';
+      const parts = [];
+      const defense = Number(requirements.defense);
+      const soldiers = Number(requirements.soldiers);
+      if (Number.isFinite(defense)) parts.push(`防御 ${this.formatResourceAmount(defense)}`);
+      if (Number.isFinite(soldiers)) parts.push(`士兵 ${this.formatResourceAmount(soldiers)}`);
+      return parts.join('，');
+    }
+
     static formatEventReward(reward) {
       if (!reward) return '事件已完成';
       const parts = [];
-      if (reward.food) parts.push(`🌾 +${this.formatResourceAmount(reward.food)}`);
-      if (reward.knowledge) parts.push(`📚 +${this.formatResourceAmount(reward.knowledge)}`);
-      if (reward.wood) parts.push(`🪵 +${this.formatResourceAmount(reward.wood)}`);
+      if (reward.food) parts.push(this.formatEventResourcePart('food', reward.food));
+      if (reward.knowledge) parts.push(this.formatEventResourcePart('knowledge', reward.knowledge));
+      if (reward.wood) parts.push(this.formatEventResourcePart('wood', reward.wood));
       return parts.join(' ') || '事件已完成';
+    }
+
+    static getEventOptionRewardText(option = {}) {
+      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
+      const directEffects = Array.isArray(option.effects) ? option.effects : [];
+      const effectReward = this.formatEventEffects(option.requirements ? successEffects : directEffects, 'positive');
+      const explicitReward = option.reward ? this.formatEventReward(option.reward) : '';
+      return effectReward || explicitReward;
+    }
+
+    static getEventOptionCostText(option = {}) {
+      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
+      const directEffects = Array.isArray(option.effects) ? option.effects : [];
+      return this.formatEventEffects(option.requirements ? successEffects : directEffects, 'negative');
+    }
+
+    static getEventOptionPenaltyText(option = {}) {
+      const failureEffects = Array.isArray(option.failureEffects) ? option.failureEffects : [];
+      const timeoutEffects = Array.isArray(option.timeoutEffects) ? option.timeoutEffects : [];
+      return this.formatEventEffects(failureEffects.length ? failureEffects : timeoutEffects, 'negative');
+    }
+
+    static buildEventOptionRows(option = {}) {
+      const rows = [];
+      const requirementText = this.formatEventRequirements(option.requirements);
+      const rewardText = this.getEventOptionRewardText(option);
+      const costText = this.getEventOptionCostText(option);
+      const penaltyText = this.getEventOptionPenaltyText(option);
+      if (requirementText) rows.push({ label: '需求', text: requirementText, tone: 'requirement' });
+      if (rewardText) rows.push({ label: '奖励', text: rewardText, tone: 'reward' });
+      if (costText) rows.push({ label: '消耗', text: costText, tone: 'cost' });
+      if (penaltyText) rows.push({ label: '惩罚', text: penaltyText, tone: 'penalty' });
+      if (!rows.length && option.preview) rows.push({ label: '结果', text: option.preview, tone: 'neutral' });
+      return rows;
     }
 
     static getEventOptionPreview(option) {
       if (option?.preview) return option.preview;
+      if (option?.reward) return this.formatEventReward(option.reward);
+      const rows = this.buildEventOptionRows(option);
+      if (rows.length) return rows.map((row) => `${row.label} ${row.text}`).join('；');
       return this.formatEventReward(option?.reward);
     }
 
@@ -646,11 +768,15 @@
     static buildEventModalViewState(eventData = {}, options = {}) {
       const nowMs = options.nowMs ?? Date.now();
       const eventOptions = Array.isArray(eventData.options) ? eventData.options : [];
-      const optionViews = eventOptions.map((option) => ({
-        id: option.id || '',
-        label: option.label || '处理事件',
-        preview: this.getEventOptionPreview(option),
-      }));
+      const optionViews = eventOptions.map((option) => {
+        const rows = this.buildEventOptionRows(option);
+        return {
+          id: option.id || '',
+          label: option.label || '处理事件',
+          preview: this.getEventOptionPreview(option),
+          rows,
+        };
+      });
       const firstOption = optionViews[0];
       const singleOptionPreview = optionViews.length === 1
         ? optionViews[0].preview
@@ -659,12 +785,25 @@
         ? this.getEventHint(eventData, nowMs)
         : '';
 
+      const metaRows = [];
+      if (expiryHint) {
+        metaRows.push({
+          label: '时限',
+          text: expiryHint,
+          tone: eventData?.type === 'threat' ? 'penalty' : 'time',
+        });
+      }
+      if (optionViews.length > 1) {
+        metaRows.push({ label: '选项', text: '选择一种处理方式', tone: 'neutral' });
+      }
+
       return {
         text: {
           title: `${eventData.icon || '📜'} ${eventData.title || ''}`,
           description: eventData.description || '',
           reward: expiryHint ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview,
         },
+        metaRows,
         options: optionViews,
         claimButton: {
           optionId: firstOption?.id || '',
