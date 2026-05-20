@@ -237,6 +237,15 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
                 currentEra: 2,
                 resources: { food: 100, knowledge: 4, wood: 1 },
                 population: { total: 4, max: 6, unassigned: 1, farmers: 2, scholars: 1, craftsmen: 1 },
+                activeCityId: 'capital',
+                cityState: {
+                  activeCityId: 'capital',
+                  capitalCityId: 'capital',
+                  cities: [
+                    { id: 'capital', name: 'Capital', isCapital: true, population: { total: 4 }, totalBuildings: 2 },
+                    { id: 'site_river', name: 'River City', isCapital: false, population: { total: 2 }, totalBuildings: 1 },
+                  ],
+                },
               },
             };
           },
@@ -258,6 +267,15 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
         currentEra: 2,
         resources: { food: 100, knowledge: 4, wood: 1 },
         population: { total: 4, max: 6, unassigned: 1, farmers: 2, scholars: 1, craftsmen: 1 },
+        activeCityId: 'capital',
+        cityState: {
+          activeCityId: 'capital',
+          capitalCityId: 'capital',
+          cities: [
+            { id: 'capital', name: 'Capital', isCapital: true, population: { total: 4 }, totalBuildings: 2 },
+            { id: 'site_river', name: 'River City', isCapital: false, population: { total: 2 }, totalBuildings: 1 },
+          ],
+        },
       },
     });
     app.start();
@@ -296,10 +314,30 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     });
     assert.equal(app.showResourceDetails, false);
 
+    const cityTrigger = app.renderer.hitTargets.find((target) => target.action?.type === 'openCitySwitcher');
+    assert.ok(cityTrigger);
+    app.handleTap({
+      x: cityTrigger.x + cityTrigger.width / 2,
+      y: cityTrigger.y + cityTrigger.height / 2,
+    });
+    assert.equal(app.showCitySwitcher, true);
+    const cityTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'selectCity' && target.action.cityId === 'site_river');
+    assert.ok(cityTarget);
+    app.handleTap({
+      x: cityTarget.x + cityTarget.width / 2,
+      y: cityTarget.y + cityTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(app.showCitySwitcher, false);
+
     assert.deepEqual(requests.find((request) => request.action === 'assign'), {
       action: 'assign',
       target: 'farmer',
       count: 1,
+    });
+    assert.deepEqual(requests.find((request) => request.action === 'switchCity'), {
+      action: 'switchCity',
+      cityId: 'site_river',
     });
     assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'), true);
   } finally {

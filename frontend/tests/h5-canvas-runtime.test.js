@@ -134,6 +134,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       showSettings: false,
       showLogs: false,
       showResourceDetails: false,
+      showCitySwitcher: false,
       logs: [],
     },
   });
@@ -259,6 +260,35 @@ test('H5 canvas app shell owns resource details panel state without DOM adapter'
   assert.equal(renderCalls.at(-1).showResourceDetails, false);
 });
 
+test('H5 canvas app shell owns city switcher state and dispatches canvas city selection', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [{ type: 'openCitySwitcher' }, { type: 'selectCity', cityId: 'site_river' }];
+  const renderCalls = [];
+  const selected = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      if (action.type === 'selectCity') selected.push(action.cityId);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 155, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(renderCalls.at(-1).showCitySwitcher, true);
+  listeners['document:pointerup']({ clientX: 205, clientY: 252, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(renderCalls.at(-1).showCitySwitcher, false);
+  assert.deepEqual(selected, ['site_river']);
+});
+
 test('H5 canvas app shell dispatches every HUD hit action and consumes the event', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [];
@@ -292,18 +322,19 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
   assert.ok(prevented.includes('stopPropagation'));
 });
 
-test('stage 6 canvas HUD takeover hides only replaced controls and keeps menus clickable', () => {
+test('stage 6 canvas HUD takeover removes resource and city switcher DOM controls', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const indexHtml = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
 
-  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.top-bar > \.city-switcher > \.city-switcher-trigger,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
-  assert.match(css, /#app > \.top-bar > \.city-switcher,[\s\S]*#app > \.top-bar \.city-switcher-menu \{[\s\S]*pointer-events: auto;/);
-  assert.match(css, /\.city-switcher-menu \{[\s\S]*position: fixed;[\s\S]*top: 194px;/);
+  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+  assert.doesNotMatch(css, /city-switcher/);
   assert.doesNotMatch(css, /\.resource-strip/);
   assert.doesNotMatch(indexHtml, /resource-strip/);
   assert.doesNotMatch(indexHtml, /resourcePanel/);
   assert.doesNotMatch(indexHtml, /resourceDetailModal/);
+  assert.doesNotMatch(indexHtml, /citySwitcher/);
+  assert.doesNotMatch(indexHtml, /CitySwitcherAdapter/);
   assert.doesNotMatch(indexHtml, /ResourceRenderer/);
   assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);

@@ -357,6 +357,90 @@
       return y + barHeight + 12;
     }
 
+    renderCitySwitcherMenu(state = {}) {
+      if (!this.presenter || typeof this.presenter.buildCitySwitcherViewState !== 'function') return;
+      const view = this.presenter.buildCitySwitcherViewState(state);
+      if (view.hidden) return;
+
+      const options = Array.isArray(view.options) ? view.options : [];
+      const layout = this.getLayout();
+      const panelWidth = Math.min(260, layout.contentWidth - 44);
+      const x = (this.width - panelWidth) / 2;
+      const y = 194;
+      const itemHeight = 50;
+      const visibleCount = Math.min(options.length, 5);
+      const panelHeight = Math.max(56, 18 + visibleCount * itemHeight);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeCitySwitcher' });
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(45, 32, 21, 0.98)'],
+            [1, 'rgba(23, 18, 13, 0.98)'],
+          ],
+          'rgba(35, 26, 19, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 10,
+        inset: 'rgba(255, 238, 203, 0.12)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      if (!options.length) {
+        this.drawText('暂无城市', x + panelWidth / 2, y + 23, {
+          size: 13,
+          color: '#cbbd96',
+          align: 'center',
+        });
+        return;
+      }
+
+      options.slice(0, visibleCount).forEach((city, index) => {
+        const itemX = x + 9;
+        const itemY = y + 9 + index * itemHeight;
+        const itemWidth = panelWidth - 18;
+        const active = Boolean(city.isActive);
+        this.drawPanel(itemX, itemY, itemWidth, 43, {
+          fill: active
+            ? 'rgba(126, 81, 39, 0.92)'
+            : 'rgba(45, 34, 24, 0.82)',
+          stroke: active
+            ? 'rgba(240, 180, 91, 0.6)'
+            : 'rgba(255, 226, 177, 0.12)',
+          radius: 8,
+        });
+        if (active) {
+          this.drawPanel(itemX, itemY, 4, 43, {
+            fill: '#f0b45b',
+            stroke: '#f0b45b',
+            radius: 2,
+          });
+        }
+        this.drawText(city.name || '未命名城市', itemX + 12, itemY + 8, {
+          size: 13,
+          bold: true,
+          color: '#fff1cf',
+        });
+        this.drawText(city.tag || '', itemX + itemWidth - 12, itemY + 8, {
+          size: 11,
+          bold: true,
+          color: '#f0b45b',
+          align: 'right',
+        });
+        this.drawText(city.metaText || '', itemX + 12, itemY + 26, {
+          size: 11,
+          color: 'rgba(234, 234, 234, 0.66)',
+        });
+        this.addHitTarget(
+          { x: itemX, y: itemY, width: itemWidth, height: 43 },
+          active || !city.id
+            ? { type: 'blockCanvasModal' }
+            : { type: 'selectCity', cityId: city.id },
+        );
+      });
+    }
+
     renderPopulation(state = {}, startY = 84) {
       if (!this.presenter) return startY + 180;
       const view = this.presenter.buildPopulationViewState(state);
@@ -652,6 +736,9 @@
       if (options.showLogs) {
         this.renderLogsPanel(options.logs || []);
       }
+      if (options.showCitySwitcher) {
+        this.renderCitySwitcherMenu(state);
+      }
     }
 
     renderSettingsPanel() {
@@ -910,6 +997,7 @@
       this.renderAdvisor(state);
       this.renderTabs(activeTab);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
+      if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
     }
   }
 

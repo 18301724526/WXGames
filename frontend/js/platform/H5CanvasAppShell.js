@@ -14,6 +14,7 @@
       this.showSettings = false;
       this.showLogs = false;
       this.showResourceDetails = false;
+      this.showCitySwitcher = false;
     }
 
     createRenderer(canvas) {
@@ -68,6 +69,7 @@
         this.showSettings = true;
         this.showLogs = false;
         this.showResourceDetails = false;
+        this.showCitySwitcher = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -80,6 +82,7 @@
         this.showLogs = true;
         this.showSettings = false;
         this.showResourceDetails = false;
+        this.showCitySwitcher = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -92,6 +95,7 @@
         this.showResourceDetails = true;
         this.showSettings = false;
         this.showLogs = false;
+        this.showCitySwitcher = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -100,6 +104,23 @@
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
+      if (action.type === 'openCitySwitcher') {
+        this.showCitySwitcher = !this.showCitySwitcher;
+        this.showSettings = false;
+        this.showLogs = false;
+        this.showResourceDetails = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'closeCitySwitcher') {
+        this.showCitySwitcher = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'selectCity') {
+        this.showCitySwitcher = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      }
       if (action.type === 'blockCanvasModal') {
         return true;
       }
@@ -107,6 +128,7 @@
         this.showSettings = false;
         this.showLogs = false;
         this.showResourceDetails = false;
+        this.showCitySwitcher = false;
       }
       if (this.onAction) return this.onAction(action, event) !== false;
       if (action.type === 'switchTab' && this.lastGame?.switchTab) {
@@ -141,6 +163,7 @@
         showSettings: this.showSettings,
         showLogs: this.showLogs,
         showResourceDetails: this.showResourceDetails,
+        showCitySwitcher: this.showCitySwitcher,
         logs: this.lastGame?.requestLogs || [],
       });
       return true;

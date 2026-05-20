@@ -213,6 +213,48 @@ test('CanvasGameRenderer HUD overlay draws city dropdown arrow when city switche
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '▾'));
 });
 
+test('CanvasGameRenderer renders city switcher menu and city hit targets on canvas', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '2',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({
+      hidden: false,
+      activeCityName: '首都',
+      options: [
+        { id: 'capital', name: '首都', tag: '主城', metaText: '人口 8 · 建筑 4', isActive: true },
+        { id: 'site_river', name: '河湾城', tag: '分城', metaText: '人口 3 · 建筑 1', isActive: false },
+      ],
+    }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+  });
+
+  renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showCitySwitcher: true,
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '河湾城'));
+  assert.deepEqual(renderer.getHitTarget({ x: 40, y: 100 }), { type: 'closeCitySwitcher' });
+  const cityTarget = renderer.hitTargets.find((target) => target.action?.type === 'selectCity' && target.action.cityId === 'site_river');
+  assert.ok(cityTarget);
+  assert.deepEqual(renderer.getHitTarget({
+    x: cityTarget.x + cityTarget.width / 2,
+    y: cityTarget.y + cityTarget.height / 2,
+  }), { type: 'selectCity', cityId: 'site_river' });
+});
+
 test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order tab hit targets', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

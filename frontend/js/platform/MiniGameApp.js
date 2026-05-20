@@ -30,6 +30,7 @@
       };
       this.activeTab = options.activeTab || 'resources';
       this.showResourceDetails = false;
+      this.showCitySwitcher = false;
       this.log = options.log || (() => {});
       this.timer = null;
       this.tapDisposer = null;
@@ -48,6 +49,7 @@
       this.renderer.render(this.state, {
         activeTab: this.activeTab,
         showResourceDetails: this.showResourceDetails,
+        showCitySwitcher: this.showCitySwitcher,
       });
     }
 
@@ -78,17 +80,35 @@
       if (!action || action.disabled) return;
       if (action.type === 'switchTab') {
         this.showResourceDetails = false;
+        this.showCitySwitcher = false;
         this.switchTab(action.tab);
         return;
       }
       if (action.type === 'openResourceDetails') {
         this.showResourceDetails = true;
+        this.showCitySwitcher = false;
         this.render();
         return;
       }
       if (action.type === 'closeResourceDetails') {
         this.showResourceDetails = false;
         this.render();
+        return;
+      }
+      if (action.type === 'openCitySwitcher') {
+        this.showCitySwitcher = !this.showCitySwitcher;
+        this.showResourceDetails = false;
+        this.render();
+        return;
+      }
+      if (action.type === 'closeCitySwitcher') {
+        this.showCitySwitcher = false;
+        this.render();
+        return;
+      }
+      if (action.type === 'selectCity') {
+        this.showCitySwitcher = false;
+        this.runAction(() => this.api.switchCity(action.cityId));
         return;
       }
       if (action.type === 'blockCanvasModal') {

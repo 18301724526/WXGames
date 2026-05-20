@@ -157,8 +157,8 @@ const Game = {
           this.logout?.();
           return true;
         }
-        if (action?.type === 'openCitySwitcher') {
-          this.toggleCitySwitcher?.();
+        if (action?.type === 'selectCity') {
+          this.switchCity(action.cityId);
           return true;
         }
         return false;
@@ -179,10 +179,6 @@ const Game = {
       },
       onMilitaryViewClick: (view) => this.switchMilitaryView(view),
       onAdvanceEra: () => this.advanceEra(),
-    });
-
-    this.citySwitcher?.bind({
-      onSelect: (cityId) => this.switchCity(cityId),
     });
 
     this.eventRenderer?.bind({
@@ -429,7 +425,6 @@ const Game = {
   },
 
   render() {
-    this.renderCitySwitcher();
     if (this.renderPopulation) {
       this.renderPopulation();
       this.updatePopulationButtons();
@@ -447,17 +442,16 @@ const Game = {
     }
   },
 
-  renderCitySwitcher() {
-    const view = this.presenter.buildCitySwitcherViewState(this.state);
-    this.citySwitcher?.render(view);
-  },
-
   toggleCitySwitcher() {
-    this.citySwitcher?.toggle();
+    if (!this.canvasShell) return;
+    this.canvasShell.showCitySwitcher = !this.canvasShell.showCitySwitcher;
+    this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
   },
 
   closeCitySwitcher() {
-    this.citySwitcher?.close();
+    if (!this.canvasShell) return;
+    this.canvasShell.showCitySwitcher = false;
+    this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
   },
 
   escapeHtml(value) {
@@ -480,7 +474,7 @@ const Game = {
       this.log(`🏛️ ${result.message || '城市已切换'}`);
     } catch (error) {
       this.log(`❌ ${error.payload?.message || error.message}`);
-      this.renderCitySwitcher();
+      this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
     }
   },
 
