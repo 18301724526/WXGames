@@ -351,76 +351,6 @@ body {
     box-shadow: 0 0 10px var(--number-glow);
 }
 
-.recent-log-empty {
-    color: #888;
-    text-align: center;
-    padding: 20px;
-}
-
-.recent-log-list {
-    display: grid;
-    gap: 8px;
-    max-height: 60vh;
-    overflow: auto;
-}
-
-.recent-log-item {
-    padding: 8px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    color: #ddd;
-    background: rgba(255, 255, 255, 0.04);
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.request-log-empty {
-    color: #888;
-    text-align: center;
-    padding: 20px;
-}
-
-.request-log-table-wrap {
-    max-height: 60vh;
-    overflow-y: auto;
-}
-
-.request-log-table {
-    width: 100%;
-    font-size: 12px;
-    border-collapse: collapse;
-}
-
-.request-log-table th {
-    padding: 4px;
-    color: #aaa;
-    text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.request-log-table td {
-    padding: 4px;
-    color: #aaa;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.request-log-table td:nth-child(2) {
-    color: #f1f1f1;
-}
-
-.request-log-table .is-ok,
-.request-log-table .is-error {
-    font-weight: 700;
-}
-
-.request-log-table .is-ok {
-    color: var(--success);
-}
-
-.request-log-table .is-error {
-    color: var(--danger);
-}
-
 /* ===== 椤甸潰瀹瑰櫒 ===== */
 .page-container {
     flex: 1;
@@ -543,9 +473,7 @@ body {
    弹出的菜单/弹窗保持 DOM 可见可点，避免 Canvas 层级挡住关闭按钮。 */
 #app > .top-bar > .top-status-row,
 #app > .top-bar > .city-switcher > .city-switcher-trigger,
-#app > .tab-bar,
-#logButton,
-.log-modal-overlay {
+#app > .tab-bar {
     opacity: 0;
     pointer-events: none;
     user-select: none;
@@ -553,9 +481,7 @@ body {
 
 #app > .top-bar > .top-status-row *,
 #app > .top-bar > .city-switcher > .city-switcher-trigger *,
-#app > .tab-bar *,
-#logButton *,
-.log-modal-overlay * {
+#app > .tab-bar * {
     pointer-events: none !important;
 }
 
@@ -2040,25 +1966,6 @@ body {
     color: var(--text-secondary);
     cursor: not-allowed;
     opacity: 0.6;
-}
-
-/* ===== 鏃ュ織闈㈡澘 ===== */
-.log-panel {
-    display: none;
-}
-
-.log-content {
-    display: none;
-}
-
-.log-entry {
-    animation: logSlide 0.3s ease;
-    margin-bottom: 2px;
-}
-
-@keyframes logSlide {
-    0% { opacity: 0; transform: translateX(-10px); }
-    100% { opacity: 1; transform: translateX(0); }
 }
 
 /* ===== 鍝嶅簲寮?===== */
