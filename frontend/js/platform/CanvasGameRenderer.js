@@ -319,6 +319,7 @@
         this.drawText(resource.label, cardX + 41, cardY + 16, { size: 10, color: '#a0a0a0' });
         this.drawText(resource.value, cardX + 41, cardY + 34, { size: 17, bold: true, color: '#74d3a0' });
         this.drawText(resource.rate, cardX + 41, cardY + 59, { size: 10, color: '#a0a0a0' });
+        this.addHitTarget({ x: cardX, y: cardY, width: cardWidth, height: resourceHeight }, { type: 'openResourceDetails' });
       });
 
       if (!cityView.hidden) {
@@ -558,9 +559,10 @@
     renderTabs(activeTab = 'resources') {
       const tabs = [
         ['resources', '资源', 'assets/art/icon-food-cutout.webp'],
-        ['civilization', '文明', 'assets/art/icon-fire-cutout.webp'],
         ['buildings', '建造', 'assets/art/building-house-cutout.png'],
+        ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
         ['events', '事件', 'assets/art/icon-event-cutout.webp'],
+        ['civilization', '文明', 'assets/art/icon-fire-cutout.webp'],
         ['military', '军事', 'assets/art/icon-soldier-cutout.webp'],
       ];
       const layout = this.getLayout();

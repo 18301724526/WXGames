@@ -141,6 +141,10 @@ const Game = {
           this.openLog?.();
           return true;
         }
+        if (action?.type === 'openResourceDetails') {
+          this.openResourceDetails?.();
+          return true;
+        }
         if (action?.type === 'openSettings') {
           this.toggleSettingsMenu?.();
           return true;

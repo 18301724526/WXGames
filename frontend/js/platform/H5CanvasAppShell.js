@@ -54,10 +54,10 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return false;
-      if (action.type === 'switchTab') {
-        return this.handleAction(action, event);
-      }
-      return false;
+      const handled = this.handleAction(action, event);
+      if (handled && event?.preventDefault) event.preventDefault();
+      if (handled && event?.stopPropagation) event.stopPropagation();
+      return handled;
     }
 
     handleAction(action, event) {

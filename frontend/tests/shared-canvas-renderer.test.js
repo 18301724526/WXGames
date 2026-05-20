@@ -213,6 +213,33 @@ test('CanvasGameRenderer HUD overlay draws city dropdown arrow when city switche
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '▾'));
 });
 
+test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order tab hit targets', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '2',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: false, activeCityName: '首都' }),
+    buildAdvisorViewState: () => ({ hidden: false }),
+  });
+
+  renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.deepEqual(renderer.getHitTarget({ x: 40, y: 100 }), { type: 'openResourceDetails' });
+  assert.deepEqual(renderer.getHitTarget({ x: 110, y: 804 }), { type: 'switchTab', tab: 'buildings' });
+  assert.deepEqual(renderer.getHitTarget({ x: 176, y: 804 }), { type: 'switchTab', tab: 'tech' });
+  assert.deepEqual(renderer.getHitTarget({ x: 370, y: 804 }), { type: 'switchTab', tab: 'military' });
+});
+
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });

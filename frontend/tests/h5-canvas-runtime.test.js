@@ -206,15 +206,49 @@ test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions'
   assert.deepEqual(switched, ['events']);
 });
 
-test('stage 5 verification hides original DOM resource strip while keeping canvas HUD enabled', () => {
+test('H5 canvas app shell dispatches every HUD hit action and consumes the event', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [];
+  const prevented = [];
+  const renderer = {
+    getHitTarget: () => ({ type: 'openAdvisor' }),
+    render() {},
+  };
+  H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    inputEnabled: true,
+    onAction: (action) => {
+      actions.push(action.type);
+      return true;
+    },
+  });
+
+  listeners.pointerup({
+    clientX: 205,
+    clientY: 442,
+    cancelable: true,
+    preventDefault() { prevented.push('preventDefault'); },
+    stopPropagation() { prevented.push('stopPropagation'); },
+  });
+
+  assert.deepEqual(actions, ['openAdvisor']);
+  assert.ok(prevented.includes('preventDefault'));
+  assert.ok(prevented.includes('stopPropagation'));
+});
+
+test('stage 6 canvas HUD takeover hides original DOM HUD and tab bar', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(css, /\.top-bar > \.resource-panel\.resource-strip/);
-  assert.match(css, /clip-path: inset\(50%\)/);
-  assert.match(css, /pointer-events: none/);
+  assert.match(css, /#app > \.top-bar,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+  assert.match(css, /#app > \.top-bar \* ,[\s\S]*#app > \.tab-bar \* \{[\s\S]*pointer-events: none !important;/);
   assert.match(appJs, /previewEnabled: true/);
   assert.match(appJs, /inputEnabled: true/);
+  assert.match(appJs, /action\?\.type === 'openResourceDetails'/);
+  assert.match(appJs, /this\.openResourceDetails\?\.\(\)/);
 });
 
 test('H5 entry loads canvas shell before app without replacing DOM UI', () => {

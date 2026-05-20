@@ -21,6 +21,7 @@
       const canvas = this.document.createElement('canvas');
       canvas.id = this.id;
       canvas.setAttribute?.('aria-hidden', 'true');
+      canvas.setAttribute?.('data-canvas-hud-input', 'true');
       canvas.style.position = 'fixed';
       canvas.style.inset = '0';
       canvas.style.width = '100vw';
@@ -91,7 +92,13 @@
 
     handlePointerUp(event) {
       const point = this.toCanvasPoint(event);
-      this.tapHandlers.forEach((handler) => handler(point, event));
+      let handled = false;
+      this.tapHandlers.forEach((handler) => {
+        if (handler(point, event)) handled = true;
+      });
+      if (handled && event?.cancelable !== false) event.preventDefault?.();
+      if (handled) event.stopPropagation?.();
+      return handled;
     }
 
     onTap(handler) {
