@@ -15,6 +15,7 @@
       this.showLogs = false;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showAdvisor = false;
     }
 
     createRenderer(canvas) {
@@ -70,6 +71,7 @@
         this.showLogs = false;
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
+        this.showAdvisor = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -83,6 +85,7 @@
         this.showSettings = false;
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
+        this.showAdvisor = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -96,6 +99,7 @@
         this.showSettings = false;
         this.showLogs = false;
         this.showCitySwitcher = false;
+        this.showAdvisor = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -109,6 +113,7 @@
         this.showSettings = false;
         this.showLogs = false;
         this.showResourceDetails = false;
+        this.showAdvisor = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -121,6 +126,26 @@
         this.showCitySwitcher = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       }
+      if (action.type === 'openAdvisor') {
+        const view = this.presenter?.buildAdvisorViewState?.(this.lastGame?.state?.softGuide);
+        if (view?.hidden || !view?.activeAdvisor) return false;
+        this.showAdvisor = true;
+        this.showSettings = false;
+        this.showLogs = false;
+        this.showResourceDetails = false;
+        this.showCitySwitcher = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'closeAdvisor') {
+        this.showAdvisor = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
+      if (action.type === 'goToAdvisorTarget') {
+        this.showAdvisor = false;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      }
       if (action.type === 'blockCanvasModal') {
         return true;
       }
@@ -129,6 +154,7 @@
         this.showLogs = false;
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
+        this.showAdvisor = false;
       }
       if (this.onAction) return this.onAction(action, event) !== false;
       if (action.type === 'switchTab' && this.lastGame?.switchTab) {
@@ -164,6 +190,7 @@
         showLogs: this.showLogs,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
+        showAdvisor: this.showAdvisor,
         logs: this.lastGame?.requestLogs || [],
       });
       return true;

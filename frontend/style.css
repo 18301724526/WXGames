@@ -117,60 +117,6 @@ body {
     color: var(--text-secondary);
 }
 
-.top-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    min-width: 0;
-    position: relative;
-}
-
-.hud-btn,
-.advisor-btn {
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 6px 9px;
-    border: 1px solid rgba(240, 180, 91, 0.32);
-    border-radius: 999px;
-    background: linear-gradient(135deg, rgba(64, 43, 25, 0.94), rgba(25, 20, 14, 0.94));
-    color: var(--text-primary);
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
-}
-
-.advisor-btn {
-    color: var(--accent-light);
-}
-
-.advisor-btn[hidden] {
-    display: none;
-}
-
-.advisor-btn-icon {
-    width: 24px;
-    height: 24px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: rgba(215, 131, 50, 0.22);
-    color: #ffe6b5;
-    font-size: 12px;
-}
-
-.advisor-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--number);
-    box-shadow: 0 0 10px var(--number-glow);
-}
-
 /* ===== 椤甸潰瀹瑰櫒 ===== */
 .page-container {
     flex: 1;
@@ -2502,44 +2448,6 @@ body {
 .event-modal-actions {
   display: flex;
   gap: 10px;
-}
-
-.advisor-modal-content {
-  position: relative;
-  max-width: 340px;
-  text-align: center;
-}
-
-.advisor-portrait {
-  width: 74px;
-  height: 74px;
-  margin: 0 auto 12px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(240, 180, 91, 0.32);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(240, 180, 91, 0.3), rgba(37, 29, 21, 0.92));
-  color: #ffe6b5;
-  font-size: 26px;
-  font-weight: 900;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
-}
-
-.advisor-message {
-  margin: 12px 0 16px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(23, 18, 13, 0.36);
-  color: var(--text-primary);
-  line-height: 1.55;
-  text-align: left;
-}
-
-.advisor-actions {
-  display: grid;
-  gap: 9px;
 }
 
 .modal-close {

@@ -132,8 +132,8 @@ const Game = {
           this.switchTab(action.tab);
           return true;
         }
-        if (action?.type === 'openAdvisor') {
-          this.openAdvisor?.();
+        if (action?.type === 'goToAdvisorTarget') {
+          this.goToAdvisorTarget();
           return true;
         }
         if (action?.type === 'openLogs') {
@@ -195,11 +195,6 @@ const Game = {
       onSubmit: () => this.submitNaming(),
     });
 
-    this.advisorPanel?.bind({
-      onOpen: () => this.openAdvisor(),
-      onClose: () => this.closeAdvisor(),
-      onGo: () => this.goToAdvisorTarget(),
-    });
     this.logModal?.bindOpen(() => this.showRecentLogs());
     this.authShell?.bindSettingsEvents({
       onToggleSettings: () => this.toggleSettings(),
@@ -590,25 +585,14 @@ const Game = {
   updateAdvisor(guide) {
     const view = this.presenter.buildAdvisorViewState(guide);
     this.activeAdvisor = view.activeAdvisor;
-    this.advisorPanel?.render(view);
     if (this.canvasShell?.previewEnabled) {
       this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
     }
   },
 
-  openAdvisor() {
-    if (!this.activeAdvisor?.message) return;
-    this.advisorPanel?.open();
-  },
-
-  closeAdvisor() {
-    this.advisorPanel?.close();
-  },
-
   goToAdvisorTarget() {
     const tabId = this.presenter.getAdvisorTargetTab(this.activeAdvisor?.target);
     if (tabId) this.switchTab(tabId);
-    this.closeAdvisor();
   },
 
   renderRecentLogView(view) {

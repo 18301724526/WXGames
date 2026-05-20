@@ -362,6 +362,49 @@ test('CanvasGameRenderer resource details panel hides wood before settlement era
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'), false);
 });
 
+test('CanvasGameRenderer renders advisor panel and actions on canvas', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 12 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({
+      hidden: false,
+      activeAdvisor: { message: 'Scout north now', target: 'tab-military' },
+      text: { message: 'Scout north now' },
+      goButton: { disabled: false },
+    }),
+  });
+
+  renderer.render({ currentTab: 'resources', softGuide: { message: 'Scout north now', target: 'tab-military' } }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showAdvisor: true,
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '顾问建议'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前往处理'));
+  const goTarget = renderer.hitTargets.find((target) => target.action?.type === 'goToAdvisorTarget');
+  const closeTarget = renderer.hitTargets.find((target) => target.action?.type === 'closeAdvisor' && !target.action.background);
+  assert.ok(goTarget);
+  assert.ok(closeTarget);
+  assert.deepEqual(renderer.getHitTarget({
+    x: goTarget.x + goTarget.width / 2,
+    y: goTarget.y + goTarget.height / 2,
+  }), { type: 'goToAdvisorTarget', disabled: false });
+});
+
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });

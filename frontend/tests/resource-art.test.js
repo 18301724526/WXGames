@@ -120,7 +120,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /RuntimeLogAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
+  assert.doesNotMatch(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
   assert.match(html, /TerritoryActionAdapter\.js\?v=explicit-doc-v1/);
@@ -144,8 +144,8 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /auth\.js\?v=h5-module-deps-v1/);
   assert.match(html, /population\.js\?v=h5-module-deps-v1/);
   assert.match(html, /logs\.js\?v=h5-module-deps-v1/);
-  assert.match(html, /id="advisorBtn"/);
-  assert.match(html, /id="advisorModal"/);
+  assert.doesNotMatch(html, /id="advisorBtn"/);
+  assert.doesNotMatch(html, /id="advisorModal"/);
   assert.match(html, /id="btnLogin"/);
   assert.doesNotMatch(html, /id="logButton"/);
   assert.doesNotMatch(html, /id="logModal"/);
@@ -156,10 +156,10 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.doesNotMatch(html, /ResourceRenderer|ResourceDetailModalAdapter/);
   assert.doesNotMatch(html, /id="gameTime"/);
   assert.doesNotMatch(html, /\son[a-z]+="/);
-  assert.match(css, /\.advisor-btn/);
-  assert.match(css, /\.advisor-modal-content/);
-  assert.match(css, /\.top-actions/);
-  assert.match(css, /\.hud-btn/);
+  assert.doesNotMatch(css, /\.advisor-btn/);
+  assert.doesNotMatch(css, /\.advisor-modal-content/);
+  assert.doesNotMatch(css, /\.top-actions/);
+  assert.doesNotMatch(css, /\.hud-btn/);
   assert.doesNotMatch(css, /\.log-panel/);
   assert.match(css, /\.tab-btn:disabled/);
   assert.match(css, /\.site-card-hero/);

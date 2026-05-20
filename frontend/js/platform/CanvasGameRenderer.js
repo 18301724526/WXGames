@@ -156,6 +156,30 @@
       });
     }
 
+    wrapText(text, maxWidth, options = {}) {
+      const content = String(text ?? '');
+      if (!content) return [];
+      if (!this.ctx || typeof this.ctx.measureText !== 'function') return [content];
+      const previousFont = this.ctx.font;
+      this.ctx.font = `${options.bold ? '700 ' : ''}${options.size || 14}px ${options.fontFamily || 'sans-serif'}`;
+      const lines = [];
+      content.split('\n').forEach((rawLine) => {
+        let buffer = '';
+        Array.from(rawLine).forEach((char) => {
+          const next = `${buffer}${char}`;
+          if (buffer && this.ctx.measureText(next).width > maxWidth) {
+            lines.push(buffer);
+            buffer = char;
+          } else {
+            buffer = next;
+          }
+        });
+        if (buffer || rawLine === '') lines.push(buffer);
+      });
+      this.ctx.font = previousFont;
+      return lines;
+    }
+
     drawLine(x1, y1, x2, y2, options = {}) {
       if (!this.ctx) return;
       this.ctx.strokeStyle = options.color || 'rgba(232, 199, 128, 0.28)';
@@ -733,6 +757,100 @@
       this.drawText(view.activeAdvisor.message, x + 64, y + 13, { color: '#f6e8c8', size: 12 });
     }
 
+    renderAdvisorPanel(state = {}) {
+      if (!this.presenter || typeof this.presenter.buildAdvisorViewState !== 'function') return;
+      const view = this.presenter.buildAdvisorViewState(state.softGuide);
+      if (view.hidden || !view.activeAdvisor) return;
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(340, layout.contentWidth - 28);
+      const panelHeight = 276;
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(96, (this.height - panelHeight) / 2 - 18);
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeAdvisor' });
+
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.98)'],
+            [1, 'rgba(22, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawButton(closeX, closeY, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeAdvisor' });
+
+      const portraitSize = 64;
+      const portraitX = x + panelWidth / 2 - portraitSize / 2;
+      const portraitY = y + 24;
+      this.drawPanel(portraitX, portraitY, portraitSize, portraitSize, {
+        fill: 'rgba(92, 63, 34, 0.92)',
+        stroke: 'rgba(240, 180, 91, 0.42)',
+        radius: portraitSize / 2,
+        inset: 'rgba(255, 231, 184, 0.14)',
+      });
+      this.drawText('谋', x + panelWidth / 2, portraitY + portraitSize / 2, {
+        size: 24,
+        bold: true,
+        color: '#ffe6b5',
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.drawText('顾问建议', x + panelWidth / 2, y + 102, {
+        size: 17,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+
+      const messageX = x + 18;
+      const messageY = y + 132;
+      const messageWidth = panelWidth - 36;
+      const messageHeight = 72;
+      this.drawPanel(messageX, messageY, messageWidth, messageHeight, {
+        fill: 'rgba(23, 18, 13, 0.42)',
+        stroke: 'rgba(255, 226, 177, 0.14)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.04)',
+      });
+      const lines = this.wrapText(view.text?.message || view.activeAdvisor.message, messageWidth - 24, { size: 13 })
+        .slice(0, 3);
+      this.drawTextLines(lines, messageX + 12, messageY + 13, {
+        size: 13,
+        color: '#f6e8c8',
+        lineHeight: 18,
+      });
+
+      const buttonY = y + panelHeight - 52;
+      const buttonGap = 10;
+      const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
+      const goX = x + 18;
+      const dismissX = goX + buttonWidth + buttonGap;
+      this.drawButton(goX, buttonY, buttonWidth, 36, '前往处理', {
+        size: 13,
+        bold: true,
+        radius: 9,
+        disabled: Boolean(view.goButton?.disabled),
+        active: !view.goButton?.disabled,
+      });
+      this.drawButton(dismissX, buttonY, buttonWidth, 36, '稍后再说', { size: 13, radius: 9 });
+      this.addHitTarget(
+        { x: goX, y: buttonY, width: buttonWidth, height: 36 },
+        { type: 'goToAdvisorTarget', disabled: Boolean(view.goButton?.disabled) },
+      );
+      this.addHitTarget({ x: dismissX, y: buttonY, width: buttonWidth, height: 36 }, { type: 'closeAdvisor' });
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
@@ -753,6 +871,9 @@
       }
       if (options.showCitySwitcher) {
         this.renderCitySwitcherMenu(state);
+      }
+      if (options.showAdvisor) {
+        this.renderAdvisorPanel(state);
       }
     }
 

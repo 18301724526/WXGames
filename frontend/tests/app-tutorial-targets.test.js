@@ -27,7 +27,6 @@ function createWindowStub() {
     TutorialController: class {},
     EventController: class {},
     BuildingController: class {},
-    AdvisorPanelAdapter: require('../js/ui/AdvisorPanelAdapter'),
     NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
     CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
@@ -686,7 +685,6 @@ test('renderSoftGuide exposes backend advice through the advisor panel', () => {
     require('../app');
 
     const { Game } = global.window;
-    Game.advisorPanel = global.window.AdvisorPanelAdapter.fromDocument(global.document);
     Game.state.softGuide = {
       target: 'tab-military',
       message: '派出侦察队探索城市之外的世界。',
@@ -697,19 +695,15 @@ test('renderSoftGuide exposes backend advice through the advisor panel', () => {
 
     Game.renderSoftGuide();
 
-    assert.equal(getElement('advisorBtn').hidden, false);
-    assert.equal(getElement('advisorMessage').textContent, '派出侦察队探索城市之外的世界。');
-    assert.equal(getElement('btnAdvisorGo').disabled, false);
-
-    Game.openAdvisor();
-    assert.equal(getElement('advisorModal').classList.contains('show'), true);
+    assert.equal(Game.activeAdvisor.message, '派出侦察队探索城市之外的世界。');
+    assert.equal(elements.has('advisorBtn'), false);
+    assert.equal(elements.has('advisorModal'), false);
 
     const switched = [];
     Game.switchTab = (tabId) => switched.push(tabId);
     Game.goToAdvisorTarget();
 
     assert.deepEqual(switched, ['military']);
-    assert.equal(getElement('advisorModal').classList.contains('show'), false);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

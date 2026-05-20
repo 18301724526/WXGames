@@ -135,6 +135,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       showLogs: false,
       showResourceDetails: false,
       showCitySwitcher: false,
+      showAdvisor: false,
       logs: [],
     },
   });
@@ -291,22 +292,22 @@ test('H5 canvas app shell owns city switcher state and dispatches canvas city se
 
 test('H5 canvas app shell dispatches every HUD hit action and consumes the event', () => {
   const { document, runtime, listeners } = createCanvasHarness();
-  const actions = [];
+  const renderCalls = [];
   const prevented = [];
   const renderer = {
     getHitTarget: () => ({ type: 'openAdvisor' }),
-    render() {},
+    render(state, options) { renderCalls.push(options); },
   };
   H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
     renderer,
-    inputEnabled: true,
-    onAction: (action) => {
-      actions.push(action.type);
-      return true;
+    presenter: {
+      buildAdvisorViewState: () => ({ hidden: false, activeAdvisor: { message: 'Scout north', target: 'tab-military' } }),
     },
+    previewEnabled: true,
+    inputEnabled: true,
   });
 
   listeners['document:pointerup']({
@@ -317,9 +318,50 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
     stopPropagation() { prevented.push('stopPropagation'); },
   });
 
-  assert.deepEqual(actions, ['openAdvisor']);
+  assert.equal(renderCalls.at(-1).showAdvisor, true);
   assert.ok(prevented.includes('preventDefault'));
   assert.ok(prevented.includes('stopPropagation'));
+});
+
+test('H5 canvas app shell owns advisor panel state and dispatches target action', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [
+    { type: 'openAdvisor' },
+    { type: 'goToAdvisorTarget' },
+    { type: 'openAdvisor' },
+    { type: 'closeAdvisor' },
+  ];
+  const renderCalls = [];
+  const goCalls = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  H5CanvasAppShell.mount({ state: { currentTab: 'resources', softGuide: { message: 'Scout north', target: 'tab-military' } } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: {
+      buildAdvisorViewState: () => ({ hidden: false, activeAdvisor: { message: 'Scout north', target: 'tab-military' } }),
+    },
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      if (action.type === 'goToAdvisorTarget') goCalls.push(action.type);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 80, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(renderCalls.at(-1).showAdvisor, true);
+  listeners['document:pointerup']({ clientX: 205, clientY: 600, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(renderCalls.at(-1).showAdvisor, false);
+  assert.deepEqual(goCalls, ['goToAdvisorTarget']);
+  listeners['document:pointerup']({ clientX: 205, clientY: 80, type: 'pointerup', timeStamp: 1600 });
+  assert.equal(renderCalls.at(-1).showAdvisor, true);
+  listeners['document:pointerup']({ clientX: 350, clientY: 120, type: 'pointerup', timeStamp: 1900 });
+  assert.equal(renderCalls.at(-1).showAdvisor, false);
 });
 
 test('stage 6 canvas HUD takeover removes resource and city switcher DOM controls', () => {
@@ -335,6 +377,7 @@ test('stage 6 canvas HUD takeover removes resource and city switcher DOM control
   assert.doesNotMatch(indexHtml, /resourceDetailModal/);
   assert.doesNotMatch(indexHtml, /citySwitcher/);
   assert.doesNotMatch(indexHtml, /population-panel|PopulationPanelAdapter|craftsmanCard|farmerCount|scholarCount|craftsmanCount/);
+  assert.doesNotMatch(indexHtml, /advisorModal|advisorBtn|AdvisorPanelAdapter|btnAdvisor|advisorMessage/);
   assert.doesNotMatch(indexHtml, /CitySwitcherAdapter/);
   assert.doesNotMatch(indexHtml, /ResourceRenderer/);
   assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);
