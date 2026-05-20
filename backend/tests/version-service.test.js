@@ -40,3 +40,16 @@ test('version service deployment id changes when a frontend file changes', async
 
   assert.notEqual(first.deploymentId, second.deploymentId);
 });
+
+test('version service reads git commit from packed refs when loose head ref is missing', () => {
+  const root = makeTempRepo();
+  const gitDir = path.join(root, '.git');
+  fs.mkdirSync(gitDir, { recursive: true });
+  fs.writeFileSync(path.join(gitDir, 'HEAD'), 'ref: refs/heads/main\n');
+  fs.writeFileSync(path.join(gitDir, 'packed-refs'), '# pack-refs with: peeled fully-peeled sorted\nabc1234567890abcdef refs/heads/main\n');
+
+  const service = new VersionService({ repoRoot: root, cacheMs: 0 });
+  const version = service.getVersionInfo();
+
+  assert.equal(version.gitCommit, 'abc1234567890abcdef');
+});

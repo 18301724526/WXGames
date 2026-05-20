@@ -14,13 +14,30 @@ function readJson(filePath) {
   }
 }
 
+function getPackedRef(gitDir, ref) {
+  try {
+    const packedRefsPath = path.join(gitDir, 'packed-refs');
+    const packedRefs = fs.readFileSync(packedRefsPath, 'utf8').split(/\r?\n/);
+    const matchedLine = packedRefs.find((line) => {
+      if (!line || line.startsWith('#') || line.startsWith('^')) return false;
+      const [hash, packedRef] = line.trim().split(/\s+/);
+      return hash && packedRef === ref;
+    });
+    return matchedLine ? matchedLine.trim().split(/\s+/)[0] : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 function getGitCommit(repoRoot) {
   try {
     const gitDir = path.join(repoRoot, '.git');
     const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
     if (!head.startsWith('ref:')) return head;
     const ref = head.slice(5).trim();
-    return fs.readFileSync(path.join(gitDir, ref), 'utf8').trim();
+    const looseRefPath = path.join(gitDir, ref);
+    if (fs.existsSync(looseRefPath)) return fs.readFileSync(looseRefPath, 'utf8').trim();
+    return getPackedRef(gitDir, ref);
   } catch (error) {
     return null;
   }

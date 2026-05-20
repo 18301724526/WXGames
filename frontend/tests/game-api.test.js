@@ -21,7 +21,7 @@ test('getVersion requests the public version endpoint', async () => {
     const api = new GameAPI('/api', null);
     const result = await api.getVersion();
 
-    assert.equal(requestedUrl, '/api/version');
+    assert.match(requestedUrl, /^\/api\/version\?_=/);
     assert.deepEqual(result, { deploymentId: 'version-id' });
   } finally {
     global.fetch = originalFetch;

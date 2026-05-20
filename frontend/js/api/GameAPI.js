@@ -10,11 +10,18 @@
       this.token = token;
     }
 
+    buildUrl(path) {
+      const baseUrl = `${this.baseUrl}${path}`;
+      if (path !== '/version') return baseUrl;
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${separator}_=${Date.now()}`;
+    }
+
     async request(method, path, body) {
       const headers = { 'Content-Type': 'application/json' };
       if (this.token) headers.Authorization = `Bearer ${this.token}`;
       const requestPayload = {
-        url: `${this.baseUrl}${path}`,
+        url: this.buildUrl(path),
         method,
         headers,
         body: method === 'GET' ? undefined : JSON.stringify(body || {}),
