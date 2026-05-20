@@ -45,7 +45,7 @@ test('app delegates startup to H5GameBootstrap instead of binding document direc
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1/);
-  assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v1/);
+  assert.match(html, /js\/ui\/H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v2/);
   assert.match(appJs, /H5GameBootstrap\?\.mount\(Game, \{ document, runtime: window \}\)/);
   assert.doesNotMatch(appJs, /document\.addEventListener\(['"]DOMContentLoaded/);
 });
