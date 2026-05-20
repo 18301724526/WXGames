@@ -206,6 +206,17 @@ test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions'
   assert.deepEqual(switched, ['events']);
 });
 
+test('stage 5 verification hides original DOM resource strip while keeping canvas HUD enabled', () => {
+  const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
+  const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+
+  assert.match(css, /\.top-bar > \.resource-panel\.resource-strip/);
+  assert.match(css, /clip-path: inset\(50%\)/);
+  assert.match(css, /pointer-events: none/);
+  assert.match(appJs, /previewEnabled: true/);
+  assert.match(appJs, /inputEnabled: false/);
+});
+
 test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
