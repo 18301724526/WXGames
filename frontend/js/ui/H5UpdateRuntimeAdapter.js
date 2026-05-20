@@ -198,18 +198,18 @@
       ctx.fillRect(0, 0, viewport.width, viewport.height);
 
       const panelWidth = Math.min(420, viewport.width - 32);
-      const panelHeight = Math.min(336, Math.max(260, viewport.height - 96));
+      const panelHeight = Math.min(336, Math.max(280, viewport.height - 96));
       const panelX = Math.floor((viewport.width - panelWidth) / 2);
       const panelY = Math.max(24, Math.floor((viewport.height - panelHeight) / 2));
       const contentX = panelX + panelWidth / 2;
-      const dividerY = panelY + 62;
-      const titleY = panelY + 82;
-      const bodyStartY = panelY + 128;
+      const titleY = panelY + 42;
+      const dividerY = panelY + 82;
+      const bodyStartY = panelY + 116;
       const buttonWidth = Math.min(panelWidth - 48, 190);
       const buttonHeight = 46;
       const buttonX = panelX + Math.floor((panelWidth - buttonWidth) / 2);
-      const buttonY = panelY + panelHeight - 76;
-      const noteY = buttonY - 34;
+      const buttonY = panelY + panelHeight - 64;
+      const noteY = buttonY - 44;
       this.promptButtonRect = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
 
       this.drawPanel(panelX, panelY, panelWidth, panelHeight, {
@@ -244,17 +244,6 @@
         'rgba(240, 180, 91, 0.12)',
       );
       ctx.fillRect(panelX + 22, dividerY, panelWidth - 44, 1);
-
-      ctx.fillStyle = 'rgba(240, 180, 91, 0.16)';
-      ctx.beginPath();
-      ctx.arc(contentX, panelY + 38, 18, 0, Math.PI * 2);
-      ctx.fill();
-      this.drawText('更', contentX, panelY + 22, {
-        size: 20,
-        bold: true,
-        color: '#f0b45b',
-        align: 'center',
-      });
 
       this.drawText('发现新版本', contentX, titleY, {
         size: 22,

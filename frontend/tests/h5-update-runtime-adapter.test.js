@@ -166,7 +166,7 @@ test('H5 update runtime adapter renders a canvas prompt and waits for canvas cli
   assert.equal(confirmCalls, 0);
   assert.ok(draws.includes('发现新版本'));
   assert.ok(draws.includes('立即更新'));
-  assert.equal(adapter.promptButtonRect.y, 514);
+  assert.equal(adapter.promptButtonRect.y, 526);
   assert.equal(replaced.length, 0);
 
   const button = adapter.promptButtonRect;
@@ -188,8 +188,8 @@ test('app delegates update reload runtime instead of touching browser globals di
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const adapterJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5UpdateRuntimeAdapter.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v3/);
-  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v3[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v2/);
+  assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5/);
+  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v2/);
   assert.match(appJs, /this\.updateRuntime\?\.promptAndReload\(version\)/);
   assert.doesNotMatch(appJs, /window\.confirm|window\.caches|navigator\.serviceWorker|window\.location|new URL\(window\.location/);
   assert.doesNotMatch(adapterJs, /global\.navigator|global\.URL/);
