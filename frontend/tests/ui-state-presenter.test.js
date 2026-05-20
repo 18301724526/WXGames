@@ -553,9 +553,9 @@ test('population view state formats jobs and button availability', () => {
     },
   });
 
-  assert.equal(view.text.totalPop, 6);
-  assert.equal(view.text.maxPop, 8);
-  assert.equal(view.text.unassignedPop, 1);
+  assert.equal(view.text.total, 6);
+  assert.equal(view.text.max, 8);
+  assert.equal(view.text.unassigned, 1);
   assert.equal(view.showCraftsman, true);
   assert.deepEqual(
     view.jobs.map((job) => [job.id, job.count, job.visible, job.canIncrease, job.canDecrease]),
@@ -580,7 +580,7 @@ test('population view state locks increase buttons without unassigned people', (
     },
   });
 
-  assert.equal(view.text.maxPop, 3);
+  assert.equal(view.text.max, 3);
   assert.equal(view.showCraftsman, false);
   assert.deepEqual(
     view.jobs.map((job) => [job.id, job.visible, job.canIncrease, job.canDecrease]),
@@ -610,5 +610,5 @@ test('population view state allows decreasing craftsmen without unassigned peopl
   assert.equal(craftsman.count, 1);
   assert.equal(craftsman.canIncrease, false);
   assert.equal(craftsman.canDecrease, true);
-  assert.equal(view.text.craftsmanCount, 1);
+  assert.equal(craftsman.count, 1);
 });

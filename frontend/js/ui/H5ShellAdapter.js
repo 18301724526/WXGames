@@ -59,7 +59,6 @@
         advisorPanel: registry.AdvisorPanelAdapter?.fromDocument(doc),
         namingModal: registry.NamingModalAdapter?.fromDocument(doc),
         authShell: registry.AuthShellAdapter?.fromDocument(doc),
-        populationPanel: registry.PopulationPanelAdapter?.fromDocument(doc),
         navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
         tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
         civilizationPanel: registry.CivilizationPanelAdapter?.fromDocument(doc, { setText }),

@@ -117,7 +117,6 @@ const Game = {
     };
 
     this.bindBaseEvents();
-    if (this.bindPopulationEvents) this.bindPopulationEvents();
     this.buildingController.bind();
     this.territoryController.bind();
     this.startScoutCountdownTimer();
@@ -159,6 +158,10 @@ const Game = {
         }
         if (action?.type === 'selectCity') {
           this.switchCity(action.cityId);
+          return true;
+        }
+        if (action?.type === 'assignJob') {
+          this.assignJob(action.job, action.delta);
           return true;
         }
         return false;
@@ -425,10 +428,6 @@ const Game = {
   },
 
   render() {
-    if (this.renderPopulation) {
-      this.renderPopulation();
-      this.updatePopulationButtons();
-    }
     this.renderBuildings();
     this.renderCivilization();
     this.renderMilitary();

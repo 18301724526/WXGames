@@ -334,6 +334,7 @@ test('stage 6 canvas HUD takeover removes resource and city switcher DOM control
   assert.doesNotMatch(indexHtml, /resourcePanel/);
   assert.doesNotMatch(indexHtml, /resourceDetailModal/);
   assert.doesNotMatch(indexHtml, /citySwitcher/);
+  assert.doesNotMatch(indexHtml, /population-panel|PopulationPanelAdapter|craftsmanCard|farmerCount|scholarCount|craftsmanCount/);
   assert.doesNotMatch(indexHtml, /CitySwitcherAdapter/);
   assert.doesNotMatch(indexHtml, /ResourceRenderer/);
   assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);

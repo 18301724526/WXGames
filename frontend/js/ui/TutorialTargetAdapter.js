@@ -20,7 +20,6 @@
         'event-card-special': byId('event-card-special'),
         'card-lumbermill': byId('card-lumbermill'),
         'card-barracks': byId('card-barracks'),
-        'card-craftsman': byId('craftsmanCard'),
       });
     }
 

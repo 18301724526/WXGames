@@ -66,7 +66,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     AdvisorPanelAdapter: makeFactory('advisor', calls),
     NamingModalAdapter: makeFactory('naming', calls),
     AuthShellAdapter: makeFactory('auth', calls),
-    PopulationPanelAdapter: makeFactory('population', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
     TutorialTargetAdapter: makeFactory('tutorialTargets', calls),
     CivilizationPanelAdapter: makeFactory('civilization', calls),
@@ -171,6 +170,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
 
   assert.match(html, /js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1/);
   assert.doesNotMatch(html, /CitySwitcherAdapter|citySwitcher/);
+  assert.doesNotMatch(html, /PopulationPanelAdapter/);
   assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v2[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.match(appJs, /registry: window/);
@@ -188,5 +188,5 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.match(appJs, /this\.gameModules\?\.mount\?\.\(this\)/);
   assert.doesNotMatch(appJs, /AuthShellAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);
-  assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter|CitySwitcherAdapter/);
+  assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter|CitySwitcherAdapter|PopulationPanelAdapter|populationPanel/);
 });

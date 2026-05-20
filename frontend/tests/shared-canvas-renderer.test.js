@@ -370,7 +370,7 @@ test('CanvasGameRenderer constructor does not double-scale DPR because runtime o
   assert.deepEqual(ctx.transforms.at(-1), [1, 1]);
 });
 
-test('CanvasGameRenderer HUD overlay mode only draws top HUD and bottom tabs', () => {
+test('CanvasGameRenderer HUD overlay mode draws resource population controls on Canvas', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   renderer.setPresenter({
@@ -387,15 +387,22 @@ test('CanvasGameRenderer HUD overlay mode only draws top HUD and bottom tabs', (
     }),
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
-    buildPopulationViewState: () => {
-      throw new Error('HUD mode must not render population panel');
-    },
+    buildPopulationViewState: () => ({
+      text: { total: '4', max: '6', unassigned: '1' },
+      jobs: [
+        { id: 'farmer', visible: true, count: 2, canIncrease: true, canDecrease: true },
+        { id: 'scholar', visible: true, count: 1, canIncrease: true, canDecrease: true },
+        { id: 'craftsman', visible: true, count: 1, canIncrease: true, canDecrease: true },
+      ],
+    }),
   });
 
   renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '食物'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'farmer'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'craftsman'));
 });
 
 test('CanvasGameRenderer clear() does not draw full background for HUD overlay mode', () => {
@@ -426,7 +433,7 @@ test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view sta
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
     buildPopulationViewState: () => ({
-      text: { totalPop: '3', maxPop: '3', unassignedPop: '0' },
+      text: { total: '3', max: '3', unassigned: '0' },
       jobs: [
         { id: 'farmer', visible: true, count: 3, canIncrease: false, canDecrease: false },
         { id: 'scholar', visible: true, count: 0, canIncrease: false, canDecrease: false },

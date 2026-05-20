@@ -222,12 +222,9 @@
         unassigned,
         jobs,
         text: {
-          totalPop: this.toInteger(pop.total ?? state.totalPop),
-          maxPop: this.toInteger(pop.maxPop ?? pop.max ?? state.maxPop),
-          unassignedPop: unassigned,
-          farmerCount: counts.farmer,
-          scholarCount: counts.scholar,
-          craftsmanCount: counts.craftsman,
+          total: this.toInteger(pop.total ?? state.totalPop),
+          max: this.toInteger(pop.maxPop ?? pop.max ?? state.maxPop),
+          unassigned,
         },
       };
     }

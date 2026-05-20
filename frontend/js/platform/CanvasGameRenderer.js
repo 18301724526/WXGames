@@ -442,7 +442,7 @@
     }
 
     renderPopulation(state = {}, startY = 84) {
-      if (!this.presenter) return startY + 180;
+      if (!this.presenter || typeof this.presenter.buildPopulationViewState !== 'function') return startY + 180;
       const view = this.presenter.buildPopulationViewState(state);
       const layout = this.getLayout();
       const x = layout.contentX;
@@ -469,8 +469,8 @@
       this.drawText('族人职责', x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
 
       const stats = [
-        { icon: 'assets/art/icon-population-cutout.webp', label: '总人口', value: `${view.text.totalPop}/${view.text.maxPop}`, color: '#74d3a0' },
-        { icon: 'assets/art/icon-population-cutout.webp', label: '待分配', value: String(view.text.unassignedPop), color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: '总人口', value: `${view.text.total}/${view.text.max}`, color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: '待分配', value: String(view.text.unassigned), color: '#74d3a0' },
         { icon: 'assets/art/icon-happiness-cutout.webp', label: '幸福度', value: `${state.happiness || 100}%`, color: '#f9ca24' },
       ];
       const statWidth = Math.floor((width - 28) / 3);
@@ -725,7 +725,10 @@
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
       this.clear();
-      this.renderTopBar(state);
+      const topBarBottom = this.renderTopBar(state);
+      if (activeTab === 'resources') {
+        this.renderPopulation(state, topBarBottom);
+      }
       this.renderTabs(activeTab);
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);

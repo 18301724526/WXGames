@@ -125,12 +125,12 @@ test('app 会映射所有教程高亮目标，包括民居卡片', () => {
       'card-house': 'card-house',
       'event-card-special': 'event-card-special',
       'card-lumbermill': 'card-lumbermill',
-      'card-craftsman': 'craftsmanCard',
     };
 
     for (const [key, id] of Object.entries(expected)) {
       assert.equal(global.window.Game.getTutorialTarget(key), elements.get(id));
     }
+    assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), null);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

@@ -3,53 +3,122 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
+
 const projectRoot = path.join(__dirname, '..', '..');
 
-test('population panel uses custom HUD controls and dedicated cutout icons', () => {
+function makeCtx() {
+  const calls = [];
+  const gradient = { addColorStop() {} };
+  return {
+    calls,
+    ctx: {
+      fillStyle: '',
+      strokeStyle: '',
+      lineWidth: 1,
+      font: '',
+      textBaseline: '',
+      textAlign: '',
+      globalAlpha: 1,
+      scale() {},
+      clearRect(...args) { calls.push(['clearRect', ...args]); },
+      fillRect(...args) { calls.push(['fillRect', ...args]); },
+      beginPath() { calls.push(['beginPath']); },
+      rect(...args) { calls.push(['rect', ...args]); },
+      roundRect(...args) { calls.push(['roundRect', ...args]); },
+      moveTo() {},
+      lineTo() {},
+      stroke() {},
+      fill() {},
+      createLinearGradient() { calls.push(['gradient']); return gradient; },
+      fillText(...args) { calls.push(['fillText', ...args]); },
+      drawImage(...args) { calls.push(['drawImage', ...args]); },
+    },
+  };
+}
+
+test('population management has no DOM panel, adapter, or style surface', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
+  const populationJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'population.js'), 'utf8');
+  const h5ShellJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5ShellAdapter.js'), 'utf8');
 
-  assert.match(html, /class="population-header"/);
-  assert.match(html, /class="pop-stat-icon pop-stat-population"/);
-  assert.match(html, /class="pop-stat-icon pop-stat-happiness"/);
-  assert.match(html, /class="job-card job-farmer"[\s\S]*class="job-icon" aria-hidden="true"/);
-  assert.match(html, /class="btn-minus" data-job="farmer" type="button" aria-label="减少农民"><span aria-hidden="true"><\/span><\/button>\s*<div class="job-count" id="farmerCount">3<\/div>\s*<button class="btn-plus" data-job="farmer"/);
-  assert.match(html, /class="btn-plus" data-job="craftsman" type="button" aria-label="增加工匠"><span aria-hidden="true"><\/span><\/button>/);
-  assert.doesNotMatch(html, /<select[^>]*population/i);
+  assert.match(html, /<section class="page page-resources active" data-page="resources"><\/section>/);
+  assert.match(html, /population\.js\?v=h5-module-deps-v1/);
+  assert.doesNotMatch(html, /PopulationPanelAdapter|population-panel|craftsmanCard|farmerCount|scholarCount|craftsmanCount|totalPop|maxPop|unassignedPop|happinessValue/);
+  assert.doesNotMatch(css, /\.population-panel|\.pop-stat|\.job-card|\.job-controls|\.job-icon|\.job-count/);
+  assert.doesNotMatch(h5ShellJs, /PopulationPanelAdapter|populationPanel/);
 
-  assert.match(css, /url\('assets\/art\/icon-population-cutout\.webp'\)/);
-  assert.match(css, /url\('assets\/art\/icon-happiness-cutout\.webp'\)/);
-  assert.match(css, /url\('assets\/art\/icon-farmer-cutout\.webp'\)/);
-  assert.match(css, /url\('assets\/art\/icon-scholar-cutout\.webp'\)/);
-  assert.match(css, /url\('assets\/art\/icon-craftsman-cutout\.webp'\)/);
-  assert.match(css, /\.pop-stats \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
-  assert.match(css, /\.pop-stat \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/);
-  assert.match(html, /style\.css\?v=[^"]+/);
-  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=ui-state-v\d+/);
-  assert.match(css, /\.job-card \{[\s\S]*?padding: 4px 7px;[\s\S]*?grid-template-columns: 24px minmax\(0, 1fr\) auto;/);
-  assert.match(css, /\.job-icon \{[\s\S]*?width: 24px;[\s\S]*?height: 24px;[\s\S]*?border: 0;[\s\S]*?background: center \/ contain no-repeat;[\s\S]*?box-shadow: none;/);
-  assert.doesNotMatch(css, /@media \(min-width: 481px\) \{[\s\S]*?\.job-icon \{[\s\S]*?(?:width|height): 64px;/);
-  assert.match(css, /\.job-info \{[\s\S]*?justify-self: center;[\s\S]*?text-align: center;/);
-  assert.match(css, /\.job-count \{[\s\S]*?min-width: 38px;[\s\S]*?min-height: 28px;[\s\S]*?font-size: 15px;/);
-  assert.match(css, /\.job-controls \{[\s\S]*?grid-template-columns: 16px minmax\(38px, auto\) 16px;/);
-  assert.match(css, /\.job-controls button \{[\s\S]*?width: 16px;[\s\S]*?height: 16px;/);
-  assert.match(css, /\.job-controls button::before/);
-  assert.match(css, /\.job-controls \.btn-plus::after/);
-  assert.match(css, /\.job-controls \.btn-minus \{[\s\S]*?color: #ff7f92;/);
-  assert.match(css, /\.job-controls \.btn-plus \{[\s\S]*?color: #74d3a0;/);
-  assert.doesNotMatch(css, /\.job-farmer \.job-icon \{[^}]*linear-gradient/);
-  assert.doesNotMatch(css, /\.job-scholar \.job-icon \{[^}]*linear-gradient/);
-  assert.doesNotMatch(css, /\.job-craftsman \.job-icon \{[^}]*linear-gradient/);
+  assert.match(populationJs, /window\.mountPopulationMethods/);
+  assert.match(populationJs, /game\.assignJob = async function assignJob/);
+  assert.match(populationJs, /action: 'assign'/);
+  assert.doesNotMatch(populationJs, /PopulationPanelAdapter|populationPanel|renderPopulation|updatePopulationButtons|bindPopulationEvents/);
+  assert.doesNotMatch(populationJs, /\bdocument\b|querySelector|getElementById|classList|addEventListener/);
 });
 
-test('population click handler reads the closest custom button', () => {
-  const populationJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'population.js'), 'utf8');
-  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
-  assert.match(populationJs, /presenter\.buildPopulationViewState/);
-  assert.match(populationJs, /this\.populationPanel\?\.render\(view\)/);
-  assert.doesNotMatch(populationJs, /PopulationPanelAdapter/);
-  assert.doesNotMatch(populationJs, /window\.UIStatePresenter/);
-  assert.doesNotMatch(populationJs, /\bdocument\b|querySelectorAll|getElementById|classList\.contains/);
-  assert.match(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /population\.js\?v=h5-module-deps-v1/);
+test('resource HUD renders population management through Canvas hit targets', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const assets = [];
+  renderer.drawAsset = (assetPath) => {
+    assets.push(assetPath);
+    return true;
+  };
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '10',
+        foodRate: '+1/s',
+        knowledgeValue: '5',
+        knowledgeRate: '+0/s',
+        woodValue: '2',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildPopulationViewState: () => ({
+      text: { total: '4', max: '6', unassigned: '1' },
+      jobs: [
+        { id: 'farmer', visible: true, count: 2, canIncrease: true, canDecrease: true },
+        { id: 'scholar', visible: true, count: 1, canIncrease: true, canDecrease: true },
+        { id: 'craftsman', visible: true, count: 1, canIncrease: true, canDecrease: true },
+      ],
+    }),
+  });
+
+  renderer.render({ currentTab: 'resources', happiness: 92 }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 150 && call[4] === 168));
+  assert.ok(assets.includes('assets/art/icon-population-cutout.webp'));
+  assert.ok(assets.includes('assets/art/icon-happiness-cutout.webp'));
+  assert.ok(assets.includes('assets/art/icon-farmer-cutout.webp'));
+  assert.ok(assets.includes('assets/art/icon-scholar-cutout.webp'));
+  assert.ok(assets.includes('assets/art/icon-craftsman-cutout.webp'));
+
+  const plusTarget = renderer.hitTargets.find((target) => (
+    target.action?.type === 'assignJob'
+    && target.action.job === 'craftsman'
+    && target.action.delta === 1
+  ));
+  const minusTarget = renderer.hitTargets.find((target) => (
+    target.action?.type === 'assignJob'
+    && target.action.job === 'farmer'
+    && target.action.delta === -1
+  ));
+  assert.ok(plusTarget);
+  assert.ok(minusTarget);
+  assert.equal(renderer.getHitTarget({
+    x: plusTarget.x + plusTarget.width / 2,
+    y: plusTarget.y + plusTarget.height / 2,
+  }).type, 'assignJob');
+});
+
+test('H5 app dispatches population Canvas actions without DOM render methods', () => {
+  const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+
+  assert.match(appJs, /action\?\.type === 'assignJob'/);
+  assert.match(appJs, /this\.assignJob\(action\.job, action\.delta\)/);
+  assert.doesNotMatch(appJs, /bindPopulationEvents|updatePopulationButtons|this\.renderPopulation\(\)/);
 });
