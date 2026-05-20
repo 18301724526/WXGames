@@ -493,9 +493,12 @@
         const jobLabel = { farmer: '农民', scholar: '学者', craftsman: '工匠' }[job.id] || job.id;
         const desc = { farmer: '生产食物', scholar: '口耳相传', craftsman: '钻研技艺' }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];
-        this.drawPanel(x + 7, rowY, width - 14, jobRowHeight, {
+        const jobPanelX = x + 7;
+        const jobPanelRight = x + width - 7;
+        const jobPanelInset = 8;
+        this.drawPanel(jobPanelX, rowY, width - 14, jobRowHeight, {
           fill: this.createGradient(
-            x + 7, rowY, x + width - 7, rowY + jobRowHeight,
+            jobPanelX, rowY, jobPanelRight, rowY + jobRowHeight,
             [
               [0, 'rgba(74, 52, 34, 0.86)'],
               [1, 'rgba(28, 22, 16, 0.84)'],
@@ -506,14 +509,14 @@
           radius: 9,
           inset: 'rgba(255, 231, 184, 0.08)',
         });
-        this.drawAsset(icon, x + 15, rowY + 9, 24, 24);
+        this.drawAsset(icon, jobPanelX + jobPanelInset, rowY + 9, 24, 24);
         this.drawText(jobLabel, x + 48, rowY + 8, { size: 13, bold: true, color: '#fff1cf' });
         this.drawText(desc, x + 48, rowY + 26, { size: 10, color: 'rgba(234, 234, 234, 0.58)' });
         const controlGap = 6;
         const controlButtonWidth = 22;
         const countWidth = 40;
         const controlGroupWidth = controlButtonWidth * 2 + countWidth + controlGap * 2;
-        const minusX = x + width - 7 - controlGroupWidth;
+        const minusX = jobPanelRight - jobPanelInset - controlGroupWidth;
         const countX = minusX + controlButtonWidth + controlGap;
         const plusX = countX + countWidth + controlGap;
         const controlY = rowY + 10;

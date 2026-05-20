@@ -117,6 +117,7 @@ test('resource HUD renders population management through Canvas hit targets', ()
   assert.ok(minusTarget);
   assert.ok(craftsmanMinusTarget);
   assert.ok(plusTarget.x - (craftsmanMinusTarget.x + craftsmanMinusTarget.width) >= 52);
+  assert.equal(371 - (plusTarget.x + plusTarget.width), 8);
   assert.equal(renderer.getHitTarget({
     x: plusTarget.x + plusTarget.width / 2,
     y: plusTarget.y + plusTarget.height / 2,
