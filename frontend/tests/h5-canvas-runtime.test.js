@@ -37,6 +37,7 @@ function createCanvasHarness() {
       assert.equal(tag, 'canvas');
       return canvas;
     },
+    addEventListener(type, handler) { listeners[`document:${type}`] = handler; },
   };
   const runtime = {
     innerWidth: 390,
@@ -58,7 +59,8 @@ test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
   assert.equal(canvas.id, 'h5CanvasLayer');
   assert.equal(canvas.attributes['aria-hidden'], 'true');
   assert.equal(canvas.style.position, 'fixed');
-  assert.equal(canvas.style.pointerEvents, 'auto');
+  assert.equal(canvas.style.pointerEvents, 'none');
+  assert.equal(canvas.style.touchAction, 'auto');
   assert.equal(canvas.style.zIndex, '999');
   assert.equal(canvas.style.background, 'transparent');
   assert.equal(canvas.width, 780);
@@ -79,7 +81,7 @@ test('H5 canvas runtime resizes and converts pointer coordinates', () => {
   runtime.innerHeight = 600;
   runtime.devicePixelRatio = 3;
   listeners['window:resize']();
-  listeners.pointerup({ clientX: 205, clientY: 442 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
 
   assert.deepEqual(sizes.at(-1), { width: 300, height: 600, pixelRatio: 3 });
   assert.deepEqual(taps.at(-1), { x: 150, y: 300 });
@@ -173,14 +175,32 @@ test('H5 canvas app shell bridges canvas tab taps only when input is explicitly 
   assert.ok(shell);
   assert.equal(shell.inputEnabled, true);
   assert.equal(typeof shell.tapDisposer, 'function');
-  listeners.pointerup({ clientX: 205, clientY: 442 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 442 });
   assert.deepEqual(actions, [{ type: 'switchTab', tab: 'buildings' }]);
 
   shell.setInputEnabled(false);
   assert.equal(shell.inputEnabled, false);
   assert.equal(shell.tapDisposer, null);
-  listeners.pointerup({ clientX: 205, clientY: 442 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 442 });
   assert.equal(actions.length, 1);
+});
+
+test('H5 canvas runtime ignores duplicate compatibility events for the same tap', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+  const taps = [];
+
+  h5Runtime.onTap((point) => {
+    taps.push(point);
+    return true;
+  });
+  h5Runtime.ensureCanvas();
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1050 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 450, type: 'pointerup', timeStamp: 1300 });
+
+  assert.equal(taps.length, 2);
 });
 
 test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions', () => {
@@ -202,7 +222,7 @@ test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions'
   });
 
   assert.ok(shell);
-  listeners.pointerup({ clientX: 205, clientY: 442 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 442 });
   assert.deepEqual(switched, ['events']);
 });
 
@@ -226,7 +246,7 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
     },
   });
 
-  listeners.pointerup({
+  listeners['document:pointerup']({
     clientX: 205,
     clientY: 442,
     cancelable: true,
@@ -239,12 +259,14 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
   assert.ok(prevented.includes('stopPropagation'));
 });
 
-test('stage 6 canvas HUD takeover hides original DOM HUD and tab bar', () => {
+test('stage 6 canvas HUD takeover hides only replaced controls and keeps menus clickable', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
-  assert.match(css, /#app > \.top-bar,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
-  assert.match(css, /#app > \.top-bar \* ,[\s\S]*#app > \.tab-bar \* \{[\s\S]*pointer-events: none !important;/);
+  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.top-bar > \.resource-strip,[\s\S]*#app > \.top-bar > \.city-switcher > \.city-switcher-trigger,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+  assert.match(css, /#app > \.top-bar > \.city-switcher,[\s\S]*#app > \.top-bar \.city-switcher-menu,[\s\S]*#app > \.top-bar \.settings-menu \{[\s\S]*pointer-events: auto;/);
+  assert.match(css, /\.city-switcher-menu \{[\s\S]*position: fixed;[\s\S]*top: 194px;/);
+  assert.match(css, /\.settings-menu \{[\s\S]*position: fixed;[\s\S]*top: 62px;/);
   assert.match(appJs, /previewEnabled: true/);
   assert.match(appJs, /inputEnabled: true/);
   assert.match(appJs, /action\?\.type === 'openResourceDetails'/);

@@ -13,6 +13,8 @@
       this.resizeHandlers = [];
       this.handleResize = this.handleResize.bind(this);
       this.handlePointerUp = this.handlePointerUp.bind(this);
+      this.lastTapAt = 0;
+      this.lastTapKey = '';
     }
 
     ensureCanvas() {
@@ -21,14 +23,14 @@
       const canvas = this.document.createElement('canvas');
       canvas.id = this.id;
       canvas.setAttribute?.('aria-hidden', 'true');
-      canvas.setAttribute?.('data-canvas-hud-input', 'true');
+      canvas.setAttribute?.('data-canvas-hud-input', 'document-capture');
       canvas.style.position = 'fixed';
       canvas.style.inset = '0';
       canvas.style.width = '100vw';
       canvas.style.height = '100vh';
       canvas.style.display = 'block';
-      canvas.style.pointerEvents = 'auto';
-      canvas.style.touchAction = 'none';
+      canvas.style.pointerEvents = 'none';
+      canvas.style.touchAction = 'auto';
       canvas.style.zIndex = '999';
       canvas.style.background = 'transparent';
       const host = this.container || this.document.body;
@@ -69,9 +71,12 @@
       if (!this.canvas || this.eventsBound) return;
       this.eventsBound = true;
       this.runtime.addEventListener?.('resize', this.handleResize);
-      this.canvas.addEventListener?.('pointerup', this.handlePointerUp);
-      this.canvas.addEventListener?.('touchend', this.handlePointerUp, { passive: true });
-      this.canvas.addEventListener?.('click', this.handlePointerUp);
+      const eventTarget = this.document || this.canvas;
+      eventTarget.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
+      if (!global.PointerEvent) {
+        eventTarget.addEventListener?.('touchend', this.handlePointerUp, { capture: true, passive: false });
+        eventTarget.addEventListener?.('click', this.handlePointerUp, { capture: true });
+      }
     }
 
     handleResize() {
@@ -90,8 +95,18 @@
       };
     }
 
+    shouldIgnoreDuplicateTap(point, event = {}) {
+      const now = Number(event.timeStamp) || Date.now();
+      const key = `${event.type || 'tap'}:${Math.round(point.x)}:${Math.round(point.y)}`;
+      if (key === this.lastTapKey && now - this.lastTapAt < 180) return true;
+      this.lastTapKey = key;
+      this.lastTapAt = now;
+      return false;
+    }
+
     handlePointerUp(event) {
       const point = this.toCanvasPoint(event);
+      if (this.shouldIgnoreDuplicateTap(point, event)) return false;
       let handled = false;
       this.tapHandlers.forEach((handler) => {
         if (handler(point, event)) handled = true;

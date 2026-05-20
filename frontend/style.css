@@ -193,9 +193,9 @@ body {
 }
 
 .city-switcher-menu {
-    position: absolute;
+    position: fixed;
     z-index: 260;
-    top: calc(100% + 7px);
+    top: 194px;
     left: 50%;
     width: min(260px, calc(100vw - 44px));
     max-height: min(55vh, 360px);
@@ -352,9 +352,9 @@ body {
 }
 
 .settings-menu {
-    position: absolute;
-    top: calc(100% + 7px);
-    right: 0;
+    position: fixed;
+    top: 62px;
+    right: max(12px, calc((100vw - 480px) / 2 + 12px));
     z-index: 120;
     min-width: 136px;
     display: none;
@@ -579,18 +579,34 @@ body {
     filter: grayscale(0.7) brightness(0.7);
 }
 
-/* 阶段 6 Canvas HUD 接管：顶部 HUD 和底部 Tab 的 DOM 仅保留数据/状态绑定，
-   视觉和点击都交给 Canvas；中间页面 DOM 不受影响。 */
-#app > .top-bar,
+/* 阶段 6 Canvas HUD 接管：只隐藏已被 Canvas 替代的顶栏/底栏可视控件，
+   弹出的菜单/弹窗保持 DOM 可见可点，避免 Canvas 层级挡住关闭按钮。 */
+#app > .top-bar > .top-status-row,
+#app > .top-bar > .resource-strip,
+#app > .top-bar > .city-switcher > .city-switcher-trigger,
 #app > .tab-bar {
     opacity: 0;
     pointer-events: none;
     user-select: none;
 }
 
-#app > .top-bar * ,
+#app > .top-bar > .top-status-row *,
+#app > .top-bar > .resource-strip *,
+#app > .top-bar > .city-switcher > .city-switcher-trigger *,
 #app > .tab-bar * {
     pointer-events: none !important;
+}
+
+#app > .top-bar > .city-switcher,
+#app > .top-bar .city-switcher-menu,
+#app > .top-bar .settings-menu {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#app > .top-bar .city-switcher-menu *,
+#app > .top-bar .settings-menu * {
+    pointer-events: auto !important;
 }
 
 /* ===== 璧勬簮闈㈡澘 ===== */
