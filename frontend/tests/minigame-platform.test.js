@@ -246,6 +246,15 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
                     { id: 'site_river', name: 'River City', isCapital: false, population: { total: 2 }, totalBuildings: 1 },
                   ],
                 },
+                eventQueue: [{
+                  id: 'evt_forest',
+                  type: 'special',
+                  title: '森林低语',
+                  description: '林间传来回声。',
+                  icon: '🌲',
+                  options: [{ id: 'collect_wood', label: '收集木材', reward: { wood: 20 } }],
+                }],
+                eventHistory: [],
               },
             };
           },
@@ -276,6 +285,15 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
             { id: 'site_river', name: 'River City', isCapital: false, population: { total: 2 }, totalBuildings: 1 },
           ],
         },
+        eventQueue: [{
+          id: 'evt_forest',
+          type: 'special',
+          title: '森林低语',
+          description: '林间传来回声。',
+          icon: '🌲',
+          options: [{ id: 'collect_wood', label: '收集木材', reward: { wood: 20 } }],
+        }],
+        eventHistory: [],
       },
     });
     app.start();
@@ -334,6 +352,25 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(app.showCitySwitcher, false);
 
+    app.switchTab('events');
+    const eventTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openEvent' && target.action.eventId === 'evt_forest');
+    assert.ok(eventTarget);
+    app.handleTap({
+      x: eventTarget.x + eventTarget.width / 2,
+      y: eventTarget.y + eventTarget.height / 2,
+    });
+    assert.equal(app.activeEventId, 'evt_forest');
+    assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '🌲 森林低语'), true);
+    assert.equal(requests.some((request) => request.action === 'claimEvent'), false);
+    const claimTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'collect_wood');
+    assert.ok(claimTarget);
+    app.handleTap({
+      x: claimTarget.x + claimTarget.width / 2,
+      y: claimTarget.y + claimTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(app.activeEventId, null);
+
     assert.deepEqual(requests.find((request) => request.action === 'assign'), {
       action: 'assign',
       target: 'farmer',
@@ -342,6 +379,11 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     assert.deepEqual(requests.find((request) => request.action === 'switchCity'), {
       action: 'switchCity',
       cityId: 'site_river',
+    });
+    assert.deepEqual(requests.find((request) => request.action === 'claimEvent'), {
+      action: 'claimEvent',
+      eventId: 'evt_forest',
+      optionId: 'collect_wood',
     });
     assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'), true);
   } finally {

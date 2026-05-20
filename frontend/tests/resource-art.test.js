@@ -13,7 +13,7 @@ test('H5 document adapters require an explicit document argument', () => {
   const uiDir = path.join(projectRoot, 'frontend', 'js', 'ui');
   const files = fs.readdirSync(uiDir)
     .filter((name) => name.endsWith('.js'))
-    .filter((name) => !['EventUIRenderer.js', 'TerritoryUIRenderer.js'].includes(name));
+    .filter((name) => name !== 'TerritoryUIRenderer.js');
 
   for (const file of files) {
     const source = fs.readFileSync(path.join(uiDir, file), 'utf8');
@@ -113,7 +113,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
-  assert.match(html, /EventUIRenderer\.js\?v=event-presenter-v1/);
+  assert.doesNotMatch(html, /EventUIRenderer\.js/);
   assert.match(html, /RuntimeLogAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);

@@ -76,7 +76,7 @@ const Game = {
       renderer: this.tutorialRenderer,
       getTarget: (key) => this.getTutorialTarget(key),
       getCurrentTab: () => this.state.currentTab,
-      isEventModalOpen: () => this.eventRenderer?.isOpen?.() || false,
+      isEventModalOpen: () => this.eventController?.isOpen?.() || this.canvasShell?.activeEventId || false,
       getState: () => this.state,
       onTabLockChange: () => this.updateTabLocks(),
       storage: this.tutorialStorage,
@@ -85,12 +85,12 @@ const Game = {
     });
     this.eventController = new constructors.EventController({
       api: this.gameAPI,
-      renderer: this.eventRenderer,
       getState: () => this.state,
       onStateApplied: (result) => this.applyApiState(result),
       onTutorialUpdated: (tutorial) => this.tutorialController.notifySpecialEventClaimed(tutorial),
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
+      formatReward: (reward) => this.presenter.formatEventReward(reward),
     });
     this.buildingController = new constructors.BuildingController({
       api: this.gameAPI,
@@ -169,6 +169,11 @@ const Game = {
           });
           return true;
         }
+        if (action?.type === 'claimEvent') {
+          this.eventController.open(action.eventId);
+          this.eventController.claimActive(action.optionId);
+          return true;
+        }
         return false;
       },
     });
@@ -187,12 +192,6 @@ const Game = {
       },
       onMilitaryViewClick: (view) => this.switchMilitaryView(view),
       onAdvanceEra: () => this.advanceEra(),
-    });
-
-    this.eventRenderer?.bind({
-      onOpen: (eventId) => this.eventController.open(eventId),
-      onClaim: (optionId) => this.eventController.claimActive(optionId),
-      onClose: () => this.eventController.close(),
     });
 
     this.namingModal?.bind({
@@ -429,9 +428,9 @@ const Game = {
 
   render() {
     this.renderCivilization();
+    this.renderTech();
     this.renderMilitary();
     this.renderTerritory();
-    this.renderEvents();
     this.tutorialController.render();
     this.renderSoftGuide();
     this.maybeShowNamingPrompt();
@@ -483,6 +482,11 @@ const Game = {
       { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
     );
     this.civilizationPanel?.render(view);
+  },
+
+  renderTech() {
+    const view = this.presenter.buildEventViewState(this.state);
+    this.setText('techKnowledgeRate', view.text.techKnowledgeRate);
   },
 
   renderMilitary() {
@@ -607,10 +611,6 @@ const Game = {
   showRecentLogs() {
     const view = this.presenter.buildRecentLogViewState(this.recentLogs);
     this.logModal?.open(this.renderRecentLogView(view));
-  },
-
-  renderEvents() {
-    this.eventRenderer.render(this.state);
   },
 
   showFloatingText(message) {

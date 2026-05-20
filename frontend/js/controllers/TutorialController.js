@@ -179,7 +179,7 @@
         : '资源已满足，先打开文明页面查看时代进阶';
       if (step === 10) return '森林里似乎有什么发现...';
       if (step === 11) return this.isEventModalOpen()
-        ? '点击按钮领取木材奖励'
+        ? '选择处理方式领取木材奖励'
         : '打开森林低语，领取你的第一批木材';
       if (step === 12) return '用新发现的木材建造伐木场';
       if (step === 13) {
@@ -210,7 +210,7 @@
       if (step === 8) return 'tab-resources';
       if (step === 9) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
       if (step === 10) return 'tab-events';
-      if (step === 11) return this.isEventModalOpen() ? 'btn-claim-event' : 'event-card-special';
+      if (step === 11) return 'tab-events';
       if (step === 12) return 'tab-buildings';
       if (step === 13) {
         if (!this.canAffordLumbermill()) return 'tab-resources';

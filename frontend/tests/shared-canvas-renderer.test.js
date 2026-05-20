@@ -504,6 +504,72 @@ test('CanvasGameRenderer paginates overflow building cards without DOM scrolling
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'), false);
 });
 
+test('CanvasGameRenderer draws events page and event modal without DOM renderer', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({
+      badge: { hidden: false, text: '1' },
+      pending: {
+        isEmpty: false,
+        cards: [{
+          id: 'evt_forest',
+          icon: '🌲',
+          title: '森林低语',
+          description: '林间传来回声。',
+          hint: '点击查看详情',
+          classState: { 'is-special': true },
+        }],
+      },
+      history: {
+        isEmpty: false,
+        items: [{ icon: '🌾', title: '丰收', result: '🌾 +40', className: 'positive' }],
+      },
+    }),
+    buildEventModalViewState: () => ({
+      showModal: true,
+      text: {
+        title: '🌲 森林低语',
+        description: '林间传来回声。',
+        reward: '选择一种处理方式',
+      },
+      options: [
+        { id: 'collect_wood', label: '收集木材', preview: '🪵 +20' },
+        { id: 'study_trail', label: '研究路径', preview: '📚 +10' },
+      ],
+      claimButton: { optionId: '', label: '处理事件', hidden: true },
+    }),
+  });
+
+  renderer.render({ currentTab: 'events', eventQueue: [{ id: 'evt_forest' }] }, {
+    activeTab: 'events',
+    mode: 'hud',
+    activeEventId: 'evt_forest',
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('待处理事件')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('最近事件')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '🌲 森林低语'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '收集木材'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openEvent' && target.action.eventId === 'evt_forest'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'collect_wood'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeEvent'));
+});
+
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });
@@ -625,7 +691,6 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
   assert.match(html, /<div id="app">/);
-  assert.match(html, /id="eventModal"/);
   assert.match(html, /id="tabResources"/);
   assert.match(html, /id="tabBuildings"/);
   assert.match(html, /id="tabCivilization"/);
@@ -634,10 +699,13 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   assert.doesNotMatch(html, /id="resourcePanel"/);
   assert.doesNotMatch(html, /id="resourceDetailModal"/);
   assert.doesNotMatch(html, /id="buildingGrid"|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
+  assert.doesNotMatch(html, /id="eventModal"|eventsBadge|pendingEventsContainer|eventHistoryList|EventUIRenderer/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
   assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
+  assert.match(appJs, /action\?\.type === 'claimEvent'/);
+  assert.match(appJs, /renderTech\(\)/);
 });
 
 test('Canvas renderers are loaded in correct order in H5 index.html', () => {

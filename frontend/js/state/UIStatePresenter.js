@@ -593,7 +593,6 @@
     static buildEventCardViewState(event = {}, nowMs = Date.now()) {
       return {
         id: event.id || '',
-        domId: event.id === 'evt_settlement_forest_001' ? 'event-card-special' : '',
         icon: event.icon || '📜',
         title: event.title || '',
         description: event.description || '',

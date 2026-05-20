@@ -32,6 +32,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.buildingOffset = 0;
+      this.activeEventId = null;
       this.log = options.log || (() => {});
       this.timer = null;
       this.tapDisposer = null;
@@ -52,6 +53,7 @@
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         buildingOffset: this.buildingOffset,
+        activeEventId: this.activeEventId,
       });
     }
 
@@ -75,6 +77,7 @@
     switchTab(tab) {
       this.activeTab = tab || 'resources';
       this.buildingOffset = 0;
+      this.activeEventId = null;
       this.render();
     }
 
@@ -84,12 +87,14 @@
       if (action.type === 'switchTab') {
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
+        this.activeEventId = null;
         this.switchTab(action.tab);
         return;
       }
       if (action.type === 'openResourceDetails') {
         this.showResourceDetails = true;
         this.showCitySwitcher = false;
+        this.activeEventId = null;
         this.render();
         return;
       }
@@ -101,6 +106,7 @@
       if (action.type === 'openCitySwitcher') {
         this.showCitySwitcher = !this.showCitySwitcher;
         this.showResourceDetails = false;
+        this.activeEventId = null;
         this.render();
         return;
       }
@@ -111,6 +117,7 @@
       }
       if (action.type === 'selectCity') {
         this.showCitySwitcher = false;
+        this.activeEventId = null;
         this.runAction(() => this.api.switchCity(action.cityId));
         return;
       }
@@ -140,8 +147,21 @@
       }
       if (action.type === 'openEvent') {
         const event = (this.state.eventQueue || []).find((item) => item.id === action.eventId);
-        const option = event?.options?.[0];
-        if (event && option) this.runAction(() => this.api.claimEvent(event.id, option.id));
+        if (!event) return;
+        this.activeEventId = event.id;
+        this.showResourceDetails = false;
+        this.showCitySwitcher = false;
+        this.render();
+        return;
+      }
+      if (action.type === 'closeEvent') {
+        this.activeEventId = null;
+        this.render();
+        return;
+      }
+      if (action.type === 'claimEvent') {
+        this.activeEventId = null;
+        this.runAction(() => this.api.claimEvent(action.eventId, action.optionId));
         return;
       }
       if (action.type === 'scoutTerritory') {

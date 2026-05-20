@@ -17,6 +17,7 @@
       this.showCitySwitcher = false;
       this.showAdvisor = false;
       this.buildingOffset = 0;
+      this.activeEventId = null;
     }
 
     createRenderer(canvas) {
@@ -73,6 +74,7 @@
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
         this.showAdvisor = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -87,6 +89,7 @@
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
         this.showAdvisor = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -101,6 +104,7 @@
         this.showLogs = false;
         this.showCitySwitcher = false;
         this.showAdvisor = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -115,6 +119,7 @@
         this.showLogs = false;
         this.showResourceDetails = false;
         this.showAdvisor = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -125,10 +130,12 @@
       }
       if (action.type === 'selectCity') {
         this.showCitySwitcher = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       }
       if (action.type === 'switchTab') {
         this.buildingOffset = 0;
+        this.activeEventId = null;
       }
       if (action.type === 'scrollBuildings') {
         this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
@@ -143,6 +150,7 @@
         this.showLogs = false;
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
@@ -153,7 +161,37 @@
       }
       if (action.type === 'goToAdvisorTarget') {
         this.showAdvisor = false;
+        this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      }
+      if (action.type === 'openEvent') {
+        const eventData = (this.lastGame?.state?.eventQueue || []).find((item) => item.id === action.eventId);
+        if (!eventData) return false;
+        this.activeEventId = action.eventId;
+        this.showSettings = false;
+        this.showLogs = false;
+        this.showResourceDetails = false;
+        this.showCitySwitcher = false;
+        this.showAdvisor = false;
+        this.lastGame?.eventController?.open?.(action.eventId);
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
+        return true;
+      }
+      if (action.type === 'closeEvent') {
+        this.activeEventId = null;
+        this.lastGame?.eventController?.close?.();
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
+        return true;
+      }
+      if (action.type === 'claimEvent') {
+        if (!this.onAction) return false;
+        const handled = this.onAction(action, event) !== false;
+        if (handled) {
+          this.activeEventId = null;
+          this.lastGame?.eventController?.close?.();
+          this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
+        }
+        return handled;
       }
       if (action.type === 'blockCanvasModal') {
         return true;
@@ -164,6 +202,7 @@
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
         this.showAdvisor = false;
+        this.activeEventId = null;
       }
       if (this.onAction) return this.onAction(action, event) !== false;
       if (action.type === 'switchTab' && this.lastGame?.switchTab) {
@@ -203,6 +242,7 @@
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
+        activeEventId: this.activeEventId,
       });
       return true;
     }

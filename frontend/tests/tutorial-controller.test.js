@@ -108,7 +108,7 @@ test('时代2引导步骤会按规则锁定标签页', () => {
   }
 });
 
-test('事件弹窗打开后会把引导切到领取按钮', () => {
+test('事件引导在 Canvas 迁移后保持在事件页标签目标', () => {
   const originalLocalStorage = global.localStorage;
   try {
     global.localStorage = createStorage();
@@ -124,12 +124,12 @@ test('事件弹窗打开后会把引导切到领取按钮', () => {
     });
 
     controller.setState({ completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } });
-    assert.equal(controller.getTargetKey(), 'event-card-special');
+    assert.equal(controller.getTargetKey(), 'tab-events');
     assert.equal(controller.getMessage(), '打开森林低语，领取你的第一批木材');
 
     modalOpen = true;
-    assert.equal(controller.getTargetKey(), 'btn-claim-event');
-    assert.equal(controller.getMessage(), '点击按钮领取木材奖励');
+    assert.equal(controller.getTargetKey(), 'tab-events');
+    assert.equal(controller.getMessage(), '选择处理方式领取木材奖励');
   } finally {
     global.localStorage = originalLocalStorage;
   }
@@ -439,35 +439,4 @@ test('时代2可进阶时如果已在文明页会直接高亮进阶按钮', () =
   } finally {
     global.localStorage = originalLocalStorage;
   }
-});
-
-test('事件弹窗会切换 show 类而不是失效的 active 类', () => {
-  const modal = {
-    classList: {
-      values: new Set(),
-      add(name) { this.values.add(name); },
-      remove(name) { this.values.delete(name); },
-      contains(name) { return this.values.has(name); },
-    },
-  };
-  const documentStub = {
-    getElementById(id) {
-      if (id === 'eventModal') return modal;
-      return { textContent: '', dataset: {}, classList: { add() {}, remove() {} } };
-    },
-  };
-  const UIStatePresenter = require('../js/state/UIStatePresenter');
-  const EventUIRenderer = require('../js/ui/EventUIRenderer');
-  const renderer = new EventUIRenderer(() => {}, {
-    document: documentStub,
-    presenter: UIStatePresenter,
-  });
-
-  renderer.open({ title: '森林低语', description: 'desc', options: [{ reward: { wood: 10 } }] });
-  assert.equal(modal.classList.contains('show'), true);
-  assert.equal(renderer.isOpen(), true);
-
-  renderer.close();
-  assert.equal(modal.classList.contains('show'), false);
-  assert.equal(renderer.isOpen(), false);
 });

@@ -2,25 +2,34 @@
   class EventController {
     constructor(options) {
       this.api = options.api;
-      this.renderer = options.renderer;
       this.getState = options.getState;
       this.onStateApplied = options.onStateApplied;
       this.onTutorialUpdated = options.onTutorialUpdated;
       this.onFloatingText = options.onFloatingText;
       this.onLog = options.onLog;
+      this.formatReward = options.formatReward
+        || ((reward) => options.presenter?.formatEventReward?.(reward) || '');
       this.activeEventId = null;
     }
 
     open(eventId) {
       const eventData = (this.getState().eventQueue || []).find((item) => item.id === eventId);
-      if (!eventData) return;
+      if (!eventData) return null;
       this.activeEventId = eventId;
-      this.renderer.open(eventData);
+      return eventData;
     }
 
     close() {
       this.activeEventId = null;
-      this.renderer.close();
+    }
+
+    isOpen() {
+      return Boolean(this.activeEventId);
+    }
+
+    async claim(eventId, optionId = null) {
+      if (eventId) this.open(eventId);
+      return this.claimActive(optionId);
     }
 
     async claimActive(optionId = null) {
@@ -36,7 +45,7 @@
         this.onStateApplied(result);
         this.onTutorialUpdated(result.tutorial);
         this.close();
-        this.onFloatingText(this.renderer.formatReward(result.reward));
+        this.onFloatingText(this.formatReward(result.reward));
         this.onLog(`🎁 ${result.message}`);
       } catch (error) {
         this.onLog(`❌ ${error.payload?.message || error.message}`);

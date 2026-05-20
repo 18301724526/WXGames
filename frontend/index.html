@@ -72,16 +72,7 @@
                 </section>
             </section>
 
-            <section class="page page-events" data-page="events">
-                <section class="events-panel">
-                    <h2 class="panel-title">📜 待处理事件</h2>
-                    <div id="pendingEventsContainer"><div class="pending-events-empty">暂无待处理事件</div></div>
-                </section>
-                <section class="event-history-panel">
-                    <h2 class="panel-title">📜 最近事件</h2>
-                    <div class="event-history-list" id="eventHistoryList"><div class="event-history-empty">暂无事件记录</div></div>
-                </section>
-            </section>
+            <section class="page page-events" data-page="events"></section>
 
             <section class="page page-civilization" data-page="civilization">
                 <section class="civ-overview-panel">
@@ -172,24 +163,10 @@
             <button class="tab-btn active" id="tabResources" data-tab="resources"><span class="tab-icon">🌾</span><span class="tab-label">资源</span></button>
             <button class="tab-btn" id="tabBuildings" data-tab="buildings"><span class="tab-icon">🏗️</span><span class="tab-label">建造</span></button>
             <button class="tab-btn" id="tabTech" data-tab="tech"><span class="tab-icon">🔬</span><span class="tab-label">科技</span></button>
-            <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span><span class="tab-badge" id="eventsBadge" hidden>1</span></button>
+            <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span></button>
             <button class="tab-btn" id="tabCivilization" data-tab="civilization"><span class="tab-icon">🔥</span><span class="tab-label">文明</span></button>
             <button class="tab-btn" id="tabMilitary" data-tab="military"><span class="tab-icon">🛡️</span><span class="tab-label">军事</span></button>
         </nav>
-
-        <div class="modal-overlay" id="eventModal">
-            <div class="modal-content event-modal-content">
-                <div class="modal-icon">🌲</div>
-                <h3 id="eventModalTitle">森林低语</h3>
-                <p class="event-modal-description" id="eventModalDescription"></p>
-                <div class="event-modal-reward" id="eventModalReward"></div>
-                <div class="event-modal-options" id="eventModalOptions"></div>
-                <div class="event-modal-actions">
-                    <button class="btn-claim" id="btnClaimEvent">收集木材</button>
-                    <button class="btn-secondary" id="btnCloseEventModal">稍后查看</button>
-                </div>
-            </div>
-        </div>
 
         <div class="modal-overlay" id="namingModal">
             <div class="modal-content naming-modal-content" role="dialog" aria-modal="true" aria-labelledby="namingTitle">
@@ -235,7 +212,6 @@
     <script src="js/platform/H5CanvasGameRenderer.js?v=h5-game-renderer-v1"></script>
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
-    <script src="js/ui/EventUIRenderer.js?v=event-presenter-v1"></script>
     <script src="js/ui/TerritoryUIRenderer.js?v=territory-presenter-v1"></script>
     <script src="js/ui/TutorialUIRenderer.js?v=tutorial-presenter-v1"></script>
     <script src="js/ui/LogModalAdapter.js?v=explicit-doc-v1"></script>

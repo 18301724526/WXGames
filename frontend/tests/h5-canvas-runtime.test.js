@@ -133,13 +133,14 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       mode: 'hud',
       showSettings: false,
       showLogs: false,
-        showResourceDetails: false,
-        showCitySwitcher: false,
-        showAdvisor: false,
-        logs: [],
-        tutorial: {},
-        buildingOffset: 0,
-      },
+      showResourceDetails: false,
+      showCitySwitcher: false,
+      showAdvisor: false,
+      logs: [],
+      tutorial: {},
+      buildingOffset: 0,
+      activeEventId: null,
+    },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
   assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
@@ -431,6 +432,55 @@ test('H5 canvas app shell owns building pager state without DOM adapter', () => 
   assert.deepEqual(dispatched, [{ type: 'switchTab', tab: 'resources' }]);
 });
 
+test('H5 canvas app shell owns event modal state and dispatches claim actions', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [
+    { type: 'openEvent', eventId: 'evt_forest' },
+    { type: 'claimEvent', eventId: 'evt_forest', optionId: 'collect_wood' },
+    { type: 'openEvent', eventId: 'evt_forest' },
+    { type: 'closeEvent' },
+  ];
+  const renderCalls = [];
+  const controllerCalls = [];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  const shell = H5CanvasAppShell.mount({
+    state: {
+      currentTab: 'events',
+      eventQueue: [{ id: 'evt_forest', options: [{ id: 'collect_wood' }] }],
+    },
+    eventController: {
+      open(eventId) { controllerCalls.push(['open', eventId]); },
+      close() { controllerCalls.push(['close']); },
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(shell.activeEventId, 'evt_forest');
+  assert.equal(renderCalls.at(-1).activeEventId, 'evt_forest');
+  listeners['document:pointerup']({ clientX: 205, clientY: 500, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(shell.activeEventId, null);
+  assert.deepEqual(dispatched, [{ type: 'claimEvent', eventId: 'evt_forest', optionId: 'collect_wood' }]);
+  listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1600 });
+  listeners['document:pointerup']({ clientX: 350, clientY: 120, type: 'pointerup', timeStamp: 1900 });
+  assert.equal(shell.activeEventId, null);
+  assert.deepEqual(controllerCalls, [['open', 'evt_forest'], ['close'], ['open', 'evt_forest'], ['close']]);
+});
+
 test('stage 6 canvas HUD takeover removes resource and city switcher DOM controls', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
@@ -446,6 +496,7 @@ test('stage 6 canvas HUD takeover removes resource and city switcher DOM control
   assert.doesNotMatch(indexHtml, /population-panel|PopulationPanelAdapter|craftsmanCard|farmerCount|scholarCount|craftsmanCount/);
   assert.doesNotMatch(indexHtml, /advisorModal|advisorBtn|AdvisorPanelAdapter|btnAdvisor|advisorMessage/);
   assert.doesNotMatch(indexHtml, /buildingGrid|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
+  assert.doesNotMatch(indexHtml, /eventModal|eventsBadge|pendingEventsContainer|eventHistoryList|EventUIRenderer/);
   assert.doesNotMatch(indexHtml, /CitySwitcherAdapter/);
   assert.doesNotMatch(indexHtml, /ResourceRenderer/);
   assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);

@@ -685,21 +685,189 @@
         inset: 'rgba(255, 231, 184, 0.08)',
       });
       this.renderSectionHeader(`待处理事件${view.badge.hidden ? '' : ` ${view.badge.text}`}`, x + 14, startY + 14, '📜');
+      const contentX = x + 12;
+      const contentWidth = width - 24;
+      const pendingTop = startY + 44;
+      const historyTitleY = Math.max(pendingTop + 74, Math.min(startY + panelHeight - 128, pendingTop + 236));
+      const maxPendingCards = Math.max(1, Math.floor((historyTitleY - pendingTop - 10) / 70));
+
       if (view.pending.isEmpty) {
-        this.drawText(view.pending.emptyText, x + 14, startY + 46, { color: '#cbbd96', size: 13 });
-        return;
-      }
-      view.pending.cards.slice(0, 3).forEach((card, index) => {
-        const y = startY + 46 + index * 76;
-        this.drawPanel(x + 12, y, width - 24, 64, {
-          fill: 'rgba(28, 22, 16, 0.84)',
-          stroke: 'rgba(255, 226, 177, 0.12)',
+        this.drawPanel(contentX, pendingTop, contentWidth, 54, {
+          fill: 'rgba(28, 22, 16, 0.58)',
+          stroke: 'rgba(255, 226, 177, 0.1)',
           radius: 8,
         });
-        this.drawText(`${card.icon} ${card.title}`, x + 26, y + 8, { size: 14, bold: true });
-        this.drawText(card.hint, x + 26, y + 32, { color: '#cbbd96', size: 12 });
-        this.addHitTarget({ x: x + 12, y, width: width - 24, height: 64 }, { type: 'openEvent', eventId: card.id });
+        this.drawText(view.pending.emptyText, x + width / 2, pendingTop + 27, {
+          color: '#cbbd96',
+          size: 13,
+          baseline: 'middle',
+          align: 'center',
+        });
+      } else {
+        view.pending.cards.slice(0, maxPendingCards).forEach((card, index) => {
+          const y = pendingTop + index * 70;
+          const isThreat = Boolean(card.classState?.['is-threat']);
+          const isSpecial = Boolean(card.classState?.['is-special']);
+          this.drawPanel(contentX, y, contentWidth, 60, {
+            fill: isThreat ? 'rgba(58, 28, 28, 0.84)' : 'rgba(28, 22, 16, 0.84)',
+            stroke: isThreat
+              ? 'rgba(233, 69, 96, 0.5)'
+              : (isSpecial ? 'rgba(247, 215, 116, 0.48)' : 'rgba(255, 226, 177, 0.12)'),
+            radius: 8,
+          });
+          this.drawText(`${card.icon} ${card.title}`, x + 26, y + 8, { size: 14, bold: true });
+          this.drawText(card.description, x + 26, y + 29, { color: '#aeb0b8', size: 11 });
+          this.drawText(card.hint, x + contentWidth + 10, y + 45, {
+            color: isThreat ? '#ff9aa2' : '#f7d774',
+            size: 11,
+            align: 'right',
+          });
+          this.addHitTarget({ x: contentX, y, width: contentWidth, height: 60 }, { type: 'openEvent', eventId: card.id });
+        });
+        if (view.pending.cards.length > maxPendingCards) {
+          this.drawText(`还有 ${view.pending.cards.length - maxPendingCards} 个事件`, x + width - 14, historyTitleY - 20, {
+            color: 'rgba(234, 234, 234, 0.56)',
+            size: 11,
+            align: 'right',
+          });
+        }
+      }
+
+      this.drawLine(x + 14, historyTitleY - 8, x + width - 14, historyTitleY - 8, {
+        color: 'rgba(240, 180, 91, 0.18)',
       });
+      this.renderSectionHeader('最近事件', x + 14, historyTitleY, '📜');
+      if (view.history.isEmpty) {
+        this.drawText(view.history.emptyText, x + 14, historyTitleY + 30, { color: '#cbbd96', size: 12 });
+      } else {
+        const historyTop = historyTitleY + 30;
+        const maxHistoryItems = Math.max(1, Math.floor((startY + panelHeight - historyTop - 10) / 38));
+        view.history.items.slice(0, maxHistoryItems).forEach((item, index) => {
+          const y = historyTop + index * 38;
+          const isThreat = item.className === 'threat';
+          this.drawPanel(contentX, y, contentWidth, 30, {
+            fill: 'rgba(28, 22, 16, 0.58)',
+            stroke: isThreat ? 'rgba(233, 69, 96, 0.3)' : 'rgba(116, 211, 160, 0.24)',
+            radius: 7,
+          });
+          this.drawText(item.icon, x + 26, y + 15, { size: 14, baseline: 'middle' });
+          this.drawText(item.title, x + 48, y + 7, { size: 12, bold: true, color: '#f6e8c8' });
+          this.drawText(item.result, x + width - 24, y + 7, {
+            size: 11,
+            color: isThreat ? '#ff9aa2' : '#74d3a0',
+            align: 'right',
+          });
+        });
+      }
+    }
+
+    renderEventModal(state = {}, activeEventId = null) {
+      if (!this.presenter || !activeEventId) return;
+      const eventData = (state.eventQueue || []).find((item) => item.id === activeEventId);
+      if (!eventData) return;
+      const view = this.presenter.buildEventModalViewState(eventData);
+      if (!view.showModal) return;
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeEvent' });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.46)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(352, layout.contentWidth - 24);
+      const optionCount = Math.max(1, view.options.length);
+      const panelHeight = Math.min(this.height - 120, 240 + optionCount * 54);
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(76, (this.height - panelHeight) / 2 - 12);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.98)'],
+            [1, 'rgba(22, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeEvent' });
+
+      this.drawText(view.text.title, x + panelWidth / 2, y + 28, {
+        size: 17,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+
+      const descX = x + 18;
+      const descY = y + 58;
+      const descWidth = panelWidth - 36;
+      const descLines = this.wrapText(view.text.description, descWidth, { size: 13 }).slice(0, 3);
+      this.drawTextLines(descLines, descX, descY, {
+        size: 13,
+        color: '#cbbd96',
+        lineHeight: 19,
+      });
+
+      const rewardY = descY + Math.max(44, descLines.length * 19) + 8;
+      const rewardLines = this.wrapText(view.text.reward, descWidth, { size: 12 }).slice(0, 2);
+      this.drawPanel(descX, rewardY, descWidth, 44, {
+        fill: 'rgba(23, 18, 13, 0.48)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 9,
+      });
+      this.drawTextLines(rewardLines, descX + 12, rewardY + 9, {
+        size: 12,
+        bold: true,
+        color: '#74d3a0',
+        lineHeight: 16,
+      });
+
+      const options = view.options.length ? view.options : [{
+        id: view.claimButton.optionId,
+        label: view.claimButton.label,
+        preview: view.text.reward,
+      }];
+      const optionTop = rewardY + 58;
+      const optionHeight = 46;
+      const optionGap = 8;
+      options.forEach((option, index) => {
+        const optionY = optionTop + index * (optionHeight + optionGap);
+        if (optionY + optionHeight > y + panelHeight - 54) return;
+        this.drawPanel(descX, optionY, descWidth, optionHeight, {
+          fill: 'rgba(69, 48, 30, 0.92)',
+          stroke: 'rgba(240, 180, 91, 0.34)',
+          radius: 9,
+          inset: 'rgba(255, 231, 184, 0.08)',
+        });
+        this.drawText(option.label || '处理事件', descX + 12, optionY + 9, {
+          size: 13,
+          bold: true,
+          color: '#f6e8c8',
+        });
+        this.drawText(option.preview || '', descX + 12, optionY + 27, {
+          size: 11,
+          color: '#aeb0b8',
+        });
+        this.addHitTarget({ x: descX, y: optionY, width: descWidth, height: optionHeight }, {
+          type: 'claimEvent',
+          eventId: eventData.id,
+          optionId: option.id,
+        });
+      });
+
+      const laterY = y + panelHeight - 42;
+      this.drawButton(descX, laterY, descWidth, 30, '稍后查看', { size: 12, radius: 8 });
+      this.addHitTarget({ x: descX, y: laterY, width: descWidth, height: 30 }, { type: 'closeEvent' });
     }
 
     renderCivilization(state = {}, startY = 210, panelHeight = 250) {
@@ -771,7 +939,7 @@
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight);
     }
 
-    renderTabs(activeTab = 'resources') {
+    renderTabs(activeTab = 'resources', state = {}) {
       const tabs = [
         ['resources', '资源', 'assets/art/icon-food-cutout.webp'],
         ['buildings', '建造', 'assets/art/building-house-cutout.png'],
@@ -785,6 +953,9 @@
       const width = layout.contentWidth;
       const tabBarHeight = 58;
       const y = this.height - tabBarHeight;
+      const eventBadge = this.presenter && typeof this.presenter.buildEventViewState === 'function'
+        ? this.presenter.buildEventViewState(state).badge
+        : { hidden: true };
       this.drawPanel(x, y, width, tabBarHeight, {
         fill: this.createGradient(
           x, y, x, y + tabBarHeight,
@@ -819,6 +990,22 @@
           align: 'center',
           bold: isActive,
         });
+        if (id === 'events' && !eventBadge.hidden) {
+          const badgeX = tabX + tabWidth / 2 + 10;
+          const badgeY = y + 6;
+          this.drawPanel(badgeX, badgeY, 18, 18, {
+            fill: '#e94560',
+            stroke: 'rgba(255, 255, 255, 0.16)',
+            radius: 9,
+          });
+          this.drawText(eventBadge.text, badgeX + 9, badgeY + 9, {
+            size: 10,
+            bold: true,
+            color: '#fff',
+            baseline: 'middle',
+            align: 'center',
+          });
+        }
         this.addHitTarget({ x: tabX, y, width: tabWidth, height: tabBarHeight }, { type: 'switchTab', tab: id });
       });
     }
@@ -950,8 +1137,12 @@
           availableHeight,
           { offset: options.buildingOffset },
         );
+      } else if (activeTab === 'events') {
+        const tabsTop = this.height - 60 - this.bottomSafeArea;
+        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
+        this.renderEvents(state, topBarBottom, availableHeight);
       }
-      this.renderTabs(activeTab);
+      this.renderTabs(activeTab, state);
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);
       }
@@ -966,6 +1157,9 @@
       }
       if (options.showAdvisor) {
         this.renderAdvisorPanel(state);
+      }
+      if (options.activeEventId) {
+        this.renderEventModal(state, options.activeEventId);
       }
     }
 
@@ -1223,9 +1417,10 @@
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
       if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
-      this.renderTabs(activeTab);
+      this.renderTabs(activeTab, state);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
+      if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
     }
   }
 

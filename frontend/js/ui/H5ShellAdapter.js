@@ -61,7 +61,6 @@
         tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
         civilizationPanel: registry.CivilizationPanelAdapter?.fromDocument(doc, { setText }),
         militaryPanel: registry.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
-        eventRenderer: registry.EventUIRenderer ? new registry.EventUIRenderer(setText, { document: doc, presenter }) : null,
         logModal: registry.LogModalAdapter?.fromDocument(doc),
         runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),
         territoryActions,

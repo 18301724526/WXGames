@@ -14,8 +14,6 @@
         'tab-military': byId('tabMilitary'),
         'tab-territory': byId('tabMilitary'),
         'btn-advance-era': byId('btnAdvanceEra'),
-        'btn-claim-event': byId('btnClaimEvent'),
-        'event-card-special': byId('event-card-special'),
       });
     }
 

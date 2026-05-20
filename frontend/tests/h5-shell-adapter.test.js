@@ -73,12 +73,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     RuntimeLogAdapter: makeFactory('runtimeLog', calls),
     TerritoryActionAdapter: makeFactory('territoryActions', calls, { name: 'territoryActions', getContainer: () => 'territory-grid' }),
     TutorialUIRenderer: makeDocumentFactory('tutorialRenderer', calls),
-    EventUIRenderer: class {
-      constructor(setText, options) {
-        this.setText = setText;
-        this.options = options;
-      }
-    },
     TerritoryUIRenderer: class {
       constructor(container, options) {
         this.container = container;
@@ -109,9 +103,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     }
     assert.equal(shell.buildingRenderer, undefined);
     assert.equal(shell.buildingActions, undefined);
-    assert.equal(shell.eventRenderer.setText, setText);
-    assert.equal(shell.eventRenderer.options.document, doc);
-    assert.equal(shell.eventRenderer.options.presenter, factories.UIStatePresenter);
+    assert.equal(shell.eventRenderer, undefined);
     assert.deepEqual(shell.updateRuntime, { name: 'updateRuntime' });
     assert.deepEqual(shell.authRuntime, { name: 'authRuntime' });
     assert.deepEqual(shell.authStorage, { name: 'authStorage' });
@@ -166,7 +158,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.match(appJs, /registry: window/);
   assert.match(shellJs, /const registry = options\.registry \|\| runtimeHost/);
-  assert.doesNotMatch(shellJs, /BuildingActionAdapter|BuildingUIRenderer|buildingActions|buildingRenderer/);
+  assert.doesNotMatch(shellJs, /BuildingActionAdapter|BuildingUIRenderer|buildingActions|buildingRenderer|EventUIRenderer|eventRenderer/);
   assert.doesNotMatch(shellJs, /global\.(?:GameConfig|UIStatePresenter|FrontendBuildingState|GameAPI|GameStateSync|UpdateChecker|GameStateManager|TutorialController|EventController|BuildingController|TerritoryController|FrontendGameState|mountAuthMethods|mountPopulationMethods|mountLogMethods)/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(appJs, /window\.FrontendGameState/);

@@ -21,7 +21,6 @@ function createWindowStub() {
       stop() {}
     },
     GameStateManager: class {},
-    EventUIRenderer: class {},
     TutorialUIRenderer: class {},
     TutorialController: class {},
     EventController: class {},
@@ -117,8 +116,6 @@ test('app maps tutorial highlight targets without building card DOM', () => {
       'tab-events': 'tabEvents',
       'tab-military': 'tabMilitary',
       'btn-advance-era': 'btnAdvanceEra',
-      'btn-claim-event': 'btnClaimEvent',
-      'event-card-special': 'event-card-special',
     };
 
     for (const [key, id] of Object.entries(expected)) {
@@ -128,6 +125,8 @@ test('app maps tutorial highlight targets without building card DOM', () => {
     assert.equal(global.window.Game.getTutorialTarget('card-house'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-lumbermill'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), null);
+    assert.equal(global.window.Game.getTutorialTarget('event-card-special'), null);
+    assert.equal(global.window.Game.getTutorialTarget('btn-claim-event'), null);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
