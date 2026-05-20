@@ -33,9 +33,6 @@ test('resource strip uses dedicated resource icon assets', () => {
   for (const asset of assets) {
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
   }
-  assert.match(css, new RegExp(`\\.food-card \\.resource-icon \\{ background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\); \\}`));
-  assert.match(css, new RegExp(`\\.knowledge-card \\.resource-icon \\{ background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\); \\}`));
-  assert.match(css, new RegExp(`\\.wood-card \\.resource-icon \\{ background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\); \\}`));
   assert.match(css, new RegExp(`\\.resource-detail-food \\{ background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\); \\}`));
   assert.match(css, new RegExp(`\\.resource-detail-knowledge \\{ background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\); \\}`));
   assert.match(css, new RegExp(`\\.resource-detail-wood \\{ background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\); \\}`));

@@ -378,6 +378,9 @@ const Game = {
     this.navigationShell?.renderTabs(navigation);
     this.renderMilitaryView();
     this.tutorialController.render();
+    if (this.canvasShell?.previewEnabled) {
+      this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    }
   },
 
   getPreferredMilitaryView(tabId) {

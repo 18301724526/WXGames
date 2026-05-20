@@ -235,9 +235,9 @@ test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order 
   renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
   assert.deepEqual(renderer.getHitTarget({ x: 40, y: 100 }), { type: 'openResourceDetails' });
-  assert.deepEqual(renderer.getHitTarget({ x: 110, y: 804 }), { type: 'switchTab', tab: 'buildings' });
-  assert.deepEqual(renderer.getHitTarget({ x: 176, y: 804 }), { type: 'switchTab', tab: 'tech' });
-  assert.deepEqual(renderer.getHitTarget({ x: 370, y: 804 }), { type: 'switchTab', tab: 'military' });
+  assert.deepEqual(renderer.getHitTarget({ x: 75, y: 804 }), { type: 'switchTab', tab: 'buildings' });
+  assert.deepEqual(renderer.getHitTarget({ x: 135, y: 804 }), { type: 'switchTab', tab: 'tech' });
+  assert.deepEqual(renderer.getHitTarget({ x: 320, y: 804 }), { type: 'switchTab', tab: 'military' });
 });
 
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
@@ -354,7 +354,6 @@ test('H5 entry does not replace existing DOM UI after renderer extraction', () =
   const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
   assert.match(html, /<div id="app">/);
-  assert.match(html, /id="resourcePanel"/);
   assert.match(html, /id="buildingGrid"/);
   assert.match(html, /id="eventModal"/);
   assert.match(html, /id="tabResources"/);
@@ -362,6 +361,7 @@ test('H5 entry does not replace existing DOM UI after renderer extraction', () =
   assert.match(html, /id="tabCivilization"/);
   assert.match(html, /id="tabMilitary"/);
   assert.match(html, /id="tabEvents"/);
+  assert.doesNotMatch(html, /id="resourcePanel"/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);

@@ -582,7 +582,6 @@ body {
 /* 阶段 6 Canvas HUD 接管：只隐藏已被 Canvas 替代的顶栏/底栏可视控件，
    弹出的菜单/弹窗保持 DOM 可见可点，避免 Canvas 层级挡住关闭按钮。 */
 #app > .top-bar > .top-status-row,
-#app > .top-bar > .resource-strip,
 #app > .top-bar > .city-switcher > .city-switcher-trigger,
 #app > .tab-bar {
     opacity: 0;
@@ -591,7 +590,6 @@ body {
 }
 
 #app > .top-bar > .top-status-row *,
-#app > .top-bar > .resource-strip *,
 #app > .top-bar > .city-switcher > .city-switcher-trigger *,
 #app > .tab-bar * {
     pointer-events: none !important;
@@ -609,113 +607,7 @@ body {
     pointer-events: auto !important;
 }
 
-/* ===== 璧勬簮闈㈡澘 ===== */
-.resource-panel {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.resource-panel.has-era-two {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.resource-card {
-    background:
-        linear-gradient(145deg, rgba(68, 48, 31, 0.78), rgba(28, 22, 17, 0.74));
-    border-radius: 10px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: inset 0 1px 0 rgba(255, 231, 184, 0.1);
-    overflow: hidden;
-}
-
-.resource-card[hidden],
-.resource-card.is-hidden {
-    display: none !important;
-}
-
-.resource-card:active {
-    transform: scale(0.97);
-}
-
-.resource-icon {
-    width: 30px;
-    height: 30px;
-    flex: 0 0 30px;
-    font-size: 0;
-    background: center / contain no-repeat;
-    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.32));
-}
-
-.food-card .resource-icon { background-image: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3'); }
-.knowledge-card .resource-icon { background-image: url('assets/art/icon-knowledge-cutout.webp?v=resource-icons-v3'); }
-.wood-card .resource-icon { background-image: url('assets/art/icon-wood-cutout.webp?v=resource-icons-v3'); }
-
-@keyframes iconFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-}
-
-.resource-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.resource-label {
-    font-size: 10px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0;
-    margin-bottom: 2px;
-}
-
-.resource-value {
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--number);
-    font-variant-numeric: tabular-nums;
-    transition: all 0.3s ease;
-    line-height: 1.1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.resource-value.pop,
-.building-count.pop,
-.job-count.pop {
-    animation: numberPop 0.3s ease;
-}
-
-@keyframes numberPop {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.3); color: var(--accent-light); }
-    100% { transform: scale(1); }
-}
-
-.resource-rate {
-    font-size: 10px;
-    color: var(--text-secondary);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+/* ===== 资源面板（Canvas HUD 已接管，DOM 资源条已删除） ===== */
 
 .resource-breakdown {
     margin-top: 10px;

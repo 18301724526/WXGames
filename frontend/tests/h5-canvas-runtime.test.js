@@ -262,15 +262,16 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
 test('stage 6 canvas HUD takeover hides only replaced controls and keeps menus clickable', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+  const indexHtml = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
 
-  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.top-bar > \.resource-strip,[\s\S]*#app > \.top-bar > \.city-switcher > \.city-switcher-trigger,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.top-bar > \.city-switcher > \.city-switcher-trigger,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
   assert.match(css, /#app > \.top-bar > \.city-switcher,[\s\S]*#app > \.top-bar \.city-switcher-menu,[\s\S]*#app > \.top-bar \.settings-menu \{[\s\S]*pointer-events: auto;/);
   assert.match(css, /\.city-switcher-menu \{[\s\S]*position: fixed;[\s\S]*top: 194px;/);
   assert.match(css, /\.settings-menu \{[\s\S]*position: fixed;[\s\S]*top: 62px;/);
-  assert.match(appJs, /previewEnabled: true/);
-  assert.match(appJs, /inputEnabled: true/);
-  assert.match(appJs, /action\?\.type === 'openResourceDetails'/);
-  assert.match(appJs, /this\.openResourceDetails\?\.\(\)/);
+  assert.doesNotMatch(css, /\.resource-strip/);
+  assert.doesNotMatch(indexHtml, /resource-strip/);
+  assert.doesNotMatch(indexHtml, /resourcePanel/);
+  assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });
 
 test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
