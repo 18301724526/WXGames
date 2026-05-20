@@ -5,9 +5,12 @@
       this.renderer = options.renderer || null;
       this.presenter = options.presenter || null;
       this.previewEnabled = Boolean(options.previewEnabled);
+      this.inputEnabled = Boolean(options.inputEnabled);
+      this.onAction = typeof options.onAction === 'function' ? options.onAction : null;
       this.mounted = false;
       this.lastGame = null;
       this.resizeDisposer = null;
+      this.tapDisposer = null;
     }
 
     createRenderer(canvas) {
@@ -36,8 +39,43 @@
       if (this.runtime?.onResize && !this.resizeDisposer) {
         this.resizeDisposer = this.runtime.onResize((size) => this.handleResize(size));
       }
+      this.bindInput();
       this.renderReadOnly(game?.state, game?.state?.currentTab || 'resources');
       return true;
+    }
+
+    bindInput() {
+      if (!this.inputEnabled || !this.runtime?.onTap || this.tapDisposer) return false;
+      this.tapDisposer = this.runtime.onTap((point, event) => this.handleTap(point, event));
+      return true;
+    }
+
+    handleTap(point, event) {
+      if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+      const action = this.renderer.getHitTarget(point);
+      if (!action || action.disabled) return false;
+      if (action.type === 'switchTab') {
+        return this.handleAction(action, event);
+      }
+      return false;
+    }
+
+    handleAction(action, event) {
+      if (this.onAction) return this.onAction(action, event) !== false;
+      if (action.type === 'switchTab' && this.lastGame?.switchTab) {
+        this.lastGame.switchTab(action.tab);
+        return true;
+      }
+      return false;
+    }
+
+    setInputEnabled(enabled) {
+      this.inputEnabled = Boolean(enabled);
+      if (!this.inputEnabled && this.tapDisposer) {
+        this.tapDisposer();
+        this.tapDisposer = null;
+      }
+      if (this.inputEnabled) this.bindInput();
     }
 
     handleResize(size) {
@@ -64,6 +102,8 @@
         renderer: options.renderer,
         presenter: options.presenter,
         previewEnabled: options.previewEnabled,
+        inputEnabled: options.inputEnabled,
+        onAction: options.onAction,
       });
       const mounted = shell.mount(game);
       return mounted ? shell : null;

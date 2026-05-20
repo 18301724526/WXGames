@@ -127,6 +127,14 @@ const Game = {
       runtime: window,
       presenter: this.presenter,
       previewEnabled: false,
+      inputEnabled: false,
+      onAction: (action) => {
+        if (action?.type === 'switchTab') {
+          this.switchTab(action.tab);
+          return true;
+        }
+        return false;
+      },
     });
     this.render();
   },

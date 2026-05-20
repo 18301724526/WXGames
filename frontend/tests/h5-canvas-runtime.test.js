@@ -95,6 +95,7 @@ test('H5 canvas app shell mounts runtime without requiring renderer', () => {
   assert.ok(shell);
   assert.equal(shell.mounted, true);
   assert.equal(shell.previewEnabled, false);
+  assert.equal(shell.inputEnabled, false);
   assert.equal(appended.length, 1);
 });
 
@@ -140,8 +141,67 @@ test('H5 canvas app shell keeps preview disabled by default so existing DOM UI r
 
   assert.ok(shell);
   assert.equal(shell.previewEnabled, false);
+  assert.equal(shell.inputEnabled, false);
+  assert.equal(shell.tapDisposer, null);
   assert.equal(shell.renderReadOnly({ currentTab: 'events' }, 'events'), false);
   assert.equal(renderCalls.length, 0);
+});
+
+test('H5 canvas app shell bridges canvas tab taps only when input is explicitly enabled', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [];
+  const renderer = {
+    getHitTarget(point) {
+      return point.x > 100 ? { type: 'switchTab', tab: 'buildings' } : null;
+    },
+    render() {},
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    inputEnabled: true,
+    onAction: (action) => {
+      actions.push(action);
+      return true;
+    },
+  });
+
+  assert.ok(shell);
+  assert.equal(shell.inputEnabled, true);
+  assert.equal(typeof shell.tapDisposer, 'function');
+  listeners.pointerup({ clientX: 205, clientY: 442 });
+  assert.deepEqual(actions, [{ type: 'switchTab', tab: 'buildings' }]);
+
+  shell.setInputEnabled(false);
+  assert.equal(shell.inputEnabled, false);
+  assert.equal(shell.tapDisposer, null);
+  listeners.pointerup({ clientX: 205, clientY: 442 });
+  assert.equal(actions.length, 1);
+});
+
+test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const switched = [];
+  const renderer = {
+    getHitTarget: () => ({ type: 'switchTab', tab: 'events' }),
+    render() {},
+  };
+  const shell = H5CanvasAppShell.mount({
+    state: { currentTab: 'resources' },
+    switchTab(tab) { switched.push(tab); },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    inputEnabled: true,
+  });
+
+  assert.ok(shell);
+  listeners.pointerup({ clientX: 205, clientY: 442 });
+  assert.deepEqual(switched, ['events']);
 });
 
 test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
@@ -154,5 +214,8 @@ test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
   assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
   assert.match(appJs, /previewEnabled: false/);
+  assert.match(appJs, /inputEnabled: false/);
+  assert.match(appJs, /action\?\.type === 'switchTab'/);
+  assert.match(appJs, /this\.switchTab\(action\.tab\)/);
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });
