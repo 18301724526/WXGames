@@ -58,7 +58,7 @@ test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
   assert.equal(canvas.id, 'h5CanvasLayer');
   assert.equal(canvas.attributes['aria-hidden'], 'true');
   assert.equal(canvas.style.position, 'fixed');
-  assert.equal(canvas.style.pointerEvents, 'none');
+  assert.equal(canvas.style.pointerEvents, 'auto');
   assert.equal(canvas.style.zIndex, '999');
   assert.equal(canvas.style.background, 'transparent');
   assert.equal(canvas.width, 780);
@@ -214,7 +214,7 @@ test('stage 5 verification hides original DOM resource strip while keeping canva
   assert.match(css, /clip-path: inset\(50%\)/);
   assert.match(css, /pointer-events: none/);
   assert.match(appJs, /previewEnabled: true/);
-  assert.match(appJs, /inputEnabled: false/);
+  assert.match(appJs, /inputEnabled: true/);
 });
 
 test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
@@ -227,7 +227,7 @@ test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
   assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
   assert.match(appJs, /previewEnabled: true/);
-  assert.match(appJs, /inputEnabled: false/);
+  assert.match(appJs, /inputEnabled: true/);
   assert.match(appJs, /action\?\.type === 'switchTab'/);
   assert.match(appJs, /this\.switchTab\(action\.tab\)/);
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);

@@ -273,10 +273,17 @@
       let cursor = x + width - barPaddingX;
       actionDefs.slice().reverse().forEach((action, index) => {
         cursor -= action.width;
-        this.drawButton(cursor, statusTop + 1, action.width, action.label === '顾问' ? statusHeight : 36, action.label, { size: 12, bold: true, active: false, radius: 18 });
+        const actionY = statusTop + 1;
+        const actionHeight = action.label === '顾问' ? statusHeight : 36;
+        this.drawButton(cursor, actionY, action.width, actionHeight, action.label, { size: 12, bold: true, active: false, radius: 18 });
         if (action.label === '顾问') {
           this.drawText('谋', cursor + 14, statusTop + 20, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
           this.drawText('●', cursor + action.width - 10, statusTop + 20, { size: 7, color: '#74d3a0', baseline: 'middle', align: 'center' });
+          this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openAdvisor' });
+        } else if (action.label === '日志') {
+          this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openLog' });
+        } else if (action.label === '设置') {
+          this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openSettings' });
         }
         if (index < actionDefs.length - 1) cursor -= 6;
       });
@@ -331,6 +338,7 @@
           baseline: 'middle',
           align: 'center',
         });
+        this.addHitTarget({ x: triggerX, y: triggerY, width: triggerWidth, height: cityHeight }, { type: 'openCitySwitcher' });
       }
 
       return y + barHeight + 12;

@@ -127,10 +127,26 @@ const Game = {
       runtime: window,
       presenter: this.presenter,
       previewEnabled: true,
-      inputEnabled: false,
+      inputEnabled: true,
       onAction: (action) => {
         if (action?.type === 'switchTab') {
           this.switchTab(action.tab);
+          return true;
+        }
+        if (action?.type === 'openAdvisor') {
+          this.openAdvisor?.();
+          return true;
+        }
+        if (action?.type === 'openLog') {
+          this.openLog?.();
+          return true;
+        }
+        if (action?.type === 'openSettings') {
+          this.toggleSettingsMenu?.();
+          return true;
+        }
+        if (action?.type === 'openCitySwitcher') {
+          this.toggleCitySwitcher?.();
           return true;
         }
         return false;

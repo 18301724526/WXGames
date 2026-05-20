@@ -26,7 +26,7 @@
       canvas.style.width = '100vw';
       canvas.style.height = '100vh';
       canvas.style.display = 'block';
-      canvas.style.pointerEvents = 'none';
+      canvas.style.pointerEvents = 'auto';
       canvas.style.touchAction = 'none';
       canvas.style.zIndex = '999';
       canvas.style.background = 'transparent';
