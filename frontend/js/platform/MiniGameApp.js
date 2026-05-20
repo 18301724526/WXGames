@@ -18,6 +18,9 @@
         presenter: this.presenter,
       }) : null);
       if (!this.renderer) throw new Error('MiniGame renderer is required');
+      if (typeof this.renderer.setAssetsChangedHandler === 'function') {
+        this.renderer.setAssetsChangedHandler(() => this.render());
+      }
       this.syncIntervalMs = options.syncIntervalMs || this.config.SYNC_INTERVAL_MS || 2000;
       this.state = options.initialState || {
         resources: {},

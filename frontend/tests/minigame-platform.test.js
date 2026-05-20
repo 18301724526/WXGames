@@ -16,6 +16,9 @@ function createCanvasStub(calls) {
     height: 0,
     getContext(type) {
       assert.equal(type, '2d');
+      const gradient = {
+        addColorStop: (...args) => calls.push(['addColorStop', ...args]),
+      };
       return {
         fillStyle: '',
         strokeStyle: '',
@@ -23,16 +26,23 @@ function createCanvasStub(calls) {
         font: '',
         textBaseline: '',
         textAlign: '',
+        globalAlpha: 1,
         scale: (...args) => calls.push(['scale', ...args]),
         clearRect: (...args) => calls.push(['clearRect', ...args]),
         fillRect: (...args) => calls.push(['fillRect', ...args]),
         beginPath: () => calls.push(['beginPath']),
         rect: (...args) => calls.push(['rect', ...args]),
+        roundRect: (...args) => calls.push(['roundRect', ...args]),
         moveTo: (...args) => calls.push(['moveTo', ...args]),
         lineTo: (...args) => calls.push(['lineTo', ...args]),
+        createLinearGradient: (...args) => {
+          calls.push(['createLinearGradient', ...args]);
+          return gradient;
+        },
         fill: () => calls.push(['fill']),
         stroke: () => calls.push(['stroke']),
         fillText: (...args) => calls.push(['fillText', ...args]),
+        drawImage: (...args) => calls.push(['drawImage', ...args]),
       };
     },
   };
@@ -253,10 +263,20 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     app.start();
 
     assert.equal(typeof tapHandler, 'function');
-    app.handleTap({ x: 96, y: 162 });
+    const assignTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'assignJob' && target.action.job === 'farmer' && target.action.delta === 1);
+    assert.ok(assignTarget);
+    app.handleTap({
+      x: assignTarget.x + assignTarget.width / 2,
+      y: assignTarget.y + assignTarget.height / 2,
+    });
     await new Promise((resolve) => setImmediate(resolve));
 
-    app.handleTap({ x: 88, y: 670 });
+    const tabTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'switchTab' && target.action.tab === 'buildings');
+    assert.ok(tabTarget);
+    app.handleTap({
+      x: tabTarget.x + tabTarget.width / 2,
+      y: tabTarget.y + tabTarget.height / 2,
+    });
     assert.equal(app.activeTab, 'buildings');
 
     assert.deepEqual(requests.find((request) => request.action === 'assign'), {
