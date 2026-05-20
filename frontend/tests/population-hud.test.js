@@ -108,8 +108,15 @@ test('resource HUD renders population management through Canvas hit targets', ()
     && target.action.job === 'farmer'
     && target.action.delta === -1
   ));
+  const craftsmanMinusTarget = renderer.hitTargets.find((target) => (
+    target.action?.type === 'assignJob'
+    && target.action.job === 'craftsman'
+    && target.action.delta === -1
+  ));
   assert.ok(plusTarget);
   assert.ok(minusTarget);
+  assert.ok(craftsmanMinusTarget);
+  assert.ok(plusTarget.x - (craftsmanMinusTarget.x + craftsmanMinusTarget.width) >= 52);
   assert.equal(renderer.getHitTarget({
     x: plusTarget.x + plusTarget.width / 2,
     y: plusTarget.y + plusTarget.height / 2,

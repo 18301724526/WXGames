@@ -509,16 +509,20 @@
         this.drawAsset(icon, x + 15, rowY + 9, 24, 24);
         this.drawText(jobLabel, x + 48, rowY + 8, { size: 13, bold: true, color: '#fff1cf' });
         this.drawText(desc, x + 48, rowY + 26, { size: 10, color: 'rgba(234, 234, 234, 0.58)' });
-        const minusX = x + width - 72;
-        const countX = x + width - 52;
-        const plusX = x + width - 24;
+        const controlGap = 6;
+        const controlButtonWidth = 22;
+        const countWidth = 40;
+        const controlGroupWidth = controlButtonWidth * 2 + countWidth + controlGap * 2;
+        const minusX = x + width - 7 - controlGroupWidth;
+        const countX = minusX + controlButtonWidth + controlGap;
+        const plusX = countX + countWidth + controlGap;
         const controlY = rowY + 10;
-        this.drawButton(minusX, controlY, 20, 22, '-', { disabled: !job.canDecrease, size: 13, radius: 6 });
+        this.drawButton(minusX, controlY, controlButtonWidth, 22, '-', { disabled: !job.canDecrease, size: 13, radius: 6 });
         this.drawPanel(countX, rowY + 9, 40, 24, { fill: 'rgba(11, 18, 14, 0.38)', stroke: 'rgba(116, 211, 160, 0.24)', radius: 8, inset: 'rgba(116, 211, 160, 0.08)' });
         this.drawText(job.count, countX + 20, rowY + 21, { size: 14, bold: true, color: '#74d3a0', baseline: 'middle', align: 'center' });
-        this.drawButton(plusX, controlY, 20, 22, '+', { disabled: !job.canIncrease, size: 13, radius: 6 });
-        this.addHitTarget({ x: minusX, y: controlY, width: 20, height: 22 }, { type: 'assignJob', job: job.id, delta: -1, disabled: !job.canDecrease });
-        this.addHitTarget({ x: plusX, y: controlY, width: 20, height: 22 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
+        this.drawButton(plusX, controlY, controlButtonWidth, 22, '+', { disabled: !job.canIncrease, size: 13, radius: 6 });
+        this.addHitTarget({ x: minusX, y: controlY, width: controlButtonWidth, height: 22 }, { type: 'assignJob', job: job.id, delta: -1, disabled: !job.canDecrease });
+        this.addHitTarget({ x: plusX, y: controlY, width: controlButtonWidth, height: 22 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
       });
       return y + panelHeight + 12;
     }
