@@ -2,8 +2,12 @@
   class H5AuthRuntimeAdapter {
     constructor(runtime = global, options = {}) {
       this.runtime = runtime || {};
-      this.confirm = options.confirm || this.runtime.confirm || (() => true);
-      this.alert = options.alert || this.runtime.alert || (() => {});
+      this.confirm = options.confirm
+        || (typeof this.runtime.confirm === 'function' ? this.runtime.confirm.bind(this.runtime) : null)
+        || (() => true);
+      this.alert = options.alert
+        || (typeof this.runtime.alert === 'function' ? this.runtime.alert.bind(this.runtime) : null)
+        || (() => {});
       this.location = options.location || this.runtime.location || null;
     }
 

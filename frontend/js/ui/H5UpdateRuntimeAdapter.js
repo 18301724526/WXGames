@@ -2,7 +2,9 @@
   class H5UpdateRuntimeAdapter {
     constructor(runtime = global, options = {}) {
       this.runtime = runtime || {};
-      this.confirm = options.confirm || this.runtime.confirm || (() => true);
+      this.confirm = options.confirm
+        || (typeof this.runtime.confirm === 'function' ? this.runtime.confirm.bind(this.runtime) : null)
+        || (() => true);
       this.caches = options.caches || this.runtime.caches || null;
       this.navigator = options.navigator || this.runtime.navigator || null;
       this.location = options.location || this.runtime.location || null;

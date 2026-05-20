@@ -53,14 +53,36 @@ test('H5 update runtime adapter owns confirmation cache clearing and reload', as
   assert.deepEqual(replaced, [nextUrl]);
 });
 
+test('H5 update runtime adapter binds runtime confirm to avoid illegal invocation', async () => {
+  const calls = [];
+  const runtime = {
+    prefix: 'runtime-bound',
+    confirm(message) {
+      calls.push(`${this.prefix}:${message}`);
+      return true;
+    },
+  };
+  const adapter = H5UpdateRuntimeAdapter.fromRuntime(runtime, {
+    caches: { async keys() { return []; }, async delete() {} },
+    navigator: { serviceWorker: { async getRegistrations() { return []; } } },
+    location: { href: 'https://kodagame.top/', replace() {} },
+    now: () => 1,
+  });
+
+  await adapter.promptAndReload({ version: '2.0.0' });
+
+  assert.deepEqual(calls, ['runtime-bound:游戏有更新，需要重启后继续。\n版本：2.0.0']);
+});
+
 test('app delegates update reload runtime instead of touching browser globals directly', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const adapterJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5UpdateRuntimeAdapter.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v1/);
-  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v2/);
+  assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v2/);
+  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v2[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v2/);
   assert.match(appJs, /this\.updateRuntime\?\.promptAndReload\(version\)/);
   assert.doesNotMatch(appJs, /window\.confirm|window\.caches|navigator\.serviceWorker|window\.location|new URL\(window\.location/);
   assert.doesNotMatch(adapterJs, /global\.navigator|global\.URL/);
+  assert.match(adapterJs, /this\.runtime\.confirm\.bind\(this\.runtime\)/);
 });
