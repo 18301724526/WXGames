@@ -21,7 +21,6 @@ function createWindowStub() {
       stop() {}
     },
     GameStateManager: class {},
-    BuildingUIRenderer: class {},
     EventUIRenderer: class {},
     TutorialUIRenderer: class {},
     TutorialController: class {},
@@ -32,7 +31,6 @@ function createWindowStub() {
     CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
     MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
-    BuildingActionAdapter: require('../js/ui/BuildingActionAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
     H5GameBootstrap: {
       mount(Game, options = {}) {
@@ -91,7 +89,7 @@ function attachMilitaryPanel(Game, elements, textSink = null) {
   });
 }
 
-test('app 会映射所有教程高亮目标，包括民居卡片', () => {
+test('app maps tutorial highlight targets without building card DOM', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
@@ -120,15 +118,15 @@ test('app 会映射所有教程高亮目标，包括民居卡片', () => {
       'tab-military': 'tabMilitary',
       'btn-advance-era': 'btnAdvanceEra',
       'btn-claim-event': 'btnClaimEvent',
-      'card-farm': 'card-farm',
-      'card-house': 'card-house',
       'event-card-special': 'event-card-special',
-      'card-lumbermill': 'card-lumbermill',
     };
 
     for (const [key, id] of Object.entries(expected)) {
       assert.equal(global.window.Game.getTutorialTarget(key), elements.get(id));
     }
+    assert.equal(global.window.Game.getTutorialTarget('card-farm'), null);
+    assert.equal(global.window.Game.getTutorialTarget('card-house'), null);
+    assert.equal(global.window.Game.getTutorialTarget('card-lumbermill'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), null);
   } finally {
     global.window = originalWindow;

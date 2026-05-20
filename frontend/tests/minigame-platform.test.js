@@ -296,8 +296,12 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       y: tabTarget.y + tabTarget.height / 2,
     });
     assert.equal(app.activeTab, 'buildings');
+    app.renderer.addHitTarget({ x: 1, y: 1, width: 20, height: 20 }, { type: 'scrollBuildings', delta: 1 });
+    app.handleTap({ x: 10, y: 10 });
+    assert.equal(app.buildingOffset, 1);
 
     app.switchTab('resources');
+    assert.equal(app.buildingOffset, 0);
     const resourceTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openResourceDetails');
     assert.ok(resourceTarget);
     app.handleTap({

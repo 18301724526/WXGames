@@ -69,18 +69,10 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     TutorialTargetAdapter: makeFactory('tutorialTargets', calls),
     CivilizationPanelAdapter: makeFactory('civilization', calls),
     MilitaryPanelAdapter: makeFactory('military', calls),
-    BuildingActionAdapter: makeFactory('buildingActions', calls, { name: 'buildingActions', getContainer: () => 'building-grid' }),
     LogModalAdapter: makeFactory('logModal', calls),
     RuntimeLogAdapter: makeFactory('runtimeLog', calls),
     TerritoryActionAdapter: makeFactory('territoryActions', calls, { name: 'territoryActions', getContainer: () => 'territory-grid' }),
     TutorialUIRenderer: makeDocumentFactory('tutorialRenderer', calls),
-    BuildingUIRenderer: class {
-      constructor(container, buildingConfig, options) {
-        this.container = container;
-        this.buildingConfig = buildingConfig;
-        this.options = options;
-      }
-    },
     EventUIRenderer: class {
       constructor(setText, options) {
         this.setText = setText;
@@ -115,9 +107,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
       assert.deepEqual(deps.authRuntime, { name: 'authRuntime' });
       assert.deepEqual(deps.authStorage, { name: 'authStorage' });
     }
-    assert.equal(shell.buildingRenderer.container, 'building-grid');
-    assert.deepEqual(shell.buildingRenderer.buildingConfig, {});
-    assert.equal(shell.buildingRenderer.options.presenter, factories.UIStatePresenter);
+    assert.equal(shell.buildingRenderer, undefined);
+    assert.equal(shell.buildingActions, undefined);
     assert.equal(shell.eventRenderer.setText, setText);
     assert.equal(shell.eventRenderer.options.document, doc);
     assert.equal(shell.eventRenderer.options.presenter, factories.UIStatePresenter);
@@ -175,6 +166,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
   assert.match(appJs, /registry: window/);
   assert.match(shellJs, /const registry = options\.registry \|\| runtimeHost/);
+  assert.doesNotMatch(shellJs, /BuildingActionAdapter|BuildingUIRenderer|buildingActions|buildingRenderer/);
   assert.doesNotMatch(shellJs, /global\.(?:GameConfig|UIStatePresenter|FrontendBuildingState|GameAPI|GameStateSync|UpdateChecker|GameStateManager|TutorialController|EventController|BuildingController|TerritoryController|FrontendGameState|mountAuthMethods|mountPopulationMethods|mountLogMethods)/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(appJs, /window\.FrontendGameState/);

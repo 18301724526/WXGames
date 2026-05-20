@@ -93,7 +93,6 @@ const Game = {
       onLog: (message) => this.log(message),
     });
     this.buildingController = new constructors.BuildingController({
-      actionAdapter: this.buildingActions,
       api: this.gameAPI,
       onSuccess: (result, action, buildingId) => this.handleBuildingSuccess(result, action, buildingId),
       onError: (error) => this.log(`❌ ${error.payload?.message || error.message}`),
@@ -117,7 +116,6 @@ const Game = {
     };
 
     this.bindBaseEvents();
-    this.buildingController.bind();
     this.territoryController.bind();
     this.startScoutCountdownTimer();
     this.updateChecker.start();
@@ -162,6 +160,13 @@ const Game = {
         }
         if (action?.type === 'assignJob') {
           this.assignJob(action.job, action.delta);
+          return true;
+        }
+        if (action?.type === 'buildBuilding' || action?.type === 'upgradeBuilding') {
+          this.buildingController.handleAction({
+            buildingId: action.buildingId,
+            action: action.type === 'upgradeBuilding' ? 'upgrade' : 'build',
+          });
           return true;
         }
         return false;
@@ -423,7 +428,6 @@ const Game = {
   },
 
   render() {
-    this.renderBuildings();
     this.renderCivilization();
     this.renderMilitary();
     this.renderTerritory();
@@ -470,10 +474,6 @@ const Game = {
       this.log(`❌ ${error.payload?.message || error.message}`);
       this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
     }
-  },
-
-  renderBuildings() {
-    this.buildingRenderer.render(this.state, this.tutorialController.state);
   },
 
   renderCivilization() {

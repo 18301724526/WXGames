@@ -13,7 +13,7 @@ test('H5 document adapters require an explicit document argument', () => {
   const uiDir = path.join(projectRoot, 'frontend', 'js', 'ui');
   const files = fs.readdirSync(uiDir)
     .filter((name) => name.endsWith('.js'))
-    .filter((name) => !['BuildingUIRenderer.js', 'EventUIRenderer.js', 'TerritoryUIRenderer.js'].includes(name));
+    .filter((name) => !['EventUIRenderer.js', 'TerritoryUIRenderer.js'].includes(name));
 
   for (const file of files) {
     const source = fs.readFileSync(path.join(uiDir, file), 'utf8');
@@ -37,9 +37,6 @@ test('canvas resource HUD uses dedicated resource icon assets without DOM resour
   assert.match(canvasRenderer, /assets\/art\/icon-food-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-knowledge-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-wood-cutout\.webp/);
-  assert.match(css, new RegExp(`\\.cost-food \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-food-cutout.webp')}'\\);\\s*\\}`));
-  assert.match(css, new RegExp(`\\.cost-knowledge \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-knowledge-cutout.webp')}'\\);\\s*\\}`));
-  assert.match(css, new RegExp(`\\.cost-wood \\.cost-icon \\{\\s*background-image: url\\('${iconUrlPattern('icon-wood-cutout.webp')}'\\);\\s*\\}`));
   assert.match(css, new RegExp(`\\.civ-overview-item:nth-child\\(4\\) \\.civ-overview-icon \\{ background-image: url\\('${iconUrlPattern('icon-happiness-cutout.webp')}'\\); \\}`));
   assert.doesNotMatch(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
   assert.doesNotMatch(css, /resource-detail/);
@@ -115,7 +112,7 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
-  assert.match(html, /BuildingUIRenderer\.js\?v=building-presenter-v1/);
+  assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
   assert.match(html, /EventUIRenderer\.js\?v=event-presenter-v1/);
   assert.match(html, /RuntimeLogAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);

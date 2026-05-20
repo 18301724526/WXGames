@@ -3,21 +3,11 @@ const assert = require('node:assert/strict');
 
 const BuildingController = require('../js/controllers/BuildingController');
 
-test('building controller delegates H5 loading state and submits build actions', async () => {
-  const loadingStates = [];
+test('building controller submits canvas build actions', async () => {
   const busyStates = [];
-  let boundHandler = null;
   let built = null;
   let success = null;
   const controller = new BuildingController({
-    actionAdapter: {
-      bindClick(handler) {
-        boundHandler = handler;
-      },
-      setLoading(button, isLoading) {
-        loadingStates.push([button.id, isLoading]);
-      },
-    },
     api: {
       async build(buildingId) {
         built = buildingId;
@@ -35,11 +25,9 @@ test('building controller delegates H5 loading state and submits build actions',
     },
   });
 
-  controller.bind();
-  await boundHandler({ buildingId: 'farm', action: 'build', button: { id: 'btnFarm' } });
+  await controller.handleAction({ buildingId: 'farm', action: 'build' });
 
   assert.equal(built, 'farm');
-  assert.deepEqual(loadingStates, [['btnFarm', true], ['btnFarm', false]]);
   assert.deepEqual(busyStates, [true, false]);
   assert.equal(success.action, 'build');
   assert.equal(success.buildingId, 'farm');
@@ -49,9 +37,6 @@ test('building controller submits upgrade actions and forwards errors', async ()
   const errors = [];
   let upgraded = null;
   const controller = new BuildingController({
-    actionAdapter: {
-      setLoading() {},
-    },
     api: {
       async upgrade(buildingId) {
         upgraded = buildingId;
@@ -66,11 +51,37 @@ test('building controller submits upgrade actions and forwards errors', async ()
     },
   });
 
-  await controller.handleAction({ buildingId: 'house', action: 'upgrade', button: {} });
+  await controller.handleAction({ buildingId: 'house', action: 'upgrade' });
 
   assert.equal(upgraded, 'house');
   assert.equal(errors.length, 1);
   assert.equal(errors[0].action, 'upgrade');
   assert.equal(errors[0].buildingId, 'house');
   assert.equal(errors[0].error.message, 'nope');
+});
+
+test('building controller ignores duplicate actions while busy', async () => {
+  let resolveBuild;
+  let buildCount = 0;
+  const controller = new BuildingController({
+    api: {
+      async build() {
+        buildCount += 1;
+        await new Promise((resolve) => {
+          resolveBuild = resolve;
+        });
+        return { success: true, message: 'ok' };
+      },
+      async upgrade() {
+        throw new Error('unexpected upgrade');
+      },
+    },
+  });
+
+  const first = controller.handleAction({ buildingId: 'farm', action: 'build' });
+  await controller.handleAction({ buildingId: 'farm', action: 'build' });
+  resolveBuild();
+  await first;
+
+  assert.equal(buildCount, 1);
 });

@@ -1,20 +1,17 @@
 (function (global) {
   class BuildingController {
     constructor(options) {
-      this.actionAdapter = options.actionAdapter;
       this.api = options.api;
       this.onSuccess = options.onSuccess;
       this.onError = options.onError;
       this.onBusy = options.onBusy;
+      this.busy = false;
     }
 
-    bind() {
-      this.actionAdapter?.bindClick?.((action) => this.handleAction(action));
-    }
-
-    async handleAction({ buildingId, action, button }) {
+    async handleAction({ buildingId, action }) {
       if (!buildingId) return;
-      this.actionAdapter?.setLoading?.(button, true);
+      if (this.busy) return;
+      this.busy = true;
       this.onBusy && this.onBusy(true);
       try {
         const result = action === 'upgrade' ? await this.api.upgrade(buildingId) : await this.api.build(buildingId);
@@ -22,7 +19,7 @@
       } catch (error) {
         this.onError && this.onError(error, action, buildingId);
       } finally {
-        this.actionAdapter?.setLoading?.(button, false);
+        this.busy = false;
         this.onBusy && this.onBusy(false);
       }
     }

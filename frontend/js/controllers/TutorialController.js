@@ -205,8 +205,8 @@
       if (step === 1) return 'tab-civilization';
       if (step === 2) return 'btn-advance-era';
       if (step === 4) return 'tab-buildings';
-      if (step === 5) return 'card-farm';
-      if (step === 7) return 'card-house';
+      if (step === 5) return 'tab-buildings';
+      if (step === 7) return 'tab-buildings';
       if (step === 8) return 'tab-resources';
       if (step === 9) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
       if (step === 10) return 'tab-events';
@@ -214,7 +214,7 @@
       if (step === 12) return 'tab-buildings';
       if (step === 13) {
         if (!this.canAffordLumbermill()) return 'tab-resources';
-        return currentTab === 'buildings' ? 'card-lumbermill' : 'tab-buildings';
+        return 'tab-buildings';
       }
       if (step === 14) return 'tab-resources';
       return null;

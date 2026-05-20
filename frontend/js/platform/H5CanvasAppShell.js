@@ -16,6 +16,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showAdvisor = false;
+      this.buildingOffset = 0;
     }
 
     createRenderer(canvas) {
@@ -126,6 +127,14 @@
         this.showCitySwitcher = false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       }
+      if (action.type === 'switchTab') {
+        this.buildingOffset = 0;
+      }
+      if (action.type === 'scrollBuildings') {
+        this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        return true;
+      }
       if (action.type === 'openAdvisor') {
         const view = this.presenter?.buildAdvisorViewState?.(this.lastGame?.state?.softGuide);
         if (view?.hidden || !view?.activeAdvisor) return false;
@@ -192,6 +201,8 @@
         showCitySwitcher: this.showCitySwitcher,
         showAdvisor: this.showAdvisor,
         logs: this.lastGame?.requestLogs || [],
+        tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
+        buildingOffset: this.buildingOffset,
       });
       return true;
     }

@@ -54,12 +54,7 @@
         <div class="page-container">
             <section class="page page-resources active" data-page="resources"></section>
 
-            <section class="page page-buildings" data-page="buildings">
-                <section class="building-panel">
-                    <h2 class="panel-title">🏗️ 建筑</h2>
-                    <div class="building-grid" id="buildingGrid"></div>
-                </section>
-            </section>
+            <section class="page page-buildings" data-page="buildings"></section>
 
             <section class="page page-tech" data-page="tech">
                 <section class="tech-header-panel">
@@ -240,7 +235,6 @@
     <script src="js/platform/H5CanvasGameRenderer.js?v=h5-game-renderer-v1"></script>
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
-    <script src="js/ui/BuildingUIRenderer.js?v=building-presenter-v1"></script>
     <script src="js/ui/EventUIRenderer.js?v=event-presenter-v1"></script>
     <script src="js/ui/TerritoryUIRenderer.js?v=territory-presenter-v1"></script>
     <script src="js/ui/TutorialUIRenderer.js?v=tutorial-presenter-v1"></script>
@@ -252,7 +246,6 @@
     <script src="js/ui/CivilizationPanelAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/MilitaryPanelAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/TutorialTargetAdapter.js?v=explicit-doc-v1"></script>
-    <script src="js/ui/BuildingActionAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/TerritoryActionAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5GameBootstrap.js?v=h5-bootstrap-explicit-doc-v1"></script>
     <script src="js/ui/H5TextAdapter.js?v=explicit-doc-v1"></script>
@@ -261,7 +254,7 @@
     <script src="js/ui/H5AuthStorageAdapter.js?v=h5-storage-runtime-v1"></script>
     <script src="js/ui/H5TutorialStorageAdapter.js?v=h5-storage-runtime-v1"></script>
     <script src="js/ui/H5ShellAdapter.js?v=h5-shell-registry-v1"></script>
-    <script src="js/controllers/BuildingController.js?v=building-action-adapter-v1"></script>
+    <script src="js/controllers/BuildingController.js?v=canvas-building-actions-v1"></script>
     <script src="js/controllers/EventController.js?v=regular-events-v1"></script>
     <script src="js/controllers/TerritoryController.js?v=territory-rename-adapter-v1"></script>
     <script src="js/controllers/TutorialController.js?v=tutorial-scheduler-v1"></script>

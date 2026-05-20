@@ -133,11 +133,13 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       mode: 'hud',
       showSettings: false,
       showLogs: false,
-      showResourceDetails: false,
-      showCitySwitcher: false,
-      showAdvisor: false,
-      logs: [],
-    },
+        showResourceDetails: false,
+        showCitySwitcher: false,
+        showAdvisor: false,
+        logs: [],
+        tutorial: {},
+        buildingOffset: 0,
+      },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
   assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
@@ -364,6 +366,71 @@ test('H5 canvas app shell owns advisor panel state and dispatches target action'
   assert.equal(renderCalls.at(-1).showAdvisor, false);
 });
 
+test('H5 canvas app shell dispatches building actions without DOM adapter', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [
+    { type: 'buildBuilding', buildingId: 'farm' },
+    { type: 'upgradeBuilding', buildingId: 'house' },
+  ];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render() {},
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'buildings' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
+  listeners['document:pointerup']({ clientX: 205, clientY: 390, type: 'pointerup', timeStamp: 1300 });
+
+  assert.deepEqual(dispatched, [
+    { type: 'buildBuilding', buildingId: 'farm' },
+    { type: 'upgradeBuilding', buildingId: 'house' },
+  ]);
+});
+
+test('H5 canvas app shell owns building pager state without DOM adapter', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [
+    { type: 'scrollBuildings', delta: 1 },
+    { type: 'switchTab', tab: 'resources' },
+  ];
+  const renderCalls = [];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'buildings' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 300, clientY: 740, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(renderCalls.at(-1).buildingOffset, 1);
+  listeners['document:pointerup']({ clientX: 30, clientY: 800, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(shell.buildingOffset, 0);
+  assert.deepEqual(dispatched, [{ type: 'switchTab', tab: 'resources' }]);
+});
+
 test('stage 6 canvas HUD takeover removes resource and city switcher DOM controls', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
@@ -378,6 +445,7 @@ test('stage 6 canvas HUD takeover removes resource and city switcher DOM control
   assert.doesNotMatch(indexHtml, /citySwitcher/);
   assert.doesNotMatch(indexHtml, /population-panel|PopulationPanelAdapter|craftsmanCard|farmerCount|scholarCount|craftsmanCount/);
   assert.doesNotMatch(indexHtml, /advisorModal|advisorBtn|AdvisorPanelAdapter|btnAdvisor|advisorMessage/);
+  assert.doesNotMatch(indexHtml, /buildingGrid|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
   assert.doesNotMatch(indexHtml, /CitySwitcherAdapter/);
   assert.doesNotMatch(indexHtml, /ResourceRenderer/);
   assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);

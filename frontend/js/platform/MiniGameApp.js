@@ -31,6 +31,7 @@
       this.activeTab = options.activeTab || 'resources';
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.buildingOffset = 0;
       this.log = options.log || (() => {});
       this.timer = null;
       this.tapDisposer = null;
@@ -50,6 +51,7 @@
         activeTab: this.activeTab,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
+        buildingOffset: this.buildingOffset,
       });
     }
 
@@ -72,6 +74,7 @@
 
     switchTab(tab) {
       this.activeTab = tab || 'resources';
+      this.buildingOffset = 0;
       this.render();
     }
 
@@ -116,6 +119,11 @@
       }
       if (action.type === 'assignJob') {
         this.runAction(() => this.api.assignJob(action.job, action.delta));
+        return;
+      }
+      if (action.type === 'scrollBuildings') {
+        this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
+        this.render();
         return;
       }
       if (action.type === 'buildBuilding') {

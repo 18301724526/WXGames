@@ -130,7 +130,7 @@
       if (!this.ctx) return;
       // For HUD overlay mode: only clear the HUD regions we actually draw to.
       // The DOM game UI shows through the transparent canvas background.
-      // Top bar: y 12 to y 170 approx
+      // Top bar and migrated Canvas-owned pages.
       // Bottom tabs: y height-72 to height
       const hudTopY = 0;
       const hudBottomY = Math.max(0, this.height - 72);
@@ -554,39 +554,122 @@
       return y + panelHeight + 12;
     }
 
-    renderBuildings(state = {}, startY = 210, panelHeight = 310) {
+    renderBuildings(state = {}, startY = 210, panelHeight = 310, options = {}) {
       if (!this.presenter) return;
       const view = this.presenter.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {});
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
+      const panelBottom = startY + panelHeight;
       this.drawPanel(x, startY, width, panelHeight, {
-        fill: 'rgba(37, 29, 21, 0.88)',
-        stroke: 'rgba(255, 226, 177, 0.14)',
+        fill: this.createGradient(
+          x, startY, x + width, panelBottom,
+          [
+            [0, 'rgba(54, 40, 28, 0.94)'],
+            [1, 'rgba(24, 19, 14, 0.94)'],
+          ],
+          'rgba(37, 29, 21, 0.92)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.18)',
         radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
+        inset: 'rgba(255, 231, 184, 0.1)',
       });
-      this.renderSectionHeader('建筑', x + 14, startY + 14, '🏗️');
+      this.drawIconCard(x + 14, startY + 14, 38, 38, 'assets/art/building-house-cutout.png');
+      this.drawText('建筑', x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
+      this.drawText('建造与升级', x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      this.drawLine(x + 16, startY + 60, x + width - 16, startY + 60, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
       if (view.isEmpty) {
-        this.drawText(view.emptyText, x + 14, startY + 46, { color: '#cbbd96', size: 13 });
+        this.drawText(view.emptyText, x + width / 2, startY + 96, { color: '#cbbd96', size: 13, align: 'center' });
         return;
       }
-      view.cards.slice(0, 4).forEach((card, index) => {
-        const y = startY + 46 + index * 62;
-        this.drawPanel(x + 12, y, width - 24, 50, {
-          fill: 'rgba(28, 22, 16, 0.84)',
-          stroke: 'rgba(255, 226, 177, 0.12)',
+      const rowHeight = 78;
+      const rowGap = 8;
+      const firstRowY = startY + 76;
+      let visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 8) / (rowHeight + rowGap)));
+      let offset = Math.max(0, Number(options.offset) || 0);
+      let maxOffset = Math.max(0, view.cards.length - visibleCount);
+      if (view.cards.length > visibleCount || offset > 0) {
+        visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 42) / (rowHeight + rowGap)));
+        maxOffset = Math.max(0, view.cards.length - visibleCount);
+      }
+      offset = Math.min(offset, maxOffset);
+      const visibleCards = view.cards.slice(offset, offset + visibleCount);
+
+      visibleCards.forEach((card, index) => {
+        const y = firstRowY + index * (rowHeight + rowGap);
+        const isMuted = Boolean(card.isMuted || card.button.disabled);
+        this.drawPanel(x + 10, y, width - 20, rowHeight, {
+          fill: isMuted
+            ? 'rgba(35, 31, 27, 0.78)'
+            : this.createGradient(
+              x + 10, y, x + width - 10, y + rowHeight,
+              [
+                [0, 'rgba(79, 57, 38, 0.88)'],
+                [1, 'rgba(28, 22, 16, 0.86)'],
+              ],
+              'rgba(48, 36, 26, 0.86)',
+            ),
+          stroke: isMuted ? 'rgba(255, 226, 177, 0.1)' : 'rgba(255, 226, 177, 0.16)',
           radius: 8,
+          inset: 'rgba(255, 231, 184, 0.07)',
         });
-        if (card.art) this.drawAsset(card.art, x + 20, y + 9, 32, 32);
-        this.drawText(card.name, x + 60, y + 8, { size: 13, bold: true, color: '#fff1cf' });
-        this.drawText(`${card.levelText} ${card.effectText || card.descText || ''}`.trim(), x + 60, y + 27, { color: '#cbbd96', size: 11 });
-        this.drawButton(x + width - 96, y + 10, 72, 30, card.button.label, { disabled: card.button.disabled, size: 12 });
+        if (card.art) this.drawAsset(card.art, x + 20, y + 12, 46, 46, isMuted ? 0.62 : 1);
+        else this.drawText(card.icon || '', x + 43, y + 35, { size: 24, align: 'center', baseline: 'middle' });
+
+        const textX = x + 76;
+        const buttonWidth = 78;
+        const buttonX = x + width - buttonWidth - 22;
+        const textWidth = Math.max(112, buttonX - textX - 12);
+        this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
+        this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
+
+        const detail = card.effectText || (card.militaryLines || [])[0] || card.descText || '';
+        const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
+        this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
+
+        const costText = card.cost?.text || (card.cost?.parts || []).map((part) => `${this.resourceShortName(part.resource)} ${part.text}`).join(' ');
+        if (costText) {
+          this.drawText(costText, buttonX + buttonWidth / 2, y + 8, {
+            size: 10,
+            color: card.cost?.isMax ? '#a0a0a0' : '#f6e8c8',
+            align: 'center',
+          });
+        }
+        this.drawButton(buttonX, y + 31, buttonWidth, 34, card.button.label, { disabled: card.button.disabled, size: 12, radius: 8 });
         this.addHitTarget(
-          { x: x + width - 96, y: y + 10, width: 72, height: 30 },
+          { x: buttonX, y: y + 31, width: buttonWidth, height: 34 },
           { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
         );
       });
+      if (view.cards.length > visibleCount) {
+        const pagerY = panelBottom - 32;
+        const buttonWidth = 68;
+        const gap = 8;
+        const prevX = x + width / 2 - buttonWidth - gap - 42;
+        const nextX = x + width / 2 + 42 + gap;
+        const canPrev = offset > 0;
+        const canNext = offset < maxOffset;
+        this.drawButton(prevX, pagerY, buttonWidth, 24, '上一页', { disabled: !canPrev, size: 11, radius: 7 });
+        this.drawText(`${offset + 1}-${offset + visibleCards.length}/${view.cards.length}`, x + width / 2, pagerY + 12, {
+          size: 10,
+          color: 'rgba(234, 234, 234, 0.62)',
+          baseline: 'middle',
+          align: 'center',
+        });
+        this.drawButton(nextX, pagerY, buttonWidth, 24, '下一页', { disabled: !canNext, size: 11, radius: 7 });
+        this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
+        this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
+      }
+    }
+
+    resourceShortName(resource) {
+      return {
+        food: '食物',
+        wood: '木材',
+        knowledge: '知识',
+        stone: '石料',
+        metal: '金属',
+      }[resource] || resource;
     }
 
     renderEvents(state = {}, startY = 210, panelHeight = 310) {
@@ -681,8 +764,8 @@
       });
     }
 
-    renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310) {
-      if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight);
+    renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
+      if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, { offset: options.buildingOffset });
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
       else if (activeTab === 'civilization') this.renderCivilization(state, startY, Math.min(availableHeight, 260));
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight);
@@ -858,6 +941,15 @@
       const topBarBottom = this.renderTopBar(state);
       if (activeTab === 'resources') {
         this.renderPopulation(state, topBarBottom);
+      } else if (activeTab === 'buildings') {
+        const tabsTop = this.height - 60 - this.bottomSafeArea;
+        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
+        this.renderBuildings(
+          { ...state, tutorial: options.tutorial || state.tutorial || {} },
+          topBarBottom,
+          availableHeight,
+          { offset: options.buildingOffset },
+        );
       }
       this.renderTabs(activeTab);
       if (options.showResourceDetails) {
@@ -1129,7 +1221,7 @@
       const tabsTop = this.height - 60 - this.bottomSafeArea;
       const advisorOffset = this.presenter && typeof this.presenter.buildAdvisorViewState === 'function' && this.presenter.buildAdvisorViewState(state.softGuide).hidden ? 0 : 52;
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
-      if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight);
+      if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
       this.renderTabs(activeTab);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);

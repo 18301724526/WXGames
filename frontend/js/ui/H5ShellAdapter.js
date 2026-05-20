@@ -9,7 +9,6 @@
       const registry = options.registry || runtimeHost;
       const presenter = options.presenter || registry.UIStatePresenter || null;
       const setText = options.setText || (() => {});
-      const buildingActions = registry.BuildingActionAdapter?.fromDocument(doc);
       const territoryActions = registry.TerritoryActionAdapter?.fromDocument(doc);
       const tutorialRenderer = registry.TutorialUIRenderer?.fromDocument(doc, runtimeHost, { presenter });
       const authRuntime = registry.H5AuthRuntimeAdapter?.fromRuntime(runtimeHost);
@@ -62,8 +61,6 @@
         tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
         civilizationPanel: registry.CivilizationPanelAdapter?.fromDocument(doc, { setText }),
         militaryPanel: registry.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
-        buildingActions,
-        buildingRenderer: registry.BuildingUIRenderer ? new registry.BuildingUIRenderer(buildingActions?.getContainer?.(), {}, { presenter }) : null,
         eventRenderer: registry.EventUIRenderer ? new registry.EventUIRenderer(setText, { document: doc, presenter }) : null,
         logModal: registry.LogModalAdapter?.fromDocument(doc),
         runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),

@@ -405,6 +405,105 @@ test('CanvasGameRenderer renders advisor panel and actions on canvas', () => {
   }), { type: 'goToAdvisorTarget', disabled: false });
 });
 
+test('CanvasGameRenderer HUD overlay draws buildings page and build actions on canvas', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildBuildingViewState: () => ({
+      isEmpty: false,
+      cards: [
+        {
+          id: 'farm',
+          name: '农田',
+          art: 'assets/art/building-farm-cutout.png',
+          levelText: '等级 0',
+          effectText: '食物产出 +50%',
+          button: { action: 'build', label: '建造', disabled: false },
+          cost: { text: '免费建造', parts: [], isMax: false },
+        },
+        {
+          id: 'house',
+          name: '民居',
+          art: 'assets/art/building-house-cutout.png',
+          levelText: '等级 1',
+          descText: '增加人口上限',
+          button: { action: 'upgrade', label: '升级', disabled: false },
+          cost: { text: '', parts: [{ resource: 'food', text: '80' }], isMax: false },
+        },
+      ],
+    }),
+  });
+
+  renderer.render({ currentEraName: '农耕时代', currentTab: 'buildings' }, {
+    activeTab: 'buildings',
+    mode: 'hud',
+    tutorial: { completed: true },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建筑'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '民居'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'house'));
+});
+
+test('CanvasGameRenderer paginates overflow building cards without DOM scrolling', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const cards = ['farm', 'house', 'lumbermill', 'barracks', 'watchtower', 'temple'].map((id, index) => ({
+    id,
+    name: id,
+    art: '',
+    icon: `${index}`,
+    levelText: '等级 0',
+    descText: '建筑说明',
+    button: { action: 'build', label: '建造', disabled: false },
+    cost: { text: '免费建造', parts: [], isMax: false },
+  }));
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildBuildingViewState: () => ({ isEmpty: false, cards }),
+  });
+
+  renderer.render({ currentTab: 'buildings' }, {
+    activeTab: 'buildings',
+    mode: 'hud',
+    buildingOffset: 2,
+  });
+
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scrollBuildings' && target.action.delta === -1));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scrollBuildings' && target.action.delta === 1));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'lumbermill'));
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'), false);
+});
+
 test('CanvasGameRenderer constructor does not double-scale DPR because runtime owns setTransform', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });
@@ -521,12 +620,11 @@ test('MiniGameCanvasRenderer extends CanvasGameRenderer after refactor', () => {
   assert.ok(typeof renderer.createImage === 'function');
 });
 
-test('H5 entry does not replace existing DOM UI after renderer extraction', () => {
+test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
   assert.match(html, /<div id="app">/);
-  assert.match(html, /id="buildingGrid"/);
   assert.match(html, /id="eventModal"/);
   assert.match(html, /id="tabResources"/);
   assert.match(html, /id="tabBuildings"/);
@@ -535,9 +633,11 @@ test('H5 entry does not replace existing DOM UI after renderer extraction', () =
   assert.match(html, /id="tabEvents"/);
   assert.doesNotMatch(html, /id="resourcePanel"/);
   assert.doesNotMatch(html, /id="resourceDetailModal"/);
+  assert.doesNotMatch(html, /id="buildingGrid"|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
+  assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
 });
 
 test('Canvas renderers are loaded in correct order in H5 index.html', () => {
