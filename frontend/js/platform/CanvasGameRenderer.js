@@ -1413,11 +1413,14 @@
       this.drawText('W', radarX + 12, radarY + radarSize / 2 - 5, { size: 10, color: '#d6b16e' });
       this.drawText('E', radarX + radarSize - 18, radarY + radarSize / 2 - 5, { size: 10, color: '#d6b16e' });
 
+      const panX = radarView.pan?.x || 0;
+      const panY = radarView.pan?.y || 0;
+
       radarView.sites.forEach((site) => {
         const left = Math.max(8, Math.min(92, Number(site.position?.left) || 50));
         const top = Math.max(8, Math.min(92, Number(site.position?.top) || 50));
-        const siteX = radarX + radarSize * left / 100 - 18;
-        const siteY = radarY + radarSize * top / 100 - 18;
+        const siteX = radarX + radarSize * left / 100 - 18 + panX;
+        const siteY = radarY + radarSize * top / 100 - 18 + panY;
         const isSelected = uiState.selectedSiteId === site.id;
         this.drawPanel(siteX, siteY, 36, 36, {
           fill: isSelected ? 'rgba(116, 211, 160, 0.3)' : 'rgba(42, 35, 24, 0.86)',

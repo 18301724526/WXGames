@@ -112,6 +112,50 @@ test('CanvasGameRenderer top HUD uses compact icon/value resource strip', () => 
   assert.doesNotMatch(source, /drawPanel\(cardX, cardY, cardWidth, resourceHeight/);
 });
 
+test('CanvasGameRenderer world radar applies pan offset to site positions', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ hasWood: true, text: { foodValue: '100', foodRate: '+1/s', knowledgeValue: '20', knowledgeRate: '+0.2/s', woodValue: '8', woodRate: '+0.1/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildMilitaryNavigationViewState: () => ({ activeView: 'world', views: [{ id: 'world', isActive: true, disabled: false }] }),
+    buildMilitaryViewState: () => ({ text: { soldierCount: '0/5', militaryDefense: 0, availableSoldierCount: 0, soldiersOnMission: 0, soldierTrainingText: '' }, training: { progressWidth: '0%' } }),
+    buildScoutControlViewState: () => ({ statusText: '', reports: [], cells: [] }),
+    buildTerritorySummaryViewState: () => ({ text: { polityName: '测试', territoryCount: '0/0' } }),
+    buildWorldRadarViewState: (territories, opts) => ({
+      pan: { x: opts?.panX || 0, y: opts?.panY || 0 },
+      sites: [{ id: 'site-1', status: 'discovered', owner: 'neutral', type: 'town', name: '东岸', title: '东岸', art: '', position: { left: '50', top: '50' } }],
+    }),
+    buildWorldSiteDialogViewState: () => ({ showModal: false, details: [] }),
+  });
+
+  renderer.render({
+    currentTab: 'military',
+    militaryView: 'world',
+    currentEra: 5,
+    territoryState: { territories: [{ id: 'site-1', status: 'discovered', owner: 'neutral', type: 'town', naturalName: '东岸', art: '' }] },
+  }, { activeTab: 'military', mode: 'hud', territoryUiState: { worldPanX: 0, worldPanY: 0 } });
+
+  const noPanTarget = renderer.hitTargets.find((target) => target.action?.type === 'openWorldSite' && target.action?.siteId === 'site-1');
+  assert.ok(noPanTarget);
+
+  renderer.hitTargets.length = 0;
+  renderer.render({
+    currentTab: 'military',
+    militaryView: 'world',
+    currentEra: 5,
+    territoryState: { territories: [{ id: 'site-1', status: 'discovered', owner: 'neutral', type: 'town', naturalName: '东岸', art: '' }] },
+  }, { activeTab: 'military', mode: 'hud', territoryUiState: { worldPanX: 40, worldPanY: -30 } });
+
+  const withPanTarget = renderer.hitTargets.find((target) => target.action?.type === 'openWorldSite' && target.action?.siteId === 'site-1');
+  assert.ok(withPanTarget);
+  assert.ok(Math.abs(withPanTarget.x - noPanTarget.x - 40) < 2, `panX diff should be 40, got ${withPanTarget.x - noPanTarget.x}`);
+  assert.ok(Math.abs(withPanTarget.y - noPanTarget.y + 30) < 2, `panY diff should be -30, got ${withPanTarget.y - noPanTarget.y}`);
+});
+
 test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constructor', () => {
   const originalImage = global.Image;
   let imageCreated = false;
