@@ -282,6 +282,35 @@
             await this.runAction(() => this.api.switchCity(a.cityId));
             return true;
           },
+          assignJob: async (a) => {
+            await this.runAction(() => this.api.assignJob(a.job, a.delta));
+            return true;
+          },
+          buildBuilding: async (a) => {
+            await this.runAction(() => this.api.build(a.buildingId));
+            return true;
+          },
+          upgradeBuilding: async (a) => {
+            await this.runAction(() => this.api.upgrade(a.buildingId));
+            return true;
+          },
+          advanceEra: async () => {
+            await this.runAction(() => this.api.advanceEra());
+            return true;
+          },
+          claimEvent: async (a) => {
+            this.activeEventId = null;
+            await this.runAction(() => this.api.claimEvent(a.eventId, a.optionId));
+            return true;
+          },
+          scoutTerritory: async (a) => {
+            await this.runAction(() => this.api.scoutTerritory(a.value));
+            return true;
+          },
+          claimScout: async (a) => {
+            await this.runAction(() => this.api.claimScout(a.value));
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },
@@ -304,25 +333,14 @@
         this.submitNaming();
         return;
       }
-      if (action.type === 'assignJob') {
-        this.runAction(() => this.api.assignJob(action.job, action.delta));
-        return;
-      }
       if (action.type === 'scrollBuildings') {
         this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
         this.render();
         return;
       }
-      if (action.type === 'buildBuilding') {
-        this.runAction(() => this.api.build(action.buildingId));
-        return;
-      }
-      if (action.type === 'upgradeBuilding') {
-        this.runAction(() => this.api.upgrade(action.buildingId));
-        return;
-      }
-      if (action.type === 'advanceEra') {
-        this.runAction(() => this.api.advanceEra());
+      if (action.type === 'scrollBuildings') {
+        this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
+        this.render();
         return;
       }
       if (action.type === 'switchMilitaryView') {
@@ -332,19 +350,6 @@
         return;
       }
 
-      if (action.type === 'claimEvent') {
-        this.activeEventId = null;
-        this.runAction(() => this.api.claimEvent(action.eventId, action.optionId));
-        return;
-      }
-      if (action.type === 'scoutTerritory') {
-        this.runAction(() => this.api.scoutTerritory(action.value));
-        return;
-      }
-      if (action.type === 'claimScout') {
-        this.runAction(() => this.api.claimScout(action.value));
-        return;
-      }
       if (action.type === 'territoryAction') {
         if (action.action === 'open-expedition') {
           const site = (this.state.territoryState?.territories || []).find((item) => item.id === action.territoryId);

@@ -14,7 +14,7 @@ function extractActionTypes(source) {
   return actions;
 }
 
-test('H5 与小游戏当前 action 覆盖矩阵明确记录共享 changeExpeditionSoldiers 迁移起点', () => {
+test('H5 与小游戏当前 action 覆盖矩阵明确记录阶段 4 异步迁移起点', () => {
   const h5Shell = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'H5CanvasAppShell.js'), 'utf8');
   const miniGameApp = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'MiniGameApp.js'), 'utf8');
   const h5Actions = extractActionTypes(h5Shell);
@@ -22,9 +22,9 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录共享 changeExpediti
 
   const sharedActions = [...h5Actions].filter((action) => miniActions.has(action)).sort();
 
-  // 以下 action 已迁入 dispatcher，不再在直接 if 分支中处理
-  assert.ok(sharedActions.includes('claimScout'));
-  // openSettings/closeSettings/openLogs/closeLogs/openAdvisor/closeAdvisor/openEvent/closeEvent/openWorldSite/closeWorldSite/resetWorldPan/changeExpeditionSoldiers 已迁入 dispatcher
+  // claimScout 已从小游戏直接 if 分支移入 dispatcher，不再是共享直接分支
+  assert.equal(sharedActions.includes('claimScout'), false);
+  // 阶段 3 纯 UI action 已全部迁入 dispatcher
   assert.equal(h5Actions.has('openSettings'), false);
   assert.equal(h5Actions.has('closeSettings'), false);
   assert.equal(h5Actions.has('openLogs'), false);
@@ -37,14 +37,15 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录共享 changeExpediti
   assert.equal(h5Actions.has('closeWorldSite'), false);
   assert.equal(h5Actions.has('resetWorldPan'), false);
   assert.equal(h5Actions.has('changeExpeditionSoldiers'), false);
-  assert.equal(miniActions.has('openSettings'), false);
-  assert.equal(miniActions.has('openLogs'), false);
-  assert.equal(miniActions.has('openAdvisor'), false);
-  assert.equal(miniActions.has('openEvent'), false);
-  assert.equal(miniActions.has('openWorldSite'), false);
-  assert.equal(miniActions.has('closeWorldSite'), false);
-  assert.equal(miniActions.has('resetWorldPan'), false);
-  assert.equal(miniActions.has('changeExpeditionSoldiers'), false);
+  // 阶段 4 异步 action 已从小游戏直接 if 分支中移除
+  assert.equal(miniActions.has('selectCity'), false);
+  assert.equal(miniActions.has('assignJob'), false);
+  assert.equal(miniActions.has('buildBuilding'), false);
+  assert.equal(miniActions.has('upgradeBuilding'), false);
+  assert.equal(miniActions.has('advanceEra'), false);
+  assert.equal(miniActions.has('claimEvent'), false);
+  assert.equal(miniActions.has('scoutTerritory'), false);
+  assert.equal(miniActions.has('claimScout'), false);
 });
 
 test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers 纯 UI action', () => {
