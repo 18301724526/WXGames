@@ -907,6 +907,7 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
     }),
     buildScoutControlViewState: () => ({
       statusText: '北方侦察中，预计 0:30 后返回。',
+      reports: [{ title: '侦察报告', text: '发现东岸。' }],
       cells: [
         { type: 'center', label: '城', subLabel: '本城' },
         { type: 'button', id: 'n', direction: 'n', status: 'active', disabled: true, action: '', actionValue: '', label: '北方', actionText: '0:30' },
@@ -956,10 +957,13 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
     mode: 'hud',
   });
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察报告'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '发现东岸。'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchMilitaryView' && target.action.view === 'world'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scoutTerritory' && target.action.value === 'e'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimScout' && target.action.value === 'mission-west'));
 
+  calls.length = 0;
   renderer.render({
     currentTab: 'military',
     currentEra: 5,
@@ -972,6 +976,10 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   });
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '赤火联盟'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察报告'), false);
+  const radarDragTarget = renderer.hitTargets.find((target) => target.action?.type === 'worldRadarDrag');
+  assert.ok(radarDragTarget);
+  assert.ok(radarDragTarget.width > 286);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'territoryAction' && target.action.action === 'conquer'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));

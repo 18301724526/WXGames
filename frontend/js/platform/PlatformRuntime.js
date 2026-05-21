@@ -155,6 +155,27 @@
       return this.onTouchEnd((event) => handler(PlatformRuntime.getTouchPoint(event), event));
     }
 
+    onDrag(handler) {
+      if (typeof handler !== 'function') return () => {};
+      const disposers = [];
+      if (this.host && typeof this.host.onTouchStart === 'function') {
+        const start = (event) => handler('start', PlatformRuntime.getTouchPoint(event), event);
+        this.host.onTouchStart(start);
+        disposers.push(() => this.host.offTouchStart?.(start));
+      }
+      if (this.host && typeof this.host.onTouchMove === 'function') {
+        const move = (event) => handler('move', PlatformRuntime.getTouchPoint(event), event);
+        this.host.onTouchMove(move);
+        disposers.push(() => this.host.offTouchMove?.(move));
+      }
+      if (this.host && typeof this.host.onTouchEnd === 'function') {
+        const end = (event) => handler('end', PlatformRuntime.getTouchPoint(event), event);
+        this.host.onTouchEnd(end);
+        disposers.push(() => this.host.offTouchEnd?.(end));
+      }
+      return () => disposers.forEach((dispose) => dispose());
+    }
+
     requestTextInput(options = {}) {
       if (this.textInput) return Promise.resolve(this.textInput(options));
       if (!this.host || typeof this.host.showKeyboard !== 'function') return Promise.resolve(null);

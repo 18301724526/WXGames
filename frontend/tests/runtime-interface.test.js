@@ -22,6 +22,7 @@ function assertUnifiedRuntimeShape(runtime) {
     'setStorage',
     'removeStorage',
     'onTap',
+    'onDrag',
     'requestTextInput',
     'setInterval',
     'clearInterval',

@@ -167,6 +167,37 @@
       return Math.max(1, Number(this.territoryUiState.expeditionSoldiers) || recommended);
     }
 
+    handleDrag(phase, point = {}) {
+      if (this.activeTab !== 'military' || this.militaryView !== 'world') return;
+      const x = Number(point.x) || 0;
+      const y = Number(point.y) || 0;
+      if (phase === 'start') {
+        this.dragStart = {
+          x,
+          y,
+          panX: Number(this.territoryUiState.worldPanX) || 0,
+          panY: Number(this.territoryUiState.worldPanY) || 0,
+        };
+        return;
+      }
+      if (phase === 'move') {
+        const dx = Number(point.dx ?? point.deltaX);
+        const dy = Number(point.dy ?? point.deltaY);
+        if (Number.isFinite(dx) && Number.isFinite(dy)) {
+          this.territoryUiState.worldPanX += dx;
+          this.territoryUiState.worldPanY += dy;
+        } else if (this.dragStart) {
+          this.territoryUiState.worldPanX = this.dragStart.panX + x - this.dragStart.x;
+          this.territoryUiState.worldPanY = this.dragStart.panY + y - this.dragStart.y;
+        }
+        this.render();
+        return;
+      }
+      if (phase === 'end' || phase === 'cancel') {
+        this.dragStart = null;
+      }
+    }
+
     handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
@@ -367,6 +398,9 @@
       if (this.timer) return;
       if (!this.tapDisposer && this.runtime && typeof this.runtime.onTap === 'function') {
         this.tapDisposer = this.runtime.onTap((point) => this.handleTap(point));
+      }
+      if (!this.dragDisposer && this.runtime && typeof this.runtime.onDrag === 'function') {
+        this.dragDisposer = this.runtime.onDrag((phase, point) => this.handleDrag(phase, point));
       }
       this.timer = this.runtime.setInterval(() => {
         this.syncOnce().catch(() => {});

@@ -13,8 +13,14 @@
       this.width = 0;
       this.height = 0;
       this.tapHandlers = [];
+      this.dragHandlers = [];
+      this.pointerDown = null;
+      this.dragActive = false;
+      this.dragMoved = false;
       this.resizeHandlers = [];
       this.handleResize = this.handleResize.bind(this);
+      this.handlePointerDown = this.handlePointerDown.bind(this);
+      this.handlePointerMove = this.handlePointerMove.bind(this);
       this.handlePointerUp = this.handlePointerUp.bind(this);
       this.lastTapAt = 0;
       this.lastTapKey = '';
@@ -127,8 +133,12 @@
       this.eventsBound = true;
       this.runtime.addEventListener?.('resize', this.handleResize);
       const eventTarget = this.document || this.canvas;
+      eventTarget.addEventListener?.('pointerdown', this.handlePointerDown, { capture: true });
+      eventTarget.addEventListener?.('pointermove', this.handlePointerMove, { capture: true });
       eventTarget.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
       if (!global.PointerEvent) {
+        eventTarget.addEventListener?.('touchstart', this.handlePointerDown, { capture: true, passive: false });
+        eventTarget.addEventListener?.('touchmove', this.handlePointerMove, { capture: true, passive: false });
         eventTarget.addEventListener?.('touchend', this.handlePointerUp, { capture: true, passive: false });
         eventTarget.addEventListener?.('click', this.handlePointerUp, { capture: true });
       }
@@ -159,8 +169,56 @@
       return false;
     }
 
+    handlePointerDown(event) {
+      const point = this.toCanvasPoint(event);
+      const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? 1;
+      this.pointerDown = { ...point, pointerId };
+      this.dragActive = false;
+      this.dragMoved = false;
+      let handled = false;
+      this.dragHandlers.forEach((handler) => {
+        if (handler('start', { ...point, pointerId }, event)) handled = true;
+      });
+      if (handled) {
+        this.dragActive = true;
+        if (event?.cancelable !== false) event.preventDefault?.();
+        event.stopPropagation?.();
+      }
+      return handled;
+    }
+
+    handlePointerMove(event) {
+      if (!this.pointerDown || !this.dragActive) return false;
+      const point = this.toCanvasPoint(event);
+      const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown.pointerId;
+      if (pointerId !== this.pointerDown.pointerId) return false;
+      if (Math.abs(point.x - this.pointerDown.x) > 3 || Math.abs(point.y - this.pointerDown.y) > 3) this.dragMoved = true;
+      let handled = false;
+      this.dragHandlers.forEach((handler) => {
+        if (handler('move', { ...point, pointerId }, event)) handled = true;
+      });
+      if (handled) {
+        if (event?.cancelable !== false) event.preventDefault?.();
+        event.stopPropagation?.();
+      }
+      return handled;
+    }
+
     handlePointerUp(event) {
       const point = this.toCanvasPoint(event);
+      const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown?.pointerId ?? 1;
+      if (this.dragActive) {
+        this.dragHandlers.forEach((handler) => handler('end', { ...point, pointerId }, event));
+      }
+      const skipTap = this.dragMoved;
+      this.pointerDown = null;
+      this.dragActive = false;
+      this.dragMoved = false;
+      if (skipTap) {
+        if (event?.cancelable !== false) event.preventDefault?.();
+        event.stopPropagation?.();
+        return true;
+      }
       if (this.shouldIgnoreDuplicateTap(point, event)) return false;
       let handled = false;
       this.tapHandlers.forEach((handler) => {
@@ -176,6 +234,14 @@
       this.tapHandlers.push(handler);
       return () => {
         this.tapHandlers = this.tapHandlers.filter((item) => item !== handler);
+      };
+    }
+
+    onDrag(handler) {
+      if (typeof handler !== 'function') return () => {};
+      this.dragHandlers.push(handler);
+      return () => {
+        this.dragHandlers = this.dragHandlers.filter((item) => item !== handler);
       };
     }
 

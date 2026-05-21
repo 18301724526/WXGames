@@ -81,7 +81,24 @@
     bindInput() {
       if (!this.inputEnabled || !this.runtime?.onTap || this.tapDisposer) return false;
       this.tapDisposer = this.runtime.onTap((point, event) => this.handleTap(point, event));
+      if (this.runtime.onDrag && !this.dragDisposer) {
+        this.dragDisposer = this.runtime.onDrag((phase, point, event) => this.handleDrag(phase, point, event));
+      }
       return true;
+    }
+
+    handleDrag(phase, point, event) {
+      if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+      if (phase === 'start') {
+        const action = this.renderer.getHitTarget(point);
+        if (action?.type !== 'worldRadarDrag') return false;
+        this.dragAction = action;
+      }
+      if (!this.dragAction) return false;
+      if (!this.onAction) return false;
+      const handled = this.onAction({ type: 'worldRadarDrag', phase, pointer: point }, event) !== false;
+      if (phase === 'end') this.dragAction = null;
+      return handled;
     }
 
     handleTap(point, event) {

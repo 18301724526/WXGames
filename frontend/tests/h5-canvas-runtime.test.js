@@ -87,6 +87,27 @@ test('H5 canvas runtime resizes and converts pointer coordinates', () => {
   assert.deepEqual(taps.at(-1), { x: 150, y: 300 });
 });
 
+test('H5 canvas runtime dispatches drag phases and suppresses tap after movement', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+  const dragEvents = [];
+  const taps = [];
+
+  h5Runtime.onDrag((phase, point) => {
+    dragEvents.push({ phase, point });
+    return true;
+  });
+  h5Runtime.onTap((point) => taps.push(point));
+  h5Runtime.ensureCanvas();
+
+  listeners['document:pointerdown']({ pointerId: 7, clientX: 110, clientY: 220, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners['document:pointermove']({ pointerId: 7, clientX: 140, clientY: 260, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners['document:pointerup']({ pointerId: 7, clientX: 140, clientY: 260, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.deepEqual(dragEvents.map((event) => event.phase), ['start', 'move', 'end']);
+  assert.equal(taps.length, 0);
+});
+
 test('H5 canvas app shell mounts runtime without requiring renderer', () => {
   const { document, runtime, appended } = createCanvasHarness();
   const shell = H5CanvasAppShell.mount({ state: { resources: {} } }, {

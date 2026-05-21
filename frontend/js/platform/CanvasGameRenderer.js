@@ -1258,7 +1258,8 @@
       this.drawTextLines(statusLines, x + 14, y + 14, { size: 12, color: '#cbbd96', lineHeight: 16 });
 
       const gridTop = y + 56;
-      const gridSize = Math.min(width - 28, Math.max(210, Math.min(height - 70, 286)));
+      const reportReserve = Math.min(126, Math.max(86, height * 0.26));
+      const gridSize = Math.min(width - 28, Math.max(190, Math.min(height - 82 - reportReserve, 286)));
       const gridX = x + (width - gridSize) / 2;
       this.drawPanel(gridX, gridTop, gridSize, gridSize, {
         fill: 'rgba(18, 16, 13, 0.38)',
@@ -1328,6 +1329,11 @@
           disabled: cell.disabled || !cell.action,
         });
       });
+
+      const reportsY = gridTop + gridSize + 18;
+      if (reportsY < y + height - 42) {
+        this.renderWorldReports(scout.reports || scout.scoutReports || [], x + 14, reportsY, width - 28, y + height - reportsY - 10);
+      }
     }
 
     renderWorldReports(reports = [], x, y, width, maxHeight) {
@@ -1389,7 +1395,7 @@
         panX: uiState.worldPanX || 0,
         panY: uiState.worldPanY || 0,
       });
-      const radarSize = Math.min(width - 28, Math.max(190, Math.min(height - 140, 286)));
+      const radarSize = Math.min(width - 24, Math.max(260, Math.min(height - 68, 520)));
       const radarX = x + (width - radarSize) / 2;
       const radarY = y + 46;
       this.drawPanel(radarX, radarY, radarSize, radarSize, {
@@ -1405,6 +1411,7 @@
         radius: radarSize / 2,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
+      this.addHitTarget({ x: radarX, y: radarY, width: radarSize, height: radarSize }, { type: 'worldRadarDrag', background: true });
       this.drawLine(radarX + radarSize / 2, radarY + 12, radarX + radarSize / 2, radarY + radarSize - 12, {
         color: 'rgba(240, 180, 91, 0.16)',
       });
@@ -1447,11 +1454,6 @@
       const resetW = 76;
       this.drawButton(radarX + radarSize - resetW - 8, radarY + 8, resetW, 28, '回到本城', { size: 11, radius: 14 });
       this.addHitTarget({ x: radarX + radarSize - resetW - 8, y: radarY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
-
-      const reportsY = radarY + radarSize + 20;
-      if (reportsY < y + height - 48) {
-        this.renderWorldReports(territoryState.scoutReports || [], x + 14, reportsY, width - 28, y + height - reportsY - 10);
-      }
     }
 
     renderWorldSiteAction(actionView = {}, x, y, width) {

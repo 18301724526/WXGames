@@ -196,6 +196,14 @@ const Game = {
           this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
           return true;
         }
+        if (action?.type === 'worldRadarDrag') {
+          const pointer = action.pointer || {};
+          if (action.phase === 'start') this.territoryController.startWorldDrag(pointer);
+          if (action.phase === 'move') this.territoryController.moveWorldDrag(pointer);
+          if (action.phase === 'end') this.territoryController.endWorldDrag(pointer);
+          this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
+          return true;
+        }
         if (action?.type === 'territoryAction') {
           this.territoryController.handleAction({
             territoryId: action.territoryId,

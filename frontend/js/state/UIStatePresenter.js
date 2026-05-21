@@ -890,6 +890,7 @@
 
       const directions = Array.isArray(territoryState.directions) ? territoryState.directions : [];
       const scoutMissions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
+      const scoutReports = Array.isArray(territoryState.scoutReports) ? territoryState.scoutReports : [];
       const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
       const activeScouts = scoutMissions.filter((mission) => mission.status === 'active');
       const activeScout = activeScouts[0];
@@ -984,6 +985,7 @@
       return {
         statusText,
         cells,
+        reports: scoutReports,
       };
     }
 
