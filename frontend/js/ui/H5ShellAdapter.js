@@ -56,8 +56,6 @@
         tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
         authShell: registry.AuthShellAdapter?.fromDocument(doc),
         navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
-        logModal: registry.LogModalAdapter?.fromDocument(doc),
-        runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),
         tutorialRenderer,
       });
     }

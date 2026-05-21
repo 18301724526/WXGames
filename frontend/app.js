@@ -133,10 +133,7 @@ const Game = {
           this.goToAdvisorTarget();
           return true;
         }
-        if (action?.type === 'openLogs') {
-          this.showRecentLogs?.();
-          return true;
-        }
+        if (action?.type === 'openLogs') return true;
         if (action?.type === 'closeLogs') {
           this.closeRequestLogs?.();
           return true;
@@ -240,7 +237,6 @@ const Game = {
       onAdvanceEra: () => this.advanceEra(),
     });
 
-    this.logModal?.bindOpen(() => this.showRecentLogs());
     this.authShell?.bindSettingsEvents({
       onToggleSettings: () => this.toggleSettings(),
       onReset: async () => {
@@ -252,7 +248,6 @@ const Game = {
         this.logout();
       },
     });
-    this.logModal?.bindClose(() => this.closeRequestLogs && this.closeRequestLogs());
   },
 
   async startHeartbeat() {
@@ -615,20 +610,6 @@ const Game = {
     if (tabId) this.switchTab(tabId);
   },
 
-  renderRecentLogView(view) {
-    if (view.isEmpty) {
-      return `<div class="recent-log-empty">${this.escapeHtml(view.emptyText)}</div>`;
-    }
-    return `<div class="recent-log-list">${view.items.map((entry) => (
-      `<div class="recent-log-item">${this.escapeHtml(entry.text)}</div>`
-    )).join('')}</div>`;
-  },
-
-  showRecentLogs() {
-    const view = this.presenter.buildRecentLogViewState(this.recentLogs);
-    this.logModal?.open(this.renderRecentLogView(view));
-  },
-
   showFloatingText(message) {
     const shown = this.canvasShell?.showFloatingText?.(message);
     if (!shown) this.log(message);
@@ -644,7 +625,6 @@ const Game = {
     const entry = { text: String(message ?? ''), timestamp: Date.now() };
     this.recentLogs.unshift(entry);
     if (this.recentLogs.length > 30) this.recentLogs = this.recentLogs.slice(0, 30);
-    this.runtimeLog?.render(this.recentLogs);
   },
 };
 

@@ -55,8 +55,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     TerritoryController: class TerritoryController {},
     AuthShellAdapter: makeFactory('auth', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
-    LogModalAdapter: makeFactory('logModal', calls),
-    RuntimeLogAdapter: makeFactory('runtimeLog', calls),
     TutorialCanvasRenderer: class TutorialCanvasRenderer {
       constructor() {
         calls.push(['tutorialRenderer']);
@@ -111,6 +109,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.equal(shell.floatingText, undefined);
     assert.equal(shell.namingModal, undefined);
     assert.equal(shell.territoryActions, undefined);
+    assert.equal(shell.logModal, undefined);
+    assert.equal(shell.runtimeLog, undefined);
     assert.equal(shell.territoryRenderer, undefined);
     assert.ok(calls.some(([name, callDoc]) => name === 'auth' && callDoc === doc));
     assert.ok(calls.some(([name, callRuntime]) => name === 'updateRuntime' && callRuntime === runtime));
@@ -157,5 +157,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(shellJs, /NamingModalAdapter|namingModal/);
   assert.doesNotMatch(shellJs, /FloatingTextAdapter|floatingText/);
   assert.doesNotMatch(shellJs, /TutorialTargetAdapter|tutorialTargets|TutorialUIRenderer/);
+  assert.doesNotMatch(shellJs, /LogModalAdapter|RuntimeLogAdapter|logModal|runtimeLog/);
+  assert.doesNotMatch(appJs, /renderRecentLogView|showRecentLogs|runtimeLog|logModal/);
   assert.match(html, /js\/ui\/TutorialCanvasRenderer\.js\?v=tutorial-canvas-v1/);
 });

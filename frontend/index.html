@@ -17,10 +17,6 @@
         .btn-login { background:var(--accent); color:#fff; }
         .login-panel .login-remember { display:flex; align-items:center; gap:8px; margin:4px 0 14px; color:var(--text-secondary); font-size:13px; }
         .login-panel .login-remember input { width:auto; margin:0; }
-        .log-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:20px; }
-        .log-modal-overlay.active { display:flex; }
-        .log-modal-content { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:20px; width:100%; max-width:560px; max-height:80vh; overflow:auto; }
-        .log-modal-close { float:right; background:none; border:none; color:var(--text-secondary); font-size:18px; cursor:pointer; }
     </style>
 </head>
 <body>
@@ -102,8 +98,6 @@
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
     <script src="js/ui/TutorialCanvasRenderer.js?v=tutorial-canvas-v1"></script>
-    <script src="js/ui/LogModalAdapter.js?v=explicit-doc-v1"></script>
-    <script src="js/ui/RuntimeLogAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/AuthShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/NavigationShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5GameBootstrap.js?v=h5-bootstrap-explicit-doc-v1"></script>
