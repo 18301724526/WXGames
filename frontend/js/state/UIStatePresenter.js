@@ -998,9 +998,11 @@
     }
 
     static getWorldRadarPosition(site, maxDistance) {
-      const visualOffset = site.visualOffset || {};
-      const x = Number(site.relativeX ?? site.x ?? 0) + (Number(visualOffset.x) || 0);
-      const y = Number(site.relativeY ?? site.y ?? 0) + (Number(visualOffset.y) || 0);
+      const rx = Number(site.relativeX ?? site.x ?? 0);
+      const ry = Number(site.relativeY ?? site.y ?? 0);
+      const offset = UIStatePresenter.relativeVisualOffset(rx, ry, site.id || '');
+      const x = rx + offset.x;
+      const y = ry + offset.y;
       const distance = Math.max(0, Math.hypot(x, y));
       const normalized = Math.sqrt(Math.min(1, distance / Math.max(1, maxDistance)));
       const radius = distance > 0 ? 12 + normalized * 30 : 0;
@@ -1012,6 +1014,28 @@
         angle,
         radius,
       };
+    }
+
+    static relativeVisualOffset(x, y, seedHint = '') {
+      if (x === 0 && y === 0) return { x: 0, y: 0 };
+      const seed = Math.abs((x * 92821) + (y * 68917) + String(seedHint).length * 131);
+      const distance = Math.max(1, Math.max(Math.abs(x), Math.abs(y)));
+      const lateralX = (UIStatePresenter.seededNoise(seed + 11) - 0.5) * 0.44;
+      const lateralY = (UIStatePresenter.seededNoise(seed + 23) - 0.5) * 0.44;
+      const radial = (UIStatePresenter.seededNoise(seed + 37) - 0.5) * 0.22;
+      return {
+        x: UIStatePresenter.roundOffset(lateralX + (x / distance) * radial),
+        y: UIStatePresenter.roundOffset(lateralY + (y / distance) * radial),
+      };
+    }
+
+    static seededNoise(seed) {
+      const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    }
+
+    static roundOffset(value) {
+      return Math.round(value * 100) / 100;
     }
 
     static measureWorldRadarSpacing(candidate, placed) {
@@ -1056,8 +1080,8 @@
       const maxDistance = Math.max(
         1,
         ...territories.map((site) => Math.hypot(
-          Number(site.relativeX ?? site.x ?? 0) + (Number(site.visualOffset?.x) || 0),
-          Number(site.relativeY ?? site.y ?? 0) + (Number(site.visualOffset?.y) || 0),
+          Number(site.relativeX ?? site.x ?? 0),
+          Number(site.relativeY ?? site.y ?? 0),
         )),
       );
       const sorted = [...territories].sort((a, b) => {
