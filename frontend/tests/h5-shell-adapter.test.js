@@ -16,15 +16,6 @@ function makeFactory(name, calls, result = null) {
   };
 }
 
-function makeDocumentFactory(name, calls, result = null) {
-  return {
-    fromDocument(...args) {
-      calls.push([name, ...args]);
-      return result || { name };
-    },
-  };
-}
-
 function makeRuntimeFactory(name, calls, result = null) {
   return {
     fromRuntime(runtime, options) {
@@ -64,10 +55,14 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     TerritoryController: class TerritoryController {},
     AuthShellAdapter: makeFactory('auth', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
-    TutorialTargetAdapter: makeFactory('tutorialTargets', calls),
     LogModalAdapter: makeFactory('logModal', calls),
     RuntimeLogAdapter: makeFactory('runtimeLog', calls),
-    TutorialUIRenderer: makeDocumentFactory('tutorialRenderer', calls),
+    TutorialCanvasRenderer: class TutorialCanvasRenderer {
+      constructor() {
+        calls.push(['tutorialRenderer']);
+        this.name = 'tutorialRenderer';
+      }
+    },
   };
   const mountedModules = [];
   const registry = {
@@ -124,12 +119,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.ok(calls.some(([name, callRuntime]) => name === 'tutorialStorage' && callRuntime === runtime));
     assert.equal(calls.some(([name]) => name === 'floatingText'), false);
     assert.equal(calls.some(([name]) => name === 'civilization'), false);
-    assert.ok(calls.some(([name, callDoc, callRuntime, options]) => (
-      name === 'tutorialRenderer'
-      && callDoc === doc
-      && callRuntime === runtime
-      && options.presenter === factories.UIStatePresenter
-    )));
+    assert.ok(calls.some(([name]) => name === 'tutorialRenderer'));
+    assert.equal(shell.tutorialTargets, undefined);
 });
 
 test('app receives H5 shell instead of assembling every document adapter itself', () => {
@@ -165,4 +156,6 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(shellJs, /MilitaryPanelAdapter|militaryPanel|TerritoryActionAdapter|TerritoryUIRenderer|territoryActions|territoryRenderer/);
   assert.doesNotMatch(shellJs, /NamingModalAdapter|namingModal/);
   assert.doesNotMatch(shellJs, /FloatingTextAdapter|floatingText/);
+  assert.doesNotMatch(shellJs, /TutorialTargetAdapter|tutorialTargets|TutorialUIRenderer/);
+  assert.match(html, /js\/ui\/TutorialCanvasRenderer\.js\?v=tutorial-canvas-v1/);
 });

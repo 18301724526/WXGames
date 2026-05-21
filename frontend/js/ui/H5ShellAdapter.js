@@ -8,7 +8,9 @@
       const runtimeHost = runtime || {};
       const registry = options.registry || runtimeHost;
       const presenter = options.presenter || registry.UIStatePresenter || null;
-      const tutorialRenderer = registry.TutorialUIRenderer?.fromDocument(doc, runtimeHost, { presenter });
+      const tutorialRenderer = registry.TutorialCanvasRenderer
+        ? new registry.TutorialCanvasRenderer()
+        : null;
       const authRuntime = registry.H5AuthRuntimeAdapter?.fromRuntime(runtimeHost);
       const authStorage = registry.H5AuthStorageAdapter?.fromRuntime(runtimeHost);
       const moduleDeps = {
@@ -54,7 +56,6 @@
         tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
         authShell: registry.AuthShellAdapter?.fromDocument(doc),
         navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
-        tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
         logModal: registry.LogModalAdapter?.fromDocument(doc),
         runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),
         tutorialRenderer,

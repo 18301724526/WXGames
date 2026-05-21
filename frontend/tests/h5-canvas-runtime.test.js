@@ -148,6 +148,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
         submitting: false,
       },
       floatingTexts: [],
+      tutorialHighlight: null,
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -441,6 +442,51 @@ test('H5 canvas app shell dispatches era advance without DOM button', () => {
   listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
 
   assert.deepEqual(dispatched, [{ type: 'advanceEra' }]);
+});
+
+test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    hitTargets: [
+      { x: 20, y: 220, width: 300, height: 32, action: { type: 'advanceEra' } },
+      { x: 272, y: 786, width: 53, height: 58, action: { type: 'switchTab', tab: 'civilization' } },
+    ],
+    render(state, options) { renderCalls.push(options); },
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'civilization' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+
+  assert.deepEqual(shell.getTutorialTarget('tab-civilization').getRect(), {
+    left: 272,
+    top: 786,
+    width: 53,
+    height: 58,
+    right: 325,
+    bottom: 844,
+  });
+  assert.equal(shell.getTutorialTarget('tab-resources'), null);
+
+  assert.equal(shell.showTutorialHighlight(shell.getTutorialTarget('btn-advance-era'), 'Advance now'), true);
+  assert.deepEqual(renderCalls.at(-1).tutorialHighlight, {
+    rect: {
+      left: 20,
+      top: 220,
+      width: 300,
+      height: 32,
+      right: 320,
+      bottom: 252,
+    },
+    message: 'Advance now',
+  });
+
+  assert.equal(shell.hideTutorialHighlight(), true);
+  assert.equal(renderCalls.at(-1).tutorialHighlight, null);
 });
 
 test('H5 canvas app shell dispatches military and world actions without DOM adapters', () => {

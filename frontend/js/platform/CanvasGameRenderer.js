@@ -1936,6 +1936,73 @@
       });
     }
 
+    parsePixelValue(value) {
+      if (typeof value === 'number') return value;
+      const parsed = Number(String(value ?? '').replace('px', ''));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    renderTutorialHighlight(highlight = null) {
+      if (!highlight || !highlight.rect || !this.presenter || !this.ctx) return;
+      const view = this.presenter.buildTutorialHighlightViewState(highlight.rect, {
+        innerWidth: this.width,
+        innerHeight: this.height,
+      });
+      const overlay = {
+        x: this.parsePixelValue(view.overlay.left),
+        y: this.parsePixelValue(view.overlay.top),
+        width: this.parsePixelValue(view.overlay.width),
+        height: this.parsePixelValue(view.overlay.height),
+      };
+      const bubble = {
+        x: this.parsePixelValue(view.bubble.left),
+        y: this.parsePixelValue(view.bubble.top),
+        width: 220,
+        height: 72,
+      };
+      const pointer = {
+        x: this.parsePixelValue(view.pointer.left),
+        y: this.parsePixelValue(view.pointer.top),
+      };
+
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+      this.ctx.fillRect(0, 0, this.width, overlay.y);
+      this.ctx.fillRect(0, overlay.y + overlay.height, this.width, Math.max(0, this.height - overlay.y - overlay.height));
+      this.ctx.fillRect(0, overlay.y, overlay.x, overlay.height);
+      this.ctx.fillRect(overlay.x + overlay.width, overlay.y, Math.max(0, this.width - overlay.x - overlay.width), overlay.height);
+
+      this.drawPanel(overlay.x, overlay.y, overlay.width, overlay.height, {
+        fill: 'rgba(255, 247, 214, 0.08)',
+        stroke: 'rgba(255, 215, 0, 0.96)',
+        radius: 16,
+        inset: 'rgba(255, 247, 214, 0.18)',
+      });
+      this.ctx.lineWidth = 3;
+      this.roundRectPath(overlay.x, overlay.y, overlay.width, overlay.height, 16);
+      this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.96)';
+      this.ctx.stroke();
+      this.ctx.lineWidth = 1;
+
+      this.drawPanel(bubble.x, bubble.y, bubble.width, bubble.height, {
+        fill: '#fff7d6',
+        stroke: 'rgba(255, 215, 0, 0.38)',
+        radius: 12,
+        inset: 'rgba(255, 255, 255, 0.26)',
+      });
+      const messageLines = this.wrapTextLimit(highlight.message || '', bubble.width - 28, 3, { size: 13 });
+      this.drawTextLines(messageLines, bubble.x + 14, bubble.y + 12, {
+        size: 13,
+        color: '#3b2f00',
+        lineHeight: 19,
+      });
+
+      this.drawText('👇', pointer.x + 12, pointer.y + 13, {
+        size: 24,
+        baseline: 'middle',
+        align: 'center',
+      });
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
@@ -1999,6 +2066,7 @@
       if (options.naming) {
         this.renderNamingModal(options.naming);
       }
+      this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
     }
 
@@ -2262,6 +2330,7 @@
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
+      this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
     }
   }

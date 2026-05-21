@@ -222,6 +222,7 @@ const Game = {
         return false;
       },
     });
+    this.tutorialRenderer?.setCanvasShell?.(this.canvasShell);
     this.render();
   },
 
@@ -465,9 +466,7 @@ const Game = {
   },
 
   getTutorialTarget(key) {
-    const canvasTarget = this.canvasShell?.getTutorialTarget?.(key);
-    if (canvasTarget) return canvasTarget;
-    return this.tutorialTargets?.getTarget(key) || null;
+    return this.canvasShell?.getTutorialTarget?.(key) || null;
   },
 
   render() {

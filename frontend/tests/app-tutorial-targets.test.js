@@ -21,12 +21,11 @@ function createWindowStub() {
       stop() {}
     },
     GameStateManager: class {},
-    TutorialUIRenderer: class {},
+    TutorialCanvasRenderer: class {},
     TutorialController: class {},
     EventController: class {},
     BuildingController: class {},
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
-    TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
     H5GameBootstrap: {
       mount(Game, options = {}) {
@@ -50,7 +49,7 @@ function createWindowStub() {
   };
 }
 
-test('app maps tutorial highlight targets without building card DOM', () => {
+test('app maps tutorial highlight targets from Canvas hit regions only', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
@@ -69,28 +68,25 @@ test('app maps tutorial highlight targets without building card DOM', () => {
 
     delete require.cache[require.resolve('../app')];
     require('../app');
-    global.window.Game.tutorialTargets = global.window.TutorialTargetAdapter.fromDocument(global.document);
-
-    const expected = {
-      'tab-resources': 'tabResources',
-      'tab-civilization': 'tabCivilization',
-      'tab-buildings': 'tabBuildings',
-      'tab-events': 'tabEvents',
-      'tab-military': 'tabMilitary',
-    };
-
-    for (const [key, id] of Object.entries(expected)) {
-      assert.equal(global.window.Game.getTutorialTarget(key), elements.get(id));
-    }
     const canvasAdvanceTarget = { getBoundingClientRect() { return { left: 20, top: 30, width: 120, height: 40, right: 140, bottom: 70 }; } };
-    global.window.Game.canvasShell = { getTutorialTarget: (key) => (key === 'btn-advance-era' ? canvasAdvanceTarget : null) };
+    const canvasTabTarget = { x: 10, y: 790, width: 60, height: 58 };
+    global.window.Game.canvasShell = {
+      getTutorialTarget: (key) => {
+        if (key === 'btn-advance-era') return canvasAdvanceTarget;
+        if (key === 'tab-civilization') return canvasTabTarget;
+        return null;
+      },
+    };
     assert.equal(global.window.Game.getTutorialTarget('btn-advance-era'), canvasAdvanceTarget);
+    assert.equal(global.window.Game.getTutorialTarget('tab-civilization'), canvasTabTarget);
+    assert.equal(global.window.Game.getTutorialTarget('tab-resources'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-farm'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-house'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-lumbermill'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), null);
     assert.equal(global.window.Game.getTutorialTarget('event-card-special'), null);
     assert.equal(global.window.Game.getTutorialTarget('btn-claim-event'), null);
+    assert.equal(elements.size, 0);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

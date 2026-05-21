@@ -282,6 +282,42 @@ test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order 
   assert.deepEqual(renderer.getHitTarget({ x: 320, y: 804 }), { type: 'switchTab', tab: 'military' });
 });
 
+test('CanvasGameRenderer draws tutorial highlight overlay and bubble', () => {
+  const { ctx, calls } = makeCtx();
+  const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildTutorialHighlightViewState: UIStatePresenter.buildTutorialHighlightViewState.bind(UIStatePresenter),
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+  });
+
+  renderer.render({ currentEraName: '鍘熷鏃朵唬', currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    tutorialHighlight: {
+      rect: { left: 20, top: 220, width: 300, height: 32, right: 320, bottom: 252 },
+      message: 'Advance now',
+    },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === 390));
+  assert.ok(calls.some((call) => call[0] === 'roundRect' && call[1] === 12 && call[2] === 212 && call[3] === 316 && call[4] === 48));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'Advance now'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '👇'));
+});
+
 test('CanvasGameRenderer renders resource details panel from presenter view state', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

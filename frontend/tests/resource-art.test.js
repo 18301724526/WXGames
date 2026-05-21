@@ -105,7 +105,9 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-rename-adapter-v1/);
   assert.doesNotMatch(html, /TerritoryActionAdapter\.js|TerritoryUIRenderer\.js|MilitaryPanelAdapter\.js/);
-  assert.match(html, /TutorialUIRenderer\.js\?v=tutorial-presenter-v1/);
+  assert.match(html, /TutorialCanvasRenderer\.js\?v=tutorial-canvas-v1/);
+  assert.doesNotMatch(html, /TutorialUIRenderer\.js|TutorialTargetAdapter\.js|id="tutorialOverlay"|id="tutorialBubble"|id="tutorialPointer"/);
+  assert.doesNotMatch(css, /tutorial-overlay|tutorial-bubble|tutorial-pointer|tutorial-highlight|tutorial-bounce/);
   assert.match(html, /LogModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1/);
   assert.match(html, /H5TextAdapter\.js\?v=explicit-doc-v1/);

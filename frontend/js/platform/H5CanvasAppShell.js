@@ -26,6 +26,7 @@
         inputValue: '',
         submitting: false,
       };
+      this.tutorialHighlight = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
     }
@@ -77,11 +78,26 @@
       return handled;
     }
 
-    getCanvasTarget(type) {
+    getCanvasTarget(type, predicate = null) {
       if (!this.renderer || !Array.isArray(this.renderer.hitTargets)) return null;
-      const target = this.renderer.hitTargets.find((item) => item.action?.type === type);
+      const target = this.renderer.hitTargets.find((item) => (
+        item.action?.type === type
+        && (typeof predicate !== 'function' || predicate(item.action))
+      ));
       if (!target) return null;
       return {
+        x: target.x,
+        y: target.y,
+        width: target.width,
+        height: target.height,
+        getRect: () => ({
+          left: target.x,
+          top: target.y,
+          width: target.width,
+          height: target.height,
+          right: target.x + target.width,
+          bottom: target.y + target.height,
+        }),
         getBoundingClientRect: () => ({
           left: target.x,
           top: target.y,
@@ -96,7 +112,53 @@
 
     getTutorialTarget(key) {
       if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
+      if (key === 'tab-resources') return this.getCanvasTarget('switchTab', (action) => action.tab === 'resources');
+      if (key === 'tab-civilization') return this.getCanvasTarget('switchTab', (action) => action.tab === 'civilization');
+      if (key === 'tab-buildings') return this.getCanvasTarget('switchTab', (action) => action.tab === 'buildings');
+      if (key === 'tab-events') return this.getCanvasTarget('switchTab', (action) => action.tab === 'events');
+      if (key === 'tab-military' || key === 'tab-territory') return this.getCanvasTarget('switchTab', (action) => action.tab === 'military');
       return null;
+    }
+
+    resolveTutorialRect(target) {
+      if (!target) return null;
+      const rect = typeof target.getRect === 'function'
+        ? target.getRect()
+        : (typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : target);
+      const x = Number(rect.x ?? rect.left);
+      const y = Number(rect.y ?? rect.top);
+      const width = Number(rect.width);
+      const height = Number(rect.height);
+      if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+      return {
+        left: x,
+        top: y,
+        width,
+        height,
+        right: Number(rect.right) || x + width,
+        bottom: Number(rect.bottom) || y + height,
+      };
+    }
+
+    showTutorialHighlight(target, message) {
+      const rect = this.resolveTutorialRect(target);
+      if (!rect) {
+        this.hideTutorialHighlight();
+        return false;
+      }
+      this.tutorialHighlight = {
+        rect,
+        message: String(message ?? ''),
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    hideTutorialHighlight() {
+      const hadHighlight = Boolean(this.tutorialHighlight);
+      this.tutorialHighlight = null;
+      if (hadHighlight) this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return hadHighlight;
     }
 
     now() {
@@ -431,6 +493,7 @@
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
         naming: this.naming,
         floatingTexts: this.getFloatingTextView(),
+        tutorialHighlight: this.tutorialHighlight,
       });
       return true;
     }

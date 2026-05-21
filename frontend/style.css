@@ -797,68 +797,6 @@ body {
   opacity: 0.45;
 }
 
-.tutorial-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 0;
-  background: rgba(255, 247, 214, 0.08);
-  border: 3px solid rgba(255, 215, 0, 0.96);
-  border-radius: 16px;
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.72),
-    0 10px 28px rgba(0, 0, 0, 0.38);
-  z-index: 1100;
-  display: none;
-  pointer-events: none;
-  transition: top 0.18s ease, left 0.18s ease, width 0.18s ease, height 0.18s ease;
-}
-
-.tutorial-overlay.active {
-  display: block;
-}
-
-.tutorial-bubble {
-  position: fixed;
-  max-width: 220px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: #fff7d6;
-  color: #3b2f00;
-  font-size: 13px;
-  line-height: 1.5;
-  z-index: 1102;
-  display: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  pointer-events: none;
-}
-
-.tutorial-bubble.active {
-  display: block;
-}
-
-.tutorial-bubble.soft {
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 247, 214, 0.96);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-}
-
-.tutorial-pointer {
-  position: fixed;
-  z-index: 1102;
-  display: none;
-  font-size: 24px;
-  animation: tutorial-bounce 1s infinite;
-  pointer-events: none;
-}
-
-.tutorial-pointer.active {
-  display: block;
-}
-
 .modal-close {
   position: absolute;
   top: 10px;
@@ -881,18 +819,4 @@ body {
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
-}
-
-.tutorial-highlight {
-  outline: 3px solid rgba(255, 215, 0, 0.96);
-  outline-offset: 4px;
-}
-
-
-
-
-
-@keyframes tutorial-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(6px); }
 }
