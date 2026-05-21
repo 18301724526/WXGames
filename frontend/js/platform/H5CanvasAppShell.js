@@ -91,7 +91,7 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       if (phase === 'start') {
         const action = this.renderer.getHitTarget(point);
-        if (action?.type !== 'worldRadarDrag') return false;
+        if (action?.type !== 'worldRadarDrag' && action?.type !== 'openWorldSite') return false;
         this.dragAction = action;
       }
       if (!this.dragAction) return false;

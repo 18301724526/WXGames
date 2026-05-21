@@ -91,7 +91,7 @@ test('resource HUD renders population management through Canvas hit targets', ()
 
   renderer.render({ currentTab: 'resources', happiness: 92 }, { activeTab: 'resources', mode: 'hud' });
 
-  assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 150 && call[4] === 268));
+  assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 120 && call[4] === 268));
   assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 112 && call[4] === 42));
   assert.ok(assets.includes('assets/art/icon-population-cutout.webp'));
   assert.ok(assets.includes('assets/art/icon-happiness-cutout.webp'));

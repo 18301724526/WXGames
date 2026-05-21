@@ -59,8 +59,8 @@ test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
   assert.equal(canvas.id, 'h5CanvasLayer');
   assert.equal(canvas.attributes['aria-hidden'], 'true');
   assert.equal(canvas.style.position, 'fixed');
-  assert.equal(canvas.style.pointerEvents, 'none');
-  assert.equal(canvas.style.touchAction, 'auto');
+  assert.equal(canvas.style.pointerEvents, 'auto');
+  assert.equal(canvas.style.touchAction, 'none');
   assert.equal(canvas.style.zIndex, '999');
   assert.equal(canvas.style.background, 'transparent');
   assert.equal(canvas.width, 780);
@@ -81,7 +81,7 @@ test('H5 canvas runtime resizes and converts pointer coordinates', () => {
   runtime.innerHeight = 600;
   runtime.devicePixelRatio = 3;
   listeners['window:resize']();
-  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
+  listeners.pointerup({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
 
   assert.deepEqual(sizes.at(-1), { width: 300, height: 600, pixelRatio: 3 });
   assert.deepEqual(taps.at(-1), { x: 150, y: 300 });
@@ -100,9 +100,9 @@ test('H5 canvas runtime dispatches drag phases and suppresses tap after movement
   h5Runtime.onTap((point) => taps.push(point));
   h5Runtime.ensureCanvas();
 
-  listeners['document:pointerdown']({ pointerId: 7, clientX: 110, clientY: 220, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
-  listeners['document:pointermove']({ pointerId: 7, clientX: 140, clientY: 260, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
-  listeners['document:pointerup']({ pointerId: 7, clientX: 140, clientY: 260, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerdown({ pointerId: 7, clientX: 110, clientY: 220, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 7, clientX: 140, clientY: 260, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 7, clientX: 140, clientY: 260, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
   assert.deepEqual(dragEvents.map((event) => event.phase), ['start', 'move', 'end']);
   assert.equal(taps.length, 0);
@@ -572,6 +572,34 @@ test('H5 canvas app shell dispatches military and world actions without DOM adap
     { type: 'changeExpeditionSoldiers', siteId: 'site-east', value: 3 },
     { type: 'closeWorldSite' },
   ]);
+});
+
+test('H5 canvas app shell dispatches world radar drag phases from canvas-owned pointer events', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => ({ type: 'worldRadarDrag', background: true }),
+    render() {},
+  };
+  H5CanvasAppShell.mount({ state: { currentTab: 'military' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  listeners.pointerdown({ pointerId: 3, clientX: 100, clientY: 180, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 3, clientX: 150, clientY: 210, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 3, clientX: 150, clientY: 210, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.deepEqual(dispatched.map((action) => action.phase), ['start', 'move', 'end']);
+  assert.ok(dispatched.every((action) => action.type === 'worldRadarDrag'));
 });
 
 test('H5 canvas app shell owns naming prompt state and dispatches canvas submit', async () => {

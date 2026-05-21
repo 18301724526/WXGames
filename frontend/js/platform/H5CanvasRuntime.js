@@ -42,8 +42,8 @@
       canvas.style.width = '100vw';
       canvas.style.height = '100vh';
       canvas.style.display = 'block';
-      canvas.style.pointerEvents = 'none';
-      canvas.style.touchAction = 'auto';
+      canvas.style.pointerEvents = 'auto';
+      canvas.style.touchAction = 'none';
       canvas.style.zIndex = '999';
       canvas.style.background = 'transparent';
       const host = this.container || this.document.body;
@@ -132,10 +132,11 @@
       if (!this.canvas || this.eventsBound) return;
       this.eventsBound = true;
       this.runtime.addEventListener?.('resize', this.handleResize);
-      const eventTarget = this.document || this.canvas;
+      const eventTarget = this.canvas;
       eventTarget.addEventListener?.('pointerdown', this.handlePointerDown, { capture: true });
       eventTarget.addEventListener?.('pointermove', this.handlePointerMove, { capture: true });
       eventTarget.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
+      this.document?.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
       if (!global.PointerEvent) {
         eventTarget.addEventListener?.('touchstart', this.handlePointerDown, { capture: true, passive: false });
         eventTarget.addEventListener?.('touchmove', this.handlePointerMove, { capture: true, passive: false });

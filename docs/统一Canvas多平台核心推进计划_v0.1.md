@@ -392,6 +392,7 @@ node --test frontend/tests/*.test.js
 - 阶段 1 验收修复：领取侦查报告 action payload 修正（v0.1.29）
 - 阶段 2：抽离共享 action 覆盖矩阵与 dispatcher 雏形（v0.1.30）
 - 阶段 2 验收修复：军事世界沙盘放大、拖动恢复、侦查报告移入侦查页（v0.1.31）
+- 阶段 2 验收修复：Canvas 接管触摸拖动、顶部资源栏压缩（v0.1.32）
 
 ### 阶段 1 结果
 

@@ -103,6 +103,15 @@ test('CanvasGameRenderer hit target management works independently of platform',
   assert.equal(renderer.getHitTarget({ x: 30, y: 20 }), null);
 });
 
+test('CanvasGameRenderer top HUD uses compact icon/value resource strip', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
+
+  assert.match(source, /const resourceHeight = 48/);
+  assert.match(source, /const barHeight = cityView\.hidden \? 112 : 152/);
+  assert.doesNotMatch(source, /const resourceHeight = 79/);
+  assert.doesNotMatch(source, /drawPanel\(cardX, cardY, cardWidth, resourceHeight/);
+});
+
 test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constructor', () => {
   const originalImage = global.Image;
   let imageCreated = false;
@@ -148,9 +157,9 @@ test('CanvasGameRenderer HUD overlay matches measured mobile DOM baseline respon
 
   renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
-  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 12 && c[3] === 366 && c[4] === 180), 'top bar should match measured 366x180 DOM rect');
-  assert.ok(calls.some((c) => c[0] === 'roundRect' && Math.abs(c[1] - 26) < 0.2 && c[2] === 69 && Math.abs(c[3] - 107.33) < 0.2 && c[4] === 79), 'resource card should match DOM y=69 height=79 responsively');
-  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 92 && c[2] === 153 && c[3] === 190 && c[4] === 34), 'city switcher should match measured 190x34 DOM rect');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 12 && c[3] === 366 && c[4] === 152), 'top bar should use compact 366x152 HUD rect');
+  assert.equal(calls.some((c) => c[0] === 'roundRect' && c[2] === 68 && c[4] === 48), false, 'resource strip should not draw individual card backgrounds');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 92 && c[2] === 124 && c[3] === 190 && c[4] === 32), 'city switcher should move upward under compact resource strip');
   assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 786 && c[3] === 366 && c[4] === 58), 'bottom tab bar should keep DOM app inset while matching measured 58px height');
 });
 

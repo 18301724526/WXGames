@@ -312,11 +312,11 @@
       const barPaddingX = 14;
       const statusTop = y + 10;
       const statusHeight = 38;
-      const resourceTop = y + 57;
-      const resourceHeight = 79;
-      const cityTop = y + 141;
-      const cityHeight = 34;
-      const barHeight = cityView.hidden ? 138 : 180;
+      const resourceTop = y + 56;
+      const resourceHeight = 48;
+      const cityTop = y + 112;
+      const cityHeight = 32;
+      const barHeight = cityView.hidden ? 112 : 152;
 
       this.drawPanel(x, y, width, barHeight, {
         fill: this.createGradient(
@@ -367,28 +367,18 @@
       const gap = 8;
       const resourceX = x + barPaddingX;
       const resourceWidth = width - barPaddingX * 2;
-      const cardWidth = (resourceWidth - gap * (resources.length - 1)) / resources.length;
-      const cardY = resourceTop;
+      const itemWidth = (resourceWidth - gap * (resources.length - 1)) / resources.length;
+      const itemY = resourceTop;
       resources.forEach((resource, index) => {
-        const cardX = resourceX + index * (cardWidth + gap);
-        this.drawPanel(cardX, cardY, cardWidth, resourceHeight, {
-          fill: this.createGradient(
-            cardX, cardY, cardX + cardWidth, cardY + resourceHeight,
-            [
-              [0, 'rgba(68, 48, 31, 0.78)'],
-              [1, 'rgba(28, 22, 17, 0.74)'],
-            ],
-            'rgba(50, 38, 27, 0.82)',
-          ),
-          stroke: 'rgba(255, 226, 177, 0.14)',
-          radius: 10,
-          inset: 'rgba(255, 231, 184, 0.08)',
-        });
-        this.drawAsset(resource.icon, cardX + 6, cardY + 24, 30, 30);
-        this.drawText(resource.label, cardX + 41, cardY + 16, { size: 10, color: '#a0a0a0' });
-        this.drawText(resource.value, cardX + 41, cardY + 34, { size: 17, bold: true, color: '#74d3a0' });
-        this.drawText(resource.rate, cardX + 41, cardY + 59, { size: 10, color: '#a0a0a0' });
-        this.addHitTarget({ x: cardX, y: cardY, width: cardWidth, height: resourceHeight }, { type: 'openResourceDetails' });
+        const itemX = resourceX + index * (itemWidth + gap);
+        const iconSize = 22;
+        const iconX = itemX + 4;
+        const valueX = itemX + 33;
+        this.drawAsset(resource.icon, iconX, itemY + 3, iconSize, iconSize);
+        this.drawText(resource.label, iconX + iconSize / 2, itemY + 34, { size: 10, color: '#cbbd96', align: 'center' });
+        this.drawText(resource.value, valueX, itemY + 9, { size: 16, bold: true, color: '#74d3a0' });
+        this.drawText(resource.rate, valueX, itemY + 31, { size: 10, color: '#a0a0a0' });
+        this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: resourceHeight }, { type: 'openResourceDetails' });
       });
 
       if (!cityView.hidden) {
