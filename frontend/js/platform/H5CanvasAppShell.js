@@ -421,6 +421,19 @@
             this.showResourceDetails = false;
             return true;
           },
+          openCitySwitcher: () => {
+            this.showCitySwitcher = !this.showCitySwitcher;
+            this.showSettings = false;
+            this.showLogs = false;
+            this.showResourceDetails = false;
+            this.showAdvisor = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeCitySwitcher: () => {
+            this.showCitySwitcher = false;
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
           },

@@ -222,6 +222,16 @@
             this.showResourceDetails = false;
             return true;
           },
+          openCitySwitcher: () => {
+            this.showCitySwitcher = !this.showCitySwitcher;
+            this.showResourceDetails = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeCitySwitcher: () => {
+            this.showCitySwitcher = false;
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },

@@ -40,11 +40,27 @@
         return closed;
       }
 
+      if (action.type === 'openCitySwitcher') {
+        const opened = typeof context.openCitySwitcher === 'function'
+          ? context.openCitySwitcher(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeCitySwitcher') {
+        const closed = typeof context.closeCitySwitcher === 'function'
+          ? context.closeCitySwitcher(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
     static supportedActions() {
-      return ['switchTab', 'openResourceDetails', 'closeResourceDetails'];
+      return ['switchTab', 'openResourceDetails', 'closeResourceDetails', 'openCitySwitcher', 'closeCitySwitcher'];
     }
   }
 

@@ -14,7 +14,7 @@ function extractActionTypes(source) {
   return actions;
 }
 
-test('H5 与小游戏当前 action 覆盖矩阵明确记录共享资源详情迁移起点', () => {
+test('H5 与小游戏当前 action 覆盖矩阵明确记录共享城市切换迁移起点', () => {
   const h5Shell = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'H5CanvasAppShell.js'), 'utf8');
   const miniGameApp = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'MiniGameApp.js'), 'utf8');
   const h5Actions = extractActionTypes(h5Shell);
@@ -25,18 +25,28 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录共享资源详情迁
   assert.ok(sharedActions.includes('switchTab'));
   assert.ok(sharedActions.includes('openResourceDetails'));
   assert.ok(sharedActions.includes('closeResourceDetails'));
+  assert.ok(sharedActions.includes('openCitySwitcher'));
+  assert.ok(sharedActions.includes('closeCitySwitcher'));
   assert.ok(sharedActions.includes('claimScout'));
   assert.ok(h5Actions.has('openSettings'));
   assert.equal(miniActions.has('openSettings'), false);
 });
 
-test('CanvasActionDispatcher 阶段 3 第一批接管资源详情纯 UI action', () => {
+test('CanvasActionDispatcher 阶段 3 第二批接管城市切换纯 UI action', () => {
   const dispatcher = new CanvasActionDispatcher();
 
-  assert.deepEqual(CanvasActionDispatcher.supportedActions(), ['switchTab', 'openResourceDetails', 'closeResourceDetails']);
+  assert.deepEqual(CanvasActionDispatcher.supportedActions(), [
+    'switchTab',
+    'openResourceDetails',
+    'closeResourceDetails',
+    'openCitySwitcher',
+    'closeCitySwitcher',
+  ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeResourceDetails' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openCitySwitcher' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeCitySwitcher' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
 });
 
@@ -77,5 +87,27 @@ test('CanvasActionDispatcher 通过注入上下文处理资源详情开关，不
     ['render', 'openResourceDetails'],
     ['close', 'closeResourceDetails'],
     ['render', 'closeResourceDetails'],
+  ]);
+});
+
+test('CanvasActionDispatcher 通过注入上下文处理城市切换开关，不依赖 H5 或小游戏类', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'openCitySwitcher' }, {
+    openCitySwitcher(action) { calls.push(['openCity', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.equal(dispatcher.handle({ type: 'closeCitySwitcher' }, {
+    closeCitySwitcher(action) { calls.push(['closeCity', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['openCity', 'openCitySwitcher'],
+    ['render', 'openCitySwitcher'],
+    ['closeCity', 'closeCitySwitcher'],
+    ['render', 'closeCitySwitcher'],
   ]);
 });
