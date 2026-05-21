@@ -486,6 +486,12 @@
       ];
     }
 
+    static canAffordCost(resources = {}, cost) {
+      if (!cost || cost === null) return true;
+      return ['food', 'wood', 'knowledge', 'stone', 'metal']
+        .every((resource) => this.toNumber(resources?.[resource]) >= this.toNumber(cost?.[resource]));
+    }
+
     static buildBuildingCardViewState(state = {}, tutorial = {}, buildingConfig = {}, id) {
       const config = this.getBuildingConfig(state, buildingConfig, id);
       if (!config) return null;
@@ -500,7 +506,9 @@
         || (tutorial.currentStep >= 13 && tutorial.currentStep <= 14 && id !== 'lumbermill')
       ));
       const isMax = cost === null || actionLabel === '已满级' || actionLabel === '宸叉弧绾?' || actionLabel === 'max';
-      const disabled = disabledByTutorial || isMax;
+      const canAfford = this.canAffordCost(state.resources, cost);
+      const disabledByCost = !isMax && !canAfford;
+      const disabled = disabledByTutorial || isMax || disabledByCost;
       const effectText = this.getBuildingEffectText(config, state.buildingEffects);
       const militaryLines = this.getBuildingMilitaryLines(id, state.military, state.buildingEffects);
       const descText = config?.ui?.description || '';
@@ -519,7 +527,7 @@
         button: {
           action: level ? 'upgrade' : 'build',
           disabled,
-          label: disabledByTutorial ? '引导中锁定' : actionLabel,
+          label: disabledByTutorial ? '引导中锁定' : disabledByCost ? '资源不足' : actionLabel,
         },
         cost: this.buildCostViewState(cost),
         structure: {

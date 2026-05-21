@@ -288,6 +288,7 @@ test('request log and territory summary view states format shell text', () => {
 test('building view state is renderer-neutral and formats compact costs', () => {
   const view = UIStatePresenter.buildBuildingViewState({
     unlockedBuildings: ['farm'],
+    resources: { food: 2000, wood: 1000000 },
     buildings: { farm: { level: 1 } },
     buildingCosts: { farm: { food: 1250, wood: 1000000 } },
     buildingEffects: {
@@ -315,6 +316,27 @@ test('building view state is renderer-neutral and formats compact costs', () => 
     ['wood', '1M'],
   ]);
   assert.equal(view.cards[0].button.action, 'upgrade');
+  assert.equal(view.cards[0].button.disabled, false);
+});
+
+test('building view state disables build and upgrade actions when resources are insufficient', () => {
+  const view = UIStatePresenter.buildBuildingViewState({
+    unlockedBuildings: ['lumbermill'],
+    resources: { food: 100, wood: 10, knowledge: 0 },
+    buildings: { lumbermill: { level: 0 } },
+    buildingCosts: { lumbermill: { food: 200, wood: 50 } },
+  }, { completed: true, currentStep: 15 }, {
+    lumbermill: {
+      id: 'lumbermill',
+      name: '伐木场',
+      icon: 'L',
+      ui: { description: '产出木材' },
+    },
+  });
+
+  assert.equal(view.cards[0].button.action, 'build');
+  assert.equal(view.cards[0].button.disabled, true);
+  assert.equal(view.cards[0].button.label, '资源不足');
 });
 
 test('event view state is renderer-neutral and formats cards, badge, and history', () => {
