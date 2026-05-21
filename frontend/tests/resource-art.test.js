@@ -43,16 +43,13 @@ test('canvas resource HUD uses dedicated resource icon assets without DOM resour
   assert.doesNotMatch(css, /civ-overview|civ-features|btn-era|era-panel/);
 });
 
-test('military has its own tab and page outside the civilization page', () => {
+test('military tab is owned by canvas without H5 tab or page DOM', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
-  const civStart = html.indexOf('<section class="page page-civilization"');
-  const militaryStart = html.indexOf('<section class="page page-military"');
+  const renderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
 
-  assert.ok(civStart >= 0);
-  assert.ok(militaryStart > civStart);
-  assert.match(html, /id="tabMilitary" data-tab="military"/);
-  assert.match(html, /class="page page-military" data-page="military"/);
-  assert.equal(html.slice(civStart, militaryStart).includes('id="militaryPanel"'), false);
+  assert.doesNotMatch(html, /class="page|data-page=|class="tab-btn|data-tab=|id="tabMilitary"/);
+  assert.match(renderer, /\['military', '.*?', 'assets\/art\/icon-soldier-cutout\.webp'\]/);
+  assert.match(renderer, /type: 'switchTab', tab: id/);
 });
 
 test('world scouting uses dedicated site icons and canvas military controls', () => {
@@ -109,7 +106,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(html, /TutorialUIRenderer\.js|TutorialTargetAdapter\.js|id="tutorialOverlay"|id="tutorialBubble"|id="tutorialPointer"/);
   assert.doesNotMatch(css, /tutorial-overlay|tutorial-bubble|tutorial-pointer|tutorial-highlight|tutorial-bounce/);
   assert.match(html, /H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1/);
-  assert.match(html, /H5TextAdapter\.js\?v=explicit-doc-v1/);
+  assert.doesNotMatch(html, /H5TextAdapter\.js|NavigationShellAdapter\.js/);
   assert.match(html, /H5AuthRuntimeAdapter\.js\?v=h5-auth-runtime-v2/);
   assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5/);
   assert.match(html, /H5AuthStorageAdapter\.js\?v=h5-storage-runtime-v1/);
@@ -141,7 +138,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(css, /\.top-actions/);
   assert.doesNotMatch(css, /\.hud-btn/);
   assert.doesNotMatch(css, /\.log-panel/);
-  assert.match(css, /\.tab-btn:disabled/);
+  assert.doesNotMatch(css, /\.tab-btn|\.tab-bar|\.page-container|\.page\b|\.top-bar|\.modal-overlay|offline-/);
   assert.match(renderer, /scoutReports/);
   assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
 });

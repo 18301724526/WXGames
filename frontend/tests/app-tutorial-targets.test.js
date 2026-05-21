@@ -25,8 +25,6 @@ function createWindowStub() {
     TutorialController: class {},
     EventController: class {},
     BuildingController: class {},
-    NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
-    H5TextAdapter: require('../js/ui/H5TextAdapter'),
     H5GameBootstrap: {
       mount(Game, options = {}) {
         const runtime = options.runtime || global.window;

@@ -1619,7 +1619,7 @@
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight, options);
     }
 
-    renderTabs(activeTab = 'resources', state = {}) {
+    renderTabs(activeTab = 'resources', state = {}, options = {}) {
       const tabs = [
         ['resources', '资源', 'assets/art/icon-food-cutout.webp'],
         ['buildings', '建造', 'assets/art/building-house-cutout.png'],
@@ -1636,6 +1636,7 @@
       const eventBadge = this.presenter && typeof this.presenter.buildEventViewState === 'function'
         ? this.presenter.buildEventViewState(state).badge
         : { hidden: true };
+      const lockById = new Map((options.tabLocks || []).map((item) => [item.id, item]));
       this.drawPanel(x, y, width, tabBarHeight, {
         fill: this.createGradient(
           x, y, x, y + tabBarHeight,
@@ -1652,6 +1653,8 @@
       tabs.forEach(([id, label, icon], index) => {
         const tabX = x + index * tabWidth;
         const isActive = id === activeTab;
+        const lock = lockById.get(id) || { disabled: false, isLocked: false };
+        const isLocked = Boolean(lock.disabled || lock.isLocked);
         if (isActive && this.ctx) {
           this.ctx.fillStyle = this.createGradient(
             tabX + tabWidth * 0.2, y, tabX + tabWidth * 0.8, y,
@@ -1663,10 +1666,13 @@
           );
           this.ctx.fillRect(tabX + tabWidth * 0.2, y, tabWidth * 0.6, 3);
         }
+        const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = isLocked ? 0.38 : previousAlpha;
         this.drawAsset(icon, tabX + tabWidth / 2 - (isActive ? 16 : 14), y + 7 - (isActive ? 2 : 0), isActive ? 32 : 28, isActive ? 32 : 28);
+        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
         this.drawText(label, tabX + tabWidth / 2, y + 38, {
           size: 10,
-          color: isActive ? '#d78332' : '#a0a0a0',
+          color: isLocked ? '#666' : (isActive ? '#d78332' : '#a0a0a0'),
           align: 'center',
           bold: isActive,
         });
@@ -1686,7 +1692,7 @@
             align: 'center',
           });
         }
-        this.addHitTarget({ x: tabX, y, width: tabWidth, height: tabBarHeight }, { type: 'switchTab', tab: id });
+        this.addHitTarget({ x: tabX, y, width: tabWidth, height: tabBarHeight }, { type: 'switchTab', tab: id, disabled: isLocked });
       });
     }
 
@@ -2156,7 +2162,7 @@
         const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
         this.renderMilitary(state, topBarBottom, availableHeight, options);
       }
-      this.renderTabs(activeTab, state);
+      this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);
       }
@@ -2443,7 +2449,7 @@
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
       if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
-      this.renderTabs(activeTab, state);
+      this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);

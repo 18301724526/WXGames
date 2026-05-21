@@ -43,7 +43,8 @@ test('population management has no DOM panel, adapter, or style surface', () => 
   const populationJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'population.js'), 'utf8');
   const h5ShellJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5ShellAdapter.js'), 'utf8');
 
-  assert.match(html, /<section class="page page-resources active" data-page="resources"><\/section>/);
+  assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
+  assert.doesNotMatch(html, /class="page|data-page=|class="tab-btn|data-tab=/);
   assert.match(html, /population\.js\?v=h5-module-deps-v1/);
   assert.doesNotMatch(html, /PopulationPanelAdapter|population-panel|craftsmanCard|farmerCount|scholarCount|craftsmanCount|totalPop|maxPop|unassignedPop|happinessValue/);
   assert.doesNotMatch(css, /\.population-panel|\.pop-stat|\.job-card|\.job-controls|\.job-icon|\.job-count/);

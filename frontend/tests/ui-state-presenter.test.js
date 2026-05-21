@@ -248,8 +248,8 @@ test('advisor, naming, and recent log view states are renderer-neutral', () => {
     message: '你已经扩张了领土。',
   });
   const logs = UIStatePresenter.buildRecentLogViewState([
-    { textContent: '第一条' },
-    { textContent: '第二条' },
+    { text: '第一条' },
+    { text: '第二条' },
   ]);
 
   assert.equal(advisor.hidden, false);

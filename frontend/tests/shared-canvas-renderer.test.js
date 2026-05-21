@@ -277,9 +277,41 @@ test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order 
   renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
   assert.deepEqual(renderer.getHitTarget({ x: 40, y: 100 }), { type: 'openResourceDetails' });
-  assert.deepEqual(renderer.getHitTarget({ x: 75, y: 804 }), { type: 'switchTab', tab: 'buildings' });
-  assert.deepEqual(renderer.getHitTarget({ x: 135, y: 804 }), { type: 'switchTab', tab: 'tech' });
-  assert.deepEqual(renderer.getHitTarget({ x: 320, y: 804 }), { type: 'switchTab', tab: 'military' });
+  assert.deepEqual(renderer.getHitTarget({ x: 75, y: 804 }), { type: 'switchTab', tab: 'buildings', disabled: false });
+  assert.deepEqual(renderer.getHitTarget({ x: 135, y: 804 }), { type: 'switchTab', tab: 'tech', disabled: false });
+  assert.deepEqual(renderer.getHitTarget({ x: 320, y: 804 }), { type: 'switchTab', tab: 'military', disabled: false });
+});
+
+test('CanvasGameRenderer disables tutorial-locked canvas tabs', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '2',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+  });
+
+  renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    tabLocks: [
+      { id: 'resources', disabled: false, isLocked: false },
+      { id: 'buildings', disabled: true, isLocked: true },
+    ],
+  });
+
+  assert.deepEqual(renderer.getHitTarget({ x: 75, y: 804 }), { type: 'switchTab', tab: 'buildings', disabled: true });
 });
 
 test('CanvasGameRenderer draws tutorial highlight overlay and bubble', () => {
@@ -1026,16 +1058,13 @@ test('MiniGameCanvasRenderer extends CanvasGameRenderer after refactor', () => {
   assert.ok(typeof renderer.createImage === 'function');
 });
 
-test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', () => {
+test('H5 entry keeps Canvas as the only business UI after renderer extraction', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
-  assert.match(html, /<div id="app">/);
-  assert.match(html, /id="tabResources"/);
-  assert.match(html, /id="tabBuildings"/);
-  assert.match(html, /id="tabCivilization"/);
-  assert.match(html, /id="tabMilitary"/);
-  assert.match(html, /id="tabEvents"/);
+  assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
+  assert.doesNotMatch(html, /id="tabResources"|id="tabBuildings"|id="tabCivilization"|id="tabMilitary"|id="tabEvents"/);
+  assert.doesNotMatch(html, /class="page|data-page=|class="tab-btn|data-tab=/);
   assert.doesNotMatch(html, /id="resourcePanel"/);
   assert.doesNotMatch(html, /id="resourceDetailModal"/);
   assert.doesNotMatch(html, /id="buildingGrid"|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
@@ -1043,9 +1072,11 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   assert.doesNotMatch(html, /id="techKnowledgeRate"|tech-header-panel|tech-panel/);
   assert.doesNotMatch(html, /btnAdvanceEra|civ-overview|civ-features|CivilizationPanelAdapter/);
   assert.doesNotMatch(html, /militaryPanel|scoutDirectionGrid|territoryGrid|MilitaryPanelAdapter|TerritoryActionAdapter|TerritoryUIRenderer/);
+  assert.doesNotMatch(html, /NavigationShellAdapter\.js|H5TextAdapter\.js/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
+  assert.match(appJs, /handleCanvasTabSelection/);
   assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
   assert.match(appJs, /action\?\.type === 'claimEvent'/);
   assert.doesNotMatch(appJs, /renderTech\(\)|techKnowledgeRate/);

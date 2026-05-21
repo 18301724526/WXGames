@@ -378,7 +378,7 @@
 
     static buildRecentLogViewState(entries = []) {
       const items = (entries || []).slice(0, 20).map((entry) => ({
-        text: typeof entry === 'string' ? entry : (entry?.text ?? entry?.textContent ?? ''),
+        text: typeof entry === 'string' ? entry : (entry?.text ?? ''),
       }));
       return {
         isEmpty: items.length === 0,

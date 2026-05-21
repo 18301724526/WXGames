@@ -49,12 +49,10 @@
         },
         stateNormalizer: options.stateNormalizer || registry.FrontendGameState,
         scheduler,
-        textAdapter: registry.H5TextAdapter?.fromDocument(doc),
         updateRuntime: registry.H5UpdateRuntimeAdapter?.fromRuntime(runtimeHost),
         authRuntime,
         authStorage,
         tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
-        navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
         tutorialRenderer,
       });
     }

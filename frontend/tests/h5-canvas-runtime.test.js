@@ -141,6 +141,14 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       buildingOffset: 0,
       activeEventId: null,
       territoryUiState: {},
+      tabLocks: [
+        { id: 'resources', disabled: false, isLocked: false },
+        { id: 'buildings', disabled: false, isLocked: false },
+        { id: 'tech', disabled: false, isLocked: false },
+        { id: 'events', disabled: false, isLocked: false },
+        { id: 'civilization', disabled: false, isLocked: false },
+        { id: 'military', disabled: false, isLocked: false },
+      ],
       naming: {
         visible: false,
         view: null,
@@ -728,6 +736,35 @@ test('H5 canvas app shell owns building pager state without DOM adapter', () => 
   assert.deepEqual(dispatched, [{ type: 'switchTab', tab: 'resources' }]);
 });
 
+test('H5 canvas app shell passes tutorial tab locks into canvas renderer', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    getHitTarget: () => null,
+    render(state, options) { renderCalls.push(options); },
+  };
+
+  H5CanvasAppShell.mount({
+    state: { currentTab: 'resources' },
+    tutorialController: {
+      canOpenTab(tabId) {
+        return tabId === 'resources';
+      },
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  const locks = renderCalls.at(-1).tabLocks;
+  assert.deepEqual(locks.find((tab) => tab.id === 'resources'), { id: 'resources', disabled: false, isLocked: false });
+  assert.deepEqual(locks.find((tab) => tab.id === 'buildings'), { id: 'buildings', disabled: true, isLocked: true });
+});
+
 test('H5 canvas app shell owns event modal state and dispatches claim actions', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
@@ -777,40 +814,35 @@ test('H5 canvas app shell owns event modal state and dispatches claim actions', 
   assert.deepEqual(controllerCalls, [['open', 'evt_forest'], ['close'], ['open', 'evt_forest'], ['close']]);
 });
 
-test('stage 6 canvas HUD takeover removes resource and city switcher DOM controls', () => {
+test('canvas HUD takeover leaves no hidden H5 business UI shell', () => {
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const indexHtml = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
 
-  assert.match(css, /#app > \.top-bar > \.top-status-row,[\s\S]*#app > \.tab-bar \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
-  assert.doesNotMatch(css, /city-switcher/);
-  assert.doesNotMatch(css, /\.resource-strip/);
-  assert.doesNotMatch(indexHtml, /resource-strip/);
-  assert.doesNotMatch(indexHtml, /resourcePanel/);
-  assert.doesNotMatch(indexHtml, /resourceDetailModal/);
-  assert.doesNotMatch(indexHtml, /citySwitcher/);
+  assert.match(indexHtml, /<div id="app" aria-hidden="true"><\/div>/);
+  assert.doesNotMatch(indexHtml, /resource-strip|resourcePanel|resourceDetailModal|citySwitcher/);
   assert.doesNotMatch(indexHtml, /population-panel|PopulationPanelAdapter|craftsmanCard|farmerCount|scholarCount|craftsmanCount/);
   assert.doesNotMatch(indexHtml, /advisorModal|advisorBtn|AdvisorPanelAdapter|btnAdvisor|advisorMessage/);
   assert.doesNotMatch(indexHtml, /buildingGrid|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
   assert.doesNotMatch(indexHtml, /eventModal|eventsBadge|pendingEventsContainer|eventHistoryList|EventUIRenderer/);
-  assert.doesNotMatch(indexHtml, /CitySwitcherAdapter/);
-  assert.doesNotMatch(indexHtml, /ResourceRenderer/);
-  assert.doesNotMatch(indexHtml, /ResourceDetailModalAdapter/);
+  assert.doesNotMatch(indexHtml, /CitySwitcherAdapter|ResourceRenderer|ResourceDetailModalAdapter/);
+  assert.doesNotMatch(indexHtml, /class="page|data-page=|class="tab-btn|data-tab=|offlineModal|modal-overlay/);
+  assert.doesNotMatch(css, /\.top-bar|\.tab-bar|\.tab-btn|\.page-container|\.page\b|\.modal-overlay|offline-|resource-strip|city-switcher/);
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });
 
-test('H5 entry loads canvas shell before app without replacing DOM UI', () => {
+test('H5 entry loads canvas shell before app as the authoritative UI surface', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=h5-canvas-runtime-v1/);
   assert.match(html, /js\/platform\/H5CanvasAppShell\.js\?v=h5-canvas-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
-  assert.match(html, /<div id="app">/);
+  assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
   assert.match(appJs, /previewEnabled: true/);
   assert.match(appJs, /inputEnabled: true/);
   assert.match(appJs, /action\?\.type === 'switchTab'/);
-  assert.match(appJs, /this\.switchTab\(action\.tab\)/);
+  assert.match(appJs, /this\.handleCanvasTabSelection\(action\.tab\)/);
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });

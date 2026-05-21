@@ -36,7 +36,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     clearTimeout() {},
   };
   const factories = {
-    H5TextAdapter: makeFactory('text', calls),
     H5UpdateRuntimeAdapter: makeRuntimeFactory('updateRuntime', calls),
     H5AuthRuntimeAdapter: makeRuntimeFactory('authRuntime', calls),
     H5AuthStorageAdapter: makeRuntimeFactory('authStorage', calls),
@@ -53,7 +52,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     EventController: class EventController {},
     BuildingController: class BuildingController {},
     TerritoryController: class TerritoryController {},
-    NavigationShellAdapter: makeFactory('navigation', calls),
     TutorialCanvasRenderer: class TutorialCanvasRenderer {
       constructor() {
         calls.push(['tutorialRenderer']);
@@ -69,9 +67,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     mountLogMethods: (game, deps) => mountedModules.push(['logs', game, deps]),
   };
 
-  const setText = () => {};
   const getTerritoryUiState = () => ({ selectedSiteId: 'east' });
-  const shell = H5ShellAdapter.fromDocument(doc, runtime, { registry, setText, getTerritoryUiState });
+  const shell = H5ShellAdapter.fromDocument(doc, runtime, { registry, getTerritoryUiState });
   const game = { id: 'game' };
   shell.gameModules.mount(game);
 
@@ -112,6 +109,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.equal(shell.runtimeLog, undefined);
     assert.equal(shell.territoryRenderer, undefined);
     assert.equal(shell.authShell, undefined);
+    assert.equal(shell.textAdapter, undefined);
+    assert.equal(shell.navigationShell, undefined);
     assert.ok(calls.some(([name, callRuntime]) => name === 'updateRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authStorage' && callRuntime === runtime));
@@ -150,6 +149,8 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.match(appJs, /this\.gameModules\?\.mount\?\.\(this\)/);
   assert.doesNotMatch(appJs, /AuthShellAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(shellJs, /AuthShellAdapter|authShell/);
+  assert.doesNotMatch(shellJs, /H5TextAdapter|textAdapter|NavigationShellAdapter|navigationShell/);
+  assert.doesNotMatch(html, /H5TextAdapter\.js|NavigationShellAdapter\.js/);
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter|CitySwitcherAdapter|PopulationPanelAdapter|populationPanel|AdvisorPanelAdapter|advisorPanel/);
   assert.doesNotMatch(shellJs, /CivilizationPanelAdapter|civilizationPanel/);

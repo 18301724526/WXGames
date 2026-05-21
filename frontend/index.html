@@ -8,54 +8,7 @@
     <link rel="stylesheet" href="style.css?v=ui-state-shell-v1">
 </head>
 <body>
-    <div id="app">
-        <header class="top-bar">
-            <div class="top-status-row">
-                <div class="era-badge" id="eraBadge">
-                    <span class="era-icon">🔥</span>
-                    <span class="era-name" id="eraName">原始时代</span>
-                </div>
-            </div>
-        </header>
-
-        <div class="page-container">
-            <section class="page page-resources active" data-page="resources"></section>
-
-            <section class="page page-buildings" data-page="buildings"></section>
-
-            <section class="page page-tech" data-page="tech"></section>
-
-            <section class="page page-events" data-page="events"></section>
-
-            <section class="page page-civilization" data-page="civilization"></section>
-
-            <section class="page page-military" data-page="military"></section>
-        </div>
-
-        <nav class="tab-bar">
-            <button class="tab-btn active" id="tabResources" data-tab="resources"><span class="tab-icon">🌾</span><span class="tab-label">资源</span></button>
-            <button class="tab-btn" id="tabBuildings" data-tab="buildings"><span class="tab-icon">🏗️</span><span class="tab-label">建造</span></button>
-            <button class="tab-btn" id="tabTech" data-tab="tech"><span class="tab-icon">🔬</span><span class="tab-label">科技</span></button>
-            <button class="tab-btn" id="tabEvents" data-tab="events"><span class="tab-icon">📜</span><span class="tab-label">事件</span></button>
-            <button class="tab-btn" id="tabCivilization" data-tab="civilization"><span class="tab-icon">🔥</span><span class="tab-label">文明</span></button>
-            <button class="tab-btn" id="tabMilitary" data-tab="military"><span class="tab-icon">🛡️</span><span class="tab-label">军事</span></button>
-        </nav>
-
-        <div class="modal-overlay" id="offlineModal">
-            <div class="modal-content">
-                <div class="modal-icon">⏰</div>
-                <h3>离线收益</h3>
-                <p>你离开了 <span id="offlineTime">0</span></p>
-                <div class="offline-rewards">
-                    <div class="reward-item"><span>🌾</span><span id="offlineFood">0</span></div>
-                    <div class="reward-item"><span>📚</span><span id="offlineKnowledge">0</span></div>
-                </div>
-                <div class="offline-efficiency" id="offlineEfficiency">效率: 80%</div>
-                <div class="offline-narrative" id="offlineNarrative">族人安稳度过了你离开的时间。</div>
-                <button class="btn-claim" id="btnClaimOffline">领取收益</button>
-            </div>
-        </div>
-    </div>
+    <div id="app" aria-hidden="true"></div>
 
     <script src="js/config/GameConfig.js?v=update-check-interval-v2"></script>
     <script src="js/domain/BuildingState.js?v=settlement-era2-fix2"></script>
@@ -69,9 +22,7 @@
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
     <script src="js/ui/TutorialCanvasRenderer.js?v=tutorial-canvas-v1"></script>
-    <script src="js/ui/NavigationShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5GameBootstrap.js?v=h5-bootstrap-explicit-doc-v1"></script>
-    <script src="js/ui/H5TextAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5UpdateRuntimeAdapter.js?v=h5-update-runtime-v5"></script>
     <script src="js/ui/H5AuthRuntimeAdapter.js?v=h5-auth-runtime-v2"></script>
     <script src="js/ui/H5AuthStorageAdapter.js?v=h5-storage-runtime-v1"></script>

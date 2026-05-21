@@ -41,7 +41,6 @@ const Game = {
   init() {
     const shell = window.H5ShellAdapter?.fromDocument(document, window, {
       registry: window,
-      setText: (id, value) => this.setText(id, value),
       getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });
     Object.assign(this, shell);
@@ -78,7 +77,6 @@ const Game = {
       getCurrentTab: () => this.state.currentTab,
       isEventModalOpen: () => this.eventController?.isOpen?.() || this.canvasShell?.activeEventId || false,
       getState: () => this.state,
-      onTabLockChange: () => this.updateTabLocks(),
       storage: this.tutorialStorage,
       startDelayMs: this.config?.TUTORIAL_START_DELAY_MS,
       scheduler: this.scheduler,
@@ -114,7 +112,6 @@ const Game = {
       if (error.payload && error.payload.error && this.handleAuthError) this.handleAuthError(error.payload);
     };
 
-    this.bindBaseEvents();
     this.territoryController.bind();
     this.startScoutCountdownTimer();
     this.updateChecker.start();
@@ -126,7 +123,7 @@ const Game = {
       inputEnabled: true,
       onAction: (action) => {
         if (action?.type === 'switchTab') {
-          this.switchTab(action.tab);
+          this.handleCanvasTabSelection(action.tab);
           return true;
         }
         if (action?.type === 'goToAdvisorTarget') {
@@ -227,19 +224,19 @@ const Game = {
     this.render();
   },
 
-  bindBaseEvents() {
-    this.navigationShell?.bind({
-      onTabClick: async (tabId) => {
-        const allowed = await this.tutorialController.onTabClicked(tabId).catch(() => false);
-        if (!allowed) {
-          this.log('👉 请先完成当前引导步骤');
-          return;
-        }
-        this.switchTab(tabId);
-      },
-      onMilitaryViewClick: (view) => this.switchMilitaryView(view),
-      onAdvanceEra: () => this.advanceEra(),
-    });
+  async handleCanvasTabSelection(tabId) {
+    if (!tabId) return false;
+    const onTabClicked = this.tutorialController?.onTabClicked;
+    const allowed = typeof onTabClicked === 'function'
+      ? await onTabClicked.call(this.tutorialController, tabId).catch(() => false)
+      : true;
+    if (!allowed) {
+      this.log('👉 请先完成当前引导步骤');
+      this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
+      return false;
+    }
+    this.switchTab(tabId);
+    return true;
   },
 
   async startHeartbeat() {
@@ -403,7 +400,6 @@ const Game = {
     const preferredMilitaryView = this.getPreferredMilitaryView(tabId);
     if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
     this.state.currentTab = nextTabId;
-    this.navigationShell?.renderTabs(navigation);
     this.renderMilitaryView();
     this.tutorialController.render();
     if (this.canvasShell?.previewEnabled) {
@@ -437,19 +433,10 @@ const Game = {
   renderMilitaryView() {
     const view = this.presenter.buildMilitaryNavigationViewState(this.state);
     this.state.militaryView = view.activeView;
-    this.navigationShell?.renderMilitaryView(view);
   },
 
   updateMilitaryViewLocks() {
     this.renderMilitaryView();
-  },
-
-  updateTabLocks() {
-    const view = this.presenter.buildTabLockViewState(
-      this.navigationShell?.getTabDescriptors?.() || [],
-      (tabId) => this.tutorialController.canOpenTab(tabId),
-    );
-    this.navigationShell?.renderTabLocks(view);
   },
 
   getTutorialTarget(key) {
@@ -605,12 +592,6 @@ const Game = {
   showFloatingText(message) {
     const shown = this.canvasShell?.showFloatingText?.(message);
     if (!shown) this.log(message);
-  },
-
-  showOfflineModal() {},
-
-  setText(id, value) {
-    this.textAdapter?.setText(id, value);
   },
 
   log(message) {

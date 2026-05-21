@@ -598,12 +598,29 @@
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
+        tabLocks: this.getTabLocks(state),
         naming: this.naming,
         auth: this.auth,
         floatingTexts: this.getFloatingTextView(),
         tutorialHighlight: this.tutorialHighlight,
       });
       return true;
+    }
+
+    getTabLocks(state = {}) {
+      const tabIds = ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
+      const canOpenTab = this.lastGame?.tutorialController?.canOpenTab;
+      if (typeof canOpenTab !== 'function') {
+        return tabIds.map((id) => ({ id, disabled: false, isLocked: false }));
+      }
+      return tabIds.map((id) => {
+        const allowed = Boolean(canOpenTab.call(this.lastGame.tutorialController, id));
+        return {
+          id,
+          disabled: !allowed,
+          isLocked: !allowed,
+        };
+      });
     }
 
     static mount(game, options = {}) {
