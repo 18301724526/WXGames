@@ -301,7 +301,7 @@ test('伐木场建成后会先引导回资源页，再引导分配工匠', () =>
     assert.equal(controller.getMessage(), '伐木场建好了，回到资源页面分配工匠');
 
     currentTab = 'resources';
-    assert.equal(controller.getTargetKey(), 'tab-resources');
+    assert.equal(controller.getTargetKey(), 'card-craftsman');
     assert.equal(controller.getMessage(), '分配 1 名工匠去伐木场工作');
   } finally {
     global.localStorage = originalLocalStorage;

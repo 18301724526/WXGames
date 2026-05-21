@@ -69,6 +69,7 @@ test('app maps tutorial highlight targets from Canvas hit regions only', () => {
     const canvasAdvanceTarget = { getBoundingClientRect() { return { left: 20, top: 30, width: 120, height: 40, right: 140, bottom: 70 }; } };
     const canvasTabTarget = { x: 10, y: 790, width: 60, height: 58 };
     const canvasFarmTarget = { x: 290, y: 252, width: 78, height: 34 };
+    const canvasCraftsmanTarget = { x: 346, y: 512, width: 22, height: 22 };
     const canvasEventTarget = { x: 24, y: 164, width: 342, height: 78 };
     const canvasClaimTarget = { x: 36, y: 446, width: 318, height: 92 };
     global.window.Game.canvasShell = {
@@ -76,6 +77,7 @@ test('app maps tutorial highlight targets from Canvas hit regions only', () => {
         if (key === 'btn-advance-era') return canvasAdvanceTarget;
         if (key === 'tab-civilization') return canvasTabTarget;
         if (key === 'card-farm') return canvasFarmTarget;
+        if (key === 'card-craftsman') return canvasCraftsmanTarget;
         if (key === 'event-card-special') return canvasEventTarget;
         if (key === 'btn-claim-event') return canvasClaimTarget;
         return null;
@@ -87,7 +89,7 @@ test('app maps tutorial highlight targets from Canvas hit regions only', () => {
     assert.equal(global.window.Game.getTutorialTarget('card-farm'), canvasFarmTarget);
     assert.equal(global.window.Game.getTutorialTarget('card-house'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-lumbermill'), null);
-    assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), null);
+    assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), canvasCraftsmanTarget);
     assert.equal(global.window.Game.getTutorialTarget('event-card-special'), canvasEventTarget);
     assert.equal(global.window.Game.getTutorialTarget('btn-claim-event'), canvasClaimTarget);
     assert.equal(elements.size, 0);

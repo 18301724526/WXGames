@@ -219,7 +219,7 @@
         if (!this.canAffordLumbermill()) return 'tab-resources';
         return currentTab === 'buildings' ? 'card-lumbermill' : 'tab-buildings';
       }
-      if (step === 14) return 'tab-resources';
+      if (step === 14) return currentTab === 'resources' ? 'card-craftsman' : 'tab-resources';
       return null;
     }
 

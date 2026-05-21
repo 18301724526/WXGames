@@ -498,6 +498,7 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
       { x: 290, y: 252, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'farm' } },
       { x: 290, y: 338, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'house' } },
       { x: 290, y: 424, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'lumbermill' } },
+      { x: 346, y: 512, width: 22, height: 22, action: { type: 'assignJob', job: 'craftsman', delta: 1 } },
       { x: 24, y: 164, width: 342, height: 78, action: { type: 'openEvent', eventId: 'evt_settlement_forest_001' } },
       { x: 36, y: 446, width: 318, height: 92, action: { type: 'claimEvent', eventId: 'evt_settlement_forest_001', optionId: 'opt_collect_wood' } },
     ],
@@ -542,6 +543,14 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
     height: 34,
     right: 368,
     bottom: 458,
+  });
+  assert.deepEqual(shell.getTutorialTarget('card-craftsman').getRect(), {
+    left: 346,
+    top: 512,
+    width: 22,
+    height: 22,
+    right: 368,
+    bottom: 534,
   });
   assert.deepEqual(shell.getTutorialTarget('event-card-special').getRect(), {
     left: 24,
