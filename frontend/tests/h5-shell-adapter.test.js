@@ -9,8 +9,8 @@ const projectRoot = path.join(__dirname, '..', '..');
 
 function makeFactory(name, calls, result = null) {
   return {
-    fromDocument(doc, options) {
-      calls.push([name, doc, options]);
+    fromRuntime(runtime, options) {
+      calls.push([name, runtime, options]);
       return result || { name };
     },
   };
@@ -68,7 +68,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
   };
 
   const getTerritoryUiState = () => ({ selectedSiteId: 'east' });
-  const shell = H5ShellAdapter.fromDocument(doc, runtime, { registry, getTerritoryUiState });
+  const shell = H5ShellAdapter.fromRuntime(runtime, { registry, getTerritoryUiState });
   const game = { id: 'game' };
   shell.gameModules.mount(game);
 
@@ -132,7 +132,8 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(html, /PopulationPanelAdapter/);
   assert.doesNotMatch(html, /AdvisorPanelAdapter|advisorModal|advisorBtn/);
   assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v2[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
-  assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromDocument\(document, window/);
+  assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromRuntime\(window/);
+  assert.doesNotMatch(appJs, /H5ShellAdapter\?\.fromDocument\(document/);
   assert.match(appJs, /registry: window/);
   assert.match(shellJs, /const registry = options\.registry \|\| runtimeHost/);
   assert.doesNotMatch(shellJs, /BuildingActionAdapter|BuildingUIRenderer|buildingActions|buildingRenderer|EventUIRenderer|eventRenderer/);

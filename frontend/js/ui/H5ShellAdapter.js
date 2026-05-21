@@ -4,7 +4,7 @@
       Object.assign(this, parts);
     }
 
-    static fromDocument(doc, runtime = null, options = {}) {
+    static fromRuntime(runtime = null, options = {}) {
       const runtimeHost = runtime || {};
       const registry = options.registry || runtimeHost;
       const presenter = options.presenter || registry.UIStatePresenter || null;

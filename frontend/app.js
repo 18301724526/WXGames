@@ -39,7 +39,7 @@ const Game = {
   recentLogs: [],
 
   init() {
-    const shell = window.H5ShellAdapter?.fromDocument(document, window, {
+    const shell = window.H5ShellAdapter?.fromRuntime(window, {
       registry: window,
       getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });

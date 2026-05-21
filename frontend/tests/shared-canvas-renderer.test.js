@@ -1074,7 +1074,8 @@ test('H5 entry keeps Canvas as the only business UI after renderer extraction', 
   assert.doesNotMatch(html, /militaryPanel|scoutDirectionGrid|territoryGrid|MilitaryPanelAdapter|TerritoryActionAdapter|TerritoryUIRenderer/);
   assert.doesNotMatch(html, /NavigationShellAdapter\.js|H5TextAdapter\.js/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
-  assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
+  assert.match(appJs, /H5ShellAdapter\?\.fromRuntime/);
+  assert.doesNotMatch(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
   assert.match(appJs, /handleCanvasTabSelection/);
   assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
