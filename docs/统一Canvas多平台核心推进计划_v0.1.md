@@ -389,6 +389,8 @@ node --test frontend/tests/*.test.js
 
 - 阶段 0：工作区与基线确认（v0.1.27）
 - 阶段 1：定义统一 Runtime 接口，不替换调用方（v0.1.28）
+- 阶段 1 验收修复：领取侦查报告 action payload 修正（v0.1.29）
+- 阶段 2：抽离共享 action 覆盖矩阵与 dispatcher 雏形（v0.1.30）
 
 ### 阶段 1 结果
 
@@ -397,10 +399,17 @@ node --test frontend/tests/*.test.js
 - `PlatformRuntime` 已补齐兼容方法：`now()`、`log()`。
 - 本阶段不替换任何调用方，不改变现有 H5 或小游戏业务行为。
 
+### 阶段 2 结果
+
+- 已新增 `CanvasActionDispatcher.js` 作为共享 Canvas action 分发雏形。
+- 已新增 `canvas-action-dispatcher.test.js`，记录 H5/小游戏 action 覆盖矩阵，并锁定阶段 2 只接管 `switchTab`。
+- H5 与小游戏的 `switchTab` 已优先走共享 dispatcher；旧逻辑保留 fallback，避免一次性大改。
+- 其他 action 暂不迁移，等待人工验收后再进入下一小步。
+
 ### 下一步
 
-等待人工验收阶段 1。通过后进入：
+等待人工验收阶段 2。通过后进入：
 
 ```text
-阶段 2：抽离共享 action 覆盖矩阵与 dispatcher 雏形
+阶段 3：逐步迁移纯 UI 状态 action
 ```

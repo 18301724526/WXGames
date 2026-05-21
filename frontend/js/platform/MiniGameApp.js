@@ -51,6 +51,8 @@
         expeditionSoldiers: '',
       };
       this.log = options.log || (() => {});
+      const DispatcherCtor = global.CanvasActionDispatcher;
+      this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
       this.timer = null;
       this.tapDisposer = null;
     }
@@ -168,6 +170,20 @@
     handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
+      if (this.actionDispatcher?.canHandle?.(action)) {
+        this.actionDispatcher.handle(action, {
+          resetForTabSwitch: () => {
+            this.showResourceDetails = false;
+            this.showCitySwitcher = false;
+            this.activeEventId = null;
+          },
+          switchTab: (tab) => {
+            this.switchTab(tab);
+            return true;
+          },
+        });
+        return;
+      }
       if (action.type === 'switchTab') {
         this.showResourceDetails = false;
         this.showCitySwitcher = false;

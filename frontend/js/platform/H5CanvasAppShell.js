@@ -7,6 +7,8 @@
       this.previewEnabled = Boolean(options.previewEnabled);
       this.inputEnabled = Boolean(options.inputEnabled);
       this.onAction = typeof options.onAction === 'function' ? options.onAction : null;
+      const DispatcherCtor = global.CanvasActionDispatcher;
+      this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
       this.mounted = false;
       this.lastGame = null;
       this.resizeDisposer = null;
@@ -375,6 +377,22 @@
     }
 
     handleAction(action, event) {
+      if (this.actionDispatcher?.canHandle?.(action)) {
+        return this.actionDispatcher.handle(action, {
+          resetForTabSwitch: () => {
+            this.buildingOffset = 0;
+            this.activeEventId = null;
+          },
+          switchTab: () => {
+            if (this.onAction) return this.onAction(action, event) !== false;
+            if (this.lastGame?.switchTab) {
+              this.lastGame.switchTab(action.tab);
+              return true;
+            }
+            return false;
+          },
+        });
+      }
       if (action.type === 'requestLoginUsername') {
         return this.requestAuthInput('username');
       }
