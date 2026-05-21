@@ -495,6 +495,9 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
     hitTargets: [
       { x: 20, y: 220, width: 300, height: 32, action: { type: 'advanceEra' } },
       { x: 272, y: 786, width: 53, height: 58, action: { type: 'switchTab', tab: 'civilization' } },
+      { x: 290, y: 252, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'farm' } },
+      { x: 290, y: 338, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'house' } },
+      { x: 290, y: 424, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'lumbermill' } },
     ],
     render(state, options) { renderCalls.push(options); },
   };
@@ -513,6 +516,30 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
     height: 58,
     right: 325,
     bottom: 844,
+  });
+  assert.deepEqual(shell.getTutorialTarget('card-farm').getRect(), {
+    left: 290,
+    top: 252,
+    width: 78,
+    height: 34,
+    right: 368,
+    bottom: 286,
+  });
+  assert.deepEqual(shell.getTutorialTarget('card-house').getRect(), {
+    left: 290,
+    top: 338,
+    width: 78,
+    height: 34,
+    right: 368,
+    bottom: 372,
+  });
+  assert.deepEqual(shell.getTutorialTarget('card-lumbermill').getRect(), {
+    left: 290,
+    top: 424,
+    width: 78,
+    height: 34,
+    right: 368,
+    bottom: 458,
   });
   assert.equal(shell.getTutorialTarget('tab-resources'), null);
 

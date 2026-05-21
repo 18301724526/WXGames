@@ -145,6 +145,9 @@
 
     getTutorialTarget(key) {
       if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
+      if (key === 'card-farm') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'farm');
+      if (key === 'card-house') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'house');
+      if (key === 'card-lumbermill') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'lumbermill');
       if (key === 'tab-resources') return this.getCanvasTarget('switchTab', (action) => action.tab === 'resources');
       if (key === 'tab-civilization') return this.getCanvasTarget('switchTab', (action) => action.tab === 'civilization');
       if (key === 'tab-buildings') return this.getCanvasTarget('switchTab', (action) => action.tab === 'buildings');

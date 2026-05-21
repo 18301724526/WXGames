@@ -414,10 +414,10 @@ const Game = {
     if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
     this.state.currentTab = nextTabId;
     this.renderMilitaryView();
-    this.tutorialController.render();
     if (this.canvasShell?.previewEnabled) {
       this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
     }
+    this.tutorialController.render();
   },
 
   getPreferredMilitaryView(tabId) {

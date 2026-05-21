@@ -68,17 +68,19 @@ test('app maps tutorial highlight targets from Canvas hit regions only', () => {
     require('../app');
     const canvasAdvanceTarget = { getBoundingClientRect() { return { left: 20, top: 30, width: 120, height: 40, right: 140, bottom: 70 }; } };
     const canvasTabTarget = { x: 10, y: 790, width: 60, height: 58 };
+    const canvasFarmTarget = { x: 290, y: 252, width: 78, height: 34 };
     global.window.Game.canvasShell = {
       getTutorialTarget: (key) => {
         if (key === 'btn-advance-era') return canvasAdvanceTarget;
         if (key === 'tab-civilization') return canvasTabTarget;
+        if (key === 'card-farm') return canvasFarmTarget;
         return null;
       },
     };
     assert.equal(global.window.Game.getTutorialTarget('btn-advance-era'), canvasAdvanceTarget);
     assert.equal(global.window.Game.getTutorialTarget('tab-civilization'), canvasTabTarget);
     assert.equal(global.window.Game.getTutorialTarget('tab-resources'), null);
-    assert.equal(global.window.Game.getTutorialTarget('card-farm'), null);
+    assert.equal(global.window.Game.getTutorialTarget('card-farm'), canvasFarmTarget);
     assert.equal(global.window.Game.getTutorialTarget('card-house'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-lumbermill'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-craftsman'), null);
