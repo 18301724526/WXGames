@@ -135,6 +135,15 @@
     getContext(type = '2d') {
       return this.ensureCanvas()?.getContext?.(type) || null;
     }
+
+    requestTextInput(options = {}) {
+      if (typeof this.runtime.prompt !== 'function') return Promise.resolve(null);
+      const title = options.title || '输入';
+      const message = options.message ? `${options.message}\n` : '';
+      const placeholder = options.placeholder ? `\n${options.placeholder}` : '';
+      const value = this.runtime.prompt(`${message}${title}${placeholder}`, options.value || '');
+      return Promise.resolve(value);
+    }
   }
 
   global.H5CanvasRuntime = H5CanvasRuntime;

@@ -153,6 +153,10 @@ const Game = {
           this.logout?.();
           return true;
         }
+        if (action?.type === 'submitNaming') {
+          this.submitNaming(action.name);
+          return true;
+        }
         if (action?.type === 'selectCity') {
           this.switchCity(action.cityId);
           return true;
@@ -233,11 +237,6 @@ const Game = {
       },
       onMilitaryViewClick: (view) => this.switchMilitaryView(view),
       onAdvanceEra: () => this.advanceEra(),
-    });
-
-    this.namingModal?.bind({
-      onClose: () => this.closeNamingModal(),
-      onSubmit: () => this.submitNaming(),
     });
 
     this.logModal?.bindOpen(() => this.showRecentLogs());
@@ -570,18 +569,18 @@ const Game = {
     const view = this.presenter.buildNamingPromptViewState(prompt);
     this.activeNamingPrompt = prompt;
     this.activeNamingPromptKey = view.key;
-    this.namingModal?.open(view);
+    this.canvasShell?.openNaming(view);
   },
 
   closeNamingModal() {
-    this.namingModal?.close();
+    this.canvasShell?.closeNaming();
   },
 
-  async submitNaming() {
+  async submitNaming(inputName) {
     const prompt = this.activeNamingPrompt;
-    const name = this.namingModal?.getName();
+    const name = String(inputName ?? this.canvasShell?.getNamingName?.() ?? '').trim();
     if (!prompt || !name) return;
-    this.namingModal?.setSubmitting(true);
+    this.canvasShell?.setNamingSubmitting(true);
     try {
       const result = prompt.type === 'polity'
         ? await this.gameAPI.renamePolity(name)
@@ -595,7 +594,7 @@ const Game = {
     } catch (error) {
       this.log(`❌ ${error.payload?.message || error.message}`);
     } finally {
-      this.namingModal?.setSubmitting(false);
+      this.canvasShell?.setNamingSubmitting(false);
     }
   },
 

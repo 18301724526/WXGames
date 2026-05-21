@@ -141,6 +141,12 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       buildingOffset: 0,
       activeEventId: null,
       territoryUiState: {},
+      naming: {
+        visible: false,
+        view: null,
+        inputValue: '',
+        submitting: false,
+      },
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -478,6 +484,63 @@ test('H5 canvas app shell dispatches military and world actions without DOM adap
     { type: 'changeExpeditionSoldiers', siteId: 'site-east', value: 3 },
     { type: 'closeWorldSite' },
   ]);
+});
+
+test('H5 canvas app shell owns naming prompt state and dispatches canvas submit', async () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  runtime.prompt = () => ' 赤火联盟 ';
+  const actions = [
+    { type: 'requestNamingInput' },
+    { type: 'submitNaming' },
+  ];
+  const renderCalls = [];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  shell.openNaming({ title: '为势力命名', message: '你已经扩张了领土。', placeholder: '例如：赤火联盟', maxLength: 12 });
+  assert.equal(renderCalls.at(-1).naming.visible, true);
+  listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
+  await Promise.resolve();
+  assert.equal(renderCalls.at(-1).naming.inputValue, '赤火联盟');
+  listeners['document:pointerup']({ clientX: 205, clientY: 540, type: 'pointerup', timeStamp: 1300 });
+
+  assert.deepEqual(dispatched, [{ type: 'submitNaming', name: '赤火联盟' }]);
+});
+
+test('H5 canvas runtime provides platform text input without exposing DOM input elements', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const prompts = [];
+  runtime.prompt = (message, value) => {
+    prompts.push([message, value]);
+    return '河湾城';
+  };
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+
+  const value = await h5Runtime.requestTextInput({
+    title: '为这座城市命名',
+    message: '当前名称：东岸',
+    placeholder: '例如：河湾城',
+    value: '',
+  });
+
+  assert.equal(value, '河湾城');
+  assert.match(prompts[0][0], /当前名称：东岸/);
+  assert.match(prompts[0][0], /为这座城市命名/);
 });
 
 test('H5 canvas app shell owns building pager state without DOM adapter', () => {

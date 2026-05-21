@@ -80,6 +80,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(renderer, /renderMilitaryScoutView/);
   assert.match(renderer, /renderMilitaryWorldView/);
   assert.match(renderer, /renderWorldSiteModal/);
+  assert.match(renderer, /renderNamingModal/);
   assert.match(renderer, /type: 'switchMilitaryView'/);
   assert.match(renderer, /type: cell\.action === 'claim' \? 'claimScout' : 'scoutTerritory'/);
   assert.match(renderer, /type: 'openWorldSite'/);
@@ -89,6 +90,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(presenter, /visualOffset/);
   assert.match(presenter, /buildWorldRadarViewState/);
   assert.match(html, /style\.css\?v=[^"]+/);
+  assert.doesNotMatch(css, /naming-modal-content|naming-input|naming-message/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
@@ -97,7 +99,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
-  assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
+  assert.doesNotMatch(html, /NamingModalAdapter\.js|id="namingModal"|id="namingInput"/);
   assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-rename-adapter-v1/);
   assert.doesNotMatch(html, /TerritoryActionAdapter\.js|TerritoryUIRenderer\.js|MilitaryPanelAdapter\.js/);

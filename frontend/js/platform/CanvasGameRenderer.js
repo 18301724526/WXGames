@@ -1801,6 +1801,113 @@
       this.addHitTarget({ x: dismissX, y: buttonY, width: buttonWidth, height: 36 }, { type: 'closeAdvisor' });
     }
 
+    renderNamingModal(naming = {}) {
+      if (!naming || !naming.visible || !naming.view) return;
+      const view = naming.view || {};
+      const inputValue = String(naming.inputValue || '');
+      const isSubmitting = Boolean(naming.submitting);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeNaming' });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.54)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(360, layout.contentWidth - 16);
+      const panelHeight = 286;
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(72, (this.height - panelHeight) / 2 - 12);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.98)'],
+            [1, 'rgba(22, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeNaming' });
+
+      const iconSize = 58;
+      const iconX = x + panelWidth / 2 - iconSize / 2;
+      const iconY = y + 24;
+      this.drawPanel(iconX, iconY, iconSize, iconSize, {
+        fill: 'rgba(92, 63, 34, 0.92)',
+        stroke: 'rgba(240, 180, 91, 0.42)',
+        radius: iconSize / 2,
+        inset: 'rgba(255, 231, 184, 0.14)',
+      });
+      this.drawText('城', x + panelWidth / 2, iconY + iconSize / 2, {
+        size: 22,
+        bold: true,
+        color: '#ffe6b5',
+        baseline: 'middle',
+        align: 'center',
+      });
+
+      this.drawText(this.truncateText(view.title || '命名', panelWidth - 84, { size: 17, bold: true }), x + panelWidth / 2, y + 98, {
+        size: 17,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+
+      const messageLines = this.wrapTextLimit(view.message || '', panelWidth - 48, 2, { size: 13 });
+      this.drawTextLines(messageLines, x + 24, y + 128, {
+        size: 13,
+        color: '#cbbd96',
+        lineHeight: 17,
+      });
+
+      const inputX = x + 18;
+      const inputY = y + 174;
+      const inputWidth = panelWidth - 36;
+      const inputHeight = 42;
+      this.drawPanel(inputX, inputY, inputWidth, inputHeight, {
+        fill: 'rgba(23, 18, 13, 0.56)',
+        stroke: 'rgba(116, 211, 160, 0.24)',
+        radius: 9,
+        inset: 'rgba(116, 211, 160, 0.08)',
+      });
+      const displayValue = inputValue || view.placeholder || '请输入名称';
+      this.drawText(this.truncateText(displayValue, inputWidth - 24, { size: 14 }), inputX + 12, inputY + 21, {
+        size: 14,
+        color: inputValue ? '#f6e8c8' : 'rgba(234, 234, 234, 0.48)',
+        baseline: 'middle',
+      });
+      this.addHitTarget({ x: inputX, y: inputY, width: inputWidth, height: inputHeight }, { type: 'requestNamingInput' });
+
+      const buttonY = y + panelHeight - 52;
+      const buttonGap = 10;
+      const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
+      const cancelX = x + 18;
+      const submitX = cancelX + buttonWidth + buttonGap;
+      this.drawButton(cancelX, buttonY, buttonWidth, 36, '取消', { size: 13, radius: 9 });
+      this.drawButton(submitX, buttonY, buttonWidth, 36, isSubmitting ? '提交中' : '确定', {
+        size: 13,
+        bold: true,
+        radius: 9,
+        active: true,
+        disabled: isSubmitting || !inputValue.trim(),
+      });
+      this.addHitTarget({ x: cancelX, y: buttonY, width: buttonWidth, height: 36 }, { type: 'closeNaming' });
+      this.addHitTarget(
+        { x: submitX, y: buttonY, width: buttonWidth, height: 36 },
+        { type: 'submitNaming', disabled: isSubmitting || !inputValue.trim() },
+      );
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
@@ -1860,6 +1967,9 @@
       }
       if (activeTab === 'military') {
         this.renderWorldSiteModal(state, options);
+      }
+      if (options.naming) {
+        this.renderNamingModal(options.naming);
       }
     }
 
@@ -2122,6 +2232,7 @@
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
+      if (options.naming) this.renderNamingModal(options.naming);
     }
   }
 

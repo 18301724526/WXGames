@@ -115,6 +115,7 @@ test('MiniGame app renders state and syncs through platform transport without do
         return { windowWidth: 360, windowHeight: 720, pixelRatio: 1 };
       },
     },
+    textInput: () => '东岸城',
     scheduler: {
       setInterval(callback, intervalMs) {
         const timer = { callback, intervalMs };
@@ -217,6 +218,7 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
         tapHandler = null;
       },
     },
+    textInput: () => '东岸城',
     scheduler: {
       setInterval() {
         const timer = {};
@@ -427,6 +429,37 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     });
     await new Promise((resolve) => setImmediate(resolve));
 
+    app.state.territoryState.territories[0] = {
+      ...app.state.territoryState.territories[0],
+      status: 'occupied',
+      owner: 'player',
+      cityName: '东岸',
+    };
+    app.territoryUiState.selectedSiteId = 'site-east';
+    app.render();
+    const renameTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'territoryAction' && target.action.action === 'rename-city');
+    assert.ok(renameTarget);
+    app.handleTap({
+      x: renameTarget.x + renameTarget.width / 2,
+      y: renameTarget.y + renameTarget.height / 2,
+    });
+    assert.equal(app.naming.visible, true);
+    const inputTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'requestNamingInput');
+    assert.ok(inputTarget);
+    app.handleTap({
+      x: inputTarget.x + inputTarget.width / 2,
+      y: inputTarget.y + inputTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(app.naming.inputValue, '东岸城');
+    const submitNamingTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'submitNaming');
+    assert.ok(submitNamingTarget);
+    app.handleTap({
+      x: submitNamingTarget.x + submitNamingTarget.width / 2,
+      y: submitNamingTarget.y + submitNamingTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
     assert.deepEqual(requests.find((request) => request.action === 'assign'), {
       action: 'assign',
       target: 'farmer',
@@ -445,6 +478,11 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       action: 'startConquest',
       territoryId: 'site-east',
       expedition: { soldiers: 1 },
+    });
+    assert.deepEqual(requests.find((request) => request.action === 'renameCity'), {
+      action: 'renameCity',
+      territoryId: 'site-east',
+      name: '东岸城',
     });
     assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'), true);
   } finally {

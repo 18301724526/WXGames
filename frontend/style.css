@@ -862,28 +862,6 @@ body {
 }
 
 
-.naming-modal-content {
-  max-width: 360px;
-}
-
-.naming-message {
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-
-.naming-input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 15px;
-  margin-bottom: 12px;
-}
-
 .tab-btn.is-locked {
   opacity: 0.45;
 }

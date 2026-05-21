@@ -63,7 +63,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     BuildingController: class BuildingController {},
     TerritoryController: class TerritoryController {},
     FloatingTextAdapter: makeFactory('floatingText', calls),
-    NamingModalAdapter: makeFactory('naming', calls),
     AuthShellAdapter: makeFactory('auth', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
     TutorialTargetAdapter: makeFactory('tutorialTargets', calls),
@@ -116,6 +115,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.equal(typeof shell.scheduler.setTimeout, 'function');
     assert.equal(typeof shell.scheduler.clearTimeout, 'function');
     assert.deepEqual(shell.floatingText, { name: 'floatingText' });
+    assert.equal(shell.namingModal, undefined);
     assert.equal(shell.territoryActions, undefined);
     assert.equal(shell.territoryRenderer, undefined);
     assert.ok(calls.some(([name, callDoc]) => name === 'auth' && callDoc === doc));
@@ -164,4 +164,5 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter|CitySwitcherAdapter|PopulationPanelAdapter|populationPanel|AdvisorPanelAdapter|advisorPanel/);
   assert.doesNotMatch(shellJs, /CivilizationPanelAdapter|civilizationPanel/);
   assert.doesNotMatch(shellJs, /MilitaryPanelAdapter|militaryPanel|TerritoryActionAdapter|TerritoryUIRenderer|territoryActions|territoryRenderer/);
+  assert.doesNotMatch(shellJs, /NamingModalAdapter|namingModal/);
 });

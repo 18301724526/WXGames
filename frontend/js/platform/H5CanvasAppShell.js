@@ -19,6 +19,12 @@
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.territoryUiState = {};
+      this.naming = {
+        visible: false,
+        view: null,
+        inputValue: '',
+        submitting: false,
+      };
     }
 
     createRenderer(canvas) {
@@ -90,7 +96,82 @@
       return null;
     }
 
+    openNaming(view = {}) {
+      this.naming = {
+        visible: true,
+        view,
+        inputValue: '',
+        submitting: false,
+      };
+      this.showSettings = false;
+      this.showLogs = false;
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.showAdvisor = false;
+      this.activeEventId = null;
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    closeNaming() {
+      this.naming = {
+        visible: false,
+        view: null,
+        inputValue: '',
+        submitting: false,
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    getNamingName() {
+      return String(this.naming?.inputValue || '').trim();
+    }
+
+    setNamingSubmitting(isSubmitting) {
+      this.naming = {
+        ...this.naming,
+        submitting: Boolean(isSubmitting),
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+    }
+
+    requestNamingInput() {
+      if (!this.naming?.visible) return false;
+      const view = this.naming.view || {};
+      const currentValue = this.naming.inputValue || '';
+      if (!this.runtime || typeof this.runtime.requestTextInput !== 'function') return false;
+      Promise.resolve(this.runtime.requestTextInput({
+        title: view.title || '命名',
+        message: view.message || '',
+        placeholder: view.placeholder || '',
+        value: currentValue,
+        maxLength: view.maxLength || 12,
+      })).then((value) => {
+        if (value === null || value === undefined || !this.naming?.visible) return;
+        const maxLength = Number(view.maxLength) || 12;
+        this.naming = {
+          ...this.naming,
+          inputValue: String(value).trim().slice(0, maxLength),
+        };
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      }).catch(() => {});
+      return true;
+    }
+
     handleAction(action, event) {
+      if (action.type === 'requestNamingInput') {
+        return this.requestNamingInput();
+      }
+      if (action.type === 'closeNaming') {
+        return this.closeNaming();
+      }
+      if (action.type === 'submitNaming') {
+        if (!this.onAction) return false;
+        const name = this.getNamingName();
+        if (!name) return false;
+        return this.onAction({ ...action, name }, event) !== false;
+      }
       if (action.type === 'openSettings') {
         this.showSettings = true;
         this.showLogs = false;
@@ -289,6 +370,7 @@
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
+        naming: this.naming,
       });
       return true;
     }

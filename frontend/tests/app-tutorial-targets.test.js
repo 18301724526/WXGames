@@ -25,7 +25,6 @@ function createWindowStub() {
     TutorialController: class {},
     EventController: class {},
     BuildingController: class {},
-    NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),

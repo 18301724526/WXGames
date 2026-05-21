@@ -34,6 +34,13 @@
       this.showCitySwitcher = false;
       this.buildingOffset = 0;
       this.activeEventId = null;
+      this.naming = {
+        visible: false,
+        view: null,
+        prompt: null,
+        inputValue: '',
+        submitting: false,
+      };
       this.territoryUiState = {
         selectedSiteId: '',
         worldPanX: 0,
@@ -65,6 +72,63 @@
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
         territoryUiState: this.territoryUiState,
+        naming: this.naming,
+      });
+    }
+
+    openNaming(prompt = {}) {
+      const view = this.presenter.buildNamingPromptViewState(prompt);
+      this.naming = {
+        visible: true,
+        view,
+        prompt,
+        inputValue: '',
+        submitting: false,
+      };
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.activeEventId = null;
+      this.render();
+    }
+
+    closeNaming() {
+      this.naming = {
+        visible: false,
+        view: null,
+        prompt: null,
+        inputValue: '',
+        submitting: false,
+      };
+      this.render();
+    }
+
+    async requestNamingInput() {
+      if (!this.naming.visible || typeof this.runtime.requestTextInput !== 'function') return;
+      const view = this.naming.view || {};
+      const value = await this.runtime.requestTextInput({
+        title: view.title || '命名',
+        message: view.message || '',
+        placeholder: view.placeholder || '',
+        value: this.naming.inputValue || '',
+        maxLength: view.maxLength || 12,
+      });
+      if (value === null || value === undefined || !this.naming.visible) return;
+      this.naming.inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
+      this.render();
+    }
+
+    submitNaming() {
+      const prompt = this.naming.prompt || {};
+      const name = String(this.naming.inputValue || '').trim();
+      if (!prompt.type || !name) return;
+      this.naming.submitting = true;
+      this.render();
+      this.runAction(() => (
+        prompt.type === 'polity'
+          ? this.api.renamePolity(name)
+          : this.api.renameCity(prompt.territoryId, name)
+      )).then(() => {
+        this.closeNaming();
       });
     }
 
@@ -142,6 +206,18 @@
         return;
       }
       if (action.type === 'blockCanvasModal') {
+        return;
+      }
+      if (action.type === 'requestNamingInput') {
+        this.requestNamingInput();
+        return;
+      }
+      if (action.type === 'closeNaming') {
+        this.closeNaming();
+        return;
+      }
+      if (action.type === 'submitNaming') {
+        this.submitNaming();
         return;
       }
       if (action.type === 'assignJob') {
@@ -255,6 +331,16 @@
         if (action.action === 'manage-city') {
           this.territoryUiState.selectedSiteId = '';
           this.runAction(() => this.api.switchCity(action.territoryId));
+          return;
+        }
+        if (action.action === 'rename-city') {
+          const site = (this.state.territoryState?.territories || []).find((item) => item.id === action.territoryId) || {};
+          this.openNaming({
+            type: 'city',
+            territoryId: action.territoryId,
+            title: '为这座城市命名',
+            message: `当前名称：${site.cityName || site.naturalName || '未命名城市'}`,
+          });
         }
       }
     }

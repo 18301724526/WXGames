@@ -8,6 +8,7 @@
       this.systemInfo = options.systemInfo || null;
       this.storage = options.storage || PlatformRuntime.detectStorage(global);
       this.scheduler = options.scheduler || PlatformRuntime.detectScheduler(global);
+      this.textInput = typeof options.textInput === 'function' ? options.textInput : null;
     }
 
     static detectStorage(scope) {
@@ -143,6 +144,37 @@
 
     onTap(handler) {
       return this.onTouchEnd((event) => handler(PlatformRuntime.getTouchPoint(event), event));
+    }
+
+    requestTextInput(options = {}) {
+      if (this.textInput) return Promise.resolve(this.textInput(options));
+      if (!this.host || typeof this.host.showKeyboard !== 'function') return Promise.resolve(null);
+      return new Promise((resolve) => {
+        let settled = false;
+        const done = (value) => {
+          if (settled) return;
+          settled = true;
+          if (typeof this.host.offKeyboardConfirm === 'function' && confirmHandler) this.host.offKeyboardConfirm(confirmHandler);
+          if (typeof this.host.offKeyboardInput === 'function' && inputHandler) this.host.offKeyboardInput(inputHandler);
+          resolve(value);
+        };
+        let currentValue = String(options.value || '');
+        const confirmHandler = (event = {}) => done(event.value ?? currentValue);
+        const inputHandler = (event = {}) => {
+          currentValue = String(event.value ?? currentValue);
+        };
+        if (typeof this.host.onKeyboardInput === 'function') this.host.onKeyboardInput(inputHandler);
+        if (typeof this.host.onKeyboardConfirm === 'function') this.host.onKeyboardConfirm(confirmHandler);
+        this.host.showKeyboard({
+          defaultValue: currentValue,
+          maxLength: Number(options.maxLength) || 12,
+          multiple: false,
+          confirmHold: false,
+          confirmType: 'done',
+          success: () => {},
+          fail: () => done(null),
+        });
+      });
     }
   }
 

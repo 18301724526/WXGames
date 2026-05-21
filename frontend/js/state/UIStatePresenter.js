@@ -370,6 +370,7 @@
         title: prompt?.title || '命名',
         message: prompt?.message || '',
         placeholder: type === 'polity' ? '例如：赤火联盟' : '例如：河湾城',
+        maxLength: 12,
         key: `${type}:${prompt?.territoryId || 'polity'}`,
         prompt: prompt || null,
       };
