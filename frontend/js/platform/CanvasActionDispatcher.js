@@ -88,6 +88,22 @@
         return closed;
       }
 
+      if (action.type === 'openAdvisor') {
+        const opened = typeof context.openAdvisor === 'function'
+          ? context.openAdvisor(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeAdvisor') {
+        const closed = typeof context.closeAdvisor === 'function'
+          ? context.closeAdvisor(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
@@ -102,6 +118,8 @@
         'closeSettings',
         'openLogs',
         'closeLogs',
+        'openAdvisor',
+        'closeAdvisor',
       ];
     }
   }

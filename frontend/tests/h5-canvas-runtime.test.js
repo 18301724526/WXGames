@@ -5,6 +5,8 @@ const path = require('node:path');
 
 const H5CanvasRuntime = require('../js/platform/H5CanvasRuntime');
 global.H5CanvasRuntime = H5CanvasRuntime;
+const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
+global.CanvasActionDispatcher = CanvasActionDispatcher;
 const H5CanvasAppShell = require('../js/platform/H5CanvasAppShell');
 
 const projectRoot = path.join(__dirname, '..', '..');
