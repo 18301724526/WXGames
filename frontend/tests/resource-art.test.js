@@ -12,8 +12,7 @@ function iconUrlPattern(assetName) {
 test('H5 document adapters require an explicit document argument', () => {
   const uiDir = path.join(projectRoot, 'frontend', 'js', 'ui');
   const files = fs.readdirSync(uiDir)
-    .filter((name) => name.endsWith('.js'))
-    .filter((name) => name !== 'TerritoryUIRenderer.js');
+    .filter((name) => name.endsWith('.js'));
 
   for (const file of files) {
     const source = fs.readFileSync(path.join(uiDir, file), 'utf8');
@@ -56,10 +55,10 @@ test('military has its own tab and page outside the civilization page', () => {
   assert.equal(html.slice(civStart, militaryStart).includes('id="militaryPanel"'), false);
 });
 
-test('world scouting uses dedicated site icons and military scout controls', () => {
+test('world scouting uses dedicated site icons and canvas military controls', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(projectRoot, 'frontend', 'style.css'), 'utf8');
-  const renderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'TerritoryUIRenderer.js'), 'utf8');
+  const renderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
   const controller = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'controllers', 'TerritoryController.js'), 'utf8');
   const presenter = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'state', 'UIStatePresenter.js'), 'utf8');
   const assets = [
@@ -75,40 +74,20 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   }
   assert.doesNotMatch(html, /id="tabTerritory"/);
   assert.doesNotMatch(html, /data-tab="territory"/);
-  assert.match(html, /id="militarySubTabs"/);
-  assert.match(html, /data-military-view="army"/);
-  assert.match(html, /data-military-view="scout"/);
-  assert.match(html, /data-military-view="world"/);
-  assert.match(html, /id="scoutDirectionGrid"/);
-  assert.match(css, /\.scout-compass/);
-  assert.match(css, /\.world-radar/);
-  assert.match(css, /\.world-radar-pan/);
-  assert.match(css, /\.world-reset/);
-  assert.match(css, /\.world-site-modal-content/);
-  assert.match(css, /@keyframes radarSweep/);
-  assert.match(css, /@keyframes radarNeedle/);
-  assert.doesNotMatch(css, /--radar-phase/);
-  assert.match(css, /\.btn-scout\.status-locked/);
-  assert.match(css, /\.world-site-detail\[hidden\] \{\s*display: none !important;/);
-  assert.match(renderer, /class="world-radar"/);
-  assert.match(renderer, /data-world-pan/);
-  assert.match(renderer, /data-world-reset/);
-  assert.match(renderer, /data-world-site-modal/);
-  assert.match(renderer, /data-site-detail/);
-  assert.match(renderer, /selectedSiteId/);
-  assert.doesNotMatch(renderer, /dataset\.selectedSiteId|dataset\.worldPan|dataset\.expedition/);
+  assert.doesNotMatch(html, /id="militarySubTabs"|data-military-view|data-military-page|id="scoutDirectionGrid"|id="territoryGrid"/);
+  assert.doesNotMatch(css, /military-subtab|military-panel|scout-compass|btn-scout|world-radar|world-site|territory-panel/);
+  assert.match(renderer, /renderMilitarySubTabs/);
+  assert.match(renderer, /renderMilitaryScoutView/);
+  assert.match(renderer, /renderMilitaryWorldView/);
+  assert.match(renderer, /renderWorldSiteModal/);
+  assert.match(renderer, /type: 'switchMilitaryView'/);
+  assert.match(renderer, /type: cell\.action === 'claim' \? 'claimScout' : 'scoutTerritory'/);
+  assert.match(renderer, /type: 'openWorldSite'/);
+  assert.match(renderer, /type: 'territoryAction'/);
   assert.match(controller, /this\.uiState\.selectedSiteId/);
   assert.match(controller, /getUiState\(\)/);
   assert.match(presenter, /visualOffset/);
   assert.match(presenter, /buildWorldRadarViewState/);
-  assert.match(renderer, /data-world-map-host/);
-  assert.match(renderer, /mapSignature/);
-  assert.doesNotMatch(renderer, /radarPhase|--radar-phase/);
-  assert.match(renderer, /site-card-hero/);
-  assert.match(renderer, /site-card-art/);
-  assert.match(renderer, /site-card-summary/);
-  assert.doesNotMatch(renderer, /territory-site-list/);
-  assert.doesNotMatch(renderer, /world-cell-unknown/);
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
@@ -120,9 +99,8 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.doesNotMatch(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /NamingModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
-  assert.match(html, /TerritoryActionAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /TerritoryController\.js\?v=territory-rename-adapter-v1/);
-  assert.match(html, /TerritoryUIRenderer\.js\?v=territory-presenter-v1/);
+  assert.doesNotMatch(html, /TerritoryActionAdapter\.js|TerritoryUIRenderer\.js|MilitaryPanelAdapter\.js/);
   assert.match(html, /TutorialUIRenderer\.js\?v=tutorial-presenter-v1/);
   assert.match(html, /LogModalAdapter\.js\?v=explicit-doc-v1/);
   assert.match(html, /H5GameBootstrap\.js\?v=h5-bootstrap-explicit-doc-v1/);
@@ -159,7 +137,6 @@ test('world scouting uses dedicated site icons and military scout controls', () 
   assert.doesNotMatch(css, /\.hud-btn/);
   assert.doesNotMatch(css, /\.log-panel/);
   assert.match(css, /\.tab-btn:disabled/);
-  assert.match(css, /\.site-card-hero/);
   assert.match(renderer, /scoutReports/);
   assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
 });

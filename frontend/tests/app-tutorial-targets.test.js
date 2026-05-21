@@ -27,7 +27,6 @@ function createWindowStub() {
     BuildingController: class {},
     NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
-    MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
     H5GameBootstrap: {
@@ -50,24 +49,6 @@ function createWindowStub() {
       },
     },
   };
-}
-
-
-function attachMilitaryPanel(Game, elements, textSink = null) {
-  function getElement(id) {
-    if (!elements.has(id)) elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false, hidden: false });
-    return elements.get(id);
-  }
-
-  Game.militaryPanel = new global.window.MilitaryPanelAdapter({
-    setText: (id, value) => {
-      if (textSink) textSink.set(id, value);
-      getElement(id).textContent = value;
-    },
-    panel: getElement('militaryPanel'),
-    trainingProgress: getElement('soldierTrainingProgress'),
-    scoutGrid: getElement('scoutDirectionGrid'),
-  });
 }
 
 test('app maps tutorial highlight targets without building card DOM', () => {
@@ -495,40 +476,24 @@ test('syncFromServer locally promotes step8 to step9 when era2 resource requirem
   }
 });
 
-test('renderMilitary displays backend-provided military state', () => {
+test('renderMilitary refreshes Canvas military state from backend-provided data', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
 
   try {
-    const elements = new Map();
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
     global.document = {
       addEventListener() {},
       getElementById(id) {
-        if (!elements.has(id)) {
-          elements.set(id, {
-            id,
-            style: {},
-            textContent: '',
-            innerHTML: '',
-            disabled: false,
-            hidden: false,
-            classList: { toggle() {} },
-          });
-        }
-        return elements.get(id);
-      },
-      querySelector() {
-        return { innerHTML: '' };
+        return { id };
       },
     };
     delete require.cache[require.resolve('../app')];
     require('../app');
 
     const { Game } = global.window;
-    attachMilitaryPanel(Game, elements);
     Game.state = {
       currentEra: 3,
       currentEraName: '城邦时代',
@@ -559,14 +524,21 @@ test('renderMilitary displays backend-provided military state', () => {
       state: { completed: true, currentStep: 99 },
       canOpenTab() { return true; },
     };
+    const renderCalls = [];
+    Game.canvasShell = {
+      renderReadOnly(state, tab) {
+        renderCalls.push({ state, tab });
+      },
+    };
 
     Game.renderMilitary();
 
-    assert.equal(elements.get('militaryPanel').hidden, false);
-    assert.equal(elements.get('soldierCount').textContent, '2/5');
-    assert.equal(elements.get('militaryDefense').textContent, 4);
-    assert.equal(elements.get('soldierTrainingText').textContent, '下一名 15/30 秒');
-    assert.equal(elements.get('soldierTrainingProgress').style.width, '50%');
+    const view = Game.presenter.buildMilitaryViewState(Game.state);
+    assert.equal(view.text.soldierCount, '2/5');
+    assert.equal(view.text.militaryDefense, 4);
+    assert.equal(view.text.soldierTrainingText, '下一名 15/30 秒');
+    assert.equal(view.training.progressWidth, '50%');
+    assert.deepEqual(renderCalls, [{ state: Game.state, tab: Game.state.currentTab }]);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
@@ -687,17 +659,6 @@ test('military scout and world subviews stay disabled before classical era', () 
   const originalLocalStorage = global.localStorage;
 
   try {
-    const buttons = [
-      { dataset: { militaryView: 'army' }, disabled: false, classList: { toggle() {} }, setAttribute() {} },
-      { dataset: { militaryView: 'scout' }, disabled: false, classList: { toggle() {} }, setAttribute() {} },
-      { dataset: { militaryView: 'world' }, disabled: false, classList: { toggle() {} }, setAttribute() {} },
-    ];
-    const pages = [
-      { dataset: { militaryPage: 'army' }, classList: { toggle() {} } },
-      { dataset: { militaryPage: 'scout' }, classList: { toggle() {} } },
-      { dataset: { militaryPage: 'world' }, classList: { toggle() {} } },
-    ];
-
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
     global.document = {
@@ -705,30 +666,22 @@ test('military scout and world subviews stay disabled before classical era', () 
       getElementById(id) {
         return { id };
       },
-      querySelectorAll(selector) {
-        if (selector === '[data-military-view]') return buttons;
-        if (selector === '[data-military-page]') return pages;
-        return [];
-      },
     };
 
     delete require.cache[require.resolve('../app')];
     require('../app');
 
     const { Game } = global.window;
-    Game.navigationShell = new global.window.NavigationShellAdapter({
-      militaryButtons: buttons,
-      militaryPages: pages,
-    });
     Game.state.currentEra = 4;
     Game.state.militaryView = 'world';
 
     Game.renderMilitaryView();
 
+    const nav = Game.presenter.buildMilitaryNavigationViewState(Game.state);
     assert.equal(Game.state.militaryView, 'army');
-    assert.equal(buttons[0].disabled, false);
-    assert.equal(buttons[1].disabled, true);
-    assert.equal(buttons[2].disabled, true);
+    assert.equal(nav.views.find((view) => view.id === 'army').disabled, false);
+    assert.equal(nav.views.find((view) => view.id === 'scout').disabled, true);
+    assert.equal(nav.views.find((view) => view.id === 'world').disabled, true);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
@@ -736,24 +689,19 @@ test('military scout and world subviews stay disabled before classical era', () 
   }
 });
 
-test('scout controls show countdown and lock other directions while one scout is active', () => {
+test('Canvas scout controls show countdown and lock other directions while one scout is active', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
   const originalNow = Date.now;
 
   try {
-    const text = new Map();
-    const elements = new Map();
-    const container = { innerHTML: '' };
-    elements.set('scoutDirectionGrid', container);
     Date.now = () => new Date('2026-05-17T08:00:30.000Z').getTime();
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
     global.document = {
       addEventListener() {},
       getElementById(id) {
-        if (id === 'scoutDirectionGrid') return container;
         return { id };
       },
     };
@@ -762,7 +710,6 @@ test('scout controls show countdown and lock other directions while one scout is
     require('../app');
 
     const { Game } = global.window;
-    attachMilitaryPanel(Game, elements, text);
     Game.state.currentEra = 5;
     Game.state.territoryState = {
       directions: [
@@ -785,13 +732,18 @@ test('scout controls show countdown and lock other directions while one scout is
       }],
     };
 
-    Game.renderScoutControls();
+    const view = Game.presenter.buildScoutControlViewState(Game.state);
+    const north = view.cells.find((cell) => cell.id === 'n');
+    const east = view.cells.find((cell) => cell.id === 'e');
 
-    assert.match(text.get('scoutStatus'), /北方侦察中，预计 0:30 后返回/);
-    assert.match(container.innerHTML, /direction-n status-active/);
-    assert.match(container.innerHTML, /<span class="scout-action">0:30<\/span>/);
-    assert.match(container.innerHTML, /direction-e status-locked/);
-    assert.doesNotMatch(container.innerHTML, /data-scout-direction="e"/);
+    assert.match(view.statusText, /北方侦察中，预计 0:30 后返回/);
+    assert.equal(north.direction, 'n');
+    assert.equal(north.status, 'active');
+    assert.equal(north.actionText, '0:30');
+    assert.equal(north.disabled, true);
+    assert.equal(east.direction, 'e');
+    assert.equal(east.status, 'locked');
+    assert.equal(east.action, '');
   } finally {
     Date.now = originalNow;
     global.window = originalWindow;

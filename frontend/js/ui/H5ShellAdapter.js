@@ -8,8 +8,6 @@
       const runtimeHost = runtime || {};
       const registry = options.registry || runtimeHost;
       const presenter = options.presenter || registry.UIStatePresenter || null;
-      const setText = options.setText || (() => {});
-      const territoryActions = registry.TerritoryActionAdapter?.fromDocument(doc);
       const tutorialRenderer = registry.TutorialUIRenderer?.fromDocument(doc, runtimeHost, { presenter });
       const authRuntime = registry.H5AuthRuntimeAdapter?.fromRuntime(runtimeHost);
       const authStorage = registry.H5AuthStorageAdapter?.fromRuntime(runtimeHost);
@@ -59,14 +57,8 @@
         authShell: registry.AuthShellAdapter?.fromDocument(doc),
         navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
         tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
-        militaryPanel: registry.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
         logModal: registry.LogModalAdapter?.fromDocument(doc),
         runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),
-        territoryActions,
-        territoryRenderer: registry.TerritoryUIRenderer ? new registry.TerritoryUIRenderer(territoryActions?.getContainer?.(), {
-          getUiState: options.getTerritoryUiState || (() => ({})),
-          presenter,
-        }) : null,
         tutorialRenderer,
       });
     }

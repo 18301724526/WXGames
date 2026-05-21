@@ -4,8 +4,6 @@
       this.document = elements.document || null;
       this.tabButtons = elements.tabButtons || [];
       this.pages = elements.pages || [];
-      this.militaryButtons = elements.militaryButtons || [];
-      this.militaryPages = elements.militaryPages || [];
       this.advanceButton = elements.advanceButton || null;
     }
 
@@ -18,12 +16,6 @@
         pages: typeof doc.querySelectorAll === 'function'
           ? Array.from(doc.querySelectorAll('.page'))
           : [],
-        militaryButtons: typeof doc.querySelectorAll === 'function'
-          ? Array.from(doc.querySelectorAll('[data-military-view]'))
-          : [],
-        militaryPages: typeof doc.querySelectorAll === 'function'
-          ? Array.from(doc.querySelectorAll('[data-military-page]'))
-          : [],
       });
     }
 
@@ -32,12 +24,6 @@
         button.addEventListener?.('click', async (event) => {
           if (event.currentTarget?.disabled) return;
           await handlers.onTabClick?.(event.currentTarget?.dataset?.tab);
-        });
-      });
-
-      this.militaryButtons.forEach((button) => {
-        button.addEventListener?.('click', (event) => {
-          handlers.onMilitaryViewClick?.(event.currentTarget?.dataset?.militaryView);
         });
       });
 
@@ -70,25 +56,7 @@
     }
 
     renderMilitaryView(view = {}) {
-      this.militaryPages.forEach((page) => {
-        page.classList?.toggle('active', page.dataset?.militaryPage === view.activeView);
-      });
-
-      const viewById = new Map((view.views || []).map((item) => [item.id, item]));
-      this.militaryButtons.forEach((button) => {
-        const buttonView = viewById.get(button.dataset?.militaryView) || {
-          isActive: false,
-          disabled: false,
-          isLocked: false,
-          title: '',
-          ariaSelected: 'false',
-        };
-        button.disabled = buttonView.disabled;
-        button.classList?.toggle('is-locked', buttonView.isLocked);
-        button.title = buttonView.title;
-        button.classList?.toggle('active', buttonView.isActive);
-        button.setAttribute?.('aria-selected', buttonView.ariaSelected);
-      });
+      return view;
     }
   }
 

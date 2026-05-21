@@ -928,7 +928,8 @@
           return {
             type: 'button',
             id,
-            className: `direction-${id} status-ready`,
+            direction: id,
+            status: 'ready',
             disabled: false,
             action: 'claim',
             actionValue: mission.id,
@@ -941,7 +942,8 @@
           return {
             type: 'button',
             id,
-            className: `direction-${id} status-active`,
+            direction: id,
+            status: 'active',
             disabled: true,
             action: '',
             actionValue: '',
@@ -954,7 +956,8 @@
           return {
             type: 'button',
             id,
-            className: `direction-${id} status-locked`,
+            direction: id,
+            status: 'locked',
             disabled: true,
             action: '',
             actionValue: '',
@@ -966,7 +969,8 @@
         return {
           type: 'button',
           id,
-          className: `direction-${id} status-available`,
+          direction: id,
+          status: 'available',
           disabled: false,
           action: 'scout',
           actionValue: id,
@@ -1315,7 +1319,9 @@
           const position = layout.get(site.id) || { left: '50.00', top: '50.00' };
           return {
             id: site.id || '',
-            className: `world-site-${site.status} owner-${site.owner} type-${site.type}`,
+            status: site.status || '',
+            owner: site.owner || '',
+            type: site.type || '',
             title: site.naturalName || '',
             art: site.art || '',
             alt: site.naturalName || '',

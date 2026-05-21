@@ -36,44 +36,31 @@ function createElement(dataset = {}) {
 test('navigation shell adapter owns H5 tab and military bindings', async () => {
   const resourcesTab = createElement({ tab: 'resources' });
   const militaryTab = createElement({ tab: 'military' });
-  const armyButton = createElement({ militaryView: 'army' });
-  const scoutButton = createElement({ militaryView: 'scout' });
   const calls = [];
   const adapter = new NavigationShellAdapter({
     tabButtons: [resourcesTab, militaryTab],
     pages: [createElement({ page: 'resources' }), createElement({ page: 'military' })],
-    militaryButtons: [armyButton, scoutButton],
-    militaryPages: [createElement({ militaryPage: 'army' }), createElement({ militaryPage: 'scout' })],
   });
 
   adapter.bind({
     onTabClick: async (tabId) => calls.push(['tab', tabId]),
-    onMilitaryViewClick: (view) => calls.push(['military', view]),
   });
   await militaryTab.listeners.click({ currentTarget: militaryTab });
-  scoutButton.listeners.click({ currentTarget: scoutButton });
 
   assert.deepEqual(calls, [
     ['tab', 'military'],
-    ['military', 'scout'],
   ]);
   assert.deepEqual(adapter.getTabDescriptors(), [{ id: 'resources' }, { id: 'military' }]);
 });
 
-test('navigation shell adapter renders tab, lock, and military view states', () => {
+test('navigation shell adapter renders tab and lock states', () => {
   const resourcesTab = createElement({ tab: 'resources' });
   const militaryTab = createElement({ tab: 'military' });
   const resourcesPage = createElement({ page: 'resources' });
   const militaryPage = createElement({ page: 'military' });
-  const armyButton = createElement({ militaryView: 'army' });
-  const scoutButton = createElement({ militaryView: 'scout' });
-  const armyPage = createElement({ militaryPage: 'army' });
-  const scoutPage = createElement({ militaryPage: 'scout' });
   const adapter = new NavigationShellAdapter({
     tabButtons: [resourcesTab, militaryTab],
     pages: [resourcesPage, militaryPage],
-    militaryButtons: [armyButton, scoutButton],
-    militaryPages: [armyPage, scoutPage],
   });
 
   adapter.renderTabs({
@@ -90,18 +77,4 @@ test('navigation shell adapter renders tab, lock, and military view states', () 
   ]);
   assert.equal(militaryTab.disabled, true);
   assert.equal(militaryTab.classList.contains('is-locked'), true);
-
-  adapter.renderMilitaryView({
-    activeView: 'scout',
-    views: [
-      { id: 'army', isActive: false, disabled: false, isLocked: false, title: '', ariaSelected: 'false' },
-      { id: 'scout', isActive: true, disabled: true, isLocked: true, title: '未解锁', ariaSelected: 'true' },
-    ],
-  });
-  assert.equal(scoutPage.classList.contains('active'), true);
-  assert.equal(scoutButton.disabled, true);
-  assert.equal(scoutButton.classList.contains('active'), true);
-  assert.equal(scoutButton.classList.contains('is-locked'), true);
-  assert.equal(scoutButton.title, '未解锁');
-  assert.equal(scoutButton.attrs['aria-selected'], 'true');
 });

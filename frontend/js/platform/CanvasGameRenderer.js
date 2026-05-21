@@ -1197,10 +1197,398 @@
       });
     }
 
-    renderMilitary(state = {}, startY = 210, panelHeight = 310) {
+    renderMilitarySubTabs(nav = {}, x, y, width) {
+      const labels = { army: '军队', scout: '侦察', world: '世界' };
+      const tabs = nav.views || [];
+      const gap = 6;
+      const tabWidth = (width - gap * Math.max(0, tabs.length - 1)) / Math.max(1, tabs.length);
+      tabs.forEach((tab, index) => {
+        const tabX = x + index * (tabWidth + gap);
+        this.drawButton(tabX, y, tabWidth, 34, labels[tab.id] || tab.id, {
+          size: 12,
+          bold: true,
+          radius: 9,
+          disabled: tab.disabled,
+          active: tab.isActive,
+        });
+        this.addHitTarget({ x: tabX, y, width: tabWidth, height: 34 }, {
+          type: 'switchMilitaryView',
+          view: tab.id,
+          disabled: tab.disabled,
+        });
+      });
+      return y + 46;
+    }
+
+    renderMilitaryArmyView(view = {}, x, y, width, height) {
+      const cardHeight = Math.min(150, Math.max(126, height - 18));
+      this.drawPanel(x, y, width, cardHeight, {
+        fill: 'rgba(28, 22, 17, 0.78)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      this.drawAsset('assets/art/icon-soldier-cutout.webp', x + 16, y + 24, 58, 72);
+      const textX = x + 88;
+      this.drawText('军队状态', textX, y + 16, { size: 14, bold: true, color: '#f6e8c8' });
+      this.drawText(`士兵 ${view.text?.soldierCount || '0/0'}`, textX, y + 42, { size: 18, bold: true, color: '#74d3a0' });
+      this.drawText(`防御 ${view.text?.militaryDefense ?? 0}`, textX, y + 68, { size: 12, color: '#cbbd96' });
+      this.drawText(`可用 ${view.text?.availableSoldierCount ?? 0} · 出征中 ${view.text?.soldiersOnMission ?? 0}`, textX, y + 88, {
+        size: 12,
+        color: '#aeb0b8',
+      });
+      const progressY = y + cardHeight - 38;
+      this.drawText(view.text?.soldierTrainingText || '等待兵营', x + 16, progressY - 18, { size: 12, color: '#cbbd96' });
+      this.drawProgressBar(x + 16, progressY, width - 32, 12, parseFloat(view.training?.progressWidth || '0'));
+    }
+
+    getScoutButtonTone(cell = {}) {
+      if (cell.status === 'ready') return { fill: 'rgba(40, 84, 62, 0.72)', stroke: 'rgba(116, 211, 160, 0.42)' };
+      if (cell.status === 'active') return { fill: 'rgba(75, 58, 37, 0.66)', stroke: 'rgba(240, 180, 91, 0.28)' };
+      if (cell.status === 'locked') return { fill: 'rgba(42, 40, 39, 0.62)', stroke: 'rgba(255, 255, 255, 0.08)' };
+      return { fill: 'rgba(63, 47, 32, 0.78)', stroke: 'rgba(240, 180, 91, 0.25)' };
+    }
+
+    renderMilitaryScoutView(scout = {}, x, y, width, height) {
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(28, 22, 17, 0.78)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      const statusLines = this.wrapTextLimit(scout.statusText || '', width - 28, 2, { size: 12 });
+      this.drawTextLines(statusLines, x + 14, y + 14, { size: 12, color: '#cbbd96', lineHeight: 16 });
+
+      const gridTop = y + 56;
+      const gridSize = Math.min(width - 28, Math.max(210, Math.min(height - 70, 286)));
+      const gridX = x + (width - gridSize) / 2;
+      this.drawPanel(gridX, gridTop, gridSize, gridSize, {
+        fill: 'rgba(18, 16, 13, 0.38)',
+        stroke: 'rgba(240, 180, 91, 0.16)',
+        radius: 18,
+      });
+      const order = ['nw', 'n', 'ne', 'w', 'center', 'e', 'sw', 's', 'se'];
+      const cellsById = new Map((scout.cells || []).map((cell) => [cell.id || cell.type, cell]));
+      const cellGap = 7;
+      const cellSize = (gridSize - 28 - cellGap * 2) / 3;
+      order.forEach((id, index) => {
+        const col = index % 3;
+        const row = Math.floor(index / 3);
+        const cellX = gridX + 14 + col * (cellSize + cellGap);
+        const cellY = gridTop + 14 + row * (cellSize + cellGap);
+        const cell = id === 'center'
+          ? { type: 'center', label: '城', subLabel: '本城' }
+          : cellsById.get(id);
+        if (!cell) return;
+        if (cell.type === 'center') {
+          this.drawPanel(cellX, cellY, cellSize, cellSize, {
+            fill: 'rgba(75, 49, 25, 0.82)',
+            stroke: 'rgba(240, 180, 91, 0.38)',
+            radius: Math.min(22, cellSize / 2),
+            inset: 'rgba(255, 231, 184, 0.12)',
+          });
+          this.drawText(cell.label || '城', cellX + cellSize / 2, cellY + cellSize / 2 - 7, {
+            size: 18,
+            bold: true,
+            color: '#f0b45b',
+            baseline: 'middle',
+            align: 'center',
+          });
+          this.drawText(cell.subLabel || '本城', cellX + cellSize / 2, cellY + cellSize / 2 + 14, {
+            size: 10,
+            color: '#a0a0a0',
+            baseline: 'middle',
+            align: 'center',
+          });
+          return;
+        }
+        const tone = this.getScoutButtonTone(cell);
+        this.drawPanel(cellX, cellY, cellSize, cellSize, {
+          fill: tone.fill,
+          stroke: tone.stroke,
+          radius: 12,
+          inset: 'rgba(255, 231, 184, 0.05)',
+        });
+        this.drawText(cell.label, cellX + cellSize / 2, cellY + cellSize / 2 - 8, {
+          size: 13,
+          bold: true,
+          color: '#f6e8c8',
+          baseline: 'middle',
+          align: 'center',
+        });
+        this.drawText(cell.actionText, cellX + cellSize / 2, cellY + cellSize / 2 + 12, {
+          size: 10,
+          color: cell.status === 'ready' ? '#74d3a0' : '#aeb0b8',
+          baseline: 'middle',
+          align: 'center',
+        });
+        this.addHitTarget({ x: cellX, y: cellY, width: cellSize, height: cellSize }, {
+          type: cell.action === 'claim' ? 'claimScout' : 'scoutTerritory',
+          value: cell.actionValue,
+          direction: cell.action === 'scout' ? cell.actionValue : undefined,
+          missionId: cell.action === 'claim' ? cell.actionValue : undefined,
+          disabled: cell.disabled || !cell.action,
+        });
+      });
+    }
+
+    renderWorldReports(reports = [], x, y, width, maxHeight) {
+      this.drawText('侦察报告', x, y, { size: 13, bold: true, color: '#f6e8c8' });
+      if (!reports.length) {
+        this.drawTextLines(this.wrapTextLimit('暂无侦察报告。派出侦察队后，外部世界会从这里开始显现。', width, 2, { size: 11 }), x, y + 24, {
+          size: 11,
+          color: '#aeb0b8',
+          lineHeight: 15,
+        });
+        return;
+      }
+      let cursorY = y + 24;
+      reports.slice().reverse().slice(0, Math.max(1, Math.floor(maxHeight / 54))).forEach((report) => {
+        this.drawPanel(x, cursorY, width, 48, {
+          fill: 'rgba(0, 0, 0, 0.16)',
+          stroke: 'rgba(240, 180, 91, 0.18)',
+          radius: 9,
+        });
+        this.drawText(this.truncateText(report.title || '侦察报告', width - 20, { size: 12, bold: true }), x + 10, cursorY + 8, {
+          size: 12,
+          bold: true,
+          color: '#f6e8c8',
+        });
+        this.drawText(this.truncateText(report.text || '', width - 20, { size: 11 }), x + 10, cursorY + 27, {
+          size: 11,
+          color: '#aeb0b8',
+        });
+        cursorY += 56;
+      });
+    }
+
+    renderMilitaryWorldView(state = {}, x, y, width, height, options = {}) {
+      const territoryState = state.territoryState || {};
+      const uiState = options.territoryUiState || {};
+      const summary = this.presenter.buildTerritorySummaryViewState(territoryState);
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(28, 22, 17, 0.78)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      this.drawText(summary.text?.polityName || '未命名势力', x + 14, y + 13, { size: 14, bold: true, color: '#f0b45b' });
+      this.drawText(summary.text?.territoryCount || '0/0 已控制', x + width - 14, y + 15, {
+        size: 11,
+        color: '#74d3a0',
+        align: 'right',
+      });
+      if ((state.currentEra || 0) < 5) {
+        this.drawTextLines(this.wrapTextLimit('进入古典时代后，外部世界将在这里逐步显现。', width - 40, 3, { size: 13 }), x + 20, y + 70, {
+          size: 13,
+          color: '#cbbd96',
+          lineHeight: 18,
+        });
+        return;
+      }
+
+      const territories = territoryState.territories || [];
+      const radarView = this.presenter.buildWorldRadarViewState(territories, {
+        panX: uiState.worldPanX || 0,
+        panY: uiState.worldPanY || 0,
+      });
+      const radarSize = Math.min(width - 28, Math.max(190, Math.min(height - 140, 286)));
+      const radarX = x + (width - radarSize) / 2;
+      const radarY = y + 46;
+      this.drawPanel(radarX, radarY, radarSize, radarSize, {
+        fill: this.createGradient(
+          radarX, radarY, radarX + radarSize, radarY + radarSize,
+          [
+            [0, 'rgba(39, 56, 42, 0.78)'],
+            [1, 'rgba(18, 16, 13, 0.9)'],
+          ],
+          'rgba(24, 30, 24, 0.86)',
+        ),
+        stroke: 'rgba(240, 180, 91, 0.22)',
+        radius: radarSize / 2,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.drawLine(radarX + radarSize / 2, radarY + 12, radarX + radarSize / 2, radarY + radarSize - 12, {
+        color: 'rgba(240, 180, 91, 0.16)',
+      });
+      this.drawLine(radarX + 12, radarY + radarSize / 2, radarX + radarSize - 12, radarY + radarSize / 2, {
+        color: 'rgba(240, 180, 91, 0.16)',
+      });
+      this.drawText('N', radarX + radarSize / 2, radarY + 12, { size: 10, color: '#d6b16e', align: 'center' });
+      this.drawText('S', radarX + radarSize / 2, radarY + radarSize - 22, { size: 10, color: '#d6b16e', align: 'center' });
+      this.drawText('W', radarX + 12, radarY + radarSize / 2 - 5, { size: 10, color: '#d6b16e' });
+      this.drawText('E', radarX + radarSize - 18, radarY + radarSize / 2 - 5, { size: 10, color: '#d6b16e' });
+
+      radarView.sites.forEach((site) => {
+        const left = Math.max(8, Math.min(92, Number(site.position?.left) || 50));
+        const top = Math.max(8, Math.min(92, Number(site.position?.top) || 50));
+        const siteX = radarX + radarSize * left / 100 - 18;
+        const siteY = radarY + radarSize * top / 100 - 18;
+        const isSelected = uiState.selectedSiteId === site.id;
+        this.drawPanel(siteX, siteY, 36, 36, {
+          fill: isSelected ? 'rgba(116, 211, 160, 0.3)' : 'rgba(42, 35, 24, 0.86)',
+          stroke: isSelected ? 'rgba(116, 211, 160, 0.76)' : 'rgba(240, 180, 91, 0.3)',
+          radius: 18,
+          inset: 'rgba(255, 231, 184, 0.08)',
+        });
+        if (!this.drawAsset(site.art, siteX + 5, siteY + 5, 26, 26)) {
+          this.drawText('●', siteX + 18, siteY + 18, {
+            size: 14,
+            color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
+            baseline: 'middle',
+            align: 'center',
+          });
+        }
+        this.drawText(this.truncateText(site.name || site.title || '地点', 64, { size: 9 }), siteX + 18, siteY + 39, {
+          size: 9,
+          color: '#eaeaea',
+          align: 'center',
+        });
+        this.addHitTarget({ x: siteX - 6, y: siteY - 6, width: 48, height: 54 }, { type: 'openWorldSite', siteId: site.id });
+      });
+
+      const resetW = 76;
+      this.drawButton(radarX + radarSize - resetW - 8, radarY + 8, resetW, 28, '回到本城', { size: 11, radius: 14 });
+      this.addHitTarget({ x: radarX + radarSize - resetW - 8, y: radarY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
+
+      const reportsY = radarY + radarSize + 20;
+      if (reportsY < y + height - 48) {
+        this.renderWorldReports(territoryState.scoutReports || [], x + 14, reportsY, width - 28, y + height - reportsY - 10);
+      }
+    }
+
+    renderWorldSiteAction(actionView = {}, x, y, width) {
+      const buttons = actionView.buttons || [];
+      if (!buttons.length) return y;
+      const gap = 8;
+      const buttonWidth = Math.max(72, (width - gap * (buttons.length - 1)) / Math.max(1, buttons.length));
+      buttons.forEach((button, index) => {
+        const buttonX = x + index * (buttonWidth + gap);
+        this.drawButton(buttonX, y, buttonWidth, 34, button.label, {
+          size: 12,
+          radius: 8,
+          disabled: button.disabled || !button.action,
+          active: !button.secondary && !button.disabled && Boolean(button.action),
+        });
+        this.addHitTarget({ x: buttonX, y, width: buttonWidth, height: 34 }, {
+          type: 'territoryAction',
+          territoryId: button.territoryId,
+          action: button.action,
+          disabled: button.disabled || !button.action,
+        });
+      });
+      return y + 44;
+    }
+
+    renderWorldExpeditionConfig(config = {}, x, y, width) {
+      if (!config) return y;
+      this.drawPanel(x, y, width, 94, {
+        fill: 'rgba(0, 0, 0, 0.16)',
+        stroke: 'rgba(240, 180, 91, 0.16)',
+        radius: 9,
+      });
+      this.drawText(`出征数量 ${config.fields?.soldiers?.value || 1}`, x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
+      this.drawText(config.note || '', x + 12, y + 34, { size: 10, color: '#aeb0b8' });
+      const value = Number(config.fields?.soldiers?.value) || 1;
+      const controlsY = y + 54;
+      this.drawButton(x + 12, controlsY, 34, 28, '-', { size: 14, radius: 7, disabled: value <= 1 });
+      this.drawButton(x + width - 46, controlsY, 34, 28, '+', { size: 14, radius: 7 });
+      this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || '出发', {
+        size: 12,
+        radius: 7,
+        disabled: config.disabled,
+        active: !config.disabled,
+      });
+      this.addHitTarget({ x: x + 12, y: controlsY, width: 34, height: 28 }, {
+        type: 'changeExpeditionSoldiers',
+        siteId: config.siteId,
+        delta: -1,
+        value: Math.max(1, value - 1),
+        disabled: value <= 1,
+      });
+      this.addHitTarget({ x: x + width - 46, y: controlsY, width: 34, height: 28 }, {
+        type: 'changeExpeditionSoldiers',
+        siteId: config.siteId,
+        delta: 1,
+        value: value + 1,
+      });
+      this.addHitTarget({ x: x + width - 132, y: controlsY, width: 78, height: 28 }, {
+        type: 'territoryAction',
+        territoryId: config.siteId,
+        action: config.buttons?.launch?.action || 'launch-expedition',
+        disabled: config.disabled,
+      });
+      return y + 106;
+    }
+
+    renderWorldSiteModal(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildWorldSiteDialogViewState !== 'function') return;
+      const territoryState = state.territoryState || {};
+      const territories = territoryState.territories || [];
+      const uiState = options.territoryUiState || {};
+      const view = this.presenter.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+      if (!view.showModal) return;
+      const detail = view.details.find((item) => item.id === view.selectedSiteId);
+      if (!detail) return;
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeWorldSite' });
+      const layout = this.getLayout();
+      const panelWidth = Math.min(layout.contentWidth - 24, 360);
+      const panelHeight = Math.min(500, this.height - 150);
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(72, (this.height - panelHeight) / 2 - 12);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.98)'],
+            [1, 'rgba(22, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+      const closeSize = 28;
+      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeWorldSite' });
+
+      const selectedSite = territories.find((site) => site.id === detail.id) || {};
+      this.drawAsset(selectedSite.art, x + 16, y + 20, 58, 58);
+      this.drawText(this.truncateText(detail.text.name || '地点', panelWidth - 112, { size: 17, bold: true }), x + 84, y + 22, {
+        size: 17,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      this.drawText(`${detail.text.status} · ${detail.text.owner}`, x + 84, y + 50, { size: 11, color: '#aeb0b8' });
+      this.drawText(`${detail.text.distance} · ${detail.text.scale} · ${detail.text.threat}`, x + 84, y + 68, { size: 11, color: '#aeb0b8' });
+      let cursorY = y + 94;
+      const summaryLines = this.wrapTextLimit(detail.text.summary || '无', panelWidth - 32, 3, { size: 12 });
+      this.drawTextLines(summaryLines, x + 16, cursorY, { size: 12, color: '#f6e8c8', lineHeight: 17 });
+      cursorY += summaryLines.length * 17 + 12;
+      this.drawText(`${detail.text.defense} · ${detail.text.soldiers}`, x + 16, cursorY, { size: 12, color: '#74d3a0' });
+      cursorY += 22;
+      if (detail.text.march) {
+        this.drawText(detail.text.march, x + 16, cursorY, { size: 11, color: '#d6b16e' });
+        cursorY += 20;
+      }
+      if (detail.text.note) {
+        this.drawText(detail.text.note, x + 16, cursorY, { size: 11, color: '#d6b16e' });
+        cursorY += 20;
+      }
+      if (detail.action?.hint) {
+        const hintLines = this.wrapTextLimit(detail.action.hint, panelWidth - 32, 2, { size: 11 });
+        this.drawTextLines(hintLines, x + 16, cursorY, { size: 11, color: '#aeb0b8', lineHeight: 15 });
+        cursorY += hintLines.length * 15 + 10;
+      }
+      cursorY = this.renderWorldSiteAction(detail.action, x + 16, cursorY, panelWidth - 32);
+      if (detail.action?.expeditionConfig) {
+        this.renderWorldExpeditionConfig(detail.action.expeditionConfig, x + 16, cursorY, panelWidth - 32);
+      }
+    }
+
+    renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {
       if (!this.presenter) return;
-      const view = this.presenter.buildMilitaryViewState(state);
-      const scout = this.presenter.buildScoutControlViewState(state);
+      const nav = this.presenter.buildMilitaryNavigationViewState(state);
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
@@ -1211,25 +1599,16 @@
         inset: 'rgba(255, 231, 184, 0.08)',
       });
       this.renderSectionHeader('军事', x + 14, startY + 14, '🛡️');
-      this.drawText(`士兵 ${view.text.soldierCount}`, x + 14, startY + 44, { size: 14, bold: true });
-      this.drawText(`可用 ${view.text.availableSoldierCount} · 出征中 ${view.text.soldiersOnMission}`, x + 14, startY + 68, { color: '#cbbd96', size: 12 });
-      this.drawText(view.text.soldierTrainingText, x + 14, startY + 96, { color: '#cbbd96', size: 12 });
-      this.drawProgressBar(x + 14, startY + 118, width - 28, 10, parseFloat(view.training.progressWidth));
-      this.drawLine(x + 14, startY + 148, x + width - 14, startY + 148);
-      this.drawText(scout.statusText, x + 14, startY + 162, { color: '#cbbd96', size: 12 });
-      scout.cells.filter((cell) => cell.type === 'button').slice(0, 8).forEach((cell, index) => {
-        const col = index % 4;
-        const row = Math.floor(index / 4);
-        const cellWidth = (width - 40) / 4;
-        const cellX = x + 14 + col * (cellWidth + 4);
-        const cellY = startY + 194 + row * 42;
-        this.drawButton(cellX, cellY, cellWidth, 32, `${cell.label} ${cell.actionText}`, { disabled: cell.disabled, size: 11 });
-        this.addHitTarget({ x: cellX, y: cellY, width: cellWidth, height: 32 }, {
-          type: cell.action === 'claim' ? 'claimScout' : 'scoutTerritory',
-          value: cell.actionValue,
-          disabled: cell.disabled || !cell.action,
-        });
-      });
+      const contentTop = this.renderMilitarySubTabs(nav, x + 12, startY + 42, width - 24);
+      const viewY = contentTop;
+      const viewHeight = Math.max(120, startY + panelHeight - viewY - 12);
+      if (nav.activeView === 'scout') {
+        this.renderMilitaryScoutView(this.presenter.buildScoutControlViewState(state), x + 12, viewY, width - 24, viewHeight);
+      } else if (nav.activeView === 'world') {
+        this.renderMilitaryWorldView(state, x + 12, viewY, width - 24, viewHeight, options);
+      } else {
+        this.renderMilitaryArmyView(this.presenter.buildMilitaryViewState(state), x + 12, viewY, width - 24, viewHeight);
+      }
     }
 
     renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
@@ -1237,7 +1616,7 @@
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
       else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight);
       else if (activeTab === 'civilization') this.renderCivilization(state, startY, availableHeight, options);
-      else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight);
+      else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight, options);
     }
 
     renderTabs(activeTab = 'resources', state = {}) {
@@ -1455,6 +1834,10 @@
           availableHeight,
           { tutorial: options.tutorial || state.tutorial || {} },
         );
+      } else if (activeTab === 'military') {
+        const tabsTop = this.height - 60 - this.bottomSafeArea;
+        const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
+        this.renderMilitary(state, topBarBottom, availableHeight, options);
       }
       this.renderTabs(activeTab, state);
       if (options.showResourceDetails) {
@@ -1474,6 +1857,9 @@
       }
       if (options.activeEventId) {
         this.renderEventModal(state, options.activeEventId);
+      }
+      if (activeTab === 'military') {
+        this.renderWorldSiteModal(state, options);
       }
     }
 
@@ -1735,6 +2121,7 @@
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      if (activeTab === 'military') this.renderWorldSiteModal(state, options);
     }
   }
 

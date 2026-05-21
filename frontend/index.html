@@ -62,56 +62,7 @@
 
             <section class="page page-civilization" data-page="civilization"></section>
 
-            <section class="page page-military" data-page="military">
-                <div class="military-subtabs" id="militarySubTabs" role="tablist" aria-label="军事视图">
-                    <button class="military-subtab active" type="button" data-military-view="army" aria-selected="true">军队</button>
-                    <button class="military-subtab" type="button" data-military-view="scout" aria-selected="false">侦察</button>
-                    <button class="military-subtab" type="button" data-military-view="world" aria-selected="false">世界</button>
-                </div>
-
-                <div class="military-subpage active" data-military-page="army">
-                    <section class="military-panel" id="militaryPanel">
-                        <h2 class="panel-title">🛡️ 军事</h2>
-                        <div class="military-status">
-                            <div class="military-unit-art"></div>
-                            <div class="military-info">
-                                <div class="military-row"><span>士兵</span><strong id="soldierCount">0/0</strong></div>
-                                <div class="military-row"><span>防御</span><strong id="militaryDefense">0</strong></div>
-                                <div class="military-progress">
-                                    <div class="military-progress-label" id="soldierTrainingText">等待兵营</div>
-                                    <div class="progress-bar"><div class="progress-fill" id="soldierTrainingProgress" style="width:0%"></div></div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                    <section class="military-panel territory-summary-panel">
-                        <h2 class="panel-title">🧭 出征状态</h2>
-                        <div class="military-row"><span>可用士兵</span><strong id="availableSoldierCount">0</strong></div>
-                        <div class="military-row"><span>出征中</span><strong id="soldiersOnMission">0</strong></div>
-                    </section>
-                </div>
-
-                <div class="military-subpage" data-military-page="scout">
-                    <section class="military-panel scout-panel">
-                        <h2 class="panel-title">🧭 侦察</h2>
-                        <div class="scout-status" id="scoutStatus">进入古典时代后可派出侦察队。</div>
-                        <div class="scout-compass" id="scoutDirectionGrid"></div>
-                    </section>
-                </div>
-
-                <div class="military-subpage" data-military-page="world">
-                    <section class="territory-panel">
-                        <div class="territory-header">
-                            <div>
-                                <h2 class="panel-title">🗺️ 世界</h2>
-                                <div class="territory-polity" id="territoryPolityName">未命名势力</div>
-                            </div>
-                            <div class="territory-count" id="territoryCount">0 领土</div>
-                        </div>
-                        <div class="territory-grid" id="territoryGrid"></div>
-                    </section>
-                </div>
-            </section>
+            <section class="page page-military" data-page="military"></section>
         </div>
 
         <nav class="tab-bar">
@@ -167,7 +118,6 @@
     <script src="js/platform/H5CanvasGameRenderer.js?v=h5-game-renderer-v1"></script>
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
-    <script src="js/ui/TerritoryUIRenderer.js?v=territory-presenter-v1"></script>
     <script src="js/ui/TutorialUIRenderer.js?v=tutorial-presenter-v1"></script>
     <script src="js/ui/LogModalAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/RuntimeLogAdapter.js?v=explicit-doc-v1"></script>
@@ -175,9 +125,7 @@
     <script src="js/ui/NamingModalAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/NavigationShellAdapter.js?v=explicit-doc-v1"></script>
 
-    <script src="js/ui/MilitaryPanelAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/TutorialTargetAdapter.js?v=explicit-doc-v1"></script>
-    <script src="js/ui/TerritoryActionAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5GameBootstrap.js?v=h5-bootstrap-explicit-doc-v1"></script>
     <script src="js/ui/H5TextAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5UpdateRuntimeAdapter.js?v=h5-update-runtime-v5"></script>

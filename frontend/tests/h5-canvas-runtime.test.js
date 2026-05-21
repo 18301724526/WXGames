@@ -140,6 +140,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       tutorial: {},
       buildingOffset: 0,
       activeEventId: null,
+      territoryUiState: {},
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -433,6 +434,50 @@ test('H5 canvas app shell dispatches era advance without DOM button', () => {
   listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
 
   assert.deepEqual(dispatched, [{ type: 'advanceEra' }]);
+});
+
+test('H5 canvas app shell dispatches military and world actions without DOM adapters', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [
+    { type: 'switchMilitaryView', view: 'scout' },
+    { type: 'scoutTerritory', direction: 'n', value: 'n' },
+    { type: 'claimScout', missionId: 'scout-n-1', value: 'scout-n-1' },
+    { type: 'openWorldSite', siteId: 'site-east' },
+    { type: 'territoryAction', territoryId: 'site-east', action: 'conquer' },
+    { type: 'changeExpeditionSoldiers', siteId: 'site-east', value: 3 },
+    { type: 'closeWorldSite' },
+  ];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render() {},
+  };
+  H5CanvasAppShell.mount({ state: { currentTab: 'military' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  for (let index = 0; index < 7; index += 1) {
+    listeners['document:pointerup']({ clientX: 205, clientY: 300 + index, type: 'pointerup', timeStamp: 1000 + index * 300 });
+  }
+
+  assert.deepEqual(dispatched, [
+    { type: 'switchMilitaryView', view: 'scout' },
+    { type: 'scoutTerritory', direction: 'n', value: 'n' },
+    { type: 'claimScout', missionId: 'scout-n-1', value: 'scout-n-1' },
+    { type: 'openWorldSite', siteId: 'site-east' },
+    { type: 'territoryAction', territoryId: 'site-east', action: 'conquer' },
+    { type: 'changeExpeditionSoldiers', siteId: 'site-east', value: 3 },
+    { type: 'closeWorldSite' },
+  ]);
 });
 
 test('H5 canvas app shell owns building pager state without DOM adapter', () => {

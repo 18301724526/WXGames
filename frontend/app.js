@@ -98,7 +98,6 @@ const Game = {
       onError: (error) => this.log(`❌ ${error.payload?.message || error.message}`),
     });
     this.territoryController = new constructors.TerritoryController({
-      actionAdapter: this.territoryActions,
       api: this.gameAPI,
       getState: () => this.state,
       onRenderRequested: () => this.renderTerritory(),
@@ -164,6 +163,44 @@ const Game = {
         }
         if (action?.type === 'advanceEra') {
           this.advanceEra();
+          return true;
+        }
+        if (action?.type === 'switchMilitaryView') {
+          this.switchMilitaryView(action.view);
+          return true;
+        }
+        if (action?.type === 'scoutTerritory' || action?.type === 'claimScout') {
+          this.territoryController.handleScoutAction({
+            direction: action.direction || action.value,
+            missionId: action.missionId || action.value,
+          });
+          return true;
+        }
+        if (action?.type === 'openWorldSite') {
+          this.territoryController.openSiteDialog(action.siteId);
+          return true;
+        }
+        if (action?.type === 'closeWorldSite') {
+          this.territoryController.closeSiteDialog();
+          return true;
+        }
+        if (action?.type === 'resetWorldPan') {
+          this.territoryController.resetWorldPan();
+          this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
+          return true;
+        }
+        if (action?.type === 'territoryAction') {
+          this.territoryController.handleAction({
+            territoryId: action.territoryId,
+            action: action.action,
+          });
+          return true;
+        }
+        if (action?.type === 'changeExpeditionSoldiers') {
+          this.territoryController.handleDraftInput({
+            field: 'soldiers',
+            value: action.value,
+          });
           return true;
         }
         if (action?.type === 'buildBuilding' || action?.type === 'upgradeBuilding') {
@@ -405,6 +442,9 @@ const Game = {
     this.state.militaryView = allowed.includes(view) ? view : 'army';
     this.renderMilitaryView();
     this.tutorialController.render();
+    if (this.canvasShell?.previewEnabled) {
+      this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    }
   },
 
   renderMilitaryView() {
@@ -432,7 +472,6 @@ const Game = {
   },
 
   render() {
-    this.renderMilitary();
     this.renderTerritory();
     this.tutorialController.render();
     this.renderSoftGuide();
@@ -479,10 +518,8 @@ const Game = {
   },
 
   renderMilitary() {
-    const view = this.presenter.buildMilitaryViewState(this.state);
-    if (!this.militaryPanel?.renderMilitary(view)) return;
-    this.renderScoutControls();
     this.updateMilitaryViewLocks();
+    this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
   },
 
   startScoutCountdownTimer() {
@@ -490,7 +527,7 @@ const Game = {
     this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
       if ((this.state.currentEra || 0) < 5) return;
       if (this.state.currentTab === 'military') {
-        this.renderScoutControls();
+        this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
       }
       if (this.state.currentTab === 'territory') {
         const territories = this.state.territoryState?.territories || [];
@@ -509,15 +546,7 @@ const Game = {
   },
 
   renderTerritory() {
-    const view = this.presenter.buildTerritorySummaryViewState(this.state.territoryState || {});
-    this.setText('territoryPolityName', view.text.polityName);
-    this.setText('territoryCount', view.text.territoryCount);
-    if (this.territoryRenderer) this.territoryRenderer.render(this.state);
-  },
-
-  renderScoutControls() {
-    const view = this.presenter.buildScoutControlViewState(this.state);
-    this.militaryPanel?.renderScoutControls(view);
+    this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
   },
 
   maybeShowNamingPrompt() {

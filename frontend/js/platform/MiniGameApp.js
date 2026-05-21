@@ -29,10 +29,20 @@
         softGuide: null,
       };
       this.activeTab = options.activeTab || 'resources';
+      this.militaryView = options.militaryView || this.state.militaryView || 'army';
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.buildingOffset = 0;
       this.activeEventId = null;
+      this.territoryUiState = {
+        selectedSiteId: '',
+        worldPanX: 0,
+        worldPanY: 0,
+        expeditionConfigSiteId: '',
+        expeditionTroopType: '',
+        expeditionLeader: '',
+        expeditionSoldiers: '',
+      };
       this.log = options.log || (() => {});
       this.timer = null;
       this.tapDisposer = null;
@@ -54,6 +64,7 @@
         showCitySwitcher: this.showCitySwitcher,
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
+        territoryUiState: this.territoryUiState,
       });
     }
 
@@ -79,6 +90,15 @@
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.render();
+    }
+
+    getSelectedSite() {
+      return (this.state.territoryState?.territories || []).find((site) => site.id === this.territoryUiState.selectedSiteId) || null;
+    }
+
+    getExpeditionSoldiers(site = this.getSelectedSite()) {
+      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
+      return Math.max(1, Number(this.territoryUiState.expeditionSoldiers) || recommended);
     }
 
     handleTap(point) {
@@ -145,6 +165,12 @@
         this.runAction(() => this.api.advanceEra());
         return;
       }
+      if (action.type === 'switchMilitaryView') {
+        this.militaryView = action.view || 'army';
+        this.state = { ...this.state, militaryView: this.militaryView };
+        this.render();
+        return;
+      }
       if (action.type === 'openEvent') {
         const event = (this.state.eventQueue || []).find((item) => item.id === action.eventId);
         if (!event) return;
@@ -170,6 +196,66 @@
       }
       if (action.type === 'claimScout') {
         this.runAction(() => this.api.claimScout(action.value));
+        return;
+      }
+      if (action.type === 'openWorldSite') {
+        this.territoryUiState.selectedSiteId = action.siteId || '';
+        this.render();
+        return;
+      }
+      if (action.type === 'closeWorldSite') {
+        this.territoryUiState.selectedSiteId = '';
+        this.territoryUiState.expeditionConfigSiteId = '';
+        this.territoryUiState.expeditionSoldiers = '';
+        this.render();
+        return;
+      }
+      if (action.type === 'resetWorldPan') {
+        this.territoryUiState.worldPanX = 0;
+        this.territoryUiState.worldPanY = 0;
+        this.render();
+        return;
+      }
+      if (action.type === 'changeExpeditionSoldiers') {
+        this.territoryUiState.expeditionConfigSiteId = action.siteId || this.territoryUiState.expeditionConfigSiteId;
+        this.territoryUiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
+        this.render();
+        return;
+      }
+      if (action.type === 'territoryAction') {
+        if (action.action === 'open-expedition') {
+          const site = (this.state.territoryState?.territories || []).find((item) => item.id === action.territoryId);
+          this.territoryUiState.expeditionConfigSiteId = action.territoryId || '';
+          this.territoryUiState.expeditionSoldiers = String(Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1));
+          this.render();
+          return;
+        }
+        if (action.action === 'close-expedition') {
+          this.territoryUiState.expeditionConfigSiteId = '';
+          this.territoryUiState.expeditionSoldiers = '';
+          this.render();
+          return;
+        }
+        if (action.action === 'conquer') {
+          this.runAction(() => this.api.startConquest(action.territoryId, { soldiers: 1 }));
+          return;
+        }
+        if (action.action === 'launch-expedition') {
+          this.runAction(() => this.api.startConquest(action.territoryId, {
+            troopType: this.territoryUiState.expeditionTroopType || 'unavailable',
+            leader: this.territoryUiState.expeditionLeader || 'unavailable',
+            soldiers: this.getExpeditionSoldiers(),
+          }));
+          return;
+        }
+        if (action.action === 'claim') {
+          this.runAction(() => this.api.claimConquest(action.territoryId));
+          return;
+        }
+        if (action.action === 'manage-city') {
+          this.territoryUiState.selectedSiteId = '';
+          this.runAction(() => this.api.switchCity(action.territoryId));
+        }
       }
     }
 

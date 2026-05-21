@@ -782,6 +782,108 @@ test('CanvasGameRenderer draws civilization page and advance action without DOM 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'advanceEra'));
 });
 
+test('CanvasGameRenderer draws military subviews and world actions without DOM adapters', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: { foodValue: '100', foodRate: '+1/s', knowledgeValue: '20', knowledgeRate: '+0.2/s', woodValue: '8', woodRate: '+0.1/s' },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildMilitaryNavigationViewState: (state) => ({
+      activeView: state.militaryView || 'army',
+      views: [
+        { id: 'army', isActive: state.militaryView === 'army', disabled: false },
+        { id: 'scout', isActive: state.militaryView === 'scout', disabled: false },
+        { id: 'world', isActive: state.militaryView === 'world', disabled: false },
+      ],
+    }),
+    buildMilitaryViewState: () => ({
+      text: {
+        soldierCount: '2/5',
+        militaryDefense: 4,
+        availableSoldierCount: 2,
+        soldiersOnMission: 1,
+        soldierTrainingText: '下一名 15/30 秒',
+      },
+      training: { progressWidth: '50%' },
+    }),
+    buildScoutControlViewState: () => ({
+      statusText: '北方侦察中，预计 0:30 后返回。',
+      cells: [
+        { type: 'center', label: '城', subLabel: '本城' },
+        { type: 'button', id: 'n', direction: 'n', status: 'active', disabled: true, action: '', actionValue: '', label: '北方', actionText: '0:30' },
+        { type: 'button', id: 'e', direction: 'e', status: 'available', disabled: false, action: 'scout', actionValue: 'e', label: '东方', actionText: '派出' },
+        { type: 'button', id: 'w', direction: 'w', status: 'ready', disabled: false, action: 'claim', actionValue: 'mission-west', label: '西方', actionText: '报告' },
+      ],
+    }),
+    buildTerritorySummaryViewState: () => ({ text: { polityName: '赤火联盟', territoryCount: '1/2 已控制' } }),
+    buildWorldRadarViewState: () => ({
+      sites: [
+        { id: 'capital', status: 'occupied', owner: 'player', type: 'capital', name: '首都', title: '首都', art: 'assets/art/world-site-city-cutout.png', position: { left: '50', top: '50' } },
+        { id: 'site-east', status: 'discovered', owner: 'neutral', type: 'town', name: '东岸', title: '东岸', art: 'assets/art/world-site-town-cutout.png', position: { left: '72', top: '44' } },
+      ],
+    }),
+    buildWorldSiteDialogViewState: () => ({
+      selectedSiteId: 'site-east',
+      showModal: true,
+      details: [{
+        id: 'site-east',
+        text: {
+          name: '东岸',
+          status: '已发现',
+          owner: '无主',
+          distance: '距 2',
+          scale: '规模 1',
+          threat: '威胁 0',
+          summary: '食物 +10%',
+          defense: '防御 0',
+          soldiers: '建议 1 士兵',
+          march: '行军耗时 1:30',
+          note: '',
+        },
+        action: {
+          buttons: [{ label: '占领', action: 'conquer', territoryId: 'site-east', disabled: false }],
+          hint: '该地区无主，派 1 人即可建立据点。',
+        },
+      }],
+    }),
+  });
+
+  renderer.render({
+    currentTab: 'military',
+    militaryView: 'scout',
+    territoryState: { scoutReports: [{ title: '侦察报告', text: '发现东岸。' }] },
+  }, {
+    activeTab: 'military',
+    mode: 'hud',
+  });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchMilitaryView' && target.action.view === 'world'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scoutTerritory' && target.action.value === 'e'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimScout' && target.action.value === 'mission-west'));
+
+  renderer.render({
+    currentTab: 'military',
+    currentEra: 5,
+    militaryView: 'world',
+    territoryState: { territories: [{ id: 'site-east', art: 'assets/art/world-site-town-cutout.png' }], scoutReports: [{ title: '侦察报告', text: '发现东岸。' }] },
+  }, {
+    activeTab: 'military',
+    mode: 'hud',
+    territoryUiState: { selectedSiteId: 'site-east' },
+  });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '赤火联盟'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'territoryAction' && target.action.action === 'conquer'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));
+});
+
 test('H5CanvasGameRenderer render calls drawing primitives with presenter guard', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new H5CanvasGameRenderer({ ctx, width: 390, height: 844 });
@@ -824,6 +926,7 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   assert.doesNotMatch(html, /id="eventModal"|eventsBadge|pendingEventsContainer|eventHistoryList|EventUIRenderer/);
   assert.doesNotMatch(html, /id="techKnowledgeRate"|tech-header-panel|tech-panel/);
   assert.doesNotMatch(html, /btnAdvanceEra|civ-overview|civ-features|CivilizationPanelAdapter/);
+  assert.doesNotMatch(html, /militaryPanel|scoutDirectionGrid|territoryGrid|MilitaryPanelAdapter|TerritoryActionAdapter|TerritoryUIRenderer/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
@@ -831,6 +934,7 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   assert.match(appJs, /action\?\.type === 'claimEvent'/);
   assert.doesNotMatch(appJs, /renderTech\(\)|techKnowledgeRate/);
   assert.doesNotMatch(appJs, /renderCivilization\(\)|civilizationPanel/);
+  assert.doesNotMatch(appJs, /militaryPanel|renderScoutControls\(\)|territoryRenderer|territoryActions/);
 });
 
 test('Canvas renderers are loaded in correct order in H5 index.html', () => {

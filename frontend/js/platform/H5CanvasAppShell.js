@@ -18,6 +18,7 @@
       this.showAdvisor = false;
       this.buildingOffset = 0;
       this.activeEventId = null;
+      this.territoryUiState = {};
     }
 
     createRenderer(canvas) {
@@ -219,6 +220,24 @@
         if (!this.onAction) return false;
         return this.onAction(action, event) !== false;
       }
+      if (action.type === 'switchMilitaryView') {
+        if (!this.onAction) return false;
+        return this.onAction(action, event) !== false;
+      }
+      if (action.type === 'scoutTerritory' || action.type === 'claimScout') {
+        if (!this.onAction) return false;
+        return this.onAction(action, event) !== false;
+      }
+      if (
+        action.type === 'openWorldSite'
+        || action.type === 'closeWorldSite'
+        || action.type === 'resetWorldPan'
+        || action.type === 'territoryAction'
+        || action.type === 'changeExpeditionSoldiers'
+      ) {
+        if (!this.onAction) return false;
+        return this.onAction(action, event) !== false;
+      }
       if (action.type === 'blockCanvasModal') {
         return true;
       }
@@ -269,6 +288,7 @@
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
+        territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
       });
       return true;
     }

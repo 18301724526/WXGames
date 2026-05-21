@@ -67,17 +67,9 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     AuthShellAdapter: makeFactory('auth', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
     TutorialTargetAdapter: makeFactory('tutorialTargets', calls),
-    MilitaryPanelAdapter: makeFactory('military', calls),
     LogModalAdapter: makeFactory('logModal', calls),
     RuntimeLogAdapter: makeFactory('runtimeLog', calls),
-    TerritoryActionAdapter: makeFactory('territoryActions', calls, { name: 'territoryActions', getContainer: () => 'territory-grid' }),
     TutorialUIRenderer: makeDocumentFactory('tutorialRenderer', calls),
-    TerritoryUIRenderer: class {
-      constructor(container, options) {
-        this.container = container;
-        this.options = options;
-      }
-    },
   };
   const mountedModules = [];
   const registry = {
@@ -124,10 +116,8 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.equal(typeof shell.scheduler.setTimeout, 'function');
     assert.equal(typeof shell.scheduler.clearTimeout, 'function');
     assert.deepEqual(shell.floatingText, { name: 'floatingText' });
-    assert.equal(shell.territoryRenderer.container, 'territory-grid');
-    assert.equal(shell.territoryRenderer.options.getUiState, getTerritoryUiState);
-    assert.equal(shell.territoryRenderer.options.presenter, factories.UIStatePresenter);
-    assert.deepEqual(shell.territoryRenderer.options.getUiState(), { selectedSiteId: 'east' });
+    assert.equal(shell.territoryActions, undefined);
+    assert.equal(shell.territoryRenderer, undefined);
     assert.ok(calls.some(([name, callDoc]) => name === 'auth' && callDoc === doc));
     assert.ok(calls.some(([name, callRuntime]) => name === 'updateRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authRuntime' && callRuntime === runtime));
@@ -173,4 +163,5 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter|CitySwitcherAdapter|PopulationPanelAdapter|populationPanel|AdvisorPanelAdapter|advisorPanel/);
   assert.doesNotMatch(shellJs, /CivilizationPanelAdapter|civilizationPanel/);
+  assert.doesNotMatch(shellJs, /MilitaryPanelAdapter|militaryPanel|TerritoryActionAdapter|TerritoryUIRenderer|territoryActions|territoryRenderer/);
 });

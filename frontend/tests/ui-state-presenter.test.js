@@ -482,10 +482,12 @@ test('scout control view state formats directional actions and countdowns', () =
   const east = view.cells.find((cell) => cell.id === 'e');
 
   assert.equal(view.statusText, '北方侦察中，预计 0:30 后返回。');
-  assert.equal(north.className, 'direction-n status-active');
+  assert.equal(north.direction, 'n');
+  assert.equal(north.status, 'active');
   assert.equal(north.actionText, '0:30');
   assert.equal(north.disabled, true);
-  assert.equal(east.className, 'direction-e status-locked');
+  assert.equal(east.direction, 'e');
+  assert.equal(east.status, 'locked');
   assert.equal(east.action, '');
 });
 
@@ -512,7 +514,8 @@ test('world radar view state places sites and exposes map signature', () => {
   assert.match(view.signature, /site_b/);
   assert.equal(capital.position.left, '50.00');
   assert.equal(capital.position.top, '50.00');
-  assert.match(siteA.className, /owner-neutral/);
+  assert.equal(siteA.owner, 'neutral');
+  assert.equal(siteA.status, 'discovered');
   assert.equal(siteB.name, 'Stone City');
   assert.ok(Math.hypot(Number(siteA.position.left) - Number(siteB.position.left), Number(siteA.position.top) - Number(siteB.position.top)) >= 9.5);
 });

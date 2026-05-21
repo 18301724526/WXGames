@@ -255,6 +255,25 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
                   options: [{ id: 'collect_wood', label: '收集木材', reward: { wood: 20 } }],
                 }],
                 eventHistory: [],
+                currentEra: 5,
+                militaryView: 'world',
+                territoryState: {
+                  availableSoldiers: 3,
+                  territories: [{
+                    id: 'site-east',
+                    status: 'discovered',
+                    owner: 'neutral',
+                    occupationMode: 'settlement',
+                    naturalName: '东岸',
+                    type: 'town',
+                    art: 'assets/art/world-site-town-cutout.png',
+                    relativeX: 1,
+                    relativeY: 0,
+                    recommendedSoldiers: 1,
+                    defense: 0,
+                  }],
+                  scoutReports: [],
+                },
               },
             };
           },
@@ -294,6 +313,25 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
           options: [{ id: 'collect_wood', label: '收集木材', reward: { wood: 20 } }],
         }],
         eventHistory: [],
+        currentEra: 5,
+        militaryView: 'world',
+        territoryState: {
+          availableSoldiers: 3,
+          territories: [{
+            id: 'site-east',
+            status: 'discovered',
+            owner: 'neutral',
+            occupationMode: 'settlement',
+            naturalName: '东岸',
+            type: 'town',
+            art: 'assets/art/world-site-town-cutout.png',
+            relativeX: 1,
+            relativeY: 0,
+            recommendedSoldiers: 1,
+            defense: 0,
+          }],
+          scoutReports: [],
+        },
       },
     });
     app.start();
@@ -371,6 +409,24 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(app.activeEventId, null);
 
+    app.switchTab('military');
+    app.state = { ...app.state, currentEra: 5, militaryView: 'world' };
+    app.render();
+    const worldTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east');
+    assert.ok(worldTarget);
+    app.handleTap({
+      x: worldTarget.x + worldTarget.width / 2,
+      y: worldTarget.y + worldTarget.height / 2,
+    });
+    assert.equal(app.territoryUiState.selectedSiteId, 'site-east');
+    const conquerTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'territoryAction' && target.action.action === 'conquer');
+    assert.ok(conquerTarget);
+    app.handleTap({
+      x: conquerTarget.x + conquerTarget.width / 2,
+      y: conquerTarget.y + conquerTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
     assert.deepEqual(requests.find((request) => request.action === 'assign'), {
       action: 'assign',
       target: 'farmer',
@@ -384,6 +440,11 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       action: 'claimEvent',
       eventId: 'evt_forest',
       optionId: 'collect_wood',
+    });
+    assert.deepEqual(requests.find((request) => request.action === 'startConquest'), {
+      action: 'startConquest',
+      territoryId: 'site-east',
+      expedition: { soldiers: 1 },
     });
     assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'), true);
   } finally {
