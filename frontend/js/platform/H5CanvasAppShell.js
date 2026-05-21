@@ -504,6 +504,10 @@
             if (!this.onAction) return false;
             return this.onAction(action, event) !== false;
           },
+          changeExpeditionSoldiers: () => {
+            if (!this.onAction) return false;
+            return this.onAction(action, event) !== false;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
           },
@@ -605,10 +609,7 @@
         if (!this.onAction) return false;
         return this.onAction(action, event) !== false;
       }
-      if (
-        action.type === 'territoryAction'
-        || action.type === 'changeExpeditionSoldiers'
-      ) {
+      if (action.type === 'territoryAction') {
         if (!this.onAction) return false;
         return this.onAction(action, event) !== false;
       }

@@ -144,6 +144,14 @@
         return reset;
       }
 
+      if (action.type === 'changeExpeditionSoldiers') {
+        const changed = typeof context.changeExpeditionSoldiers === 'function'
+          ? context.changeExpeditionSoldiers(action) !== false
+          : false;
+        if (changed && typeof context.render === 'function') context.render(action);
+        return changed;
+      }
+
       return false;
     }
 
@@ -165,6 +173,7 @@
         'openWorldSite',
         'closeWorldSite',
         'resetWorldPan',
+        'changeExpeditionSoldiers',
       ];
     }
   }

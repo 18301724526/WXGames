@@ -259,6 +259,11 @@
             this.territoryUiState.worldPanY = 0;
             return true;
           },
+          changeExpeditionSoldiers: () => {
+            this.territoryUiState.expeditionConfigSiteId = action.siteId || this.territoryUiState.expeditionConfigSiteId;
+            this.territoryUiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },
@@ -325,12 +330,6 @@
       }
       if (action.type === 'claimScout') {
         this.runAction(() => this.api.claimScout(action.value));
-        return;
-      }
-      if (action.type === 'changeExpeditionSoldiers') {
-        this.territoryUiState.expeditionConfigSiteId = action.siteId || this.territoryUiState.expeditionConfigSiteId;
-        this.territoryUiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
-        this.render();
         return;
       }
       if (action.type === 'territoryAction') {
