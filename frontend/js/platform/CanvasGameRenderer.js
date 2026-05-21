@@ -983,15 +983,22 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const panelBottom = startY + panelHeight;
-      const sectionGap = 10;
+      const compact = panelHeight < 430;
+      const sectionGap = compact ? 8 : 10;
       const overviewX = x + 12;
       const overviewY = startY + 12;
       const overviewWidth = width - 24;
-      const overviewHeight = 148;
+      const overviewHeight = panelHeight < 390 ? 128 : (panelHeight < 500 ? 136 : 148);
       const eraY = overviewY + overviewHeight + sectionGap;
-      const eraHeight = Math.min(190, Math.max(156, panelBottom - eraY - 96));
+      const innerBottom = panelBottom - 12;
+      const availableAfterOverview = Math.max(0, innerBottom - eraY);
+      const minEraHeight = compact ? 188 : 214;
+      const canShowFeature = availableAfterOverview >= minEraHeight + sectionGap + 64;
+      const eraHeight = canShowFeature
+        ? Math.min(compact ? 244 : 300, Math.max(minEraHeight, Math.floor((availableAfterOverview - sectionGap) * 0.72)))
+        : Math.max(168, availableAfterOverview);
       const featureY = eraY + eraHeight + sectionGap;
-      const featureHeight = Math.max(72, panelBottom - featureY - 12);
+      const featureHeight = canShowFeature ? Math.max(58, innerBottom - featureY) : 0;
 
       this.drawPanel(x, startY, width, panelHeight, {
         fill: 'rgba(37, 29, 21, 0.88)',
@@ -1030,22 +1037,26 @@
         { label: '科技', value: view.text.civOverviewTechs, icon: 'assets/art/icon-science-cutout.webp' },
         { label: '幸福度', value: view.text.civOverviewHappiness, icon: 'assets/art/icon-happiness-cutout.webp' },
       ];
+      const compactOverview = overviewHeight < 140;
       const statGap = 8;
       const statWidth = (overviewWidth - 24 - statGap) / 2;
-      const statHeight = 38;
+      const statHeight = compactOverview ? 30 : 38;
+      const statTop = overviewY + (compactOverview ? 58 : 66);
+      const statRowGap = compactOverview ? 5 : 7;
+      const statIconSize = compactOverview ? 20 : 26;
       stats.forEach((item, index) => {
         const col = index % 2;
         const row = Math.floor(index / 2);
         const statX = overviewX + 12 + col * (statWidth + statGap);
-        const statY = overviewY + 66 + row * (statHeight + 7);
+        const statY = statTop + row * (statHeight + statRowGap);
         this.drawPanel(statX, statY, statWidth, statHeight, {
           fill: 'rgba(63, 47, 32, 0.82)',
           stroke: 'rgba(255, 226, 177, 0.1)',
           radius: 8,
         });
-        this.drawAsset(item.icon, statX + 8, statY + 6, 26, 26);
-        this.drawText(item.label, statX + 40, statY + 6, { size: 10, color: '#a0a0a0' });
-        this.drawText(String(item.value), statX + 40, statY + 21, { size: 14, bold: true, color: '#74d3a0' });
+        this.drawAsset(item.icon, statX + 8, statY + (statHeight - statIconSize) / 2, statIconSize, statIconSize);
+        this.drawText(item.label, statX + 34, statY + (compactOverview ? 3 : 6), { size: compactOverview ? 9 : 10, color: '#a0a0a0' });
+        this.drawText(String(item.value), statX + 34, statY + (compactOverview ? 16 : 21), { size: compactOverview ? 12 : 14, bold: true, color: '#74d3a0' });
       });
 
       const eraX = x + 12;
@@ -1065,27 +1076,35 @@
       });
       this.renderSectionHeader('时代进阶', eraX + 12, eraY + 14, '🔥');
       this.drawAsset('assets/art/icon-food-cutout.webp', eraX + eraWidth / 2 - 42, eraY + 40, 38, 38);
-      this.drawText(view.text.eraTargetName, eraX + eraWidth / 2 + 4, eraY + 59, {
+      this.drawText(this.truncateText(view.text.eraTargetName, eraWidth - 112, { size: 15, bold: true }), eraX + eraWidth / 2 + 4, eraY + 59, {
         size: 15,
         bold: true,
         color: '#f6e8c8',
         baseline: 'middle',
       });
       this.drawProgressBar(eraX + 12, eraY + 84, eraWidth - 24, 10, view.progress.percentage);
-      this.drawText(view.text.eraProgressText, eraX + eraWidth / 2, eraY + 102, {
+      this.drawText(this.truncateText(view.text.eraProgressText, eraWidth - 32, { size: 11 }), eraX + eraWidth / 2, eraY + 102, {
         size: 11,
         color: '#a0a0a0',
         align: 'center',
       });
 
       const conditions = view.conditions || [];
+      const buttonY = eraY + eraHeight - 42;
+      const conditionTop = eraY + 114;
+      const conditionRowHeight = 22;
+      const conditionRowGap = 5;
+      const conditionRows = Math.max(
+        0,
+        Math.floor((buttonY - conditionTop - conditionRowHeight - 2) / (conditionRowHeight + conditionRowGap)) + 1,
+      );
       const conditionWidth = Math.floor((eraWidth - 32) / 2);
-      conditions.slice(0, 4).forEach((condition, index) => {
+      conditions.slice(0, Math.min(4, conditionRows * 2)).forEach((condition, index) => {
         const col = index % 2;
         const row = Math.floor(index / 2);
         const itemX = eraX + 12 + col * (conditionWidth + 8);
-        const itemY = eraY + 122 + row * 27;
-        this.drawPanel(itemX, itemY, conditionWidth, 22, {
+        const itemY = conditionTop + row * (conditionRowHeight + conditionRowGap);
+        this.drawPanel(itemX, itemY, conditionWidth, conditionRowHeight, {
           fill: 'rgba(63, 47, 32, 0.62)',
           stroke: condition.met ? 'rgba(78, 204, 163, 0.3)' : 'rgba(233, 69, 96, 0.15)',
           radius: 7,
@@ -1108,8 +1127,8 @@
         });
       });
 
-      const buttonY = eraY + eraHeight - 42;
-      this.drawButton(eraX + 12, buttonY, eraWidth - 24, 32, view.text.advanceLabel, {
+      const advanceLabel = this.truncateText(view.text.advanceLabel, eraWidth - 52, { size: 13, bold: true });
+      this.drawButton(eraX + 12, buttonY, eraWidth - 24, 32, advanceLabel, {
         disabled: view.advanceButton.disabled,
         bold: true,
         radius: 8,
@@ -1120,18 +1139,21 @@
         { type: 'advanceEra', disabled: view.advanceButton.disabled },
       );
 
-      this.drawPanel(x + 12, featureY, width - 24, featureHeight, {
-        fill: 'rgba(37, 29, 21, 0.82)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
-      this.renderSectionHeader('当前时代特性', x + 26, featureY + 14, '✓');
-      const featureLines = this.wrapTextLimit(view.text.featureDescription, width - 58, 3, { size: 12 });
-      this.drawTextLines(featureLines, x + 26, featureY + 44, {
-        size: 12,
-        color: '#f6e8c8',
-        lineHeight: 18,
-      });
+      if (featureHeight > 0) {
+        this.drawPanel(x + 12, featureY, width - 24, featureHeight, {
+          fill: 'rgba(37, 29, 21, 0.82)',
+          stroke: 'rgba(255, 226, 177, 0.12)',
+          radius: 10,
+        });
+        this.renderSectionHeader('当前时代特性', x + 26, featureY + 14, '✓');
+        const featureLineLimit = Math.max(1, Math.floor((featureHeight - 44) / 18));
+        const featureLines = this.wrapTextLimit(view.text.featureDescription, width - 58, featureLineLimit, { size: 12 });
+        this.drawTextLines(featureLines, x + 26, featureY + 44, {
+          size: 12,
+          color: '#f6e8c8',
+          lineHeight: 18,
+        });
+      }
     }
 
     renderTech(state = {}, startY = 210, panelHeight = 250) {
@@ -2156,7 +2178,7 @@
         this.renderTech(state, topBarBottom, availableHeight);
       } else if (activeTab === 'civilization') {
         const tabsTop = this.height - 60 - this.bottomSafeArea;
-        const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
+        const availableHeight = Math.max(260, tabsTop - topBarBottom - 12);
         this.renderCivilization(
           state,
           topBarBottom,

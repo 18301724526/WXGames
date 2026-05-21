@@ -936,6 +936,68 @@ test('CanvasGameRenderer draws civilization page and advance action without DOM 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'advanceEra'));
 });
 
+test('CanvasGameRenderer keeps civilization advance layout within compact mobile viewport', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 360, height: 640, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '120',
+        foodRate: '+1/s',
+        knowledgeValue: '80',
+        knowledgeRate: '+0.2/s',
+        woodValue: '30',
+        woodRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildCivilizationViewState: () => ({
+      text: {
+        eraName: '农耕时代',
+        civOverviewDay: '第 3 天',
+        civOverviewPop: 4,
+        civOverviewBuildings: 2,
+        civOverviewTechs: '1/0',
+        civOverviewHappiness: '100%',
+        eraTargetName: '聚落时代',
+        eraProgressText: '总进度: 100%',
+        advanceLabel: '满足条件，可以进阶',
+        featureDescription: '农耕时代：继续建设你的文明。',
+      },
+      progress: { percentage: 100 },
+      advanceButton: { disabled: false },
+      conditions: [
+        { met: true, name: '食物', progressText: '120/120' },
+        { met: true, name: '知识', progressText: '80/80' },
+        { met: true, name: '人口', progressText: '4/4' },
+        { met: true, name: '建筑', progressText: '2/2' },
+      ],
+    }),
+  });
+
+  renderer.render({ currentTab: 'civilization' }, {
+    activeTab: 'civilization',
+    mode: 'hud',
+    tutorial: { completed: true },
+  });
+
+  const advanceTarget = renderer.hitTargets.find((target) => target.action?.type === 'advanceEra');
+  assert.ok(advanceTarget);
+  assert.ok(advanceTarget.y + advanceTarget.height <= 568);
+
+  const conditionPanels = calls.filter((call) => (
+    call[0] === 'roundRect'
+    && call[2] > 120
+    && call[4] === 22
+    && call[3] < advanceTarget.y
+  ));
+  assert.ok(conditionPanels.length <= 4);
+  assert.ok(conditionPanels.every((call) => call[3] + call[4] < advanceTarget.y));
+});
+
 test('CanvasGameRenderer draws military subviews and world actions without DOM adapters', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
