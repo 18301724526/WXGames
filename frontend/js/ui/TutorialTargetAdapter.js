@@ -13,7 +13,6 @@
         'tab-events': byId('tabEvents'),
         'tab-military': byId('tabMilitary'),
         'tab-territory': byId('tabMilitary'),
-        'btn-advance-era': byId('btnAdvanceEra'),
       });
     }
 

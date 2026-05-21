@@ -400,6 +400,41 @@ test('H5 canvas app shell dispatches building actions without DOM adapter', () =
   ]);
 });
 
+test('H5 canvas app shell dispatches era advance without DOM button', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const dispatched = [];
+  const renderer = {
+    hitTargets: [{ x: 20, y: 220, width: 300, height: 32, action: { type: 'advanceEra' } }],
+    getHitTarget: () => ({ type: 'advanceEra' }),
+    render() {},
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'civilization' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  const target = shell.getTutorialTarget('btn-advance-era');
+  assert.deepEqual(target.getBoundingClientRect(), {
+    left: 20,
+    top: 220,
+    width: 300,
+    height: 32,
+    right: 320,
+    bottom: 252,
+  });
+  listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
+
+  assert.deepEqual(dispatched, [{ type: 'advanceEra' }]);
+});
+
 test('H5 canvas app shell owns building pager state without DOM adapter', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [

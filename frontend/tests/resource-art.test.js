@@ -37,11 +37,11 @@ test('canvas resource HUD uses dedicated resource icon assets without DOM resour
   assert.match(canvasRenderer, /assets\/art\/icon-food-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-knowledge-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-wood-cutout\.webp/);
-  assert.match(css, new RegExp(`\\.civ-overview-item:nth-child\\(4\\) \\.civ-overview-icon \\{ background-image: url\\('${iconUrlPattern('icon-happiness-cutout.webp')}'\\); \\}`));
+  assert.match(canvasRenderer, /assets\/art\/icon-happiness-cutout\.webp/);
   assert.doesNotMatch(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
   assert.doesNotMatch(css, /resource-detail/);
   assert.doesNotMatch(css, /\.(?:resource-panel|resource-card|resource-icon|resource-value)\b/);
-  assert.doesNotMatch(css, /\.civ-overview-item:nth-child\(4\) \.civ-overview-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);
+  assert.doesNotMatch(css, /civ-overview|civ-features|btn-era|era-panel/);
 });
 
 test('military has its own tab and page outside the civilization page', () => {

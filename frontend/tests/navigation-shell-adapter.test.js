@@ -38,29 +38,24 @@ test('navigation shell adapter owns H5 tab and military bindings', async () => {
   const militaryTab = createElement({ tab: 'military' });
   const armyButton = createElement({ militaryView: 'army' });
   const scoutButton = createElement({ militaryView: 'scout' });
-  const advanceButton = createElement();
   const calls = [];
   const adapter = new NavigationShellAdapter({
     tabButtons: [resourcesTab, militaryTab],
     pages: [createElement({ page: 'resources' }), createElement({ page: 'military' })],
     militaryButtons: [armyButton, scoutButton],
     militaryPages: [createElement({ militaryPage: 'army' }), createElement({ militaryPage: 'scout' })],
-    advanceButton,
   });
 
   adapter.bind({
     onTabClick: async (tabId) => calls.push(['tab', tabId]),
     onMilitaryViewClick: (view) => calls.push(['military', view]),
-    onAdvanceEra: () => calls.push(['advance']),
   });
   await militaryTab.listeners.click({ currentTarget: militaryTab });
   scoutButton.listeners.click({ currentTarget: scoutButton });
-  advanceButton.listeners.click();
 
   assert.deepEqual(calls, [
     ['tab', 'military'],
     ['military', 'scout'],
-    ['advance'],
   ]);
   assert.deepEqual(adapter.getTabDescriptors(), [{ id: 'resources' }, { id: 'military' }]);
 });

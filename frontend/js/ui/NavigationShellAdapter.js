@@ -24,7 +24,6 @@
         militaryPages: typeof doc.querySelectorAll === 'function'
           ? Array.from(doc.querySelectorAll('[data-military-page]'))
           : [],
-        advanceButton: doc.getElementById('btnAdvanceEra'),
       });
     }
 

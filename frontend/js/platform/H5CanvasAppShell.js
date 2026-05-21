@@ -67,6 +67,28 @@
       return handled;
     }
 
+    getCanvasTarget(type) {
+      if (!this.renderer || !Array.isArray(this.renderer.hitTargets)) return null;
+      const target = this.renderer.hitTargets.find((item) => item.action?.type === type);
+      if (!target) return null;
+      return {
+        getBoundingClientRect: () => ({
+          left: target.x,
+          top: target.y,
+          width: target.width,
+          height: target.height,
+          right: target.x + target.width,
+          bottom: target.y + target.height,
+        }),
+        scrollIntoView() {},
+      };
+    }
+
+    getTutorialTarget(key) {
+      if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
+      return null;
+    }
+
     handleAction(action, event) {
       if (action.type === 'openSettings') {
         this.showSettings = true;
@@ -192,6 +214,10 @@
           this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
         }
         return handled;
+      }
+      if (action.type === 'advanceEra') {
+        if (!this.onAction) return false;
+        return this.onAction(action, event) !== false;
       }
       if (action.type === 'blockCanvasModal') {
         return true;

@@ -60,38 +60,7 @@
 
             <section class="page page-events" data-page="events"></section>
 
-            <section class="page page-civilization" data-page="civilization">
-                <section class="civ-overview-panel">
-                    <div class="civ-overview-header">
-                        <div class="civ-overview-era"><span id="civOverviewEraIcon">🔥</span><span id="civOverviewEraName">原始时代</span></div>
-                        <div class="civ-overview-day" id="civOverviewDay">第 1 天</div>
-                    </div>
-                    <div class="civ-overview-stats">
-                        <div class="civ-overview-item"><span class="civ-overview-icon">👥</span><span class="civ-overview-label">总人口</span><span class="civ-overview-value" id="civOverviewPop">3</span></div>
-                        <div class="civ-overview-item"><span class="civ-overview-icon">🏠</span><span class="civ-overview-label">建筑</span><span class="civ-overview-value" id="civOverviewBuildings">0</span></div>
-                        <div class="civ-overview-item"><span class="civ-overview-icon">🔬</span><span class="civ-overview-label">科技</span><span class="civ-overview-value" id="civOverviewTechs">0/0</span></div>
-                        <div class="civ-overview-item"><span class="civ-overview-icon">😊</span><span class="civ-overview-label">幸福度</span><span class="civ-overview-value" id="civOverviewHappiness">100%</span></div>
-                    </div>
-                </section>
-
-                <section class="era-panel">
-                    <h2 class="panel-title">🏛️ 时代进阶</h2>
-                    <div class="era-target"><span id="eraTargetIcon">🌾</span><span id="eraTargetName">农耕时代</span></div>
-                    <div class="era-progress">
-                        <div class="progress-bar"><div class="progress-fill" id="eraProgress" style="width: 0%"></div></div>
-                        <div class="progress-label" id="eraProgressText">总进度: 0%</div>
-                    </div>
-                    <div class="era-conditions" id="eraConditions"></div>
-                    <button class="btn-era" id="btnAdvanceEra" disabled>
-                        <span class="btn-era-label" id="btnEraLabel">等待状态同步</span>
-                    </button>
-                </section>
-
-                <section class="civ-features-panel">
-                    <h2 class="panel-title">✨ 当前时代特性</h2>
-                    <div class="civ-features-list"><div class="civ-feature-item">原始时代：口耳相传，等待迈入农耕时代。</div></div>
-                </section>
-            </section>
+            <section class="page page-civilization" data-page="civilization"></section>
 
             <section class="page page-military" data-page="military">
                 <div class="military-subtabs" id="militarySubTabs" role="tablist" aria-label="军事视图">
@@ -205,7 +174,7 @@
     <script src="js/ui/AuthShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/NamingModalAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/NavigationShellAdapter.js?v=explicit-doc-v1"></script>
-    <script src="js/ui/CivilizationPanelAdapter.js?v=explicit-doc-v1"></script>
+
     <script src="js/ui/MilitaryPanelAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/TutorialTargetAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/TerritoryActionAdapter.js?v=explicit-doc-v1"></script>

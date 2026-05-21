@@ -982,31 +982,166 @@
       this.addHitTarget({ x: descX, y: laterY, width: descWidth, height: 30 }, { type: 'closeEvent' });
     }
 
-    renderCivilization(state = {}, startY = 210, panelHeight = 250) {
-      if (!this.presenter) return;
-      const view = this.presenter.buildCivilizationViewState(state, state.tutorial || {}, { canOpenCivilizationTab: true });
+    renderCivilization(state = {}, startY = 210, panelHeight = 420, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildCivilizationViewState !== 'function') return;
+      const view = this.presenter.buildCivilizationViewState(
+        state,
+        options.tutorial || state.tutorial || {},
+        { canOpenCivilizationTab: options.canOpenCivilizationTab !== false },
+      );
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
+      const panelBottom = startY + panelHeight;
+      const sectionGap = 10;
+      const overviewX = x + 12;
+      const overviewY = startY + 12;
+      const overviewWidth = width - 24;
+      const overviewHeight = 148;
+      const eraY = overviewY + overviewHeight + sectionGap;
+      const eraHeight = Math.min(190, Math.max(156, panelBottom - eraY - 96));
+      const featureY = eraY + eraHeight + sectionGap;
+      const featureHeight = Math.max(72, panelBottom - featureY - 12);
+
       this.drawPanel(x, startY, width, panelHeight, {
         fill: 'rgba(37, 29, 21, 0.88)',
         stroke: 'rgba(255, 226, 177, 0.14)',
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderSectionHeader('文明', x + 14, startY + 14, '🏛️');
-      this.drawText(view.text.eraName, x + 14, startY + 44, { size: 18, bold: true });
-      this.drawText(`目标：${view.text.eraTargetName}`, x + 14, startY + 74, { color: '#cbbd96', size: 13 });
-      this.drawProgressBar(x + 14, startY + 104, width - 28, 12, view.progress.percentage);
-      this.drawText(view.text.eraProgressText, x + 14, startY + 124, { color: '#cbbd96', size: 12 });
-      view.conditions.slice(0, 4).forEach((condition, index) => {
-        this.drawText(`${condition.met ? '✓' : '·'} ${condition.name} ${condition.progressText}`, x + 14, startY + 150 + index * 22, {
-          color: condition.met ? '#9ed39a' : '#d6b16e',
-          size: 13,
+
+      this.drawPanel(overviewX, overviewY, overviewWidth, overviewHeight, {
+        fill: this.createGradient(
+          overviewX, overviewY, overviewX, overviewY + overviewHeight,
+          [
+            [0, 'rgba(54, 40, 28, 0.92)'],
+            [1, 'rgba(28, 22, 17, 0.9)'],
+          ],
+          'rgba(44, 32, 23, 0.9)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.14)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.drawAsset('assets/art/icon-fire-cutout.webp', overviewX + 12, overviewY + 12, 32, 32);
+      this.drawText(view.text.eraName, overviewX + 50, overviewY + 19, { size: 16, bold: true, color: '#f0b45b' });
+      this.drawText(view.text.civOverviewDay, overviewX + overviewWidth - 12, overviewY + 20, {
+        size: 12,
+        color: '#a0a0a0',
+        align: 'right',
+      });
+      this.drawLine(overviewX + 12, overviewY + 54, overviewX + overviewWidth - 12, overviewY + 54, {
+        color: 'rgba(255, 226, 177, 0.14)',
+      });
+
+      const stats = [
+        { label: '总人口', value: view.text.civOverviewPop, icon: 'assets/art/icon-population-cutout.webp' },
+        { label: '建筑', value: view.text.civOverviewBuildings, icon: 'assets/art/building-house-cutout.png' },
+        { label: '科技', value: view.text.civOverviewTechs, icon: 'assets/art/icon-science-cutout.webp' },
+        { label: '幸福度', value: view.text.civOverviewHappiness, icon: 'assets/art/icon-happiness-cutout.webp' },
+      ];
+      const statGap = 8;
+      const statWidth = (overviewWidth - 24 - statGap) / 2;
+      const statHeight = 38;
+      stats.forEach((item, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const statX = overviewX + 12 + col * (statWidth + statGap);
+        const statY = overviewY + 66 + row * (statHeight + 7);
+        this.drawPanel(statX, statY, statWidth, statHeight, {
+          fill: 'rgba(63, 47, 32, 0.82)',
+          stroke: 'rgba(255, 226, 177, 0.1)',
+          radius: 8,
+        });
+        this.drawAsset(item.icon, statX + 8, statY + 6, 26, 26);
+        this.drawText(item.label, statX + 40, statY + 6, { size: 10, color: '#a0a0a0' });
+        this.drawText(String(item.value), statX + 40, statY + 21, { size: 14, bold: true, color: '#74d3a0' });
+      });
+
+      const eraX = x + 12;
+      const eraWidth = width - 24;
+      this.drawPanel(eraX, eraY, eraWidth, eraHeight, {
+        fill: this.createGradient(
+          eraX, eraY, eraX, eraY + eraHeight,
+          [
+            [0, 'rgba(54, 40, 28, 0.92)'],
+            [1, 'rgba(28, 22, 17, 0.9)'],
+          ],
+          'rgba(44, 32, 23, 0.9)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.14)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.renderSectionHeader('时代进阶', eraX + 12, eraY + 14, '🔥');
+      this.drawAsset('assets/art/icon-food-cutout.webp', eraX + eraWidth / 2 - 42, eraY + 40, 38, 38);
+      this.drawText(view.text.eraTargetName, eraX + eraWidth / 2 + 4, eraY + 59, {
+        size: 15,
+        bold: true,
+        color: '#f6e8c8',
+        baseline: 'middle',
+      });
+      this.drawProgressBar(eraX + 12, eraY + 84, eraWidth - 24, 10, view.progress.percentage);
+      this.drawText(view.text.eraProgressText, eraX + eraWidth / 2, eraY + 102, {
+        size: 11,
+        color: '#a0a0a0',
+        align: 'center',
+      });
+
+      const conditions = view.conditions || [];
+      const conditionWidth = Math.floor((eraWidth - 32) / 2);
+      conditions.slice(0, 4).forEach((condition, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const itemX = eraX + 12 + col * (conditionWidth + 8);
+        const itemY = eraY + 122 + row * 27;
+        this.drawPanel(itemX, itemY, conditionWidth, 22, {
+          fill: 'rgba(63, 47, 32, 0.62)',
+          stroke: condition.met ? 'rgba(78, 204, 163, 0.3)' : 'rgba(233, 69, 96, 0.15)',
+          radius: 7,
+        });
+        this.drawText(condition.met ? '✓' : '•', itemX + 9, itemY + 11, {
+          size: 12,
+          bold: true,
+          color: condition.met ? '#4ecca3' : '#d6b16e',
+          baseline: 'middle',
+        });
+        this.drawText(this.truncateText(condition.name, conditionWidth - 52, { size: 11, bold: true }), itemX + 24, itemY + 6, {
+          size: 11,
+          bold: true,
+          color: '#f6e8c8',
+        });
+        this.drawText(condition.progressText, itemX + conditionWidth - 8, itemY + 6, {
+          size: 10,
+          color: condition.met ? '#4ecca3' : '#a0a0a0',
+          align: 'right',
         });
       });
-      this.drawButton(x + 14, startY + panelHeight - 40, width - 28, 34, view.text.advanceLabel, { disabled: view.advanceButton.disabled, bold: true });
-      this.addHitTarget({ x: x + 14, y: startY + panelHeight - 40, width: width - 28, height: 34 }, { type: 'advanceEra', disabled: view.advanceButton.disabled });
+
+      const buttonY = eraY + eraHeight - 42;
+      this.drawButton(eraX + 12, buttonY, eraWidth - 24, 32, view.text.advanceLabel, {
+        disabled: view.advanceButton.disabled,
+        bold: true,
+        radius: 8,
+        active: !view.advanceButton.disabled,
+      });
+      this.addHitTarget(
+        { x: eraX + 12, y: buttonY, width: eraWidth - 24, height: 32 },
+        { type: 'advanceEra', disabled: view.advanceButton.disabled },
+      );
+
+      this.drawPanel(x + 12, featureY, width - 24, featureHeight, {
+        fill: 'rgba(37, 29, 21, 0.82)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      this.renderSectionHeader('当前时代特性', x + 26, featureY + 14, '✓');
+      const featureLines = this.wrapTextLimit(view.text.featureDescription, width - 58, 3, { size: 12 });
+      this.drawTextLines(featureLines, x + 26, featureY + 44, {
+        size: 12,
+        color: '#f6e8c8',
+        lineHeight: 18,
+      });
     }
 
     renderTech(state = {}, startY = 210, panelHeight = 250) {
@@ -1101,7 +1236,7 @@
       if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, { offset: options.buildingOffset });
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
       else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight);
-      else if (activeTab === 'civilization') this.renderCivilization(state, startY, Math.min(availableHeight, 260));
+      else if (activeTab === 'civilization') this.renderCivilization(state, startY, availableHeight, options);
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight);
     }
 
@@ -1311,6 +1446,15 @@
         const tabsTop = this.height - 60 - this.bottomSafeArea;
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderTech(state, topBarBottom, availableHeight);
+      } else if (activeTab === 'civilization') {
+        const tabsTop = this.height - 60 - this.bottomSafeArea;
+        const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
+        this.renderCivilization(
+          state,
+          topBarBottom,
+          availableHeight,
+          { tutorial: options.tutorial || state.tutorial || {} },
+        );
       }
       this.renderTabs(activeTab, state);
       if (options.showResourceDetails) {

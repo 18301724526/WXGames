@@ -302,76 +302,28 @@ body {
 }
 
 /* ===== 鏂囨槑姒傝 ===== */
-.civ-info-panel {
-    background: var(--bg-panel);
-    border-radius: 14px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    margin-bottom: 12px;
-}
 
-.civ-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
 
-.civ-stat-item {
-    background: var(--bg-card);
-    border-radius: 10px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    text-align: center;
-}
 
-.civ-stat-icon {
-    font-size: 24px;
-}
 
-.civ-stat-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-}
 
-.civ-stat-value {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--number);
-}
+
+
+
+
+
+
 
 /* ===== 鏃朵唬杩涢樁 ===== */
-.era-panel {
-    background: var(--bg-panel);
-    border-radius: 14px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    margin-bottom: 12px;
-}
 
-.era-current {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    font-size: 14px;
-}
 
-.era-arrow {
-    color: var(--text-secondary);
-}
 
-.era-locked {
-    color: var(--text-secondary);
-}
 
-.era-locked.unlocked {
-    color: var(--warning);
-    animation: unlockPulse 1.5s ease-in-out infinite;
-}
+
+
+
+
+
 
 @keyframes unlockPulse {
     0%, 100% { opacity: 1; }
@@ -399,45 +351,15 @@ body {
     color: var(--text-secondary);
 }
 
-.btn-era {
-    width: 100%;
-    margin-top: 12px;
-    padding: 14px;
-    border-radius: 12px;
-    border: none;
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    color: white;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
-}
 
-.btn-era:active {
-    transform: scale(0.96);
-    box-shadow: 0 2px 8px rgba(233, 69, 96, 0.2);
-}
 
-.btn-era:disabled {
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    cursor: not-allowed;
-    box-shadow: none;
-}
 
-.btn-era-label {
-    font-size: 15px;
-}
 
-.btn-era-cost {
-    font-size: 12px;
-    opacity: 0.9;
-}
+
+
+
+
+
 
 /* ===== 绂荤嚎鏀剁泭寮圭獥 ===== */
 .modal-overlay {
@@ -637,275 +559,77 @@ body {
 }
 
 /* ===== 鏂囨槑姒傝闈㈡澘 ===== */
-.civ-overview-panel {
-    background:
-        linear-gradient(145deg, rgba(54, 40, 28, 0.9), rgba(28, 22, 17, 0.9));
-    border-radius: 14px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    margin-bottom: 12px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 231, 184, 0.09);
-    backdrop-filter: blur(8px);
-}
 
-.civ-overview-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-}
 
-.civ-overview-era {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    font-weight: 700;
-}
 
-.civ-overview-era span:first-child {
-    font-size: 24px;
-}
 
-.civ-overview-day {
-    font-size: 12px;
-    color: var(--text-secondary);
-}
 
-.civ-overview-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
 
-.civ-overview-item {
-    background: var(--bg-card);
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    text-align: center;
-}
 
-.civ-overview-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 0;
-    background: center / contain no-repeat;
-    filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.26));
-}
 
-.civ-overview-item:nth-child(1) .civ-overview-icon { background-image: url('assets/art/icon-population-cutout.webp'); }
-.civ-overview-item:nth-child(2) .civ-overview-icon { background-image: url('assets/art/building-house-cutout.png'); }
-.civ-overview-item:nth-child(3) .civ-overview-icon { background-image: url('assets/art/icon-science-cutout.webp'); }
-.civ-overview-item:nth-child(4) .civ-overview-icon { background-image: url('assets/art/icon-happiness-cutout.webp?v=resource-icons-v3'); }
 
-.civ-overview-label {
-    font-size: 10px;
-    color: var(--text-secondary);
-}
 
-.civ-overview-value {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--number);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ===== 鏃朵唬杩涢樁闈㈡澘 ===== */
-.era-panel {
-    background:
-        linear-gradient(145deg, rgba(54, 40, 28, 0.9), rgba(28, 22, 17, 0.9));
-    border-radius: 14px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    margin-bottom: 12px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 231, 184, 0.09);
-    backdrop-filter: blur(8px);
-}
 
-.era-target {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    font-size: 16px;
-    font-weight: 700;
-}
 
-.era-target span:first-child {
-    width: 40px;
-    height: 40px;
-    font-size: 0;
-    background: url('assets/art/icon-food-cutout.webp?v=resource-icons-v3') center / contain no-repeat;
-    filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
-}
 
-.era-conditions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 14px;
-}
 
-.era-condition-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    background: var(--bg-card);
-    border-radius: 10px;
-    font-size: 13px;
-}
 
-.era-condition-item.met {
-    border: 1px solid rgba(78, 204, 163, 0.3);
-}
 
-.era-condition-item.unmet {
-    border: 1px solid rgba(233, 69, 96, 0.15);
-}
 
-.era-condition-icon {
-    font-size: 18px;
-    width: 24px;
-    text-align: center;
-    flex-shrink: 0;
-}
 
-.era-condition-icon.met {
-    color: var(--success);
-}
 
-.era-condition-icon.unmet {
-    color: var(--danger);
-}
 
-.era-condition-info {
-    flex: 1;
-    min-width: 0;
-}
 
-.era-condition-name {
-    font-weight: 600;
-    margin-bottom: 2px;
-}
 
-.era-condition-progress {
-    font-size: 11px;
-    color: var(--text-secondary);
-}
 
-.era-condition-progress.met {
-    color: var(--success);
-}
 
-.era-condition-bar {
-    width: 60px;
-    height: 6px;
-    background: var(--bg-primary);
-    border-radius: 3px;
-    overflow: hidden;
-    flex-shrink: 0;
-}
 
-.era-condition-fill {
-    height: 100%;
-    background: var(--success);
-    border-radius: 3px;
-    transition: width 0.3s ease;
-}
 
-.era-condition-fill.unmet {
-    background: var(--accent);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ===== 鏂囨槑鐗规€ч潰鏉?===== */
-.civ-features-panel,
-.civ-preview-panel {
-    background: var(--bg-panel);
-    border-radius: 14px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    margin-bottom: 12px;
-}
-
-.civ-features-list,
-.civ-preview-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.civ-feature-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--bg-card);
-    border-radius: 8px;
-    font-size: 12px;
-}
-
-.civ-feature-item .feature-icon {
-    font-size: 16px;
-    flex-shrink: 0;
-}
-
-.civ-feature-item .feature-text {
-    color: var(--text-primary);
-}
-
-.civ-preview-panel {
-    opacity: 0.8;
-}
-
-.civ-preview-panel .civ-feature-item {
-    opacity: 0.7;
-}
-
 /* ===== 鏃朵唬杩涢樁鎸夐挳 ===== */
-.btn-era {
-    width: 100%;
-    margin-top: 4px;
-    padding: 14px;
-    border-radius: 12px;
-    border: none;
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    color: white;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
-}
 
-.btn-era:disabled {
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    cursor: not-allowed;
-    box-shadow: none;
-}
 
-.btn-era:not(:disabled) {
-    animation: eraPulse 1.5s ease-in-out infinite;
-}
 
-.btn-era:active {
-    transform: scale(0.96);
-}
 
-.btn-era-label {
-    font-size: 15px;
-}
+
+
+
+
+
 
 /* ===== 绉戞妧椤甸《閮?===== */
 .tech-header-panel {
@@ -2024,19 +1748,9 @@ body {
   outline-offset: 4px;
 }
 
-.era-condition-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 8px;
-}
 
-.era-condition-item.met {
-  border-color: rgba(78, 204, 163, 0.5);
-}
+
+
 
 @keyframes tutorial-bounce {
   0%, 100% { transform: translateY(0); }

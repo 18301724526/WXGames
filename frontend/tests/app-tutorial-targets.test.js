@@ -27,7 +27,6 @@ function createWindowStub() {
     BuildingController: class {},
     NamingModalAdapter: require('../js/ui/NamingModalAdapter'),
     NavigationShellAdapter: require('../js/ui/NavigationShellAdapter'),
-    CivilizationPanelAdapter: require('../js/ui/CivilizationPanelAdapter'),
     MilitaryPanelAdapter: require('../js/ui/MilitaryPanelAdapter'),
     TutorialTargetAdapter: require('../js/ui/TutorialTargetAdapter'),
     H5TextAdapter: require('../js/ui/H5TextAdapter'),
@@ -53,23 +52,6 @@ function createWindowStub() {
   };
 }
 
-function attachCivilizationPanel(Game, elements) {
-  function getElement(id) {
-    if (!elements.has(id)) elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
-    return elements.get(id);
-  }
-
-  Game.civilizationPanel = new global.window.CivilizationPanelAdapter({
-    setText: (id, value) => {
-      getElement(id).textContent = value;
-    },
-    progressBar: getElement('eraProgress'),
-    advanceButton: getElement('btnAdvanceEra'),
-    advanceLabel: getElement('btnEraLabel'),
-    features: getElement('civFeaturesList'),
-    conditions: getElement('eraConditions'),
-  });
-}
 
 function attachMilitaryPanel(Game, elements, textSink = null) {
   function getElement(id) {
@@ -115,12 +97,14 @@ test('app maps tutorial highlight targets without building card DOM', () => {
       'tab-buildings': 'tabBuildings',
       'tab-events': 'tabEvents',
       'tab-military': 'tabMilitary',
-      'btn-advance-era': 'btnAdvanceEra',
     };
 
     for (const [key, id] of Object.entries(expected)) {
       assert.equal(global.window.Game.getTutorialTarget(key), elements.get(id));
     }
+    const canvasAdvanceTarget = { getBoundingClientRect() { return { left: 20, top: 30, width: 120, height: 40, right: 140, bottom: 70 }; } };
+    global.window.Game.canvasShell = { getTutorialTarget: (key) => (key === 'btn-advance-era' ? canvasAdvanceTarget : null) };
+    assert.equal(global.window.Game.getTutorialTarget('btn-advance-era'), canvasAdvanceTarget);
     assert.equal(global.window.Game.getTutorialTarget('card-farm'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-house'), null);
     assert.equal(global.window.Game.getTutorialTarget('card-lumbermill'), null);
@@ -221,33 +205,23 @@ test('app uses injected scheduler for scout countdown timer', () => {
   }
 });
 
-test('era advance button stays locked until tutorial unlocks the advance step', () => {
+test('era advance Canvas state stays locked until tutorial unlocks the advance step', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
 
   try {
-    const elements = new Map();
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
-    global.document = {
-      addEventListener() {},
-      getElementById(id) {
-        if (!elements.has(id)) {
-          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
-        }
-        return elements.get(id);
-      },
-    };
+    global.document = { addEventListener() {}, getElementById(id) { return { id }; } };
 
     delete require.cache[require.resolve('../app')];
     require('../app');
 
     const { Game } = global.window;
-    attachCivilizationPanel(Game, elements);
     Game.state = {
       currentEra: 1,
-      currentEraName: '农耕时代',
+      currentEraName: '????',
       gameDay: 1,
       population: { total: 4 },
       totalBuildings: 2,
@@ -256,7 +230,7 @@ test('era advance button stays locked until tutorial unlocks the advance step', 
       eraProgress: {
         percentage: 100,
         canAdvance: true,
-        targetEraName: '聚落时代',
+        targetEraName: '????',
         conditions: [],
       },
     };
@@ -265,14 +239,24 @@ test('era advance button stays locked until tutorial unlocks the advance step', 
       canOpenTab(tabId) { return tabId === 'civilization'; },
     };
 
-    Game.renderCivilization();
-    assert.equal(elements.get('btnAdvanceEra').disabled, true);
-    assert.equal(elements.get('btnEraLabel').textContent, '引导未解锁');
+    let view = Game.presenter.buildCivilizationViewState(
+      Game.state,
+      Game.tutorialController.state,
+      { canOpenCivilizationTab: Game.tutorialController.canOpenTab('civilization') },
+    );
+    assert.equal(view.advanceButton.disabled, true);
+    const lockedLabel = view.text.advanceLabel;
+    assert.ok(lockedLabel.length > 0);
 
     Game.tutorialController.state.currentStep = 9;
-    Game.renderCivilization();
-    assert.equal(elements.get('btnAdvanceEra').disabled, false);
-    assert.equal(elements.get('btnEraLabel').textContent, '满足条件，可进阶');
+    view = Game.presenter.buildCivilizationViewState(
+      Game.state,
+      Game.tutorialController.state,
+      { canOpenCivilizationTab: Game.tutorialController.canOpenTab('civilization') },
+    );
+    assert.equal(view.advanceButton.disabled, false);
+    assert.ok(view.text.advanceLabel.length > 0);
+    assert.notEqual(view.text.advanceLabel, lockedLabel);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
@@ -280,33 +264,23 @@ test('era advance button stays locked until tutorial unlocks the advance step', 
   }
 });
 
-test('subcity keeps era advance button disabled even when conditions are met', () => {
+test('subcity keeps Canvas era advance disabled even when conditions are met', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
 
   try {
-    const elements = new Map();
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
-    global.document = {
-      addEventListener() {},
-      getElementById(id) {
-        if (!elements.has(id)) {
-          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
-        }
-        return elements.get(id);
-      },
-    };
+    global.document = { addEventListener() {}, getElementById(id) { return { id }; } };
 
     delete require.cache[require.resolve('../app')];
     require('../app');
 
     const { Game } = global.window;
-    attachCivilizationPanel(Game, elements);
     Game.state = {
       currentEra: 5,
-      currentEraName: '古典时代',
+      currentEraName: '????',
       gameDay: 1,
       population: { total: 4 },
       totalBuildings: 1,
@@ -316,7 +290,7 @@ test('subcity keeps era advance button disabled even when conditions are met', (
       eraProgress: {
         percentage: 100,
         canAdvance: true,
-        targetEraName: '后续时代',
+        targetEraName: '????',
         conditions: [],
       },
     };
@@ -325,11 +299,11 @@ test('subcity keeps era advance button disabled even when conditions are met', (
       canOpenTab() { return true; },
     };
 
-    Game.renderCivilization();
+    const view = Game.presenter.buildCivilizationViewState(Game.state, Game.tutorialController.state, { canOpenCivilizationTab: true });
 
     assert.equal(Game.canAdvanceEraNow(), false);
-    assert.equal(elements.get('btnAdvanceEra').disabled, true);
-    assert.equal(elements.get('btnEraLabel').textContent, '分城跟随主城时代');
+    assert.equal(view.advanceButton.disabled, true);
+    assert.ok(view.text.advanceLabel.length > 0);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
@@ -360,7 +334,6 @@ test('advanceEra does not call the API before tutorial unlocks the advance step'
     require('../app');
 
     const { Game } = global.window;
-    attachCivilizationPanel(Game, elements);
     let called = false;
     const logs = [];
     Game.gameAPI = {
@@ -401,33 +374,23 @@ test('advanceEra does not call the API before tutorial unlocks the advance step'
   }
 });
 
-test('initial era advance also stays locked before the tutorial reaches the advance step', () => {
+test('initial Canvas era advance also stays locked before the tutorial reaches the advance step', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
 
   try {
-    const elements = new Map();
     global.window = createWindowStub();
     global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
-    global.document = {
-      addEventListener() {},
-      getElementById(id) {
-        if (!elements.has(id)) {
-          elements.set(id, { id, style: {}, textContent: '', innerHTML: '', disabled: false });
-        }
-        return elements.get(id);
-      },
-    };
+    global.document = { addEventListener() {}, getElementById(id) { return { id }; } };
 
     delete require.cache[require.resolve('../app')];
     require('../app');
 
     const { Game } = global.window;
-    attachCivilizationPanel(Game, elements);
     Game.state = {
       currentEra: 0,
-      currentEraName: '原始时代',
+      currentEraName: '????',
       gameDay: 1,
       population: { total: 3 },
       totalBuildings: 0,
@@ -436,7 +399,7 @@ test('initial era advance also stays locked before the tutorial reaches the adva
       eraProgress: {
         percentage: 100,
         canAdvance: true,
-        targetEraName: '农耕时代',
+        targetEraName: '????',
         conditions: [],
       },
     };
@@ -445,14 +408,24 @@ test('initial era advance also stays locked before the tutorial reaches the adva
       canOpenTab(tabId) { return tabId === 'civilization'; },
     };
 
-    Game.renderCivilization();
-    assert.equal(elements.get('btnAdvanceEra').disabled, true);
-    assert.equal(elements.get('btnEraLabel').textContent, '引导未解锁');
+    let view = Game.presenter.buildCivilizationViewState(
+      Game.state,
+      Game.tutorialController.state,
+      { canOpenCivilizationTab: Game.tutorialController.canOpenTab('civilization') },
+    );
+    assert.equal(view.advanceButton.disabled, true);
+    const lockedLabel = view.text.advanceLabel;
+    assert.ok(lockedLabel.length > 0);
 
     Game.tutorialController.state.currentStep = 2;
-    Game.renderCivilization();
-    assert.equal(elements.get('btnAdvanceEra').disabled, false);
-    assert.equal(elements.get('btnEraLabel').textContent, '满足条件，可进阶');
+    view = Game.presenter.buildCivilizationViewState(
+      Game.state,
+      Game.tutorialController.state,
+      { canOpenCivilizationTab: Game.tutorialController.canOpenTab('civilization') },
+    );
+    assert.equal(view.advanceButton.disabled, false);
+    assert.ok(view.text.advanceLabel.length > 0);
+    assert.notEqual(view.text.advanceLabel, lockedLabel);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

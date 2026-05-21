@@ -16,10 +16,11 @@ test('tutorial target adapter maps tutorial keys to H5 elements', () => {
 
   assert.equal(adapter.getTarget('tab-resources'), elements.get('tabResources'));
   assert.equal(adapter.getTarget('tab-territory'), elements.get('tabMilitary'));
-  assert.equal(adapter.getTarget('btn-advance-era'), elements.get('btnAdvanceEra'));
+  assert.equal(adapter.getTarget('btn-advance-era'), null);
   assert.equal(adapter.getTarget('card-house'), null);
   assert.equal(adapter.getTarget('card-craftsman'), null);
   assert.equal(elements.has('card-house'), false);
   assert.equal(elements.has('craftsmanCard'), false);
+  assert.equal(elements.has('btnAdvanceEra'), false);
   assert.equal(adapter.getTarget('missing'), null);
 });

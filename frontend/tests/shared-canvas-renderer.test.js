@@ -733,6 +733,55 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '首期暂不重构科技系统'));
 });
 
+test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0.2/s',
+        woodValue: '8',
+        woodRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildCivilizationViewState: () => ({
+      text: {
+        eraName: '农耕时代',
+        civOverviewDay: '第 3 天',
+        civOverviewPop: 4,
+        civOverviewBuildings: 2,
+        civOverviewTechs: '1/0',
+        civOverviewHappiness: '100%',
+        eraTargetName: '聚落时代',
+        eraProgressText: '总进度: 100%',
+        advanceLabel: '满足条件，可进阶',
+        featureDescription: '农耕时代：继续建设你的文明。',
+      },
+      progress: { percentage: 100 },
+      advanceButton: { disabled: false },
+      conditions: [{ met: true, name: '食物', progressText: '120/120' }],
+    }),
+  });
+
+  renderer.render({ currentTab: 'civilization' }, {
+    activeTab: 'civilization',
+    mode: 'hud',
+    tutorial: { completed: true },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农耕时代'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '总人口'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '满足条件，可进阶'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'advanceEra'));
+});
+
 test('H5CanvasGameRenderer render calls drawing primitives with presenter guard', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new H5CanvasGameRenderer({ ctx, width: 390, height: 844 });
@@ -774,12 +823,14 @@ test('H5 entry keeps only unmigrated DOM UI after canvas renderer extraction', (
   assert.doesNotMatch(html, /id="buildingGrid"|BuildingUIRenderer|BuildingActionAdapter|building-panel|building-card/);
   assert.doesNotMatch(html, /id="eventModal"|eventsBadge|pendingEventsContainer|eventHistoryList|EventUIRenderer/);
   assert.doesNotMatch(html, /id="techKnowledgeRate"|tech-header-panel|tech-panel/);
+  assert.doesNotMatch(html, /btnAdvanceEra|civ-overview|civ-features|CivilizationPanelAdapter/);
   assert.doesNotMatch(appJs, /innerHTML\s*=\s*['"][^'"]*page[^'"]*<\/section>['"]/);
   assert.match(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
   assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
   assert.match(appJs, /action\?\.type === 'claimEvent'/);
   assert.doesNotMatch(appJs, /renderTech\(\)|techKnowledgeRate/);
+  assert.doesNotMatch(appJs, /renderCivilization\(\)|civilizationPanel/);
 });
 
 test('Canvas renderers are loaded in correct order in H5 index.html', () => {

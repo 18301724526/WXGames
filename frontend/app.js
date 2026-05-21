@@ -162,6 +162,10 @@ const Game = {
           this.assignJob(action.job, action.delta);
           return true;
         }
+        if (action?.type === 'advanceEra') {
+          this.advanceEra();
+          return true;
+        }
         if (action?.type === 'buildBuilding' || action?.type === 'upgradeBuilding') {
           this.buildingController.handleAction({
             buildingId: action.buildingId,
@@ -349,11 +353,10 @@ const Game = {
   },
 
   async advanceEra() {
-    this.civilizationPanel?.setAdvanceDisabled(true);
     if (!this.canAdvanceEraNow()) {
       this.log(this.state.isCapitalCity === false ? '只有主城可以推动文明进阶' : this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
-      this.renderCivilization();
       this.renderMilitary();
+      this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
       return;
     }
     try {
@@ -365,8 +368,8 @@ const Game = {
     } catch (error) {
       this.log(`❌ ${error.payload?.message || error.message}`);
     } finally {
-      this.renderCivilization();
       this.renderMilitary();
+      this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
     }
   },
 
@@ -423,11 +426,12 @@ const Game = {
   },
 
   getTutorialTarget(key) {
+    const canvasTarget = this.canvasShell?.getTutorialTarget?.(key);
+    if (canvasTarget) return canvasTarget;
     return this.tutorialTargets?.getTarget(key) || null;
   },
 
   render() {
-    this.renderCivilization();
     this.renderMilitary();
     this.renderTerritory();
     this.tutorialController.render();
@@ -472,15 +476,6 @@ const Game = {
       this.log(`❌ ${error.payload?.message || error.message}`);
       this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
     }
-  },
-
-  renderCivilization() {
-    const view = this.presenter.buildCivilizationViewState(
-      this.state,
-      this.tutorialController?.state || this.tutorial || {},
-      { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab('civilization') },
-    );
-    this.civilizationPanel?.render(view);
   },
 
   renderMilitary() {

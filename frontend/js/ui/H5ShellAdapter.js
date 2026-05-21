@@ -59,7 +59,6 @@
         authShell: registry.AuthShellAdapter?.fromDocument(doc),
         navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
         tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),
-        civilizationPanel: registry.CivilizationPanelAdapter?.fromDocument(doc, { setText }),
         militaryPanel: registry.MilitaryPanelAdapter?.fromDocument(doc, { setText }),
         logModal: registry.LogModalAdapter?.fromDocument(doc),
         runtimeLog: registry.RuntimeLogAdapter?.fromDocument(doc),
