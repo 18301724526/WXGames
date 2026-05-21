@@ -171,9 +171,14 @@ const Game = {
           this.switchMilitaryView(action.view);
           return true;
         }
-        if (action?.type === 'scoutTerritory' || action?.type === 'claimScout') {
+        if (action?.type === 'scoutTerritory') {
           this.territoryController.handleScoutAction({
             direction: action.direction || action.value,
+          });
+          return true;
+        }
+        if (action?.type === 'claimScout') {
+          this.territoryController.handleScoutAction({
             missionId: action.missionId || action.value,
           });
           return true;

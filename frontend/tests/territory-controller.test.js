@@ -99,6 +99,14 @@ test('territory controller receives expedition draft changes as plain data', () 
   assert.equal(controller.getUiState().expeditionSoldiers, '5');
 });
 
+test('app maps scout and claim scout canvas actions to distinct controller payloads', () => {
+  const projectRoot = path.join(__dirname, '..', '..');
+  const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+
+  assert.match(appJs, /if \(action\?\.type === 'scoutTerritory'\) \{[\s\S]*direction: action\.direction \|\| action\.value,[\s\S]*return true;[\s\S]*if \(action\?\.type === 'claimScout'\) \{[\s\S]*missionId: action\.missionId \|\| action\.value,/);
+  assert.doesNotMatch(appJs, /if \(action\?\.type === 'scoutTerritory' \|\| action\?\.type === 'claimScout'\) \{[\s\S]*direction: action\.direction \|\| action\.value,[\s\S]*missionId: action\.missionId \|\| action\.value,/);
+});
+
 test('rename city action delegates to injected naming handler', async () => {
   const requests = [];
   const apiCalls = [];
