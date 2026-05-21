@@ -52,7 +52,6 @@
         authRuntime,
         authStorage,
         tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
-        floatingText: registry.FloatingTextAdapter?.fromDocument(doc),
         authShell: registry.AuthShellAdapter?.fromDocument(doc),
         navigationShell: registry.NavigationShellAdapter?.fromDocument(doc),
         tutorialTargets: registry.TutorialTargetAdapter?.fromDocument(doc),

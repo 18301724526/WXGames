@@ -147,6 +147,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
         inputValue: '',
         submitting: false,
       },
+      floatingTexts: [],
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -520,6 +521,46 @@ test('H5 canvas app shell owns naming prompt state and dispatches canvas submit'
   listeners['document:pointerup']({ clientX: 205, clientY: 540, type: 'pointerup', timeStamp: 1300 });
 
   assert.deepEqual(dispatched, [{ type: 'submitNaming', name: '赤火联盟' }]);
+});
+
+test('H5 canvas app shell owns floating text effects without DOM adapter', () => {
+  const { document, runtime } = createCanvasHarness();
+  const timers = [];
+  const cleared = [];
+  runtime.setInterval = (callback, intervalMs) => {
+    const timer = { callback, intervalMs };
+    timers.push(timer);
+    return timer;
+  };
+  runtime.clearInterval = (timer) => cleared.push(timer);
+  const renderCalls = [];
+  const renderer = {
+    render(state, options) { renderCalls.push(options); },
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  let now = 1000;
+  shell.now = () => now;
+
+  assert.equal(shell.showFloatingText('建造成功！'), true);
+  assert.equal(timers.length, 1);
+  assert.equal(renderCalls.at(-1).floatingTexts[0].text, '建造成功！');
+  assert.equal(renderCalls.at(-1).floatingTexts[0].progress, 0);
+
+  now += 600;
+  shell.renderReadOnly(shell.lastGame.state, 'resources');
+  assert.ok(renderCalls.at(-1).floatingTexts[0].progress > 0);
+
+  now += 700;
+  timers[0].callback();
+  assert.deepEqual(renderCalls.at(-1).floatingTexts, []);
+  assert.deepEqual(cleared, [timers[0]]);
 });
 
 test('H5 canvas runtime provides platform text input without exposing DOM input elements', async () => {

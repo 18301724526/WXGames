@@ -136,6 +136,15 @@
       return this.ensureCanvas()?.getContext?.(type) || null;
     }
 
+    setInterval(callback, intervalMs) {
+      if (typeof this.runtime.setInterval !== 'function') return null;
+      return this.runtime.setInterval(callback, intervalMs);
+    }
+
+    clearInterval(timer) {
+      if (timer && typeof this.runtime.clearInterval === 'function') this.runtime.clearInterval(timer);
+    }
+
     requestTextInput(options = {}) {
       if (typeof this.runtime.prompt !== 'function') return Promise.resolve(null);
       const title = options.title || '输入';

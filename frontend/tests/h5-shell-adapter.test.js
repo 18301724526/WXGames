@@ -62,7 +62,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     EventController: class EventController {},
     BuildingController: class BuildingController {},
     TerritoryController: class TerritoryController {},
-    FloatingTextAdapter: makeFactory('floatingText', calls),
     AuthShellAdapter: makeFactory('auth', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
     TutorialTargetAdapter: makeFactory('tutorialTargets', calls),
@@ -114,7 +113,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.equal(typeof shell.scheduler.clearInterval, 'function');
     assert.equal(typeof shell.scheduler.setTimeout, 'function');
     assert.equal(typeof shell.scheduler.clearTimeout, 'function');
-    assert.deepEqual(shell.floatingText, { name: 'floatingText' });
+    assert.equal(shell.floatingText, undefined);
     assert.equal(shell.namingModal, undefined);
     assert.equal(shell.territoryActions, undefined);
     assert.equal(shell.territoryRenderer, undefined);
@@ -123,7 +122,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.ok(calls.some(([name, callRuntime]) => name === 'authRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authStorage' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'tutorialStorage' && callRuntime === runtime));
-    assert.ok(calls.some(([name, callDoc]) => name === 'floatingText' && callDoc === doc));
+    assert.equal(calls.some(([name]) => name === 'floatingText'), false);
     assert.equal(calls.some(([name]) => name === 'civilization'), false);
     assert.ok(calls.some(([name, callDoc, callRuntime, options]) => (
       name === 'tutorialRenderer'
@@ -165,4 +164,5 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(shellJs, /CivilizationPanelAdapter|civilizationPanel/);
   assert.doesNotMatch(shellJs, /MilitaryPanelAdapter|militaryPanel|TerritoryActionAdapter|TerritoryUIRenderer|territoryActions|territoryRenderer/);
   assert.doesNotMatch(shellJs, /NamingModalAdapter|namingModal/);
+  assert.doesNotMatch(shellJs, /FloatingTextAdapter|floatingText/);
 });

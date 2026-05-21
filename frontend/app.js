@@ -631,7 +631,7 @@ const Game = {
   },
 
   showFloatingText(message) {
-    const shown = this.floatingText?.show(message);
+    const shown = this.canvasShell?.showFloatingText?.(message);
     if (!shown) this.log(message);
   },
 

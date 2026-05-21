@@ -916,6 +916,29 @@ test('CanvasGameRenderer renders naming prompt modal and actions on canvas', () 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeNaming'));
 });
 
+test('CanvasGameRenderer draws floating text effects on canvas', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: { foodValue: '10', foodRate: '+0/s', knowledgeValue: '1', knowledgeRate: '+0/s', woodValue: '0', woodRate: '+0/s' },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildPopulationViewState: () => ({ text: { total: 3, max: 3, unassigned: 0 }, jobs: [] }),
+  });
+
+  renderer.render({ currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    floatingTexts: [{ text: '建造成功！', progress: 0.25, color: '#74d3a0' }],
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建造成功！'));
+});
+
 test('H5CanvasGameRenderer render calls drawing primitives with presenter guard', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new H5CanvasGameRenderer({ ctx, width: 390, height: 844 });

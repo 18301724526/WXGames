@@ -11,6 +11,7 @@
       this.lastGame = null;
       this.resizeDisposer = null;
       this.tapDisposer = null;
+      this.floatTimer = null;
       this.showSettings = false;
       this.showLogs = false;
       this.showResourceDetails = false;
@@ -25,6 +26,8 @@
         inputValue: '',
         submitting: false,
       };
+      this.floatingTexts = [];
+      this.floatDurationMs = options.floatDurationMs || 1200;
     }
 
     createRenderer(canvas) {
@@ -94,6 +97,62 @@
     getTutorialTarget(key) {
       if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
       return null;
+    }
+
+    now() {
+      return Date.now();
+    }
+
+    showFloatingText(text, options = {}) {
+      const content = String(text ?? '').trim();
+      if (!content) return false;
+      const now = this.now();
+      this.floatingTexts.unshift({
+        id: `${now}:${content}:${this.floatingTexts.length}`,
+        text: content,
+        color: options.color || '#74d3a0',
+        createdAt: now,
+        durationMs: options.durationMs || this.floatDurationMs,
+      });
+      this.floatingTexts = this.floatingTexts.slice(0, 4);
+      this.startFloatTimer();
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    getFloatingTextView(now = this.now()) {
+      return this.floatingTexts
+        .map((effect) => ({
+          ...effect,
+          progress: Math.max(0, Math.min(1, (now - effect.createdAt) / Math.max(1, effect.durationMs))),
+        }))
+        .filter((effect) => effect.progress < 1);
+    }
+
+    pruneFloatingTexts(now = this.now()) {
+      const next = this.floatingTexts.filter((effect) => now - effect.createdAt < effect.durationMs);
+      const changed = next.length !== this.floatingTexts.length;
+      this.floatingTexts = next;
+      return changed;
+    }
+
+    startFloatTimer() {
+      if (this.floatTimer || !this.runtime?.setInterval) return;
+      this.floatTimer = this.runtime.setInterval(() => {
+        const changed = this.pruneFloatingTexts();
+        if (!this.floatingTexts.length) {
+          this.stopFloatTimer();
+        }
+        if (changed || this.floatingTexts.length) {
+          this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        }
+      }, 80);
+    }
+
+    stopFloatTimer() {
+      if (!this.floatTimer) return;
+      this.runtime?.clearInterval?.(this.floatTimer);
+      this.floatTimer = null;
     }
 
     openNaming(view = {}) {
@@ -371,6 +430,7 @@
         activeEventId: this.activeEventId,
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
         naming: this.naming,
+        floatingTexts: this.getFloatingTextView(),
       });
       return true;
     }

@@ -81,6 +81,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(renderer, /renderMilitaryWorldView/);
   assert.match(renderer, /renderWorldSiteModal/);
   assert.match(renderer, /renderNamingModal/);
+  assert.match(renderer, /renderFloatingTexts/);
   assert.match(renderer, /type: 'switchMilitaryView'/);
   assert.match(renderer, /type: cell\.action === 'claim' \? 'claimScout' : 'scoutTerritory'/);
   assert.match(renderer, /type: 'openWorldSite'/);
@@ -91,7 +92,8 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(presenter, /buildWorldRadarViewState/);
   assert.match(html, /style\.css\?v=[^"]+/);
   assert.doesNotMatch(css, /naming-modal-content|naming-input|naming-message/);
-  assert.match(html, /floating-text\.js\?v=floating-adapter-v3/);
+  assert.doesNotMatch(html, /floating-text\.js|id="fxLayer"/);
+  assert.doesNotMatch(css, /fx-layer|floating-text|particleFly|screen-flash|floatUp/);
   assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
   assert.doesNotMatch(html, /EventUIRenderer\.js/);

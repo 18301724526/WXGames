@@ -1908,6 +1908,34 @@
       );
     }
 
+    renderFloatingTexts(effects = []) {
+      if (!Array.isArray(effects) || !effects.length) return;
+      const layout = this.getLayout();
+      const centerX = layout.contentX + layout.contentWidth / 2;
+      effects.slice(0, 4).forEach((effect, index) => {
+        const progress = Math.max(0, Math.min(1, Number(effect.progress) || 0));
+        const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+        if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = Math.max(0, 1 - progress);
+        const y = 128 - progress * 58 - index * 22;
+        const text = this.truncateText(effect.text || '', layout.contentWidth - 52, { size: 15, bold: true });
+        const textWidth = Math.min(layout.contentWidth - 36, Math.max(96, this.measureTextWidth(text, { size: 15, bold: true }) + 28));
+        this.drawPanel(centerX - textWidth / 2, y - 8, textWidth, 30, {
+          fill: 'rgba(16, 20, 14, 0.62)',
+          stroke: 'rgba(116, 211, 160, 0.24)',
+          radius: 15,
+          inset: 'rgba(116, 211, 160, 0.08)',
+        });
+        this.drawText(text, centerX, y + 7, {
+          size: 15,
+          bold: true,
+          color: effect.color || '#74d3a0',
+          baseline: 'middle',
+          align: 'center',
+        });
+        if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      });
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
@@ -1971,6 +1999,7 @@
       if (options.naming) {
         this.renderNamingModal(options.naming);
       }
+      this.renderFloatingTexts(options.floatingTexts || []);
     }
 
     renderSettingsPanel() {
@@ -2233,6 +2262,7 @@
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
+      this.renderFloatingTexts(options.floatingTexts || []);
     }
   }
 
