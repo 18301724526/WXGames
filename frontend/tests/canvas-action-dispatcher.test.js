@@ -14,7 +14,7 @@ function extractActionTypes(source) {
   return actions;
 }
 
-test('H5 与小游戏当前 action 覆盖矩阵明确记录共享设置面板迁移起点', () => {
+test('H5 与小游戏当前 action 覆盖矩阵明确记录共享日志面板迁移起点', () => {
   const h5Shell = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'H5CanvasAppShell.js'), 'utf8');
   const miniGameApp = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'MiniGameApp.js'), 'utf8');
   const h5Actions = extractActionTypes(h5Shell);
@@ -28,13 +28,16 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录共享设置面板迁
   assert.ok(sharedActions.includes('openCitySwitcher'));
   assert.ok(sharedActions.includes('closeCitySwitcher'));
   assert.ok(sharedActions.includes('claimScout'));
-  // openSettings/closeSettings 已迁入 dispatcher，不再在 H5 直接 if 中处理
+  // openSettings/closeSettings/openLogs/closeLogs 已迁入 dispatcher，不再在 H5 直接 if 中处理
   assert.equal(h5Actions.has('openSettings'), false);
   assert.equal(h5Actions.has('closeSettings'), false);
+  assert.equal(h5Actions.has('openLogs'), false);
+  assert.equal(h5Actions.has('closeLogs'), false);
   assert.equal(miniActions.has('openSettings'), false);
+  assert.equal(miniActions.has('openLogs'), false);
 });
 
-test('CanvasActionDispatcher 阶段 3 第三批接管设置面板纯 UI action', () => {
+test('CanvasActionDispatcher 阶段 3 第四批接管日志面板纯 UI action', () => {
   const dispatcher = new CanvasActionDispatcher();
 
   assert.deepEqual(CanvasActionDispatcher.supportedActions(), [
@@ -45,6 +48,8 @@ test('CanvasActionDispatcher 阶段 3 第三批接管设置面板纯 UI action',
     'closeCitySwitcher',
     'openSettings',
     'closeSettings',
+    'openLogs',
+    'closeLogs',
   ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
@@ -53,6 +58,8 @@ test('CanvasActionDispatcher 阶段 3 第三批接管设置面板纯 UI action',
   assert.equal(dispatcher.canHandle({ type: 'closeCitySwitcher' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openSettings' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeSettings' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openLogs' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeLogs' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
 });
 
@@ -137,5 +144,27 @@ test('CanvasActionDispatcher 通过注入上下文处理设置面板开关，不
     ['render', 'openSettings'],
     ['closeSettings', 'closeSettings'],
     ['render', 'closeSettings'],
+  ]);
+});
+
+test('CanvasActionDispatcher 通过注入上下文处理日志面板开关，不依赖 H5 或小游戏类', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'openLogs' }, {
+    openLogs(action) { calls.push(['openLogs', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.equal(dispatcher.handle({ type: 'closeLogs' }, {
+    closeLogs(action) { calls.push(['closeLogs', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['openLogs', 'openLogs'],
+    ['render', 'openLogs'],
+    ['closeLogs', 'closeLogs'],
+    ['render', 'closeLogs'],
   ]);
 });

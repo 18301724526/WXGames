@@ -72,6 +72,22 @@
         return closed;
       }
 
+      if (action.type === 'openLogs') {
+        const opened = typeof context.openLogs === 'function'
+          ? context.openLogs(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeLogs') {
+        const closed = typeof context.closeLogs === 'function'
+          ? context.closeLogs(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
@@ -84,6 +100,8 @@
         'closeCitySwitcher',
         'openSettings',
         'closeSettings',
+        'openLogs',
+        'closeLogs',
       ];
     }
   }
