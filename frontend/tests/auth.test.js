@@ -1,9 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
 const UIStatePresenter = require('../js/state/UIStatePresenter');
-const AuthShellAdapter = require('../js/ui/AuthShellAdapter');
 const H5AuthStorageAdapter = require('../js/ui/H5AuthStorageAdapter');
 const H5AuthRuntimeAdapter = require('../js/ui/H5AuthRuntimeAdapter');
+
+const projectRoot = path.join(__dirname, '..', '..');
 
 function createStorage(initial = {}) {
   const store = new Map(Object.entries(initial));
@@ -20,26 +24,34 @@ function createStorage(initial = {}) {
   };
 }
 
-function createElement(overrides = {}) {
+function createCanvasShell() {
   return {
-    value: '',
-    checked: false,
-    textContent: '',
-    style: {},
-    dataset: {},
-    listeners: {},
-    addEventListener(type, handler) {
-      this.listeners[type] = handler;
+    auth: {
+      view: {},
+      credentials: {},
     },
-    ...overrides,
-  };
-}
-
-function createDocument(elements) {
-  return {
-    getElementById(id) {
-      return elements[id] || null;
+    setLoginMessage(message) {
+      this.auth.view = {
+        ...this.auth.view,
+        loginPanelVisible: true,
+        appVisible: false,
+        message: message || '',
+      };
     },
+    applyAuthShell(view) {
+      this.auth.view = { ...view };
+    },
+    applyCredentials(view) {
+      this.auth.credentials = { ...view };
+    },
+    readCredentials() {
+      return {
+        username: String(this.auth.credentials.usernameValue || '').trim().toLowerCase(),
+        password: this.auth.credentials.passwordValue || '',
+        rememberPassword: Boolean(this.auth.credentials.rememberPasswordChecked),
+      };
+    },
+    renderReadOnly() {},
   };
 }
 
@@ -48,6 +60,8 @@ function createGame() {
     apiBase: 'http://localhost:3000/api',
     token: null,
     playerId: null,
+    canvasShell: createCanvasShell(),
+    state: { currentTab: 'resources' },
     buildingAPI: { setToken(token) { this.token = token; } },
     applyApiState(data) { this.lastAppliedState = data; },
     startHeartbeat() { this.heartbeatStarted = true; },
@@ -56,33 +70,24 @@ function createGame() {
   };
 }
 
-test('记住密码会在登录面板回填用户名和密码', async () => {
+test('记住密码会回填到 Canvas 登录状态', async () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
 
   try {
-    const elements = {
-      loginPanel: createElement(),
-      loginMessage: createElement(),
-      app: createElement(),
-      loginUsername: createElement(),
-      loginPassword: createElement(),
-      rememberPassword: createElement(),
-    };
     global.window = {};
     global.document = undefined;
+    global.localStorage = undefined;
     const storage = createStorage({
       cf_remember_enabled: 'true',
       cf_remember_username: 'test2',
       cf_remember_password: '123456',
     });
-    global.localStorage = undefined;
 
     require('../auth');
 
     const game = createGame();
-    game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
     game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
     global.window.mountAuthMethods(game, {
       presenter: UIStatePresenter,
@@ -91,9 +96,10 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
     });
     game.showLoginPanel();
 
-    assert.equal(elements.loginUsername.value, 'test2');
-    assert.equal(elements.loginPassword.value, '123456');
-    assert.equal(elements.rememberPassword.checked, true);
+    assert.equal(game.canvasShell.auth.credentials.usernameValue, 'test2');
+    assert.equal(game.canvasShell.auth.credentials.passwordValue, '123456');
+    assert.equal(game.canvasShell.auth.credentials.rememberPasswordChecked, true);
+    assert.equal(game.canvasShell.auth.view.loginPanelVisible, true);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
@@ -102,25 +108,17 @@ test('记住密码会在登录面板回填用户名和密码', async () => {
   }
 });
 
-test('登录会提交用户名密码并保存记住密码信息', async () => {
+test('登录会读取 Canvas 凭据并保存记住密码信息', async () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
   const originalLocalStorage = global.localStorage;
   const originalFetch = global.fetch;
 
   try {
-    const elements = {
-      loginPanel: createElement(),
-      loginMessage: createElement(),
-      app: createElement(),
-      loginUsername: createElement(),
-      loginPassword: createElement(),
-      rememberPassword: createElement(),
-    };
     global.window = {};
     global.document = undefined;
-    const storage = createStorage();
     global.localStorage = undefined;
+    const storage = createStorage();
 
     let requestBody = null;
     global.fetch = async (url, options) => {
@@ -144,16 +142,17 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
     require('../auth');
 
     const game = createGame();
-    game.authShell = AuthShellAdapter.fromDocument(createDocument(elements));
     game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
     global.window.mountAuthMethods(game, {
       presenter: UIStatePresenter,
       authStorage: game.authStorage,
       authRuntime: H5AuthRuntimeAdapter.fromRuntime({}),
     });
-    elements.loginUsername.value = 'test1';
-    elements.loginPassword.value = '123456';
-    elements.rememberPassword.checked = true;
+    game.canvasShell.applyCredentials({
+      usernameValue: 'test1',
+      passwordValue: '123456',
+      rememberPasswordChecked: true,
+    });
     await game.handleLogin();
 
     assert.deepEqual(requestBody, { username: 'test1', password: '123456' });
@@ -164,6 +163,7 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
     assert.equal(storage.getItem('cf_remember_password'), '123456');
     assert.equal(game.heartbeatStarted, true);
     assert.deepEqual(game.lastAppliedState.gameState, { currentEra: 0 });
+    assert.equal(game.canvasShell.auth.view.loginPanelVisible, false);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
@@ -171,4 +171,10 @@ test('登录会提交用户名密码并保存记住密码信息', async () => {
     global.fetch = originalFetch;
     delete require.cache[require.resolve('../auth')];
   }
+});
+
+test('auth module source has no DOM shell dependency', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'auth.js'), 'utf8');
+
+  assert.doesNotMatch(source, /AuthShellAdapter|authShell|document|getElementById|querySelector|classList|style\.|textContent|addEventListener/);
 });

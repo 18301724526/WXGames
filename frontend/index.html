@@ -6,37 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>文明火种</title>
     <link rel="stylesheet" href="style.css?v=ui-state-shell-v1">
-    <style>
-        .login-panel { display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
-        .login-panel .login-box { background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:360px; text-align:center; }
-        .login-panel h2 { margin-bottom:8px; font-size:24px; }
-        .login-panel .login-msg { color:#e94560; font-size:14px; margin-bottom:16px; min-height:20px; }
-        .login-panel input { width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); margin-bottom:12px; font-size:14px; }
-        .login-panel .login-btns { display:flex; gap:8px; }
-        .login-panel .login-btns button { flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; font-size:14px; font-weight:bold; }
-        .btn-login { background:var(--accent); color:#fff; }
-        .login-panel .login-remember { display:flex; align-items:center; gap:8px; margin:4px 0 14px; color:var(--text-secondary); font-size:13px; }
-        .login-panel .login-remember input { width:auto; margin:0; }
-    </style>
 </head>
 <body>
-    <div class="login-panel" id="loginPanel">
-        <div class="login-box">
-            <div style="font-size:48px;margin-bottom:8px;">🔥</div>
-            <h2>文明火种</h2>
-            <div class="login-msg" id="loginMessage"></div>
-            <input type="text" id="loginUsername" placeholder="用户名" autocomplete="username" />
-            <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password" />
-            <label class="login-remember" for="rememberPassword">
-                <input type="checkbox" id="rememberPassword" />
-                <span>记住密码</span>
-            </label>
-            <div class="login-btns">
-                <button class="btn-login" id="btnLogin" type="button">登录</button>
-            </div>
-        </div>
-    </div>
-
     <div id="app">
         <header class="top-bar">
             <div class="top-status-row">
@@ -98,7 +69,6 @@
     <script src="js/services/GameStateSync.js?v=sync-scheduler-v2"></script>
     <script src="js/services/UpdateChecker.js?v=update-scheduler-v2"></script>
     <script src="js/ui/TutorialCanvasRenderer.js?v=tutorial-canvas-v1"></script>
-    <script src="js/ui/AuthShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/NavigationShellAdapter.js?v=explicit-doc-v1"></script>
     <script src="js/ui/H5GameBootstrap.js?v=h5-bootstrap-explicit-doc-v1"></script>
     <script src="js/ui/H5TextAdapter.js?v=explicit-doc-v1"></script>

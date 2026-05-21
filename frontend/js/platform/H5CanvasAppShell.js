@@ -26,6 +26,18 @@
         inputValue: '',
         submitting: false,
       };
+      this.auth = {
+        view: {
+          loginPanelVisible: false,
+          appVisible: true,
+          message: '',
+        },
+        credentials: {
+          usernameValue: '',
+          passwordValue: '',
+          rememberPasswordChecked: false,
+        },
+      };
       this.tutorialHighlight = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
@@ -54,6 +66,8 @@
       this.createRenderer(canvas);
       this.mounted = true;
       this.lastGame = game || null;
+      if (game?.authView) this.applyAuthShell(game.authView);
+      if (game?.authCredentials) this.applyCredentials(game.authCredentials);
       if (this.runtime?.onResize && !this.resizeDisposer) {
         this.resizeDisposer = this.runtime.onResize((size) => this.handleResize(size));
       }
@@ -217,6 +231,86 @@
       this.floatTimer = null;
     }
 
+    applyAuthShell(view = {}) {
+      this.auth = {
+        ...this.auth,
+        view: {
+          loginPanelVisible: Boolean(view.loginPanelVisible),
+          appVisible: view.appVisible !== false,
+          message: view.message || '',
+        },
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+    }
+
+    setLoginMessage(message) {
+      this.applyAuthShell({
+        ...(this.auth.view || {}),
+        loginPanelVisible: true,
+        appVisible: false,
+        message: message || '',
+      });
+    }
+
+    applyCredentials(view = {}) {
+      this.auth = {
+        ...this.auth,
+        credentials: {
+          usernameValue: view.usernameValue || '',
+          passwordValue: view.passwordValue || '',
+          rememberPasswordChecked: Boolean(view.rememberPasswordChecked),
+        },
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+    }
+
+    readCredentials() {
+      const credentials = this.auth.credentials || {};
+      return {
+        username: String(credentials.usernameValue || '').trim().toLowerCase(),
+        password: credentials.passwordValue || '',
+        rememberPassword: Boolean(credentials.rememberPasswordChecked),
+      };
+    }
+
+    toggleRememberPassword() {
+      const credentials = this.auth.credentials || {};
+      this.auth = {
+        ...this.auth,
+        credentials: {
+          ...credentials,
+          rememberPasswordChecked: !credentials.rememberPasswordChecked,
+        },
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    requestAuthInput(field) {
+      if (!this.auth.view?.loginPanelVisible || !this.runtime?.requestTextInput) return false;
+      const credentials = this.auth.credentials || {};
+      const isPassword = field === 'password';
+      Promise.resolve(this.runtime.requestTextInput({
+        title: isPassword ? '输入密码' : '输入用户名',
+        message: isPassword ? '' : '请输入用于登录的用户名',
+        placeholder: isPassword ? '密码' : '用户名',
+        value: isPassword ? '' : (credentials.usernameValue || ''),
+        maxLength: isPassword ? 64 : 32,
+      })).then((value) => {
+        if (value === null || value === undefined || !this.auth.view?.loginPanelVisible) return;
+        const nextValue = String(value);
+        this.auth = {
+          ...this.auth,
+          credentials: {
+            ...this.auth.credentials,
+            [isPassword ? 'passwordValue' : 'usernameValue']: nextValue,
+          },
+        };
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      }).catch(() => {});
+      return true;
+    }
+
     openNaming(view = {}) {
       this.naming = {
         visible: true,
@@ -281,6 +375,19 @@
     }
 
     handleAction(action, event) {
+      if (action.type === 'requestLoginUsername') {
+        return this.requestAuthInput('username');
+      }
+      if (action.type === 'requestLoginPassword') {
+        return this.requestAuthInput('password');
+      }
+      if (action.type === 'toggleRememberPassword') {
+        return this.toggleRememberPassword();
+      }
+      if (action.type === 'submitLogin') {
+        if (!this.onAction) return false;
+        return this.onAction(action, event) !== false;
+      }
       if (action.type === 'requestNamingInput') {
         return this.requestNamingInput();
       }
@@ -492,6 +599,7 @@
         activeEventId: this.activeEventId,
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
         naming: this.naming,
+        auth: this.auth,
         floatingTexts: this.getFloatingTextView(),
         tutorialHighlight: this.tutorialHighlight,
       });

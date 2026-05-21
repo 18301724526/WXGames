@@ -2003,10 +2003,125 @@
       });
     }
 
+    renderLoginPanel(auth = {}) {
+      const view = auth.view || {};
+      if (!view.loginPanelVisible) return;
+      const credentials = auth.credentials || {};
+      this.setHitTargets([]);
+      if (this.ctx) {
+        this.ctx.fillStyle = '#14120f';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(360, layout.contentWidth - 12);
+      const panelHeight = 344;
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(72, (this.height - panelHeight) / 2 - 8);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.98)'],
+            [1, 'rgba(22, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+
+      const iconSize = 58;
+      const iconX = x + panelWidth / 2 - iconSize / 2;
+      const iconY = y + 24;
+      this.drawPanel(iconX, iconY, iconSize, iconSize, {
+        fill: 'rgba(92, 63, 34, 0.92)',
+        stroke: 'rgba(240, 180, 91, 0.42)',
+        radius: iconSize / 2,
+        inset: 'rgba(255, 231, 184, 0.14)',
+      });
+      this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 12, iconY + 12, 34, 34);
+      this.drawText('\u6587\u660e\u706b\u79cd', x + panelWidth / 2, y + 104, {
+        size: 22,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+
+      const message = view.message || '';
+      this.drawText(this.truncateText(message, panelWidth - 48, { size: 13 }), x + panelWidth / 2, y + 134, {
+        size: 13,
+        color: message ? '#e94560' : 'rgba(234, 234, 234, 0.42)',
+        align: 'center',
+      });
+
+      const inputX = x + 24;
+      const inputWidth = panelWidth - 48;
+      const inputHeight = 42;
+      const usernameY = y + 160;
+      const passwordY = usernameY + 52;
+      const drawInput = (fieldY, label, value, actionType, masked = false) => {
+        this.drawPanel(inputX, fieldY, inputWidth, inputHeight, {
+          fill: 'rgba(23, 18, 13, 0.56)',
+          stroke: 'rgba(116, 211, 160, 0.24)',
+          radius: 8,
+          inset: 'rgba(116, 211, 160, 0.08)',
+        });
+        const displayValue = value
+          ? (masked ? '\u2022'.repeat(Math.min(12, String(value).length)) : value)
+          : label;
+        this.drawText(this.truncateText(displayValue, inputWidth - 24, { size: 14 }), inputX + 12, fieldY + 21, {
+          size: 14,
+          color: value ? '#f6e8c8' : 'rgba(234, 234, 234, 0.48)',
+          baseline: 'middle',
+        });
+        this.addHitTarget({ x: inputX, y: fieldY, width: inputWidth, height: inputHeight }, { type: actionType });
+      };
+      drawInput(usernameY, '\u7528\u6237\u540d', credentials.usernameValue || '', 'requestLoginUsername');
+      drawInput(passwordY, '\u5bc6\u7801', credentials.passwordValue || '', 'requestLoginPassword', true);
+
+      const rememberY = passwordY + 54;
+      const checkboxSize = 18;
+      this.drawPanel(inputX, rememberY, checkboxSize, checkboxSize, {
+        fill: credentials.rememberPasswordChecked ? 'rgba(116, 211, 160, 0.68)' : 'rgba(23, 18, 13, 0.56)',
+        stroke: 'rgba(116, 211, 160, 0.34)',
+        radius: 5,
+      });
+      if (credentials.rememberPasswordChecked) {
+        this.drawText('\u2713', inputX + checkboxSize / 2, rememberY + checkboxSize / 2, {
+          size: 13,
+          bold: true,
+          color: '#0d1510',
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
+      this.drawText('\u8bb0\u4f4f\u5bc6\u7801', inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
+        size: 13,
+        color: '#cbbd96',
+        baseline: 'middle',
+      });
+      this.addHitTarget({ x: inputX, y: rememberY - 6, width: 112, height: 32 }, { type: 'toggleRememberPassword' });
+
+      const loginY = y + panelHeight - 58;
+      this.drawButton(inputX, loginY, inputWidth, 40, '\u767b\u5f55', {
+        size: 14,
+        bold: true,
+        radius: 9,
+        active: true,
+      });
+      this.addHitTarget({ x: inputX, y: loginY, width: inputWidth, height: 40 }, { type: 'submitLogin' });
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
       this.clear();
+      if (options.auth?.view?.loginPanelVisible) {
+        this.renderLoginPanel(options.auth);
+        return;
+      }
       const topBarBottom = this.renderTopBar(state);
       if (activeTab === 'resources') {
         this.renderPopulation(state, topBarBottom);
@@ -2316,6 +2431,10 @@
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
       this.clear();
+      if (options.auth?.view?.loginPanelVisible) {
+        this.renderLoginPanel(options.auth);
+        return;
+      }
       const topBarBottom = this.renderTopBar(state);
       const populationBottom = this.renderPopulation(state, topBarBottom);
       const panelTop = activeTab === 'resources' ? populationBottom : topBarBottom;

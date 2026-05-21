@@ -11,11 +11,12 @@ window.mountAuthMethods = function(game, deps = {}) {
   }
 
   function setLoginMessage(message) {
-    game.authShell?.setMessage(message);
+    game.canvasShell?.setLoginMessage?.(message);
   }
 
   function applyAuthShellView(view) {
-    game.authShell?.applyShell(view);
+    game.authView = view;
+    game.canvasShell?.applyAuthShell?.(view);
   }
 
   function showAuthenticatedShell() {
@@ -28,7 +29,8 @@ window.mountAuthMethods = function(game, deps = {}) {
 
   function fillRememberedCredentials() {
     const view = presenter.buildAuthCredentialViewState(authStorage?.getCredentialSnapshot?.() || {});
-    game.authShell?.applyCredentials(view);
+    game.authCredentials = view;
+    game.canvasShell?.applyCredentials?.(view);
   }
 
   async function parseResponsePayload(resp) {
@@ -58,7 +60,7 @@ window.mountAuthMethods = function(game, deps = {}) {
   };
 
   game.handleLogin = function() {
-    const credentials = this.authShell?.readCredentials() || {};
+    const credentials = this.canvasShell?.readCredentials?.() || this.authCredentials || {};
     const username = credentials.username;
     const password = credentials.password;
     const rememberPassword = credentials.rememberPassword;
@@ -119,8 +121,18 @@ window.mountAuthMethods = function(game, deps = {}) {
     }
   };
 
-  game.toggleSettings = function() { this.authShell?.toggleSettings(); };
-  game.closeSettings = function() { this.authShell?.closeSettings(); };
+  game.toggleSettings = function() {
+    if (!this.canvasShell) return false;
+    this.canvasShell.showSettings = !this.canvasShell.showSettings;
+    this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    return true;
+  };
+  game.closeSettings = function() {
+    if (!this.canvasShell) return false;
+    this.canvasShell.showSettings = false;
+    this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    return true;
+  };
 
   // 已有 token 时自动启动 heartbeat（刷新页面无需重新登录）
   if (game.token) {
@@ -130,8 +142,6 @@ window.mountAuthMethods = function(game, deps = {}) {
     // 无 token：显示登录面板
     game.showLoginPanel();
   }
-
-  game.authShell?.bindLoginEvents(() => game.handleLogin());
 
   console.log('[auth.js] 账号管理模块已挂载');
 };

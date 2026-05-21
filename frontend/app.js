@@ -154,6 +154,10 @@ const Game = {
           this.submitNaming(action.name);
           return true;
         }
+        if (action?.type === 'submitLogin') {
+          this.handleLogin?.();
+          return true;
+        }
         if (action?.type === 'selectCity') {
           this.switchCity(action.cityId);
           return true;
@@ -235,18 +239,6 @@ const Game = {
       },
       onMilitaryViewClick: (view) => this.switchMilitaryView(view),
       onAdvanceEra: () => this.advanceEra(),
-    });
-
-    this.authShell?.bindSettingsEvents({
-      onToggleSettings: () => this.toggleSettings(),
-      onReset: async () => {
-        await this.resetGame();
-        this.closeSettings && this.closeSettings();
-      },
-      onLogout: () => {
-        this.closeSettings && this.closeSettings();
-        this.logout();
-      },
     });
   },
 

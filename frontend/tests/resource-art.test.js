@@ -98,7 +98,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
   assert.doesNotMatch(html, /EventUIRenderer\.js/);
   assert.doesNotMatch(html, /RuntimeLogAdapter\.js|LogModalAdapter\.js/);
-  assert.match(html, /AuthShellAdapter\.js\?v=explicit-doc-v1/);
+  assert.doesNotMatch(html, /AuthShellAdapter\.js|id="loginPanel"|id="loginUsername"|id="loginPassword"|id="rememberPassword"|id="btnLogin"/);
   assert.doesNotMatch(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /NamingModalAdapter\.js|id="namingModal"|id="namingInput"/);
@@ -126,7 +126,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(html, /logs\.js\?v=h5-module-deps-v1/);
   assert.doesNotMatch(html, /id="advisorBtn"/);
   assert.doesNotMatch(html, /id="advisorModal"/);
-  assert.match(html, /id="btnLogin"/);
+  assert.doesNotMatch(css, /login-panel|login-box|btn-login|login-remember/);
   assert.doesNotMatch(html, /id="logButton"/);
   assert.doesNotMatch(html, /id="logModal"/);
   assert.doesNotMatch(html, /id="settingsBtn"/);

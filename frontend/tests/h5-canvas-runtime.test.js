@@ -147,6 +147,18 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
         inputValue: '',
         submitting: false,
       },
+      auth: {
+        view: {
+          loginPanelVisible: false,
+          appVisible: true,
+          message: '',
+        },
+        credentials: {
+          usernameValue: '',
+          passwordValue: '',
+          rememberPasswordChecked: false,
+        },
+      },
       floatingTexts: [],
       tutorialHighlight: null,
     },
@@ -628,6 +640,60 @@ test('H5 canvas runtime provides platform text input without exposing DOM input 
   assert.equal(value, '河湾城');
   assert.match(prompts[0][0], /当前名称：东岸/);
   assert.match(prompts[0][0], /为这座城市命名/);
+});
+
+test('H5 canvas app shell owns login credentials and dispatches canvas login actions', async () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const requested = [];
+  runtime.prompt = (message, value) => {
+    requested.push({ message, value });
+    return requested.length === 1 ? 'TestUser' : 'secret';
+  };
+  const actions = [
+    { type: 'requestLoginUsername' },
+    { type: 'requestLoginPassword' },
+    { type: 'toggleRememberPassword' },
+    { type: 'submitLogin' },
+  ];
+  const dispatched = [];
+  const renderCalls = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  shell.applyAuthShell({ loginPanelVisible: true, appVisible: false, message: '请登录' });
+  listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1000 });
+  await Promise.resolve();
+  assert.equal(shell.auth.credentials.usernameValue, 'TestUser');
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 352, type: 'pointerup', timeStamp: 1300 });
+  await Promise.resolve();
+  assert.equal(shell.auth.credentials.passwordValue, 'secret');
+
+  listeners['document:pointerup']({ clientX: 48, clientY: 405, type: 'pointerup', timeStamp: 1600 });
+  assert.equal(shell.auth.credentials.rememberPasswordChecked, true);
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 470, type: 'pointerup', timeStamp: 1900 });
+  assert.deepEqual(dispatched, [{ type: 'submitLogin' }]);
+  assert.deepEqual(shell.readCredentials(), {
+    username: 'testuser',
+    password: 'secret',
+    rememberPassword: true,
+  });
+  assert.equal(renderCalls.at(-1).auth.view.loginPanelVisible, true);
 });
 
 test('H5 canvas app shell owns building pager state without DOM adapter', () => {

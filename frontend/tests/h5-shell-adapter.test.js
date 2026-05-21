@@ -53,7 +53,6 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     EventController: class EventController {},
     BuildingController: class BuildingController {},
     TerritoryController: class TerritoryController {},
-    AuthShellAdapter: makeFactory('auth', calls),
     NavigationShellAdapter: makeFactory('navigation', calls),
     TutorialCanvasRenderer: class TutorialCanvasRenderer {
       constructor() {
@@ -112,7 +111,7 @@ test('H5 shell adapter collects H5 adapters in one place', () => {
     assert.equal(shell.logModal, undefined);
     assert.equal(shell.runtimeLog, undefined);
     assert.equal(shell.territoryRenderer, undefined);
-    assert.ok(calls.some(([name, callDoc]) => name === 'auth' && callDoc === doc));
+    assert.equal(shell.authShell, undefined);
     assert.ok(calls.some(([name, callRuntime]) => name === 'updateRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authRuntime' && callRuntime === runtime));
     assert.ok(calls.some(([name, callRuntime]) => name === 'authStorage' && callRuntime === runtime));
@@ -150,6 +149,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(appJs, /window\.mount(?:AuthMethods|PopulationMethods|LogMethods)/);
   assert.match(appJs, /this\.gameModules\?\.mount\?\.\(this\)/);
   assert.doesNotMatch(appJs, /AuthShellAdapter\?\.fromDocument\(document/);
+  assert.doesNotMatch(shellJs, /AuthShellAdapter|authShell/);
   assert.doesNotMatch(appJs, /PopulationPanelAdapter\?\.fromDocument\(document/);
   assert.doesNotMatch(shellJs, /ResourceRenderer|ResourceDetailModalAdapter|CitySwitcherAdapter|PopulationPanelAdapter|populationPanel|AdvisorPanelAdapter|advisorPanel/);
   assert.doesNotMatch(shellJs, /CivilizationPanelAdapter|civilizationPanel/);

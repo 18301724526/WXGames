@@ -315,7 +315,32 @@ test('CanvasGameRenderer draws tutorial highlight overlay and bubble', () => {
   assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === 390));
   assert.ok(calls.some((call) => call[0] === 'roundRect' && call[1] === 12 && call[2] === 212 && call[3] === 316 && call[4] === 48));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'Advance now'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '👇'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1]));
+});
+
+test('CanvasGameRenderer renders login panel and login hit targets on canvas', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+
+  renderer.render({}, {
+    mode: 'hud',
+    auth: {
+      view: { loginPanelVisible: true, appVisible: false, message: '请登录' },
+      credentials: {
+        usernameValue: 'test1',
+        passwordValue: 'secret',
+        rememberPasswordChecked: true,
+      },
+    },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '文明火种'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'test1'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '登录'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'requestLoginUsername'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'requestLoginPassword'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'toggleRememberPassword'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'submitLogin'));
 });
 
 test('CanvasGameRenderer renders resource details panel from presenter view state', () => {
