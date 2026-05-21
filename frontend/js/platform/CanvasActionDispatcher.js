@@ -136,6 +136,14 @@
         return closed;
       }
 
+      if (action.type === 'resetWorldPan') {
+        const reset = typeof context.resetWorldPan === 'function'
+          ? context.resetWorldPan(action) !== false
+          : false;
+        if (reset && typeof context.render === 'function') context.render(action);
+        return reset;
+      }
+
       return false;
     }
 
@@ -156,6 +164,7 @@
         'closeEvent',
         'openWorldSite',
         'closeWorldSite',
+        'resetWorldPan',
       ];
     }
   }

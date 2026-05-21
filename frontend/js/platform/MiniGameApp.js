@@ -254,6 +254,11 @@
             this.territoryUiState.expeditionSoldiers = '';
             return true;
           },
+          resetWorldPan: () => {
+            this.territoryUiState.worldPanX = 0;
+            this.territoryUiState.worldPanY = 0;
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },
@@ -320,12 +325,6 @@
       }
       if (action.type === 'claimScout') {
         this.runAction(() => this.api.claimScout(action.value));
-        return;
-      }
-      if (action.type === 'resetWorldPan') {
-        this.territoryUiState.worldPanX = 0;
-        this.territoryUiState.worldPanY = 0;
-        this.render();
         return;
       }
       if (action.type === 'changeExpeditionSoldiers') {

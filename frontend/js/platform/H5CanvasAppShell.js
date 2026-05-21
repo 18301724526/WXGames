@@ -500,6 +500,10 @@
             if (!this.onAction) return false;
             return this.onAction(action, event) !== false;
           },
+          resetWorldPan: () => {
+            if (!this.onAction) return false;
+            return this.onAction(action, event) !== false;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
           },
@@ -602,8 +606,7 @@
         return this.onAction(action, event) !== false;
       }
       if (
-        action.type === 'resetWorldPan'
-        || action.type === 'territoryAction'
+        action.type === 'territoryAction'
         || action.type === 'changeExpeditionSoldiers'
       ) {
         if (!this.onAction) return false;
