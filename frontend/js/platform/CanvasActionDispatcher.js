@@ -120,6 +120,22 @@
         return closed;
       }
 
+      if (action.type === 'openWorldSite') {
+        const opened = typeof context.openWorldSite === 'function'
+          ? context.openWorldSite(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeWorldSite') {
+        const closed = typeof context.closeWorldSite === 'function'
+          ? context.closeWorldSite(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
@@ -138,6 +154,8 @@
         'closeAdvisor',
         'openEvent',
         'closeEvent',
+        'openWorldSite',
+        'closeWorldSite',
       ];
     }
   }

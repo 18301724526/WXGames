@@ -403,6 +403,7 @@ node --test frontend/tests/*.test.js
 - 阶段 3 第四批：日志面板打开/关闭迁入共享 dispatcher（v0.1.40）
 - 阶段 3 第五批：顾问面板打开/关闭迁入共享 dispatcher（v0.1.41）
 - 阶段 3 第六批：事件弹窗打开/关闭迁入共享 dispatcher（v0.1.42）
+- 阶段 3 第七批：世界地点弹窗打开/关闭迁入共享 dispatcher（v0.1.43）
 
 ### 阶段 1 结果
 
@@ -426,14 +427,15 @@ node --test frontend/tests/*.test.js
 - `CanvasActionDispatcher` 已接管 `openLogs` / `closeLogs`（仅 H5，小游戏无日志面板）。
 - `CanvasActionDispatcher` 已接管 `openAdvisor` / `closeAdvisor`（仅 H5，小游戏无顾问面板）。
 - `CanvasActionDispatcher` 已接管 `openEvent` / `closeEvent`（H5 与小游戏共享）。
+- `CanvasActionDispatcher` 已接管 `openWorldSite` / `closeWorldSite`（H5 与小游戏共享）。
 - H5 与小游戏均通过注入上下文处理资源详情与城市切换 UI 状态，避免各自重复实现开关逻辑。
-- 已更新 action 覆盖矩阵与 dispatcher 测试，锁定前六批纯 UI action 迁移范围。
-- 本批不涉及后端 API，不改变事件弹窗表现。
+- 已更新 action 覆盖矩阵与 dispatcher 测试，锁定前七批纯 UI action 迁移范围。
+- 本批不涉及后端 API，不改变世界地点弹窗表现。
 
 ### 下一步
 
-等待人工验收阶段 3 第六批。通过后继续阶段 3 下一批纯 UI action：
+等待人工验收阶段 3 第七批。通过后继续阶段 3 下一批纯 UI action：
 
 ```text
-阶段 3：继续迁移纯 UI 状态 action（建议 openWorldSite / closeWorldSite）
+阶段 3：继续迁移纯 UI 状态 action（建议 resetWorldPan）
 ```

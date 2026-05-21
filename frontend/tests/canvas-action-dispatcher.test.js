@@ -14,7 +14,7 @@ function extractActionTypes(source) {
   return actions;
 }
 
-test('H5 与小游戏当前 action 覆盖矩阵明确记录共享事件弹窗迁移起点', () => {
+test('H5 与小游戏当前 action 覆盖矩阵明确记录共享世界地点迁移起点', () => {
   const h5Shell = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'H5CanvasAppShell.js'), 'utf8');
   const miniGameApp = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'MiniGameApp.js'), 'utf8');
   const h5Actions = extractActionTypes(h5Shell);
@@ -23,13 +23,8 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录共享事件弹窗迁
   const sharedActions = [...h5Actions].filter((action) => miniActions.has(action)).sort();
 
   // 以下 action 已迁入 dispatcher，不再在直接 if 分支中处理
-  // assert.ok(sharedActions.includes('switchTab'));
-  // assert.ok(sharedActions.includes('openResourceDetails'));
-  // assert.ok(sharedActions.includes('closeResourceDetails'));
-  // assert.ok(sharedActions.includes('openCitySwitcher'));
-  // assert.ok(sharedActions.includes('closeCitySwitcher'));
   assert.ok(sharedActions.includes('claimScout'));
-  // openSettings/closeSettings/openLogs/closeLogs/openAdvisor/closeAdvisor/openEvent/closeEvent 已迁入 dispatcher，不再在 H5 直接 if 中处理
+  // openSettings/closeSettings/openLogs/closeLogs/openAdvisor/closeAdvisor/openEvent/closeEvent/openWorldSite/closeWorldSite 已迁入 dispatcher
   assert.equal(h5Actions.has('openSettings'), false);
   assert.equal(h5Actions.has('closeSettings'), false);
   assert.equal(h5Actions.has('openLogs'), false);
@@ -38,13 +33,17 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录共享事件弹窗迁
   assert.equal(h5Actions.has('closeAdvisor'), false);
   assert.equal(h5Actions.has('openEvent'), false);
   assert.equal(h5Actions.has('closeEvent'), false);
+  assert.equal(h5Actions.has('openWorldSite'), false);
+  assert.equal(h5Actions.has('closeWorldSite'), false);
   assert.equal(miniActions.has('openSettings'), false);
   assert.equal(miniActions.has('openLogs'), false);
   assert.equal(miniActions.has('openAdvisor'), false);
   assert.equal(miniActions.has('openEvent'), false);
+  assert.equal(miniActions.has('openWorldSite'), false);
+  assert.equal(miniActions.has('closeWorldSite'), false);
 });
 
-test('CanvasActionDispatcher 阶段 3 第六批接管事件弹窗纯 UI action', () => {
+test('CanvasActionDispatcher 阶段 3 第七批接管世界地点纯 UI action', () => {
   const dispatcher = new CanvasActionDispatcher();
 
   assert.deepEqual(CanvasActionDispatcher.supportedActions(), [
@@ -61,6 +60,8 @@ test('CanvasActionDispatcher 阶段 3 第六批接管事件弹窗纯 UI action',
     'closeAdvisor',
     'openEvent',
     'closeEvent',
+    'openWorldSite',
+    'closeWorldSite',
   ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
@@ -75,6 +76,8 @@ test('CanvasActionDispatcher 阶段 3 第六批接管事件弹窗纯 UI action',
   assert.equal(dispatcher.canHandle({ type: 'closeAdvisor' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openEvent' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeEvent' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openWorldSite' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeWorldSite' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
 });
 
@@ -225,5 +228,27 @@ test('CanvasActionDispatcher 通过注入上下文处理事件弹窗开关，不
     ['render', 'openEvent'],
     ['closeEvent', 'closeEvent'],
     ['render', 'closeEvent'],
+  ]);
+});
+
+test('CanvasActionDispatcher 通过注入上下文处理世界地点弹窗开关，不依赖 H5 或小游戏类', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'openWorldSite' }, {
+    openWorldSite(action) { calls.push(['openWorldSite', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.equal(dispatcher.handle({ type: 'closeWorldSite' }, {
+    closeWorldSite(action) { calls.push(['closeWorldSite', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['openWorldSite', 'openWorldSite'],
+    ['render', 'openWorldSite'],
+    ['closeWorldSite', 'closeWorldSite'],
+    ['render', 'closeWorldSite'],
   ]);
 });

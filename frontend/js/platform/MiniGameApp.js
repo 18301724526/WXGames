@@ -244,6 +244,16 @@
             this.activeEventId = null;
             return true;
           },
+          openWorldSite: () => {
+            this.territoryUiState.selectedSiteId = action.siteId || '';
+            return true;
+          },
+          closeWorldSite: () => {
+            this.territoryUiState.selectedSiteId = '';
+            this.territoryUiState.expeditionConfigSiteId = '';
+            this.territoryUiState.expeditionSoldiers = '';
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },
@@ -310,18 +320,6 @@
       }
       if (action.type === 'claimScout') {
         this.runAction(() => this.api.claimScout(action.value));
-        return;
-      }
-      if (action.type === 'openWorldSite') {
-        this.territoryUiState.selectedSiteId = action.siteId || '';
-        this.render();
-        return;
-      }
-      if (action.type === 'closeWorldSite') {
-        this.territoryUiState.selectedSiteId = '';
-        this.territoryUiState.expeditionConfigSiteId = '';
-        this.territoryUiState.expeditionSoldiers = '';
-        this.render();
         return;
       }
       if (action.type === 'resetWorldPan') {
