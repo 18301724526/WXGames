@@ -290,3 +290,57 @@ test('CanvasActionDispatcher 通过注入上下文处理 changeExpeditionSoldier
     ['render', 'changeExpeditionSoldiers'],
   ]);
 });
+
+test('CanvasActionDispatcher handleAsync handles async actions', async () => {
+  const dispatcher = new CanvasActionDispatcher();
+
+  assert.deepEqual(CanvasActionDispatcher.supportedAsyncActions(), [
+    'selectCity',
+    'assignJob',
+    'buildBuilding',
+    'upgradeBuilding',
+    'advanceEra',
+    'claimEvent',
+    'scoutTerritory',
+    'claimScout',
+  ]);
+
+  assert.equal(dispatcher.canHandleAsync({ type: 'selectCity' }), true);
+  assert.equal(dispatcher.canHandleAsync({ type: 'unknown' }), false);
+
+  const calls = [];
+  const result = await dispatcher.handleAsync({ type: 'selectCity', cityId: 'city_1' }, {
+    selectCity: async (action) => {
+      calls.push(['selectCity', action.cityId]);
+      return true;
+    },
+    render: (action) => {
+      calls.push(['render', action.type]);
+    },
+  });
+
+  assert.equal(result.handled, true);
+  assert.equal(result.success, true);
+  assert.deepEqual(calls, [
+    ['selectCity', 'city_1'],
+    ['render', 'selectCity'],
+  ]);
+});
+
+test('CanvasActionDispatcher handleAsync returns not handled for unknown actions', async () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const result = await dispatcher.handleAsync({ type: 'unknown' }, {});
+  assert.equal(result.handled, false);
+});
+
+test('CanvasActionDispatcher handleAsync handles errors gracefully', async () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const result = await dispatcher.handleAsync({ type: 'selectCity' }, {
+    selectCity: async () => {
+      throw new Error('API error');
+    },
+  });
+  assert.equal(result.handled, true);
+  assert.equal(result.success, false);
+  assert.ok(result.error);
+});

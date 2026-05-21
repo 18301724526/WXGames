@@ -198,9 +198,11 @@
       }
     }
 
-    handleTap(point) {
+    async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
+
+      // Try sync dispatcher first
       if (this.actionDispatcher?.canHandle?.(action)) {
         this.actionDispatcher.handle(action, {
           resetForTabSwitch: () => {
@@ -270,12 +272,23 @@
         });
         return;
       }
-      if (action.type === 'selectCity') {
-        this.showCitySwitcher = false;
-        this.activeEventId = null;
-        this.runAction(() => this.api.switchCity(action.cityId));
-        return;
+
+      // Try async dispatcher
+      if (this.actionDispatcher?.canHandleAsync?.(action)) {
+        const result = await this.actionDispatcher.handleAsync(action, {
+          selectCity: async (a) => {
+            this.showCitySwitcher = false;
+            this.activeEventId = null;
+            await this.runAction(() => this.api.switchCity(a.cityId));
+            return true;
+          },
+          render: (dispatchAction) => {
+            if (dispatchAction?.type !== 'switchTab') this.render();
+          },
+        });
+        if (result.handled) return;
       }
+
       if (action.type === 'blockCanvasModal') {
         return;
       }
