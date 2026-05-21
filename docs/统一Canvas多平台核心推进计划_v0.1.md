@@ -394,6 +394,9 @@ node --test frontend/tests/*.test.js
 - 阶段 2 验收修复：军事世界沙盘放大、拖动恢复、侦查报告移入侦查页（v0.1.31）
 - 阶段 2 验收修复：Canvas 接管触摸拖动、顶部资源栏压缩（v0.1.32）
 - 阶段 2 验收修复：世界沙盘拖动兼容 Canvas x/y 指针坐标（v0.1.33）
+- 阶段 2 验收修复：世界沙盘渲染应用 pan 偏移（v0.1.34）
+- 阶段 2 验收修复：雷达圆形裁剪与 iPhone 视口比例修复（v0.1.35）
+- 阶段 3 第一批：资源详情打开/关闭迁入共享 dispatcher（v0.1.36）
 
 ### 阶段 1 结果
 
@@ -409,10 +412,17 @@ node --test frontend/tests/*.test.js
 - H5 与小游戏的 `switchTab` 已优先走共享 dispatcher；旧逻辑保留 fallback，避免一次性大改。
 - 其他 action 暂不迁移，等待人工验收后再进入下一小步。
 
+### 阶段 3 第一批结果
+
+- `CanvasActionDispatcher` 已接管 `openResourceDetails` / `closeResourceDetails`。
+- H5 与小游戏均通过注入上下文处理资源详情 UI 状态，避免各自重复实现开关逻辑。
+- 已更新 action 覆盖矩阵与 dispatcher 测试，锁定第一批纯 UI action 迁移范围。
+- 本批不涉及后端 API，不改变资源详情面板表现。
+
 ### 下一步
 
-等待人工验收阶段 2。通过后进入：
+等待人工验收阶段 3 第一批。通过后继续阶段 3 下一批纯 UI action：
 
 ```text
-阶段 3：逐步迁移纯 UI 状态 action
+阶段 3：继续迁移纯 UI 状态 action（建议 openCitySwitcher / closeCitySwitcher）
 ```

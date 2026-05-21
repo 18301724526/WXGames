@@ -408,6 +408,22 @@
             }
             return false;
           },
+          openResourceDetails: () => {
+            this.showResourceDetails = true;
+            this.showSettings = false;
+            this.showLogs = false;
+            this.showCitySwitcher = false;
+            this.showAdvisor = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeResourceDetails: () => {
+            this.showResourceDetails = false;
+            return true;
+          },
+          render: (dispatchAction) => {
+            if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+          },
         });
       }
       if (action.type === 'requestLoginUsername') {

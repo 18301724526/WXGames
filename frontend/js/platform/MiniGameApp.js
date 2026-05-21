@@ -212,6 +212,19 @@
             this.switchTab(tab);
             return true;
           },
+          openResourceDetails: () => {
+            this.showResourceDetails = true;
+            this.showCitySwitcher = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeResourceDetails: () => {
+            this.showResourceDetails = false;
+            return true;
+          },
+          render: (dispatchAction) => {
+            if (dispatchAction?.type !== 'switchTab') this.render();
+          },
         });
         return;
       }

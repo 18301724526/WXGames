@@ -5,26 +5,46 @@
     }
 
     canHandle(action) {
-      return Boolean(action && action.type === 'switchTab');
+      return Boolean(action && CanvasActionDispatcher.supportedActions().includes(action.type));
     }
 
     handle(action, context = {}) {
       if (!this.canHandle(action)) return false;
       if (action.disabled) return true;
 
-      if (typeof context.resetForTabSwitch === 'function') context.resetForTabSwitch(action);
+      if (action.type === 'switchTab') {
+        if (typeof context.resetForTabSwitch === 'function') context.resetForTabSwitch(action);
 
-      let switched = false;
-      if (typeof context.switchTab === 'function') {
-        switched = context.switchTab(action.tab, action) !== false;
+        let switched = false;
+        if (typeof context.switchTab === 'function') {
+          switched = context.switchTab(action.tab, action) !== false;
+        }
+
+        if (switched && typeof context.render === 'function') context.render(action);
+        return switched;
       }
 
-      if (switched && typeof context.render === 'function') context.render(action);
-      return switched;
+      if (action.type === 'openResourceDetails') {
+        const opened = typeof context.openResourceDetails === 'function'
+          ? context.openResourceDetails(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeResourceDetails') {
+        const closed = typeof context.closeResourceDetails === 'function'
+          ? context.closeResourceDetails(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
+      return false;
     }
 
     static supportedActions() {
-      return ['switchTab'];
+      return ['switchTab', 'openResourceDetails', 'closeResourceDetails'];
     }
   }
 
