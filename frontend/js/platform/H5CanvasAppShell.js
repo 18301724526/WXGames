@@ -434,6 +434,19 @@
             this.showCitySwitcher = false;
             return true;
           },
+          openSettings: () => {
+            this.showSettings = true;
+            this.showLogs = false;
+            this.showResourceDetails = false;
+            this.showCitySwitcher = false;
+            this.showAdvisor = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
           },
@@ -463,21 +476,6 @@
         const name = this.getNamingName();
         if (!name) return false;
         return this.onAction({ ...action, name }, event) !== false;
-      }
-      if (action.type === 'openSettings') {
-        this.showSettings = true;
-        this.showLogs = false;
-        this.showResourceDetails = false;
-        this.showCitySwitcher = false;
-        this.showAdvisor = false;
-        this.activeEventId = null;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
-      }
-      if (action.type === 'closeSettings') {
-        this.showSettings = false;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
       }
       if (action.type === 'openLogs') {
         this.showLogs = true;

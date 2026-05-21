@@ -56,11 +56,35 @@
         return closed;
       }
 
+      if (action.type === 'openSettings') {
+        const opened = typeof context.openSettings === 'function'
+          ? context.openSettings(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeSettings') {
+        const closed = typeof context.closeSettings === 'function'
+          ? context.closeSettings(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
     static supportedActions() {
-      return ['switchTab', 'openResourceDetails', 'closeResourceDetails', 'openCitySwitcher', 'closeCitySwitcher'];
+      return [
+        'switchTab',
+        'openResourceDetails',
+        'closeResourceDetails',
+        'openCitySwitcher',
+        'closeCitySwitcher',
+        'openSettings',
+        'closeSettings',
+      ];
     }
   }
 

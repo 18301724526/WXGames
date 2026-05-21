@@ -399,6 +399,7 @@ node --test frontend/tests/*.test.js
 - 阶段 3 第一批：资源详情打开/关闭迁入共享 dispatcher（v0.1.36）
 - 阶段 3 第二批：城市切换打开/关闭迁入共享 dispatcher（v0.1.37）
 - 阶段 3 验收修复：Canvas 建筑按钮按资源是否足够禁用，避免资源不足请求触发 400（v0.1.38）
+- 阶段 3 第三批：设置面板打开/关闭迁入共享 dispatcher（v0.1.39）
 
 ### 阶段 1 结果
 
@@ -418,14 +419,15 @@ node --test frontend/tests/*.test.js
 
 - `CanvasActionDispatcher` 已接管 `openResourceDetails` / `closeResourceDetails`。
 - `CanvasActionDispatcher` 已接管 `openCitySwitcher` / `closeCitySwitcher`。
+- `CanvasActionDispatcher` 已接管 `openSettings` / `closeSettings`（仅 H5，小游戏无设置面板）。
 - H5 与小游戏均通过注入上下文处理资源详情与城市切换 UI 状态，避免各自重复实现开关逻辑。
-- 已更新 action 覆盖矩阵与 dispatcher 测试，锁定前两批纯 UI action 迁移范围。
-- 本批不涉及后端 API，不改变资源详情面板或城市切换面板表现。
+- 已更新 action 覆盖矩阵与 dispatcher 测试，锁定前三批纯 UI action 迁移范围。
+- 本批不涉及后端 API，不改变设置面板表现。
 
 ### 下一步
 
-等待人工验收阶段 3 第二批。通过后继续阶段 3 下一批纯 UI action：
+等待人工验收阶段 3 第三批。通过后继续阶段 3 下一批纯 UI action：
 
 ```text
-阶段 3：继续迁移纯 UI 状态 action（建议 openSettings / closeSettings）
+阶段 3：继续迁移纯 UI 状态 action（建议 openLogs / closeLogs）
 ```
