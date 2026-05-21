@@ -8,6 +8,7 @@
       this.systemInfo = options.systemInfo || null;
       this.storage = options.storage || PlatformRuntime.detectStorage(global);
       this.scheduler = options.scheduler || PlatformRuntime.detectScheduler(global);
+      this.logger = options.logger || global.console || null;
       this.textInput = typeof options.textInput === 'function' ? options.textInput : null;
     }
 
@@ -122,6 +123,14 @@
 
     clearInterval(timer) {
       if (timer && typeof this.scheduler.clearInterval === 'function') this.scheduler.clearInterval(timer);
+    }
+
+    now() {
+      return Date.now();
+    }
+
+    log(message) {
+      if (this.logger && typeof this.logger.log === 'function') this.logger.log(message);
     }
 
     onTouchStart(handler) {

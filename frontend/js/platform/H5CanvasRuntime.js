@@ -3,6 +3,9 @@
     constructor(options = {}) {
       this.document = options.document || global.document || null;
       this.runtime = options.runtime || global;
+      this.kind = 'h5';
+      this.storagePrefix = options.storagePrefix || 'cf_';
+      this.storage = options.storage || this.runtime.localStorage || null;
       this.canvas = options.canvas || null;
       this.container = options.container || null;
       this.id = options.id || 'h5CanvasLayer';
@@ -18,7 +21,11 @@
     }
 
     ensureCanvas() {
-      if (this.canvas) return this.canvas;
+      if (this.canvas) {
+        this.resize();
+        this.bindEvents();
+        return this.canvas;
+      }
       if (!this.document || typeof this.document.createElement !== 'function') return null;
       const canvas = this.document.createElement('canvas');
       canvas.id = this.id;
@@ -39,6 +46,54 @@
       this.resize();
       this.bindEvents();
       return this.canvas;
+    }
+
+    createCanvas() {
+      return this.ensureCanvas();
+    }
+
+    getSystemInfo() {
+      const viewport = this.getViewportSize();
+      return {
+        windowWidth: viewport.width,
+        windowHeight: viewport.height,
+        pixelRatio: this.runtime.devicePixelRatio || this.pixelRatio || 1,
+      };
+    }
+
+    getStorage(key) {
+      const namespacedKey = `${this.storagePrefix}${key}`;
+      if (this.storage && typeof this.storage.getItem === 'function') return this.storage.getItem(namespacedKey);
+      return null;
+    }
+
+    setStorage(key, value) {
+      const namespacedKey = `${this.storagePrefix}${key}`;
+      if (this.storage && typeof this.storage.setItem === 'function') this.storage.setItem(namespacedKey, value);
+    }
+
+    removeStorage(key) {
+      const namespacedKey = `${this.storagePrefix}${key}`;
+      if (this.storage && typeof this.storage.removeItem === 'function') this.storage.removeItem(namespacedKey);
+    }
+
+    request(options = {}) {
+      const requestFn = this.runtime.fetch || global.fetch;
+      if (typeof requestFn !== 'function') return Promise.reject(new Error('H5 fetch API is unavailable'));
+      return requestFn.call(this.runtime, options.url, {
+        method: options.method,
+        headers: options.headers,
+        body: options.body,
+      });
+    }
+
+    now() {
+      return Date.now();
+    }
+
+    log(message) {
+      const logger = this.runtime.console || global.console;
+      if (logger && typeof logger.log === 'function') logger.log(message);
     }
 
     getViewportSize() {

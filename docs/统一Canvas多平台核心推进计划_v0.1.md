@@ -383,12 +383,24 @@ node --test frontend/tests/*.test.js
 
 ---
 
-## 9. 当前推荐下一步
+## 9. 当前进度
 
-下一步不是直接合并大文件，而是先执行：
+### 已完成
+
+- 阶段 0：工作区与基线确认（v0.1.27）
+- 阶段 1：定义统一 Runtime 接口，不替换调用方（v0.1.28）
+
+### 阶段 1 结果
+
+- 已新增 `runtime-interface.test.js`，锁定 H5 与小游戏 runtime 的统一接口形态。
+- `H5CanvasRuntime` 已补齐兼容方法：`kind`、`createCanvas()`、`getSystemInfo()`、`request()`、`getStorage()`、`setStorage()`、`removeStorage()`、`now()`、`log()`。
+- `PlatformRuntime` 已补齐兼容方法：`now()`、`log()`。
+- 本阶段不替换任何调用方，不改变现有 H5 或小游戏业务行为。
+
+### 下一步
+
+等待人工验收阶段 1。通过后进入：
 
 ```text
-阶段 0：工作区与基线确认
+阶段 2：抽离共享 action 覆盖矩阵与 dispatcher 雏形
 ```
-
-因为当前曾出现大量文件处于删除状态，必须先确认本地工作区是否干净，再开始任何架构改造。
