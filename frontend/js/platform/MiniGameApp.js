@@ -232,41 +232,22 @@
             this.showCitySwitcher = false;
             return true;
           },
+          openEvent: () => {
+            const eventData = (this.state.eventQueue || []).find((item) => item.id === action.eventId);
+            if (!eventData) return false;
+            this.activeEventId = action.eventId;
+            this.showResourceDetails = false;
+            this.showCitySwitcher = false;
+            return true;
+          },
+          closeEvent: () => {
+            this.activeEventId = null;
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },
         });
-        return;
-      }
-      if (action.type === 'switchTab') {
-        this.showResourceDetails = false;
-        this.showCitySwitcher = false;
-        this.activeEventId = null;
-        this.switchTab(action.tab);
-        return;
-      }
-      if (action.type === 'openResourceDetails') {
-        this.showResourceDetails = true;
-        this.showCitySwitcher = false;
-        this.activeEventId = null;
-        this.render();
-        return;
-      }
-      if (action.type === 'closeResourceDetails') {
-        this.showResourceDetails = false;
-        this.render();
-        return;
-      }
-      if (action.type === 'openCitySwitcher') {
-        this.showCitySwitcher = !this.showCitySwitcher;
-        this.showResourceDetails = false;
-        this.activeEventId = null;
-        this.render();
-        return;
-      }
-      if (action.type === 'closeCitySwitcher') {
-        this.showCitySwitcher = false;
-        this.render();
         return;
       }
       if (action.type === 'selectCity') {
@@ -317,20 +298,7 @@
         this.render();
         return;
       }
-      if (action.type === 'openEvent') {
-        const event = (this.state.eventQueue || []).find((item) => item.id === action.eventId);
-        if (!event) return;
-        this.activeEventId = event.id;
-        this.showResourceDetails = false;
-        this.showCitySwitcher = false;
-        this.render();
-        return;
-      }
-      if (action.type === 'closeEvent') {
-        this.activeEventId = null;
-        this.render();
-        return;
-      }
+
       if (action.type === 'claimEvent') {
         this.activeEventId = null;
         this.runAction(() => this.api.claimEvent(action.eventId, action.optionId));

@@ -104,6 +104,22 @@
         return closed;
       }
 
+      if (action.type === 'openEvent') {
+        const opened = typeof context.openEvent === 'function'
+          ? context.openEvent(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeEvent') {
+        const closed = typeof context.closeEvent === 'function'
+          ? context.closeEvent(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
@@ -120,6 +136,8 @@
         'closeLogs',
         'openAdvisor',
         'closeAdvisor',
+        'openEvent',
+        'closeEvent',
       ];
     }
   }

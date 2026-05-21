@@ -475,6 +475,23 @@
             this.showAdvisor = false;
             return true;
           },
+          openEvent: () => {
+            const eventData = (this.lastGame?.state?.eventQueue || []).find((item) => item.id === action.eventId);
+            if (!eventData) return false;
+            this.activeEventId = action.eventId;
+            this.showSettings = false;
+            this.showLogs = false;
+            this.showResourceDetails = false;
+            this.showCitySwitcher = false;
+            this.showAdvisor = false;
+            this.lastGame?.eventController?.open?.(action.eventId);
+            return true;
+          },
+          closeEvent: () => {
+            this.activeEventId = null;
+            this.lastGame?.eventController?.close?.();
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
           },
@@ -553,25 +570,6 @@
         this.showAdvisor = false;
         this.activeEventId = null;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-      }
-      if (action.type === 'openEvent') {
-        const eventData = (this.lastGame?.state?.eventQueue || []).find((item) => item.id === action.eventId);
-        if (!eventData) return false;
-        this.activeEventId = action.eventId;
-        this.showSettings = false;
-        this.showLogs = false;
-        this.showResourceDetails = false;
-        this.showCitySwitcher = false;
-        this.showAdvisor = false;
-        this.lastGame?.eventController?.open?.(action.eventId);
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
-        return true;
-      }
-      if (action.type === 'closeEvent') {
-        this.activeEventId = null;
-        this.lastGame?.eventController?.close?.();
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
-        return true;
       }
       if (action.type === 'claimEvent') {
         if (!this.onAction) return false;
