@@ -40,7 +40,7 @@
       canvas.style.position = 'fixed';
       canvas.style.inset = '0';
       canvas.style.width = '100vw';
-      canvas.style.height = '100vh';
+      canvas.style.height = '100dvh';
       canvas.style.display = 'block';
       canvas.style.pointerEvents = 'auto';
       canvas.style.touchAction = 'none';
@@ -103,10 +103,11 @@
     }
 
     getViewportSize() {
+      const vv = this.runtime.visualViewport;
       const docElement = this.document?.documentElement || {};
       return {
-        width: Math.max(1, Math.floor(this.runtime.innerWidth || docElement.clientWidth || 390)),
-        height: Math.max(1, Math.floor(this.runtime.innerHeight || docElement.clientHeight || 844)),
+        width: Math.max(1, Math.floor(vv?.width || this.runtime.innerWidth || docElement.clientWidth || 390)),
+        height: Math.max(1, Math.floor(vv?.height || this.runtime.innerHeight || docElement.clientHeight || 844)),
       };
     }
 

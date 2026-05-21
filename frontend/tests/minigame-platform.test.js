@@ -41,6 +41,10 @@ function createCanvasStub(calls) {
         },
         fill: () => calls.push(['fill']),
         stroke: () => calls.push(['stroke']),
+        save: () => {},
+        restore: () => {},
+        clip: () => {},
+        arc: () => {},
         fillText: (...args) => calls.push(['fillText', ...args]),
         drawImage: (...args) => calls.push(['drawImage', ...args]),
       };

@@ -63,6 +63,7 @@ test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
   assert.equal(canvas.style.touchAction, 'none');
   assert.equal(canvas.style.zIndex, '999');
   assert.equal(canvas.style.background, 'transparent');
+  assert.equal(canvas.style.height, '100dvh');
   assert.equal(canvas.width, 780);
   assert.equal(canvas.height, 1688);
   assert.deepEqual(ctx.transforms.at(-1), [2, 0, 0, 2, 0, 0]);

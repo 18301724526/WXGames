@@ -1416,6 +1416,11 @@
       const panX = radarView.pan?.x || 0;
       const panY = radarView.pan?.y || 0;
 
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.arc(radarX + radarSize / 2, radarY + radarSize / 2, radarSize / 2 - 2, 0, Math.PI * 2);
+      this.ctx.clip();
+
       radarView.sites.forEach((site) => {
         const left = Math.max(8, Math.min(92, Number(site.position?.left) || 50));
         const top = Math.max(8, Math.min(92, Number(site.position?.top) || 50));
@@ -1443,6 +1448,8 @@
         });
         this.addHitTarget({ x: siteX - 6, y: siteY - 6, width: 48, height: 54 }, { type: 'openWorldSite', siteId: site.id });
       });
+
+      this.ctx.restore();
 
       const resetW = 76;
       this.drawButton(radarX + radarSize - resetW - 8, radarY + 8, resetW, 28, '回到本城', { size: 11, radius: 14 });

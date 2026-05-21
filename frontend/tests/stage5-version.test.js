@@ -5,20 +5,20 @@ const test = require('node:test');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
-test('world radar pan render fix app version is 0.1.34 in package metadata', () => {
+test('radar clip and viewport fix app version is 0.1.35 in package metadata', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package.json'), 'utf8'));
   const packageLock = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package-lock.json'), 'utf8'));
 
-  assert.equal(packageJson.version, '0.1.34');
-  assert.equal(packageLock.version, '0.1.34');
-  assert.equal(packageLock.packages[''].version, '0.1.34');
+  assert.equal(packageJson.version, '0.1.35');
+  assert.equal(packageLock.version, '0.1.35');
+  assert.equal(packageLock.packages[''].version, '0.1.35');
 });
 
-test('version service reads updated 0.1.34 package version', () => {
+test('version service reads updated 0.1.35 package version', () => {
   const VersionService = require('../../backend/services/VersionService');
   const service = new VersionService({ repoRoot: projectRoot });
   const info = service.getVersionInfo();
 
-  assert.equal(info.version, '0.1.34');
+  assert.equal(info.version, '0.1.35');
   assert.ok(info.deploymentId);
 });
