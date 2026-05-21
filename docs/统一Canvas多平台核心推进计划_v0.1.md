@@ -438,8 +438,8 @@ node --test frontend/tests/*.test.js
 
 ### 下一步
 
-等待人工验收阶段 3 第九批。通过后继续阶段 3 下一批纯 UI action：
+阶段 3 已完成。`territoryAction` 包含 API 调用（`conquer`、`launch-expedition`、`claim`、`manage-city`）和混合逻辑（`rename-city`），不是纯 UI action，不迁入 dispatcher。
 
 ```text
-阶段 3：继续迁移纯 UI 状态 action（建议 territoryAction）
+阶段 4：待规划（如需继续迁移含 API 调用的 action，需重新设计 dispatcher 以支持异步 action）
 ```
