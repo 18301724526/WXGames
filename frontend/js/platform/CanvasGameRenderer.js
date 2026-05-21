@@ -1470,9 +1470,14 @@
           active: !button.secondary && !button.disabled && Boolean(button.action),
         });
         this.addHitTarget({ x: buttonX, y, width: buttonWidth, height: 34 }, {
-          type: 'territoryAction',
+          type: button.action === 'conquer' ? 'conquer' :
+               button.action === 'launch-expedition' ? 'launchExpedition' :
+               button.action === 'claim' ? 'claimConquest' :
+               button.action === 'manage-city' ? 'manageCity' :
+               button.action === 'rename-city' ? 'renameCity' :
+               button.action === 'open-expedition' ? 'openExpedition' :
+               button.action === 'close-expedition' ? 'closeExpedition' : 'territoryAction',
           territoryId: button.territoryId,
-          action: button.action,
           disabled: button.disabled || !button.action,
         });
       });
@@ -1512,9 +1517,8 @@
         value: value + 1,
       });
       this.addHitTarget({ x: x + width - 132, y: controlsY, width: 78, height: 28 }, {
-        type: 'territoryAction',
+        type: 'launchExpedition',
         territoryId: config.siteId,
-        action: config.buttons?.launch?.action || 'launch-expedition',
         disabled: config.disabled,
       });
       return y + 106;

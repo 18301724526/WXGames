@@ -1042,7 +1042,7 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   assert.ok(radarDragTarget);
   assert.ok(radarDragTarget.width > 286);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'territoryAction' && target.action.action === 'conquer'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'conquer'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));
 });
 

@@ -427,7 +427,7 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       y: worldTarget.y + worldTarget.height / 2,
     });
     assert.equal(app.territoryUiState.selectedSiteId, 'site-east');
-    const conquerTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'territoryAction' && target.action.action === 'conquer');
+    const conquerTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'conquer');
     assert.ok(conquerTarget);
     app.handleTap({
       x: conquerTarget.x + conquerTarget.width / 2,
@@ -443,7 +443,7 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
     };
     app.territoryUiState.selectedSiteId = 'site-east';
     app.render();
-    const renameTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'territoryAction' && target.action.action === 'rename-city');
+    const renameTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'renameCity');
     assert.ok(renameTarget);
     app.handleTap({
       x: renameTarget.x + renameTarget.width / 2,

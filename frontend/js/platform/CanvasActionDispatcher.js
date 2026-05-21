@@ -187,6 +187,18 @@
         'claimEvent',
         'scoutTerritory',
         'claimScout',
+        'requestNamingInput',
+        'closeNaming',
+        'submitNaming',
+        'scrollBuildings',
+        'switchMilitaryView',
+        'openExpedition',
+        'closeExpedition',
+        'conquer',
+        'launchExpedition',
+        'claimConquest',
+        'manageCity',
+        'renameCity',
       ];
     }
 

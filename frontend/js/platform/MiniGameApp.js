@@ -311,6 +311,69 @@
             await this.runAction(() => this.api.claimScout(a.value));
             return true;
           },
+          requestNamingInput: async () => {
+            this.requestNamingInput();
+            return true;
+          },
+          closeNaming: async () => {
+            this.closeNaming();
+            return true;
+          },
+          submitNaming: async () => {
+            this.submitNaming();
+            return true;
+          },
+          scrollBuildings: async (a) => {
+            this.buildingOffset = Math.max(0, this.buildingOffset + (Number(a.delta) || 0));
+            return true;
+          },
+          switchMilitaryView: async (a) => {
+            this.militaryView = a.view || 'army';
+            this.state = { ...this.state, militaryView: this.militaryView };
+            return true;
+          },
+          openExpedition: async (a) => {
+            const site = (this.state.territoryState?.territories || []).find((item) => item.id === a.territoryId);
+            this.territoryUiState.expeditionConfigSiteId = a.territoryId || '';
+            this.territoryUiState.expeditionSoldiers = String(Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1));
+            return true;
+          },
+          closeExpedition: async () => {
+            this.territoryUiState.expeditionConfigSiteId = '';
+            this.territoryUiState.expeditionSoldiers = '';
+            return true;
+          },
+          conquer: async (a) => {
+            await this.runAction(() => this.api.startConquest(a.territoryId, { soldiers: 1 }));
+            return true;
+          },
+          launchExpedition: async (a) => {
+            await this.runAction(() => this.api.startConquest(a.territoryId, {
+              troopType: this.territoryUiState.expeditionTroopType || 'unavailable',
+              leader: this.territoryUiState.expeditionLeader || 'unavailable',
+              soldiers: this.getExpeditionSoldiers(),
+            }));
+            return true;
+          },
+          claimConquest: async (a) => {
+            await this.runAction(() => this.api.claimConquest(a.territoryId));
+            return true;
+          },
+          manageCity: async (a) => {
+            this.territoryUiState.selectedSiteId = '';
+            await this.runAction(() => this.api.switchCity(a.territoryId));
+            return true;
+          },
+          renameCity: async (a) => {
+            const site = (this.state.territoryState?.territories || []).find((item) => item.id === a.territoryId) || {};
+            this.openNaming({
+              type: 'city',
+              territoryId: a.territoryId,
+              title: '为这座城市命名',
+              message: `当前名称：${site.cityName || site.naturalName || '未命名城市'}`,
+            });
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab') this.render();
           },
@@ -320,80 +383,6 @@
 
       if (action.type === 'blockCanvasModal') {
         return;
-      }
-      if (action.type === 'requestNamingInput') {
-        this.requestNamingInput();
-        return;
-      }
-      if (action.type === 'closeNaming') {
-        this.closeNaming();
-        return;
-      }
-      if (action.type === 'submitNaming') {
-        this.submitNaming();
-        return;
-      }
-      if (action.type === 'scrollBuildings') {
-        this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
-        this.render();
-        return;
-      }
-      if (action.type === 'scrollBuildings') {
-        this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
-        this.render();
-        return;
-      }
-      if (action.type === 'switchMilitaryView') {
-        this.militaryView = action.view || 'army';
-        this.state = { ...this.state, militaryView: this.militaryView };
-        this.render();
-        return;
-      }
-
-      if (action.type === 'territoryAction') {
-        if (action.action === 'open-expedition') {
-          const site = (this.state.territoryState?.territories || []).find((item) => item.id === action.territoryId);
-          this.territoryUiState.expeditionConfigSiteId = action.territoryId || '';
-          this.territoryUiState.expeditionSoldiers = String(Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1));
-          this.render();
-          return;
-        }
-        if (action.action === 'close-expedition') {
-          this.territoryUiState.expeditionConfigSiteId = '';
-          this.territoryUiState.expeditionSoldiers = '';
-          this.render();
-          return;
-        }
-        if (action.action === 'conquer') {
-          this.runAction(() => this.api.startConquest(action.territoryId, { soldiers: 1 }));
-          return;
-        }
-        if (action.action === 'launch-expedition') {
-          this.runAction(() => this.api.startConquest(action.territoryId, {
-            troopType: this.territoryUiState.expeditionTroopType || 'unavailable',
-            leader: this.territoryUiState.expeditionLeader || 'unavailable',
-            soldiers: this.getExpeditionSoldiers(),
-          }));
-          return;
-        }
-        if (action.action === 'claim') {
-          this.runAction(() => this.api.claimConquest(action.territoryId));
-          return;
-        }
-        if (action.action === 'manage-city') {
-          this.territoryUiState.selectedSiteId = '';
-          this.runAction(() => this.api.switchCity(action.territoryId));
-          return;
-        }
-        if (action.action === 'rename-city') {
-          const site = (this.state.territoryState?.territories || []).find((item) => item.id === action.territoryId) || {};
-          this.openNaming({
-            type: 'city',
-            territoryId: action.territoryId,
-            title: '为这座城市命名',
-            message: `当前名称：${site.cityName || site.naturalName || '未命名城市'}`,
-          });
-        }
       }
     }
 

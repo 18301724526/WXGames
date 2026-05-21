@@ -46,6 +46,14 @@ test('H5 与小游戏当前 action 覆盖矩阵明确记录阶段 4 异步迁移
   assert.equal(miniActions.has('claimEvent'), false);
   assert.equal(miniActions.has('scoutTerritory'), false);
   assert.equal(miniActions.has('claimScout'), false);
+  // 阶段 4 第二批异步 action 已从小游戏直接 if 分支中移除
+  assert.equal(miniActions.has('requestNamingInput'), false);
+  assert.equal(miniActions.has('closeNaming'), false);
+  assert.equal(miniActions.has('submitNaming'), false);
+  assert.equal(miniActions.has('scrollBuildings'), false);
+  assert.equal(miniActions.has('switchMilitaryView'), false);
+  // territoryAction 已完全拆分并迁入 dispatcher
+  assert.equal(miniActions.has('territoryAction'), false);
 });
 
 test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers 纯 UI action', () => {
@@ -304,6 +312,18 @@ test('CanvasActionDispatcher handleAsync handles async actions', async () => {
     'claimEvent',
     'scoutTerritory',
     'claimScout',
+    'requestNamingInput',
+    'closeNaming',
+    'submitNaming',
+    'scrollBuildings',
+    'switchMilitaryView',
+    'openExpedition',
+    'closeExpedition',
+    'conquer',
+    'launchExpedition',
+    'claimConquest',
+    'manageCity',
+    'renameCity',
   ]);
 
   assert.equal(dispatcher.canHandleAsync({ type: 'selectCity' }), true);
