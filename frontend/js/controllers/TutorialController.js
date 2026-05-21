@@ -210,7 +210,10 @@
       if (step === 8) return 'tab-resources';
       if (step === 9) return currentTab === 'civilization' ? 'btn-advance-era' : 'tab-civilization';
       if (step === 10) return 'tab-events';
-      if (step === 11) return 'tab-events';
+      if (step === 11) {
+        if (this.isEventModalOpen()) return 'btn-claim-event';
+        return currentTab === 'events' ? 'event-card-special' : 'tab-events';
+      }
       if (step === 12) return 'tab-buildings';
       if (step === 13) {
         if (!this.canAffordLumbermill()) return 'tab-resources';

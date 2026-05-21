@@ -498,6 +498,8 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
       { x: 290, y: 252, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'farm' } },
       { x: 290, y: 338, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'house' } },
       { x: 290, y: 424, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'lumbermill' } },
+      { x: 24, y: 164, width: 342, height: 78, action: { type: 'openEvent', eventId: 'evt_settlement_forest_001' } },
+      { x: 36, y: 446, width: 318, height: 92, action: { type: 'claimEvent', eventId: 'evt_settlement_forest_001', optionId: 'opt_collect_wood' } },
     ],
     render(state, options) { renderCalls.push(options); },
   };
@@ -540,6 +542,22 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
     height: 34,
     right: 368,
     bottom: 458,
+  });
+  assert.deepEqual(shell.getTutorialTarget('event-card-special').getRect(), {
+    left: 24,
+    top: 164,
+    width: 342,
+    height: 78,
+    right: 366,
+    bottom: 242,
+  });
+  assert.deepEqual(shell.getTutorialTarget('btn-claim-event').getRect(), {
+    left: 36,
+    top: 446,
+    width: 318,
+    height: 92,
+    right: 354,
+    bottom: 538,
   });
   assert.equal(shell.getTutorialTarget('tab-resources'), null);
 

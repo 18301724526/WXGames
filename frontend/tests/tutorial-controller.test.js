@@ -115,20 +115,25 @@ test('事件引导在 Canvas 迁移后保持在事件页标签目标', () => {
     delete require.cache[require.resolve('../js/controllers/TutorialController')];
     const TutorialController = require('../js/controllers/TutorialController');
     let modalOpen = false;
+    let currentTab = 'civilization';
     const controller = new TutorialController({
       api: { async advanceTutorial(step) { return { tutorial: { completed: false, currentStep: step, phaseCompleted: { newbie: true, era2: false } } }; } },
       renderer: { hide() {}, show() {} },
       getTarget: (key) => key,
+      getCurrentTab: () => currentTab,
       isEventModalOpen: () => modalOpen,
       onTabLockChange: () => {},
     });
 
     controller.setState({ completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } });
     assert.equal(controller.getTargetKey(), 'tab-events');
+
+    currentTab = 'events';
+    assert.equal(controller.getTargetKey(), 'event-card-special');
     assert.equal(controller.getMessage(), '打开森林低语，领取你的第一批木材');
 
     modalOpen = true;
-    assert.equal(controller.getTargetKey(), 'tab-events');
+    assert.equal(controller.getTargetKey(), 'btn-claim-event');
     assert.equal(controller.getMessage(), '选择处理方式领取木材奖励');
   } finally {
     global.localStorage = originalLocalStorage;
