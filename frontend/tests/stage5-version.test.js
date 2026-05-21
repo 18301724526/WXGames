@@ -5,20 +5,20 @@ const test = require('node:test');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
-test('compact resource HUD and canvas-owned radar drag app version is 0.1.32 in package metadata', () => {
+test('world radar drag pointer compatibility fix app version is 0.1.33 in package metadata', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package.json'), 'utf8'));
   const packageLock = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package-lock.json'), 'utf8'));
 
-  assert.equal(packageJson.version, '0.1.32');
-  assert.equal(packageLock.version, '0.1.32');
-  assert.equal(packageLock.packages[''].version, '0.1.32');
+  assert.equal(packageJson.version, '0.1.33');
+  assert.equal(packageLock.version, '0.1.33');
+  assert.equal(packageLock.packages[''].version, '0.1.33');
 });
 
-test('version service reads updated 0.1.32 package version', () => {
+test('version service reads updated 0.1.33 package version', () => {
   const VersionService = require('../../backend/services/VersionService');
   const service = new VersionService({ repoRoot: projectRoot });
   const info = service.getVersionInfo();
 
-  assert.equal(info.version, '0.1.32');
+  assert.equal(info.version, '0.1.33');
   assert.ok(info.deploymentId);
 });

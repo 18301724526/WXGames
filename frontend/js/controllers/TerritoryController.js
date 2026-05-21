@@ -64,22 +64,31 @@
       this.setWorldPan(0, 0);
     }
 
-    startWorldDrag(pointer) {
+    getPointerPosition(pointer = {}) {
+      return {
+        x: Number(pointer.clientX ?? pointer.x ?? 0),
+        y: Number(pointer.clientY ?? pointer.y ?? 0),
+      };
+    }
+
+    startWorldDrag(pointer = {}) {
       const current = this.getWorldPan();
+      const position = this.getPointerPosition(pointer);
       this.dragState = {
         pointerId: pointer.pointerId,
-        startX: pointer.clientX,
-        startY: pointer.clientY,
+        startX: position.x,
+        startY: position.y,
         panX: current.x,
         panY: current.y,
       };
     }
 
-    moveWorldDrag(pointer) {
+    moveWorldDrag(pointer = {}) {
       if (!this.dragState || this.dragState.pointerId !== pointer.pointerId) return;
+      const position = this.getPointerPosition(pointer);
       this.setWorldPan(
-        this.dragState.panX + pointer.clientX - this.dragState.startX,
-        this.dragState.panY + pointer.clientY - this.dragState.startY,
+        this.dragState.panX + position.x - this.dragState.startX,
+        this.dragState.panY + position.y - this.dragState.startY,
       );
     }
 

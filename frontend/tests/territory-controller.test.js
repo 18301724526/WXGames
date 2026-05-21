@@ -107,6 +107,27 @@ test('app maps scout and claim scout canvas actions to distinct controller paylo
   assert.doesNotMatch(appJs, /if \(action\?\.type === 'scoutTerritory' \|\| action\?\.type === 'claimScout'\) \{[\s\S]*direction: action\.direction \|\| action\.value,[\s\S]*missionId: action\.missionId \|\| action\.value,/);
 });
 
+test('world radar drag accepts canvas x/y pointers and updates pan', () => {
+  const TerritoryController = require('../js/controllers/TerritoryController');
+  const renders = [];
+  const pans = [];
+  const controller = new TerritoryController({
+    api: {},
+    onRenderRequested: () => renders.push('render'),
+    actionAdapter: {
+      setWorldPan: (x, y) => pans.push({ x, y }),
+    },
+  });
+
+  controller.startWorldDrag({ pointerId: 5, x: 100, y: 120 });
+  controller.moveWorldDrag({ pointerId: 5, x: 132, y: 86 });
+  controller.endWorldDrag({ pointerId: 5, x: 132, y: 86 });
+
+  assert.deepEqual(controller.getWorldPan(), { x: 32, y: -34 });
+  assert.deepEqual(pans.at(-1), { x: 32, y: -34 });
+  assert.equal(renders.length, 0);
+});
+
 test('rename city action delegates to injected naming handler', async () => {
   const requests = [];
   const apiCalls = [];
