@@ -1039,16 +1039,19 @@
       ];
       const compactOverview = overviewHeight < 140;
       const statGap = 8;
-      const statWidth = (overviewWidth - 24 - statGap) / 2;
-      const statHeight = compactOverview ? 30 : 38;
-      const statTop = overviewY + (compactOverview ? 58 : 66);
+      const statLeft = overviewX + 12;
+      const statRight = overviewX + overviewWidth - 12;
+      const statWidth = Math.floor((statRight - statLeft - statGap) / 2);
+      const statTop = overviewY + (compactOverview ? 58 : 62);
+      const statBottom = overviewY + overviewHeight - 8;
       const statRowGap = compactOverview ? 5 : 7;
+      const statHeight = Math.floor((statBottom - statTop - statRowGap) / 2);
       const statIconSize = compactOverview ? 20 : 26;
       stats.forEach((item, index) => {
         const col = index % 2;
         const row = Math.floor(index / 2);
-        const statX = overviewX + 12 + col * (statWidth + statGap);
-        const statY = statTop + row * (statHeight + statRowGap);
+        const statX = col === 0 ? statLeft : statRight - statWidth;
+        const statY = row === 0 ? statTop : statBottom - statHeight;
         this.drawPanel(statX, statY, statWidth, statHeight, {
           fill: 'rgba(63, 47, 32, 0.82)',
           stroke: 'rgba(255, 226, 177, 0.1)',

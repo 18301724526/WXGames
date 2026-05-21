@@ -936,6 +936,72 @@ test('CanvasGameRenderer draws civilization page and advance action without DOM 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'advanceEra'));
 });
 
+test('CanvasGameRenderer aligns civilization overview stat cards to their frame', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0.2/s',
+        woodValue: '8',
+        woodRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildCivilizationViewState: () => ({
+      text: {
+        eraName: '农耕时代',
+        civOverviewDay: '第 3 天',
+        civOverviewPop: 4,
+        civOverviewBuildings: 2,
+        civOverviewTechs: '1/0',
+        civOverviewHappiness: '100%',
+        eraTargetName: '聚落时代',
+        eraProgressText: '总进度: 100%',
+        advanceLabel: '满足条件，可以进阶',
+        featureDescription: '农耕时代：继续建设你的文明。',
+      },
+      progress: { percentage: 100 },
+      advanceButton: { disabled: false },
+      conditions: [],
+    }),
+  });
+
+  renderer.render({ currentTab: 'civilization' }, {
+    activeTab: 'civilization',
+    mode: 'hud',
+    tutorial: { completed: true },
+  });
+
+  const statPanels = calls.filter((call) => (
+    call[0] === 'roundRect'
+    && [36, 199].includes(call[1])
+    && [210, 253].includes(call[2])
+    && call[3] === 155
+    && call[4] === 35
+  ));
+  assert.equal(statPanels.length, 4);
+
+  const leftX = statPanels[0][1];
+  const rightX = statPanels[1][1];
+  const topY = statPanels[0][2];
+  const bottomY = statPanels[2][2];
+  const cardWidth = statPanels[0][3];
+  const cardHeight = statPanels[0][4];
+  assert.equal(statPanels[2][1], leftX);
+  assert.equal(statPanels[3][1], rightX);
+  assert.equal(statPanels[1][2], topY);
+  assert.equal(statPanels[3][2], bottomY);
+  assert.equal(rightX + cardWidth, 354);
+  assert.equal(bottomY + cardHeight, 288);
+});
+
 test('CanvasGameRenderer keeps civilization advance layout within compact mobile viewport', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
