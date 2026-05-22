@@ -74,6 +74,60 @@ test('tab navigation view states format active tabs and tutorial locks', () => {
   ]);
 });
 
+test('task center view state normalizes tabs, badges, categories, and legacy guide fallback', () => {
+  const view = UIStatePresenter.buildTaskCenterViewState({
+    taskCenter: {
+      visible: true,
+      activeTab: 'daily',
+      tabs: [
+        { id: 'daily', label: '每日任务', badge: 0 },
+        { id: 'main', label: '主线任务', badge: 1 },
+        { id: 'season', label: '赛季任务', badge: 0 },
+        { id: 'challenge', label: '挑战任务', badge: 0 },
+      ],
+      categories: {
+        daily: { tasks: [], emptyText: '暂无每日任务' },
+        main: {
+          tasks: [{
+            id: 'barracks_supplies',
+            title: '城邦守备',
+            status: 'claimable',
+            rewardText: '食物 +260 / 知识 +80',
+          }],
+        },
+        season: { tasks: [], emptyText: '暂无赛季任务' },
+        challenge: { tasks: [], emptyText: '暂无挑战任务' },
+      },
+      summary: { claimableCount: 1, activeCount: 1 },
+    },
+  }, { activeTab: 'main' });
+
+  assert.equal(view.visible, true);
+  assert.equal(view.activeTab, 'main');
+  assert.equal(view.tabs.find((tab) => tab.id === 'main').isActive, true);
+  assert.equal(view.tabs.find((tab) => tab.id === 'main').badge, 1);
+  assert.equal(view.activeCategory.tasks[0].action.type, 'claimTaskReward');
+  assert.equal(view.activeCategory.tasks[0].actionLabel, '领取');
+  assert.equal(view.categories.daily.emptyText, '暂无每日任务');
+
+  const fallback = UIStatePresenter.buildTaskCenterViewState({
+    guideTasks: {
+      visible: true,
+      tasks: [{
+        id: 'lumbermill_supplies',
+        title: '备齐伐木物资',
+        status: 'active',
+        target: 'card-lumbermill',
+      }],
+    },
+  });
+
+  assert.equal(fallback.visible, true);
+  assert.equal(fallback.activeTab, 'main');
+  assert.equal(fallback.categories.main.tasks[0].id, 'lumbermill_supplies');
+  assert.equal(fallback.categories.main.tasks[0].action.type, 'goToGuideTaskTarget');
+});
+
 test('resource view state is renderer-neutral and formats resource display', () => {
   const view = UIStatePresenter.buildResourceViewState({
     currentEra: 2,
