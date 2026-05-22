@@ -1755,10 +1755,6 @@
       const visibleCount = Math.max(1, Math.min(optionCount, Math.floor((optionAreaHeight + optionGap) / (optionHeight + optionGap))));
       options.slice(0, visibleCount).forEach((option, index) => {
         const optionY = optionTop + index * (optionHeight + optionGap);
-        const actionWidth = 72;
-        const actionHeight = 30;
-        const actionX = descX + descWidth - actionWidth - 10;
-        const actionY = optionY + 10;
         this.drawPanel(descX, optionY, descWidth, optionHeight, {
           fill: this.createGradient(
             descX, optionY, descX + descWidth, optionY + optionHeight,
@@ -1772,15 +1768,11 @@
           radius: 9,
           inset: 'rgba(255, 231, 184, 0.12)',
         });
-        const label = this.truncateText(option.label || '处理事件', descWidth - actionWidth - 34, { size: 13, bold: true });
+        const label = this.truncateText(option.label || '处理事件', descWidth - 24, { size: 13, bold: true });
         this.drawText(label, descX + 12, optionY + 9, {
           size: 13,
           bold: true,
           color: '#f6e8c8',
-        });
-        this.drawPrimaryActionButton(actionX, actionY, actionWidth, actionHeight, '处理', {
-          size: 12,
-          radius: 8,
         });
         const rows = Array.isArray(option.rows) && option.rows.length
           ? option.rows
