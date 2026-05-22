@@ -185,6 +185,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   const platformFiles = [
     'PlatformRuntime.js',
     'MiniGameCanvasRenderer.js',
+    'CanvasGuideController.js',
     'CanvasGameApp.js',
   ].map((file) => fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', file), 'utf8')).join('\n');
   const appSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
@@ -196,6 +197,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
+  assert.match(entry, /CanvasGuideController/);
   assert.match(entry, /CanvasGameApp/);
   assert.match(entry, /presenter: globalThis\.UIStatePresenter/);
   assert.match(entry, /config: globalThis\.GameConfig/);

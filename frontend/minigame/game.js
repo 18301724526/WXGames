@@ -4,6 +4,7 @@ require('../js/api/GameAPI');
 require('../js/platform/PlatformRuntime');
 require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/MiniGameCanvasRenderer');
+require('../js/platform/CanvasGuideController');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();

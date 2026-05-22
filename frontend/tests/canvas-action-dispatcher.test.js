@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const projectRoot = path.join(__dirname, '..', '..');
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
+const CanvasGuideController = require('../js/platform/CanvasGuideController');
 
 function extractActionTypes(source) {
   const actions = new Set();
@@ -60,6 +61,53 @@ test('Canvas app and shell action coverage stays centralized after platform unif
   assert.equal(miniActions.has('territoryAction'), false);
 });
 
+test('guide target routing lives only in the shared Canvas guide controller', () => {
+  const appSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
+  const shellSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameShell.js'), 'utf8');
+  const dispatcherSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionDispatcher.js'), 'utf8');
+  const controllerSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGuideController.js'), 'utf8');
+  const guideTokens = [
+    'btn-advance-era',
+    'task-center-main-claim',
+    'guide-task-claim',
+    'card-farm',
+    'card-house',
+    'card-lumbermill',
+    'card-barracks',
+    'card-watchtower',
+    'card-barracks-upgrade',
+    'card-craftsman',
+    'event-card-special',
+    'btn-claim-event',
+    'evt_settlement_forest_001',
+    'scout-action-first',
+    'tab-resources',
+    'tab-civilization',
+    'tab-buildings',
+    'tab-events',
+    'tab-military',
+    'tab-territory',
+  ];
+
+  for (const token of guideTokens) {
+    assert.doesNotMatch(appSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasGameApp must not own guide token ${token}`);
+    assert.doesNotMatch(shellSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasGameShell must not own guide token ${token}`);
+    assert.doesNotMatch(dispatcherSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasActionDispatcher must not own guide token ${token}`);
+    assert.match(controllerSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasGuideController should own guide token ${token}`);
+  }
+
+  assert.match(appSource, /this\.guideController\?\.getTargetRect\?\.\(key\)/);
+  assert.match(appSource, /this\.guideController\?\.goToGuideTaskTarget\?\.\(action\)/);
+  assert.match(shellSource, /this\.guideController\?\.getTargetRect\?\.\(key\)/);
+  assert.match(shellSource, /this\.guideController\?\.goToGuideTaskTarget\?\.\(action\)/);
+  assert.equal(typeof CanvasActionDispatcher.getGuideTargetTab, 'undefined');
+
+  const controller = new CanvasGuideController();
+  assert.equal(controller.getTargetTab('card-barracks'), 'buildings');
+  assert.equal(controller.getTargetTab('btn-advance-era'), 'civilization');
+  assert.equal(controller.getTargetTab('scout-action-first'), 'military');
+});
+
 test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers 纯 UI action', () => {
   const dispatcher = new CanvasActionDispatcher();
 
@@ -112,9 +160,6 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'closeTaskCenter' }), true);
   assert.equal(dispatcher.canHandle({ type: 'switchTaskCenterTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
-  assert.equal(CanvasActionDispatcher.getGuideTargetTab('card-barracks'), 'buildings');
-  assert.equal(CanvasActionDispatcher.getGuideTargetTab('btn-advance-era'), 'civilization');
-  assert.equal(CanvasActionDispatcher.getGuideTargetTab('scout-action-first'), 'military');
 });
 
 test('CanvasActionDispatcher 通过注入上下文处理 switchTab，不依赖平台壳类', () => {

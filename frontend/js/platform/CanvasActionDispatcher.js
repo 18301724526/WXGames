@@ -231,17 +231,6 @@
       ];
     }
 
-    static getGuideTargetTab(target) {
-      if (target === 'btn-advance-era') return 'civilization';
-      if (target === 'card-craftsman') return 'resources';
-      if (target === 'event-card-special' || target === 'btn-claim-event') return 'events';
-      if (target === 'tab-territory' || target === 'scout-action-first') return 'military';
-      if (typeof target === 'string' && target.startsWith('tab-')) return target.slice(4);
-      if (typeof target === 'string' && target.startsWith('card-')) return 'buildings';
-      if (target === 'card-barracks-upgrade') return 'buildings';
-      return null;
-    }
-
     static supportedAsyncActions() {
       return [
         'selectCity',

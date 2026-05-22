@@ -1590,6 +1590,7 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   const canvasIdx = html.indexOf('js/platform/CanvasGameRenderer.js');
   const minigameIdx = html.indexOf('js/platform/MiniGameCanvasRenderer.js');
   const h5gameIdx = html.indexOf('js/platform/H5CanvasGameRenderer.js');
+  const guideIdx = html.indexOf('js/platform/CanvasGuideController.js');
   const runtimeIdx = html.indexOf('js/platform/H5CanvasRuntime.js');
   const appCoreIdx = html.indexOf('js/platform/CanvasGameApp.js');
   const shellIdx = html.indexOf('js/platform/CanvasGameShell.js');
@@ -1598,6 +1599,7 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   assert.ok(canvasIdx >= 0);
   assert.ok(minigameIdx >= 0);
   assert.ok(h5gameIdx >= 0);
+  assert.ok(guideIdx >= 0);
   assert.ok(appCoreIdx >= 0);
   assert.ok(runtimeIdx >= 0);
   assert.ok(shellIdx >= 0);
@@ -1605,6 +1607,8 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
 
   assert.ok(canvasIdx < minigameIdx);
   assert.ok(canvasIdx < h5gameIdx);
+  assert.ok(h5gameIdx < guideIdx);
+  assert.ok(guideIdx < appCoreIdx);
   assert.ok(appCoreIdx < shellIdx);
   assert.ok(runtimeIdx < shellIdx);
   assert.ok(shellIdx < appIdx);

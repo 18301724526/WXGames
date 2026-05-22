@@ -61,6 +61,11 @@
       this.log = options.log || (() => {});
       const DispatcherCtor = global.CanvasActionDispatcher;
       this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
+      const GuideControllerCtor = global.CanvasGuideController || (typeof require === 'function' ? require('./CanvasGuideController') : null);
+      this.guideController = options.guideController || (GuideControllerCtor ? new GuideControllerCtor({
+        host: this,
+        actionDispatcher: this.actionDispatcher,
+      }) : null);
       this.timer = null;
       this.tapDisposer = null;
     }
@@ -183,8 +188,40 @@
     }
 
     getTargetTab(key) {
-      const DispatcherCtor = this.actionDispatcher?.constructor || global.CanvasActionDispatcher;
-      return DispatcherCtor?.getGuideTargetTab?.(key) || null;
+      return this.guideController?.getTargetTab?.(key) || null;
+    }
+
+    getGuideState() {
+      return this.state;
+    }
+
+    getGuideActiveTab() {
+      return this.getActiveTab();
+    }
+
+    getGuideTutorialState() {
+      return this.state?.tutorial || {};
+    }
+
+    getGuideCanvasTarget(type, predicate = null) {
+      return this.getCanvasTarget(type, predicate);
+    }
+
+    renderGuideFrame() {
+      this.render();
+      return true;
+    }
+
+    switchGuideTab(tabId) {
+      this.switchTab(tabId);
+      return true;
+    }
+
+    setGuideMilitaryView(view) {
+      this.militaryView = view || 'army';
+      this.state = { ...this.state, militaryView: this.militaryView };
+      this.render();
+      return true;
     }
 
     getCanvasTarget(type, predicate = null) {
@@ -204,107 +241,23 @@
     }
 
     getGuideTargetRect(key) {
-      if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
-      if (key === 'card-farm') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'farm');
-      if (key === 'card-house') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'house');
-      if (key === 'card-lumbermill') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'lumbermill');
-      if (key === 'card-barracks') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'barracks');
-      if (key === 'card-watchtower') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'watchtower');
-      if (key === 'card-barracks-upgrade') return this.getCanvasTarget('upgradeBuilding', (action) => action.buildingId === 'barracks');
-      if (key === 'card-craftsman') return this.getCanvasTarget('assignJob', (action) => action.job === 'craftsman' && action.delta > 0);
-      if (key === 'guide-task-claim' || key === 'task-center-main-claim') {
-        return this.getCanvasTarget('claimTaskReward', (action) => (action.category || 'main') === 'main')
-          || this.getCanvasTarget('openTaskCenter', (action) => action.source === 'taskIcon');
-      }
-      if (key === 'task-center-button') return this.getCanvasTarget('openTaskCenter', (action) => action.source === 'taskIcon');
-      if (key === 'event-card-special') return this.getCanvasTarget('openEvent', (action) => action.eventId === 'evt_settlement_forest_001');
-      if (key === 'btn-claim-event') return this.getCanvasTarget('claimEvent', (action) => action.eventId === 'evt_settlement_forest_001');
-      if (key === 'scout-action-first') {
-        return this.getCanvasTarget('scoutTerritory', (action) => !action.disabled)
-          || this.getCanvasTarget('switchMilitaryView', (action) => action.view === 'scout');
-      }
-      if (key === 'tab-resources') return this.getCanvasTarget('switchTab', (action) => action.tab === 'resources');
-      if (key === 'tab-civilization') return this.getCanvasTarget('switchTab', (action) => action.tab === 'civilization');
-      if (key === 'tab-buildings') return this.getCanvasTarget('switchTab', (action) => action.tab === 'buildings');
-      if (key === 'tab-events') return this.getCanvasTarget('switchTab', (action) => action.tab === 'events');
-      if (key === 'tab-military' || key === 'tab-territory') return this.getCanvasTarget('switchTab', (action) => action.tab === 'military');
-      return null;
+      return this.guideController?.getTargetRect?.(key) || null;
     }
 
     refreshTaskCenterGuideHighlight(action = {}) {
-      const guideTarget = action.target || this.state?.softGuide?.target;
-      if (
-        guideTarget !== 'task-center-main-claim'
-        && guideTarget !== 'guide-task-claim'
-        && !this.hasClaimableMainTask()
-      ) return false;
-      this.render();
-      const target = this.getGuideTargetRect('task-center-main-claim');
-      if (!target) return false;
-      return this.showGuideHighlight(target, action.message || '领取主线任务奖励');
+      return this.guideController?.refreshTaskCenterGuideHighlight?.(action) || false;
     }
 
     hasClaimableMainTask() {
-      const view = this.presenter?.buildTaskCenterViewState?.(this.state, { activeTab: this.activeTaskCenterTab || 'main' });
-      const tasks = Array.isArray(view?.categories?.main?.tasks) ? view.categories.main.tasks : [];
-      return tasks.some((task) => task.status === 'claimable' && !task.claimed);
+      return this.guideController?.hasClaimableMainTask?.() || false;
     }
 
     refreshCurrentGuideHighlight() {
-      const guide = this.state?.softGuide || null;
-      if (!guide || guide.mode !== 'strong' || !guide.target) {
-        this.tutorialHighlight = null;
-        this.render();
-        return false;
-      }
-      const targetKey = guide.target;
-      const tabId = this.getTargetTab(targetKey);
-      if (tabId && this.getActiveTab() !== tabId) {
-        this.switchTab(tabId);
-      }
-      if (tabId) {
-        this.activeTab = tabId;
-        this.state = { ...this.state, currentTab: tabId };
-      }
-      if (targetKey === 'scout-action-first') {
-        this.militaryView = 'scout';
-        this.state = { ...this.state, militaryView: 'scout' };
-      }
-      this.ensureGuideTargetVisible(targetKey);
-      this.render();
-      const target = this.getGuideTargetRect(targetKey)
-        || (tabId ? this.getGuideTargetRect(`tab-${tabId}`) : null);
-      if (!target) {
-        this.tutorialHighlight = null;
-        this.render();
-        return false;
-      }
-      return this.showGuideHighlight(target, guide.message);
+      return this.guideController?.refreshCurrentGuideHighlight?.() || false;
     }
 
     ensureGuideTargetVisible(key) {
-      if (!key || this.getActiveTab() !== 'buildings') return false;
-      const targetBuilding = {
-        'card-farm': 'farm',
-        'card-house': 'house',
-        'card-lumbermill': 'lumbermill',
-        'card-barracks': 'barracks',
-        'card-watchtower': 'watchtower',
-        'card-barracks-upgrade': 'barracks',
-      }[key];
-      if (!targetBuilding) return false;
-      const ids = this.presenter?.buildBuildingViewState?.(
-        this.state,
-        this.state?.tutorial || {},
-        this.state?.buildingDefinitions || {},
-      )?.ids || [];
-      const index = ids.indexOf(targetBuilding);
-      if (index < 0) return false;
-      const nextOffset = Math.max(0, index - 1);
-      if (this.buildingOffset === nextOffset) return false;
-      this.buildingOffset = nextOffset;
-      this.render();
-      return true;
+      return this.guideController?.ensureTargetVisible?.(key) || false;
     }
 
     showGuideHighlight(rect, message) {
@@ -333,25 +286,7 @@
     }
 
     goToGuideTaskTarget(action = {}) {
-      const targetKey = action.target || action.nextTarget;
-      if (!targetKey) return false;
-      const tabId = this.getTargetTab(targetKey);
-      if (tabId && this.getActiveTab() !== tabId) {
-        this.switchTab(tabId);
-      }
-      if (action.nextAction?.type === 'switchMilitaryView') {
-        this.militaryView = action.nextAction.view || 'army';
-        this.state = { ...this.state, militaryView: this.militaryView };
-        this.render();
-      }
-      this.showResourceDetails = false;
-      this.showCitySwitcher = false;
-      this.activeEventId = null;
-      this.ensureGuideTargetVisible(targetKey);
-      this.render();
-      const target = this.getGuideTargetRect(targetKey)
-        || (tabId ? this.getGuideTargetRect(`tab-${tabId}`) : null);
-      return this.showGuideHighlight(target, action.message);
+      return this.guideController?.goToGuideTaskTarget?.(action) || false;
     }
 
     getSelectedSite() {
