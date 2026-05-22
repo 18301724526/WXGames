@@ -66,7 +66,13 @@
     }
 
     applyState(payload = {}) {
-      this.state = payload.gameState || payload.state || this.state;
+      const nextState = payload.gameState || payload.state || this.state;
+      this.state = {
+        ...nextState,
+        softGuide: payload.softGuide ?? nextState.softGuide ?? null,
+        guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
+        taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
+      };
       this.activeTab = this.state.currentTab || this.activeTab;
       if (payload.token) {
         this.api.setToken(payload.token);
@@ -244,6 +250,38 @@
       return tasks.some((task) => task.status === 'claimable' && !task.claimed);
     }
 
+    refreshCurrentGuideHighlight() {
+      const guide = this.state?.softGuide || null;
+      if (!guide || guide.mode !== 'strong' || !guide.target) {
+        this.tutorialHighlight = null;
+        this.render();
+        return false;
+      }
+      const targetKey = guide.target;
+      const tabId = this.getTargetTab(targetKey);
+      if (tabId && this.getActiveTab() !== tabId) {
+        this.switchTab(tabId);
+      }
+      if (tabId) {
+        this.activeTab = tabId;
+        this.state = { ...this.state, currentTab: tabId };
+      }
+      if (targetKey === 'scout-action-first') {
+        this.militaryView = 'scout';
+        this.state = { ...this.state, militaryView: 'scout' };
+      }
+      this.ensureGuideTargetVisible(targetKey);
+      this.render();
+      const target = this.getGuideTargetRect(targetKey)
+        || (tabId ? this.getGuideTargetRect(`tab-${tabId}`) : null);
+      if (!target) {
+        this.tutorialHighlight = null;
+        this.render();
+        return false;
+      }
+      return this.showGuideHighlight(target, guide.message);
+    }
+
     ensureGuideTargetVisible(key) {
       if (!key || this.getActiveTab() !== 'buildings') return false;
       const targetBuilding = {
@@ -286,14 +324,7 @@
       };
       if (this.highlightTimer) this.runtime?.clearInterval?.(this.highlightTimer);
       if (this.runtime?.setInterval) {
-        const startedAt = now;
         this.highlightTimer = this.runtime.setInterval(() => {
-          const current = this.runtime?.now?.() || Date.now();
-          if (current - startedAt > 1600) {
-            this.runtime.clearInterval(this.highlightTimer);
-            this.highlightTimer = null;
-            this.tutorialHighlight = null;
-          }
           this.render();
         }, 33);
       }
@@ -495,6 +526,7 @@
           claimGuideTaskReward: async (a) => {
             const result = await this.runAction(() => this.api.claimGuideTaskReward(a.taskId));
             this.rewardReveal = result?.rewardReveal || null;
+            this.refreshCurrentGuideHighlight();
             return true;
           },
           claimTaskReward: async (a) => {
@@ -502,6 +534,7 @@
             const claim = this.api.claimTaskReward || ((taskId) => this.api.claimGuideTaskReward(taskId));
             const result = await this.runAction(() => claim.call(this.api, a.taskId, a.category || 'main'));
             this.rewardReveal = result?.rewardReveal || null;
+            this.refreshCurrentGuideHighlight();
             return true;
           },
           scoutTerritory: async (a) => {

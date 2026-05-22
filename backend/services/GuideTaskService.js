@@ -343,6 +343,14 @@ function getGuide(gameState) {
       target: task.nextTarget || task.target,
     };
   }
+  if (view.claimed && task.continueAfterClaim && view.target) {
+    return {
+      id: `task_${task.id}_next`,
+      mode: 'strong',
+      message: task.description,
+      target: view.target,
+    };
+  }
   if (task.id === 'first_scout_reward') {
     return {
       id: 'first_scout_strong',

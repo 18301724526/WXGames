@@ -216,6 +216,44 @@
       return tasks.some((task) => task.status === 'claimable' && !task.claimed);
     }
 
+    refreshCurrentGuideHighlight() {
+      const guide = this.lastGame?.state?.softGuide || null;
+      if (!guide || guide.mode !== 'strong' || !guide.target) {
+        return this.hideTutorialHighlight();
+      }
+      const targetKey = guide.target;
+      const tabId = this.getTargetTab(targetKey);
+      if (targetKey !== 'task-center-main-claim' && targetKey !== 'guide-task-claim') {
+        this.showTaskCenter = false;
+      }
+      const showTarget = () => {
+        if (targetKey === 'scout-action-first' && this.onAction) {
+          this.onAction({ type: 'switchMilitaryView', view: 'scout' });
+        }
+        this.showAdvisor = false;
+        this.showSettings = false;
+        this.showLogs = false;
+        this.showResourceDetails = false;
+        this.showCitySwitcher = false;
+        this.activeEventId = null;
+        this.ensureTutorialTargetVisible(targetKey);
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || tabId || 'resources');
+        const target = this.getTutorialTarget(targetKey)
+          || (tabId ? this.getTutorialTarget(`tab-${tabId}`) : null);
+        return target ? this.showTutorialHighlight(target, guide.message) : this.hideTutorialHighlight();
+      };
+      if (tabId && this.lastGame?.state?.currentTab !== tabId) {
+        const switchResult = this.lastGame?.handleCanvasTabSelection
+          ? this.lastGame.handleCanvasTabSelection(tabId)
+          : (this.onAction ? this.onAction({ type: 'switchTab', tab: tabId, source: 'guideTask' }) : this.lastGame?.switchTab?.(tabId));
+        Promise.resolve(switchResult).then((allowed) => {
+          if (allowed !== false) showTarget();
+        }).catch(() => {});
+        return true;
+      }
+      return showTarget();
+    }
+
     getTargetTab(key) {
       const DispatcherCtor = this.actionDispatcher?.constructor || global.CanvasActionDispatcher;
       return DispatcherCtor?.getGuideTargetTab?.(key) || null;

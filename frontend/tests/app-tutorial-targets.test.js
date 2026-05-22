@@ -643,6 +643,50 @@ test('renderSoftGuide falls back to the target tab when the next guide target is
   }
 });
 
+test('renderSoftGuide clears stale task claim highlight for soft guide state', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    const calls = [];
+    Game.state.softGuide = {
+      mode: 'soft',
+      target: 'card-lumbermill',
+      message: 'Build the lumbermill.',
+    };
+    Game.tutorialRenderer = {
+      hide() {
+        calls.push('hide');
+      },
+      show() {
+        calls.push('show');
+      },
+    };
+
+    Game.renderSoftGuide();
+
+    assert.deepEqual(calls, ['hide']);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('first scout guide target prefers the scout military sub view', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;

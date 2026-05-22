@@ -438,6 +438,7 @@ const Game = {
     try {
       const result = await this.gameAPI.claimGuideTaskReward(taskId);
       this.applyApiState(result);
+      if (!this.canvasShell?.refreshCurrentGuideHighlight?.()) this.renderSoftGuide();
       this.canvasShell?.showRewardReveal?.(result.rewardReveal);
       this.showFloatingText(result.rewardText || result.message || '奖励已领取');
       this.log(`🎁 ${result.message}`);
@@ -452,6 +453,7 @@ const Game = {
     try {
       const result = await this.gameAPI.claimTaskReward(taskId, category || 'main');
       this.applyApiState(result);
+      if (!this.canvasShell?.refreshCurrentGuideHighlight?.()) this.renderSoftGuide();
       this.canvasShell?.showRewardReveal?.(result.rewardReveal);
       this.showFloatingText(result.rewardText || result.message || '奖励已领取');
       this.log(`🎁 ${result.message}`);
@@ -629,14 +631,16 @@ const Game = {
   renderSoftGuide() {
     const guide = this.state.softGuide;
     this.updateAdvisor(guide);
-    if (guide?.mode === 'strong' && guide.target) {
-      const target = this.getTutorialTarget(guide.target)
-        || this.getTutorialTarget(this.getFallbackGuideTarget(guide.target));
-      if (target) {
-        this.tutorialRenderer.show(target, guide.message);
-      } else {
-        this.tutorialRenderer.hide?.();
-      }
+    if (!guide || guide.mode !== 'strong' || !guide.target) {
+      this.tutorialRenderer?.hide?.();
+      return;
+    }
+    const target = this.getTutorialTarget(guide.target)
+      || this.getTutorialTarget(this.getFallbackGuideTarget(guide.target));
+    if (target) {
+      this.tutorialRenderer?.show?.(target, guide.message);
+    } else {
+      this.tutorialRenderer?.hide?.();
     }
   },
 

@@ -32,7 +32,7 @@ test('settlement task grants its full reward regardless of current stockpile', (
   assert.equal(state.resources.knowledge, 5);
 
   const guide = GuideTaskService.getGuide(state);
-  assert.equal(guide.mode, 'soft');
+  assert.equal(guide.mode, 'strong');
   assert.equal(guide.target, 'btn-advance-era');
 
   const allowed = GuideTaskService.validateAction(state, 'advanceEra', {});
@@ -66,7 +66,7 @@ test('lumbermill task stays on build target after reward claim instead of loopin
   });
 
   const guide = GuideTaskService.getGuide(state);
-  assert.equal(guide.mode, 'soft');
+  assert.equal(guide.mode, 'strong');
   assert.equal(guide.target, 'card-lumbermill');
   assert.equal(GuideTaskService.validateAction(state, 'claimGuideTaskReward', { target: 'lumbermill_supplies' }).allowed, false);
   assert.equal(GuideTaskService.validateAction(state, 'build', { target: 'lumbermill' }).allowed, true);

@@ -114,8 +114,9 @@ test('CanvasGameRenderer hit target management works independently of platform',
 test('CanvasGameRenderer top HUD uses compact icon/value resource strip', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
 
-  assert.match(source, /const resourceHeight = 48/);
-  assert.match(source, /const barHeight = cityView\.hidden \? 112 : 152/);
+  assert.match(source, /const resourceHeight = 62/);
+  assert.match(source, /const barHeight = cityView\.hidden \? 128 : 166/);
+  assert.match(source, /const iconSize = compactResources \? 30 : 30/);
   assert.doesNotMatch(source, /const resourceHeight = 79/);
   assert.doesNotMatch(source, /drawPanel\(cardX, cardY, cardWidth, resourceHeight/);
 });
@@ -243,9 +244,9 @@ test('CanvasGameRenderer HUD overlay matches measured mobile DOM baseline respon
 
   renderer.render({ currentEraName: '古典时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
-  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 12 && c[3] === 366 && c[4] === 152), 'top bar should use compact 366x152 HUD rect');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 12 && c[3] === 366 && c[4] === 166), 'top bar should use readable 366x166 HUD rect');
   assert.equal(calls.some((c) => c[0] === 'roundRect' && c[2] === 68 && c[4] === 48), false, 'resource strip should not draw individual card backgrounds');
-  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 92 && c[2] === 124 && c[3] === 190 && c[4] === 32), 'city switcher should move upward under compact resource strip');
+  assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 92 && c[2] === 138 && c[3] === 190 && c[4] === 32), 'city switcher should sit under the readable resource strip');
   assert.ok(calls.some((c) => c[0] === 'roundRect' && c[1] === 12 && c[2] === 786 && c[3] === 366 && c[4] === 58), 'bottom tab bar should keep DOM app inset while matching measured 58px height');
 });
 
@@ -1283,7 +1284,7 @@ test('CanvasGameRenderer aligns civilization overview stat cards to their frame'
   const statPanels = calls.filter((call) => (
     call[0] === 'roundRect'
     && [36, 199].includes(call[1])
-    && [210, 253].includes(call[2])
+    && [226, 269].includes(call[2])
     && call[3] === 155
     && call[4] === 35
   ));
@@ -1300,7 +1301,7 @@ test('CanvasGameRenderer aligns civilization overview stat cards to their frame'
   assert.equal(statPanels[1][2], topY);
   assert.equal(statPanels[3][2], bottomY);
   assert.equal(rightX + cardWidth, 354);
-  assert.equal(bottomY + cardHeight, 288);
+  assert.equal(bottomY + cardHeight, 304);
 });
 
 test('CanvasGameRenderer keeps civilization advance layout within compact mobile viewport', () => {

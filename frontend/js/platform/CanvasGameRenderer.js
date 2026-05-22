@@ -313,10 +313,10 @@
       const statusTop = y + 10;
       const statusHeight = 38;
       const resourceTop = y + 56;
-      const resourceHeight = 48;
-      const cityTop = y + 112;
+      const resourceHeight = 62;
+      const cityTop = y + 126;
       const cityHeight = 32;
-      const barHeight = cityView.hidden ? 112 : 152;
+      const barHeight = cityView.hidden ? 128 : 166;
 
       this.drawPanel(x, y, width, barHeight, {
         fill: this.createGradient(
@@ -372,7 +372,7 @@
       const itemY = resourceTop;
       resources.forEach((resource, index) => {
         const itemX = resourceX + index * (itemWidth + gap);
-        const iconSize = compactResources ? 13 : 22;
+        const iconSize = compactResources ? 30 : 30;
         const valueSize = compactResources ? 11 : 16;
         const rateSize = compactResources ? 9 : 10;
         const labelSize = compactResources ? 8 : 10;
@@ -380,22 +380,22 @@
         if (compactResources) {
           const centerX = itemX + itemWidth / 2;
           const iconX = centerX - iconSize / 2;
-          this.drawAsset(resource.icon, iconX, itemY + 2, iconSize, iconSize);
-          this.drawText(resource.label, centerX, itemY + 17, { size: labelSize, color: '#cbbd96', align: 'center' });
-          this.drawText(this.truncateText(resource.value, textWidth, { size: valueSize, bold: true }), centerX, itemY + 28, {
+          this.drawAsset(resource.icon, iconX, itemY, iconSize, iconSize);
+          this.drawText(resource.label, centerX, itemY + 31, { size: labelSize, color: '#cbbd96', align: 'center' });
+          this.drawText(this.truncateText(resource.value, textWidth, { size: valueSize, bold: true }), centerX, itemY + 41, {
             size: valueSize,
             bold: true,
             color: '#74d3a0',
             align: 'center',
           });
-          this.drawText(this.truncateText(resource.rate, textWidth, { size: rateSize }), centerX, itemY + 40, {
+          this.drawText(this.truncateText(resource.rate, textWidth, { size: rateSize }), centerX, itemY + 52, {
             size: rateSize,
             color: '#a0a0a0',
             align: 'center',
           });
         } else {
           const iconX = itemX + 4;
-          const valueX = itemX + 33;
+          const valueX = itemX + 41;
           const wideTextWidth = Math.max(18, itemWidth - (valueX - itemX));
           this.drawAsset(resource.icon, iconX, itemY + 3, iconSize, iconSize);
           this.drawText(resource.label, iconX + iconSize / 2, itemY + 32, { size: labelSize, color: '#cbbd96', align: 'center' });

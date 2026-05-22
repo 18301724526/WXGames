@@ -811,6 +811,75 @@ test('Canvas game shell owns task center state and dispatches reward claims', ()
   assert.deepEqual(dispatched, [{ type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' }]);
 });
 
+test('Canvas game shell refreshes guide highlight after task reward is claimed', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const taskIconTarget = { x: 302, y: 604, width: 48, height: 48, action: { type: 'openTaskCenter', source: 'taskIcon' } };
+  const claimTarget = { x: 258, y: 462, width: 78, height: 34, action: { type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' } };
+  const tabBuildingsTarget = { x: 76, y: 786, width: 58, height: 58, action: { type: 'switchTab', tab: 'buildings' } };
+  const barracksTarget = { x: 24, y: 236, width: 342, height: 96, action: { type: 'buildBuilding', buildingId: 'barracks' } };
+  const renderer = {
+    hitTargets: [taskIconTarget, claimTarget],
+    getHitTarget: () => null,
+    render(state, options) {
+      renderCalls.push(options);
+      this.hitTargets = state.currentTab === 'buildings'
+        ? [tabBuildingsTarget, barracksTarget]
+        : [taskIconTarget, claimTarget];
+    },
+  };
+  const game = {
+    state: {
+      currentTab: 'resources',
+      softGuide: { mode: 'strong', target: 'card-barracks', message: '建造兵营' },
+      buildingDefinitions: { barracks: { id: 'barracks' } },
+      buildings: { barracks: { level: 0 } },
+      unlockedBuildings: ['barracks'],
+    },
+    tutorialController: { state: { completed: true }, canOpenTab: () => true },
+    handleCanvasTabSelection(tabId) {
+      this.state.currentTab = tabId;
+      shell.renderReadOnly(this.state, tabId);
+      return true;
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: {
+      buildBuildingViewState: () => ({ ids: ['barracks'] }),
+    },
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.showTaskCenter = true;
+  shell.showTutorialHighlight({ getRect: () => ({
+    left: claimTarget.x,
+    top: claimTarget.y,
+    width: claimTarget.width,
+    height: claimTarget.height,
+    right: claimTarget.x + claimTarget.width,
+    bottom: claimTarget.y + claimTarget.height,
+  }) }, '领取奖励');
+
+  assert.equal(shell.refreshCurrentGuideHighlight(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(shell.showTaskCenter, false);
+  assert.equal(game.state.currentTab, 'buildings');
+  assert.deepEqual(renderCalls.at(-1).tutorialHighlight.rect, {
+    left: barracksTarget.x,
+    top: barracksTarget.y,
+    width: barracksTarget.width,
+    height: barracksTarget.height,
+    right: barracksTarget.x + barracksTarget.width,
+    bottom: barracksTarget.y + barracksTarget.height,
+  });
+  assert.notEqual(renderCalls.at(-1).tutorialHighlight.rect.left, claimTarget.x);
+});
+
 test('Canvas game shell dispatches military and world actions without DOM adapters', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [

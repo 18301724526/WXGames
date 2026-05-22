@@ -236,7 +236,59 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
   const api = new GameAPI('/api', null, {
     transport: {
       async request(options) {
-        requests.push(JSON.parse(options.body || '{}'));
+        const body = JSON.parse(options.body || '{}');
+        requests.push(body);
+        if (options.url === '/api/game/tasks/claim') {
+          return {
+            ok: true,
+            async json() {
+              return {
+                success: true,
+                rewardReveal: { title: '获得奖励' },
+                gameState: {
+                  currentEra: 3,
+                  currentTab: 'resources',
+                  resources: { food: 260, knowledge: 80 },
+                  population: { total: 4, max: 6, unassigned: 0, farmers: 3, scholars: 1, craftsmen: 0 },
+                  unlockedBuildings: ['barracks'],
+                  buildingDefinitions: {
+                    barracks: {
+                      id: 'barracks',
+                      name: '兵营',
+                      buildCost: { food: 260, knowledge: 80 },
+                      ui: { description: '训练士兵', effectText: [] },
+                      military: { soldierCapByLevel: [0, 5], trainingIntervalSecondsByLevel: [0, 30] },
+                    },
+                  },
+                  buildingCosts: { barracks: { food: 260, knowledge: 80 } },
+                  buildings: { barracks: { level: 0 } },
+                },
+                guideTasks: {
+                  visible: true,
+                  tasks: [{
+                    id: 'barracks_supplies',
+                    title: '城邑守备',
+                    description: '建造兵营',
+                    status: 'active',
+                    target: 'card-barracks',
+                    actionLabel: '前往',
+                    action: {
+                      type: 'goToGuideTaskTarget',
+                      taskId: 'barracks_supplies',
+                      target: 'card-barracks',
+                      nextAction: { type: 'buildBuilding', buildingId: 'barracks' },
+                    },
+                  }],
+                },
+                softGuide: {
+                  mode: 'strong',
+                  target: 'card-barracks',
+                  message: '建造兵营',
+                },
+              };
+            },
+          };
+        }
         return {
           ok: true,
           async json() {
@@ -526,6 +578,16 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       taskId: 'barracks_supplies',
       category: 'main',
     });
+    const barracksBuildTargetAfterClaim = app.renderer.hitTargets.find((target) => (
+      target.action?.type === 'buildBuilding'
+      && target.action.buildingId === 'barracks'
+    ));
+    assert.ok(barracksBuildTargetAfterClaim);
+    assert.equal(app.showTaskCenter, false);
+    assert.equal(app.tutorialHighlight?.rect.left, barracksBuildTargetAfterClaim.x);
+    assert.notEqual(app.tutorialHighlight?.rect.left, taskCenterClaimTarget.x);
+    app.rewardReveal = null;
+    app.render();
 
     app.state = {
       ...app.state,
