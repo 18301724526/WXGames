@@ -358,26 +358,31 @@
       });
 
       const resources = [
-        { label: '食物', value: resourceView.text.foodValue, rate: resourceView.text.foodRate, icon: 'assets/art/icon-food-cutout.webp' },
+        { label: '木材', value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' },
+        { label: '铁矿', value: resourceView.text.ironValue, rate: resourceView.text.ironRate, icon: 'assets/art/icon-iron-cutout.webp' },
+        { label: '石料', value: resourceView.text.stoneValue, rate: resourceView.text.stoneRate, icon: 'assets/art/icon-stone-cutout.webp' },
+        { label: '粮食', value: resourceView.text.foodValue, rate: resourceView.text.foodRate, icon: 'assets/art/icon-food-cutout.webp' },
         { label: '知识', value: resourceView.text.knowledgeValue, rate: resourceView.text.knowledgeRate, icon: 'assets/art/icon-knowledge-cutout.webp' },
       ];
-      if (resourceView.hasWood) {
-        resources.push({ label: '木材', value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' });
-      }
-      const gap = 8;
+      const compactResources = resources.length >= 5;
+      const gap = compactResources ? 4 : 8;
       const resourceX = x + barPaddingX;
       const resourceWidth = width - barPaddingX * 2;
       const itemWidth = (resourceWidth - gap * (resources.length - 1)) / resources.length;
       const itemY = resourceTop;
       resources.forEach((resource, index) => {
         const itemX = resourceX + index * (itemWidth + gap);
-        const iconSize = 22;
-        const iconX = itemX + 4;
-        const valueX = itemX + 33;
+        const iconSize = compactResources ? 18 : 22;
+        const iconX = itemX + (compactResources ? 3 : 4);
+        const valueX = itemX + (compactResources ? 25 : 33);
+        const valueSize = compactResources ? 12 : 16;
+        const rateSize = compactResources ? 9 : 10;
+        const labelSize = compactResources ? 9 : 10;
+        const textWidth = Math.max(18, itemWidth - (valueX - itemX) - 1);
         this.drawAsset(resource.icon, iconX, itemY + 3, iconSize, iconSize);
-        this.drawText(resource.label, iconX + iconSize / 2, itemY + 34, { size: 10, color: '#cbbd96', align: 'center' });
-        this.drawText(resource.value, valueX, itemY + 9, { size: 16, bold: true, color: '#74d3a0' });
-        this.drawText(resource.rate, valueX, itemY + 31, { size: 10, color: '#a0a0a0' });
+        this.drawText(resource.label, iconX + iconSize / 2, itemY + 32, { size: labelSize, color: '#cbbd96', align: 'center' });
+        this.drawText(this.truncateText(resource.value, textWidth, { size: valueSize, bold: true }), valueX, itemY + 8, { size: valueSize, bold: true, color: '#74d3a0' });
+        this.drawText(this.truncateText(resource.rate, textWidth, { size: rateSize }), valueX, itemY + 29, { size: rateSize, color: '#a0a0a0' });
         this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: resourceHeight }, { type: 'openResourceDetails' });
       });
 
@@ -769,9 +774,10 @@
       return {
         food: '食物',
         wood: '木材',
+        iron: '铁矿',
         knowledge: '知识',
         stone: '石料',
-        metal: '金属',
+        metal: '铁矿',
       }[resource] || resource;
     }
 
@@ -779,7 +785,10 @@
       return {
         food: 'assets/art/icon-food-cutout.webp',
         wood: 'assets/art/icon-wood-cutout.webp',
+        iron: 'assets/art/icon-iron-cutout.webp',
         knowledge: 'assets/art/icon-knowledge-cutout.webp',
+        stone: 'assets/art/icon-stone-cutout.webp',
+        metal: 'assets/art/icon-iron-cutout.webp',
       }[resource] || '';
     }
 
@@ -2682,7 +2691,7 @@
       const view = this.presenter.buildResourceViewState(state);
       const layout = this.getLayout();
       const panelWidth = Math.min(360, layout.contentWidth - 24);
-      const resourceCount = view.hasWood ? 3 : 2;
+      const resourceCount = 5;
       const panelHeight = 92 + resourceCount * 86;
       const x = (this.width - panelWidth) / 2;
       const y = Math.max(76, (this.height - panelHeight) / 2 - 20);
@@ -2714,7 +2723,25 @@
 
       const cards = [
         {
-          label: '食物',
+          label: '木材',
+          icon: 'assets/art/icon-wood-cutout.webp',
+          value: view.text.woodDetailValue,
+          lines: [`产出 ${view.text.woodDetailRate}`],
+        },
+        {
+          label: '铁矿',
+          icon: 'assets/art/icon-iron-cutout.webp',
+          value: view.text.ironDetailValue,
+          lines: [`产出 ${view.text.ironDetailRate}`],
+        },
+        {
+          label: '石料',
+          icon: 'assets/art/icon-stone-cutout.webp',
+          value: view.text.stoneDetailValue,
+          lines: [`产出 ${view.text.stoneDetailRate}`],
+        },
+        {
+          label: '粮食',
           icon: 'assets/art/icon-food-cutout.webp',
           value: view.text.foodDetailValue,
           lines: [
@@ -2730,15 +2757,6 @@
           lines: [`产出 ${view.text.knowledgeDetailRate}`],
         },
       ];
-
-      if (view.hasWood) {
-        cards.push({
-          label: '木材',
-          icon: 'assets/art/icon-wood-cutout.webp',
-          value: view.text.woodDetailValue,
-          lines: [`产出 ${view.text.woodDetailRate}`],
-        });
-      }
 
       const cardX = x + 12;
       const cardWidth = panelWidth - 24;

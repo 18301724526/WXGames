@@ -81,24 +81,34 @@ test('resource view state is renderer-neutral and formats resource display', () 
       food: 12.8,
       knowledge: 5.2,
       wood: 30.9,
+      iron: 7.4,
+      stone: 9.6,
       foodOutputPerSecond: 1.5,
       foodConsumptionPerSecond: 0.25,
       foodNetPerSecond: 1.25,
       knowledgePerSecond: 0.4,
       woodPerSecond: 0,
+      ironPerSecond: 0,
+      stonePerSecond: 0,
     },
     happiness: 92,
     gameDay: 7,
   });
 
   assert.equal(view.hasWood, true);
+  assert.equal(view.hasIron, true);
+  assert.equal(view.hasStone, true);
   assert.equal(view.text.foodValue, 12);
   assert.equal(view.text.knowledgeValue, 5);
   assert.equal(view.text.woodValue, 30);
+  assert.equal(view.text.ironValue, 7);
+  assert.equal(view.text.stoneValue, 9);
   assert.equal(view.text.foodRate, '+1.25/s');
   assert.equal(view.text.foodConsumptionRate, '-0.25/s');
   assert.equal(view.text.knowledgeRate, '+0.4/s');
   assert.equal(view.text.woodRate, '+0/s');
+  assert.equal(view.text.ironRate, '+0/s');
+  assert.equal(view.text.stoneRate, '+0/s');
   assert.equal(view.text.happinessValue, 92);
   assert.equal(view.classState.foodNetRate['is-positive'], true);
   assert.equal(view.classState.foodNetRate['is-negative'], false);
@@ -111,6 +121,8 @@ test('resource view state compacts large resource amounts', () => {
       food: 1120,
       knowledge: 1200000,
       wood: 3450000000,
+      iron: 6400000,
+      stone: 7200,
       foodOutputPerSecond: 1250,
       foodConsumptionPerSecond: 1100,
       foodNetPerSecond: 150,
@@ -125,25 +137,33 @@ test('resource view state compacts large resource amounts', () => {
   assert.equal(view.text.foodValue, '1.1k');
   assert.equal(view.text.knowledgeValue, '1.2M');
   assert.equal(view.text.woodValue, '3.4G');
+  assert.equal(view.text.ironValue, '6.4M');
+  assert.equal(view.text.stoneValue, '7.2k');
   assert.equal(view.text.foodOutputRate, '+1.2k/s');
   assert.equal(view.text.foodConsumptionRate, '-1.1k/s');
   assert.equal(view.text.woodRate, '+1T/s');
 });
 
-test('resource view state hides wood before settlement era', () => {
+test('resource view state always exposes expanded resources with zero production defaults', () => {
   const view = UIStatePresenter.buildResourceViewState({
     currentEra: 1,
     resources: {
       food: 4,
       knowledge: 2,
       wood: 99,
+      iron: 0,
+      stone: 0,
       foodPerSecond: -0.5,
     },
   });
 
-  assert.equal(view.hasWood, false);
-  assert.equal(view.text.woodValue, 0);
+  assert.equal(view.hasWood, true);
+  assert.equal(view.text.woodValue, 99);
   assert.equal(view.text.woodRate, '+0/s');
+  assert.equal(view.text.ironValue, 0);
+  assert.equal(view.text.stoneValue, 0);
+  assert.equal(view.text.ironRate, '+0/s');
+  assert.equal(view.text.stoneRate, '+0/s');
   assert.equal(view.classState.foodNetRate['is-positive'], false);
   assert.equal(view.classState.foodNetRate['is-negative'], true);
 });
@@ -312,8 +332,8 @@ test('building view state is renderer-neutral and formats compact costs', () => 
   assert.equal(view.cards[0].levelText, '等级 1');
   assert.equal(view.cards[0].effectText, 'Food output +100%');
   assert.deepEqual(view.cards[0].cost.parts.map((part) => [part.resource, part.text]), [
-    ['food', '1.2k'],
     ['wood', '1M'],
+    ['food', '1.2k'],
   ]);
   assert.equal(view.cards[0].button.action, 'upgrade');
   assert.equal(view.cards[0].button.disabled, false);

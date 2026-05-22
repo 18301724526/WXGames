@@ -10,8 +10,9 @@ function createInitialResources(resources = {}) {
     food: Math.max(0, Number(resources.food) || 0),
     knowledge: Math.max(0, Number(resources.knowledge) || 0),
     wood: Math.max(0, Number(resources.wood) || 0),
+    iron: Math.max(0, Number(resources.iron ?? resources.metal) || 0),
     stone: Math.max(0, Number(resources.stone) || 0),
-    metal: Math.max(0, Number(resources.metal) || 0),
+    metal: Math.max(0, Number(resources.metal ?? resources.iron) || 0),
   };
 }
 
@@ -46,7 +47,7 @@ function createCityState(options = {}) {
     name: options.name || (id === CAPITAL_CITY_ID ? '首都' : '新城市'),
     isCapital: Boolean(options.isCapital || id === CAPITAL_CITY_ID),
     foundedAt: options.foundedAt || new Date().toISOString(),
-    resources: createInitialResources(options.resources || { food: 100, knowledge: 0, wood: 0, stone: 0, metal: 0 }),
+    resources: createInitialResources(options.resources || { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 }),
     buildings: BuildingState.normalizeLegacyBuildingState(options.buildings),
     population: createInitialPopulation(options.population),
     military: options.military || { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
@@ -67,7 +68,7 @@ function createCityForTerritory(territory, now = new Date()) {
     name: territory.cityName || territory.naturalName || '新城市',
     isCapital: false,
     foundedAt: territory.occupiedAt || now.toISOString(),
-    resources: { food, knowledge, wood, stone: 0, metal: 0 },
+    resources: { food, knowledge, wood, iron: 0, stone: 0, metal: 0 },
     population: {
       total: populationTotal,
       max: Math.max(3, populationTotal),
@@ -248,6 +249,9 @@ function advanceAllCities(gameState, deltaSeconds = 1) {
     city.resources.food = Math.max(0, (city.resources.food || 0) + outputs.foodPerSecond);
     city.resources.knowledge = Math.max(0, (city.resources.knowledge || 0) + outputs.knowledgePerSecond);
     city.resources.wood = Math.max(0, (city.resources.wood || 0) + outputs.woodPerSecond);
+    city.resources.iron = Math.max(0, (city.resources.iron ?? city.resources.metal ?? 0) + outputs.ironPerSecond);
+    city.resources.stone = Math.max(0, (city.resources.stone || 0) + outputs.stonePerSecond);
+    city.resources.metal = city.resources.iron;
     ResourceTickCalculator.applyPopulationGrowth({
       ...gameState,
       resources: city.resources,
@@ -286,12 +290,17 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
       food: Math.max(0, Math.floor(outputs.foodPerSecond * actualOffline * efficiency)),
       knowledge: Math.max(0, Math.floor(outputs.knowledgePerSecond * actualOffline * efficiency)),
       wood: Math.max(0, Math.floor(outputs.woodPerSecond * actualOffline * efficiency)),
+      iron: Math.max(0, Math.floor(outputs.ironPerSecond * actualOffline * efficiency)),
+      stone: Math.max(0, Math.floor(outputs.stonePerSecond * actualOffline * efficiency)),
       offlineHours: Math.floor((actualOffline / 3600) * 100) / 100,
       efficiency,
     };
     city.resources.food += income.food;
     city.resources.knowledge += income.knowledge;
     city.resources.wood += income.wood;
+    city.resources.iron = (city.resources.iron ?? city.resources.metal ?? 0) + income.iron;
+    city.resources.stone = (city.resources.stone || 0) + income.stone;
+    city.resources.metal = city.resources.iron;
     const trainingState = {
       ...gameState,
       activeCityId: city.id,
@@ -304,7 +313,7 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
     if (city.id === gameState.activeCityId) activeIncome = income;
   }
   syncActiveCityToLegacyFields(gameState);
-  const active = activeIncome || incomeByCity[CAPITAL_CITY_ID] || { food: 0, knowledge: 0, wood: 0, offlineHours: 0, efficiency: baseEfficiency };
+  const active = activeIncome || incomeByCity[CAPITAL_CITY_ID] || { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, offlineHours: 0, efficiency: baseEfficiency };
   return {
     activeIncome: active,
     incomeByCity,
@@ -312,9 +321,11 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
       food: sum.food + (income.food || 0),
       knowledge: sum.knowledge + (income.knowledge || 0),
       wood: sum.wood + (income.wood || 0),
+      iron: sum.iron + (income.iron || 0),
+      stone: sum.stone + (income.stone || 0),
       offlineHours: Math.max(sum.offlineHours, income.offlineHours || 0),
       efficiency: active.efficiency,
-    }), { food: 0, knowledge: 0, wood: 0, offlineHours: 0, efficiency: active.efficiency }),
+    }), { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, offlineHours: 0, efficiency: active.efficiency }),
   };
 }
 

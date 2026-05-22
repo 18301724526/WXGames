@@ -160,32 +160,46 @@
       const foodConsumption = this.toNumber(resources.foodConsumptionPerSecond);
       const knowledgeRate = this.toNumber(resources.knowledgePerSecond);
       const woodRate = this.toNumber(resources.woodPerSecond);
+      const ironRate = this.toNumber(resources.ironPerSecond ?? resources.metalPerSecond);
+      const stoneRate = this.toNumber(resources.stonePerSecond);
       const foodNet = Object.prototype.hasOwnProperty.call(resources, 'foodNetPerSecond')
         ? this.toNumber(resources.foodNetPerSecond)
         : this.toNumber(resources.foodPerSecond);
-      const hasWood = this.toNumber(state.currentEra) >= 2;
+      const hasWood = true;
       const food = this.formatResourceAmount(resources.food);
       const knowledge = this.formatResourceAmount(resources.knowledge);
-      const wood = hasWood ? this.formatResourceAmount(resources.wood) : 0;
+      const wood = this.formatResourceAmount(resources.wood);
+      const iron = this.formatResourceAmount(resources.iron ?? resources.metal);
+      const stone = this.formatResourceAmount(resources.stone);
 
       return {
         hasWood,
+        hasIron: true,
+        hasStone: true,
         foodNet,
         text: {
           foodValue: food,
           knowledgeValue: knowledge,
           woodValue: wood,
+          ironValue: iron,
+          stoneValue: stone,
           foodDetailValue: food,
           knowledgeDetailValue: knowledge,
           woodDetailValue: wood,
+          ironDetailValue: iron,
+          stoneDetailValue: stone,
           foodRate: this.formatRate(foodNet),
           foodOutputRate: this.formatRate(foodOutput),
           foodConsumptionRate: this.formatNegativeRate(foodConsumption),
           foodNetRate: this.formatRate(foodNet),
           knowledgeRate: this.formatRate(knowledgeRate),
-          woodRate: hasWood ? this.formatRate(woodRate) : '+0/s',
+          woodRate: this.formatRate(woodRate),
+          ironRate: this.formatRate(ironRate),
+          stoneRate: this.formatRate(stoneRate),
           knowledgeDetailRate: this.formatRate(knowledgeRate),
-          woodDetailRate: hasWood ? this.formatRate(woodRate) : '+0/s',
+          woodDetailRate: this.formatRate(woodRate),
+          ironDetailRate: this.formatRate(ironRate),
+          stoneDetailRate: this.formatRate(stoneRate),
           happinessValue: state.happiness || 100,
           gameTime: `第 ${state.gameDay || 1} 天`,
         },
@@ -440,7 +454,7 @@
     static buildCostViewState(cost) {
       if (cost === null) return { text: '已满级', parts: [], isMax: true };
       if (!cost) return { text: '免费建造', parts: [], isMax: false };
-      const parts = ['food', 'wood', 'knowledge', 'stone', 'metal']
+      const parts = ['wood', 'iron', 'stone', 'food', 'knowledge', 'metal']
         .filter((resource) => cost[resource])
         .map((resource) => ({
           resource,
@@ -488,7 +502,7 @@
 
     static canAffordCost(resources = {}, cost) {
       if (!cost || cost === null) return true;
-      return ['food', 'wood', 'knowledge', 'stone', 'metal']
+      return ['wood', 'iron', 'stone', 'food', 'knowledge', 'metal']
         .every((resource) => this.toNumber(resources?.[resource]) >= this.toNumber(cost?.[resource]));
     }
 
@@ -563,6 +577,9 @@
         food: '食物',
         knowledge: '知识',
         wood: '木材',
+        iron: '铁矿',
+        stone: '石料',
+        metal: '铁矿',
       }[resource] || resource;
     }
 
@@ -571,6 +588,9 @@
         food: '🌾',
         knowledge: '📚',
         wood: '🪵',
+        iron: '⛏️',
+        stone: '🪨',
+        metal: '⛏️',
       }[resource] || '';
     }
 

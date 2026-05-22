@@ -18,6 +18,8 @@
       this.state.food = this.state.resources.food || 0;
       this.state.knowledge = this.state.resources.knowledge || 0;
       this.state.wood = this.state.resources.wood || 0;
+      this.state.iron = this.state.resources.iron ?? this.state.resources.metal ?? 0;
+      this.state.stone = this.state.resources.stone || 0;
       this.state.softGuide = serverState.softGuide || null;
       this.state.guideTasks = serverState.guideTasks || { visible: false, tasks: [] };
       this.state.workshopCount = this.buildingState.getLevel(this.state.buildings, 'workshop');

@@ -26,7 +26,9 @@ test('canvas resource HUD uses dedicated resource icon assets without DOM resour
   const assets = [
     'icon-food-cutout.webp',
     'icon-happiness-cutout.webp',
+    'icon-iron-cutout.webp',
     'icon-knowledge-cutout.webp',
+    'icon-stone-cutout.webp',
     'icon-wood-cutout.webp',
   ];
 
@@ -34,7 +36,9 @@ test('canvas resource HUD uses dedicated resource icon assets without DOM resour
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
   }
   assert.match(canvasRenderer, /assets\/art\/icon-food-cutout\.webp/);
+  assert.match(canvasRenderer, /assets\/art\/icon-iron-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-knowledge-cutout\.webp/);
+  assert.match(canvasRenderer, /assets\/art\/icon-stone-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-wood-cutout\.webp/);
   assert.match(canvasRenderer, /assets\/art\/icon-happiness-cutout\.webp/);
   assert.doesNotMatch(css, /\.wood-card \.resource-icon \{ background-image: url\('assets\/art\/icon-fire-cutout\.webp'\); \}/);

@@ -71,6 +71,14 @@ function calculateWoodPerSecond(gameState, effects) {
     * withBuffMultiplier(gameState, 'wood');
 }
 
+function calculateIronPerSecond() {
+  return 0;
+}
+
+function calculateStonePerSecond() {
+  return 0;
+}
+
 function calculatePopulationCap(effects) {
   return effects?.populationCap || GameConfig.population.baseMax;
 }
@@ -95,6 +103,9 @@ function calculateOutputs(gameState, effects) {
     foodConsumptionPerSecond: food.consumptionPerSecond,
     knowledgePerSecond: calculateKnowledgePerSecond(gameState.population, effects, gameState),
     woodPerSecond: calculateWoodPerSecond(gameState, effects),
+    ironPerSecond: calculateIronPerSecond(gameState, effects),
+    stonePerSecond: calculateStonePerSecond(gameState, effects),
+    metalPerSecond: calculateIronPerSecond(gameState, effects),
   };
 }
 
@@ -132,6 +143,8 @@ module.exports = {
   calculateFoodPerSecond,
   calculateKnowledgePerSecond,
   calculateWoodPerSecond,
+  calculateIronPerSecond,
+  calculateStonePerSecond,
   calculatePopulationCap,
   calculateHappiness,
   calculateBuffedHappiness,

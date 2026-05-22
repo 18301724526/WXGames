@@ -294,9 +294,10 @@ function formatRewardText(reward = {}) {
   const names = {
     food: '食物',
     wood: '木材',
+    iron: '铁矿',
     knowledge: '知识',
     stone: '石料',
-    metal: '金属',
+    metal: '铁矿',
   };
   const parts = Object.entries(reward.resources || {})
     .filter(([, value]) => Number(value) > 0)

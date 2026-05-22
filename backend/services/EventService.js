@@ -290,7 +290,7 @@ function summarizeEffects(effects, reward, outcome = null) {
   if (outcome === 'timeout') parts.push('未及时处理，局势恶化');
   (effects || []).forEach((effect) => {
     if (effect.type === 'resource' && effect.value < 0) {
-      const label = { food: '食物', knowledge: '知识', wood: '木材' }[effect.key] || effect.key;
+      const label = { food: '食物', knowledge: '知识', wood: '木材', iron: '铁矿', stone: '石料', metal: '铁矿' }[effect.key] || effect.key;
       parts.push(`消耗 ${Math.abs(effect.value)} ${label}`);
     }
     if (effect.type === 'soldiers' && effect.value < 0) {
@@ -304,7 +304,7 @@ function summarizeEffects(effects, reward, outcome = null) {
     }
   });
   Object.entries(reward || {}).forEach(([key, value]) => {
-    const label = { food: '食物', knowledge: '知识', wood: '木材' }[key] || key;
+    const label = { food: '食物', knowledge: '知识', wood: '木材', iron: '铁矿', stone: '石料', metal: '铁矿' }[key] || key;
     parts.push(`获得 ${value} ${label}`);
   });
   return parts.length ? parts.join('，') : '事件已完成';

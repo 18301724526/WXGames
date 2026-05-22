@@ -125,7 +125,7 @@ test('CanvasGameRenderer world radar applies pan offset to site positions', () =
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   renderer.setPresenter({
-    buildResourceViewState: () => ({ hasWood: true, text: { foodValue: '100', foodRate: '+1/s', knowledgeValue: '20', knowledgeRate: '+0.2/s', woodValue: '8', woodRate: '+0.1/s' } }),
+    buildResourceViewState: () => ({ hasWood: true, hasIron: true, hasStone: true, text: { foodValue: '100', foodRate: '+1/s', knowledgeValue: '20', knowledgeRate: '+0.2/s', woodValue: '8', woodRate: '+0.1/s', ironValue: '0', ironRate: '+0/s', stoneValue: '0', stoneRate: '+0/s' } }),
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
     buildEventViewState: () => ({ badge: { hidden: true } }),
@@ -563,6 +563,14 @@ test('CanvasGameRenderer renders resource details panel from presenter view stat
         woodRate: '+0.3/s',
         woodDetailValue: '2',
         woodDetailRate: '+0.3/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        ironDetailValue: '0',
+        ironDetailRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+        stoneDetailValue: '0',
+        stoneDetailRate: '+0/s',
       },
     }),
     buildCitySwitcherViewState: () => ({ hidden: true }),
@@ -576,6 +584,8 @@ test('CanvasGameRenderer renders resource details panel from presenter view stat
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源详情'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '铁矿'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '石料'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '净增长 +1/s'));
   const closeTarget = renderer.hitTargets.find((target) => target.action?.type === 'closeResourceDetails' && target.width === 28);
   assert.ok(closeTarget);
@@ -586,7 +596,7 @@ test('CanvasGameRenderer renders resource details panel from presenter view stat
   assert.deepEqual(renderer.getHitTarget({ x: 40, y: 100 }), { type: 'closeResourceDetails' });
 });
 
-test('CanvasGameRenderer resource details panel hides wood before settlement era', () => {
+test('CanvasGameRenderer resource details panel keeps expanded resources visible before settlement era', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   renderer.setPresenter({
@@ -607,6 +617,14 @@ test('CanvasGameRenderer resource details panel hides wood before settlement era
         woodRate: '+0/s',
         woodDetailValue: '0',
         woodDetailRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        ironDetailValue: '0',
+        ironDetailRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+        stoneDetailValue: '0',
+        stoneDetailRate: '+0/s',
       },
     }),
     buildCitySwitcherViewState: () => ({ hidden: true }),
@@ -619,7 +637,9 @@ test('CanvasGameRenderer resource details panel hides wood before settlement era
     showResourceDetails: true,
   });
 
-  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '铁矿'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '石料'));
 });
 
 test('CanvasGameRenderer renders advisor panel and actions on canvas', () => {
@@ -953,7 +973,7 @@ test('CanvasGameRenderer HUD overlay mode draws resource population controls on 
 
   renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '食物'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '粮食'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'farmer'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'craftsman'));
@@ -1006,9 +1026,11 @@ test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view sta
   renderer.render({ currentEraName: '原始时代', currentTab: 'resources', happiness: 100 }, { activeTab: 'resources' });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '原始时代'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '食物'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '粮食'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '知识'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '铁矿'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '石料'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'));
   assert.ok(renderer.getHitTarget({ x: 30, y: 800 })?.type === 'switchTab');

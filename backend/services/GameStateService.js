@@ -22,7 +22,7 @@ function createInitialGameState(playerId) {
   const buildingEffects = BuildingEffectCalculator.calculate(buildings);
   return {
     playerId,
-    resources: { food: 100, knowledge: 0, wood: 0, stone: 0, metal: 0 },
+    resources: { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
     buildings,
     buildingEffects,
     population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0, growthProgress: 0 },
@@ -62,8 +62,9 @@ function normalizeState(rawState) {
     food: state.resources?.food || 0,
     knowledge: state.resources?.knowledge || 0,
     wood: state.resources?.wood || 0,
+    iron: state.resources?.iron ?? state.resources?.metal ?? 0,
     stone: state.resources?.stone || 0,
-    metal: state.resources?.metal || 0,
+    metal: state.resources?.metal ?? state.resources?.iron ?? 0,
   };
   state.buildings = BuildingState.normalizeLegacyBuildingState(state.buildings);
   state.population = {
@@ -158,6 +159,9 @@ function getClientGameState(gameState) {
       foodPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
       knowledgePerSecond: Math.round(outputs.knowledgePerSecond * 10) / 10,
       woodPerSecond: Math.round(outputs.woodPerSecond * 10) / 10,
+      ironPerSecond: Math.round(outputs.ironPerSecond * 10) / 10,
+      stonePerSecond: Math.round(outputs.stonePerSecond * 10) / 10,
+      metalPerSecond: Math.round(outputs.ironPerSecond * 10) / 10,
     },
     buildings: normalized.buildings,
     buildingCosts: getBuildingCosts(normalized.buildings),
