@@ -645,6 +645,7 @@ const Game = {
     if (target === 'card-craftsman') return 'tab-resources';
     if (target === 'event-card-special' || target === 'btn-claim-event') return 'tab-events';
     if (target === 'scout-action-first') return 'tab-military';
+    if (target === 'task-center-main-claim') return 'task-center-button';
     if (typeof target === 'string' && target.startsWith('card-')) return 'tab-buildings';
     return null;
   },

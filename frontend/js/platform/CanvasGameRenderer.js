@@ -462,8 +462,8 @@
         bold: true,
         color: '#fff1cf',
       });
-      const desc = task.status === 'claimable'
-        ? `奖励 ${task.rewardText || ''}`
+      const desc = canClaim
+        ? '任务已完成，前往任务列表领取奖励'
         : (task.description || task.rewardText || '');
       const lines = this.wrapTextLimit(desc, textWidth, 2, { size: 11 });
       this.drawTextLines(lines, textX, y + 31, {
@@ -472,10 +472,10 @@
         lineHeight: 15,
       });
 
-      const buttonLabel = canClaim ? (task.actionLabel || '领取') : (task.actionLabel || '前往');
+      const buttonLabel = canClaim ? (task.actionLabel || '任务') : (task.actionLabel || '前往');
       const buttonAction = task.action || (
         canClaim
-          ? { type: 'claimGuideTaskReward', taskId: task.id }
+          ? { type: 'openTaskCenter', tab: 'main', taskId: task.id, target: 'task-center-main-claim' }
           : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
       );
       this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, buttonLabel, {

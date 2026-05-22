@@ -17,6 +17,7 @@ function buildMainTask(task) {
     ...task,
     category: 'main',
     source: 'guide',
+    actionLabel: canClaim ? '领取' : task.actionLabel,
     action: canClaim
       ? { type: 'claimTaskReward', taskId: task.id, category: 'main' }
       : task.action,

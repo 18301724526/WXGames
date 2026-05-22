@@ -182,11 +182,9 @@
               ...task,
               category: task.category || tab.id,
               actionLabel: task.actionLabel || (claimable ? '领取' : '前往'),
-              action: task.action || (
-                claimable
-                  ? { type: 'claimTaskReward', taskId: task.id, category: tab.id }
-                  : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
-              ),
+              action: claimable
+                ? { type: 'claimTaskReward', taskId: task.id, category: tab.id }
+                : (task.action || { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }),
             };
           }),
         };

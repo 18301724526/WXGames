@@ -177,7 +177,11 @@
       if (key === 'card-watchtower') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'watchtower');
       if (key === 'card-barracks-upgrade') return this.getCanvasTarget('upgradeBuilding', (action) => action.buildingId === 'barracks');
       if (key === 'card-craftsman') return this.getCanvasTarget('assignJob', (action) => action.job === 'craftsman' && action.delta > 0);
-      if (key === 'guide-task-claim') return this.getCanvasTarget('claimGuideTaskReward');
+      if (key === 'guide-task-claim' || key === 'task-center-main-claim') {
+        return this.getCanvasTarget('claimTaskReward', (action) => (action.category || 'main') === 'main')
+          || this.getCanvasTarget('openTaskCenter');
+      }
+      if (key === 'task-center-button') return this.getCanvasTarget('openTaskCenter');
       if (key === 'event-card-special') return this.getCanvasTarget('openEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'btn-claim-event') return this.getCanvasTarget('claimEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'scout-action-first') {
@@ -654,6 +658,7 @@
           goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
           openTaskCenter: () => {
             this.showTaskCenter = true;
+            this.activeTaskCenterTab = action.tab || this.activeTaskCenterTab || 'main';
             this.showSettings = false;
             this.showLogs = false;
             this.showResourceDetails = false;

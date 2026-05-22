@@ -296,9 +296,9 @@ function buildTaskView(gameState, task) {
   const complete = Boolean(task.complete?.(gameState));
   const claimed = isClaimed(gameState, task.id);
   const status = !claimed && complete ? 'claimable' : 'active';
-  const target = status === 'claimable' ? task.target : (task.nextTarget || task.target || null);
+  const target = status === 'claimable' ? 'task-center-main-claim' : (task.nextTarget || task.target || null);
   const action = status === 'claimable'
-    ? { type: 'claimGuideTaskReward', taskId: task.id }
+    ? { type: 'openTaskCenter', tab: 'main', target }
     : { type: 'goToGuideTaskTarget', taskId: task.id, target, nextAction: getTaskGoAction(task) };
   return {
     id: task.id,
@@ -308,7 +308,7 @@ function buildTaskView(gameState, task) {
     claimed,
     target,
     action,
-    actionLabel: status === 'claimable' ? (task.actionLabel || '领取') : '前往',
+    actionLabel: status === 'claimable' ? '任务' : '前往',
     reward,
     rewardText: formatRewardText(reward),
   };
@@ -332,7 +332,7 @@ function getGuide(gameState) {
       id: `task_${task.id}`,
       mode: 'strong',
       message: `${task.title}完成，领取奖励后继续。`,
-      target: task.target,
+      target: view.target,
     };
   }
   if (task.id === 'barracks_supplies') {

@@ -457,7 +457,8 @@ test('CanvasGameRenderer renders guide task bar and reward reveal on shared canv
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线'));
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimGuideTaskReward' && target.action.taskId === 'barracks_supplies'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openTaskCenter' && target.action.tab === 'main'));
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'claimGuideTaskReward'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '获得奖励'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '收下'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeRewardReveal'));

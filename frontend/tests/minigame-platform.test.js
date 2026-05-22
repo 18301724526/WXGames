@@ -494,16 +494,25 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       },
     };
     app.switchTab('resources');
-    const guideTaskTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimGuideTaskReward');
+    const guideTaskTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openTaskCenter' && target.action.tab === 'main');
     assert.ok(guideTaskTarget);
     app.handleTap({
       x: guideTaskTarget.x + guideTaskTarget.width / 2,
       y: guideTaskTarget.y + guideTaskTarget.height / 2,
     });
     await new Promise((resolve) => setImmediate(resolve));
-    assert.deepEqual(requests.find((request) => request.action === 'claimGuideTaskReward'), {
-      action: 'claimGuideTaskReward',
-      target: 'barracks_supplies',
+    assert.equal(app.showTaskCenter, true);
+    assert.equal(app.activeTaskCenterTab, 'main');
+    const taskCenterClaimTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimTaskReward' && target.action.taskId === 'barracks_supplies');
+    assert.ok(taskCenterClaimTarget);
+    app.handleTap({
+      x: taskCenterClaimTarget.x + taskCenterClaimTarget.width / 2,
+      y: taskCenterClaimTarget.y + taskCenterClaimTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(requests.find((request) => request.taskId === 'barracks_supplies'), {
+      taskId: 'barracks_supplies',
+      category: 'main',
     });
 
     app.state = {
