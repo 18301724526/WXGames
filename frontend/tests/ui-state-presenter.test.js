@@ -721,7 +721,7 @@ test('population view state formats jobs and button availability', () => {
     },
   });
 
-  assert.equal(view.text.title, '要员分配');
+  assert.equal(view.text.title, '人才分配');
   assert.equal(view.text.subtitle, '核心岗位');
   assert.equal(view.text.total, 6);
   assert.equal(view.text.max, 8);

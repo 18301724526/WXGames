@@ -312,7 +312,7 @@
         unassigned,
         jobs,
         text: {
-          title: '要员分配',
+          title: '人才分配',
           subtitle: '核心岗位',
           total: totalOfficials,
           max: maxOfficials,

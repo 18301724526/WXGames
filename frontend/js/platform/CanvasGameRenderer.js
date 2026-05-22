@@ -1106,13 +1106,13 @@
       this.drawLine(x + 10, y + 6, x + width - 10, y + 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawLine(x + 10, y + panelHeight - 6, x + width - 10, y + panelHeight - 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawIconCard(x + 14, y + 14, 38, 38, 'assets/art/icon-population-cutout.webp');
-      this.drawText(view.text.title || '要员分配', x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
+      this.drawText(view.text.title || '人才分配', x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
       this.drawText(view.text.subtitle || '核心岗位', x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
       this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 
       const stats = [
-        { icon: 'assets/art/icon-population-cutout.webp', label: '要员', value: `${view.text.total}/${view.text.max}`, color: '#74d3a0' },
-        { icon: 'assets/art/icon-population-cutout.webp', label: '待分配要员', value: String(view.text.unassigned), color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: '人才', value: `${view.text.total}/${view.text.max}`, color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: '待分配人才', value: String(view.text.unassigned), color: '#74d3a0' },
         { icon: 'assets/art/icon-happiness-cutout.webp', label: '幸福度', value: `${state.happiness || 100}%`, color: '#f9ca24' },
       ];
       const statWidth = Math.floor((width - 28) / 3);
