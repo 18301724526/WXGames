@@ -467,6 +467,7 @@ const Game = {
     const guide = this.state.softGuide || {};
     const target = guide.target || '';
     const message = String(guide.message || '');
+    if (target === 'scout-action-first') return 'scout';
     if (target === 'tab-territory') return 'world';
     if (target !== 'tab-military') return null;
     if (/侦察|探索/.test(message)) return 'scout';
@@ -643,6 +644,7 @@ const Game = {
     if (target === 'btn-advance-era') return 'tab-civilization';
     if (target === 'card-craftsman') return 'tab-resources';
     if (target === 'event-card-special' || target === 'btn-claim-event') return 'tab-events';
+    if (target === 'scout-action-first') return 'tab-military';
     if (typeof target === 'string' && target.startsWith('card-')) return 'tab-buildings';
     return null;
   },
@@ -656,8 +658,16 @@ const Game = {
   },
 
   goToAdvisorTarget() {
-    const tabId = this.presenter.getAdvisorTargetTab(this.activeAdvisor?.target);
+    const target = this.activeAdvisor?.target;
+    if (target === 'scout-action-first') {
+      return this.canvasShell?.goToGuideTaskTarget?.({
+        target,
+        nextAction: { type: 'switchMilitaryView', view: 'scout' },
+      });
+    }
+    const tabId = this.presenter.getAdvisorTargetTab(target);
     if (tabId) this.switchTab(tabId);
+    return Boolean(tabId);
   },
 
   showFloatingText(message) {

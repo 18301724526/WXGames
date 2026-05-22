@@ -329,6 +329,7 @@ test('advisor, naming, and recent log view states are renderer-neutral', () => {
   assert.equal(advisor.hidden, false);
   assert.equal(advisor.goButton.disabled, false);
   assert.equal(UIStatePresenter.getAdvisorTargetTab(advisor.activeAdvisor.target), 'military');
+  assert.equal(UIStatePresenter.getAdvisorTargetTab('scout-action-first'), 'military');
   assert.equal(emptyAdvisor.hidden, true);
   assert.equal(emptyAdvisor.text.message, '暂无建议。');
   assert.equal(naming.placeholder, '例如：赤火联盟');

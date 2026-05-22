@@ -112,6 +112,14 @@
         return closed;
       }
 
+      if (action.type === 'goToAdvisorTarget') {
+        const moved = typeof context.goToAdvisorTarget === 'function'
+          ? context.goToAdvisorTarget(action) !== false
+          : false;
+        if (moved && typeof context.render === 'function') context.render(action);
+        return moved;
+      }
+
       if (action.type === 'openEvent') {
         const opened = typeof context.openEvent === 'function'
           ? context.openEvent(action) !== false
@@ -209,6 +217,7 @@
         'closeLogs',
         'openAdvisor',
         'closeAdvisor',
+        'goToAdvisorTarget',
         'openEvent',
         'closeEvent',
         'openWorldSite',
@@ -226,7 +235,7 @@
       if (target === 'btn-advance-era') return 'civilization';
       if (target === 'card-craftsman') return 'resources';
       if (target === 'event-card-special' || target === 'btn-claim-event') return 'events';
-      if (target === 'tab-territory') return 'military';
+      if (target === 'tab-territory' || target === 'scout-action-first') return 'military';
       if (typeof target === 'string' && target.startsWith('tab-')) return target.slice(4);
       if (typeof target === 'string' && target.startsWith('card-')) return 'buildings';
       return null;

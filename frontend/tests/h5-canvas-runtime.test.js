@@ -396,7 +396,13 @@ test('Canvas game shell owns advisor panel state and dispatches target action', 
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  CanvasGameShell.mount({ state: { currentTab: 'resources', softGuide: { message: 'Scout north', target: 'tab-military' } } }, {
+  CanvasGameShell.mount({
+    state: { currentTab: 'resources', softGuide: { message: 'Scout north', target: 'tab-military' } },
+    goToAdvisorTarget() {
+      goCalls.push('goToAdvisorTarget');
+      return true;
+    },
+  }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -406,10 +412,6 @@ test('Canvas game shell owns advisor panel state and dispatches target action', 
     },
     previewEnabled: true,
     inputEnabled: true,
-    onAction: (action) => {
-      if (action.type === 'goToAdvisorTarget') goCalls.push(action.type);
-      return true;
-    },
   });
 
   listeners['document:pointerup']({ clientX: 205, clientY: 80, type: 'pointerup', timeStamp: 1000 });
@@ -645,6 +647,64 @@ test('Canvas game shell sends guide task go actions through shared target naviga
     height: 34,
     right: 368,
     bottom: 458,
+  });
+});
+
+test('Canvas game shell highlights first available scout action for the scout guide task', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const scoutTarget = { x: 118, y: 352, width: 86, height: 86, action: { type: 'scoutTerritory', value: 'e', disabled: false } };
+  const renderer = {
+    hitTargets: [
+      { x: 325, y: 786, width: 53, height: 58, action: { type: 'switchTab', tab: 'military' } },
+      { x: 135, y: 246, width: 108, height: 34, action: { type: 'switchMilitaryView', view: 'scout' } },
+      scoutTarget,
+    ],
+    render(state, options) { renderCalls.push(options); },
+    getHitTarget: () => ({ type: 'goToGuideTaskTarget', target: 'scout-action-first', nextAction: { type: 'switchMilitaryView', view: 'scout' } }),
+  };
+  const dispatched = [];
+  const game = {
+    state: {
+      currentTab: 'resources',
+      currentEra: 5,
+      militaryView: 'army',
+      guideTasks: { visible: false, tasks: [] },
+    },
+    tutorial: {},
+    tutorialController: { state: {}, canOpenTab: () => true },
+    handleCanvasTabSelection(tabId) {
+      this.state.currentTab = tabId;
+      return true;
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      if (action.type === 'switchMilitaryView') game.state.militaryView = action.view;
+      return true;
+    },
+  });
+
+  assert.equal(shell.handleAction({ type: 'goToGuideTaskTarget', target: 'scout-action-first', nextAction: { type: 'switchMilitaryView', view: 'scout' } }), true);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(game.state.currentTab, 'military');
+  assert.deepEqual(dispatched, [{ type: 'switchMilitaryView', view: 'scout' }]);
+  assert.equal(game.state.militaryView, 'scout');
+  assert.deepEqual(renderCalls.at(-1).tutorialHighlight.rect, {
+    left: scoutTarget.x,
+    top: scoutTarget.y,
+    width: scoutTarget.width,
+    height: scoutTarget.height,
+    right: scoutTarget.x + scoutTarget.width,
+    bottom: scoutTarget.y + scoutTarget.height,
   });
 });
 

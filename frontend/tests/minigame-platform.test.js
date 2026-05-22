@@ -553,6 +553,58 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.equal(app.renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'barracks'), true);
     assert.equal(app.tutorialHighlight?.message, '按这里继续主线任务');
 
+    app.state = {
+      ...app.state,
+      currentEra: 5,
+      currentTab: 'resources',
+      militaryView: 'army',
+      territoryState: {
+        ...app.state.territoryState,
+        directions: [
+          { id: 'n', label: 'North' },
+          { id: 'e', label: 'East' },
+        ],
+        scoutMissions: [],
+        scoutReports: [],
+      },
+      guideTasks: {
+        visible: true,
+        tasks: [{
+          id: 'first_scout_reward',
+          title: 'First scout',
+          description: 'Send a scout.',
+          status: 'active',
+          target: 'scout-action-first',
+          actionLabel: 'Go',
+          action: {
+            type: 'goToGuideTaskTarget',
+            taskId: 'first_scout_reward',
+            target: 'scout-action-first',
+            nextAction: { type: 'switchMilitaryView', view: 'scout' },
+          },
+        }],
+      },
+    };
+    app.switchTab('resources');
+    const scoutGuideTarget = app.renderer.hitTargets.find((target) => (
+      target.action?.type === 'goToGuideTaskTarget'
+      && target.action.target === 'scout-action-first'
+    ));
+    assert.ok(scoutGuideTarget);
+    app.handleTap({
+      x: scoutGuideTarget.x + scoutGuideTarget.width / 2,
+      y: scoutGuideTarget.y + scoutGuideTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    const scoutActionTarget = app.renderer.hitTargets.find((target) => (
+      target.action?.type === 'scoutTerritory'
+      && target.action.disabled === false
+    ));
+    assert.ok(scoutActionTarget);
+    assert.equal(app.state.currentTab, 'military');
+    assert.equal(app.state.militaryView, 'scout');
+    assert.equal(app.tutorialHighlight?.rect.left, scoutActionTarget.x);
+
     assert.deepEqual(requests.find((request) => request.action === 'startConquest'), {
       action: 'startConquest',
       territoryId: 'site-east',

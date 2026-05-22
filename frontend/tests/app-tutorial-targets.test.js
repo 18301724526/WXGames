@@ -635,6 +635,79 @@ test('renderSoftGuide falls back to the target tab when the next guide target is
     assert.deepEqual(shownTarget, { id: 'buildings-tab' });
     assert.equal(Game.getFallbackGuideTarget('btn-advance-era'), 'tab-civilization');
     assert.equal(Game.getFallbackGuideTarget('card-craftsman'), 'tab-resources');
+    assert.equal(Game.getFallbackGuideTarget('scout-action-first'), 'tab-military');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('first scout guide target prefers the scout military sub view', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    Game.state.softGuide = {
+      target: 'scout-action-first',
+      message: 'Scout now.',
+    };
+
+    assert.equal(Game.getPreferredMilitaryView('military'), 'scout');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
+test('advisor target can jump directly to the first scout guide action', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    const calls = [];
+    Game.activeAdvisor = { target: 'scout-action-first' };
+    Game.canvasShell = {
+      goToGuideTaskTarget(action) {
+        calls.push(action);
+        return true;
+      },
+    };
+
+    assert.equal(Game.goToAdvisorTarget(), true);
+    assert.deepEqual(calls, [{
+      target: 'scout-action-first',
+      nextAction: { type: 'switchMilitaryView', view: 'scout' },
+    }]);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;

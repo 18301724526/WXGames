@@ -240,7 +240,7 @@ const TASKS = [
     title: '第一次侦察',
     description: '派出侦察队，让地图外的世界开始显现。',
     target: 'guide-task-claim',
-    nextTarget: 'tab-military',
+    nextTarget: 'scout-action-first',
     actionLabel: '领取',
     available: (gameState) => gameState.currentEra >= 5,
     complete: (gameState) => hasAnyScoutProgress(gameState),

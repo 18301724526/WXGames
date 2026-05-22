@@ -180,6 +180,10 @@
       if (key === 'guide-task-claim') return this.getCanvasTarget('claimGuideTaskReward');
       if (key === 'event-card-special') return this.getCanvasTarget('openEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'btn-claim-event') return this.getCanvasTarget('claimEvent', (action) => action.eventId === 'evt_settlement_forest_001');
+      if (key === 'scout-action-first') {
+        return this.getCanvasTarget('scoutTerritory', (action) => !action.disabled)
+          || this.getCanvasTarget('switchMilitaryView', (action) => action.view === 'scout');
+      }
       if (key === 'tab-resources') return this.getCanvasTarget('switchTab', (action) => action.tab === 'resources');
       if (key === 'tab-civilization') return this.getCanvasTarget('switchTab', (action) => action.tab === 'civilization');
       if (key === 'tab-buildings') return this.getCanvasTarget('switchTab', (action) => action.tab === 'buildings');
@@ -608,6 +612,12 @@
             this.showAdvisor = false;
             return true;
           },
+          goToAdvisorTarget: () => {
+            this.showAdvisor = false;
+            this.activeEventId = null;
+            if (!this.lastGame?.goToAdvisorTarget) return false;
+            return this.lastGame.goToAdvisorTarget() !== false;
+          },
           openEvent: () => {
             const eventData = (this.lastGame?.state?.eventQueue || []).find((item) => item.id === action.eventId);
             if (!eventData) return false;
@@ -745,6 +755,7 @@
       if (action.type === 'goToAdvisorTarget') {
         this.showAdvisor = false;
         this.activeEventId = null;
+        if (this.lastGame?.goToAdvisorTarget) return this.lastGame.goToAdvisorTarget() !== false;
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       }
       if (action.type === 'claimEvent') {

@@ -440,6 +440,7 @@
     }
 
     static getAdvisorTargetTab(target) {
+      if (target === 'scout-action-first') return 'military';
       if (target === 'tab-territory') return 'territory';
       if (typeof target === 'string' && target.startsWith('tab-')) return target.slice(4);
       return null;

@@ -110,3 +110,31 @@ test('时代进阶主线奖励按完整条件包发放', () => {
   assert.equal(state.resources.knowledge, 340);
   assert.equal(state.military.soldiers, 4);
 });
+
+test('first scout main task go action targets the scout button', () => {
+  const state = gameStateService.createInitialGameState('guide-task-first-scout-target');
+  completeTutorial(state);
+  state.currentEra = 5;
+  state.buildings.barracks = { level: 2 };
+  state.buildings.watchtower = { level: 1 };
+  state.warMissions = [];
+  state.scoutReports = [];
+  state.scoutedCoordinates = [];
+  gameStateService.normalizeState(state);
+
+  const tasks = GuideTaskService.getGuideTasks(state);
+  assert.equal(tasks.visible, true);
+  assert.equal(tasks.tasks[0].id, 'first_scout_reward');
+  assert.equal(tasks.tasks[0].status, 'active');
+  assert.equal(tasks.tasks[0].target, 'scout-action-first');
+  assert.deepEqual(tasks.tasks[0].action, {
+    type: 'goToGuideTaskTarget',
+    taskId: 'first_scout_reward',
+    target: 'scout-action-first',
+    nextAction: { type: 'switchMilitaryView', view: 'scout' },
+  });
+
+  const guide = GuideTaskService.getGuide(state);
+  assert.equal(guide.mode, 'strong');
+  assert.equal(guide.target, 'scout-action-first');
+});

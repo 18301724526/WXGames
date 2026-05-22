@@ -76,6 +76,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'closeLogs',
     'openAdvisor',
     'closeAdvisor',
+    'goToAdvisorTarget',
     'openEvent',
     'closeEvent',
     'openWorldSite',
@@ -99,6 +100,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'closeLogs' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openAdvisor' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeAdvisor' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'goToAdvisorTarget' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openEvent' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeEvent' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openWorldSite' }), true);
@@ -112,6 +114,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
   assert.equal(CanvasActionDispatcher.getGuideTargetTab('card-barracks'), 'buildings');
   assert.equal(CanvasActionDispatcher.getGuideTargetTab('btn-advance-era'), 'civilization');
+  assert.equal(CanvasActionDispatcher.getGuideTargetTab('scout-action-first'), 'military');
 });
 
 test('CanvasActionDispatcher 通过注入上下文处理 switchTab，不依赖平台壳类', () => {
