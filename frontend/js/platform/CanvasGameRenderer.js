@@ -1096,7 +1096,7 @@
           muted: isMuted,
           resources: state.resources || {},
         });
-        this.drawButton(buttonX, y + 56, actionWidth, 26, card.button.label, { disabled: card.button.disabled, size: 12, radius: 8 });
+        this.drawBuildingActionButton(buttonX, y + 56, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
         this.addHitTarget(
           { x: buttonX, y: y + 56, width: actionWidth, height: 26 },
           { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
@@ -1145,10 +1145,110 @@
       }[resource] || '';
     }
 
-    drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
+    buildingCostResourceAliases(resource) {
+      return resource === 'iron' ? ['iron', 'metal'] : [resource];
+    }
+
+    formatBuildingCostAmount(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return String(value ?? 0);
+      const sign = number < 0 ? '-' : '';
+      const abs = Math.abs(number);
+      if (abs < 1000) return String(Math.floor(number));
+      const units = [
+        { value: 1_000_000_000_000, suffix: 'T' },
+        { value: 1_000_000_000, suffix: 'G' },
+        { value: 1_000_000, suffix: 'M' },
+        { value: 1_000, suffix: 'k' },
+      ];
+      const unit = units.find((item) => abs >= item.value) || units[units.length - 1];
+      const scaled = Math.floor((abs / unit.value) * 10) / 10;
+      return `${sign}${String(scaled.toFixed(1)).replace(/\.0$/, '')}${unit.suffix}`;
+    }
+
+    getBuildingCostSlot(cost = {}, resource) {
+      const aliases = this.buildingCostResourceAliases(resource);
       const parts = Array.isArray(cost?.parts) ? cost.parts : [];
-      if (cost?.isMax || cost?.text || !parts.length) {
-        const text = cost?.text || (cost?.isMax ? '\u5df2\u6ee1\u7ea7' : '\u514d\u8d39');
+      const matches = parts.filter((part) => aliases.includes(part?.resource));
+      if (!matches.length) {
+        return { resource, value: 0, text: '0', present: false };
+      }
+      if (matches.length === 1) {
+        const match = matches[0];
+        const value = Number(match.value) || 0;
+        return {
+          resource,
+          value,
+          text: String(match.text ?? this.formatBuildingCostAmount(value)),
+          present: true,
+        };
+      }
+      const total = matches.reduce((sum, part) => sum + (Number(part.value) || 0), 0);
+      return {
+        resource,
+        value: total,
+        text: this.formatBuildingCostAmount(total),
+        present: total > 0,
+      };
+    }
+
+    getOwnedBuildingResource(resources = {}, resource) {
+      const aliases = this.buildingCostResourceAliases(resource);
+      const key = aliases.find((alias) => resources?.[alias] !== undefined);
+      return Number(key ? resources[key] : 0) || 0;
+    }
+
+    drawBuildingActionButton(x, y, width, height, label, cost = {}, options = {}) {
+      const knowledge = this.getBuildingCostSlot(cost, 'knowledge');
+      if (cost?.isMax || !knowledge.present || knowledge.value <= 0) {
+        this.drawButton(x, y, width, height, label, { disabled: options.disabled, size: 12, radius: 8 });
+        return;
+      }
+      this.drawPanel(x, y, width, height, {
+        fill: options.disabled ? 'rgba(60, 52, 46, 0.72)' : 'rgba(50, 35, 22, 0.94)',
+        stroke: 'rgba(240, 180, 91, 0.32)',
+        radius: 8,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      const amountText = this.truncateText(String(knowledge.text), Math.max(20, width * 0.32), { size: 10, bold: true });
+      const amountWidth = this.measureTextWidth(amountText, { size: 10, bold: true });
+      const iconSize = 13;
+      const gap = 4;
+      const labelMaxWidth = Math.max(28, width - amountWidth - iconSize - gap * 2 - 12);
+      const labelText = this.truncateText(label, labelMaxWidth, { size: 11, bold: true });
+      const labelWidth = this.measureTextWidth(labelText, { size: 11, bold: true });
+      const groupWidth = labelWidth + gap + iconSize + 2 + amountWidth;
+      const startX = x + Math.max(7, (width - groupWidth) / 2);
+      const centerY = y + height / 2;
+      const textColor = options.disabled ? '#8d8f99' : '#f6e8c8';
+      this.drawText(labelText, startX, centerY, {
+        color: textColor,
+        size: 11,
+        bold: true,
+        baseline: 'middle',
+      });
+      const iconX = startX + labelWidth + gap;
+      const iconY = y + (height - iconSize) / 2;
+      if (!this.drawAsset(this.resourceIconPath('knowledge'), iconX, iconY, iconSize, iconSize, options.disabled ? 0.52 : 1)) {
+        this.drawText('\u77e5', iconX + iconSize / 2, centerY, {
+          color: textColor,
+          size: 9,
+          bold: true,
+          align: 'center',
+          baseline: 'middle',
+        });
+      }
+      this.drawText(amountText, iconX + iconSize + 2, centerY, {
+        color: textColor,
+        size: 10,
+        bold: true,
+        baseline: 'middle',
+      });
+    }
+
+    drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
+      if (cost?.isMax) {
+        const text = cost?.text || '\u5df2\u6ee1\u7ea7';
         const fill = cost?.isMax ? 'rgba(60, 52, 46, 0.48)' : 'rgba(116, 211, 160, 0.12)';
         const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.1)' : 'rgba(116, 211, 160, 0.26)';
         this.drawPanel(x, y + 7, width, 24, { fill, stroke, radius: 7 });
@@ -1164,23 +1264,28 @@
 
       const gap = 4;
       const chipHeight = 18;
-      const chipColumns = parts.length > 1 ? 2 : 1;
+      const chipColumns = 2;
       const chipWidth = Math.floor((width - gap * (chipColumns - 1)) / chipColumns);
-      parts.slice(0, 4).forEach((part, index) => {
+      ['wood', 'iron', 'stone', 'food'].forEach((resource, index) => {
+        const part = this.getBuildingCostSlot(cost, resource);
         const col = index % chipColumns;
         const row = Math.floor(index / chipColumns);
         const chipX = x + col * (chipWidth + gap);
         const chipY = y + row * (chipHeight + gap);
         const required = Number(part.value) || 0;
-        const owned = Number(options.resources?.[part.resource]) || 0;
-        const insufficient = required > 0 && owned < required;
-        const fill = insufficient ? 'rgba(116, 47, 39, 0.58)' : 'rgba(40, 48, 34, 0.62)';
-        const stroke = insufficient ? 'rgba(235, 116, 100, 0.46)' : 'rgba(116, 211, 160, 0.24)';
-        const textColor = insufficient ? '#ffb0a5' : '#f6e8c8';
+        const owned = this.getOwnedBuildingResource(options.resources || {}, resource);
+        const insufficient = part.present && required > 0 && owned < required;
+        const fill = insufficient
+          ? 'rgba(116, 47, 39, 0.58)'
+          : (part.present ? 'rgba(40, 48, 34, 0.62)' : 'rgba(50, 44, 36, 0.42)');
+        const stroke = insufficient
+          ? 'rgba(235, 116, 100, 0.46)'
+          : (part.present ? 'rgba(116, 211, 160, 0.24)' : 'rgba(255, 226, 177, 0.12)');
+        const textColor = insufficient ? '#ffb0a5' : (part.present ? '#f6e8c8' : '#9a927e');
         this.drawPanel(chipX, chipY, chipWidth, chipHeight, { fill, stroke, radius: 6, inset: 'rgba(255, 255, 255, 0.04)' });
-        const iconPath = this.resourceIconPath(part.resource);
-        if (!this.drawAsset(iconPath, chipX + 4, chipY + 3, 12, 12, options.muted ? 0.62 : 1)) {
-          this.drawText(this.resourceShortName(part.resource), chipX + 8, chipY + 9, {
+        const iconPath = this.resourceIconPath(resource);
+        if (!this.drawAsset(iconPath, chipX + 4, chipY + 3, 12, 12, options.muted || !part.present ? 0.5 : 1)) {
+          this.drawText(this.resourceShortName(resource), chipX + 8, chipY + 9, {
             size: 8,
             bold: true,
             color: textColor,
@@ -1196,14 +1301,6 @@
           baseline: 'middle',
         });
       });
-      if (parts.length > 4) {
-        this.drawText(`+${parts.length - 4}`, x + width - 2, y + height - 4, {
-          size: 9,
-          color: '#cbbd96',
-          align: 'right',
-          baseline: 'bottom',
-        });
-      }
     }
 
     eventRowColor(tone) {

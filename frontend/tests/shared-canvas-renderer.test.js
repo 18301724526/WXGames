@@ -903,10 +903,15 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'house'));
 });
 
-test('CanvasGameRenderer renders building upgrade costs as icon chips inside compact cards', () => {
+test('CanvasGameRenderer renders building costs as fixed base slots with knowledge on the action button', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 360, height: 640, pixelRatio: 1 });
+  const assets = [];
+  renderer.drawAsset = (...args) => {
+    assets.push(args);
+    return true;
+  };
   renderer.setPresenter({
     buildResourceViewState: () => ({
       hasWood: true,
@@ -946,7 +951,7 @@ test('CanvasGameRenderer renders building upgrade costs as icon chips inside com
   renderer.render({
     currentEraName: '城邦时代',
     currentTab: 'buildings',
-    resources: { food: 260, wood: 40, knowledge: 100 },
+    resources: { food: 260, wood: 40, iron: 0, stone: 0, knowledge: 100 },
   }, {
     activeTab: 'buildings',
     mode: 'hud',
@@ -955,8 +960,20 @@ test('CanvasGameRenderer renders building upgrade costs as icon chips inside com
 
   assert.equal(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('食物 500')), false);
   const chipPanels = calls.filter((call) => call[0] === 'roundRect' && call[4] === 18);
-  assert.ok(chipPanels.length >= 3);
+  assert.equal(chipPanels.length, 4);
   assert.ok(chipPanels.every((call) => call[1] >= 220 && call[1] + call[3] <= 348));
+  const costSlotAssets = assets
+    .filter((call) => call[3] === 12 && call[4] === 12)
+    .map((call) => call[0]);
+  assert.deepEqual(costSlotAssets, [
+    'assets/art/icon-wood-cutout.webp',
+    'assets/art/icon-iron-cutout.webp',
+    'assets/art/icon-stone-cutout.webp',
+    'assets/art/icon-food-cutout.webp',
+  ]);
+  assert.equal(costSlotAssets.includes('assets/art/icon-knowledge-cutout.webp'), false);
+  assert.ok(assets.some((call) => call[0] === 'assets/art/icon-knowledge-cutout.webp' && call[3] === 13 && call[4] === 13));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '100'));
   const upgradeTarget = renderer.hitTargets.find((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'barracks');
   assert.ok(upgradeTarget);
   assert.ok(upgradeTarget.x >= 220);
