@@ -499,6 +499,7 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
       { x: 290, y: 252, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'farm' } },
       { x: 290, y: 338, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'house' } },
       { x: 290, y: 424, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'lumbermill' } },
+      { x: 290, y: 510, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'barracks' } },
       { x: 346, y: 512, width: 22, height: 22, action: { type: 'assignJob', job: 'craftsman', delta: 1 } },
       { x: 24, y: 164, width: 342, height: 78, action: { type: 'openEvent', eventId: 'evt_settlement_forest_001' } },
       { x: 36, y: 446, width: 318, height: 92, action: { type: 'claimEvent', eventId: 'evt_settlement_forest_001', optionId: 'opt_collect_wood' } },
@@ -545,6 +546,14 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
     right: 368,
     bottom: 458,
   });
+  assert.deepEqual(shell.getTutorialTarget('card-barracks').getRect(), {
+    left: 290,
+    top: 510,
+    width: 78,
+    height: 34,
+    right: 368,
+    bottom: 544,
+  });
   assert.deepEqual(shell.getTutorialTarget('card-craftsman').getRect(), {
     left: 346,
     top: 512,
@@ -587,6 +596,54 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
 
   assert.equal(shell.hideTutorialHighlight(), true);
   assert.equal(renderCalls.at(-1).tutorialHighlight, null);
+});
+
+test('H5 canvas app shell sends guide task go actions through shared target navigation', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    hitTargets: [
+      { x: 272, y: 786, width: 53, height: 58, action: { type: 'switchTab', tab: 'buildings' } },
+      { x: 290, y: 424, width: 78, height: 34, action: { type: 'buildBuilding', buildingId: 'barracks' } },
+    ],
+    render(state, options) { renderCalls.push(options); },
+    getHitTarget: () => ({ type: 'goToGuideTaskTarget', target: 'card-barracks' }),
+  };
+  const game = {
+    state: {
+      currentTab: 'resources',
+      buildingDefinitions: {},
+      guideTasks: { visible: false, tasks: [] },
+    },
+    tutorial: {},
+    tutorialController: { state: {}, canOpenTab: () => true },
+    handleCanvasTabSelection(tabId) {
+      this.state.currentTab = tabId;
+      return true;
+    },
+  };
+  const shell = H5CanvasAppShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  assert.equal(shell.handleAction({ type: 'goToGuideTaskTarget', target: 'card-barracks' }), true);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(game.state.currentTab, 'buildings');
+  assert.equal(renderCalls.at(-1).tutorialHighlight.message, '按这里继续主线任务');
+  assert.deepEqual(renderCalls.at(-1).tutorialHighlight.rect, {
+    left: 290,
+    top: 424,
+    width: 78,
+    height: 34,
+    right: 368,
+    bottom: 458,
+  });
 });
 
 test('H5 canvas app shell dispatches military and world actions without DOM adapters', () => {

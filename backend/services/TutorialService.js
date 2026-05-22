@@ -151,14 +151,14 @@ function validateAction(tutorialState, action, payload, gameState) {
     }
 
     if (action === 'claimEvent') {
-      if (step < TUTORIAL_STEPS.specialEventTabOpened || payload?.eventId !== 'evt_settlement_forest_001') {
+      if (step < TUTORIAL_STEPS.eraAdvancedTo2 || payload?.eventId !== 'evt_settlement_forest_001') {
         return blocked('请先查看森林事件并领取木材');
       }
       return { allowed: true };
     }
 
     if (action === 'build') {
-      if (payload?.target !== 'lumbermill' || step < TUTORIAL_STEPS.buildingsTabOpenedForLumbermill) {
+      if (payload?.target !== 'lumbermill' || step < TUTORIAL_STEPS.specialEventClaimed) {
         return blocked('当前只能按照引导建造伐木场');
       }
       return { allowed: true };

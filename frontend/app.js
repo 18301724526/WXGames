@@ -172,6 +172,9 @@ const Game = {
           this.claimGuideTaskReward(action.taskId);
           return true;
         }
+        if (action?.type === 'goToGuideTaskTarget') {
+          return true;
+        }
         if (action?.type === 'switchMilitaryView') {
           this.switchMilitaryView(action.view);
           return true;

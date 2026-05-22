@@ -78,6 +78,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'closeWorldSite',
     'resetWorldPan',
     'changeExpeditionSoldiers',
+    'goToGuideTaskTarget',
   ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
@@ -97,7 +98,10 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'closeWorldSite' }), true);
   assert.equal(dispatcher.canHandle({ type: 'resetWorldPan' }), true);
   assert.equal(dispatcher.canHandle({ type: 'changeExpeditionSoldiers' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'goToGuideTaskTarget' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
+  assert.equal(CanvasActionDispatcher.getGuideTargetTab('card-barracks'), 'buildings');
+  assert.equal(CanvasActionDispatcher.getGuideTargetTab('btn-advance-era'), 'civilization');
 });
 
 test('CanvasActionDispatcher 通过注入上下文处理 switchTab，不依赖 H5 或小游戏类', () => {
@@ -315,6 +319,21 @@ test('CanvasActionDispatcher 通过注入上下文处理 changeExpeditionSoldier
   assert.deepEqual(calls, [
     ['changeExpeditionSoldiers', 'changeExpeditionSoldiers', 5],
     ['render', 'changeExpeditionSoldiers'],
+  ]);
+});
+
+test('CanvasActionDispatcher 通过注入上下文处理主线任务前往，不依赖 H5 或小游戏类', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'goToGuideTaskTarget', target: 'card-barracks' }, {
+    goToGuideTaskTarget(action) { calls.push(['goToGuideTaskTarget', action.target]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['goToGuideTaskTarget', 'card-barracks'],
+    ['render', 'goToGuideTaskTarget'],
   ]);
 });
 

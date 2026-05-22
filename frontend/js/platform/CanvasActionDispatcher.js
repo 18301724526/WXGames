@@ -160,6 +160,14 @@
         return changed;
       }
 
+      if (action.type === 'goToGuideTaskTarget') {
+        const moved = typeof context.goToGuideTaskTarget === 'function'
+          ? context.goToGuideTaskTarget(action) !== false
+          : false;
+        if (moved && typeof context.render === 'function') context.render(action);
+        return moved;
+      }
+
       return false;
     }
 
@@ -183,7 +191,18 @@
         'closeWorldSite',
         'resetWorldPan',
         'changeExpeditionSoldiers',
+        'goToGuideTaskTarget',
       ];
+    }
+
+    static getGuideTargetTab(target) {
+      if (target === 'btn-advance-era') return 'civilization';
+      if (target === 'card-craftsman') return 'resources';
+      if (target === 'event-card-special' || target === 'btn-claim-event') return 'events';
+      if (target === 'tab-territory') return 'military';
+      if (typeof target === 'string' && target.startsWith('tab-')) return target.slice(4);
+      if (typeof target === 'string' && target.startsWith('card-')) return 'buildings';
+      return null;
     }
 
     static supportedAsyncActions() {

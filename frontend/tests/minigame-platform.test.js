@@ -506,6 +506,53 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       target: 'barracks_supplies',
     });
 
+    app.state = {
+      ...app.state,
+      currentEra: 3,
+      currentTab: 'resources',
+      unlockedBuildings: ['barracks'],
+      buildingDefinitions: {
+        barracks: {
+          id: 'barracks',
+          name: '兵营',
+          buildCost: { food: 260, knowledge: 80 },
+          ui: { description: '自动训练士兵', effectText: [] },
+          military: { soldierCapByLevel: [0, 5], trainingIntervalSecondsByLevel: [0, 30] },
+        },
+      },
+      buildingCosts: { barracks: { food: 260, knowledge: 80 } },
+      buildings: { barracks: { level: 0 } },
+      resources: { food: 260, knowledge: 80 },
+      guideTasks: {
+        visible: true,
+        tasks: [{
+          id: 'barracks_supplies',
+          title: '城邦守备',
+          description: '建造兵营',
+          status: 'active',
+          target: 'card-barracks',
+          actionLabel: '前往',
+          action: {
+            type: 'goToGuideTaskTarget',
+            taskId: 'barracks_supplies',
+            target: 'card-barracks',
+            nextAction: { type: 'buildBuilding', buildingId: 'barracks' },
+          },
+        }],
+      },
+    };
+    app.switchTab('resources');
+    const goTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'goToGuideTaskTarget');
+    assert.ok(goTarget);
+    app.handleTap({
+      x: goTarget.x + goTarget.width / 2,
+      y: goTarget.y + goTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(app.state.currentTab, 'buildings');
+    assert.equal(app.renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'barracks'), true);
+    assert.equal(app.tutorialHighlight?.message, '按这里继续主线任务');
+
     assert.deepEqual(requests.find((request) => request.action === 'startConquest'), {
       action: 'startConquest',
       territoryId: 'site-east',

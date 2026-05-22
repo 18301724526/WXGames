@@ -31,7 +31,7 @@ test('settlement task rewards enough resources to continue into era 2 after hous
   assert.equal(state.resources.knowledge, 5);
 
   const guide = GuideTaskService.getGuide(state);
-  assert.equal(guide.mode, 'strong');
+  assert.equal(guide.mode, 'soft');
   assert.equal(guide.target, 'btn-advance-era');
 
   const allowed = GuideTaskService.validateAction(state, 'advanceEra', {});
@@ -56,9 +56,16 @@ test('lumbermill task stays on build target after reward claim instead of loopin
   assert.equal(tasks.tasks[0].status, 'active');
   assert.equal(tasks.tasks[0].claimed, true);
   assert.equal(tasks.tasks[0].target, 'card-lumbermill');
+  assert.equal(tasks.tasks[0].actionLabel, '前往');
+  assert.deepEqual(tasks.tasks[0].action, {
+    type: 'goToGuideTaskTarget',
+    taskId: 'lumbermill_supplies',
+    target: 'card-lumbermill',
+    nextAction: { type: 'buildBuilding', buildingId: 'lumbermill' },
+  });
 
   const guide = GuideTaskService.getGuide(state);
-  assert.equal(guide.mode, 'strong');
+  assert.equal(guide.mode, 'soft');
   assert.equal(guide.target, 'card-lumbermill');
   assert.equal(GuideTaskService.validateAction(state, 'claimGuideTaskReward', { target: 'lumbermill_supplies' }).allowed, false);
   assert.equal(GuideTaskService.validateAction(state, 'build', { target: 'lumbermill' }).allowed, true);

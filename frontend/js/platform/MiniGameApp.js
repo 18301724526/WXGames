@@ -33,6 +33,8 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.rewardReveal = null;
+      this.tutorialHighlight = null;
+      this.highlightTimer = null;
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.naming = {
@@ -60,6 +62,7 @@
 
     applyState(payload = {}) {
       this.state = payload.gameState || payload.state || this.state;
+      this.activeTab = this.state.currentTab || this.activeTab;
       if (payload.token) {
         this.api.setToken(payload.token);
         this.runtime.setStorage('token', payload.token);
@@ -69,7 +72,7 @@
 
     render() {
       this.renderer.render(this.state, {
-        activeTab: this.activeTab,
+        activeTab: this.getActiveTab(),
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         rewardReveal: this.rewardReveal,
@@ -77,7 +80,12 @@
         activeEventId: this.activeEventId,
         territoryUiState: this.territoryUiState,
         naming: this.naming,
+        tutorialHighlight: this.tutorialHighlight,
       });
+    }
+
+    getActiveTab() {
+      return this.state?.currentTab || this.activeTab || 'resources';
     }
 
     openNaming(prompt = {}) {
@@ -155,9 +163,130 @@
 
     switchTab(tab) {
       this.activeTab = tab || 'resources';
+      this.state = { ...this.state, currentTab: this.activeTab };
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.render();
+    }
+
+    getTargetTab(key) {
+      const DispatcherCtor = this.actionDispatcher?.constructor || global.CanvasActionDispatcher;
+      return DispatcherCtor?.getGuideTargetTab?.(key) || null;
+    }
+
+    getCanvasTarget(type, predicate = null) {
+      const target = (this.renderer.hitTargets || []).find((item) => (
+        item.action?.type === type
+        && (typeof predicate !== 'function' || predicate(item.action))
+      ));
+      if (!target) return null;
+      return {
+        left: target.x,
+        top: target.y,
+        width: target.width,
+        height: target.height,
+        right: target.x + target.width,
+        bottom: target.y + target.height,
+      };
+    }
+
+    getGuideTargetRect(key) {
+      if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
+      if (key === 'card-farm') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'farm');
+      if (key === 'card-house') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'house');
+      if (key === 'card-lumbermill') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'lumbermill');
+      if (key === 'card-barracks') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'barracks');
+      if (key === 'card-watchtower') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'watchtower');
+      if (key === 'card-barracks-upgrade') return this.getCanvasTarget('upgradeBuilding', (action) => action.buildingId === 'barracks');
+      if (key === 'card-craftsman') return this.getCanvasTarget('assignJob', (action) => action.job === 'craftsman' && action.delta > 0);
+      if (key === 'guide-task-claim') return this.getCanvasTarget('claimGuideTaskReward');
+      if (key === 'event-card-special') return this.getCanvasTarget('openEvent', (action) => action.eventId === 'evt_settlement_forest_001');
+      if (key === 'btn-claim-event') return this.getCanvasTarget('claimEvent', (action) => action.eventId === 'evt_settlement_forest_001');
+      if (key === 'tab-resources') return this.getCanvasTarget('switchTab', (action) => action.tab === 'resources');
+      if (key === 'tab-civilization') return this.getCanvasTarget('switchTab', (action) => action.tab === 'civilization');
+      if (key === 'tab-buildings') return this.getCanvasTarget('switchTab', (action) => action.tab === 'buildings');
+      if (key === 'tab-events') return this.getCanvasTarget('switchTab', (action) => action.tab === 'events');
+      if (key === 'tab-military' || key === 'tab-territory') return this.getCanvasTarget('switchTab', (action) => action.tab === 'military');
+      return null;
+    }
+
+    ensureGuideTargetVisible(key) {
+      if (!key || this.getActiveTab() !== 'buildings') return false;
+      const targetBuilding = {
+        'card-farm': 'farm',
+        'card-house': 'house',
+        'card-lumbermill': 'lumbermill',
+        'card-barracks': 'barracks',
+        'card-watchtower': 'watchtower',
+        'card-barracks-upgrade': 'barracks',
+      }[key];
+      if (!targetBuilding) return false;
+      const ids = this.presenter?.buildBuildingViewState?.(
+        this.state,
+        this.state?.tutorial || {},
+        this.state?.buildingDefinitions || {},
+      )?.ids || [];
+      const index = ids.indexOf(targetBuilding);
+      if (index < 0) return false;
+      const nextOffset = Math.max(0, index - 1);
+      if (this.buildingOffset === nextOffset) return false;
+      this.buildingOffset = nextOffset;
+      this.render();
+      return true;
+    }
+
+    showGuideHighlight(rect, message) {
+      if (!rect) return false;
+      const now = this.runtime?.now?.() || Date.now();
+      const previousRect = this.tutorialHighlight?.rect || rect;
+      this.tutorialHighlight = {
+        rect,
+        message: String(message || '按这里继续主线任务'),
+        transition: {
+          fromRect: previousRect,
+          toRect: rect,
+          startedAt: now,
+          durationMs: 260,
+        },
+        pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
+      };
+      if (this.highlightTimer) this.runtime?.clearInterval?.(this.highlightTimer);
+      if (this.runtime?.setInterval) {
+        const startedAt = now;
+        this.highlightTimer = this.runtime.setInterval(() => {
+          const current = this.runtime?.now?.() || Date.now();
+          if (current - startedAt > 1600) {
+            this.runtime.clearInterval(this.highlightTimer);
+            this.highlightTimer = null;
+            this.tutorialHighlight = null;
+          }
+          this.render();
+        }, 33);
+      }
+      this.render();
+      return true;
+    }
+
+    goToGuideTaskTarget(action = {}) {
+      const targetKey = action.target || action.nextTarget;
+      if (!targetKey) return false;
+      const tabId = this.getTargetTab(targetKey);
+      if (tabId && this.getActiveTab() !== tabId) {
+        this.switchTab(tabId);
+      }
+      if (action.nextAction?.type === 'switchMilitaryView') {
+        this.militaryView = action.nextAction.view || 'army';
+        this.state = { ...this.state, militaryView: this.militaryView };
+        this.render();
+      }
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.activeEventId = null;
+      this.ensureGuideTargetVisible(targetKey);
+      this.render();
+      const target = this.getGuideTargetRect(targetKey)
+        || (tabId ? this.getGuideTargetRect(`tab-${tabId}`) : null);
+      return this.showGuideHighlight(target, action.message);
     }
 
     getSelectedSite() {
@@ -272,8 +401,9 @@
             this.territoryUiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
             return true;
           },
+          goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
           render: (dispatchAction) => {
-            if (dispatchAction?.type !== 'switchTab') this.render();
+            if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') this.render();
           },
         });
         return;
@@ -413,9 +543,14 @@
     }
 
     stop() {
-      if (!this.timer) return;
-      this.runtime.clearInterval(this.timer);
-      this.timer = null;
+      if (this.timer) {
+        this.runtime.clearInterval(this.timer);
+        this.timer = null;
+      }
+      if (this.highlightTimer) {
+        this.runtime.clearInterval(this.highlightTimer);
+        this.highlightTimer = null;
+      }
       if (this.tapDisposer) {
         this.tapDisposer();
         this.tapDisposer = null;

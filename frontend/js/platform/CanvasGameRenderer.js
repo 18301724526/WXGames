@@ -420,6 +420,8 @@
       const buttonX = x + width - buttonWidth - 14;
       const buttonY = y + 19;
       const canClaim = task.status === 'claimable' && !task.claimed;
+      const canGo = !canClaim && Boolean(task.target);
+      const buttonDisabled = !canClaim && !canGo;
 
       this.drawPanel(x, y, width, height, {
         fill: this.createGradient(
@@ -465,17 +467,22 @@
         lineHeight: 15,
       });
 
-      const buttonLabel = canClaim ? (task.actionLabel || '领取') : (task.claimed ? '继续' : '进行中');
+      const buttonLabel = canClaim ? (task.actionLabel || '领取') : (task.actionLabel || '前往');
+      const buttonAction = task.action || (
+        canClaim
+          ? { type: 'claimGuideTaskReward', taskId: task.id }
+          : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
+      );
       this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, buttonLabel, {
-        disabled: !canClaim,
-        active: canClaim,
+        disabled: buttonDisabled,
+        active: canClaim || canGo,
         size: 12,
-        bold: canClaim,
+        bold: canClaim || canGo,
         radius: 9,
       });
       this.addHitTarget(
         { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight },
-        { type: 'claimGuideTaskReward', taskId: task.id, disabled: !canClaim },
+        { ...buttonAction, disabled: buttonDisabled },
       );
 
       return y + height + 10;

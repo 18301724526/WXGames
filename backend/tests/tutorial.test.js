@@ -107,6 +107,29 @@ test('领取事件奖励后允许切到建筑标签继续引导', () => {
   assert.equal(TutorialService.canAccessTab(tutorial, 'civilization'), false);
 });
 
+test('双端共用流程不依赖切页事件也能领取森林事件并建造伐木场', () => {
+  const state = gameStateService.createInitialGameState('minigame-eventless-tabs');
+  state.currentEra = 2;
+  state.resources.food = 50;
+  state.resources.wood = 15;
+
+  const eventClaim = TutorialService.validateAction(
+    TutorialService.manualAdvance(state.tutorial, 10),
+    'claimEvent',
+    { eventId: 'evt_settlement_forest_001' },
+    state,
+  );
+  assert.equal(eventClaim.allowed, true);
+
+  const buildLumbermill = TutorialService.validateAction(
+    TutorialService.manualAdvance(state.tutorial, 12),
+    'build',
+    { target: 'lumbermill' },
+    state,
+  );
+  assert.equal(buildLumbermill.allowed, true);
+});
+
 test('伐木场建成后允许切到资源标签分配工匠', () => {
   let tutorial = TutorialService.createInitialTutorialState();
   tutorial = TutorialService.manualAdvance(tutorial, 14);

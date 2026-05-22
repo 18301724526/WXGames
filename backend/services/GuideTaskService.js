@@ -119,6 +119,20 @@ function hasPendingSettlementEvent(gameState) {
   ));
 }
 
+function getTaskGoAction(task) {
+  if (!task) return null;
+  if (task.id === 'settlement_advance_supplies') return { type: 'advanceEra' };
+  if (task.id === 'lumbermill_supplies') return { type: 'buildBuilding', buildingId: 'lumbermill' };
+  if (task.id === 'city_advance_supplies') return { type: 'advanceEra' };
+  if (task.id === 'barracks_supplies') return { type: 'buildBuilding', buildingId: 'barracks' };
+  if (task.id === 'border_advance_supplies') return { type: 'advanceEra' };
+  if (task.id === 'watchtower_supplies') return { type: 'buildBuilding', buildingId: 'watchtower' };
+  if (task.id === 'barracks_upgrade_supplies') return { type: 'upgradeBuilding', buildingId: 'barracks' };
+  if (task.id === 'classical_advance_supplies') return { type: 'advanceEra' };
+  if (task.id === 'first_scout_reward') return { type: 'switchMilitaryView', view: 'scout' };
+  return null;
+}
+
 const TASKS = [
   {
     id: 'settlement_advance_supplies',
@@ -302,14 +316,19 @@ function buildTaskView(gameState, task) {
   const complete = Boolean(task.complete?.(gameState));
   const claimed = isClaimed(gameState, task.id);
   const status = !claimed && complete ? 'claimable' : 'active';
+  const target = status === 'claimable' ? task.target : (task.nextTarget || task.target || null);
+  const action = status === 'claimable'
+    ? { type: 'claimGuideTaskReward', taskId: task.id }
+    : { type: 'goToGuideTaskTarget', taskId: task.id, target, nextAction: getTaskGoAction(task) };
   return {
     id: task.id,
     title: task.title,
     description: task.description,
     status,
     claimed,
-    target: status === 'claimable' ? task.target : (task.nextTarget || task.target || null),
-    actionLabel: claimed ? '继续' : (task.actionLabel || '领取'),
+    target,
+    action,
+    actionLabel: status === 'claimable' ? (task.actionLabel || '领取') : '前往',
     reward,
     rewardText: formatRewardText(reward),
   };
@@ -336,6 +355,14 @@ function getGuide(gameState) {
       target: task.target,
     };
   }
+  if (task.id === 'barracks_supplies') {
+    return {
+      id: 'task_barracks_force',
+      mode: 'strong',
+      message: '领取城邦守备奖励后，点击前往建造兵营。',
+      target: task.nextTarget || task.target,
+    };
+  }
   if (task.id === 'first_scout_reward') {
     return {
       id: 'first_scout_strong',
@@ -346,7 +373,7 @@ function getGuide(gameState) {
   }
   return {
     id: `task_${task.id}_next`,
-    mode: 'strong',
+    mode: 'soft',
     message: task.description,
     target: task.nextTarget || task.target || null,
   };
@@ -428,7 +455,7 @@ function getExpectedActionForTask(task) {
 }
 
 function validateAction(gameState, action, payload = {}) {
-  if (action === 'claimEvent') return { allowed: true };
+  if (action === 'claimEvent' || action === 'goToGuideTaskTarget') return { allowed: true };
   const task = getCurrentTaskDefinition(gameState);
   if (!task) return { allowed: true };
   const view = buildTaskView(gameState, task);
@@ -461,4 +488,5 @@ module.exports = {
   claimReward,
   validateAction,
   formatRewardText,
+  getTaskGoAction,
 };

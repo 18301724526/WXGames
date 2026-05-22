@@ -463,6 +463,60 @@ test('CanvasGameRenderer renders guide task bar and reward reveal on shared canv
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeRewardReveal'));
 });
 
+test('CanvasGameRenderer renders guide task go button for active tasks', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '260',
+        foodRate: '+0/s',
+        knowledgeValue: '80',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+  });
+
+  renderer.render({
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    guideTasks: {
+      visible: true,
+      tasks: [{
+        id: 'barracks_supplies',
+        title: '城邦守备',
+        description: '先建造兵营',
+        status: 'active',
+        target: 'card-barracks',
+        actionLabel: '前往',
+        action: {
+          type: 'goToGuideTaskTarget',
+          taskId: 'barracks_supplies',
+          target: 'card-barracks',
+          nextAction: { type: 'buildBuilding', buildingId: 'barracks' },
+        },
+      }],
+    },
+  }, {
+    activeTab: 'resources',
+    mode: 'hud',
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前往'));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'goToGuideTaskTarget'
+    && target.action.taskId === 'barracks_supplies'
+    && !target.action.disabled
+  )));
+});
+
 test('CanvasGameRenderer renders login panel and login hit targets on canvas', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

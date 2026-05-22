@@ -172,6 +172,11 @@
       return null;
     }
 
+    getTargetTab(key) {
+      const DispatcherCtor = this.actionDispatcher?.constructor || global.CanvasActionDispatcher;
+      return DispatcherCtor?.getGuideTargetTab?.(key) || null;
+    }
+
     ensureTutorialTargetVisible(key) {
       if (!key || this.lastGame?.state?.currentTab !== 'buildings') return false;
       const targetBuilding = {
@@ -195,6 +200,41 @@
       this.buildingOffset = nextOffset;
       this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       return true;
+    }
+
+    goToGuideTaskTarget(action = {}) {
+      const targetKey = action.target || action.nextTarget;
+      if (!targetKey) return false;
+      const tabId = this.getTargetTab(targetKey);
+      const showTarget = () => {
+        if (action.nextAction?.type === 'switchMilitaryView' && this.onAction) {
+          this.onAction(action.nextAction);
+        }
+        this.showAdvisor = false;
+        this.showSettings = false;
+        this.showLogs = false;
+        this.showResourceDetails = false;
+        this.showCitySwitcher = false;
+        this.activeEventId = null;
+        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || tabId || 'resources');
+        const target = this.getTutorialTarget(targetKey);
+        if (target) return this.showTutorialHighlight(target, action.message || '按这里继续主线任务');
+        const fallbackTab = tabId ? this.getTutorialTarget(`tab-${tabId}`) : null;
+        return fallbackTab ? this.showTutorialHighlight(fallbackTab, action.message || '按这里继续主线任务') : false;
+      };
+      if (tabId && this.lastGame?.state?.currentTab !== tabId) {
+        const switchResult = this.lastGame?.handleCanvasTabSelection
+          ? this.lastGame.handleCanvasTabSelection(tabId)
+          : (this.onAction ? this.onAction({ type: 'switchTab', tab: tabId, source: 'guideTask' }) : this.lastGame?.switchTab?.(tabId));
+        Promise.resolve(switchResult).then((allowed) => {
+          if (allowed !== false) {
+            const currentTab = this.lastGame?.state?.currentTab;
+            if (!currentTab || currentTab === tabId) showTarget();
+          }
+        }).catch(() => {});
+        return true;
+      }
+      return showTarget();
     }
 
     resolveTutorialRect(target) {
@@ -585,8 +625,11 @@
             if (!this.onAction) return false;
             return this.onAction(action, event) !== false;
           },
+          goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
           render: (dispatchAction) => {
-            if (dispatchAction?.type !== 'switchTab') this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+            if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') {
+              this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+            }
             if (dispatchAction?.type === 'openEvent' || dispatchAction?.type === 'closeEvent') {
               this.lastGame?.tutorialController?.render?.();
             }
