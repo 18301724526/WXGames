@@ -512,6 +512,39 @@
       });
     }
 
+    drawPrimaryActionButton(x, y, width, height, label, options = {}) {
+      if (!this.ctx) return;
+      const disabled = Boolean(options.disabled);
+      const radius = options.radius || Math.min(10, Math.floor(height / 2));
+      const fill = disabled
+        ? 'rgba(60, 52, 46, 0.72)'
+        : this.createGradient(
+          x, y, x, y + height,
+          [
+            [0, 'rgba(247, 202, 104, 0.98)'],
+            [1, 'rgba(176, 92, 39, 0.98)'],
+          ],
+          'rgba(214, 137, 58, 0.98)',
+        );
+      this.drawPanel(x, y, width, height, {
+        fill,
+        stroke: disabled ? 'rgba(240, 180, 91, 0.22)' : 'rgba(255, 235, 166, 0.82)',
+        radius,
+        inset: disabled ? 'rgba(255, 231, 184, 0.06)' : 'rgba(255, 252, 218, 0.22)',
+      });
+      if (!disabled) {
+        this.drawLine(x + 9, y + 4, x + width - 9, y + 4, { color: 'rgba(255, 255, 220, 0.5)' });
+        this.drawLine(x + 10, y + height - 3, x + width - 10, y + height - 3, { color: 'rgba(80, 36, 18, 0.28)' });
+      }
+      this.drawText(label, x + width / 2, y + height / 2, {
+        color: disabled ? '#8d8f99' : '#24170e',
+        size: options.size || 13,
+        bold: true,
+        baseline: 'middle',
+        align: 'center',
+      });
+    }
+
     drawProgressBar(x, y, width, height, percentage) {
       if (!this.ctx) return;
       this.drawPanel(x, y, width, height, {
@@ -1271,6 +1304,7 @@
         knowledge: 'assets/art/icon-knowledge-cutout.webp',
         stone: 'assets/art/icon-stone-cutout.webp',
         metal: 'assets/art/icon-iron-cutout.webp',
+        soldier: 'assets/art/icon-soldier-cutout.webp',
       }[resource] || '';
     }
 
@@ -1457,13 +1491,53 @@
       });
       const textX = x + labelWidth;
       const textWidth = Math.max(24, width - labelWidth);
+      if (Array.isArray(row.parts) && row.parts.length) {
+        this.drawEventParts(row.parts, textX, y - 2, textWidth, { size, lineHeight, color: options.color || '#cbbd96' });
+        return lineHeight;
+      }
       const lines = this.wrapTextLimit(row.text || '', textWidth, maxLines, { size });
       this.drawTextLines(lines, textX, y, {
         size,
-        color: options.color || '#cbbd96',
+        color: row.empty ? 'rgba(203, 189, 150, 0.58)' : (options.color || '#cbbd96'),
         lineHeight,
       });
       return Math.max(lineHeight, lines.length * lineHeight);
+    }
+
+    drawEventParts(parts = [], x, y, width, options = {}) {
+      const size = options.size || 10;
+      const iconSize = Math.max(11, size + 2);
+      const gap = 4;
+      let cursorX = x;
+      const baselineY = y + iconSize / 2;
+      parts.forEach((part, index) => {
+        if (cursorX > x + width - 8) return;
+        if (index > 0) cursorX += gap + 2;
+        if (part.type === 'resource') {
+          const iconPath = this.resourceIconPath(part.resource);
+          if (iconPath && this.drawAsset(iconPath, cursorX, y, iconSize, iconSize)) {
+            cursorX += iconSize + 2;
+          } else {
+            const fallback = this.resourceShortName(part.resource).slice(0, 1);
+            this.drawText(fallback, cursorX + iconSize / 2, baselineY, {
+              size: Math.max(8, size - 1),
+              bold: true,
+              color: options.color || '#cbbd96',
+              align: 'center',
+              baseline: 'middle',
+            });
+            cursorX += iconSize + 2;
+          }
+        }
+        const text = this.truncateText(part.text || '', Math.max(12, x + width - cursorX), { size, bold: true });
+        this.drawText(text, cursorX, baselineY, {
+          size,
+          bold: part.type === 'resource',
+          color: options.color || '#cbbd96',
+          baseline: 'middle',
+        });
+        cursorX += this.measureTextWidth(text, { size, bold: part.type === 'resource' });
+      });
     }
 
     renderEvents(state = {}, startY = 210, panelHeight = 310) {
@@ -1478,7 +1552,8 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderSectionHeader(`待处理事件${view.badge.hidden ? '' : ` ${view.badge.text}`}`, x + 14, startY + 14, '📜');
+      this.renderSectionHeader(`待处理事件${view.badge.hidden ? '' : ` ${view.badge.text}`}`, x + 14, startY + 14, '');
+      this.drawAsset('assets/art/icon-event-cutout.webp', x + width - 42, startY + 9, 24, 24, 0.9);
       const contentX = x + 12;
       const contentWidth = width - 24;
       const pendingTop = startY + 44;
@@ -1511,21 +1586,33 @@
               : (isSpecial ? 'rgba(247, 215, 116, 0.48)' : 'rgba(255, 226, 177, 0.12)'),
             radius: 8,
           });
-          const textX = contentX + 12;
-          const textWidth = contentWidth - 24;
-          const title = this.truncateText(`${card.icon} ${card.title}`, textWidth, { size: 14, bold: true });
+          const buttonWidth = 58;
+          const buttonHeight = 28;
+          const buttonX = contentX + contentWidth - buttonWidth - 12;
+          const buttonY = y + cardHeight - buttonHeight - 12;
+          const iconAsset = card.iconAsset || 'assets/art/icon-event-cutout.webp';
+          const iconSize = 34;
+          const iconX = contentX + 10;
+          const iconY = y + 10;
+          this.drawAsset(iconAsset, iconX, iconY, iconSize, iconSize);
+          const textX = iconX + iconSize + 9;
+          const textWidth = Math.max(120, buttonX - textX - 10);
+          const title = this.truncateText(card.title, textWidth, { size: 14, bold: true });
           const descriptionLines = this.wrapTextLimit(card.description, textWidth, 2, { size: 11 });
-          const hint = this.truncateText(card.hint, textWidth, { size: 11 });
+          const hint = this.truncateText(card.hint, Math.max(90, buttonX - textX - 10), { size: 11 });
           this.drawText(title, textX, y + 8, { size: 14, bold: true });
           this.drawTextLines(descriptionLines, textX, y + 29, {
             color: '#aeb0b8',
             size: 11,
             lineHeight: 15,
           });
-          this.drawText(hint, contentX + contentWidth - 12, y + cardHeight - 18, {
+          this.drawText(hint, textX, y + cardHeight - 20, {
             color: isThreat ? '#ff9aa2' : '#f7d774',
             size: 11,
-            align: 'right',
+          });
+          this.drawPrimaryActionButton(buttonX, buttonY, buttonWidth, buttonHeight, '查看', {
+            size: 12,
+            radius: 8,
           });
           this.addHitTarget({ x: contentX, y, width: contentWidth, height: cardHeight }, { type: 'openEvent', eventId: card.id });
         });
@@ -1541,7 +1628,7 @@
       this.drawLine(x + 14, historyTitleY - 8, x + width - 14, historyTitleY - 8, {
         color: 'rgba(240, 180, 91, 0.18)',
       });
-      this.renderSectionHeader('最近事件', x + 14, historyTitleY, '📜');
+      this.renderSectionHeader('最近事件', x + 14, historyTitleY, '');
       if (view.history.isEmpty) {
         this.drawText(view.history.emptyText, x + 14, historyTitleY + 30, { color: '#cbbd96', size: 12 });
       } else {
@@ -1555,7 +1642,7 @@
             stroke: isThreat ? 'rgba(233, 69, 96, 0.3)' : 'rgba(116, 211, 160, 0.24)',
             radius: 7,
           });
-          this.drawText(item.icon, x + 26, y + 15, { size: 14, baseline: 'middle' });
+          this.drawAsset(item.iconAsset || 'assets/art/icon-event-cutout.webp', x + 16, y + 6, 18, 18);
           this.drawText(item.title, x + 48, y + 7, { size: 12, bold: true, color: '#f6e8c8' });
           this.drawText(item.result, x + width - 24, y + 7, {
             size: 11,
@@ -1588,7 +1675,7 @@
         rows: [{ label: '奖励', text: view.text.reward, tone: 'reward' }],
       }];
       const optionCount = Math.max(1, options.length);
-      const panelHeight = Math.min(this.height - 96, Math.max(382, 270 + optionCount * 94));
+      const panelHeight = Math.min(this.height - 96, Math.max(382, 270 + optionCount * 126));
       const x = (this.width - panelWidth) / 2;
       const y = Math.max(48, (this.height - panelHeight) / 2 - 8);
       this.drawPanel(x, y, panelWidth, panelHeight, {
@@ -1614,14 +1701,15 @@
 
       const descX = x + 18;
       const descWidth = panelWidth - 36;
-      const titleWidth = panelWidth - 84;
+      const modalIconSize = 30;
+      const titleWidth = panelWidth - 112;
       const titleLines = this.wrapTextLimit(view.text.title, titleWidth, 2, { size: 17, bold: true });
       const titleY = y + 22;
-      this.drawTextLines(titleLines, x + panelWidth / 2, titleY, {
+      this.drawAsset(view.iconAsset || 'assets/art/icon-event-cutout.webp', descX, y + 17, modalIconSize, modalIconSize);
+      this.drawTextLines(titleLines, descX + modalIconSize + 10, titleY, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
-        align: 'center',
         lineHeight: 21,
       });
 
@@ -1662,31 +1750,46 @@
       const optionTop = metaY + metaHeight + 12;
       const optionGap = 8;
       const optionAreaHeight = Math.max(72, laterY - optionTop - 12);
-      const roomyHeight = optionCount >= 4 ? 76 : 92;
-      const optionHeight = Math.max(68, Math.min(roomyHeight, Math.floor((optionAreaHeight - (optionCount - 1) * optionGap) / optionCount)));
+      const roomyHeight = optionCount >= 4 ? 112 : 126;
+      const optionHeight = Math.max(106, Math.min(roomyHeight, Math.floor((optionAreaHeight - (optionCount - 1) * optionGap) / optionCount)));
       const visibleCount = Math.max(1, Math.min(optionCount, Math.floor((optionAreaHeight + optionGap) / (optionHeight + optionGap))));
       options.slice(0, visibleCount).forEach((option, index) => {
         const optionY = optionTop + index * (optionHeight + optionGap);
+        const actionWidth = 72;
+        const actionHeight = 30;
+        const actionX = descX + descWidth - actionWidth - 10;
+        const actionY = optionY + 10;
         this.drawPanel(descX, optionY, descWidth, optionHeight, {
-          fill: 'rgba(69, 48, 30, 0.92)',
-          stroke: 'rgba(240, 180, 91, 0.34)',
+          fill: this.createGradient(
+            descX, optionY, descX + descWidth, optionY + optionHeight,
+            [
+              [0, 'rgba(74, 52, 32, 0.96)'],
+              [1, 'rgba(36, 27, 19, 0.96)'],
+            ],
+            'rgba(58, 42, 28, 0.96)',
+          ),
+          stroke: 'rgba(247, 215, 116, 0.5)',
           radius: 9,
-          inset: 'rgba(255, 231, 184, 0.08)',
+          inset: 'rgba(255, 231, 184, 0.12)',
         });
-        const label = this.truncateText(option.label || '处理事件', descWidth - 24, { size: 13, bold: true });
+        const label = this.truncateText(option.label || '处理事件', descWidth - actionWidth - 34, { size: 13, bold: true });
         this.drawText(label, descX + 12, optionY + 9, {
           size: 13,
           bold: true,
           color: '#f6e8c8',
         });
+        this.drawPrimaryActionButton(actionX, actionY, actionWidth, actionHeight, '处理', {
+          size: 12,
+          radius: 8,
+        });
         const rows = Array.isArray(option.rows) && option.rows.length
           ? option.rows
           : [{ label: '结果', text: option.preview || '', tone: 'neutral' }];
-        const maxRows = Math.max(1, Math.floor((optionHeight - 30) / 14));
+        const maxRows = Math.max(1, Math.floor((optionHeight - 30) / 16));
         rows.slice(0, maxRows).forEach((row, rowIndex) => {
-          this.drawEventDetailRow(row, descX + 12, optionY + 30 + rowIndex * 14, descWidth - 24, {
+          this.drawEventDetailRow(row, descX + 12, optionY + 30 + rowIndex * 16, descWidth - 24, {
             size: 10,
-            lineHeight: 13,
+            lineHeight: 15,
             labelWidth: 36,
             maxLines: rows.length === 1 && maxRows > 1 ? 2 : 1,
           });

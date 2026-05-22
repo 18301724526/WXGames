@@ -459,7 +459,7 @@ test('event view state is renderer-neutral and formats cards, badge, and history
   assert.equal(view.pending.cards[0].classState['is-special'], false);
   assert.equal(view.pending.cards[1].hint, '剩余 5:00，超时将按失败处理');
   assert.equal(view.pending.cards[1].classState['is-threat'], true);
-  assert.equal(view.history.items[0].result, '🌾 +1.2k');
+  assert.equal(view.history.items[0].result, '食物 +1.2k');
 });
 
 test('tech view state formats knowledge rate for Canvas renderer', () => {
@@ -485,15 +485,19 @@ test('event modal view state handles multiple and single event options', () => {
     ],
   }, { nowMs: new Date('2026-05-17T08:01:00.000Z').getTime() });
 
-  assert.equal(multi.text.title, 'H Harvest Sign');
+  assert.equal(multi.iconAsset, 'assets/art/icon-event-cutout.webp');
+  assert.equal(multi.text.title, 'Harvest Sign');
   assert.equal(multi.text.reward, '选择一种处理方式 | 剩余 4:00，超时将自动失效');
   assert.deepEqual(multi.metaRows, [
     { label: '时限', text: '剩余 4:00，超时将自动失效', tone: 'time' },
     { label: '选项', text: '选择一种处理方式', tone: 'neutral' },
   ]);
-  assert.equal(multi.options[1].preview, '📚 +1.2k');
+  assert.equal(multi.options[1].preview, '知识 +1.2k');
   assert.deepEqual(multi.options[1].rows, [
-    { label: '奖励', text: '📚 +1.2k', tone: 'reward' },
+    { label: '需求', text: '无', tone: 'requirement', parts: [], empty: true },
+    { label: '奖励', text: '知识 +1.2k', tone: 'reward', parts: [{ type: 'resource', resource: 'knowledge', text: '+1.2k' }], empty: false },
+    { label: '消耗', text: '无', tone: 'cost', parts: [], empty: true },
+    { label: '惩罚', text: '无', tone: 'penalty', parts: [], empty: true },
   ]);
   assert.equal(multi.claimButton.hidden, true);
 
@@ -502,7 +506,7 @@ test('event modal view state handles multiple and single event options', () => {
     options: [{ id: 'collect', label: 'Collect', reward: { wood: 20 } }],
   });
 
-  assert.equal(single.text.reward, '🪵 +20');
+  assert.equal(single.text.reward, '木材 +20');
   assert.deepEqual(single.claimButton, { optionId: 'collect', label: 'Collect', hidden: false });
 });
 
@@ -530,16 +534,17 @@ test('event modal view state separates requirements rewards costs penalties and 
     ],
   }, { nowMs: new Date('2026-05-17T08:01:00.000Z').getTime() });
 
+  assert.equal(view.iconAsset, 'assets/art/icon-event-cutout.webp');
   assert.deepEqual(view.metaRows, [
     { label: '时限', text: '剩余 4:00，超时将按失败处理', tone: 'penalty' },
   ]);
   assert.deepEqual(view.options[0].rows, [
-    { label: '需求', text: '防御 2，士兵 3', tone: 'requirement' },
-    { label: '奖励', text: '🌾 +60', tone: 'reward' },
-    { label: '消耗', text: '📚 -8', tone: 'cost' },
-    { label: '惩罚', text: '🌾 -45 士兵 -1', tone: 'penalty' },
+    { label: '需求', text: '防御 2，士兵 3', tone: 'requirement', parts: [{ type: 'text', text: '防御 2' }, { type: 'resource', resource: 'soldier', text: '3' }], empty: false },
+    { label: '奖励', text: '食物 +60', tone: 'reward', parts: [{ type: 'resource', resource: 'food', text: '+60' }], empty: false },
+    { label: '消耗', text: '知识 -8', tone: 'cost', parts: [{ type: 'resource', resource: 'knowledge', text: '-8' }], empty: false },
+    { label: '惩罚', text: '食物 -45 士兵 -1', tone: 'penalty', parts: [{ type: 'resource', resource: 'food', text: '-45' }, { type: 'resource', resource: 'soldier', text: '-1' }], empty: false },
   ]);
-  assert.equal(view.options[0].preview, '需求 防御 2，士兵 3；奖励 🌾 +60；消耗 📚 -8；惩罚 🌾 -45 士兵 -1');
+  assert.equal(view.options[0].preview, '需求 防御 2，士兵 3；奖励 食物 +60；消耗 知识 -8；惩罚 食物 -45 士兵 -1');
 });
 
 test('military view state formats army counts and training progress', () => {

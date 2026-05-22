@@ -1220,6 +1220,11 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const assets = [];
+  renderer.drawAsset = (...args) => {
+    assets.push(args);
+    return true;
+  };
   renderer.setPresenter({
     buildResourceViewState: () => ({
       hasWood: true,
@@ -1249,13 +1254,14 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
       },
       history: {
         isEmpty: false,
-        items: [{ icon: '🌾', title: '丰收', result: '🌾 +40', className: 'positive' }],
+        items: [{ iconAsset: 'assets/art/icon-event-cutout.webp', title: '丰收', result: '食物 +40', className: 'positive' }],
       },
     }),
     buildEventModalViewState: () => ({
       showModal: true,
+      iconAsset: 'assets/art/icon-event-cutout.webp',
       text: {
-        title: '🌲 森林低语以及一段足够长的标题',
+        title: '森林低语以及一段足够长的标题',
         description: '林间传来很长很长的回声，需要在有限的弹窗区域里换行显示，不能盖住下面的选项。',
         reward: '选择一种处理方式',
       },
@@ -1267,20 +1273,23 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
         {
           id: 'collect_wood',
           label: '收集木材',
-          preview: '🪵 +20',
+          preview: '木材 +20',
           rows: [
-            { label: '奖励', text: '🪵 +20', tone: 'reward' },
-            { label: '时限', text: '立即完成', tone: 'time' },
+            { label: '需求', text: '无', tone: 'requirement', parts: [], empty: true },
+            { label: '奖励', text: '木材 +20', tone: 'reward', parts: [{ type: 'resource', resource: 'wood', text: '+20' }] },
+            { label: '消耗', text: '无', tone: 'cost', parts: [], empty: true },
+            { label: '惩罚', text: '无', tone: 'penalty', parts: [], empty: true },
           ],
         },
         {
           id: 'study_trail',
           label: '研究路径',
-          preview: '📚 +10',
+          preview: '知识 +10',
           rows: [
-            { label: '需求', text: '知识 8', tone: 'requirement' },
-            { label: '奖励', text: '📚 +10', tone: 'reward' },
-            { label: '惩罚', text: '失败损失 20 食物', tone: 'penalty' },
+            { label: '需求', text: '知识 8', tone: 'requirement', parts: [{ type: 'resource', resource: 'knowledge', text: '8' }] },
+            { label: '奖励', text: '知识 +10', tone: 'reward', parts: [{ type: 'resource', resource: 'knowledge', text: '+10' }] },
+            { label: '消耗', text: '无', tone: 'cost', parts: [], empty: true },
+            { label: '惩罚', text: '食物 -20', tone: 'penalty', parts: [{ type: 'resource', resource: 'food', text: '-20' }] },
           ],
         },
       ],
@@ -1296,12 +1305,19 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('待处理事件')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('最近事件')));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('🌲 森林低语')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('森林低语')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '收集木材'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('需求:')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('奖励:')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('消耗:')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('惩罚:')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('时限:')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '处理'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '查看'));
+  assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-wood-cutout.webp'));
+  assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-knowledge-cutout.webp'));
+  assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-food-cutout.webp'));
+  assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-event-cutout.webp'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openEvent' && target.action.eventId === 'evt_forest'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'collect_wood'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'study_trail'));

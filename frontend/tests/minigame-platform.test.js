@@ -552,7 +552,8 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       y: eventTarget.y + eventTarget.height / 2,
     });
     assert.equal(app.activeEventId, 'evt_forest');
-    assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '🌲 森林低语'), true);
+    assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '森林低语'), true);
+    assert.equal(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('🌲')), false);
     assert.equal(requests.some((request) => request.action === 'claimEvent'), false);
     const claimTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'collect_wood');
     assert.ok(claimTarget);

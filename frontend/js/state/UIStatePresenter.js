@@ -652,23 +652,22 @@
       }[resource] || resource;
     }
 
-    static getEventResourceIcon(resource) {
-      return {
-        food: '🌾',
-        knowledge: '📚',
-        wood: '🪵',
-        iron: '⛏️',
-        stone: '🪨',
-        metal: '⛏️',
-      }[resource] || '';
-    }
-
     static formatEventResourcePart(resource, value) {
       const amount = this.toNumber(value);
       if (!amount) return '';
-      const icon = this.getEventResourceIcon(resource);
       const sign = amount > 0 ? '+' : '-';
-      return `${icon ? `${icon} ` : ''}${sign}${this.formatResourceAmount(Math.abs(amount))}`;
+      return `${this.getEventResourceLabel(resource)} ${sign}${this.formatResourceAmount(Math.abs(amount))}`;
+    }
+
+    static buildEventResourcePart(resource, value) {
+      const amount = this.toNumber(value);
+      if (!amount) return null;
+      const sign = amount > 0 ? '+' : '-';
+      return {
+        type: 'resource',
+        resource: resource === 'metal' ? 'iron' : resource,
+        text: `${sign}${this.formatResourceAmount(Math.abs(amount))}`,
+      };
     }
 
     static formatEventDuration(seconds) {
@@ -707,6 +706,18 @@
       return '';
     }
 
+    static buildEventEffectPart(effect = {}) {
+      const value = this.toNumber(effect.value);
+      if (!value) return null;
+      if (effect.type === 'resource') return this.buildEventResourcePart(effect.key, value);
+      if (effect.type === 'soldiers') {
+        const sign = value > 0 ? '+' : '-';
+        return { type: 'resource', resource: 'soldier', text: `${sign}${this.formatResourceAmount(Math.abs(value))}` };
+      }
+      if (effect.type === 'buff') return { type: 'text', text: this.formatEventBuffEffect(effect) };
+      return null;
+    }
+
     static formatEventEffects(effects = [], filter = 'all') {
       return (effects || [])
         .map((effect) => {
@@ -722,6 +733,20 @@
         .join(' ');
     }
 
+    static buildEventEffectParts(effects = [], filter = 'all') {
+      return (effects || [])
+        .map((effect) => {
+          const value = this.toNumber(effect?.value);
+          const isBuff = effect?.type === 'buff';
+          const isPositive = isBuff ? value >= 0 : value > 0;
+          const isNegative = value < 0;
+          if (filter === 'positive' && !isPositive) return null;
+          if (filter === 'negative' && !isNegative) return null;
+          return this.buildEventEffectPart(effect);
+        })
+        .filter(Boolean);
+    }
+
     static formatEventRequirements(requirements = {}) {
       if (!requirements || typeof requirements !== 'object') return '';
       const parts = [];
@@ -732,13 +757,32 @@
       return parts.join('，');
     }
 
+    static buildEventRequirementParts(requirements = {}) {
+      if (!requirements || typeof requirements !== 'object') return [];
+      const parts = [];
+      const defense = Number(requirements.defense);
+      const soldiers = Number(requirements.soldiers);
+      if (Number.isFinite(defense)) parts.push({ type: 'text', text: `防御 ${this.formatResourceAmount(defense)}` });
+      if (Number.isFinite(soldiers)) parts.push({ type: 'resource', resource: 'soldier', text: String(this.formatResourceAmount(soldiers)) });
+      return parts;
+    }
+
     static formatEventReward(reward) {
       if (!reward) return '事件已完成';
       const parts = [];
       if (reward.food) parts.push(this.formatEventResourcePart('food', reward.food));
       if (reward.knowledge) parts.push(this.formatEventResourcePart('knowledge', reward.knowledge));
       if (reward.wood) parts.push(this.formatEventResourcePart('wood', reward.wood));
+      if (reward.iron || reward.metal) parts.push(this.formatEventResourcePart('iron', reward.iron || reward.metal));
+      if (reward.stone) parts.push(this.formatEventResourcePart('stone', reward.stone));
       return parts.join(' ') || '事件已完成';
+    }
+
+    static buildEventRewardParts(reward = {}) {
+      if (!reward || typeof reward !== 'object') return [];
+      return ['food', 'wood', 'iron', 'stone', 'knowledge']
+        .map((resource) => this.buildEventResourcePart(resource, reward[resource] ?? (resource === 'iron' ? reward.metal : undefined)))
+        .filter(Boolean);
     }
 
     static getEventOptionRewardText(option = {}) {
@@ -749,10 +793,24 @@
       return effectReward || explicitReward;
     }
 
+    static getEventOptionRewardParts(option = {}) {
+      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
+      const directEffects = Array.isArray(option.effects) ? option.effects : [];
+      const effectParts = this.buildEventEffectParts(option.requirements ? successEffects : directEffects, 'positive');
+      const explicitParts = option.reward ? this.buildEventRewardParts(option.reward) : [];
+      return effectParts.length ? effectParts : explicitParts;
+    }
+
     static getEventOptionCostText(option = {}) {
       const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
       const directEffects = Array.isArray(option.effects) ? option.effects : [];
       return this.formatEventEffects(option.requirements ? successEffects : directEffects, 'negative');
+    }
+
+    static getEventOptionCostParts(option = {}) {
+      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
+      const directEffects = Array.isArray(option.effects) ? option.effects : [];
+      return this.buildEventEffectParts(option.requirements ? successEffects : directEffects, 'negative');
     }
 
     static getEventOptionPenaltyText(option = {}) {
@@ -761,25 +819,31 @@
       return this.formatEventEffects(failureEffects.length ? failureEffects : timeoutEffects, 'negative');
     }
 
+    static getEventOptionPenaltyParts(option = {}) {
+      const failureEffects = Array.isArray(option.failureEffects) ? option.failureEffects : [];
+      const timeoutEffects = Array.isArray(option.timeoutEffects) ? option.timeoutEffects : [];
+      return this.buildEventEffectParts(failureEffects.length ? failureEffects : timeoutEffects, 'negative');
+    }
+
     static buildEventOptionRows(option = {}) {
-      const rows = [];
       const requirementText = this.formatEventRequirements(option.requirements);
       const rewardText = this.getEventOptionRewardText(option);
       const costText = this.getEventOptionCostText(option);
       const penaltyText = this.getEventOptionPenaltyText(option);
-      if (requirementText) rows.push({ label: '需求', text: requirementText, tone: 'requirement' });
-      if (rewardText) rows.push({ label: '奖励', text: rewardText, tone: 'reward' });
-      if (costText) rows.push({ label: '消耗', text: costText, tone: 'cost' });
-      if (penaltyText) rows.push({ label: '惩罚', text: penaltyText, tone: 'penalty' });
-      if (!rows.length && option.preview) rows.push({ label: '结果', text: option.preview, tone: 'neutral' });
-      return rows;
+      return [
+        { label: '需求', text: requirementText || '无', tone: 'requirement', parts: this.buildEventRequirementParts(option.requirements), empty: !requirementText },
+        { label: '奖励', text: rewardText || '无', tone: 'reward', parts: this.getEventOptionRewardParts(option), empty: !rewardText },
+        { label: '消耗', text: costText || '无', tone: 'cost', parts: this.getEventOptionCostParts(option), empty: !costText },
+        { label: '惩罚', text: penaltyText || '无', tone: 'penalty', parts: this.getEventOptionPenaltyParts(option), empty: !penaltyText },
+      ];
     }
 
     static getEventOptionPreview(option) {
       if (option?.preview) return option.preview;
       if (option?.reward) return this.formatEventReward(option.reward);
       const rows = this.buildEventOptionRows(option);
-      if (rows.length) return rows.map((row) => `${row.label} ${row.text}`).join('；');
+      const visibleRows = rows.filter((row) => !row.empty);
+      if (visibleRows.length) return visibleRows.map((row) => `${row.label} ${row.text}`).join('；');
       return this.formatEventReward(option?.reward);
     }
 
@@ -814,6 +878,7 @@
       return {
         id: event.id || '',
         icon: event.icon || '📜',
+        iconAsset: 'assets/art/icon-event-cutout.webp',
         title: event.title || '',
         description: event.description || '',
         hint: this.getEventHint(event, nowMs),
@@ -830,6 +895,7 @@
         : null;
       return {
         icon: event.icon || '📜',
+        iconAsset: 'assets/art/icon-event-cutout.webp',
         title: event.title || '',
         result: event.resultSummary || this.formatEventReward(selectedOption?.reward),
         className: event.type === 'threat' ? 'threat' : 'positive',
@@ -904,8 +970,9 @@
       }
 
       return {
+        iconAsset: 'assets/art/icon-event-cutout.webp',
         text: {
-          title: `${eventData.icon || '📜'} ${eventData.title || ''}`,
+          title: eventData.title || '',
           description: eventData.description || '',
           reward: expiryHint ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview,
         },
