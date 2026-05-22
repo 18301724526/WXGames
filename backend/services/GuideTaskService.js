@@ -2,6 +2,7 @@ const BuildingConfig = require('../config/BuildingConfig');
 const { getAdvanceConfig } = require('../config/EraConfig');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 const BuildingState = require('../domain/BuildingState');
+const EventDomain = require('../domain/Event');
 const CityService = require('./CityService');
 const MilitaryService = require('./MilitaryService');
 
@@ -112,6 +113,12 @@ function hasAnyScoutProgress(gameState) {
   );
 }
 
+function hasPendingSettlementEvent(gameState) {
+  return (gameState.eventQueue || []).some((event) => (
+    event?.id === EventDomain.SETTLEMENT_EVENT_ID && event.status !== 'claimed'
+  ));
+}
+
 const TASKS = [
   {
     id: 'settlement_advance_supplies',
@@ -146,11 +153,13 @@ const TASKS = [
       gameState.currentEra === 2
       && !hasBuilt(gameState, 'lumbermill')
       && Number(gameState.tutorial?.currentStep || 0) >= 12
+      && !hasPendingSettlementEvent(gameState)
     ),
     complete: (gameState) => (
       gameState.currentEra === 2
       && !hasBuilt(gameState, 'lumbermill')
       && Number(gameState.tutorial?.currentStep || 0) >= 12
+      && !hasPendingSettlementEvent(gameState)
     ),
     obsolete: (gameState) => gameState.currentEra > 2 || hasBuilt(gameState, 'lumbermill'),
     reward: () => makeResourceReward(BuildingConfig.getBuildCost('lumbermill')),
@@ -419,6 +428,7 @@ function getExpectedActionForTask(task) {
 }
 
 function validateAction(gameState, action, payload = {}) {
+  if (action === 'claimEvent') return { allowed: true };
   const task = getCurrentTaskDefinition(gameState);
   if (!task) return { allowed: true };
   const view = buildTaskView(gameState, task);
