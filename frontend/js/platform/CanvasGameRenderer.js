@@ -689,7 +689,7 @@
         this.drawText(view.emptyText, x + width / 2, startY + 96, { color: '#cbbd96', size: 13, align: 'center' });
         return;
       }
-      const rowHeight = 78;
+      const rowHeight = 92;
       const rowGap = 8;
       const firstRowY = startY + 76;
       let visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 8) / (rowHeight + rowGap)));
@@ -724,8 +724,8 @@
         else this.drawText(card.icon || '', x + 43, y + 35, { size: 24, align: 'center', baseline: 'middle' });
 
         const textX = x + 76;
-        const buttonWidth = 78;
-        const buttonX = x + width - buttonWidth - 22;
+        const actionWidth = Math.min(128, Math.max(104, width - 238));
+        const buttonX = x + width - actionWidth - 22;
         const textWidth = Math.max(112, buttonX - textX - 12);
         this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
         this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
@@ -734,17 +734,13 @@
         const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
         this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
 
-        const costText = card.cost?.text || (card.cost?.parts || []).map((part) => `${this.resourceShortName(part.resource)} ${part.text}`).join(' ');
-        if (costText) {
-          this.drawText(costText, buttonX + buttonWidth / 2, y + 8, {
-            size: 10,
-            color: card.cost?.isMax ? '#a0a0a0' : '#f6e8c8',
-            align: 'center',
-          });
-        }
-        this.drawButton(buttonX, y + 31, buttonWidth, 34, card.button.label, { disabled: card.button.disabled, size: 12, radius: 8 });
+        this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
+          muted: isMuted,
+          resources: state.resources || {},
+        });
+        this.drawButton(buttonX, y + 56, actionWidth, 26, card.button.label, { disabled: card.button.disabled, size: 12, radius: 8 });
         this.addHitTarget(
-          { x: buttonX, y: y + 31, width: buttonWidth, height: 34 },
+          { x: buttonX, y: y + 56, width: actionWidth, height: 26 },
           { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
         );
       });
@@ -777,6 +773,75 @@
         stone: '石料',
         metal: '金属',
       }[resource] || resource;
+    }
+
+    resourceIconPath(resource) {
+      return {
+        food: 'assets/art/icon-food-cutout.webp',
+        wood: 'assets/art/icon-wood-cutout.webp',
+        knowledge: 'assets/art/icon-knowledge-cutout.webp',
+      }[resource] || '';
+    }
+
+    drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
+      const parts = Array.isArray(cost?.parts) ? cost.parts : [];
+      if (cost?.isMax || cost?.text || !parts.length) {
+        const text = cost?.text || (cost?.isMax ? '\u5df2\u6ee1\u7ea7' : '\u514d\u8d39');
+        const fill = cost?.isMax ? 'rgba(60, 52, 46, 0.48)' : 'rgba(116, 211, 160, 0.12)';
+        const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.1)' : 'rgba(116, 211, 160, 0.26)';
+        this.drawPanel(x, y + 7, width, 24, { fill, stroke, radius: 7 });
+        this.drawText(this.truncateText(text, width - 14, { size: 10, bold: true }), x + width / 2, y + 19, {
+          size: 10,
+          bold: true,
+          color: cost?.isMax ? '#a0a0a0' : '#74d3a0',
+          align: 'center',
+          baseline: 'middle',
+        });
+        return;
+      }
+
+      const gap = 4;
+      const chipHeight = 18;
+      const chipColumns = parts.length > 1 ? 2 : 1;
+      const chipWidth = Math.floor((width - gap * (chipColumns - 1)) / chipColumns);
+      parts.slice(0, 4).forEach((part, index) => {
+        const col = index % chipColumns;
+        const row = Math.floor(index / chipColumns);
+        const chipX = x + col * (chipWidth + gap);
+        const chipY = y + row * (chipHeight + gap);
+        const required = Number(part.value) || 0;
+        const owned = Number(options.resources?.[part.resource]) || 0;
+        const insufficient = required > 0 && owned < required;
+        const fill = insufficient ? 'rgba(116, 47, 39, 0.58)' : 'rgba(40, 48, 34, 0.62)';
+        const stroke = insufficient ? 'rgba(235, 116, 100, 0.46)' : 'rgba(116, 211, 160, 0.24)';
+        const textColor = insufficient ? '#ffb0a5' : '#f6e8c8';
+        this.drawPanel(chipX, chipY, chipWidth, chipHeight, { fill, stroke, radius: 6, inset: 'rgba(255, 255, 255, 0.04)' });
+        const iconPath = this.resourceIconPath(part.resource);
+        if (!this.drawAsset(iconPath, chipX + 4, chipY + 3, 12, 12, options.muted ? 0.62 : 1)) {
+          this.drawText(this.resourceShortName(part.resource), chipX + 8, chipY + 9, {
+            size: 8,
+            bold: true,
+            color: textColor,
+            align: 'center',
+            baseline: 'middle',
+          });
+        }
+        const valueText = this.truncateText(String(part.text ?? required), chipWidth - 21, { size: 10, bold: true });
+        this.drawText(valueText, chipX + 19, chipY + 9, {
+          size: 10,
+          bold: true,
+          color: textColor,
+          baseline: 'middle',
+        });
+      });
+      if (parts.length > 4) {
+        this.drawText(`+${parts.length - 4}`, x + width - 2, y + height - 4, {
+          size: 9,
+          color: '#cbbd96',
+          align: 'right',
+          baseline: 'bottom',
+        });
+      }
     }
 
     eventRowColor(tone) {

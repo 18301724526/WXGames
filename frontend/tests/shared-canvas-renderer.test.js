@@ -721,6 +721,66 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'house'));
 });
 
+test('CanvasGameRenderer renders building upgrade costs as icon chips inside compact cards', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 360, height: 640, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildBuildingViewState: () => ({
+      isEmpty: false,
+      cards: [{
+        id: 'barracks',
+        name: '兵营',
+        art: 'assets/art/building-barracks-cutout.png',
+        levelText: '等级 1',
+        descText: '训练士兵',
+        button: { action: 'upgrade', label: '升级', disabled: true },
+        cost: {
+          text: '',
+          parts: [
+            { resource: 'food', value: 500, text: '500' },
+            { resource: 'wood', value: 200, text: '200' },
+            { resource: 'knowledge', value: 100, text: '100' },
+          ],
+          isMax: false,
+        },
+      }],
+    }),
+  });
+
+  renderer.render({
+    currentEraName: '城邦时代',
+    currentTab: 'buildings',
+    resources: { food: 260, wood: 40, knowledge: 100 },
+  }, {
+    activeTab: 'buildings',
+    mode: 'hud',
+    tutorial: { completed: true },
+  });
+
+  assert.equal(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('食物 500')), false);
+  const chipPanels = calls.filter((call) => call[0] === 'roundRect' && call[4] === 18);
+  assert.ok(chipPanels.length >= 3);
+  assert.ok(chipPanels.every((call) => call[1] >= 220 && call[1] + call[3] <= 348));
+  const upgradeTarget = renderer.hitTargets.find((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'barracks');
+  assert.ok(upgradeTarget);
+  assert.ok(upgradeTarget.x >= 220);
+  assert.ok(upgradeTarget.x + upgradeTarget.width <= 348);
+});
+
 test('CanvasGameRenderer paginates overflow building cards without DOM scrolling', () => {
   const { ctx } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
