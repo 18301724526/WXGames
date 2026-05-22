@@ -23,6 +23,7 @@
       this.state.softGuide = serverState.softGuide || null;
       this.state.guideTasks = serverState.guideTasks || { visible: false, tasks: [] };
       this.state.taskCenter = serverState.taskCenter || null;
+      this.state.talentPolicies = serverState.talentPolicies || this.state.talentPolicies || {};
       this.state.workshopCount = this.buildingState.getLevel(this.state.buildings, 'workshop');
       this.state.lumbermillCount = this.buildingState.getLevel(this.state.buildings, 'lumbermill');
       this.state.military = {

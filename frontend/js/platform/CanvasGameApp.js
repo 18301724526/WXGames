@@ -42,6 +42,8 @@
       this.showCitySwitcher = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
+      this.showTalentPolicy = false;
+      this.talentPolicyUiState = {};
       this.rewardReveal = null;
       this.tutorialHighlight = null;
       this.highlightTimer = null;
@@ -259,6 +261,8 @@
         showCitySwitcher: this.showCitySwitcher,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
+        showTalentPolicy: this.showTalentPolicy,
+        talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
@@ -462,6 +466,7 @@
       this.showCitySwitcher = false;
       this.activeEventId = null;
       this.showTaskCenter = false;
+      this.showTalentPolicy = false;
     }
 
     resetLocalViewToResources(options = {}) {
@@ -471,6 +476,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showTaskCenter = false;
+      this.showTalentPolicy = false;
       this.activeTaskCenterTab = 'main';
       this.activeGuideNavigation = null;
       this.pageTransition = null;
@@ -699,6 +705,84 @@
       }
     }
 
+    getTalentPolicyDraft() {
+      const policies = this.state?.talentPolicies || {};
+      const systemPolicies = Array.isArray(policies.systemPolicies) ? policies.systemPolicies : [];
+      const activeIsSystem = systemPolicies.some((policy) => policy.id === policies.activePolicyId);
+      const basePolicyId = this.talentPolicyUiState.basePolicyId
+        || (activeIsSystem ? policies.activePolicyId : null)
+        || 'balanced';
+      const defaults = policies.defaultTiers || { agriculture: 2, knowledge: 2, industry: 2 };
+      return {
+        basePolicyId,
+        tiers: {
+          agriculture: Number(this.talentPolicyUiState.tiers?.agriculture ?? defaults.agriculture ?? 2),
+          knowledge: Number(this.talentPolicyUiState.tiers?.knowledge ?? defaults.knowledge ?? 2),
+          industry: Number(this.talentPolicyUiState.tiers?.industry ?? defaults.industry ?? 2),
+        },
+      };
+    }
+
+    async applyTalentPolicy(policyId) {
+      if (!policyId) return false;
+      try {
+        const result = await this.getGameApi().applyTalentPolicy(policyId);
+        this.applyApiState(result);
+        this.showTalentPolicy = false;
+        this.showFloatingText(result.message || '方针已应用');
+        this.log(result.message || '方针已应用');
+        return true;
+      } catch (error) {
+        this.log(`方针失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    async applyTalentPolicyDraft() {
+      try {
+        const result = await this.getGameApi().applyTalentPolicy(null, this.getTalentPolicyDraft());
+        this.applyApiState(result);
+        this.showTalentPolicy = false;
+        this.showFloatingText(result.message || '方针已应用');
+        this.log(result.message || '方针已应用');
+        return true;
+      } catch (error) {
+        this.log(`方针失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    async saveTalentPolicyDraft() {
+      try {
+        const result = await this.getGameApi().saveTalentPolicy(this.getTalentPolicyDraft());
+        this.applyApiState(result);
+        this.showFloatingText(result.message || '方针已保存');
+        this.log(result.message || '方针已保存');
+        return true;
+      } catch (error) {
+        this.log(`保存失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    async deleteTalentPolicy(policyId) {
+      if (!policyId) return false;
+      try {
+        const result = await this.getGameApi().deleteTalentPolicy(policyId);
+        this.applyApiState(result);
+        this.showFloatingText(result.message || '方针已删除');
+        this.log(result.message || '方针已删除');
+        return true;
+      } catch (error) {
+        this.log(`删除失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
     async advanceEra() {
       if (!this.canAdvanceEraNow()) {
         this.log(this.state?.isCapitalCity === false ? '只有主城可以推动文明进阶' : this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
@@ -732,6 +816,7 @@
       this.buildingTransition = null;
       this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
       this.activeEventId = null;
+      this.showTalentPolicy = false;
       this.renderMilitaryView();
       this.renderCanvasSurface(this.state.currentTab);
       this.tutorialController?.render?.();

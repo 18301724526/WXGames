@@ -213,6 +213,8 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       rewardReveal: null,
       showTaskCenter: false,
       activeTaskCenterTab: 'main',
+      showTalentPolicy: false,
+      talentPolicyUiState: {},
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);

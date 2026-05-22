@@ -323,6 +323,109 @@
       };
     }
 
+    static getDefaultTalentPolicyDraft(state = {}, uiState = {}) {
+      const source = state.talentPolicies || {};
+      const systemPolicies = Array.isArray(source.systemPolicies) ? source.systemPolicies : [];
+      const activeIsSystem = systemPolicies.some((policy) => policy.id === source.activePolicyId);
+      const selected = uiState.selectedBasePolicyId
+        || (activeIsSystem ? source.activePolicyId : null)
+        || 'balanced';
+      const fallbackTiers = source.defaultTiers || { agriculture: 2, knowledge: 2, industry: 2 };
+      return {
+        basePolicyId: selected,
+        tiers: {
+          agriculture: this.toInteger(uiState.tiers?.agriculture ?? fallbackTiers.agriculture, 2),
+          knowledge: this.toInteger(uiState.tiers?.knowledge ?? fallbackTiers.knowledge, 2),
+          industry: this.toInteger(uiState.tiers?.industry ?? fallbackTiers.industry, 2),
+        },
+      };
+    }
+
+    static makeTalentPolicyName(basePolicy = {}, tiers = {}) {
+      const baseLabel = basePolicy.label || '均衡发展';
+      const labels = {
+        agriculture: '农业',
+        knowledge: '知识',
+        industry: '工业',
+      };
+      const high = Object.entries(labels)
+        .filter(([key]) => this.toInteger(tiers[key], 2) === 3)
+        .map(([, label]) => label);
+      if (high.length) return `${baseLabel}·偏${high.slice(0, 2).join('与')}`;
+      const low = Object.entries(labels)
+        .filter(([key]) => this.toInteger(tiers[key], 2) === 1)
+        .map(([, label]) => label);
+      if (low.length) return `${baseLabel}·轻${low.slice(0, 2).join('与')}`;
+      return `${baseLabel}·微调`;
+    }
+
+    static buildTalentPolicyViewState(state = {}, uiState = {}) {
+      const source = state.talentPolicies || {};
+      const systemPolicies = Array.isArray(source.systemPolicies) ? source.systemPolicies : [];
+      const customPolicies = Array.isArray(source.customPolicies) ? source.customPolicies : [];
+      const activePolicyId = source.activePolicyId || 'balanced';
+      const draft = this.getDefaultTalentPolicyDraft(state, uiState);
+      const basePolicy = systemPolicies.find((policy) => policy.id === draft.basePolicyId)
+        || systemPolicies.find((policy) => policy.id === activePolicyId)
+        || systemPolicies[0]
+        || { id: 'balanced', label: '均衡发展', description: '维持稳定分工' };
+      const tendencies = Array.isArray(source.tendencies) ? source.tendencies : [
+        { id: 'agriculture', label: '农业', disabled: false },
+        { id: 'knowledge', label: '知识', disabled: false },
+        { id: 'industry', label: '工业', disabled: this.toNumber(state.currentEra) < 2 },
+      ];
+      const preview = source.preview || {};
+      const allocation = preview.allocation || {};
+      const jobLabels = { farmer: '农民', scholar: '学者', craftsman: '工匠' };
+      const allocationText = ['farmer', 'scholar', 'craftsman']
+        .filter((job) => job !== 'craftsman' || this.toNumber(state.currentEra) >= 2 || this.toNumber(allocation[job]) > 0)
+        .map((job) => `${jobLabels[job]} ${this.toInteger(allocation[job])}`)
+        .join(' / ');
+      const tierLabels = {
+        1: '低',
+        2: '稳',
+        3: '高',
+      };
+
+      return {
+        activePolicyId,
+        activePolicyLabel: source.activePolicyLabel || preview.policyLabel || basePolicy.label,
+        systemPolicies: systemPolicies.map((policy) => ({
+          ...policy,
+          active: policy.id === activePolicyId,
+          selected: policy.id === draft.basePolicyId,
+        })),
+        customPolicies: customPolicies.map((policy) => ({
+          ...policy,
+          label: policy.displayName || policy.label || '自定义方针',
+          active: policy.id === activePolicyId,
+        })),
+        tendencies: tendencies.map((tendency) => ({
+          ...tendency,
+          tier: Math.max(1, Math.min(3, this.toInteger(draft.tiers[tendency.id], 2))),
+          tierLabel: tierLabels[Math.max(1, Math.min(3, this.toInteger(draft.tiers[tendency.id], 2)))],
+        })),
+        draft: {
+          ...draft,
+          displayName: this.makeTalentPolicyName(basePolicy, draft.tiers),
+        },
+        preview: {
+          ...preview,
+          allocationText: allocationText || '暂无人才',
+        },
+        text: {
+          title: '人才方针',
+          subtitle: `当前：${source.activePolicyLabel || preview.policyLabel || '均衡发展'}`,
+          presetTitle: '系统方针',
+          customTitle: '自定义微调',
+          customName: this.makeTalentPolicyName(basePolicy, draft.tiers),
+          emptyCustom: '暂无自定义方针',
+          applyDraft: '应用微调',
+          saveDraft: '保存微调',
+        },
+      };
+    }
+
     static buildCitySwitcherViewState(state = {}) {
       const cityState = state.cityState || {};
       const cities = Array.isArray(cityState.cities) ? cityState.cities : [];

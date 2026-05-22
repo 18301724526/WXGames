@@ -784,3 +784,37 @@ test('population view state allows decreasing craftsmen without unassigned peopl
   assert.equal(craftsman.canDecrease, true);
   assert.equal(craftsman.count, 1);
 });
+
+test('talent policy view state builds presets and tier draft without using custom policy as base', () => {
+  const view = UIStatePresenter.buildTalentPolicyViewState({
+    currentEra: 2,
+    talentPolicies: {
+      activePolicyId: 'custom_1',
+      activePolicyLabel: '均衡发展·偏工业',
+      defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
+      systemPolicies: [
+        { id: 'balanced', label: '均衡发展', description: '稳定分工' },
+        { id: 'agriculture', label: '农业优先', description: '重视农业' },
+      ],
+      customPolicies: [
+        { id: 'custom_1', displayName: '均衡发展·偏工业', tiers: { agriculture: 1, knowledge: 2, industry: 3 } },
+      ],
+      tendencies: [
+        { id: 'agriculture', label: '农业', disabled: false },
+        { id: 'knowledge', label: '知识', disabled: false },
+        { id: 'industry', label: '工业', disabled: false },
+      ],
+      preview: {
+        allocation: { farmer: 2, scholar: 1, craftsman: 1 },
+      },
+    },
+  }, { tiers: { agriculture: 3, knowledge: 2, industry: 1 } });
+
+  assert.equal(view.activePolicyLabel, '均衡发展·偏工业');
+  assert.equal(view.draft.basePolicyId, 'balanced');
+  assert.equal(view.draft.displayName, '均衡发展·偏农业');
+  assert.equal(view.tendencies.find((item) => item.id === 'agriculture').tierLabel, '高');
+  assert.equal(view.systemPolicies[0].selected, true);
+  assert.equal(view.customPolicies[0].active, true);
+  assert.equal(view.preview.allocationText, '农民 2 / 学者 1 / 工匠 1');
+});

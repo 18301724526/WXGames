@@ -92,6 +92,7 @@ test('resource HUD renders population management through Canvas hit targets', ()
   renderer.render({ currentTab: 'resources', happiness: 92 }, { activeTab: 'resources', mode: 'hud' });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人才分配'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '方针'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人才'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '待分配人才'));
   assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 120 && call[4] === 268));
@@ -117,15 +118,67 @@ test('resource HUD renders population management through Canvas hit targets', ()
     && target.action.job === 'craftsman'
     && target.action.delta === -1
   ));
+  const policyTarget = renderer.hitTargets.find((target) => target.action?.type === 'openTalentPolicy');
   assert.ok(plusTarget);
   assert.ok(minusTarget);
   assert.ok(craftsmanMinusTarget);
+  assert.ok(policyTarget);
   assert.ok(plusTarget.x - (craftsmanMinusTarget.x + craftsmanMinusTarget.width) >= 52);
   assert.equal(371 - (plusTarget.x + plusTarget.width), 8);
   assert.equal(renderer.getHitTarget({
     x: plusTarget.x + plusTarget.width / 2,
     y: plusTarget.y + plusTarget.height / 2,
   }).type, 'assignJob');
+});
+
+test('talent policy panel renders presets, tier controls, and save/apply hit targets', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ hasWood: true, text: {} }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildPopulationViewState: () => ({
+      text: { total: '4', max: '6', unassigned: '0' },
+      jobs: [],
+    }),
+    buildTaskCenterViewState: () => ({ summary: { claimableCount: 0 } }),
+    buildTalentPolicyViewState: () => ({
+      text: {
+        title: '人才方针',
+        subtitle: '当前：均衡发展',
+        presetTitle: '系统方针',
+        customTitle: '自定义微调',
+        customName: '均衡发展·偏农业',
+        emptyCustom: '暂无自定义方针',
+        applyDraft: '应用微调',
+        saveDraft: '保存微调',
+      },
+      systemPolicies: [
+        { id: 'balanced', label: '均衡发展', active: true, selected: true },
+        { id: 'agriculture', label: '农业优先' },
+      ],
+      customPolicies: [],
+      tendencies: [
+        { id: 'agriculture', label: '农业', tier: 3 },
+        { id: 'knowledge', label: '知识', tier: 2 },
+        { id: 'industry', label: '工业', tier: 1 },
+      ],
+      preview: { allocationText: '农民 2 / 学者 1 / 工匠 1' },
+    }),
+  });
+
+  renderer.render({ currentTab: 'resources', population: { total: 4 } }, {
+    activeTab: 'resources',
+    showTalentPolicy: true,
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人才方针'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '应用微调'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'applyTalentPolicy' && target.action.policyId === 'balanced'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'setTalentPolicyTier' && target.action.tendency === 'agriculture' && target.action.tier === 3));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'applyTalentPolicyDraft'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'saveTalentPolicyDraft'));
 });
 
 test('H5 app dispatches population Canvas actions without DOM render methods', () => {

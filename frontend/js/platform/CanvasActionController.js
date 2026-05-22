@@ -6,6 +6,7 @@
     'showCitySwitcher',
     'showAdvisor',
     'showTaskCenter',
+    'showTalentPolicy',
   ];
 
   class CanvasActionController {
@@ -256,6 +257,85 @@
     handle_switchTaskCenterTab(action) {
       this.host.activeTaskCenterTab = action.tab || 'main';
       return this.afterHandled(action);
+    }
+
+    handle_openTalentPolicy(action) {
+      this.host.showTalentPolicy = true;
+      this.closePanels(['showTalentPolicy']);
+      return this.afterHandled(action);
+    }
+
+    handle_closeTalentPolicy(action) {
+      this.host.showTalentPolicy = false;
+      return this.afterHandled(action);
+    }
+
+    handle_setTalentPolicyTier(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (!target.talentPolicyUiState || typeof target.talentPolicyUiState !== 'object') target.talentPolicyUiState = {};
+      target.talentPolicyUiState.tiers = {
+        ...(target.talentPolicyUiState.tiers || {}),
+        [action.tendency]: action.tier,
+      };
+      if (game && game !== this.host) this.host.talentPolicyUiState = target.talentPolicyUiState;
+      return this.afterHandled(action);
+    }
+
+    handle_selectTalentPolicyBase(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (!target.talentPolicyUiState || typeof target.talentPolicyUiState !== 'object') target.talentPolicyUiState = {};
+      target.talentPolicyUiState = {
+        ...target.talentPolicyUiState,
+        basePolicyId: action.policyId || 'balanced',
+      };
+      if (game && game !== this.host) this.host.talentPolicyUiState = target.talentPolicyUiState;
+      return this.afterHandled(action);
+    }
+
+    handle_resetTalentPolicyDraft(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      target.talentPolicyUiState = {};
+      if (game && game !== this.host) this.host.talentPolicyUiState = {};
+      return this.afterHandled(action);
+    }
+
+    handle_applyTalentPolicy(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.applyTalentPolicy === 'function') {
+        return this.finalize(game.applyTalentPolicy(action.policyId));
+      }
+      return this.finalize(this.runAction(() => this.host.api.applyTalentPolicy(action.policyId)));
+    }
+
+    handle_applyTalentPolicyDraft(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.applyTalentPolicyDraft === 'function') return this.finalize(game.applyTalentPolicyDraft());
+      const draft = this.host?.talentPolicyUiState || {};
+      return this.finalize(this.runAction(() => this.host.api.applyTalentPolicy(null, draft)));
+    }
+
+    handle_saveTalentPolicyDraft(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.saveTalentPolicyDraft === 'function') return this.finalize(game.saveTalentPolicyDraft());
+      const draft = this.host?.talentPolicyUiState || {};
+      return this.finalize(this.runAction(() => this.host.api.saveTalentPolicy(draft)));
+    }
+
+    handle_deleteTalentPolicy(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.deleteTalentPolicy === 'function') return this.finalize(game.deleteTalentPolicy(action.policyId));
+      return this.finalize(this.runAction(() => this.host.api.deleteTalentPolicy(action.policyId)));
     }
 
     handle_requestLoginUsername() {

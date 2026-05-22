@@ -41,6 +41,8 @@
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
+      this.showTalentPolicy = false;
+      this.talentPolicyUiState = {};
       this.buildingOffset = 0;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -191,6 +193,7 @@
       this.buildingOffset = 0;
       this.buildingTransition = null;
       this.activeEventId = null;
+      this.showTalentPolicy = false;
     }
 
     resetLocalViewToResources(options = {}) {
@@ -202,6 +205,7 @@
       this.showCitySwitcher = false;
       this.showAdvisor = false;
       this.showTaskCenter = false;
+      this.showTalentPolicy = false;
       this.activeTaskCenterTab = 'main';
       const game = this.lastGame;
       if (game?.state && typeof game.state === 'object') game.state = { ...game.state, currentTab: 'resources' };
@@ -732,6 +736,8 @@
         showAdvisor: this.showAdvisor,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
+        showTalentPolicy: this.showTalentPolicy,
+        talentPolicyUiState: this.lastGame?.talentPolicyUiState || this.talentPolicyUiState || {},
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,

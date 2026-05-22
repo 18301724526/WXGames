@@ -77,6 +77,35 @@ test('assignJob posts population reassignment through shared action API', async 
   assert.deepEqual(requests, [{ action: 'assign', target: 'craftsman', count: -1 }]);
 });
 
+test('talent policy APIs use shared action endpoint', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', null, {
+    transport: {
+      async request(options) {
+        requests.push(JSON.parse(options.body));
+        return {
+          ok: true,
+          async json() {
+            return { success: true };
+          },
+        };
+      },
+    },
+  });
+
+  await api.applyTalentPolicy('agriculture');
+  await api.applyTalentPolicy(null, { basePolicyId: 'balanced', tiers: { agriculture: 3 } });
+  await api.saveTalentPolicy({ basePolicyId: 'knowledge', tiers: { knowledge: 3 } });
+  await api.deleteTalentPolicy('custom-a');
+
+  assert.deepEqual(requests, [
+    { action: 'applyTalentPolicy', policyId: 'agriculture', policy: null },
+    { action: 'applyTalentPolicy', policyId: null, policy: { basePolicyId: 'balanced', tiers: { agriculture: 3 } } },
+    { action: 'saveTalentPolicy', policy: { basePolicyId: 'knowledge', tiers: { knowledge: 3 } } },
+    { action: 'deleteTalentPolicy', policyId: 'custom-a' },
+  ]);
+});
+
 test('claimGuideTaskReward posts task id through shared action API', async () => {
   const requests = [];
   const api = new GameAPI('/api', null, {

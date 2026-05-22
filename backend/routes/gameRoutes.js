@@ -3,6 +3,7 @@ const SoftGuideService = require('../services/SoftGuideService');
 const GuideTaskService = require('../services/GuideTaskService');
 const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
+const TalentPolicyService = require('../services/TalentPolicyService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
@@ -111,7 +112,24 @@ function registerGameRoutes(app, deps) {
     }
 
     let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-    const { action, target, count, step, eventId, optionId, territoryId, cityId, soldiers, name, direction, missionId } = req.body || {};
+    const {
+      action,
+      target,
+      count,
+      step,
+      eventId,
+      optionId,
+      territoryId,
+      cityId,
+      soldiers,
+      name,
+      direction,
+      missionId,
+      policyId,
+      basePolicyId,
+      tiers,
+      policy,
+    } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
     if (action === 'tutorialAdvance') {
@@ -149,6 +167,13 @@ function registerGameRoutes(app, deps) {
     } else if (action === 'assign') {
       result = AssignPopulationAction.execute(gameState, tutorial, { target, count });
       tutorial = result.tutorial || tutorial;
+    } else if (action === 'applyTalentPolicy') {
+      result = TalentPolicyService.applyPolicy(gameState, tutorial, { policyId, basePolicyId, tiers, policy });
+      tutorial = result.tutorial || tutorial;
+    } else if (action === 'saveTalentPolicy') {
+      result = TalentPolicyService.saveCustomPolicy(gameState, { policyId, basePolicyId, tiers, policy });
+    } else if (action === 'deleteTalentPolicy') {
+      result = TalentPolicyService.deleteCustomPolicy(gameState, { policyId });
     } else if (['scoutTerritory', 'claimScout', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity', 'switchCity'].includes(action)) {
       result = TerritoryAction.execute(action, gameState, { territoryId, cityId, soldiers, name, direction, missionId });
     } else if (action === 'research') {

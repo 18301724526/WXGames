@@ -1108,6 +1108,20 @@
       this.drawIconCard(x + 14, y + 14, 38, 38, 'assets/art/icon-population-cutout.webp');
       this.drawText(view.text.title || '人才分配', x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
       this.drawText(view.text.subtitle || '核心岗位', x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      const policyButtonWidth = 58;
+      const policyButtonHeight = 28;
+      const policyButtonX = x + width - policyButtonWidth - 14;
+      const policyButtonY = y + 18;
+      this.drawButton(policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, '方针', {
+        size: 12,
+        bold: true,
+        active: true,
+        radius: 8,
+      });
+      this.addHitTarget(
+        { x: policyButtonX, y: policyButtonY, width: policyButtonWidth, height: policyButtonHeight },
+        { type: 'openTalentPolicy' },
+      );
       this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 
       const stats = [
@@ -1166,6 +1180,216 @@
         this.addHitTarget({ x: plusX, y: controlY, width: controlButtonWidth, height: 22 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
       });
       return y + panelHeight + 12;
+    }
+
+    renderTalentPolicyPanel(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildTalentPolicyViewState !== 'function') return;
+      const view = this.presenter.buildTalentPolicyViewState(state, options.talentPolicyUiState || {});
+      const layout = this.getLayout();
+      const panelWidth = Math.min(380, layout.contentWidth - 10);
+      const panelHeight = Math.min(612, Math.max(500, this.height - 150));
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(52, (this.height - panelHeight) / 2 - 8);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeTalentPolicy' });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.46)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(49, 38, 26, 0.99)'],
+            [1, 'rgba(20, 18, 15, 0.99)'],
+          ],
+          'rgba(34, 27, 21, 0.99)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 12,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawText(view.text.title, x + 18, y + 16, { size: 18, bold: true, color: '#ffe6b5' });
+      this.drawText(this.truncateText(view.text.subtitle, panelWidth - 76, { size: 12 }), x + 18, y + 43, {
+        size: 12,
+        color: '#cbbd96',
+      });
+      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeTalentPolicy' });
+
+      const innerX = x + 14;
+      const innerWidth = panelWidth - 28;
+      let cursorY = y + 72;
+      this.drawPanel(innerX, cursorY, innerWidth, 44, {
+        fill: 'rgba(24, 22, 17, 0.62)',
+        stroke: 'rgba(116, 211, 160, 0.22)',
+        radius: 8,
+      });
+      this.drawText('预览', innerX + 12, cursorY + 9, { size: 12, bold: true, color: '#74d3a0' });
+      this.drawText(
+        this.truncateText(view.preview.allocationText || '暂无人才', innerWidth - 74, { size: 13, bold: true }),
+        innerX + 64,
+        cursorY + 22,
+        { size: 13, bold: true, color: '#fff1cf', baseline: 'middle' },
+      );
+      cursorY += 58;
+
+      this.drawText(view.text.presetTitle, innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+      cursorY += 22;
+      const presets = (view.systemPolicies || []).slice(0, 5);
+      const presetGap = 6;
+      const presetHeight = 34;
+      const presetWidth = Math.max(84, Math.floor((innerWidth - presetGap) / 2));
+      presets.forEach((policy, index) => {
+        const column = index % 2;
+        const row = Math.floor(index / 2);
+        const buttonX = innerX + column * (presetWidth + presetGap);
+        const buttonY = cursorY + row * (presetHeight + presetGap);
+        const width = column === 1 ? innerX + innerWidth - buttonX : presetWidth;
+        this.drawButton(buttonX, buttonY, width, presetHeight, this.truncateText(policy.label, width - 12, { size: 12, bold: true }), {
+          disabled: policy.disabled,
+          active: policy.active || policy.selected,
+          size: 12,
+          bold: policy.active || policy.selected,
+          radius: 8,
+        });
+        this.addHitTarget(
+          { x: buttonX, y: buttonY, width, height: presetHeight },
+          { type: 'applyTalentPolicy', policyId: policy.id, disabled: policy.disabled },
+        );
+      });
+      cursorY += Math.ceil(presets.length / 2) * (presetHeight + presetGap) + 10;
+
+      const customPolicies = view.customPolicies || [];
+      this.drawText('已保存', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+      cursorY += 20;
+      if (!customPolicies.length) {
+        this.drawPanel(innerX, cursorY, innerWidth, 34, {
+          fill: 'rgba(23, 18, 13, 0.38)',
+          stroke: 'rgba(255, 226, 177, 0.1)',
+          radius: 8,
+        });
+        this.drawText(view.text.emptyCustom, innerX + 12, cursorY + 17, {
+          size: 12,
+          color: '#aeb0b8',
+          baseline: 'middle',
+        });
+        cursorY += 44;
+      } else {
+        customPolicies.slice(0, 2).forEach((policy) => {
+          const rowHeight = 36;
+          const applyWidth = 54;
+          const deleteWidth = 44;
+          const applyX = innerX + innerWidth - applyWidth - deleteWidth - 8;
+          const deleteX = innerX + innerWidth - deleteWidth;
+          this.drawPanel(innerX, cursorY, innerWidth, rowHeight, {
+            fill: policy.active ? 'rgba(64, 49, 27, 0.82)' : 'rgba(27, 22, 17, 0.72)',
+            stroke: policy.active ? 'rgba(247, 215, 116, 0.42)' : 'rgba(255, 226, 177, 0.12)',
+            radius: 8,
+          });
+          this.drawText(this.truncateText(policy.label, applyX - innerX - 18, { size: 12, bold: true }), innerX + 10, cursorY + 18, {
+            size: 12,
+            bold: true,
+            color: policy.active ? '#ffd98a' : '#fff1cf',
+            baseline: 'middle',
+          });
+          this.drawButton(applyX, cursorY + 5, applyWidth, 26, '应用', { size: 11, active: !policy.active, radius: 7 });
+          this.drawButton(deleteX, cursorY + 5, deleteWidth, 26, '删', { size: 11, radius: 7 });
+          this.addHitTarget({ x: applyX, y: cursorY + 5, width: applyWidth, height: 26 }, { type: 'applyTalentPolicy', policyId: policy.id });
+          this.addHitTarget({ x: deleteX, y: cursorY + 5, width: deleteWidth, height: 26 }, { type: 'deleteTalentPolicy', policyId: policy.id });
+          cursorY += rowHeight + 8;
+        });
+      }
+
+      const draftBottom = y + panelHeight - 16;
+      const actionHeight = 34;
+      const actionY = draftBottom - actionHeight;
+      const tuningBottom = actionY - 10;
+      this.drawText(view.text.customTitle, innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+      this.drawText(this.truncateText(view.text.customName, innerWidth - 104, { size: 12, bold: true }), innerX + 92, cursorY + 1, {
+        size: 12,
+        bold: true,
+        color: '#74d3a0',
+      });
+      cursorY += 24;
+      const tierRowHeight = 30;
+      (view.tendencies || []).slice(0, 3).forEach((tendency) => {
+        if (cursorY + tierRowHeight > tuningBottom) return;
+        this.drawText(tendency.label, innerX + 2, cursorY + 15, {
+          size: 12,
+          bold: true,
+          color: tendency.disabled ? '#8d8f99' : '#fff1cf',
+          baseline: 'middle',
+        });
+        const tierButtonWidth = 44;
+        const tierGap = 5;
+        [1, 2, 3].forEach((tier, index) => {
+          const tierX = innerX + innerWidth - (3 - index) * tierButtonWidth - (2 - index) * tierGap;
+          const active = Number(tendency.tier) === tier;
+          const label = { 1: '低', 2: '稳', 3: '高' }[tier];
+          this.drawButton(tierX, cursorY, tierButtonWidth, tierRowHeight, label, {
+            disabled: tendency.disabled,
+            active,
+            size: 11,
+            bold: active,
+            radius: 7,
+          });
+          this.addHitTarget(
+            { x: tierX, y: cursorY, width: tierButtonWidth, height: tierRowHeight },
+            { type: 'setTalentPolicyTier', tendency: tendency.id, tier, disabled: tendency.disabled },
+          );
+        });
+        cursorY += tierRowHeight + 7;
+      });
+
+      const basePolicies = (view.systemPolicies || []).slice(0, 4);
+      const baseButtonHeight = 24;
+      if (basePolicies.length && cursorY + baseButtonHeight + 6 <= tuningBottom) {
+        this.drawText('底稿', innerX + 2, cursorY + 12, {
+          size: 11,
+          bold: true,
+          color: '#cbbd96',
+          baseline: 'middle',
+        });
+        const availableWidth = innerWidth - 42;
+        const baseGap = 4;
+        const baseWidth = Math.max(50, Math.floor((availableWidth - baseGap * (basePolicies.length - 1)) / basePolicies.length));
+        basePolicies.forEach((policy, index) => {
+          const buttonX = innerX + 42 + index * (baseWidth + baseGap);
+          const buttonWidth = index === basePolicies.length - 1
+            ? innerX + innerWidth - buttonX
+            : baseWidth;
+          const active = policy.id === view.draft?.basePolicyId;
+          this.drawButton(buttonX, cursorY, buttonWidth, baseButtonHeight, this.truncateText(policy.label, buttonWidth - 8, { size: 10, bold: active }), {
+            disabled: policy.disabled,
+            active,
+            size: 10,
+            bold: active,
+            radius: 7,
+          });
+          this.addHitTarget(
+            { x: buttonX, y: cursorY, width: buttonWidth, height: baseButtonHeight },
+            { type: 'selectTalentPolicyBase', policyId: policy.id, disabled: policy.disabled },
+          );
+        });
+        cursorY += baseButtonHeight + 6;
+      }
+
+      const applyWidth = Math.floor((innerWidth - 8) / 2);
+      this.drawPrimaryActionButton(innerX, actionY, applyWidth, actionHeight, view.text.applyDraft, { radius: 8 });
+      this.drawButton(innerX + applyWidth + 8, actionY, innerWidth - applyWidth - 8, actionHeight, view.text.saveDraft, {
+        size: 12,
+        bold: true,
+        active: true,
+        radius: 8,
+      });
+      this.addHitTarget({ x: innerX, y: actionY, width: applyWidth, height: actionHeight }, { type: 'applyTalentPolicyDraft' });
+      this.addHitTarget({ x: innerX + applyWidth + 8, y: actionY, width: innerWidth - applyWidth - 8, height: actionHeight }, { type: 'saveTalentPolicyDraft' });
     }
 
     renderBuildings(state = {}, startY = 210, panelHeight = 310, options = {}) {
@@ -3649,6 +3873,7 @@
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
+      if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);

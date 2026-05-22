@@ -468,7 +468,13 @@ function getExpectedActionForTask(task) {
 }
 
 function validateAction(gameState, action, payload = {}) {
-  if (action === 'claimEvent' || action === 'goToGuideTaskTarget') return { allowed: true };
+  if (
+    action === 'claimEvent'
+    || action === 'goToGuideTaskTarget'
+    || action === 'applyTalentPolicy'
+    || action === 'saveTalentPolicy'
+    || action === 'deleteTalentPolicy'
+  ) return { allowed: true };
   const task = getCurrentTaskDefinition(gameState);
   if (!task) return { allowed: true };
   const view = buildTaskView(gameState, task);
