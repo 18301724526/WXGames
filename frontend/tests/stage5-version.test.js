@@ -5,20 +5,20 @@ const test = require('node:test');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
-test('fixed guide task reward version is 0.1.49 in package metadata', () => {
+test('task center version is 0.1.50 in package metadata', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package.json'), 'utf8'));
   const packageLock = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package-lock.json'), 'utf8'));
 
-  assert.equal(packageJson.version, '0.1.49');
-  assert.equal(packageLock.version, '0.1.49');
-  assert.equal(packageLock.packages[''].version, '0.1.49');
+  assert.equal(packageJson.version, '0.1.50');
+  assert.equal(packageLock.version, '0.1.50');
+  assert.equal(packageLock.packages[''].version, '0.1.50');
 });
 
-test('version service reads updated 0.1.49 package version', () => {
+test('version service reads updated 0.1.50 package version', () => {
   const VersionService = require('../../backend/services/VersionService');
   const service = new VersionService({ repoRoot: projectRoot });
   const info = service.getVersionInfo();
 
-  assert.equal(info.version, '0.1.49');
+  assert.equal(info.version, '0.1.50');
   assert.ok(info.deploymentId);
 });
