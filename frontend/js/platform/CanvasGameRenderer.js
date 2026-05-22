@@ -1586,20 +1586,16 @@
               : (isSpecial ? 'rgba(247, 215, 116, 0.48)' : 'rgba(255, 226, 177, 0.12)'),
             radius: 8,
           });
-          const buttonWidth = 58;
-          const buttonHeight = 28;
-          const buttonX = contentX + contentWidth - buttonWidth - 12;
-          const buttonY = y + cardHeight - buttonHeight - 12;
           const iconAsset = card.iconAsset || 'assets/art/icon-event-cutout.webp';
           const iconSize = 34;
           const iconX = contentX + 10;
           const iconY = y + 10;
           this.drawAsset(iconAsset, iconX, iconY, iconSize, iconSize);
           const textX = iconX + iconSize + 9;
-          const textWidth = Math.max(120, buttonX - textX - 10);
+          const textWidth = Math.max(120, contentX + contentWidth - textX - 12);
           const title = this.truncateText(card.title, textWidth, { size: 14, bold: true });
           const descriptionLines = this.wrapTextLimit(card.description, textWidth, 2, { size: 11 });
-          const hint = this.truncateText(card.hint, Math.max(90, buttonX - textX - 10), { size: 11 });
+          const hint = this.truncateText(card.hint, textWidth, { size: 11 });
           this.drawText(title, textX, y + 8, { size: 14, bold: true });
           this.drawTextLines(descriptionLines, textX, y + 29, {
             color: '#aeb0b8',
@@ -1609,10 +1605,6 @@
           this.drawText(hint, textX, y + cardHeight - 20, {
             color: isThreat ? '#ff9aa2' : '#f7d774',
             size: 11,
-          });
-          this.drawPrimaryActionButton(buttonX, buttonY, buttonWidth, buttonHeight, '查看', {
-            size: 12,
-            radius: 8,
           });
           this.addHitTarget({ x: contentX, y, width: contentWidth, height: cardHeight }, { type: 'openEvent', eventId: card.id });
         });

@@ -1313,7 +1313,7 @@ test('CanvasGameRenderer draws events page and event modal without DOM renderer'
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('惩罚:')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('时限:')));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '处理'), false);
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '查看'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '查看'), false);
   assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-wood-cutout.webp'));
   assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-knowledge-cutout.webp'));
   assert.ok(assets.some((asset) => asset[0] === 'assets/art/icon-food-cutout.webp'));
