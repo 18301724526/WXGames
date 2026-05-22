@@ -885,6 +885,85 @@ test('Canvas game shell refreshes guide highlight after task reward is claimed',
   assert.notEqual(renderCalls.at(-1).tutorialHighlight.rect.left, claimTarget.x);
 });
 
+test('Canvas game shell keeps strong guide highlight when a transient target is missing', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    hitTargets: [],
+    getHitTarget: () => null,
+    render(state, options) { renderCalls.push(options); },
+  };
+  const game = {
+    state: {
+      currentTab: 'buildings',
+      softGuide: { mode: 'strong', target: 'card-barracks', message: 'Build barracks' },
+      buildingDefinitions: { barracks: { id: 'barracks' } },
+      buildings: {},
+      unlockedBuildings: ['barracks'],
+    },
+    tutorialController: { state: {}, canOpenTab: () => true },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: {
+      buildBuildingViewState: () => ({ ids: ['barracks'] }),
+    },
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  const previous = {
+    rect: { left: 20, top: 200, width: 80, height: 36, right: 100, bottom: 236 },
+    message: 'keep me',
+  };
+  shell.tutorialHighlight = previous;
+
+  assert.equal(shell.refreshCurrentGuideHighlight(), false);
+  assert.equal(shell.tutorialHighlight, previous);
+  assert.equal(renderCalls.at(-1).tutorialHighlight, previous);
+});
+
+test('Canvas action reset returns the local view to resources before applying reset state', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    getHitTarget: () => ({ type: 'resetGame' }),
+    render(state, options) { renderCalls.push({ state, options }); },
+  };
+  const game = {
+    activeTab: 'buildings',
+    state: { currentTab: 'buildings', resources: { food: 1 } },
+    resetGame() {
+      this.resetCalled = true;
+      this.state = { ...this.state, resources: { food: 100 } };
+      return true;
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.showTaskCenter = true;
+  shell.showResourceDetails = true;
+  shell.buildingOffset = 3;
+  const handled = shell.handleTap({ x: 1, y: 1 });
+
+  assert.equal(handled, true);
+  assert.equal(game.resetCalled, true);
+  assert.equal(game.activeTab, 'resources');
+  assert.equal(game.state.currentTab, 'resources');
+  assert.equal(shell.showTaskCenter, false);
+  assert.equal(shell.showResourceDetails, false);
+  assert.equal(shell.buildingOffset, 0);
+  assert.equal(renderCalls.at(-1).options.activeTab, 'resources');
+});
+
 test('Canvas game shell dispatches military and world actions without DOM adapters', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [

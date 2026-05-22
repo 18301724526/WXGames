@@ -45,6 +45,9 @@
       this.rewardReveal = null;
       this.tutorialHighlight = null;
       this.highlightTimer = null;
+      this.skipNextSoftGuideRender = false;
+      this.suppressSoftGuideRenderOnce = false;
+      this.activeGuideNavigation = null;
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.naming = {
@@ -348,6 +351,25 @@
       this.activeEventId = null;
     }
 
+    resetLocalViewToResources(options = {}) {
+      this.activeTab = 'resources';
+      this.buildingOffset = 0;
+      this.activeEventId = null;
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.showTaskCenter = false;
+      this.activeTaskCenterTab = 'main';
+      this.activeGuideNavigation = null;
+      if (this.state && typeof this.state === 'object') {
+        this.state = { ...this.state, currentTab: 'resources' };
+      }
+      if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
+        this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });
+      }
+      if (!options.skipRender) this.renderCanvasSurface('resources');
+      return true;
+    }
+
     openNaming(prompt = {}) {
       const view = this.presenter.buildNamingPromptViewState(prompt);
       this.activeNamingPrompt = prompt;
@@ -594,6 +616,15 @@
       this.renderMilitaryView();
       this.renderCanvasSurface(this.state.currentTab);
       this.tutorialController?.render?.();
+      if (this.skipNextSoftGuideRender) {
+        this.skipNextSoftGuideRender = false;
+        if (this.activeGuideNavigation?.target === 'scout-action-first') {
+          this.activeGuideNavigation = null;
+          this.renderSoftGuide();
+        }
+      } else {
+        this.renderSoftGuide();
+      }
     }
 
     async handleCanvasTabSelection(tabId) {
@@ -771,7 +802,28 @@
       return this.guideController?.ensureTargetVisible?.(key) || false;
     }
 
-    showGuideHighlight(rect, message) {
+    normalizeGuideHighlightRect(target) {
+      if (!target) return null;
+      const rawRect = typeof target.getRect === 'function'
+        ? target.getRect()
+        : (typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : target);
+      const left = Number(rawRect.left ?? rawRect.x);
+      const top = Number(rawRect.top ?? rawRect.y);
+      const width = Number(rawRect.width);
+      const height = Number(rawRect.height);
+      if (![left, top, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+      return {
+        left,
+        top,
+        width,
+        height,
+        right: Number(rawRect.right) || left + width,
+        bottom: Number(rawRect.bottom) || top + height,
+      };
+    }
+
+    showGuideHighlight(target, message, options = {}) {
+      const rect = this.normalizeGuideHighlightRect(target);
       if (!rect) return false;
       const now = this.runtime?.now?.() || Date.now();
       const previousRect = this.tutorialHighlight?.rect || rect;
@@ -792,11 +844,19 @@
           this.render();
         }, 33);
       }
-      this.render();
+      if (!options.skipRender) {
+        this.suppressSoftGuideRenderOnce = true;
+        this.render();
+      }
       return true;
     }
 
     goToGuideTaskTarget(action = {}) {
+      this.skipNextSoftGuideRender = true;
+      const target = action.target || action.nextTarget || '';
+      this.activeGuideNavigation = target
+        ? { target, message: String(action.message || '按这里继续主线任务') }
+        : null;
       return this.guideController?.goToGuideTaskTarget?.(action) || false;
     }
 
@@ -881,18 +941,45 @@
     }
 
     renderSoftGuide(options = {}) {
+      if (this.suppressSoftGuideRenderOnce) {
+        this.suppressSoftGuideRenderOnce = false;
+        return;
+      }
       const guide = this.state?.softGuide;
       this.updateAdvisor(guide, { skipSurface: true });
-      if (!guide || guide.mode !== 'strong' || !guide.target) {
+      const navigation = this.getActiveGuideNavigation();
+      const targetKey = navigation?.target || guide?.target || '';
+      if ((!guide || guide.mode !== 'strong' || !guide.target) && !navigation) {
         this.tutorialRenderer?.hide?.();
         if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
         return;
       }
-      const target = this.getTutorialTarget(guide.target)
-        || this.getTutorialTarget(this.getFallbackGuideTarget(guide.target));
-      if (target) this.tutorialRenderer?.show?.(target, guide.message);
-      else this.tutorialRenderer?.hide?.();
+      const target = this.getTutorialTarget(targetKey)
+        || this.getTutorialTarget(this.getFallbackGuideTarget(targetKey));
+      const message = navigation?.message || guide?.message;
+      if (target) {
+        if (this.tutorialRenderer?.show) this.tutorialRenderer.show(target, message);
+        else this.showGuideHighlight(target, message, { skipRender: true });
+      }
+      else if (!this.tutorialHighlight && !this.canvasShell?.tutorialHighlight) this.tutorialRenderer?.hide?.();
       if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    getActiveGuideNavigation() {
+      const navigation = this.activeGuideNavigation;
+      if (!navigation?.target) return null;
+      if (this.hasActiveGuideTaskTarget(navigation.target)) return navigation;
+      this.activeGuideNavigation = null;
+      return null;
+    }
+
+    hasActiveGuideTaskTarget(target) {
+      const guideTasks = this.state?.guideTasks?.tasks || [];
+      const taskCenterTasks = this.state?.taskCenter?.categories?.main?.tasks || [];
+      return [...guideTasks, ...taskCenterTasks].some((task) => {
+        const taskTarget = task?.target || task?.action?.target || task?.action?.nextTarget;
+        return taskTarget === target && task?.status !== 'completed' && !task?.claimed;
+      });
     }
 
     getFallbackGuideTarget(target) {

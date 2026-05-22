@@ -239,6 +239,79 @@ test('login waits for loading assets before applying state', async () => {
   }
 });
 
+test('reset game forces shared canvas view back to resources before applying reset state', async () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+  const originalFetch = global.fetch;
+
+  try {
+    global.window = {};
+    global.document = undefined;
+    global.localStorage = undefined;
+    const storage = createStorage();
+    global.fetch = async (url) => {
+      assert.match(url, /\/player\/reset$/);
+      return {
+        ok: true,
+        async text() {
+          return JSON.stringify({
+            success: true,
+            message: 'reset ok',
+            gameState: { currentTab: 'resources', resources: { food: 100 } },
+          });
+        },
+      };
+    };
+
+    require('../auth');
+
+    const calls = [];
+    const game = createGame();
+    game.state = { currentTab: 'buildings', resources: { food: 1 } };
+    game.activeTab = 'buildings';
+    game.apiPost = async (path) => {
+      assert.equal(path, '/player/reset');
+      return {
+        success: true,
+        message: 'reset ok',
+        gameState: { currentTab: 'resources', resources: { food: 100 } },
+      };
+    };
+    game.resetLocalViewToResources = function(options) {
+      calls.push(['game', options]);
+      this.activeTab = 'resources';
+      this.state = { ...this.state, currentTab: 'resources' };
+    };
+    game.canvasShell.resetLocalViewToResources = (options) => calls.push(['shell', options]);
+    game.authStorage = H5AuthStorageAdapter.fromStorage(storage);
+    global.window.mountAuthMethods(game, {
+      presenter: UIStatePresenter,
+      authStorage: game.authStorage,
+      authRuntime: H5AuthRuntimeAdapter.fromRuntime({}, {
+        confirm: () => true,
+        alert: () => {},
+      }),
+    });
+
+    await game.resetGame();
+
+    assert.deepEqual(calls, [
+      ['game', { skipRender: true }],
+      ['shell', { skipGame: true, skipRender: true }],
+    ]);
+    assert.equal(game.activeTab, 'resources');
+    assert.equal(game.state.currentTab, 'resources');
+    assert.equal(game.lastAppliedState.gameState.currentTab, 'resources');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+    global.fetch = originalFetch;
+    delete require.cache[require.resolve('../auth')];
+  }
+});
+
 test('auth module source has no DOM shell dependency', () => {
   const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'auth.js'), 'utf8');
 

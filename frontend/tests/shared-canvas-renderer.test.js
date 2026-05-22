@@ -492,6 +492,47 @@ test('CanvasGameRenderer draws tutorial highlight overlay and bubble', () => {
   assert.ok(calls.some((call) => call[0] === 'roundRect' && call[1] === 12 && call[2] === 212 && call[3] === 316 && call[4] === 48));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'Advance now'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1]));
+  assert.deepEqual(renderer.getHitTarget({ x: 30, y: 120 }), { type: 'blockCanvasModal' });
+});
+
+test('CanvasGameRenderer tutorial highlight blocks non-target clicks but keeps target actionable', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTutorialHighlightViewState: UIStatePresenter.buildTutorialHighlightViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({ currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    tutorialHighlight: {
+      rect: { left: 24, top: 786, width: 57, height: 58, right: 81, bottom: 844 },
+      message: 'Only this tab works',
+    },
+  });
+
+  assert.deepEqual(renderer.getHitTarget({ x: 110, y: 804 }), { type: 'blockCanvasModal' });
+  assert.deepEqual(renderer.getHitTarget({ x: 40, y: 804 }), { type: 'switchTab', tab: 'resources', disabled: false });
 });
 
 test('CanvasGameRenderer renders guide task bar and reward reveal on shared canvas', () => {

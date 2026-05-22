@@ -133,19 +133,23 @@ window.mountAuthMethods = function(game, deps = {}) {
   };
 
   game.resetGame = async function() {
-    if (!authRuntime?.confirmReset?.()) return;
+    if (!authRuntime?.confirmReset?.()) return false;
     try {
       const result = await this.apiPost('/player/reset', {});
       if (!result.success) {
         authRuntime?.alertMessage?.(result.message || '重置失败');
-        return;
+        return false;
       }
+      this.resetLocalViewToResources?.({ skipRender: true });
+      this.canvasShell?.resetLocalViewToResources?.({ skipGame: true, skipRender: true });
       this.applyApiState(result);
       this.showFloatingText && this.showFloatingText(result.message || '进度已重置');
       this.log && this.log(`✅ ${result.message || '进度已重置'}`);
       authRuntime?.alertMessage?.(result.message || '进度已重置');
+      return true;
     } catch (error) {
       authRuntime?.alertMessage?.(error.payload?.message || '请求失败');
+      return false;
     }
   };
 

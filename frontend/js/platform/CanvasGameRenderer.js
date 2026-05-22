@@ -202,6 +202,7 @@
       const x = Number(point.x);
       const y = Number(point.y);
       let backgroundAction = null;
+      let tutorialShieldAction = null;
       for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
         const target = this.hitTargets[index];
         if (
@@ -210,14 +211,30 @@
           && y >= target.y
           && y <= target.y + target.height
         ) {
-          if (target.action?.background) {
+          if (target.action?.type === 'blockCanvasModal') {
+            tutorialShieldAction = target.action;
+          } else if (tutorialShieldAction && !this.isAllowedUnderTutorialShield(target.action)) {
+            return tutorialShieldAction;
+          } else if (target.action?.background) {
             backgroundAction = target.action;
           } else {
             return target.action;
           }
         }
       }
+      if (tutorialShieldAction) return tutorialShieldAction;
       return backgroundAction;
+    }
+
+    isAllowedUnderTutorialShield(action = {}) {
+      if (action.type === 'goToGuideTaskTarget') return true;
+      if (action.type === 'openTaskCenter') {
+        return action.source === 'taskIcon' || action.source === 'guideTaskBar';
+      }
+      if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
+        return (action.category || 'main') === 'main';
+      }
+      return false;
     }
 
     setAssetsChangedHandler(handler) {
@@ -2642,6 +2659,7 @@
         x: this.parsePixelValue(view.pointer.left),
         y: this.parsePixelValue(view.pointer.top),
       };
+      this.addTutorialShield(rect);
 
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
       this.ctx.fillRect(0, 0, this.width, overlay.y);
@@ -2679,6 +2697,24 @@
         baseline: 'middle',
         align: 'center',
       });
+    }
+
+    addTutorialShield(rect = {}) {
+      const x = Math.max(0, Math.min(this.width, Number(rect.left ?? rect.x) || 0));
+      const y = Math.max(0, Math.min(this.height, Number(rect.top ?? rect.y) || 0));
+      const width = Math.max(0, Math.min(this.width - x, Number(rect.width) || 0));
+      const height = Math.max(0, Math.min(this.height - y, Number(rect.height) || 0));
+      const right = Math.max(x, Math.min(this.width, x + width));
+      const bottom = Math.max(y, Math.min(this.height, y + height));
+      const block = { type: 'blockCanvasModal' };
+      [
+        { x: 0, y: 0, width: this.width, height: y },
+        { x: 0, y: bottom, width: this.width, height: Math.max(0, this.height - bottom) },
+        { x: 0, y, width: x, height },
+        { x: right, y, width: Math.max(0, this.width - right), height },
+      ]
+        .filter((item) => item.width > 0 && item.height > 0)
+        .forEach((item) => this.addHitTarget(item, block));
     }
 
     drawRewardParticle(cx, cy, radius, angle, progress, index) {

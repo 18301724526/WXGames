@@ -188,6 +188,24 @@
       this.activeEventId = null;
     }
 
+    resetLocalViewToResources(options = {}) {
+      this.buildingOffset = 0;
+      this.activeEventId = null;
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.showAdvisor = false;
+      this.showTaskCenter = false;
+      this.activeTaskCenterTab = 'main';
+      const game = this.lastGame;
+      if (game?.state && typeof game.state === 'object') game.state = { ...game.state, currentTab: 'resources' };
+      if (game && 'activeTab' in game) game.activeTab = 'resources';
+      if (!options.skipGame && game?.resetLocalViewToResources) {
+        game.resetLocalViewToResources({ skipShell: true, skipRender: true });
+      }
+      if (!options.skipRender) this.renderReadOnly(game?.state, 'resources');
+      return true;
+    }
+
     forwardCanvasAction(action, meta = {}) {
       if (!this.onAction) return undefined;
       return this.onAction(action, meta.event) !== false;
@@ -295,7 +313,7 @@
     showTutorialHighlight(target, message) {
       const rect = this.resolveTutorialRect(target);
       if (!rect) {
-        this.hideTutorialHighlight();
+        if (this.tutorialHighlight) return true;
         return false;
       }
       const now = this.now();

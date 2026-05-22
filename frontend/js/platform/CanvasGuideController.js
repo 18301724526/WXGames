@@ -94,14 +94,27 @@
       return null;
     }
 
+    getGuideTaskActionTarget(key) {
+      return this.getCanvasTarget('goToGuideTaskTarget', (action) => (
+        action.target === key || action.nextTarget === key
+      ));
+    }
+
+    getBuildingTargetRect(key, type, buildingId) {
+      const realTarget = this.getCanvasTarget(type, (action) => action.buildingId === buildingId);
+      if (realTarget) return realTarget;
+      if (this.getActiveTab() !== 'buildings') return this.getGuideTaskActionTarget(key);
+      return null;
+    }
+
     getTargetRectWithoutScroll(key) {
       if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
-      if (key === 'card-farm') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'farm');
-      if (key === 'card-house') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'house');
-      if (key === 'card-lumbermill') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'lumbermill');
-      if (key === 'card-barracks') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'barracks');
-      if (key === 'card-watchtower') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'watchtower');
-      if (key === 'card-barracks-upgrade') return this.getCanvasTarget('upgradeBuilding', (action) => action.buildingId === 'barracks');
+      if (key === 'card-farm') return this.getBuildingTargetRect(key, 'buildBuilding', 'farm');
+      if (key === 'card-house') return this.getBuildingTargetRect(key, 'buildBuilding', 'house');
+      if (key === 'card-lumbermill') return this.getBuildingTargetRect(key, 'buildBuilding', 'lumbermill');
+      if (key === 'card-barracks') return this.getBuildingTargetRect(key, 'buildBuilding', 'barracks');
+      if (key === 'card-watchtower') return this.getBuildingTargetRect(key, 'buildBuilding', 'watchtower');
+      if (key === 'card-barracks-upgrade') return this.getBuildingTargetRect(key, 'upgradeBuilding', 'barracks');
       if (key === 'card-craftsman') return this.getCanvasTarget('assignJob', (action) => action.job === 'craftsman' && action.delta > 0);
       if (key === 'guide-task-claim' || key === 'task-center-main-claim') {
         return this.getCanvasTarget('claimTaskReward', (action) => (action.category || 'main') === 'main')
@@ -119,7 +132,7 @@
       if (key === 'tab-buildings') return this.getCanvasTarget('switchTab', (action) => action.tab === 'buildings');
       if (key === 'tab-events') return this.getCanvasTarget('switchTab', (action) => action.tab === 'events');
       if (key === 'tab-military' || key === 'tab-territory') return this.getCanvasTarget('switchTab', (action) => action.tab === 'military');
-      return null;
+      return this.getGuideTaskActionTarget(key);
     }
 
     getTargetRect(key) {
@@ -184,7 +197,12 @@
         this.render();
         const target = this.getTargetRect(targetKey)
           || (tabId ? this.getTargetRect(`tab-${tabId}`) : null);
-        return target ? this.showHighlight(target, options.message || DEFAULT_GUIDE_MESSAGE) : this.hideHighlight();
+        if (target) return this.showHighlight(target, options.message || DEFAULT_GUIDE_MESSAGE);
+        if (this.hasHighlight()) {
+          this.render();
+          return false;
+        }
+        return this.hideHighlight();
       };
 
       if (tabId && this.getActiveTab() !== tabId) {
@@ -272,6 +290,10 @@
         return hadHighlight;
       }
       return false;
+    }
+
+    hasHighlight() {
+      return Boolean(this.host?.tutorialHighlight);
     }
   }
 

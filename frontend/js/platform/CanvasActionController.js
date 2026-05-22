@@ -273,7 +273,16 @@
     handle_resetGame(action) {
       this.closePanels();
       const result = this.getGameHost()?.resetGame?.();
-      return result === undefined ? true : result !== false;
+      const applyResetView = (success) => {
+        if (success === false) return false;
+        this.host?.resetLocalViewToResources?.({ skipRender: true });
+        const game = this.getGameHost();
+        if (game && game !== this.host) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
+        this.render({ ...action, tab: 'resources' });
+        return true;
+      };
+      if (!result || typeof result.then !== 'function') return applyResetView(result);
+      return this.finalize(result.then(applyResetView));
     }
 
     handle_logout(action) {
