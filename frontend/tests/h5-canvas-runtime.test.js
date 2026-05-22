@@ -7,7 +7,7 @@ const H5CanvasRuntime = require('../js/platform/H5CanvasRuntime');
 global.H5CanvasRuntime = H5CanvasRuntime;
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
-const H5CanvasAppShell = require('../js/platform/H5CanvasAppShell');
+const CanvasGameShell = require('../js/platform/CanvasGameShell');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
@@ -111,9 +111,9 @@ test('H5 canvas runtime dispatches drag phases and suppresses tap after movement
   assert.equal(taps.length, 0);
 });
 
-test('H5 canvas app shell mounts runtime without requiring renderer', () => {
+test('Canvas game shell mounts runtime without requiring renderer', () => {
   const { document, runtime, appended } = createCanvasHarness();
-  const shell = H5CanvasAppShell.mount({ state: { resources: {} } }, {
+  const shell = CanvasGameShell.mount({ state: { resources: {} } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -126,7 +126,7 @@ test('H5 canvas app shell mounts runtime without requiring renderer', () => {
   assert.equal(appended.length, 1);
 });
 
-test('H5 canvas app shell can render read-only HUD preview when explicitly enabled', () => {
+test('Canvas game shell can render read-only HUD preview when explicitly enabled', () => {
   const { document, runtime, appended } = createCanvasHarness();
   const renderCalls = [];
   const renderer = {
@@ -138,7 +138,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
     },
   };
   const state = { currentTab: 'resources', resources: { food: 10, knowledge: 2 } };
-  const shell = H5CanvasAppShell.mount({ state }, {
+  const shell = CanvasGameShell.mount({ state }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -201,11 +201,11 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
   assert.equal(renderCalls.at(-1).options.mode, 'hud');
 });
 
-test('H5 canvas app shell keeps preview disabled by default so existing DOM UI remains authoritative', () => {
+test('Canvas game shell keeps preview disabled by default so existing DOM UI remains authoritative', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
   const renderer = { render: (...args) => renderCalls.push(args) };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -220,7 +220,7 @@ test('H5 canvas app shell keeps preview disabled by default so existing DOM UI r
   assert.equal(renderCalls.length, 0);
 });
 
-test('H5 canvas app shell bridges canvas tab taps only when input is explicitly enabled', () => {
+test('Canvas game shell bridges canvas tab taps only when input is explicitly enabled', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [];
   const renderer = {
@@ -229,7 +229,7 @@ test('H5 canvas app shell bridges canvas tab taps only when input is explicitly 
     },
     render() {},
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -272,14 +272,14 @@ test('H5 canvas runtime ignores duplicate compatibility events for the same tap'
   assert.equal(taps.length, 2);
 });
 
-test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions', () => {
+test('Canvas game shell can fallback to game.switchTab for canvas tab actions', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const switched = [];
   const renderer = {
     getHitTarget: () => ({ type: 'switchTab', tab: 'events' }),
     render() {},
   };
-  const shell = H5CanvasAppShell.mount({
+  const shell = CanvasGameShell.mount({
     state: { currentTab: 'resources' },
     switchTab(tab) { switched.push(tab); },
   }, {
@@ -295,7 +295,7 @@ test('H5 canvas app shell can fallback to game.switchTab for canvas tab actions'
   assert.deepEqual(switched, ['events']);
 });
 
-test('H5 canvas app shell owns resource details panel state without DOM adapter', () => {
+test('Canvas game shell owns resource details panel state without DOM adapter', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const renderCalls = [];
   const actions = [{ type: 'openResourceDetails' }, { type: 'closeResourceDetails' }];
@@ -303,7 +303,7 @@ test('H5 canvas app shell owns resource details panel state without DOM adapter'
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  H5CanvasAppShell.mount({ state: { currentTab: 'resources', resources: { food: 10 } } }, {
+  CanvasGameShell.mount({ state: { currentTab: 'resources', resources: { food: 10 } } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -318,7 +318,7 @@ test('H5 canvas app shell owns resource details panel state without DOM adapter'
   assert.equal(renderCalls.at(-1).showResourceDetails, false);
 });
 
-test('H5 canvas app shell owns city switcher state and dispatches canvas city selection', () => {
+test('Canvas game shell owns city switcher state and dispatches canvas city selection', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [{ type: 'openCitySwitcher' }, { type: 'selectCity', cityId: 'site_river' }];
   const renderCalls = [];
@@ -327,7 +327,7 @@ test('H5 canvas app shell owns city switcher state and dispatches canvas city se
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -347,7 +347,7 @@ test('H5 canvas app shell owns city switcher state and dispatches canvas city se
   assert.deepEqual(selected, ['site_river']);
 });
 
-test('H5 canvas app shell dispatches every HUD hit action and consumes the event', () => {
+test('Canvas game shell dispatches every HUD hit action and consumes the event', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const renderCalls = [];
   const prevented = [];
@@ -355,7 +355,7 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
     getHitTarget: () => ({ type: 'openAdvisor' }),
     render(state, options) { renderCalls.push(options); },
   };
-  H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -380,7 +380,7 @@ test('H5 canvas app shell dispatches every HUD hit action and consumes the event
   assert.ok(prevented.includes('stopPropagation'));
 });
 
-test('H5 canvas app shell owns advisor panel state and dispatches target action', () => {
+test('Canvas game shell owns advisor panel state and dispatches target action', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'openAdvisor' },
@@ -394,7 +394,7 @@ test('H5 canvas app shell owns advisor panel state and dispatches target action'
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  H5CanvasAppShell.mount({ state: { currentTab: 'resources', softGuide: { message: 'Scout north', target: 'tab-military' } } }, {
+  CanvasGameShell.mount({ state: { currentTab: 'resources', softGuide: { message: 'Scout north', target: 'tab-military' } } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -421,7 +421,7 @@ test('H5 canvas app shell owns advisor panel state and dispatches target action'
   assert.equal(renderCalls.at(-1).showAdvisor, false);
 });
 
-test('H5 canvas app shell dispatches building actions without DOM adapter', () => {
+test('Canvas game shell dispatches building actions without DOM adapter', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'buildBuilding', buildingId: 'farm' },
@@ -432,7 +432,7 @@ test('H5 canvas app shell dispatches building actions without DOM adapter', () =
     getHitTarget: () => actions.shift(),
     render() {},
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'buildings' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'buildings' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -454,7 +454,7 @@ test('H5 canvas app shell dispatches building actions without DOM adapter', () =
   ]);
 });
 
-test('H5 canvas app shell dispatches era advance without DOM button', () => {
+test('Canvas game shell dispatches era advance without DOM button', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const dispatched = [];
   const renderer = {
@@ -462,7 +462,7 @@ test('H5 canvas app shell dispatches era advance without DOM button', () => {
     getHitTarget: () => ({ type: 'advanceEra' }),
     render() {},
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'civilization' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'civilization' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -489,7 +489,7 @@ test('H5 canvas app shell dispatches era advance without DOM button', () => {
   assert.deepEqual(dispatched, [{ type: 'advanceEra' }]);
 });
 
-test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', () => {
+test('Canvas game shell resolves tutorial targets from Canvas hit regions', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
   const renderer = {
@@ -506,7 +506,7 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
     ],
     render(state, options) { renderCalls.push(options); },
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'civilization' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'civilization' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -598,7 +598,7 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
   assert.equal(renderCalls.at(-1).tutorialHighlight, null);
 });
 
-test('H5 canvas app shell sends guide task go actions through shared target navigation', async () => {
+test('Canvas game shell sends guide task go actions through shared target navigation', async () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
   const renderer = {
@@ -622,7 +622,7 @@ test('H5 canvas app shell sends guide task go actions through shared target navi
       return true;
     },
   };
-  const shell = H5CanvasAppShell.mount(game, {
+  const shell = CanvasGameShell.mount(game, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -646,7 +646,7 @@ test('H5 canvas app shell sends guide task go actions through shared target navi
   });
 });
 
-test('H5 canvas app shell dispatches military and world actions without DOM adapters', () => {
+test('Canvas game shell dispatches military and world actions without DOM adapters', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'switchMilitaryView', view: 'scout' },
@@ -662,7 +662,7 @@ test('H5 canvas app shell dispatches military and world actions without DOM adap
     getHitTarget: () => actions.shift(),
     render() {},
   };
-  H5CanvasAppShell.mount({ state: { currentTab: 'military' } }, {
+  CanvasGameShell.mount({ state: { currentTab: 'military' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -690,14 +690,14 @@ test('H5 canvas app shell dispatches military and world actions without DOM adap
   ]);
 });
 
-test('H5 canvas app shell dispatches world radar drag phases from canvas-owned pointer events', () => {
+test('Canvas game shell dispatches world radar drag phases from canvas-owned pointer events', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const dispatched = [];
   const renderer = {
     getHitTarget: () => ({ type: 'worldRadarDrag', background: true }),
     render() {},
   };
-  H5CanvasAppShell.mount({ state: { currentTab: 'military' } }, {
+  CanvasGameShell.mount({ state: { currentTab: 'military' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -718,7 +718,7 @@ test('H5 canvas app shell dispatches world radar drag phases from canvas-owned p
   assert.ok(dispatched.every((action) => action.type === 'worldRadarDrag'));
 });
 
-test('H5 canvas app shell owns naming prompt state and dispatches canvas submit', async () => {
+test('Canvas game shell owns naming prompt state and dispatches canvas submit', async () => {
   const { document, runtime, listeners } = createCanvasHarness();
   runtime.prompt = () => ' 赤火联盟 ';
   const actions = [
@@ -731,7 +731,7 @@ test('H5 canvas app shell owns naming prompt state and dispatches canvas submit'
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -754,7 +754,7 @@ test('H5 canvas app shell owns naming prompt state and dispatches canvas submit'
   assert.deepEqual(dispatched, [{ type: 'submitNaming', name: '赤火联盟' }]);
 });
 
-test('H5 canvas app shell owns floating text effects without DOM adapter', () => {
+test('Canvas game shell owns floating text effects without DOM adapter', () => {
   const { document, runtime } = createCanvasHarness();
   const timers = [];
   const cleared = [];
@@ -768,7 +768,7 @@ test('H5 canvas app shell owns floating text effects without DOM adapter', () =>
   const renderer = {
     render(state, options) { renderCalls.push(options); },
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -815,7 +815,7 @@ test('H5 canvas runtime provides platform text input without exposing DOM input 
   assert.match(prompts[0][0], /为这座城市命名/);
 });
 
-test('H5 canvas app shell owns login credentials and dispatches canvas login actions', async () => {
+test('Canvas game shell owns login credentials and dispatches canvas login actions', async () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const requested = [];
   runtime.prompt = (message, value) => {
@@ -834,7 +834,7 @@ test('H5 canvas app shell owns login credentials and dispatches canvas login act
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'resources' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -869,7 +869,7 @@ test('H5 canvas app shell owns login credentials and dispatches canvas login act
   assert.equal(renderCalls.at(-1).auth.view.loginPanelVisible, true);
 });
 
-test('H5 canvas app shell owns building pager state without DOM adapter', () => {
+test('Canvas game shell owns building pager state without DOM adapter', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'scrollBuildings', delta: 1 },
@@ -881,7 +881,7 @@ test('H5 canvas app shell owns building pager state without DOM adapter', () => 
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  const shell = H5CanvasAppShell.mount({ state: { currentTab: 'buildings' } }, {
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'buildings' } }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
@@ -901,7 +901,7 @@ test('H5 canvas app shell owns building pager state without DOM adapter', () => 
   assert.deepEqual(dispatched, [{ type: 'switchTab', tab: 'resources' }]);
 });
 
-test('H5 canvas app shell passes tutorial tab locks into canvas renderer', () => {
+test('Canvas game shell passes tutorial tab locks into canvas renderer', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
   const renderer = {
@@ -909,7 +909,7 @@ test('H5 canvas app shell passes tutorial tab locks into canvas renderer', () =>
     render(state, options) { renderCalls.push(options); },
   };
 
-  H5CanvasAppShell.mount({
+  CanvasGameShell.mount({
     state: { currentTab: 'resources' },
     tutorialController: {
       canOpenTab(tabId) {
@@ -930,7 +930,7 @@ test('H5 canvas app shell passes tutorial tab locks into canvas renderer', () =>
   assert.deepEqual(locks.find((tab) => tab.id === 'buildings'), { id: 'buildings', disabled: true, isLocked: true });
 });
 
-test('H5 canvas app shell owns event modal state and dispatches claim actions', () => {
+test('Canvas game shell owns event modal state and dispatches claim actions', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'openEvent', eventId: 'evt_forest' },
@@ -945,7 +945,7 @@ test('H5 canvas app shell owns event modal state and dispatches claim actions', 
     getHitTarget: () => actions.shift(),
     render(state, options) { renderCalls.push(options); },
   };
-  const shell = H5CanvasAppShell.mount({
+  const shell = CanvasGameShell.mount({
     state: {
       currentTab: 'events',
       eventQueue: [{ id: 'evt_forest', options: [{ id: 'collect_wood' }] }],
@@ -996,14 +996,14 @@ test('canvas HUD takeover leaves no hidden H5 business UI shell', () => {
   assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });
 
-test('H5 entry loads canvas shell before app as the authoritative UI surface', () => {
+test('Browser entry loads Canvas game shell before app as the authoritative UI surface', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=h5-canvas-runtime-v1/);
-  assert.match(html, /js\/platform\/H5CanvasAppShell\.js\?v=h5-canvas-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
-  assert.match(appJs, /H5CanvasAppShell\?\.mount\(this/);
+  assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
   assert.match(appJs, /previewEnabled: true/);
   assert.match(appJs, /inputEnabled: true/);

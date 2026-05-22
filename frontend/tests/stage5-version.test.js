@@ -5,20 +5,20 @@ const test = require('node:test');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
-test('changeExpeditionSoldiers dispatcher migration app version is 0.1.45 in package metadata', () => {
+test('Canvas game app unification version is 0.1.46 in package metadata', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package.json'), 'utf8'));
   const packageLock = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package-lock.json'), 'utf8'));
 
-  assert.equal(packageJson.version, '0.1.45');
-  assert.equal(packageLock.version, '0.1.45');
-  assert.equal(packageLock.packages[''].version, '0.1.45');
+  assert.equal(packageJson.version, '0.1.46');
+  assert.equal(packageLock.version, '0.1.46');
+  assert.equal(packageLock.packages[''].version, '0.1.46');
 });
 
-test('version service reads updated 0.1.45 package version', () => {
+test('version service reads updated 0.1.46 package version', () => {
   const VersionService = require('../../backend/services/VersionService');
   const service = new VersionService({ repoRoot: projectRoot });
   const info = service.getVersionInfo();
 
-  assert.equal(info.version, '0.1.45');
+  assert.equal(info.version, '0.1.46');
   assert.ok(info.deploymentId);
 });

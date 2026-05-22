@@ -8,7 +8,7 @@ const PlatformRuntime = require('../js/platform/PlatformRuntime');
 const MiniGameCanvasRenderer = require('../js/platform/MiniGameCanvasRenderer');
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
-const MiniGameApp = require('../js/platform/MiniGameApp');
+const CanvasGameApp = require('../js/platform/CanvasGameApp');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -107,7 +107,7 @@ test('PlatformRuntime wraps wx style canvas, storage and request APIs without DO
   }
 });
 
-test('MiniGame app renders state and syncs through platform transport without document', async () => {
+test('Canvas game app renders state and syncs through platform transport without document', async () => {
   const originalDocument = global.document;
   const calls = [];
   const timers = [];
@@ -154,7 +154,7 @@ test('MiniGame app renders state and syncs through platform transport without do
 
   try {
     global.document = undefined;
-    app = new MiniGameApp({
+    app = new CanvasGameApp({
       runtime,
       api,
       rendererClass: MiniGameCanvasRenderer,
@@ -185,9 +185,9 @@ test('minigame entry does not load H5 DOM adapters', () => {
   const platformFiles = [
     'PlatformRuntime.js',
     'MiniGameCanvasRenderer.js',
-    'MiniGameApp.js',
+    'CanvasGameApp.js',
   ].map((file) => fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', file), 'utf8')).join('\n');
-  const appSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'MiniGameApp.js'), 'utf8');
+  const appSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
 
   assert.doesNotMatch(entry, /app\.js|auth\.js|population\.js|logs\.js|floating-text\.js|DOMHelper|document|getElementById|querySelector|innerHTML|classList/);
   assert.doesNotMatch(platformFiles, /document|getElementById|querySelector|innerHTML|classList/);
@@ -196,14 +196,14 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
-  assert.match(entry, /MiniGameApp/);
+  assert.match(entry, /CanvasGameApp/);
   assert.match(entry, /presenter: globalThis\.UIStatePresenter/);
   assert.match(entry, /config: globalThis\.GameConfig/);
   assert.match(entry, /apiClass: globalThis\.GameAPI/);
   assert.match(entry, /rendererClass: globalThis\.MiniGameCanvasRenderer/);
 });
 
-test('MiniGame app dispatches canvas taps to server actions without DOM controllers', async () => {
+test('Canvas game app dispatches canvas taps to server actions without DOM controllers', async () => {
   const originalDocument = global.document;
   const calls = [];
   const requests = [];
@@ -293,7 +293,7 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
 
   try {
     global.document = undefined;
-    app = new MiniGameApp({
+    app = new CanvasGameApp({
       runtime,
       api,
       rendererClass: MiniGameCanvasRenderer,

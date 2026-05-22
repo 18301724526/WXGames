@@ -4,10 +4,10 @@ require('../js/api/GameAPI');
 require('../js/platform/PlatformRuntime');
 require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/MiniGameCanvasRenderer');
-require('../js/platform/MiniGameApp');
+require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();
-const app = new globalThis.MiniGameApp({
+const app = new globalThis.CanvasGameApp({
   runtime,
   presenter: globalThis.UIStatePresenter,
   config: globalThis.GameConfig,

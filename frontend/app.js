@@ -116,7 +116,7 @@ const Game = {
     this.territoryController.bind();
     this.startScoutCountdownTimer();
     this.updateChecker.start();
-    this.canvasShell = window.H5CanvasAppShell?.mount(this, {
+    this.canvasShell = window.CanvasGameShell?.mount(this, {
       document,
       runtime: window,
       presenter: this.presenter,

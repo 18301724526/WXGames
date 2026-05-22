@@ -1380,6 +1380,7 @@ test('H5 entry keeps Canvas as the only business UI after renderer extraction', 
   assert.match(appJs, /H5ShellAdapter\?\.fromRuntime/);
   assert.doesNotMatch(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
+  assert.match(appJs, /CanvasGameShell\?\.mount/);
   assert.match(appJs, /handleCanvasTabSelection/);
   assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
   assert.match(appJs, /action\?\.type === 'claimEvent'/);
@@ -1394,18 +1395,21 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   const minigameIdx = html.indexOf('js/platform/MiniGameCanvasRenderer.js');
   const h5gameIdx = html.indexOf('js/platform/H5CanvasGameRenderer.js');
   const runtimeIdx = html.indexOf('js/platform/H5CanvasRuntime.js');
-  const shellIdx = html.indexOf('js/platform/H5CanvasAppShell.js');
+  const appCoreIdx = html.indexOf('js/platform/CanvasGameApp.js');
+  const shellIdx = html.indexOf('js/platform/CanvasGameShell.js');
   const appIdx = html.indexOf('app.js');
 
   assert.ok(canvasIdx >= 0);
   assert.ok(minigameIdx >= 0);
   assert.ok(h5gameIdx >= 0);
+  assert.ok(appCoreIdx >= 0);
   assert.ok(runtimeIdx >= 0);
   assert.ok(shellIdx >= 0);
   assert.ok(appIdx >= 0);
 
   assert.ok(canvasIdx < minigameIdx);
   assert.ok(canvasIdx < h5gameIdx);
+  assert.ok(appCoreIdx < shellIdx);
   assert.ok(runtimeIdx < shellIdx);
   assert.ok(shellIdx < appIdx);
 });
