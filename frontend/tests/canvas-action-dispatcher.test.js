@@ -63,6 +63,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'switchTab',
     'openResourceDetails',
     'closeResourceDetails',
+    'closeRewardReveal',
     'openCitySwitcher',
     'closeCitySwitcher',
     'openSettings',
@@ -76,11 +77,12 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'openWorldSite',
     'closeWorldSite',
     'resetWorldPan',
-        'changeExpeditionSoldiers',
-      ]);
+    'changeExpeditionSoldiers',
+  ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeResourceDetails' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeRewardReveal' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openCitySwitcher' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeCitySwitcher' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openSettings' }), true);
@@ -137,6 +139,22 @@ test('CanvasActionDispatcher 通过注入上下文处理资源详情开关，不
     ['render', 'closeResourceDetails'],
   ]);
 });
+
+test('CanvasActionDispatcher 通过注入上下文处理奖励弹窗关闭，不依赖 H5 或小游戏类', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'closeRewardReveal' }, {
+    closeRewardReveal(action) { calls.push(['closeRewardReveal', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['closeRewardReveal', 'closeRewardReveal'],
+    ['render', 'closeRewardReveal'],
+  ]);
+});
+
 
 test('CanvasActionDispatcher 通过注入上下文处理城市切换开关，不依赖 H5 或小游戏类', () => {
   const dispatcher = new CanvasActionDispatcher();
@@ -310,6 +328,7 @@ test('CanvasActionDispatcher handleAsync handles async actions', async () => {
     'upgradeBuilding',
     'advanceEra',
     'claimEvent',
+    'claimGuideTaskReward',
     'scoutTerritory',
     'claimScout',
     'requestNamingInput',

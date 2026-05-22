@@ -9,7 +9,7 @@ function completeTutorial(state) {
   state.tutorial.phaseCompleted = { newbie: true, era2: true };
 }
 
-test('城邦进阶软引导在中段后补齐时代3所需资源', () => {
+test('城邦进阶软引导不再后台补齐时代3所需资源', () => {
   const state = gameStateService.createInitialGameState('city-guide-resources');
   completeTutorial(state);
   state.currentEra = 2;
@@ -21,12 +21,12 @@ test('城邦进阶软引导在中段后补齐时代3所需资源', () => {
   const changed = SoftGuideService.apply(state, progress);
   progress = gameStateService.calculateEraProgress(state);
 
-  assert.equal(changed, true);
-  assert.equal(state.resources.food, 500);
-  assert.equal(state.resources.wood, 200);
-  assert.equal(state.resources.knowledge, 100);
-  assert.equal(progress.canAdvance, true);
-  assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'city_advance_ready');
+  assert.equal(changed, false);
+  assert.equal(state.resources.food, 250);
+  assert.equal(state.resources.wood, 100);
+  assert.equal(state.resources.knowledge, 50);
+  assert.equal(progress.canAdvance, false);
+  assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'city_preparation');
 });
 
 test('城邦进阶软引导不会在过早阶段补齐资源', () => {
@@ -47,7 +47,7 @@ test('城邦进阶软引导不会在过早阶段补齐资源', () => {
   assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'city_preparation');
 });
 
-test('进入城邦后补齐兵营建造所需资源', () => {
+test('进入城邦后软引导不再后台补齐兵营建造资源', () => {
   const state = gameStateService.createInitialGameState('barracks-guide-resources');
   completeTutorial(state);
   state.currentEra = 3;
@@ -56,9 +56,9 @@ test('进入城邦后补齐兵营建造所需资源', () => {
 
   const changed = SoftGuideService.apply(state, gameStateService.calculateEraProgress(state));
 
-  assert.equal(changed, true);
-  assert.equal(state.resources.food, 260);
-  assert.equal(state.resources.knowledge, 80);
+  assert.equal(changed, false);
+  assert.equal(state.resources.food, 0);
+  assert.equal(state.resources.knowledge, 0);
   assert.equal(SoftGuideService.getSoftGuide(state, gameStateService.calculateEraProgress(state)).id, 'barracks_unlocked');
 });
 
@@ -78,7 +78,7 @@ test('兵营建成后不再补齐兵营资源', () => {
   assert.equal(SoftGuideService.getSoftGuide(state, gameStateService.calculateEraProgress(state)).id, 'barracks_built');
 });
 
-test('城邦后段软引导补齐边境时代资源但不补士兵', () => {
+test('城邦后段软引导不再后台补齐边境时代资源', () => {
   const state = gameStateService.createInitialGameState('border-guide-resources');
   completeTutorial(state);
   state.currentEra = 3;
@@ -93,16 +93,16 @@ test('城邦后段软引导补齐边境时代资源但不补士兵', () => {
   const changed = SoftGuideService.apply(state, progress);
   progress = gameStateService.calculateEraProgress(state);
 
-  assert.equal(changed, true);
-  assert.equal(state.resources.food, 900);
-  assert.equal(state.resources.wood, 500);
-  assert.equal(state.resources.knowledge, 260);
+  assert.equal(changed, false);
+  assert.equal(state.resources.food, 600);
+  assert.equal(state.resources.wood, 350);
+  assert.equal(state.resources.knowledge, 160);
   assert.equal(state.military.soldiers, 3);
-  assert.equal(progress.canAdvance, true);
-  assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'border_advance_ready');
+  assert.equal(progress.canAdvance, false);
+  assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'barracks_built');
 });
 
-test('进入边境时代后软引导补齐瞭望台建造资源', () => {
+test('进入边境时代后软引导不再后台补齐瞭望台建造资源', () => {
   const state = gameStateService.createInitialGameState('watchtower-guide-resources');
   completeTutorial(state);
   state.currentEra = 4;
@@ -112,10 +112,10 @@ test('进入边境时代后软引导补齐瞭望台建造资源', () => {
 
   const changed = SoftGuideService.apply(state, gameStateService.calculateEraProgress(state));
 
-  assert.equal(changed, true);
-  assert.equal(state.resources.food, 180);
-  assert.equal(state.resources.wood, 120);
-  assert.equal(state.resources.knowledge, 60);
+  assert.equal(changed, false);
+  assert.equal(state.resources.food, 0);
+  assert.equal(state.resources.wood, 0);
+  assert.equal(state.resources.knowledge, 0);
   assert.equal(SoftGuideService.getSoftGuide(state, gameStateService.calculateEraProgress(state)).id, 'watchtower_unlocked');
 });
 

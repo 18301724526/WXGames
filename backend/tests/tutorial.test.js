@@ -139,7 +139,7 @@ test('伐木场资源不足时允许自由进行普通操作', () => {
   assert.equal(assignScholar.allowed, true);
 });
 
-test('领取森林事件后会补齐伐木场建造所需资源', () => {
+test('领取森林事件后不再后台补齐伐木场建造所需资源', () => {
   const state = gameStateService.createInitialGameState('lumbermill-guide-resources');
   state.currentEra = 2;
   state.resources.food = 20;
@@ -149,9 +149,9 @@ test('领取森林事件后会补齐伐木场建造所需资源', () => {
 
   const changed = TutorialService.ensureLumbermillGuideResources(tutorial, state);
 
-  assert.equal(changed, true);
-  assert.equal(state.resources.food, 50);
-  assert.equal(state.resources.wood, 15);
+  assert.equal(changed, false);
+  assert.equal(state.resources.food, 20);
+  assert.equal(state.resources.wood, 0);
 });
 
 test('伐木场已建成后不会再补齐伐木场资源', () => {

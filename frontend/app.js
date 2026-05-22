@@ -31,6 +31,7 @@ const Game = {
     military: {},
     territoryState: {},
     softGuide: null,
+    guideTasks: { visible: false, tasks: [] },
   },
   tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
   activeEventId: null,
@@ -165,6 +166,10 @@ const Game = {
         }
         if (action?.type === 'advanceEra') {
           this.advanceEra();
+          return true;
+        }
+        if (action?.type === 'claimGuideTaskReward') {
+          this.claimGuideTaskReward(action.taskId);
           return true;
         }
         if (action?.type === 'switchMilitaryView') {
@@ -420,6 +425,20 @@ const Game = {
     this.tutorialController.render();
   },
 
+  async claimGuideTaskReward(taskId) {
+    if (!taskId) return;
+    try {
+      const result = await this.gameAPI.claimGuideTaskReward(taskId);
+      this.applyApiState(result);
+      this.canvasShell?.showRewardReveal?.(result.rewardReveal);
+      this.showFloatingText(result.rewardText || result.message || '奖励已领取');
+      this.log(`🎁 ${result.message}`);
+    } catch (error) {
+      this.log(`❌ ${error.payload?.message || error.message}`);
+      this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
+    }
+  },
+
   getPreferredMilitaryView(tabId) {
     if (tabId === 'territory') return 'world';
     if (tabId !== 'military') return null;
@@ -587,6 +606,12 @@ const Game = {
   renderSoftGuide() {
     const guide = this.state.softGuide;
     this.updateAdvisor(guide);
+    if (guide?.mode === 'strong' && guide.target) {
+      const target = this.getTutorialTarget(guide.target);
+      if (target) {
+        this.tutorialRenderer.show(target, guide.message);
+      }
+    }
   },
 
   updateAdvisor(guide) {

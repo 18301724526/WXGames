@@ -480,6 +480,32 @@ test('MiniGame app dispatches canvas taps to server actions without DOM controll
       eventId: 'evt_forest',
       optionId: 'collect_wood',
     });
+
+    app.state = {
+      ...app.state,
+      guideTasks: {
+        visible: true,
+        tasks: [{
+          id: 'barracks_supplies',
+          title: '城邦守备',
+          status: 'claimable',
+          rewardText: '食物 +260 / 知识 +80',
+        }],
+      },
+    };
+    app.switchTab('resources');
+    const guideTaskTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimGuideTaskReward');
+    assert.ok(guideTaskTarget);
+    app.handleTap({
+      x: guideTaskTarget.x + guideTaskTarget.width / 2,
+      y: guideTaskTarget.y + guideTaskTarget.height / 2,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(requests.find((request) => request.action === 'claimGuideTaskReward'), {
+      action: 'claimGuideTaskReward',
+      target: 'barracks_supplies',
+    });
+
     assert.deepEqual(requests.find((request) => request.action === 'startConquest'), {
       action: 'startConquest',
       territoryId: 'site-east',

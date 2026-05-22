@@ -19,54 +19,29 @@ function isTutorialDone(gameState) {
 }
 
 function ensureCityAdvanceResources(gameState, eraProgress) {
-  if (!isTutorialDone(gameState)) return false;
-  if (gameState.currentEra !== 2) return false;
-  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
-  const config = getAdvanceConfig(2);
-  if (!config) return false;
-  if ((eraProgress?.percentage || 0) < 50) return false;
-  return ensureAtLeast(gameState.resources, config.cost);
+  return false;
 }
 
 function ensureBarracksResources(gameState) {
-  if (gameState.currentEra !== 3) return false;
-  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
-  if (BuildingState.isBuilt(gameState.buildings, 'barracks')) return false;
-  return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('barracks'));
+  return false;
 }
 
 function ensureBorderAdvanceResources(gameState, eraProgress) {
-  if (!isTutorialDone(gameState)) return false;
-  if (gameState.currentEra !== 3) return false;
-  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
-  const config = getAdvanceConfig(3);
-  if (!config) return false;
-  if ((eraProgress?.percentage || 0) < 60) return false;
-  return ensureAtLeast(gameState.resources, config.cost);
+  return false;
 }
 
 function ensureWatchtowerResources(gameState) {
-  if (!isTutorialDone(gameState)) return false;
-  if (gameState.currentEra !== 4) return false;
-  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
-  if (BuildingState.isBuilt(gameState.buildings, 'watchtower')) return false;
-  return ensureAtLeast(gameState.resources, BuildingConfig.getBuildCost('watchtower'));
+  return false;
 }
 
 function apply(gameState, eraProgress) {
   CityService.normalizeCities(gameState);
   if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return false;
-  let changed = false;
-  changed = ensureCityAdvanceResources(gameState, eraProgress) || changed;
-  changed = ensureBarracksResources(gameState) || changed;
-  changed = ensureBorderAdvanceResources(gameState, eraProgress) || changed;
-  changed = ensureWatchtowerResources(gameState) || changed;
   gameState.softGuideState = gameState.softGuideState || {};
   if (gameState.currentEra === 3 && BuildingState.isBuilt(gameState.buildings, 'barracks')) {
     gameState.softGuideState.barracksUnlockedSeen = true;
   }
-  if (changed) CityService.persistLegacyFieldsToActiveCity(gameState);
-  return changed;
+  return false;
 }
 
 function getSoftGuide(gameState, eraProgress) {

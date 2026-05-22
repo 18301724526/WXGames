@@ -77,6 +77,28 @@ test('assignJob posts population reassignment through shared action API', async 
   assert.deepEqual(requests, [{ action: 'assign', target: 'craftsman', count: -1 }]);
 });
 
+test('claimGuideTaskReward posts task id through shared action API', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', null, {
+    transport: {
+      async request(options) {
+        requests.push(JSON.parse(options.body));
+        return {
+          ok: true,
+          async json() {
+            return { success: true };
+          },
+        };
+      },
+    },
+  });
+
+  await api.claimGuideTaskReward('barracks_supplies');
+
+  assert.deepEqual(requests, [{ action: 'claimGuideTaskReward', target: 'barracks_supplies' }]);
+});
+
+
 test('GameAPI can use platform transport without browser fetch', async () => {
   const api = new GameAPI('https://server.example/api', 'token-y', {
     transport: {

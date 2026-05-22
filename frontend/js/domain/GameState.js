@@ -31,6 +31,7 @@
       currentEraName: gameState.currentEraName || '原始时代',
       currentEraDescription: gameState.currentEraDescription || '',
       softGuide: (apiResponse && apiResponse.softGuide) || null,
+      guideTasks: (apiResponse && apiResponse.guideTasks) || gameState.guideTasks || { visible: false, tasks: [] },
       population: gameState.population || {},
       happiness: Number.isFinite(gameState.happiness) ? gameState.happiness : 100,
       techs: gameState.techs || {},

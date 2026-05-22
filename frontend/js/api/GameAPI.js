@@ -48,6 +48,7 @@
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     assignJob(job, count) { return this.request('POST', '/game/action', { action: 'assign', target: job, count }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
+    claimGuideTaskReward(taskId) { return this.request('POST', '/game/action', { action: 'claimGuideTaskReward', target: taskId }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
     claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }

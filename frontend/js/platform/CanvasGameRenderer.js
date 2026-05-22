@@ -404,6 +404,83 @@
       return y + barHeight + 12;
     }
 
+    renderGuideTasks(state = {}, startY = 0) {
+      const guideTasks = state.guideTasks || {};
+      const tasks = Array.isArray(guideTasks.tasks) ? guideTasks.tasks : [];
+      if (!guideTasks.visible || !tasks.length) return startY;
+
+      const task = tasks[0];
+      const layout = this.getLayout();
+      const x = layout.contentX;
+      const y = startY;
+      const width = layout.contentWidth;
+      const height = 72;
+      const buttonWidth = 82;
+      const buttonHeight = 34;
+      const buttonX = x + width - buttonWidth - 14;
+      const buttonY = y + 19;
+      const canClaim = task.status === 'claimable' && !task.claimed;
+
+      this.drawPanel(x, y, width, height, {
+        fill: this.createGradient(
+          x, y, x + width, y + height,
+          [
+            [0, 'rgba(57, 44, 28, 0.96)'],
+            [1, 'rgba(23, 20, 15, 0.96)'],
+          ],
+          'rgba(38, 30, 22, 0.96)',
+        ),
+        stroke: canClaim ? 'rgba(247, 215, 116, 0.56)' : 'rgba(240, 180, 91, 0.22)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+
+      this.drawPanel(x + 12, y + 12, 42, 20, {
+        fill: canClaim ? 'rgba(247, 215, 116, 0.22)' : 'rgba(116, 211, 160, 0.16)',
+        stroke: canClaim ? 'rgba(247, 215, 116, 0.42)' : 'rgba(116, 211, 160, 0.28)',
+        radius: 6,
+      });
+      this.drawText('主线', x + 33, y + 22, {
+        size: 11,
+        bold: true,
+        color: canClaim ? '#ffd98a' : '#74d3a0',
+        baseline: 'middle',
+        align: 'center',
+      });
+
+      const textX = x + 64;
+      const textWidth = Math.max(96, buttonX - textX - 12);
+      this.drawText(this.truncateText(task.title || '主线任务', textWidth, { size: 14, bold: true }), textX, y + 10, {
+        size: 14,
+        bold: true,
+        color: '#fff1cf',
+      });
+      const desc = task.status === 'claimable'
+        ? `奖励 ${task.rewardText || ''}`
+        : (task.description || task.rewardText || '');
+      const lines = this.wrapTextLimit(desc, textWidth, 2, { size: 11 });
+      this.drawTextLines(lines, textX, y + 31, {
+        size: 11,
+        color: canClaim ? '#ffd98a' : '#cbbd96',
+        lineHeight: 15,
+      });
+
+      const buttonLabel = canClaim ? (task.actionLabel || '领取') : (task.claimed ? '继续' : '进行中');
+      this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, buttonLabel, {
+        disabled: !canClaim,
+        active: canClaim,
+        size: 12,
+        bold: canClaim,
+        radius: 9,
+      });
+      this.addHitTarget(
+        { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight },
+        { type: 'claimGuideTaskReward', taskId: task.id, disabled: !canClaim },
+      );
+
+      return y + height + 10;
+    }
+
     renderCitySwitcherMenu(state = {}) {
       if (!this.presenter || typeof this.presenter.buildCitySwitcherViewState !== 'function') return;
       const view = this.presenter.buildCitySwitcherViewState(state);
@@ -1979,9 +2056,42 @@
       return Number.isFinite(parsed) ? parsed : 0;
     }
 
+    easeOutCubic(value) {
+      const t = Math.max(0, Math.min(1, Number(value) || 0));
+      return 1 - ((1 - t) ** 3);
+    }
+
+    interpolateRect(fromRect = {}, toRect = {}, progress = 1) {
+      const eased = this.easeOutCubic(progress);
+      const read = (rect, key, fallback = 0) => Number(rect?.[key] ?? fallback) || 0;
+      const lerp = (from, to) => from + (to - from) * eased;
+      const left = lerp(read(fromRect, 'left'), read(toRect, 'left'));
+      const top = lerp(read(fromRect, 'top'), read(toRect, 'top'));
+      const width = lerp(read(fromRect, 'width'), read(toRect, 'width'));
+      const height = lerp(read(fromRect, 'height'), read(toRect, 'height'));
+      return {
+        left,
+        top,
+        width,
+        height,
+        right: left + width,
+        bottom: top + height,
+      };
+    }
+
     renderTutorialHighlight(highlight = null) {
       if (!highlight || !highlight.rect || !this.presenter || !this.ctx) return;
-      const view = this.presenter.buildTutorialHighlightViewState(highlight.rect, {
+      const now = Date.now();
+      const transition = highlight.transition || null;
+      const rect = transition
+        ? this.interpolateRect(
+          transition.fromRect,
+          transition.toRect || highlight.rect,
+          (now - (Number(transition.startedAt) || now)) / Math.max(1, Number(transition.durationMs) || 260),
+        )
+        : highlight.rect;
+      const pulse = 0.5 + Math.sin((now - (Number(highlight.pulseStartedAt) || now)) / 180) * 0.5;
+      const view = this.presenter.buildTutorialHighlightViewState(rect, {
         innerWidth: this.width,
         innerHeight: this.height,
       });
@@ -2009,14 +2119,14 @@
       this.ctx.fillRect(overlay.x + overlay.width, overlay.y, Math.max(0, this.width - overlay.x - overlay.width), overlay.height);
 
       this.drawPanel(overlay.x, overlay.y, overlay.width, overlay.height, {
-        fill: 'rgba(255, 247, 214, 0.08)',
-        stroke: 'rgba(255, 215, 0, 0.96)',
+        fill: `rgba(255, 247, 214, ${0.07 + pulse * 0.04})`,
+        stroke: `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`,
         radius: 16,
         inset: 'rgba(255, 247, 214, 0.18)',
       });
       this.ctx.lineWidth = 3;
       this.roundRectPath(overlay.x, overlay.y, overlay.width, overlay.height, 16);
-      this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.96)';
+      this.ctx.strokeStyle = `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`;
       this.ctx.stroke();
       this.ctx.lineWidth = 1;
 
@@ -2038,6 +2148,125 @@
         baseline: 'middle',
         align: 'center',
       });
+    }
+
+    drawRewardParticle(cx, cy, radius, angle, progress, index) {
+      if (!this.ctx) return;
+      const distance = radius * (0.44 + progress * 0.36 + (index % 3) * 0.04);
+      const x = cx + Math.cos(angle) * distance;
+      const y = cy + Math.sin(angle) * distance;
+      const size = 2 + (index % 4);
+      this.ctx.fillStyle = index % 2 ? 'rgba(255, 245, 190, 0.86)' : 'rgba(247, 215, 116, 0.78)';
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, size, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+
+    renderRewardReveal(reveal = null) {
+      if (!reveal || !this.ctx) return;
+      const now = Date.now();
+      const startedAt = Number(reveal.createdAt) || now;
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / 900));
+      const pulse = 0.5 + Math.sin(now / 180) * 0.5;
+      const layout = this.getLayout();
+      const panelWidth = Math.min(340, layout.contentWidth - 22);
+      const panelHeight = 254;
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(96, (this.height - panelHeight) / 2 - 14);
+      const cx = x + panelWidth / 2;
+      const glowY = y + 72;
+
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeRewardReveal' });
+
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      this.ctx.globalAlpha = 0.78;
+      this.ctx.fillStyle = this.createGradient(
+        cx - 86, glowY - 86, cx + 86, glowY + 86,
+        [
+          [0, 'rgba(255, 248, 189, 0.02)'],
+          [0.5, `rgba(247, 215, 116, ${0.26 + pulse * 0.16})`],
+          [1, 'rgba(255, 248, 189, 0.02)'],
+        ],
+        'rgba(247, 215, 116, 0.24)',
+      );
+      this.ctx.beginPath();
+      this.ctx.arc(cx, glowY, 86 + pulse * 10, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.globalAlpha = previousAlpha;
+
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(69, 48, 26, 0.99)'],
+            [0.52, 'rgba(33, 26, 18, 0.99)'],
+            [1, 'rgba(20, 18, 14, 0.99)'],
+          ],
+          'rgba(35, 28, 20, 0.99)',
+        ),
+        stroke: 'rgba(247, 215, 116, 0.52)',
+        radius: 14,
+        inset: 'rgba(255, 245, 190, 0.12)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const sweepWidth = 72;
+      const sweepX = x - sweepWidth + (panelWidth + sweepWidth * 2) * progress;
+      this.ctx.globalAlpha = 0.28;
+      this.ctx.fillStyle = this.createGradient(
+        sweepX, y, sweepX + sweepWidth, y,
+        [
+          [0, 'rgba(255, 255, 255, 0)'],
+          [0.5, 'rgba(255, 255, 255, 0.82)'],
+          [1, 'rgba(255, 255, 255, 0)'],
+        ],
+        'rgba(255, 255, 255, 0.28)',
+      );
+      this.ctx.fillRect(Math.max(x, sweepX), y + 1, Math.min(sweepWidth, x + panelWidth - sweepX), panelHeight - 2);
+      this.ctx.globalAlpha = previousAlpha;
+
+      for (let index = 0; index < 18; index += 1) {
+        this.drawRewardParticle(cx, glowY, 94, (Math.PI * 2 * index) / 18 + now / 900, progress, index);
+      }
+
+      this.drawText(reveal.title || '获得奖励', cx, y + 30, {
+        size: 20,
+        bold: true,
+        color: '#fff1cf',
+        align: 'center',
+      });
+      this.drawText(reveal.subtitle || '', cx, y + 60, {
+        size: 13,
+        color: '#ffd98a',
+        align: 'center',
+      });
+
+      const rewardText = reveal.rewardText || '';
+      const rewardLines = this.wrapTextLimit(rewardText, panelWidth - 58, 3, { size: 15, bold: true });
+      this.drawPanel(x + 22, y + 96, panelWidth - 44, 72, {
+        fill: 'rgba(11, 18, 14, 0.42)',
+        stroke: 'rgba(116, 211, 160, 0.28)',
+        radius: 10,
+        inset: 'rgba(116, 211, 160, 0.08)',
+      });
+      this.drawTextLines(rewardLines, x + 34, y + 111, {
+        size: 15,
+        bold: true,
+        color: '#74d3a0',
+        lineHeight: 22,
+      });
+
+      const buttonWidth = panelWidth - 44;
+      const buttonY = y + panelHeight - 58;
+      this.drawButton(x + 22, buttonY, buttonWidth, 40, '收下', {
+        size: 14,
+        bold: true,
+        active: true,
+        radius: 10,
+      });
+      this.addHitTarget({ x: x + 22, y: buttonY, width: buttonWidth, height: 40 }, { type: 'closeRewardReveal' });
     }
 
     renderLoginPanel(auth = {}) {
@@ -2159,7 +2388,7 @@
         this.renderLoginPanel(options.auth);
         return;
       }
-      const topBarBottom = this.renderTopBar(state);
+      const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
       if (activeTab === 'resources') {
         this.renderPopulation(state, topBarBottom);
       } else if (activeTab === 'buildings') {
@@ -2220,6 +2449,7 @@
       }
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
+      this.renderRewardReveal(options.rewardReveal || null);
     }
 
     renderSettingsPanel() {
@@ -2472,7 +2702,7 @@
         this.renderLoginPanel(options.auth);
         return;
       }
-      const topBarBottom = this.renderTopBar(state);
+      const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
       const populationBottom = this.renderPopulation(state, topBarBottom);
       const panelTop = activeTab === 'resources' ? populationBottom : topBarBottom;
       const tabsTop = this.height - 60 - this.bottomSafeArea;
@@ -2488,6 +2718,7 @@
       if (options.naming) this.renderNamingModal(options.naming);
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
+      this.renderRewardReveal(options.rewardReveal || null);
     }
   }
 

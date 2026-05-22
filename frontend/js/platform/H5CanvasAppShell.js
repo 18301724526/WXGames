@@ -13,6 +13,7 @@
       this.lastGame = null;
       this.resizeDisposer = null;
       this.tapDisposer = null;
+      this.effectTimer = null;
       this.floatTimer = null;
       this.showSettings = false;
       this.showLogs = false;
@@ -43,6 +44,7 @@
       this.tutorialHighlight = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
+      this.rewardReveal = null;
     }
 
     createRenderer(canvas) {
@@ -144,11 +146,22 @@
     }
 
     getTutorialTarget(key) {
+      const visibleTarget = this.getTutorialTargetWithoutScroll(key);
+      if (visibleTarget) return visibleTarget;
+      this.ensureTutorialTargetVisible(key);
+      return this.getTutorialTargetWithoutScroll(key);
+    }
+
+    getTutorialTargetWithoutScroll(key) {
       if (key === 'btn-advance-era') return this.getCanvasTarget('advanceEra');
       if (key === 'card-farm') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'farm');
       if (key === 'card-house') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'house');
       if (key === 'card-lumbermill') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'lumbermill');
+      if (key === 'card-barracks') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'barracks');
+      if (key === 'card-watchtower') return this.getCanvasTarget('buildBuilding', (action) => action.buildingId === 'watchtower');
+      if (key === 'card-barracks-upgrade') return this.getCanvasTarget('upgradeBuilding', (action) => action.buildingId === 'barracks');
       if (key === 'card-craftsman') return this.getCanvasTarget('assignJob', (action) => action.job === 'craftsman' && action.delta > 0);
+      if (key === 'guide-task-claim') return this.getCanvasTarget('claimGuideTaskReward');
       if (key === 'event-card-special') return this.getCanvasTarget('openEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'btn-claim-event') return this.getCanvasTarget('claimEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'tab-resources') return this.getCanvasTarget('switchTab', (action) => action.tab === 'resources');
@@ -157,6 +170,31 @@
       if (key === 'tab-events') return this.getCanvasTarget('switchTab', (action) => action.tab === 'events');
       if (key === 'tab-military' || key === 'tab-territory') return this.getCanvasTarget('switchTab', (action) => action.tab === 'military');
       return null;
+    }
+
+    ensureTutorialTargetVisible(key) {
+      if (!key || this.lastGame?.state?.currentTab !== 'buildings') return false;
+      const targetBuilding = {
+        'card-farm': 'farm',
+        'card-house': 'house',
+        'card-lumbermill': 'lumbermill',
+        'card-barracks': 'barracks',
+        'card-watchtower': 'watchtower',
+        'card-barracks-upgrade': 'barracks',
+      }[key];
+      if (!targetBuilding) return false;
+      const ids = this.presenter?.buildBuildingViewState?.(
+        this.lastGame.state,
+        this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
+        this.lastGame.state.buildingDefinitions || {},
+      )?.ids || [];
+      const index = ids.indexOf(targetBuilding);
+      if (index < 0) return false;
+      const nextOffset = Math.max(0, index - 1);
+      if (this.buildingOffset === nextOffset) return false;
+      this.buildingOffset = nextOffset;
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
     }
 
     resolveTutorialRect(target) {
@@ -185,10 +223,20 @@
         this.hideTutorialHighlight();
         return false;
       }
+      const now = this.now();
+      const previousRect = this.tutorialHighlight?.rect || rect;
       this.tutorialHighlight = {
         rect,
         message: String(message ?? ''),
+        transition: {
+          fromRect: previousRect,
+          toRect: rect,
+          startedAt: now,
+          durationMs: 260,
+        },
+        pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
       };
+      this.startFloatTimer();
       this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       return true;
     }
@@ -221,6 +269,24 @@
       return true;
     }
 
+    showRewardReveal(reveal) {
+      if (!reveal) return false;
+      this.rewardReveal = {
+        ...reveal,
+        createdAt: this.now(),
+      };
+      this.startFloatTimer();
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    closeRewardReveal() {
+      const hadReveal = Boolean(this.rewardReveal);
+      this.rewardReveal = null;
+      if (hadReveal) this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return hadReveal;
+    }
+
     getFloatingTextView(now = this.now()) {
       return this.floatingTexts
         .map((effect) => ({
@@ -238,21 +304,25 @@
     }
 
     startFloatTimer() {
-      if (this.floatTimer || !this.runtime?.setInterval) return;
-      this.floatTimer = this.runtime.setInterval(() => {
+      if (this.effectTimer || !this.runtime?.setInterval) return;
+      this.effectTimer = this.runtime.setInterval(() => {
         const changed = this.pruneFloatingTexts();
-        if (!this.floatingTexts.length) {
+        const hasHighlight = Boolean(this.tutorialHighlight);
+        const hasReveal = Boolean(this.rewardReveal);
+        if (!this.floatingTexts.length && !hasHighlight && !hasReveal) {
           this.stopFloatTimer();
         }
-        if (changed || this.floatingTexts.length) {
+        if (changed || this.floatingTexts.length || hasHighlight || hasReveal) {
           this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         }
-      }, 80);
+      }, 33);
+      this.floatTimer = this.effectTimer;
     }
 
     stopFloatTimer() {
-      if (!this.floatTimer) return;
-      this.runtime?.clearInterval?.(this.floatTimer);
+      if (!this.effectTimer) return;
+      this.runtime?.clearInterval?.(this.effectTimer);
+      this.effectTimer = null;
       this.floatTimer = null;
     }
 
@@ -427,6 +497,7 @@
             this.showResourceDetails = false;
             return true;
           },
+          closeRewardReveal: () => this.closeRewardReveal(),
           openCitySwitcher: () => {
             this.showCitySwitcher = !this.showCitySwitcher;
             this.showSettings = false;
@@ -562,6 +633,9 @@
         this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
         return true;
       }
+      if (action.type === 'closeRewardReveal') {
+        return this.closeRewardReveal();
+      }
       if (action.type === 'openCitySwitcher') {
         this.showCitySwitcher = !this.showCitySwitcher;
         this.showSettings = false;
@@ -678,6 +752,7 @@
         auth: this.auth,
         floatingTexts: this.getFloatingTextView(),
         tutorialHighlight: this.tutorialHighlight,
+        rewardReveal: this.rewardReveal,
       });
       return true;
     }

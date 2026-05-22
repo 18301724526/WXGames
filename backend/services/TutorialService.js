@@ -214,23 +214,8 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
 }
 
 function ensureLumbermillGuideResources(tutorialState, gameState) {
-  const tutorial = normalizeTutorialState(tutorialState);
-  if (tutorial.phaseCompleted.era2) return false;
-  if (tutorial.currentStep < TUTORIAL_STEPS.specialEventClaimed) return false;
-  if (tutorial.currentStep > TUTORIAL_STEPS.lumbermillBuilt) return false;
-  if (hasBuiltLumbermill(gameState)) return false;
-
-  const cost = getLumbermillBuildCost(gameState);
-  const resources = gameState.resources || {};
-  let changed = false;
-  Object.entries(cost).forEach(([key, required]) => {
-    if ((resources[key] || 0) < required) {
-      resources[key] = required;
-      changed = true;
-    }
-  });
-  gameState.resources = resources;
-  return changed;
+  normalizeTutorialState(tutorialState);
+  return false;
 }
 
 function advanceTutorial(tutorialState, eventName) {

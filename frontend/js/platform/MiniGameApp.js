@@ -32,6 +32,7 @@
       this.militaryView = options.militaryView || this.state.militaryView || 'army';
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.rewardReveal = null;
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.naming = {
@@ -71,6 +72,7 @@
         activeTab: this.activeTab,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
+        rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
         territoryUiState: this.territoryUiState,
@@ -234,6 +236,10 @@
             this.showCitySwitcher = false;
             return true;
           },
+          closeRewardReveal: () => {
+            this.rewardReveal = null;
+            return true;
+          },
           openEvent: () => {
             const eventData = (this.state.eventQueue || []).find((item) => item.id === action.eventId);
             if (!eventData) return false;
@@ -301,6 +307,11 @@
           claimEvent: async (a) => {
             this.activeEventId = null;
             await this.runAction(() => this.api.claimEvent(a.eventId, a.optionId));
+            return true;
+          },
+          claimGuideTaskReward: async (a) => {
+            const result = await this.runAction(() => this.api.claimGuideTaskReward(a.taskId));
+            this.rewardReveal = result?.rewardReveal || null;
             return true;
           },
           scoutTerritory: async (a) => {

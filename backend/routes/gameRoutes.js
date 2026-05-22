@@ -1,5 +1,6 @@
 const TutorialService = require('../services/TutorialService');
 const SoftGuideService = require('../services/SoftGuideService');
+const GuideTaskService = require('../services/GuideTaskService');
 const EventService = require('../services/EventService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
@@ -20,19 +21,17 @@ function registerGameRoutes(app, deps) {
     let eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
-    TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    if (SoftGuideService.apply(gameState, eraProgress)) {
-      eraProgress = gameStateService.calculateEraProgress(gameState);
-    }
-    const softGuide = SoftGuideService.getSoftGuide(gameState, eraProgress);
+    const guideTasks = GuideTaskService.getGuideTasks(gameState);
+    const softGuide = GuideTaskService.getGuide(gameState) || SoftGuideService.getSoftGuide(gameState, eraProgress);
     repository.touchPlayerActiveAt(req.playerId);
     repository.save(gameState);
     return res.json({
       gameState: gameStateService.getClientGameState(gameState),
       tutorial,
       softGuide,
+      guideTasks,
       eraProgress,
       syncTime: new Date().toISOString(),
     });
@@ -59,18 +58,20 @@ function registerGameRoutes(app, deps) {
     let eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
-    TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    if (SoftGuideService.apply(gameState, eraProgress)) {
-      eraProgress = gameStateService.calculateEraProgress(gameState);
-    }
     const tutorialCheck = TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
     if (!tutorialCheck.allowed) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
     }
+    const guideTaskCheck = GuideTaskService.validateAction(gameState, action, { target, count, step, eventId, optionId, direction, missionId, cityId });
+    if (!guideTaskCheck.allowed) {
+      return res.status(403).json({ success: false, error: guideTaskCheck.code, message: guideTaskCheck.message });
+    }
 
-    if (action === 'build' || action === 'upgrade') {
+    if (action === 'claimGuideTaskReward') {
+      result = GuideTaskService.claimReward(gameState, target);
+    } else if (action === 'build' || action === 'upgrade') {
       result = BuildBuildingAction.execute(action, gameState, tutorial, target);
       tutorial = result.tutorial || tutorial;
     } else if (action === 'advanceEra') {
@@ -91,22 +92,20 @@ function registerGameRoutes(app, deps) {
     eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
-    TutorialService.ensureLumbermillGuideResources(tutorial, gameState);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    if (SoftGuideService.apply(gameState, eraProgress)) {
-      eraProgress = gameStateService.calculateEraProgress(gameState);
-    }
     repository.save(gameState);
     const clientState = gameStateService.getClientGameState(gameState);
     eraProgress = gameStateService.calculateEraProgress(gameState);
-    const softGuide = SoftGuideService.getSoftGuide(gameState, eraProgress);
+    const guideTasks = GuideTaskService.getGuideTasks(gameState);
+    const softGuide = GuideTaskService.getGuide(gameState) || SoftGuideService.getSoftGuide(gameState, eraProgress);
     repository.save(gameState);
     return res.status(result.success ? 200 : 400).json({
       ...result,
       gameState: clientState,
       tutorial,
       softGuide,
+      guideTasks,
       eraProgress,
     });
   });

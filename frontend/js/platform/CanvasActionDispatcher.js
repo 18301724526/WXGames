@@ -40,6 +40,14 @@
         return closed;
       }
 
+      if (action.type === 'closeRewardReveal') {
+        const closed = typeof context.closeRewardReveal === 'function'
+          ? context.closeRewardReveal(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       if (action.type === 'openCitySwitcher') {
         const opened = typeof context.openCitySwitcher === 'function'
           ? context.openCitySwitcher(action) !== false
@@ -160,6 +168,7 @@
         'switchTab',
         'openResourceDetails',
         'closeResourceDetails',
+        'closeRewardReveal',
         'openCitySwitcher',
         'closeCitySwitcher',
         'openSettings',
@@ -185,6 +194,7 @@
         'upgradeBuilding',
         'advanceEra',
         'claimEvent',
+        'claimGuideTaskReward',
         'scoutTerritory',
         'claimScout',
         'requestNamingInput',

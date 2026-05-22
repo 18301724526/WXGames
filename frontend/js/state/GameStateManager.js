@@ -19,6 +19,7 @@
       this.state.knowledge = this.state.resources.knowledge || 0;
       this.state.wood = this.state.resources.wood || 0;
       this.state.softGuide = serverState.softGuide || null;
+      this.state.guideTasks = serverState.guideTasks || { visible: false, tasks: [] };
       this.state.workshopCount = this.buildingState.getLevel(this.state.buildings, 'workshop');
       this.state.lumbermillCount = this.buildingState.getLevel(this.state.buildings, 'lumbermill');
       this.state.military = {

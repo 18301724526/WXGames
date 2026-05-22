@@ -193,6 +193,7 @@ test('H5 canvas app shell can render read-only HUD preview when explicitly enabl
       },
       floatingTexts: [],
       tutorialHighlight: null,
+      rewardReveal: null,
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -571,17 +572,18 @@ test('H5 canvas app shell resolves tutorial targets from Canvas hit regions', ()
   assert.equal(shell.getTutorialTarget('tab-resources'), null);
 
   assert.equal(shell.showTutorialHighlight(shell.getTutorialTarget('btn-advance-era'), 'Advance now'), true);
-  assert.deepEqual(renderCalls.at(-1).tutorialHighlight, {
-    rect: {
-      left: 20,
-      top: 220,
-      width: 300,
-      height: 32,
-      right: 320,
-      bottom: 252,
-    },
-    message: 'Advance now',
+  const highlight = renderCalls.at(-1).tutorialHighlight;
+  assert.deepEqual(highlight.rect, {
+    left: 20,
+    top: 220,
+    width: 300,
+    height: 32,
+    right: 320,
+    bottom: 252,
   });
+  assert.equal(highlight.message, 'Advance now');
+  assert.equal(highlight.transition.durationMs, 260);
+  assert.ok(Number.isFinite(highlight.pulseStartedAt));
 
   assert.equal(shell.hideTutorialHighlight(), true);
   assert.equal(renderCalls.at(-1).tutorialHighlight, null);
