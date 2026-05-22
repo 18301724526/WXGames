@@ -161,6 +161,29 @@ test('CanvasGameRenderer draws loading page over gameplay until resources are re
   assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'blockCanvasModal' });
 });
 
+test('CanvasGameRenderer draws realtime FPS overlay without adding hit targets', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 7 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+
+  renderer.render({ currentTab: 'resources' }, {
+    mode: 'hud',
+    activeTab: 'resources',
+    loading: { visible: true, percentage: 10, message: 'Loading resources' },
+    now: 1000,
+  });
+  renderer.render({ currentTab: 'resources' }, {
+    mode: 'hud',
+    activeTab: 'resources',
+    loading: { visible: true, percentage: 20, message: 'Loading resources' },
+    now: 1016,
+  });
+
+  assert.equal(renderer.currentFps, 60);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'FPS 60'));
+  assert.deepEqual(renderer.getHitTarget({ x: 12, y: 12 }), { type: 'blockCanvasModal' });
+});
+
 test('CanvasGameRenderer top HUD uses compact icon/value resource strip', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
 

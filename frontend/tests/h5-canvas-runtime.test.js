@@ -1109,6 +1109,7 @@ test('Canvas game shell owns floating text effects without DOM adapter', () => {
 
   assert.equal(shell.showFloatingText('建造成功！'), true);
   assert.equal(timers.length, 1);
+  assert.equal(timers[0].intervalMs, 16);
   assert.equal(renderCalls.at(-1).floatingTexts[0].text, '建造成功！');
   assert.equal(renderCalls.at(-1).floatingTexts[0].progress, 0);
 
@@ -1120,6 +1121,35 @@ test('Canvas game shell owns floating text effects without DOM adapter', () => {
   timers[0].callback();
   assert.deepEqual(renderCalls.at(-1).floatingTexts, []);
   assert.deepEqual(cleared, [timers[0]]);
+});
+
+test('Canvas game shell uses a 60FPS target for shared canvas animations', () => {
+  const { document, runtime } = createCanvasHarness();
+  const timers = [];
+  runtime.setInterval = (callback, intervalMs) => {
+    const timer = { callback, intervalMs };
+    timers.push(timer);
+    return timer;
+  };
+  runtime.clearInterval = () => {};
+  let now = 1000;
+  const renderer = {
+    render() {},
+  };
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+  shell.now = () => now;
+
+  assert.equal(shell.startPageTransition('resources', 'buildings'), true);
+  assert.equal(timers[0].intervalMs, 16);
+  now += 16;
+  timers[0].callback();
+  assert.ok(shell.pageTransition);
 });
 
 test('H5 canvas runtime provides platform text input without exposing DOM input elements', async () => {

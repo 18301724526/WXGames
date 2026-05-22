@@ -14,6 +14,11 @@
       this.assetsChangedHandler = null;
       this.hitTargets = [];
       this.suppressHitTargets = false;
+      this.frameNow = 0;
+      this.fpsLastFrameAt = 0;
+      this.fpsSamples = [];
+      this.currentFps = 0;
+      this.showFpsOverlay = options.showFpsOverlay !== false;
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
 
@@ -407,6 +412,61 @@
       this.ctx.moveTo(x1, y1);
       this.ctx.lineTo(x2, y2);
       this.ctx.stroke();
+    }
+
+    beginFrame(options = {}) {
+      const optionNow = Number(options.now);
+      const now = Number.isFinite(optionNow) ? optionNow : Date.now();
+      this.frameNow = now;
+      this.updateFps(now);
+      return now;
+    }
+
+    endFrame(options = {}) {
+      this.renderFpsOverlay(options);
+      this.frameNow = 0;
+    }
+
+    getNow() {
+      return this.frameNow || Date.now();
+    }
+
+    updateFps(now = Date.now()) {
+      const timestamp = Number(now);
+      if (!Number.isFinite(timestamp)) return this.currentFps;
+      if (!this.fpsLastFrameAt) {
+        this.fpsLastFrameAt = timestamp;
+        return this.currentFps;
+      }
+      const delta = Math.max(4, timestamp - this.fpsLastFrameAt);
+      this.fpsLastFrameAt = timestamp;
+      if (delta > 250) return this.currentFps;
+      const fps = Math.min(120, 1000 / delta);
+      this.fpsSamples.push(fps);
+      if (this.fpsSamples.length > 30) this.fpsSamples.shift();
+      const average = this.fpsSamples.reduce((sum, value) => sum + value, 0) / this.fpsSamples.length;
+      this.currentFps = Math.round(average >= 58 && average <= 64 ? 60 : average);
+      return this.currentFps;
+    }
+
+    renderFpsOverlay(options = {}) {
+      if (!this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
+      const fps = Math.max(0, Math.round(Number(options.fps ?? this.currentFps) || 0));
+      const label = fps ? `FPS ${fps}` : 'FPS --';
+      const width = Math.max(66, Math.min(84, Math.ceil(this.measureTextWidth(label, { size: 11, bold: true }) + 18)));
+      const color = fps >= 55 ? '#74d3a0' : (fps >= 30 ? '#ffd98a' : '#ff6b6b');
+      this.drawPanel(8, 8, width, 22, {
+        fill: 'rgba(11, 18, 14, 0.72)',
+        stroke: 'rgba(255, 226, 177, 0.16)',
+        radius: 6,
+        inset: 'rgba(255, 255, 255, 0.03)',
+      });
+      this.drawText(label, 17, 19, {
+        size: 11,
+        bold: true,
+        color,
+        baseline: 'middle',
+      });
     }
 
     drawPanel(x, y, width, height, options = {}) {
@@ -2720,7 +2780,7 @@
       const startedAt = Number(transition.startedAt);
       if (!Number.isFinite(startedAt)) return null;
       const durationMs = Math.max(1, Number(transition.durationMs) || 220);
-      const progress = Math.max(0, Math.min(1, (Date.now() - startedAt) / durationMs));
+      const progress = Math.max(0, Math.min(1, (this.getNow() - startedAt) / durationMs));
       if (progress >= 1) return null;
       return {
         progress,
@@ -2749,7 +2809,7 @@
 
     renderTutorialHighlight(highlight = null) {
       if (!highlight || !highlight.rect || !this.presenter || !this.ctx) return;
-      const now = Date.now();
+      const now = this.getNow();
       const transition = highlight.transition || null;
       const rect = transition
         ? this.interpolateRect(
@@ -2851,7 +2911,7 @@
 
     renderRewardReveal(reveal = null) {
       if (!reveal || !this.ctx) return;
-      const now = Date.now();
+      const now = this.getNow();
       const startedAt = Number(reveal.createdAt) || now;
       const progress = Math.max(0, Math.min(1, (now - startedAt) / 900));
       const pulse = 0.5 + Math.sin(now / 180) * 0.5;
@@ -3144,14 +3204,17 @@
 
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
+      this.beginFrame(options);
       this.setHitTargets([]);
       this.clear();
       if (options.auth?.view?.loginPanelVisible) {
         this.renderLoginPanel(options.auth);
+        this.endFrame(options);
         return;
       }
       if (options.loading?.visible) {
         this.renderLoadingScreen(options.loading);
+        this.endFrame(options);
         return;
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
@@ -3188,6 +3251,7 @@
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
+      this.endFrame(options);
     }
 
     renderSettingsPanel() {
@@ -3443,14 +3507,17 @@
         return;
       }
       const activeTab = options.activeTab || 'resources';
+      this.beginFrame(options);
       this.setHitTargets([]);
       this.clear();
       if (options.auth?.view?.loginPanelVisible) {
         this.renderLoginPanel(options.auth);
+        this.endFrame(options);
         return;
       }
       if (options.loading?.visible) {
         this.renderLoadingScreen(options.loading);
+        this.endFrame(options);
         return;
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
@@ -3487,6 +3554,7 @@
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
+      this.endFrame(options);
     }
   }
 

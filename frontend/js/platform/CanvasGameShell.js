@@ -45,6 +45,7 @@
       this.pageTransition = null;
       this.buildingTransition = null;
       this.transitionTimer = null;
+      this.lastAnimationRenderAt = 0;
       this.activeEventId = null;
       this.territoryUiState = {};
       this.naming = {
@@ -359,6 +360,18 @@
       return 220;
     }
 
+    getAnimationFrameMs() {
+      return 16;
+    }
+
+    renderAnimationFrame() {
+      const now = this.now();
+      const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
+      if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
+      this.lastAnimationRenderAt = now;
+      return this.renderActive();
+    }
+
     startTransitionTimer() {
       if (this.transitionTimer || !this.runtime?.setInterval) return false;
       this.transitionTimer = this.runtime.setInterval(() => {
@@ -369,8 +382,8 @@
         if (pageDone) this.pageTransition = null;
         if (buildingDone) this.buildingTransition = null;
         if (!this.pageTransition && !this.buildingTransition) this.stopTransitionTimer();
-        this.renderActive();
-      }, 33);
+        this.renderAnimationFrame();
+      }, this.getAnimationFrameMs());
       return true;
     }
 
@@ -480,9 +493,9 @@
           this.stopFloatTimer();
         }
         if (changed || this.floatingTexts.length || hasHighlight || hasReveal) {
-          this.renderActive();
+          this.renderAnimationFrame();
         }
-      }, 33);
+      }, this.getAnimationFrameMs());
       this.floatTimer = this.effectTimer;
     }
 

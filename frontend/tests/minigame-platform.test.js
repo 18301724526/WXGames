@@ -275,6 +275,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
   const originalDocument = global.document;
   const calls = [];
   const requests = [];
+  const timers = [];
   let tapHandler = null;
   const runtime = new PlatformRuntime({
     kind: 'wechat',
@@ -294,8 +295,9 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     },
     textInput: () => '东岸城',
     scheduler: {
-      setInterval() {
-        const timer = {};
+      setInterval(callback, intervalMs) {
+        const timer = { callback, intervalMs };
+        timers.push(timer);
         return timer;
       },
       clearInterval() {},
@@ -483,6 +485,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.equal(app.state.currentTab, 'buildings');
     assert.equal(app.pageTransition.fromTab, 'resources');
     assert.equal(app.pageTransition.toTab, 'buildings');
+    assert.ok(timers.some((timer) => timer.intervalMs === 16));
     const renderOptions = [];
     const originalRender = app.renderer.render.bind(app.renderer);
     app.renderer.render = (state, options) => {

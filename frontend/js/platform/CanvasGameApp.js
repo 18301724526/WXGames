@@ -52,6 +52,7 @@
       this.pageTransition = null;
       this.buildingTransition = null;
       this.transitionTimer = null;
+      this.lastAnimationRenderAt = 0;
       this.activeEventId = null;
       this.naming = {
         visible: false,
@@ -352,6 +353,18 @@
       return 220;
     }
 
+    getAnimationFrameMs() {
+      return 16;
+    }
+
+    renderAnimationFrame(activeTab = this.state?.currentTab || this.getActiveTab()) {
+      const now = this.now();
+      const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
+      if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
+      this.lastAnimationRenderAt = now;
+      return this.renderCanvasSurface(activeTab);
+    }
+
     startTransitionTimer() {
       if (this.transitionTimer || !this.runtime?.setInterval) return false;
       this.transitionTimer = this.runtime.setInterval(() => {
@@ -362,8 +375,8 @@
         if (pageDone) this.pageTransition = null;
         if (buildingDone) this.buildingTransition = null;
         if (!this.pageTransition && !this.buildingTransition) this.stopTransitionTimer();
-        this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
-      }, 33);
+        this.renderAnimationFrame(this.state?.currentTab || this.getActiveTab());
+      }, this.getAnimationFrameMs());
       return true;
     }
 
@@ -922,8 +935,8 @@
       if (this.highlightTimer) this.runtime?.clearInterval?.(this.highlightTimer);
       if (this.runtime?.setInterval) {
         this.highlightTimer = this.runtime.setInterval(() => {
-          this.render();
-        }, 33);
+          this.renderAnimationFrame(this.state?.currentTab || this.getActiveTab());
+        }, this.getAnimationFrameMs());
       }
       if (!options.skipRender) {
         this.suppressSoftGuideRenderOnce = true;
