@@ -22,10 +22,12 @@ test('game state manager uses injected building state helper', () => {
     resources: { food: 10, knowledge: 5, wood: 3 },
     buildings: { lumbermill: { level: 1 } },
     population: { max: 4 },
+    taskCenter: { visible: true, summary: { claimableCount: 1 } },
   });
 
   assert.equal(state.workshopCount, 0);
   assert.equal(state.lumbermillCount, 2);
+  assert.equal(state.taskCenter.summary.claimableCount, 1);
   assert.deepEqual(calls.map((call) => call.id), ['workshop', 'lumbermill']);
 });
 

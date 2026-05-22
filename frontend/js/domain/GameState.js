@@ -32,6 +32,7 @@
       currentEraDescription: gameState.currentEraDescription || '',
       softGuide: (apiResponse && apiResponse.softGuide) || null,
       guideTasks: (apiResponse && apiResponse.guideTasks) || gameState.guideTasks || { visible: false, tasks: [] },
+      taskCenter: (apiResponse && apiResponse.taskCenter) || gameState.taskCenter || null,
       population: gameState.population || {},
       happiness: Number.isFinite(gameState.happiness) ? gameState.happiness : 100,
       techs: gameState.techs || {},

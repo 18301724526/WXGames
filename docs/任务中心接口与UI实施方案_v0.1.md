@@ -69,4 +69,5 @@
 | 时间戳 | 提交 | 内容 | 测试 |
 | --- | --- | --- | --- |
 | 2026-05-22 15:39:04 +08:00 | `bb1181d` | 初始化任务中心实施文档 | `git diff --check` |
-| 2026-05-22 15:48:04 +08:00 | 待回填 | 新增后端任务中心服务、状态快照、获取接口和领取接口 | `node --test backend\tests\task-center-service.test.js backend\tests\guide-task.test.js backend\tests\guide-task-newbie-flow.test.js` |
+| 2026-05-22 15:48:04 +08:00 | `99be29e` | 新增后端任务中心服务、状态快照、获取接口和领取接口 | `node --test backend\tests\task-center-service.test.js backend\tests\guide-task.test.js backend\tests\guide-task-newbie-flow.test.js` |
+| 2026-05-22 15:53:35 +08:00 | 待回填 | 接入前端任务中心 API、接口状态归一化和运行时状态保存 | `node --test frontend\tests\game-api.test.js frontend\tests\frontend-game-state.test.js frontend\tests\game-state-manager.test.js` |

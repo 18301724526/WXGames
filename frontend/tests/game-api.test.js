@@ -98,6 +98,36 @@ test('claimGuideTaskReward posts task id through shared action API', async () =>
   assert.deepEqual(requests, [{ action: 'claimGuideTaskReward', target: 'barracks_supplies' }]);
 });
 
+test('task center API reads task list and claims category reward', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', 'token-task', {
+    transport: {
+      async request(options) {
+        requests.push({
+          url: options.url,
+          method: options.method,
+          body: options.body ? JSON.parse(options.body) : null,
+          auth: options.headers.Authorization,
+        });
+        return {
+          ok: true,
+          async json() {
+            return { success: true };
+          },
+        };
+      },
+    },
+  });
+
+  await api.getTasks();
+  await api.claimTaskReward('barracks_supplies', 'main');
+
+  assert.deepEqual(requests, [
+    { url: '/api/game/tasks', method: 'GET', body: null, auth: 'Bearer token-task' },
+    { url: '/api/game/tasks/claim', method: 'POST', body: { taskId: 'barracks_supplies', category: 'main' }, auth: 'Bearer token-task' },
+  ]);
+});
+
 
 test('GameAPI can use platform transport without browser fetch', async () => {
   const api = new GameAPI('https://server.example/api', 'token-y', {
