@@ -104,10 +104,14 @@
     }
 
     handle_switchTab(action, meta = {}) {
+      const previousTab = this.host?.getActiveTab?.() || this.getGameHost()?.getActiveTab?.() || this.getState()?.currentTab || 'resources';
+      const previousBuildingOffset = Math.max(0, Number(this.host?.buildingOffset) || 0);
       this.host?.resetForCanvasTabSwitch?.(action);
       const game = this.getGameHost();
+      const gameHandlesSelection = typeof game?.handleCanvasTabSelection === 'function';
+      const hostCanAnimate = !gameHandlesSelection;
       let result;
-      if (typeof game?.handleCanvasTabSelection === 'function') {
+      if (gameHandlesSelection) {
         result = game.handleCanvasTabSelection(action.tab);
       } else {
         const forwarded = this.forward(action, meta);
@@ -117,7 +121,12 @@
         else result = false;
       }
       return this.finalize(Promise.resolve(result).then((allowed) => {
-        if (allowed !== false) this.afterHandled(action);
+        if (allowed !== false) {
+          const resolvedTab = this.host?.getActiveTab?.() || game?.getActiveTab?.() || '';
+          const nextTab = resolvedTab && resolvedTab !== previousTab ? resolvedTab : (action.tab || resolvedTab || 'resources');
+          if (hostCanAnimate) this.host?.startPageTransition?.(previousTab, nextTab, { fromBuildingOffset: previousBuildingOffset });
+          this.afterHandled(action);
+        }
         return allowed !== false;
       }));
     }
@@ -490,7 +499,11 @@
     }
 
     handle_scrollBuildings(action) {
-      this.host.buildingOffset = Math.max(0, (Number(this.host.buildingOffset) || 0) + (Number(action.delta) || 0));
+      if (typeof this.host?.scrollBuildings === 'function') {
+        this.host.scrollBuildings(action);
+      } else {
+        this.host.buildingOffset = Math.max(0, (Number(this.host.buildingOffset) || 0) + (Number(action.delta) || 0));
+      }
       return this.afterHandled(action);
     }
 

@@ -13,6 +13,7 @@
       this.assetCache = new Map();
       this.assetsChangedHandler = null;
       this.hitTargets = [];
+      this.suppressHitTargets = false;
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
 
@@ -188,6 +189,7 @@
     }
 
     addHitTarget(rect, action) {
+      if (this.suppressHitTargets) return;
       if (!action || !rect) return;
       this.hitTargets.push({
         x: Number(rect.x) || 0,
@@ -235,6 +237,36 @@
         return (action.category || 'main') === 'main';
       }
       return false;
+    }
+
+    withSuppressedHitTargets(callback) {
+      const previous = this.suppressHitTargets;
+      this.suppressHitTargets = true;
+      try {
+        return callback?.();
+      } finally {
+        this.suppressHitTargets = previous;
+      }
+    }
+
+    withSlideClip(x, y, width, height, offsetX, callback) {
+      if (!this.ctx || typeof callback !== 'function') return callback?.();
+      const canClip = typeof this.ctx.save === 'function'
+        && typeof this.ctx.restore === 'function'
+        && typeof this.ctx.beginPath === 'function'
+        && typeof this.ctx.rect === 'function'
+        && typeof this.ctx.clip === 'function';
+      if (!canClip) return callback();
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.rect(x, y, width, height);
+      this.ctx.clip();
+      if (typeof this.ctx.translate === 'function') this.ctx.translate(offsetX, 0);
+      try {
+        return callback();
+      } finally {
+        this.ctx.restore();
+      }
     }
 
     setAssetsChangedHandler(handler) {
@@ -691,17 +723,10 @@
         radius: 12,
         inset: 'rgba(255, 231, 184, 0.12)',
       });
-      this.drawText('任', x + size / 2, y + 18, {
-        size: 17,
+      this.drawText('\u4efb\u52a1', x + size / 2, y + size / 2 + 1, {
+        size: 14,
         bold: true,
         color: '#ffe6b5',
-        baseline: 'middle',
-        align: 'center',
-      });
-      this.drawText('务', x + size / 2, y + 33, {
-        size: 11,
-        bold: true,
-        color: '#cbbd96',
         baseline: 'middle',
         align: 'center',
       });
@@ -1076,49 +1101,65 @@
       }
       offset = Math.min(offset, maxOffset);
       const visibleCards = view.cards.slice(offset, offset + visibleCount);
+      const drawCards = (cards, cardOffset = offset) => {
+        cards.forEach((card, index) => {
+          const y = firstRowY + index * (rowHeight + rowGap);
+          const isMuted = Boolean(card.isMuted || card.button.disabled);
+          this.drawPanel(x + 10, y, width - 20, rowHeight, {
+            fill: isMuted
+              ? 'rgba(35, 31, 27, 0.78)'
+              : this.createGradient(
+                x + 10, y, x + width - 10, y + rowHeight,
+                [
+                  [0, 'rgba(79, 57, 38, 0.88)'],
+                  [1, 'rgba(28, 22, 16, 0.86)'],
+                ],
+                'rgba(48, 36, 26, 0.86)',
+              ),
+            stroke: isMuted ? 'rgba(255, 226, 177, 0.1)' : 'rgba(255, 226, 177, 0.16)',
+            radius: 8,
+            inset: 'rgba(255, 231, 184, 0.07)',
+          });
+          if (card.art) this.drawAsset(card.art, x + 20, y + 12, 46, 46, isMuted ? 0.62 : 1);
+          else this.drawText(card.icon || '', x + 43, y + 35, { size: 24, align: 'center', baseline: 'middle' });
 
-      visibleCards.forEach((card, index) => {
-        const y = firstRowY + index * (rowHeight + rowGap);
-        const isMuted = Boolean(card.isMuted || card.button.disabled);
-        this.drawPanel(x + 10, y, width - 20, rowHeight, {
-          fill: isMuted
-            ? 'rgba(35, 31, 27, 0.78)'
-            : this.createGradient(
-              x + 10, y, x + width - 10, y + rowHeight,
-              [
-                [0, 'rgba(79, 57, 38, 0.88)'],
-                [1, 'rgba(28, 22, 16, 0.86)'],
-              ],
-              'rgba(48, 36, 26, 0.86)',
-            ),
-          stroke: isMuted ? 'rgba(255, 226, 177, 0.1)' : 'rgba(255, 226, 177, 0.16)',
-          radius: 8,
-          inset: 'rgba(255, 231, 184, 0.07)',
+          const textX = x + 76;
+          const actionWidth = Math.min(128, Math.max(104, width - 238));
+          const buttonX = x + width - actionWidth - 22;
+          const textWidth = Math.max(112, buttonX - textX - 12);
+          this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
+          this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
+
+          const detail = card.effectText || (card.militaryLines || [])[0] || card.descText || '';
+          const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
+          this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
+
+          this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
+            muted: isMuted,
+            resources: state.resources || {},
+          });
+          this.drawBuildingActionButton(buttonX, y + 56, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
+          this.addHitTarget(
+            { x: buttonX, y: y + 56, width: actionWidth, height: 26 },
+            { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
+          );
         });
-        if (card.art) this.drawAsset(card.art, x + 20, y + 12, 46, 46, isMuted ? 0.62 : 1);
-        else this.drawText(card.icon || '', x + 43, y + 35, { size: 24, align: 'center', baseline: 'middle' });
-
-        const textX = x + 76;
-        const actionWidth = Math.min(128, Math.max(104, width - 238));
-        const buttonX = x + width - actionWidth - 22;
-        const textWidth = Math.max(112, buttonX - textX - 12);
-        this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
-        this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
-
-        const detail = card.effectText || (card.militaryLines || [])[0] || card.descText || '';
-        const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
-        this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
-
-        this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
-          muted: isMuted,
-          resources: state.resources || {},
+      };
+      const cardsBottom = firstRowY + visibleCount * (rowHeight + rowGap) - rowGap;
+      const transition = this.getTransitionFrame(options.buildingTransition);
+      if (transition && Number(options.buildingTransition?.toOffset) === offset) {
+        const fromOffset = Math.min(Math.max(0, Number(options.buildingTransition.fromOffset) || 0), maxOffset);
+        const oldCards = view.cards.slice(fromOffset, fromOffset + visibleCount);
+        const travel = width + 24;
+        this.withSlideClip(x, firstRowY - 4, width, Math.max(rowHeight, cardsBottom - firstRowY + 8), -transition.direction * travel * transition.eased, () => {
+          this.withSuppressedHitTargets(() => drawCards(oldCards, fromOffset));
         });
-        this.drawBuildingActionButton(buttonX, y + 56, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
-        this.addHitTarget(
-          { x: buttonX, y: y + 56, width: actionWidth, height: 26 },
-          { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
-        );
-      });
+        this.withSlideClip(x, firstRowY - 4, width, Math.max(rowHeight, cardsBottom - firstRowY + 8), transition.direction * travel * (1 - transition.eased), () => {
+          drawCards(visibleCards, offset);
+        });
+      } else {
+        drawCards(visibleCards, offset);
+      }
       if (view.cards.length > visibleCount) {
         const pagerY = panelBottom - 32;
         const buttonWidth = 68;
@@ -1127,8 +1168,10 @@
         const nextX = x + width / 2 + 42 + gap;
         const canPrev = offset > 0;
         const canNext = offset < maxOffset;
+        const pageCount = Math.max(1, maxOffset + 1);
+        const currentPage = Math.min(pageCount, offset + 1);
         this.drawButton(prevX, pagerY, buttonWidth, 24, '上一页', { disabled: !canPrev, size: 11, radius: 7 });
-        this.drawText(`${offset + 1}-${offset + visibleCards.length}/${view.cards.length}`, x + width / 2, pagerY + 12, {
+        this.drawText(`${currentPage}/${pageCount}`, x + width / 2, pagerY + 12, {
           size: 10,
           color: 'rgba(234, 234, 234, 0.62)',
           baseline: 'middle',
@@ -2268,11 +2311,74 @@
     }
 
     renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
-      if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, { offset: options.buildingOffset });
+      if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, {
+        offset: options.buildingOffset,
+        buildingTransition: options.buildingTransition,
+      });
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
       else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight);
       else if (activeTab === 'civilization') this.renderCivilization(state, startY, availableHeight, options);
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight, options);
+    }
+
+    renderHudTabPage(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
+      const tabsTop = this.height - 60 - this.bottomSafeArea;
+      if (activeTab === 'resources') {
+        this.renderPopulation(state, topBarBottom);
+      } else if (activeTab === 'buildings') {
+        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
+        this.renderBuildings(
+          { ...state, tutorial: options.tutorial || state.tutorial || {} },
+          topBarBottom,
+          availableHeight,
+          {
+            offset: options.buildingOffset,
+            buildingTransition: options.buildingTransition,
+          },
+        );
+      } else if (activeTab === 'events') {
+        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
+        this.renderEvents(state, topBarBottom, availableHeight);
+      } else if (activeTab === 'tech') {
+        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
+        this.renderTech(state, topBarBottom, availableHeight);
+      } else if (activeTab === 'civilization') {
+        const availableHeight = Math.max(260, tabsTop - topBarBottom - 12);
+        this.renderCivilization(
+          state,
+          topBarBottom,
+          availableHeight,
+          { tutorial: options.tutorial || state.tutorial || {} },
+        );
+      } else if (activeTab === 'military') {
+        const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
+        this.renderMilitary(state, topBarBottom, availableHeight, options);
+      }
+    }
+
+    renderHudTabPageWithTransition(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
+      const pageTransition = options.pageTransition || null;
+      const transition = this.getTransitionFrame(pageTransition);
+      const fromTab = pageTransition?.fromTab;
+      const toTab = pageTransition?.toTab || activeTab;
+      if (!transition || !fromTab || fromTab === activeTab || toTab !== activeTab) {
+        this.renderHudTabPage(state, activeTab, topBarBottom, options);
+        return;
+      }
+      const tabsTop = this.height - 60 - this.bottomSafeArea;
+      const clipY = topBarBottom;
+      const clipHeight = Math.max(120, tabsTop - clipY);
+      const travel = this.width + 24;
+      this.withSlideClip(0, clipY, this.width, clipHeight, -transition.direction * travel * transition.eased, () => {
+        this.withSuppressedHitTargets(() => this.renderHudTabPage(state, fromTab, topBarBottom, {
+          ...options,
+          buildingOffset: pageTransition.fromBuildingOffset ?? options.buildingOffset,
+          buildingTransition: null,
+        }));
+      });
+      this.withSlideClip(0, clipY, this.width, clipHeight, transition.direction * travel * (1 - transition.eased), () => {
+        this.renderHudTabPage(state, activeTab, topBarBottom, options);
+      });
     }
 
     renderTabs(activeTab = 'resources', state = {}, options = {}) {
@@ -2607,6 +2713,20 @@
     easeOutCubic(value) {
       const t = Math.max(0, Math.min(1, Number(value) || 0));
       return 1 - ((1 - t) ** 3);
+    }
+
+    getTransitionFrame(transition = null) {
+      if (!transition) return null;
+      const startedAt = Number(transition.startedAt);
+      if (!Number.isFinite(startedAt)) return null;
+      const durationMs = Math.max(1, Number(transition.durationMs) || 220);
+      const progress = Math.max(0, Math.min(1, (Date.now() - startedAt) / durationMs));
+      if (progress >= 1) return null;
+      return {
+        progress,
+        eased: this.easeOutCubic(progress),
+        direction: Number(transition.direction) < 0 ? -1 : 1,
+      };
     }
 
     interpolateRect(fromRect = {}, toRect = {}, progress = 1) {
@@ -3035,39 +3155,7 @@
         return;
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
-      if (activeTab === 'resources') {
-        this.renderPopulation(state, topBarBottom);
-      } else if (activeTab === 'buildings') {
-        const tabsTop = this.height - 60 - this.bottomSafeArea;
-        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderBuildings(
-          { ...state, tutorial: options.tutorial || state.tutorial || {} },
-          topBarBottom,
-          availableHeight,
-          { offset: options.buildingOffset },
-        );
-      } else if (activeTab === 'events') {
-        const tabsTop = this.height - 60 - this.bottomSafeArea;
-        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderEvents(state, topBarBottom, availableHeight);
-      } else if (activeTab === 'tech') {
-        const tabsTop = this.height - 60 - this.bottomSafeArea;
-        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderTech(state, topBarBottom, availableHeight);
-      } else if (activeTab === 'civilization') {
-        const tabsTop = this.height - 60 - this.bottomSafeArea;
-        const availableHeight = Math.max(260, tabsTop - topBarBottom - 12);
-        this.renderCivilization(
-          state,
-          topBarBottom,
-          availableHeight,
-          { tutorial: options.tutorial || state.tutorial || {} },
-        );
-      } else if (activeTab === 'military') {
-        const tabsTop = this.height - 60 - this.bottomSafeArea;
-        const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
-        this.renderMilitary(state, topBarBottom, availableHeight, options);
-      }
+      this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
       this.renderTaskCenterButton(state);
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) {
@@ -3371,7 +3459,22 @@
       const tabsTop = this.height - 60 - this.bottomSafeArea;
       const advisorOffset = this.presenter && typeof this.presenter.buildAdvisorViewState === 'function' && this.presenter.buildAdvisorViewState(state.softGuide).hidden ? 0 : 52;
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
-      if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
+      const transition = this.getTransitionFrame(options.pageTransition);
+      const fromTab = options.pageTransition?.fromTab;
+      const toTab = options.pageTransition?.toTab || activeTab;
+      if (transition && fromTab && fromTab !== activeTab && toTab === activeTab && activeTab !== 'resources') {
+        const travel = this.width + 24;
+        this.withSlideClip(0, panelTop, this.width, Math.max(120, tabsTop - panelTop), -transition.direction * travel * transition.eased, () => {
+          this.withSuppressedHitTargets(() => this.renderMainPanel(state, fromTab, panelTop, availableHeight, {
+            ...options,
+            buildingOffset: options.pageTransition.fromBuildingOffset ?? options.buildingOffset,
+            buildingTransition: null,
+          }));
+        });
+        this.withSlideClip(0, panelTop, this.width, Math.max(120, tabsTop - panelTop), transition.direction * travel * (1 - transition.eased), () => {
+          this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
+        });
+      } else if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
       this.renderTaskCenterButton(state);
       this.renderTabs(activeTab, state, options);

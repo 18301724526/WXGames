@@ -42,6 +42,9 @@
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
       this.buildingOffset = 0;
+      this.pageTransition = null;
+      this.buildingTransition = null;
+      this.transitionTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
       this.naming = {
@@ -185,11 +188,14 @@
 
     resetForCanvasTabSwitch() {
       this.buildingOffset = 0;
+      this.buildingTransition = null;
       this.activeEventId = null;
     }
 
     resetLocalViewToResources(options = {}) {
       this.buildingOffset = 0;
+      this.pageTransition = null;
+      this.buildingTransition = null;
       this.activeEventId = null;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
@@ -342,7 +348,75 @@
     }
 
     now() {
-      return Date.now();
+      return this.runtime?.now?.() || Date.now();
+    }
+
+    getTabOrder() {
+      return ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
+    }
+
+    getTransitionDurationMs() {
+      return 220;
+    }
+
+    startTransitionTimer() {
+      if (this.transitionTimer || !this.runtime?.setInterval) return false;
+      this.transitionTimer = this.runtime.setInterval(() => {
+        const now = this.now();
+        const duration = this.getTransitionDurationMs();
+        const pageDone = !this.pageTransition || now - this.pageTransition.startedAt >= (this.pageTransition.durationMs || duration);
+        const buildingDone = !this.buildingTransition || now - this.buildingTransition.startedAt >= (this.buildingTransition.durationMs || duration);
+        if (pageDone) this.pageTransition = null;
+        if (buildingDone) this.buildingTransition = null;
+        if (!this.pageTransition && !this.buildingTransition) this.stopTransitionTimer();
+        this.renderActive();
+      }, 33);
+      return true;
+    }
+
+    stopTransitionTimer() {
+      if (!this.transitionTimer) return;
+      this.runtime?.clearInterval?.(this.transitionTimer);
+      this.transitionTimer = null;
+    }
+
+    startPageTransition(fromTab, toTab, options = {}) {
+      if (!fromTab || !toTab || fromTab === toTab) {
+        this.pageTransition = null;
+        return false;
+      }
+      const tabs = this.getTabOrder();
+      const fromIndex = tabs.indexOf(fromTab);
+      const toIndex = tabs.indexOf(toTab);
+      this.pageTransition = {
+        fromTab,
+        toTab,
+        direction: toIndex >= 0 && fromIndex >= 0 && toIndex < fromIndex ? -1 : 1,
+        startedAt: this.now(),
+        durationMs: this.getTransitionDurationMs(),
+        fromBuildingOffset: options.fromBuildingOffset ?? this.buildingOffset,
+      };
+      this.startTransitionTimer();
+      this.renderActive();
+      return true;
+    }
+
+    scrollBuildings(action = {}) {
+      const fromOffset = Math.max(0, Number(this.buildingOffset) || 0);
+      const delta = Number(action.delta) || 0;
+      const toOffset = Math.max(0, fromOffset + delta);
+      this.buildingOffset = toOffset;
+      if (toOffset !== fromOffset) {
+        this.buildingTransition = {
+          fromOffset,
+          toOffset,
+          direction: toOffset < fromOffset ? -1 : 1,
+          startedAt: this.now(),
+          durationMs: this.getTransitionDurationMs(),
+        };
+        this.startTransitionTimer();
+      }
+      return true;
     }
 
     showFloatingText(text, options = {}) {
@@ -648,6 +722,8 @@
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
+        ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
+        ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
         tabLocks: this.getTabLocks(state),

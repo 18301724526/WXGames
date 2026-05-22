@@ -481,6 +481,8 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     });
     assert.equal(app.activeTab, 'buildings');
     assert.equal(app.state.currentTab, 'buildings');
+    assert.equal(app.pageTransition.fromTab, 'resources');
+    assert.equal(app.pageTransition.toTab, 'buildings');
     const renderOptions = [];
     const originalRender = app.renderer.render.bind(app.renderer);
     app.renderer.render = (state, options) => {
@@ -500,9 +502,13 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     app.renderer.addHitTarget({ x: 1, y: 1, width: 20, height: 20 }, { type: 'scrollBuildings', delta: 1 });
     app.handleTap({ x: 10, y: 10 });
     assert.equal(app.buildingOffset, 1);
+    assert.equal(app.buildingTransition.fromOffset, 0);
+    assert.equal(app.buildingTransition.toOffset, 1);
 
     app.switchTab('resources');
     assert.equal(app.buildingOffset, 0);
+    assert.equal(app.pageTransition.fromTab, 'buildings');
+    assert.equal(app.pageTransition.toTab, 'resources');
     const resourceTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openResourceDetails');
     assert.ok(resourceTarget);
     app.handleTap({

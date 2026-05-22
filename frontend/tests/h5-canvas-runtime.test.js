@@ -14,6 +14,7 @@ const projectRoot = path.join(__dirname, '..', '..');
 function createCanvasHarness() {
   const listeners = {};
   const appended = [];
+  const timers = [];
   const ctx = {
     transforms: [],
     setTransform(...args) { this.transforms.push(args); },
@@ -46,8 +47,17 @@ function createCanvasHarness() {
     innerHeight: 844,
     devicePixelRatio: 2,
     addEventListener(type, handler) { listeners[`window:${type}`] = handler; },
+    setInterval(callback, intervalMs) {
+      const timer = { callback, intervalMs };
+      timers.push(timer);
+      return timer;
+    },
+    clearInterval(timer) {
+      const index = timers.indexOf(timer);
+      if (index >= 0) timers.splice(index, 1);
+    },
   };
-  return { canvas, ctx, document, runtime, listeners, appended };
+  return { canvas, ctx, document, runtime, listeners, appended, timers };
 }
 
 test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
@@ -1222,7 +1232,7 @@ test('Canvas game shell passes shared loading state and preloads assets through 
   assert.equal(renderCalls.at(-1).loading.visible, false);
 });
 
-test('Canvas game shell owns building pager state without DOM adapter', () => {
+test('Canvas game shell owns building pager state without DOM adapter', async () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'scrollBuildings', delta: 1 },
@@ -1249,8 +1259,13 @@ test('Canvas game shell owns building pager state without DOM adapter', () => {
 
   listeners['document:pointerup']({ clientX: 300, clientY: 740, type: 'pointerup', timeStamp: 1000 });
   assert.equal(renderCalls.at(-1).buildingOffset, 1);
+  assert.equal(renderCalls.at(-1).buildingTransition.fromOffset, 0);
+  assert.equal(renderCalls.at(-1).buildingTransition.toOffset, 1);
   listeners['document:pointerup']({ clientX: 30, clientY: 800, type: 'pointerup', timeStamp: 1300 });
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(shell.buildingOffset, 0);
+  assert.equal(renderCalls.at(-1).pageTransition.fromTab, 'buildings');
+  assert.equal(renderCalls.at(-1).pageTransition.toTab, 'resources');
   assert.deepEqual(dispatched, [{ type: 'switchTab', tab: 'resources' }]);
 });
 

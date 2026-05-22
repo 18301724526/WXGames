@@ -35,6 +35,7 @@ function makeCtx() {
       save() {},
       restore() {},
       clip() {},
+      translate(...a) { calls.push(['translate', ...a]); },
       arc() {},
       createLinearGradient() { calls.push(['gradient']); return gradient; },
       fillText(...a) { calls.push(['fillText', ...a]); },
@@ -64,6 +65,7 @@ test('CanvasGameRenderer provides shared drawing primitives without platform dep
     save() {},
     restore() {},
     clip() {},
+    translate(...a) { calls.push('translate', a); },
     arc() {},
     fillText(...a) { calls.push('fillText', a); },
     clearRect(...a) { calls.push('clearRect', a); },
@@ -709,6 +711,8 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '任务'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '任'), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '务'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线任务'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城邦守备'));
   assert.ok(renderer.hitTargets.some((target) => (
@@ -1022,7 +1026,7 @@ test('CanvasGameRenderer renders building costs as fixed base slots with knowled
 });
 
 test('CanvasGameRenderer paginates overflow building cards without DOM scrolling', () => {
-  const { ctx } = makeCtx();
+  const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   const cards = ['farm', 'house', 'lumbermill', 'barracks', 'watchtower', 'temple'].map((id, index) => ({
@@ -1060,8 +1064,124 @@ test('CanvasGameRenderer paginates overflow building cards without DOM scrolling
 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scrollBuildings' && target.action.delta === -1));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scrollBuildings' && target.action.delta === 1));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '3/3'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '3-5/6'), false);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'lumbermill'));
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'), false);
+});
+
+test('CanvasGameRenderer slides building pager cards and suppresses old page hit targets', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const cards = ['farm', 'house', 'lumbermill', 'barracks', 'watchtower', 'temple'].map((id, index) => ({
+    id,
+    name: id,
+    art: '',
+    icon: `${index}`,
+    levelText: '等级 0',
+    descText: '建筑说明',
+    button: { action: 'build', label: '建造', disabled: false },
+    cost: { text: '免费建造', parts: [], isMax: false },
+  }));
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildBuildingViewState: () => ({ isEmpty: false, cards }),
+  });
+
+  renderer.render({ currentTab: 'buildings' }, {
+    activeTab: 'buildings',
+    mode: 'hud',
+    buildingOffset: 2,
+    buildingTransition: {
+      fromOffset: 1,
+      toOffset: 2,
+      direction: 1,
+      startedAt: Date.now() - 80,
+      durationMs: 220,
+    },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'translate' && Math.abs(Number(call[1]) || 0) > 0));
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'house'), false);
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'lumbermill'));
+});
+
+test('CanvasGameRenderer slides HUD tab content while keeping old page non-interactive', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+      },
+    }),
+    buildPopulationViewState: () => ({
+      text: { total: 3, max: 5, unassigned: 1 },
+      jobs: [
+        { id: 'farmer', visible: true, count: 1, canIncrease: true, canDecrease: true },
+        { id: 'scholar', visible: true, count: 1, canIncrease: true, canDecrease: true },
+        { id: 'craftsman', visible: true, count: 1, canIncrease: true, canDecrease: true },
+      ],
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildBuildingViewState: () => ({
+      isEmpty: false,
+      cards: [{
+        id: 'farm',
+        name: '农田',
+        art: '',
+        icon: 'F',
+        levelText: '等级 0',
+        descText: '产出粮食',
+        button: { action: 'build', label: '建造', disabled: false },
+        cost: { text: '免费建造', parts: [], isMax: false },
+      }],
+    }),
+    buildTaskCenterViewState: () => ({ summary: { claimableCount: 0 } }),
+  });
+  const startedAt = Date.now() - 80;
+
+  renderer.render({ currentTab: 'buildings' }, {
+    activeTab: 'buildings',
+    mode: 'hud',
+    pageTransition: {
+      fromTab: 'resources',
+      toTab: 'buildings',
+      direction: 1,
+      startedAt,
+      durationMs: 220,
+    },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'translate' && Math.abs(Number(call[1]) || 0) > 0));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'));
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'assignJob'), false);
 });
 
 test('CanvasGameRenderer draws events page and event modal without DOM renderer', () => {

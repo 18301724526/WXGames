@@ -49,6 +49,9 @@
       this.suppressSoftGuideRenderOnce = false;
       this.activeGuideNavigation = null;
       this.buildingOffset = 0;
+      this.pageTransition = null;
+      this.buildingTransition = null;
+      this.transitionTimer = null;
       this.activeEventId = null;
       this.naming = {
         visible: false,
@@ -229,6 +232,8 @@
     renderCanvasSurface(activeTab = this.getActiveTab()) {
       const resolvedActiveTab = activeTab || this.getActiveTab();
       if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
+        if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
+        if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         return true;
       }
@@ -241,6 +246,8 @@
         activeTaskCenterTab: this.activeTaskCenterTab,
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
+        ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
+        ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
         territoryUiState: this.territoryUiState,
         naming: this.naming,
@@ -337,6 +344,73 @@
       return this.activeTab || this.state?.currentTab || 'resources';
     }
 
+    getTabOrder() {
+      return ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
+    }
+
+    getTransitionDurationMs() {
+      return 220;
+    }
+
+    startTransitionTimer() {
+      if (this.transitionTimer || !this.runtime?.setInterval) return false;
+      this.transitionTimer = this.runtime.setInterval(() => {
+        const now = this.now();
+        const duration = this.getTransitionDurationMs();
+        const pageDone = !this.pageTransition || now - this.pageTransition.startedAt >= (this.pageTransition.durationMs || duration);
+        const buildingDone = !this.buildingTransition || now - this.buildingTransition.startedAt >= (this.buildingTransition.durationMs || duration);
+        if (pageDone) this.pageTransition = null;
+        if (buildingDone) this.buildingTransition = null;
+        if (!this.pageTransition && !this.buildingTransition) this.stopTransitionTimer();
+        this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
+      }, 33);
+      return true;
+    }
+
+    stopTransitionTimer() {
+      if (!this.transitionTimer) return;
+      this.runtime?.clearInterval?.(this.transitionTimer);
+      this.transitionTimer = null;
+    }
+
+    startPageTransition(fromTab, toTab, options = {}) {
+      if (!fromTab || !toTab || fromTab === toTab) {
+        this.pageTransition = null;
+        return false;
+      }
+      const tabs = this.getTabOrder();
+      const fromIndex = tabs.indexOf(fromTab);
+      const toIndex = tabs.indexOf(toTab);
+      this.pageTransition = {
+        fromTab,
+        toTab,
+        direction: toIndex >= 0 && fromIndex >= 0 && toIndex < fromIndex ? -1 : 1,
+        startedAt: this.now(),
+        durationMs: this.getTransitionDurationMs(),
+        fromBuildingOffset: options.fromBuildingOffset ?? this.buildingOffset,
+      };
+      this.startTransitionTimer();
+      return true;
+    }
+
+    scrollBuildings(action = {}) {
+      const fromOffset = Math.max(0, Number(this.buildingOffset) || 0);
+      const delta = Number(action.delta) || 0;
+      const toOffset = Math.max(0, fromOffset + delta);
+      this.buildingOffset = toOffset;
+      if (toOffset !== fromOffset) {
+        this.buildingTransition = {
+          fromOffset,
+          toOffset,
+          direction: toOffset < fromOffset ? -1 : 1,
+          startedAt: this.now(),
+          durationMs: this.getTransitionDurationMs(),
+        };
+        this.startTransitionTimer();
+      }
+      return true;
+    }
+
     getCanvasActionState() {
       return this.state;
     }
@@ -349,6 +423,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.activeEventId = null;
+      this.showTaskCenter = false;
     }
 
     resetLocalViewToResources(options = {}) {
@@ -360,6 +435,8 @@
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
       this.activeGuideNavigation = null;
+      this.pageTransition = null;
+      this.buildingTransition = null;
       if (this.state && typeof this.state === 'object') {
         this.state = { ...this.state, currentTab: 'resources' };
       }
@@ -606,12 +683,16 @@
     }
 
     switchTab(tab) {
+      const previousTab = this.getActiveTab();
+      const previousBuildingOffset = this.buildingOffset;
       const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
       this.activeTab = navigation?.activeTab || tab || 'resources';
       const preferredMilitaryView = this.getPreferredMilitaryView(tab);
       this.state = { ...this.state, currentTab: this.activeTab };
       if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
       this.buildingOffset = 0;
+      this.buildingTransition = null;
+      this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
       this.activeEventId = null;
       this.renderMilitaryView();
       this.renderCanvasSurface(this.state.currentTab);
@@ -1080,6 +1161,7 @@
         this.runtime.clearInterval(this.highlightTimer);
         this.highlightTimer = null;
       }
+      this.stopTransitionTimer();
       if (this.tapDisposer) {
         this.tapDisposer();
         this.tapDisposer = null;
