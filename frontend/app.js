@@ -607,11 +607,22 @@ const Game = {
     const guide = this.state.softGuide;
     this.updateAdvisor(guide);
     if (guide?.mode === 'strong' && guide.target) {
-      const target = this.getTutorialTarget(guide.target);
+      const target = this.getTutorialTarget(guide.target)
+        || this.getTutorialTarget(this.getFallbackGuideTarget(guide.target));
       if (target) {
         this.tutorialRenderer.show(target, guide.message);
+      } else {
+        this.tutorialRenderer.hide?.();
       }
     }
+  },
+
+  getFallbackGuideTarget(target) {
+    if (target === 'btn-advance-era') return 'tab-civilization';
+    if (target === 'card-craftsman') return 'tab-resources';
+    if (target === 'event-card-special' || target === 'btn-claim-event') return 'tab-events';
+    if (typeof target === 'string' && target.startsWith('card-')) return 'tab-buildings';
+    return null;
   },
 
   updateAdvisor(guide) {

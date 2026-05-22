@@ -50,6 +50,12 @@
       return this.state.currentStep === 8 || (this.state.currentStep === 13 && !this.canAffordLumbermill());
     }
 
+    hasVisibleGuideTask() {
+      const state = this.getState() || {};
+      const guideTasks = state.guideTasks || {};
+      return Boolean(guideTasks.visible && Array.isArray(guideTasks.tasks) && guideTasks.tasks.length);
+    }
+
     syncLocalProgress() {
       this.storage.setProgress(this.state);
     }
@@ -225,6 +231,7 @@
 
     render() {
       this.onTabLockChange && this.onTabLockChange();
+      if (this.hasVisibleGuideTask()) return;
       if (this.state.completed || this.state.currentStep === 0) {
         this.renderer.hide();
         return;

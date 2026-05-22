@@ -114,6 +114,27 @@ function hasAnyScoutProgress(gameState) {
 
 const TASKS = [
   {
+    id: 'settlement_advance_supplies',
+    title: '备齐聚落物资',
+    description: '民居让族人安定下来，领取储备物资后迈入聚落时代。',
+    target: 'guide-task-claim',
+    nextTarget: 'btn-advance-era',
+    actionLabel: '领取',
+    continueAfterClaim: true,
+    available: (gameState) => (
+      gameState.currentEra === 1
+      && hasBuilt(gameState, 'house')
+      && Number(gameState.tutorial?.currentStep || 0) >= 8
+    ),
+    complete: (gameState) => (
+      gameState.currentEra === 1
+      && hasBuilt(gameState, 'house')
+      && Number(gameState.tutorial?.currentStep || 0) >= 8
+    ),
+    obsolete: (gameState) => gameState.currentEra > 1,
+    reward: () => makeResourceReward(getEraCost(1)),
+  },
+  {
     id: 'lumbermill_supplies',
     title: '备齐伐木物资',
     description: '领取森林馈赠，建起第一座伐木场。',
@@ -386,6 +407,7 @@ function claimReward(gameState, taskId) {
 
 function getExpectedActionForTask(task) {
   if (!task) return null;
+  if (task.id === 'settlement_advance_supplies') return { action: 'advanceEra' };
   if (task.id === 'lumbermill_supplies') return { action: 'build', target: 'lumbermill' };
   if (task.id === 'city_advance_supplies') return { action: 'advanceEra' };
   if (task.id === 'barracks_supplies') return { action: 'build', target: 'barracks' };
@@ -397,7 +419,6 @@ function getExpectedActionForTask(task) {
 }
 
 function validateAction(gameState, action, payload = {}) {
-  if (!isTutorialDone(gameState)) return { allowed: true };
   const task = getCurrentTaskDefinition(gameState);
   if (!task) return { allowed: true };
   const view = buildTaskView(gameState, task);

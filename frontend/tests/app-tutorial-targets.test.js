@@ -592,6 +592,56 @@ test('soft guide does not repeatedly force the military sub view after manual se
   }
 });
 
+test('renderSoftGuide falls back to the target tab when the next guide target is offscreen', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    let shownTarget = null;
+    Game.state.softGuide = {
+      mode: 'strong',
+      target: 'card-lumbermill',
+      message: 'Build the lumbermill.',
+    };
+    Game.canvasShell = {
+      previewEnabled: false,
+      getTutorialTarget(key) {
+        return key === 'tab-buildings' ? { id: 'buildings-tab' } : null;
+      },
+    };
+    Game.tutorialRenderer = {
+      show(target) {
+        shownTarget = target;
+      },
+      hide() {},
+    };
+
+    Game.renderSoftGuide();
+
+    assert.deepEqual(shownTarget, { id: 'buildings-tab' });
+    assert.equal(Game.getFallbackGuideTarget('btn-advance-era'), 'tab-civilization');
+    assert.equal(Game.getFallbackGuideTarget('card-craftsman'), 'tab-resources');
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('renderSoftGuide exposes backend advice through the advisor panel', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;
