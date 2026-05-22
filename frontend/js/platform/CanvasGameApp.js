@@ -227,11 +227,21 @@
 
     refreshTaskCenterGuideHighlight(action = {}) {
       const guideTarget = action.target || this.state?.softGuide?.target;
-      if (guideTarget !== 'task-center-main-claim' && guideTarget !== 'guide-task-claim') return false;
+      if (
+        guideTarget !== 'task-center-main-claim'
+        && guideTarget !== 'guide-task-claim'
+        && !this.hasClaimableMainTask()
+      ) return false;
       this.render();
       const target = this.getGuideTargetRect('task-center-main-claim');
       if (!target) return false;
       return this.showGuideHighlight(target, action.message || '领取主线任务奖励');
+    }
+
+    hasClaimableMainTask() {
+      const view = this.presenter?.buildTaskCenterViewState?.(this.state, { activeTab: this.activeTaskCenterTab || 'main' });
+      const tasks = Array.isArray(view?.categories?.main?.tasks) ? view.categories.main.tasks : [];
+      return tasks.some((task) => task.status === 'claimable' && !task.claimed);
     }
 
     ensureGuideTargetVisible(key) {
@@ -428,7 +438,9 @@
           goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
           openTaskCenter: (dispatchAction) => {
             this.showTaskCenter = true;
-            this.activeTaskCenterTab = dispatchAction?.tab || this.activeTaskCenterTab || 'main';
+            this.activeTaskCenterTab = dispatchAction?.tab
+              || (this.hasClaimableMainTask() ? 'main' : this.activeTaskCenterTab)
+              || 'main';
             this.showResourceDetails = false;
             this.showCitySwitcher = false;
             this.activeEventId = null;

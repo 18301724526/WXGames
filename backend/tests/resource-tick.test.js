@@ -63,6 +63,21 @@ test('客户端状态返回食物产出/消耗/净增长拆解', () => {
   assert.equal(clientState.buildingDefinitions.farm.art, 'assets/art/building-farm-cutout.png');
 });
 
+test('online progress advances resources from the last saved timestamp', () => {
+  const state = gameStateService.createInitialGameState('online-progress-player');
+  state.population.farmers = 3;
+  state.population.scholars = 0;
+  state.resources.food = 100;
+  state.resources.knowledge = 0;
+  state.updatedAt = '2026-05-22T00:00:00.000Z';
+
+  const progressed = gameStateService.applyOnlineProgress(state, new Date('2026-05-22T00:00:10.000Z'));
+
+  assert.equal(progressed.resources.food, 124);
+  assert.equal(Math.round(progressed.resources.knowledge * 10) / 10, 1.5);
+  assert.equal(progressed.updatedAt, '2026-05-22T00:00:10.000Z');
+});
+
 test('伐木场与工匠会产出木材并计入离线收益', () => {
   const state = gameStateService.createInitialGameState('wood-player');
   state.currentEra = 2;

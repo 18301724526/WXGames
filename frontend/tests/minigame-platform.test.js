@@ -483,11 +483,6 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
 
     app.state = {
       ...app.state,
-      softGuide: {
-        mode: 'strong',
-        target: 'task-center-main-claim',
-        message: 'Claim the reward.',
-      },
       guideTasks: {
         visible: true,
         tasks: [{
@@ -511,6 +506,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     ));
     assert.ok(guideTaskTarget);
     assert.equal(app.getGuideTargetRect('task-center-main-claim').left, guideTaskTarget.x);
+    app.activeTaskCenterTab = 'daily';
     app.handleTap({
       x: guideTaskTarget.x + guideTaskTarget.width / 2,
       y: guideTaskTarget.y + guideTaskTarget.height / 2,

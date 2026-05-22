@@ -25,15 +25,22 @@ function buildGameView(gameState, tutorial, gameStateService) {
   };
 }
 
+function loadProgressedGameState(repository, gameStateService, playerId) {
+  const rawState = repository.findByPlayerId(playerId);
+  if (!rawState) return null;
+  return gameStateService.applyOnlineProgress
+    ? gameStateService.applyOnlineProgress(rawState)
+    : gameStateService.normalizeState(rawState);
+}
+
 function registerGameRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService } = deps;
 
   app.get('/api/game/state', authMiddleware, (req, res) => {
-    const rawState = repository.findByPlayerId(req.playerId);
-    if (!rawState) {
+    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
-    const gameState = gameStateService.normalizeState(rawState);
     let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     let eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
@@ -49,11 +56,10 @@ function registerGameRoutes(app, deps) {
   });
 
   app.get('/api/game/tasks', authMiddleware, (req, res) => {
-    const rawState = repository.findByPlayerId(req.playerId);
-    if (!rawState) {
+    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
-    const gameState = gameStateService.normalizeState(rawState);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.touchPlayerActiveAt(req.playerId);
@@ -65,12 +71,11 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
-    const rawState = repository.findByPlayerId(req.playerId);
-    if (!rawState) {
+    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
 
-    const gameState = gameStateService.normalizeState(rawState);
     let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     let eraProgress = gameStateService.calculateEraProgress(gameState);
     tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
@@ -100,12 +105,11 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/action', authMiddleware, (req, res) => {
-    const rawState = repository.findByPlayerId(req.playerId);
-    if (!rawState) {
+    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
 
-    const gameState = gameStateService.normalizeState(rawState);
     let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const { action, target, count, step, eventId, optionId, territoryId, cityId, soldiers, name, direction, missionId } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
@@ -156,7 +160,6 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    repository.save(gameState);
     repository.save(gameState);
     return res.status(result.success ? 200 : 400).json({
       ...result,

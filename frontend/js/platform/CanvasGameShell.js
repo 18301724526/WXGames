@@ -198,11 +198,22 @@
 
     refreshTaskCenterGuideHighlight(action = {}) {
       const guideTarget = action.target || this.lastGame?.state?.softGuide?.target;
-      if (guideTarget !== 'task-center-main-claim' && guideTarget !== 'guide-task-claim') return false;
+      if (
+        guideTarget !== 'task-center-main-claim'
+        && guideTarget !== 'guide-task-claim'
+        && !this.hasClaimableMainTask()
+      ) return false;
       this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
       const target = this.getTutorialTargetWithoutScroll('task-center-main-claim');
       if (!target) return false;
       return this.showTutorialHighlight(target, action.message || '领取主线任务奖励');
+    }
+
+    hasClaimableMainTask() {
+      const state = this.lastGame?.state || {};
+      const view = this.presenter?.buildTaskCenterViewState?.(state, { activeTab: this.activeTaskCenterTab || 'main' });
+      const tasks = Array.isArray(view?.categories?.main?.tasks) ? view.categories.main.tasks : [];
+      return tasks.some((task) => task.status === 'claimable' && !task.claimed);
     }
 
     getTargetTab(key) {
@@ -667,7 +678,9 @@
           goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
           openTaskCenter: (dispatchAction) => {
             this.showTaskCenter = true;
-            this.activeTaskCenterTab = dispatchAction?.tab || this.activeTaskCenterTab || 'main';
+            this.activeTaskCenterTab = dispatchAction?.tab
+              || (this.hasClaimableMainTask() ? 'main' : this.activeTaskCenterTab)
+              || 'main';
             this.showSettings = false;
             this.showLogs = false;
             this.showResourceDetails = false;

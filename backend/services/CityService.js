@@ -236,6 +236,7 @@ function updateCityName(gameState, territoryId, name) {
 
 function advanceAllCities(gameState, deltaSeconds = 1) {
   normalizeCities(gameState);
+  const seconds = Math.max(0, Number(deltaSeconds) || 0);
   for (const city of Object.values(gameState.cities)) {
     applyDerivedStatsToCity(city, gameState);
     const outputs = ResourceTickCalculator.calculateOutputs({
@@ -246,25 +247,25 @@ function advanceAllCities(gameState, deltaSeconds = 1) {
       military: city.military,
       happiness: city.happiness,
     }, city.buildingEffects);
-    city.resources.food = Math.max(0, (city.resources.food || 0) + outputs.foodPerSecond);
-    city.resources.knowledge = Math.max(0, (city.resources.knowledge || 0) + outputs.knowledgePerSecond);
-    city.resources.wood = Math.max(0, (city.resources.wood || 0) + outputs.woodPerSecond);
-    city.resources.iron = Math.max(0, (city.resources.iron ?? city.resources.metal ?? 0) + outputs.ironPerSecond);
-    city.resources.stone = Math.max(0, (city.resources.stone || 0) + outputs.stonePerSecond);
+    city.resources.food = Math.max(0, (city.resources.food || 0) + outputs.foodPerSecond * seconds);
+    city.resources.knowledge = Math.max(0, (city.resources.knowledge || 0) + outputs.knowledgePerSecond * seconds);
+    city.resources.wood = Math.max(0, (city.resources.wood || 0) + outputs.woodPerSecond * seconds);
+    city.resources.iron = Math.max(0, (city.resources.iron ?? city.resources.metal ?? 0) + outputs.ironPerSecond * seconds);
+    city.resources.stone = Math.max(0, (city.resources.stone || 0) + outputs.stonePerSecond * seconds);
     city.resources.metal = city.resources.iron;
     ResourceTickCalculator.applyPopulationGrowth({
       ...gameState,
       resources: city.resources,
       population: city.population,
       buildingEffects: city.buildingEffects,
-    }, deltaSeconds);
+    }, seconds);
     const trainingState = {
       ...gameState,
       activeCityId: city.id,
       buildings: city.buildings,
       military: city.military,
     };
-    MilitaryService.advanceTraining(trainingState, deltaSeconds);
+    MilitaryService.advanceTraining(trainingState, seconds);
     city.military = trainingState.military;
   }
   syncActiveCityToLegacyFields(gameState);

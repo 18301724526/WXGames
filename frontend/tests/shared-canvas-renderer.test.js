@@ -120,6 +120,40 @@ test('CanvasGameRenderer top HUD uses compact icon/value resource strip', () => 
   assert.doesNotMatch(source, /drawPanel\(cardX, cardY, cardWidth, resourceHeight/);
 });
 
+test('CanvasGameRenderer top HUD draws all initial resource values', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      hasIron: true,
+      hasStone: true,
+      text: {
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+        foodValue: '100',
+        foodRate: '+2.4/s',
+        knowledgeValue: '0',
+        knowledgeRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+  });
+
+  renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+
+  for (const text of ['木材', '铁矿', '石料', '粮食', '知识', '100', '+2.4/s', '+0.1/s']) {
+    assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === text), `expected resource strip to draw ${text}`);
+  }
+});
+
 test('CanvasGameRenderer world radar applies pan offset to site positions', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

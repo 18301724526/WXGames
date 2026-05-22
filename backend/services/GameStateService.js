@@ -100,6 +100,17 @@ function normalizeState(rawState) {
   return state;
 }
 
+function applyOnlineProgress(gameState, now = new Date()) {
+  const normalized = normalizeState(gameState);
+  const lastUpdated = new Date(normalized.updatedAt || now);
+  const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return normalized;
+  const cappedSeconds = Math.min(elapsedSeconds, 60);
+  CityService.advanceAllCities(normalized, cappedSeconds);
+  normalized.updatedAt = now.toISOString();
+  return normalized;
+}
+
 function calculateEraProgress(gameState) {
   const normalized = normalizeState(gameState);
   const capital = CityService.getCapitalCity(normalized);
@@ -212,4 +223,5 @@ module.exports = {
   getClientGameState,
   calculateEraProgress,
   calculateOfflineIncome,
+  applyOnlineProgress,
 };

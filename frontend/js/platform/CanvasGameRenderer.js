@@ -372,17 +372,36 @@
       const itemY = resourceTop;
       resources.forEach((resource, index) => {
         const itemX = resourceX + index * (itemWidth + gap);
-        const iconSize = compactResources ? 18 : 22;
-        const iconX = itemX + (compactResources ? 3 : 4);
-        const valueX = itemX + (compactResources ? 25 : 33);
-        const valueSize = compactResources ? 12 : 16;
+        const iconSize = compactResources ? 13 : 22;
+        const valueSize = compactResources ? 11 : 16;
         const rateSize = compactResources ? 9 : 10;
-        const labelSize = compactResources ? 9 : 10;
-        const textWidth = Math.max(18, itemWidth - (valueX - itemX) - 1);
-        this.drawAsset(resource.icon, iconX, itemY + 3, iconSize, iconSize);
-        this.drawText(resource.label, iconX + iconSize / 2, itemY + 32, { size: labelSize, color: '#cbbd96', align: 'center' });
-        this.drawText(this.truncateText(resource.value, textWidth, { size: valueSize, bold: true }), valueX, itemY + 8, { size: valueSize, bold: true, color: '#74d3a0' });
-        this.drawText(this.truncateText(resource.rate, textWidth, { size: rateSize }), valueX, itemY + 29, { size: rateSize, color: '#a0a0a0' });
+        const labelSize = compactResources ? 8 : 10;
+        const textWidth = Math.max(24, itemWidth - 2);
+        if (compactResources) {
+          const centerX = itemX + itemWidth / 2;
+          const iconX = centerX - iconSize / 2;
+          this.drawAsset(resource.icon, iconX, itemY + 2, iconSize, iconSize);
+          this.drawText(resource.label, centerX, itemY + 17, { size: labelSize, color: '#cbbd96', align: 'center' });
+          this.drawText(this.truncateText(resource.value, textWidth, { size: valueSize, bold: true }), centerX, itemY + 28, {
+            size: valueSize,
+            bold: true,
+            color: '#74d3a0',
+            align: 'center',
+          });
+          this.drawText(this.truncateText(resource.rate, textWidth, { size: rateSize }), centerX, itemY + 40, {
+            size: rateSize,
+            color: '#a0a0a0',
+            align: 'center',
+          });
+        } else {
+          const iconX = itemX + 4;
+          const valueX = itemX + 33;
+          const wideTextWidth = Math.max(18, itemWidth - (valueX - itemX));
+          this.drawAsset(resource.icon, iconX, itemY + 3, iconSize, iconSize);
+          this.drawText(resource.label, iconX + iconSize / 2, itemY + 32, { size: labelSize, color: '#cbbd96', align: 'center' });
+          this.drawText(this.truncateText(resource.value, wideTextWidth, { size: valueSize, bold: true }), valueX, itemY + 8, { size: valueSize, bold: true, color: '#74d3a0' });
+          this.drawText(this.truncateText(resource.rate, wideTextWidth, { size: rateSize }), valueX, itemY + 29, { size: rateSize, color: '#a0a0a0' });
+        }
         this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: resourceHeight }, { type: 'openResourceDetails' });
       });
 

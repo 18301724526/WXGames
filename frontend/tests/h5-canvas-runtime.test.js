@@ -716,10 +716,11 @@ test('Canvas game shell guides claimable main task through task icon then panel 
   const claimTarget = { x: 258, y: 462, width: 78, height: 34, action: { type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' } };
   const renderer = {
     hitTargets: [guideBarTarget, taskIconTarget],
-    getHitTarget: () => ({ type: 'openTaskCenter', tab: 'main', target: 'task-center-main-claim', source: 'taskIcon' }),
+    getHitTarget: () => ({ type: 'openTaskCenter', source: 'taskIcon' }),
     render(state, options) {
       renderCalls.push(options);
-      this.hitTargets = options.showTaskCenter
+      const shouldShowClaim = options.showTaskCenter && options.activeTaskCenterTab === 'main';
+      this.hitTargets = shouldShowClaim
         ? [guideBarTarget, taskIconTarget, claimTarget]
         : [guideBarTarget, taskIconTarget];
     },
@@ -727,7 +728,10 @@ test('Canvas game shell guides claimable main task through task icon then panel 
   const game = {
     state: {
       currentTab: 'resources',
-      softGuide: { target: 'task-center-main-claim', message: 'Claim the reward.' },
+      guideTasks: {
+        visible: true,
+        tasks: [{ id: 'barracks_supplies', status: 'claimable', claimed: false }],
+      },
     },
   };
   const shell = CanvasGameShell.mount(game, {
@@ -735,6 +739,15 @@ test('Canvas game shell guides claimable main task through task icon then panel 
     document,
     runtime,
     renderer,
+    presenter: {
+      buildTaskCenterViewState: () => ({
+        categories: {
+          main: {
+            tasks: [{ id: 'barracks_supplies', status: 'claimable', claimed: false }],
+          },
+        },
+      }),
+    },
     previewEnabled: true,
     inputEnabled: true,
   });
@@ -747,10 +760,12 @@ test('Canvas game shell guides claimable main task through task icon then panel 
     right: taskIconTarget.x + taskIconTarget.width,
     bottom: taskIconTarget.y + taskIconTarget.height,
   });
+  shell.activeTaskCenterTab = 'daily';
 
   listeners['document:pointerup']({ clientX: 326, clientY: 628, type: 'pointerup', timeStamp: 1000 });
 
   assert.equal(renderCalls.at(-1).showTaskCenter, true);
+  assert.equal(renderCalls.at(-1).activeTaskCenterTab, 'main');
   assert.deepEqual(renderCalls.at(-1).tutorialHighlight.rect, {
     left: claimTarget.x,
     top: claimTarget.y,
