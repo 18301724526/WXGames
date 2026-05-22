@@ -62,6 +62,11 @@
           rememberPasswordChecked: false,
         },
       };
+      this.loading = {
+        visible: false,
+        percentage: 0,
+        message: '',
+      };
       this.tutorialHighlight = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
@@ -438,6 +443,46 @@
       };
     }
 
+    showLoading(message = '') {
+      this.loading = {
+        visible: true,
+        percentage: 0,
+        message: message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90',
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    updateLoading(progress = {}) {
+      if (!this.loading.visible) return false;
+      this.loading = {
+        ...this.loading,
+        percentage: Math.max(0, Math.min(100, Number(progress.percentage) || 0)),
+        message: progress.message || this.loading.message,
+      };
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
+    }
+
+    hideLoading() {
+      const hadLoading = Boolean(this.loading.visible);
+      this.loading = {
+        visible: false,
+        percentage: 100,
+        message: '',
+      };
+      if (hadLoading) this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return hadLoading;
+    }
+
+    preloadAssets(onProgress = null, assetPaths = null) {
+      if (!this.renderer || typeof this.renderer.preloadAssets !== 'function') {
+        onProgress?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
+        return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
+      }
+      return this.renderer.preloadAssets(assetPaths || undefined, onProgress);
+    }
+
     toggleRememberPassword() {
       const credentials = this.auth.credentials || {};
       this.auth = {
@@ -579,6 +624,7 @@
         tabLocks: this.getTabLocks(state),
         naming: this.naming,
         auth: this.auth,
+        loading: this.loading,
         floatingTexts: this.getFloatingTextView(),
         tutorialHighlight: this.tutorialHighlight,
         rewardReveal: this.rewardReveal,

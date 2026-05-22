@@ -23,6 +23,32 @@ window.mountAuthMethods = function(game, deps = {}) {
     applyAuthShellView(presenter.buildAuthShellViewState({ authenticated: true }));
   }
 
+  async function waitForAuthenticatedAssets() {
+    const message = '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90';
+    if (typeof game.loadGameAssets === 'function') {
+      await game.loadGameAssets({ message });
+      return;
+    }
+    game.canvasShell?.showLoading?.(message);
+    try {
+      await (game.canvasShell?.preloadAssets?.((progress) => {
+        game.canvasShell?.updateLoading?.({ ...progress, message });
+      }) || Promise.resolve());
+    } finally {
+      game.canvasShell?.hideLoading?.();
+    }
+  }
+
+  function startAuthenticatedSession() {
+    game.showLoading?.('\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90');
+    showAuthenticatedShell();
+    return waitForAuthenticatedAssets()
+      .catch((error) => {
+        console.warn('[auth.js] asset preload failed before heartbeat', error);
+      })
+      .finally(() => game.startHeartbeat());
+  }
+
   function persistRememberedCredentials(username, password, rememberPassword) {
     authStorage?.persistRememberedCredentials?.(username, password, rememberPassword);
   }
@@ -84,7 +110,9 @@ window.mountAuthMethods = function(game, deps = {}) {
         authStorage?.setUsername?.(username);
         persistRememberedCredentials(username, password, rememberPassword);
         if (this.buildingAPI) this.buildingAPI.setToken(data.token);
+        this.showLoading?.('\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90');
         showAuthenticatedShell();
+        await waitForAuthenticatedAssets();
         if (data.gameState) {
           this.applyApiState(data);
         }
@@ -136,8 +164,12 @@ window.mountAuthMethods = function(game, deps = {}) {
 
   // 已有 token 时自动启动 heartbeat（刷新页面无需重新登录）
   if (game.token) {
-    showAuthenticatedShell();
-    game.startHeartbeat();
+    if (game.canvasShell) {
+      startAuthenticatedSession();
+    } else {
+      game.onCanvasShellReady = startAuthenticatedSession;
+      showAuthenticatedShell();
+    }
   } else {
     // 无 token：显示登录面板
     game.showLoginPanel();

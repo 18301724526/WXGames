@@ -16,6 +16,48 @@
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
 
+    static getPreloadAssetPaths() {
+      return [
+        'assets/art/civilization-bg.webp',
+        'assets/art/icon-fire-cutout.webp',
+        'assets/art/icon-wood-cutout.webp',
+        'assets/art/icon-iron-cutout.webp',
+        'assets/art/icon-stone-cutout.webp',
+        'assets/art/icon-food-cutout.webp',
+        'assets/art/icon-knowledge-cutout.webp',
+        'assets/art/icon-population-cutout.webp',
+        'assets/art/icon-happiness-cutout.webp',
+        'assets/art/icon-farmer-cutout.webp',
+        'assets/art/icon-scholar-cutout.webp',
+        'assets/art/icon-craftsman-cutout.webp',
+        'assets/art/icon-science-cutout.webp',
+        'assets/art/icon-soldier-cutout.webp',
+        'assets/art/icon-event-cutout.webp',
+        'assets/art/building-house-cutout.png',
+        'assets/art/building-farm-cutout.png',
+        'assets/art/building-lumbermill-cutout.png',
+        'assets/art/building-barracks-cutout.png',
+        'assets/art/building-academy-cutout.png',
+        'assets/art/building-workshop-cutout.png',
+        'assets/art/building-temple-cutout.png',
+        'assets/art/building-watchtower-cutout.png',
+        'assets/art/territory-capital-cutout.png',
+        'assets/art/territory-forest-cutout.png',
+        'assets/art/territory-hills-cutout.png',
+        'assets/art/territory-plains-cutout.png',
+        'assets/art/territory-ruins-cutout.png',
+        'assets/art/world-site-camp-cutout.png',
+        'assets/art/world-site-city-cutout.png',
+        'assets/art/world-site-outpost-cutout.png',
+        'assets/art/world-site-ruins-cutout.png',
+        'assets/art/world-site-town-cutout.png',
+      ];
+    }
+
+    getPreloadAssetPaths() {
+      return this.constructor.getPreloadAssetPaths();
+    }
+
     setPresenter(presenter) {
       this.presenter = presenter;
     }
@@ -49,6 +91,72 @@
 
     createImage(src) {
       return null;
+    }
+
+    preloadAssets(assetPaths = this.getPreloadAssetPaths(), onProgress = null) {
+      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
+      const total = paths.length;
+      const report = typeof onProgress === 'function' ? onProgress : null;
+      if (!total) {
+        report?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
+        return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
+      }
+
+      let completed = 0;
+      let loaded = 0;
+      let failed = 0;
+      const notify = (assetPath, status) => {
+        const percentage = Math.round((completed / total) * 100);
+        report?.({ total, completed, loaded, failed, percentage, assetPath, status });
+      };
+
+      return new Promise((resolve) => {
+        const settle = (assetPath, status) => {
+          completed += 1;
+          if (status === 'loaded') loaded += 1;
+          else failed += 1;
+          notify(assetPath, status);
+          if (completed >= total) resolve({ total, completed, loaded, failed, percentage: 100 });
+        };
+
+        notify('', 'start');
+        paths.forEach((assetPath) => {
+          const cached = this.assetCache.get(assetPath);
+          if (cached?.status === 'loaded') {
+            settle(assetPath, 'loaded');
+            return;
+          }
+          if (cached?.status === 'error') {
+            settle(assetPath, 'error');
+            return;
+          }
+
+          const image = cached?.image || this.createImage(assetPath);
+          if (!image) {
+            this.assetCache.set(assetPath, { status: 'error', image: null });
+            settle(assetPath, 'error');
+            return;
+          }
+
+          const record = cached || { status: 'loading', image };
+          if (!cached) this.assetCache.set(assetPath, record);
+          const previousOnload = image.onload;
+          const previousOnerror = image.onerror;
+          let settled = false;
+          const complete = (status, handler, event) => {
+            if (settled) return;
+            settled = true;
+            record.status = status;
+            if (status === 'loaded' && this.assetsChangedHandler) this.assetsChangedHandler();
+            if (typeof handler === 'function') handler.call(image, event);
+            settle(assetPath, status);
+          };
+          image.onload = (event) => complete('loaded', previousOnload, event);
+          image.onerror = (event) => complete('error', previousOnerror, event);
+          if (!cached) image.src = assetPath;
+          else if (!image.src) image.src = assetPath;
+        });
+      });
     }
 
     getAsset(assetPath) {
@@ -122,6 +230,35 @@
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
       this.ctx.drawImage(image, x, y, width, height);
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return true;
+    }
+
+    drawCoverAsset(assetPath, x, y, width, height, alpha = 1) {
+      const image = this.getAsset(assetPath);
+      if (!image || typeof this.ctx.drawImage !== 'function') return false;
+      const sourceWidth = Number(image.naturalWidth || image.width);
+      const sourceHeight = Number(image.naturalHeight || image.height);
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
+      if (sourceWidth > 0 && sourceHeight > 0) {
+        const sourceRatio = sourceWidth / sourceHeight;
+        const targetRatio = width / height;
+        let sx = 0;
+        let sy = 0;
+        let sw = sourceWidth;
+        let sh = sourceHeight;
+        if (sourceRatio > targetRatio) {
+          sw = sourceHeight * targetRatio;
+          sx = (sourceWidth - sw) / 2;
+        } else {
+          sh = sourceWidth / targetRatio;
+          sy = (sourceHeight - sh) / 2;
+        }
+        this.ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
+      } else {
+        this.ctx.drawImage(image, x, y, width, height);
+      }
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
       return true;
     }
@@ -2677,12 +2814,91 @@
       this.addHitTarget({ x: inputX, y: loginY, width: inputWidth, height: 40 }, { type: 'submitLogin' });
     }
 
+    renderLoadingScreen(loading = {}) {
+      if (!loading.visible) return;
+      this.setHitTargets([]);
+      if (this.ctx) {
+        const hasBackground = this.drawCoverAsset('assets/art/civilization-bg.webp', 0, 0, this.width, this.height, 1);
+        if (!hasBackground) {
+          this.ctx.fillStyle = this.createGradient(
+            0, 0, this.width, this.height,
+            [
+              [0, '#1c241b'],
+              [0.48, '#44321f'],
+              [1, '#11140f'],
+            ],
+            '#14120f',
+          );
+          this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+        this.ctx.fillStyle = 'rgba(10, 10, 8, 0.42)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(360, layout.contentWidth - 16);
+      const panelHeight = 154;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.floor(this.height * 0.56);
+      const percentage = Math.max(0, Math.min(100, Number(loading.percentage) || 0));
+
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.92)'],
+            [1, 'rgba(19, 17, 13, 0.94)'],
+          ],
+          'rgba(31, 25, 18, 0.94)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.3)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+
+      const iconSize = 52;
+      const iconX = x + 22;
+      const iconY = y + 24;
+      this.drawPanel(iconX, iconY, iconSize, iconSize, {
+        fill: 'rgba(92, 63, 34, 0.9)',
+        stroke: 'rgba(240, 180, 91, 0.44)',
+        radius: iconSize / 2,
+        inset: 'rgba(255, 231, 184, 0.14)',
+      });
+      this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 10, iconY + 10, 32, 32);
+      this.drawText('\u6587\u660e\u706b\u79cd', iconX + iconSize + 14, y + 31, {
+        size: 19,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      this.drawText(loading.message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90', iconX + iconSize + 14, y + 58, {
+        size: 12,
+        color: '#cbbd96',
+      });
+
+      const barX = x + 22;
+      const barY = y + 98;
+      const barWidth = panelWidth - 44;
+      this.drawProgressBar(barX, barY, barWidth, 16, percentage);
+      this.drawText(`${Math.round(percentage)}%`, x + panelWidth / 2, barY + 28, {
+        size: 12,
+        bold: true,
+        color: '#ffd98a',
+        align: 'center',
+      });
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'blockCanvasModal' });
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.setHitTargets([]);
       this.clear();
       if (options.auth?.view?.loginPanelVisible) {
         this.renderLoginPanel(options.auth);
+        return;
+      }
+      if (options.loading?.visible) {
+        this.renderLoadingScreen(options.loading);
         return;
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
@@ -3010,6 +3226,10 @@
       this.clear();
       if (options.auth?.view?.loginPanelVisible) {
         this.renderLoginPanel(options.auth);
+        return;
+      }
+      if (options.loading?.visible) {
+        this.renderLoadingScreen(options.loading);
         return;
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));

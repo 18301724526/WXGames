@@ -111,6 +111,54 @@ test('CanvasGameRenderer hit target management works independently of platform',
   assert.equal(renderer.getHitTarget({ x: 30, y: 20 }), null);
 });
 
+test('CanvasGameRenderer preloads shared assets and reports progress', async () => {
+  const { ctx } = makeCtx();
+  const loadedImages = [];
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.createImage = () => {
+    const image = { width: 96, height: 96 };
+    loadedImages.push(image);
+    return image;
+  };
+
+  const progress = [];
+  const pending = renderer.preloadAssets(['assets/art/icon-fire-cutout.webp', 'assets/art/icon-wood-cutout.webp'], (entry) => {
+    progress.push(entry);
+  });
+  loadedImages.forEach((image) => image.onload());
+  const result = await pending;
+
+  assert.equal(result.total, 2);
+  assert.equal(result.loaded, 2);
+  assert.equal(result.failed, 0);
+  assert.equal(progress.at(-1).percentage, 100);
+  assert.equal(renderer.getAsset('assets/art/icon-fire-cutout.webp'), loadedImages[0]);
+});
+
+test('CanvasGameRenderer draws loading page over gameplay until resources are ready', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.assetCache.set('assets/art/civilization-bg.webp', {
+    status: 'loaded',
+    image: { width: 1600, height: 900, naturalWidth: 1600, naturalHeight: 900 },
+  });
+  renderer.assetCache.set('assets/art/icon-fire-cutout.webp', {
+    status: 'loaded',
+    image: { width: 128, height: 128, naturalWidth: 128, naturalHeight: 128 },
+  });
+
+  renderer.render({ currentTab: 'resources' }, {
+    mode: 'hud',
+    activeTab: 'resources',
+    loading: { visible: true, percentage: 42, message: 'Loading resources' },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'drawImage' && call.length >= 10), `background should be cropped as cover image: ${JSON.stringify(calls)}`);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'Loading resources'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '42%'));
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'blockCanvasModal' });
+});
+
 test('CanvasGameRenderer top HUD uses compact icon/value resource strip', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
 

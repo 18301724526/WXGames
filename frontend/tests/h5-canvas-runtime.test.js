@@ -191,6 +191,11 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
           rememberPasswordChecked: false,
         },
       },
+      loading: {
+        visible: false,
+        percentage: 0,
+        message: '',
+      },
       floatingTexts: [],
       tutorialHighlight: null,
       rewardReveal: null,
@@ -1101,6 +1106,41 @@ test('Canvas game shell owns login credentials and dispatches canvas login actio
     rememberPassword: true,
   });
   assert.equal(renderCalls.at(-1).auth.view.loginPanelVisible, true);
+});
+
+test('Canvas game shell passes shared loading state and preloads assets through renderer', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const progressCalls = [];
+  const renderer = {
+    getHitTarget: () => null,
+    render(state, options) { renderCalls.push(options); },
+    async preloadAssets(assetPaths, onProgress) {
+      assert.equal(assetPaths, undefined);
+      onProgress({ total: 2, completed: 1, percentage: 50 });
+      progressCalls.push('preload');
+      return { total: 2, completed: 2, loaded: 2, failed: 0, percentage: 100 };
+    },
+  };
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  shell.showLoading('Loading resources');
+  assert.equal(renderCalls.at(-1).loading.visible, true);
+  assert.equal(renderCalls.at(-1).loading.message, 'Loading resources');
+
+  await shell.preloadAssets((progress) => shell.updateLoading(progress));
+  assert.equal(progressCalls.length, 1);
+  assert.equal(renderCalls.at(-1).loading.percentage, 50);
+
+  shell.hideLoading();
+  assert.equal(renderCalls.at(-1).loading.visible, false);
 });
 
 test('Canvas game shell owns building pager state without DOM adapter', () => {
