@@ -1577,9 +1577,11 @@ test('H5 entry keeps Canvas as the only business UI after renderer extraction', 
   assert.doesNotMatch(appJs, /H5ShellAdapter\?\.fromDocument/);
   assert.match(appJs, /this\.canvasShell/);
   assert.match(appJs, /CanvasGameShell\?\.mount/);
-  assert.match(appJs, /handleCanvasTabSelection/);
-  assert.match(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
-  assert.match(appJs, /action\?\.type === 'claimEvent'/);
+  assert.match(appJs, /class H5GameHost extends CanvasGameAppBase/);
+  assert.doesNotMatch(appJs, /handleCanvasTabSelection\(tabId\)/);
+  assert.doesNotMatch(appJs, /action\?\.type === 'buildBuilding' \|\| action\?\.type === 'upgradeBuilding'/);
+  assert.doesNotMatch(appJs, /action\?\.type === 'claimEvent'/);
+  assert.doesNotMatch(appJs, /onAction: \(action\) =>/);
   assert.doesNotMatch(appJs, /renderTech\(\)|techKnowledgeRate/);
   assert.doesNotMatch(appJs, /renderCivilization\(\)|civilizationPanel/);
   assert.doesNotMatch(appJs, /militaryPanel|renderScoutControls\(\)|territoryRenderer|territoryActions/);
@@ -1590,6 +1592,7 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   const canvasIdx = html.indexOf('js/platform/CanvasGameRenderer.js');
   const minigameIdx = html.indexOf('js/platform/MiniGameCanvasRenderer.js');
   const h5gameIdx = html.indexOf('js/platform/H5CanvasGameRenderer.js');
+  const actionControllerIdx = html.indexOf('js/platform/CanvasActionController.js');
   const guideIdx = html.indexOf('js/platform/CanvasGuideController.js');
   const runtimeIdx = html.indexOf('js/platform/H5CanvasRuntime.js');
   const appCoreIdx = html.indexOf('js/platform/CanvasGameApp.js');
@@ -1599,6 +1602,7 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   assert.ok(canvasIdx >= 0);
   assert.ok(minigameIdx >= 0);
   assert.ok(h5gameIdx >= 0);
+  assert.ok(actionControllerIdx >= 0);
   assert.ok(guideIdx >= 0);
   assert.ok(appCoreIdx >= 0);
   assert.ok(runtimeIdx >= 0);
@@ -1607,6 +1611,8 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
 
   assert.ok(canvasIdx < minigameIdx);
   assert.ok(canvasIdx < h5gameIdx);
+  assert.ok(h5gameIdx < actionControllerIdx);
+  assert.ok(actionControllerIdx < guideIdx);
   assert.ok(h5gameIdx < guideIdx);
   assert.ok(guideIdx < appCoreIdx);
   assert.ok(appCoreIdx < shellIdx);

@@ -186,12 +186,15 @@ test('H5 update runtime adapter renders a canvas prompt and waits for canvas cli
 test('app delegates update reload runtime instead of touching browser globals directly', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+  const canvasAppJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
   const adapterJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5UpdateRuntimeAdapter.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5/);
   assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
-  assert.match(appJs, /this\.updateRuntime\?\.promptAndReload\(version\)/);
+  assert.match(appJs, /this\.showUpdatePrompt\(version\)/);
+  assert.match(canvasAppJs, /this\.updateRuntime\?\.promptAndReload\?\.\(version\)/);
   assert.doesNotMatch(appJs, /window\.confirm|window\.caches|navigator\.serviceWorker|window\.location|new URL\(window\.location/);
+  assert.doesNotMatch(canvasAppJs, /window\.confirm|window\.caches|navigator\.serviceWorker|window\.location|new URL\(window\.location/);
   assert.doesNotMatch(adapterJs, /global\.navigator|global\.URL/);
   assert.match(adapterJs, /this\.runtime\.confirm\.bind\(this\.runtime\)/);
   assert.match(adapterJs, /createElement\('canvas'\)/);

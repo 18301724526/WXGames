@@ -51,8 +51,8 @@ test('population management has no DOM panel, adapter, or style surface', () => 
   assert.doesNotMatch(h5ShellJs, /PopulationPanelAdapter|populationPanel/);
 
   assert.match(populationJs, /window\.mountPopulationMethods/);
-  assert.match(populationJs, /game\.assignJob = async function assignJob/);
-  assert.match(populationJs, /action: 'assign'/);
+  assert.doesNotMatch(populationJs, /game\.assignJob = async function assignJob/);
+  assert.doesNotMatch(populationJs, /action: 'assign'/);
   assert.doesNotMatch(populationJs, /PopulationPanelAdapter|populationPanel|renderPopulation|updatePopulationButtons|bindPopulationEvents/);
   assert.doesNotMatch(populationJs, /\bdocument\b|querySelector|getElementById|classList|addEventListener/);
 });
@@ -127,8 +127,11 @@ test('resource HUD renders population management through Canvas hit targets', ()
 
 test('H5 app dispatches population Canvas actions without DOM render methods', () => {
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+  const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(appJs, /action\?\.type === 'assignJob'/);
-  assert.match(appJs, /this\.assignJob\(action\.job, action\.delta\)/);
+  assert.doesNotMatch(appJs, /action\?\.type === 'assignJob'/);
+  assert.doesNotMatch(appJs, /this\.assignJob\(action\.job, action\.delta\)/);
+  assert.match(actionControllerJs, /handle_assignJob\(action\)/);
+  assert.match(actionControllerJs, /host\.api\.assignJob\(action\.job, action\.delta\)/);
   assert.doesNotMatch(appJs, /bindPopulationEvents|updatePopulationButtons|this\.renderPopulation\(\)/);
 });

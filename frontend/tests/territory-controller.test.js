@@ -99,11 +99,13 @@ test('territory controller receives expedition draft changes as plain data', () 
   assert.equal(controller.getUiState().expeditionSoldiers, '5');
 });
 
-test('app maps scout and claim scout canvas actions to distinct controller payloads', () => {
+test('shared canvas action controller maps scout actions to distinct controller payloads', () => {
   const projectRoot = path.join(__dirname, '..', '..');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+  const controllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(appJs, /if \(action\?\.type === 'scoutTerritory'\) \{[\s\S]*direction: action\.direction \|\| action\.value,[\s\S]*return true;[\s\S]*if \(action\?\.type === 'claimScout'\) \{[\s\S]*missionId: action\.missionId \|\| action\.value,/);
+  assert.match(controllerJs, /handle_scoutTerritory\(action\) \{[\s\S]*direction: action\.direction \|\| action\.value[\s\S]*handle_claimScout\(action\) \{[\s\S]*missionId: action\.missionId \|\| action\.value/);
+  assert.doesNotMatch(appJs, /scoutTerritory|claimScout/);
   assert.doesNotMatch(appJs, /if \(action\?\.type === 'scoutTerritory' \|\| action\?\.type === 'claimScout'\) \{[\s\S]*direction: action\.direction \|\| action\.value,[\s\S]*missionId: action\.missionId \|\| action\.value,/);
 });
 

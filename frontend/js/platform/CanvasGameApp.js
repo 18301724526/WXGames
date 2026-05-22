@@ -58,9 +58,32 @@
         expeditionLeader: '',
         expeditionSoldiers: '',
       };
-      this.log = options.log || (() => {});
+      this.externalLog = typeof options.log === 'function' ? options.log : null;
+      this.stateNormalizer = options.stateNormalizer || null;
+      this.stateManager = options.stateManager || null;
+      this.tutorialController = options.tutorialController || null;
+      this.tutorialRenderer = options.tutorialRenderer || null;
+      this.eventController = options.eventController || null;
+      this.buildingController = options.buildingController || null;
+      this.territoryController = options.territoryController || null;
+      this.canvasShell = options.canvasShell || null;
+      this.syncService = options.syncService || null;
+      this.updateChecker = options.updateChecker || null;
+      this.scheduler = options.scheduler || this.runtime || null;
+      this.requestLogs = [];
+      this.recentLogs = [];
+      this.activeAdvisor = null;
+      this.activeNamingPrompt = null;
+      this.activeNamingPromptKey = null;
+      this.scoutCountdownTimer = null;
       const DispatcherCtor = global.CanvasActionDispatcher;
       this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
+      const ActionControllerCtor = global.CanvasActionController || (typeof require === 'function' ? require('./CanvasActionController') : null);
+      this.actionController = options.actionController || (ActionControllerCtor ? new ActionControllerCtor({
+        host: this,
+        awaitAsync: true,
+        log: (message) => this.log(message),
+      }) : null);
       const GuideControllerCtor = global.CanvasGuideController || (typeof require === 'function' ? require('./CanvasGuideController') : null);
       this.guideController = options.guideController || (GuideControllerCtor ? new GuideControllerCtor({
         host: this,
@@ -72,21 +95,113 @@
 
     applyState(payload = {}) {
       const nextState = payload.gameState || payload.state || this.state;
+      const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
       this.state = {
         ...nextState,
         softGuide: payload.softGuide ?? nextState.softGuide ?? null,
         guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
         taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
+        eraProgress: payload.eraProgress ?? nextState.eraProgress,
       };
+      this.tutorial = nextTutorial;
       this.activeTab = this.state.currentTab || this.activeTab;
-      if (payload.token) {
-        this.api.setToken(payload.token);
-        this.runtime.setStorage('token', payload.token);
+      const api = this.getGameApi();
+      if (payload.token && api) {
+        api.setToken?.(payload.token);
+        this.runtime?.setStorage?.('token', payload.token);
       }
       this.render();
     }
 
+    getGameApi() {
+      return this.gameAPI || this.api;
+    }
+
+    applyApiState(data = {}) {
+      if (this.stateNormalizer?.normalizeGameState) {
+        const nextState = this.stateNormalizer.normalizeGameState(data);
+        this.tutorial = this.stateNormalizer.normalizeTutorialState?.(data) || this.tutorial || {};
+        this.syncFromServer(nextState, data.tutorial, data.eraProgress);
+        return;
+      }
+      this.applyState(data);
+    }
+
+    syncFromServer(serverState, tutorial, eraProgress) {
+      this.state = this.stateManager?.sync
+        ? this.stateManager.sync(serverState, eraProgress)
+        : { ...serverState, eraProgress: eraProgress ?? serverState?.eraProgress };
+      const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
+      this.tutorial = nextTutorial;
+      this.tutorialController?.setState?.(nextTutorial);
+      this.updateSyncInterval();
+      this.render();
+    }
+
+    getSyncInterval() {
+      const step = this.tutorialController?.state?.currentStep ?? this.tutorial?.currentStep;
+      if (step === 8) return this.config?.TUTORIAL_WAIT_SYNC_INTERVAL_MS || 500;
+      return this.config?.SYNC_INTERVAL_MS || this.syncIntervalMs;
+    }
+
+    updateSyncInterval() {
+      this.syncService?.setIntervalMs?.(this.getSyncInterval());
+    }
+
+    getBuildingLevel(buildingId) {
+      const entry = this.state?.buildings?.[buildingId];
+      if (!entry) return 0;
+      return typeof entry === 'object' ? entry.level || 0 : Number(entry) || 0;
+    }
+
+    isEra2AdvanceReady(progress = this.state?.eraProgress) {
+      return this.state?.currentEra === 1
+        && Boolean(progress?.canAdvance)
+        && this.getBuildingLevel('house') > 0;
+    }
+
+    getEffectiveTutorialState(tutorial) {
+      const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
+      if (!nextTutorial.completed && nextTutorial.currentStep === 8 && this.isEra2AdvanceReady()) {
+        return {
+          ...nextTutorial,
+          currentStep: 9,
+          phaseCompleted: {
+            ...nextTutorial.phaseCompleted,
+            newbie: true,
+          },
+        };
+      }
+      return nextTutorial;
+    }
+
+    canAdvanceEraByTutorial() {
+      return this.presenter?.canAdvanceEraByTutorial?.(this.state, this.tutorialController?.state || this.tutorial || {}) !== false;
+    }
+
+    canAdvanceEraNow(progress = this.state?.eraProgress) {
+      const view = this.presenter?.buildCivilizationViewState?.(
+        { ...this.state, eraProgress: progress },
+        this.tutorialController?.state || this.tutorial || {},
+        { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab?.('civilization') !== false },
+      );
+      return Boolean(view?.advanceButton?.canAdvance);
+    }
+
     render() {
+      this.renderMilitaryView();
+      this.tutorialController?.render?.();
+      this.renderSoftGuide({ skipSurface: true });
+      this.maybeShowNamingPrompt();
+      this.renderCanvasSurface();
+    }
+
+    renderCanvasSurface(activeTab = this.state?.currentTab || this.getActiveTab()) {
+      if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
+        this.canvasShell.renderReadOnly(this.state, activeTab);
+        return true;
+      }
+      if (!this.renderer?.render) return false;
       this.renderer.render(this.state, {
         activeTab: this.getActiveTab(),
         showResourceDetails: this.showResourceDetails,
@@ -100,14 +215,31 @@
         naming: this.naming,
         tutorialHighlight: this.tutorialHighlight,
       });
+      return true;
     }
 
     getActiveTab() {
       return this.state?.currentTab || this.activeTab || 'resources';
     }
 
+    getCanvasActionState() {
+      return this.state;
+    }
+
+    renderCanvasAction() {
+      return this.renderCanvasSurface();
+    }
+
+    resetForCanvasTabSwitch() {
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.activeEventId = null;
+    }
+
     openNaming(prompt = {}) {
       const view = this.presenter.buildNamingPromptViewState(prompt);
+      this.activeNamingPrompt = prompt;
+      this.activeNamingPromptKey = view.key;
       this.naming = {
         visible: true,
         view,
@@ -122,6 +254,8 @@
     }
 
     closeNaming() {
+      this.activeNamingPrompt = null;
+      this.activeNamingPromptKey = null;
       this.naming = {
         visible: false,
         view: null,
@@ -147,25 +281,64 @@
       this.render();
     }
 
-    submitNaming() {
-      const prompt = this.naming.prompt || {};
-      const name = String(this.naming.inputValue || '').trim();
+    submitNaming(inputName = null) {
+      return this.submitNamingValue(inputName);
+    }
+
+    async submitNamingValue(inputName = null) {
+      const prompt = this.activeNamingPrompt || this.naming.prompt || {};
+      const name = String(inputName ?? this.naming.inputValue ?? '').trim();
       if (!prompt.type || !name) return;
       this.naming.submitting = true;
       this.render();
-      this.runAction(() => (
-        prompt.type === 'polity'
-          ? this.api.renamePolity(name)
-          : this.api.renameCity(prompt.territoryId, name)
-      )).then(() => {
+      try {
+        const api = this.getGameApi();
+        const result = prompt.type === 'polity'
+          ? await api.renamePolity(name)
+          : await api.renameCity(prompt.territoryId, name);
         this.closeNaming();
-      });
+        this.applyApiState(result);
+        this.showFloatingText(result.message);
+        this.log(`成功：${result.message || ''}`);
+      } catch (error) {
+        this.log(`失败：${error.payload?.message || error.message}`);
+      } finally {
+        this.naming.submitting = false;
+        this.renderCanvasSurface(this.state?.currentTab);
+      }
     }
 
     async syncOnce() {
       const data = await this.api.getState();
       this.applyState(data);
       return data;
+    }
+
+    async startHeartbeat() {
+      const api = this.getGameApi();
+      api?.setToken?.(this.token);
+      try {
+        if (this.syncService?.fetchNow) await this.syncService.fetchNow();
+        this.syncService?.start?.();
+      } catch (error) {
+        if (error.payload && error.payload.error && this.handleAuthError) {
+          this.handleAuthError(error.payload);
+        }
+      }
+    }
+
+    stopHeartbeat() {
+      this.syncService?.stop?.();
+      this.updateChecker?.stop?.();
+      if (this.scoutCountdownTimer) {
+        this.scheduler?.clearInterval?.(this.scoutCountdownTimer);
+        this.scoutCountdownTimer = null;
+      }
+    }
+
+    showUpdatePrompt(version) {
+      this.stopHeartbeat();
+      return this.updateRuntime?.promptAndReload?.(version);
     }
 
     async runAction(callback) {
@@ -179,16 +352,241 @@
       }
     }
 
+    async apiGet(path) {
+      const api = this.getGameApi();
+      const startedAt = Date.now();
+      try {
+        const data = await api.request('GET', path);
+        this.cacheRequestLog?.(path, 'GET', null, 200, data, Date.now() - startedAt);
+        return data;
+      } catch (error) {
+        this.cacheRequestLog?.(path, 'GET', null, error.payload?.statusCode || 500, error.payload || { message: error.message }, Date.now() - startedAt);
+        throw error;
+      }
+    }
+
+    async apiPost(path, body) {
+      const api = this.getGameApi();
+      const startedAt = Date.now();
+      try {
+        const data = await api.request('POST', path, body);
+        this.cacheRequestLog?.(path, 'POST', body, 200, data, Date.now() - startedAt);
+        return data;
+      } catch (error) {
+        this.cacheRequestLog?.(path, 'POST', body, error.payload?.statusCode || 500, error.payload || { message: error.message }, Date.now() - startedAt);
+        throw error;
+      }
+    }
+
+    async handleBuildingSuccess(result, action, buildingId) {
+      this.applyApiState(result);
+      if (buildingId === 'farm' && action === 'build') {
+        this.tutorialController?.notifyFarmBuilt?.(result.tutorial);
+        this.showFloatingText('农田建成！');
+      } else if (buildingId === 'house' && action === 'build') {
+        this.tutorialController?.notifyHouseBuilt?.(result.tutorial);
+        this.showFloatingText('民居建成！');
+      } else if (buildingId === 'lumbermill' && action === 'build') {
+        this.tutorialController?.notifyLumbermillBuilt?.(result.tutorial);
+        this.showFloatingText('伐木场建成！');
+      } else {
+        this.showFloatingText(action === 'upgrade' ? '升级成功！' : '建造成功！');
+      }
+      this.log(`成功：${result.message || ''}`);
+    }
+
+    async buildBuilding(buildingId) {
+      return this.handleBuildingAction(buildingId, 'build');
+    }
+
+    async upgradeBuilding(buildingId) {
+      return this.handleBuildingAction(buildingId, 'upgrade');
+    }
+
+    async handleBuildingAction(buildingId, action) {
+      if (!buildingId) return false;
+      const controller = this.buildingController;
+      if (controller?.handleAction) {
+        await controller.handleAction({ buildingId, action });
+        return true;
+      }
+      try {
+        const api = this.getGameApi();
+        const result = action === 'upgrade'
+          ? await api.upgrade(buildingId)
+          : await api.build(buildingId);
+        await this.handleBuildingSuccess(result, action, buildingId);
+        return true;
+      } catch (error) {
+        this.log(`澶辫触锛?{error.payload?.message || error.message}`);
+        return false;
+      }
+    }
+
+    async assignJob(job, delta) {
+      if (!this.token && this.authStorage) {
+        this.log('请先登录');
+        return false;
+      }
+      try {
+        const result = await this.getGameApi().assignJob(job, delta);
+        if (result?.success === false) {
+          this.log(result.message || '人口分配失败');
+          const data = await this.getGameApi().getState?.();
+          if (data?.gameState) this.applyApiState(data);
+          return false;
+        }
+        this.applyApiState(result);
+        if (job === 'craftsman' && delta > 0) this.tutorialController?.notifyCraftsmanAssigned?.(result.tutorial);
+        this.log(`人口分配 ${delta > 0 ? '+' : ''}${delta} ${job}`);
+        return true;
+      } catch (error) {
+        this.log(`人口分配失败：${error.payload?.message || error.message}`);
+        try {
+          const data = await this.getGameApi().getState?.();
+          if (data?.gameState) this.applyApiState(data);
+        } catch (_) {}
+        return false;
+      }
+    }
+
+    async advanceEra() {
+      if (!this.canAdvanceEraNow()) {
+        this.log(this.state?.isCapitalCity === false ? '只有主城可以推动文明进阶' : this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
+        this.renderMilitary();
+        return false;
+      }
+      try {
+        const result = await this.getGameApi().advanceEra();
+        this.applyApiState(result);
+        this.tutorialController?.notifyEraAdvanced?.(result.tutorial);
+        this.log(`进入新阶段：${result.message || this.state.currentEraName || ''}`);
+        this.showFloatingText(`进入${this.state.currentEraName || '新阶段'}`);
+        return true;
+      } catch (error) {
+        this.log(`失败：${error.payload?.message || error.message}`);
+        return false;
+      } finally {
+        this.renderMilitary();
+      }
+    }
+
     switchTab(tab) {
-      this.activeTab = tab || 'resources';
+      const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
+      this.activeTab = navigation?.activeTab || tab || 'resources';
+      const preferredMilitaryView = this.getPreferredMilitaryView(tab);
       this.state = { ...this.state, currentTab: this.activeTab };
+      if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
       this.buildingOffset = 0;
       this.activeEventId = null;
-      this.render();
+      this.renderMilitaryView();
+      this.renderCanvasSurface(this.state.currentTab);
+      this.tutorialController?.render?.();
+    }
+
+    async handleCanvasTabSelection(tabId) {
+      if (!tabId) return false;
+      const onTabClicked = this.tutorialController?.onTabClicked;
+      const allowed = typeof onTabClicked === 'function'
+        ? await onTabClicked.call(this.tutorialController, tabId).catch(() => false)
+        : true;
+      if (!allowed) {
+        this.log('请先完成当前引导步骤');
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+      this.switchTab(tabId);
+      return true;
+    }
+
+    async claimGuideTaskReward(taskId) {
+      return this.claimTaskReward(taskId, 'main', { legacyGuideTask: true });
+    }
+
+    async claimTaskReward(taskId, category = 'main', options = {}) {
+      if (!taskId) return false;
+      try {
+        const api = this.getGameApi();
+        const result = options.legacyGuideTask && api.claimGuideTaskReward
+          ? await api.claimGuideTaskReward(taskId)
+          : await api.claimTaskReward(taskId, category || 'main');
+        this.applyApiState(result);
+        if (!this.moveToCurrentMainTaskTarget()) {
+          if (!this.canvasShell?.refreshCurrentGuideHighlight?.()) this.renderSoftGuide();
+        }
+        if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
+          this.rewardReveal = {
+            ...result.rewardReveal,
+            createdAt: this.runtime?.now?.() || Date.now(),
+          };
+          this.renderCanvasSurface(this.state?.currentTab);
+        }
+        this.showFloatingText(result.rewardText || result.message || '奖励已领取');
+        this.log(`奖励：${result.message || ''}`);
+        return true;
+      } catch (error) {
+        this.log(`失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    moveToCurrentMainTaskTarget() {
+      const tasks = this.state?.guideTasks?.tasks || this.state?.taskCenter?.categories?.main?.tasks || [];
+      const task = tasks.find((item) => item && item.status !== 'completed' && (item.target || item.action?.target));
+      const target = task?.target || task?.action?.target;
+      if (!target) return false;
+      return this.goToGuideTaskTarget({
+        ...(task.action || {}),
+        taskId: task.id,
+        target,
+      });
+    }
+
+    getPreferredMilitaryView(tabId) {
+      if (tabId === 'territory') return 'world';
+      if (tabId !== 'military') return null;
+      const guide = this.state?.softGuide || {};
+      const target = guide.target || '';
+      const message = String(guide.message || '');
+      if (target === 'scout-action-first') return 'scout';
+      if (target === 'tab-territory') return 'world';
+      if (target !== 'tab-military') return null;
+      if (/侦察|探索/.test(message)) return 'scout';
+      if (/领土|疆域|世界|占领/.test(message)) return 'world';
+      return null;
+    }
+
+    switchMilitaryView(view) {
+      const allowed = ['army', 'scout', 'world'];
+      this.militaryView = allowed.includes(view) ? view : 'army';
+      this.state = { ...this.state, militaryView: this.militaryView };
+      this.renderMilitaryView();
+      this.tutorialController?.render?.();
+      this.renderCanvasSurface(this.state?.currentTab);
+      return true;
+    }
+
+    renderMilitaryView() {
+      const view = this.presenter?.buildMilitaryNavigationViewState?.(this.state);
+      if (view?.activeView) {
+        this.militaryView = view.activeView;
+        if (this.state) this.state.militaryView = view.activeView;
+      }
+    }
+
+    updateMilitaryViewLocks() {
+      this.renderMilitaryView();
     }
 
     getTargetTab(key) {
       return this.guideController?.getTargetTab?.(key) || null;
+    }
+
+    getTutorialTarget(key) {
+      return this.canvasShell?.getTutorialTarget?.(key)
+        || this.guideController?.getTargetRect?.(key)
+        || null;
     }
 
     getGuideState() {
@@ -225,7 +623,8 @@
     }
 
     getCanvasTarget(type, predicate = null) {
-      const target = (this.renderer.hitTargets || []).find((item) => (
+      const targets = this.renderer?.hitTargets || [];
+      const target = targets.find((item) => (
         item.action?.type === type
         && (typeof predicate !== 'function' || predicate(item.action))
       ));
@@ -289,6 +688,156 @@
       return this.guideController?.goToGuideTaskTarget?.(action) || false;
     }
 
+    toggleCitySwitcher() {
+      const target = this.canvasShell || this;
+      target.showCitySwitcher = !target.showCitySwitcher;
+      this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    closeCitySwitcher() {
+      const target = this.canvasShell || this;
+      target.showCitySwitcher = false;
+      this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    async switchCity(cityId) {
+      if (!cityId || cityId === this.state?.activeCityId) return false;
+      try {
+        this.closeCitySwitcher();
+        const result = await this.getGameApi().switchCity(cityId);
+        this.applyApiState(result);
+        this.showFloatingText(result.message || '城市已切换');
+        this.log(`城市：${result.message || '城市已切换'}`);
+        return true;
+      } catch (error) {
+        this.log(`失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    renderMilitary() {
+      this.updateMilitaryViewLocks();
+      this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    startScoutCountdownTimer() {
+      if (this.scoutCountdownTimer) return;
+      this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
+        if ((this.state?.currentEra || 0) < 5) return;
+        if (this.state?.currentTab === 'military') this.renderCanvasSurface(this.state.currentTab);
+        if (this.state?.currentTab === 'territory') {
+          const territories = this.state.territoryState?.territories || [];
+          const hasConquestMission = territories.some((site) => site.mission?.status === 'active');
+          if (hasConquestMission) this.renderTerritory();
+        }
+      }, 1000);
+    }
+
+    renderTerritory() {
+      this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    getMissionRemainingSeconds(mission) {
+      return this.presenter?.getScoutMissionRemainingSeconds?.(mission);
+    }
+
+    formatScoutCountdown(seconds) {
+      return this.presenter?.formatScoutCountdown?.(seconds);
+    }
+
+    maybeShowNamingPrompt() {
+      const prompt = this.state?.territoryState?.namingPrompt;
+      const key = prompt ? `${prompt.type}:${prompt.territoryId || 'polity'}` : null;
+      if (!prompt || this.activeNamingPromptKey === key) return;
+      this.openNaming(prompt);
+    }
+
+    requestCityRename(prompt = {}) {
+      if (!prompt.territoryId) return null;
+      this.openNaming({
+        type: 'city',
+        territoryId: prompt.territoryId,
+        title: '为这座城市命名',
+        message: `当前名称：${prompt.currentName || '未命名城市'}`,
+      });
+      return null;
+    }
+
+    closeNamingModal() {
+      this.closeNaming();
+    }
+
+    renderSoftGuide(options = {}) {
+      const guide = this.state?.softGuide;
+      this.updateAdvisor(guide, { skipSurface: true });
+      if (!guide || guide.mode !== 'strong' || !guide.target) {
+        this.tutorialRenderer?.hide?.();
+        if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
+        return;
+      }
+      const target = this.getTutorialTarget(guide.target)
+        || this.getTutorialTarget(this.getFallbackGuideTarget(guide.target));
+      if (target) this.tutorialRenderer?.show?.(target, guide.message);
+      else this.tutorialRenderer?.hide?.();
+      if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    getFallbackGuideTarget(target) {
+      if (target === 'btn-advance-era') return 'tab-civilization';
+      if (target === 'card-craftsman') return 'tab-resources';
+      if (target === 'event-card-special' || target === 'btn-claim-event') return 'tab-events';
+      if (target === 'scout-action-first') return 'tab-military';
+      if (target === 'task-center-main-claim') return 'task-center-button';
+      if (typeof target === 'string' && target.startsWith('card-')) return 'tab-buildings';
+      return null;
+    }
+
+    updateAdvisor(guide, options = {}) {
+      const view = this.presenter?.buildAdvisorViewState?.(guide) || {};
+      this.activeAdvisor = view.activeAdvisor;
+      if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    goToAdvisorTarget() {
+      const target = this.activeAdvisor?.target;
+      if (target === 'scout-action-first') {
+        return this.canvasShell?.goToGuideTaskTarget?.({
+          target,
+          nextAction: { type: 'switchMilitaryView', view: 'scout' },
+        });
+      }
+      const tabId = this.presenter?.getAdvisorTargetTab?.(target);
+      if (tabId) this.switchTab(tabId);
+      return Boolean(tabId);
+    }
+
+    showFloatingText(message) {
+      const shown = this.canvasShell?.showFloatingText?.(message);
+      if (!shown && message) this.log(message);
+      return shown;
+    }
+
+    cacheRequestLog(path, method, body, statusCode, response, duration) {
+      this.requestLogs.unshift({
+        path,
+        method,
+        body: body ? JSON.stringify(body).slice(0, 200) : '',
+        statusCode,
+        response: JSON.stringify(response).slice(0, 200),
+        duration,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      if (this.requestLogs.length > 100) this.requestLogs = this.requestLogs.slice(0, 100);
+    }
+
+    log(message) {
+      if (this.externalLog) this.externalLog(message);
+      const entry = { text: String(message ?? ''), timestamp: Date.now() };
+      this.recentLogs.unshift(entry);
+      if (this.recentLogs.length > 30) this.recentLogs = this.recentLogs.slice(0, 30);
+    }
+
     getSelectedSite() {
       return (this.state.territoryState?.territories || []).find((site) => site.id === this.territoryUiState.selectedSiteId) || null;
     }
@@ -299,262 +848,15 @@
     }
 
     handleDrag(phase, point = {}) {
-      if (this.activeTab !== 'military' || this.militaryView !== 'world') return;
-      const x = Number(point.x) || 0;
-      const y = Number(point.y) || 0;
-      if (phase === 'start') {
-        this.dragStart = {
-          x,
-          y,
-          panX: Number(this.territoryUiState.worldPanX) || 0,
-          panY: Number(this.territoryUiState.worldPanY) || 0,
-        };
-        return;
-      }
-      if (phase === 'move') {
-        const dx = Number(point.dx ?? point.deltaX);
-        const dy = Number(point.dy ?? point.deltaY);
-        if (Number.isFinite(dx) && Number.isFinite(dy)) {
-          this.territoryUiState.worldPanX += dx;
-          this.territoryUiState.worldPanY += dy;
-        } else if (this.dragStart) {
-          this.territoryUiState.worldPanX = this.dragStart.panX + x - this.dragStart.x;
-          this.territoryUiState.worldPanY = this.dragStart.panY + y - this.dragStart.y;
-        }
-        this.render();
-        return;
-      }
-      if (phase === 'end' || phase === 'cancel') {
-        this.dragStart = null;
-      }
+      if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+      return this.actionController?.handle?.({ type: 'worldRadarDrag', phase, pointer: point }) || false;
     }
 
     async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
-
-      // Try sync dispatcher first
-      if (this.actionDispatcher?.canHandle?.(action)) {
-        this.actionDispatcher.handle(action, {
-          resetForTabSwitch: () => {
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.activeEventId = null;
-          },
-          switchTab: (tab) => {
-            this.switchTab(tab);
-            return true;
-          },
-          openResourceDetails: () => {
-            this.showResourceDetails = true;
-            this.showCitySwitcher = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeResourceDetails: () => {
-            this.showResourceDetails = false;
-            return true;
-          },
-          openCitySwitcher: () => {
-            this.showCitySwitcher = !this.showCitySwitcher;
-            this.showResourceDetails = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeCitySwitcher: () => {
-            this.showCitySwitcher = false;
-            return true;
-          },
-          closeRewardReveal: () => {
-            this.rewardReveal = null;
-            return true;
-          },
-          openEvent: () => {
-            const eventData = (this.state.eventQueue || []).find((item) => item.id === action.eventId);
-            if (!eventData) return false;
-            this.activeEventId = action.eventId;
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            return true;
-          },
-          closeEvent: () => {
-            this.activeEventId = null;
-            return true;
-          },
-          openWorldSite: () => {
-            this.territoryUiState.selectedSiteId = action.siteId || '';
-            return true;
-          },
-          closeWorldSite: () => {
-            this.territoryUiState.selectedSiteId = '';
-            this.territoryUiState.expeditionConfigSiteId = '';
-            this.territoryUiState.expeditionSoldiers = '';
-            return true;
-          },
-          resetWorldPan: () => {
-            this.territoryUiState.worldPanX = 0;
-            this.territoryUiState.worldPanY = 0;
-            return true;
-          },
-          changeExpeditionSoldiers: () => {
-            this.territoryUiState.expeditionConfigSiteId = action.siteId || this.territoryUiState.expeditionConfigSiteId;
-            this.territoryUiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
-            return true;
-          },
-          goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
-          openTaskCenter: (dispatchAction) => {
-            this.showTaskCenter = true;
-            this.activeTaskCenterTab = dispatchAction?.tab
-              || (this.hasClaimableMainTask() ? 'main' : this.activeTaskCenterTab)
-              || 'main';
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeTaskCenter: () => {
-            this.showTaskCenter = false;
-            return true;
-          },
-          switchTaskCenterTab: (tab) => {
-            this.activeTaskCenterTab = tab || 'main';
-            return true;
-          },
-          render: (dispatchAction) => {
-            if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') this.render();
-            if (dispatchAction?.type === 'openTaskCenter') this.refreshTaskCenterGuideHighlight(dispatchAction);
-          },
-        });
-        return;
-      }
-
-      // Try async dispatcher
-      if (this.actionDispatcher?.canHandleAsync?.(action)) {
-        const result = await this.actionDispatcher.handleAsync(action, {
-          selectCity: async (a) => {
-            this.showCitySwitcher = false;
-            this.activeEventId = null;
-            await this.runAction(() => this.api.switchCity(a.cityId));
-            return true;
-          },
-          assignJob: async (a) => {
-            await this.runAction(() => this.api.assignJob(a.job, a.delta));
-            return true;
-          },
-          buildBuilding: async (a) => {
-            await this.runAction(() => this.api.build(a.buildingId));
-            return true;
-          },
-          upgradeBuilding: async (a) => {
-            await this.runAction(() => this.api.upgrade(a.buildingId));
-            return true;
-          },
-          advanceEra: async () => {
-            await this.runAction(() => this.api.advanceEra());
-            return true;
-          },
-          claimEvent: async (a) => {
-            this.activeEventId = null;
-            await this.runAction(() => this.api.claimEvent(a.eventId, a.optionId));
-            return true;
-          },
-          claimGuideTaskReward: async (a) => {
-            const result = await this.runAction(() => this.api.claimGuideTaskReward(a.taskId));
-            this.rewardReveal = result?.rewardReveal || null;
-            this.refreshCurrentGuideHighlight();
-            return true;
-          },
-          claimTaskReward: async (a) => {
-            this.showTaskCenter = false;
-            const claim = this.api.claimTaskReward || ((taskId) => this.api.claimGuideTaskReward(taskId));
-            const result = await this.runAction(() => claim.call(this.api, a.taskId, a.category || 'main'));
-            this.rewardReveal = result?.rewardReveal || null;
-            this.refreshCurrentGuideHighlight();
-            return true;
-          },
-          scoutTerritory: async (a) => {
-            await this.runAction(() => this.api.scoutTerritory(a.value));
-            return true;
-          },
-          claimScout: async (a) => {
-            await this.runAction(() => this.api.claimScout(a.value));
-            return true;
-          },
-          requestNamingInput: async () => {
-            this.requestNamingInput();
-            return true;
-          },
-          closeNaming: async () => {
-            this.closeNaming();
-            return true;
-          },
-          submitNaming: async () => {
-            this.submitNaming();
-            return true;
-          },
-          scrollBuildings: async (a) => {
-            this.buildingOffset = Math.max(0, this.buildingOffset + (Number(a.delta) || 0));
-            return true;
-          },
-          switchMilitaryView: async (a) => {
-            this.militaryView = a.view || 'army';
-            this.state = { ...this.state, militaryView: this.militaryView };
-            return true;
-          },
-          openExpedition: async (a) => {
-            const site = (this.state.territoryState?.territories || []).find((item) => item.id === a.territoryId);
-            this.territoryUiState.expeditionConfigSiteId = a.territoryId || '';
-            this.territoryUiState.expeditionSoldiers = String(Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1));
-            return true;
-          },
-          closeExpedition: async () => {
-            this.territoryUiState.expeditionConfigSiteId = '';
-            this.territoryUiState.expeditionSoldiers = '';
-            return true;
-          },
-          conquer: async (a) => {
-            await this.runAction(() => this.api.startConquest(a.territoryId, { soldiers: 1 }));
-            return true;
-          },
-          launchExpedition: async (a) => {
-            await this.runAction(() => this.api.startConquest(a.territoryId, {
-              troopType: this.territoryUiState.expeditionTroopType || 'unavailable',
-              leader: this.territoryUiState.expeditionLeader || 'unavailable',
-              soldiers: this.getExpeditionSoldiers(),
-            }));
-            return true;
-          },
-          claimConquest: async (a) => {
-            await this.runAction(() => this.api.claimConquest(a.territoryId));
-            return true;
-          },
-          manageCity: async (a) => {
-            this.territoryUiState.selectedSiteId = '';
-            await this.runAction(() => this.api.switchCity(a.territoryId));
-            return true;
-          },
-          renameCity: async (a) => {
-            const site = (this.state.territoryState?.territories || []).find((item) => item.id === a.territoryId) || {};
-            this.openNaming({
-              type: 'city',
-              territoryId: a.territoryId,
-              title: '为这座城市命名',
-              message: `当前名称：${site.cityName || site.naturalName || '未命名城市'}`,
-            });
-            return true;
-          },
-          render: (dispatchAction) => {
-            if (dispatchAction?.type !== 'switchTab') this.render();
-          },
-        });
-        if (result.handled) return;
-      }
-
-      if (action.type === 'blockCanvasModal') {
-        return;
-      }
+      await this.actionController?.handle?.(action);
     }
-
     start() {
       this.render();
       this.syncOnce().catch(() => {});

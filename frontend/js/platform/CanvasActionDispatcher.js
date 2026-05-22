@@ -231,57 +231,6 @@
       ];
     }
 
-    static supportedAsyncActions() {
-      return [
-        'selectCity',
-        'assignJob',
-        'buildBuilding',
-        'upgradeBuilding',
-        'advanceEra',
-        'claimEvent',
-        'claimGuideTaskReward',
-        'claimTaskReward',
-        'scoutTerritory',
-        'claimScout',
-        'requestNamingInput',
-        'closeNaming',
-        'submitNaming',
-        'scrollBuildings',
-        'switchMilitaryView',
-        'openExpedition',
-        'closeExpedition',
-        'conquer',
-        'launchExpedition',
-        'claimConquest',
-        'manageCity',
-        'renameCity',
-      ];
-    }
-
-    canHandleAsync(action) {
-      return Boolean(action && CanvasActionDispatcher.supportedAsyncActions().includes(action.type));
-    }
-
-    async handleAsync(action, context = {}) {
-      if (!this.canHandleAsync(action)) return { handled: false };
-      if (action.disabled) return { handled: true, success: false, reason: 'disabled' };
-
-      const handler = context[action.type];
-      if (typeof handler !== 'function') {
-        return { handled: false, reason: 'no_handler' };
-      }
-
-      try {
-        const result = await handler(action);
-        if (result !== false && typeof context.render === 'function') {
-          context.render(action);
-        }
-        return { handled: true, success: result !== false };
-      } catch (error) {
-        if (this.log) this.log('Async action error:', action.type, error);
-        return { handled: true, success: false, error };
-      }
-    }
   }
 
   global.CanvasActionDispatcher = CanvasActionDispatcher;

@@ -23,6 +23,11 @@
       this.onAction = typeof options.onAction === 'function' ? options.onAction : null;
       const DispatcherCtor = global.CanvasActionDispatcher;
       this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
+      const ActionControllerCtor = global.CanvasActionController || (typeof require === 'function' ? require('./CanvasActionController') : null);
+      this.actionController = options.actionController || (ActionControllerCtor ? new ActionControllerCtor({
+        host: this,
+        log: options.log,
+      }) : this.actionController);
       this.mounted = false;
       this.lastGame = null;
       this.resizeDisposer = null;
@@ -118,8 +123,7 @@
         this.dragAction = action;
       }
       if (!this.dragAction) return false;
-      if (!this.onAction) return false;
-      const handled = this.onAction({ type: 'worldRadarDrag', phase, pointer: point }, event) !== false;
+      const handled = this.actionController?.handle?.({ type: 'worldRadarDrag', phase, pointer: point }, { event }) || false;
       if (phase === 'end') this.dragAction = null;
       return handled;
     }
@@ -164,6 +168,29 @@
         }),
         scrollIntoView() {},
       };
+    }
+
+    getCanvasGameHost() {
+      return this.lastGame || null;
+    }
+
+    getCanvasActionState() {
+      return this.lastGame?.state || {};
+    }
+
+    resetForCanvasTabSwitch() {
+      this.buildingOffset = 0;
+      this.activeEventId = null;
+    }
+
+    forwardCanvasAction(action, meta = {}) {
+      if (!this.onAction) return undefined;
+      return this.onAction(action, meta.event) !== false;
+    }
+
+    renderCanvasAction(action = {}) {
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return true;
     }
 
     getGuideState() {
@@ -513,294 +540,8 @@
     }
 
     handleAction(action, event) {
-      if (this.actionDispatcher?.canHandle?.(action)) {
-        return this.actionDispatcher.handle(action, {
-          resetForTabSwitch: () => {
-            this.buildingOffset = 0;
-            this.activeEventId = null;
-          },
-          switchTab: () => {
-            if (this.onAction) return this.onAction(action, event) !== false;
-            if (this.lastGame?.switchTab) {
-              this.lastGame.switchTab(action.tab);
-              return true;
-            }
-            return false;
-          },
-          openResourceDetails: () => {
-            this.showResourceDetails = true;
-            this.showSettings = false;
-            this.showLogs = false;
-            this.showCitySwitcher = false;
-            this.showAdvisor = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeResourceDetails: () => {
-            this.showResourceDetails = false;
-            return true;
-          },
-          closeRewardReveal: () => this.closeRewardReveal(),
-          openCitySwitcher: () => {
-            this.showCitySwitcher = !this.showCitySwitcher;
-            this.showSettings = false;
-            this.showLogs = false;
-            this.showResourceDetails = false;
-            this.showAdvisor = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeCitySwitcher: () => {
-            this.showCitySwitcher = false;
-            return true;
-          },
-          openSettings: () => {
-            this.showSettings = true;
-            this.showLogs = false;
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.showAdvisor = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeSettings: () => {
-            this.showSettings = false;
-            return true;
-          },
-          openLogs: () => {
-            this.showLogs = true;
-            this.showSettings = false;
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.showAdvisor = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeLogs: () => {
-            this.showLogs = false;
-            return true;
-          },
-          openAdvisor: () => {
-            const view = this.presenter?.buildAdvisorViewState?.(this.lastGame?.state?.softGuide);
-            if (view?.hidden || !view?.activeAdvisor) return false;
-            this.showAdvisor = true;
-            this.showSettings = false;
-            this.showLogs = false;
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeAdvisor: () => {
-            this.showAdvisor = false;
-            return true;
-          },
-          goToAdvisorTarget: () => {
-            this.showAdvisor = false;
-            this.activeEventId = null;
-            if (!this.lastGame?.goToAdvisorTarget) return false;
-            return this.lastGame.goToAdvisorTarget() !== false;
-          },
-          openEvent: () => {
-            const eventData = (this.lastGame?.state?.eventQueue || []).find((item) => item.id === action.eventId);
-            if (!eventData) return false;
-            this.activeEventId = action.eventId;
-            this.showSettings = false;
-            this.showLogs = false;
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.showAdvisor = false;
-            this.lastGame?.eventController?.open?.(action.eventId);
-            return true;
-          },
-          closeEvent: () => {
-            this.activeEventId = null;
-            this.lastGame?.eventController?.close?.();
-            return true;
-          },
-          openWorldSite: () => {
-            if (!this.onAction) return false;
-            return this.onAction(action, event) !== false;
-          },
-          closeWorldSite: () => {
-            if (!this.onAction) return false;
-            return this.onAction(action, event) !== false;
-          },
-          resetWorldPan: () => {
-            if (!this.onAction) return false;
-            return this.onAction(action, event) !== false;
-          },
-          changeExpeditionSoldiers: () => {
-            if (!this.onAction) return false;
-            return this.onAction(action, event) !== false;
-          },
-          goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
-          openTaskCenter: (dispatchAction) => {
-            this.showTaskCenter = true;
-            this.activeTaskCenterTab = dispatchAction?.tab
-              || (this.hasClaimableMainTask() ? 'main' : this.activeTaskCenterTab)
-              || 'main';
-            this.showSettings = false;
-            this.showLogs = false;
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.showAdvisor = false;
-            this.activeEventId = null;
-            return true;
-          },
-          closeTaskCenter: () => {
-            this.showTaskCenter = false;
-            return true;
-          },
-          switchTaskCenterTab: (tab) => {
-            this.activeTaskCenterTab = tab || 'main';
-            return true;
-          },
-          render: (dispatchAction) => {
-            if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') {
-              this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-            }
-            if (dispatchAction?.type === 'openTaskCenter') {
-              this.refreshTaskCenterGuideHighlight(dispatchAction);
-            }
-            if (dispatchAction?.type === 'openEvent' || dispatchAction?.type === 'closeEvent') {
-              this.lastGame?.tutorialController?.render?.();
-            }
-          },
-        });
-      }
-      if (action.type === 'requestLoginUsername') {
-        return this.requestAuthInput('username');
-      }
-      if (action.type === 'requestLoginPassword') {
-        return this.requestAuthInput('password');
-      }
-      if (action.type === 'toggleRememberPassword') {
-        return this.toggleRememberPassword();
-      }
-      if (action.type === 'submitLogin') {
-        if (!this.onAction) return false;
-        return this.onAction(action, event) !== false;
-      }
-      if (action.type === 'requestNamingInput') {
-        return this.requestNamingInput();
-      }
-      if (action.type === 'closeNaming') {
-        return this.closeNaming();
-      }
-      if (action.type === 'submitNaming') {
-        if (!this.onAction) return false;
-        const name = this.getNamingName();
-        if (!name) return false;
-        return this.onAction({ ...action, name }, event) !== false;
-      }
-      if (action.type === 'openResourceDetails') {
-        this.showResourceDetails = true;
-        this.showSettings = false;
-        this.showLogs = false;
-        this.showCitySwitcher = false;
-        this.showAdvisor = false;
-        this.activeEventId = null;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
-      }
-      if (action.type === 'closeResourceDetails') {
-        this.showResourceDetails = false;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
-      }
-      if (action.type === 'closeRewardReveal') {
-        return this.closeRewardReveal();
-      }
-      if (action.type === 'openCitySwitcher') {
-        this.showCitySwitcher = !this.showCitySwitcher;
-        this.showSettings = false;
-        this.showLogs = false;
-        this.showResourceDetails = false;
-        this.showAdvisor = false;
-        this.activeEventId = null;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
-      }
-      if (action.type === 'closeCitySwitcher') {
-        this.showCitySwitcher = false;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
-      }
-      if (action.type === 'selectCity') {
-        this.showCitySwitcher = false;
-        this.activeEventId = null;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-      }
-      if (action.type === 'switchTab') {
-        this.buildingOffset = 0;
-        this.activeEventId = null;
-      }
-      if (action.type === 'scrollBuildings') {
-        this.buildingOffset = Math.max(0, this.buildingOffset + (Number(action.delta) || 0));
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        return true;
-      }
-      if (action.type === 'goToAdvisorTarget') {
-        this.showAdvisor = false;
-        this.activeEventId = null;
-        if (this.lastGame?.goToAdvisorTarget) return this.lastGame.goToAdvisorTarget() !== false;
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-      }
-      if (action.type === 'claimEvent') {
-        if (!this.onAction) return false;
-        const handled = this.onAction(action, event) !== false;
-        if (handled) {
-          this.activeEventId = null;
-          this.lastGame?.eventController?.close?.();
-          this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'events');
-        }
-        return handled;
-      }
-      if (action.type === 'claimTaskReward') {
-        if (!this.onAction) return false;
-        const handled = this.onAction(action, event) !== false;
-        if (handled) {
-          this.showTaskCenter = false;
-          this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
-        }
-        return handled;
-      }
-      if (action.type === 'advanceEra') {
-        if (!this.onAction) return false;
-        return this.onAction(action, event) !== false;
-      }
-      if (action.type === 'switchMilitaryView') {
-        if (!this.onAction) return false;
-        return this.onAction(action, event) !== false;
-      }
-      if (action.type === 'scoutTerritory' || action.type === 'claimScout') {
-        if (!this.onAction) return false;
-        return this.onAction(action, event) !== false;
-      }
-      if (action.type === 'territoryAction') {
-        if (!this.onAction) return false;
-        return this.onAction(action, event) !== false;
-      }
-      if (action.type === 'blockCanvasModal') {
-        return true;
-      }
-      if (action.type === 'resetGame' || action.type === 'logout' || action.type === 'clearLogs') {
-        this.showSettings = false;
-        this.showLogs = false;
-        this.showResourceDetails = false;
-        this.showCitySwitcher = false;
-        this.showAdvisor = false;
-        this.activeEventId = null;
-      }
-      if (this.onAction) return this.onAction(action, event) !== false;
-      if (action.type === 'switchTab' && this.lastGame?.switchTab) {
-        this.lastGame.switchTab(action.tab);
-        return true;
-      }
-      return false;
+      return this.actionController?.handle?.(action, { event }) || false;
     }
-
     setInputEnabled(enabled) {
       this.inputEnabled = Boolean(enabled);
       if (!this.inputEnabled && this.tapDisposer) {

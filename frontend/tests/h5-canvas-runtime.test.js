@@ -1227,21 +1227,28 @@ test('canvas HUD takeover leaves no hidden H5 business UI shell', () => {
   assert.doesNotMatch(indexHtml, /CitySwitcherAdapter|ResourceRenderer|ResourceDetailModalAdapter/);
   assert.doesNotMatch(indexHtml, /class="page|data-page=|class="tab-btn|data-tab=|offlineModal|modal-overlay/);
   assert.doesNotMatch(css, /\.top-bar|\.tab-bar|\.tab-btn|\.page-container|\.page\b|\.modal-overlay|offline-|resource-strip|city-switcher/);
-  assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
+  assert.doesNotMatch(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });
 
 test('Browser entry loads Canvas game shell before app as the authoritative UI surface', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+  const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=h5-canvas-runtime-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=canvas-action-controller-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1/);
   assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
   assert.match(appJs, /previewEnabled: true/);
   assert.match(appJs, /inputEnabled: true/);
-  assert.match(appJs, /action\?\.type === 'switchTab'/);
-  assert.match(appJs, /this\.handleCanvasTabSelection\(action\.tab\)/);
-  assert.match(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
+  assert.match(appJs, /class H5GameHost extends CanvasGameAppBase/);
+  assert.doesNotMatch(appJs, /handleCanvasTabSelection\(tabId\)/);
+  assert.doesNotMatch(appJs, /action\?\.type === 'switchTab'/);
+  assert.match(actionControllerJs, /handle_switchTab\(action/);
+  assert.match(actionControllerJs, /handleCanvasTabSelection/);
+  assert.match(actionControllerJs, /game\.handleCanvasTabSelection\(action\.tab\)/);
+  assert.match(appJs, /class H5GameHost extends CanvasGameAppBase/);
+  assert.doesNotMatch(appJs, /canvasShell\.renderReadOnly\(this\.state, this\.state\.currentTab\)/);
 });

@@ -185,6 +185,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   const platformFiles = [
     'PlatformRuntime.js',
     'MiniGameCanvasRenderer.js',
+    'CanvasActionController.js',
     'CanvasGuideController.js',
     'CanvasGameApp.js',
   ].map((file) => fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', file), 'utf8')).join('\n');
@@ -197,6 +198,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
+  assert.match(entry, /CanvasActionController/);
   assert.match(entry, /CanvasGuideController/);
   assert.match(entry, /CanvasGameApp/);
   assert.match(entry, /presenter: globalThis\.UIStatePresenter/);
@@ -588,6 +590,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.equal(app.showTaskCenter, false);
     assert.equal(app.tutorialHighlight?.rect.left, barracksBuildTargetAfterClaim.x);
     assert.notEqual(app.tutorialHighlight?.rect.left, taskCenterClaimTarget.x);
+    assert.deepEqual(app.rewardReveal?.title, '获得奖励');
     app.rewardReveal = null;
     app.render();
 

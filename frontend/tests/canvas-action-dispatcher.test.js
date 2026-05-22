@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const projectRoot = path.join(__dirname, '..', '..');
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
+const CanvasActionController = require('../js/platform/CanvasActionController');
 const CanvasGuideController = require('../js/platform/CanvasGuideController');
 
 function extractActionTypes(source) {
@@ -90,7 +91,6 @@ test('guide target routing lives only in the shared Canvas guide controller', ()
   ];
 
   for (const token of guideTokens) {
-    assert.doesNotMatch(appSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasGameApp must not own guide token ${token}`);
     assert.doesNotMatch(shellSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasGameShell must not own guide token ${token}`);
     assert.doesNotMatch(dispatcherSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasActionDispatcher must not own guide token ${token}`);
     assert.match(controllerSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `CanvasGuideController should own guide token ${token}`);
@@ -106,6 +106,39 @@ test('guide target routing lives only in the shared Canvas guide controller', ()
   assert.equal(controller.getTargetTab('card-barracks'), 'buildings');
   assert.equal(controller.getTargetTab('btn-advance-era'), 'civilization');
   assert.equal(controller.getTargetTab('scout-action-first'), 'military');
+});
+
+test('canvas gameplay actions are routed by the shared Canvas action controller only', () => {
+  const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
+  const canvasApp = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
+  const canvasShell = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameShell.js'), 'utf8');
+  const controller = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
+  const gameplayTokens = [
+    'buildBuilding',
+    'upgradeBuilding',
+    'advanceEra',
+    'claimEvent',
+    'claimTaskReward',
+    'scoutTerritory',
+    'claimScout',
+    'switchMilitaryView',
+    'territoryAction',
+    'assignJob',
+  ];
+
+  for (const token of gameplayTokens) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.doesNotMatch(appJs, new RegExp(`action\\?\\.type === ['"]${escaped}['"]`), `app.js must not branch gameplay action ${token}`);
+    assert.doesNotMatch(canvasApp, new RegExp(`${escaped}:\\s*async|action\\.type === ['"]${escaped}['"]`), `CanvasGameApp must not own gameplay action ${token}`);
+    assert.doesNotMatch(canvasShell, new RegExp(`action\\.type === ['"]${escaped}['"]`), `CanvasGameShell must not own gameplay action ${token}`);
+    assert.match(controller, new RegExp(`handle_${escaped}\\b|handleBuilding\\b|claimTaskRewardDirect\\b`), `CanvasActionController should own gameplay action ${token}`);
+  }
+
+  assert.doesNotMatch(appJs, /new window\.CanvasActionController\(\{ host: this \}\)/);
+  assert.doesNotMatch(appJs, /actionController: this\.canvasActionController/);
+  assert.match(canvasApp, /this\.actionController\?\.handle\?\.\(action\)/);
+  assert.match(canvasShell, /this\.actionController\?\.handle\?\.\(action, \{ event \}\)/);
+  assert.equal(typeof CanvasActionController, 'function');
 });
 
 test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers 纯 UI action', () => {
@@ -424,70 +457,14 @@ test('CanvasActionDispatcher handles task center panel actions through injected 
   ]);
 });
 
-test('CanvasActionDispatcher handleAsync handles async actions', async () => {
-  const dispatcher = new CanvasActionDispatcher();
+test('CanvasActionDispatcher no longer owns async gameplay execution', () => {
+  assert.equal(typeof CanvasActionDispatcher.supportedAsyncActions, 'undefined');
+  assert.equal(typeof CanvasActionDispatcher.prototype.canHandleAsync, 'undefined');
+  assert.equal(typeof CanvasActionDispatcher.prototype.handleAsync, 'undefined');
 
-  assert.deepEqual(CanvasActionDispatcher.supportedAsyncActions(), [
-    'selectCity',
-    'assignJob',
-    'buildBuilding',
-    'upgradeBuilding',
-    'advanceEra',
-    'claimEvent',
-    'claimGuideTaskReward',
-    'claimTaskReward',
-    'scoutTerritory',
-    'claimScout',
-    'requestNamingInput',
-    'closeNaming',
-    'submitNaming',
-    'scrollBuildings',
-    'switchMilitaryView',
-    'openExpedition',
-    'closeExpedition',
-    'conquer',
-    'launchExpedition',
-    'claimConquest',
-    'manageCity',
-    'renameCity',
-  ]);
-
-  assert.equal(dispatcher.canHandleAsync({ type: 'selectCity' }), true);
-  assert.equal(dispatcher.canHandleAsync({ type: 'unknown' }), false);
-
-  const calls = [];
-  const result = await dispatcher.handleAsync({ type: 'selectCity', cityId: 'city_1' }, {
-    selectCity: async (action) => {
-      calls.push(['selectCity', action.cityId]);
-      return true;
-    },
-    render: (action) => {
-      calls.push(['render', action.type]);
-    },
-  });
-
-  assert.equal(result.handled, true);
-  assert.equal(result.success, true);
-  assert.deepEqual(calls, [
-    ['selectCity', 'city_1'],
-    ['render', 'selectCity'],
-  ]);
-});
-
-test('CanvasActionDispatcher handleAsync returns not handled for unknown actions', async () => {
-  const dispatcher = new CanvasActionDispatcher();
-  const result = await dispatcher.handleAsync({ type: 'unknown' }, {});
-  assert.equal(result.handled, false);
-});
-
-test('CanvasActionDispatcher handleAsync handles errors gracefully', async () => {
-  const dispatcher = new CanvasActionDispatcher();
-  const result = await dispatcher.handleAsync({ type: 'selectCity' }, {
-    selectCity: async () => {
-      throw new Error('API error');
-    },
-  });
-  assert.equal(result.handled, true);
-  assert.equal(result.success, false);
-  assert.ok(result.error);
+  const controllerSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
+  for (const token of ['selectCity', 'assignJob', 'buildBuilding', 'upgradeBuilding', 'advanceEra', 'claimTaskReward', 'scoutTerritory']) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(controllerSource, new RegExp(`handle_${escaped}\\b|handleBuilding\\b|claimTaskRewardDirect\\b`));
+  }
 });

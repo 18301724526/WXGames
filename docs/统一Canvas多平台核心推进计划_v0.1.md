@@ -443,3 +443,19 @@ node --test frontend/tests/*.test.js
 ```text
 阶段 4：待规划（如需继续迁移含 API 调用的 action，需重新设计 dispatcher 以支持异步 action）
 ```
+
+## 当前状态补充（2026-05-22 20:42:31 +08:00，版本 0.1.58）
+
+本节修正上方历史阶段记录的旧口径。当前代码已经完成共享 Canvas 玩法核心收口：
+
+- `CanvasGameApp` 是唯一共享玩法核心，承载状态同步、任务领奖、建筑、人口分配、时代进阶、事件、军事、命名、引导目标跳转和奖励弹窗状态。
+- `CanvasActionController` 是 Canvas 命中动作的唯一执行入口；`CanvasActionDispatcher` 仅保留早期纯 UI action 的兼容测试面，不再拥有异步玩法动作表。
+- `frontend/app.js` 只保留网页宿主装配：网页登录、存储、更新提示、调度器、控制器构造和 `CanvasGameShell` 挂载，不再维护独立玩法 action 分发。
+- `frontend/minigame/game.js` 直接创建 `CanvasGameApp`；`MiniGameApp.js` 仅是 `CanvasGameApp` 的兼容别名。
+- `H5CanvasAppShell.js` 仅是 `CanvasGameShell` 的兼容别名；`CanvasGameShell` 负责浏览器 Canvas 壳层输入、登录输入弹层、奖励/飘字/高亮效果状态，不拥有玩法流程。
+- 后续允许保留的差异只有 host adapter：网页登录、未来平台登录、Canvas 创建、网络、存储、触摸、文本输入、更新提示。不得再新增按网页/平台分开的任务、引导、建筑、人口、事件、军事或时代进阶逻辑。
+
+本次验证范围：
+
+- `node --test frontend\tests\minigame-platform.test.js frontend\tests\h5-canvas-runtime.test.js frontend\tests\app-tutorial-targets.test.js frontend\tests\canvas-action-dispatcher.test.js`
+- `npm.cmd test`

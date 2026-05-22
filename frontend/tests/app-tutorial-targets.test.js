@@ -539,7 +539,7 @@ test('renderMilitary refreshes Canvas military state from backend-provided data'
     assert.equal(view.text.militaryDefense, 4);
     assert.equal(view.text.soldierTrainingText, '下一名 15/30 秒');
     assert.equal(view.training.progressWidth, '50%');
-    assert.deepEqual(renderCalls, [{ state: Game.state, tab: Game.state.currentTab }]);
+    assert.deepEqual(renderCalls, [{ state: Game.state, tab: Game.state.currentTab || 'resources' }]);
   } finally {
     global.window = originalWindow;
     global.document = originalDocument;
