@@ -93,6 +93,11 @@ test('task center view state normalizes tabs, badges, categories, and legacy gui
             title: '城邦守备',
             status: 'claimable',
             rewardText: '食物 +260 / 知识 +80',
+          }, {
+            id: 'lumbermill_supplies',
+            title: '备齐伐木物资',
+            status: 'completed',
+            rewardText: '木材 +15 / 食物 +50',
           }],
         },
         season: { tasks: [], emptyText: '暂无赛季任务' },
@@ -108,6 +113,8 @@ test('task center view state normalizes tabs, badges, categories, and legacy gui
   assert.equal(view.tabs.find((tab) => tab.id === 'main').badge, 1);
   assert.equal(view.activeCategory.tasks[0].action.type, 'claimTaskReward');
   assert.equal(view.activeCategory.tasks[0].actionLabel, '领取');
+  assert.equal(view.activeCategory.tasks[1].action, null);
+  assert.equal(view.activeCategory.tasks[1].actionLabel, '已完成');
   assert.equal(view.categories.daily.emptyText, '暂无每日任务');
 
   const fallback = UIStatePresenter.buildTaskCenterViewState({

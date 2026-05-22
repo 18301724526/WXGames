@@ -719,6 +719,13 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
             description: '建造兵营',
             status: 'claimable',
             rewardText: '食物 +260 / 知识 +80',
+          }, {
+            id: 'lumbermill_supplies',
+            title: '备齐伐木物资',
+            description: '建造伐木场',
+            status: 'completed',
+            actionLabel: '已完成',
+            rewardText: '木材 +15 / 食物 +50',
           }],
         },
         season: { tasks: [], emptyText: '暂无赛季任务' },
@@ -738,12 +745,14 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '务'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线任务'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城邦守备'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '已完成'));
   assert.ok(renderer.hitTargets.some((target) => (
     target.action?.type === 'openTaskCenter'
     && target.action.source === 'taskIcon'
   )));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchTaskCenterTab' && target.action.tab === 'daily'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimTaskReward' && target.action.taskId === 'barracks_supplies'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.disabled === true && target.action?.taskId === 'lumbermill_supplies'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeTaskCenter'));
 });
 

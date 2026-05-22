@@ -24,10 +24,17 @@ function buildMainTask(task) {
   };
 }
 
+function getTaskSortRank(task) {
+  if (task?.status === 'claimable' && !task?.claimed) return 0;
+  if (task?.status === 'active') return 1;
+  if (task?.status === 'completed') return 2;
+  return 3;
+}
+
 function buildCategories(gameState) {
-  const guideTasks = GuideTaskService.getGuideTasks(gameState);
-  const mainTasks = Array.isArray(guideTasks.tasks)
-    ? guideTasks.tasks.map(buildMainTask)
+  const guideMainTasks = GuideTaskService.getMainTasks(gameState);
+  const mainTasks = Array.isArray(guideMainTasks)
+    ? guideMainTasks.map(buildMainTask).sort((a, b) => getTaskSortRank(a) - getTaskSortRank(b))
     : [];
   return TAB_DEFINITIONS.reduce((result, tab) => {
     result[tab.id] = {

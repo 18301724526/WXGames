@@ -257,6 +257,13 @@ function isObsolete(gameState, task) {
   return typeof task.obsolete === 'function' && task.obsolete(gameState);
 }
 
+function isCompletedForTaskList(gameState, task) {
+  const claimed = isClaimed(gameState, task.id);
+  const obsolete = isObsolete(gameState, task);
+  if (claimed && (!task.continueAfterClaim || obsolete)) return true;
+  return obsolete;
+}
+
 function getCurrentTaskDefinition(gameState) {
   CityService.normalizeCities(gameState);
   if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return null;
@@ -291,15 +298,18 @@ function getTaskReward(gameState, task) {
   return reward && typeof reward === 'object' ? reward : {};
 }
 
-function buildTaskView(gameState, task) {
+function buildTaskView(gameState, task, options = {}) {
   const reward = getTaskReward(gameState, task);
   const complete = Boolean(task.complete?.(gameState));
   const claimed = isClaimed(gameState, task.id);
-  const status = !claimed && complete ? 'claimable' : 'active';
-  const target = status === 'claimable' ? 'task-center-main-claim' : (task.nextTarget || task.target || null);
-  const action = status === 'claimable'
-    ? { type: 'openTaskCenter', tab: 'main', target }
-    : { type: 'goToGuideTaskTarget', taskId: task.id, target, nextAction: getTaskGoAction(task) };
+  const status = options.status || (!claimed && complete ? 'claimable' : 'active');
+  const completed = status === 'completed';
+  const target = completed ? null : (status === 'claimable' ? 'task-center-main-claim' : (task.nextTarget || task.target || null));
+  const action = completed
+    ? null
+    : (status === 'claimable'
+      ? { type: 'openTaskCenter', tab: 'main', target }
+      : { type: 'goToGuideTaskTarget', taskId: task.id, target, nextAction: getTaskGoAction(task) });
   return {
     id: task.id,
     title: task.title,
@@ -308,10 +318,25 @@ function buildTaskView(gameState, task) {
     claimed,
     target,
     action,
-    actionLabel: status === 'claimable' ? '任务' : '前往',
+    actionLabel: completed ? '已完成' : (status === 'claimable' ? '任务' : '前往'),
     reward,
     rewardText: formatRewardText(reward),
   };
+}
+
+function getMainTasks(gameState) {
+  CityService.normalizeCities(gameState);
+  if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) return [];
+  return TASKS.reduce((tasks, task) => {
+    if (isCompletedForTaskList(gameState, task)) {
+      tasks.push(buildTaskView(gameState, task, { status: 'completed' }));
+      return tasks;
+    }
+    if (typeof task.available === 'function' && task.available(gameState)) {
+      tasks.push(buildTaskView(gameState, task));
+    }
+    return tasks;
+  }, []);
 }
 
 function getGuideTasks(gameState) {
@@ -471,6 +496,7 @@ module.exports = {
   TASKS,
   getTaskState,
   getCurrentTaskDefinition,
+  getMainTasks,
   getGuideTasks,
   getGuide,
   claimReward,

@@ -178,13 +178,16 @@
           emptyText: sourceCategory.emptyText || tab.emptyText,
           tasks: tasks.map((task) => {
             const claimable = task.status === 'claimable' && !task.claimed;
+            const completed = task.status === 'completed';
             return {
               ...task,
               category: task.category || tab.id,
-              actionLabel: task.actionLabel || (claimable ? '领取' : '前往'),
-              action: claimable
+              actionLabel: task.actionLabel || (completed ? '已完成' : (claimable ? '领取' : '前往')),
+              action: completed
+                ? null
+                : (claimable
                 ? { type: 'claimTaskReward', taskId: task.id, category: tab.id }
-                : (task.action || { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }),
+                : (task.action || { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target })),
             };
           }),
         };

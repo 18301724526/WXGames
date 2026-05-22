@@ -910,6 +910,7 @@
         const itemY = listY + index * (itemHeight + itemGap);
         if (itemY + itemHeight > listBottom) return;
         const claimable = task.status === 'claimable' && !task.claimed;
+        const completed = task.status === 'completed';
         const buttonWidth = 78;
         const buttonHeight = 34;
         const buttonX = listX + listWidth - buttonWidth - 12;
@@ -919,30 +920,30 @@
             ? { type: 'claimTaskReward', taskId: task.id, category: task.category || view.activeTab }
             : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
         );
-        const buttonDisabled = !claimable && !task.target && buttonAction.type !== 'goToGuideTaskTarget';
+        const buttonDisabled = completed || (!claimable && !task.target && buttonAction.type !== 'goToGuideTaskTarget');
         this.drawPanel(listX, itemY, listWidth, itemHeight, {
-          fill: claimable ? 'rgba(64, 49, 27, 0.82)' : 'rgba(27, 22, 17, 0.74)',
-          stroke: claimable ? 'rgba(247, 215, 116, 0.42)' : 'rgba(255, 226, 177, 0.12)',
+          fill: completed ? 'rgba(21, 25, 22, 0.66)' : (claimable ? 'rgba(64, 49, 27, 0.82)' : 'rgba(27, 22, 17, 0.74)'),
+          stroke: completed ? 'rgba(116, 211, 160, 0.18)' : (claimable ? 'rgba(247, 215, 116, 0.42)' : 'rgba(255, 226, 177, 0.12)'),
           radius: 10,
           inset: 'rgba(255, 231, 184, 0.05)',
         });
         this.drawText(this.truncateText(task.title || '任务', listWidth - 26, { size: 14, bold: true }), listX + 12, itemY + 10, {
           size: 14,
           bold: true,
-          color: '#fff1cf',
+          color: completed ? '#aec9b8' : '#fff1cf',
         });
         const desc = task.description || task.rewardText || '';
         this.drawTextLines(this.wrapTextLimit(desc, listWidth - 104, 2, { size: 11 }), listX + 12, itemY + 34, {
           size: 11,
-          color: '#cbbd96',
+          color: completed ? '#8ba494' : '#cbbd96',
           lineHeight: 15,
         });
         this.drawText(this.truncateText(task.rewardText || '无奖励', listWidth - buttonWidth - 34, { size: 12, bold: true }), listX + 12, itemY + 76, {
           size: 12,
           bold: true,
-          color: claimable ? '#ffd98a' : '#74d3a0',
+          color: completed ? '#79c79b' : (claimable ? '#ffd98a' : '#74d3a0'),
         });
-        this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, task.actionLabel || (claimable ? '领取' : '前往'), {
+        this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, task.actionLabel || (completed ? '已完成' : (claimable ? '领取' : '前往')), {
           disabled: buttonDisabled,
           active: !buttonDisabled,
           size: 12,

@@ -103,6 +103,32 @@ test('task center claim delegates main task reward and keeps reward reveal', () 
   assert.equal(state.resources.knowledge, 100);
 });
 
+test('main task center keeps completed tasks visible after they are done', () => {
+  const state = createBarracksTaskState('task-center-history');
+  const claim = TaskCenterService.claimTask(state, 'barracks_supplies', 'main');
+  assert.equal(claim.success, true);
+
+  state.buildings.barracks = { level: 1 };
+  state.resources.food = 700;
+  state.resources.wood = 120;
+  state.resources.knowledge = 80;
+  gameStateService.normalizeState(state);
+
+  const taskCenter = TaskCenterService.getTaskCenter(state);
+  const mainTasks = taskCenter.categories.main.tasks;
+  const completed = mainTasks.find((task) => task.id === 'barracks_supplies');
+  const current = mainTasks.find((task) => task.id === 'border_advance_supplies');
+
+  assert.ok(completed);
+  assert.equal(completed.status, 'completed');
+  assert.equal(completed.actionLabel, '已完成');
+  assert.equal(completed.action, null);
+  assert.ok(current);
+  assert.equal(current.status, 'claimable');
+  assert.equal(mainTasks.indexOf(current) < mainTasks.indexOf(completed), true);
+  assert.equal(taskCenter.tabs.find((tab) => tab.id === 'main').count, mainTasks.length);
+});
+
 test('game task routes expose task center and claim endpoint snapshots', async () => {
   const state = createBarracksTaskState('task-center-route');
   const { routes, repository } = createRouteHarness(state);
