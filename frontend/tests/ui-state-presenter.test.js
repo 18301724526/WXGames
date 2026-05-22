@@ -245,7 +245,9 @@ test('city switcher view state formats active city and options', () => {
   assert.equal(view.hidden, false);
   assert.equal(view.activeCityName, '北京');
   assert.equal(view.options[0].tag, '主城');
-  assert.equal(view.options[1].metaText, '人口 3 · 建筑 1');
+  assert.equal(view.options[1].population, 300);
+  assert.equal(view.options[1].officials, 3);
+  assert.equal(view.options[1].metaText, '人口 300 · 建筑 1');
   assert.equal(view.options[1].isActive, false);
   assert.match(view.signature, /site_river/);
 });
@@ -270,6 +272,7 @@ test('civilization view state formats era progress and advance lock text', () =>
 
   assert.equal(locked.text.eraName, '农耕时代');
   assert.equal(locked.text.civOverviewDay, '第 3 天');
+  assert.equal(locked.text.civOverviewPop, 500);
   assert.equal(locked.text.civOverviewTechs, '1/0');
   assert.equal(locked.text.eraProgressText, '总进度: 100%');
   assert.equal(locked.text.advanceLabel, '引导未解锁');
@@ -718,9 +721,13 @@ test('population view state formats jobs and button availability', () => {
     },
   });
 
+  assert.equal(view.text.title, '要员分配');
+  assert.equal(view.text.subtitle, '核心岗位');
   assert.equal(view.text.total, 6);
   assert.equal(view.text.max, 8);
   assert.equal(view.text.unassigned, 1);
+  assert.equal(view.text.population, 600);
+  assert.equal(view.text.maxPopulation, 800);
   assert.equal(view.showCraftsman, true);
   assert.deepEqual(
     view.jobs.map((job) => [job.id, job.count, job.visible, job.canIncrease, job.canDecrease]),

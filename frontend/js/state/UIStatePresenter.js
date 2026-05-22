@@ -1,5 +1,7 @@
 (function (global) {
   class UIStatePresenter {
+    static POPULATION_PER_OFFICIAL = 100;
+
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -39,6 +41,10 @@
     static formatRate(value) {
       const number = this.toNumber(value);
       return `${number >= 0 ? '+' : ''}${this.formatCompactNumber(number, { floorSmall: false })}/s`;
+    }
+
+    static toDisplayPopulation(officials) {
+      return this.toInteger(officials) * this.POPULATION_PER_OFFICIAL;
     }
 
     static formatNegativeRate(value) {
@@ -298,15 +304,21 @@
         canIncrease: unassigned > 0,
         canDecrease: job.count > 0,
       }));
+      const totalOfficials = this.toInteger(pop.total ?? state.totalPop);
+      const maxOfficials = this.toInteger(pop.maxPop ?? pop.max ?? state.maxPop);
 
       return {
         showCraftsman: currentEra >= 2,
         unassigned,
         jobs,
         text: {
-          total: this.toInteger(pop.total ?? state.totalPop),
-          max: this.toInteger(pop.maxPop ?? pop.max ?? state.maxPop),
+          title: '要员分配',
+          subtitle: '核心岗位',
+          total: totalOfficials,
+          max: maxOfficials,
           unassigned,
+          population: this.toDisplayPopulation(totalOfficials),
+          maxPopulation: this.toDisplayPopulation(maxOfficials),
         },
       };
     }
@@ -319,12 +331,14 @@
       const activeCity = cities.find((city) => city.id === activeCityId) || cities[0] || null;
       const options = cities.map((city) => {
         const isActive = city.id === activeCityId;
-        const population = this.toInteger(city.population?.total);
+        const officials = this.toInteger(city.population?.total);
+        const population = this.toDisplayPopulation(officials);
         const buildings = this.toInteger(city.totalBuildings);
         return {
           id: city.id || '',
           name: city.name || '未命名城市',
           tag: city.isCapital ? '主城' : '分城',
+          officials,
           population,
           buildings,
           metaText: `人口 ${population} · 建筑 ${buildings}`,
@@ -379,7 +393,7 @@
           eraName,
           civOverviewEraName: eraName,
           civOverviewDay: `第 ${state.gameDay || 1} 天`,
-          civOverviewPop: this.toInteger(state.population?.total),
+          civOverviewPop: this.toDisplayPopulation(state.population?.total),
           civOverviewBuildings: this.toInteger(state.totalBuildings),
           civOverviewTechs: `${Object.keys(state.techs || {}).length}/0`,
           civOverviewHappiness: `${state.happiness || 100}%`,

@@ -199,6 +199,7 @@ test('CanvasGameRenderer top HUD draws all initial resource values', () => {
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   renderer.setPresenter({
+    toDisplayPopulation: (officials) => Number(officials || 0) * 100,
     buildResourceViewState: () => ({
       hasWood: true,
       hasIron: true,
@@ -221,9 +222,9 @@ test('CanvasGameRenderer top HUD draws all initial resource values', () => {
     buildEventViewState: () => ({ badge: { hidden: true } }),
   });
 
-  renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
+  renderer.render({ currentEraName: '原始时代', currentTab: 'resources', population: { total: 3 } }, { activeTab: 'resources', mode: 'hud' });
 
-  for (const text of ['木材', '铁矿', '石料', '粮食', '知识', '100', '+2.4/s', '+0.1/s']) {
+  for (const text of ['人口：300', '木材', '铁矿', '石料', '粮食', '知识', '100', '+2.4/s', '+0.1/s']) {
     assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === text), `expected resource strip to draw ${text}`);
   }
 });
@@ -401,8 +402,8 @@ test('CanvasGameRenderer renders city switcher menu and city hit targets on canv
       hidden: false,
       activeCityName: '首都',
       options: [
-        { id: 'capital', name: '首都', tag: '主城', metaText: '人口 8 · 建筑 4', isActive: true },
-        { id: 'site_river', name: '河湾城', tag: '分城', metaText: '人口 3 · 建筑 1', isActive: false },
+        { id: 'capital', name: '首都', tag: '主城', metaText: '人口 800 · 建筑 4', isActive: true },
+        { id: 'site_river', name: '河湾城', tag: '分城', metaText: '人口 300 · 建筑 1', isActive: false },
       ],
     }),
     buildAdvisorViewState: () => ({ hidden: true }),
@@ -1485,7 +1486,7 @@ test('CanvasGameRenderer draws civilization page and advance action without DOM 
       text: {
         eraName: '农耕时代',
         civOverviewDay: '第 3 天',
-        civOverviewPop: 4,
+        civOverviewPop: 400,
         civOverviewBuildings: 2,
         civOverviewTechs: '1/0',
         civOverviewHappiness: '100%',
@@ -1507,7 +1508,8 @@ test('CanvasGameRenderer draws civilization page and advance action without DOM 
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农耕时代'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '总人口'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人口'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '400'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '满足条件，可进阶'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'advanceEra'));
 });
@@ -1534,7 +1536,7 @@ test('CanvasGameRenderer aligns civilization overview stat cards to their frame'
       text: {
         eraName: '农耕时代',
         civOverviewDay: '第 3 天',
-        civOverviewPop: 4,
+        civOverviewPop: 400,
         civOverviewBuildings: 2,
         civOverviewTechs: '1/0',
         civOverviewHappiness: '100%',
@@ -1600,7 +1602,7 @@ test('CanvasGameRenderer keeps civilization advance layout within compact mobile
       text: {
         eraName: '农耕时代',
         civOverviewDay: '第 3 天',
-        civOverviewPop: 4,
+        civOverviewPop: 400,
         civOverviewBuildings: 2,
         civOverviewTechs: '1/0',
         civOverviewHappiness: '100%',
