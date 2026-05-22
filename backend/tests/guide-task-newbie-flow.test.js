@@ -5,7 +5,7 @@ const GuideTaskService = require('../services/GuideTaskService');
 const EventService = require('../services/EventService');
 const gameStateService = require('../services/GameStateService');
 
-test('settlement task rewards enough resources to continue into era 2 after house guide', () => {
+test('settlement task grants its full reward regardless of current stockpile', () => {
   const state = gameStateService.createInitialGameState('guide-task-settlement-reward');
   state.currentEra = 1;
   state.buildings.house = { level: 1 };
@@ -19,7 +19,8 @@ test('settlement task rewards enough resources to continue into era 2 after hous
   assert.equal(tasks.visible, true);
   assert.equal(tasks.tasks[0].id, 'settlement_advance_supplies');
   assert.equal(tasks.tasks[0].status, 'claimable');
-  assert.deepEqual(tasks.tasks[0].reward.resources, { food: 110, knowledge: 5 });
+  assert.deepEqual(tasks.tasks[0].reward.resources, { food: 120, knowledge: 5 });
+  assert.equal(tasks.tasks[0].rewardText, '食物 +120 / 知识 +5');
 
   const blocked = GuideTaskService.validateAction(state, 'advanceEra', {});
   assert.equal(blocked.allowed, false);
@@ -27,7 +28,7 @@ test('settlement task rewards enough resources to continue into era 2 after hous
 
   const result = GuideTaskService.claimReward(state, 'settlement_advance_supplies');
   assert.equal(result.success, true);
-  assert.equal(state.resources.food, 120);
+  assert.equal(state.resources.food, 130);
   assert.equal(state.resources.knowledge, 5);
 
   const guide = GuideTaskService.getGuide(state);

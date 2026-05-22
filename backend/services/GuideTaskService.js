@@ -42,29 +42,10 @@ function hasBuilt(gameState, buildingId) {
   return getLevel(gameState, buildingId) > 0;
 }
 
-function getCapitalResources(gameState) {
-  CityService.normalizeCities(gameState);
-  const capital = CityService.getCapitalCity(gameState);
-  capital.resources = capital.resources || {};
-  return capital.resources;
-}
-
-function getCapitalMilitary(gameState) {
-  CityService.normalizeCities(gameState);
-  const capital = CityService.getCapitalCity(gameState);
-  capital.military = MilitaryService.normalizeMilitaryState(capital.military, {
-    ...gameState,
-    activeCityId: CityService.CAPITAL_CITY_ID,
-    buildings: capital.buildings,
-    military: capital.military,
-  });
-  return capital.military;
-}
-
-function positiveDeltaToTargets(current, targets = {}) {
-  return Object.entries(targets).reduce((result, [key, required]) => {
-    const delta = Math.max(0, Math.ceil(Number(required || 0) - Number(current?.[key] || 0)));
-    if (delta > 0) result[key] = delta;
+function fixedPositiveResources(resources = {}) {
+  return Object.entries(resources).reduce((result, [key, value]) => {
+    const amount = Math.max(0, Math.ceil(Number(value) || 0));
+    if (amount > 0) result[key] = amount;
     return result;
   }, {});
 }
@@ -88,19 +69,17 @@ function getEraConditionTargets(currentEra) {
 }
 
 function makeResourceReward(targetResources = {}) {
-  return (gameState) => ({
-    resources: positiveDeltaToTargets(getCapitalResources(gameState), targetResources),
+  return () => ({
+    resources: fixedPositiveResources(targetResources),
   });
 }
 
 function makeEraReward(currentEra) {
-  return (gameState) => {
+  return () => {
     const targets = getEraConditionTargets(currentEra);
-    const military = getCapitalMilitary(gameState);
-    const soldiers = Math.max(0, targets.soldiers - (military.soldiers || 0));
     return {
-      resources: positiveDeltaToTargets(getCapitalResources(gameState), targets.resources),
-      soldiers,
+      resources: fixedPositiveResources(targets.resources),
+      soldiers: Math.max(0, Math.ceil(Number(targets.soldiers) || 0)),
     };
   };
 }
@@ -303,7 +282,7 @@ function formatRewardText(reward = {}) {
     .filter(([, value]) => Number(value) > 0)
     .map(([key, value]) => `${names[key] || key} +${Math.ceil(value)}`);
   if (reward.soldiers > 0) parts.push(`士兵 +${Math.ceil(reward.soldiers)}`);
-  return parts.length ? parts.join(' / ') : '已满足后续条件';
+  return parts.length ? parts.join(' / ') : '无奖励';
 }
 
 function getTaskReward(gameState, task) {
