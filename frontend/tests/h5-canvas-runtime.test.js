@@ -5,6 +5,8 @@ const path = require('node:path');
 
 const H5CanvasRuntime = require('../js/platform/H5CanvasRuntime');
 global.H5CanvasRuntime = H5CanvasRuntime;
+const CanvasGameApp = require('../js/platform/CanvasGameApp');
+global.CanvasGameApp = CanvasGameApp;
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
 const CanvasGameShell = require('../js/platform/CanvasGameShell');
@@ -1150,6 +1152,56 @@ test('Canvas game shell uses a 60FPS target for shared canvas animations', () =>
   now += 16;
   timers[0].callback();
   assert.ok(shell.pageTransition);
+});
+
+test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {
+  const { document, runtime } = createCanvasHarness();
+  const timers = [];
+  runtime.setInterval = (callback, intervalMs) => {
+    const timer = { callback, intervalMs };
+    timers.push(timer);
+    return timer;
+  };
+  runtime.clearInterval = () => {};
+  const renderCalls = [];
+  const renderer = {
+    render(state, options) { renderCalls.push({ state, options }); },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+    },
+    initialState: { currentTab: 'resources', resources: {}, population: {} },
+  });
+  app.tutorialController = { render() {} };
+  app.renderSoftGuide = () => {};
+  app.renderMilitaryView = () => {};
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+  let now = 1000;
+  app.now = () => now;
+  app.canvasShell.now = () => now;
+
+  app.switchTab('civilization');
+
+  assert.equal(app.pageTransition.fromTab, 'resources');
+  assert.equal(app.pageTransition.toTab, 'civilization');
+  assert.equal(app.canvasShell.pageTransition, app.pageTransition);
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].intervalMs, 16);
+  assert.equal(renderCalls.at(-1).options.pageTransition, app.pageTransition);
+  now += 16;
+  timers[0].callback();
+  assert.equal(renderCalls.at(-1).options.pageTransition, app.pageTransition);
 });
 
 test('H5 canvas runtime provides platform text input without exposing DOM input elements', async () => {

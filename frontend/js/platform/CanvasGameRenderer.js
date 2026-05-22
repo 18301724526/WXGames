@@ -18,6 +18,8 @@
       this.fpsLastFrameAt = 0;
       this.fpsSamples = [];
       this.currentFps = 0;
+      this.fpsLastPaintAt = 0;
+      this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
@@ -436,6 +438,7 @@
       if (!Number.isFinite(timestamp)) return this.currentFps;
       if (!this.fpsLastFrameAt) {
         this.fpsLastFrameAt = timestamp;
+        this.fpsLastPaintAt = timestamp;
         return this.currentFps;
       }
       const delta = Math.max(4, timestamp - this.fpsLastFrameAt);
@@ -451,7 +454,12 @@
 
     renderFpsOverlay(options = {}) {
       if (!this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
-      const fps = Math.max(0, Math.round(Number(options.fps ?? this.currentFps) || 0));
+      const now = this.getNow();
+      if (!this.fpsLastPaintAt || now - this.fpsLastPaintAt >= 180 || (!this.fpsLastPaintedValue && this.currentFps)) {
+        this.fpsLastPaintAt = now;
+        this.fpsLastPaintedValue = Math.max(0, Math.round(Number(options.fps ?? this.currentFps) || 0));
+      }
+      const fps = this.fpsLastPaintedValue;
       const label = fps ? `FPS ${fps}` : 'FPS --';
       const width = Math.max(66, Math.min(84, Math.ceil(this.measureTextWidth(label, { size: 11, bold: true }) + 18)));
       const color = fps >= 55 ? '#74d3a0' : (fps >= 30 ? '#ffd98a' : '#ff6b6b');

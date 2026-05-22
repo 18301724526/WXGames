@@ -354,10 +354,13 @@
     }
 
     getAnimationFrameMs() {
-      return 16;
+      return this.canvasShell?.getAnimationFrameMs?.() || 16;
     }
 
     renderAnimationFrame(activeTab = this.state?.currentTab || this.getActiveTab()) {
+      if (this.canvasShell && typeof this.canvasShell.renderAnimationFrame === 'function') {
+        return this.canvasShell.renderAnimationFrame();
+      }
       const now = this.now();
       const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
       if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
@@ -366,6 +369,11 @@
     }
 
     startTransitionTimer() {
+      if (this.canvasShell && typeof this.canvasShell.startTransitionTimer === 'function') {
+        if (typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
+        if (typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
+        return this.canvasShell.startTransitionTimer();
+      }
       if (this.transitionTimer || !this.runtime?.setInterval) return false;
       this.transitionTimer = this.runtime.setInterval(() => {
         const now = this.now();
@@ -402,6 +410,9 @@
         durationMs: this.getTransitionDurationMs(),
         fromBuildingOffset: options.fromBuildingOffset ?? this.buildingOffset,
       };
+      if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') {
+        this.canvasShell.pageTransition = this.pageTransition;
+      }
       this.startTransitionTimer();
       return true;
     }
