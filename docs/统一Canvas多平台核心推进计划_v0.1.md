@@ -444,7 +444,7 @@ node --test frontend/tests/*.test.js
 阶段 4：待规划（如需继续迁移含 API 调用的 action，需重新设计 dispatcher 以支持异步 action）
 ```
 
-## 当前状态补充（2026-05-22 21:09:23 +08:00，版本 0.1.59）
+## 当前状态补充（2026-05-22 21:28:07 +08:00，版本 0.1.60）
 
 本节修正上方历史阶段记录的旧口径。当前代码已经完成共享 Canvas 玩法核心收口：
 
@@ -453,7 +453,8 @@ node --test frontend/tests/*.test.js
 - `frontend/app.js` 只保留网页宿主装配：网页登录、存储、更新提示、调度器、控制器构造和 `CanvasGameShell` 挂载，不再维护独立玩法 action 分发。
 - `frontend/minigame/game.js` 直接创建 `CanvasGameApp`；`MiniGameApp.js` 仅是 `CanvasGameApp` 的兼容别名。
 - `H5CanvasAppShell.js` 仅是 `CanvasGameShell` 的兼容别名；`CanvasGameShell` 负责浏览器 Canvas 壳层输入、登录输入弹层、奖励/飘字/高亮效果状态，不拥有玩法流程。
-- 登录后 loading、资源预加载和进度条已进入共享 Canvas 核心；宿主登录成功后只调用同一套 `loadGameAssets()`，等待美术资源加载完毕再进入状态同步。
+- 登录后 loading、资源预加载、最短 3 秒展示和进度条已进入共享 Canvas 核心；宿主登录成功后只调用同一套 `loadGameAssets()`，等待美术资源加载完毕再进入状态同步。
+- 当前页签与军事子页是本地 UI 状态，状态同步会保留玩家正在查看的页面，不再接受服务端默认 `currentTab` 把画面拉回资源页。
 - 后续允许保留的差异只有 host adapter：网页登录、未来平台登录、Canvas 创建、网络、存储、触摸、文本输入、更新提示。不得再新增按网页/平台分开的任务、引导、建筑、人口、事件、军事或时代进阶逻辑。
 
 本次验证范围：

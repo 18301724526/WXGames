@@ -107,7 +107,7 @@
         this.resizeDisposer = this.runtime.onResize((size) => this.handleResize(size));
       }
       this.bindInput();
-      this.renderReadOnly(game?.state, game?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -194,7 +194,7 @@
     }
 
     renderCanvasAction(action = {}) {
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -203,7 +203,7 @@
     }
 
     getGuideActiveTab() {
-      return this.lastGame?.state?.currentTab || this.activeTab || 'resources';
+      return this.getActiveTab();
     }
 
     getGuideTutorialState() {
@@ -215,7 +215,7 @@
     }
 
     renderGuideFrame() {
-      return this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      return this.renderActive();
     }
 
     switchGuideTab(tabId) {
@@ -312,14 +312,14 @@
         pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
       };
       this.startFloatTimer();
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
     hideTutorialHighlight() {
       const hadHighlight = Boolean(this.tutorialHighlight);
       this.tutorialHighlight = null;
-      if (hadHighlight) this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      if (hadHighlight) this.renderActive();
       return hadHighlight;
     }
 
@@ -340,7 +340,7 @@
       });
       this.floatingTexts = this.floatingTexts.slice(0, 4);
       this.startFloatTimer();
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -351,14 +351,14 @@
         createdAt: this.now(),
       };
       this.startFloatTimer();
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
     closeRewardReveal() {
       const hadReveal = Boolean(this.rewardReveal);
       this.rewardReveal = null;
-      if (hadReveal) this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      if (hadReveal) this.renderActive();
       return hadReveal;
     }
 
@@ -388,7 +388,7 @@
           this.stopFloatTimer();
         }
         if (changed || this.floatingTexts.length || hasHighlight || hasReveal) {
-          this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+          this.renderActive();
         }
       }, 33);
       this.floatTimer = this.effectTimer;
@@ -410,7 +410,7 @@
           message: view.message || '',
         },
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
     }
 
     setLoginMessage(message) {
@@ -431,7 +431,7 @@
           rememberPasswordChecked: Boolean(view.rememberPasswordChecked),
         },
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
     }
 
     readCredentials() {
@@ -449,7 +449,7 @@
         percentage: 0,
         message: message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90',
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -460,7 +460,7 @@
         percentage: Math.max(0, Math.min(100, Number(progress.percentage) || 0)),
         message: progress.message || this.loading.message,
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -471,7 +471,7 @@
         percentage: 100,
         message: '',
       };
-      if (hadLoading) this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      if (hadLoading) this.renderActive();
       return hadLoading;
     }
 
@@ -492,7 +492,7 @@
           rememberPasswordChecked: !credentials.rememberPasswordChecked,
         },
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -516,7 +516,7 @@
             [isPassword ? 'passwordValue' : 'usernameValue']: nextValue,
           },
         };
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        this.renderActive();
       }).catch(() => {});
       return true;
     }
@@ -534,7 +534,7 @@
       this.showCitySwitcher = false;
       this.showAdvisor = false;
       this.activeEventId = null;
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -545,7 +545,7 @@
         inputValue: '',
         submitting: false,
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
       return true;
     }
 
@@ -558,7 +558,7 @@
         ...this.naming,
         submitting: Boolean(isSubmitting),
       };
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
     }
 
     requestNamingInput() {
@@ -579,7 +579,7 @@
           ...this.naming,
           inputValue: String(value).trim().slice(0, maxLength),
         };
-        this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        this.renderActive();
       }).catch(() => {});
       return true;
     }
@@ -601,7 +601,18 @@
       this.renderer.width = size.width;
       this.renderer.height = size.height;
       this.renderer.pixelRatio = size.pixelRatio;
-      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      this.renderActive();
+    }
+
+    getActiveTab() {
+      return this.lastGame?.getActiveTab?.()
+        || this.lastGame?.activeTab
+        || this.lastGame?.state?.currentTab
+        || 'resources';
+    }
+
+    renderActive() {
+      return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
     }
 
     renderReadOnly(state, activeTab = 'resources') {

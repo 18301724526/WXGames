@@ -20,6 +20,8 @@
       return {
         setInterval: typeof scope.setInterval === 'function' ? scope.setInterval.bind(scope) : null,
         clearInterval: typeof scope.clearInterval === 'function' ? scope.clearInterval.bind(scope) : null,
+        setTimeout: typeof scope.setTimeout === 'function' ? scope.setTimeout.bind(scope) : null,
+        clearTimeout: typeof scope.clearTimeout === 'function' ? scope.clearTimeout.bind(scope) : null,
       };
     }
 
@@ -123,6 +125,15 @@
 
     clearInterval(timer) {
       if (timer && typeof this.scheduler.clearInterval === 'function') this.scheduler.clearInterval(timer);
+    }
+
+    setTimeout(callback, delayMs) {
+      if (typeof this.scheduler.setTimeout === 'function') return this.scheduler.setTimeout(callback, delayMs);
+      return null;
+    }
+
+    clearTimeout(timer) {
+      if (timer && typeof this.scheduler.clearTimeout === 'function') this.scheduler.clearTimeout(timer);
     }
 
     now() {

@@ -97,6 +97,14 @@
       return Date.now();
     }
 
+    setTimeout(callback, delayMs) {
+      return this.runtime.setTimeout?.(callback, delayMs);
+    }
+
+    clearTimeout(timer) {
+      if (timer) this.runtime.clearTimeout?.(timer);
+    }
+
     log(message) {
       const logger = this.runtime.console || global.console;
       if (logger && typeof logger.log === 'function') logger.log(message);

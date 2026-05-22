@@ -152,13 +152,13 @@ window.mountAuthMethods = function(game, deps = {}) {
   game.toggleSettings = function() {
     if (!this.canvasShell) return false;
     this.canvasShell.showSettings = !this.canvasShell.showSettings;
-    this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    this.canvasShell.renderActive?.();
     return true;
   };
   game.closeSettings = function() {
     if (!this.canvasShell) return false;
     this.canvasShell.showSettings = false;
-    this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
+    this.canvasShell.renderActive?.();
     return true;
   };
 

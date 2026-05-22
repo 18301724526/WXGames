@@ -54,6 +54,25 @@ function createCanvasStub(calls) {
   };
 }
 
+function createManualScheduler() {
+  const timers = [];
+  return {
+    timers,
+    setInterval(callback, intervalMs) {
+      const timer = { type: 'interval', callback, intervalMs };
+      timers.push(timer);
+      return timer;
+    },
+    clearInterval() {},
+    setTimeout(callback, delayMs) {
+      const timer = { type: 'timeout', callback, delayMs };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimeout() {},
+  };
+}
+
 test('PlatformRuntime wraps wx style canvas, storage and request APIs without DOM', async () => {
   const originalFetch = global.fetch;
   const calls = [];
@@ -177,6 +196,51 @@ test('Canvas game app renders state and syncs through platform transport without
     app?.stop?.();
     global.document = originalDocument;
   }
+});
+
+test('Canvas game app keeps post-login loading visible for at least three seconds', async () => {
+  const calls = [];
+  const scheduler = createManualScheduler();
+  let now = 1000;
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() {
+        return createCanvasStub(calls);
+      },
+      getSystemInfoSync() {
+        return { windowWidth: 360, windowHeight: 720, pixelRatio: 1 };
+      },
+    },
+    scheduler,
+  });
+  runtime.now = () => now;
+  const app = new CanvasGameApp({
+    runtime,
+    api: { setToken() {}, async getState() { return {}; } },
+    rendererClass: MiniGameCanvasRenderer,
+    presenter: UIStatePresenter,
+    config: GameConfig,
+    initialState: { currentEra: 0, currentTab: 'resources', resources: {}, population: {} },
+  });
+  app.preloadAssets = async (onProgress) => {
+    onProgress({ percentage: 100 });
+    now += 200;
+    return { loaded: 1, failed: 0, total: 1, completed: 1, percentage: 100 };
+  };
+
+  const loadingPromise = app.loadGameAssets({ minimumDurationMs: 3000 });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const timeout = scheduler.timers.find((timer) => timer.type === 'timeout');
+  assert.ok(timeout);
+  assert.equal(timeout.delayMs, 2800);
+  assert.equal(app.loading.visible, true);
+
+  now += timeout.delayMs;
+  timeout.callback();
+  await loadingPromise;
+  assert.equal(app.loading.visible, false);
 });
 
 test('minigame entry does not load H5 DOM adapters', () => {
@@ -416,6 +480,23 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       y: tabTarget.y + tabTarget.height / 2,
     });
     assert.equal(app.activeTab, 'buildings');
+    assert.equal(app.state.currentTab, 'buildings');
+    const renderOptions = [];
+    const originalRender = app.renderer.render.bind(app.renderer);
+    app.renderer.render = (state, options) => {
+      renderOptions.push(options);
+      return originalRender(state, options);
+    };
+    app.applyApiState({
+      gameState: {
+        ...app.state,
+        currentTab: 'resources',
+        resources: { ...app.state.resources, food: 240 },
+      },
+    });
+    assert.equal(app.activeTab, 'buildings');
+    assert.equal(app.state.currentTab, 'buildings');
+    assert.equal(renderOptions.at(-1).activeTab, 'buildings');
     app.renderer.addHitTarget({ x: 1, y: 1, width: 20, height: 20 }, { type: 'scrollBuildings', delta: 1 });
     app.handleTap({ x: 10, y: 10 });
     assert.equal(app.buildingOffset, 1);

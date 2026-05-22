@@ -101,15 +101,20 @@
     applyState(payload = {}) {
       const nextState = payload.gameState || payload.state || this.state;
       const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
+      const localTab = this.getActiveTab();
+      const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'army';
       this.state = {
         ...nextState,
+        currentTab: localTab,
+        militaryView: localMilitaryView,
         softGuide: payload.softGuide ?? nextState.softGuide ?? null,
         guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
         taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
         eraProgress: payload.eraProgress ?? nextState.eraProgress,
       };
       this.tutorial = nextTutorial;
-      this.activeTab = this.state.currentTab || this.activeTab;
+      this.activeTab = this.state.currentTab || localTab;
+      this.militaryView = this.state.militaryView || localMilitaryView;
       const api = this.getGameApi();
       if (payload.token && api) {
         api.setToken?.(payload.token);
@@ -133,9 +138,26 @@
     }
 
     syncFromServer(serverState, tutorial, eraProgress) {
+      const localTab = this.getActiveTab();
+      const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
+      if (this.stateManager && typeof this.stateManager === 'object') {
+        this.stateManager.state = {
+          ...(this.stateManager.state || {}),
+          ...(this.state || {}),
+          currentTab: localTab,
+          militaryView: localMilitaryView,
+        };
+      }
       this.state = this.stateManager?.sync
         ? this.stateManager.sync(serverState, eraProgress)
-        : { ...serverState, eraProgress: eraProgress ?? serverState?.eraProgress };
+        : {
+          ...serverState,
+          currentTab: localTab,
+          militaryView: localMilitaryView,
+          eraProgress: eraProgress ?? serverState?.eraProgress,
+        };
+      this.activeTab = this.state.currentTab || localTab;
+      this.militaryView = this.state.militaryView || localMilitaryView;
       const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
       this.tutorial = nextTutorial;
       this.tutorialController?.setState?.(nextTutorial);
@@ -201,14 +223,15 @@
       this.renderCanvasSurface();
     }
 
-    renderCanvasSurface(activeTab = this.state?.currentTab || this.getActiveTab()) {
+    renderCanvasSurface(activeTab = this.getActiveTab()) {
+      const resolvedActiveTab = activeTab || this.getActiveTab();
       if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
-        this.canvasShell.renderReadOnly(this.state, activeTab);
+        this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         return true;
       }
       if (!this.renderer?.render) return false;
       this.renderer.render(this.state, {
-        activeTab: this.getActiveTab(),
+        activeTab: resolvedActiveTab,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showTaskCenter: this.showTaskCenter,
@@ -271,13 +294,36 @@
       return this.renderer.preloadAssets(assetPaths || undefined, onProgress);
     }
 
+    now() {
+      return this.runtime?.now?.() || Date.now();
+    }
+
+    wait(ms = 0) {
+      const delay = Math.max(0, Number(ms) || 0);
+      if (delay <= 0) return Promise.resolve();
+      if (this.scheduler && typeof this.scheduler.setTimeout === 'function') {
+        return new Promise((resolve) => this.scheduler.setTimeout(resolve, delay));
+      }
+      if (typeof setTimeout === 'function') {
+        return new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      return Promise.resolve();
+    }
+
     async loadGameAssets(options = {}) {
       const message = options.message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90';
+      const minimumDurationMs = Number.isFinite(options.minimumDurationMs)
+        ? Math.max(0, options.minimumDurationMs)
+        : 3000;
+      const startedAt = this.now();
       this.showLoading(message);
       try {
-        return await this.preloadAssets((progress) => {
+        const result = await this.preloadAssets((progress) => {
           this.updateLoading({ ...progress, message });
         }, options.assetPaths || null);
+        const elapsed = Math.max(0, this.now() - startedAt);
+        await this.wait(Math.max(0, minimumDurationMs - elapsed));
+        return result;
       } finally {
         this.updateLoading({ percentage: 100, message });
         this.hideLoading();
@@ -285,7 +331,7 @@
     }
 
     getActiveTab() {
-      return this.state?.currentTab || this.activeTab || 'resources';
+      return this.activeTab || this.state?.currentTab || 'resources';
     }
 
     getCanvasActionState() {
