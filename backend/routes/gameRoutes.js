@@ -1,12 +1,29 @@
 const TutorialService = require('../services/TutorialService');
 const SoftGuideService = require('../services/SoftGuideService');
 const GuideTaskService = require('../services/GuideTaskService');
+const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
 const ClaimEventAction = require('../actions/ClaimEventAction');
 const TerritoryAction = require('../actions/TerritoryAction');
+
+function buildGameView(gameState, tutorial, gameStateService) {
+  const clientState = gameStateService.getClientGameState(gameState);
+  const eraProgress = gameStateService.calculateEraProgress(gameState);
+  const guideTasks = GuideTaskService.getGuideTasks(gameState);
+  const taskCenter = TaskCenterService.getTaskCenter(gameState);
+  const softGuide = GuideTaskService.getGuide(gameState) || SoftGuideService.getSoftGuide(gameState, eraProgress);
+  return {
+    gameState: clientState,
+    tutorial,
+    softGuide,
+    guideTasks,
+    taskCenter,
+    eraProgress,
+  };
+}
 
 function registerGameRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService } = deps;
@@ -23,17 +40,62 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    const guideTasks = GuideTaskService.getGuideTasks(gameState);
-    const softGuide = GuideTaskService.getGuide(gameState) || SoftGuideService.getSoftGuide(gameState, eraProgress);
     repository.touchPlayerActiveAt(req.playerId);
     repository.save(gameState);
     return res.json({
-      gameState: gameStateService.getClientGameState(gameState),
-      tutorial,
-      softGuide,
-      guideTasks,
-      eraProgress,
+      ...buildGameView(gameState, tutorial, gameStateService),
       syncTime: new Date().toISOString(),
+    });
+  });
+
+  app.get('/api/game/tasks', authMiddleware, (req, res) => {
+    const rawState = repository.findByPlayerId(req.playerId);
+    if (!rawState) {
+      return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
+    }
+    const gameState = gameStateService.normalizeState(rawState);
+    EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
+    repository.touchPlayerActiveAt(req.playerId);
+    repository.save(gameState);
+    return res.json({
+      taskCenter: TaskCenterService.getTaskCenter(gameState, { activeTab: req.query?.tab }),
+      syncTime: new Date().toISOString(),
+    });
+  });
+
+  app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
+    const rawState = repository.findByPlayerId(req.playerId);
+    if (!rawState) {
+      return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
+    }
+
+    const gameState = gameStateService.normalizeState(rawState);
+    let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
+    let eraProgress = gameStateService.calculateEraProgress(gameState);
+    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+    gameState.tutorial = tutorial;
+    EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
+
+    const { taskId, category } = req.body || {};
+    const guideTaskCheck = GuideTaskService.validateAction(gameState, 'claimGuideTaskReward', { target: taskId });
+    if (!guideTaskCheck.allowed) {
+      return res.status(403).json({ success: false, error: guideTaskCheck.code, message: guideTaskCheck.message });
+    }
+
+    const result = TaskCenterService.claimTask(gameState, taskId, category);
+    gameState.tutorial = tutorial;
+    eraProgress = gameStateService.calculateEraProgress(gameState);
+    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+    gameState.tutorial = tutorial;
+    EventService.maybeGenerateRegularEvent(gameState);
+    EventService.maybeGenerateThreatEvent(gameState);
+    repository.save(gameState);
+
+    return res.status(result.success ? 200 : 400).json({
+      ...result,
+      ...buildGameView(gameState, tutorial, gameStateService),
     });
   });
 
@@ -95,18 +157,10 @@ function registerGameRoutes(app, deps) {
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
-    const clientState = gameStateService.getClientGameState(gameState);
-    eraProgress = gameStateService.calculateEraProgress(gameState);
-    const guideTasks = GuideTaskService.getGuideTasks(gameState);
-    const softGuide = GuideTaskService.getGuide(gameState) || SoftGuideService.getSoftGuide(gameState, eraProgress);
     repository.save(gameState);
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      gameState: clientState,
-      tutorial,
-      softGuide,
-      guideTasks,
-      eraProgress,
+      ...buildGameView(gameState, tutorial, gameStateService),
     });
   });
 }

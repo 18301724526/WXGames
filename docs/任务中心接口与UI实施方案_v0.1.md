@@ -68,4 +68,5 @@
 
 | 时间戳 | 提交 | 内容 | 测试 |
 | --- | --- | --- | --- |
-| 2026-05-22 15:39:04 +08:00 | 待回填 | 初始化任务中心实施文档 | `git diff --check` |
+| 2026-05-22 15:39:04 +08:00 | `bb1181d` | 初始化任务中心实施文档 | `git diff --check` |
+| 2026-05-22 15:48:04 +08:00 | 待回填 | 新增后端任务中心服务、状态快照、获取接口和领取接口 | `node --test backend\tests\task-center-service.test.js backend\tests\guide-task.test.js backend\tests\guide-task-newbie-flow.test.js` |
