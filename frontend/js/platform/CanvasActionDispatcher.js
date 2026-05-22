@@ -168,6 +168,30 @@
         return moved;
       }
 
+      if (action.type === 'openTaskCenter') {
+        const opened = typeof context.openTaskCenter === 'function'
+          ? context.openTaskCenter(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeTaskCenter') {
+        const closed = typeof context.closeTaskCenter === 'function'
+          ? context.closeTaskCenter(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
+      if (action.type === 'switchTaskCenterTab') {
+        const switched = typeof context.switchTaskCenterTab === 'function'
+          ? context.switchTaskCenterTab(action.tab, action) !== false
+          : false;
+        if (switched && typeof context.render === 'function') context.render(action);
+        return switched;
+      }
+
       return false;
     }
 
@@ -192,6 +216,9 @@
         'resetWorldPan',
         'changeExpeditionSoldiers',
         'goToGuideTaskTarget',
+        'openTaskCenter',
+        'closeTaskCenter',
+        'switchTaskCenterTab',
       ];
     }
 
@@ -214,6 +241,7 @@
         'advanceEra',
         'claimEvent',
         'claimGuideTaskReward',
+        'claimTaskReward',
         'scoutTerritory',
         'claimScout',
         'requestNamingInput',

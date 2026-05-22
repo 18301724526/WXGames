@@ -517,6 +517,77 @@ test('CanvasGameRenderer renders guide task go button for active tasks', () => {
   )));
 });
 
+test('CanvasGameRenderer renders task center entry and panel with category tabs', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '260',
+        foodRate: '+0/s',
+        knowledgeValue: '80',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    taskCenter: {
+      visible: true,
+      activeTab: 'main',
+      tabs: [
+        { id: 'daily', label: '每日任务', badge: 0 },
+        { id: 'main', label: '主线任务', badge: 1 },
+        { id: 'season', label: '赛季任务', badge: 0 },
+        { id: 'challenge', label: '挑战任务', badge: 0 },
+      ],
+      categories: {
+        daily: { tasks: [], emptyText: '暂无每日任务' },
+        main: {
+          tasks: [{
+            id: 'barracks_supplies',
+            title: '城邦守备',
+            description: '建造兵营',
+            status: 'claimable',
+            rewardText: '食物 +260 / 知识 +80',
+          }],
+        },
+        season: { tasks: [], emptyText: '暂无赛季任务' },
+        challenge: { tasks: [], emptyText: '暂无挑战任务' },
+      },
+      summary: { claimableCount: 1, activeCount: 1 },
+    },
+  }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showTaskCenter: true,
+    activeTaskCenterTab: 'main',
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '任务'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线任务'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城邦守备'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openTaskCenter'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchTaskCenterTab' && target.action.tab === 'daily'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimTaskReward' && target.action.taskId === 'barracks_supplies'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeTaskCenter'));
+});
+
 test('CanvasGameRenderer renders login panel and login hit targets on canvas', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

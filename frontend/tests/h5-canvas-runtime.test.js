@@ -194,6 +194,8 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       floatingTexts: [],
       tutorialHighlight: null,
       rewardReveal: null,
+      showTaskCenter: false,
+      activeTaskCenterTab: 'main',
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -644,6 +646,41 @@ test('Canvas game shell sends guide task go actions through shared target naviga
     right: 368,
     bottom: 458,
   });
+});
+
+test('Canvas game shell owns task center state and dispatches reward claims', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const actions = [
+    { type: 'openTaskCenter' },
+    { type: 'switchTaskCenterTab', tab: 'daily' },
+    { type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' },
+  ];
+  const renderCalls = [];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => actions.shift(),
+    render(state, options) { renderCalls.push(options); },
+  };
+  CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 350, clientY: 720, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(renderCalls.at(-1).showTaskCenter, true);
+  listeners['document:pointerup']({ clientX: 90, clientY: 180, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(renderCalls.at(-1).activeTaskCenterTab, 'daily');
+  listeners['document:pointerup']({ clientX: 320, clientY: 500, type: 'pointerup', timeStamp: 1600 });
+  assert.equal(renderCalls.at(-1).showTaskCenter, false);
+  assert.deepEqual(dispatched, [{ type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' }]);
 });
 
 test('Canvas game shell dispatches military and world actions without DOM adapters', () => {

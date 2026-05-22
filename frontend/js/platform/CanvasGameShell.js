@@ -34,6 +34,8 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showAdvisor = false;
+      this.showTaskCenter = false;
+      this.activeTaskCenterTab = 'main';
       this.buildingOffset = 0;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -640,6 +642,24 @@
             return this.onAction(action, event) !== false;
           },
           goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
+          openTaskCenter: () => {
+            this.showTaskCenter = true;
+            this.showSettings = false;
+            this.showLogs = false;
+            this.showResourceDetails = false;
+            this.showCitySwitcher = false;
+            this.showAdvisor = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeTaskCenter: () => {
+            this.showTaskCenter = false;
+            return true;
+          },
+          switchTaskCenterTab: (tab) => {
+            this.activeTaskCenterTab = tab || 'main';
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') {
               this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
@@ -737,6 +757,15 @@
         }
         return handled;
       }
+      if (action.type === 'claimTaskReward') {
+        if (!this.onAction) return false;
+        const handled = this.onAction(action, event) !== false;
+        if (handled) {
+          this.showTaskCenter = false;
+          this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+        }
+        return handled;
+      }
       if (action.type === 'advanceEra') {
         if (!this.onAction) return false;
         return this.onAction(action, event) !== false;
@@ -799,6 +828,8 @@
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showAdvisor: this.showAdvisor,
+        showTaskCenter: this.showTaskCenter,
+        activeTaskCenterTab: this.activeTaskCenterTab,
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,

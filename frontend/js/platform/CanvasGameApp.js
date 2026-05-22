@@ -35,6 +35,8 @@
       this.militaryView = options.militaryView || this.state.militaryView || 'army';
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showTaskCenter = false;
+      this.activeTaskCenterTab = 'main';
       this.rewardReveal = null;
       this.tutorialHighlight = null;
       this.highlightTimer = null;
@@ -78,6 +80,8 @@
         activeTab: this.getActiveTab(),
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
+        showTaskCenter: this.showTaskCenter,
+        activeTaskCenterTab: this.activeTaskCenterTab,
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
         activeEventId: this.activeEventId,
@@ -405,6 +409,21 @@
             return true;
           },
           goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
+          openTaskCenter: () => {
+            this.showTaskCenter = true;
+            this.showResourceDetails = false;
+            this.showCitySwitcher = false;
+            this.activeEventId = null;
+            return true;
+          },
+          closeTaskCenter: () => {
+            this.showTaskCenter = false;
+            return true;
+          },
+          switchTaskCenterTab: (tab) => {
+            this.activeTaskCenterTab = tab || 'main';
+            return true;
+          },
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') this.render();
           },
@@ -444,6 +463,13 @@
           },
           claimGuideTaskReward: async (a) => {
             const result = await this.runAction(() => this.api.claimGuideTaskReward(a.taskId));
+            this.rewardReveal = result?.rewardReveal || null;
+            return true;
+          },
+          claimTaskReward: async (a) => {
+            this.showTaskCenter = false;
+            const claim = this.api.claimTaskReward || ((taskId) => this.api.claimGuideTaskReward(taskId));
+            const result = await this.runAction(() => claim.call(this.api, a.taskId, a.category || 'main'));
             this.rewardReveal = result?.rewardReveal || null;
             return true;
           },

@@ -32,6 +32,7 @@ const Game = {
     territoryState: {},
     softGuide: null,
     guideTasks: { visible: false, tasks: [] },
+    taskCenter: null,
   },
   tutorial: { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } },
   activeEventId: null,
@@ -170,6 +171,10 @@ const Game = {
         }
         if (action?.type === 'claimGuideTaskReward') {
           this.claimGuideTaskReward(action.taskId);
+          return true;
+        }
+        if (action?.type === 'claimTaskReward') {
+          this.claimTaskReward(action.taskId, action.category);
           return true;
         }
         if (action?.type === 'goToGuideTaskTarget') {
@@ -432,6 +437,20 @@ const Game = {
     if (!taskId) return;
     try {
       const result = await this.gameAPI.claimGuideTaskReward(taskId);
+      this.applyApiState(result);
+      this.canvasShell?.showRewardReveal?.(result.rewardReveal);
+      this.showFloatingText(result.rewardText || result.message || '奖励已领取');
+      this.log(`🎁 ${result.message}`);
+    } catch (error) {
+      this.log(`❌ ${error.payload?.message || error.message}`);
+      this.canvasShell?.renderReadOnly(this.state, this.state.currentTab);
+    }
+  },
+
+  async claimTaskReward(taskId, category = 'main') {
+    if (!taskId) return;
+    try {
+      const result = await this.gameAPI.claimTaskReward(taskId, category || 'main');
       this.applyApiState(result);
       this.canvasShell?.showRewardReveal?.(result.rewardReveal);
       this.showFloatingText(result.rewardText || result.message || '奖励已领取');
