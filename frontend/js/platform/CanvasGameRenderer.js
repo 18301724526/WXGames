@@ -475,9 +475,12 @@
       const buttonLabel = canClaim ? (task.actionLabel || '任务') : (task.actionLabel || '前往');
       const buttonAction = task.action || (
         canClaim
-          ? { type: 'openTaskCenter', tab: 'main', taskId: task.id, target: 'task-center-main-claim' }
+          ? { type: 'openTaskCenter', tab: 'main', taskId: task.id, target: 'task-center-main-claim', source: 'guideTaskBar' }
           : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
       );
+      const hitAction = buttonAction.type === 'openTaskCenter'
+        ? { ...buttonAction, source: buttonAction.source || 'guideTaskBar' }
+        : buttonAction;
       this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, buttonLabel, {
         disabled: buttonDisabled,
         active: canClaim || canGo,
@@ -487,7 +490,7 @@
       });
       this.addHitTarget(
         { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight },
-        { ...buttonAction, disabled: buttonDisabled },
+        { ...hitAction, disabled: buttonDisabled },
       );
 
       return y + height + 10;
@@ -544,7 +547,7 @@
           align: 'center',
         });
       }
-      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openTaskCenter' });
+      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openTaskCenter', source: 'taskIcon' });
     }
 
     renderTaskCenterPanel(state = {}, options = {}) {

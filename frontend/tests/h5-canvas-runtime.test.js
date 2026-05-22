@@ -708,6 +708,59 @@ test('Canvas game shell highlights first available scout action for the scout gu
   });
 });
 
+test('Canvas game shell guides claimable main task through task icon then panel claim', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const guideBarTarget = { x: 286, y: 92, width: 82, height: 34, action: { type: 'openTaskCenter', tab: 'main', target: 'task-center-main-claim', source: 'guideTaskBar' } };
+  const taskIconTarget = { x: 302, y: 604, width: 48, height: 48, action: { type: 'openTaskCenter', source: 'taskIcon' } };
+  const claimTarget = { x: 258, y: 462, width: 78, height: 34, action: { type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' } };
+  const renderer = {
+    hitTargets: [guideBarTarget, taskIconTarget],
+    getHitTarget: () => ({ type: 'openTaskCenter', tab: 'main', target: 'task-center-main-claim', source: 'taskIcon' }),
+    render(state, options) {
+      renderCalls.push(options);
+      this.hitTargets = options.showTaskCenter
+        ? [guideBarTarget, taskIconTarget, claimTarget]
+        : [guideBarTarget, taskIconTarget];
+    },
+  };
+  const game = {
+    state: {
+      currentTab: 'resources',
+      softGuide: { target: 'task-center-main-claim', message: 'Claim the reward.' },
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  assert.deepEqual(shell.getTutorialTarget('task-center-main-claim').getRect(), {
+    left: taskIconTarget.x,
+    top: taskIconTarget.y,
+    width: taskIconTarget.width,
+    height: taskIconTarget.height,
+    right: taskIconTarget.x + taskIconTarget.width,
+    bottom: taskIconTarget.y + taskIconTarget.height,
+  });
+
+  listeners['document:pointerup']({ clientX: 326, clientY: 628, type: 'pointerup', timeStamp: 1000 });
+
+  assert.equal(renderCalls.at(-1).showTaskCenter, true);
+  assert.deepEqual(renderCalls.at(-1).tutorialHighlight.rect, {
+    left: claimTarget.x,
+    top: claimTarget.y,
+    width: claimTarget.width,
+    height: claimTarget.height,
+    right: claimTarget.x + claimTarget.width,
+    bottom: claimTarget.y + claimTarget.height,
+  });
+});
+
 test('Canvas game shell owns task center state and dispatches reward claims', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [

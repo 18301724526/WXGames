@@ -179,9 +179,9 @@
       if (key === 'card-craftsman') return this.getCanvasTarget('assignJob', (action) => action.job === 'craftsman' && action.delta > 0);
       if (key === 'guide-task-claim' || key === 'task-center-main-claim') {
         return this.getCanvasTarget('claimTaskReward', (action) => (action.category || 'main') === 'main')
-          || this.getCanvasTarget('openTaskCenter');
+          || this.getCanvasTarget('openTaskCenter', (action) => action.source === 'taskIcon');
       }
-      if (key === 'task-center-button') return this.getCanvasTarget('openTaskCenter');
+      if (key === 'task-center-button') return this.getCanvasTarget('openTaskCenter', (action) => action.source === 'taskIcon');
       if (key === 'event-card-special') return this.getCanvasTarget('openEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'btn-claim-event') return this.getCanvasTarget('claimEvent', (action) => action.eventId === 'evt_settlement_forest_001');
       if (key === 'scout-action-first') {
@@ -194,6 +194,15 @@
       if (key === 'tab-events') return this.getCanvasTarget('switchTab', (action) => action.tab === 'events');
       if (key === 'tab-military' || key === 'tab-territory') return this.getCanvasTarget('switchTab', (action) => action.tab === 'military');
       return null;
+    }
+
+    refreshTaskCenterGuideHighlight(action = {}) {
+      const guideTarget = action.target || this.lastGame?.state?.softGuide?.target;
+      if (guideTarget !== 'task-center-main-claim' && guideTarget !== 'guide-task-claim') return false;
+      this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+      const target = this.getTutorialTargetWithoutScroll('task-center-main-claim');
+      if (!target) return false;
+      return this.showTutorialHighlight(target, action.message || '领取主线任务奖励');
     }
 
     getTargetTab(key) {
@@ -656,9 +665,9 @@
             return this.onAction(action, event) !== false;
           },
           goToGuideTaskTarget: (dispatchAction) => this.goToGuideTaskTarget(dispatchAction),
-          openTaskCenter: () => {
+          openTaskCenter: (dispatchAction) => {
             this.showTaskCenter = true;
-            this.activeTaskCenterTab = action.tab || this.activeTaskCenterTab || 'main';
+            this.activeTaskCenterTab = dispatchAction?.tab || this.activeTaskCenterTab || 'main';
             this.showSettings = false;
             this.showLogs = false;
             this.showResourceDetails = false;
@@ -678,6 +687,9 @@
           render: (dispatchAction) => {
             if (dispatchAction?.type !== 'switchTab' && dispatchAction?.type !== 'goToGuideTaskTarget') {
               this.renderReadOnly(this.lastGame?.state, this.lastGame?.state?.currentTab || 'resources');
+            }
+            if (dispatchAction?.type === 'openTaskCenter') {
+              this.refreshTaskCenterGuideHighlight(dispatchAction);
             }
             if (dispatchAction?.type === 'openEvent' || dispatchAction?.type === 'closeEvent') {
               this.lastGame?.tutorialController?.render?.();

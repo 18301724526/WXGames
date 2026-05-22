@@ -457,7 +457,11 @@ test('CanvasGameRenderer renders guide task bar and reward reveal on shared canv
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线'));
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openTaskCenter' && target.action.tab === 'main'));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'openTaskCenter'
+    && target.action.tab === 'main'
+    && target.action.source === 'guideTaskBar'
+  )));
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'claimGuideTaskReward'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '获得奖励'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '收下'));
@@ -583,7 +587,10 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '任务'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线任务'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城邦守备'));
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openTaskCenter'));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'openTaskCenter'
+    && target.action.source === 'taskIcon'
+  )));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchTaskCenterTab' && target.action.tab === 'daily'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'claimTaskReward' && target.action.taskId === 'barracks_supplies'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeTaskCenter'));

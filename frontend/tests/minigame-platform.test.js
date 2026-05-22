@@ -483,6 +483,11 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
 
     app.state = {
       ...app.state,
+      softGuide: {
+        mode: 'strong',
+        target: 'task-center-main-claim',
+        message: 'Claim the reward.',
+      },
       guideTasks: {
         visible: true,
         tasks: [{
@@ -494,8 +499,18 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       },
     };
     app.switchTab('resources');
-    const guideTaskTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openTaskCenter' && target.action.tab === 'main');
+    const guideTaskBarTarget = app.renderer.hitTargets.find((target) => (
+      target.action?.type === 'openTaskCenter'
+      && target.action.tab === 'main'
+      && target.action.source === 'guideTaskBar'
+    ));
+    assert.ok(guideTaskBarTarget);
+    const guideTaskTarget = app.renderer.hitTargets.find((target) => (
+      target.action?.type === 'openTaskCenter'
+      && target.action.source === 'taskIcon'
+    ));
     assert.ok(guideTaskTarget);
+    assert.equal(app.getGuideTargetRect('task-center-main-claim').left, guideTaskTarget.x);
     app.handleTap({
       x: guideTaskTarget.x + guideTaskTarget.width / 2,
       y: guideTaskTarget.y + guideTaskTarget.height / 2,
@@ -505,6 +520,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.equal(app.activeTaskCenterTab, 'main');
     const taskCenterClaimTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimTaskReward' && target.action.taskId === 'barracks_supplies');
     assert.ok(taskCenterClaimTarget);
+    assert.equal(app.tutorialHighlight?.rect.left, taskCenterClaimTarget.x);
     app.handleTap({
       x: taskCenterClaimTarget.x + taskCenterClaimTarget.width / 2,
       y: taskCenterClaimTarget.y + taskCenterClaimTarget.height / 2,
