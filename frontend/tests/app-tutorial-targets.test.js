@@ -687,6 +687,53 @@ test('renderSoftGuide clears stale task claim highlight for soft guide state', (
   }
 });
 
+test('renderSoftGuide keeps active tutorial highlight when heartbeat has no soft guide', () => {
+  const originalWindow = global.window;
+  const originalDocument = global.document;
+  const originalLocalStorage = global.localStorage;
+
+  try {
+    global.window = createWindowStub();
+    global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+    global.document = {
+      addEventListener() {},
+      getElementById(id) {
+        return { id };
+      },
+    };
+
+    delete require.cache[require.resolve('../app')];
+    require('../app');
+
+    const { Game } = global.window;
+    const calls = [];
+    Game.state.softGuide = null;
+    Game.tutorialController = {
+      state: { completed: false, currentStep: 1 },
+      isSoftGuideStep() {
+        return false;
+      },
+      hasVisibleGuideTask() {
+        return false;
+      },
+    };
+    Game.tutorialRenderer = {
+      hide() {
+        calls.push('hide');
+      },
+    };
+
+    assert.equal(Game.hasActiveTutorialGuideHighlight(), true);
+    Game.renderSoftGuide();
+
+    assert.deepEqual(calls, []);
+  } finally {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('first scout guide target prefers the scout military sub view', () => {
   const originalWindow = global.window;
   const originalDocument = global.document;

@@ -222,6 +222,20 @@
       return Boolean(view?.advanceButton?.canAdvance);
     }
 
+    hasActiveTutorialGuideHighlight() {
+      const tutorial = this.tutorialController?.state || this.tutorial || {};
+      const currentStep = Number(tutorial.currentStep) || 0;
+      if (tutorial.completed || currentStep <= 0) return false;
+      const isSoftStep = typeof this.tutorialController?.isSoftGuideStep === 'function'
+        ? this.tutorialController.isSoftGuideStep()
+        : currentStep === 8;
+      if (isSoftStep) return false;
+      const hasVisibleGuideTask = typeof this.tutorialController?.hasVisibleGuideTask === 'function'
+        ? this.tutorialController.hasVisibleGuideTask()
+        : false;
+      return !hasVisibleGuideTask;
+    }
+
     render() {
       this.renderMilitaryView();
       this.tutorialController?.render?.();
@@ -1055,7 +1069,7 @@
       const navigation = this.getActiveGuideNavigation();
       const targetKey = navigation?.target || guide?.target || '';
       if ((!guide || guide.mode !== 'strong' || !guide.target) && !navigation) {
-        this.tutorialRenderer?.hide?.();
+        if (!this.hasActiveTutorialGuideHighlight()) this.tutorialRenderer?.hide?.();
         if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
         return;
       }
