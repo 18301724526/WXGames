@@ -326,17 +326,24 @@
     static getDefaultTalentPolicyDraft(state = {}, uiState = {}) {
       const source = state.talentPolicies || {};
       const systemPolicies = Array.isArray(source.systemPolicies) ? source.systemPolicies : [];
+      const customPolicies = Array.isArray(source.customPolicies) ? source.customPolicies : [];
       const activeIsSystem = systemPolicies.some((policy) => policy.id === source.activePolicyId);
+      const activeCustom = customPolicies.find((policy) => policy.id === source.activePolicyId) || null;
+      const activeDraft = source.activePolicyId === 'draft' && source.activeDraft ? source.activeDraft : null;
       const selected = uiState.selectedBasePolicyId
+        || uiState.basePolicyId
+        || activeDraft?.basePolicyId
+        || activeCustom?.basePolicyId
         || (activeIsSystem ? source.activePolicyId : null)
         || 'balanced';
       const fallbackTiers = source.defaultTiers || { agriculture: 2, knowledge: 2, industry: 2 };
+      const activeTiers = activeDraft?.tiers || activeCustom?.tiers || fallbackTiers;
       return {
         basePolicyId: selected,
         tiers: {
-          agriculture: this.toInteger(uiState.tiers?.agriculture ?? fallbackTiers.agriculture, 2),
-          knowledge: this.toInteger(uiState.tiers?.knowledge ?? fallbackTiers.knowledge, 2),
-          industry: this.toInteger(uiState.tiers?.industry ?? fallbackTiers.industry, 2),
+          agriculture: this.toInteger(uiState.tiers?.agriculture ?? activeTiers.agriculture, 2),
+          knowledge: this.toInteger(uiState.tiers?.knowledge ?? activeTiers.knowledge, 2),
+          industry: this.toInteger(uiState.tiers?.industry ?? activeTiers.industry, 2),
         },
       };
     }
@@ -365,6 +372,9 @@
       const customPolicies = Array.isArray(source.customPolicies) ? source.customPolicies : [];
       const activePolicyId = source.activePolicyId || 'balanced';
       const draft = this.getDefaultTalentPolicyDraft(state, uiState);
+      const activeSystemPolicy = systemPolicies.find((policy) => policy.id === activePolicyId) || null;
+      const activeCustomPolicy = customPolicies.find((policy) => policy.id === activePolicyId) || null;
+      const activeDraftPolicy = activePolicyId === 'draft' && source.activeDraft ? source.activeDraft : null;
       const basePolicy = systemPolicies.find((policy) => policy.id === draft.basePolicyId)
         || systemPolicies.find((policy) => policy.id === activePolicyId)
         || systemPolicies[0]
@@ -386,10 +396,17 @@
         2: '稳',
         3: '高',
       };
+      const activePolicyLabel = activeDraftPolicy?.displayName
+        || activeCustomPolicy?.displayName
+        || activeCustomPolicy?.label
+        || activeSystemPolicy?.label
+        || source.activePolicyLabel
+        || preview.policyLabel
+        || basePolicy.label;
 
       return {
         activePolicyId,
-        activePolicyLabel: source.activePolicyLabel || preview.policyLabel || basePolicy.label,
+        activePolicyLabel,
         systemPolicies: systemPolicies.map((policy) => ({
           ...policy,
           active: policy.id === activePolicyId,
@@ -415,7 +432,7 @@
         },
         text: {
           title: '人才方针',
-          subtitle: `当前：${source.activePolicyLabel || preview.policyLabel || '均衡发展'}`,
+          subtitle: `当前：${activePolicyLabel || '均衡发展'}`,
           presetTitle: '系统方针',
           customTitle: '自定义微调',
           customName: this.makeTalentPolicyName(basePolicy, draft.tiers),

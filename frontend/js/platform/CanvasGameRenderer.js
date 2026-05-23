@@ -1253,9 +1253,9 @@
         const width = column === 1 ? innerX + innerWidth - buttonX : presetWidth;
         this.drawButton(buttonX, buttonY, width, presetHeight, this.truncateText(policy.label, width - 12, { size: 12, bold: true }), {
           disabled: policy.disabled,
-          active: policy.active || policy.selected,
+          active: policy.active,
           size: 12,
-          bold: policy.active || policy.selected,
+          bold: policy.active,
           radius: 8,
         });
         this.addHitTarget(

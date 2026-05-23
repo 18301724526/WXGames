@@ -818,3 +818,37 @@ test('talent policy view state builds presets and tier draft without using custo
   assert.equal(view.customPolicies[0].active, true);
   assert.equal(view.preview.allocationText, '农民 2 / 学者 1 / 工匠 1');
 });
+
+test('talent policy view state follows the applied policy for title and preset active state', () => {
+  const view = UIStatePresenter.buildTalentPolicyViewState({
+    currentEra: 2,
+    talentPolicies: {
+      activePolicyId: 'agriculture',
+      activePolicyLabel: '均衡发展',
+      defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
+      systemPolicies: [
+        { id: 'balanced', label: '均衡发展', description: '稳定分工' },
+        { id: 'agriculture', label: '农业优先', description: '重视农业' },
+        { id: 'knowledge', label: '知识优先', description: '重视知识' },
+      ],
+      customPolicies: [],
+      tendencies: [
+        { id: 'agriculture', label: '农业', disabled: false },
+        { id: 'knowledge', label: '知识', disabled: false },
+        { id: 'industry', label: '工业', disabled: false },
+      ],
+      preview: {
+        policyLabel: '农业优先',
+        allocation: { farmer: 3, scholar: 0, craftsman: 0 },
+      },
+    },
+  });
+
+  assert.equal(view.activePolicyLabel, '农业优先');
+  assert.equal(view.text.subtitle, '当前：农业优先');
+  assert.equal(view.draft.basePolicyId, 'agriculture');
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').active, false);
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').selected, false);
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'agriculture').active, true);
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'agriculture').selected, true);
+});
