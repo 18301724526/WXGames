@@ -164,6 +164,8 @@ function getClientGameState(gameState) {
   const normalized = normalizeState(gameState);
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
   const totalBuildings = Object.values(normalized.buildings).reduce((sum, item) => sum + (item?.level || 0), 0);
+  const activeCity = CityService.getActiveCity(normalized);
+  const growthMultiplier = ResourceTickCalculator.calculatePopulationGrowthMultiplier(activeCity || normalized);
   return {
     playerId: normalized.playerId,
     resources: {
@@ -197,6 +199,8 @@ function getClientGameState(gameState) {
       ...normalized.population,
       max: normalized.population.max,
       maxPop: normalized.population.max,
+      growthIntervalSeconds: GameConfig.population.growthIntervalSeconds,
+      growthMultiplier,
     },
     talentPolicies: TalentPolicyService.getClientState(normalized),
     techs: normalized.techs,

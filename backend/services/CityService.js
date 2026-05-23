@@ -263,6 +263,8 @@ function advanceAllCities(gameState, deltaSeconds = 1) {
       resources: city.resources,
       population: city.population,
       buildingEffects: city.buildingEffects,
+      habitability: city.habitability,
+      planning: city.planning,
     }, seconds);
     const trainingState = {
       ...gameState,
@@ -355,6 +357,7 @@ function getClientCityState(gameState) {
       terrainLabel: city.terrainLabel,
       habitability: city.habitability,
       habitabilityLabel: city.habitabilityLabel,
+      populationGrowthMultiplier: ResourceTickCalculator.calculatePopulationGrowthMultiplier(city),
       totalBuildings: Object.values(city.buildings || {}).reduce((sum, item) => sum + (item?.level || 0), 0),
     })),
   };

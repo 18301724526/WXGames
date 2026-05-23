@@ -46,6 +46,44 @@ test('人口自然增长在食物充足且未达上限时生效', () => {
   assert.equal(state.population.growthProgress, 0);
 });
 
+test('habitability above zero speeds up population growth progress', () => {
+  const state = gameStateService.createInitialGameState('growth-good-habitability-player');
+  state.resources.food = 100;
+  state.population.total = 2;
+  state.population.farmers = 2;
+  state.population.unassigned = 0;
+  state.population.max = 3;
+  state.population.maxPop = 3;
+  state.population.growthProgress = 118.5;
+  state.habitability = 50;
+
+  const result = ResourceTickCalculator.applyPopulationGrowth(state, 1);
+
+  assert.equal(result.growthMultiplier, 1.5);
+  assert.equal(result.grown, 1);
+  assert.equal(state.population.total, 3);
+  assert.equal(state.population.growthProgress, 0);
+});
+
+test('habitability below zero slows population growth progress', () => {
+  const state = gameStateService.createInitialGameState('growth-low-habitability-player');
+  state.resources.food = 100;
+  state.population.total = 2;
+  state.population.farmers = 2;
+  state.population.unassigned = 0;
+  state.population.max = 3;
+  state.population.maxPop = 3;
+  state.population.growthProgress = 119;
+  state.habitability = -50;
+
+  const result = ResourceTickCalculator.applyPopulationGrowth(state, 1);
+
+  assert.equal(result.growthMultiplier, 0.5);
+  assert.equal(result.grown, 0);
+  assert.equal(state.population.total, 2);
+  assert.equal(state.population.growthProgress, 119.5);
+});
+
 test('客户端状态返回食物产出/消耗/净增长拆解', () => {
   const state = gameStateService.createInitialGameState('breakdown-player');
   state.population.farmers = 2;
@@ -57,6 +95,8 @@ test('客户端状态返回食物产出/消耗/净增长拆解', () => {
   assert.equal(clientState.resources.foodNetPerSecond, 1.4);
   assert.equal(clientState.resources.foodPerSecond, 1.4);
   assert.equal(clientState.resources.knowledgePerSecond, 0.3);
+  assert.equal(clientState.population.growthIntervalSeconds, 120);
+  assert.equal(clientState.population.growthMultiplier, 1);
   assert.equal(clientState.currentEraName, '原始时代');
   assert.ok(clientState.currentEraDescription);
   assert.equal(clientState.buildingDefinitions.farm.name, '农田');

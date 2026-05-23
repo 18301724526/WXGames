@@ -43,6 +43,16 @@
       return `${number >= 0 ? '+' : ''}${this.formatCompactNumber(number, { floorSmall: false })}/s`;
     }
 
+    static formatMultiplier(value) {
+      const number = Math.round(this.toNumber(value, 1) * 100) / 100;
+      return `x${number.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}`;
+    }
+
+    static calculatePopulationGrowthMultiplier(habitability = 0) {
+      const score = this.toNumber(habitability);
+      return Math.round(Math.max(0.5, Math.min(1.5, 1 + score / 100)) * 100) / 100;
+    }
+
     static toDisplayPopulation(officials) {
       return this.toInteger(officials) * this.POPULATION_PER_OFFICIAL;
     }
@@ -360,6 +370,10 @@
       const label = planning.habitabilityLabel || activeCity.habitabilityLabel || '平稳';
       const terrainLabel = planning.terrainLabel || activeCity.terrainLabel || '平原';
       const notes = Array.isArray(planning.habitabilityNotes) ? planning.habitabilityNotes : [];
+      const growthMultiplier = this.toNumber(
+        planning.populationGrowthMultiplier ?? activeCity.populationGrowthMultiplier ?? state.population?.growthMultiplier,
+        this.calculatePopulationGrowthMultiplier(habitability),
+      );
       return {
         terrainId: planning.terrainId || activeCity.terrain || 'plains',
         terrainLabel,
@@ -368,12 +382,14 @@
         habitability,
         habitabilityLabel: label,
         habitabilityTone: planning.habitabilityTone || 'neutral',
+        populationGrowthMultiplier: growthMultiplier,
         habitabilitySummary: planning.habitabilitySummary || `${terrainLabel}城市规划${label}`,
         habitabilityNotes: notes,
         text: {
           terrain: terrainLabel,
           habitability: `${habitability >= 0 ? '+' : ''}${habitability}`,
           habitabilityLabel: label,
+          populationGrowthMultiplier: this.formatMultiplier(growthMultiplier),
           summary: planning.habitabilitySummary || `${terrainLabel}城市规划${label}`,
           note: notes[0] || planning.terrainHint || '保持建筑搭配，会让城市更稳定。',
         },

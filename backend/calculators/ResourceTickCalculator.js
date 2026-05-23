@@ -95,6 +95,21 @@ function calculateOfflineEfficiencyBonus(gameState) {
   return getBuffBonus(gameState, 'offlineEfficiencyBonus');
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function calculatePopulationGrowthMultiplier(gameState = {}) {
+  const rawHabitability = Number(
+    gameState.habitability
+      ?? gameState.planning?.habitability
+      ?? gameState.city?.habitability
+      ?? 0,
+  );
+  const habitability = Number.isFinite(rawHabitability) ? rawHabitability : 0;
+  return Math.round(clamp(1 + habitability / 100, 0.5, 1.5) * 100) / 100;
+}
+
 function calculateOutputs(gameState, effects) {
   const food = calculateFoodBreakdown(gameState, effects);
   return {
@@ -114,10 +129,11 @@ function applyPopulationGrowth(gameState, deltaSeconds = 1) {
   const population = state.population || {};
   const maxPopulation = population.max || population.maxPop || calculatePopulationCap(state.buildingEffects);
   const interval = GameConfig.population.growthIntervalSeconds;
+  const growthMultiplier = calculatePopulationGrowthMultiplier(state);
 
   population.max = maxPopulation;
   population.maxPop = maxPopulation;
-  population.growthProgress = (population.growthProgress || 0) + Math.max(0, deltaSeconds);
+  population.growthProgress = (population.growthProgress || 0) + Math.max(0, deltaSeconds) * growthMultiplier;
 
   let grown = 0;
   while (population.growthProgress >= interval) {
@@ -133,6 +149,7 @@ function applyPopulationGrowth(gameState, deltaSeconds = 1) {
     grown,
     maxPopulation,
     growthProgress: population.growthProgress,
+    growthMultiplier,
   };
 }
 
@@ -149,6 +166,7 @@ module.exports = {
   calculateHappiness,
   calculateBuffedHappiness,
   calculateOfflineEfficiencyBonus,
+  calculatePopulationGrowthMultiplier,
   calculateOutputs,
   applyPopulationGrowth,
 };

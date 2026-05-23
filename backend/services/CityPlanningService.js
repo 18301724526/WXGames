@@ -156,7 +156,7 @@ function calculateHabitability(city = {}, terrainId = DEFAULT_TERRAIN_ID) {
   return {
     score: finalScore,
     ...label,
-    summary: `${terrain.label}城市规划${label.label}，主要影响后续人口成长体验。`,
+    summary: `${terrain.label}城市规划${label.label}，会影响人口成长速度。`,
     notes: notes.slice(0, 3),
   };
 }
@@ -223,7 +223,7 @@ function getGuidebookCategories() {
       title: '城市规划',
       lines: [
         '宜居度来自建筑搭配与城市地理，不同城市适合不同建设方向。',
-        '民居需要粮食和生活空间配套，生产与军事建筑过密会让城市更紧张。',
+        '民居需要粮食和生活空间配套，生产与军事建筑过密会让城市更紧张，并拖慢人口成长。',
       ],
     },
     {

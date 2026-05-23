@@ -988,7 +988,7 @@
           bold: true,
           color: '#fff1cf',
         });
-        this.drawText(`宜居度：${view.planning.text.habitability} ${view.planning.habitabilityLabel}`, contentX + 26, planningY + 36, {
+        this.drawText(`宜居度：${view.planning.text.habitability} ${view.planning.habitabilityLabel} · 成长 ${view.planning.text.populationGrowthMultiplier || 'x1'}`, contentX + 26, planningY + 36, {
           size: 12,
           bold: true,
           color: '#74d3a0',
@@ -1299,7 +1299,7 @@
         bold: true,
         color: '#d5ffe8',
       });
-      this.drawText(`宜居度 ${planning.text?.habitability || '+0'} ${planning.habitabilityLabel || '平稳'}`, x + width - 20, planningY + 12, {
+      this.drawText(`宜居度 ${planning.text?.habitability || '+0'} · 成长 ${planning.text?.populationGrowthMultiplier || 'x1'}`, x + width - 20, planningY + 12, {
         size: 11,
         bold: true,
         color: '#74d3a0',

@@ -56,6 +56,7 @@ test('旧存档会迁移出首都城市，客户端返回城市列表', () => {
   assert.equal(clientState.isCapitalCity, true);
   assert.equal(clientState.cityState.cities[0].planning.terrainLabel, '平原');
   assert.equal(clientState.cityState.cities[0].planning.habitabilityLabel, '平稳');
+  assert.equal(clientState.cityState.cities[0].populationGrowthMultiplier, 0.97);
   assert.ok(Array.isArray(clientState.guidebook.categories));
 });
 
