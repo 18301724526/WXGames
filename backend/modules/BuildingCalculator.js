@@ -74,6 +74,10 @@ class BuildingCalculator {
     return Object.keys(BuildingConfig.getAllBuildings());
   }
 
+  static canUpgrade(buildingType, currentCount) {
+    return BuildingConfig.canUpgrade(buildingType, normalizeLevel(currentCount));
+  }
+
   static getCurrentLevel(buildings, buildingType) {
     return BuildingState.getLevel(buildings, buildingType);
   }

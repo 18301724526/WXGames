@@ -46,7 +46,7 @@ class BuildingValidator {
     }
 
     // 4. 建造上限检查
-    if (def.maxLevel && currentCount >= def.maxLevel) {
+    if (currentCount > 0 && !BuildingCalculator.canUpgrade(buildingType, currentCount)) {
       errors.push({
         code: 'MAX_COUNT_REACHED',
         message: '已达到建造上限'

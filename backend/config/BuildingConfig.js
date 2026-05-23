@@ -15,6 +15,44 @@ function cloneConfig(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function toLevel(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return 0;
+  return Math.floor(number);
+}
+
+function getConfiguredMaxLevel(building) {
+  return Math.max(1, toLevel(building?.maxLevel || 1));
+}
+
+function isOpenEndedScale(building) {
+  return Boolean(building?.scalePlan?.openEnded);
+}
+
+function getCostGrowth(building) {
+  const growth = Number(building?.scalePlan?.costGrowth);
+  return Number.isFinite(growth) && growth > 1 ? growth : 1.15;
+}
+
+function roundGeneratedCost(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return 0;
+  if (number < 20) return Math.ceil(number);
+  if (number < 100) return Math.ceil(number / 5) * 5;
+  if (number < 1000) return Math.ceil(number / 10) * 10;
+  return Math.ceil(number / 50) * 50;
+}
+
+function scaleCost(cost = {}, growth = 1.15, steps = 1) {
+  const multiplier = Math.pow(growth, Math.max(1, toLevel(steps)));
+  const next = {};
+  for (const [resource, amount] of Object.entries(cost || {})) {
+    const rounded = roundGeneratedCost(Number(amount) * multiplier);
+    if (rounded > 0) next[resource] = rounded;
+  }
+  return Object.keys(next).length ? next : null;
+}
+
 function getAllBuildings() {
   return config.buildings;
 }
@@ -34,11 +72,57 @@ function getBuildCost(buildingId) {
 function getUpgradeCost(buildingId, currentLevel) {
   const building = getBuilding(buildingId);
   if (!building) return null;
-  return building.upgradeCosts?.[Math.max(0, currentLevel - 1)] || null;
+  const level = toLevel(currentLevel);
+  if (level <= 0) return null;
+  const upgradeCosts = Array.isArray(building.upgradeCosts) ? building.upgradeCosts : [];
+  const configured = upgradeCosts[level - 1];
+  if (configured) return { ...configured };
+  if (!canUpgrade(buildingId, level)) return null;
+  const seedCost = upgradeCosts[upgradeCosts.length - 1] || building.buildCost || {};
+  return scaleCost(seedCost, getCostGrowth(building), level - upgradeCosts.length);
 }
 
 function getMaxLevel(buildingId) {
   return getBuilding(buildingId)?.maxLevel || 1;
+}
+
+function canUpgrade(buildingId, currentLevel) {
+  const building = getBuilding(buildingId);
+  const level = toLevel(currentLevel);
+  if (!building || level <= 0) return false;
+  if (isOpenEndedScale(building)) return true;
+  return level < getConfiguredMaxLevel(building);
+}
+
+function getExtraEffectEfficiency(curve, extraIndex) {
+  if (curve === 'linear') return 1;
+  if (curve === 'step') return 0.5;
+  return Math.pow(0.72, extraIndex + 1);
+}
+
+function roundEffectBonus(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.round(number * 1000) / 1000;
+}
+
+function calculateEffectBonus(buildingId, field, level) {
+  const building = typeof buildingId === 'string' ? getBuilding(buildingId) : buildingId;
+  const currentLevel = toLevel(level);
+  const perLevel = Number(building?.effects?.perLevel?.[field] || 0);
+  if (!building || currentLevel <= 0 || perLevel <= 0) return 0;
+
+  const maxLevel = getConfiguredMaxLevel(building);
+  const baseLevels = isOpenEndedScale(building) ? Math.min(currentLevel, maxLevel) : Math.min(currentLevel, maxLevel);
+  let total = baseLevels * perLevel;
+  if (isOpenEndedScale(building) && currentLevel > maxLevel) {
+    const extraLevels = currentLevel - maxLevel;
+    const curve = building.scalePlan?.effectCurve || 'diminishing';
+    for (let index = 0; index < extraLevels; index += 1) {
+      total += perLevel * getExtraEffectEfficiency(curve, index);
+    }
+  }
+  return roundEffectBonus(total);
 }
 
 function getScalePlan(buildingId) {
@@ -121,6 +205,8 @@ module.exports = {
   getBuildCost,
   getUpgradeCost,
   getMaxLevel,
+  canUpgrade,
+  calculateEffectBonus,
   getScalePlan,
   getMaintenancePolicy,
   getMaintenance,

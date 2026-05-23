@@ -11,7 +11,7 @@ const BuildingConfig = require('../config/BuildingConfig');
 test('遗留 BuildingCalculator 兼容新版 buildCost/upgradeCosts 配置', () => {
   assert.deepEqual(BuildingCalculator.getBuildingCost('farm', 0), { food: 0 });
   assert.deepEqual(BuildingCalculator.getBuildingCost('farm', 1), { food: 50 });
-  assert.equal(BuildingCalculator.getBuildingCost('farm', 4), null);
+  assert.deepEqual(BuildingCalculator.getBuildingCost('farm', 4), { food: 350 });
   assert.equal(BuildingCalculator.getBuildingDef('farm').maxLevel, 4);
 });
 

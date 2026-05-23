@@ -77,3 +77,9 @@ test('building maintenance and scale previews are player-facing but inactive', (
   assert.equal(farmScale.currentCapRetained, true);
   assert.equal(farmScale.curveText, '规模收益会逐步放缓');
 });
+
+test('open-ended scale plan generates upgrade costs beyond retained cap', () => {
+  assert.equal(BuildingConfig.canUpgrade('farm', 4), true);
+  assert.deepEqual(BuildingConfig.getUpgradeCost('farm', 4), { food: 350 });
+  assert.deepEqual(BuildingConfig.getUpgradeCost('farm', 5), { food: 410 });
+});

@@ -27,3 +27,19 @@ test('house 建造会提升人口上限但不产出幸福度', () => {
   assert.equal(state.population.max, 6);
   assert.equal(state.happiness, 100);
 });
+
+test('open-ended buildings can upgrade beyond the retained scale cap', () => {
+  const state = gameStateService.createInitialGameState('p3');
+  state.currentEra = 1;
+  state.resources.food = 1000;
+  state.tutorial.completed = true;
+  state.buildings.farm = { level: 4, builtAt: 'x', upgradedAt: 'x' };
+
+  const result = BuildingActionService.upgrade(state, state.tutorial, 'farm');
+
+  assert.equal(result.success, true);
+  assert.equal(result.oldLevel, 4);
+  assert.equal(result.newLevel, 5);
+  assert.deepEqual(result.cost, { food: 350 });
+  assert.equal(state.buildings.farm.level, 5);
+});

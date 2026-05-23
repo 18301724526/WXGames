@@ -875,6 +875,10 @@
       return level > 0 ? '升级' : '建造';
     }
 
+    static isBuildingOpenEnded(config = {}) {
+      return Boolean(config?.scalePlan?.openEnded);
+    }
+
     static getVisibleBuildingIds(state = {}) {
       const unlocked = Array.isArray(state.unlockedBuildings) ? state.unlockedBuildings : [];
       const built = Object.entries(state.buildings || {})
@@ -952,16 +956,34 @@
       const currentLevel = Math.max(0, this.toInteger(level));
       const perLevel = config.effects?.perLevel || {};
       const summary = { level: currentLevel };
-      if (perLevel.foodOutputMultiplier) summary.foodOutputBonus = currentLevel * perLevel.foodOutputMultiplier;
-      if (perLevel.populationCap) summary.populationCapBonus = currentLevel * perLevel.populationCap;
-      if (perLevel.knowledgeOutputMultiplier) summary.knowledgeOutputBonus = currentLevel * perLevel.knowledgeOutputMultiplier;
-      if (perLevel.craftsmanOutputMultiplier) summary.craftsmanOutputBonus = currentLevel * perLevel.craftsmanOutputMultiplier;
-      if (perLevel.woodOutputBase) summary.woodOutputBase = currentLevel * perLevel.woodOutputBase;
-      if (perLevel.offlineEfficiency) summary.offlineEfficiencyBonus = currentLevel * perLevel.offlineEfficiency;
-      if (perLevel.defense) summary.defenseLevel = currentLevel * perLevel.defense;
-      if (perLevel.threatDefense) summary.threatDefenseBonus = currentLevel * perLevel.threatDefense;
-      if (perLevel.globalOutputMultiplier) summary.globalOutputBonus = currentLevel * perLevel.globalOutputMultiplier;
+      if (perLevel.foodOutputMultiplier) summary.foodOutputBonus = this.calculateBuildingEffectBonus(config, 'foodOutputMultiplier', currentLevel);
+      if (perLevel.populationCap) summary.populationCapBonus = this.calculateBuildingEffectBonus(config, 'populationCap', currentLevel);
+      if (perLevel.knowledgeOutputMultiplier) summary.knowledgeOutputBonus = this.calculateBuildingEffectBonus(config, 'knowledgeOutputMultiplier', currentLevel);
+      if (perLevel.craftsmanOutputMultiplier) summary.craftsmanOutputBonus = this.calculateBuildingEffectBonus(config, 'craftsmanOutputMultiplier', currentLevel);
+      if (perLevel.woodOutputBase) summary.woodOutputBase = this.calculateBuildingEffectBonus(config, 'woodOutputBase', currentLevel);
+      if (perLevel.offlineEfficiency) summary.offlineEfficiencyBonus = this.calculateBuildingEffectBonus(config, 'offlineEfficiency', currentLevel);
+      if (perLevel.defense) summary.defenseLevel = this.calculateBuildingEffectBonus(config, 'defense', currentLevel);
+      if (perLevel.threatDefense) summary.threatDefenseBonus = this.calculateBuildingEffectBonus(config, 'threatDefense', currentLevel);
+      if (perLevel.globalOutputMultiplier) summary.globalOutputBonus = this.calculateBuildingEffectBonus(config, 'globalOutputMultiplier', currentLevel);
       return summary;
+    }
+
+    static calculateBuildingEffectBonus(config = {}, field = '', level = 0) {
+      const currentLevel = Math.max(0, this.toInteger(level));
+      const perLevel = this.toNumber(config.effects?.perLevel?.[field]);
+      if (currentLevel <= 0 || perLevel <= 0) return 0;
+      const configuredMaxLevel = this.toInteger(config.maxLevel);
+      if (configuredMaxLevel <= 0) return Math.round(currentLevel * perLevel * 1000) / 1000;
+      const maxLevel = Math.max(1, configuredMaxLevel);
+      let total = Math.min(currentLevel, maxLevel) * perLevel;
+      if (this.isBuildingOpenEnded(config) && currentLevel > maxLevel) {
+        const curve = config.scalePlan?.effectCurve || 'diminishing';
+        for (let index = 0; index < currentLevel - maxLevel; index += 1) {
+          const efficiency = curve === 'linear' ? 1 : (curve === 'step' ? 0.5 : Math.pow(0.72, index + 1));
+          total += perLevel * efficiency;
+        }
+      }
+      return Math.round(total * 1000) / 1000;
     }
 
     static formatBuildingEffectValue(template, value, previousValue = null) {

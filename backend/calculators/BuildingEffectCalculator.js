@@ -22,55 +22,55 @@ function calculate(buildings) {
     const summary = { level };
 
     if (perLevel.foodOutputMultiplier) {
-      const bonus = level * perLevel.foodOutputMultiplier;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'foodOutputMultiplier', level);
       effects.foodOutputMultiplier += bonus;
       summary.foodOutputMultiplier = 1 + bonus;
       summary.foodOutputBonus = bonus;
     }
     if (perLevel.populationCap) {
-      const bonus = level * perLevel.populationCap;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'populationCap', level);
       effects.populationCap += bonus;
       summary.populationCapBonus = bonus;
     }
     if (perLevel.happiness) {
-      const bonus = level * perLevel.happiness;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'happiness', level);
       effects.happinessBonus += bonus;
       summary.happinessBonus = bonus;
     }
     if (perLevel.knowledgeOutputMultiplier) {
-      const bonus = level * perLevel.knowledgeOutputMultiplier;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'knowledgeOutputMultiplier', level);
       effects.knowledgeOutputMultiplier += bonus;
       summary.knowledgeOutputMultiplier = 1 + bonus;
       summary.knowledgeOutputBonus = bonus;
     }
     if (perLevel.craftsmanOutputMultiplier) {
-      const bonus = level * perLevel.craftsmanOutputMultiplier;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'craftsmanOutputMultiplier', level);
       effects.craftsmanOutputMultiplier += bonus;
       summary.craftsmanOutputMultiplier = 1 + bonus;
       summary.craftsmanOutputBonus = bonus;
     }
     if (perLevel.woodOutputBase) {
-      const bonus = level * perLevel.woodOutputBase;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'woodOutputBase', level);
       effects.woodOutputBase += bonus;
       summary.woodOutputBase = bonus;
     }
     if (perLevel.offlineEfficiency) {
-      const bonus = level * perLevel.offlineEfficiency;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'offlineEfficiency', level);
       effects.offlineEfficiencyBonus += bonus;
       summary.offlineEfficiencyBonus = bonus;
     }
     if (perLevel.defense) {
-      const bonus = level * perLevel.defense;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'defense', level);
       effects.defenseLevel += bonus;
       summary.defenseLevel = bonus;
     }
     if (perLevel.threatDefense) {
-      const bonus = level * perLevel.threatDefense;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'threatDefense', level);
       effects.threatDefense += bonus;
       summary.threatDefenseBonus = bonus;
     }
     if (perLevel.globalOutputMultiplier) {
-      const bonus = level * perLevel.globalOutputMultiplier;
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'globalOutputMultiplier', level);
       effects.globalOutputMultiplier += bonus;
       summary.globalOutputMultiplier = 1 + bonus;
       summary.globalOutputBonus = bonus;

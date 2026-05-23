@@ -15,8 +15,7 @@ class BuildingEffects {
    */
   getFoodOutputMultiplier(gameState) {
     const farmCount = BuildingState.getLevel(gameState.buildings, 'farm');
-    const multiplier = this.config.farm?.effects?.perLevel?.foodOutputMultiplier || 0;
-    return 1 + (farmCount * multiplier);
+    return 1 + BuildingConfig.calculateEffectBonus('farm', 'foodOutputMultiplier', farmCount);
   }
 
   /**
@@ -25,8 +24,7 @@ class BuildingEffects {
    */
   getKnowledgeOutputMultiplier(gameState) {
     const academyCount = BuildingState.getLevel(gameState.buildings, 'academy');
-    const multiplier = this.config.academy?.effects?.perLevel?.knowledgeOutputMultiplier || 0;
-    return 1 + (academyCount * multiplier);
+    return 1 + BuildingConfig.calculateEffectBonus('academy', 'knowledgeOutputMultiplier', academyCount);
   }
 
   /**
@@ -35,8 +33,7 @@ class BuildingEffects {
    */
   getCraftsmanOutputMultiplier(gameState) {
     const workshopCount = BuildingState.getLevel(gameState.buildings, 'workshop');
-    const multiplier = this.config.workshop?.effects?.perLevel?.craftsmanOutputMultiplier || 0;
-    return 1 + (workshopCount * multiplier);
+    return 1 + BuildingConfig.calculateEffectBonus('workshop', 'craftsmanOutputMultiplier', workshopCount);
   }
 
   /**
@@ -45,8 +42,7 @@ class BuildingEffects {
    */
   getGlobalOutputMultiplier(gameState) {
     const barracksCount = BuildingState.getLevel(gameState.buildings, 'barracks');
-    const multiplier = this.config.barracks?.effects?.perLevel?.globalOutputMultiplier || 0;
-    return 1 + (barracksCount * multiplier);
+    return 1 + BuildingConfig.calculateEffectBonus('barracks', 'globalOutputMultiplier', barracksCount);
   }
 
   /**
@@ -55,8 +51,7 @@ class BuildingEffects {
    */
   getOfflineEfficiencyBonus(gameState) {
     const templeCount = BuildingState.getLevel(gameState.buildings, 'temple');
-    const efficiency = this.config.temple?.effects?.perLevel?.offlineEfficiency || 0;
-    return templeCount * efficiency;
+    return BuildingConfig.calculateEffectBonus('temple', 'offlineEfficiency', templeCount);
   }
 
   /**
@@ -66,9 +61,8 @@ class BuildingEffects {
   getHappinessBonus(gameState) {
     const houseCount = BuildingState.getLevel(gameState.buildings, 'house');
     const templeCount = BuildingState.getLevel(gameState.buildings, 'temple');
-    const houseHappiness = this.config.house?.effects?.perLevel?.happiness || 0;
-    const templeHappiness = this.config.temple?.effects?.perLevel?.happiness || 0;
-    return (houseCount * houseHappiness) + (templeCount * templeHappiness);
+    return BuildingConfig.calculateEffectBonus('house', 'happiness', houseCount)
+      + BuildingConfig.calculateEffectBonus('temple', 'happiness', templeCount);
   }
 
   /**
@@ -77,8 +71,7 @@ class BuildingEffects {
    */
   getDefenseLevel(gameState) {
     const watchtowerCount = BuildingState.getLevel(gameState.buildings, 'watchtower');
-    const defensePerLevel = this.config.watchtower?.effects?.perLevel?.threatDefense || 0;
-    return watchtowerCount * defensePerLevel;
+    return BuildingConfig.calculateEffectBonus('watchtower', 'threatDefense', watchtowerCount);
   }
 
   /**

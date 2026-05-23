@@ -25,8 +25,9 @@ function validateUpgrade(gameState, tutorialState, buildingId) {
   if (!BuildingConfig.hasBuilding(buildingId)) return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   if (!BuildingState.isBuilt(gameState.buildings, buildingId)) return { allowed: false, code: 'BUILDING_NOT_BUILT', message: '建筑尚未建造' };
   const currentLevel = BuildingState.getLevel(gameState.buildings, buildingId);
-  if (currentLevel >= BuildingConfig.getMaxLevel(buildingId)) return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '已达到最高级' };
+  if (!BuildingConfig.canUpgrade(buildingId, currentLevel)) return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '已达到最高级' };
   const cost = BuildingCostCalculator.getUpgradeCost(buildingId, currentLevel);
+  if (!cost) return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '已达到最高级' };
   if (!hasEnoughResources(gameState.resources, cost)) return { allowed: false, code: 'INSUFFICIENT_RESOURCES', message: '资源不足' };
   return { allowed: true, cost, currentLevel };
 }
