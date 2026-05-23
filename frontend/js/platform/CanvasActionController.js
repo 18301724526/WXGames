@@ -825,14 +825,19 @@
         };
       };
       if (action.phase === 'start') {
-        const pan = clampPan(Number(this.host?.techTreePanX) || 0, Number(this.host?.techTreePanY) || 0);
+        const currentPan = this.host?.getTechTreePan?.() || {
+          x: Number(this.host?.techTreePanX) || 0,
+          y: Number(this.host?.techTreePanY) || 0,
+        };
+        const pan = clampPan(currentPan.x, currentPan.y);
         this.techTreeDragStart = {
           x,
           y,
           panX: pan.x,
           panY: pan.y,
         };
-        if (this.host) {
+        if (this.host?.setTechTreePan) this.host.setTechTreePan(pan);
+        else if (this.host) {
           this.host.techTreePanX = pan.x;
           this.host.techTreePanY = pan.y;
         }
@@ -840,15 +845,22 @@
         if (!this.host) return false;
         const dx = Number(pointer.dx ?? pointer.deltaX);
         const dy = Number(pointer.dy ?? pointer.deltaY);
+        const currentPan = this.host.getTechTreePan?.() || {
+          x: Number(this.host.techTreePanX) || 0,
+          y: Number(this.host.techTreePanY) || 0,
+        };
         const nextPanX = Number.isFinite(dx)
-          ? (Number(this.host.techTreePanX) || 0) - dx
-          : (this.techTreeDragStart ? this.techTreeDragStart.panX + this.techTreeDragStart.x - x : Number(this.host.techTreePanX) || 0);
+          ? currentPan.x - dx
+          : (this.techTreeDragStart ? this.techTreeDragStart.panX + this.techTreeDragStart.x - x : currentPan.x);
         const nextPanY = Number.isFinite(dy)
-          ? (Number(this.host.techTreePanY) || 0) - dy
-          : (this.techTreeDragStart ? this.techTreeDragStart.panY + this.techTreeDragStart.y - y : Number(this.host.techTreePanY) || 0);
+          ? currentPan.y - dy
+          : (this.techTreeDragStart ? this.techTreeDragStart.panY + this.techTreeDragStart.y - y : currentPan.y);
         const pan = clampPan(nextPanX, nextPanY);
-        this.host.techTreePanX = pan.x;
-        this.host.techTreePanY = pan.y;
+        if (this.host.setTechTreePan) this.host.setTechTreePan(pan);
+        else {
+          this.host.techTreePanX = pan.x;
+          this.host.techTreePanY = pan.y;
+        }
       } else if (action.phase === 'end' || action.phase === 'cancel') {
         this.techTreeDragStart = null;
         if (this.host) this.host.techTreeDragStart = null;

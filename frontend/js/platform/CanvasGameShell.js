@@ -132,37 +132,36 @@
       return true;
     }
 
+    hasBlockingOverlayOpen() {
+      return Boolean(this.showSettings
+        || this.showLogs
+        || this.showResourceDetails
+        || this.showCitySwitcher
+        || this.showAdvisor
+        || this.showTaskCenter
+        || this.showGuidebook
+        || this.showTalentPolicy
+        || this.activeEventId
+        || this.naming.visible
+        || this.rewardReveal);
+    }
+
     handleDrag(phase, point, event) {
-      if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+      if (!this.inputEnabled || !this.renderer) return false;
       if (phase === 'start') {
-        const action = this.renderer.getHitTarget(point);
-        const techPanel = this.renderer.lastTechTreeScroll?.panel || null;
-        const inTechTree = this.getActiveTab() === 'tech'
-          && techPanel
-          && Number(point?.x) >= techPanel.x
-          && Number(point?.x) <= techPanel.x + techPanel.width
-          && Number(point?.y) >= techPanel.y
-          && Number(point?.y) <= techPanel.y + techPanel.height;
-        const overlayOpen = this.showSettings
-          || this.showLogs
-          || this.showResourceDetails
-          || this.showCitySwitcher
-          || this.showAdvisor
-          || this.showTaskCenter
-          || this.showGuidebook
-          || this.showTalentPolicy
-          || this.activeEventId
-          || this.naming.visible
-          || this.rewardReveal;
-        if (inTechTree && !overlayOpen) {
+        if (this.getActiveTab() === 'tech' && !this.hasBlockingOverlayOpen()) {
           this.dragAction = { type: 'techTreeDrag' };
-        } else if (
+        } else {
+          if (typeof this.renderer.getHitTarget !== 'function') return false;
+          const action = this.renderer.getHitTarget(point);
+          if (
           action?.type !== 'worldRadarDrag'
           && action?.type !== 'openWorldSite'
           && action?.type !== 'techTreeDrag'
           && action?.dragType !== 'techTreeDrag'
         ) return false;
-        else this.dragAction = action.dragType === 'techTreeDrag' ? { type: 'techTreeDrag' } : action;
+          this.dragAction = action.dragType === 'techTreeDrag' ? { type: 'techTreeDrag' } : action;
+        }
       }
       if (!this.dragAction) return false;
       const dragType = this.dragAction.type === 'techTreeDrag' ? 'techTreeDrag' : 'worldRadarDrag';
@@ -774,6 +773,25 @@
         || this.lastGame?.activeTab
         || this.lastGame?.state?.currentTab
         || 'resources';
+    }
+
+    getTechTreePan() {
+      return {
+        x: Number(this.techTreePanX) || 0,
+        y: Number(this.techTreePanY) || 0,
+      };
+    }
+
+    setTechTreePan(pan = {}) {
+      const x = Number(pan.x) || 0;
+      const y = Number(pan.y) || 0;
+      this.techTreePanX = x;
+      this.techTreePanY = y;
+      if (this.lastGame && typeof this.lastGame === 'object') {
+        this.lastGame.techTreePanX = x;
+        this.lastGame.techTreePanY = y;
+      }
+      return true;
     }
 
     renderActive() {

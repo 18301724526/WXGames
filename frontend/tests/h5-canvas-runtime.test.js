@@ -1166,6 +1166,51 @@ test('Canvas game shell starts tech tree drag from disabled node inside tree pan
   assert.equal(shell.techTreePanY, 80);
 });
 
+test('Canvas game shell keeps tech tree pan synchronized with game host renders', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderOptions = [];
+  const game = {
+    state: { currentTab: 'tech' },
+    activeTab: 'tech',
+    techTreePanX: 0,
+    techTreePanY: 0,
+    getActiveTab() { return this.activeTab; },
+  };
+  const renderer = {
+    getHitTarget: () => ({ type: 'research', techId: 'future_locked', disabled: true }),
+    getLayout: () => ({ contentX: 12, contentWidth: 366 }),
+    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, maxPanY: 180 }),
+    presenter: {
+      buildTechViewState: () => ({ tree: { nodes: [] }, text: {} }),
+    },
+    render(_state, options) {
+      renderOptions.push(options);
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  listeners.pointerdown({ pointerId: 9, clientX: 260, clientY: 520, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 9, clientX: 150, clientY: 390, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 9, clientX: 150, clientY: 390, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(shell.techTreePanX, 110);
+  assert.equal(shell.techTreePanY, 130);
+  assert.equal(game.techTreePanX, 110);
+  assert.equal(game.techTreePanY, 130);
+
+  shell.renderReadOnly(game.state, 'tech');
+  const lastRender = renderOptions.at(-1);
+  assert.equal(lastRender.techTreePanX, 110);
+  assert.equal(lastRender.techTreePanY, 130);
+});
+
 test('Canvas game shell owns naming prompt state and dispatches canvas submit', async () => {
   const { document, runtime, listeners } = createCanvasHarness();
   runtime.prompt = () => ' 赤火联盟 ';
@@ -1594,9 +1639,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-drag-map-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-drag-map-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-drag-map-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-drag-map-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-drag-hard-v2/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-drag-hard-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-drag-hard-v2/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-drag-hard-v2[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
