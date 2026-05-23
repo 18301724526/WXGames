@@ -301,6 +301,8 @@
 
     static buildResourceViewState(state = {}) {
       const resources = state.resources || {};
+      const population = state.population || {};
+      const capacity = population.capacity || {};
       const foodOutput = this.toNumber(resources.foodOutputPerSecond);
       const foodConsumption = this.toNumber(resources.foodConsumptionPerSecond);
       const knowledgeRate = this.toNumber(resources.knowledgePerSecond);
@@ -316,12 +318,28 @@
       const wood = this.formatResourceAmount(resources.wood);
       const iron = this.formatResourceAmount(resources.iron ?? resources.metal);
       const stone = this.formatResourceAmount(resources.stone);
+      const populationTotal = this.toInteger(population.total ?? state.totalPop);
+      const eraCap = this.toInteger(capacity.eraCap ?? population.eraCap);
+      const housingCap = this.toInteger(capacity.housingCap ?? population.housingCap);
+      const populationAtEraCap = Boolean(
+        capacity.active
+        && capacity.limitingSource === 'era'
+        && eraCap > 0
+        && housingCap > 0
+        && populationTotal >= eraCap
+        && eraCap <= housingCap,
+      );
 
       return {
         hasWood,
         hasIron: true,
         hasStone: true,
         foodNet,
+        population: {
+          total: populationTotal,
+          display: this.toDisplayPopulation(populationTotal),
+          atEraCap: populationAtEraCap,
+        },
         text: {
           foodValue: food,
           knowledgeValue: knowledge,
@@ -347,6 +365,8 @@
           stoneDetailRate: this.formatRate(stoneRate),
           happinessValue: state.happiness || 100,
           gameTime: `第 ${state.gameDay || 1} 天`,
+          populationValue: this.toDisplayPopulation(populationTotal),
+          populationStatus: populationAtEraCap ? '人口已无法增长，请推进时代' : '',
         },
         classState: {
           foodNetRate: {
@@ -421,11 +441,6 @@
       }));
       const totalOfficials = this.toInteger(pop.total ?? state.totalPop);
       const maxOfficials = this.toInteger(pop.maxPop ?? pop.max ?? state.maxPop);
-      const capacity = pop.capacity || {};
-      const eraCap = this.toInteger(capacity.eraCap ?? pop.eraCap ?? maxOfficials);
-      const housingCap = this.toInteger(capacity.housingCap ?? pop.housingCap ?? maxOfficials);
-      const capacityActive = Boolean(capacity.active);
-      const capacityStatus = capacityActive ? '承载生效' : '承载预览';
 
       return {
         showCraftsman: currentEra >= 2,
@@ -440,10 +455,6 @@
           unassigned,
           population: this.toDisplayPopulation(totalOfficials),
           maxPopulation: this.toDisplayPopulation(maxOfficials),
-          eraCapacity: this.toDisplayPopulation(eraCap),
-          housingCapacity: this.toDisplayPopulation(housingCap),
-          capacityStatus,
-          capacitySummary: `${capacityStatus}：时代 ${this.toDisplayPopulation(eraCap)} / 民居 ${this.toDisplayPopulation(housingCap)}`,
         },
       };
     }
@@ -899,6 +910,9 @@
       if (typeof value !== 'number') return '';
       if (template.format === 'percent') {
         return `${template.label} +${Math.round(value * 100)}%`;
+      }
+      if (template.field === 'populationCapBonus') {
+        return `人口 +${this.toDisplayPopulation(value)}`;
       }
       return `${template.label} +${value}`;
     }

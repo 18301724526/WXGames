@@ -171,8 +171,25 @@ test('resource view state is renderer-neutral and formats resource display', () 
   assert.equal(view.text.ironRate, '+0/s');
   assert.equal(view.text.stoneRate, '+0/s');
   assert.equal(view.text.happinessValue, 92);
+  assert.equal(view.text.populationValue, 0);
+  assert.equal(view.text.populationStatus, '');
   assert.equal(view.classState.foodNetRate['is-positive'], true);
   assert.equal(view.classState.foodNetRate['is-negative'], false);
+});
+
+test('resource view state only warns about population when era cap blocks growth', () => {
+  const view = UIStatePresenter.buildResourceViewState({
+    resources: {},
+    population: {
+      total: 9,
+      capacity: { active: true, limitingSource: 'era', eraCap: 9, housingCap: 12 },
+    },
+  });
+
+  assert.equal(view.population.display, 900);
+  assert.equal(view.population.atEraCap, true);
+  assert.equal(view.text.populationValue, 900);
+  assert.equal(view.text.populationStatus, '人口已无法增长，请推进时代');
 });
 
 test('resource view state compacts large resource amounts', () => {
@@ -747,10 +764,10 @@ test('population view state formats jobs and button availability', () => {
   assert.equal(view.text.unassigned, 1);
   assert.equal(view.text.population, 600);
   assert.equal(view.text.maxPopulation, 800);
-  assert.equal(view.text.capacityStatus, '承载生效');
-  assert.equal(view.text.eraCapacity, 900);
-  assert.equal(view.text.housingCapacity, 800);
-  assert.equal(view.text.capacitySummary, '承载生效：时代 900 / 民居 800');
+  assert.equal(Object.prototype.hasOwnProperty.call(view.text, 'capacityStatus'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(view.text, 'eraCapacity'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(view.text, 'housingCapacity'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(view.text, 'capacitySummary'), false);
   assert.equal(view.showCraftsman, true);
   assert.deepEqual(
     view.jobs.map((job) => [job.id, job.count, job.visible, job.canIncrease, job.canDecrease]),

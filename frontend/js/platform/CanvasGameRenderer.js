@@ -593,10 +593,11 @@
       const resourceView = this.presenter.buildResourceViewState(state);
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       const advisorView = this.presenter.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
-      const officialCount = state.population?.total ?? state.totalPop;
-      const populationScale = typeof this.presenter.toDisplayPopulation === 'function'
-        ? this.presenter.toDisplayPopulation(officialCount)
-        : (Number(officialCount) || 0) * 100;
+      const populationScale = resourceView.text?.populationValue
+        ?? (typeof this.presenter.toDisplayPopulation === 'function'
+          ? this.presenter.toDisplayPopulation(state.population?.total ?? state.totalPop)
+          : (Number(state.population?.total ?? state.totalPop) || 0) * 100);
+      const populationStatus = resourceView.text?.populationStatus || '';
       const x = layout.contentX;
       const y = 12;
       const width = layout.contentWidth;
@@ -625,7 +626,17 @@
 
       this.drawAsset('assets/art/icon-fire-cutout.webp', x + barPaddingX, statusTop + 4, 30, 30);
       this.drawText(state.currentEraName || '原始时代', x + barPaddingX + 36, statusTop + 13, { size: 14, bold: true, color: '#d78332', baseline: 'middle' });
-      this.drawText(`人口：${populationScale}`, x + barPaddingX + 36, statusTop + 31, { size: 10, color: 'rgba(234, 234, 234, 0.72)', baseline: 'middle' });
+      this.drawText(
+        populationStatus || `人口：${populationScale}`,
+        x + barPaddingX + 36,
+        statusTop + 31,
+        {
+          size: populationStatus ? 9 : 10,
+          bold: Boolean(populationStatus),
+          color: populationStatus ? '#ffd98a' : 'rgba(234, 234, 234, 0.72)',
+          baseline: 'middle',
+        },
+      );
 
       const actionDefs = [];
       if (!advisorView.hidden) actionDefs.push({ label: '顾问', width: 62 });
@@ -1233,7 +1244,7 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const y = startY;
-      const panelHeight = 322;
+      const panelHeight = 304;
       const jobRowHeight = 42;
       const jobRowGap = 8;
       this.drawPanel(x, y, width, panelHeight, {
@@ -1272,7 +1283,7 @@
       this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 
       const stats = [
-        { icon: 'assets/art/icon-population-cutout.webp', label: '人才', value: `${view.text.total}/${view.text.max}`, color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: '人才', value: String(view.text.total), color: '#74d3a0' },
         { icon: 'assets/art/icon-population-cutout.webp', label: '待分配人才', value: String(view.text.unassigned), color: '#74d3a0' },
         { icon: 'assets/art/icon-happiness-cutout.webp', label: '幸福度', value: `${state.happiness || 100}%`, color: '#f9ca24' },
       ];
@@ -1288,7 +1299,7 @@
 
       const planning = view.planning || {};
       const planningY = y + 106;
-      this.drawPanel(x + 7, planningY, width - 14, 52, {
+      this.drawPanel(x + 7, planningY, width - 14, 42, {
         fill: 'rgba(24, 36, 29, 0.72)',
         stroke: 'rgba(116, 211, 160, 0.16)',
         radius: 8,
@@ -1309,15 +1320,10 @@
         size: 10,
         color: 'rgba(234, 234, 234, 0.62)',
       });
-      this.drawText(this.truncateText(view.text.capacitySummary || '', width - 40, { size: 10, bold: true }), x + 20, planningY + 43, {
-        size: 10,
-        bold: true,
-        color: 'rgba(255, 226, 177, 0.74)',
-      });
 
       const jobs = view.jobs.filter((job) => job.visible);
       jobs.forEach((job, index) => {
-        const rowY = y + 166 + index * (jobRowHeight + jobRowGap);
+        const rowY = y + 156 + index * (jobRowHeight + jobRowGap);
         const jobLabel = { farmer: '农民', scholar: '学者', craftsman: '工匠' }[job.id] || job.id;
         const desc = { farmer: '生产食物', scholar: '口耳相传', craftsman: '钻研技艺' }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];

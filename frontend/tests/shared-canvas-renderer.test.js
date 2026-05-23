@@ -229,6 +229,41 @@ test('CanvasGameRenderer top HUD draws all initial resource values', () => {
   }
 });
 
+test('CanvasGameRenderer top HUD shows era population cap prompt when growth is blocked by era', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      hasIron: true,
+      hasStone: true,
+      text: {
+        populationValue: 900,
+        populationStatus: '人口已无法增长，请推进时代',
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+        foodValue: '100',
+        foodRate: '+2.4/s',
+        knowledgeValue: '0',
+        knowledgeRate: '+0.1/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+  });
+
+  renderer.render({ currentEraName: '聚落时代', currentTab: 'resources', population: { total: 9 } }, { activeTab: 'resources', mode: 'hud' });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人口已无法增长，请推进时代'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '人口：900'), false);
+});
+
 test('CanvasGameRenderer world radar applies pan offset to site positions', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
@@ -831,7 +866,8 @@ test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城市规划'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('地理：河谷')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('宜居度良好 · 人口成长良好')));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('承载生效：时代 1200 / 民居 600')));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('承载生效')), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('时代 1200 / 民居')), false);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openGuidebook'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchGuidebookTab' && target.action.tab === 'policy'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeGuidebook'));
