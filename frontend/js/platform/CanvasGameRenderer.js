@@ -2698,11 +2698,13 @@
       const panelY = Number(panel.y) || 0;
       const routeCatalog = this.getTechRouteCatalog();
       const nodeWidth = Math.max(132, Math.min(154, width * 0.44));
-      const nodeHeight = 74;
-      const rowGap = 156;
+      const nodeHeight = 78;
+      const baseEraHeight = Math.max(280, Math.min(360, height * 0.78));
+      const localRowGap = nodeHeight + 40;
+      const collisionGap = 24;
       const laneGap = Math.max(nodeWidth + 28, Math.min(180, width * 0.48));
-      const eraGap = rowGap;
-      const eraRailWidth = 52;
+      const eraRailWidth = 58;
+      const eraRailX = panelX + width - eraRailWidth - 8;
       const panelCenterX = panelX + width / 2;
       const routeEntries = Object.entries(routeCatalog);
       const fallbackRoutes = nodes.flatMap((node) => this.getTechNodeRoutes(node));
@@ -2719,16 +2721,13 @@
         const column = Number(era.column) || Number(era.era) || index + 1;
         return [column, { ...era, column, index }];
       }));
-      const getVisualRow = (node) => {
-        const column = Number(node.tree?.column ?? node.era) || 1;
-        const fallbackRow = Number(node.tree?.row ?? node.tree?.column ?? node.era) || 1;
-        if (!eraLookup.has(column)) return fallbackRow;
-        return eraLookup.get(column).index + 1 + Math.max(0, fallbackRow - column);
-      };
-      const visualRows = nodes.map((node) => getVisualRow(node));
-      const firstVisualRow = visualRows.length ? Math.min(...visualRows) : 1;
+      const getNodeColumn = (node) => Number(node.tree?.column ?? node.era) || 1;
+      const getNodeRow = (node) => Number(node.tree?.row ?? node.tree?.column ?? node.era) || getNodeColumn(node);
+      const getLocalRowOffset = (node) => Math.max(0, getNodeRow(node) - getNodeColumn(node));
+      const nodeColumns = nodes.map((node) => getNodeColumn(node));
+      const firstColumn = nodeColumns.length ? Math.min(...nodeColumns) : (Number(eras[0]?.column ?? eras[0]?.era) || 1);
       const focusLanes = nodes
-        .filter((node) => getVisualRow(node) === firstVisualRow)
+        .filter((node) => getNodeColumn(node) === firstColumn)
         .map((node) => Number(node.tree?.lane) || 0);
       const focusLane = focusLanes.length
         ? (Math.min(...focusLanes) + Math.max(...focusLanes)) / 2
@@ -2736,58 +2735,83 @@
       const contentCenterX = panelCenterX - focusLane * laneGap;
       const laneToX = (lane) => contentCenterX + (Number(lane) || 0) * laneGap;
       const nodeRects = {};
-      const rowOccupancy = new Map();
       const nodesById = Object.fromEntries(nodes.map((node) => [node.id, node]));
-      nodes
-        .slice()
-        .sort((a, b) => {
-          const rowA = getVisualRow(a);
-          const rowB = getVisualRow(b);
-          if (rowA !== rowB) return rowA - rowB;
-          return (Number(a.tree?.lane) || 0) - (Number(b.tree?.lane) || 0);
-        })
-        .forEach((node) => {
-          const row = getVisualRow(node);
-          const column = Number(node.tree?.column ?? node.era) || row;
+      const nodesByColumn = new Map();
+      nodes.forEach((node) => {
+        const column = getNodeColumn(node);
+        if (!nodesByColumn.has(column)) nodesByColumn.set(column, []);
+        nodesByColumn.get(column).push(node);
+      });
+      let eraTopCursor = minContentY;
+      const eraPositions = eras.map((era, eraIndex) => {
+        const column = Number(era.column) || Number(era.era) || eraIndex + 1;
+        const eraNodes = (nodesByColumn.get(column) || [])
+          .slice()
+          .sort((a, b) => {
+            const rowA = getLocalRowOffset(a);
+            const rowB = getLocalRowOffset(b);
+            if (rowA !== rowB) return rowA - rowB;
+            return (Number(a.tree?.lane) || 0) - (Number(b.tree?.lane) || 0);
+          });
+        const top = eraTopCursor;
+        const placed = [];
+        eraNodes.forEach((node) => {
+          const localRow = getLocalRowOffset(node);
           const lane = Number(node.tree?.lane) || 0;
-          const key = `${row}:${lane.toFixed(2)}`;
-          const slot = rowOccupancy.get(key) || 0;
-          rowOccupancy.set(key, slot + 1);
-          const offsetX = slot % 2 === 0 ? 0 : Math.min(34, laneGap * 0.22);
-          const offsetY = slot * 36;
-          const centerX = laneToX(lane) + offsetX;
-          const centerY = startY + (row - 1) * rowGap + offsetY;
+          const centerX = laneToX(lane);
+          let centerY = Math.max(startY, top + 92) + localRow * localRowGap;
+          const makeRect = () => ({
+            x: centerX - nodeWidth / 2,
+            y: centerY - nodeHeight / 2,
+            width: nodeWidth,
+            height: nodeHeight,
+          });
+          let rect = makeRect();
+          let guard = 0;
+          const overlapsPlaced = (candidate) => placed.some((other) => (
+            candidate.x < other.x + other.width + 14
+            && candidate.x + candidate.width + 14 > other.x
+            && candidate.y < other.y + other.height + collisionGap
+            && candidate.y + candidate.height + collisionGap > other.y
+          ));
+          while (overlapsPlaced(rect) && guard < 24) {
+            centerY += nodeHeight + collisionGap;
+            rect = makeRect();
+            guard += 1;
+          }
           const routes = this.getTechNodeRoutes(node);
           const routeLanes = routes.length
             ? routes.map((route) => this.getTechRouteMeta(route).lane)
             : [lane];
           nodeRects[node.id] = {
-            x: centerX - nodeWidth / 2,
-            y: centerY - nodeHeight / 2,
+            ...rect,
             width: nodeWidth,
             height: nodeHeight,
             centerX,
             centerY,
-            row,
+            row: getNodeRow(node),
+            localRow,
             column,
             lane,
             routeLanes,
             routes,
             eraColumn: column,
           };
+          placed.push(nodeRects[node.id]);
         });
-      const eraPositions = eras.map((era, eraIndex) => {
-        const column = Number(era.column) || Number(era.era) || eraIndex + 1;
-        const top = minContentY + eraIndex * eraGap;
-        const bottom = minContentY + (eraIndex + 1) * eraGap;
+        const nodesBottom = placed.length
+          ? Math.max(...placed.map((rect) => rect.y + rect.height))
+          : top + baseEraHeight;
+        const bottom = Math.max(top + baseEraHeight, nodesBottom + 78);
+        eraTopCursor = bottom;
         return {
           ...era,
-          x: laneToX(maxLane) + nodeWidth / 2 + 56,
-          y: top + eraGap / 2,
+          x: eraRailX,
+          y: top + (bottom - top) / 2,
           top,
           bottom,
           column,
-          nodes: nodes.filter((node) => (Number(node.tree?.column ?? node.era) || 1) === column),
+          nodes: eraNodes,
         };
       });
       const routeGuides = routeEntries.map(([route, meta]) => ({
@@ -2841,8 +2865,7 @@
         ...Object.values(nodeRects).map((rect) => rect.x - 24),
       );
       const contentRight = Math.max(
-        laneToX(maxLane) + nodeWidth / 2 + eraRailWidth + 92,
-        ...eraPositions.map((era) => era.x + eraRailWidth + 32),
+        laneToX(maxLane) + nodeWidth / 2 + 80,
         ...routeGuides.map((guide) => guide.x + 40),
         ...Object.values(nodeRects).map((rect) => rect.x + rect.width + 24),
       );
@@ -2879,6 +2902,7 @@
         routeGuides,
         linkPaths,
         eraRailWidth,
+        eraRailX,
         routeCatalog,
         laneToX,
         spineX: panelCenterX,
@@ -2981,6 +3005,7 @@
           routeGuides,
           linkPaths,
           eraRailWidth,
+          eraRailX,
         } = layoutInfo;
         this.lastTechTreeScroll = {
           maxPanY,
@@ -3001,22 +3026,6 @@
             this.drawLine(contentLeft, era.top, contentRight, era.top, {
               color: 'rgba(255, 226, 177, 0.16)',
               width: 1,
-            });
-            this.drawPanel(era.x, era.top + 8, eraRailWidth, era.bottom - era.top - 16, {
-              fill: 'rgba(70, 72, 74, 0.76)',
-              stroke: 'rgba(255, 226, 177, 0.12)',
-              radius: 6,
-            });
-            this.drawText(this.truncateText(era.name || `时代 ${era.era}`, eraRailWidth - 10, { size: 11, bold: true }), era.x + eraRailWidth / 2, era.y - 18, {
-              size: 11,
-              bold: true,
-              color: era.closed ? '#74d3a0' : '#f0b45b',
-              align: 'center',
-            });
-            this.drawText(this.truncateText(era.choiceText || '', eraRailWidth - 12, { size: 9 }), era.x + eraRailWidth / 2, era.y + 2, {
-              size: 9,
-              color: 'rgba(234, 234, 234, 0.58)',
-              align: 'center',
             });
           });
           routeGuides.forEach((route) => {
@@ -3049,6 +3058,26 @@
               { type: 'research', techId: node.id, disabled: node.disabled, dragType: 'techTreeDrag' },
             );
             renderedCards += 1;
+          });
+        });
+        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, 0, panY, () => {
+          eraPositions.forEach((era) => {
+            this.drawPanel(eraRailX, era.top + 10, eraRailWidth, era.bottom - era.top - 20, {
+              fill: 'rgba(70, 72, 74, 0.84)',
+              stroke: 'rgba(255, 226, 177, 0.16)',
+              radius: 7,
+            });
+            this.drawText(this.truncateText(era.name || `时代 ${era.era}`, eraRailWidth - 10, { size: 11, bold: true }), eraRailX + eraRailWidth / 2, era.y - 18, {
+              size: 11,
+              bold: true,
+              color: era.closed ? '#74d3a0' : '#f0b45b',
+              align: 'center',
+            });
+            this.drawText(this.truncateText(era.choiceText || '', eraRailWidth - 12, { size: 9 }), eraRailX + eraRailWidth / 2, era.y + 2, {
+              size: 9,
+              color: 'rgba(234, 234, 234, 0.64)',
+              align: 'center',
+            });
           });
         });
         this.addHitTarget(treePanel, { type: 'techTreeDrag', background: true });

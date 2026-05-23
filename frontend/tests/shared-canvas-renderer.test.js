@@ -1810,7 +1810,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
   renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
     activeTab: 'tech',
     mode: 'hud',
-    techTreePanY: 0,
+    techTreePanY: -300,
   });
 
   const initialTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_4');
@@ -1819,7 +1819,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
   renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
     activeTab: 'tech',
     mode: 'hud',
-    techTreePanY: -420,
+    techTreePanY: -520,
   });
 
   const visibleClassicalTargets = renderer.hitTargets
@@ -1911,6 +1911,41 @@ test('CanvasGameRenderer places shared tech nodes between route lanes', () => {
   assert.equal(layout.linkPaths.length, 2);
   assert.ok(leftRect.x + leftRect.width < pivotRect.x);
   assert.ok(rightRect.x > pivotRect.x + pivotRect.width);
+});
+
+test('CanvasGameRenderer keeps tech era rail visible and gives eras roomy height', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const view = {
+    tree: {
+      eras: [
+        { era: 1, name: 'Era 1', choiceText: '0/1', closed: false, column: 1 },
+        { era: 2, name: 'Era 2', choiceText: '0/1', closed: false, column: 2 },
+      ],
+      nodes: [
+        { id: 'a', title: 'A', tree: { column: 1, row: 1, lane: -4, routes: ['agriculture'], parents: [] } },
+        { id: 'b', title: 'B', tree: { column: 1, row: 1, lane: -4, routes: ['agriculture'], parents: [] } },
+        { id: 'c', title: 'C', tree: { column: 1, row: 1, lane: -3.8, routes: ['agriculture'], parents: [] } },
+        { id: 'd', title: 'D', tree: { column: 2, row: 2, lane: 5, routes: ['military'], parents: ['a'] } },
+      ],
+      links: [],
+    },
+  };
+  const panel = { x: 36, y: 316, width: 318, height: 418 };
+  const layout = renderer.getTechTreeLayout(view, panel, { techTreePanX: -900 });
+  const firstEra = layout.eraPositions[0];
+  const railScreenX = layout.eraRailX;
+  const rects = ['a', 'b', 'c'].map((id) => layout.nodeRects[id]);
+
+  assert.ok(firstEra.bottom - firstEra.top >= 280);
+  rects.forEach((rect, index) => {
+    rects.slice(index + 1).forEach((other) => {
+      assert.equal(rectsOverlap(rect, other), false);
+    });
+  });
+  assert.ok(railScreenX > panel.x + panel.width - 80);
+  assert.equal(railScreenX + layout.panX < panel.x, true);
 });
 
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {
