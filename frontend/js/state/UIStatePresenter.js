@@ -879,6 +879,13 @@
       return Boolean(config?.scalePlan?.openEnded);
     }
 
+    static getExtraBuildingEffectEfficiency(curve, extraIndex) {
+      if (curve === 'linear') return 1;
+      if (curve === 'step') return 0.5;
+      const floor = 0.05;
+      return floor + (1 - floor) / Math.sqrt(extraIndex + 2);
+    }
+
     static getVisibleBuildingIds(state = {}) {
       const unlocked = Array.isArray(state.unlockedBuildings) ? state.unlockedBuildings : [];
       const built = Object.entries(state.buildings || {})
@@ -979,11 +986,10 @@
       if (this.isBuildingOpenEnded(config) && currentLevel > maxLevel) {
         const curve = config.scalePlan?.effectCurve || 'diminishing';
         for (let index = 0; index < currentLevel - maxLevel; index += 1) {
-          const efficiency = curve === 'linear' ? 1 : (curve === 'step' ? 0.5 : Math.pow(0.72, index + 1));
-          total += perLevel * efficiency;
+          total += perLevel * this.getExtraBuildingEffectEfficiency(curve, index);
         }
       }
-      return Math.round(total * 1000) / 1000;
+      return Math.round(total * 1000000) / 1000000;
     }
 
     static formatBuildingEffectValue(template, value, previousValue = null) {
@@ -997,7 +1003,10 @@
         if (delta > 0) deltaText = `提升 ${this.toDisplayPopulation(delta)}`;
       } else if (template.format === 'percent') {
         totalText = `${template.label}效率 ${Math.round((1 + value) * 100)}%`;
-        if (delta > 0) deltaText = `提升 ${Math.round(delta * 100)}%`;
+        if (delta > 0) {
+          const deltaPercent = delta * 100;
+          deltaText = `提升 ${deltaPercent < 1 ? '<1' : Math.round(deltaPercent)}%`;
+        }
       } else {
         totalText = `${template.label} ${this.formatCompactNumber(value, { floorSmall: false })}`;
         if (delta > 0) deltaText = `提升 ${this.formatCompactNumber(delta, { floorSmall: false })}`;

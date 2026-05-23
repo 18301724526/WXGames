@@ -20,7 +20,7 @@ test('farm 和 house 等级效果计算正确', () => {
   assert.equal(effects.byBuilding.house.happinessBonus, undefined);
 });
 
-test('open-ended scale effects keep retained cap and then slow down', () => {
+test('open-ended scale effects keep retained cap and grow without a hard ceiling', () => {
   const effects = BuildingEffectCalculator.calculate({
     farm: { level: 5 },
     house: null,
@@ -31,9 +31,30 @@ test('open-ended scale effects keep retained cap and then slow down', () => {
     watchtower: null,
     temple: null,
   });
+  const lateEffects = BuildingEffectCalculator.calculate({
+    farm: { level: 50 },
+    house: null,
+    workshop: null,
+    academy: null,
+    lumbermill: null,
+    barracks: null,
+    watchtower: null,
+    temple: null,
+  });
+  const laterEffects = BuildingEffectCalculator.calculate({
+    farm: { level: 51 },
+    house: null,
+    workshop: null,
+    academy: null,
+    lumbermill: null,
+    barracks: null,
+    watchtower: null,
+    temple: null,
+  });
 
-  assert.equal(effects.byBuilding.farm.foodOutputBonus, 2.36);
-  assert.equal(effects.foodOutputMultiplier, 3.36);
+  assert.equal(effects.byBuilding.farm.foodOutputBonus, 2.360876);
+  assert.equal(effects.foodOutputMultiplier, 3.360876);
+  assert.ok(laterEffects.byBuilding.farm.foodOutputBonus > lateEffects.byBuilding.farm.foodOutputBonus);
 });
 
 test('barracks does not grant output bonus or building defense level', () => {

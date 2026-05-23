@@ -481,6 +481,21 @@ test('building view state exposes category tabs and filters cards', () => {
   assert.equal(military.categoryTabs.find((tab) => tab.id === 'military').active, true);
 });
 
+test('building effect text keeps showing progress at high open-ended levels', () => {
+  const config = {
+    id: 'farm',
+    maxLevel: 4,
+    scalePlan: { openEnded: true, effectCurve: 'diminishing' },
+    effects: { perLevel: { foodOutputMultiplier: 0.5 } },
+    ui: { effectText: [{ field: 'foodOutputBonus', label: '食物产出', format: 'percent' }] },
+  };
+
+  const text = UIStatePresenter.formatBuildingEffectText(config, 51, 50);
+
+  assert.match(text, /提升/);
+  assert.doesNotMatch(text, /提升 0%/);
+});
+
 test('building view state disables build and upgrade actions when resources are insufficient', () => {
   const view = UIStatePresenter.buildBuildingViewState({
     unlockedBuildings: ['lumbermill'],

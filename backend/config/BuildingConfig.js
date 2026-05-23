@@ -10,6 +10,7 @@ const RESOURCE_LABELS = {
   knowledge: '知识',
   metal: '铁矿',
 };
+const MIN_DIMINISHING_EFFECT_EFFICIENCY = 0.05;
 
 function cloneConfig(value) {
   return JSON.parse(JSON.stringify(value));
@@ -97,13 +98,14 @@ function canUpgrade(buildingId, currentLevel) {
 function getExtraEffectEfficiency(curve, extraIndex) {
   if (curve === 'linear') return 1;
   if (curve === 'step') return 0.5;
-  return Math.pow(0.72, extraIndex + 1);
+  return MIN_DIMINISHING_EFFECT_EFFICIENCY
+    + (1 - MIN_DIMINISHING_EFFECT_EFFICIENCY) / Math.sqrt(extraIndex + 2);
 }
 
 function roundEffectBonus(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
-  return Math.round(number * 1000) / 1000;
+  return Math.round(number * 1_000_000) / 1_000_000;
 }
 
 function calculateEffectBonus(buildingId, field, level) {
