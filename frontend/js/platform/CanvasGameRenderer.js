@@ -2695,46 +2695,71 @@
       let renderedCards = 0;
 
       if (nodes.length && treeWidth > 0) {
-        const laneMin = Math.min(-3, Number(tree.laneMin) || 0);
-        const laneMax = Math.max(3, Number(tree.laneMax) || 0);
-        const laneAbs = Math.max(1, Math.abs(laneMin), Math.abs(laneMax));
-        const eraCount = Math.max(1, treeEras.length);
-        const nodeWidth = Math.max(58, Math.min(88, (treeWidth - Math.max(0, eraCount - 1) * 8) / eraCount));
-        const nodeHeight = Math.max(42, Math.min(58, (treeHeight - 20) / (laneAbs * 2 + 1)));
-        const minColumn = Math.min(...treeEras.map((era) => Number(era.column) || Number(era.era) || 1));
-        const maxColumn = Math.max(...treeEras.map((era) => Number(era.column) || Number(era.era) || 1));
-        const columnCount = Math.max(1, maxColumn - minColumn);
-        const columnStart = x + 18 + nodeWidth / 2;
-        const columnEnd = x + width - 18 - nodeWidth / 2;
-        const columnRange = Math.max(1, columnEnd - columnStart);
-        const columnX = (column) => columnStart + ((Number(column) || minColumn) - minColumn) / columnCount * columnRange;
+        const sortedEras = treeEras
+          .slice()
+          .sort((a, b) => (Number(a.column) || Number(a.era) || 0) - (Number(b.column) || Number(b.era) || 0));
+        const nodesByColumn = new Map();
+        nodes.forEach((node) => {
+          const column = Number(node.tree?.column ?? node.era) || 1;
+          if (!nodesByColumn.has(column)) nodesByColumn.set(column, []);
+          nodesByColumn.get(column).push(node);
+        });
+        const focusEra = sortedEras.find((era) => (
+          (nodesByColumn.get(Number(era.column) || Number(era.era) || 1) || []).some((node) => node.available)
+        )) || sortedEras.find((era) => !era.closed) || sortedEras[sortedEras.length - 1] || sortedEras[0];
+        const focusIndex = Math.max(0, sortedEras.indexOf(focusEra));
+        const maxVisibleColumns = Math.min(sortedEras.length, treeWidth >= 420 ? 3 : 2);
+        let startIndex = 0;
+        if (maxVisibleColumns >= 3) {
+          startIndex = Math.max(0, Math.min(focusIndex - 1, sortedEras.length - maxVisibleColumns));
+        } else if (focusIndex >= sortedEras.length - 1) {
+          startIndex = Math.max(0, sortedEras.length - maxVisibleColumns);
+        } else {
+          startIndex = Math.max(0, focusIndex);
+        }
+        const visibleEras = sortedEras.slice(startIndex, startIndex + maxVisibleColumns);
+        const visibleColumns = new Set(visibleEras.map((era) => Number(era.column) || Number(era.era) || 1));
+        const visibleNodes = nodes
+          .filter((node) => visibleColumns.has(Number(node.tree?.column ?? node.era) || 1));
+        const maxColumnNodeCount = Math.max(1, ...visibleEras.map((era) => (
+          (nodesByColumn.get(Number(era.column) || Number(era.era) || 1) || []).length
+        )));
+        const columnGap = 16;
+        const columnWidth = (treeWidth - columnGap * Math.max(0, visibleEras.length - 1)) / Math.max(1, visibleEras.length);
+        const nodeGap = 8;
+        const nodeAreaTop = treeTop + 14;
+        const nodeAreaBottom = treeBottom - 12;
+        const nodeAreaHeight = Math.max(80, nodeAreaBottom - nodeAreaTop);
+        const nodeWidth = Math.max(118, Math.min(156, columnWidth - 6));
+        const nodeHeight = Math.max(42, Math.min(62, (nodeAreaHeight - nodeGap * Math.max(0, maxColumnNodeCount - 1)) / maxColumnNodeCount));
+        const columnX = (visibleIndex) => treeX + columnWidth * visibleIndex + columnGap * visibleIndex + columnWidth / 2;
         const spineY = treeTop + treeHeight / 2;
-        const maxOffset = Math.max(36, (treeHeight - nodeHeight - 20) / 2);
-        const laneY = (lane) => spineY + (Number(lane) || 0) / laneAbs * maxOffset;
         const nodeRects = {};
+        const firstColumnX = columnX(0);
+        const lastColumnX = columnX(Math.max(0, visibleEras.length - 1));
 
-        this.drawLine(columnStart, spineY, columnEnd, spineY, {
+        this.drawLine(firstColumnX, spineY, lastColumnX, spineY, {
           color: 'rgba(240, 180, 91, 0.34)',
           width: 3,
         });
-        treeEras.forEach((era) => {
-          const eraX = columnX(era.column);
-          this.drawLine(eraX, spineY - maxOffset - 8, eraX, spineY + maxOffset + 8, {
+        visibleEras.forEach((era, visibleIndex) => {
+          const eraX = columnX(visibleIndex);
+          this.drawLine(eraX, nodeAreaTop, eraX, nodeAreaBottom, {
             color: 'rgba(255, 226, 177, 0.1)',
             width: 1,
           });
-          this.drawPanel(eraX - 24, spineY - 14, 48, 28, {
+          this.drawPanel(eraX - 24, treeTop - 16, 48, 24, {
             fill: era.closed ? 'rgba(39, 82, 59, 0.9)' : 'rgba(63, 47, 32, 0.92)',
             stroke: era.closed ? 'rgba(116, 211, 160, 0.5)' : 'rgba(240, 180, 91, 0.36)',
-            radius: 14,
+            radius: 12,
           });
-          this.drawText(this.truncateText(`E${era.era}`, 36, { size: 10, bold: true }), eraX, spineY - 2, {
+          this.drawText(this.truncateText(`E${era.era}`, 36, { size: 10, bold: true }), eraX, treeTop - 9, {
             size: 10,
             bold: true,
             color: era.closed ? '#74d3a0' : '#f0b45b',
             align: 'center',
           });
-          this.drawText(this.truncateText(era.name || `时代 ${era.era}`, 56, { size: 9 }), eraX, treeTop - 15, {
+          this.drawText(this.truncateText(era.name || `时代 ${era.era}`, Math.max(62, columnWidth - 12), { size: 9 }), eraX, treeTop + 9, {
             size: 9,
             color: '#cbbd96',
             align: 'center',
@@ -2747,15 +2772,24 @@
           });
         });
 
-        nodes.forEach((node) => {
-          const nodeCenterX = columnX(node.tree?.column ?? node.era);
-          const nodeCenterY = laneY(node.tree?.lane);
-          nodeRects[node.id] = {
-            x: Math.max(x + 18, Math.min(x + width - 18 - nodeWidth, nodeCenterX - nodeWidth / 2)),
-            y: Math.max(treeTop + 2, Math.min(treeBottom - nodeHeight, nodeCenterY - nodeHeight / 2)),
-            width: nodeWidth,
-            height: nodeHeight,
-          };
+        visibleEras.forEach((era, visibleIndex) => {
+          const column = Number(era.column) || Number(era.era) || 1;
+          const columnNodes = (nodesByColumn.get(column) || [])
+            .slice()
+            .sort((a, b) => (Number(a.tree?.lane) || 0) - (Number(b.tree?.lane) || 0));
+          const eraX = columnX(visibleIndex);
+          const slotCount = Math.max(1, columnNodes.length);
+          columnNodes.forEach((node, index) => {
+            const slotY = slotCount === 1
+              ? spineY
+              : nodeAreaTop + nodeHeight / 2 + index * ((nodeAreaHeight - nodeHeight) / Math.max(1, slotCount - 1));
+            nodeRects[node.id] = {
+              x: Math.max(x + 18, Math.min(x + width - 18 - nodeWidth, eraX - nodeWidth / 2)),
+              y: Math.max(nodeAreaTop, Math.min(nodeAreaBottom - nodeHeight, slotY - nodeHeight / 2)),
+              width: nodeWidth,
+              height: nodeHeight,
+            };
+          });
         });
 
         (tree.links || []).forEach((link) => {
@@ -2775,7 +2809,7 @@
           this.drawLine(midX, toY, toX, toY, { color, width: link.researched || link.active ? 2 : 1 });
         });
 
-        nodes.forEach((node) => {
+        visibleNodes.forEach((node) => {
           const rect = nodeRects[node.id];
           if (!rect) return;
           this.renderTechNode(node, rect);

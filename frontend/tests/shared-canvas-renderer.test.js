@@ -1759,6 +1759,66 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   );
 });
 
+test('CanvasGameRenderer keeps dense tech tree nodes from overlapping on mobile', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const classicalNodes = Array.from({ length: 8 }, (_, index) => ({
+    id: `classical_dense_${index}`,
+    title: `古典科技${index + 1}`,
+    routeLabel: index % 2 ? '文化' : '生产',
+    core: '路线节点',
+    buttonLabel: '研究',
+    status: 'available',
+    available: true,
+    disabled: false,
+    tree: { column: 5, lane: index - 4, parents: [] },
+  }));
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ hasWood: true, text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s', woodValue: '0', woodRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildTechViewState: () => ({
+      tree: {
+        eras: [
+          { era: 4, name: '边境分支', choiceText: '1/1', closed: true, column: 4 },
+          { era: 5, name: '古典分支', choiceText: '0/3', closed: false, column: 5 },
+        ],
+        nodes: [
+          { id: 'frontier_done', title: '土炉试炼', routeLabel: '生产', core: '已定路线', buttonLabel: '已研究', status: 'researched', researched: true, disabled: true, tree: { column: 4, lane: 0, parents: [] } },
+          ...classicalNodes,
+        ],
+        links: [],
+        laneMin: -4,
+        laneMax: 3,
+      },
+      text: {
+        knowledgeRate: '0/s',
+        title: '科技树',
+        points: '科技点 3',
+        researched: '已研究 1',
+        available: '可研究 8',
+        placeholder: '进入新时代后获得科技点',
+        subtitle: '前期科技用于选择文明路线，古典时代开始解锁关键建筑。',
+      },
+    }),
+  });
+
+  renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
+    activeTab: 'tech',
+    mode: 'hud',
+  });
+
+  const visibleClassicalTargets = renderer.hitTargets
+    .filter((target) => target.action.techId?.startsWith('classical_dense_'));
+  assert.equal(visibleClassicalTargets.length, 8);
+  visibleClassicalTargets.forEach((target, index) => {
+    visibleClassicalTargets.slice(index + 1).forEach((other) => {
+      assert.equal(rectsOverlap(target, other), false);
+    });
+  });
+});
+
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
