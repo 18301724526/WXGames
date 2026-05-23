@@ -14,9 +14,10 @@ test('farm 和 house 等级效果计算正确', () => {
   });
   assert.equal(effects.foodOutputMultiplier, 2);
   assert.equal(effects.populationCap, 6);
-  assert.equal(effects.happinessBonus, 5);
+  assert.equal(effects.happinessBonus, 0);
   assert.equal(effects.byBuilding.farm.foodOutputBonus, 1);
   assert.equal(effects.byBuilding.house.populationCapBonus, 3);
+  assert.equal(effects.byBuilding.house.happinessBonus, undefined);
 });
 
 test('barracks does not grant output bonus or building defense level', () => {

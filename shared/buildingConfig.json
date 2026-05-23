@@ -76,16 +76,14 @@
       ],
       "effects": {
         "perLevel": {
-          "populationCap": 3,
-          "happiness": 5
+          "populationCap": 3
         }
       },
       "ui": {
         "color": "#e67e22",
-        "description": "每级增加人口上限与幸福度",
+        "description": "每级增加可居住人口",
         "effectText": [
-          { "field": "populationCapBonus", "label": "人口上限", "format": "number" },
-          { "field": "happinessBonus", "label": "幸福度", "format": "number" }
+          { "field": "populationCapBonus", "label": "可居住人口", "format": "number" }
         ]
       }
     },
@@ -310,15 +308,13 @@
       ],
       "effects": {
         "perLevel": {
-          "offlineEfficiency": 0.05,
-          "happiness": 10
+          "offlineEfficiency": 0.05
         }
       },
       "ui": {
         "color": "#f39c12",
-        "description": "提升离线收益效率与幸福度",
+        "description": "提升离线收益效率",
         "effectText": [
-          { "field": "happinessBonus", "label": "幸福度", "format": "number" },
           { "field": "offlineEfficiencyBonus", "label": "离线收益", "format": "percent" }
         ]
       }

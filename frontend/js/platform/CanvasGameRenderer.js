@@ -1622,7 +1622,7 @@
         this.drawText(view.emptyText, x + width / 2, startY + 96, { color: '#cbbd96', size: 13, align: 'center' });
         return;
       }
-      const rowHeight = 112;
+      const rowHeight = 174;
       const rowGap = 8;
       const firstRowY = startY + 76;
       let visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 8) / (rowHeight + rowGap)));
@@ -1632,7 +1632,9 @@
         visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 42) / (rowHeight + rowGap)));
         maxOffset = Math.max(0, view.cards.length - visibleCount);
       }
-      offset = Math.min(offset, maxOffset);
+      const pageCount = Math.max(1, Math.ceil(view.cards.length / visibleCount));
+      const pageIndex = Math.min(Math.max(0, offset), pageCount - 1);
+      offset = pageIndex * visibleCount;
       const visibleCards = view.cards.slice(offset, offset + visibleCount);
       const drawCards = (cards, cardOffset = offset) => {
         cards.forEach((card, index) => {
@@ -1653,24 +1655,29 @@
             radius: 8,
             inset: 'rgba(255, 231, 184, 0.07)',
           });
-          if (card.art) this.drawAsset(card.art, x + 20, y + 12, 46, 46, isMuted ? 0.62 : 1);
-          else this.drawText(card.icon || '', x + 43, y + 35, { size: 24, align: 'center', baseline: 'middle' });
+          if (card.art) this.drawAsset(card.art, x + 20, y + 14, 46, 46, isMuted ? 0.62 : 1);
+          else this.drawText(card.icon || '', x + 43, y + 37, { size: 24, align: 'center', baseline: 'middle' });
 
           const textX = x + 76;
           const actionWidth = Math.min(128, Math.max(104, width - 238));
           const buttonX = x + width - actionWidth - 22;
           const textWidth = Math.max(112, buttonX - textX - 12);
           this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
-          this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
+          this.drawText(card.metaText || card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
 
-          const detail = card.effectText || (card.militaryLines || [])[0] || card.descText || '';
-          const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
-          this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
-          this.drawBuildingPlanningBadges(card.planningBadges, textX, y + rowHeight - 43, textWidth, { muted: isMuted });
+          this.drawBuildingInfoLine(card.currentEffectText || '当前效果：无', textX, y + 58, textWidth, { tone: 'current' });
+          this.drawBuildingInfoLine(card.nextEffectText || '下一级效果：无', textX, y + 77, x + width - 98, { tone: 'next' });
+          this.drawBuildingInfoLine(card.maintenanceText || '维护所需：无', textX, y + 96, x + width - 98, { tone: 'maintenance' });
+          this.drawBuildingInfoLine(card.cityImpactText || '城市影响：宜居压力平稳', textX, y + 115, x + width - 98, { tone: 'impact' });
 
           this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
             muted: isMuted,
             resources: state.resources || {},
+          });
+          this.drawText(card.costTitle || '升级所需', buttonX, y + 58, {
+            size: 10,
+            bold: true,
+            color: 'rgba(255, 226, 177, 0.68)',
           });
           this.drawBuildingActionButton(buttonX, y + rowHeight - 36, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
           this.addHitTarget(
@@ -1681,8 +1688,9 @@
       };
       const cardsBottom = firstRowY + visibleCount * (rowHeight + rowGap) - rowGap;
       const transition = this.getTransitionFrame(options.buildingTransition);
-      if (transition && Number(options.buildingTransition?.toOffset) === offset) {
-        const fromOffset = Math.min(Math.max(0, Number(options.buildingTransition.fromOffset) || 0), maxOffset);
+      if (transition && Number(options.buildingTransition?.toOffset) === pageIndex) {
+        const fromPage = Math.min(Math.max(0, Number(options.buildingTransition.fromOffset) || 0), pageCount - 1);
+        const fromOffset = fromPage * visibleCount;
         const oldCards = view.cards.slice(fromOffset, fromOffset + visibleCount);
         const travel = width + 24;
         this.withSlideClip(x, firstRowY - 4, width, Math.max(rowHeight, cardsBottom - firstRowY + 8), -transition.direction * travel * transition.eased, () => {
@@ -1700,10 +1708,9 @@
         const gap = 8;
         const prevX = x + width / 2 - buttonWidth - gap - 42;
         const nextX = x + width / 2 + 42 + gap;
-        const canPrev = offset > 0;
-        const canNext = offset < maxOffset;
-        const pageCount = Math.max(1, maxOffset + 1);
-        const currentPage = Math.min(pageCount, offset + 1);
+        const canPrev = pageIndex > 0;
+        const canNext = pageIndex < pageCount - 1;
+        const currentPage = pageIndex + 1;
         this.drawButton(prevX, pagerY, buttonWidth, 24, '上一页', { disabled: !canPrev, size: 11, radius: 7 });
         this.drawText(`${currentPage}/${pageCount}`, x + width / 2, pagerY + 12, {
           size: 10,
@@ -1715,6 +1722,21 @@
         this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
         this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
       }
+    }
+
+    drawBuildingInfoLine(text, x, y, width, options = {}) {
+      const palette = {
+        current: '#f6e8c8',
+        next: '#d5ffe8',
+        maintenance: '#cbbd96',
+        impact: '#f1c27d',
+      };
+      const content = this.truncateText(text || '', width, { size: 10, bold: options.tone === 'next' });
+      this.drawText(content, x, y, {
+        size: 10,
+        bold: options.tone === 'next',
+        color: palette[options.tone] || '#cbbd96',
+      });
     }
 
     drawBuildingPlanningBadges(badges = [], x, y, width, options = {}) {

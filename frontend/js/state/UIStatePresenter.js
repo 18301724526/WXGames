@@ -904,26 +904,82 @@
       };
     }
 
-    static formatEffectPart(template, effect) {
-      if (!template?.field || !template?.label) return '';
-      const value = effect?.[template.field];
-      if (typeof value !== 'number') return '';
-      if (template.format === 'percent') {
-        return `${template.label} +${Math.round(value * 100)}%`;
-      }
+    static getBuildingEffectSummary(config = {}, level = 0) {
+      const currentLevel = Math.max(0, this.toInteger(level));
+      const perLevel = config.effects?.perLevel || {};
+      const summary = { level: currentLevel };
+      if (perLevel.foodOutputMultiplier) summary.foodOutputBonus = currentLevel * perLevel.foodOutputMultiplier;
+      if (perLevel.populationCap) summary.populationCapBonus = currentLevel * perLevel.populationCap;
+      if (perLevel.knowledgeOutputMultiplier) summary.knowledgeOutputBonus = currentLevel * perLevel.knowledgeOutputMultiplier;
+      if (perLevel.craftsmanOutputMultiplier) summary.craftsmanOutputBonus = currentLevel * perLevel.craftsmanOutputMultiplier;
+      if (perLevel.woodOutputBase) summary.woodOutputBase = currentLevel * perLevel.woodOutputBase;
+      if (perLevel.offlineEfficiency) summary.offlineEfficiencyBonus = currentLevel * perLevel.offlineEfficiency;
+      if (perLevel.defense) summary.defenseLevel = currentLevel * perLevel.defense;
+      if (perLevel.threatDefense) summary.threatDefenseBonus = currentLevel * perLevel.threatDefense;
+      if (perLevel.globalOutputMultiplier) summary.globalOutputBonus = currentLevel * perLevel.globalOutputMultiplier;
+      return summary;
+    }
+
+    static formatBuildingEffectValue(template, value, previousValue = null) {
+      if (!template?.field || !template?.label || typeof value !== 'number' || value <= 0) return '';
+      let totalText = '';
+      let deltaText = '';
+      const previous = typeof previousValue === 'number' ? previousValue : null;
+      const delta = previous === null ? 0 : value - previous;
       if (template.field === 'populationCapBonus') {
-        return `人口 +${this.toDisplayPopulation(value)}`;
+        totalText = `${template.label} ${this.toDisplayPopulation(value)}`;
+        if (delta > 0) deltaText = `提升 ${this.toDisplayPopulation(delta)}`;
+      } else if (template.format === 'percent') {
+        totalText = `${template.label}效率 ${Math.round((1 + value) * 100)}%`;
+        if (delta > 0) deltaText = `提升 ${Math.round(delta * 100)}%`;
+      } else {
+        totalText = `${template.label} ${this.formatCompactNumber(value, { floorSmall: false })}`;
+        if (delta > 0) deltaText = `提升 ${this.formatCompactNumber(delta, { floorSmall: false })}`;
       }
-      return `${template.label} +${value}`;
+      return deltaText ? `${totalText}（${deltaText}）` : totalText;
+    }
+
+    static formatMilitaryEffectParts(config = {}, level = 0, previousLevel = null) {
+      const military = config.military || {};
+      const currentLevel = Math.max(0, this.toInteger(level));
+      const previous = previousLevel === null ? null : Math.max(0, this.toInteger(previousLevel));
+      const parts = [];
+      const soldierCaps = Array.isArray(military.soldierCapByLevel) ? military.soldierCapByLevel : [];
+      const intervals = Array.isArray(military.trainingIntervalSecondsByLevel) ? military.trainingIntervalSecondsByLevel : [];
+      const cap = this.toInteger(soldierCaps[currentLevel]);
+      const previousCap = previous === null ? null : this.toInteger(soldierCaps[previous]);
+      if (cap > 0) {
+        const delta = previousCap === null ? 0 : cap - previousCap;
+        parts.push(delta > 0 ? `士兵容量 ${cap}（提升 ${delta}）` : `士兵容量 ${cap}`);
+      }
+      const interval = this.toInteger(intervals[currentLevel]);
+      const previousInterval = previous === null ? null : this.toInteger(intervals[previous]);
+      if (interval > 0) {
+        const faster = previousInterval && previousInterval > interval ? previousInterval - interval : 0;
+        parts.push(faster > 0 ? `训练速度 ${interval}秒/人（加快 ${faster}秒）` : `训练速度 ${interval}秒/人`);
+      }
+      return parts;
+    }
+
+    static formatBuildingEffectText(config = {}, level = 0, previousLevel = null, effectOverride = null) {
+      const effect = effectOverride || this.getBuildingEffectSummary(config, level);
+      const previousEffect = previousLevel === null ? null : this.getBuildingEffectSummary(config, previousLevel);
+      const templates = config?.ui?.effectText || [];
+      const parts = templates
+        .map((template) => this.formatBuildingEffectValue(
+          template,
+          effect?.[template.field],
+          previousEffect?.[template.field],
+        ))
+        .filter(Boolean);
+      parts.push(...this.formatMilitaryEffectParts(config, level, previousLevel));
+      return parts.join('，');
     }
 
     static getBuildingEffectText(config, buildingEffects = {}) {
       const effect = buildingEffects?.byBuilding?.[config?.id] || {};
-      const templates = config?.ui?.effectText || [];
-      const parts = templates
-        .map((template) => this.formatEffectPart(template, effect))
-        .filter(Boolean);
-      return parts.join('，');
+      const level = this.toInteger(effect.level);
+      return this.formatBuildingEffectText(config, level);
     }
 
     static getResourceDisplayName(resource) {
@@ -959,38 +1015,38 @@
       return '沉重';
     }
 
-    static formatScalePlanText(scalePlan = {}) {
-      if (!scalePlan.openEnded) return '规模：当前有上限';
-      return scalePlan.currentCapRetained ? '规模：后续可继续扩张' : '规模：可继续扩张';
+    static formatBuildingScale(level = 0) {
+      const currentLevel = this.toInteger(level);
+      if (currentLevel <= 0) return '未建造';
+      if (currentLevel <= 2) return '小';
+      if (currentLevel <= 4) return '中';
+      return '大';
     }
 
-    static buildBuildingPlanningLines(config = {}) {
-      const maintenance = config.maintenance || {};
-      const resourceKeys = this.getMaintenanceResourceKeys(maintenance);
-      const resources = resourceKeys.map((resource) => this.getResourceDisplayName(resource)).join('、') || '无';
-      const lines = [];
-      if (resourceKeys.length || maintenance.summary) {
-        lines.push(`维护：${resources} · ${this.formatHabitabilityPressure(maintenance.habitabilityPressure)}`);
-      }
-      if (config.scalePlan?.openEnded) {
-        lines.push(this.formatScalePlanText(config.scalePlan));
-      }
-      return lines;
+    static formatMaintenanceRate(value) {
+      const perSecond = this.toNumber(value) / 60;
+      if (perSecond <= 0) return '';
+      const rounded = perSecond < 0.01
+        ? Math.round(perSecond * 1000) / 1000
+        : Math.round(perSecond * 100) / 100;
+      return this.trimDecimal(rounded);
     }
 
-    static buildBuildingPlanningBadges(config = {}) {
+    static formatBuildingMaintenanceText(config = {}, level = 0) {
       const maintenance = config.maintenance || {};
-      const resourceKeys = this.getMaintenanceResourceKeys(maintenance);
-      const resourceText = resourceKeys.map((resource) => this.getResourceDisplayName(resource)).join('/') || '无';
-      const badges = [];
-      if (resourceKeys.length || maintenance.summary) {
-        badges.push({ type: 'maintenance', label: `维护 ${resourceText}` });
-        badges.push({ type: 'pressure', label: `压力 ${this.formatHabitabilityPressureShort(maintenance.habitabilityPressure)}` });
-      }
-      if (config.scalePlan?.openEnded) {
-        badges.push({ type: 'scale', label: '规模 可扩张' });
-      }
-      return badges;
+      const currentLevel = this.toInteger(level);
+      if (currentLevel <= 0) return '维护所需：无';
+      const parts = Object.entries(maintenance.perLevelPerMinute || {})
+        .map(([resource, value]) => {
+          const rate = this.formatMaintenanceRate(this.toNumber(value) * currentLevel);
+          return rate ? `${this.getResourceDisplayName(resource)} ${rate}/s` : '';
+        })
+        .filter(Boolean);
+      return `维护所需：${parts.join('，') || '无'}`;
+    }
+
+    static formatBuildingCityImpactText(config = {}) {
+      return `城市影响：${this.formatHabitabilityPressure(config.maintenance?.habitabilityPressure)}`;
     }
 
     static getBuildingMilitaryLines(id, military = {}, buildingEffects = {}) {
@@ -1029,11 +1085,17 @@
       const canAfford = this.canAffordCost(state.resources, cost);
       const disabledByCost = !isMax && !canAfford;
       const disabled = disabledByTutorial || isMax || disabledByCost;
-      const effectText = this.getBuildingEffectText(config, state.buildingEffects);
+      const maxLevel = this.toInteger(config.maxLevel);
+      const nextLevel = isMax ? null : level + 1;
+      const currentEffectSummary = state.buildingEffects?.byBuilding?.[id] || this.getBuildingEffectSummary(config, level);
+      const currentEffectText = this.formatBuildingEffectText(config, level, null, currentEffectSummary) || '无';
+      const nextEffectValue = nextLevel === null
+        ? '当前时代暂不可继续扩建'
+        : (this.formatBuildingEffectText(config, nextLevel, level) || '无');
+      const nextEffectLabel = level > 0 ? '下一级效果' : '建成后效果';
+      const effectText = currentEffectText === '无' ? '' : currentEffectText;
       const militaryLines = this.getBuildingMilitaryLines(id, state.military, state.buildingEffects);
       const descText = config?.ui?.description || '';
-      const planningLines = this.buildBuildingPlanningLines(config);
-      const planningBadges = this.buildBuildingPlanningBadges(config);
 
       return {
         id,
@@ -1042,12 +1104,18 @@
         icon: config.icon || '',
         level,
         levelText: `等级 ${level}`,
+        maxLevel,
+        scaleText: `规模：${this.formatBuildingScale(level)}`,
+        metaText: `等级：${level}　规模：${this.formatBuildingScale(level)}`,
         isMuted: disabledByTutorial,
         effectText,
+        currentEffectText: `当前效果：${currentEffectText}`,
+        nextEffectText: `${nextEffectLabel}：${nextEffectValue}`,
+        maintenanceText: this.formatBuildingMaintenanceText(config, level),
+        cityImpactText: this.formatBuildingCityImpactText(config),
+        costTitle: level > 0 ? '升级所需' : '建造所需',
         descText,
         militaryLines,
-        planningLines,
-        planningBadges,
         button: {
           action: level ? 'upgrade' : 'build',
           disabled,
@@ -1055,10 +1123,10 @@
         },
         cost: this.buildCostViewState(cost),
         structure: {
-          hasEffect: Boolean(effectText),
-          hasMilitary: militaryLines.length > 0,
+          hasEffect: currentEffectText !== '无' || nextEffectValue !== '无',
+          hasMilitary: Boolean(config.military),
           hasDescription: Boolean(descText),
-          hasPlanning: planningLines.length > 0,
+          hasPlanning: true,
         },
       };
     }

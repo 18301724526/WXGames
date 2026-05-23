@@ -1066,8 +1066,11 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
           id: 'farm',
           name: '农田',
           art: 'assets/art/building-farm-cutout.png',
-          levelText: '等级 0',
-          effectText: '食物产出 +50%',
+          metaText: '等级：0　规模：未建造',
+          currentEffectText: '当前效果：无',
+          nextEffectText: '建成后效果：粮食产出效率 150%',
+          maintenanceText: '维护所需：无',
+          cityImpactText: '城市影响：宜居压力平稳',
           button: { action: 'build', label: '建造', disabled: false },
           cost: { text: '免费建造', parts: [], isMax: false },
         },
@@ -1075,8 +1078,11 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
           id: 'house',
           name: '民居',
           art: 'assets/art/building-house-cutout.png',
-          levelText: '等级 1',
-          descText: '增加人口上限',
+          metaText: '等级：1　规模：小',
+          currentEffectText: '当前效果：可居住人口 300',
+          nextEffectText: '下一级效果：可居住人口 600（提升 300）',
+          maintenanceText: '维护所需：粮食 0.01/s，木材 0.002/s',
+          cityImpactText: '城市影响：宜居压力平稳',
           button: { action: 'upgrade', label: '升级', disabled: false },
           cost: { text: '', parts: [{ resource: 'food', text: '80' }], isMax: false },
         },
@@ -1093,6 +1099,9 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建筑'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '民居'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '当前效果：可居住人口 300'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '下一级效果：可居住人口 600（提升 300）'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '维护所需：粮食 0.01/s，木材 0.002/s'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'house'));
 });
@@ -1126,13 +1135,11 @@ test('CanvasGameRenderer renders building costs as fixed base slots with knowled
         id: 'barracks',
         name: '兵营',
         art: 'assets/art/building-barracks-cutout.png',
-        levelText: '等级 1',
-        descText: '训练士兵',
-        planningBadges: [
-          { type: 'maintenance', label: '维护 食物' },
-          { type: 'pressure', label: '压力 较高' },
-          { type: 'scale', label: '规模 可扩张' },
-        ],
+        metaText: '等级：1　规模：小',
+        currentEffectText: '当前效果：士兵容量 5，训练速度 30秒/人',
+        nextEffectText: '下一级效果：士兵容量 10（提升 5），训练速度 20秒/人（加快 10秒）',
+        maintenanceText: '维护所需：粮食 0.01/s，木材 0.002/s',
+        cityImpactText: '城市影响：宜居压力较高',
         button: { action: 'upgrade', label: '升级', disabled: true },
         cost: {
           text: '',
@@ -1173,9 +1180,8 @@ test('CanvasGameRenderer renders building costs as fixed base slots with knowled
   assert.equal(costSlotAssets.includes('assets/art/icon-knowledge-cutout.webp'), false);
   assert.ok(assets.some((call) => call[0] === 'assets/art/icon-knowledge-cutout.webp' && call[3] === 13 && call[4] === 13));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '100'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '维护 食物'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '压力 较高'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '规模 可扩张'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '维护所需：粮食 0.01/s，木材 0.002/s'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城市影响：宜居压力较高'));
   const upgradeTarget = renderer.hitTargets.find((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'barracks');
   assert.ok(upgradeTarget);
   assert.ok(upgradeTarget.x >= 220);
@@ -1191,8 +1197,11 @@ test('CanvasGameRenderer paginates overflow building cards without DOM scrolling
     name: id,
     art: '',
     icon: `${index}`,
-    levelText: '等级 0',
-    descText: '建筑说明',
+    metaText: '等级：0　规模：未建造',
+    currentEffectText: '当前效果：无',
+    nextEffectText: '建成后效果：无',
+    maintenanceText: '维护所需：无',
+    cityImpactText: '城市影响：宜居压力平稳',
     button: { action: 'build', label: '建造', disabled: false },
     cost: { text: '免费建造', parts: [], isMax: false },
   }));
@@ -1223,7 +1232,7 @@ test('CanvasGameRenderer paginates overflow building cards without DOM scrolling
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'scrollBuildings' && target.action.delta === 1));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '3/3'));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '3-5/6'), false);
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'lumbermill'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'watchtower'));
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'), false);
 });
 
@@ -1236,8 +1245,11 @@ test('CanvasGameRenderer slides building pager cards and suppresses old page hit
     name: id,
     art: '',
     icon: `${index}`,
-    levelText: '等级 0',
-    descText: '建筑说明',
+    metaText: '等级：0　规模：未建造',
+    currentEffectText: '当前效果：无',
+    nextEffectText: '建成后效果：无',
+    maintenanceText: '维护所需：无',
+    cityImpactText: '城市影响：宜居压力平稳',
     button: { action: 'build', label: '建造', disabled: false },
     cost: { text: '免费建造', parts: [], isMax: false },
   }));
@@ -1273,7 +1285,7 @@ test('CanvasGameRenderer slides building pager cards and suppresses old page hit
 
   assert.ok(calls.some((call) => call[0] === 'translate' && Math.abs(Number(call[1]) || 0) > 0));
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'house'), false);
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'lumbermill'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'watchtower'));
 });
 
 test('CanvasGameRenderer slides HUD tab content while keeping old page non-interactive', () => {

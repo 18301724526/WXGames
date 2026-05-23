@@ -412,6 +412,9 @@ test('building view state is renderer-neutral and formats compact costs', () => 
         openEnded: true,
         currentCapRetained: true,
       },
+      effects: {
+        perLevel: { foodOutputMultiplier: 1 },
+      },
       ui: {
         effectText: [{ field: 'foodOutputBonus', label: 'Food output', format: 'percent' }],
       },
@@ -421,16 +424,11 @@ test('building view state is renderer-neutral and formats compact costs', () => 
   assert.equal(view.isEmpty, false);
   assert.equal(view.cards[0].id, 'farm');
   assert.equal(view.cards[0].levelText, '等级 1');
-  assert.equal(view.cards[0].effectText, 'Food output +100%');
-  assert.deepEqual(view.cards[0].planningLines, [
-    '维护：食物、木材 · 宜居压力轻微',
-    '规模：后续可继续扩张',
-  ]);
-  assert.deepEqual(view.cards[0].planningBadges, [
-    { type: 'maintenance', label: '维护 食物/木材' },
-    { type: 'pressure', label: '压力 轻微' },
-    { type: 'scale', label: '规模 可扩张' },
-  ]);
+  assert.equal(view.cards[0].metaText, '等级：1　规模：小');
+  assert.equal(view.cards[0].currentEffectText, '当前效果：Food output效率 200%');
+  assert.equal(view.cards[0].nextEffectText, '下一级效果：Food output效率 300%（提升 100%）');
+  assert.equal(view.cards[0].maintenanceText, '维护所需：食物 0.007/s，木材 0.002/s');
+  assert.equal(view.cards[0].cityImpactText, '城市影响：宜居压力轻微');
   assert.deepEqual(view.cards[0].cost.parts.map((part) => [part.resource, part.text]), [
     ['wood', '1M'],
     ['food', '1.2k'],

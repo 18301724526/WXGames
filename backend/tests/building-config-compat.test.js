@@ -30,7 +30,7 @@ test('遗留 BuildingEffects 按新版 perLevel 配置计算效果', () => {
   };
 
   assert.equal(effects.getFoodOutputMultiplier(gameState), 2);
-  assert.equal(effects.getHappinessBonus(gameState), 5);
+  assert.equal(effects.getHappinessBonus(gameState), 0);
 });
 
 test('遗留 BuildingValidator 与 BuildingSystem 兼容对象式建筑状态', () => {

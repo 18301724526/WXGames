@@ -17,7 +17,7 @@ test('farm 首次建造免费并推进到民居引导', () => {
   assert.equal(result.tutorial.currentStep, 7);
 });
 
-test('house 建造会提升人口上限和幸福度', () => {
+test('house 建造会提升人口上限但不产出幸福度', () => {
   const state = gameStateService.createInitialGameState('p2');
   state.currentEra = 1;
   state.resources.food = 100;
@@ -25,5 +25,5 @@ test('house 建造会提升人口上限和幸福度', () => {
   const result = BuildingActionService.build(state, state.tutorial, 'house');
   assert.equal(result.success, true);
   assert.equal(state.population.max, 6);
-  assert.equal(state.happiness, 105);
+  assert.equal(state.happiness, 100);
 });
