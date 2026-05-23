@@ -1611,7 +1611,7 @@
         this.drawText(view.emptyText, x + width / 2, startY + 96, { color: '#cbbd96', size: 13, align: 'center' });
         return;
       }
-      const rowHeight = 104;
+      const rowHeight = 112;
       const rowGap = 8;
       const firstRowY = startY + 76;
       let visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 8) / (rowHeight + rowGap)));
@@ -1652,13 +1652,10 @@
           this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
           this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
 
-          const detailParts = [
-            card.effectText || (card.militaryLines || [])[0] || card.descText || '',
-            ...((card.planningLines || []).slice(0, 2)),
-          ].filter(Boolean);
-          const detail = detailParts.join(' · ');
-          const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 3);
+          const detail = card.effectText || (card.militaryLines || [])[0] || card.descText || '';
+          const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
           this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
+          this.drawBuildingPlanningBadges(card.planningBadges, textX, y + rowHeight - 43, textWidth, { muted: isMuted });
 
           this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
             muted: isMuted,
@@ -1707,6 +1704,65 @@
         this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
         this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
       }
+    }
+
+    drawBuildingPlanningBadges(badges = [], x, y, width, options = {}) {
+      const items = Array.isArray(badges) ? badges.slice(0, 3) : [];
+      if (!items.length) return;
+      const gap = 4;
+      const rowGap = 3;
+      const height = 17;
+      const maxRows = 2;
+      let cursorX = x;
+      let cursorY = y;
+      let row = 0;
+      const palette = {
+        maintenance: {
+          fill: 'rgba(44, 62, 80, 0.52)',
+          stroke: 'rgba(129, 178, 154, 0.24)',
+          color: '#b7d4c2',
+        },
+        pressure: {
+          fill: 'rgba(88, 58, 34, 0.52)',
+          stroke: 'rgba(240, 180, 91, 0.26)',
+          color: '#f1c27d',
+        },
+        scale: {
+          fill: 'rgba(48, 68, 48, 0.5)',
+          stroke: 'rgba(116, 211, 160, 0.24)',
+          color: '#9ddfb5',
+        },
+      };
+      items.forEach((badge) => {
+        const style = palette[badge.type] || palette.maintenance;
+        const rawLabel = String(badge.label || '');
+        if (!rawLabel) return;
+        let available = x + width - cursorX;
+        let label = this.truncateText(rawLabel, Math.min(82, available - 12), { size: 9, bold: true });
+        let badgeWidth = Math.min(88, Math.max(38, this.measureTextWidth(label, { size: 9, bold: true }) + 12));
+        if (badgeWidth > available && row < maxRows - 1) {
+          row += 1;
+          cursorX = x;
+          cursorY += height + rowGap;
+          available = width;
+          label = this.truncateText(rawLabel, Math.min(82, available - 12), { size: 9, bold: true });
+          badgeWidth = Math.min(88, Math.max(38, this.measureTextWidth(label, { size: 9, bold: true }) + 12));
+        }
+        if (available < 34) return;
+        this.drawPanel(cursorX, cursorY, badgeWidth, height, {
+          fill: options.muted ? 'rgba(45, 42, 38, 0.46)' : style.fill,
+          stroke: options.muted ? 'rgba(255, 226, 177, 0.08)' : style.stroke,
+          radius: 6,
+        });
+        this.drawText(label, cursorX + badgeWidth / 2, cursorY + height / 2, {
+          size: 9,
+          bold: true,
+          color: options.muted ? '#8d8f99' : style.color,
+          align: 'center',
+          baseline: 'middle',
+        });
+        cursorX += badgeWidth + gap;
+      });
     }
 
     resourceShortName(resource) {

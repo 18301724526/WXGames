@@ -406,8 +406,13 @@ test('building view state is renderer-neutral and formats compact costs', () => 
   assert.equal(view.cards[0].levelText, '等级 1');
   assert.equal(view.cards[0].effectText, 'Food output +100%');
   assert.deepEqual(view.cards[0].planningLines, [
-    '维护预案：食物、木材 · 宜居压力轻微',
-    '规模预案：后续可继续扩张',
+    '维护：食物、木材 · 宜居压力轻微',
+    '规模：后续可继续扩张',
+  ]);
+  assert.deepEqual(view.cards[0].planningBadges, [
+    { type: 'maintenance', label: '维护 食物/木材' },
+    { type: 'pressure', label: '压力 轻微' },
+    { type: 'scale', label: '规模 可扩张' },
   ]);
   assert.deepEqual(view.cards[0].cost.parts.map((part) => [part.resource, part.text]), [
     ['wood', '1M'],

@@ -1083,6 +1083,11 @@ test('CanvasGameRenderer renders building costs as fixed base slots with knowled
         art: 'assets/art/building-barracks-cutout.png',
         levelText: '等级 1',
         descText: '训练士兵',
+        planningBadges: [
+          { type: 'maintenance', label: '维护 食物' },
+          { type: 'pressure', label: '压力 较高' },
+          { type: 'scale', label: '规模 可扩张' },
+        ],
         button: { action: 'upgrade', label: '升级', disabled: true },
         cost: {
           text: '',
@@ -1123,6 +1128,9 @@ test('CanvasGameRenderer renders building costs as fixed base slots with knowled
   assert.equal(costSlotAssets.includes('assets/art/icon-knowledge-cutout.webp'), false);
   assert.ok(assets.some((call) => call[0] === 'assets/art/icon-knowledge-cutout.webp' && call[3] === 13 && call[4] === 13));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '100'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '维护 食物'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '压力 较高'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '规模 可扩张'));
   const upgradeTarget = renderer.hitTargets.find((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'barracks');
   assert.ok(upgradeTarget);
   assert.ok(upgradeTarget.x >= 220);
