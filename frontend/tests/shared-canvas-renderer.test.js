@@ -1752,6 +1752,7 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   const lineCalls = calls.filter((call) => call[0] === 'lineTo');
   assert.ok(lineCalls.length >= 4);
   assert.ok(lineCalls.some((call) => Math.abs(call[1] - 195) < 1));
+  assert.equal(lineCalls.some((call) => call[1] === 195 && Math.abs(call[2] - 603.55) < 1), false);
   const techTarget = renderer.hitTargets.find((target) => target.action.techId === 'farming_field_rotation');
   assert.ok(techTarget);
   assert.deepEqual(
@@ -1881,6 +1882,33 @@ test('CanvasGameRenderer pans tech tree horizontally and keeps card drag handles
   const pannedTarget = renderer.hitTargets.find((target) => target.action.techId === 'right_branch');
   assert.ok(pannedTarget);
   assert.ok(pannedTarget.x < initialTarget.x);
+});
+
+test('CanvasGameRenderer places shared tech pivots on the era spine', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const view = {
+    tree: {
+      eras: [{ era: 2, name: 'Shared Era', choiceText: '0/1', closed: false, column: 2 }],
+      nodes: [
+        { id: 'left', title: 'Left', tree: { column: 2, lane: -1, parents: [] } },
+        { id: 'pivot', title: 'Pivot', tree: { column: 2, lane: 0, parents: ['left', 'right'] } },
+        { id: 'right', title: 'Right', tree: { column: 2, lane: 1, parents: [] } },
+      ],
+      links: [],
+    },
+  };
+  const layout = renderer.getTechTreeLayout(view, { x: 36, y: 316, width: 318, height: 418 });
+  const pivotRect = layout.nodeRects.pivot;
+  const leftRect = layout.nodeRects.left;
+  const rightRect = layout.nodeRects.right;
+
+  assert.ok(pivotRect);
+  assert.equal(pivotRect.side, 'center');
+  assert.equal(pivotRect.anchorX, layout.spineX);
+  assert.ok(leftRect.x + leftRect.width < pivotRect.x);
+  assert.ok(rightRect.x > pivotRect.x + pivotRect.width);
 });
 
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {

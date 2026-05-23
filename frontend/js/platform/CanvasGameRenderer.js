@@ -421,6 +421,16 @@
       this.ctx.stroke();
     }
 
+    drawPolyline(points = [], options = {}) {
+      if (!this.ctx || points.length < 2) return;
+      this.ctx.strokeStyle = options.color || 'rgba(232, 199, 128, 0.28)';
+      this.ctx.lineWidth = options.width || 1;
+      this.ctx.beginPath();
+      this.ctx.moveTo(points[0].x, points[0].y);
+      points.slice(1).forEach((point) => this.ctx.lineTo(point.x, point.y));
+      this.ctx.stroke();
+    }
+
     beginFrame(options = {}) {
       const optionNow = Number(options.now);
       const now = Number.isFinite(optionNow) ? optionNow : Date.now();
@@ -2648,6 +2658,9 @@
       const rightAnchorX = rightNodeX;
       const leftBranchMidX = Math.min(leftAnchorX + lanePadding, centerX - Math.max(26, width * 0.1));
       const rightBranchMidX = Math.max(rightAnchorX - lanePadding, centerX + Math.max(26, width * 0.1));
+      const sharedNodeX = centerX - nodeWidth / 2;
+      const sharedAnchorX = centerX;
+      const sharedBranchMidX = centerX;
       const nodesByColumn = new Map();
       nodes.forEach((node) => {
         const column = Number(node.tree?.column ?? node.era) || 1;
@@ -2671,10 +2684,13 @@
           .sort((a, b) => (Number(a.tree?.lane) || 0) - (Number(b.tree?.lane) || 0));
         const eraY = startY + eraIndex * rowGap;
         const leftNodes = [];
+        const centerNodes = [];
         const rightNodes = [];
         eraNodes.forEach((node, index) => {
-          if (index % 2 === 0) leftNodes.push(node);
-          else rightNodes.push(node);
+          const lane = Number(node.tree?.lane) || 0;
+          if (lane < 0) leftNodes.push(node);
+          else if (lane > 0) rightNodes.push(node);
+          else centerNodes.push(node);
         });
         const placeSide = (sideNodes, side) => {
           if (!sideNodes.length) return;
@@ -2682,15 +2698,15 @@
           const firstY = eraY - totalHeight / 2 + nodeHeight / 2;
           sideNodes.forEach((node, sideIndex) => {
             const nodeCenterY = firstY + sideIndex * (nodeHeight + branchGap);
-            const nodeX = side === 'left' ? leftNodeX : rightNodeX;
+            const nodeX = side === 'left' ? leftNodeX : (side === 'right' ? rightNodeX : sharedNodeX);
             nodeRects[node.id] = {
               x: nodeX,
               y: nodeCenterY - nodeHeight / 2,
               width: nodeWidth,
               height: nodeHeight,
               side,
-              anchorX: side === 'left' ? leftAnchorX : rightAnchorX,
-              branchMidX: side === 'left' ? leftBranchMidX : rightBranchMidX,
+              anchorX: side === 'left' ? leftAnchorX : (side === 'right' ? rightAnchorX : sharedAnchorX),
+              branchMidX: side === 'left' ? leftBranchMidX : (side === 'right' ? rightBranchMidX : sharedBranchMidX),
               anchorY: nodeCenterY,
               eraX: centerX,
               eraY,
@@ -2698,6 +2714,7 @@
           });
         };
         placeSide(leftNodes, 'left');
+        placeSide(centerNodes, 'center');
         placeSide(rightNodes, 'right');
         return {
           ...era,
@@ -2887,21 +2904,17 @@
             const color = node.researched
               ? 'rgba(116, 211, 160, 0.5)'
               : (!node.disabled ? 'rgba(240, 180, 91, 0.5)' : 'rgba(174, 176, 184, 0.2)');
-            this.drawLine(spineX, rect.eraY, rect.branchMidX, rect.anchorY, { color, width: node.researched || !node.disabled ? 2 : 1 });
-            this.drawLine(rect.branchMidX, rect.anchorY, rect.anchorX, rect.anchorY, { color, width: node.researched || !node.disabled ? 2 : 1 });
-          });
-          (tree.links || []).forEach((link) => {
-            const from = nodeRects[link.from];
-            const to = nodeRects[link.to];
-            if (!from || !to) return;
-            const fromX = from.x + from.width / 2;
-            const fromY = from.y + from.height / 2;
-            const toX = to.x + to.width / 2;
-            const toY = to.y + to.height / 2;
-            const color = link.researched
-              ? 'rgba(116, 211, 160, 0.32)'
-              : (link.active ? 'rgba(240, 180, 91, 0.32)' : 'rgba(174, 176, 184, 0.12)');
-            this.drawLine(fromX, fromY, toX, toY, { color, width: link.researched || link.active ? 2 : 1 });
+            const width = node.researched || !node.disabled ? 2 : 1;
+            if (rect.side === 'center') {
+              this.drawLine(spineX, rect.eraY, rect.anchorX, rect.anchorY, { color, width });
+            } else {
+              this.drawPolyline([
+                { x: spineX, y: rect.eraY },
+                { x: rect.branchMidX, y: rect.eraY },
+                { x: rect.branchMidX, y: rect.anchorY },
+                { x: rect.anchorX, y: rect.anchorY },
+              ], { color, width });
+            }
           });
           nodes.forEach((node) => {
             const rect = nodeRects[node.id];

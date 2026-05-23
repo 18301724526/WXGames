@@ -8,6 +8,15 @@ const TutorialService = require('../services/TutorialService');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
 const { TECHS, TECH_BY_ID } = require('../config/TechTreeConfig');
 
+test('tech tree has shared pivot nodes for route switching', () => {
+  const sharedNodes = TECHS.filter((tech) => Number(tech.tree?.lane) === 0 && tech.parents.length >= 2);
+  assert.ok(sharedNodes.length >= 4);
+  assert.ok(sharedNodes.some((tech) => tech.id === 'settlement_logging_rights'));
+  assert.ok(sharedNodes.some((tech) => tech.id === 'city_quarry_survey'));
+  assert.ok(sharedNodes.some((tech) => tech.id === 'frontier_bloomery_signs'));
+  assert.ok(sharedNodes.some((tech) => tech.id === 'classical_workshop_guilds'));
+});
+
 test('科技树配置包含鱼骨图坐标并且父节点都存在', () => {
   assert.ok(TECHS.length > 0);
   TECHS.forEach((tech) => {
@@ -72,7 +81,7 @@ test('客户端科技状态返回完整时代鱼骨图元数据', () => {
   assert.equal(firstEraTech.tree.column, 1);
   assert.equal(firstEraTech.tree.lane, -3);
   assert.equal(futureTech.status, 'locked');
-  assert.deepEqual(futureTech.parents, ['farming_field_rotation']);
+  assert.deepEqual(futureTech.parents, ['farming_field_rotation', 'farming_storehouse_rules']);
 });
 
 test('古典时代允许用三个科技点形成组合', () => {
