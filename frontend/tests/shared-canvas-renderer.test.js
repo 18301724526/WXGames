@@ -1669,11 +1669,34 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
     buildTechViewState: () => ({
+      points: 1,
+      researchedCount: 0,
+      availableCount: 1,
+      eras: [{
+        era: 1,
+        name: '农耕分支',
+        summary: '选择早期路线',
+        choiceText: '0/1',
+        closed: false,
+        techs: [{
+          id: 'farming_field_rotation',
+          title: '田块轮作',
+          routeLabel: '农业',
+          core: '核心入口：粮食稳定',
+          summary: '稳定粮食',
+          unlockSummary: '入口：粮食 / 建筑：农田',
+          buttonLabel: '研究',
+          disabled: false,
+        }],
+      }],
       text: {
         knowledgeRate: '0.2/s',
         title: '科技树',
-        placeholder: '首期暂不重构科技系统',
-        subtitle: '当前阶段先保留科技入口与知识产出展示',
+        points: '科技点 1',
+        researched: '已研究 0',
+        available: '可研究 1',
+        placeholder: '进入新时代后获得科技点',
+        subtitle: '前期科技用于选择文明路线，古典时代开始解锁关键建筑。',
       },
     }),
   });
@@ -1686,7 +1709,8 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '当前知识产出'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '首期暂不重构科技系统'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '田块轮作'));
+  assert.deepEqual(renderer.getHitTarget({ x: 28, y: 340 }), { type: 'research', techId: 'farming_field_rotation', disabled: false });
 });
 
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {

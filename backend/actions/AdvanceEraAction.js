@@ -3,6 +3,7 @@ const EventService = require('../services/EventService');
 const { getAdvanceConfig, getEraName } = require('../config/EraConfig');
 const BuildingState = require('../domain/BuildingState');
 const CityService = require('../services/CityService');
+const TechTreeService = require('../services/TechTreeService');
 
 function deductResources(resources, cost) {
   const next = { ...resources };
@@ -72,6 +73,7 @@ function execute(gameState, tutorial) {
   CityService.syncActiveCityToLegacyFields(gameState);
   gameState.currentEra = config.nextEra;
   applyEraKnowledgeBonus(gameState, config.nextEra);
+  const techGrant = TechTreeService.grantEraPoints(gameState, config.nextEra);
   welcomeSettlementResident(gameState, config.nextEra);
   gameState.eraHistory.push({ era: config.nextEra, advancedAt: new Date().toISOString() });
 
@@ -85,8 +87,9 @@ function execute(gameState, tutorial) {
 
   return {
     success: true,
-    message: `已进入${getEraName(config.nextEra)}`,
+    message: `已进入${getEraName(config.nextEra)}${techGrant.granted ? `，获得科技点 +${techGrant.granted}` : ''}`,
     currentEra: config.nextEra,
+    techGrant,
     tutorial: nextTutorial,
   };
 }

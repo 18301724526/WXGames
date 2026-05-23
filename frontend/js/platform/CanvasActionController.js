@@ -576,6 +576,16 @@
       return this.finalize(this.runAction(() => this.host.api.advanceEra()));
     }
 
+    handle_research(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.research === 'function') {
+        return this.finalize(game.research(action.techId));
+      }
+      return this.finalize(this.runAction(() => this.host.api.research(action.techId)));
+    }
+
     handle_claimEvent(action) {
       return this.finalize(this.claimEvent(action));
     }

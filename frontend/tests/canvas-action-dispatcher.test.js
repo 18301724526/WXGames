@@ -48,6 +48,7 @@ test('Canvas app and shell action coverage stays centralized after platform unif
   assert.equal(miniActions.has('assignJob'), false);
   assert.equal(miniActions.has('buildBuilding'), false);
   assert.equal(miniActions.has('upgradeBuilding'), false);
+  assert.equal(miniActions.has('research'), false);
   assert.equal(miniActions.has('advanceEra'), false);
   assert.equal(miniActions.has('claimEvent'), false);
   assert.equal(miniActions.has('scoutTerritory'), false);
@@ -116,6 +117,7 @@ test('canvas gameplay actions are routed by the shared Canvas action controller 
   const gameplayTokens = [
     'buildBuilding',
     'upgradeBuilding',
+    'research',
     'advanceEra',
     'claimEvent',
     'claimTaskReward',
@@ -495,7 +497,7 @@ test('CanvasActionDispatcher no longer owns async gameplay execution', () => {
   assert.equal(typeof CanvasActionDispatcher.prototype.handleAsync, 'undefined');
 
   const controllerSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
-  for (const token of ['selectCity', 'assignJob', 'buildBuilding', 'upgradeBuilding', 'advanceEra', 'claimTaskReward', 'scoutTerritory']) {
+  for (const token of ['selectCity', 'assignJob', 'buildBuilding', 'upgradeBuilding', 'research', 'advanceEra', 'claimTaskReward', 'scoutTerritory']) {
     const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     assert.match(controllerSource, new RegExp(`handle_${escaped}\\b|handleBuilding\\b|claimTaskRewardDirect\\b`));
   }

@@ -4,6 +4,7 @@ const GuideTaskService = require('../services/GuideTaskService');
 const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const TalentPolicyService = require('../services/TalentPolicyService');
+const TechTreeService = require('../services/TechTreeService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
@@ -126,6 +127,8 @@ function registerGameRoutes(app, deps) {
       direction,
       missionId,
       policyId,
+      techId,
+      tech,
       basePolicyId,
       tiers,
       policy,
@@ -177,7 +180,7 @@ function registerGameRoutes(app, deps) {
     } else if (['scoutTerritory', 'claimScout', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity', 'switchCity'].includes(action)) {
       result = TerritoryAction.execute(action, gameState, { territoryId, cityId, soldiers, name, direction, missionId });
     } else if (action === 'research') {
-      result = { success: false, error: 'NOT_IMPLEMENTED', message: '首期未重构科技研发，请稍后再试' };
+      result = TechTreeService.research(gameState, techId || target || tech);
     }
     gameState.tutorial = tutorial;
     eraProgress = gameStateService.calculateEraProgress(gameState);

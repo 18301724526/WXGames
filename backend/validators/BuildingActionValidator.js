@@ -12,7 +12,7 @@ function validateBuild(gameState, tutorialState, buildingId) {
   const tutorialCheck = TutorialService.validateAction(tutorialState, 'build', { target: buildingId }, gameState);
   if (!tutorialCheck.allowed) return tutorialCheck;
   if (!BuildingConfig.hasBuilding(buildingId)) return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
-  if (!BuildingUnlockService.isUnlocked(buildingId, gameState.currentEra)) return { allowed: false, code: 'ERA_NOT_UNLOCKED', message: '时代未解锁' };
+  if (!BuildingUnlockService.isUnlocked(buildingId, gameState.currentEra, gameState)) return { allowed: false, code: 'ERA_NOT_UNLOCKED', message: '时代未解锁' };
   if (BuildingState.isBuilt(gameState.buildings, buildingId)) return { allowed: false, code: 'BUILDING_ALREADY_EXISTS', message: '建筑已建造' };
   const cost = BuildingCostCalculator.getBuildCost(buildingId);
   if (!hasEnoughResources(gameState.resources, cost)) return { allowed: false, code: 'INSUFFICIENT_RESOURCES', message: '资源不足' };

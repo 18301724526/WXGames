@@ -51,6 +51,7 @@
     applyTalentPolicy(policyId, policy = null) { return this.request('POST', '/game/action', { action: 'applyTalentPolicy', policyId, policy }); }
     saveTalentPolicy(policy) { return this.request('POST', '/game/action', { action: 'saveTalentPolicy', policy }); }
     deleteTalentPolicy(policyId) { return this.request('POST', '/game/action', { action: 'deleteTalentPolicy', policyId }); }
+    research(techId) { return this.request('POST', '/game/action', { action: 'research', techId }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimGuideTaskReward(taskId) { return this.request('POST', '/game/action', { action: 'claimGuideTaskReward', target: taskId }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }

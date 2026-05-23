@@ -560,11 +560,36 @@ test('event view state is renderer-neutral and formats cards, badge, and history
 test('tech view state formats knowledge rate for Canvas renderer', () => {
   const view = UIStatePresenter.buildTechViewState({
     resources: { knowledgePerSecond: 1.25 },
+    techs: {
+      points: 1,
+      researchedCount: 0,
+      eras: [{
+        era: 1,
+        name: '农耕分支',
+        summary: '选择早期路线',
+        choiceLimit: 1,
+        choicesUsed: 0,
+        techs: [{
+          id: 'farming_field_rotation',
+          name: '田块轮作',
+          routeLabel: '农业',
+          summary: '稳定粮食',
+          core: '核心入口：粮食稳定',
+          status: 'available',
+          available: true,
+          resourceText: '粮食',
+          unlockText: '农田',
+        }],
+      }],
+    },
   });
 
   assert.equal(view.text.knowledgeRate, '1.25/s');
   assert.equal(view.text.title, '科技树');
-  assert.equal(view.text.placeholder, '首期暂不重构科技系统');
+  assert.equal(view.text.points, '科技点 1');
+  assert.equal(view.text.available, '可研究 1');
+  assert.equal(view.eras[0].techs[0].buttonLabel, '研究');
+  assert.equal(view.eras[0].techs[0].unlockSummary, '入口：粮食 / 建筑：农田');
 });
 
 test('event modal view state handles multiple and single event options', () => {

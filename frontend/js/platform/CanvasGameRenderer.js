@@ -2568,6 +2568,26 @@
         bold: true,
         color: '#74d3a0',
       });
+      const pillY = startY + 27;
+      const pillWidth = 68;
+      [
+        view.text.points,
+        view.text.researched,
+        view.text.available,
+      ].forEach((label, index) => {
+        const pillX = x + width - 12 - pillWidth * (3 - index) - 6 * (2 - index);
+        this.drawPanel(pillX, pillY, pillWidth, 24, {
+          fill: 'rgba(63, 47, 32, 0.78)',
+          stroke: 'rgba(255, 226, 177, 0.12)',
+          radius: 8,
+        });
+        this.drawText(this.truncateText(label, pillWidth - 14, { size: 10, bold: index === 0 }), pillX + pillWidth / 2, pillY + 7, {
+          size: 10,
+          bold: index === 0,
+          color: index === 0 ? '#f0b45b' : '#cbbd96',
+          align: 'center',
+        });
+      });
 
       const panelY = startY + 96;
       const panelBottom = startY + panelHeight - 14;
@@ -2578,19 +2598,108 @@
         radius: 10,
       });
       this.renderSectionHeader(view.text.title, x + 28, panelY + 16, '🔬');
-      const centerY = panelY + Math.max(66, panelH / 2 + 6);
-      this.drawAsset('assets/art/icon-science-cutout.webp', x + width / 2 - 34, centerY - 52, 68, 68, 0.62);
-      this.drawText(view.text.placeholder, x + width / 2, centerY + 24, {
-        size: 15,
-        bold: true,
-        color: '#cbbd96',
-        align: 'center',
-      });
-      this.drawText(view.text.subtitle, x + width / 2, centerY + 48, {
+      this.drawText(this.truncateText(view.text.subtitle, width - 120, { size: 11 }), x + 28, panelY + 42, {
         size: 11,
-        color: 'rgba(234, 234, 234, 0.58)',
-        align: 'center',
+        color: 'rgba(234, 234, 234, 0.62)',
       });
+
+      const eras = view.eras || [];
+      const focusEra = eras.find((era) => !era.closed) || eras[eras.length - 1] || null;
+      const renderEras = focusEra ? [focusEra] : [];
+      const listTop = panelY + 66;
+      const listBottom = startY + panelHeight - 24;
+      let cursorY = listTop;
+      let renderedCards = 0;
+      renderEras.forEach((era) => {
+        if (cursorY + 92 > listBottom) return;
+        this.drawText(`${era.name} ${era.choiceText}`, x + 28, cursorY + 1, {
+          size: 12,
+          bold: true,
+          color: era.closed ? '#a0a0a0' : '#f0b45b',
+        });
+        if (eras.length > 1) {
+          const earlierCount = Math.max(0, eras.indexOf(era));
+          this.drawText(`已确定 ${earlierCount} 个时代`, x + 28, cursorY + 17, {
+            size: 9,
+            color: 'rgba(234, 234, 234, 0.48)',
+          });
+        }
+        this.drawText(this.truncateText(era.summary, width - 154, { size: 10 }), x + width - 28, cursorY + 3, {
+          size: 10,
+          color: 'rgba(234, 234, 234, 0.56)',
+          align: 'right',
+        });
+        cursorY += eras.length > 1 ? 34 : 20;
+        const techs = era.techs || [];
+        const cardGap = 6;
+        const cardHeight = 78;
+        const cardWidth = Math.floor((width - 24 - cardGap) / 2);
+        const visibleTechs = techs;
+        visibleTechs.forEach((tech, index) => {
+          const col = index % 2;
+          const row = Math.floor(index / 2);
+          const cardX = x + 12 + col * (cardWidth + cardGap);
+          const cardY = cursorY + row * (cardHeight + cardGap);
+          if (cardY + cardHeight > listBottom) return;
+          const active = !tech.disabled;
+          const researched = Boolean(tech.researched);
+          this.drawPanel(cardX, cardY, cardWidth, cardHeight, {
+            fill: researched ? 'rgba(45, 73, 55, 0.74)' : 'rgba(45, 34, 24, 0.78)',
+            stroke: active ? 'rgba(240, 180, 91, 0.38)' : (researched ? 'rgba(78, 204, 163, 0.34)' : 'rgba(255, 226, 177, 0.1)'),
+            radius: 8,
+          });
+          this.drawText(tech.routeLabel, cardX + 10, cardY + 8, {
+            size: 9,
+            bold: true,
+            color: active ? '#f0b45b' : (researched ? '#74d3a0' : '#a0a0a0'),
+          });
+          this.drawText(this.truncateText(tech.title, cardWidth - 20, { size: 13, bold: true }), cardX + 10, cardY + 23, {
+            size: 13,
+            bold: true,
+            color: '#f6e8c8',
+          });
+          this.drawText(this.truncateText(tech.core || tech.summary, cardWidth - 20, { size: 10 }), cardX + 10, cardY + 42, {
+            size: 10,
+            color: '#cbbd96',
+          });
+          this.drawText(this.truncateText(tech.unlockSummary, cardWidth - 20, { size: 9 }), cardX + 10, cardY + 57, {
+            size: 9,
+            color: 'rgba(234, 234, 234, 0.58)',
+          });
+          const buttonW = Math.min(68, cardWidth - 16);
+          const buttonX = cardX + cardWidth - buttonW - 8;
+          const buttonY = cardY + cardHeight - 26;
+          this.drawButton(buttonX, buttonY, buttonW, 20, this.truncateText(tech.buttonLabel, buttonW - 12, { size: 10, bold: true }), {
+            disabled: tech.disabled,
+            active,
+            size: 10,
+            bold: true,
+            radius: 7,
+          });
+          this.addHitTarget(
+            { x: cardX, y: cardY, width: cardWidth, height: cardHeight },
+            { type: 'research', techId: tech.id, disabled: tech.disabled },
+          );
+          renderedCards += 1;
+        });
+        cursorY += Math.ceil(visibleTechs.length / 2) * (cardHeight + cardGap) + 10;
+      });
+
+      if (!renderedCards) {
+        const centerY = panelY + Math.max(66, panelH / 2 + 6);
+        this.drawAsset('assets/art/icon-science-cutout.webp', x + width / 2 - 34, centerY - 52, 68, 68, 0.62);
+        this.drawText(view.text.placeholder, x + width / 2, centerY + 24, {
+          size: 15,
+          bold: true,
+          color: '#cbbd96',
+          align: 'center',
+        });
+        this.drawText(view.text.subtitle, x + width / 2, centerY + 48, {
+          size: 11,
+          color: 'rgba(234, 234, 234, 0.58)',
+          align: 'center',
+        });
+      }
     }
 
     renderMilitarySubTabs(nav = {}, x, y, width) {

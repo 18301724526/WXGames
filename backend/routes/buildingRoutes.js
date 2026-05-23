@@ -21,7 +21,7 @@ function registerBuildingRoutes(app, deps) {
         category: config.category,
         level,
         isBuilt: level > 0,
-        isUnlocked: BuildingUnlockService.isUnlocked(config.id, gameState.currentEra),
+        isUnlocked: BuildingUnlockService.isUnlocked(config.id, gameState.currentEra, gameState),
         nextCost: BuildingCostCalculator.getNextActionCost(config.id, gameState.buildings),
         maxLevel: config.maxLevel,
         maintenancePreview: BuildingConfig.getMaintenancePreview(config.id),

@@ -106,6 +106,27 @@ test('talent policy APIs use shared action endpoint', async () => {
   ]);
 });
 
+test('research posts tech id through shared action API', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', null, {
+    transport: {
+      async request(options) {
+        requests.push(JSON.parse(options.body));
+        return {
+          ok: true,
+          async json() {
+            return { success: true };
+          },
+        };
+      },
+    },
+  });
+
+  await api.research('classical_workshop_guilds');
+
+  assert.deepEqual(requests, [{ action: 'research', techId: 'classical_workshop_guilds' }]);
+});
+
 test('claimGuideTaskReward posts task id through shared action API', async () => {
   const requests = [];
   const api = new GameAPI('/api', null, {

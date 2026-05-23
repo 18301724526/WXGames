@@ -839,6 +839,21 @@
       }
     }
 
+    async research(techId) {
+      if (!techId) return false;
+      try {
+        const result = await this.getGameApi().research(techId);
+        this.applyApiState(result);
+        this.showFloatingText(result.message || '科技已研究');
+        this.log(result.message || '科技已研究');
+        return true;
+      } catch (error) {
+        this.log(`研究失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
     switchTab(tab) {
       const previousTab = this.getActiveTab();
       const previousBuildingOffset = this.buildingOffset;

@@ -1523,12 +1523,54 @@
     }
 
     static buildTechViewState(state = {}) {
+      const techs = state.techs || {};
+      const eras = Array.isArray(techs.eras) ? techs.eras : [];
+      const points = this.toInteger(techs.points);
+      const researchedCount = this.toInteger(techs.researchedCount || Object.keys(techs.researched || {}).length);
+      const availableCount = eras.reduce((sum, era) => (
+        sum + (Array.isArray(era.techs) ? era.techs.filter((tech) => tech.available).length : 0)
+      ), 0);
+      const visibleEras = eras.map((era) => ({
+        era: era.era,
+        name: era.name || `时代 ${era.era}`,
+        summary: era.summary || '',
+        choiceText: `${this.toInteger(era.choicesUsed)}/${this.toInteger(era.choiceLimit, 1)}`,
+        closed: Boolean(era.closed),
+        techs: (era.techs || []).map((tech) => {
+          let buttonLabel = '研究';
+          if (tech.status === 'researched') buttonLabel = '已研究';
+          else if (tech.status === 'locked') buttonLabel = '未解锁';
+          else if (tech.status === 'eraChoiceFull') buttonLabel = '本时代已确定';
+          else if (tech.status === 'noPoints') buttonLabel = '点数不足';
+          const unlockParts = [];
+          if (tech.resourceText && tech.resourceText !== '无') unlockParts.push(`入口：${tech.resourceText}`);
+          if (tech.unlockText) unlockParts.push(`建筑：${tech.unlockText}`);
+          return {
+            ...tech,
+            title: tech.name || '',
+            routeLabel: tech.routeLabel || '路线',
+            summary: tech.summary || '',
+            core: tech.core || '',
+            unlockSummary: unlockParts.join(' / ') || '路线倾向',
+            buttonLabel,
+            disabled: !tech.available,
+            researched: Boolean(tech.researched || tech.status === 'researched'),
+          };
+        }),
+      }));
       return {
+        points,
+        researchedCount,
+        availableCount,
+        eras: visibleEras,
         text: {
           knowledgeRate: `${this.toNumber(state.resources?.knowledgePerSecond)}/s`,
           title: '科技树',
-          placeholder: '首期暂不重构科技系统',
-          subtitle: '当前阶段先保留科技入口与知识产出展示',
+          points: `科技点 ${points}`,
+          researched: `已研究 ${researchedCount}`,
+          available: availableCount > 0 ? `可研究 ${availableCount}` : '暂无可研究',
+          placeholder: '进入新时代后获得科技点',
+          subtitle: '前期科技用于选择文明路线，古典时代开始解锁关键建筑。',
         },
       };
     }

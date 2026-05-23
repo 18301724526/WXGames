@@ -14,6 +14,7 @@ const TerritoryService = require('./TerritoryService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const CityPlanningService = require('./CityPlanningService');
+const TechTreeService = require('./TechTreeService');
 
 function getBuildingLevel(buildings, buildingId) {
   return BuildingState.getLevel(buildings, buildingId);
@@ -28,7 +29,7 @@ function createInitialGameState(playerId) {
     buildings,
     buildingEffects,
     population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0, growthProgress: 0 },
-    techs: {},
+    techs: TechTreeService.normalizeTechState({}),
     techEffects: {},
     currentEra: 0,
     eraHistory: [{ era: 0, advancedAt: new Date().toISOString() }],
@@ -80,7 +81,8 @@ function normalizeState(rawState) {
     unassigned: state.population?.unassigned || 0,
     growthProgress: state.population?.growthProgress || 0,
   };
-  state.techs = state.techs || {};
+  state.techs = TechTreeService.normalizeGameStateTechs(state);
+  TechTreeService.grantEarnedEraPoints(state);
   state.techEffects = state.techEffects || {};
   state.eventQueue = state.eventQueue || [];
   state.eventHistory = state.eventHistory || [];
@@ -196,7 +198,7 @@ function getClientGameState(gameState) {
     guidebook: {
       categories: CityPlanningService.getGuidebookCategories(),
     },
-    unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra),
+    unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra, normalized),
     currentEra: normalized.currentEra,
     currentEraName: getEraName(normalized.currentEra),
     currentEraDescription: getEraDescription(normalized.currentEra),
@@ -211,7 +213,7 @@ function getClientGameState(gameState) {
       growthMultiplier,
     },
     talentPolicies: TalentPolicyService.getClientState(normalized),
-    techs: normalized.techs,
+    techs: TechTreeService.getClientState(normalized),
     techEffects: normalized.techEffects,
     happiness: normalized.happiness,
     gameDay: normalized.gameDay,

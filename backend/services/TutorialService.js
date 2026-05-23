@@ -97,7 +97,7 @@ function blocked(message) {
 
 function validateAction(tutorialState, action, payload, gameState) {
   const tutorial = normalizeTutorialState(tutorialState);
-  if (['applyTalentPolicy', 'saveTalentPolicy', 'deleteTalentPolicy'].includes(action)) return { allowed: true };
+  if (['applyTalentPolicy', 'saveTalentPolicy', 'deleteTalentPolicy', 'research'].includes(action)) return { allowed: true };
   if (tutorial.completed) return { allowed: true };
   const step = tutorial.currentStep;
 

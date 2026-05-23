@@ -117,5 +117,6 @@ test('边境到古典需要资源、士兵和瞭望台', () => {
 
   assert.equal(success.success, true);
   assert.equal(state.currentEra, 5);
-  assert.equal(success.message, '已进入古典时代');
+  assert.equal(success.message, '已进入古典时代，获得科技点 +3');
+  assert.equal(success.techGrant.granted, 3);
 });
