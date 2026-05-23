@@ -152,6 +152,12 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
     lastEventAt: 0,
     tutorial: { completed: true, currentStep: 15 },
     softGuideState: {},
+    talentPolicies: {
+      activePolicyId: 'industry',
+      activeDraft: null,
+      custom: [],
+      lastAppliedAt: '2026-05-17T08:03:00.000Z',
+    },
     military: {},
     polity: { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' },
     territories: [{ id: 'capital', cityName: '火种城', status: 'occupied' }],
@@ -190,6 +196,12 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
       label: '丰收庆祝',
     },
   ]);
+  assert.deepEqual(result.talentPolicies, {
+    activePolicyId: 'industry',
+    activeDraft: null,
+    custom: [],
+    lastAppliedAt: '2026-05-17T08:03:00.000Z',
+  });
   assert.deepEqual(result.polity, { name: '赤火联盟', namePrompted: true, capitalCityName: '火种城' });
   assert.deepEqual(result.territories, [{ id: 'capital', cityName: '火种城', status: 'occupied' }]);
   assert.equal(result.activeCityId, 'site_1_0');
