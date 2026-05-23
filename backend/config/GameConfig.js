@@ -12,5 +12,7 @@ module.exports = {
   population: {
     baseMax: 3,
     growthIntervalSeconds: 120,
+    splitCapacityActive: false,
+    eraCaps: [3, 6, 9, 12, 16, 20],
   },
 };

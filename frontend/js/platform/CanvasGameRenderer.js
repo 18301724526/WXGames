@@ -1233,7 +1233,7 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const y = startY;
-      const panelHeight = 302;
+      const panelHeight = 322;
       const jobRowHeight = 42;
       const jobRowGap = 8;
       this.drawPanel(x, y, width, panelHeight, {
@@ -1288,7 +1288,7 @@
 
       const planning = view.planning || {};
       const planningY = y + 106;
-      this.drawPanel(x + 7, planningY, width - 14, 36, {
+      this.drawPanel(x + 7, planningY, width - 14, 52, {
         fill: 'rgba(24, 36, 29, 0.72)',
         stroke: 'rgba(116, 211, 160, 0.16)',
         radius: 8,
@@ -1309,10 +1309,15 @@
         size: 10,
         color: 'rgba(234, 234, 234, 0.62)',
       });
+      this.drawText(this.truncateText(view.text.capacitySummary || '', width - 40, { size: 10, bold: true }), x + 20, planningY + 43, {
+        size: 10,
+        bold: true,
+        color: 'rgba(255, 226, 177, 0.74)',
+      });
 
       const jobs = view.jobs.filter((job) => job.visible);
       jobs.forEach((job, index) => {
-        const rowY = y + 154 + index * (jobRowHeight + jobRowGap);
+        const rowY = y + 166 + index * (jobRowHeight + jobRowGap);
         const jobLabel = { farmer: '农民', scholar: '学者', craftsman: '工匠' }[job.id] || job.id;
         const desc = { farmer: '生产食物', scholar: '口耳相传', craftsman: '钻研技艺' }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];

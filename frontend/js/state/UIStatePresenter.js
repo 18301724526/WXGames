@@ -421,6 +421,11 @@
       }));
       const totalOfficials = this.toInteger(pop.total ?? state.totalPop);
       const maxOfficials = this.toInteger(pop.maxPop ?? pop.max ?? state.maxPop);
+      const capacity = pop.capacity || {};
+      const eraCap = this.toInteger(capacity.eraCap ?? pop.eraCap ?? maxOfficials);
+      const housingCap = this.toInteger(capacity.housingCap ?? pop.housingCap ?? maxOfficials);
+      const capacityActive = Boolean(capacity.active);
+      const capacityStatus = capacityActive ? '承载生效' : '承载预览';
 
       return {
         showCraftsman: currentEra >= 2,
@@ -435,6 +440,10 @@
           unassigned,
           population: this.toDisplayPopulation(totalOfficials),
           maxPopulation: this.toDisplayPopulation(maxOfficials),
+          eraCapacity: this.toDisplayPopulation(eraCap),
+          housingCapacity: this.toDisplayPopulation(housingCap),
+          capacityStatus,
+          capacitySummary: `${capacityStatus}：时代 ${this.toDisplayPopulation(eraCap)} / 民居 ${this.toDisplayPopulation(housingCap)}`,
         },
       };
     }

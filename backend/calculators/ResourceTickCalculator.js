@@ -83,6 +83,29 @@ function calculatePopulationCap(effects) {
   return effects?.populationCap || GameConfig.population.baseMax;
 }
 
+function calculateEraPopulationCap(currentEra = 0) {
+  const caps = GameConfig.population.eraCaps || [];
+  const era = Math.max(0, Math.floor(Number(currentEra) || 0));
+  const configured = caps[era];
+  if (Number.isFinite(configured)) return configured;
+  return caps.length ? caps[caps.length - 1] : GameConfig.population.baseMax;
+}
+
+function calculatePopulationCapacity(gameState = {}, effects = gameState.buildingEffects || {}) {
+  const housingCap = calculatePopulationCap(effects);
+  const eraCap = calculateEraPopulationCap(gameState.currentEra);
+  const active = Boolean(GameConfig.population.splitCapacityActive);
+  const effectiveCap = active ? Math.min(eraCap, housingCap) : housingCap;
+  const limitingSource = eraCap < housingCap ? 'era' : housingCap < eraCap ? 'housing' : 'balanced';
+  return {
+    active,
+    eraCap,
+    housingCap,
+    effectiveCap,
+    limitingSource: active ? limitingSource : 'legacy',
+  };
+}
+
 function calculateHappiness(effects) {
   return 100 + (effects?.happinessBonus || 0);
 }
@@ -163,6 +186,8 @@ module.exports = {
   calculateIronPerSecond,
   calculateStonePerSecond,
   calculatePopulationCap,
+  calculateEraPopulationCap,
+  calculatePopulationCapacity,
   calculateHappiness,
   calculateBuffedHappiness,
   calculateOfflineEfficiencyBonus,

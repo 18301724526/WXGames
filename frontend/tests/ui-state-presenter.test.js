@@ -732,6 +732,7 @@ test('population view state formats jobs and button availability', () => {
     population: {
       total: 6,
       maxPop: 8,
+      capacity: { active: false, eraCap: 9, housingCap: 8 },
       unassigned: 1,
       farmers: 3,
       scholars: 2,
@@ -746,6 +747,10 @@ test('population view state formats jobs and button availability', () => {
   assert.equal(view.text.unassigned, 1);
   assert.equal(view.text.population, 600);
   assert.equal(view.text.maxPopulation, 800);
+  assert.equal(view.text.capacityStatus, '承载预览');
+  assert.equal(view.text.eraCapacity, 900);
+  assert.equal(view.text.housingCapacity, 800);
+  assert.equal(view.text.capacitySummary, '承载预览：时代 900 / 民居 800');
   assert.equal(view.showCraftsman, true);
   assert.deepEqual(
     view.jobs.map((job) => [job.id, job.count, job.visible, job.canIncrease, job.canDecrease]),

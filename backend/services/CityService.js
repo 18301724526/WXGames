@@ -178,7 +178,11 @@ function applyDerivedStatsToCity(city, gameState) {
   effects.territoryKnowledgeOutputBonus = territoryEffects.knowledgeOutputMultiplier || 0;
   effects.threatDefense += territoryEffects.threatDefense || 0;
   city.buildingEffects = effects;
-  city.population.max = ResourceTickCalculator.calculatePopulationCap(effects);
+  const capacity = ResourceTickCalculator.calculatePopulationCapacity(gameState, effects);
+  city.population.capacity = capacity;
+  city.population.eraCap = capacity.eraCap;
+  city.population.housingCap = capacity.housingCap;
+  city.population.max = capacity.effectiveCap;
   city.population.maxPop = city.population.max;
   if (city.population.total > city.population.max) city.population.total = city.population.max;
   city.happiness = ResourceTickCalculator.calculateBuffedHappiness(effects, {

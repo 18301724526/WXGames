@@ -46,6 +46,33 @@ test('人口自然增长在食物充足且未达上限时生效', () => {
   assert.equal(state.population.growthProgress, 0);
 });
 
+test('population capacity exposes era and housing sources without activating split cap yet', () => {
+  const capacity = ResourceTickCalculator.calculatePopulationCapacity(
+    { currentEra: 2 },
+    { populationCap: 12 },
+  );
+
+  assert.equal(capacity.active, false);
+  assert.equal(capacity.eraCap, 9);
+  assert.equal(capacity.housingCap, 12);
+  assert.equal(capacity.effectiveCap, 12);
+  assert.equal(capacity.limitingSource, 'legacy');
+});
+
+test('client population state includes capacity preview sources', () => {
+  const state = gameStateService.createInitialGameState('capacity-preview-player');
+  state.currentEra = 2;
+  state.buildings.house = { level: 1 };
+  const clientState = gameStateService.getClientGameState(state);
+
+  assert.equal(clientState.population.max, 6);
+  assert.equal(clientState.population.capacity.active, false);
+  assert.equal(clientState.population.capacity.eraCap, 9);
+  assert.equal(clientState.population.capacity.housingCap, 6);
+  assert.equal(clientState.population.eraCap, 9);
+  assert.equal(clientState.population.housingCap, 6);
+});
+
 test('habitability above zero speeds up population growth progress', () => {
   const state = gameStateService.createInitialGameState('growth-good-habitability-player');
   state.resources.food = 100;
