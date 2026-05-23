@@ -43,14 +43,18 @@
       return `${number >= 0 ? '+' : ''}${this.formatCompactNumber(number, { floorSmall: false })}/s`;
     }
 
-    static formatMultiplier(value) {
-      const number = Math.round(this.toNumber(value, 1) * 100) / 100;
-      return `x${number.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}`;
-    }
-
     static calculatePopulationGrowthMultiplier(habitability = 0) {
       const score = this.toNumber(habitability);
       return Math.round(Math.max(0.5, Math.min(1.5, 1 + score / 100)) * 100) / 100;
+    }
+
+    static formatPopulationGrowthStatus(growthMultiplier = 1) {
+      const multiplier = this.toNumber(growthMultiplier, 1);
+      if (multiplier <= 0.55) return '人口成长停滞';
+      if (multiplier < 0.9) return '人口成长缓慢';
+      if (multiplier < 1.08) return '人口成长平稳';
+      if (multiplier < 1.25) return '人口成长良好';
+      return '人口成长旺盛';
     }
 
     static toDisplayPopulation(officials) {
@@ -389,7 +393,7 @@
           terrain: terrainLabel,
           habitability: `${habitability >= 0 ? '+' : ''}${habitability}`,
           habitabilityLabel: label,
-          populationGrowthMultiplier: this.formatMultiplier(growthMultiplier),
+          populationGrowthStatus: this.formatPopulationGrowthStatus(growthMultiplier),
           summary: planning.habitabilitySummary || `${terrainLabel}城市规划${label}`,
           note: notes[0] || planning.terrainHint || '保持建筑搭配，会让城市更稳定。',
         },

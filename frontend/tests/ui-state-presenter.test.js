@@ -855,7 +855,7 @@ test('city planning and guidebook view states expose terrain and habitability', 
   assert.equal(planning.text.habitability, '+12');
   assert.equal(planning.habitabilityLabel, '良好');
   assert.equal(planning.populationGrowthMultiplier, 1.12);
-  assert.equal(planning.text.populationGrowthMultiplier, 'x1.12');
+  assert.equal(planning.text.populationGrowthStatus, '人口成长良好');
 
   const guidebook = UIStatePresenter.buildGuidebookViewState(state, { activeTab: 'planning' });
   assert.equal(guidebook.subtitle, '河谷 · 宜居度 +12 良好');

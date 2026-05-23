@@ -822,7 +822,7 @@ test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '攻略'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城市规划'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('地理：河谷')));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('宜居度：+12 良好 · 成长 x1.12')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('宜居度：+12 良好 · 人口成长良好')));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openGuidebook'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchGuidebookTab' && target.action.tab === 'policy'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeGuidebook'));
