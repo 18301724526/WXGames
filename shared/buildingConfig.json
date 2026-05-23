@@ -1,5 +1,12 @@
 {
-  "version": "2.1",
+  "version": "2.2",
+  "maintenancePolicy": {
+    "version": "0.1",
+    "active": false,
+    "appliesToResourceTick": false,
+    "rateUnit": "perMinute",
+    "summary": "建筑维护成本已进入配置预案，当前版本只做结构准备，不扣除资源。"
+  },
   "buildings": {
     "farm": {
       "id": "farm",
@@ -9,6 +16,19 @@
       "category": "production",
       "unlockEra": 1,
       "maxLevel": 4,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.16,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 2,
+        "perLevelPerMinute": { "wood": 0.2 },
+        "habitabilityPressure": 0,
+        "summary": "农田后续需要工具与水利维护，维护不足会影响长期扩张。"
+      },
       "buildCost": { "food": 0 },
       "upgradeCosts": [
         { "food": 50 },
@@ -36,6 +56,19 @@
       "category": "housing",
       "unlockEra": 1,
       "maxLevel": 3,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.18,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 2,
+        "perLevelPerMinute": { "food": 0.4, "wood": 0.1 },
+        "habitabilityPressure": 0,
+        "summary": "民居后续需要粮食与木材维持生活空间，承担人口扩张基础。"
+      },
       "buildCost": { "food": 30 },
       "upgradeCosts": [
         { "food": 80 },
@@ -64,6 +97,19 @@
       "category": "production",
       "unlockEra": 5,
       "maxLevel": 3,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.22,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 5,
+        "perLevelPerMinute": { "food": 0.5, "wood": 0.4 },
+        "habitabilityPressure": 1,
+        "summary": "工坊后续会消耗补给和材料，过密会提高生产区压力。"
+      },
       "buildCost": { "food": 120, "wood": 40 },
       "upgradeCosts": [
         { "food": 200, "knowledge": 100 },
@@ -90,6 +136,19 @@
       "category": "research",
       "unlockEra": 5,
       "maxLevel": 3,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.2,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 5,
+        "perLevelPerMinute": { "food": 0.4, "knowledge": 0.25 },
+        "habitabilityPressure": 0,
+        "summary": "学院后续需要粮食供给与知识投入，适合稳定城市长期培养。"
+      },
       "buildCost": { "food": 180, "wood": 60, "knowledge": 30 },
       "upgradeCosts": [
         { "food": 260, "knowledge": 180 },
@@ -116,6 +175,19 @@
       "category": "production",
       "unlockEra": 2,
       "maxLevel": 3,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.2,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 2,
+        "perLevelPerMinute": { "food": 0.3, "wood": 0.15 },
+        "habitabilityPressure": 1,
+        "summary": "伐木场后续需要食物补给和工具维护，规模过大会增加环境压力。"
+      },
       "buildCost": { "food": 50, "wood": 15 },
       "upgradeCosts": [
         { "food": 80, "wood": 30 },
@@ -142,6 +214,19 @@
       "category": "military",
       "unlockEra": 3,
       "maxLevel": 2,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.25,
+        "effectCurve": "step"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 3,
+        "perLevelPerMinute": { "food": 0.8, "wood": 0.1 },
+        "habitabilityPressure": 2,
+        "summary": "兵营后续需要稳定军粮和器械维护，军事设施过密会压迫生活区。"
+      },
       "buildCost": { "food": 260, "knowledge": 80 },
       "upgradeCosts": [
         { "food": 420, "knowledge": 160 }
@@ -168,6 +253,19 @@
       "category": "military",
       "unlockEra": 4,
       "maxLevel": 2,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.22,
+        "effectCurve": "step"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 4,
+        "perLevelPerMinute": { "food": 0.4, "wood": 0.2 },
+        "habitabilityPressure": 1,
+        "summary": "瞭望台后续需要守备补给和木材维护，用于稳定边境安全。"
+      },
       "buildCost": { "food": 180, "wood": 120, "knowledge": 60 },
       "upgradeCosts": [
         { "food": 260, "wood": 180, "knowledge": 120 }
@@ -193,6 +291,19 @@
       "category": "special",
       "unlockEra": 5,
       "maxLevel": 2,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.2,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 5,
+        "perLevelPerMinute": { "food": 0.6, "knowledge": 0.2 },
+        "habitabilityPressure": 0,
+        "summary": "神庙后续需要供给与知识维护，用于承接精神生活与长期离线收益。"
+      },
       "buildCost": { "food": 320, "knowledge": 120 },
       "upgradeCosts": [
         { "food": 500, "knowledge": 220 }

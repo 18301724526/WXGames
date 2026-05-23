@@ -32,6 +32,19 @@ function getMaxLevel(buildingId) {
   return getBuilding(buildingId)?.maxLevel || 1;
 }
 
+function getMaintenancePolicy() {
+  return cloneConfig(config.maintenancePolicy || {});
+}
+
+function getMaintenance(buildingId) {
+  return cloneConfig(getBuilding(buildingId)?.maintenance || {});
+}
+
+function isMaintenanceActive() {
+  const policy = config.maintenancePolicy || {};
+  return Boolean(policy.active && policy.appliesToResourceTick);
+}
+
 module.exports = {
   raw: () => cloneConfig(config),
   getVersion: () => config.version || null,
@@ -42,4 +55,7 @@ module.exports = {
   getBuildCost,
   getUpgradeCost,
   getMaxLevel,
+  getMaintenancePolicy,
+  getMaintenance,
+  isMaintenanceActive,
 };

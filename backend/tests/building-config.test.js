@@ -6,7 +6,7 @@ const path = require('node:path');
 const BuildingConfig = require('../config/BuildingConfig');
 
 test('BuildingConfig 暴露当前配置版本与来源路径', () => {
-  assert.equal(BuildingConfig.getVersion(), '2.1');
+  assert.equal(BuildingConfig.getVersion(), '2.2');
   assert.match(BuildingConfig.getSourcePath(), /shared[\\/]+buildingConfig\.json$/);
   assert.equal(BuildingConfig.getBuildCost('farm').food, 0);
 });
@@ -45,4 +45,18 @@ test('watchtower config exposes threat defense effect only', () => {
   assert.deepEqual(watchtower.ui.effectText, [
     { field: 'threatDefenseBonus', label: '边境防御', format: 'number' },
   ]);
+});
+
+test('building maintenance plan is configured but not active in resource tick yet', () => {
+  const policy = BuildingConfig.getMaintenancePolicy();
+  const houseMaintenance = BuildingConfig.getMaintenance('house');
+  const barracksMaintenance = BuildingConfig.getMaintenance('barracks');
+
+  assert.equal(policy.version, '0.1');
+  assert.equal(policy.active, false);
+  assert.equal(policy.appliesToResourceTick, false);
+  assert.equal(BuildingConfig.isMaintenanceActive(), false);
+  assert.deepEqual(houseMaintenance.perLevelPerMinute, { food: 0.4, wood: 0.1 });
+  assert.equal(houseMaintenance.enabled, false);
+  assert.equal(barracksMaintenance.habitabilityPressure, 2);
 });
