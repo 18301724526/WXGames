@@ -1611,7 +1611,7 @@
         this.drawText(view.emptyText, x + width / 2, startY + 96, { color: '#cbbd96', size: 13, align: 'center' });
         return;
       }
-      const rowHeight = 92;
+      const rowHeight = 104;
       const rowGap = 8;
       const firstRowY = startY + 76;
       let visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 8) / (rowHeight + rowGap)));
@@ -1652,17 +1652,21 @@
           this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
           this.drawText(card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
 
-          const detail = card.effectText || (card.militaryLines || [])[0] || card.descText || '';
-          const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 2);
+          const detailParts = [
+            card.effectText || (card.militaryLines || [])[0] || card.descText || '',
+            ...((card.planningLines || []).slice(0, 2)),
+          ].filter(Boolean);
+          const detail = detailParts.join(' · ');
+          const detailLines = this.wrapText(detail, textWidth, { size: 10 }).slice(0, 3);
           this.drawTextLines(detailLines, textX, y + 47, { color: '#cbbd96', size: 10, lineHeight: 13 });
 
           this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
             muted: isMuted,
             resources: state.resources || {},
           });
-          this.drawBuildingActionButton(buttonX, y + 56, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
+          this.drawBuildingActionButton(buttonX, y + rowHeight - 36, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
           this.addHitTarget(
-            { x: buttonX, y: y + 56, width: actionWidth, height: 26 },
+            { x: buttonX, y: y + rowHeight - 36, width: actionWidth, height: 26 },
             { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
           );
         });

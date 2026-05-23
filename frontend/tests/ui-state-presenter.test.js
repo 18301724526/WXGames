@@ -386,6 +386,15 @@ test('building view state is renderer-neutral and formats compact costs', () => 
       id: 'farm',
       name: 'Farm',
       icon: 'F',
+      maintenance: {
+        perLevelPerMinute: { food: 0.4, wood: 0.1 },
+        habitabilityPressure: 1,
+        summary: 'Requires daily upkeep.',
+      },
+      scalePlan: {
+        openEnded: true,
+        currentCapRetained: true,
+      },
       ui: {
         effectText: [{ field: 'foodOutputBonus', label: 'Food output', format: 'percent' }],
       },
@@ -396,6 +405,10 @@ test('building view state is renderer-neutral and formats compact costs', () => 
   assert.equal(view.cards[0].id, 'farm');
   assert.equal(view.cards[0].levelText, '等级 1');
   assert.equal(view.cards[0].effectText, 'Food output +100%');
+  assert.deepEqual(view.cards[0].planningLines, [
+    '维护预案：食物、木材 · 宜居压力轻微',
+    '规模预案：后续可继续扩张',
+  ]);
   assert.deepEqual(view.cards[0].cost.parts.map((part) => [part.resource, part.text]), [
     ['wood', '1M'],
     ['food', '1.2k'],

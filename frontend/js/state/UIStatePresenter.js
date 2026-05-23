@@ -903,6 +903,50 @@
       return parts.join('，');
     }
 
+    static getResourceDisplayName(resource) {
+      return {
+        food: '食物',
+        knowledge: '知识',
+        wood: '木材',
+        iron: '铁矿',
+        stone: '石料',
+        metal: '铁矿',
+      }[resource] || resource;
+    }
+
+    static getMaintenanceResourceKeys(maintenance = {}) {
+      return Object.entries(maintenance.perLevelPerMinute || {})
+        .filter(([, value]) => this.toNumber(value) > 0)
+        .map(([resource]) => resource);
+    }
+
+    static formatHabitabilityPressure(value) {
+      const pressure = this.toNumber(value);
+      if (pressure <= 0) return '宜居压力平稳';
+      if (pressure <= 1) return '宜居压力轻微';
+      if (pressure <= 2) return '宜居压力较高';
+      return '宜居压力沉重';
+    }
+
+    static formatScalePlanText(scalePlan = {}) {
+      if (!scalePlan.openEnded) return '规模：当前有上限';
+      return scalePlan.currentCapRetained ? '规模预案：后续可继续扩张' : '规模：可继续扩张';
+    }
+
+    static buildBuildingPlanningLines(config = {}) {
+      const maintenance = config.maintenance || {};
+      const resourceKeys = this.getMaintenanceResourceKeys(maintenance);
+      const resources = resourceKeys.map((resource) => this.getResourceDisplayName(resource)).join('、') || '无';
+      const lines = [];
+      if (resourceKeys.length || maintenance.summary) {
+        lines.push(`维护预案：${resources} · ${this.formatHabitabilityPressure(maintenance.habitabilityPressure)}`);
+      }
+      if (config.scalePlan?.openEnded) {
+        lines.push(this.formatScalePlanText(config.scalePlan));
+      }
+      return lines;
+    }
+
     static getBuildingMilitaryLines(id, military = {}, buildingEffects = {}) {
       if (id !== 'barracks' || !military || !military.soldierCap) return [];
       const soldiers = this.toInteger(military.soldiers);
@@ -942,6 +986,7 @@
       const effectText = this.getBuildingEffectText(config, state.buildingEffects);
       const militaryLines = this.getBuildingMilitaryLines(id, state.military, state.buildingEffects);
       const descText = config?.ui?.description || '';
+      const planningLines = this.buildBuildingPlanningLines(config);
 
       return {
         id,
@@ -954,6 +999,7 @@
         effectText,
         descText,
         militaryLines,
+        planningLines,
         button: {
           action: level ? 'upgrade' : 'build',
           disabled,
@@ -964,6 +1010,7 @@
           hasEffect: Boolean(effectText),
           hasMilitary: militaryLines.length > 0,
           hasDescription: Boolean(descText),
+          hasPlanning: planningLines.length > 0,
         },
       };
     }

@@ -60,3 +60,20 @@ test('building maintenance plan is configured but not active in resource tick ye
   assert.equal(houseMaintenance.enabled, false);
   assert.equal(barracksMaintenance.habitabilityPressure, 2);
 });
+
+test('building maintenance and scale previews are player-facing but inactive', () => {
+  const housePreview = BuildingConfig.getMaintenancePreview('house');
+  const barracksPreview = BuildingConfig.getMaintenancePreview('barracks');
+  const farmScale = BuildingConfig.getScalePlanPreview('farm');
+
+  assert.equal(housePreview.planned, true);
+  assert.equal(housePreview.active, false);
+  assert.deepEqual(housePreview.resources, ['food', 'wood']);
+  assert.equal(housePreview.resourceText, '食物、木材');
+  assert.equal(housePreview.pressureText, '宜居压力平稳');
+  assert.match(barracksPreview.text, /维护预案/);
+  assert.match(barracksPreview.text, /宜居压力较高/);
+  assert.equal(farmScale.openEnded, true);
+  assert.equal(farmScale.currentCapRetained, true);
+  assert.equal(farmScale.curveText, '规模收益会逐步放缓');
+});

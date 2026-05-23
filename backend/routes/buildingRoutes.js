@@ -24,6 +24,8 @@ function registerBuildingRoutes(app, deps) {
         isUnlocked: BuildingUnlockService.isUnlocked(config.id, gameState.currentEra),
         nextCost: BuildingCostCalculator.getNextActionCost(config.id, gameState.buildings),
         maxLevel: config.maxLevel,
+        maintenancePreview: BuildingConfig.getMaintenancePreview(config.id),
+        scalePlanPreview: BuildingConfig.getScalePlanPreview(config.id),
       };
     });
     return res.json({ success: true, buildings });
