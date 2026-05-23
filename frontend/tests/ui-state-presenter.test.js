@@ -880,7 +880,7 @@ test('talent policy view state previews selected preset before confirmation', ()
     },
   }, { basePolicyId: 'industry' });
 
-  assert.equal(view.text.subtitle, '当前：均衡发展');
+  assert.equal(view.text.subtitle, '当前：均衡发展 / 预览：工业优先');
   assert.equal(view.draft.basePolicyId, 'industry');
   assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').active, true);
   assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').selected, false);

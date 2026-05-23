@@ -99,7 +99,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(css, /naming-modal-content|naming-input|naming-message/);
   assert.doesNotMatch(html, /floating-text\.js|id="fxLayer"/);
   assert.doesNotMatch(css, /fx-layer|floating-text|particleFly|screen-flash|floatUp/);
-  assert.match(html, /UIStatePresenter\.js\?v=ui-state-v11/);
+  assert.match(html, /UIStatePresenter\.js\?v=ui-state-v12/);
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
   assert.doesNotMatch(html, /EventUIRenderer\.js/);
   assert.doesNotMatch(html, /RuntimeLogAdapter\.js|LogModalAdapter\.js/);

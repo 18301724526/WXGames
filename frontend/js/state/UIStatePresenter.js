@@ -484,6 +484,14 @@
         || source.activePolicyLabel
         || activePreview.policyLabel
         || basePolicy.label;
+      const draftPolicyLabel = basePolicy.label || preview.policyLabel || '均衡发展';
+      const isDefaultDraft = ['agriculture', 'knowledge', 'industry']
+        .every((key) => this.toInteger(draft.tiers[key], 2) === this.toInteger(source.defaultTiers?.[key], 2));
+      const previewPolicyLabel = isDefaultDraft ? draftPolicyLabel : this.makeTalentPolicyName(basePolicy, draft.tiers);
+      const hasPendingPreview = previewPolicyLabel !== activePolicyLabel;
+      const subtitle = hasPendingPreview
+        ? `当前：${activePolicyLabel || '均衡发展'} / 预览：${previewPolicyLabel}`
+        : `当前：${activePolicyLabel || '均衡发展'}`;
 
       return {
         activePolicyId,
@@ -514,7 +522,7 @@
         },
         text: {
           title: '人才方针',
-          subtitle: `当前：${activePolicyLabel || '均衡发展'}`,
+          subtitle,
           presetTitle: '系统方针',
           customTitle: '自定义微调',
           customName: this.makeTalentPolicyName(basePolicy, draft.tiers),
