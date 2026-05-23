@@ -1748,11 +1748,10 @@
       items.forEach((tab, index) => {
         const remainingItems = items.length - index - 1;
         const remainingGap = remainingItems * gap;
-        const tabWidth = index === items.length - 1
-          ? Math.max(36, x + width - cursorX)
-          : Math.max(36, Math.floor(rawWidths[index] * scale));
+        const tabWidth = Math.max(36, Math.floor(rawWidths[index] * scale));
+        const actualWidth = Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap));
         const active = Boolean(tab.active);
-        this.drawButton(cursorX, y, Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap)), height, this.truncateText(tab.label || tab.id, Math.max(18, tabWidth - 12), {
+        this.drawButton(cursorX, y, actualWidth, height, this.truncateText(tab.label || tab.id, Math.max(18, actualWidth - 12), {
           size: 11,
           bold: active,
         }), {
@@ -1762,10 +1761,10 @@
           radius: 13,
         });
         this.addHitTarget(
-          { x: cursorX, y, width: Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap)), height },
+          { x: cursorX, y, width: actualWidth, height },
           { type: 'selectBuildingCategory', category: tab.id, disabled: active },
         );
-        cursorX += Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap)) + gap;
+        cursorX += actualWidth + gap;
       });
     }
 
@@ -3028,6 +3027,7 @@
       if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, {
         offset: options.buildingOffset,
         buildingTransition: options.buildingTransition,
+        activeBuildingCategory: options.activeBuildingCategory,
       });
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
       else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight);
@@ -3048,6 +3048,7 @@
           {
             offset: options.buildingOffset,
             buildingTransition: options.buildingTransition,
+            activeBuildingCategory: options.activeBuildingCategory,
           },
         );
       } else if (activeTab === 'events') {

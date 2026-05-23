@@ -1074,6 +1074,7 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
         { id: 'all', label: '全部', count: 2, active: true },
         { id: 'agriculture', label: '农业', count: 1, active: false },
         { id: 'livelihood', label: '民生', count: 1, active: false },
+        { id: 'military', label: '军事', count: 1, active: false },
       ],
       cards: [
         {
@@ -1114,6 +1115,7 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '全部'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农业'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '民生'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '军事'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '民居'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '当前效果：可居住人口 300'));
@@ -1132,6 +1134,63 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
     assert.equal(rectsOverlap(target, taskTarget), false);
     assert.equal(rectsOverlap(target, guidebookTarget), false);
   });
+  const militaryTarget = categoryTargets.find((target) => target.action?.category === 'military');
+  assert.ok(militaryTarget);
+  assert.ok(militaryTarget.width < 72);
+});
+
+test('CanvasGameRenderer passes active building category into building view state', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  let receivedCategory = '';
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '100',
+        foodRate: '+1/s',
+        knowledgeValue: '20',
+        knowledgeRate: '+0/s',
+        woodValue: '18',
+        woodRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildTaskCenterViewState: () => ({ summary: { claimableCount: 0 } }),
+    buildGuidebookViewState: () => ({ categories: [], activeCategory: null }),
+    buildBuildingViewState: (state, tutorial, defs, options) => {
+      receivedCategory = options.activeCategory;
+      return {
+        isEmpty: false,
+        categoryTabs: [
+          { id: 'all', label: '全部', count: 2, active: false },
+          { id: 'military', label: '军事', count: 1, active: true },
+        ],
+        cards: [{
+          id: 'barracks',
+          name: '兵营',
+          metaText: '等级：0　规模：未建造',
+          currentEffectText: '当前效果：无',
+          nextEffectText: '建成后效果：士兵容量 5',
+          maintenanceText: '维护所需：无',
+          cityImpactText: '城市影响：宜居压力较高',
+          button: { action: 'build', label: '建造', disabled: false },
+          cost: { text: '免费建造', parts: [], isMax: false },
+        }],
+      };
+    },
+  });
+
+  renderer.render({ currentTab: 'buildings' }, {
+    activeTab: 'buildings',
+    mode: 'hud',
+    activeBuildingCategory: 'military',
+  });
+
+  assert.equal(receivedCategory, 'military');
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'barracks'));
 });
 
 test('CanvasGameRenderer renders building costs as fixed base slots with knowledge on the action button', () => {
