@@ -1551,6 +1551,8 @@
             routeLabel: tech.routeLabel || '路线',
             summary: tech.summary || '',
             core: tech.core || '',
+            tree: tech.tree || { column: era.era, lane: 0, parents: tech.parents || [] },
+            parents: Array.isArray(tech.parents) ? [...tech.parents] : [],
             unlockSummary: unlockParts.join(' / ') || '路线倾向',
             buttonLabel,
             disabled: !tech.available,
@@ -1558,11 +1560,53 @@
           };
         }),
       }));
+      const nodes = visibleEras.flatMap((era) => (
+        (era.techs || []).map((tech, index) => ({
+          ...tech,
+          era: era.era,
+          eraName: era.name,
+          eraChoiceText: era.choiceText,
+          tree: {
+            column: this.toInteger(tech.tree?.column, era.era),
+            lane: this.toNumber(tech.tree?.lane ?? (index - Math.floor((era.techs || []).length / 2))),
+            parents: Array.isArray(tech.tree?.parents) ? [...tech.tree.parents] : [...(tech.parents || [])],
+          },
+        }))
+      ));
+      const nodesById = Object.fromEntries(nodes.map((node) => [node.id, node]));
+      const links = nodes.flatMap((node) => (
+        (node.tree?.parents || [])
+          .filter((parentId) => nodesById[parentId])
+          .map((parentId) => {
+            const parent = nodesById[parentId] || {};
+            return {
+              from: parentId,
+              to: node.id,
+              researched: Boolean(parent.researched && node.researched),
+              active: Boolean(parent.researched && node.available),
+              locked: node.status === 'locked',
+            };
+          })
+      ));
+      const treeEras = visibleEras.map((era) => ({
+        era: era.era,
+        name: era.name,
+        choiceText: era.choiceText,
+        closed: era.closed,
+        column: era.era,
+      }));
       return {
         points,
         researchedCount,
         availableCount,
         eras: visibleEras,
+        tree: {
+          eras: treeEras,
+          nodes,
+          links,
+          laneMin: nodes.reduce((min, node) => Math.min(min, Number(node.tree?.lane) || 0), 0),
+          laneMax: nodes.reduce((max, node) => Math.max(max, Number(node.tree?.lane) || 0), 0),
+        },
         text: {
           knowledgeRate: `${this.toNumber(state.resources?.knowledgePerSecond)}/s`,
           title: '科技树',

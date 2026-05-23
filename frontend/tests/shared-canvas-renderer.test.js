@@ -28,9 +28,9 @@ function makeCtx() {
       beginPath() { calls.push(['beginPath']); },
       rect(...a) { calls.push(['rect', ...a]); },
       roundRect(...a) { calls.push(['roundRect', ...a]); },
-      moveTo() {},
-      lineTo() {},
-      stroke() {},
+      moveTo(...a) { calls.push(['moveTo', ...a]); },
+      lineTo(...a) { calls.push(['lineTo', ...a]); },
+      stroke(...a) { calls.push(['stroke', ...a]); },
       fill() {},
       save() {},
       restore() {},
@@ -1672,6 +1672,43 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
       points: 1,
       researchedCount: 0,
       availableCount: 1,
+      tree: {
+        eras: [
+          { era: 1, name: '农耕分支', choiceText: '0/1', closed: false, column: 1 },
+          { era: 2, name: '聚落分支', choiceText: '0/1', closed: false, column: 2 },
+        ],
+        nodes: [
+          {
+            id: 'farming_field_rotation',
+            title: '田块轮作',
+            routeLabel: '农业',
+            core: '核心入口：粮食稳定',
+            summary: '稳定粮食',
+            unlockSummary: '入口：粮食 / 建筑：农田',
+            buttonLabel: '研究',
+            status: 'available',
+            available: true,
+            disabled: false,
+            tree: { column: 1, lane: -1, parents: [] },
+          },
+          {
+            id: 'settlement_logging_rights',
+            title: '伐木权责',
+            routeLabel: '生产',
+            core: '核心入口：木材生产',
+            summary: '稳定木材',
+            unlockSummary: '入口：木材 / 建筑：伐木场',
+            buttonLabel: '未解锁',
+            status: 'locked',
+            available: false,
+            disabled: true,
+            tree: { column: 2, lane: 1, parents: ['farming_field_rotation'] },
+          },
+        ],
+        links: [{ from: 'farming_field_rotation', to: 'settlement_logging_rights', researched: false, active: false, locked: true }],
+        laneMin: -1,
+        laneMax: 1,
+      },
       eras: [{
         era: 1,
         name: '农耕分支',
@@ -1710,7 +1747,16 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '田块轮作'));
-  assert.deepEqual(renderer.getHitTarget({ x: 28, y: 340 }), { type: 'research', techId: 'farming_field_rotation', disabled: false });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'E1'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '伐木权责'));
+  const lineCalls = calls.filter((call) => call[0] === 'lineTo');
+  assert.ok(lineCalls.length >= 4);
+  const techTarget = renderer.hitTargets.find((target) => target.action.techId === 'farming_field_rotation');
+  assert.ok(techTarget);
+  assert.deepEqual(
+    renderer.getHitTarget({ x: techTarget.x + 2, y: techTarget.y + 2 }),
+    { type: 'research', techId: 'farming_field_rotation', disabled: false },
+  );
 });
 
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {

@@ -2540,6 +2540,85 @@
       }
     }
 
+    getTechNodeColor(node = {}) {
+      if (node.researched) {
+        return {
+          fill: 'rgba(39, 82, 59, 0.88)',
+          stroke: 'rgba(116, 211, 160, 0.7)',
+          accent: '#74d3a0',
+          text: '#f6e8c8',
+          muted: 'rgba(214, 235, 203, 0.64)',
+        };
+      }
+      if (!node.disabled) {
+        return {
+          fill: 'rgba(80, 54, 29, 0.94)',
+          stroke: 'rgba(240, 180, 91, 0.82)',
+          accent: '#f0b45b',
+          text: '#fff2d2',
+          muted: 'rgba(255, 226, 177, 0.72)',
+        };
+      }
+      if (node.status === 'locked') {
+        return {
+          fill: 'rgba(28, 30, 32, 0.82)',
+          stroke: 'rgba(170, 176, 184, 0.22)',
+          accent: '#7d8590',
+          text: '#aeb0b8',
+          muted: 'rgba(174, 176, 184, 0.52)',
+        };
+      }
+      return {
+        fill: 'rgba(45, 34, 24, 0.82)',
+        stroke: 'rgba(255, 226, 177, 0.18)',
+        accent: '#cbbd96',
+        text: '#ddd0ad',
+        muted: 'rgba(203, 189, 150, 0.58)',
+      };
+    }
+
+    renderTechNode(node, rect) {
+      const palette = this.getTechNodeColor(node);
+      this.drawPanel(rect.x, rect.y, rect.width, rect.height, {
+        fill: palette.fill,
+        stroke: palette.stroke,
+        radius: 9,
+        inset: node.available ? 'rgba(255, 244, 200, 0.14)' : 'rgba(255, 255, 255, 0.03)',
+      });
+      const badgeW = Math.min(38, rect.width - 14);
+      this.drawPanel(rect.x + 7, rect.y + 6, badgeW, 18, {
+        fill: 'rgba(11, 18, 14, 0.32)',
+        stroke: palette.stroke,
+        radius: 6,
+      });
+      this.drawText(this.truncateText(node.routeLabel || '路线', badgeW - 8, { size: 9, bold: true }), rect.x + 7 + badgeW / 2, rect.y + 10, {
+        size: 9,
+        bold: true,
+        align: 'center',
+        color: palette.accent,
+      });
+      const labelX = rect.x + 10;
+      this.drawText(this.truncateText(node.title || node.name || '科技', rect.width - 20, { size: 12, bold: true }), labelX, rect.y + 30, {
+        size: 12,
+        bold: true,
+        color: palette.text,
+      });
+      if (rect.height >= 52) {
+        const summary = node.core || node.unlockSummary || node.summary || '';
+        this.drawText(this.truncateText(summary, rect.width - 20, { size: 9 }), labelX, rect.y + 48, {
+          size: 9,
+          color: palette.muted,
+        });
+      }
+      const label = node.researched ? '已研究' : node.buttonLabel;
+      this.drawText(this.truncateText(label, rect.width - 20, { size: 9, bold: true }), rect.x + rect.width - 10, rect.y + rect.height - 15, {
+        size: 9,
+        bold: true,
+        align: 'right',
+        color: palette.accent,
+      });
+    }
+
     renderTech(state = {}, startY = 210, panelHeight = 250) {
       if (!this.presenter || typeof this.presenter.buildTechViewState !== 'function') return;
       const view = this.presenter.buildTechViewState(state);
@@ -2603,87 +2682,110 @@
         color: 'rgba(234, 234, 234, 0.62)',
       });
 
-      const eras = view.eras || [];
-      const focusEra = eras.find((era) => !era.closed) || eras[eras.length - 1] || null;
-      const renderEras = focusEra ? [focusEra] : [];
-      const listTop = panelY + 66;
-      const listBottom = startY + panelHeight - 24;
-      let cursorY = listTop;
+      const tree = view.tree || {};
+      const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
+      const treeEras = Array.isArray(tree.eras) && tree.eras.length
+        ? tree.eras
+        : (view.eras || []).map((era) => ({ ...era, column: era.era }));
+      const treeTop = panelY + 68;
+      const treeBottom = startY + panelHeight - 26;
+      const treeHeight = Math.max(128, treeBottom - treeTop);
+      const treeX = x + 24;
+      const treeWidth = width - 48;
       let renderedCards = 0;
-      renderEras.forEach((era) => {
-        if (cursorY + 92 > listBottom) return;
-        this.drawText(`${era.name} ${era.choiceText}`, x + 28, cursorY + 1, {
-          size: 12,
-          bold: true,
-          color: era.closed ? '#a0a0a0' : '#f0b45b',
+
+      if (nodes.length && treeWidth > 0) {
+        const laneMin = Math.min(-3, Number(tree.laneMin) || 0);
+        const laneMax = Math.max(3, Number(tree.laneMax) || 0);
+        const laneAbs = Math.max(1, Math.abs(laneMin), Math.abs(laneMax));
+        const eraCount = Math.max(1, treeEras.length);
+        const nodeWidth = Math.max(58, Math.min(88, (treeWidth - Math.max(0, eraCount - 1) * 8) / eraCount));
+        const nodeHeight = Math.max(42, Math.min(58, (treeHeight - 20) / (laneAbs * 2 + 1)));
+        const minColumn = Math.min(...treeEras.map((era) => Number(era.column) || Number(era.era) || 1));
+        const maxColumn = Math.max(...treeEras.map((era) => Number(era.column) || Number(era.era) || 1));
+        const columnCount = Math.max(1, maxColumn - minColumn);
+        const columnStart = x + 18 + nodeWidth / 2;
+        const columnEnd = x + width - 18 - nodeWidth / 2;
+        const columnRange = Math.max(1, columnEnd - columnStart);
+        const columnX = (column) => columnStart + ((Number(column) || minColumn) - minColumn) / columnCount * columnRange;
+        const spineY = treeTop + treeHeight / 2;
+        const maxOffset = Math.max(36, (treeHeight - nodeHeight - 20) / 2);
+        const laneY = (lane) => spineY + (Number(lane) || 0) / laneAbs * maxOffset;
+        const nodeRects = {};
+
+        this.drawLine(columnStart, spineY, columnEnd, spineY, {
+          color: 'rgba(240, 180, 91, 0.34)',
+          width: 3,
         });
-        if (eras.length > 1) {
-          const earlierCount = Math.max(0, eras.indexOf(era));
-          this.drawText(`已确定 ${earlierCount} 个时代`, x + 28, cursorY + 17, {
-            size: 9,
-            color: 'rgba(234, 234, 234, 0.48)',
+        treeEras.forEach((era) => {
+          const eraX = columnX(era.column);
+          this.drawLine(eraX, spineY - maxOffset - 8, eraX, spineY + maxOffset + 8, {
+            color: 'rgba(255, 226, 177, 0.1)',
+            width: 1,
           });
-        }
-        this.drawText(this.truncateText(era.summary, width - 154, { size: 10 }), x + width - 28, cursorY + 3, {
-          size: 10,
-          color: 'rgba(234, 234, 234, 0.56)',
-          align: 'right',
-        });
-        cursorY += eras.length > 1 ? 34 : 20;
-        const techs = era.techs || [];
-        const cardGap = 6;
-        const cardHeight = 78;
-        const cardWidth = Math.floor((width - 24 - cardGap) / 2);
-        const visibleTechs = techs;
-        visibleTechs.forEach((tech, index) => {
-          const col = index % 2;
-          const row = Math.floor(index / 2);
-          const cardX = x + 12 + col * (cardWidth + cardGap);
-          const cardY = cursorY + row * (cardHeight + cardGap);
-          if (cardY + cardHeight > listBottom) return;
-          const active = !tech.disabled;
-          const researched = Boolean(tech.researched);
-          this.drawPanel(cardX, cardY, cardWidth, cardHeight, {
-            fill: researched ? 'rgba(45, 73, 55, 0.74)' : 'rgba(45, 34, 24, 0.78)',
-            stroke: active ? 'rgba(240, 180, 91, 0.38)' : (researched ? 'rgba(78, 204, 163, 0.34)' : 'rgba(255, 226, 177, 0.1)'),
-            radius: 8,
+          this.drawPanel(eraX - 24, spineY - 14, 48, 28, {
+            fill: era.closed ? 'rgba(39, 82, 59, 0.9)' : 'rgba(63, 47, 32, 0.92)',
+            stroke: era.closed ? 'rgba(116, 211, 160, 0.5)' : 'rgba(240, 180, 91, 0.36)',
+            radius: 14,
           });
-          this.drawText(tech.routeLabel, cardX + 10, cardY + 8, {
-            size: 9,
-            bold: true,
-            color: active ? '#f0b45b' : (researched ? '#74d3a0' : '#a0a0a0'),
-          });
-          this.drawText(this.truncateText(tech.title, cardWidth - 20, { size: 13, bold: true }), cardX + 10, cardY + 23, {
-            size: 13,
-            bold: true,
-            color: '#f6e8c8',
-          });
-          this.drawText(this.truncateText(tech.core || tech.summary, cardWidth - 20, { size: 10 }), cardX + 10, cardY + 42, {
+          this.drawText(this.truncateText(`E${era.era}`, 36, { size: 10, bold: true }), eraX, spineY - 2, {
             size: 10,
+            bold: true,
+            color: era.closed ? '#74d3a0' : '#f0b45b',
+            align: 'center',
+          });
+          this.drawText(this.truncateText(era.name || `时代 ${era.era}`, 56, { size: 9 }), eraX, treeTop - 15, {
+            size: 9,
             color: '#cbbd96',
+            align: 'center',
           });
-          this.drawText(this.truncateText(tech.unlockSummary, cardWidth - 20, { size: 9 }), cardX + 10, cardY + 57, {
+          this.drawText(this.truncateText(era.choiceText || '', 42, { size: 9, bold: true }), eraX, treeBottom + 5, {
             size: 9,
-            color: 'rgba(234, 234, 234, 0.58)',
-          });
-          const buttonW = Math.min(68, cardWidth - 16);
-          const buttonX = cardX + cardWidth - buttonW - 8;
-          const buttonY = cardY + cardHeight - 26;
-          this.drawButton(buttonX, buttonY, buttonW, 20, this.truncateText(tech.buttonLabel, buttonW - 12, { size: 10, bold: true }), {
-            disabled: tech.disabled,
-            active,
-            size: 10,
             bold: true,
-            radius: 7,
+            color: 'rgba(234, 234, 234, 0.58)',
+            align: 'center',
           });
+        });
+
+        nodes.forEach((node) => {
+          const nodeCenterX = columnX(node.tree?.column ?? node.era);
+          const nodeCenterY = laneY(node.tree?.lane);
+          nodeRects[node.id] = {
+            x: Math.max(x + 18, Math.min(x + width - 18 - nodeWidth, nodeCenterX - nodeWidth / 2)),
+            y: Math.max(treeTop + 2, Math.min(treeBottom - nodeHeight, nodeCenterY - nodeHeight / 2)),
+            width: nodeWidth,
+            height: nodeHeight,
+          };
+        });
+
+        (tree.links || []).forEach((link) => {
+          const from = nodeRects[link.from];
+          const to = nodeRects[link.to];
+          if (!from || !to) return;
+          const fromX = from.x + from.width / 2;
+          const fromY = from.y + from.height / 2;
+          const toX = to.x + to.width / 2;
+          const toY = to.y + to.height / 2;
+          const midX = (fromX + toX) / 2;
+          const color = link.researched
+            ? 'rgba(116, 211, 160, 0.58)'
+            : (link.active ? 'rgba(240, 180, 91, 0.58)' : 'rgba(174, 176, 184, 0.2)');
+          this.drawLine(fromX, fromY, midX, fromY, { color, width: link.researched || link.active ? 2 : 1 });
+          this.drawLine(midX, fromY, midX, toY, { color, width: link.researched || link.active ? 2 : 1 });
+          this.drawLine(midX, toY, toX, toY, { color, width: link.researched || link.active ? 2 : 1 });
+        });
+
+        nodes.forEach((node) => {
+          const rect = nodeRects[node.id];
+          if (!rect) return;
+          this.renderTechNode(node, rect);
           this.addHitTarget(
-            { x: cardX, y: cardY, width: cardWidth, height: cardHeight },
-            { type: 'research', techId: tech.id, disabled: tech.disabled },
+            rect,
+            { type: 'research', techId: node.id, disabled: node.disabled },
           );
           renderedCards += 1;
         });
-        cursorY += Math.ceil(visibleTechs.length / 2) * (cardHeight + cardGap) + 10;
-      });
+      }
 
       if (!renderedCards) {
         const centerY = panelY + Math.max(66, panelH / 2 + 6);

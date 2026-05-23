@@ -323,12 +323,62 @@ const TECH_ERAS = [
   },
 ];
 
+const TECH_TREE_LAYOUT = {
+  farming_field_rotation: { column: 1, lane: -3, parents: [] },
+  farming_household_plots: { column: 1, lane: -2, parents: [] },
+  farming_seed_selection: { column: 1, lane: -1, parents: [] },
+  farming_river_ditches: { column: 1, lane: 1, parents: [] },
+  farming_storehouse_rules: { column: 1, lane: 3, parents: [] },
+
+  settlement_logging_rights: { column: 2, lane: 1, parents: ['farming_field_rotation'] },
+  settlement_carpenter_yards: { column: 2, lane: -2, parents: ['farming_household_plots'] },
+  settlement_forest_paths: { column: 2, lane: 2, parents: ['farming_seed_selection'] },
+  settlement_river_rafts: { column: 2, lane: 3, parents: ['farming_river_ditches'] },
+  settlement_communal_labor: { column: 2, lane: -1, parents: ['farming_storehouse_rules'] },
+
+  city_quarry_survey: { column: 3, lane: 1, parents: ['settlement_logging_rights', 'settlement_communal_labor'] },
+  city_masonry_rules: { column: 3, lane: -2, parents: ['settlement_carpenter_yards'] },
+  city_hill_paths: { column: 3, lane: 2, parents: ['settlement_forest_paths'] },
+  city_storage_yards: { column: 3, lane: -1, parents: ['settlement_communal_labor', 'settlement_river_rafts'] },
+  city_public_works: { column: 3, lane: 3, parents: ['settlement_logging_rights'] },
+
+  frontier_bloomery_signs: { column: 4, lane: 1, parents: ['city_quarry_survey'] },
+  frontier_guard_forges: { column: 4, lane: 3, parents: ['city_public_works'] },
+  frontier_mountain_tracks: { column: 4, lane: 2, parents: ['city_hill_paths', 'city_quarry_survey'] },
+  frontier_militia_tools: { column: 4, lane: -2, parents: ['city_masonry_rules', 'city_public_works'] },
+  frontier_border_trade: { column: 4, lane: -1, parents: ['city_storage_yards', 'city_hill_paths'] },
+
+  classical_workshop_guilds: { column: 5, lane: 1, parents: ['frontier_bloomery_signs'] },
+  classical_academy_schools: { column: 5, lane: -1, parents: ['frontier_border_trade'] },
+  classical_temple_calendar: { column: 5, lane: -4, parents: ['city_storage_yards'] },
+  classical_masonry_contracts: { column: 5, lane: 2, parents: ['city_quarry_survey'] },
+  classical_iron_tools: { column: 5, lane: -3, parents: ['frontier_bloomery_signs', 'farming_field_rotation'] },
+  classical_grain_administration: { column: 5, lane: -2, parents: ['frontier_militia_tools', 'city_storage_yards'] },
+  classical_border_codes: { column: 5, lane: 3, parents: ['frontier_guard_forges'] },
+  classical_civic_records: { column: 5, lane: 4, parents: ['frontier_border_trade'] },
+};
+
+function getTechTreeMeta(techId) {
+  const meta = TECH_TREE_LAYOUT[techId] || {};
+  const parents = Array.isArray(meta.parents) ? [...meta.parents] : [];
+  return {
+    column: Number(meta.column) || 1,
+    lane: Number(meta.lane) || 0,
+    parents,
+  };
+}
+
 const TECHS = TECH_ERAS.flatMap((eraConfig) => (
-  eraConfig.techs.map((tech) => ({
-    ...tech,
-    era: eraConfig.era,
-    eraName: eraConfig.name,
-  }))
+  eraConfig.techs.map((tech) => {
+    const tree = getTechTreeMeta(tech.id);
+    return {
+      ...tech,
+      era: eraConfig.era,
+      eraName: eraConfig.name,
+      tree,
+      parents: tree.parents,
+    };
+  })
 ));
 
 const TECH_BY_ID = Object.fromEntries(TECHS.map((tech) => [tech.id, tech]));
@@ -339,6 +389,7 @@ module.exports = {
   RESOURCE_LABELS,
   BUILDING_LABELS,
   TECH_ERAS,
+  TECH_TREE_LAYOUT,
   TECHS,
   TECH_BY_ID,
 };

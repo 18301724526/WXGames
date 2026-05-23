@@ -118,9 +118,11 @@ function getTechStatus(tech, techs, currentEra) {
 }
 
 function buildClientTech(tech, techs, currentEra) {
+  const canonicalTech = TECH_BY_ID[tech.id] || tech;
   const status = getTechStatus(tech, techs, currentEra);
-  const unlockedBuildings = tech.effects?.unlockedBuildings || [];
-  const resourceEntrances = tech.effects?.resourceEntrances || [];
+  const unlockedBuildings = canonicalTech.effects?.unlockedBuildings || tech.effects?.unlockedBuildings || [];
+  const resourceEntrances = canonicalTech.effects?.resourceEntrances || tech.effects?.resourceEntrances || [];
+  const parents = Array.isArray(canonicalTech.parents) ? canonicalTech.parents : [];
   return {
     id: tech.id,
     era: tech.era,
@@ -130,6 +132,8 @@ function buildClientTech(tech, techs, currentEra) {
     routeLabel: tech.routeLabel,
     summary: tech.summary,
     core: tech.core,
+    tree: clone(canonicalTech.tree || { column: tech.era, lane: 0, parents }),
+    parents: [...parents],
     status,
     researched: status === 'researched',
     available: status === 'available',
@@ -145,7 +149,6 @@ function getClientState(gameState = {}) {
   const techs = normalizeGameStateTechs(gameState);
   const currentEra = Math.max(0, Math.floor(Number(gameState.currentEra) || 0));
   const eras = TECH_ERAS
-    .filter((eraConfig) => eraConfig.era <= Math.max(1, currentEra))
     .map((eraConfig) => {
       const choices = getEraChoices(techs, eraConfig.era);
       const limit = getChoiceLimit(eraConfig.era);

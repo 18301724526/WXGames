@@ -6,6 +6,19 @@ const TechTreeService = require('../services/TechTreeService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const TutorialService = require('../services/TutorialService');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
+const { TECHS, TECH_BY_ID } = require('../config/TechTreeConfig');
+
+test('科技树配置包含鱼骨图坐标并且父节点都存在', () => {
+  assert.ok(TECHS.length > 0);
+  TECHS.forEach((tech) => {
+    assert.equal(typeof tech.tree?.column, 'number');
+    assert.equal(typeof tech.tree?.lane, 'number');
+    assert.ok(Array.isArray(tech.parents));
+    tech.parents.forEach((parentId) => {
+      assert.ok(TECH_BY_ID[parentId], `${tech.id} references missing parent ${parentId}`);
+    });
+  });
+});
 
 test('科技状态会按当前时代补发已获得科技点', () => {
   const state = gameStateService.createInitialGameState('tech-points-player');
@@ -43,6 +56,23 @@ test('研究科技会消耗科技点并锁定本时代选择', () => {
   assert.equal(state.techs.eraChoices['1'][0], 'farming_field_rotation');
   assert.equal(second.success, false);
   assert.equal(second.error, 'TECH_ERA_CHOICE_FULL');
+});
+
+test('客户端科技状态返回完整时代鱼骨图元数据', () => {
+  const state = gameStateService.createInitialGameState('client-tech-tree-player');
+  state.currentEra = 1;
+  TechTreeService.grantEarnedEraPoints(state);
+
+  const client = TechTreeService.getClientState(state);
+
+  assert.equal(client.eras.length, 5);
+  const firstEraTech = client.eras[0].techs.find((tech) => tech.id === 'farming_field_rotation');
+  const futureTech = client.eras[1].techs.find((tech) => tech.id === 'settlement_logging_rights');
+  assert.equal(firstEraTech.status, 'available');
+  assert.equal(firstEraTech.tree.column, 1);
+  assert.equal(firstEraTech.tree.lane, -3);
+  assert.equal(futureTech.status, 'locked');
+  assert.deepEqual(futureTech.parents, ['farming_field_rotation']);
 });
 
 test('古典时代允许用三个科技点形成组合', () => {
