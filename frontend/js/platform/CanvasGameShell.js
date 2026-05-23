@@ -136,13 +136,33 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       if (phase === 'start') {
         const action = this.renderer.getHitTarget(point);
-        if (
+        const techPanel = this.renderer.lastTechTreeScroll?.panel || null;
+        const inTechTree = this.getActiveTab() === 'tech'
+          && techPanel
+          && Number(point?.x) >= techPanel.x
+          && Number(point?.x) <= techPanel.x + techPanel.width
+          && Number(point?.y) >= techPanel.y
+          && Number(point?.y) <= techPanel.y + techPanel.height;
+        const overlayOpen = this.showSettings
+          || this.showLogs
+          || this.showResourceDetails
+          || this.showCitySwitcher
+          || this.showAdvisor
+          || this.showTaskCenter
+          || this.showGuidebook
+          || this.showTalentPolicy
+          || this.activeEventId
+          || this.naming.visible
+          || this.rewardReveal;
+        if (inTechTree && !overlayOpen) {
+          this.dragAction = { type: 'techTreeDrag' };
+        } else if (
           action?.type !== 'worldRadarDrag'
           && action?.type !== 'openWorldSite'
           && action?.type !== 'techTreeDrag'
           && action?.dragType !== 'techTreeDrag'
         ) return false;
-        this.dragAction = action.dragType === 'techTreeDrag' ? { type: 'techTreeDrag' } : action;
+        else this.dragAction = action.dragType === 'techTreeDrag' ? { type: 'techTreeDrag' } : action;
       }
       if (!this.dragAction) return false;
       const dragType = this.dragAction.type === 'techTreeDrag' ? 'techTreeDrag' : 'worldRadarDrag';
