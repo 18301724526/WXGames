@@ -788,21 +788,22 @@ test('population view state allows decreasing craftsmen without unassigned peopl
 test('talent policy view state builds presets and tier draft without using custom policy as base', () => {
   const view = UIStatePresenter.buildTalentPolicyViewState({
     currentEra: 2,
+    population: { total: 4 },
     talentPolicies: {
       activePolicyId: 'custom_1',
       activePolicyLabel: '均衡发展·偏工业',
       defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
       systemPolicies: [
-        { id: 'balanced', label: '均衡发展', description: '稳定分工' },
-        { id: 'agriculture', label: '农业优先', description: '重视农业' },
+        { id: 'balanced', label: '均衡发展', description: '稳定分工', weights: { farmer: 2, scholar: 1, craftsman: 1 }, priority: ['farmer', 'scholar', 'craftsman'] },
+        { id: 'agriculture', label: '农业优先', description: '重视农业', weights: { farmer: 4, scholar: 1, craftsman: 1 }, priority: ['farmer', 'scholar', 'craftsman'] },
       ],
       customPolicies: [
         { id: 'custom_1', displayName: '均衡发展·偏工业', tiers: { agriculture: 1, knowledge: 2, industry: 3 } },
       ],
       tendencies: [
-        { id: 'agriculture', label: '农业', disabled: false },
-        { id: 'knowledge', label: '知识', disabled: false },
-        { id: 'industry', label: '工业', disabled: false },
+        { id: 'agriculture', label: '农业', role: 'farmer', disabled: false },
+        { id: 'knowledge', label: '知识', role: 'scholar', disabled: false },
+        { id: 'industry', label: '工业', role: 'craftsman', disabled: false },
       ],
       preview: {
         allocation: { farmer: 2, scholar: 1, craftsman: 1 },
@@ -816,26 +817,27 @@ test('talent policy view state builds presets and tier draft without using custo
   assert.equal(view.tendencies.find((item) => item.id === 'agriculture').tierLabel, '高');
   assert.equal(view.systemPolicies[0].selected, true);
   assert.equal(view.customPolicies[0].active, true);
-  assert.equal(view.preview.allocationText, '农民 2 / 学者 1 / 工匠 1');
+  assert.equal(view.preview.allocationText, '农民 3 / 学者 1 / 工匠 0');
 });
 
 test('talent policy view state follows the applied policy for title and preset active state', () => {
   const view = UIStatePresenter.buildTalentPolicyViewState({
     currentEra: 2,
+    population: { total: 4 },
     talentPolicies: {
       activePolicyId: 'agriculture',
       activePolicyLabel: '均衡发展',
       defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
       systemPolicies: [
-        { id: 'balanced', label: '均衡发展', description: '稳定分工' },
-        { id: 'agriculture', label: '农业优先', description: '重视农业' },
-        { id: 'knowledge', label: '知识优先', description: '重视知识' },
+        { id: 'balanced', label: '均衡发展', description: '稳定分工', weights: { farmer: 2, scholar: 1, craftsman: 1 }, priority: ['farmer', 'scholar', 'craftsman'] },
+        { id: 'agriculture', label: '农业优先', description: '重视农业', weights: { farmer: 4, scholar: 1, craftsman: 1 }, priority: ['farmer', 'scholar', 'craftsman'] },
+        { id: 'knowledge', label: '知识优先', description: '重视知识', weights: { farmer: 2, scholar: 3, craftsman: 1 }, priority: ['scholar', 'farmer', 'craftsman'] },
       ],
       customPolicies: [],
       tendencies: [
-        { id: 'agriculture', label: '农业', disabled: false },
-        { id: 'knowledge', label: '知识', disabled: false },
-        { id: 'industry', label: '工业', disabled: false },
+        { id: 'agriculture', label: '农业', role: 'farmer', disabled: false },
+        { id: 'knowledge', label: '知识', role: 'scholar', disabled: false },
+        { id: 'industry', label: '工业', role: 'craftsman', disabled: false },
       ],
       preview: {
         policyLabel: '农业优先',
@@ -851,4 +853,37 @@ test('talent policy view state follows the applied policy for title and preset a
   assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').selected, false);
   assert.equal(view.systemPolicies.find((policy) => policy.id === 'agriculture').active, true);
   assert.equal(view.systemPolicies.find((policy) => policy.id === 'agriculture').selected, true);
+});
+
+test('talent policy view state previews selected preset before confirmation', () => {
+  const view = UIStatePresenter.buildTalentPolicyViewState({
+    currentEra: 2,
+    population: { total: 6 },
+    talentPolicies: {
+      activePolicyId: 'balanced',
+      activePolicyLabel: '均衡发展',
+      defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
+      systemPolicies: [
+        { id: 'balanced', label: '均衡发展', weights: { farmer: 2, scholar: 1, craftsman: 1 }, priority: ['farmer', 'scholar', 'craftsman'] },
+        { id: 'industry', label: '工业优先', weights: { farmer: 2, scholar: 1, craftsman: 3 }, priority: ['craftsman', 'farmer', 'scholar'] },
+      ],
+      customPolicies: [],
+      tendencies: [
+        { id: 'agriculture', label: '农业', role: 'farmer', disabled: false },
+        { id: 'knowledge', label: '知识', role: 'scholar', disabled: false },
+        { id: 'industry', label: '工业', role: 'craftsman', disabled: false },
+      ],
+      preview: {
+        policyLabel: '均衡发展',
+        allocation: { farmer: 3, scholar: 2, craftsman: 1 },
+      },
+    },
+  }, { basePolicyId: 'industry' });
+
+  assert.equal(view.text.subtitle, '当前：均衡发展');
+  assert.equal(view.draft.basePolicyId, 'industry');
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').active, true);
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'balanced').selected, false);
+  assert.equal(view.systemPolicies.find((policy) => policy.id === 'industry').selected, true);
+  assert.equal(view.preview.allocationText, '农民 2 / 学者 1 / 工匠 3');
 });

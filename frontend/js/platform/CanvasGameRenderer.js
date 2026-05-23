@@ -1251,16 +1251,36 @@
         const buttonX = innerX + column * (presetWidth + presetGap);
         const buttonY = cursorY + row * (presetHeight + presetGap);
         const width = column === 1 ? innerX + innerWidth - buttonX : presetWidth;
+        const selected = Boolean(policy.selected);
+        const active = Boolean(policy.active);
         this.drawButton(buttonX, buttonY, width, presetHeight, this.truncateText(policy.label, width - 12, { size: 12, bold: true }), {
           disabled: policy.disabled,
-          active: policy.active,
+          active: selected,
           size: 12,
-          bold: policy.active,
+          bold: selected || active,
           radius: 8,
         });
+        if (selected && !active) {
+          this.drawText('预览', buttonX + width - 18, buttonY + 8, {
+            size: 9,
+            bold: true,
+            color: '#74d3a0',
+            align: 'center',
+            baseline: 'middle',
+          });
+        }
+        if (active) {
+          this.drawText('当前', buttonX + width - 18, buttonY + 8, {
+            size: 9,
+            bold: true,
+            color: '#ffd98a',
+            align: 'center',
+            baseline: 'middle',
+          });
+        }
         this.addHitTarget(
           { x: buttonX, y: buttonY, width, height: presetHeight },
-          { type: 'applyTalentPolicy', policyId: policy.id, disabled: policy.disabled },
+          { type: 'selectTalentPolicyBase', policyId: policy.id, resetTiers: true, disabled: policy.disabled },
         );
       });
       cursorY += Math.ceil(presets.length / 2) * (presetHeight + presetGap) + 10;
@@ -1388,7 +1408,7 @@
         active: true,
         radius: 8,
       });
-      this.addHitTarget({ x: innerX, y: actionY, width: applyWidth, height: actionHeight }, { type: 'applyTalentPolicyDraft' });
+      this.addHitTarget({ x: innerX, y: actionY, width: applyWidth, height: actionHeight }, { type: 'confirmTalentPolicy' });
       this.addHitTarget({ x: innerX + applyWidth + 8, y: actionY, width: innerWidth - applyWidth - 8, height: actionHeight }, { type: 'saveTalentPolicyDraft' });
     }
 

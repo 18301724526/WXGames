@@ -94,6 +94,35 @@
       return true;
     }
 
+    getTalentPolicyDraft() {
+      const game = this.getGameHost();
+      if (typeof game?.getTalentPolicyDraft === 'function') return game.getTalentPolicyDraft();
+      const state = this.getState();
+      const policies = state?.talentPolicies || {};
+      const uiState = this.host?.talentPolicyUiState || {};
+      const systemPolicies = Array.isArray(policies.systemPolicies) ? policies.systemPolicies : [];
+      const activeIsSystem = systemPolicies.some((policy) => policy.id === policies.activePolicyId);
+      const basePolicyId = uiState.basePolicyId
+        || uiState.selectedBasePolicyId
+        || (activeIsSystem ? policies.activePolicyId : null)
+        || policies.activeDraft?.basePolicyId
+        || 'balanced';
+      const defaults = policies.defaultTiers || { agriculture: 2, knowledge: 2, industry: 2 };
+      return {
+        basePolicyId,
+        tiers: {
+          agriculture: Number(uiState.tiers?.agriculture ?? defaults.agriculture ?? 2),
+          knowledge: Number(uiState.tiers?.knowledge ?? defaults.knowledge ?? 2),
+          industry: Number(uiState.tiers?.industry ?? defaults.industry ?? 2),
+        },
+      };
+    }
+
+    isDefaultTalentPolicyDraft(draft = {}) {
+      const tiers = draft.tiers || {};
+      return ['agriculture', 'knowledge', 'industry'].every((key) => Number(tiers[key] ?? 2) === 2);
+    }
+
     forward(action, meta = {}) {
       if (typeof this.host?.forwardCanvasAction !== 'function') return undefined;
       return this.host.forwardCanvasAction(action, meta);
@@ -305,6 +334,7 @@
       target.talentPolicyUiState = {
         ...target.talentPolicyUiState,
         basePolicyId: action.policyId || 'balanced',
+        ...(action.resetTiers ? { tiers: { agriculture: 2, knowledge: 2, industry: 2 } } : {}),
       };
       if (game && game !== this.host) this.host.talentPolicyUiState = target.talentPolicyUiState;
       return this.afterHandled(action);
@@ -347,6 +377,25 @@
         this.runAction(() => this.host.api.applyTalentPolicy(null, draft)),
         action,
       );
+    }
+
+    handle_confirmTalentPolicy(action) {
+      const draft = this.getTalentPolicyDraft();
+      if (this.host?.talentPolicyUiState && typeof this.host.talentPolicyUiState === 'object') {
+        this.host.talentPolicyUiState = {
+          ...this.host.talentPolicyUiState,
+          basePolicyId: draft.basePolicyId,
+          tiers: { ...(draft.tiers || {}) },
+        };
+      }
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'talentPolicyUiState' in game) {
+        game.talentPolicyUiState = this.host.talentPolicyUiState;
+      }
+      if (this.isDefaultTalentPolicyDraft(draft) && draft.basePolicyId) {
+        return this.handle_applyTalentPolicy({ ...action, type: 'applyTalentPolicy', policyId: draft.basePolicyId });
+      }
+      return this.handle_applyTalentPolicyDraft({ ...action, type: 'applyTalentPolicyDraft' });
     }
 
     handle_saveTalentPolicyDraft(action) {

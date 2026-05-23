@@ -151,7 +151,7 @@ test('talent policy panel renders presets, tier controls, and save/apply hit tar
         customTitle: '自定义微调',
         customName: '均衡发展·偏农业',
         emptyCustom: '暂无自定义方针',
-        applyDraft: '应用微调',
+        applyDraft: '确认方针',
         saveDraft: '保存微调',
       },
       systemPolicies: [
@@ -175,10 +175,14 @@ test('talent policy panel renders presets, tier controls, and save/apply hit tar
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人才方针'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '应用微调'));
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'applyTalentPolicy' && target.action.policyId === 'balanced'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '确认方针'));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'selectTalentPolicyBase'
+    && target.action.policyId === 'balanced'
+    && target.action.resetTiers === true
+  )));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'setTalentPolicyTier' && target.action.tendency === 'agriculture' && target.action.tier === 3));
-  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'applyTalentPolicyDraft'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'confirmTalentPolicy'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'saveTalentPolicyDraft'));
 });
 

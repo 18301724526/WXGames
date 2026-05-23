@@ -834,7 +834,8 @@ test('Canvas game shell opens talent policy panel from the resources HUD', () =>
   const { document, runtime, listeners } = createCanvasHarness();
   const actions = [
     { type: 'openTalentPolicy' },
-    { type: 'applyTalentPolicy', policyId: 'balanced' },
+    { type: 'selectTalentPolicyBase', policyId: 'industry', resetTiers: true },
+    { type: 'confirmTalentPolicy' },
   ];
   const renderCalls = [];
   const dispatched = [];
@@ -860,9 +861,16 @@ test('Canvas game shell opens talent policy panel from the resources HUD', () =>
   assert.equal(renderCalls.at(-1).showTalentPolicy, true);
 
   listeners['document:pointerup']({ clientX: 205, clientY: 300, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(shell.showTalentPolicy, true);
+  assert.equal(renderCalls.at(-1).showTalentPolicy, true);
+  assert.equal(shell.talentPolicyUiState.basePolicyId, 'industry');
+  assert.deepEqual(shell.talentPolicyUiState.tiers, { agriculture: 2, knowledge: 2, industry: 2 });
+  assert.deepEqual(dispatched, []);
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 760, type: 'pointerup', timeStamp: 1600 });
   assert.equal(shell.showTalentPolicy, false);
   assert.equal(renderCalls.at(-1).showTalentPolicy, false);
-  assert.deepEqual(dispatched, [{ type: 'applyTalentPolicy', policyId: 'balanced' }]);
+  assert.deepEqual(dispatched, [{ type: 'applyTalentPolicy', policyId: 'industry' }]);
 });
 
 test('Canvas game shell refreshes guide highlight after task reward is claimed', async () => {
@@ -1489,7 +1497,7 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=h5-canvas-runtime-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=canvas-action-controller-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=canvas-action-controller-v3[\s\S]*js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1/);
   assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);

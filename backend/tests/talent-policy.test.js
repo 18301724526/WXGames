@@ -11,6 +11,10 @@ test('initial client state exposes talent policy presets and allocation preview'
 
   assert.equal(client.talentPolicies.activePolicyId, 'balanced');
   assert.ok(client.talentPolicies.systemPolicies.some((policy) => policy.id === 'agriculture'));
+  const industry = client.talentPolicies.systemPolicies.find((policy) => policy.id === 'industry');
+  assert.deepEqual(industry.weights, { farmer: 2, scholar: 1, craftsman: 3 });
+  assert.deepEqual(industry.priority, ['craftsman', 'farmer', 'scholar']);
+  assert.equal(industry.minEra, 2);
   assert.deepEqual(client.talentPolicies.preview.allocation, {
     farmer: 2,
     scholar: 1,

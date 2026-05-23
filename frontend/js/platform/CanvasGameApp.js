@@ -710,15 +710,17 @@
       const systemPolicies = Array.isArray(policies.systemPolicies) ? policies.systemPolicies : [];
       const activeIsSystem = systemPolicies.some((policy) => policy.id === policies.activePolicyId);
       const basePolicyId = this.talentPolicyUiState.basePolicyId
+        || this.canvasShell?.talentPolicyUiState?.basePolicyId
         || (activeIsSystem ? policies.activePolicyId : null)
         || 'balanced';
       const defaults = policies.defaultTiers || { agriculture: 2, knowledge: 2, industry: 2 };
+      const tiers = this.talentPolicyUiState.tiers || this.canvasShell?.talentPolicyUiState?.tiers || {};
       return {
         basePolicyId,
         tiers: {
-          agriculture: Number(this.talentPolicyUiState.tiers?.agriculture ?? defaults.agriculture ?? 2),
-          knowledge: Number(this.talentPolicyUiState.tiers?.knowledge ?? defaults.knowledge ?? 2),
-          industry: Number(this.talentPolicyUiState.tiers?.industry ?? defaults.industry ?? 2),
+          agriculture: Number(tiers.agriculture ?? defaults.agriculture ?? 2),
+          knowledge: Number(tiers.knowledge ?? defaults.knowledge ?? 2),
+          industry: Number(tiers.industry ?? defaults.industry ?? 2),
         },
       };
     }
