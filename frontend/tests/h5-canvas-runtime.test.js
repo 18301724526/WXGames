@@ -1107,7 +1107,7 @@ test('Canvas game shell scrolls tech tree through shared drag action', () => {
   const renderer = {
     getHitTarget: () => hitTargets.shift() || { type: 'techTreeDrag', background: true },
     getLayout: () => ({ contentX: 12, contentWidth: 366 }),
-    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, maxPanY: 180 }),
+    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, minPanY: -180, maxPanY: 180 }),
     presenter: {
       buildTechViewState: () => ({ tree: { nodes: [] }, text: {} }),
     },
@@ -1126,15 +1126,15 @@ test('Canvas game shell scrolls tech tree through shared drag action', () => {
   listeners.pointermove({ pointerId: 4, clientX: 200, clientY: 350, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 4, clientX: 200, clientY: 350, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(shell.techTreePanY, 150);
+  assert.equal(shell.techTreePanY, -150);
   assert.equal(shell.techTreePanX, 0);
 
   listeners.pointerdown({ pointerId: 5, clientX: 200, clientY: 500, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointermove({ pointerId: 5, clientX: 120, clientY: 100, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 5, clientX: 120, clientY: 100, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(shell.techTreePanY, 180);
-  assert.equal(shell.techTreePanX, 80);
+  assert.equal(shell.techTreePanY, -180);
+  assert.equal(shell.techTreePanX, -80);
 });
 
 test('Canvas game shell starts tech tree drag from disabled node inside tree panel', () => {
@@ -1143,7 +1143,7 @@ test('Canvas game shell starts tech tree drag from disabled node inside tree pan
     lastTechTreeScroll: { panel: { x: 40, y: 260, width: 300, height: 360 } },
     getHitTarget: () => ({ type: 'research', techId: 'future_locked', disabled: true }),
     getLayout: () => ({ contentX: 12, contentWidth: 366 }),
-    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, maxPanY: 180 }),
+    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, minPanY: -180, maxPanY: 180 }),
     presenter: {
       buildTechViewState: () => ({ tree: { nodes: [] }, text: {} }),
     },
@@ -1162,8 +1162,8 @@ test('Canvas game shell starts tech tree drag from disabled node inside tree pan
   listeners.pointermove({ pointerId: 6, clientX: 140, clientY: 440, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 6, clientX: 140, clientY: 440, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(shell.techTreePanX, 70);
-  assert.equal(shell.techTreePanY, 80);
+  assert.equal(shell.techTreePanX, -70);
+  assert.equal(shell.techTreePanY, -80);
 });
 
 test('Canvas game shell keeps tech tree pan synchronized with game host renders', () => {
@@ -1179,7 +1179,7 @@ test('Canvas game shell keeps tech tree pan synchronized with game host renders'
   const renderer = {
     getHitTarget: () => ({ type: 'research', techId: 'future_locked', disabled: true }),
     getLayout: () => ({ contentX: 12, contentWidth: 366 }),
-    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, maxPanY: 180 }),
+    getTechTreeLayout: () => ({ minPanX: -120, maxPanX: 140, minPanY: -180, maxPanY: 180 }),
     presenter: {
       buildTechViewState: () => ({ tree: { nodes: [] }, text: {} }),
     },
@@ -1200,15 +1200,15 @@ test('Canvas game shell keeps tech tree pan synchronized with game host renders'
   listeners.pointermove({ pointerId: 9, clientX: 150, clientY: 390, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 9, clientX: 150, clientY: 390, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(shell.techTreePanX, 110);
-  assert.equal(shell.techTreePanY, 130);
-  assert.equal(game.techTreePanX, 110);
-  assert.equal(game.techTreePanY, 130);
+  assert.equal(shell.techTreePanX, -110);
+  assert.equal(shell.techTreePanY, -130);
+  assert.equal(game.techTreePanX, -110);
+  assert.equal(game.techTreePanY, -130);
 
   shell.renderReadOnly(game.state, 'tech');
   const lastRender = renderOptions.at(-1);
-  assert.equal(lastRender.techTreePanX, 110);
-  assert.equal(lastRender.techTreePanY, 130);
+  assert.equal(lastRender.techTreePanX, -110);
+  assert.equal(lastRender.techTreePanY, -130);
 });
 
 test('Canvas game shell owns naming prompt state and dispatches canvas submit', async () => {
@@ -1639,9 +1639,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-drag-hard-v2/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-drag-hard-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-drag-hard-v2/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-drag-hard-v2[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-radar-pan-v3/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-radar-pan-v3[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-radar-pan-v3/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-radar-pan-v3[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

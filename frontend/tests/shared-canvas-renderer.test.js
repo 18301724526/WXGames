@@ -1818,7 +1818,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
   renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
     activeTab: 'tech',
     mode: 'hud',
-    techTreePanY: 420,
+    techTreePanY: -420,
   });
 
   const visibleClassicalTargets = renderer.hitTargets
@@ -1876,7 +1876,7 @@ test('CanvasGameRenderer pans tech tree horizontally and keeps card drag handles
   renderer.render({ currentEraName: '农耕时代', resources: { knowledgePerSecond: 0 } }, {
     activeTab: 'tech',
     mode: 'hud',
-    techTreePanX: 100,
+    techTreePanX: -100,
   });
   const pannedTarget = renderer.hitTargets.find((target) => target.action.techId === 'right_branch');
   assert.ok(pannedTarget);

@@ -791,7 +791,7 @@
       const y = Number(pointer.y) || 0;
       const clampPan = (xValue, yValue) => {
         const requestedX = Number(xValue) || 0;
-        const requestedY = Math.max(0, Number(yValue) || 0);
+        const requestedY = Number(yValue) || 0;
         const renderer = this.host?.renderer;
         const presenter = renderer?.presenter || this.host?.presenter;
         if (
@@ -821,7 +821,10 @@
             Number(layoutInfo.minPanX) || 0,
             Math.min(requestedX, Number(layoutInfo.maxPanX) || 0),
           ),
-          y: Math.min(requestedY, Math.max(0, Number(layoutInfo.maxPanY) || 0)),
+          y: Math.max(
+            Number(layoutInfo.minPanY) || 0,
+            Math.min(requestedY, Number(layoutInfo.maxPanY) || 0),
+          ),
         };
       };
       if (action.phase === 'start') {
@@ -843,18 +846,16 @@
         }
       } else if (action.phase === 'move') {
         if (!this.host) return false;
-        const dx = Number(pointer.dx ?? pointer.deltaX);
-        const dy = Number(pointer.dy ?? pointer.deltaY);
         const currentPan = this.host.getTechTreePan?.() || {
           x: Number(this.host.techTreePanX) || 0,
           y: Number(this.host.techTreePanY) || 0,
         };
-        const nextPanX = Number.isFinite(dx)
-          ? currentPan.x - dx
-          : (this.techTreeDragStart ? this.techTreeDragStart.panX + this.techTreeDragStart.x - x : currentPan.x);
-        const nextPanY = Number.isFinite(dy)
-          ? currentPan.y - dy
-          : (this.techTreeDragStart ? this.techTreeDragStart.panY + this.techTreeDragStart.y - y : currentPan.y);
+        const nextPanX = this.techTreeDragStart
+          ? this.techTreeDragStart.panX + x - this.techTreeDragStart.x
+          : currentPan.x;
+        const nextPanY = this.techTreeDragStart
+          ? this.techTreeDragStart.panY + y - this.techTreeDragStart.y
+          : currentPan.y;
         const pan = clampPan(nextPanX, nextPanY);
         if (this.host.setTechTreePan) this.host.setTechTreePan(pan);
         else {

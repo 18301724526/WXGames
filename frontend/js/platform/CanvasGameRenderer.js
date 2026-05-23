@@ -2723,12 +2723,19 @@
         ...Object.values(nodeRects).map((rect) => rect.x + rect.width + 24),
       );
       const contentHeight = Math.max(height + 1, contentBottom - minContentY);
-      const maxPanY = Math.max(0, contentHeight - height);
-      const panY = Math.max(0, Math.min(Number(options.techTreePanY) || 0, maxPanY));
-      const minPanX = Math.min(0, contentLeft - (panelX + 16));
-      const maxPanX = Math.max(0, contentRight - (panelX + width - 16));
+      const overscroll = 96;
+      const innerLeft = panelX + 16;
+      const innerRight = panelX + width - 16;
+      const innerTop = panelY + 8;
+      const innerBottom = panelY + height - 12;
+      const minPanX = Math.min(-overscroll, innerRight - contentRight);
+      const maxPanX = Math.max(overscroll, innerLeft - contentLeft);
+      const minPanY = Math.min(-overscroll, innerBottom - contentBottom);
+      const maxPanY = Math.max(overscroll, innerTop - minContentY);
       const rawPanX = Number(options.techTreePanX) || 0;
       const panX = Math.max(minPanX, Math.min(rawPanX, maxPanX));
+      const rawPanY = Number(options.techTreePanY) || 0;
+      const panY = Math.max(minPanY, Math.min(rawPanY, maxPanY));
       return {
         nodes,
         eras,
@@ -2737,6 +2744,7 @@
         panX,
         minPanX,
         maxPanX,
+        minPanY,
         panY,
         maxPanY,
         contentHeight,
@@ -2835,6 +2843,7 @@
           minPanX,
           maxPanX,
           panY,
+          minPanY,
           maxPanY,
           minContentY,
           maxContentY,
@@ -2842,13 +2851,14 @@
         } = layoutInfo;
         this.lastTechTreeScroll = {
           maxPanY,
+          minPanY,
           minPanX,
           maxPanX,
           panX,
           panY,
           panel: treePanel,
         };
-        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, -panX, -panY, () => {
+        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, panX, panY, () => {
           this.drawLine(spineX, minContentY, spineX, maxContentY, {
             color: 'rgba(240, 180, 91, 0.58)',
             width: 6,
@@ -2897,7 +2907,7 @@
             const rect = nodeRects[node.id];
             if (!rect) return;
             this.renderTechNode(node, rect);
-            const screenRect = { ...rect, x: rect.x - panX, y: rect.y - panY };
+            const screenRect = { ...rect, x: rect.x + panX, y: rect.y + panY };
             if (screenRect.y + screenRect.height < treeTop || screenRect.y > treeBottom) return;
             if (screenRect.x + screenRect.width < treeX || screenRect.x > treeX + treeWidth) return;
             this.addHitTarget(
@@ -2908,7 +2918,7 @@
           });
         });
         this.addHitTarget(treePanel, { type: 'techTreeDrag', background: true });
-        if (minPanX < 0 || maxPanX > 0) {
+        if (minPanX < maxPanX) {
           const trackY = treeBottom - 6;
           const contentWidth = treeWidth + maxPanX - minPanX;
           const thumbW = Math.max(34, treeWidth * (treeWidth / Math.max(treeWidth, contentWidth)));
@@ -2924,10 +2934,10 @@
             radius: 3,
           });
         }
-        if (maxPanY > 0) {
+        if (minPanY < maxPanY) {
           const trackX = treeX + treeWidth - 6;
-          const thumbH = Math.max(28, treeHeight * (treeHeight / (treeHeight + maxPanY)));
-          const thumbY = treeTop + (treeHeight - thumbH) * (panY / maxPanY);
+          const thumbH = Math.max(28, treeHeight * (treeHeight / Math.max(treeHeight, treeHeight + maxPanY - minPanY)));
+          const thumbY = treeTop + (treeHeight - thumbH) * ((panY - minPanY) / Math.max(1, maxPanY - minPanY));
           this.drawPanel(trackX, treeTop + 4, 4, treeHeight - 8, {
             fill: 'rgba(255, 226, 177, 0.08)',
             stroke: 'rgba(255, 226, 177, 0.08)',
