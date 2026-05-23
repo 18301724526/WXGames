@@ -99,7 +99,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(css, /naming-modal-content|naming-input|naming-message/);
   assert.doesNotMatch(html, /floating-text\.js|id="fxLayer"/);
   assert.doesNotMatch(css, /fx-layer|floating-text|particleFly|screen-flash|floatUp/);
-  assert.match(html, /UIStatePresenter\.js\?v=ui-state-v12/);
+  assert.match(html, /UIStatePresenter\.js\?v=guidebook-planning-v1/);
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
   assert.doesNotMatch(html, /EventUIRenderer\.js/);
   assert.doesNotMatch(html, /RuntimeLogAdapter\.js|LogModalAdapter\.js/);
@@ -121,7 +121,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(html, /H5TutorialStorageAdapter\.js\?v=h5-storage-runtime-v1/);
   assert.match(html, /GameStateSync\.js\?v=sync-scheduler-v2/);
   assert.match(html, /UpdateChecker\.js\?v=update-scheduler-v2/);
-  assert.match(html, /GameStateManager\.js\?v=state-manager-building-v1/);
+  assert.match(html, /GameStateManager\.js\?v=guidebook-planning-v1/);
   assert.match(html, /H5ShellAdapter\.js\?v=h5-shell-registry-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
   assert.match(html, /TutorialController\.js\?v=tutorial-guide-task-v1/);

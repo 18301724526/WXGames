@@ -172,6 +172,12 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       showResourceDetails: false,
       showCitySwitcher: false,
       showAdvisor: false,
+      showTaskCenter: false,
+      activeTaskCenterTab: 'main',
+      showGuidebook: false,
+      activeGuidebookTab: 'planning',
+      showTalentPolicy: false,
+      talentPolicyUiState: {},
       logs: [],
       tutorial: {},
       buildingOffset: 0,
@@ -211,10 +217,6 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       floatingTexts: [],
       tutorialHighlight: null,
       rewardReveal: null,
-      showTaskCenter: false,
-      activeTaskCenterTab: 'main',
-      showTalentPolicy: false,
-      talentPolicyUiState: {},
     },
   });
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
@@ -1497,8 +1499,8 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=h5-canvas-runtime-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=canvas-action-controller-v3[\s\S]*js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=canvas-game-shell-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=guidebook-planning-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=guidebook-planning-v1/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=guidebook-planning-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

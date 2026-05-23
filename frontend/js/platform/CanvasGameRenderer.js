@@ -854,6 +854,153 @@
       this.addHitTarget({ x, y, width: size, height: size }, { type: 'openTaskCenter', source: 'taskIcon' });
     }
 
+    renderGuidebookButton(state = {}) {
+      if (!this.presenter || typeof this.presenter.buildGuidebookViewState !== 'function') return;
+      const layout = this.getLayout();
+      const size = 44;
+      const x = layout.contentRight - size - 12;
+      const taskY = this.height - 58 - this.bottomSafeArea - 48 - 10;
+      const y = taskY - size - 8;
+      if (y < 178) return;
+      this.drawPanel(x, y, size, size, {
+        fill: this.createGradient(
+          x, y, x, y + size,
+          [
+            [0, 'rgba(50, 76, 66, 0.96)'],
+            [1, 'rgba(25, 33, 29, 0.96)'],
+          ],
+          'rgba(37, 54, 47, 0.96)',
+        ),
+        stroke: 'rgba(116, 211, 160, 0.32)',
+        radius: 11,
+        inset: 'rgba(116, 211, 160, 0.1)',
+      });
+      this.drawText('略', x + size / 2, y + 17, {
+        size: 15,
+        bold: true,
+        color: '#d5ffe8',
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.drawText('攻略', x + size / 2, y + 31, {
+        size: 10,
+        bold: true,
+        color: '#8fd8af',
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openGuidebook', source: 'guidebookIcon' });
+    }
+
+    renderGuidebookPanel(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildGuidebookViewState !== 'function') return;
+      const view = this.presenter.buildGuidebookViewState(state, { activeTab: options.activeGuidebookTab });
+      const layout = this.getLayout();
+      const panelWidth = Math.min(372, layout.contentWidth - 10);
+      const panelHeight = Math.min(510, Math.max(390, this.height - 210));
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(76, (this.height - panelHeight) / 2 - 10);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeGuidebook' });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(38, 51, 42, 0.99)'],
+            [1, 'rgba(19, 20, 16, 0.99)'],
+          ],
+          'rgba(30, 36, 29, 0.99)',
+        ),
+        stroke: 'rgba(116, 211, 160, 0.28)',
+        radius: 14,
+        inset: 'rgba(116, 211, 160, 0.08)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawText(view.title || '攻略', x + 18, y + 18, { size: 18, bold: true, color: '#d5ffe8' });
+      this.drawText(this.truncateText(view.subtitle || '', panelWidth - 76, { size: 12 }), x + 18, y + 44, {
+        size: 12,
+        color: '#9ccfaf',
+      });
+      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeGuidebook' });
+
+      const tabs = Array.isArray(view.categories) ? view.categories : [];
+      const tabY = y + 74;
+      const tabGap = 5;
+      const tabWidth = Math.max(52, (panelWidth - 28 - tabGap * Math.max(0, tabs.length - 1)) / Math.max(1, tabs.length));
+      tabs.slice(0, 5).forEach((tab, index) => {
+        const tabX = x + 14 + index * (tabWidth + tabGap);
+        this.drawButton(tabX, tabY, tabWidth, 32, tab.label, {
+          size: 11,
+          bold: tab.isActive,
+          active: tab.isActive,
+          radius: 8,
+        });
+        this.addHitTarget({ x: tabX, y: tabY, width: tabWidth, height: 32 }, { type: 'switchGuidebookTab', tab: tab.id });
+      });
+
+      const contentX = x + 14;
+      const contentY = tabY + 46;
+      const contentWidth = panelWidth - 28;
+      const contentHeight = y + panelHeight - contentY - 18;
+      this.drawPanel(contentX, contentY, contentWidth, contentHeight, {
+        fill: 'rgba(18, 24, 20, 0.64)',
+        stroke: 'rgba(116, 211, 160, 0.16)',
+        radius: 10,
+      });
+
+      const active = view.activeCategory || {};
+      this.drawText(active.title || '城市规划', contentX + 14, contentY + 16, {
+        size: 15,
+        bold: true,
+        color: '#d5ffe8',
+      });
+      let cursorY = contentY + 46;
+      const lines = Array.isArray(active.lines) ? active.lines : [];
+      lines.slice(0, 4).forEach((line) => {
+        const wrapped = this.wrapTextLimit(line, contentWidth - 28, 2, { size: 12 });
+        this.drawTextLines(wrapped, contentX + 14, cursorY, {
+          size: 12,
+          color: '#c5d8c9',
+          lineHeight: 17,
+        });
+        cursorY += wrapped.length * 17 + 10;
+      });
+
+      if (active.id === 'planning' && view.planning) {
+        const planningY = Math.min(cursorY + 2, contentY + contentHeight - 96);
+        const planningHeight = Math.max(76, contentY + contentHeight - planningY - 12);
+        this.drawPanel(contentX + 12, planningY, contentWidth - 24, planningHeight, {
+          fill: 'rgba(36, 50, 41, 0.72)',
+          stroke: 'rgba(116, 211, 160, 0.18)',
+          radius: 9,
+        });
+        this.drawText(`地理：${view.planning.terrainLabel}`, contentX + 26, planningY + 16, {
+          size: 12,
+          bold: true,
+          color: '#fff1cf',
+        });
+        this.drawText(`宜居度：${view.planning.text.habitability} ${view.planning.habitabilityLabel}`, contentX + 26, planningY + 36, {
+          size: 12,
+          bold: true,
+          color: '#74d3a0',
+        });
+        this.drawTextLines(this.wrapTextLimit(view.planning.text.note, contentWidth - 52, 2, { size: 11 }), contentX + 26, planningY + 58, {
+          size: 11,
+          color: '#c5d8c9',
+          lineHeight: 15,
+        });
+      }
+    }
+
     renderTaskCenterPanel(state = {}, options = {}) {
       if (!this.presenter || typeof this.presenter.buildTaskCenterViewState !== 'function') return;
       const view = this.presenter.buildTaskCenterViewState(state, { activeTab: options.activeTaskCenterTab });
@@ -1086,7 +1233,7 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const y = startY;
-      const panelHeight = 268;
+      const panelHeight = 302;
       const jobRowHeight = 42;
       const jobRowGap = 8;
       this.drawPanel(x, y, width, panelHeight, {
@@ -1139,9 +1286,33 @@
         this.drawText(stat.value, statX + 30, statY + 18, { size: 13, bold: true, color: stat.color });
       });
 
+      const planning = view.planning || {};
+      const planningY = y + 106;
+      this.drawPanel(x + 7, planningY, width - 14, 36, {
+        fill: 'rgba(24, 36, 29, 0.72)',
+        stroke: 'rgba(116, 211, 160, 0.16)',
+        radius: 8,
+        inset: 'rgba(116, 211, 160, 0.05)',
+      });
+      this.drawText(`地理 ${planning.terrainLabel || '平原'}`, x + 20, planningY + 12, {
+        size: 11,
+        bold: true,
+        color: '#d5ffe8',
+      });
+      this.drawText(`宜居度 ${planning.text?.habitability || '+0'} ${planning.habitabilityLabel || '平稳'}`, x + width - 20, planningY + 12, {
+        size: 11,
+        bold: true,
+        color: '#74d3a0',
+        align: 'right',
+      });
+      this.drawText(this.truncateText(planning.text?.note || '保持建筑搭配，会让城市更稳定。', width - 40, { size: 10 }), x + 20, planningY + 27, {
+        size: 10,
+        color: 'rgba(234, 234, 234, 0.62)',
+      });
+
       const jobs = view.jobs.filter((job) => job.visible);
       jobs.forEach((job, index) => {
-        const rowY = y + 112 + index * (jobRowHeight + jobRowGap);
+        const rowY = y + 154 + index * (jobRowHeight + jobRowGap);
         const jobLabel = { farmer: '农民', scholar: '学者', craftsman: '工匠' }[job.id] || job.id;
         const desc = { farmer: '生产食物', scholar: '口耳相传', craftsman: '钻研技艺' }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];
@@ -3565,6 +3736,7 @@
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
       this.renderTaskCenterButton(state);
+      this.renderGuidebookButton(state);
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);
@@ -3583,6 +3755,9 @@
       }
       if (options.showTaskCenter) {
         this.renderTaskCenterPanel(state, options);
+      }
+      if (options.showGuidebook) {
+        this.renderGuidebookPanel(state, options);
       }
       if (options.showTalentPolicy) {
         this.renderTalentPolicyPanel(state, options);
@@ -3892,10 +4067,12 @@
       } else if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
       this.renderTaskCenterButton(state);
+      this.renderGuidebookButton(state);
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
+      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);

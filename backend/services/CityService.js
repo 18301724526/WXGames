@@ -2,6 +2,7 @@ const BuildingState = require('../domain/BuildingState');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
 const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const MilitaryService = require('./MilitaryService');
+const CityPlanningService = require('./CityPlanningService');
 
 const CAPITAL_CITY_ID = 'capital';
 
@@ -52,6 +53,9 @@ function createCityState(options = {}) {
     population: createInitialPopulation(options.population),
     military: options.military || { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
     happiness: Number.isFinite(options.happiness) ? options.happiness : 100,
+    terrain: CityPlanningService.normalizeTerrainId(options.terrain || options.planning?.terrainId),
+    habitability: Number.isFinite(options.habitability) ? options.habitability : 0,
+    planning: options.planning || {},
     buildingEffects: {},
   };
 }
@@ -188,6 +192,7 @@ function applyDerivedStatsToCity(city, gameState) {
     buildings: city.buildings,
     military: city.military,
   });
+  CityPlanningService.applyPlanningToCity(city, gameState);
   return effects;
 }
 
@@ -345,6 +350,11 @@ function getClientCityState(gameState) {
       resources: city.resources,
       military: city.military,
       happiness: city.happiness,
+      planning: CityPlanningService.getClientPlanning(city),
+      terrain: city.terrain,
+      terrainLabel: city.terrainLabel,
+      habitability: city.habitability,
+      habitabilityLabel: city.habitabilityLabel,
       totalBuildings: Object.values(city.buildings || {}).reduce((sum, item) => sum + (item?.level || 0), 0),
     })),
   };

@@ -54,6 +54,9 @@ test('旧存档会迁移出首都城市，客户端返回城市列表', () => {
   assert.equal(clientState.cityState.activeCityId, 'capital');
   assert.equal(clientState.cityState.cities.length, 1);
   assert.equal(clientState.isCapitalCity, true);
+  assert.equal(clientState.cityState.cities[0].planning.terrainLabel, '平原');
+  assert.equal(clientState.cityState.cities[0].planning.habitabilityLabel, '平稳');
+  assert.ok(Array.isArray(clientState.guidebook.categories));
 });
 
 test('占领地会创建可管理分城并可切换镜像状态', () => {
@@ -61,6 +64,7 @@ test('占领地会创建可管理分城并可切换镜像状态', () => {
 
   assert.ok(state.cities.site_harbor);
   assert.equal(state.cities.site_harbor.name, '河湾城');
+  assert.equal(state.cities.site_harbor.planning.terrainLabel, '河谷');
   assert.equal(state.activeCityId, 'capital');
 
   const result = CityService.setActiveCity(state, 'site_harbor');

@@ -42,6 +42,8 @@
       this.showCitySwitcher = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
+      this.showGuidebook = false;
+      this.activeGuidebookTab = 'planning';
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.rewardReveal = null;
@@ -261,6 +263,8 @@
         showCitySwitcher: this.showCitySwitcher,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
+        showGuidebook: this.showGuidebook,
+        activeGuidebookTab: this.activeGuidebookTab,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
@@ -466,6 +470,7 @@
       this.showCitySwitcher = false;
       this.activeEventId = null;
       this.showTaskCenter = false;
+      this.showGuidebook = false;
       this.showTalentPolicy = false;
     }
 
@@ -476,8 +481,10 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showTaskCenter = false;
+      this.showGuidebook = false;
       this.showTalentPolicy = false;
       this.activeTaskCenterTab = 'main';
+      this.activeGuidebookTab = 'planning';
       this.activeGuideNavigation = null;
       this.pageTransition = null;
       this.buildingTransition = null;

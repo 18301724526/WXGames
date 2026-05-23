@@ -7,6 +7,7 @@
     'showAdvisor',
     'showTaskCenter',
     'showTalentPolicy',
+    'showGuidebook',
   ];
 
   class CanvasActionController {
@@ -301,6 +302,23 @@
 
     handle_switchTaskCenterTab(action) {
       this.host.activeTaskCenterTab = action.tab || 'main';
+      return this.afterHandled(action);
+    }
+
+    handle_openGuidebook(action) {
+      this.host.showGuidebook = true;
+      this.host.activeGuidebookTab = action.tab || this.host.activeGuidebookTab || 'planning';
+      this.closePanels(['showGuidebook']);
+      return this.afterHandled(action);
+    }
+
+    handle_closeGuidebook(action) {
+      this.host.showGuidebook = false;
+      return this.afterHandled(action);
+    }
+
+    handle_switchGuidebookTab(action) {
+      this.host.activeGuidebookTab = action.tab || 'planning';
       return this.afterHandled(action);
     }
 

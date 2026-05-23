@@ -13,6 +13,7 @@ const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
+const CityPlanningService = require('./CityPlanningService');
 
 function getBuildingLevel(buildings, buildingId) {
   return BuildingState.getLevel(buildings, buildingId);
@@ -185,6 +186,9 @@ function getClientGameState(gameState) {
     cityState: CityService.getClientCityState(normalized),
     activeCityId: normalized.activeCityId,
     isCapitalCity: normalized.activeCityId === CityService.CAPITAL_CITY_ID,
+    guidebook: {
+      categories: CityPlanningService.getGuidebookCategories(),
+    },
     unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra),
     currentEra: normalized.currentEra,
     currentEraName: getEraName(normalized.currentEra),

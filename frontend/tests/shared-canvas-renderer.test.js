@@ -757,6 +757,76 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeTaskCenter'));
 });
 
+test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      text: {
+        foodValue: '260',
+        foodRate: '+0/s',
+        knowledgeValue: '80',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildGuidebookViewState: UIStatePresenter.buildGuidebookViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    population: { total: 3, max: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+    cityState: {
+      activeCityId: 'capital',
+      cities: [{
+        id: 'capital',
+        name: '首都',
+        population: { total: 3 },
+        totalBuildings: 2,
+        planning: {
+          terrainLabel: '河谷',
+          habitability: 12,
+          habitabilityLabel: '良好',
+          habitabilityNotes: ['居住与粮食配套较协调。'],
+        },
+      }],
+    },
+    guidebook: {
+      categories: [
+        { id: 'planning', label: '规划', title: '城市规划', lines: ['宜居度来自建筑搭配。'] },
+        { id: 'policy', label: '方针', title: '人才方针', lines: ['方针会调整人才。'] },
+      ],
+    },
+  }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showGuidebook: true,
+    activeGuidebookTab: 'planning',
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '攻略'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '城市规划'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('地理：河谷')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('宜居度：+12 良好')));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openGuidebook'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchGuidebookTab' && target.action.tab === 'policy'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeGuidebook'));
+});
+
 test('CanvasGameRenderer renders login panel and login hit targets on canvas', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

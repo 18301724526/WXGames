@@ -41,6 +41,8 @@
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
+      this.showGuidebook = false;
+      this.activeGuidebookTab = 'planning';
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.buildingOffset = 0;
@@ -193,6 +195,7 @@
       this.buildingOffset = 0;
       this.buildingTransition = null;
       this.activeEventId = null;
+      this.showGuidebook = false;
       this.showTalentPolicy = false;
     }
 
@@ -205,8 +208,10 @@
       this.showCitySwitcher = false;
       this.showAdvisor = false;
       this.showTaskCenter = false;
+      this.showGuidebook = false;
       this.showTalentPolicy = false;
       this.activeTaskCenterTab = 'main';
+      this.activeGuidebookTab = 'planning';
       const game = this.lastGame;
       if (game?.state && typeof game.state === 'object') game.state = { ...game.state, currentTab: 'resources' };
       if (game && 'activeTab' in game) game.activeTab = 'resources';
@@ -736,6 +741,8 @@
         showAdvisor: this.showAdvisor,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
+        showGuidebook: this.showGuidebook,
+        activeGuidebookTab: this.activeGuidebookTab,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.lastGame?.talentPolicyUiState || this.talentPolicyUiState || {},
         logs: this.lastGame?.requestLogs || [],

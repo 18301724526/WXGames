@@ -683,7 +683,6 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.notEqual(app.tutorialHighlight?.rect.left, taskCenterClaimTarget.x);
     assert.deepEqual(app.rewardReveal?.title, '获得奖励');
     app.rewardReveal = null;
-    app.render();
 
     app.state = {
       ...app.state,
@@ -702,6 +701,45 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       buildingCosts: { barracks: { food: 260, knowledge: 80 } },
       buildings: { barracks: { level: 0 } },
       resources: { food: 260, knowledge: 80 },
+      guideTasks: {
+        visible: false,
+        tasks: [],
+      },
+      softGuide: null,
+      guidebook: {
+        categories: [
+          { id: 'planning', label: '规划', title: '城市规划', lines: ['宜居度来自建筑搭配。'] },
+          { id: 'policy', label: '方针', title: '人才方针', lines: ['方针会调整人才。'] },
+        ],
+      },
+    };
+    app.tutorialHighlight = null;
+    app.render();
+
+    const guidebookTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openGuidebook');
+    assert.ok(guidebookTarget);
+    app.handleTap({
+      x: guidebookTarget.x + guidebookTarget.width / 2,
+      y: guidebookTarget.y + guidebookTarget.height / 2,
+    });
+    assert.equal(app.showGuidebook, true);
+    const policyGuidebookTab = app.renderer.hitTargets.find((target) => target.action?.type === 'switchGuidebookTab' && target.action.tab === 'policy');
+    assert.ok(policyGuidebookTab);
+    app.handleTap({
+      x: policyGuidebookTab.x + policyGuidebookTab.width / 2,
+      y: policyGuidebookTab.y + policyGuidebookTab.height / 2,
+    });
+    assert.equal(app.activeGuidebookTab, 'policy');
+    const closeGuidebookTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'closeGuidebook' && target.width === 28);
+    assert.ok(closeGuidebookTarget);
+    app.handleTap({
+      x: closeGuidebookTarget.x + closeGuidebookTarget.width / 2,
+      y: closeGuidebookTarget.y + closeGuidebookTarget.height / 2,
+    });
+    assert.equal(app.showGuidebook, false);
+
+    app.state = {
+      ...app.state,
       guideTasks: {
         visible: true,
         tasks: [{

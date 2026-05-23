@@ -247,7 +247,7 @@ test('city switcher view state formats active city and options', () => {
   assert.equal(view.options[0].tag, '主城');
   assert.equal(view.options[1].population, 300);
   assert.equal(view.options[1].officials, 3);
-  assert.equal(view.options[1].metaText, '人口 300 · 建筑 1');
+  assert.equal(view.options[1].metaText, '人口 300 · 平原 · 宜居平稳');
   assert.equal(view.options[1].isActive, false);
   assert.match(view.signature, /site_river/);
 });
@@ -818,6 +818,46 @@ test('talent policy view state builds presets and tier draft without using custo
   assert.equal(view.systemPolicies[0].selected, true);
   assert.equal(view.customPolicies[0].active, true);
   assert.equal(view.preview.allocationText, '农民 3 / 学者 1 / 工匠 0');
+});
+
+test('city planning and guidebook view states expose terrain and habitability', () => {
+  const state = {
+    activeCityId: 'capital',
+    cityState: {
+      activeCityId: 'capital',
+      cities: [{
+        id: 'capital',
+        name: '首都',
+        population: { total: 4 },
+        totalBuildings: 3,
+        planning: {
+          terrainId: 'river',
+          terrainLabel: '河谷',
+          terrainHint: '河谷适合粮食与民居搭配。',
+          habitability: 12,
+          habitabilityLabel: '良好',
+          habitabilityTone: 'good',
+          habitabilitySummary: '河谷城市规划良好',
+          habitabilityNotes: ['居住与粮食配套较协调。'],
+        },
+      }],
+    },
+    guidebook: {
+      categories: [
+        { id: 'planning', label: '规划', title: '城市规划', lines: ['宜居度来自建筑搭配。'] },
+        { id: 'policy', label: '方针', title: '人才方针', lines: ['方针会调整人才。'] },
+      ],
+    },
+  };
+
+  const planning = UIStatePresenter.buildCityPlanningViewState(state);
+  assert.equal(planning.terrainLabel, '河谷');
+  assert.equal(planning.text.habitability, '+12');
+  assert.equal(planning.habitabilityLabel, '良好');
+
+  const guidebook = UIStatePresenter.buildGuidebookViewState(state, { activeTab: 'planning' });
+  assert.equal(guidebook.subtitle, '河谷 · 宜居度 +12 良好');
+  assert.equal(guidebook.activeCategory.title, '城市规划');
 });
 
 test('talent policy view state follows the applied policy for title and preset active state', () => {

@@ -34,6 +34,7 @@
       guideTasks: (apiResponse && apiResponse.guideTasks) || gameState.guideTasks || { visible: false, tasks: [] },
       taskCenter: (apiResponse && apiResponse.taskCenter) || gameState.taskCenter || null,
       talentPolicies: gameState.talentPolicies || {},
+      guidebook: gameState.guidebook || {},
       population: gameState.population || {},
       happiness: Number.isFinite(gameState.happiness) ? gameState.happiness : 100,
       techs: gameState.techs || {},
