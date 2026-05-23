@@ -54,6 +54,8 @@
       this.activeGuideNavigation = null;
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
       this.transitionTimer = null;
@@ -270,6 +272,7 @@
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
+        techTreePanY: this.techTreePanY,
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
@@ -468,6 +471,7 @@
       if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') {
         this.canvasShell.activeBuildingCategory = category;
         this.canvasShell.buildingOffset = 0;
+        this.canvasShell.techTreePanY = 0;
         this.canvasShell.buildingTransition = null;
       }
       return category !== previous;
@@ -490,6 +494,8 @@
       this.showTalentPolicy = false;
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.buildingTransition = null;
     }
 
@@ -497,6 +503,8 @@
       this.activeTab = 'resources';
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.activeEventId = null;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
@@ -863,6 +871,8 @@
       this.state = { ...this.state, currentTab: this.activeTab };
       if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
       this.buildingOffset = 0;
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.buildingTransition = null;
       this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
       this.activeEventId = null;
@@ -1301,6 +1311,9 @@
     }
 
     handleDrag(phase, point = {}) {
+      if (this.activeTab === 'tech') {
+        return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
+      }
       if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
       return this.actionController?.handle?.({ type: 'worldRadarDrag', phase, pointer: point }) || false;
     }

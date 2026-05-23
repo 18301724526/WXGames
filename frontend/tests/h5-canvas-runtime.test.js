@@ -181,6 +181,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       logs: [],
       tutorial: {},
       buildingOffset: 0,
+      techTreePanY: 0,
       activeBuildingCategory: 'all',
       activeEventId: null,
       territoryUiState: {},
@@ -1094,6 +1095,39 @@ test('Canvas game shell dispatches world radar drag phases from canvas-owned poi
 
   assert.deepEqual(dispatched.map((action) => action.phase), ['start', 'move', 'end']);
   assert.ok(dispatched.every((action) => action.type === 'worldRadarDrag'));
+});
+
+test('Canvas game shell scrolls tech tree through shared drag action', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderer = {
+    getHitTarget: () => ({ type: 'techTreeDrag', background: true }),
+    getLayout: () => ({ contentX: 12, contentWidth: 366 }),
+    getTechTreeLayout: () => ({ maxPanY: 180 }),
+    presenter: {
+      buildTechViewState: () => ({ tree: { nodes: [] }, text: {} }),
+    },
+    render() {},
+  };
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'tech' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  listeners.pointerdown({ pointerId: 4, clientX: 200, clientY: 500, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 4, clientX: 200, clientY: 350, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 4, clientX: 200, clientY: 350, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(shell.techTreePanY, 150);
+
+  listeners.pointerdown({ pointerId: 5, clientX: 200, clientY: 500, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 5, clientX: 200, clientY: 100, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 5, clientX: 200, clientY: 100, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(shell.techTreePanY, 180);
 });
 
 test('Canvas game shell owns naming prompt state and dispatches canvas submit', async () => {

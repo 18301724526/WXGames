@@ -1747,19 +1747,21 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '田块轮作'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'E1'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农耕分支'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '伐木权责'));
   const lineCalls = calls.filter((call) => call[0] === 'lineTo');
   assert.ok(lineCalls.length >= 4);
+  assert.ok(lineCalls.some((call) => Math.abs(call[1] - 195) < 1));
   const techTarget = renderer.hitTargets.find((target) => target.action.techId === 'farming_field_rotation');
   assert.ok(techTarget);
   assert.deepEqual(
     renderer.getHitTarget({ x: techTarget.x + 2, y: techTarget.y + 2 }),
     { type: 'research', techId: 'farming_field_rotation', disabled: false },
   );
+  assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
 });
 
-test('CanvasGameRenderer keeps dense tech tree nodes from overlapping on mobile', () => {
+test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll', () => {
   const { ctx } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -1807,16 +1809,30 @@ test('CanvasGameRenderer keeps dense tech tree nodes from overlapping on mobile'
   renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
     activeTab: 'tech',
     mode: 'hud',
+    techTreePanY: 0,
+  });
+
+  const initialTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_0');
+  assert.ok(initialTarget);
+
+  renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
+    activeTab: 'tech',
+    mode: 'hud',
+    techTreePanY: 420,
   });
 
   const visibleClassicalTargets = renderer.hitTargets
     .filter((target) => target.action.techId?.startsWith('classical_dense_'));
-  assert.equal(visibleClassicalTargets.length, 8);
+  assert.ok(visibleClassicalTargets.length >= 1);
+  const scrolledTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_0');
+  assert.ok(scrolledTarget);
+  assert.ok(scrolledTarget.y < initialTarget.y);
   visibleClassicalTargets.forEach((target, index) => {
     visibleClassicalTargets.slice(index + 1).forEach((other) => {
       assert.equal(rectsOverlap(target, other), false);
     });
   });
+  assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
 });
 
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {

@@ -47,6 +47,8 @@
       this.talentPolicyUiState = {};
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
       this.transitionTimer = null;
@@ -133,11 +135,12 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       if (phase === 'start') {
         const action = this.renderer.getHitTarget(point);
-        if (action?.type !== 'worldRadarDrag' && action?.type !== 'openWorldSite') return false;
+        if (action?.type !== 'worldRadarDrag' && action?.type !== 'openWorldSite' && action?.type !== 'techTreeDrag') return false;
         this.dragAction = action;
       }
       if (!this.dragAction) return false;
-      const handled = this.actionController?.handle?.({ type: 'worldRadarDrag', phase, pointer: point }, { event }) || false;
+      const dragType = this.dragAction.type === 'techTreeDrag' ? 'techTreeDrag' : 'worldRadarDrag';
+      const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
       if (phase === 'end') this.dragAction = null;
       return handled;
     }
@@ -208,6 +211,8 @@
     resetForCanvasTabSwitch() {
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.buildingTransition = null;
       this.activeEventId = null;
       this.showGuidebook = false;
@@ -217,6 +222,8 @@
     resetLocalViewToResources(options = {}) {
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanY = 0;
+      this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
       this.activeEventId = null;
@@ -764,6 +771,7 @@
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
+        techTreePanY: this.techTreePanY,
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),

@@ -21,6 +21,7 @@
       this.fpsLastPaintAt = 0;
       this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
+      this.lastTechTreeScroll = null;
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
 
@@ -257,6 +258,10 @@
     }
 
     withSlideClip(x, y, width, height, offsetX, callback) {
+      return this.withTranslatedClip(x, y, width, height, offsetX, 0, callback);
+    }
+
+    withTranslatedClip(x, y, width, height, offsetX = 0, offsetY = 0, callback) {
       if (!this.ctx || typeof callback !== 'function') return callback?.();
       const canClip = typeof this.ctx.save === 'function'
         && typeof this.ctx.restore === 'function'
@@ -268,7 +273,7 @@
       this.ctx.beginPath();
       this.ctx.rect(x, y, width, height);
       this.ctx.clip();
-      if (typeof this.ctx.translate === 'function') this.ctx.translate(offsetX, 0);
+      if (typeof this.ctx.translate === 'function') this.ctx.translate(offsetX, offsetY);
       try {
         return callback();
       } finally {
@@ -2619,7 +2624,113 @@
       });
     }
 
-    renderTech(state = {}, startY = 210, panelHeight = 250) {
+    getTechTreeLayout(view = {}, panel = {}, options = {}) {
+      const tree = view.tree || {};
+      const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
+      const eras = (Array.isArray(tree.eras) && tree.eras.length
+        ? tree.eras
+        : (view.eras || []).map((era) => ({ ...era, column: era.era })))
+        .slice()
+        .sort((a, b) => (Number(a.column) || Number(a.era) || 0) - (Number(b.column) || Number(b.era) || 0));
+      const width = Number(panel.width) || 0;
+      const height = Number(panel.height) || 0;
+      const panelX = Number(panel.x) || 0;
+      const panelY = Number(panel.y) || 0;
+      const centerX = panelX + width / 2;
+      const sidePadding = 8;
+      const maxSideWidth = Math.max(96, (width / 2) - sidePadding * 2 - 20);
+      const nodeWidth = Math.max(96, Math.min(142, maxSideWidth));
+      const nodeHeight = 62;
+      const branchGap = Math.max(14, Math.min(26, width * 0.05));
+      const lanePadding = Math.max(10, Math.min(18, width * 0.04));
+      const leftNodeX = panelX + sidePadding;
+      const rightNodeX = panelX + width - sidePadding - nodeWidth;
+      const leftAnchorX = leftNodeX + nodeWidth;
+      const rightAnchorX = rightNodeX;
+      const leftBranchMidX = Math.max(leftAnchorX + lanePadding, centerX - Math.max(22, width * 0.08));
+      const rightBranchMidX = Math.min(rightAnchorX - lanePadding, centerX + Math.max(22, width * 0.08));
+      const nodesByColumn = new Map();
+      nodes.forEach((node) => {
+        const column = Number(node.tree?.column ?? node.era) || 1;
+        if (!nodesByColumn.has(column)) nodesByColumn.set(column, []);
+        nodesByColumn.get(column).push(node);
+      });
+      const maxSideNodeCount = eras.reduce((max, era) => {
+        const column = Number(era.column) || Number(era.era) || 1;
+        const count = (nodesByColumn.get(column) || []).length;
+        return Math.max(max, Math.ceil(count / 2), 1);
+      }, 1);
+      const maxSideStackHeight = maxSideNodeCount * nodeHeight + Math.max(0, maxSideNodeCount - 1) * branchGap;
+      const startY = panelY + Math.max(64, maxSideStackHeight / 2 + 28);
+      const rowGap = Math.max(190, maxSideStackHeight + 48);
+      const minContentY = Math.max(panelY + 8, startY - maxSideStackHeight / 2 - 28);
+      const nodeRects = {};
+      const eraPositions = eras.map((era, eraIndex) => {
+        const column = Number(era.column) || Number(era.era) || 1;
+        const eraNodes = (nodesByColumn.get(column) || [])
+          .slice()
+          .sort((a, b) => (Number(a.tree?.lane) || 0) - (Number(b.tree?.lane) || 0));
+        const eraY = startY + eraIndex * rowGap;
+        const leftNodes = [];
+        const rightNodes = [];
+        eraNodes.forEach((node, index) => {
+          if (index % 2 === 0) leftNodes.push(node);
+          else rightNodes.push(node);
+        });
+        const placeSide = (sideNodes, side) => {
+          if (!sideNodes.length) return;
+          const totalHeight = sideNodes.length * nodeHeight + Math.max(0, sideNodes.length - 1) * branchGap;
+          const firstY = eraY - totalHeight / 2 + nodeHeight / 2;
+          sideNodes.forEach((node, sideIndex) => {
+            const nodeCenterY = firstY + sideIndex * (nodeHeight + branchGap);
+            const nodeX = side === 'left' ? leftNodeX : rightNodeX;
+            nodeRects[node.id] = {
+              x: nodeX,
+              y: nodeCenterY - nodeHeight / 2,
+              width: nodeWidth,
+              height: nodeHeight,
+              side,
+              anchorX: side === 'left' ? leftAnchorX : rightAnchorX,
+              branchMidX: side === 'left' ? leftBranchMidX : rightBranchMidX,
+              anchorY: nodeCenterY,
+              eraX: centerX,
+              eraY,
+            };
+          });
+        };
+        placeSide(leftNodes, 'left');
+        placeSide(rightNodes, 'right');
+        return {
+          ...era,
+          x: centerX,
+          y: eraY,
+          column,
+          nodes: eraNodes,
+        };
+      });
+      const contentBottom = Math.max(
+        minContentY + height + 1,
+        ...eraPositions.map((era) => era.y + 64),
+        ...Object.values(nodeRects).map((rect) => rect.y + rect.height + 44),
+      );
+      const contentHeight = Math.max(height + 1, contentBottom - minContentY);
+      const maxPanY = Math.max(0, contentHeight - height);
+      const panY = Math.max(0, Math.min(Number(options.techTreePanY) || 0, maxPanY));
+      return {
+        nodes,
+        eras,
+        eraPositions,
+        nodeRects,
+        panY,
+        maxPanY,
+        contentHeight,
+        minContentY,
+        maxContentY: minContentY + contentHeight,
+        spineX: centerX,
+      };
+    }
+
+    renderTech(state = {}, startY = 210, panelHeight = 250, options = {}) {
       if (!this.presenter || typeof this.presenter.buildTechViewState !== 'function') return;
       const view = this.presenter.buildTechViewState(state);
       const layout = this.getLayout();
@@ -2684,141 +2795,109 @@
 
       const tree = view.tree || {};
       const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
-      const treeEras = Array.isArray(tree.eras) && tree.eras.length
-        ? tree.eras
-        : (view.eras || []).map((era) => ({ ...era, column: era.era }));
       const treeTop = panelY + 68;
       const treeBottom = startY + panelHeight - 26;
       const treeHeight = Math.max(128, treeBottom - treeTop);
       const treeX = x + 24;
       const treeWidth = width - 48;
+      const treePanel = {
+        x: treeX,
+        y: treeTop,
+        width: treeWidth,
+        height: treeHeight,
+      };
       let renderedCards = 0;
 
       if (nodes.length && treeWidth > 0) {
-        const sortedEras = treeEras
-          .slice()
-          .sort((a, b) => (Number(a.column) || Number(a.era) || 0) - (Number(b.column) || Number(b.era) || 0));
-        const nodesByColumn = new Map();
-        nodes.forEach((node) => {
-          const column = Number(node.tree?.column ?? node.era) || 1;
-          if (!nodesByColumn.has(column)) nodesByColumn.set(column, []);
-          nodesByColumn.get(column).push(node);
+        const layoutInfo = this.getTechTreeLayout(view, treePanel, options);
+        const {
+          eraPositions,
+          nodeRects,
+          panY,
+          maxPanY,
+          minContentY,
+          maxContentY,
+          spineX,
+        } = layoutInfo;
+        this.lastTechTreeScroll = {
+          maxPanY,
+          panY,
+          panel: treePanel,
+        };
+        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, 0, -panY, () => {
+          this.drawLine(spineX, minContentY, spineX, maxContentY, {
+            color: 'rgba(240, 180, 91, 0.58)',
+            width: 6,
+          });
+          eraPositions.forEach((era) => {
+            this.drawPanel(era.x - 44, era.y - 18, 88, 36, {
+              fill: era.closed ? 'rgba(39, 82, 59, 0.94)' : 'rgba(63, 47, 32, 0.96)',
+              stroke: era.closed ? 'rgba(116, 211, 160, 0.56)' : 'rgba(240, 180, 91, 0.5)',
+              radius: 18,
+            });
+            this.drawText(this.truncateText(era.name || `时代 ${era.era}`, 74, { size: 11, bold: true }), era.x, era.y - 10, {
+              size: 11,
+              bold: true,
+              color: era.closed ? '#74d3a0' : '#f0b45b',
+              align: 'center',
+            });
+            this.drawText(this.truncateText(era.choiceText || '', 58, { size: 9 }), era.x, era.y + 6, {
+              size: 9,
+              color: 'rgba(234, 234, 234, 0.58)',
+              align: 'center',
+            });
+          });
+          nodes.forEach((node) => {
+            const rect = nodeRects[node.id];
+            if (!rect) return;
+            const color = node.researched
+              ? 'rgba(116, 211, 160, 0.5)'
+              : (!node.disabled ? 'rgba(240, 180, 91, 0.5)' : 'rgba(174, 176, 184, 0.2)');
+            this.drawLine(spineX, rect.eraY, rect.branchMidX, rect.anchorY, { color, width: node.researched || !node.disabled ? 2 : 1 });
+            this.drawLine(rect.branchMidX, rect.anchorY, rect.anchorX, rect.anchorY, { color, width: node.researched || !node.disabled ? 2 : 1 });
+          });
+          (tree.links || []).forEach((link) => {
+            const from = nodeRects[link.from];
+            const to = nodeRects[link.to];
+            if (!from || !to) return;
+            const fromX = from.x + from.width / 2;
+            const fromY = from.y + from.height / 2;
+            const toX = to.x + to.width / 2;
+            const toY = to.y + to.height / 2;
+            const color = link.researched
+              ? 'rgba(116, 211, 160, 0.32)'
+              : (link.active ? 'rgba(240, 180, 91, 0.32)' : 'rgba(174, 176, 184, 0.12)');
+            this.drawLine(fromX, fromY, toX, toY, { color, width: link.researched || link.active ? 2 : 1 });
+          });
+          nodes.forEach((node) => {
+            const rect = nodeRects[node.id];
+            if (!rect) return;
+            this.renderTechNode(node, rect);
+            const screenRect = { ...rect, y: rect.y - panY };
+            if (screenRect.y + screenRect.height < treeTop || screenRect.y > treeBottom) return;
+            this.addHitTarget(
+              screenRect,
+              { type: 'research', techId: node.id, disabled: node.disabled },
+            );
+            renderedCards += 1;
+          });
         });
-        const focusEra = sortedEras.find((era) => (
-          (nodesByColumn.get(Number(era.column) || Number(era.era) || 1) || []).some((node) => node.available)
-        )) || sortedEras.find((era) => !era.closed) || sortedEras[sortedEras.length - 1] || sortedEras[0];
-        const focusIndex = Math.max(0, sortedEras.indexOf(focusEra));
-        const maxVisibleColumns = Math.min(sortedEras.length, treeWidth >= 420 ? 3 : 2);
-        let startIndex = 0;
-        if (maxVisibleColumns >= 3) {
-          startIndex = Math.max(0, Math.min(focusIndex - 1, sortedEras.length - maxVisibleColumns));
-        } else if (focusIndex >= sortedEras.length - 1) {
-          startIndex = Math.max(0, sortedEras.length - maxVisibleColumns);
-        } else {
-          startIndex = Math.max(0, focusIndex);
+        this.addHitTarget(treePanel, { type: 'techTreeDrag', background: true });
+        if (maxPanY > 0) {
+          const trackX = treeX + treeWidth - 6;
+          const thumbH = Math.max(28, treeHeight * (treeHeight / (treeHeight + maxPanY)));
+          const thumbY = treeTop + (treeHeight - thumbH) * (panY / maxPanY);
+          this.drawPanel(trackX, treeTop + 4, 4, treeHeight - 8, {
+            fill: 'rgba(255, 226, 177, 0.08)',
+            stroke: 'rgba(255, 226, 177, 0.08)',
+            radius: 2,
+          });
+          this.drawPanel(trackX - 1, thumbY, 6, thumbH, {
+            fill: 'rgba(240, 180, 91, 0.6)',
+            stroke: 'rgba(255, 226, 177, 0.22)',
+            radius: 3,
+          });
         }
-        const visibleEras = sortedEras.slice(startIndex, startIndex + maxVisibleColumns);
-        const visibleColumns = new Set(visibleEras.map((era) => Number(era.column) || Number(era.era) || 1));
-        const visibleNodes = nodes
-          .filter((node) => visibleColumns.has(Number(node.tree?.column ?? node.era) || 1));
-        const maxColumnNodeCount = Math.max(1, ...visibleEras.map((era) => (
-          (nodesByColumn.get(Number(era.column) || Number(era.era) || 1) || []).length
-        )));
-        const columnGap = 16;
-        const columnWidth = (treeWidth - columnGap * Math.max(0, visibleEras.length - 1)) / Math.max(1, visibleEras.length);
-        const nodeGap = 8;
-        const nodeAreaTop = treeTop + 14;
-        const nodeAreaBottom = treeBottom - 12;
-        const nodeAreaHeight = Math.max(80, nodeAreaBottom - nodeAreaTop);
-        const nodeWidth = Math.max(118, Math.min(156, columnWidth - 6));
-        const nodeHeight = Math.max(42, Math.min(62, (nodeAreaHeight - nodeGap * Math.max(0, maxColumnNodeCount - 1)) / maxColumnNodeCount));
-        const columnX = (visibleIndex) => treeX + columnWidth * visibleIndex + columnGap * visibleIndex + columnWidth / 2;
-        const spineY = treeTop + treeHeight / 2;
-        const nodeRects = {};
-        const firstColumnX = columnX(0);
-        const lastColumnX = columnX(Math.max(0, visibleEras.length - 1));
-
-        this.drawLine(firstColumnX, spineY, lastColumnX, spineY, {
-          color: 'rgba(240, 180, 91, 0.34)',
-          width: 3,
-        });
-        visibleEras.forEach((era, visibleIndex) => {
-          const eraX = columnX(visibleIndex);
-          this.drawLine(eraX, nodeAreaTop, eraX, nodeAreaBottom, {
-            color: 'rgba(255, 226, 177, 0.1)',
-            width: 1,
-          });
-          this.drawPanel(eraX - 24, treeTop - 16, 48, 24, {
-            fill: era.closed ? 'rgba(39, 82, 59, 0.9)' : 'rgba(63, 47, 32, 0.92)',
-            stroke: era.closed ? 'rgba(116, 211, 160, 0.5)' : 'rgba(240, 180, 91, 0.36)',
-            radius: 12,
-          });
-          this.drawText(this.truncateText(`E${era.era}`, 36, { size: 10, bold: true }), eraX, treeTop - 9, {
-            size: 10,
-            bold: true,
-            color: era.closed ? '#74d3a0' : '#f0b45b',
-            align: 'center',
-          });
-          this.drawText(this.truncateText(era.name || `时代 ${era.era}`, Math.max(62, columnWidth - 12), { size: 9 }), eraX, treeTop + 9, {
-            size: 9,
-            color: '#cbbd96',
-            align: 'center',
-          });
-          this.drawText(this.truncateText(era.choiceText || '', 42, { size: 9, bold: true }), eraX, treeBottom + 5, {
-            size: 9,
-            bold: true,
-            color: 'rgba(234, 234, 234, 0.58)',
-            align: 'center',
-          });
-        });
-
-        visibleEras.forEach((era, visibleIndex) => {
-          const column = Number(era.column) || Number(era.era) || 1;
-          const columnNodes = (nodesByColumn.get(column) || [])
-            .slice()
-            .sort((a, b) => (Number(a.tree?.lane) || 0) - (Number(b.tree?.lane) || 0));
-          const eraX = columnX(visibleIndex);
-          const slotCount = Math.max(1, columnNodes.length);
-          columnNodes.forEach((node, index) => {
-            const slotY = slotCount === 1
-              ? spineY
-              : nodeAreaTop + nodeHeight / 2 + index * ((nodeAreaHeight - nodeHeight) / Math.max(1, slotCount - 1));
-            nodeRects[node.id] = {
-              x: Math.max(x + 18, Math.min(x + width - 18 - nodeWidth, eraX - nodeWidth / 2)),
-              y: Math.max(nodeAreaTop, Math.min(nodeAreaBottom - nodeHeight, slotY - nodeHeight / 2)),
-              width: nodeWidth,
-              height: nodeHeight,
-            };
-          });
-        });
-
-        (tree.links || []).forEach((link) => {
-          const from = nodeRects[link.from];
-          const to = nodeRects[link.to];
-          if (!from || !to) return;
-          const fromX = from.x + from.width / 2;
-          const fromY = from.y + from.height / 2;
-          const toX = to.x + to.width / 2;
-          const toY = to.y + to.height / 2;
-          const midX = (fromX + toX) / 2;
-          const color = link.researched
-            ? 'rgba(116, 211, 160, 0.58)'
-            : (link.active ? 'rgba(240, 180, 91, 0.58)' : 'rgba(174, 176, 184, 0.2)');
-          this.drawLine(fromX, fromY, midX, fromY, { color, width: link.researched || link.active ? 2 : 1 });
-          this.drawLine(midX, fromY, midX, toY, { color, width: link.researched || link.active ? 2 : 1 });
-          this.drawLine(midX, toY, toX, toY, { color, width: link.researched || link.active ? 2 : 1 });
-        });
-
-        visibleNodes.forEach((node) => {
-          const rect = nodeRects[node.id];
-          if (!rect) return;
-          this.renderTechNode(node, rect);
-          this.addHitTarget(
-            rect,
-            { type: 'research', techId: node.id, disabled: node.disabled },
-          );
-          renderedCards += 1;
-        });
       }
 
       if (!renderedCards) {
@@ -3275,7 +3354,7 @@
         activeBuildingCategory: options.activeBuildingCategory,
       });
       else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
-      else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight);
+      else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight, options);
       else if (activeTab === 'civilization') this.renderCivilization(state, startY, availableHeight, options);
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight, options);
     }
@@ -3301,7 +3380,7 @@
         this.renderEvents(state, topBarBottom, availableHeight);
       } else if (activeTab === 'tech') {
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderTech(state, topBarBottom, availableHeight);
+        this.renderTech(state, topBarBottom, availableHeight, options);
       } else if (activeTab === 'civilization') {
         const availableHeight = Math.max(260, tabsTop - topBarBottom - 12);
         this.renderCivilization(

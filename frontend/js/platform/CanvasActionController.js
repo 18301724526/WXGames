@@ -783,6 +783,59 @@
       return true;
     }
 
+    handle_techTreeDrag(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const pointer = action.pointer || {};
+      const x = Number(pointer.x) || 0;
+      const y = Number(pointer.y) || 0;
+      const clampPan = (value) => {
+        const requested = Math.max(0, Number(value) || 0);
+        const renderer = this.host?.renderer;
+        const presenter = renderer?.presenter || this.host?.presenter;
+        if (
+          !renderer
+          || !presenter
+          || typeof renderer.getTechTreeLayout !== 'function'
+          || typeof presenter.buildTechViewState !== 'function'
+        ) return requested;
+        const state = this.host?.state || this.host?.lastGame?.state || {};
+        const view = presenter.buildTechViewState(state);
+        const renderLayout = typeof renderer.getLayout === 'function'
+          ? renderer.getLayout()
+          : { contentX: 12, contentWidth: Math.max(300, Number(renderer.width) || 390) - 24 };
+        const cachedPanel = renderer.lastTechTreeScroll?.panel;
+        const treePanel = cachedPanel || {
+          x: renderLayout.contentX + 24,
+          y: 352,
+          width: renderLayout.contentWidth - 48,
+          height: Math.max(128, (Number(renderer.height) || 844) - 438),
+        };
+        const layoutInfo = renderer.getTechTreeLayout(view, treePanel, { techTreePanY: requested });
+        return Math.min(requested, Math.max(0, Number(layoutInfo.maxPanY) || 0));
+      };
+      if (action.phase === 'start') {
+        this.techTreeDragStart = {
+          x,
+          y,
+          panY: clampPan(Number(this.host?.techTreePanY) || 0),
+        };
+        if (this.host) this.host.techTreePanY = this.techTreeDragStart.panY;
+      } else if (action.phase === 'move') {
+        if (!this.host) return false;
+        const dy = Number(pointer.dy ?? pointer.deltaY);
+        const nextPan = Number.isFinite(dy)
+          ? (Number(this.host.techTreePanY) || 0) - dy
+          : (this.techTreeDragStart ? this.techTreeDragStart.panY + this.techTreeDragStart.y - y : Number(this.host.techTreePanY) || 0);
+        this.host.techTreePanY = clampPan(nextPan);
+      } else if (action.phase === 'end' || action.phase === 'cancel') {
+        this.techTreeDragStart = null;
+        if (this.host) this.host.techTreeDragStart = null;
+      }
+      this.render(action);
+      return true;
+    }
+
     handle_changeExpeditionSoldiers(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;
