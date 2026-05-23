@@ -78,6 +78,22 @@
       return true;
     }
 
+    finalizeTalentPolicyApply(result, action = {}) {
+      const closeAfterSuccess = (value) => {
+        if (value !== false) {
+          this.host.showTalentPolicy = false;
+          const game = this.getGameHost();
+          if (game && game !== this.host && 'showTalentPolicy' in game) game.showTalentPolicy = false;
+          this.afterHandled(action);
+        }
+        return value !== false;
+      };
+      if (!result || typeof result.then !== 'function') return closeAfterSuccess(result);
+      if (this.awaitAsync) return result.then(closeAfterSuccess);
+      result.then(closeAfterSuccess).catch((error) => this.log?.(error));
+      return true;
+    }
+
     forward(action, meta = {}) {
       if (typeof this.host?.forwardCanvasAction !== 'function') return undefined;
       return this.host.forwardCanvasAction(action, meta);
@@ -304,21 +320,33 @@
 
     handle_applyTalentPolicy(action) {
       const forwarded = this.forward(action);
-      if (forwarded !== undefined) return forwarded !== false;
+      if (forwarded !== undefined) {
+        return this.finalizeTalentPolicyApply(forwarded, action);
+      }
       const game = this.getGameHost();
       if (typeof game?.applyTalentPolicy === 'function') {
-        return this.finalize(game.applyTalentPolicy(action.policyId));
+        return this.finalizeTalentPolicyApply(game.applyTalentPolicy(action.policyId), action);
       }
-      return this.finalize(this.runAction(() => this.host.api.applyTalentPolicy(action.policyId)));
+      return this.finalizeTalentPolicyApply(
+        this.runAction(() => this.host.api.applyTalentPolicy(action.policyId)),
+        action,
+      );
     }
 
     handle_applyTalentPolicyDraft(action) {
       const forwarded = this.forward(action);
-      if (forwarded !== undefined) return forwarded !== false;
+      if (forwarded !== undefined) {
+        return this.finalizeTalentPolicyApply(forwarded, action);
+      }
       const game = this.getGameHost();
-      if (typeof game?.applyTalentPolicyDraft === 'function') return this.finalize(game.applyTalentPolicyDraft());
+      if (typeof game?.applyTalentPolicyDraft === 'function') {
+        return this.finalizeTalentPolicyApply(game.applyTalentPolicyDraft(), action);
+      }
       const draft = this.host?.talentPolicyUiState || {};
-      return this.finalize(this.runAction(() => this.host.api.applyTalentPolicy(null, draft)));
+      return this.finalizeTalentPolicyApply(
+        this.runAction(() => this.host.api.applyTalentPolicy(null, draft)),
+        action,
+      );
     }
 
     handle_saveTalentPolicyDraft(action) {

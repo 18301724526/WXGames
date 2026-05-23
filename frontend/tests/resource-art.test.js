@@ -99,7 +99,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(css, /naming-modal-content|naming-input|naming-message/);
   assert.doesNotMatch(html, /floating-text\.js|id="fxLayer"/);
   assert.doesNotMatch(css, /fx-layer|floating-text|particleFly|screen-flash|floatUp/);
-  assert.match(html, /UIStatePresenter\.js\?v=ui-state-v8/);
+  assert.match(html, /UIStatePresenter\.js\?v=ui-state-v9/);
   assert.doesNotMatch(html, /BuildingUIRenderer|BuildingActionAdapter|buildingGrid|building-panel|building-card/);
   assert.doesNotMatch(html, /EventUIRenderer\.js/);
   assert.doesNotMatch(html, /RuntimeLogAdapter\.js|LogModalAdapter\.js/);
@@ -107,7 +107,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(html, /PopulationPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /NamingModalAdapter\.js|id="namingModal"|id="namingInput"/);
-  assert.match(html, /GameAPI\.js\?v=version-cache-bust-v1/);
+  assert.match(html, /GameAPI\.js\?v=version-cache-bust-v2/);
   assert.match(html, /TerritoryController\.js\?v=territory-rename-adapter-v1/);
   assert.doesNotMatch(html, /TerritoryActionAdapter\.js|TerritoryUIRenderer\.js|MilitaryPanelAdapter\.js/);
   assert.match(html, /TutorialCanvasRenderer\.js\?v=tutorial-canvas-v1/);

@@ -729,6 +729,9 @@
         const result = await this.getGameApi().applyTalentPolicy(policyId);
         this.applyApiState(result);
         this.showTalentPolicy = false;
+        if (this.canvasShell && 'showTalentPolicy' in this.canvasShell) {
+          this.canvasShell.showTalentPolicy = false;
+        }
         this.showFloatingText(result.message || '方针已应用');
         this.log(result.message || '方针已应用');
         return true;
@@ -744,6 +747,9 @@
         const result = await this.getGameApi().applyTalentPolicy(null, this.getTalentPolicyDraft());
         this.applyApiState(result);
         this.showTalentPolicy = false;
+        if (this.canvasShell && 'showTalentPolicy' in this.canvasShell) {
+          this.canvasShell.showTalentPolicy = false;
+        }
         this.showFloatingText(result.message || '方针已应用');
         this.log(result.message || '方针已应用');
         return true;

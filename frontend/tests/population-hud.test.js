@@ -170,6 +170,7 @@ test('talent policy panel renders presets, tier controls, and save/apply hit tar
 
   renderer.render({ currentTab: 'resources', population: { total: 4 } }, {
     activeTab: 'resources',
+    mode: 'hud',
     showTalentPolicy: true,
   });
 

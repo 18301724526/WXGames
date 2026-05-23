@@ -3564,6 +3564,9 @@
       if (options.showTaskCenter) {
         this.renderTaskCenterPanel(state, options);
       }
+      if (options.showTalentPolicy) {
+        this.renderTalentPolicyPanel(state, options);
+      }
       if (options.activeEventId) {
         this.renderEventModal(state, options.activeEventId);
       }
