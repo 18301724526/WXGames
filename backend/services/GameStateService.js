@@ -100,7 +100,6 @@ function normalizeState(rawState) {
   state.updatedAt = state.updatedAt || new Date().toISOString();
   BuildingActionService.applyDerivedStats(state);
   CityService.persistLegacyFieldsToActiveCity(state);
-  if (state.population.total > state.population.max) state.population.total = state.population.max;
   return state;
 }
 

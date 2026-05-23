@@ -46,31 +46,55 @@ test('人口自然增长在食物充足且未达上限时生效', () => {
   assert.equal(state.population.growthProgress, 0);
 });
 
-test('population capacity exposes era and housing sources without activating split cap yet', () => {
+test('population capacity uses the stricter era or housing source when split cap is active', () => {
   const capacity = ResourceTickCalculator.calculatePopulationCapacity(
     { currentEra: 2 },
     { populationCap: 12 },
   );
 
-  assert.equal(capacity.active, false);
+  assert.equal(capacity.active, true);
   assert.equal(capacity.eraCap, 9);
   assert.equal(capacity.housingCap, 12);
-  assert.equal(capacity.effectiveCap, 12);
-  assert.equal(capacity.limitingSource, 'legacy');
+  assert.equal(capacity.effectiveCap, 9);
+  assert.equal(capacity.limitingSource, 'era');
 });
 
-test('client population state includes capacity preview sources', () => {
+test('client population state includes active split capacity sources', () => {
   const state = gameStateService.createInitialGameState('capacity-preview-player');
   state.currentEra = 2;
   state.buildings.house = { level: 1 };
   const clientState = gameStateService.getClientGameState(state);
 
   assert.equal(clientState.population.max, 6);
-  assert.equal(clientState.population.capacity.active, false);
+  assert.equal(clientState.population.capacity.active, true);
   assert.equal(clientState.population.capacity.eraCap, 9);
   assert.equal(clientState.population.capacity.housingCap, 6);
   assert.equal(clientState.population.eraCap, 9);
   assert.equal(clientState.population.housingCap, 6);
+});
+
+test('split population capacity does not remove existing over-cap population', () => {
+  const state = gameStateService.createInitialGameState('capacity-legacy-overcap-player');
+  state.currentEra = 0;
+  state.resources.food = 100;
+  state.buildings.house = { level: 1 };
+  state.population.total = 5;
+  state.population.farmers = 5;
+  state.population.unassigned = 0;
+  state.population.max = 6;
+  state.population.maxPop = 6;
+  state.population.growthProgress = 119;
+
+  const clientState = gameStateService.getClientGameState(state);
+
+  assert.equal(clientState.population.total, 5);
+  assert.equal(clientState.population.max, 3);
+  assert.equal(clientState.population.capacity.effectiveCap, 3);
+
+  const result = ResourceTickCalculator.applyPopulationGrowth(clientState, 1);
+
+  assert.equal(result.grown, 0);
+  assert.equal(clientState.population.total, 5);
 });
 
 test('habitability above zero speeds up population growth progress', () => {

@@ -84,7 +84,7 @@ test('resource HUD renders population management through Canvas hit targets', ()
         total: '4',
         max: '6',
         unassigned: '1',
-        capacitySummary: '承载预览：时代 900 / 民居 600',
+        capacitySummary: '承载生效：时代 900 / 民居 600',
       },
       jobs: [
         { id: 'farmer', visible: true, count: 2, canIncrease: true, canDecrease: true },
@@ -100,7 +100,7 @@ test('resource HUD renders population management through Canvas hit targets', ()
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '方针'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人才'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '待分配人才'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '承载预览：时代 900 / 民居 600'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '承载生效：时代 900 / 民居 600'));
   assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 120 && call[4] === 322));
   assert.ok(calls.some((call) => call[0] === 'roundRect' && call[2] >= 112 && call[4] === 42));
   assert.ok(assets.includes('assets/art/icon-population-cutout.webp'));

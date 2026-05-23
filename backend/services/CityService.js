@@ -184,7 +184,6 @@ function applyDerivedStatsToCity(city, gameState) {
   city.population.housingCap = capacity.housingCap;
   city.population.max = capacity.effectiveCap;
   city.population.maxPop = city.population.max;
-  if (city.population.total > city.population.max) city.population.total = city.population.max;
   city.happiness = ResourceTickCalculator.calculateBuffedHappiness(effects, {
     ...gameState,
     population: city.population,
