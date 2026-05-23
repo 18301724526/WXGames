@@ -292,7 +292,7 @@
       return {
         activeTab,
         title: '攻略',
-        subtitle: `${planning.terrainLabel} · 宜居度 ${planning.text.habitability} ${planning.habitabilityLabel}`,
+        subtitle: `${planning.terrainLabel} · ${planning.text.habitabilityStatus}`,
         planning,
         categories,
         activeCategory: categories.find((category) => category.id === activeTab) || categories[0] || fallbackCategories[1],
@@ -393,6 +393,7 @@
           terrain: terrainLabel,
           habitability: `${habitability >= 0 ? '+' : ''}${habitability}`,
           habitabilityLabel: label,
+          habitabilityStatus: `宜居度${label}`,
           populationGrowthStatus: this.formatPopulationGrowthStatus(growthMultiplier),
           summary: planning.habitabilitySummary || `${terrainLabel}城市规划${label}`,
           note: notes[0] || planning.terrainHint || '保持建筑搭配，会让城市更稳定。',
