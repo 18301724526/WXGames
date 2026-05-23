@@ -789,8 +789,9 @@
       const pointer = action.pointer || {};
       const x = Number(pointer.x) || 0;
       const y = Number(pointer.y) || 0;
-      const clampPan = (value) => {
-        const requested = Math.max(0, Number(value) || 0);
+      const clampPan = (xValue, yValue) => {
+        const requestedX = Number(xValue) || 0;
+        const requestedY = Math.max(0, Number(yValue) || 0);
         const renderer = this.host?.renderer;
         const presenter = renderer?.presenter || this.host?.presenter;
         if (
@@ -798,7 +799,7 @@
           || !presenter
           || typeof renderer.getTechTreeLayout !== 'function'
           || typeof presenter.buildTechViewState !== 'function'
-        ) return requested;
+        ) return { x: requestedX, y: requestedY };
         const state = this.host?.state || this.host?.lastGame?.state || {};
         const view = presenter.buildTechViewState(state);
         const renderLayout = typeof renderer.getLayout === 'function'
@@ -811,23 +812,43 @@
           width: renderLayout.contentWidth - 48,
           height: Math.max(128, (Number(renderer.height) || 844) - 438),
         };
-        const layoutInfo = renderer.getTechTreeLayout(view, treePanel, { techTreePanY: requested });
-        return Math.min(requested, Math.max(0, Number(layoutInfo.maxPanY) || 0));
+        const layoutInfo = renderer.getTechTreeLayout(view, treePanel, {
+          techTreePanX: requestedX,
+          techTreePanY: requestedY,
+        });
+        return {
+          x: Math.max(
+            Number(layoutInfo.minPanX) || 0,
+            Math.min(requestedX, Number(layoutInfo.maxPanX) || 0),
+          ),
+          y: Math.min(requestedY, Math.max(0, Number(layoutInfo.maxPanY) || 0)),
+        };
       };
       if (action.phase === 'start') {
+        const pan = clampPan(Number(this.host?.techTreePanX) || 0, Number(this.host?.techTreePanY) || 0);
         this.techTreeDragStart = {
           x,
           y,
-          panY: clampPan(Number(this.host?.techTreePanY) || 0),
+          panX: pan.x,
+          panY: pan.y,
         };
-        if (this.host) this.host.techTreePanY = this.techTreeDragStart.panY;
+        if (this.host) {
+          this.host.techTreePanX = pan.x;
+          this.host.techTreePanY = pan.y;
+        }
       } else if (action.phase === 'move') {
         if (!this.host) return false;
+        const dx = Number(pointer.dx ?? pointer.deltaX);
         const dy = Number(pointer.dy ?? pointer.deltaY);
-        const nextPan = Number.isFinite(dy)
+        const nextPanX = Number.isFinite(dx)
+          ? (Number(this.host.techTreePanX) || 0) - dx
+          : (this.techTreeDragStart ? this.techTreeDragStart.panX + this.techTreeDragStart.x - x : Number(this.host.techTreePanX) || 0);
+        const nextPanY = Number.isFinite(dy)
           ? (Number(this.host.techTreePanY) || 0) - dy
           : (this.techTreeDragStart ? this.techTreeDragStart.panY + this.techTreeDragStart.y - y : Number(this.host.techTreePanY) || 0);
-        this.host.techTreePanY = clampPan(nextPan);
+        const pan = clampPan(nextPanX, nextPanY);
+        this.host.techTreePanX = pan.x;
+        this.host.techTreePanY = pan.y;
       } else if (action.phase === 'end' || action.phase === 'cancel') {
         this.techTreeDragStart = null;
         if (this.host) this.host.techTreeDragStart = null;

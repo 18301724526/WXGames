@@ -1756,7 +1756,7 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(techTarget);
   assert.deepEqual(
     renderer.getHitTarget({ x: techTarget.x + 2, y: techTarget.y + 2 }),
-    { type: 'research', techId: 'farming_field_rotation', disabled: false },
+    { type: 'research', techId: 'farming_field_rotation', disabled: false, dragType: 'techTreeDrag' },
   );
   assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
 });
@@ -1833,6 +1833,54 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
     });
   });
   assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
+});
+
+test('CanvasGameRenderer pans tech tree horizontally and keeps card drag handles', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ hasWood: true, text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s', woodValue: '0', woodRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildTechViewState: () => ({
+      tree: {
+        eras: [{ era: 1, name: '农耕分支', choiceText: '0/1', closed: false, column: 1 }],
+        nodes: [
+          { id: 'left_branch', title: '左侧科技', routeLabel: '农业', core: '路线节点', buttonLabel: '研究', status: 'available', available: true, disabled: false, tree: { column: 1, lane: -1, parents: [] } },
+          { id: 'right_branch', title: '右侧科技', routeLabel: '工业', core: '路线节点', buttonLabel: '研究', status: 'locked', available: false, disabled: true, tree: { column: 1, lane: 1, parents: [] } },
+        ],
+        links: [],
+      },
+      text: {
+        knowledgeRate: '0/s',
+        title: '科技树',
+        points: '科技点 1',
+        researched: '已研究 0',
+        available: '可研究 1',
+        placeholder: '进入新时代后获得科技点',
+        subtitle: '拖动画布查看分叉科技。',
+      },
+    }),
+  });
+
+  renderer.render({ currentEraName: '农耕时代', resources: { knowledgePerSecond: 0 } }, {
+    activeTab: 'tech',
+    mode: 'hud',
+    techTreePanX: 0,
+  });
+  const initialTarget = renderer.hitTargets.find((target) => target.action.techId === 'right_branch');
+  assert.ok(initialTarget);
+  assert.equal(initialTarget.action.dragType, 'techTreeDrag');
+
+  renderer.render({ currentEraName: '农耕时代', resources: { knowledgePerSecond: 0 } }, {
+    activeTab: 'tech',
+    mode: 'hud',
+    techTreePanX: 100,
+  });
+  const pannedTarget = renderer.hitTargets.find((target) => target.action.techId === 'right_branch');
+  assert.ok(pannedTarget);
+  assert.ok(pannedTarget.x < initialTarget.x);
 });
 
 test('CanvasGameRenderer draws civilization page and advance action without DOM adapter', () => {

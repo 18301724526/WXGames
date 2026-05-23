@@ -47,6 +47,7 @@
       this.talentPolicyUiState = {};
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.pageTransition = null;
@@ -135,8 +136,13 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       if (phase === 'start') {
         const action = this.renderer.getHitTarget(point);
-        if (action?.type !== 'worldRadarDrag' && action?.type !== 'openWorldSite' && action?.type !== 'techTreeDrag') return false;
-        this.dragAction = action;
+        if (
+          action?.type !== 'worldRadarDrag'
+          && action?.type !== 'openWorldSite'
+          && action?.type !== 'techTreeDrag'
+          && action?.dragType !== 'techTreeDrag'
+        ) return false;
+        this.dragAction = action.dragType === 'techTreeDrag' ? { type: 'techTreeDrag' } : action;
       }
       if (!this.dragAction) return false;
       const dragType = this.dragAction.type === 'techTreeDrag' ? 'techTreeDrag' : 'worldRadarDrag';
@@ -211,6 +217,7 @@
     resetForCanvasTabSwitch() {
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.buildingTransition = null;
@@ -222,6 +229,7 @@
     resetLocalViewToResources(options = {}) {
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.pageTransition = null;
@@ -771,6 +779,7 @@
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
+        techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),

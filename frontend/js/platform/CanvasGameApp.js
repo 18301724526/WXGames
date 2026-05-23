@@ -54,6 +54,7 @@
       this.activeGuideNavigation = null;
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.pageTransition = null;
@@ -272,6 +273,7 @@
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
+        techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
@@ -471,6 +473,7 @@
       if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') {
         this.canvasShell.activeBuildingCategory = category;
         this.canvasShell.buildingOffset = 0;
+        this.canvasShell.techTreePanX = 0;
         this.canvasShell.techTreePanY = 0;
         this.canvasShell.buildingTransition = null;
       }
@@ -494,6 +497,7 @@
       this.showTalentPolicy = false;
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.buildingTransition = null;
@@ -503,6 +507,7 @@
       this.activeTab = 'resources';
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.activeEventId = null;
@@ -871,6 +876,7 @@
       this.state = { ...this.state, currentTab: this.activeTab };
       if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
       this.buildingOffset = 0;
+      this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeDragStart = null;
       this.buildingTransition = null;

@@ -2637,18 +2637,17 @@
       const panelX = Number(panel.x) || 0;
       const panelY = Number(panel.y) || 0;
       const centerX = panelX + width / 2;
-      const sidePadding = 8;
-      const maxSideWidth = Math.max(96, (width / 2) - sidePadding * 2 - 20);
-      const nodeWidth = Math.max(96, Math.min(142, maxSideWidth));
+      const nodeWidth = Math.max(112, Math.min(136, width * 0.4));
       const nodeHeight = 62;
       const branchGap = Math.max(14, Math.min(26, width * 0.05));
-      const lanePadding = Math.max(10, Math.min(18, width * 0.04));
-      const leftNodeX = panelX + sidePadding;
-      const rightNodeX = panelX + width - sidePadding - nodeWidth;
+      const branchOffset = Math.max(96, Math.min(170, width * 0.32));
+      const lanePadding = Math.max(18, Math.min(36, width * 0.08));
+      const leftNodeX = centerX - branchOffset - nodeWidth;
+      const rightNodeX = centerX + branchOffset;
       const leftAnchorX = leftNodeX + nodeWidth;
       const rightAnchorX = rightNodeX;
-      const leftBranchMidX = Math.max(leftAnchorX + lanePadding, centerX - Math.max(22, width * 0.08));
-      const rightBranchMidX = Math.min(rightAnchorX - lanePadding, centerX + Math.max(22, width * 0.08));
+      const leftBranchMidX = Math.min(leftAnchorX + lanePadding, centerX - Math.max(26, width * 0.1));
+      const rightBranchMidX = Math.max(rightAnchorX - lanePadding, centerX + Math.max(26, width * 0.1));
       const nodesByColumn = new Map();
       nodes.forEach((node) => {
         const column = Number(node.tree?.column ?? node.era) || 1;
@@ -2713,17 +2712,36 @@
         ...eraPositions.map((era) => era.y + 64),
         ...Object.values(nodeRects).map((rect) => rect.y + rect.height + 44),
       );
+      const contentLeft = Math.min(
+        centerX - 56,
+        ...eraPositions.map((era) => era.x - 56),
+        ...Object.values(nodeRects).map((rect) => rect.x - 24),
+      );
+      const contentRight = Math.max(
+        centerX + 56,
+        ...eraPositions.map((era) => era.x + 56),
+        ...Object.values(nodeRects).map((rect) => rect.x + rect.width + 24),
+      );
       const contentHeight = Math.max(height + 1, contentBottom - minContentY);
       const maxPanY = Math.max(0, contentHeight - height);
       const panY = Math.max(0, Math.min(Number(options.techTreePanY) || 0, maxPanY));
+      const minPanX = Math.min(0, contentLeft - (panelX + 16));
+      const maxPanX = Math.max(0, contentRight - (panelX + width - 16));
+      const rawPanX = Number(options.techTreePanX) || 0;
+      const panX = Math.max(minPanX, Math.min(rawPanX, maxPanX));
       return {
         nodes,
         eras,
         eraPositions,
         nodeRects,
+        panX,
+        minPanX,
+        maxPanX,
         panY,
         maxPanY,
         contentHeight,
+        contentLeft,
+        contentRight,
         minContentY,
         maxContentY: minContentY + contentHeight,
         spineX: centerX,
@@ -2813,6 +2831,9 @@
         const {
           eraPositions,
           nodeRects,
+          panX,
+          minPanX,
+          maxPanX,
           panY,
           maxPanY,
           minContentY,
@@ -2821,10 +2842,13 @@
         } = layoutInfo;
         this.lastTechTreeScroll = {
           maxPanY,
+          minPanX,
+          maxPanX,
+          panX,
           panY,
           panel: treePanel,
         };
-        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, 0, -panY, () => {
+        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, -panX, -panY, () => {
           this.drawLine(spineX, minContentY, spineX, maxContentY, {
             color: 'rgba(240, 180, 91, 0.58)',
             width: 6,
@@ -2873,16 +2897,33 @@
             const rect = nodeRects[node.id];
             if (!rect) return;
             this.renderTechNode(node, rect);
-            const screenRect = { ...rect, y: rect.y - panY };
+            const screenRect = { ...rect, x: rect.x - panX, y: rect.y - panY };
             if (screenRect.y + screenRect.height < treeTop || screenRect.y > treeBottom) return;
+            if (screenRect.x + screenRect.width < treeX || screenRect.x > treeX + treeWidth) return;
             this.addHitTarget(
               screenRect,
-              { type: 'research', techId: node.id, disabled: node.disabled },
+              { type: 'research', techId: node.id, disabled: node.disabled, dragType: 'techTreeDrag' },
             );
             renderedCards += 1;
           });
         });
         this.addHitTarget(treePanel, { type: 'techTreeDrag', background: true });
+        if (minPanX < 0 || maxPanX > 0) {
+          const trackY = treeBottom - 6;
+          const contentWidth = treeWidth + maxPanX - minPanX;
+          const thumbW = Math.max(34, treeWidth * (treeWidth / Math.max(treeWidth, contentWidth)));
+          const thumbX = treeX + (treeWidth - thumbW) * ((panX - minPanX) / Math.max(1, maxPanX - minPanX));
+          this.drawPanel(treeX + 4, trackY, treeWidth - 8, 4, {
+            fill: 'rgba(255, 226, 177, 0.08)',
+            stroke: 'rgba(255, 226, 177, 0.08)',
+            radius: 2,
+          });
+          this.drawPanel(thumbX, trackY - 1, thumbW, 6, {
+            fill: 'rgba(240, 180, 91, 0.48)',
+            stroke: 'rgba(255, 226, 177, 0.18)',
+            radius: 3,
+          });
+        }
         if (maxPanY > 0) {
           const trackX = treeX + treeWidth - 6;
           const thumbH = Math.max(28, treeHeight * (treeHeight / (treeHeight + maxPanY)));
