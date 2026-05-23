@@ -800,7 +800,7 @@
           || typeof renderer.getTechTreeLayout !== 'function'
           || typeof presenter.buildTechViewState !== 'function'
         ) return { x: requestedX, y: requestedY };
-        const state = this.host?.state || this.host?.lastGame?.state || {};
+        const state = this.getState();
         const view = presenter.buildTechViewState(state);
         const renderLayout = typeof renderer.getLayout === 'function'
           ? renderer.getLayout()

@@ -1211,6 +1211,68 @@ test('Canvas game shell keeps tech tree pan synchronized with game host renders'
   assert.equal(lastRender.techTreePanY, -130);
 });
 
+test('Canvas game shell clamps tech tree drag with game state instead of shell initial state', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const layoutStates = [];
+  const game = {
+    state: {
+      currentTab: 'tech',
+      techs: {
+        eras: [
+          { era: 1, techs: [{ id: 'visible' }] },
+          { era: 2, techs: [{ id: 'future' }] },
+        ],
+      },
+    },
+    activeTab: 'tech',
+    techTreePanX: 0,
+    techTreePanY: 0,
+    getActiveTab() { return this.activeTab; },
+  };
+  const renderer = {
+    lastTechTreeScroll: { panel: { x: 40, y: 260, width: 300, height: 360 } },
+    getHitTarget: () => ({ type: 'techTreeDrag', background: true }),
+    getLayout: () => ({ contentX: 12, contentWidth: 366 }),
+    getTechTreeLayout: (view, _panel, options) => {
+      layoutStates.push(view);
+      const hasFullTreeState = Array.isArray(view.tree?.nodes) && view.tree.nodes.length >= 2;
+      return {
+        minPanX: -120,
+        maxPanX: 140,
+        minPanY: hasFullTreeState ? -900 : -96,
+        maxPanY: 96,
+        panX: Number(options.techTreePanX) || 0,
+        panY: Number(options.techTreePanY) || 0,
+      };
+    },
+    presenter: {
+      buildTechViewState: (state) => ({
+        tree: {
+          nodes: state?.techs?.eras?.flatMap((era) => era.techs || []) || [],
+        },
+        text: {},
+      }),
+    },
+    render() {},
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  listeners.pointerdown({ pointerId: 10, clientX: 220, clientY: 620, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 10, clientX: 220, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 10, clientX: 220, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.ok(layoutStates.some((view) => view.tree?.nodes?.length >= 2));
+  assert.equal(shell.techTreePanY, -400);
+  assert.equal(game.techTreePanY, -400);
+});
+
 test('Canvas game shell owns naming prompt state and dispatches canvas submit', async () => {
   const { document, runtime, listeners } = createCanvasHarness();
   runtime.prompt = () => ' 赤火联盟 ';
@@ -1639,9 +1701,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-radar-pan-v3/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-radar-pan-v3[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-radar-pan-v3/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-radar-pan-v3[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-pan-state-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-pan-state-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-pan-state-v1/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-pan-state-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);
