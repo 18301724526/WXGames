@@ -1569,6 +1569,8 @@
           tree: {
             column: this.toInteger(tech.tree?.column, era.era),
             lane: this.toNumber(tech.tree?.lane ?? (index - Math.floor((era.techs || []).length / 2))),
+            row: this.toNumber(tech.tree?.row ?? tech.tree?.column ?? era.era),
+            routes: Array.isArray(tech.tree?.routes) ? [...tech.tree.routes] : [],
             parents: Array.isArray(tech.tree?.parents) ? [...tech.tree.parents] : [...(tech.parents || [])],
           },
         }))

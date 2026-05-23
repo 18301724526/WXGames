@@ -323,47 +323,63 @@ const TECH_ERAS = [
   },
 ];
 
+const TECH_ROUTE_META = {
+  agriculture: { lane: -4, color: '#5fcb6b' },
+  livelihood: { lane: -3, color: '#d9b35d' },
+  administration: { lane: -2, color: '#c9a47a' },
+  knowledge: { lane: -1, color: '#57a6ff' },
+  culture: { lane: 0, color: '#b48cff' },
+  engineering: { lane: 1, color: '#83c8d9' },
+  industry: { lane: 2, color: '#d9904f' },
+  exploration: { lane: 3, color: '#62c9a7' },
+  trade: { lane: 4, color: '#d5c46a' },
+  military: { lane: 5, color: '#e35d5d' },
+};
+
 const TECH_TREE_LAYOUT = {
-  farming_field_rotation: { column: 1, lane: -3, parents: [] },
-  farming_household_plots: { column: 1, lane: -1, parents: [] },
-  farming_seed_selection: { column: 1, lane: 0, parents: [] },
-  farming_river_ditches: { column: 1, lane: 1, parents: [] },
-  farming_storehouse_rules: { column: 1, lane: 3, parents: [] },
+  farming_field_rotation: { column: 1, row: 1, lane: -4, routes: ['agriculture'], parents: [] },
+  farming_household_plots: { column: 1, row: 1, lane: -3.5, routes: ['agriculture', 'livelihood'], parents: [] },
+  farming_seed_selection: { column: 1, row: 1, lane: -2.5, routes: ['agriculture', 'knowledge'], parents: [] },
+  farming_river_ditches: { column: 1, row: 1, lane: -1.5, routes: ['agriculture', 'engineering'], parents: [] },
+  farming_storehouse_rules: { column: 1, row: 1, lane: -3, routes: ['agriculture', 'administration'], parents: [] },
 
-  settlement_carpenter_yards: { column: 2, lane: -3, parents: ['farming_household_plots'] },
-  settlement_communal_labor: { column: 2, lane: -1, parents: ['farming_field_rotation', 'farming_household_plots', 'farming_storehouse_rules'] },
-  settlement_logging_rights: { column: 2, lane: 0, parents: ['farming_field_rotation', 'farming_storehouse_rules'] },
-  settlement_forest_paths: { column: 2, lane: 1, parents: ['farming_seed_selection', 'farming_river_ditches'] },
-  settlement_river_rafts: { column: 2, lane: 3, parents: ['farming_river_ditches'] },
+  settlement_carpenter_yards: { column: 2, row: 2, lane: -2.5, routes: ['livelihood', 'industry'], parents: ['farming_household_plots'] },
+  settlement_communal_labor: { column: 2, row: 2, lane: -2.4, routes: ['agriculture', 'livelihood', 'administration', 'industry'], parents: ['farming_field_rotation', 'farming_household_plots', 'farming_storehouse_rules'] },
+  settlement_logging_rights: { column: 2, row: 2, lane: -1.3, routes: ['agriculture', 'administration', 'industry'], parents: ['farming_field_rotation', 'farming_storehouse_rules'] },
+  settlement_forest_paths: { column: 2, row: 2, lane: 1, routes: ['knowledge', 'engineering', 'exploration'], parents: ['farming_seed_selection', 'farming_river_ditches'] },
+  settlement_river_rafts: { column: 2, row: 2, lane: 2.5, routes: ['engineering', 'trade'], parents: ['farming_river_ditches'] },
 
-  city_masonry_rules: { column: 3, lane: -3, parents: ['settlement_carpenter_yards', 'settlement_communal_labor'] },
-  city_storage_yards: { column: 3, lane: -1, parents: ['settlement_communal_labor', 'settlement_logging_rights', 'settlement_river_rafts'] },
-  city_quarry_survey: { column: 3, lane: 0, parents: ['settlement_logging_rights', 'settlement_communal_labor', 'settlement_forest_paths'] },
-  city_hill_paths: { column: 3, lane: 1, parents: ['settlement_forest_paths', 'settlement_river_rafts'] },
-  city_public_works: { column: 3, lane: 3, parents: ['settlement_logging_rights', 'city_quarry_survey'] },
+  city_masonry_rules: { column: 3, row: 3, lane: -1, routes: ['livelihood', 'engineering'], parents: ['settlement_carpenter_yards', 'settlement_communal_labor'] },
+  city_storage_yards: { column: 3, row: 3, lane: 1.3, routes: ['administration', 'industry', 'trade'], parents: ['settlement_communal_labor', 'settlement_logging_rights', 'settlement_river_rafts'] },
+  city_quarry_survey: { column: 3, row: 3, lane: 2, routes: ['engineering', 'industry', 'exploration'], parents: ['settlement_logging_rights', 'settlement_communal_labor', 'settlement_forest_paths'] },
+  city_hill_paths: { column: 3, row: 3, lane: 2, routes: ['engineering', 'exploration'], parents: ['settlement_forest_paths', 'settlement_river_rafts'] },
+  city_public_works: { column: 3, row: 3, lane: 1.3, routes: ['engineering', 'administration', 'military'], parents: ['settlement_logging_rights', 'city_quarry_survey'] },
 
-  frontier_militia_tools: { column: 4, lane: -3, parents: ['city_masonry_rules', 'city_public_works'] },
-  frontier_border_trade: { column: 4, lane: -1, parents: ['city_storage_yards', 'city_hill_paths'] },
-  frontier_bloomery_signs: { column: 4, lane: 0, parents: ['city_quarry_survey', 'city_public_works'] },
-  frontier_mountain_tracks: { column: 4, lane: 1, parents: ['city_hill_paths', 'city_quarry_survey'] },
-  frontier_guard_forges: { column: 4, lane: 3, parents: ['city_public_works', 'frontier_bloomery_signs'] },
+  frontier_militia_tools: { column: 4, row: 4, lane: 1.3, routes: ['livelihood', 'industry', 'military'], parents: ['city_masonry_rules', 'city_public_works'] },
+  frontier_border_trade: { column: 4, row: 4, lane: 1.7, routes: ['administration', 'exploration', 'trade'], parents: ['city_storage_yards', 'city_hill_paths'] },
+  frontier_bloomery_signs: { column: 4, row: 4, lane: 2.7, routes: ['engineering', 'industry', 'military'], parents: ['city_quarry_survey', 'city_public_works'] },
+  frontier_mountain_tracks: { column: 4, row: 4, lane: 2, routes: ['engineering', 'industry', 'exploration'], parents: ['city_hill_paths', 'city_quarry_survey'] },
+  frontier_guard_forges: { column: 4, row: 4, lane: 3.5, routes: ['industry', 'military'], parents: ['city_public_works', 'frontier_bloomery_signs'] },
 
-  classical_temple_calendar: { column: 5, lane: -4, parents: ['city_storage_yards', 'frontier_border_trade'] },
-  classical_iron_tools: { column: 5, lane: -3, parents: ['frontier_bloomery_signs', 'frontier_militia_tools'] },
-  classical_grain_administration: { column: 5, lane: -2, parents: ['frontier_militia_tools', 'city_storage_yards'] },
-  classical_academy_schools: { column: 5, lane: -1, parents: ['frontier_border_trade', 'city_storage_yards'] },
-  classical_workshop_guilds: { column: 5, lane: 0, parents: ['frontier_bloomery_signs', 'frontier_guard_forges'] },
-  classical_masonry_contracts: { column: 5, lane: 1, parents: ['city_quarry_survey', 'frontier_mountain_tracks'] },
-  classical_border_codes: { column: 5, lane: 3, parents: ['frontier_guard_forges', 'frontier_militia_tools'] },
-  classical_civic_records: { column: 5, lane: 4, parents: ['frontier_border_trade', 'city_storage_yards'] },
+  classical_temple_calendar: { column: 5, row: 5, lane: -0.5, routes: ['knowledge', 'culture'], parents: ['city_storage_yards', 'frontier_border_trade'] },
+  classical_iron_tools: { column: 5, row: 5, lane: -1, routes: ['agriculture', 'industry'], parents: ['frontier_bloomery_signs', 'frontier_militia_tools'] },
+  classical_grain_administration: { column: 5, row: 5, lane: -3, routes: ['agriculture', 'livelihood', 'administration'], parents: ['frontier_militia_tools', 'city_storage_yards'] },
+  classical_academy_schools: { column: 5, row: 5, lane: -1, routes: ['knowledge', 'culture', 'administration'], parents: ['frontier_border_trade', 'city_storage_yards'] },
+  classical_workshop_guilds: { column: 5, row: 5, lane: 2.7, routes: ['engineering', 'industry', 'military'], parents: ['frontier_bloomery_signs', 'frontier_guard_forges'] },
+  classical_masonry_contracts: { column: 5, row: 5, lane: 1.5, routes: ['engineering', 'industry'], parents: ['city_quarry_survey', 'frontier_mountain_tracks'] },
+  classical_border_codes: { column: 5, row: 5, lane: 1.5, routes: ['administration', 'military'], parents: ['frontier_guard_forges', 'frontier_militia_tools'] },
+  classical_civic_records: { column: 5, row: 5, lane: -1, routes: ['knowledge', 'culture', 'administration'], parents: ['frontier_border_trade', 'city_storage_yards'] },
 };
 
 function getTechTreeMeta(techId) {
   const meta = TECH_TREE_LAYOUT[techId] || {};
   const parents = Array.isArray(meta.parents) ? [...meta.parents] : [];
+  const routes = Array.isArray(meta.routes) ? [...meta.routes] : [];
   return {
     column: Number(meta.column) || 1,
     lane: Number(meta.lane) || 0,
+    row: Number(meta.row) || Number(meta.column) || 1,
+    routes,
     parents,
   };
 }
@@ -389,6 +405,7 @@ module.exports = {
   RESOURCE_LABELS,
   BUILDING_LABELS,
   TECH_ERAS,
+  TECH_ROUTE_META,
   TECH_TREE_LAYOUT,
   TECHS,
   TECH_BY_ID,

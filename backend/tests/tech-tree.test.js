@@ -8,8 +8,8 @@ const TutorialService = require('../services/TutorialService');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
 const { TECHS, TECH_BY_ID } = require('../config/TechTreeConfig');
 
-test('tech tree has shared pivot nodes for route switching', () => {
-  const sharedNodes = TECHS.filter((tech) => Number(tech.tree?.lane) === 0 && tech.parents.length >= 2);
+test('tech tree has shared route nodes for route switching', () => {
+  const sharedNodes = TECHS.filter((tech) => (tech.tree?.routes || []).length >= 3 && tech.parents.length >= 2);
   assert.ok(sharedNodes.length >= 4);
   assert.ok(sharedNodes.some((tech) => tech.id === 'settlement_logging_rights'));
   assert.ok(sharedNodes.some((tech) => tech.id === 'city_quarry_survey'));
@@ -22,6 +22,8 @@ test('科技树配置包含鱼骨图坐标并且父节点都存在', () => {
   TECHS.forEach((tech) => {
     assert.equal(typeof tech.tree?.column, 'number');
     assert.equal(typeof tech.tree?.lane, 'number');
+    assert.equal(typeof tech.tree?.row, 'number');
+    assert.ok(Array.isArray(tech.tree?.routes));
     assert.ok(Array.isArray(tech.parents));
     tech.parents.forEach((parentId) => {
       assert.ok(TECH_BY_ID[parentId], `${tech.id} references missing parent ${parentId}`);
@@ -79,9 +81,11 @@ test('客户端科技状态返回完整时代鱼骨图元数据', () => {
   const futureTech = client.eras[1].techs.find((tech) => tech.id === 'settlement_logging_rights');
   assert.equal(firstEraTech.status, 'available');
   assert.equal(firstEraTech.tree.column, 1);
-  assert.equal(firstEraTech.tree.lane, -3);
+  assert.equal(firstEraTech.tree.lane, -4);
+  assert.deepEqual(firstEraTech.tree.routes, ['agriculture']);
   assert.equal(futureTech.status, 'locked');
   assert.deepEqual(futureTech.parents, ['farming_field_rotation', 'farming_storehouse_rules']);
+  assert.ok(futureTech.tree.routes.includes('industry'));
 });
 
 test('古典时代允许用三个科技点形成组合', () => {

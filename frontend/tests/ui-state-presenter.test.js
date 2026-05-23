@@ -577,7 +577,7 @@ test('tech view state formats knowledge rate for Canvas renderer', () => {
           core: '核心入口：粮食稳定',
           status: 'available',
           available: true,
-          tree: { column: 1, lane: -2, parents: [] },
+          tree: { column: 1, row: 1, lane: -2, routes: ['agriculture', 'knowledge'], parents: [] },
           parents: [],
           resourceText: '粮食',
           unlockText: '农田',
@@ -594,6 +594,8 @@ test('tech view state formats knowledge rate for Canvas renderer', () => {
   assert.equal(view.eras[0].techs[0].unlockSummary, '入口：粮食 / 建筑：农田');
   assert.equal(view.tree.nodes[0].id, 'farming_field_rotation');
   assert.equal(view.tree.nodes[0].tree.lane, -2);
+  assert.equal(view.tree.nodes[0].tree.row, 1);
+  assert.deepEqual(view.tree.nodes[0].tree.routes, ['agriculture', 'knowledge']);
   assert.deepEqual(view.tree.links, []);
 });
 

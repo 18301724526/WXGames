@@ -1775,7 +1775,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
     status: 'available',
     available: true,
     disabled: false,
-    tree: { column: 5, lane: index - 4, parents: [] },
+    tree: { column: 5, row: 5 + index * 0.35, lane: index - 4, routes: [index % 2 ? 'culture' : 'industry'], parents: [] },
   }));
   renderer.setPresenter({
     buildResourceViewState: () => ({ hasWood: true, text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s', woodValue: '0', woodRate: '+0/s' } }),
@@ -1788,7 +1788,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
           { era: 5, name: '古典分支', choiceText: '0/3', closed: false, column: 5 },
         ],
         nodes: [
-          { id: 'frontier_done', title: '土炉试炼', routeLabel: '生产', core: '已定路线', buttonLabel: '已研究', status: 'researched', researched: true, disabled: true, tree: { column: 4, lane: 0, parents: [] } },
+          { id: 'frontier_done', title: '土炉试炼', routeLabel: '生产', core: '已定路线', buttonLabel: '已研究', status: 'researched', researched: true, disabled: true, tree: { column: 4, row: 4, lane: 0, routes: ['industry'], parents: [] } },
           ...classicalNodes,
         ],
         links: [],
@@ -1813,7 +1813,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
     techTreePanY: 0,
   });
 
-  const initialTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_0');
+  const initialTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_4');
   assert.ok(initialTarget);
 
   renderer.render({ currentEraName: '古典时代', resources: { knowledgePerSecond: 0 } }, {
@@ -1825,7 +1825,7 @@ test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll'
   const visibleClassicalTargets = renderer.hitTargets
     .filter((target) => target.action.techId?.startsWith('classical_dense_'));
   assert.ok(visibleClassicalTargets.length >= 1);
-  const scrolledTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_0');
+  const scrolledTarget = renderer.hitTargets.find((target) => target.action.techId === 'classical_dense_4');
   assert.ok(scrolledTarget);
   assert.ok(scrolledTarget.y < initialTarget.y);
   visibleClassicalTargets.forEach((target, index) => {
@@ -1884,7 +1884,7 @@ test('CanvasGameRenderer pans tech tree horizontally and keeps card drag handles
   assert.ok(pannedTarget.x < initialTarget.x);
 });
 
-test('CanvasGameRenderer places shared tech pivots on the era spine', () => {
+test('CanvasGameRenderer places shared tech nodes between route lanes', () => {
   const { ctx } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -1892,9 +1892,9 @@ test('CanvasGameRenderer places shared tech pivots on the era spine', () => {
     tree: {
       eras: [{ era: 2, name: 'Shared Era', choiceText: '0/1', closed: false, column: 2 }],
       nodes: [
-        { id: 'left', title: 'Left', tree: { column: 2, lane: -1, parents: [] } },
-        { id: 'pivot', title: 'Pivot', tree: { column: 2, lane: 0, parents: ['left', 'right'] } },
-        { id: 'right', title: 'Right', tree: { column: 2, lane: 1, parents: [] } },
+        { id: 'left', title: 'Left', tree: { column: 2, row: 1, lane: -4, routes: ['agriculture'], parents: [] } },
+        { id: 'pivot', title: 'Pivot', tree: { column: 2, row: 2, lane: 0.5, routes: ['agriculture', 'military'], parents: ['left', 'right'] } },
+        { id: 'right', title: 'Right', tree: { column: 2, row: 1, lane: 5, routes: ['military'], parents: [] } },
       ],
       links: [],
     },
@@ -1905,8 +1905,10 @@ test('CanvasGameRenderer places shared tech pivots on the era spine', () => {
   const rightRect = layout.nodeRects.right;
 
   assert.ok(pivotRect);
-  assert.equal(pivotRect.side, 'center');
-  assert.equal(pivotRect.anchorX, layout.spineX);
+  assert.deepEqual(pivotRect.routes, ['agriculture', 'military']);
+  assert.ok(layout.routeGuides.some((route) => route.id === 'agriculture'));
+  assert.ok(layout.routeGuides.some((route) => route.id === 'military'));
+  assert.equal(layout.linkPaths.length, 2);
   assert.ok(leftRect.x + leftRect.width < pivotRect.x);
   assert.ok(rightRect.x > pivotRect.x + pivotRect.width);
 });
