@@ -437,6 +437,50 @@ test('building view state is renderer-neutral and formats compact costs', () => 
   assert.equal(view.cards[0].button.disabled, false);
 });
 
+test('building view state exposes category tabs and filters cards', () => {
+  const state = {
+    unlockedBuildings: ['farm', 'house', 'lumbermill', 'barracks'],
+    resources: { food: 2000, wood: 1000, knowledge: 500 },
+    buildings: {},
+    buildingCosts: {
+      farm: { food: 0 },
+      house: { food: 30 },
+      lumbermill: { food: 50, wood: 15 },
+      barracks: { food: 260, knowledge: 80 },
+    },
+    buildingCategories: {
+      agriculture: { label: '农业', order: 1 },
+      livelihood: { label: '民生', order: 2 },
+      production: { label: '生产', order: 3 },
+      entertainment: { label: '娱乐', order: 4 },
+      military: { label: '军事', order: 5 },
+    },
+  };
+  const defs = {
+    farm: { id: 'farm', name: '农田', category: 'agriculture', effects: { perLevel: {} }, ui: { effectText: [] } },
+    house: { id: 'house', name: '民居', category: 'livelihood', effects: { perLevel: {} }, ui: { effectText: [] } },
+    lumbermill: { id: 'lumbermill', name: '伐木场', category: 'production', effects: { perLevel: {} }, ui: { effectText: [] } },
+    barracks: { id: 'barracks', name: '兵营', category: 'military', effects: { perLevel: {} }, ui: { effectText: [] } },
+  };
+
+  const all = UIStatePresenter.buildBuildingViewState(state, { completed: true }, defs);
+  assert.deepEqual(all.categoryTabs.map((tab) => [tab.id, tab.label, tab.count]), [
+    ['all', '全部', 4],
+    ['agriculture', '农业', 1],
+    ['livelihood', '民生', 1],
+    ['production', '生产', 1],
+    ['military', '军事', 1],
+  ]);
+  assert.equal(all.categoryTabs.some((tab) => tab.id === 'entertainment'), false);
+
+  const military = UIStatePresenter.buildBuildingViewState(state, { completed: true }, defs, { activeCategory: 'military' });
+  assert.deepEqual(military.ids, ['farm', 'house', 'lumbermill', 'barracks']);
+  assert.deepEqual(military.filteredIds, ['barracks']);
+  assert.deepEqual(military.cards.map((card) => card.id), ['barracks']);
+  assert.equal(military.activeCategory, 'military');
+  assert.equal(military.categoryTabs.find((tab) => tab.id === 'military').active, true);
+});
+
 test('building view state disables build and upgrade actions when resources are insufficient', () => {
   const view = UIStatePresenter.buildBuildingViewState({
     unlockedBuildings: ['lumbermill'],

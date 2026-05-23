@@ -44,6 +44,13 @@ function makeCtx() {
   };
 }
 
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.width
+    && a.x + a.width > b.x
+    && a.y < b.y + b.height
+    && a.y + a.height > b.y;
+}
+
 test('CanvasGameRenderer provides shared drawing primitives without platform dependency', () => {
   var CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
   var calls = [];
@@ -1059,8 +1066,15 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
     }),
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
+    buildTaskCenterViewState: () => ({ summary: { claimableCount: 0 } }),
+    buildGuidebookViewState: () => ({ categories: [], activeCategory: null }),
     buildBuildingViewState: () => ({
       isEmpty: false,
+      categoryTabs: [
+        { id: 'all', label: '全部', count: 2, active: true },
+        { id: 'agriculture', label: '农业', count: 1, active: false },
+        { id: 'livelihood', label: '民生', count: 1, active: false },
+      ],
       cards: [
         {
           id: 'farm',
@@ -1097,13 +1111,27 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建筑'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '全部'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农业'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '民生'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '民居'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '当前效果：可居住人口 300'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '下一级效果：可居住人口 600（提升 300）'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '维护所需：粮食 0.01/s，木材 0.002/s'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'selectBuildingCategory' && target.action.category === 'agriculture'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'house'));
+  const categoryTargets = renderer.hitTargets.filter((target) => target.action?.type === 'selectBuildingCategory');
+  const taskTarget = renderer.hitTargets.find((target) => target.action?.type === 'openTaskCenter');
+  const guidebookTarget = renderer.hitTargets.find((target) => target.action?.type === 'openGuidebook');
+  assert.ok(categoryTargets.length > 0);
+  assert.ok(taskTarget);
+  assert.ok(guidebookTarget);
+  categoryTargets.forEach((target) => {
+    assert.equal(rectsOverlap(target, taskTarget), false);
+    assert.equal(rectsOverlap(target, guidebookTarget), false);
+  });
 });
 
 test('CanvasGameRenderer renders building costs as fixed base slots with knowledge on the action button', () => {
@@ -1129,6 +1157,8 @@ test('CanvasGameRenderer renders building costs as fixed base slots with knowled
     }),
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
+    buildTaskCenterViewState: () => ({ summary: { claimableCount: 0 } }),
+    buildGuidebookViewState: () => ({ categories: [], activeCategory: null }),
     buildBuildingViewState: () => ({
       isEmpty: false,
       cards: [{

@@ -20,6 +20,7 @@
       buildings: gameState.buildings || {},
       buildingCosts: gameState.buildingCosts || {},
       buildingDefinitions: gameState.buildingDefinitions || {},
+      buildingCategories: gameState.buildingCategories || {},
       buildingEffects: gameState.buildingEffects || {},
       military: gameState.military || {},
       territoryState: gameState.territoryState || {},

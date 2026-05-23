@@ -159,6 +159,10 @@ function getBuildingDefinitions() {
   return BuildingConfig.raw().buildings || {};
 }
 
+function getBuildingCategories() {
+  return BuildingConfig.raw().categories || {};
+}
+
 function getClientGameState(gameState) {
   const normalized = normalizeState(gameState);
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
@@ -183,6 +187,7 @@ function getClientGameState(gameState) {
     buildings: normalized.buildings,
     buildingCosts: getBuildingCosts(normalized.buildings),
     buildingDefinitions: getBuildingDefinitions(),
+    buildingCategories: getBuildingCategories(),
     buildingEffects: normalized.buildingEffects,
     military: normalized.military,
     cityState: CityService.getClientCityState(normalized),

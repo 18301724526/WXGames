@@ -168,6 +168,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'openTaskCenter',
     'closeTaskCenter',
     'switchTaskCenterTab',
+    'selectBuildingCategory',
   ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
@@ -454,6 +455,37 @@ test('CanvasActionDispatcher handles task center panel actions through injected 
     ['render', 'switchTaskCenterTab'],
     ['close', 'closeTaskCenter'],
     ['render', 'closeTaskCenter'],
+  ]);
+});
+
+test('CanvasActionController handles building category filter through shared canvas action controller', () => {
+  const calls = [];
+  const controller = new CanvasActionController({
+    host: {
+      selectBuildingCategory(action) { calls.push(['select', action.category]); return true; },
+      renderCanvasAction(action) { calls.push(['render', action.type]); return true; },
+    },
+  });
+
+  assert.equal(controller.handle({ type: 'selectBuildingCategory', category: 'military' }), true);
+  assert.deepEqual(calls, [
+    ['select', 'military'],
+    ['render', 'selectBuildingCategory'],
+  ]);
+});
+
+test('CanvasActionDispatcher handles building category filter when used as a compatibility dispatcher', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'selectBuildingCategory', category: 'military' }, {
+    selectBuildingCategory(action) { calls.push(['select', action.category]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['select', 'military'],
+    ['render', 'selectBuildingCategory'],
   ]);
 });
 

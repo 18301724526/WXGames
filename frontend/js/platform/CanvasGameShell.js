@@ -46,6 +46,7 @@
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.buildingOffset = 0;
+      this.activeBuildingCategory = 'all';
       this.pageTransition = null;
       this.buildingTransition = null;
       this.transitionTimer = null;
@@ -191,8 +192,22 @@
       return this.lastGame?.state || {};
     }
 
+    selectBuildingCategory(action = {}) {
+      const category = action.category || 'all';
+      this.activeBuildingCategory = category;
+      this.buildingOffset = 0;
+      this.buildingTransition = null;
+      if (this.lastGame && typeof this.lastGame === 'object') {
+        this.lastGame.activeBuildingCategory = category;
+        this.lastGame.buildingOffset = 0;
+        this.lastGame.buildingTransition = null;
+      }
+      return true;
+    }
+
     resetForCanvasTabSwitch() {
       this.buildingOffset = 0;
+      this.activeBuildingCategory = 'all';
       this.buildingTransition = null;
       this.activeEventId = null;
       this.showGuidebook = false;
@@ -201,6 +216,7 @@
 
     resetLocalViewToResources(options = {}) {
       this.buildingOffset = 0;
+      this.activeBuildingCategory = 'all';
       this.pageTransition = null;
       this.buildingTransition = null;
       this.activeEventId = null;
@@ -748,6 +764,7 @@
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
+        activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,

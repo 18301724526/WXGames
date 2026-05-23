@@ -887,6 +887,50 @@
       return state.buildingDefinitions?.[id] || buildingConfig[id] || null;
     }
 
+    static getBuildingCategoryDefinitions(state = {}, buildingConfig = {}) {
+      const source = state.buildingCategories || buildingConfig.categories || {};
+      const fallback = {
+        agriculture: { label: '农业', order: 1 },
+        livelihood: { label: '民生', order: 2 },
+        production: { label: '生产', order: 3 },
+        culture: { label: '文化', order: 4 },
+        entertainment: { label: '娱乐', order: 5 },
+        military: { label: '军事', order: 6 },
+      };
+      return { ...fallback, ...(source && typeof source === 'object' ? source : {}) };
+    }
+
+    static getBuildingCategory(config = {}) {
+      return config.category || 'production';
+    }
+
+    static buildBuildingCategoryTabs(cards = [], activeCategory = 'all', definitions = {}) {
+      const counts = cards.reduce((result, card) => {
+        const category = card.category || 'production';
+        result[category] = (result[category] || 0) + 1;
+        return result;
+      }, {});
+      const categoryTabs = Object.entries(definitions)
+        .map(([id, definition]) => ({
+          id,
+          label: definition?.label || id,
+          order: Number(definition?.order) || 99,
+          count: counts[id] || 0,
+        }))
+        .filter((tab) => tab.count > 0)
+        .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+      const tabs = [
+        { id: 'all', label: '全部', count: cards.length, active: activeCategory === 'all' },
+        ...categoryTabs,
+      ];
+      const hasActive = tabs.some((tab) => tab.id === activeCategory && tab.count > 0);
+      const resolvedActiveCategory = hasActive ? activeCategory : 'all';
+      return tabs.map((tab) => ({
+        ...tab,
+        active: tab.id === resolvedActiveCategory,
+      }));
+    }
+
     static buildCostViewState(cost) {
       if (cost === null) return { text: '已满级', parts: [], isMax: true };
       if (!cost) return { text: '免费建造', parts: [], isMax: false };
@@ -1104,6 +1148,7 @@
         icon: config.icon || '',
         level,
         levelText: `等级 ${level}`,
+        category: this.getBuildingCategory(config),
         maxLevel,
         scaleText: `规模：${this.formatBuildingScale(level)}`,
         metaText: `等级：${level}　规模：${this.formatBuildingScale(level)}`,
@@ -1131,15 +1176,25 @@
       };
     }
 
-    static buildBuildingViewState(state = {}, tutorial = {}, buildingConfig = {}) {
+    static buildBuildingViewState(state = {}, tutorial = {}, buildingConfig = {}, options = {}) {
       const ids = this.getVisibleBuildingIds(state);
-      const cards = ids
+      const allCards = ids
         .map((id) => this.buildBuildingCardViewState(state, tutorial, buildingConfig, id))
         .filter(Boolean);
+      const activeCategory = options.activeCategory || 'all';
+      const categoryDefinitions = this.getBuildingCategoryDefinitions(state, buildingConfig);
+      const categoryTabs = this.buildBuildingCategoryTabs(allCards, activeCategory, categoryDefinitions);
+      const resolvedActiveCategory = categoryTabs.find((tab) => tab.active)?.id || 'all';
+      const cards = resolvedActiveCategory === 'all'
+        ? allCards
+        : allCards.filter((card) => card.category === resolvedActiveCategory);
       return {
-        ids: cards.map((card) => card.id),
+        ids: allCards.map((card) => card.id),
+        filteredIds: cards.map((card) => card.id),
         isEmpty: cards.length === 0,
-        emptyText: '当前时代暂无可建造建筑',
+        emptyText: allCards.length === 0 ? '当前时代暂无可建造建筑' : '当前分类暂无可建造建筑',
+        activeCategory: resolvedActiveCategory,
+        categoryTabs,
         cards,
         structureSignature: JSON.stringify(cards.map((card) => ({
           id: card.id,

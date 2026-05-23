@@ -53,6 +53,7 @@
       this.suppressSoftGuideRenderOnce = false;
       this.activeGuideNavigation = null;
       this.buildingOffset = 0;
+      this.activeBuildingCategory = 'all';
       this.pageTransition = null;
       this.buildingTransition = null;
       this.transitionTimer = null;
@@ -269,6 +270,7 @@
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
+        activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
@@ -457,6 +459,20 @@
       return true;
     }
 
+    selectBuildingCategory(action = {}) {
+      const category = action.category || 'all';
+      const previous = this.activeBuildingCategory || 'all';
+      this.activeBuildingCategory = category;
+      this.buildingOffset = 0;
+      this.buildingTransition = null;
+      if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') {
+        this.canvasShell.activeBuildingCategory = category;
+        this.canvasShell.buildingOffset = 0;
+        this.canvasShell.buildingTransition = null;
+      }
+      return category !== previous;
+    }
+
     getCanvasActionState() {
       return this.state;
     }
@@ -472,11 +488,15 @@
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showTalentPolicy = false;
+      this.activeBuildingCategory = 'all';
+      this.buildingOffset = 0;
+      this.buildingTransition = null;
     }
 
     resetLocalViewToResources(options = {}) {
       this.activeTab = 'resources';
       this.buildingOffset = 0;
+      this.activeBuildingCategory = 'all';
       this.activeEventId = null;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;

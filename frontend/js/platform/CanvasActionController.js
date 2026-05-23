@@ -682,6 +682,17 @@
       return this.afterHandled(action);
     }
 
+    handle_selectBuildingCategory(action) {
+      if (typeof this.host?.selectBuildingCategory === 'function') {
+        this.host.selectBuildingCategory(action);
+      } else {
+        this.host.activeBuildingCategory = action.category || 'all';
+        this.host.buildingOffset = 0;
+        this.host.buildingTransition = null;
+      }
+      return this.afterHandled(action);
+    }
+
     handle_openWorldSite(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;

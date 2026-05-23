@@ -181,6 +181,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       logs: [],
       tutorial: {},
       buildingOffset: 0,
+      activeBuildingCategory: 'all',
       activeEventId: null,
       territoryUiState: {},
       tabLocks: [
@@ -1396,6 +1397,31 @@ test('Canvas game shell owns building pager state without DOM adapter', async ()
   assert.equal(renderCalls.at(-1).pageTransition.fromTab, 'buildings');
   assert.equal(renderCalls.at(-1).pageTransition.toTab, 'resources');
   assert.deepEqual(dispatched, [{ type: 'switchTab', tab: 'resources' }]);
+});
+
+test('Canvas game shell owns building category state without DOM adapter', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    getHitTarget: () => ({ type: 'selectBuildingCategory', category: 'military' }),
+    render(state, options) { renderCalls.push(options); },
+  };
+
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'buildings' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.buildingOffset = 2;
+
+  listeners['document:pointerup']({ clientX: 160, clientY: 278, type: 'pointerup', timeStamp: 1000 });
+
+  assert.equal(shell.activeBuildingCategory, 'military');
+  assert.equal(shell.buildingOffset, 0);
+  assert.equal(renderCalls.at(-1).activeBuildingCategory, 'military');
 });
 
 test('Canvas game shell passes tutorial tab locks into canvas renderer', () => {

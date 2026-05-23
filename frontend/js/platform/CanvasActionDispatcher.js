@@ -200,6 +200,14 @@
         return switched;
       }
 
+      if (action.type === 'selectBuildingCategory') {
+        const selected = typeof context.selectBuildingCategory === 'function'
+          ? context.selectBuildingCategory(action) !== false
+          : false;
+        if (selected && typeof context.render === 'function') context.render(action);
+        return selected;
+      }
+
       return false;
     }
 
@@ -228,6 +236,7 @@
         'openTaskCenter',
         'closeTaskCenter',
         'switchTaskCenterTab',
+        'selectBuildingCategory',
       ];
     }
 

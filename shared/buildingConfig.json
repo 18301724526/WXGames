@@ -13,7 +13,7 @@
       "name": "农田",
       "icon": "🌾",
       "art": "assets/art/building-farm-cutout.png",
-      "category": "production",
+      "category": "agriculture",
       "unlockEra": 1,
       "maxLevel": 4,
       "scalePlan": {
@@ -53,7 +53,7 @@
       "name": "民居",
       "icon": "🏠",
       "art": "assets/art/building-house-cutout.png",
-      "category": "housing",
+      "category": "livelihood",
       "unlockEra": 1,
       "maxLevel": 3,
       "scalePlan": {
@@ -131,7 +131,7 @@
       "name": "学院",
       "icon": "📚",
       "art": "assets/art/building-academy-cutout.png",
-      "category": "research",
+      "category": "culture",
       "unlockEra": 5,
       "maxLevel": 3,
       "scalePlan": {
@@ -286,7 +286,7 @@
       "name": "神庙",
       "icon": "⛪",
       "art": "assets/art/building-temple-cutout.png",
-      "category": "special",
+      "category": "culture",
       "unlockEra": 5,
       "maxLevel": 2,
       "scalePlan": {
@@ -321,10 +321,11 @@
     }
   },
   "categories": {
-    "production": { "label": "生产", "order": 1 },
-    "housing": { "label": "居住", "order": 2 },
-    "research": { "label": "科研", "order": 3 },
-    "military": { "label": "军事", "order": 4 },
-    "special": { "label": "特殊", "order": 5 }
+    "agriculture": { "label": "农业", "order": 1 },
+    "livelihood": { "label": "民生", "order": 2 },
+    "production": { "label": "生产", "order": 3 },
+    "culture": { "label": "文化", "order": 4 },
+    "entertainment": { "label": "娱乐", "order": 5 },
+    "military": { "label": "军事", "order": 6 }
   }
 }

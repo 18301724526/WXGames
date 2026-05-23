@@ -100,6 +100,12 @@
       ));
     }
 
+    getBuildingCategory(buildingId) {
+      const state = this.getState();
+      const config = state?.buildingDefinitions?.[buildingId] || null;
+      return config?.category || 'all';
+    }
+
     getBuildingTargetRect(key, type, buildingId) {
       const realTarget = this.getCanvasTarget(type, (action) => action.buildingId === buildingId);
       if (realTarget) return realTarget;
@@ -254,16 +260,26 @@
       if (!key || this.getActiveTab() !== 'buildings') return false;
       const targetBuilding = BUILDING_TARGETS[key];
       if (!targetBuilding) return false;
+      const category = this.getBuildingCategory(targetBuilding);
+      let categoryChanged = false;
+      if (category && category !== 'all' && this.host.activeBuildingCategory !== category) {
+        this.host.activeBuildingCategory = category;
+        if (this.host.lastGame && typeof this.host.lastGame === 'object') this.host.lastGame.activeBuildingCategory = category;
+        this.host.buildingOffset = 0;
+        categoryChanged = true;
+      }
       const state = this.getState();
-      const ids = this.getPresenter()?.buildBuildingViewState?.(
+      const view = this.getPresenter()?.buildBuildingViewState?.(
         state,
         this.getTutorialState(),
         state?.buildingDefinitions || {},
-      )?.ids || [];
+        { activeCategory: this.host.activeBuildingCategory || 'all' },
+      );
+      const ids = view?.filteredIds || view?.ids || [];
       const index = ids.indexOf(targetBuilding);
       if (index < 0) return false;
       const nextOffset = Math.max(0, index - 1);
-      if (this.host.buildingOffset === nextOffset) return false;
+      if (this.host.buildingOffset === nextOffset && !categoryChanged) return false;
       this.host.buildingOffset = nextOffset;
       this.render();
       return true;

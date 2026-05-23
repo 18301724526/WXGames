@@ -1596,7 +1596,9 @@
 
     renderBuildings(state = {}, startY = 210, panelHeight = 310, options = {}) {
       if (!this.presenter) return;
-      const view = this.presenter.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {});
+      const view = this.presenter.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {}, {
+        activeCategory: options.activeBuildingCategory || 'all',
+      });
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
@@ -1618,13 +1620,18 @@
       this.drawText('建筑', x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
       this.drawText('建造与升级', x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
       this.drawLine(x + 16, startY + 60, x + width - 16, startY + 60, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
+      const categoryTabs = Array.isArray(view.categoryTabs) ? view.categoryTabs : [];
+      const categoryRowHeight = categoryTabs.length > 1 ? 32 : 0;
+      if (categoryRowHeight) {
+        this.drawBuildingCategoryTabs(categoryTabs, x + 14, startY + 68, width - 28);
+      }
       if (view.isEmpty) {
-        this.drawText(view.emptyText, x + width / 2, startY + 96, { color: '#cbbd96', size: 13, align: 'center' });
+        this.drawText(view.emptyText, x + width / 2, startY + 104 + categoryRowHeight, { color: '#cbbd96', size: 13, align: 'center' });
         return;
       }
       const rowHeight = 174;
       const rowGap = 8;
-      const firstRowY = startY + 76;
+      const firstRowY = startY + 76 + categoryRowHeight;
       let visibleCount = Math.max(1, Math.floor((panelBottom - firstRowY - 8) / (rowHeight + rowGap)));
       let offset = Math.max(0, Number(options.offset) || 0);
       let maxOffset = Math.max(0, view.cards.length - visibleCount);
@@ -1722,6 +1729,44 @@
         this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
         this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
       }
+    }
+
+    drawBuildingCategoryTabs(tabs = [], x, y, width) {
+      if (!this.ctx || !Array.isArray(tabs) || tabs.length <= 1) return;
+      const gap = 5;
+      const height = 26;
+      const items = tabs.filter((tab) => tab && tab.id && tab.count > 0);
+      if (items.length <= 1) return;
+      const rawWidths = items.map((tab) => {
+        const label = String(tab.label || tab.id);
+        return Math.max(42, this.measureTextWidth(label, { size: 11, bold: Boolean(tab.active) }) + 22);
+      });
+      const totalGap = gap * Math.max(0, items.length - 1);
+      const rawTotal = rawWidths.reduce((sum, value) => sum + value, 0) + totalGap;
+      const scale = rawTotal > width ? Math.max(0.72, (width - totalGap) / Math.max(1, rawTotal - totalGap)) : 1;
+      let cursorX = x;
+      items.forEach((tab, index) => {
+        const remainingItems = items.length - index - 1;
+        const remainingGap = remainingItems * gap;
+        const tabWidth = index === items.length - 1
+          ? Math.max(36, x + width - cursorX)
+          : Math.max(36, Math.floor(rawWidths[index] * scale));
+        const active = Boolean(tab.active);
+        this.drawButton(cursorX, y, Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap)), height, this.truncateText(tab.label || tab.id, Math.max(18, tabWidth - 12), {
+          size: 11,
+          bold: active,
+        }), {
+          active,
+          size: 11,
+          bold: active,
+          radius: 13,
+        });
+        this.addHitTarget(
+          { x: cursorX, y, width: Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap)), height },
+          { type: 'selectBuildingCategory', category: tab.id, disabled: active },
+        );
+        cursorX += Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap)) + gap;
+      });
     }
 
     drawBuildingInfoLine(text, x, y, width, options = {}) {
