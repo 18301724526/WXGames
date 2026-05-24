@@ -52,6 +52,9 @@
     saveTalentPolicy(policy) { return this.request('POST', '/game/action', { action: 'saveTalentPolicy', policy }); }
     deleteTalentPolicy(policyId) { return this.request('POST', '/game/action', { action: 'deleteTalentPolicy', policyId }); }
     research(techId) { return this.request('POST', '/game/action', { action: 'research', techId }); }
+    seekFamousPerson(source = 'seek') { return this.request('POST', '/game/action', { action: 'seekFamousPerson', source }); }
+    acceptFamousPerson(candidateId) { return this.request('POST', '/game/action', { action: 'acceptFamousPerson', candidateId }); }
+    dismissFamousPersonCandidate(candidateId) { return this.request('POST', '/game/action', { action: 'dismissFamousPersonCandidate', candidateId }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimGuideTaskReward(taskId) { return this.request('POST', '/game/action', { action: 'claimGuideTaskReward', target: taskId }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }

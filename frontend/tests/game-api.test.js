@@ -127,6 +127,33 @@ test('research posts tech id through shared action API', async () => {
   assert.deepEqual(requests, [{ action: 'research', techId: 'classical_workshop_guilds' }]);
 });
 
+test('famous person APIs use shared action endpoint', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', null, {
+    transport: {
+      async request(options) {
+        requests.push(JSON.parse(options.body));
+        return {
+          ok: true,
+          async json() {
+            return { success: true };
+          },
+        };
+      },
+    },
+  });
+
+  await api.seekFamousPerson();
+  await api.acceptFamousPerson('fpc_a');
+  await api.dismissFamousPersonCandidate('fpc_b');
+
+  assert.deepEqual(requests, [
+    { action: 'seekFamousPerson', source: 'seek' },
+    { action: 'acceptFamousPerson', candidateId: 'fpc_a' },
+    { action: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' },
+  ]);
+});
+
 test('claimGuideTaskReward posts task id through shared action API', async () => {
   const requests = [];
   const api = new GameAPI('/api', null, {

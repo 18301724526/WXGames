@@ -24,6 +24,7 @@
       this.state.guideTasks = serverState.guideTasks || { visible: false, tasks: [] };
       this.state.taskCenter = serverState.taskCenter || null;
       this.state.talentPolicies = serverState.talentPolicies || this.state.talentPolicies || {};
+      this.state.famousPersons = serverState.famousPersons || this.state.famousPersons || {};
       this.state.guidebook = serverState.guidebook || this.state.guidebook || {};
       this.state.workshopCount = this.buildingState.getLevel(this.state.buildings, 'workshop');
       this.state.lumbermillCount = this.buildingState.getLevel(this.state.buildings, 'lumbermill');

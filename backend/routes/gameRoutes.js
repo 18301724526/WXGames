@@ -5,6 +5,7 @@ const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const TalentPolicyService = require('../services/TalentPolicyService');
 const TechTreeService = require('../services/TechTreeService');
+const FamousPersonService = require('../services/FamousPersonService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
@@ -129,6 +130,8 @@ function registerGameRoutes(app, deps) {
       policyId,
       techId,
       tech,
+      candidateId,
+      source,
       basePolicyId,
       tiers,
       policy,
@@ -181,6 +184,12 @@ function registerGameRoutes(app, deps) {
       result = TerritoryAction.execute(action, gameState, { territoryId, cityId, soldiers, name, direction, missionId });
     } else if (action === 'research') {
       result = TechTreeService.research(gameState, techId || target || tech);
+    } else if (action === 'seekFamousPerson') {
+      result = FamousPersonService.seekFamousPerson(gameState, { source: source || target });
+    } else if (action === 'acceptFamousPerson') {
+      result = FamousPersonService.acceptFamousPerson(gameState, candidateId || target);
+    } else if (action === 'dismissFamousPersonCandidate') {
+      result = FamousPersonService.dismissFamousPersonCandidate(gameState, candidateId || target);
     }
     gameState.tutorial = tutorial;
     eraProgress = gameStateService.calculateEraProgress(gameState);

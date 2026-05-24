@@ -15,6 +15,7 @@ const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const CityPlanningService = require('./CityPlanningService');
 const TechTreeService = require('./TechTreeService');
+const FamousPersonService = require('./FamousPersonService');
 
 function getBuildingLevel(buildings, buildingId) {
   return BuildingState.getLevel(buildings, buildingId);
@@ -52,6 +53,8 @@ function createInitialGameState(playerId) {
     activeCityId: CityService.CAPITAL_CITY_ID,
     cities: {},
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
+    famousPeople: [],
+    famousPersonState: FamousPersonService.createInitialFamousPersonState(),
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0 },
     warMissions: [],
@@ -94,6 +97,9 @@ function normalizeState(rawState) {
   state.military = MilitaryService.normalizeMilitaryState(state.military, state);
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
   state.talentPolicies = TalentPolicyService.normalizeTalentPolicyState(state.talentPolicies);
+  state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
+  state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
+  FamousPersonService.ensureFamousPersonState(state);
   TerritoryService.normalizeTerritoryState(state);
   CityService.normalizeCities(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
@@ -213,6 +219,7 @@ function getClientGameState(gameState) {
       growthMultiplier,
     },
     talentPolicies: TalentPolicyService.getClientState(normalized),
+    famousPersons: FamousPersonService.getClientState(normalized),
     techs: TechTreeService.getClientState(normalized),
     techEffects: normalized.techEffects,
     happiness: normalized.happiness,

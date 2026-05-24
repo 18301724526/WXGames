@@ -475,6 +475,9 @@ function validateAction(gameState, action, payload = {}) {
     || action === 'saveTalentPolicy'
     || action === 'deleteTalentPolicy'
     || action === 'research'
+    || action === 'seekFamousPerson'
+    || action === 'acceptFamousPerson'
+    || action === 'dismissFamousPersonCandidate'
   ) return { allowed: true };
   const task = getCurrentTaskDefinition(gameState);
   if (!task) return { allowed: true };

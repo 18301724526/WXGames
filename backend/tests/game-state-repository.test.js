@@ -39,6 +39,10 @@ function insertGameState(db, playerId) {
   );
 }
 
+function getGameStateColumns(db) {
+  return db.prepare("PRAGMA table_info(game_states)").all().map((column) => column.name);
+}
+
 test('findAll 只返回仍存在于 players 表中的玩家状态', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
@@ -213,6 +217,99 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
   assert.deepEqual(result.scoutState, { emptyStreak: 1 });
   assert.deepEqual(result.warMissions, [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }]);
   assert.deepEqual(result.scoutReports, [{ id: 'report-x', siteId: 'site_1_0', title: '东方报告', text: '发现村镇', direction: 'e' }]);
+
+  db.close();
+});
+
+test('save and findByPlayerId round-trip famous person state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  insertPlayer(db, 'player-famous', 'device-famous');
+  repository.save({
+    playerId: 'player-famous',
+    resources: {},
+    buildings: {},
+    population: {},
+    techs: {},
+    techEffects: {},
+    currentEra: 3,
+    eraHistory: [],
+    happiness: 100,
+    gameDay: 1,
+    eventQueue: [],
+    eventHistory: [],
+    offlineSnapshot: {},
+    offlineEventLog: [],
+    negativeStreak: 0,
+    lastEventAt: 0,
+    tutorial: { completed: true, currentStep: 15 },
+    softGuideState: {},
+    talentPolicies: {},
+    famousPeople: [{
+      id: 'fp_test',
+      name: '陆骁',
+      title: '山道突骑',
+      source: { type: 'seek', candidateId: 'fpc_test' },
+      archetype: 'vanguard',
+      skills: [{ id: 'skill_lifesteal_combo', name: '血刃连袭', effects: [{ key: 'lifesteal', value: 0.16 }] }],
+    }],
+    famousPersonState: {
+      candidates: [{ id: 'fpc_next', name: '姜衡', title: '垒门守将', source: { type: 'seek' }, archetype: 'guardian', skills: [] }],
+      seek: { count: 2, lastAt: '2026-05-25T03:00:00.000Z' },
+    },
+    military: {},
+  });
+
+  const result = repository.findByPlayerId('player-famous');
+
+  assert.equal(result.famousPeople[0].id, 'fp_test');
+  assert.equal(result.famousPeople[0].name, '陆骁');
+  assert.equal(result.famousPersonState.seek.count, 2);
+  assert.equal(result.famousPersonState.candidates[0].id, 'fpc_next');
+
+  db.close();
+});
+
+test('repository migration adds famous person columns to existing game_states table', () => {
+  const db = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE players (
+      playerId TEXT PRIMARY KEY,
+      deviceId TEXT UNIQUE,
+      token TEXT,
+      createdAt TEXT,
+      lastActiveAt TEXT
+    );
+    CREATE TABLE game_states (
+      playerId TEXT PRIMARY KEY,
+      resources TEXT,
+      buildings TEXT,
+      population TEXT,
+      techs TEXT,
+      techEffects TEXT,
+      currentEra INTEGER,
+      eraHistory TEXT,
+      happiness INTEGER,
+      gameDay INTEGER,
+      eventQueue TEXT,
+      eventHistory TEXT,
+      offlineSnapshot TEXT,
+      offlineEventLog TEXT,
+      negativeStreak INTEGER,
+      lastEventAt TEXT,
+      tutorial TEXT,
+      updatedAt TEXT
+    );
+  `);
+  const repository = new GameStateRepository(db);
+
+  repository.init();
+  const columns = getGameStateColumns(db);
+
+  assert.ok(columns.includes('famousPeople'));
+  assert.ok(columns.includes('famousPersonState'));
 
   db.close();
 });
