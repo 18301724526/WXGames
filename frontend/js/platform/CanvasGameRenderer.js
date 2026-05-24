@@ -2647,13 +2647,13 @@
       this.drawPanel(rect.x, rect.y, rect.width, rect.height, {
         fill: palette.fill,
         stroke: selected ? '#ffe6b5' : palette.stroke,
-        radius: 9,
-        inset: selected ? 'rgba(255, 244, 200, 0.28)' : (node.available ? 'rgba(255, 244, 200, 0.14)' : 'rgba(255, 255, 255, 0.03)'),
+        radius: 8,
+        inset: selected ? 'rgba(255, 244, 200, 0.22)' : (node.available ? 'rgba(255, 244, 200, 0.1)' : 'rgba(255, 255, 255, 0.03)'),
       });
-      this.drawTechRouteSegments(rect.x + 9, rect.y + 7, rect.width - 18, 5, routes, node.disabled && !node.researched ? 0.44 : 0.92);
-      const iconSize = 28;
-      const iconX = rect.x + (rect.width - iconSize) / 2;
-      const iconY = rect.y + 17;
+      this.drawTechRouteSegments(rect.x + 6, rect.y + 5, rect.width - 12, 4, routes, node.disabled && !node.researched ? 0.42 : 0.9);
+      const iconSize = 26;
+      const iconX = rect.x + 8;
+      const iconY = rect.y + 15;
       this.drawPanel(iconX, iconY, iconSize, iconSize, {
         fill: node.researched ? 'rgba(116, 211, 160, 0.18)' : 'rgba(11, 18, 14, 0.34)',
         stroke: selected ? '#ffe6b5' : palette.stroke,
@@ -2666,38 +2666,40 @@
         baseline: 'middle',
         color: palette.accent,
       });
-      this.drawText(this.truncateText(node.title || node.name || '科技', rect.width - 16, { size: 12, bold: true }), rect.x + rect.width / 2, rect.y + 55, {
-        size: 12,
+      const titleX = iconX + iconSize + 6;
+      const titleWidth = Math.max(28, rect.x + rect.width - titleX - 6);
+      this.drawText(this.truncateText(node.title || node.name || '科技', titleWidth, { size: 11, bold: true }), titleX, rect.y + 17, {
+        size: 11,
         bold: true,
-        align: 'center',
         color: palette.text,
       });
       const label = node.researched ? '已研究' : (node.statusLabel || node.buttonLabel);
-      this.drawText(this.truncateText(label, rect.width - 18, { size: 9, bold: true }), rect.x + rect.width / 2, rect.y + rect.height - 12, {
+      this.drawText(this.truncateText(label, titleWidth, { size: 9, bold: true }), titleX, rect.y + 35, {
         size: 9,
         bold: true,
-        align: 'center',
         color: palette.accent,
       });
     }
 
     renderTechDetailPanel(detail = {}, x, y, width, height) {
       const selected = detail && !detail.empty;
-      const iconSize = 42;
-      const actionWidth = Math.min(92, Math.max(74, width * 0.24));
+      const compact = width < 360;
+      const iconSize = compact ? 32 : 36;
+      const actionWidth = Math.min(90, Math.max(70, width * 0.22));
       const buttonX = x + width - actionWidth - 12;
-      const buttonY = y + 22;
-      const buttonH = 34;
+      const buttonY = y + 14;
+      const buttonH = 30;
       this.drawPanel(x, y, width, height, {
         fill: 'rgba(45, 34, 24, 0.82)',
         stroke: 'rgba(255, 226, 177, 0.12)',
         radius: 10,
       });
-      this.drawAsset('assets/art/icon-science-cutout.webp', x + 14, y + 15, iconSize, iconSize, selected ? 0.95 : 0.58);
-      const textX = x + 66;
-      const contentWidth = Math.max(110, width - 86 - actionWidth);
-      const fallbackTitleWidth = selected ? contentWidth : Math.max(80, width - 100);
-      const titleWidth = detail.canResearch ? contentWidth : fallbackTitleWidth;
+      const topY = y + 12;
+      this.drawAsset('assets/art/icon-science-cutout.webp', x + 12, topY + 2, iconSize, iconSize, selected ? 0.95 : 0.58);
+      const textX = x + 12 + iconSize + 10;
+      const contentRight = buttonX - 10;
+      const contentWidth = Math.max(116, contentRight - textX);
+      const titleWidth = Math.max(80, contentWidth);
       this.drawText(this.truncateText(detail.title || '选择一个科技', titleWidth, { size: 15, bold: true }), textX, y + 14, {
         size: 15,
         bold: true,
@@ -2711,21 +2713,36 @@
         bold: true,
         color: detail.canResearch ? '#74d3a0' : '#f0b45b',
       });
-      const summaryLines = this.wrapTextLimit(detail.summary || '点击科技节点查看效果。', contentWidth, 2, { size: 10 });
+      const summaryWidth = Math.max(120, width - 24);
+      const summaryLines = this.wrapTextLimit(detail.summary || '点击科技节点查看效果。', summaryWidth, 1, { size: 10 });
       this.drawTextLines(summaryLines, textX, y + 54, {
         size: 10,
         color: '#cbbd96',
         lineHeight: 13,
       });
       if (selected) {
-        const rowY = y + height - 21;
-        const effectWidth = Math.max(70, width * 0.42);
-        const prerequisiteWidth = Math.max(60, width * 0.28);
-        const effect = this.truncateText(`效果：${detail.unlockSummary || '路线倾向'}`, effectWidth, { size: 10 });
-        const prerequisite = this.truncateText(`前置：${detail.prerequisiteText || '无'}`, prerequisiteWidth, { size: 10 });
-        this.drawText(effect, x + 14, rowY, { size: 10, color: '#d5ffe8' });
-        this.drawText(prerequisite, x + 16 + effectWidth, rowY, { size: 10, color: '#aeb0b8' });
-        this.drawText(this.truncateText(detail.pointsText || '', 58, { size: 10, bold: true }), buttonX + actionWidth / 2, rowY, {
+        const infoX = x + 12;
+        const infoTop = y + 78;
+        const infoWidth = width - 24;
+        const rows = Array.isArray(detail.effectRows) && detail.effectRows.length
+          ? detail.effectRows
+          : [{ label: '研究后', text: detail.unlockSummary || '选择一条文明发展方向。' }];
+        rows.slice(0, 2).forEach((row, index) => {
+          const rowY = infoTop + index * 16;
+          this.drawText(`${row.label}：`, infoX, rowY, {
+            size: 10,
+            bold: true,
+            color: index === 0 ? '#d5ffe8' : '#f0b45b',
+          });
+          this.drawText(this.truncateText(row.text || '无', infoWidth - 58, { size: 10 }), infoX + 58, rowY, {
+            size: 10,
+            color: '#cbbd96',
+          });
+        });
+        const prerequisiteY = y + height - 18;
+        const prerequisiteText = `前置科技：${detail.prerequisiteText || '无'}`;
+        this.drawText(this.truncateText(prerequisiteText, width - actionWidth - 42, { size: 10 }), infoX, prerequisiteY, { size: 10, color: '#aeb0b8' });
+        this.drawText(this.truncateText(detail.pointsText || '', actionWidth + 8, { size: 10, bold: true }), buttonX + actionWidth / 2, prerequisiteY, {
           size: 10,
           bold: true,
           color: '#f0b45b',
@@ -2734,7 +2751,7 @@
       }
       this.drawPrimaryActionButton(buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || '研究', {
         disabled: !detail.canResearch,
-        size: 12,
+        size: 11,
         radius: 9,
       });
       this.addHitTarget({ x: buttonX, y: buttonY, width: actionWidth, height: buttonH }, {
@@ -2743,7 +2760,7 @@
         disabled: !detail.canResearch || !detail.id,
       });
       if (!detail.canResearch && detail.disabledReason) {
-        this.drawText(this.truncateText(detail.disabledReason, actionWidth + 18, { size: 9 }), buttonX + actionWidth / 2, buttonY + buttonH + 14, {
+        this.drawText(this.truncateText(detail.disabledReason, actionWidth + 18, { size: 9 }), buttonX + actionWidth / 2, buttonY + buttonH + 12, {
           size: 9,
           color: '#aeb0b8',
           align: 'center',
@@ -2764,12 +2781,12 @@
       const panelX = Number(panel.x) || 0;
       const panelY = Number(panel.y) || 0;
       const routeCatalog = this.getTechRouteCatalog();
-      const nodeWidth = Math.max(132, Math.min(154, width * 0.44));
-      const nodeHeight = 78;
+      const nodeWidth = Math.max(92, Math.min(118, width * 0.34));
+      const nodeHeight = 54;
       const baseEraHeight = Math.max(280, Math.min(360, height * 0.78));
-      const localRowGap = nodeHeight + 40;
-      const collisionGap = 24;
-      const laneGap = Math.max(nodeWidth + 28, Math.min(180, width * 0.48));
+      const localRowGap = nodeHeight + 44;
+      const collisionGap = 18;
+      const laneGap = Math.max(nodeWidth + 34, Math.min(168, width * 0.44));
       const eraRailWidth = 58;
       const eraRailX = panelX + width - eraRailWidth - 8;
       const panelCenterX = panelX + width / 2;
@@ -2995,9 +3012,9 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      const headerHeight = 94;
+      const headerHeight = 124;
       this.renderTechDetailPanel(view.detail, x + 12, startY + 12, width - 24, headerHeight);
-      const pillY = startY + headerHeight - 20;
+      const pillY = startY + headerHeight - 24;
       const pillWidth = 68;
       [
         view.text.points,

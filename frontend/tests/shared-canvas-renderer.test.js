@@ -1684,7 +1684,11 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
             routeLabel: '农业',
             core: '核心入口：粮食稳定',
             summary: '稳定粮食',
-            unlockSummary: '入口：粮食 / 建筑：农田',
+            unlockSummary: '解锁建筑：农田 / 研究后：农田提供稳定粮食生产。',
+            effectRows: [
+              { label: '解锁建筑', text: '农田' },
+              { label: '研究后', text: '农田提供稳定粮食生产。' },
+            ],
             buttonLabel: '研究',
             status: 'available',
             available: true,
@@ -1697,7 +1701,7 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
             routeLabel: '生产',
             core: '核心入口：木材生产',
             summary: '稳定木材',
-            unlockSummary: '入口：木材 / 建筑：伐木场',
+            unlockSummary: '解锁建筑：伐木场 / 研究后：伐木场提供稳定木材生产。',
             buttonLabel: '未解锁',
             status: 'locked',
             available: false,
@@ -1717,7 +1721,11 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
         routeLabel: '农业',
         statusLabel: '可研究',
         summary: '稳定粮食',
-        unlockSummary: '入口：粮食 / 建筑：农田',
+        unlockSummary: '解锁建筑：农田 / 研究后：农田提供稳定粮食生产。',
+        effectRows: [
+          { label: '解锁建筑', text: '农田' },
+          { label: '研究后', text: '农田提供稳定粮食生产。' },
+        ],
         prerequisiteText: '无',
         pointsText: '科技点 1',
         buttonLabel: '研究',
@@ -1735,7 +1743,7 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
           routeLabel: '农业',
           core: '核心入口：粮食稳定',
           summary: '稳定粮食',
-          unlockSummary: '入口：粮食 / 建筑：农田',
+          unlockSummary: '解锁建筑：农田 / 研究后：农田提供稳定粮食生产。',
           buttonLabel: '研究',
           disabled: false,
         }],
@@ -1759,8 +1767,11 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
 
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '当前知识产出'), false);
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'), false);
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '效果：入口：粮食 / 建筑：农田'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前置：无'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '解锁建筑：'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '研究后：'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田提供稳定粮食生产。'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前置科技：无'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '田块轮作'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农耕分支'));

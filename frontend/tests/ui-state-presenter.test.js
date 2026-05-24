@@ -591,8 +591,17 @@ test('tech view state formats knowledge rate for Canvas renderer', () => {
   assert.equal(view.text.points, '科技点 1');
   assert.equal(view.text.available, '可研究 1');
   assert.equal(view.eras[0].techs[0].buttonLabel, '研究');
-  assert.equal(view.eras[0].techs[0].unlockSummary, '入口：粮食 / 建筑：农田');
+  assert.equal(view.eras[0].techs[0].unlockSummary, '解锁建筑：农田 / 研究后：农田提供稳定粮食生产。 / 发展方向：粮食生产');
+  assert.deepEqual(view.eras[0].techs[0].effectRows, [
+    { label: '解锁建筑', text: '农田' },
+    { label: '研究后', text: '农田提供稳定粮食生产。' },
+    { label: '发展方向', text: '粮食生产' },
+  ]);
   assert.equal(view.detail.title, '田块轮作');
+  assert.deepEqual(view.detail.effectRows.slice(0, 2), [
+    { label: '解锁建筑', text: '农田' },
+    { label: '研究后', text: '农田提供稳定粮食生产。' },
+  ]);
   assert.equal(view.detail.canResearch, true);
   assert.equal(view.detail.buttonLabel, '研究');
   assert.equal(view.tree.nodes[0].id, 'farming_field_rotation');
@@ -638,6 +647,38 @@ test('tech view state exposes selected tech detail and prerequisite status', () 
   assert.equal(view.detail.prerequisiteText, '田块轮作');
   assert.equal(view.detail.canResearch, false);
   assert.equal(view.eras[0].techs[0].buttonLabel, '需前置');
+});
+
+test('tech detail describes housing as civilization population capacity', () => {
+  const view = UIStatePresenter.buildTechViewState({
+    techs: {
+      points: 1,
+      eras: [{
+        era: 1,
+        name: '农耕分支',
+        choiceLimit: 1,
+        choicesUsed: 0,
+        techs: [{
+          id: 'farming_household_plots',
+          name: '家户菜圃',
+          routeLabel: '民生',
+          summary: '居住与粮食',
+          status: 'available',
+          available: true,
+          tree: { column: 1, row: 1, lane: -1, routes: ['livelihood'], parents: [] },
+          resourceText: '粮食',
+          unlockText: '民居',
+          unlockedBuildings: ['house'],
+        }],
+      }],
+    },
+  });
+
+  assert.deepEqual(view.detail.effectRows.slice(0, 2), [
+    { label: '解锁建筑', text: '民居' },
+    { label: '研究后', text: '民居提升文明人口承载能力。' },
+  ]);
+  assert.equal(view.detail.unlockSummary, '解锁建筑：民居 / 研究后：民居提升文明人口承载能力。 / 发展方向：粮食生产');
 });
 
 test('event modal view state handles multiple and single event options', () => {
