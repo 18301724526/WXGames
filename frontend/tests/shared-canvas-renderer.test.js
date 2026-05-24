@@ -1767,11 +1767,9 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
 
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '当前知识产出'), false);
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'), false);
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '解锁建筑：'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '研究后：'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田提供稳定粮食生产。'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前置科技：无'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '解锁建筑：'), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '研究后：'), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '前置科技：无'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '田块轮作'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农耕分支'));
@@ -1786,13 +1784,28 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
     renderer.getHitTarget({ x: techTarget.x + 2, y: techTarget.y + 2 }),
     { type: 'selectTechNode', techId: 'farming_field_rotation', dragType: 'techTreeDrag' },
   );
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'research'), false);
+  assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
+
+  calls.length = 0;
+  renderer.render({ currentEraName: '聚落时代', resources: { knowledgePerSecond: 0.2 } }, {
+    activeTab: 'tech',
+    mode: 'hud',
+    selectedTechId: 'farming_field_rotation',
+    techDetailOpen: true,
+  });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '解锁建筑：'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '研究后：'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农田提供稳定粮食生产。'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前置科技：无'));
   const researchTarget = renderer.hitTargets.find((target) => target.action.type === 'research');
   assert.ok(researchTarget);
   assert.deepEqual(
     renderer.getHitTarget({ x: researchTarget.x + 2, y: researchTarget.y + 2 }),
     { type: 'research', techId: 'farming_field_rotation', disabled: false },
   );
-  assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
+  assert.ok(renderer.hitTargets.some((target) => target.action.type === 'closeTechDetail'));
 });
 
 test('CanvasGameRenderer renders dense tech tree as a draggable vertical scroll', () => {

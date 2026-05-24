@@ -216,6 +216,14 @@
         return selected;
       }
 
+      if (action.type === 'closeTechDetail') {
+        const closed = typeof context.closeTechDetail === 'function'
+          ? context.closeTechDetail(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       return false;
     }
 
@@ -246,6 +254,7 @@
         'switchTaskCenterTab',
         'selectBuildingCategory',
         'selectTechNode',
+        'closeTechDetail',
       ];
     }
 

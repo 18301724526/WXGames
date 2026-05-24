@@ -172,6 +172,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'switchTaskCenterTab',
     'selectBuildingCategory',
     'selectTechNode',
+    'closeTechDetail',
   ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
@@ -197,6 +198,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'closeTaskCenter' }), true);
   assert.equal(dispatcher.canHandle({ type: 'switchTaskCenterTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'selectTechNode' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeTechDetail' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
 });
 

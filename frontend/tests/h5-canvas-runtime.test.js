@@ -183,6 +183,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       buildingOffset: 0,
       techTreePanX: 0,
       techTreePanY: 0,
+      techDetailOpen: false,
       activeBuildingCategory: 'all',
       activeEventId: null,
       territoryUiState: {},
@@ -1726,9 +1727,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-compact-detail-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-compact-detail-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-compact-detail-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-compact-detail-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-radar-nodes-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-radar-nodes-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-radar-nodes-v1/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-radar-nodes-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

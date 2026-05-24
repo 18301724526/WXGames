@@ -150,3 +150,26 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(renderer, /scoutReports/);
   assert.doesNotMatch(renderer, /river_plain|north_forest|hill_outpost|old_ruins/);
 });
+
+test('tech tree uses standalone transparent route icons', () => {
+  const renderer = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
+  const assets = [
+    'tech-agriculture-cutout.png',
+    'tech-livelihood-cutout.png',
+    'tech-administration-cutout.png',
+    'tech-knowledge-cutout.png',
+    'tech-culture-cutout.png',
+    'tech-engineering-cutout.png',
+    'tech-industry-cutout.png',
+    'tech-exploration-cutout.png',
+    'tech-trade-cutout.png',
+    'tech-military-cutout.png',
+  ];
+
+  for (const asset of assets) {
+    assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true);
+    assert.match(renderer, new RegExp(iconUrlPattern(asset)));
+  }
+  assert.match(renderer, /renderTechDetailModal/);
+  assert.match(renderer, /type: 'closeTechDetail'/);
+});

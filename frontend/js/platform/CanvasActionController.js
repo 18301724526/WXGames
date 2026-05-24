@@ -8,6 +8,7 @@
     'showTaskCenter',
     'showTalentPolicy',
     'showGuidebook',
+    'techDetailOpen',
   ];
 
   class CanvasActionController {
@@ -591,6 +592,7 @@
         this.host.selectTechNode(action);
       } else if (this.host) {
         this.host.selectedTechId = action.techId || '';
+        this.host.techDetailOpen = Boolean(action.techId);
         const game = this.getGameHost();
         if (game?.state && typeof game.state === 'object') {
           game.state = {
@@ -598,6 +600,26 @@
             techUiState: {
               ...(game.state.techUiState || {}),
               selectedTechId: action.techId || '',
+              detailOpen: Boolean(action.techId),
+            },
+          };
+        }
+      }
+      return this.afterHandled(action);
+    }
+
+    handle_closeTechDetail(action) {
+      if (typeof this.host?.closeTechDetail === 'function') {
+        this.host.closeTechDetail(action);
+      } else if (this.host) {
+        this.host.techDetailOpen = false;
+        const game = this.getGameHost();
+        if (game?.state && typeof game.state === 'object') {
+          game.state = {
+            ...game.state,
+            techUiState: {
+              ...(game.state.techUiState || {}),
+              detailOpen: false,
             },
           };
         }

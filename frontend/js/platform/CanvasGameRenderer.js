@@ -42,6 +42,16 @@
         'assets/art/icon-science-cutout.webp',
         'assets/art/icon-soldier-cutout.webp',
         'assets/art/icon-event-cutout.webp',
+        'assets/art/tech-agriculture-cutout.png',
+        'assets/art/tech-livelihood-cutout.png',
+        'assets/art/tech-administration-cutout.png',
+        'assets/art/tech-knowledge-cutout.png',
+        'assets/art/tech-culture-cutout.png',
+        'assets/art/tech-engineering-cutout.png',
+        'assets/art/tech-industry-cutout.png',
+        'assets/art/tech-exploration-cutout.png',
+        'assets/art/tech-trade-cutout.png',
+        'assets/art/tech-military-cutout.png',
         'assets/art/building-house-cutout.png',
         'assets/art/building-farm-cutout.png',
         'assets/art/building-lumbermill-cutout.png',
@@ -429,6 +439,21 @@
       this.ctx.moveTo(points[0].x, points[0].y);
       points.slice(1).forEach((point) => this.ctx.lineTo(point.x, point.y));
       this.ctx.stroke();
+    }
+
+    drawCircle(x, y, radius, options = {}) {
+      if (!this.ctx || typeof this.ctx.arc !== 'function') return;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      if (options.fill) {
+        this.ctx.fillStyle = options.fill;
+        this.ctx.fill();
+      }
+      if (options.stroke) {
+        this.ctx.strokeStyle = options.stroke;
+        this.ctx.lineWidth = options.width || 1;
+        this.ctx.stroke();
+      }
     }
 
     beginFrame(options = {}) {
@@ -2557,23 +2582,23 @@
 
     getTechRouteCatalog() {
       return {
-        agriculture: { lane: -4, label: '农业', color: '#5fcb6b' },
-        livelihood: { lane: -3, label: '民生', color: '#d9b35d' },
-        administration: { lane: -2, label: '秩序', color: '#c9a47a' },
-        knowledge: { lane: -1, label: '知识', color: '#57a6ff' },
-        culture: { lane: 0, label: '文化', color: '#b48cff' },
-        engineering: { lane: 1, label: '工程', color: '#83c8d9' },
-        industry: { lane: 2, label: '工业', color: '#d9904f' },
-        exploration: { lane: 3, label: '探索', color: '#62c9a7' },
-        trade: { lane: 4, label: '贸易', color: '#d5c46a' },
-        military: { lane: 5, label: '军事', color: '#e35d5d' },
+        agriculture: { lane: -4, label: '农业', color: '#5fcb6b', icon: 'assets/art/tech-agriculture-cutout.png' },
+        livelihood: { lane: -3, label: '民生', color: '#d9b35d', icon: 'assets/art/tech-livelihood-cutout.png' },
+        administration: { lane: -2, label: '秩序', color: '#c9a47a', icon: 'assets/art/tech-administration-cutout.png' },
+        knowledge: { lane: -1, label: '知识', color: '#57a6ff', icon: 'assets/art/tech-knowledge-cutout.png' },
+        culture: { lane: 0, label: '文化', color: '#b48cff', icon: 'assets/art/tech-culture-cutout.png' },
+        engineering: { lane: 1, label: '工程', color: '#83c8d9', icon: 'assets/art/tech-engineering-cutout.png' },
+        industry: { lane: 2, label: '工业', color: '#d9904f', icon: 'assets/art/tech-industry-cutout.png' },
+        exploration: { lane: 3, label: '探索', color: '#62c9a7', icon: 'assets/art/tech-exploration-cutout.png' },
+        trade: { lane: 4, label: '贸易', color: '#d5c46a', icon: 'assets/art/tech-trade-cutout.png' },
+        military: { lane: 5, label: '军事', color: '#e35d5d', icon: 'assets/art/tech-military-cutout.png' },
       };
     }
 
     getTechRouteMeta(route) {
       const catalog = this.getTechRouteCatalog();
       if (route && catalog[route]) return catalog[route];
-      return { lane: 0, label: route || '路线', color: '#f0b45b' };
+      return { lane: 0, label: route || '路线', color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' };
     }
 
     getTechNodeRoutes(node = {}) {
@@ -2644,41 +2669,50 @@
       const palette = this.getTechNodeColor(node);
       const routes = this.getTechNodeRoutes(node);
       const selected = Boolean(options.selected);
-      this.drawPanel(rect.x, rect.y, rect.width, rect.height, {
-        fill: palette.fill,
-        stroke: selected ? '#ffe6b5' : palette.stroke,
-        radius: 8,
-        inset: selected ? 'rgba(255, 244, 200, 0.22)' : (node.available ? 'rgba(255, 244, 200, 0.1)' : 'rgba(255, 255, 255, 0.03)'),
+      const primaryRoute = routes[0] || node.route || '';
+      const routeMeta = this.getTechRouteMeta(primaryRoute);
+      const cx = Number(rect.centerX) || rect.x + rect.width / 2;
+      const cy = Number(rect.centerY) || rect.y + 30;
+      const iconSize = Math.min(50, Math.max(40, rect.width * 0.58));
+      const iconRadius = iconSize / 2;
+      const alpha = node.disabled && !node.researched ? 0.52 : 1;
+      if (selected) {
+        this.drawCircle(cx, cy, iconRadius + 10, {
+          fill: `${routeMeta.color}22`,
+          stroke: '#ffe6b5',
+          width: 2,
+        });
+      }
+      this.drawCircle(cx, cy, iconRadius + 5, {
+        fill: node.researched ? 'rgba(34, 82, 58, 0.68)' : 'rgba(18, 16, 13, 0.7)',
+        stroke: node.researched ? '#74d3a0' : (node.disabled ? 'rgba(174, 176, 184, 0.38)' : routeMeta.color),
+        width: node.researched || selected ? 2 : 1.5,
       });
-      this.drawTechRouteSegments(rect.x + 6, rect.y + 5, rect.width - 12, 4, routes, node.disabled && !node.researched ? 0.42 : 0.9);
-      const iconSize = 26;
-      const iconX = rect.x + 8;
-      const iconY = rect.y + 15;
-      this.drawPanel(iconX, iconY, iconSize, iconSize, {
-        fill: node.researched ? 'rgba(116, 211, 160, 0.18)' : 'rgba(11, 18, 14, 0.34)',
-        stroke: selected ? '#ffe6b5' : palette.stroke,
-        radius: 8,
+      if (!this.drawAsset(routeMeta.icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize, alpha)) {
+        this.drawText(this.truncateText(this.getTechNodeRouteLabel(node), iconSize - 10, { size: 13, bold: true }).slice(0, 2), cx, cy, {
+          size: 13,
+          bold: true,
+          align: 'center',
+          baseline: 'middle',
+          color: palette.accent,
+        });
+      }
+      if (routes.length > 1) {
+        this.drawTechRouteSegments(cx - 23, cy + iconRadius + 8, 46, 4, routes, node.disabled && !node.researched ? 0.46 : 0.92);
+      }
+      this.drawCircle(cx + iconRadius + 2, cy + iconRadius + 1, 5, {
+        fill: node.researched ? '#74d3a0' : (!node.disabled ? '#f0b45b' : '#7d8590'),
+        stroke: 'rgba(18, 16, 13, 0.86)',
+        width: 1.5,
       });
-      this.drawText(this.truncateText(this.getTechNodeRouteLabel(node), iconSize - 8, { size: 10, bold: true }).slice(0, 2), iconX + iconSize / 2, iconY + iconSize / 2, {
-        size: 10,
-        bold: true,
-        align: 'center',
-        baseline: 'middle',
-        color: palette.accent,
-      });
-      const titleX = iconX + iconSize + 6;
-      const titleWidth = Math.max(28, rect.x + rect.width - titleX - 6);
-      this.drawText(this.truncateText(node.title || node.name || '科技', titleWidth, { size: 11, bold: true }), titleX, rect.y + 17, {
+      const titleWidth = Math.max(54, rect.width + 16);
+      this.drawText(this.truncateText(node.title || node.name || '科技', titleWidth, { size: 10, bold: true }), cx, rect.y + rect.height - 13, {
         size: 11,
         bold: true,
+        align: 'center',
         color: palette.text,
       });
-      const label = node.researched ? '已研究' : (node.statusLabel || node.buttonLabel);
-      this.drawText(this.truncateText(label, titleWidth, { size: 9, bold: true }), titleX, rect.y + 35, {
-        size: 9,
-        bold: true,
-        color: palette.accent,
-      });
+      return;
     }
 
     renderTechDetailPanel(detail = {}, x, y, width, height) {
@@ -2768,6 +2802,119 @@
       }
     }
 
+    getTechDetailIcon(detail = {}) {
+      const routes = Array.isArray(detail.routes) && detail.routes.length
+        ? detail.routes
+        : (detail.routeId ? [detail.routeId] : []);
+      return this.getTechRouteMeta(routes[0] || detail.routeId || '').icon;
+    }
+
+    renderTechDetailModal(detail = {}) {
+      if (!detail || detail.empty) return;
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeTechDetail' });
+      const layout = this.getLayout();
+      const panelWidth = Math.min(layout.contentWidth - 24, 360);
+      const panelHeight = Math.min(430, this.height - 160);
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(86, (this.height - panelHeight) / 2 - 8);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(54, 39, 26, 0.98)'],
+            [1, 'rgba(22, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 14,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+      const closeSize = 28;
+      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeTechDetail' });
+
+      const iconSize = 58;
+      const iconPath = this.getTechDetailIcon(detail);
+      this.drawCircle(x + 45, y + 48, 34, {
+        fill: 'rgba(18, 16, 13, 0.64)',
+        stroke: 'rgba(255, 226, 177, 0.22)',
+        width: 1.5,
+      });
+      this.drawAsset(iconPath, x + 16, y + 19, iconSize, iconSize, 0.98);
+      this.drawText(this.truncateText(detail.title || '科技', panelWidth - 118, { size: 17, bold: true }), x + 84, y + 22, {
+        size: 17,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      const meta = [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · ');
+      this.drawText(this.truncateText(meta, panelWidth - 118, { size: 11, bold: true }), x + 84, y + 52, {
+        size: 11,
+        bold: true,
+        color: detail.canResearch ? '#74d3a0' : '#f0b45b',
+      });
+
+      let cursorY = y + 92;
+      const summaryLines = this.wrapTextLimit(detail.summary || '选择科技查看效果。', panelWidth - 32, 3, { size: 12 });
+      this.drawTextLines(summaryLines, x + 16, cursorY, {
+        size: 12,
+        color: '#f6e8c8',
+        lineHeight: 17,
+      });
+      cursorY += summaryLines.length * 17 + 14;
+
+      const rows = Array.isArray(detail.effectRows) && detail.effectRows.length
+        ? detail.effectRows
+        : [{ label: '研究后', text: detail.unlockSummary || '选择一条文明发展方向。' }];
+      rows.slice(0, 4).forEach((row) => {
+        const label = `${row.label}：`;
+        this.drawText(label, x + 16, cursorY, { size: 11, bold: true, color: '#f0b45b' });
+        this.ctx.font = '700 11px sans-serif';
+        const labelWidth = Math.max(58, this.ctx.measureText(label).width + 2);
+        const rowLines = this.wrapTextLimit(row.text || '无', panelWidth - 32 - labelWidth, 2, { size: 11 });
+        this.drawTextLines(rowLines, x + 16 + labelWidth, cursorY, {
+          size: 11,
+          color: '#cbbd96',
+          lineHeight: 15,
+        });
+        cursorY += Math.max(18, rowLines.length * 15 + 4);
+      });
+
+      const prereqText = `前置科技：${detail.prerequisiteText || '无'}`;
+      this.drawText(this.truncateText(prereqText, panelWidth - 32, { size: 11 }), x + 16, cursorY + 4, {
+        size: 11,
+        color: '#aeb0b8',
+      });
+      cursorY += 30;
+
+      if (!detail.canResearch && detail.disabledReason) {
+        this.drawText(this.truncateText(detail.disabledReason, panelWidth - 32, { size: 11 }), x + 16, cursorY, {
+          size: 11,
+          color: '#d6b16e',
+        });
+      }
+      const buttonW = Math.min(128, panelWidth - 32);
+      const buttonH = 36;
+      const buttonX = x + panelWidth - buttonW - 16;
+      const buttonY = y + panelHeight - buttonH - 16;
+      this.drawText(this.truncateText(detail.pointsText || '', panelWidth - buttonW - 44, { size: 11, bold: true }), x + 16, buttonY + 11, {
+        size: 11,
+        bold: true,
+        color: '#f0b45b',
+      });
+      this.drawPrimaryActionButton(buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || '研究', {
+        disabled: !detail.canResearch,
+        size: 13,
+        radius: 8,
+      });
+      this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
+        type: 'research',
+        techId: detail.id,
+        disabled: !detail.canResearch || !detail.id,
+      });
+    }
+
     getTechTreeLayout(view = {}, panel = {}, options = {}) {
       const tree = view.tree || {};
       const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
@@ -2781,12 +2928,12 @@
       const panelX = Number(panel.x) || 0;
       const panelY = Number(panel.y) || 0;
       const routeCatalog = this.getTechRouteCatalog();
-      const nodeWidth = Math.max(92, Math.min(118, width * 0.34));
-      const nodeHeight = 54;
+      const nodeWidth = Math.max(82, Math.min(102, width * 0.3));
+      const nodeHeight = 76;
       const baseEraHeight = Math.max(280, Math.min(360, height * 0.78));
-      const localRowGap = nodeHeight + 44;
+      const localRowGap = nodeHeight + 38;
       const collisionGap = 18;
-      const laneGap = Math.max(nodeWidth + 34, Math.min(168, width * 0.44));
+      const laneGap = Math.max(nodeWidth + 42, Math.min(168, width * 0.44));
       const eraRailWidth = 58;
       const eraRailX = panelX + width - eraRailWidth - 8;
       const panelCenterX = panelX + width / 2;
@@ -3012,9 +3159,13 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      const headerHeight = 124;
-      this.renderTechDetailPanel(view.detail, x + 12, startY + 12, width - 24, headerHeight);
-      const pillY = startY + headerHeight - 24;
+      const headerHeight = 58;
+      this.renderSectionHeader(view.text.title, x + 16, startY + 14, '🔩');
+      this.drawText(this.truncateText(view.text.subtitle, width - 32, { size: 10 }), x + 16, startY + 36, {
+        size: 10,
+        color: 'rgba(234, 234, 234, 0.62)',
+      });
+      const pillY = startY + 14;
       const pillWidth = 68;
       [
         view.text.points,
@@ -3035,7 +3186,7 @@
         });
       });
 
-      const panelY = startY + headerHeight + 24;
+      const panelY = startY + headerHeight;
       const panelBottom = startY + panelHeight - 14;
       const panelH = Math.max(116, panelBottom - panelY);
       this.drawPanel(x + 12, panelY, width - 24, panelH, {
@@ -3043,15 +3194,10 @@
         stroke: 'rgba(255, 226, 177, 0.12)',
         radius: 10,
       });
-      this.renderSectionHeader(view.text.title, x + 28, panelY + 16, '🔬');
-      this.drawText(this.truncateText(view.text.subtitle, width - 120, { size: 11 }), x + 28, panelY + 42, {
-        size: 11,
-        color: 'rgba(234, 234, 234, 0.62)',
-      });
 
       const tree = view.tree || {};
       const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
-      const treeTop = panelY + 68;
+      const treeTop = panelY + 14;
       const treeBottom = startY + panelHeight - 26;
       const treeHeight = Math.max(128, treeBottom - treeTop);
       const treeX = x + 24;
@@ -4519,6 +4665,17 @@
       if (options.activeEventId) {
         this.renderEventModal(state, options.activeEventId);
       }
+      if (activeTab === 'tech' && (options.techDetailOpen || state.techUiState?.detailOpen)) {
+        const view = this.presenter?.buildTechViewState?.({
+          ...state,
+          techUiState: {
+            ...(state.techUiState || {}),
+            ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
+          },
+          ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
+        });
+        this.renderTechDetailModal(view?.detail);
+      }
       if (activeTab === 'military') {
         this.renderWorldSiteModal(state, options);
       }
@@ -4829,6 +4986,17 @@
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      if (activeTab === 'tech' && (options.techDetailOpen || state.techUiState?.detailOpen)) {
+        const view = this.presenter?.buildTechViewState?.({
+          ...state,
+          techUiState: {
+            ...(state.techUiState || {}),
+            ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
+          },
+          ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
+        });
+        this.renderTechDetailModal(view?.detail);
+      }
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
       this.renderTutorialHighlight(options.tutorialHighlight || null);

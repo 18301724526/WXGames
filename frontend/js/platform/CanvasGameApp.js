@@ -56,12 +56,15 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techDetailOpen = false;
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
+      if (this.canvasShell) this.canvasShell.techDetailOpen = false;
       this.state = {
         ...this.state,
         techUiState: {
           ...(this.state.techUiState || {}),
           selectedTechId: '',
+          detailOpen: false,
         },
       };
       this.techTreeDragStart = null;
@@ -284,6 +287,7 @@
         techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
         selectedTechId: this.state?.techUiState?.selectedTechId || this.canvasShell?.selectedTechId || '',
+        techDetailOpen: this.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen || this.canvasShell?.techDetailOpen),
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
@@ -508,12 +512,15 @@
       this.buildingOffset = 0;
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techDetailOpen = false;
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
+      if (this.canvasShell) this.canvasShell.techDetailOpen = false;
       this.state = {
         ...this.state,
         techUiState: {
           ...(this.state.techUiState || {}),
           selectedTechId: '',
+          detailOpen: false,
         },
       };
       this.techTreeDragStart = null;
@@ -526,6 +533,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.activeEventId = null;
       this.showResourceDetails = false;
@@ -539,6 +547,7 @@
       this.pageTransition = null;
       this.buildingTransition = null;
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
+      if (this.canvasShell) this.canvasShell.techDetailOpen = false;
       if (this.state && typeof this.state === 'object') {
         this.state = {
           ...this.state,
@@ -546,6 +555,7 @@
           techUiState: {
             ...(this.state.techUiState || {}),
             selectedTechId: '',
+            detailOpen: false,
           },
         };
       }
@@ -888,10 +898,12 @@
             techUiState: {
               ...(this.state.techUiState || {}),
               selectedTechId: techId,
+              detailOpen: false,
             },
           };
         }
         if (this.canvasShell) this.canvasShell.selectedTechId = techId;
+        if (this.canvasShell) this.canvasShell.techDetailOpen = false;
         this.showFloatingText(result.message || '科技已研究');
         this.log(result.message || '科技已研究');
         return true;
@@ -908,13 +920,22 @@
       const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
       this.activeTab = navigation?.activeTab || tab || 'resources';
       const preferredMilitaryView = this.getPreferredMilitaryView(tab);
-      this.state = { ...this.state, currentTab: this.activeTab };
+      this.state = {
+        ...this.state,
+        currentTab: this.activeTab,
+        techUiState: {
+          ...(this.state.techUiState || {}),
+          detailOpen: false,
+        },
+      };
       if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
       this.buildingOffset = 0;
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.buildingTransition = null;
+      if (this.canvasShell) this.canvasShell.techDetailOpen = false;
       this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
       this.activeEventId = null;
       this.showTalentPolicy = false;

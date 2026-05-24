@@ -1700,6 +1700,8 @@
           id: selectedTech.id,
           title: selectedTech.title || selectedTech.name || '科技',
           eraName: selectedTech.eraName || visibleEras.find((era) => era.era === selectedTech.era)?.name || '',
+          routeId: selectedRoutes[0] || selectedTech.route || '',
+          routes: selectedRoutes,
           routeLabel: selectedRoutes.length > 1
             ? selectedRoutes.map((route) => routeLabelsById[route] || route).join(' / ')
             : (selectedTech.routeLabel || '路线'),

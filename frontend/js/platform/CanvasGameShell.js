@@ -50,6 +50,7 @@
       this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.selectedTechId = '';
+      this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -142,6 +143,7 @@
         || this.showTaskCenter
         || this.showGuidebook
         || this.showTalentPolicy
+        || this.techDetailOpen
         || this.activeEventId
         || this.naming.visible
         || this.rewardReveal);
@@ -237,12 +239,28 @@
     selectTechNode(action = {}) {
       const techId = action.techId || '';
       this.selectedTechId = techId;
+      this.techDetailOpen = Boolean(techId);
       if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
         this.lastGame.state = {
           ...this.lastGame.state,
           techUiState: {
             ...(this.lastGame.state.techUiState || {}),
             selectedTechId: techId,
+            detailOpen: Boolean(techId),
+          },
+        };
+      }
+      return true;
+    }
+
+    closeTechDetail(action = {}) {
+      this.techDetailOpen = false;
+      if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
+        this.lastGame.state = {
+          ...this.lastGame.state,
+          techUiState: {
+            ...(this.lastGame.state.techUiState || {}),
+            detailOpen: false,
           },
         };
       }
@@ -255,6 +273,7 @@
       this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.selectedTechId = '';
+      this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.buildingTransition = null;
       this.activeEventId = null;
@@ -268,6 +287,7 @@
       this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.selectedTechId = '';
+      this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -838,6 +858,7 @@
         techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
         ...(this.selectedTechId ? { selectedTechId: this.selectedTechId } : {}),
+        techDetailOpen: this.techDetailOpen || Boolean(state.techUiState?.detailOpen),
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
