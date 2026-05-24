@@ -441,6 +441,26 @@
       this.ctx.stroke();
     }
 
+    drawCurvePath(path = {}, options = {}) {
+      if (!this.ctx || !path.start || !path.end) return;
+      const previousLineCap = this.ctx.lineCap;
+      const previousLineJoin = this.ctx.lineJoin;
+      this.ctx.strokeStyle = options.color || 'rgba(232, 199, 128, 0.28)';
+      this.ctx.lineWidth = options.width || 1;
+      this.ctx.lineCap = options.lineCap || 'round';
+      this.ctx.lineJoin = options.lineJoin || 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(path.start.x, path.start.y);
+      if (typeof this.ctx.bezierCurveTo === 'function' && path.c1 && path.c2) {
+        this.ctx.bezierCurveTo(path.c1.x, path.c1.y, path.c2.x, path.c2.y, path.end.x, path.end.y);
+      } else {
+        this.ctx.lineTo(path.end.x, path.end.y);
+      }
+      this.ctx.stroke();
+      if (previousLineCap !== undefined) this.ctx.lineCap = previousLineCap;
+      if (previousLineJoin !== undefined) this.ctx.lineJoin = previousLineJoin;
+    }
+
     drawCircle(x, y, radius, options = {}) {
       if (!this.ctx || typeof this.ctx.arc !== 'function') return;
       this.ctx.beginPath();
@@ -3065,20 +3085,44 @@
               || childRoutes[0]
               || parentRoutes[0]
               || '';
-            const color = this.getTechRouteMeta(sharedRoute).color;
-            const midY = parentRect.centerY + Math.max(34, (childRect.centerY - parentRect.centerY) * 0.45);
-            const routeX = laneToX(this.getTechRouteMeta(sharedRoute).lane);
+            const routeMeta = this.getTechRouteMeta(sharedRoute);
+            const color = routeMeta.color;
+            const routeX = laneToX(routeMeta.lane);
+            const start = {
+              x: parentRect.centerX,
+              y: parentRect.centerY + Math.min(34, parentRect.height * 0.44),
+            };
+            const end = {
+              x: childRect.centerX,
+              y: childRect.centerY - Math.min(34, childRect.height * 0.44),
+            };
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const signY = dy >= 0 ? 1 : -1;
+            const side = Math.abs(dx) > 6
+              ? Math.sign(dx)
+              : ((Number(childRect.lane) || Number(parentRect.lane) || 0) >= 0 ? 1 : -1);
+            const curveBend = Math.max(24, Math.min(88, Math.abs(dx) * 0.28 + laneGap * 0.16));
+            const verticalBend = Math.max(42, Math.min(150, Math.abs(dy) * 0.38 + 24));
+            const lanePull = Number.isFinite(routeX)
+              ? Math.max(-72, Math.min(72, (routeX - (start.x + end.x) / 2) * 0.18))
+              : 0;
             return {
               from: parentId,
               to: node.id,
               color,
-              points: [
-                { x: parentRect.centerX, y: parentRect.y + parentRect.height },
-                { x: parentRect.centerX, y: midY },
-                { x: routeX, y: midY },
-                { x: childRect.centerX, y: midY },
-                { x: childRect.centerX, y: childRect.y },
-              ],
+              curve: {
+                start,
+                c1: {
+                  x: start.x + dx * 0.16 + side * curveBend + lanePull,
+                  y: start.y + signY * verticalBend,
+                },
+                c2: {
+                  x: end.x - dx * 0.16 - side * curveBend + lanePull,
+                  y: end.y - signY * verticalBend,
+                },
+                end,
+              },
               active: Boolean(parentNode.researched && node.available),
               researched: Boolean(parentNode.researched && node.researched),
               locked: node.status === 'locked',
@@ -3264,7 +3308,7 @@
             });
           });
           linkPaths.forEach((link) => {
-            this.drawPolyline(link.points, {
+            this.drawCurvePath(link.curve, {
               color: link.researched || link.active ? `${link.color}cc` : (link.locked ? 'rgba(174, 176, 184, 0.18)' : `${link.color}66`),
               width: link.researched || link.active ? 3 : 2,
             });

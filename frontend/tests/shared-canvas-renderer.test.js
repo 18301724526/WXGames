@@ -30,6 +30,7 @@ function makeCtx() {
       roundRect(...a) { calls.push(['roundRect', ...a]); },
       moveTo(...a) { calls.push(['moveTo', ...a]); },
       lineTo(...a) { calls.push(['lineTo', ...a]); },
+      bezierCurveTo(...a) { calls.push(['bezierCurveTo', ...a]); },
       stroke(...a) { calls.push(['stroke', ...a]); },
       fill() {},
       save() {},
@@ -74,6 +75,7 @@ test('CanvasGameRenderer provides shared drawing primitives without platform dep
     clip() {},
     translate(...a) { calls.push('translate', a); },
     arc() {},
+    bezierCurveTo() { calls.push('bezierCurveTo'); },
     fillText(...a) { calls.push('fillText', a); },
     clearRect(...a) { calls.push('clearRect', a); },
     fillRect(...a) { calls.push('fillRect', a); },
@@ -1778,6 +1780,8 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(lineCalls.length >= 4);
   assert.ok(lineCalls.some((call) => Math.abs(call[1] - 195) < 1));
   assert.equal(lineCalls.some((call) => call[1] === 195 && Math.abs(call[2] - 603.55) < 1), false);
+  const curveCalls = calls.filter((call) => call[0] === 'bezierCurveTo');
+  assert.ok(curveCalls.length >= 1);
   const techTarget = renderer.hitTargets.find((target) => target.action.type === 'selectTechNode' && target.action.techId === 'farming_field_rotation');
   assert.ok(techTarget);
   assert.deepEqual(
@@ -1955,6 +1959,11 @@ test('CanvasGameRenderer places shared tech nodes between route lanes', () => {
   assert.ok(layout.routeGuides.some((route) => route.id === 'agriculture'));
   assert.ok(layout.routeGuides.some((route) => route.id === 'military'));
   assert.equal(layout.linkPaths.length, 2);
+  layout.linkPaths.forEach((link) => {
+    assert.ok(link.curve);
+    assert.notEqual(link.curve.c1.x, link.curve.start.x);
+    assert.notEqual(link.curve.c2.x, link.curve.end.x);
+  });
   assert.ok(leftRect.x + leftRect.width < pivotRect.x);
   assert.ok(rightRect.x > pivotRect.x + pivotRect.width);
 });
