@@ -14,14 +14,21 @@
       this.height = 0;
       this.tapHandlers = [];
       this.dragHandlers = [];
+      this.gestureHandlers = [];
       this.pointerDown = null;
       this.dragActive = false;
       this.dragMoved = false;
+      this.activePinch = null;
+      this.suppressTapUntil = 0;
       this.resizeHandlers = [];
       this.handleResize = this.handleResize.bind(this);
       this.handlePointerDown = this.handlePointerDown.bind(this);
       this.handlePointerMove = this.handlePointerMove.bind(this);
       this.handlePointerUp = this.handlePointerUp.bind(this);
+      this.handleWheel = this.handleWheel.bind(this);
+      this.handleTouchStart = this.handleTouchStart.bind(this);
+      this.handleTouchMove = this.handleTouchMove.bind(this);
+      this.handleTouchEnd = this.handleTouchEnd.bind(this);
       this.lastTapAt = 0;
       this.lastTapKey = '';
     }
@@ -146,10 +153,12 @@
       eventTarget.addEventListener?.('pointermove', this.handlePointerMove, { capture: true });
       eventTarget.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
       this.document?.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
+      eventTarget.addEventListener?.('wheel', this.handleWheel, { capture: true, passive: false });
+      eventTarget.addEventListener?.('touchstart', this.handleTouchStart, { capture: true, passive: false });
+      eventTarget.addEventListener?.('touchmove', this.handleTouchMove, { capture: true, passive: false });
+      eventTarget.addEventListener?.('touchend', this.handleTouchEnd, { capture: true, passive: false });
+      eventTarget.addEventListener?.('touchcancel', this.handleTouchEnd, { capture: true, passive: false });
       if (!global.PointerEvent) {
-        eventTarget.addEventListener?.('touchstart', this.handlePointerDown, { capture: true, passive: false });
-        eventTarget.addEventListener?.('touchmove', this.handlePointerMove, { capture: true, passive: false });
-        eventTarget.addEventListener?.('touchend', this.handlePointerUp, { capture: true, passive: false });
         eventTarget.addEventListener?.('click', this.handlePointerUp, { capture: true });
       }
     }
@@ -170,8 +179,47 @@
       };
     }
 
+    getEventTime(event = {}) {
+      return Number(event.timeStamp) || Date.now();
+    }
+
+    getTouchPoints(event = {}) {
+      const touches = Array.from(event.touches || []);
+      if (touches.length) return touches.map((touch) => this.toCanvasPoint(touch));
+      return Array.from(event.changedTouches || []).map((touch) => this.toCanvasPoint(touch));
+    }
+
+    getGestureCenter(points = []) {
+      const usable = points.slice(0, 2);
+      const total = usable.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
+      const count = Math.max(1, usable.length);
+      return { x: total.x / count, y: total.y / count };
+    }
+
+    getGestureDistance(points = []) {
+      if (points.length < 2) return 0;
+      const dx = points[0].x - points[1].x;
+      const dy = points[0].y - points[1].y;
+      return Math.hypot(dx, dy);
+    }
+
+    dispatchGesture(gesture, event = {}) {
+      if (!gesture || !this.gestureHandlers.length) return false;
+      let handled = false;
+      this.gestureHandlers.forEach((handler) => {
+        if (handler(gesture, event)) handled = true;
+      });
+      if (handled) {
+        this.dragMoved = true;
+        this.suppressTapUntil = this.getEventTime(event) + 260;
+        if (event?.cancelable !== false) event.preventDefault?.();
+        event.stopPropagation?.();
+      }
+      return handled;
+    }
+
     shouldIgnoreDuplicateTap(point, event = {}) {
-      const now = Number(event.timeStamp) || Date.now();
+      const now = this.getEventTime(event);
       const key = `${event.type || 'tap'}:${Math.round(point.x)}:${Math.round(point.y)}`;
       if (key === this.lastTapKey && now - this.lastTapAt < 180) return true;
       this.lastTapKey = key;
@@ -180,6 +228,8 @@
     }
 
     handlePointerDown(event) {
+      if (event?.touches?.length >= 2 || this.activePinch) return false;
+      if (event?.pointerType === 'touch' && this.pointerDown) return false;
       const point = this.toCanvasPoint(event);
       const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? 1;
       this.pointerDown = { ...point, pointerId };
@@ -198,6 +248,7 @@
     }
 
     handlePointerMove(event) {
+      if (this.activePinch) return false;
       if (!this.pointerDown || !this.dragActive) return false;
       const point = this.toCanvasPoint(event);
       const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown.pointerId;
@@ -220,7 +271,7 @@
       if (this.dragActive) {
         this.dragHandlers.forEach((handler) => handler('end', { ...point, pointerId }, event));
       }
-      const skipTap = this.dragMoved;
+      const skipTap = this.dragMoved || this.getEventTime(event) < this.suppressTapUntil;
       this.pointerDown = null;
       this.dragActive = false;
       this.dragMoved = false;
@@ -239,6 +290,79 @@
       return handled;
     }
 
+    handleWheel(event = {}) {
+      const deltaY = Number(event.deltaY) || 0;
+      if (!deltaY) return false;
+      const point = this.toCanvasPoint(event);
+      const scaleDelta = Math.max(0.82, Math.min(1.22, Math.exp(-deltaY * 0.0015)));
+      return this.dispatchGesture({
+        type: 'wheelZoom',
+        scaleDelta,
+        centerX: point.x,
+        centerY: point.y,
+        x: point.x,
+        y: point.y,
+      }, event);
+    }
+
+    handleTouchStart(event = {}) {
+      const points = this.getTouchPoints(event);
+      if (points.length < 2) {
+        if (!global.PointerEvent) return this.handlePointerDown(event);
+        return false;
+      }
+      if (this.dragActive) {
+        const center = this.getGestureCenter(points);
+        this.dragHandlers.forEach((handler) => handler('cancel', center, event));
+        this.dragActive = false;
+      }
+      this.pointerDown = null;
+      this.dragMoved = true;
+      this.activePinch = {
+        distance: Math.max(1, this.getGestureDistance(points)),
+        center: this.getGestureCenter(points),
+      };
+      this.suppressTapUntil = this.getEventTime(event) + 260;
+      if (event?.cancelable !== false) event.preventDefault?.();
+      return true;
+    }
+
+    handleTouchMove(event = {}) {
+      if (!this.activePinch) {
+        if (!global.PointerEvent) return this.handlePointerMove(event);
+        return false;
+      }
+      const points = this.getTouchPoints(event);
+      if (points.length < 2) return false;
+      const distance = Math.max(1, this.getGestureDistance(points));
+      const center = this.getGestureCenter(points);
+      const previousDistance = Math.max(1, Number(this.activePinch.distance) || distance);
+      this.activePinch = { distance, center };
+      const scaleDelta = Math.max(0.82, Math.min(1.22, distance / previousDistance));
+      return this.dispatchGesture({
+        type: 'pinchZoom',
+        scaleDelta,
+        centerX: center.x,
+        centerY: center.y,
+        x: center.x,
+        y: center.y,
+      }, event);
+    }
+
+    handleTouchEnd(event = {}) {
+      if ((event.touches?.length || 0) >= 2) return this.handleTouchMove(event);
+      if (!this.activePinch) {
+        if (!global.PointerEvent) return this.handlePointerUp(event);
+        return false;
+      }
+      this.activePinch = null;
+      this.dragMoved = true;
+      this.suppressTapUntil = this.getEventTime(event) + 260;
+      if (event?.cancelable !== false) event.preventDefault?.();
+      event.stopPropagation?.();
+      return true;
+    }
+
     onTap(handler) {
       if (typeof handler !== 'function') return () => {};
       this.tapHandlers.push(handler);
@@ -252,6 +376,14 @@
       this.dragHandlers.push(handler);
       return () => {
         this.dragHandlers = this.dragHandlers.filter((item) => item !== handler);
+      };
+    }
+
+    onGesture(handler) {
+      if (typeof handler !== 'function') return () => {};
+      this.gestureHandlers.push(handler);
+      return () => {
+        this.gestureHandlers = this.gestureHandlers.filter((item) => item !== handler);
       };
     }
 

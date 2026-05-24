@@ -56,6 +56,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.techDetailOpen = false;
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
       if (this.canvasShell) this.canvasShell.techDetailOpen = false;
@@ -122,6 +123,8 @@
       }) : null);
       this.timer = null;
       this.tapDisposer = null;
+      this.dragDisposer = null;
+      this.gestureDisposer = null;
     }
 
     applyState(payload = {}) {
@@ -268,6 +271,7 @@
       if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
         if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
         if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
+        if (this.canvasShell && typeof this.canvasShell.techTreeZoom !== 'undefined') this.canvasShell.techTreeZoom = this.techTreeZoom;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         return true;
       }
@@ -286,6 +290,7 @@
         buildingOffset: this.buildingOffset,
         techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
+        techTreeZoom: this.getTechTreeZoom(),
         selectedTechId: this.state?.techUiState?.selectedTechId || this.canvasShell?.selectedTechId || '',
         techDetailOpen: this.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen || this.canvasShell?.techDetailOpen),
         activeBuildingCategory: this.activeBuildingCategory,
@@ -488,6 +493,7 @@
         this.canvasShell.buildingOffset = 0;
         this.canvasShell.techTreePanX = 0;
         this.canvasShell.techTreePanY = 0;
+        this.canvasShell.techTreeZoom = 1;
         this.canvasShell.buildingTransition = null;
       }
       return category !== previous;
@@ -495,6 +501,36 @@
 
     getCanvasActionState() {
       return this.state;
+    }
+
+    getTechTreePan() {
+      return {
+        x: Number(this.techTreePanX) || 0,
+        y: Number(this.techTreePanY) || 0,
+      };
+    }
+
+    setTechTreePan(pan = {}) {
+      const x = Number(pan.x) || 0;
+      const y = Number(pan.y) || 0;
+      this.techTreePanX = x;
+      this.techTreePanY = y;
+      if (this.canvasShell && typeof this.canvasShell === 'object') {
+        this.canvasShell.techTreePanX = x;
+        this.canvasShell.techTreePanY = y;
+      }
+      return true;
+    }
+
+    getTechTreeZoom() {
+      return Math.max(0.65, Math.min(1.6, Number(this.techTreeZoom) || 1));
+    }
+
+    setTechTreeZoom(zoom = 1) {
+      const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
+      this.techTreeZoom = nextZoom;
+      if (this.canvasShell && typeof this.canvasShell === 'object') this.canvasShell.techTreeZoom = nextZoom;
+      return true;
     }
 
     renderCanvasAction() {
@@ -512,6 +548,7 @@
       this.buildingOffset = 0;
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.techDetailOpen = false;
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
       if (this.canvasShell) this.canvasShell.techDetailOpen = false;
@@ -533,6 +570,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.activeEventId = null;
@@ -932,10 +970,12 @@
       this.buildingOffset = 0;
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.buildingTransition = null;
       if (this.canvasShell) this.canvasShell.techDetailOpen = false;
+      if (this.canvasShell) this.canvasShell.techTreeZoom = 1;
       this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
       this.activeEventId = null;
       this.showTalentPolicy = false;
@@ -1380,6 +1420,23 @@
       return this.actionController?.handle?.({ type: 'worldRadarDrag', phase, pointer: point }) || false;
     }
 
+    hasBlockingOverlayOpen() {
+      return Boolean(this.showResourceDetails
+        || this.showCitySwitcher
+        || this.showTaskCenter
+        || this.showGuidebook
+        || this.showTalentPolicy
+        || this.techDetailOpen
+        || this.activeEventId
+        || this.naming?.visible
+        || this.rewardReveal);
+    }
+
+    handleGesture(gesture) {
+      if (this.activeTab !== 'tech' || this.hasBlockingOverlayOpen()) return false;
+      return this.actionController?.handle?.({ type: 'techTreeZoom', gesture }) || false;
+    }
+
     async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
@@ -1394,6 +1451,9 @@
       }
       if (!this.dragDisposer && this.runtime && typeof this.runtime.onDrag === 'function') {
         this.dragDisposer = this.runtime.onDrag((phase, point) => this.handleDrag(phase, point));
+      }
+      if (!this.gestureDisposer && this.runtime && typeof this.runtime.onGesture === 'function') {
+        this.gestureDisposer = this.runtime.onGesture((gesture) => this.handleGesture(gesture));
       }
       this.timer = this.runtime.setInterval(() => {
         this.syncOnce().catch(() => {});
@@ -1413,6 +1473,14 @@
       if (this.tapDisposer) {
         this.tapDisposer();
         this.tapDisposer = null;
+      }
+      if (this.dragDisposer) {
+        this.dragDisposer();
+        this.dragDisposer = null;
+      }
+      if (this.gestureDisposer) {
+        this.gestureDisposer();
+        this.gestureDisposer = null;
       }
     }
   }

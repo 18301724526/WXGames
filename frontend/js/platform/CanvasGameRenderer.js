@@ -291,6 +291,29 @@
       }
     }
 
+    withTransformedClip(x, y, width, height, offsetX = 0, offsetY = 0, scale = 1, callback) {
+      if (!this.ctx || typeof callback !== 'function') return callback?.();
+      const canClip = typeof this.ctx.save === 'function'
+        && typeof this.ctx.restore === 'function'
+        && typeof this.ctx.beginPath === 'function'
+        && typeof this.ctx.rect === 'function'
+        && typeof this.ctx.clip === 'function';
+      if (!canClip) return callback();
+      const safeScale = Math.max(0.01, Number(scale) || 1);
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.rect(x, y, width, height);
+      this.ctx.clip();
+      if (typeof this.ctx.translate === 'function') this.ctx.translate(x + offsetX, y + offsetY);
+      if (typeof this.ctx.scale === 'function') this.ctx.scale(safeScale, safeScale);
+      if (typeof this.ctx.translate === 'function') this.ctx.translate(-x, -y);
+      try {
+        return callback();
+      } finally {
+        this.ctx.restore();
+      }
+    }
+
     setAssetsChangedHandler(handler) {
       this.assetsChangedHandler = typeof handler === 'function' ? handler : null;
     }
@@ -2962,6 +2985,7 @@
       const height = Number(panel.height) || 0;
       const panelX = Number(panel.x) || 0;
       const panelY = Number(panel.y) || 0;
+      const zoom = Math.max(0.65, Math.min(1.6, Number(options.techTreeZoom) || 1));
       const routeCatalog = this.getTechRouteCatalog();
       const nodeWidth = Math.max(82, Math.min(102, width * 0.3));
       const nodeHeight = 76;
@@ -3165,26 +3189,37 @@
       const innerRight = panelX + width - 16;
       const innerTop = panelY + 8;
       const innerBottom = panelY + height - 12;
-      const minPanX = Math.min(-overscroll, innerRight - contentRight);
-      const maxPanX = Math.max(overscroll, innerLeft - contentLeft);
-      const minPanY = Math.min(-overscroll, innerBottom - contentBottom);
-      const maxPanY = Math.max(overscroll, innerTop - minContentY);
+      const scaleX = (value) => panelX + (value - panelX) * zoom;
+      const scaleY = (value) => panelY + (value - panelY) * zoom;
+      const scaledContentLeft = scaleX(contentLeft);
+      const scaledContentRight = scaleX(contentRight);
+      const scaledContentTop = scaleY(minContentY);
+      const scaledContentBottom = scaleY(contentBottom);
+      const minPanX = Math.min(-overscroll, innerRight - scaledContentRight);
+      const maxPanX = Math.max(overscroll, innerLeft - scaledContentLeft);
+      const minPanY = Math.min(-overscroll, innerBottom - scaledContentBottom);
+      const maxPanY = Math.max(overscroll, innerTop - scaledContentTop);
       const rawPanX = Number(options.techTreePanX) || 0;
       const panX = Math.max(minPanX, Math.min(rawPanX, maxPanX));
       const rawPanY = Number(options.techTreePanY) || 0;
       const panY = Math.max(minPanY, Math.min(rawPanY, maxPanY));
+      const scaledContentWidth = Math.max(1, scaledContentRight - scaledContentLeft);
+      const scaledContentHeight = Math.max(1, scaledContentBottom - scaledContentTop);
       return {
         nodes,
         eras,
         eraPositions,
         nodeRects,
         panX,
+        zoom,
         minPanX,
         maxPanX,
         minPanY,
         panY,
         maxPanY,
         contentHeight,
+        scaledContentWidth,
+        scaledContentHeight,
         contentLeft,
         contentRight,
         minContentY,
@@ -3284,6 +3319,9 @@
           maxContentY,
           contentLeft,
           contentRight,
+          scaledContentWidth,
+          scaledContentHeight,
+          zoom,
           routeGuides,
           linkPaths,
           eraRailWidth,
@@ -3296,9 +3334,17 @@
           maxPanX,
           panX,
           panY,
+          zoom,
           panel: treePanel,
         };
-        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, panX, panY, () => {
+        const toScreenRect = (rect = {}) => ({
+          x: treeX + panX + (rect.x - treeX) * zoom,
+          y: treeTop + panY + (rect.y - treeTop) * zoom,
+          width: rect.width * zoom,
+          height: rect.height * zoom,
+        });
+        const toScreenY = (value) => treeTop + panY + (value - treeTop) * zoom;
+        this.withTransformedClip(treeX, treeTop, treeWidth, treeHeight, panX, panY, zoom, () => {
           eraPositions.forEach((era) => {
             this.drawPanel(contentLeft, era.top, Math.max(80, contentRight - contentLeft), era.bottom - era.top, {
               fill: era.closed ? 'rgba(42, 60, 43, 0.28)' : 'rgba(56, 44, 32, 0.28)',
@@ -3332,7 +3378,7 @@
             const rect = nodeRects[node.id];
             if (!rect) return;
             this.renderTechNode(node, rect, { selected: node.id === view.selectedTechId });
-            const screenRect = { ...rect, x: rect.x + panX, y: rect.y + panY };
+            const screenRect = toScreenRect(rect);
             if (screenRect.y + screenRect.height < treeTop || screenRect.y > treeBottom) return;
             if (screenRect.x + screenRect.width < treeX || screenRect.x > treeX + treeWidth) return;
             this.addHitTarget(
@@ -3342,9 +3388,13 @@
             renderedCards += 1;
           });
         });
-        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, 0, panY, () => {
+        this.withTranslatedClip(treeX, treeTop, treeWidth, treeHeight, 0, 0, () => {
           eraPositions.forEach((era) => {
-            this.drawPanel(eraRailX, era.top + 10, eraRailWidth, era.bottom - era.top - 20, {
+            const eraTopScreen = toScreenY(era.top + 10);
+            const eraBottomScreen = toScreenY(era.bottom - 10);
+            const eraYScreen = toScreenY(era.y);
+            era.y = eraYScreen;
+            this.drawPanel(eraRailX, eraTopScreen, eraRailWidth, Math.max(28, eraBottomScreen - eraTopScreen), {
               fill: 'rgba(70, 72, 74, 0.84)',
               stroke: 'rgba(255, 226, 177, 0.16)',
               radius: 7,
@@ -3365,7 +3415,7 @@
         this.addHitTarget(treePanel, { type: 'techTreeDrag', background: true });
         if (minPanX < maxPanX) {
           const trackY = treeBottom - 6;
-          const contentWidth = treeWidth + maxPanX - minPanX;
+          const contentWidth = Math.max(treeWidth, scaledContentWidth);
           const thumbW = Math.max(34, treeWidth * (treeWidth / Math.max(treeWidth, contentWidth)));
           const thumbX = treeX + (treeWidth - thumbW) * ((panX - minPanX) / Math.max(1, maxPanX - minPanX));
           this.drawPanel(treeX + 4, trackY, treeWidth - 8, 4, {
@@ -3381,7 +3431,8 @@
         }
         if (minPanY < maxPanY) {
           const trackX = treeX + treeWidth - 6;
-          const thumbH = Math.max(28, treeHeight * (treeHeight / Math.max(treeHeight, treeHeight + maxPanY - minPanY)));
+          const contentHeight = Math.max(treeHeight, scaledContentHeight);
+          const thumbH = Math.max(28, treeHeight * (treeHeight / Math.max(treeHeight, contentHeight)));
           const thumbY = treeTop + (treeHeight - thumbH) * ((panY - minPanY) / Math.max(1, maxPanY - minPanY));
           this.drawPanel(trackX, treeTop + 4, 4, treeHeight - 8, {
             fill: 'rgba(255, 226, 177, 0.08)',

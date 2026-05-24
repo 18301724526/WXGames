@@ -32,6 +32,8 @@
       this.lastGame = null;
       this.resizeDisposer = null;
       this.tapDisposer = null;
+      this.dragDisposer = null;
+      this.gestureDisposer = null;
       this.effectTimer = null;
       this.floatTimer = null;
       this.showSettings = false;
@@ -49,6 +51,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.selectedTechId = '';
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
@@ -131,6 +134,9 @@
       if (this.runtime.onDrag && !this.dragDisposer) {
         this.dragDisposer = this.runtime.onDrag((phase, point, event) => this.handleDrag(phase, point, event));
       }
+      if (this.runtime.onGesture && !this.gestureDisposer) {
+        this.gestureDisposer = this.runtime.onGesture((gesture, event) => this.handleGesture(gesture, event));
+      }
       return true;
     }
 
@@ -170,6 +176,15 @@
       const dragType = this.dragAction.type === 'techTreeDrag' ? 'techTreeDrag' : 'worldRadarDrag';
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
       if (phase === 'end') this.dragAction = null;
+      return handled;
+    }
+
+    handleGesture(gesture, event) {
+      if (!this.inputEnabled || !this.renderer) return false;
+      if (this.getActiveTab() !== 'tech' || this.hasBlockingOverlayOpen()) return false;
+      const handled = this.actionController?.handle?.({ type: 'techTreeZoom', gesture }, { event }) || false;
+      if (handled && event?.preventDefault) event.preventDefault();
+      if (handled && event?.stopPropagation) event.stopPropagation();
       return handled;
     }
 
@@ -272,6 +287,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.selectedTechId = '';
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
@@ -286,6 +302,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.techTreeZoom = 1;
       this.selectedTechId = '';
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
@@ -795,6 +812,14 @@
         this.tapDisposer();
         this.tapDisposer = null;
       }
+      if (!this.inputEnabled && this.dragDisposer) {
+        this.dragDisposer();
+        this.dragDisposer = null;
+      }
+      if (!this.inputEnabled && this.gestureDisposer) {
+        this.gestureDisposer();
+        this.gestureDisposer = null;
+      }
       if (this.inputEnabled) this.bindInput();
     }
 
@@ -832,6 +857,17 @@
       return true;
     }
 
+    getTechTreeZoom() {
+      return Math.max(0.65, Math.min(1.6, Number(this.techTreeZoom) || 1));
+    }
+
+    setTechTreeZoom(zoom = 1) {
+      const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
+      this.techTreeZoom = nextZoom;
+      if (this.lastGame && typeof this.lastGame === 'object') this.lastGame.techTreeZoom = nextZoom;
+      return true;
+    }
+
     renderActive() {
       return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
     }
@@ -857,6 +893,7 @@
         buildingOffset: this.buildingOffset,
         techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
+        techTreeZoom: this.getTechTreeZoom(),
         ...(this.selectedTechId ? { selectedTechId: this.selectedTechId } : {}),
         techDetailOpen: this.techDetailOpen || Boolean(state.techUiState?.detailOpen),
         activeBuildingCategory: this.activeBuildingCategory,

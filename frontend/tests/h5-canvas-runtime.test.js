@@ -123,6 +123,56 @@ test('H5 canvas runtime dispatches drag phases and suppresses tap after movement
   assert.equal(taps.length, 0);
 });
 
+test('H5 canvas runtime emits unified gesture events for wheel and pinch', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+  const gestures = [];
+  const prevented = [];
+
+  h5Runtime.onGesture((gesture) => {
+    gestures.push(gesture);
+    return true;
+  });
+  h5Runtime.ensureCanvas();
+
+  listeners.wheel({
+    clientX: 205,
+    clientY: 442,
+    deltaY: -120,
+    type: 'wheel',
+    cancelable: true,
+    preventDefault() { prevented.push('wheel'); },
+    stopPropagation() {},
+  });
+  listeners.touchstart({
+    touches: [
+      { clientX: 100, clientY: 220 },
+      { clientX: 180, clientY: 220 },
+    ],
+    type: 'touchstart',
+    cancelable: true,
+    preventDefault() {},
+  });
+  listeners.touchmove({
+    touches: [
+      { clientX: 90, clientY: 220 },
+      { clientX: 200, clientY: 220 },
+    ],
+    type: 'touchmove',
+    cancelable: true,
+    preventDefault() { prevented.push('pinch'); },
+    stopPropagation() {},
+  });
+
+  assert.equal(gestures[0].type, 'wheelZoom');
+  assert.ok(gestures[0].scaleDelta > 1);
+  assert.deepEqual({ x: Math.round(gestures[0].centerX), y: Math.round(gestures[0].centerY) }, { x: 195, y: 422 });
+  assert.equal(gestures[1].type, 'pinchZoom');
+  assert.ok(gestures[1].scaleDelta > 1);
+  assert.deepEqual({ x: Math.round(gestures[1].centerX), y: Math.round(gestures[1].centerY) }, { x: 135, y: 200 });
+  assert.deepEqual(prevented, ['wheel', 'pinch']);
+});
+
 test('Canvas game shell mounts runtime without requiring renderer', () => {
   const { document, runtime, appended } = createCanvasHarness();
   const shell = CanvasGameShell.mount({ state: { resources: {} } }, {
@@ -183,6 +233,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       buildingOffset: 0,
       techTreePanX: 0,
       techTreePanY: 0,
+      techTreeZoom: 1,
       techDetailOpen: false,
       activeBuildingCategory: 'all',
       activeEventId: null,
@@ -1212,6 +1263,64 @@ test('Canvas game shell keeps tech tree pan synchronized with game host renders'
   assert.equal(lastRender.techTreePanY, -130);
 });
 
+test('Canvas game shell zooms tech tree through shared gesture action', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderOptions = [];
+  const layoutOptions = [];
+  const game = {
+    state: { currentTab: 'tech' },
+    activeTab: 'tech',
+    getActiveTab() { return this.activeTab; },
+  };
+  const renderer = {
+    lastTechTreeScroll: { panel: { x: 40, y: 260, width: 300, height: 360 } },
+    getHitTarget: () => ({ type: 'techTreeDrag', background: true }),
+    getLayout: () => ({ contentX: 12, contentWidth: 366 }),
+    getTechTreeLayout: (view, _panel, options) => {
+      layoutOptions.push(options);
+      return {
+        minPanX: -300,
+        maxPanX: 220,
+        minPanY: -500,
+        maxPanY: 240,
+        panX: Number(options.techTreePanX) || 0,
+        panY: Number(options.techTreePanY) || 0,
+      };
+    },
+    presenter: {
+      buildTechViewState: () => ({ tree: { nodes: [{ id: 'a' }] }, text: {} }),
+    },
+    render(_state, options) {
+      renderOptions.push(options);
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  listeners.wheel({
+    clientX: 210,
+    clientY: 500,
+    deltaY: -120,
+    type: 'wheel',
+    cancelable: true,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+
+  assert.ok(shell.techTreeZoom > 1);
+  assert.equal(game.techTreeZoom, shell.techTreeZoom);
+  assert.equal(renderOptions.at(-1).techTreeZoom, shell.techTreeZoom);
+  assert.equal(layoutOptions.at(-1).techTreeZoom, shell.techTreeZoom);
+  assert.notEqual(shell.techTreePanX, 0);
+  assert.notEqual(shell.techTreePanY, 0);
+});
+
 test('Canvas game shell clamps tech tree drag with game state instead of shell initial state', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const layoutStates = [];
@@ -1727,9 +1836,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-route-lanes-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-route-lanes-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-route-lanes-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-route-lanes-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

@@ -126,6 +126,45 @@ test('PlatformRuntime wraps wx style canvas, storage and request APIs without DO
   }
 });
 
+test('PlatformRuntime emits shared pinch zoom gestures for touch hosts', () => {
+  const handlers = {};
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      onTouchStart(handler) { handlers.start = handler; },
+      onTouchMove(handler) { handlers.move = handler; },
+      onTouchEnd(handler) { handlers.end = handler; },
+      offTouchStart() {},
+      offTouchMove() {},
+      offTouchEnd() {},
+    },
+  });
+  const gestures = [];
+
+  runtime.onGesture((gesture) => {
+    gestures.push(gesture);
+    return true;
+  });
+  handlers.start({
+    touches: [
+      { x: 100, y: 200 },
+      { x: 180, y: 200 },
+    ],
+  });
+  handlers.move({
+    touches: [
+      { x: 90, y: 200 },
+      { x: 210, y: 200 },
+    ],
+  });
+
+  assert.equal(gestures.length, 1);
+  assert.equal(gestures[0].type, 'pinchZoom');
+  assert.equal(gestures[0].centerX, 150);
+  assert.equal(gestures[0].centerY, 200);
+  assert.ok(gestures[0].scaleDelta > 1);
+});
+
 test('Canvas game app renders state and syncs through platform transport without document', async () => {
   const originalDocument = global.document;
   const calls = [];

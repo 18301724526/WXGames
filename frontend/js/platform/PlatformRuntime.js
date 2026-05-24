@@ -118,6 +118,26 @@
       };
     }
 
+    static getTouchPoints(event = {}) {
+      const touches = Array.from(event.touches || []);
+      if (touches.length) return touches.map((touch) => PlatformRuntime.getTouchPoint(touch));
+      return Array.from(event.changedTouches || []).map((touch) => PlatformRuntime.getTouchPoint(touch));
+    }
+
+    static getGestureCenter(points = []) {
+      const usable = points.slice(0, 2);
+      const total = usable.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
+      const count = Math.max(1, usable.length);
+      return { x: total.x / count, y: total.y / count };
+    }
+
+    static getGestureDistance(points = []) {
+      if (points.length < 2) return 0;
+      const dx = points[0].x - points[1].x;
+      const dy = points[0].y - points[1].y;
+      return Math.hypot(dx, dy);
+    }
+
     setInterval(callback, intervalMs) {
       if (typeof this.scheduler.setInterval === 'function') return this.scheduler.setInterval(callback, intervalMs);
       return null;
@@ -170,12 +190,18 @@
       if (typeof handler !== 'function') return () => {};
       const disposers = [];
       if (this.host && typeof this.host.onTouchStart === 'function') {
-        const start = (event) => handler('start', PlatformRuntime.getTouchPoint(event), event);
+        const start = (event) => {
+          if ((event?.touches?.length || 0) >= 2) return false;
+          return handler('start', PlatformRuntime.getTouchPoint(event), event);
+        };
         this.host.onTouchStart(start);
         disposers.push(() => this.host.offTouchStart?.(start));
       }
       if (this.host && typeof this.host.onTouchMove === 'function') {
-        const move = (event) => handler('move', PlatformRuntime.getTouchPoint(event), event);
+        const move = (event) => {
+          if ((event?.touches?.length || 0) >= 2) return false;
+          return handler('move', PlatformRuntime.getTouchPoint(event), event);
+        };
         this.host.onTouchMove(move);
         disposers.push(() => this.host.offTouchMove?.(move));
       }
@@ -183,6 +209,62 @@
         const end = (event) => handler('end', PlatformRuntime.getTouchPoint(event), event);
         this.host.onTouchEnd(end);
         disposers.push(() => this.host.offTouchEnd?.(end));
+      }
+      return () => disposers.forEach((dispose) => dispose());
+    }
+
+    onGesture(handler) {
+      if (typeof handler !== 'function') return () => {};
+      const disposers = [];
+      let activePinch = null;
+      const dispatch = (gesture, event) => handler(gesture, event) === true;
+      const start = (event = {}) => {
+        const points = PlatformRuntime.getTouchPoints(event);
+        if (points.length < 2) return false;
+        activePinch = {
+          distance: Math.max(1, PlatformRuntime.getGestureDistance(points)),
+          center: PlatformRuntime.getGestureCenter(points),
+        };
+        return true;
+      };
+      const move = (event = {}) => {
+        if (!activePinch) return false;
+        const points = PlatformRuntime.getTouchPoints(event);
+        if (points.length < 2) return false;
+        const distance = Math.max(1, PlatformRuntime.getGestureDistance(points));
+        const center = PlatformRuntime.getGestureCenter(points);
+        const previousDistance = Math.max(1, Number(activePinch.distance) || distance);
+        activePinch = { distance, center };
+        const scaleDelta = Math.max(0.82, Math.min(1.22, distance / previousDistance));
+        return dispatch({
+          type: 'pinchZoom',
+          scaleDelta,
+          centerX: center.x,
+          centerY: center.y,
+          x: center.x,
+          y: center.y,
+        }, event);
+      };
+      const end = (event = {}) => {
+        if ((event.touches?.length || 0) >= 2) return move(event);
+        activePinch = null;
+        return false;
+      };
+      if (this.host && typeof this.host.onTouchStart === 'function') {
+        this.host.onTouchStart(start);
+        disposers.push(() => this.host.offTouchStart?.(start));
+      }
+      if (this.host && typeof this.host.onTouchMove === 'function') {
+        this.host.onTouchMove(move);
+        disposers.push(() => this.host.offTouchMove?.(move));
+      }
+      if (this.host && typeof this.host.onTouchEnd === 'function') {
+        this.host.onTouchEnd(end);
+        disposers.push(() => this.host.offTouchEnd?.(end));
+      }
+      if (this.host && typeof this.host.onTouchCancel === 'function') {
+        this.host.onTouchCancel(end);
+        disposers.push(() => this.host.offTouchCancel?.(end));
       }
       return () => disposers.forEach((dispose) => dispose());
     }

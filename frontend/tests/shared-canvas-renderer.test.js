@@ -1934,6 +1934,54 @@ test('CanvasGameRenderer pans tech tree horizontally and keeps card drag handles
   assert.ok(pannedTarget.x < initialTarget.x);
 });
 
+test('CanvasGameRenderer scales tech tree content and hit targets with zoom', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ hasWood: true, text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s', woodValue: '0', woodRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildTechViewState: () => ({
+      tree: {
+        eras: [{ era: 1, name: 'Era', choiceText: '0/1', closed: false, column: 1 }],
+        nodes: [
+          { id: 'zoom_node', title: 'Zoom Node', routeLabel: '农业', status: 'available', available: true, disabled: false, tree: { column: 1, lane: -1, parents: [] } },
+        ],
+        links: [],
+      },
+      text: {
+        title: '科技树',
+        points: '科技点 1',
+        researched: '已研究 0',
+        available: '可研究 1',
+        placeholder: '',
+        subtitle: '',
+      },
+    }),
+  });
+
+  renderer.render({ currentTab: 'tech' }, {
+    activeTab: 'tech',
+    mode: 'hud',
+    techTreeZoom: 1,
+  });
+  const normalTarget = renderer.hitTargets.find((target) => target.action.techId === 'zoom_node');
+  assert.ok(normalTarget);
+
+  renderer.render({ currentTab: 'tech' }, {
+    activeTab: 'tech',
+    mode: 'hud',
+    techTreeZoom: 1.4,
+  });
+  const zoomedTarget = renderer.hitTargets.find((target) => target.action.techId === 'zoom_node');
+  assert.ok(zoomedTarget);
+  assert.ok(zoomedTarget.width > normalTarget.width);
+  assert.ok(zoomedTarget.height > normalTarget.height);
+  assert.equal(renderer.lastTechTreeScroll.zoom, 1.4);
+  assert.equal(ctx.transforms.some((args) => Math.abs(args[0] - 1.4) < 0.001 && Math.abs(args[1] - 1.4) < 0.001), true);
+});
+
 test('CanvasGameRenderer keeps shared tech nodes in their primary route lane', () => {
   const { ctx } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
