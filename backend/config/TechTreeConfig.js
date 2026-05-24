@@ -371,13 +371,19 @@ const TECH_TREE_LAYOUT = {
   classical_civic_records: { column: 5, row: 5, lane: -1, routes: ['knowledge', 'culture', 'administration'], parents: ['frontier_border_trade', 'city_storage_yards'] },
 };
 
-function getTechTreeMeta(techId) {
+function getTechTreeMeta(tech = {}) {
+  const techId = typeof tech === 'string' ? tech : tech.id;
+  const route = typeof tech === 'object' ? tech.route : '';
   const meta = TECH_TREE_LAYOUT[techId] || {};
   const parents = Array.isArray(meta.parents) ? [...meta.parents] : [];
-  const routes = Array.isArray(meta.routes) ? [...meta.routes] : [];
+  const configuredRoutes = Array.isArray(meta.routes) ? [...meta.routes] : [];
+  const routes = route
+    ? [route, ...configuredRoutes.filter((item) => item && item !== route)]
+    : configuredRoutes;
+  const routeLane = TECH_ROUTE_META[route]?.lane;
   return {
     column: Number(meta.column) || 1,
-    lane: Number(meta.lane) || 0,
+    lane: Number.isFinite(routeLane) ? routeLane : (Number(meta.lane) || 0),
     row: Number(meta.row) || Number(meta.column) || 1,
     routes,
     parents,
@@ -386,7 +392,7 @@ function getTechTreeMeta(techId) {
 
 const TECHS = TECH_ERAS.flatMap((eraConfig) => (
   eraConfig.techs.map((tech) => {
-    const tree = getTechTreeMeta(tech.id);
+    const tree = getTechTreeMeta(tech);
     return {
       ...tech,
       era: eraConfig.era,

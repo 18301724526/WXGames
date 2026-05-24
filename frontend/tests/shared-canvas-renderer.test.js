@@ -1934,7 +1934,7 @@ test('CanvasGameRenderer pans tech tree horizontally and keeps card drag handles
   assert.ok(pannedTarget.x < initialTarget.x);
 });
 
-test('CanvasGameRenderer places shared tech nodes between route lanes', () => {
+test('CanvasGameRenderer keeps shared tech nodes in their primary route lane', () => {
   const { ctx } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -1942,9 +1942,9 @@ test('CanvasGameRenderer places shared tech nodes between route lanes', () => {
     tree: {
       eras: [{ era: 2, name: 'Shared Era', choiceText: '0/1', closed: false, column: 2 }],
       nodes: [
-        { id: 'left', title: 'Left', tree: { column: 2, row: 1, lane: -4, routes: ['agriculture'], parents: [] } },
-        { id: 'pivot', title: 'Pivot', tree: { column: 2, row: 2, lane: 0.5, routes: ['agriculture', 'military'], parents: ['left', 'right'] } },
-        { id: 'right', title: 'Right', tree: { column: 2, row: 1, lane: 5, routes: ['military'], parents: [] } },
+        { id: 'left', title: 'Left', route: 'agriculture', tree: { column: 2, row: 1, lane: -4, routes: ['agriculture'], parents: [] } },
+        { id: 'pivot', title: 'Pivot', route: 'agriculture', tree: { column: 2, row: 2, lane: 0.5, routes: ['agriculture', 'military'], parents: ['left', 'right'] } },
+        { id: 'right', title: 'Right', route: 'military', tree: { column: 2, row: 1, lane: 5, routes: ['military'], parents: [] } },
       ],
       links: [],
     },
@@ -1956,15 +1956,18 @@ test('CanvasGameRenderer places shared tech nodes between route lanes', () => {
 
   assert.ok(pivotRect);
   assert.deepEqual(pivotRect.routes, ['agriculture', 'military']);
-  assert.ok(layout.routeGuides.some((route) => route.id === 'agriculture'));
-  assert.ok(layout.routeGuides.some((route) => route.id === 'military'));
+  const agricultureGuide = layout.routeGuides.find((route) => route.id === 'agriculture');
+  const militaryGuide = layout.routeGuides.find((route) => route.id === 'military');
+  assert.ok(agricultureGuide);
+  assert.ok(militaryGuide);
+  assert.equal(Math.round(pivotRect.centerX), Math.round(agricultureGuide.x));
+  assert.notEqual(Math.round(pivotRect.centerX), Math.round(militaryGuide.x));
   assert.equal(layout.linkPaths.length, 2);
   layout.linkPaths.forEach((link) => {
     assert.ok(link.curve);
     assert.notEqual(link.curve.c1.x, link.curve.start.x);
     assert.notEqual(link.curve.c2.x, link.curve.end.x);
   });
-  assert.ok(leftRect.x + leftRect.width < pivotRect.x);
   assert.ok(rightRect.x > pivotRect.x + pivotRect.width);
 });
 

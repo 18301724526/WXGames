@@ -6,7 +6,7 @@ const TechTreeService = require('../services/TechTreeService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const TutorialService = require('../services/TutorialService');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
-const { TECHS, TECH_BY_ID } = require('../config/TechTreeConfig');
+const { TECHS, TECH_BY_ID, TECH_ROUTE_META } = require('../config/TechTreeConfig');
 
 test('tech tree has shared route nodes for route switching', () => {
   const sharedNodes = TECHS.filter((tech) => (tech.tree?.routes || []).length >= 3 && tech.parents.length >= 2);
@@ -29,6 +29,20 @@ test('科技树配置包含鱼骨图坐标并且父节点都存在', () => {
       assert.ok(TECH_BY_ID[parentId], `${tech.id} references missing parent ${parentId}`);
     });
   });
+});
+
+test('科技节点固定在主路线区域，交汇只通过多路线和多连线表达', () => {
+  TECHS.forEach((tech) => {
+    const expectedLane = TECH_ROUTE_META[tech.route]?.lane;
+    assert.equal(tech.tree.lane, expectedLane, `${tech.id} should stay in ${tech.route} lane`);
+    assert.equal(tech.tree.routes[0], tech.route, `${tech.id} should keep primary route first`);
+  });
+
+  const shared = TECH_BY_ID.settlement_logging_rights;
+  assert.equal(shared.route, 'industry');
+  assert.equal(shared.tree.lane, TECH_ROUTE_META.industry.lane);
+  assert.ok(shared.tree.routes.includes('agriculture'));
+  assert.ok(shared.parents.length >= 2);
 });
 
 test('科技状态会按当前时代补发已获得科技点', () => {

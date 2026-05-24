@@ -2634,6 +2634,21 @@
       return routes.map((route) => this.getTechRouteMeta(route).label).join('/');
     }
 
+    getTechNodePrimaryRoute(node = {}) {
+      const routes = this.getTechNodeRoutes(node);
+      return node.route || routes[0] || '';
+    }
+
+    getTechNodeLane(node = {}) {
+      const route = this.getTechNodePrimaryRoute(node);
+      const routeLane = this.getTechRouteMeta(route).lane;
+      if (node.route && Number.isFinite(routeLane)) return routeLane;
+      const configuredLane = Number(node.tree?.lane);
+      if (Number.isFinite(configuredLane)) return configuredLane;
+      if (route && Number.isFinite(routeLane)) return routeLane;
+      return 0;
+    }
+
     drawTechRouteSegments(x, y, width, height, routes = [], alpha = 1) {
       if (!this.ctx || typeof this.ctx.fillRect !== 'function') return;
       const activeRoutes = routes.length ? routes : [''];
@@ -2648,7 +2663,7 @@
     }
 
     getTechNodeColor(node = {}) {
-      const routeColor = this.getTechRouteMeta(this.getTechNodeRoutes(node)[0]).color;
+      const routeColor = this.getTechRouteMeta(this.getTechNodePrimaryRoute(node)).color;
       if (node.researched) {
         return {
           fill: 'rgba(39, 82, 59, 0.88)',
@@ -2689,7 +2704,7 @@
       const palette = this.getTechNodeColor(node);
       const routes = this.getTechNodeRoutes(node);
       const selected = Boolean(options.selected);
-      const primaryRoute = routes[0] || node.route || '';
+      const primaryRoute = this.getTechNodePrimaryRoute(node);
       const routeMeta = this.getTechRouteMeta(primaryRoute);
       const cx = Number(rect.centerX) || rect.x + rect.width / 2;
       const cy = Number(rect.centerY) || rect.y + 30;
@@ -2826,7 +2841,7 @@
       const routes = Array.isArray(detail.routes) && detail.routes.length
         ? detail.routes
         : (detail.routeId ? [detail.routeId] : []);
-      return this.getTechRouteMeta(routes[0] || detail.routeId || '').icon;
+      return this.getTechRouteMeta(detail.routeId || routes[0] || '').icon;
     }
 
     renderTechDetailModal(detail = {}) {
@@ -2963,7 +2978,7 @@
         if (!routeCatalog[route]) routeEntries.push([route, this.getTechRouteMeta(route)]);
       });
       const lanes = routeEntries.map(([, meta]) => Number(meta.lane) || 0);
-      nodes.forEach((node) => lanes.push(Number(node.tree?.lane) || 0));
+      nodes.forEach((node) => lanes.push(this.getTechNodeLane(node)));
       const minLane = Math.min(...lanes, 0);
       const maxLane = Math.max(...lanes, 0);
       const startY = panelY + 66;
@@ -2979,7 +2994,7 @@
       const firstColumn = nodeColumns.length ? Math.min(...nodeColumns) : (Number(eras[0]?.column ?? eras[0]?.era) || 1);
       const focusLanes = nodes
         .filter((node) => getNodeColumn(node) === firstColumn)
-        .map((node) => Number(node.tree?.lane) || 0);
+        .map((node) => this.getTechNodeLane(node));
       const focusLane = focusLanes.length
         ? (Math.min(...focusLanes) + Math.max(...focusLanes)) / 2
         : 0;
@@ -3008,7 +3023,7 @@
         const placed = [];
         eraNodes.forEach((node) => {
           const localRow = getLocalRowOffset(node);
-          const lane = Number(node.tree?.lane) || 0;
+          const lane = this.getTechNodeLane(node);
           const centerX = laneToX(lane);
           let centerY = Math.max(startY, top + 92) + localRow * localRowGap;
           const makeRect = () => ({
