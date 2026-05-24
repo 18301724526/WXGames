@@ -69,6 +69,23 @@ test('研究科技会消耗科技点并锁定本时代选择', () => {
   assert.equal(second.error, 'TECH_ERA_CHOICE_FULL');
 });
 
+test('进阶科技不能跳过前置科技直接研究', () => {
+  const state = gameStateService.createInitialGameState('research-prerequisite-player');
+  state.currentEra = 2;
+  state.techs.points = 2;
+
+  const blocked = TechTreeService.research(state, 'settlement_logging_rights');
+  assert.equal(blocked.success, false);
+  assert.equal(blocked.error, 'TECH_PREREQUISITE_MISSING');
+  assert.deepEqual(blocked.missingParents, ['farming_field_rotation', 'farming_storehouse_rules']);
+
+  const client = TechTreeService.getClientState(state);
+  const settlementTech = client.eras[1].techs.find((tech) => tech.id === 'settlement_logging_rights');
+  assert.equal(settlementTech.status, 'missingPrerequisite');
+  assert.equal(settlementTech.available, false);
+  assert.deepEqual(settlementTech.missingParentNames, ['田块轮作', '储粮约定']);
+});
+
 test('客户端科技状态返回完整时代鱼骨图元数据', () => {
   const state = gameStateService.createInitialGameState('client-tech-tree-player');
   state.currentEra = 1;
@@ -88,6 +105,20 @@ test('客户端科技状态返回完整时代鱼骨图元数据', () => {
   assert.ok(futureTech.tree.routes.includes('industry'));
 });
 
+test('交汇科技满足任一前置后可继续转型研究', () => {
+  const state = gameStateService.createInitialGameState('research-route-switch-player');
+  state.currentEra = 2;
+  state.techs.points = 2;
+
+  const base = TechTreeService.research(state, 'farming_field_rotation');
+  assert.equal(base.success, true);
+
+  state.techs.points += 1;
+  const switched = TechTreeService.research(state, 'settlement_logging_rights');
+  assert.equal(switched.success, true);
+  assert.equal(state.techs.researched.settlement_logging_rights.id, 'settlement_logging_rights');
+});
+
 test('古典时代允许用三个科技点形成组合', () => {
   const state = gameStateService.createInitialGameState('classical-tech-player');
   state.currentEra = 5;
@@ -98,16 +129,16 @@ test('古典时代允许用三个科技点形成组合', () => {
   assert.equal(TechTreeService.research(state, 'city_quarry_survey').success, true);
   assert.equal(TechTreeService.research(state, 'frontier_bloomery_signs').success, true);
   assert.equal(TechTreeService.research(state, 'classical_workshop_guilds').success, true);
-  assert.equal(TechTreeService.research(state, 'classical_academy_schools').success, true);
-  assert.equal(TechTreeService.research(state, 'classical_temple_calendar').success, true);
+  assert.equal(TechTreeService.research(state, 'classical_masonry_contracts').success, true);
+  assert.equal(TechTreeService.research(state, 'classical_iron_tools').success, true);
 
   const blocked = TechTreeService.research(state, 'classical_border_codes');
   assert.equal(blocked.success, false);
   assert.equal(blocked.error, 'TECH_ERA_CHOICE_FULL');
   assert.deepEqual(state.techs.eraChoices['5'], [
     'classical_workshop_guilds',
-    'classical_academy_schools',
-    'classical_temple_calendar',
+    'classical_masonry_contracts',
+    'classical_iron_tools',
   ]);
 });
 
@@ -121,6 +152,10 @@ test('古典科技可以解锁后续建筑建造校验', () => {
   const locked = BuildingActionValidator.validateBuild(state, state.tutorial, 'workshop');
   assert.equal(locked.allowed, false);
 
+  assert.equal(TechTreeService.research(state, 'farming_field_rotation').success, true);
+  assert.equal(TechTreeService.research(state, 'settlement_logging_rights').success, true);
+  assert.equal(TechTreeService.research(state, 'city_quarry_survey').success, true);
+  assert.equal(TechTreeService.research(state, 'frontier_bloomery_signs').success, true);
   const research = TechTreeService.research(state, 'classical_workshop_guilds');
   assert.equal(research.success, true);
 

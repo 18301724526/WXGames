@@ -56,6 +56,14 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      if (this.canvasShell) this.canvasShell.selectedTechId = '';
+      this.state = {
+        ...this.state,
+        techUiState: {
+          ...(this.state.techUiState || {}),
+          selectedTechId: '',
+        },
+      };
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -275,6 +283,7 @@
         buildingOffset: this.buildingOffset,
         techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
+        selectedTechId: this.state?.techUiState?.selectedTechId || this.canvasShell?.selectedTechId || '',
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
@@ -499,6 +508,14 @@
       this.buildingOffset = 0;
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      if (this.canvasShell) this.canvasShell.selectedTechId = '';
+      this.state = {
+        ...this.state,
+        techUiState: {
+          ...(this.state.techUiState || {}),
+          selectedTechId: '',
+        },
+      };
       this.techTreeDragStart = null;
       this.buildingTransition = null;
     }
@@ -521,8 +538,16 @@
       this.activeGuideNavigation = null;
       this.pageTransition = null;
       this.buildingTransition = null;
+      if (this.canvasShell) this.canvasShell.selectedTechId = '';
       if (this.state && typeof this.state === 'object') {
-        this.state = { ...this.state, currentTab: 'resources' };
+        this.state = {
+          ...this.state,
+          currentTab: 'resources',
+          techUiState: {
+            ...(this.state.techUiState || {}),
+            selectedTechId: '',
+          },
+        };
       }
       if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
         this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });
@@ -857,6 +882,16 @@
       try {
         const result = await this.getGameApi().research(techId);
         this.applyApiState(result);
+        if (this.state && typeof this.state === 'object') {
+          this.state = {
+            ...this.state,
+            techUiState: {
+              ...(this.state.techUiState || {}),
+              selectedTechId: techId,
+            },
+          };
+        }
+        if (this.canvasShell) this.canvasShell.selectedTechId = techId;
         this.showFloatingText(result.message || '科技已研究');
         this.log(result.message || '科技已研究');
         return true;

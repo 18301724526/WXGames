@@ -592,11 +592,52 @@ test('tech view state formats knowledge rate for Canvas renderer', () => {
   assert.equal(view.text.available, '可研究 1');
   assert.equal(view.eras[0].techs[0].buttonLabel, '研究');
   assert.equal(view.eras[0].techs[0].unlockSummary, '入口：粮食 / 建筑：农田');
+  assert.equal(view.detail.title, '田块轮作');
+  assert.equal(view.detail.canResearch, true);
+  assert.equal(view.detail.buttonLabel, '研究');
   assert.equal(view.tree.nodes[0].id, 'farming_field_rotation');
   assert.equal(view.tree.nodes[0].tree.lane, -2);
   assert.equal(view.tree.nodes[0].tree.row, 1);
   assert.deepEqual(view.tree.nodes[0].tree.routes, ['agriculture', 'knowledge']);
   assert.deepEqual(view.tree.links, []);
+});
+
+test('tech view state exposes selected tech detail and prerequisite status', () => {
+  const view = UIStatePresenter.buildTechViewState({
+    techUiState: { selectedTechId: 'settlement_logging_rights' },
+    techs: {
+      points: 1,
+      researchedCount: 0,
+      eras: [{
+        era: 2,
+        name: '聚落分支',
+        summary: '补齐木材',
+        choiceLimit: 1,
+        choicesUsed: 0,
+        techs: [{
+          id: 'settlement_logging_rights',
+          name: '伐木权责',
+          routeLabel: '工业',
+          summary: '木材生产',
+          status: 'missingPrerequisite',
+          available: false,
+          tree: { column: 2, row: 2, lane: 1, routes: ['industry'], parents: ['farming_field_rotation'] },
+          parents: ['farming_field_rotation'],
+          parentNames: ['田块轮作'],
+          missingParentNames: ['田块轮作'],
+          resourceText: '木材',
+          unlockText: '伐木场',
+        }],
+      }],
+    },
+  });
+
+  assert.equal(view.selectedTechId, 'settlement_logging_rights');
+  assert.equal(view.detail.title, '伐木权责');
+  assert.equal(view.detail.statusLabel, '需先研究前置科技');
+  assert.equal(view.detail.prerequisiteText, '田块轮作');
+  assert.equal(view.detail.canResearch, false);
+  assert.equal(view.eras[0].techs[0].buttonLabel, '需前置');
 });
 
 test('event modal view state handles multiple and single event options', () => {

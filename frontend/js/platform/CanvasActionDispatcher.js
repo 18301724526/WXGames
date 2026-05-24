@@ -208,6 +208,14 @@
         return selected;
       }
 
+      if (action.type === 'selectTechNode') {
+        const selected = typeof context.selectTechNode === 'function'
+          ? context.selectTechNode(action) !== false
+          : false;
+        if (selected && typeof context.render === 'function') context.render(action);
+        return selected;
+      }
+
       return false;
     }
 
@@ -237,6 +245,7 @@
         'closeTaskCenter',
         'switchTaskCenterTab',
         'selectBuildingCategory',
+        'selectTechNode',
       ];
     }
 

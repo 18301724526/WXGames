@@ -49,6 +49,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.selectedTechId = '';
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -233,11 +234,27 @@
       return true;
     }
 
+    selectTechNode(action = {}) {
+      const techId = action.techId || '';
+      this.selectedTechId = techId;
+      if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
+        this.lastGame.state = {
+          ...this.lastGame.state,
+          techUiState: {
+            ...(this.lastGame.state.techUiState || {}),
+            selectedTechId: techId,
+          },
+        };
+      }
+      return true;
+    }
+
     resetForCanvasTabSwitch() {
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.selectedTechId = '';
       this.techTreeDragStart = null;
       this.buildingTransition = null;
       this.activeEventId = null;
@@ -250,6 +267,7 @@
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
+      this.selectedTechId = '';
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -819,6 +837,7 @@
         buildingOffset: this.buildingOffset,
         techTreePanX: this.techTreePanX,
         techTreePanY: this.techTreePanY,
+        ...(this.selectedTechId ? { selectedTechId: this.selectedTechId } : {}),
         activeBuildingCategory: this.activeBuildingCategory,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),

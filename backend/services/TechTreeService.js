@@ -101,6 +101,20 @@ function getUnlockedBuildings(gameStateOrTechs = {}) {
   ))));
 }
 
+function getMissingParents(tech, techs) {
+  const parents = Array.isArray(tech?.parents) ? tech.parents.filter(Boolean) : [];
+  if (!parents.length) return [];
+  const researched = techs?.researched || {};
+  return parents.filter((parentId) => !researched[parentId]);
+}
+
+function hasRequiredParent(tech, techs) {
+  const parents = Array.isArray(tech?.parents) ? tech.parents.filter(Boolean) : [];
+  if (!parents.length) return true;
+  const researched = techs?.researched || {};
+  return parents.some((parentId) => Boolean(researched[parentId]));
+}
+
 function formatResourceEntrances(resources = []) {
   return resources.map((key) => RESOURCE_LABELS[key] || key).join('、') || '无';
 }
@@ -113,16 +127,18 @@ function getTechStatus(tech, techs, currentEra) {
   if (techs.researched?.[tech.id]) return 'researched';
   if (tech.era > currentEra) return 'locked';
   if (getEraChoices(techs, tech.era).length >= getChoiceLimit(tech.era)) return 'eraChoiceFull';
+  if (!hasRequiredParent(tech, techs)) return 'missingPrerequisite';
   if ((techs.points || 0) <= 0) return 'noPoints';
   return 'available';
 }
 
 function buildClientTech(tech, techs, currentEra) {
   const canonicalTech = TECH_BY_ID[tech.id] || tech;
-  const status = getTechStatus(tech, techs, currentEra);
+  const status = getTechStatus({ ...canonicalTech, era: tech.era }, techs, currentEra);
   const unlockedBuildings = canonicalTech.effects?.unlockedBuildings || tech.effects?.unlockedBuildings || [];
   const resourceEntrances = canonicalTech.effects?.resourceEntrances || tech.effects?.resourceEntrances || [];
   const parents = Array.isArray(canonicalTech.parents) ? canonicalTech.parents : [];
+  const missingParents = getMissingParents({ ...canonicalTech, parents }, techs);
   return {
     id: tech.id,
     era: tech.era,
@@ -134,6 +150,9 @@ function buildClientTech(tech, techs, currentEra) {
     core: tech.core,
     tree: clone(canonicalTech.tree || { column: tech.era, lane: 0, parents }),
     parents: [...parents],
+    missingParents,
+    parentNames: parents.map((parentId) => TECH_BY_ID[parentId]?.name || parentId),
+    missingParentNames: missingParents.map((parentId) => TECH_BY_ID[parentId]?.name || parentId),
     status,
     researched: status === 'researched',
     available: status === 'available',
@@ -189,6 +208,14 @@ function research(gameState, techId) {
   const choices = getEraChoices(techs, tech.era);
   if (choices.length >= getChoiceLimit(tech.era)) {
     return { success: false, error: 'TECH_ERA_CHOICE_FULL', message: '这个时代的科技选择已经确定' };
+  }
+  if (!hasRequiredParent(tech, techs)) {
+    return {
+      success: false,
+      error: 'TECH_PREREQUISITE_MISSING',
+      message: '需要先研究前置科技',
+      missingParents: getMissingParents(tech, techs),
+    };
   }
   if (techs.points <= 0) return { success: false, error: 'TECH_POINTS_INSUFFICIENT', message: '科技点不足' };
 

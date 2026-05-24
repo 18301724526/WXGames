@@ -586,6 +586,25 @@
       return this.finalize(this.runAction(() => this.host.api.research(action.techId)));
     }
 
+    handle_selectTechNode(action) {
+      if (typeof this.host?.selectTechNode === 'function') {
+        this.host.selectTechNode(action);
+      } else if (this.host) {
+        this.host.selectedTechId = action.techId || '';
+        const game = this.getGameHost();
+        if (game?.state && typeof game.state === 'object') {
+          game.state = {
+            ...game.state,
+            techUiState: {
+              ...(game.state.techUiState || {}),
+              selectedTechId: action.techId || '',
+            },
+          };
+        }
+      }
+      return this.afterHandled(action);
+    }
+
     handle_claimEvent(action) {
       return this.finalize(this.claimEvent(action));
     }

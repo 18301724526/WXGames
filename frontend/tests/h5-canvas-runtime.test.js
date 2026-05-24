@@ -1,4 +1,4 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -1601,6 +1601,31 @@ test('Canvas game shell owns building category state without DOM adapter', () =>
   assert.equal(renderCalls.at(-1).activeBuildingCategory, 'military');
 });
 
+test('Canvas game shell selects tech node and keeps research as detail confirmation', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    getHitTarget: () => ({ type: 'selectTechNode', techId: 'farming_field_rotation' }),
+    render(state, options) { renderCalls.push({ state, options }); },
+  };
+
+  const game = { state: { currentTab: 'tech', techs: { points: 1, eras: [] } } };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  listeners['document:pointerup']({ clientX: 160, clientY: 420, type: 'pointerup', timeStamp: 1000 });
+
+  assert.equal(shell.selectedTechId, 'farming_field_rotation');
+  assert.equal(game.state.techUiState.selectedTechId, 'farming_field_rotation');
+  assert.equal(renderCalls.at(-1).options.selectedTechId, 'farming_field_rotation');
+});
+
 test('Canvas game shell passes tutorial tab locks into canvas renderer', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
@@ -1701,9 +1726,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-era-rail-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-era-rail-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-era-rail-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-era-rail-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-detail-panel-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-detail-panel-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-detail-panel-v1/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-detail-panel-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

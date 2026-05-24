@@ -2640,48 +2640,115 @@
       };
     }
 
-    renderTechNode(node, rect) {
+    renderTechNode(node, rect, options = {}) {
       const palette = this.getTechNodeColor(node);
       const routes = this.getTechNodeRoutes(node);
+      const selected = Boolean(options.selected);
       this.drawPanel(rect.x, rect.y, rect.width, rect.height, {
         fill: palette.fill,
-        stroke: palette.stroke,
+        stroke: selected ? '#ffe6b5' : palette.stroke,
         radius: 9,
-        inset: node.available ? 'rgba(255, 244, 200, 0.14)' : 'rgba(255, 255, 255, 0.03)',
+        inset: selected ? 'rgba(255, 244, 200, 0.28)' : (node.available ? 'rgba(255, 244, 200, 0.14)' : 'rgba(255, 255, 255, 0.03)'),
       });
       this.drawTechRouteSegments(rect.x + 9, rect.y + 7, rect.width - 18, 5, routes, node.disabled && !node.researched ? 0.44 : 0.92);
-      const badgeW = Math.min(routes.length > 1 ? 82 : 46, rect.width - 14);
-      this.drawPanel(rect.x + 7, rect.y + 15, badgeW, 18, {
-        fill: 'rgba(11, 18, 14, 0.32)',
-        stroke: palette.stroke,
-        radius: 6,
+      const iconSize = 28;
+      const iconX = rect.x + (rect.width - iconSize) / 2;
+      const iconY = rect.y + 17;
+      this.drawPanel(iconX, iconY, iconSize, iconSize, {
+        fill: node.researched ? 'rgba(116, 211, 160, 0.18)' : 'rgba(11, 18, 14, 0.34)',
+        stroke: selected ? '#ffe6b5' : palette.stroke,
+        radius: 8,
       });
-      this.drawText(this.truncateText(this.getTechNodeRouteLabel(node), badgeW - 8, { size: 9, bold: true }), rect.x + 7 + badgeW / 2, rect.y + 19, {
+      this.drawText(this.truncateText(this.getTechNodeRouteLabel(node), iconSize - 8, { size: 10, bold: true }).slice(0, 2), iconX + iconSize / 2, iconY + iconSize / 2, {
+        size: 10,
+        bold: true,
+        align: 'center',
+        baseline: 'middle',
+        color: palette.accent,
+      });
+      this.drawText(this.truncateText(node.title || node.name || '科技', rect.width - 16, { size: 12, bold: true }), rect.x + rect.width / 2, rect.y + 55, {
+        size: 12,
+        bold: true,
+        align: 'center',
+        color: palette.text,
+      });
+      const label = node.researched ? '已研究' : (node.statusLabel || node.buttonLabel);
+      this.drawText(this.truncateText(label, rect.width - 18, { size: 9, bold: true }), rect.x + rect.width / 2, rect.y + rect.height - 12, {
         size: 9,
         bold: true,
         align: 'center',
         color: palette.accent,
       });
-      const labelX = rect.x + 10;
-      this.drawText(this.truncateText(node.title || node.name || '科技', rect.width - 20, { size: 12, bold: true }), labelX, rect.y + 40, {
-        size: 12,
-        bold: true,
-        color: palette.text,
+    }
+
+    renderTechDetailPanel(detail = {}, x, y, width, height) {
+      const selected = detail && !detail.empty;
+      const iconSize = 42;
+      const actionWidth = Math.min(92, Math.max(74, width * 0.24));
+      const buttonX = x + width - actionWidth - 12;
+      const buttonY = y + 22;
+      const buttonH = 34;
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(45, 34, 24, 0.82)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
       });
-      if (rect.height >= 62) {
-        const summary = node.core || node.unlockSummary || node.summary || '';
-        this.drawText(this.truncateText(summary, rect.width - 20, { size: 9 }), labelX, rect.y + 58, {
-          size: 9,
-          color: palette.muted,
+      this.drawAsset('assets/art/icon-science-cutout.webp', x + 14, y + 15, iconSize, iconSize, selected ? 0.95 : 0.58);
+      const textX = x + 66;
+      const contentWidth = Math.max(110, width - 86 - actionWidth);
+      const fallbackTitleWidth = selected ? contentWidth : Math.max(80, width - 100);
+      const titleWidth = detail.canResearch ? contentWidth : fallbackTitleWidth;
+      this.drawText(this.truncateText(detail.title || '选择一个科技', titleWidth, { size: 15, bold: true }), textX, y + 14, {
+        size: 15,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      const meta = selected
+        ? [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · ')
+        : (detail.statusLabel || '未选择');
+      this.drawText(this.truncateText(meta, contentWidth, { size: 10, bold: true }), textX, y + 36, {
+        size: 10,
+        bold: true,
+        color: detail.canResearch ? '#74d3a0' : '#f0b45b',
+      });
+      const summaryLines = this.wrapTextLimit(detail.summary || '点击科技节点查看效果。', contentWidth, 2, { size: 10 });
+      this.drawTextLines(summaryLines, textX, y + 54, {
+        size: 10,
+        color: '#cbbd96',
+        lineHeight: 13,
+      });
+      if (selected) {
+        const rowY = y + height - 21;
+        const effectWidth = Math.max(70, width * 0.42);
+        const prerequisiteWidth = Math.max(60, width * 0.28);
+        const effect = this.truncateText(`效果：${detail.unlockSummary || '路线倾向'}`, effectWidth, { size: 10 });
+        const prerequisite = this.truncateText(`前置：${detail.prerequisiteText || '无'}`, prerequisiteWidth, { size: 10 });
+        this.drawText(effect, x + 14, rowY, { size: 10, color: '#d5ffe8' });
+        this.drawText(prerequisite, x + 16 + effectWidth, rowY, { size: 10, color: '#aeb0b8' });
+        this.drawText(this.truncateText(detail.pointsText || '', 58, { size: 10, bold: true }), buttonX + actionWidth / 2, rowY, {
+          size: 10,
+          bold: true,
+          color: '#f0b45b',
+          align: 'center',
         });
       }
-      const label = node.researched ? '已研究' : node.buttonLabel;
-      this.drawText(this.truncateText(label, rect.width - 20, { size: 9, bold: true }), rect.x + rect.width - 10, rect.y + rect.height - 15, {
-        size: 9,
-        bold: true,
-        align: 'right',
-        color: palette.accent,
+      this.drawPrimaryActionButton(buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || '研究', {
+        disabled: !detail.canResearch,
+        size: 12,
+        radius: 9,
       });
+      this.addHitTarget({ x: buttonX, y: buttonY, width: actionWidth, height: buttonH }, {
+        type: 'research',
+        techId: detail.id,
+        disabled: !detail.canResearch || !detail.id,
+      });
+      if (!detail.canResearch && detail.disabledReason) {
+        this.drawText(this.truncateText(detail.disabledReason, actionWidth + 18, { size: 9 }), buttonX + actionWidth / 2, buttonY + buttonH + 14, {
+          size: 9,
+          color: '#aeb0b8',
+          align: 'center',
+        });
+      }
     }
 
     getTechTreeLayout(view = {}, panel = {}, options = {}) {
@@ -2911,7 +2978,14 @@
 
     renderTech(state = {}, startY = 210, panelHeight = 250, options = {}) {
       if (!this.presenter || typeof this.presenter.buildTechViewState !== 'function') return;
-      const view = this.presenter.buildTechViewState(state);
+      const view = this.presenter.buildTechViewState({
+        ...state,
+        techUiState: {
+          ...(state.techUiState || {}),
+          ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
+        },
+        ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
+      });
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
@@ -2921,23 +2995,9 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      const headerHeight = 72;
-      this.drawPanel(x + 12, startY + 12, width - 24, headerHeight, {
-        fill: 'rgba(45, 34, 24, 0.82)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
-      this.drawAsset('assets/art/icon-knowledge-cutout.webp', x + 28, startY + 27, 40, 40);
-      this.drawText('当前知识产出', x + 78, startY + 28, {
-        size: 12,
-        color: '#a0a0a0',
-      });
-      this.drawText(view.text.knowledgeRate, x + 78, startY + 48, {
-        size: 22,
-        bold: true,
-        color: '#74d3a0',
-      });
-      const pillY = startY + 27;
+      const headerHeight = 94;
+      this.renderTechDetailPanel(view.detail, x + 12, startY + 12, width - 24, headerHeight);
+      const pillY = startY + headerHeight - 20;
       const pillWidth = 68;
       [
         view.text.points,
@@ -2958,7 +3018,7 @@
         });
       });
 
-      const panelY = startY + 96;
+      const panelY = startY + headerHeight + 24;
       const panelBottom = startY + panelHeight - 14;
       const panelH = Math.max(116, panelBottom - panelY);
       this.drawPanel(x + 12, panelY, width - 24, panelH, {
@@ -3049,13 +3109,13 @@
           nodes.forEach((node) => {
             const rect = nodeRects[node.id];
             if (!rect) return;
-            this.renderTechNode(node, rect);
+            this.renderTechNode(node, rect, { selected: node.id === view.selectedTechId });
             const screenRect = { ...rect, x: rect.x + panX, y: rect.y + panY };
             if (screenRect.y + screenRect.height < treeTop || screenRect.y > treeBottom) return;
             if (screenRect.x + screenRect.width < treeX || screenRect.x > treeX + treeWidth) return;
             this.addHitTarget(
               screenRect,
-              { type: 'research', techId: node.id, disabled: node.disabled, dragType: 'techTreeDrag' },
+              { type: 'selectTechNode', techId: node.id, dragType: 'techTreeDrag' },
             );
             renderedCards += 1;
           });

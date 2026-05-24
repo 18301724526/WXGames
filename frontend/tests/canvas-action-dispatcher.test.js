@@ -171,6 +171,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'closeTaskCenter',
     'switchTaskCenterTab',
     'selectBuildingCategory',
+    'selectTechNode',
   ]);
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
@@ -195,6 +196,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'openTaskCenter' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeTaskCenter' }), true);
   assert.equal(dispatcher.canHandle({ type: 'switchTaskCenterTab' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'selectTechNode' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
 });
 
@@ -476,6 +478,21 @@ test('CanvasActionController handles building category filter through shared can
   ]);
 });
 
+test('CanvasActionController selects tech node before research confirmation', () => {
+  const calls = [];
+  const host = {
+    selectTechNode(action) { calls.push(['select', action.techId]); return true; },
+    renderCanvasAction(action) { calls.push(['render', action.type]); return true; },
+  };
+  const controller = new CanvasActionController({ host });
+
+  assert.equal(controller.handle({ type: 'selectTechNode', techId: 'farming_field_rotation' }), true);
+  assert.deepEqual(calls, [
+    ['select', 'farming_field_rotation'],
+    ['render', 'selectTechNode'],
+  ]);
+});
+
 test('CanvasActionDispatcher handles building category filter when used as a compatibility dispatcher', () => {
   const dispatcher = new CanvasActionDispatcher();
   const calls = [];
@@ -488,6 +505,21 @@ test('CanvasActionDispatcher handles building category filter when used as a com
   assert.deepEqual(calls, [
     ['select', 'military'],
     ['render', 'selectBuildingCategory'],
+  ]);
+});
+
+test('CanvasActionDispatcher handles tech node selection as local UI state', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'selectTechNode', techId: 'farming_field_rotation' }, {
+    selectTechNode(action) { calls.push(['select', action.techId]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['select', 'farming_field_rotation'],
+    ['render', 'selectTechNode'],
   ]);
 });
 

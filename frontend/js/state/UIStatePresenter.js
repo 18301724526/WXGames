@@ -1530,6 +1530,14 @@
       const availableCount = eras.reduce((sum, era) => (
         sum + (Array.isArray(era.techs) ? era.techs.filter((tech) => tech.available).length : 0)
       ), 0);
+      const statusLabels = {
+        available: '可研究',
+        researched: '已研究',
+        locked: '时代未解锁',
+        missingPrerequisite: '需先研究前置科技',
+        eraChoiceFull: '本时代已确定',
+        noPoints: '科技点不足',
+      };
       const visibleEras = eras.map((era) => ({
         era: era.era,
         name: era.name || `时代 ${era.era}`,
@@ -1540,11 +1548,14 @@
           let buttonLabel = '研究';
           if (tech.status === 'researched') buttonLabel = '已研究';
           else if (tech.status === 'locked') buttonLabel = '未解锁';
+          else if (tech.status === 'missingPrerequisite') buttonLabel = '需前置';
           else if (tech.status === 'eraChoiceFull') buttonLabel = '本时代已确定';
           else if (tech.status === 'noPoints') buttonLabel = '点数不足';
           const unlockParts = [];
           if (tech.resourceText && tech.resourceText !== '无') unlockParts.push(`入口：${tech.resourceText}`);
           if (tech.unlockText) unlockParts.push(`建筑：${tech.unlockText}`);
+          const parentNames = Array.isArray(tech.parentNames) ? tech.parentNames.filter(Boolean) : [];
+          const missingParentNames = Array.isArray(tech.missingParentNames) ? tech.missingParentNames.filter(Boolean) : [];
           return {
             ...tech,
             title: tech.name || '',
@@ -1553,7 +1564,12 @@
             core: tech.core || '',
             tree: tech.tree || { column: era.era, lane: 0, parents: tech.parents || [] },
             parents: Array.isArray(tech.parents) ? [...tech.parents] : [],
+            parentNames,
+            missingParentNames,
             unlockSummary: unlockParts.join(' / ') || '路线倾向',
+            prerequisiteText: parentNames.length ? parentNames.join(' / ') : '无',
+            missingPrerequisiteText: missingParentNames.length ? missingParentNames.join(' / ') : '',
+            statusLabel: statusLabels[tech.status] || buttonLabel,
             buttonLabel,
             disabled: !tech.available,
             researched: Boolean(tech.researched || tech.status === 'researched'),
@@ -1597,11 +1613,62 @@
         closed: era.closed,
         column: era.era,
       }));
+      const selectedTechId = state.techUiState?.selectedTechId
+        || state.selectedTechId
+        || nodes.find((node) => node.available)?.id
+        || nodes.find((node) => !node.researched)?.id
+        || nodes[0]?.id
+        || '';
+      const selectedTech = nodesById[selectedTechId] || nodes[0] || null;
+      const routeLabelsById = {};
+      visibleEras.forEach((era) => {
+        (era.techs || []).forEach((tech) => {
+          if (tech.route) routeLabelsById[tech.route] = tech.routeLabel || tech.route;
+          (Array.isArray(tech.tree?.routes) ? tech.tree.routes : []).forEach((route) => {
+            if (!routeLabelsById[route]) routeLabelsById[route] = tech.routeLabel || route;
+          });
+        });
+      });
+      const selectedRoutes = selectedTech
+        ? (Array.isArray(selectedTech.tree?.routes) && selectedTech.tree.routes.length
+          ? selectedTech.tree.routes
+          : (selectedTech.route ? [selectedTech.route] : []))
+        : [];
+      const detail = selectedTech
+        ? {
+          empty: false,
+          id: selectedTech.id,
+          title: selectedTech.title || selectedTech.name || '科技',
+          eraName: selectedTech.eraName || visibleEras.find((era) => era.era === selectedTech.era)?.name || '',
+          routeLabel: selectedRoutes.length > 1
+            ? selectedRoutes.map((route) => routeLabelsById[route] || route).join(' / ')
+            : (selectedTech.routeLabel || '路线'),
+          statusLabel: selectedTech.statusLabel || '未解锁',
+          summary: selectedTech.summary || selectedTech.core || '选择科技查看效果。',
+          unlockSummary: selectedTech.unlockSummary || '路线倾向',
+          prerequisiteText: selectedTech.prerequisiteText || '无',
+          missingPrerequisiteText: selectedTech.missingPrerequisiteText || '',
+          pointsText: `科技点 ${points}`,
+          buttonLabel: selectedTech.researched ? '已研究' : '研究',
+          canResearch: Boolean(selectedTech.available),
+          disabledReason: selectedTech.available ? '' : (selectedTech.statusLabel || selectedTech.buttonLabel || '暂不可研究'),
+        }
+        : {
+          empty: true,
+          title: '选择一个科技',
+          summary: '点击科技节点查看效果。',
+          statusLabel: '未选择',
+          buttonLabel: '研究',
+          canResearch: false,
+        };
+
       return {
         points,
         researchedCount,
         availableCount,
         eras: visibleEras,
+        selectedTechId,
+        detail,
         tree: {
           eras: treeEras,
           nodes,

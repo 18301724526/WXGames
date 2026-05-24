@@ -1709,6 +1709,20 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
         laneMin: -1,
         laneMax: 1,
       },
+      selectedTechId: 'farming_field_rotation',
+      detail: {
+        id: 'farming_field_rotation',
+        title: '田块轮作',
+        eraName: '农耕分支',
+        routeLabel: '农业',
+        statusLabel: '可研究',
+        summary: '稳定粮食',
+        unlockSummary: '入口：粮食 / 建筑：农田',
+        prerequisiteText: '无',
+        pointsText: '科技点 1',
+        buttonLabel: '研究',
+        canResearch: true,
+      },
       eras: [{
         era: 1,
         name: '农耕分支',
@@ -1743,8 +1757,10 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
     mode: 'hud',
   });
 
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '当前知识产出'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '当前知识产出'), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '0.2/s'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '效果：入口：粮食 / 建筑：农田'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前置：无'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('科技树')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '田块轮作'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '农耕分支'));
@@ -1753,11 +1769,17 @@ test('CanvasGameRenderer draws tech placeholder page without DOM text writes', (
   assert.ok(lineCalls.length >= 4);
   assert.ok(lineCalls.some((call) => Math.abs(call[1] - 195) < 1));
   assert.equal(lineCalls.some((call) => call[1] === 195 && Math.abs(call[2] - 603.55) < 1), false);
-  const techTarget = renderer.hitTargets.find((target) => target.action.techId === 'farming_field_rotation');
+  const techTarget = renderer.hitTargets.find((target) => target.action.type === 'selectTechNode' && target.action.techId === 'farming_field_rotation');
   assert.ok(techTarget);
   assert.deepEqual(
     renderer.getHitTarget({ x: techTarget.x + 2, y: techTarget.y + 2 }),
-    { type: 'research', techId: 'farming_field_rotation', disabled: false, dragType: 'techTreeDrag' },
+    { type: 'selectTechNode', techId: 'farming_field_rotation', dragType: 'techTreeDrag' },
+  );
+  const researchTarget = renderer.hitTargets.find((target) => target.action.type === 'research');
+  assert.ok(researchTarget);
+  assert.deepEqual(
+    renderer.getHitTarget({ x: researchTarget.x + 2, y: researchTarget.y + 2 }),
+    { type: 'research', techId: 'farming_field_rotation', disabled: false },
   );
   assert.ok(renderer.hitTargets.some((target) => target.action.type === 'techTreeDrag'));
 });
