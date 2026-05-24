@@ -99,7 +99,7 @@ test('时代进阶主线奖励按完整条件包发放', () => {
   state.resources.food = 700;
   state.resources.wood = 120;
   state.resources.knowledge = 80;
-  state.military = { soldiers: 1 };
+  state.military = { soldiers: 100 };
   gameStateService.normalizeState(state);
 
   const tasks = GuideTaskService.getGuideTasks(state);
@@ -108,12 +108,12 @@ test('时代进阶主线奖励按完整条件包发放', () => {
   const result = GuideTaskService.claimReward(state, 'border_advance_supplies');
   assert.equal(result.success, true);
   assert.deepEqual(result.reward.resources, { food: 900, wood: 500, knowledge: 260 });
-  assert.equal(result.reward.soldiers, 3);
-  assert.equal(result.rewardReveal.rewardText, '食物 +900 / 木材 +500 / 知识 +260 / 士兵 +3');
+  assert.equal(result.reward.soldiers, 300);
+  assert.equal(result.rewardReveal.rewardText, '食物 +900 / 木材 +500 / 知识 +260 / 士兵 +300');
   assert.equal(state.resources.food, 1600);
   assert.equal(state.resources.wood, 620);
   assert.equal(state.resources.knowledge, 340);
-  assert.equal(state.military.soldiers, 4);
+  assert.equal(state.military.soldiers, 300);
 });
 
 test('first scout main task go action targets the scout button', () => {

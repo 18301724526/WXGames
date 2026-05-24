@@ -21,10 +21,12 @@ function getTrainingStats(buildings) {
   const config = getBarracksMilitaryConfig();
   const fallbackCap = level > 0 ? level * 5 : 0;
   const fallbackInterval = level > 0 ? Math.max(10, 40 - level * 10) : 0;
+  const fallbackBatchSize = level > 0 ? 1 : 0;
   return {
     barracksLevel: level,
     soldierCap: getValueByLevel(config.soldierCapByLevel, level, fallbackCap),
     trainingIntervalSeconds: getValueByLevel(config.trainingIntervalSecondsByLevel, level, fallbackInterval),
+    trainingBatchSize: getValueByLevel(config.trainingBatchSizeByLevel, level, fallbackBatchSize),
     defensePerSoldier: Number.isFinite(config.defensePerSoldier) ? config.defensePerSoldier : 1,
   };
 }
@@ -35,11 +37,22 @@ function toNonNegativeNumber(value) {
   return number;
 }
 
+function migrateLegacySoldiers(rawMilitary, stats) {
+  const soldiers = Math.max(0, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)));
+  const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
+  if (soldiers <= 0 || cap < 100) return soldiers;
+  const hasHundredScaleFields = Object.prototype.hasOwnProperty.call(rawMilitary || {}, 'trainingBatchSize')
+    || Number(rawMilitary?.defensePerSoldier) === Number(stats.defensePerSoldier);
+  if (!hasHundredScaleFields && soldiers < 100) return Math.min(cap, soldiers * 100);
+  return soldiers;
+}
+
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
   const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
-  const soldiers = Math.min(cap, Math.max(0, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers))));
+  const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
+  const soldiers = Math.min(cap, migrateLegacySoldiers(rawMilitary, stats));
   const trainingProgress = cap > 0 && soldiers < cap && interval > 0
     ? Math.min(interval, toNonNegativeNumber(rawMilitary?.trainingProgress))
     : 0;
@@ -51,6 +64,7 @@ function normalizeMilitaryState(rawMilitary, gameState) {
     availableSoldiers: TerritoryService.getAvailableSoldiers(gameState || {}),
     trainingProgress,
     trainingIntervalSeconds: interval,
+    trainingBatchSize: batchSize,
     defensePerSoldier,
     defense: soldiers * defensePerSoldier,
   };
@@ -63,14 +77,20 @@ function advanceTraining(gameState, deltaSeconds = 0) {
   let trainingProgress = current.trainingProgress;
   let trained = 0;
 
-  if (elapsed > 0 && current.soldierCap > 0 && current.trainingIntervalSeconds > 0 && soldiers < current.soldierCap) {
+  if (
+    elapsed > 0
+    && current.soldierCap > 0
+    && current.trainingIntervalSeconds > 0
+    && current.trainingBatchSize > 0
+    && soldiers < current.soldierCap
+  ) {
     const totalProgress = trainingProgress + elapsed;
-    const possibleTrained = Math.floor(totalProgress / current.trainingIntervalSeconds);
-    trained = Math.min(possibleTrained, current.soldierCap - soldiers);
+    const possibleBatches = Math.floor(totalProgress / current.trainingIntervalSeconds);
+    trained = Math.min(possibleBatches * current.trainingBatchSize, current.soldierCap - soldiers);
     soldiers += trained;
     trainingProgress = soldiers >= current.soldierCap
       ? 0
-      : totalProgress - possibleTrained * current.trainingIntervalSeconds;
+      : totalProgress - possibleBatches * current.trainingIntervalSeconds;
   }
 
   gameState.military = normalizeMilitaryState({ ...current, soldiers, trainingProgress }, gameState);

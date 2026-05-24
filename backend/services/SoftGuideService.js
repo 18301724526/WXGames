@@ -95,7 +95,7 @@ function getSoftGuide(gameState, eraProgress) {
     }
     return {
       id: 'border_preparation',
-      message: '训练至少 3 名士兵，并继续积累食物、木材与知识，为边境时代做准备。',
+      message: '训练至少 300 士兵，并继续积累食物、木材与知识，为边境时代做准备。',
       target: null,
     };
   }

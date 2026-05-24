@@ -52,7 +52,7 @@ const ERA_ADVANCEMENT = {
       { key: 'food', label: '食物', required: 900 },
       { key: 'wood', label: '木材', required: 500 },
       { key: 'knowledge', label: '知识', required: 260 },
-      { key: 'soldiers', label: '士兵', required: 3, source: 'military' },
+      { key: 'soldiers', label: '士兵', required: 300, source: 'military' },
     ],
   },
   4: {
@@ -63,7 +63,7 @@ const ERA_ADVANCEMENT = {
       { key: 'food', label: '食物', required: 1400 },
       { key: 'wood', label: '木材', required: 900 },
       { key: 'knowledge', label: '知识', required: 520 },
-      { key: 'soldiers', label: '士兵', required: 6, source: 'military' },
+      { key: 'soldiers', label: '士兵', required: 600, source: 'military' },
       { key: 'watchtower', label: '瞭望台', required: 1, source: 'building' },
     ],
   },

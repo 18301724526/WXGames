@@ -34,14 +34,14 @@ const THREAT_EVENT_TEMPLATES = [
       {
         id: 'secure_road',
         label: '保护道路',
-        preview: '需要防御 4。成功获得 25 木材、10 知识；不足或超时则损失 1 士兵、20 木材',
+        preview: '需要防御 4。成功获得 25 木材、10 知识；不足或超时则损失 100 士兵、20 木材',
         requirements: { defense: 4 },
         successEffects: [
           { type: 'resource', key: 'wood', value: 25 },
           { type: 'resource', key: 'knowledge', value: 10 },
         ],
         failureEffects: [
-          { type: 'soldiers', value: -1 },
+          { type: 'soldiers', value: -100 },
           { type: 'resource', key: 'wood', value: -20 },
         ],
       },
@@ -57,8 +57,8 @@ const THREAT_EVENT_TEMPLATES = [
       {
         id: 'drive_away',
         label: '驱赶盗匪',
-        preview: '需要 3 名士兵。成功获得 60 食物；不足或超时则损失 45 食物',
-        requirements: { soldiers: 3 },
+        preview: '需要 300 士兵。成功获得 60 食物；不足或超时则损失 45 食物',
+        requirements: { soldiers: 300 },
         successEffects: [{ type: 'resource', key: 'food', value: 60 }],
         failureEffects: [{ type: 'resource', key: 'food', value: -45 }],
       },

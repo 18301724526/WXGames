@@ -222,7 +222,7 @@ test('威胁事件成功时按防御要求发放奖励', () => {
   const event = EventDomain.createThreatEvent(EventDomain.THREAT_EVENT_TEMPLATES.find((item) => item.id === 'border_probe'), now, 0);
   state.currentEra = 4;
   state.buildings.barracks = { level: 1 };
-  state.military = { soldiers: 2 };
+  state.military = { soldiers: 200 };
   state.eventQueue = [event];
 
   const result = EventService.claimEvent(state, event.id, 'show_patrol', now);
@@ -308,7 +308,7 @@ test('旧版多选威胁事件超时后会按最差选项结算', () => {
       {
         id: 'drive_away',
         label: '驱赶盗匪',
-        requirements: { soldiers: 3 },
+        requirements: { soldiers: 300 },
         successEffects: [{ type: 'resource', key: 'food', value: 60 }],
         failureEffects: [{ type: 'resource', key: 'food', value: -45 }],
       },

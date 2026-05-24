@@ -51,7 +51,7 @@ function createCityState(options = {}) {
     resources: createInitialResources(options.resources || { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 }),
     buildings: BuildingState.normalizeLegacyBuildingState(options.buildings),
     population: createInitialPopulation(options.population),
-    military: options.military || { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
+    military: options.military || { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     happiness: Number.isFinite(options.happiness) ? options.happiness : 100,
     terrain: CityPlanningService.normalizeTerrainId(options.terrain || options.planning?.terrainId),
     habitability: Number.isFinite(options.habitability) ? options.habitability : 0,

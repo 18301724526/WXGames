@@ -17,7 +17,7 @@ function createOccupiedCityState() {
   state.buildings.house = { level: 1 };
   state.buildings.barracks = { level: 2 };
   state.buildings.watchtower = { level: 1 };
-  state.military = { soldiers: 6 };
+  state.military = { soldiers: 600 };
   state.territories.push({
     id: 'site_harbor',
     x: 1,
@@ -29,8 +29,8 @@ function createOccupiedCityState() {
     status: 'occupied',
     scale: 2,
     threat: 2,
-    defense: 4,
-    recommendedSoldiers: 4,
+    defense: 400,
+    recommendedSoldiers: 400,
     art: 'assets/art/world-site-town-cutout.png',
     effects: { foodOutputMultiplier: 0.05, threatDefense: 2 },
     discoveredAt: '2026-05-17T08:00:00.000Z',
@@ -115,7 +115,7 @@ test('分城不能进阶，时代进阶始终使用主城资源', () => {
   const state = createOccupiedCityState();
   state.currentEra = 3;
   state.cities.capital.resources = { food: 900, wood: 500, knowledge: 260, stone: 0, metal: 0 };
-  state.cities.capital.military.soldiers = 3;
+  state.cities.capital.military.soldiers = 300;
   state.cities.site_harbor.resources = { food: 9999, wood: 9999, knowledge: 9999, stone: 0, metal: 0 };
   CityService.setActiveCity(state, 'site_harbor');
 

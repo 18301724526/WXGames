@@ -86,7 +86,7 @@ test('城邦后段软引导不再后台补齐边境时代资源', () => {
   state.resources.food = 600;
   state.resources.wood = 350;
   state.resources.knowledge = 160;
-  state.military = { soldiers: 3 };
+  state.military = { soldiers: 300 };
   state.military = require('../services/MilitaryService').normalizeMilitaryState(state.military, state);
   let progress = gameStateService.calculateEraProgress(state);
 
@@ -97,7 +97,7 @@ test('城邦后段软引导不再后台补齐边境时代资源', () => {
   assert.equal(state.resources.food, 600);
   assert.equal(state.resources.wood, 350);
   assert.equal(state.resources.knowledge, 160);
-  assert.equal(state.military.soldiers, 3);
+  assert.equal(state.military.soldiers, 300);
   assert.equal(progress.canAdvance, false);
   assert.equal(SoftGuideService.getSoftGuide(state, progress).id, 'barracks_built');
 });

@@ -768,14 +768,14 @@ test('event modal view state separates requirements rewards costs penalties and 
       {
         id: 'drive_away',
         label: 'Drive away the bandits',
-        requirements: { soldiers: 3, defense: 2 },
+        requirements: { soldiers: 300, defense: 2 },
         successEffects: [
           { type: 'resource', key: 'food', value: 60 },
           { type: 'resource', key: 'knowledge', value: -8 },
         ],
         failureEffects: [
           { type: 'resource', key: 'food', value: -45 },
-          { type: 'soldiers', value: -1 },
+          { type: 'soldiers', value: -100 },
         ],
       },
     ],
@@ -786,33 +786,34 @@ test('event modal view state separates requirements rewards costs penalties and 
     { label: '时限', text: '剩余 4:00，超时将按失败处理', tone: 'penalty' },
   ]);
   assert.deepEqual(view.options[0].rows, [
-    { label: '需求', text: '防御 2，士兵 3', tone: 'requirement', parts: [{ type: 'text', text: '防御 2' }, { type: 'resource', resource: 'soldier', text: '3' }], empty: false },
+    { label: '需求', text: '防御 2，士兵 300', tone: 'requirement', parts: [{ type: 'text', text: '防御 2' }, { type: 'resource', resource: 'soldier', text: '300' }], empty: false },
     { label: '奖励', text: '食物 +60', tone: 'reward', parts: [{ type: 'resource', resource: 'food', text: '+60' }], empty: false },
     { label: '消耗', text: '知识 -8', tone: 'cost', parts: [{ type: 'resource', resource: 'knowledge', text: '-8' }], empty: false },
-    { label: '惩罚', text: '食物 -45 士兵 -1', tone: 'penalty', parts: [{ type: 'resource', resource: 'food', text: '-45' }, { type: 'resource', resource: 'soldier', text: '-1' }], empty: false },
+    { label: '惩罚', text: '食物 -45 士兵 -100', tone: 'penalty', parts: [{ type: 'resource', resource: 'food', text: '-45' }, { type: 'resource', resource: 'soldier', text: '-100' }], empty: false },
   ]);
-  assert.equal(view.options[0].preview, '需求 防御 2，士兵 3；奖励 食物 +60；消耗 知识 -8；惩罚 食物 -45 士兵 -1');
+  assert.equal(view.options[0].preview, '需求 防御 2，士兵 300；奖励 食物 +60；消耗 知识 -8；惩罚 食物 -45 士兵 -100');
 });
 
 test('military view state formats army counts and training progress', () => {
   const view = UIStatePresenter.buildMilitaryViewState({
     military: {
-      soldiers: 2,
-      soldierCap: 5,
+      soldiers: 200,
+      soldierCap: 300,
       trainingProgress: 15,
       trainingIntervalSeconds: 30,
+      trainingBatchSize: 10,
       defense: 2,
-      soldiersOnMission: 1,
+      soldiersOnMission: 100,
     },
     buildingEffects: { threatDefense: 2 },
-    territoryState: { availableSoldiers: 7 },
+    territoryState: { availableSoldiers: 700 },
   });
 
-  assert.equal(view.text.soldierCount, '2/5');
+  assert.equal(view.text.soldierCount, '200/300');
   assert.equal(view.text.militaryDefense, 4);
-  assert.equal(view.text.availableSoldierCount, 7);
-  assert.equal(view.text.soldiersOnMission, 1);
-  assert.equal(view.text.soldierTrainingText, '下一名 15/30 秒');
+  assert.equal(view.text.availableSoldierCount, 700);
+  assert.equal(view.text.soldiersOnMission, 100);
+  assert.equal(view.text.soldierTrainingText, '下一批 10 兵 · 15/30 秒');
   assert.equal(view.training.progressWidth, '50%');
 });
 
@@ -887,8 +888,8 @@ test('world site dialog view state formats details and expedition actions', () =
       originDistance: 3,
       scale: 2,
       threat: 4,
-      defense: 5,
-      recommendedSoldiers: 5,
+      defense: 500,
+      recommendedSoldiers: 500,
       effects: { foodOutputMultiplier: 0.1 },
     },
     {
@@ -898,16 +899,16 @@ test('world site dialog view state formats details and expedition actions', () =
       occupationMode: 'settlement',
       naturalName: '河湾空地',
       defense: 0,
-      recommendedSoldiers: 1,
+      recommendedSoldiers: 100,
     },
   ];
   const view = UIStatePresenter.buildWorldSiteDialogViewState(territories, {
-    availableSoldiers: 4,
+    availableSoldiers: 400,
     missionDurationSeconds: 90,
   }, {
     selectedSiteId: 'tribe_site',
     expeditionConfigSiteId: 'tribe_site',
-    expeditionSoldiers: '6',
+    expeditionSoldiers: '600',
   });
   const detail = view.details.find((item) => item.id === 'tribe_site');
   const neutral = view.details.find((item) => item.id === 'neutral_site');
@@ -921,7 +922,7 @@ test('world site dialog view state formats details and expedition actions', () =
   assert.equal(detail.text.march, '行军耗时 1:30');
   assert.equal(detail.action.kind, 'group');
   assert.equal(detail.action.buttons[2].action, 'open-expedition');
-  assert.equal(detail.action.expeditionConfig.fields.soldiers.value, 6);
+  assert.equal(detail.action.expeditionConfig.fields.soldiers.value, 600);
   assert.equal(detail.action.expeditionConfig.disabled, true);
 });
 

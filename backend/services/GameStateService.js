@@ -46,7 +46,7 @@ function createInitialGameState(playerId) {
     lastEventAt: 0,
     tutorial: TutorialService.createInitialTutorialState(),
     softGuideState: {},
-    military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, defensePerSoldier: 1, defense: 0 },
+    military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     polity: TerritoryService.createInitialPolity(),
     territories: TerritoryService.createInitialTerritories(),
     activeCityId: CityService.CAPITAL_CITY_ID,

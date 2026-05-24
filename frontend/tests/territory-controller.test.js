@@ -89,14 +89,14 @@ test('territory controller receives expedition draft changes as plain data', () 
     uiState: { selectedSiteId: 'site-east', expeditionConfigSiteId: 'site-east' },
     getState: () => ({
       territoryState: {
-        territories: [{ id: 'site-east', recommendedSoldiers: 3 }],
+        territories: [{ id: 'site-east', recommendedSoldiers: 300 }],
       },
     }),
   });
 
-  controller.handleDraftInput({ field: 'soldiers', value: '5' });
+  controller.handleDraftInput({ field: 'soldiers', value: '500' });
 
-  assert.equal(controller.getUiState().expeditionSoldiers, '5');
+  assert.equal(controller.getUiState().expeditionSoldiers, '500');
 });
 
 test('shared canvas action controller maps scout actions to distinct controller payloads', () => {

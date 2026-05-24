@@ -71,14 +71,14 @@ test('聚落到城邦需要 500 食物、200 木材和 100 知识', () => {
   assert.equal(state.resources.knowledge, 0);
 });
 
-test('城邦到边境需要资源和至少 3 名士兵，士兵不会被扣除', () => {
+test('城邦到边境需要资源和至少 300 士兵，士兵不会被扣除', () => {
   let state = gameStateService.createInitialGameState('border-cost-player');
   state.currentEra = 3;
   state.resources.food = 900;
   state.resources.wood = 500;
   state.resources.knowledge = 260;
   state.buildings.barracks = { level: 1 };
-  state.military = { soldiers: 2 };
+  state.military = { soldiers: 200 };
   state = gameStateService.normalizeState(state);
 
   const blocked = AdvanceEraAction.execute(state, state.tutorial);
@@ -86,7 +86,7 @@ test('城邦到边境需要资源和至少 3 名士兵，士兵不会被扣除',
   assert.equal(blocked.error, 'INSUFFICIENT_RESOURCES');
   assert.equal(state.currentEra, 3);
 
-  state.military.soldiers = 3;
+  state.military.soldiers = 300;
   const success = AdvanceEraAction.execute(state, state.tutorial);
 
   assert.equal(success.success, true);
@@ -94,7 +94,7 @@ test('城邦到边境需要资源和至少 3 名士兵，士兵不会被扣除',
   assert.equal(state.resources.food, 0);
   assert.equal(state.resources.wood, 0);
   assert.equal(state.resources.knowledge, 0);
-  assert.equal(state.military.soldiers, 3);
+  assert.equal(state.military.soldiers, 300);
 });
 
 test('边境到古典需要资源、士兵和瞭望台', () => {
@@ -104,7 +104,7 @@ test('边境到古典需要资源、士兵和瞭望台', () => {
   state.resources.wood = 900;
   state.resources.knowledge = 520;
   state.buildings.barracks = { level: 2 };
-  state.military = { soldiers: 6 };
+  state.military = { soldiers: 600 };
   state = gameStateService.normalizeState(state);
 
   const blocked = AdvanceEraAction.execute(state, state.tutorial);

@@ -54,7 +54,9 @@ test('barracks config only exposes soldier training, not output or defense-level
   assert.deepEqual(barracks.effects.perLevel, {});
   assert.deepEqual(barracks.ui.effectText, []);
   assert.equal(barracks.military.trainingIntervalSecondsByLevel[1], 30);
-  assert.equal(barracks.military.soldierCapByLevel[1], 5);
+  assert.equal(barracks.military.trainingBatchSizeByLevel[1], 10);
+  assert.equal(barracks.military.soldierCapByLevel[1], 300);
+  assert.equal(barracks.military.defensePerSoldier, 0.01);
 });
 
 test('watchtower config exposes threat defense effect only', () => {

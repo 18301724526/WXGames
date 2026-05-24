@@ -366,7 +366,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
                       name: '兵营',
                       buildCost: { food: 260, knowledge: 80 },
                       ui: { description: '训练士兵', effectText: [] },
-                      military: { soldierCapByLevel: [0, 5], trainingIntervalSecondsByLevel: [0, 30] },
+                      military: { soldierCapByLevel: [0, 300], trainingIntervalSecondsByLevel: [0, 30], trainingBatchSizeByLevel: [0, 10] },
                     },
                   },
                   buildingCosts: { barracks: { food: 260, knowledge: 80 } },
@@ -427,7 +427,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
                 currentEra: 5,
                 militaryView: 'world',
                 territoryState: {
-                  availableSoldiers: 3,
+                  availableSoldiers: 300,
                   territories: [{
                     id: 'site-east',
                     status: 'discovered',
@@ -438,7 +438,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
                     art: 'assets/art/world-site-town-cutout.png',
                     relativeX: 1,
                     relativeY: 0,
-                    recommendedSoldiers: 1,
+                    recommendedSoldiers: 100,
                     defense: 0,
                   }],
                   scoutReports: [],
@@ -485,7 +485,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
         currentEra: 5,
         militaryView: 'world',
         territoryState: {
-          availableSoldiers: 3,
+          availableSoldiers: 300,
           territories: [{
             id: 'site-east',
             status: 'discovered',
@@ -496,7 +496,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
             art: 'assets/art/world-site-town-cutout.png',
             relativeX: 1,
             relativeY: 0,
-            recommendedSoldiers: 1,
+            recommendedSoldiers: 100,
             defense: 0,
           }],
           scoutReports: [],
@@ -734,7 +734,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
           name: '兵营',
           buildCost: { food: 260, knowledge: 80 },
           ui: { description: '自动训练士兵', effectText: [] },
-          military: { soldierCapByLevel: [0, 5], trainingIntervalSecondsByLevel: [0, 30] },
+          military: { soldierCapByLevel: [0, 300], trainingIntervalSecondsByLevel: [0, 30], trainingBatchSizeByLevel: [0, 10] },
         },
       },
       buildingCosts: { barracks: { food: 260, knowledge: 80 } },
@@ -864,7 +864,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.deepEqual(requests.find((request) => request.action === 'startConquest'), {
       action: 'startConquest',
       territoryId: 'site-east',
-      expedition: { soldiers: 1 },
+      expedition: { soldiers: 100 },
     });
     assert.deepEqual(requests.find((request) => request.action === 'renameCity'), {
       action: 'renameCity',

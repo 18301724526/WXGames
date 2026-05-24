@@ -7,6 +7,8 @@ const MAX_ACTIVE_SCOUTS = 2;
 const SCOUT_SITE_BASE_CHANCE = 0.32;
 const SCOUT_SITE_CHANCE_STEP = 0.14;
 const SCOUT_SITE_GUARANTEE_AFTER = 4;
+const MIN_EXPEDITION_SOLDIERS = 100;
+const SOLDIER_SCALE = 100;
 
 const DIRECTIONS = {
   n: { label: '北方', dx: 0, dy: -1 },
@@ -70,8 +72,8 @@ const SITE_TEMPLATES = [
     owner: 'neutral',
     scale: 1,
     threat: 1,
-    defense: 3,
-    recommendedSoldiers: 3,
+    defense: 100,
+    recommendedSoldiers: 100,
     naturalNames: ['河畔前哨', '浅丘据点', '旧猎道营地', '荒原木寨'],
     summaries: [
       '几户猎人与木栅围起了临时营地，尚未形成稳固势力。',
@@ -85,8 +87,8 @@ const SITE_TEMPLATES = [
     owner: 'neutral',
     scale: 2,
     threat: 2,
-    defense: 4,
-    recommendedSoldiers: 4,
+    defense: 100,
+    recommendedSoldiers: 100,
     naturalNames: ['河湾村镇', '石阶小城', '谷口集落', '渡口镇'],
     summaries: [
       '这里有稳定的屋舍和集市痕迹，适合成为新的城市据点。',
@@ -100,8 +102,8 @@ const SITE_TEMPLATES = [
     owner: 'tribe',
     scale: 2,
     threat: 4,
-    defense: 5,
-    recommendedSoldiers: 5,
+    defense: 500,
+    recommendedSoldiers: 500,
     naturalNames: ['林地部落', '北风营帐', '山脚部族', '河曲部落'],
     summaries: [
       '多个帐篷围绕火塘而立，哨塔上有人持续观察外来者。',
@@ -115,8 +117,8 @@ const SITE_TEMPLATES = [
     owner: 'city_state',
     scale: 3,
     threat: 5,
-    defense: 6,
-    recommendedSoldiers: 6,
+    defense: 600,
+    recommendedSoldiers: 600,
     naturalNames: ['河湾城邦', '高墙城邑', '石桥城邦', '山口自治城'],
     summaries: [
       '整齐城墙与旗帜表明这里已经形成稳定政权，哨兵正在城门上来回巡查。',
@@ -130,8 +132,8 @@ const SITE_TEMPLATES = [
     owner: 'ruin_guardians',
     scale: 2,
     threat: 5,
-    defense: 7,
-    recommendedSoldiers: 7,
+    defense: 700,
+    recommendedSoldiers: 700,
     naturalNames: ['旧日遗迹', '断柱废墟', '沉默神殿', '古道残垣'],
     summaries: [
       '破碎石柱之间仍有守卫巡逻，显然这里的遗迹并非无主空壳。',
@@ -207,6 +209,12 @@ function toInteger(value, fallback = 0) {
   return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
+function normalizeSoldierScale(value, fallback = MIN_EXPEDITION_SOLDIERS) {
+  const soldiers = toInteger(value, fallback);
+  if (soldiers <= 0) return 0;
+  return soldiers < MIN_EXPEDITION_SOLDIERS ? soldiers * SOLDIER_SCALE : soldiers;
+}
+
 function getDistance(x, y) {
   return Math.max(Math.abs(x), Math.abs(y));
 }
@@ -264,7 +272,14 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
     : rawTerritory.status === 'scouted'
       ? 'discovered'
       : 'discovered';
-  const defense = Math.max(1, toInteger(rawTerritory.defense, Math.max(3, getDistance(x, y) + 2)));
+  const rawDefense = toInteger(rawTerritory.defense, Math.max(SOLDIER_SCALE, (getDistance(x, y) + 2) * SOLDIER_SCALE));
+  const defense = rawDefense > 0 && rawDefense < MIN_EXPEDITION_SOLDIERS
+    ? rawDefense * SOLDIER_SCALE
+    : Math.max(MIN_EXPEDITION_SOLDIERS, rawDefense);
+  const rawRecommended = toInteger(rawTerritory.recommendedSoldiers, defense);
+  const recommendedSoldiers = rawRecommended > 0 && rawRecommended < MIN_EXPEDITION_SOLDIERS
+    ? rawRecommended * SOLDIER_SCALE
+    : Math.max(MIN_EXPEDITION_SOLDIERS, rawRecommended);
   return {
     id: typeof rawTerritory.id === 'string' && rawTerritory.id ? rawTerritory.id : `site_${x}_${y}`,
     x,
@@ -281,7 +296,7 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
     scale: Math.max(1, toInteger(rawTerritory.scale, 1)),
     threat: Math.max(0, toInteger(rawTerritory.threat, defense - 2)),
     defense,
-    recommendedSoldiers: Math.max(1, toInteger(rawTerritory.recommendedSoldiers, defense)),
+    recommendedSoldiers: Math.max(MIN_EXPEDITION_SOLDIERS, recommendedSoldiers),
     art: rawTerritory.art || SITE_ART[type],
     visualOffset: normalizeVisualOffset(rawTerritory.visualOffset, x, y, rawTerritory.id || rawTerritory.naturalName || type),
     discoveredAt: rawTerritory.discoveredAt || rawTerritory.scoutedAt || now,
@@ -330,7 +345,7 @@ function normalizeWarMissions(rawMissions) {
         mode: mission.mode === 'settlement' ? 'settlement' : 'conquest',
         sourceCityId: mission.sourceCityId || 'capital',
         soldierAllocations: getMissionSoldierAllocations(mission),
-        soldiersCommitted: Math.max(0, Math.floor(Number(mission.soldiersCommitted) || 0)),
+        soldiersCommitted: normalizeSoldierScale(mission.soldiersCommitted, 0),
         expedition: {
           troopType: typeof mission.expedition?.troopType === 'string' && mission.expedition.troopType.trim()
             ? mission.expedition.troopType.trim()
@@ -338,7 +353,7 @@ function normalizeWarMissions(rawMissions) {
           leader: typeof mission.expedition?.leader === 'string' && mission.expedition.leader.trim()
             ? mission.expedition.leader.trim()
             : 'unavailable',
-          soldiers: Math.max(1, Math.floor(Number(mission.expedition?.soldiers) || Number(mission.soldiersCommitted) || 1)),
+          soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, normalizeSoldierScale(mission.expedition?.soldiers || mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
         },
         startedAt: mission.startedAt || new Date().toISOString(),
         completesAt: mission.completesAt || new Date().toISOString(),
@@ -487,13 +502,13 @@ function getOccupationMode(territory) {
 
 function normalizeExpeditionConfig(rawConfig, territory) {
   const fallbackSoldiers = getOccupationMode(territory) === 'settlement'
-    ? 1
-    : Math.max(1, territory?.recommendedSoldiers || territory?.defense || 1);
+    ? MIN_EXPEDITION_SOLDIERS
+    : Math.max(MIN_EXPEDITION_SOLDIERS, territory?.recommendedSoldiers || territory?.defense || MIN_EXPEDITION_SOLDIERS);
   const raw = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
   return {
     troopType: typeof raw.troopType === 'string' && raw.troopType.trim() ? raw.troopType.trim() : 'unavailable',
     leader: typeof raw.leader === 'string' && raw.leader.trim() ? raw.leader.trim() : 'unavailable',
-    soldiers: Math.max(1, Math.floor(Number(raw.soldiers) || fallbackSoldiers)),
+    soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, Math.floor(Number(raw.soldiers) || fallbackSoldiers)),
   };
 }
 
@@ -518,13 +533,13 @@ function getMissionSoldierAllocations(mission) {
     return mission.soldierAllocations
       .map((allocation) => ({
         cityId: allocation?.cityId || mission.sourceCityId || 'capital',
-        soldiers: Math.max(0, Math.floor(Number(allocation?.soldiers) || 0)),
+        soldiers: normalizeSoldierScale(allocation?.soldiers, 0),
       }))
       .filter((allocation) => allocation.soldiers > 0);
   }
   return [{
     cityId: mission?.sourceCityId || 'capital',
-    soldiers: Math.max(0, Math.floor(Number(mission?.soldiersCommitted) || 0)),
+    soldiers: normalizeSoldierScale(mission?.soldiersCommitted, 0),
   }];
 }
 
@@ -579,7 +594,7 @@ function getAvailableSoldiersForCity(gameState, cityId) {
 }
 
 function allocateSoldiersForMission(gameState, requiredSoldiers) {
-  const required = Math.max(1, Math.floor(Number(requiredSoldiers) || 1));
+  const required = Math.max(MIN_EXPEDITION_SOLDIERS, Math.floor(Number(requiredSoldiers) || MIN_EXPEDITION_SOLDIERS));
   if (getAvailableSoldiers(gameState) < required) return null;
   const activeCityId = gameState?.activeCityId || 'capital';
   const entries = getCitySoldierEntries(gameState)
@@ -772,7 +787,7 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
   const naturalName = pickText(template.naturalNames, seed);
   const title = pickText(template.reportTitles, seed + 1);
   const summary = pickText(template.summaries, seed + 2);
-  const defense = template.defense + Math.max(0, distance - 1);
+  const defense = template.defense + Math.max(0, distance - 1) * SOLDIER_SCALE;
   const site = {
     id: `site_${x}_${y}`,
     x,
@@ -785,7 +800,7 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
     scale: Math.min(3, template.scale + Math.floor(Math.max(0, distance - 2) / 2)),
     threat: template.threat + Math.max(0, distance - 1),
     defense,
-    recommendedSoldiers: Math.max(defense, template.recommendedSoldiers + Math.max(0, distance - 1)),
+    recommendedSoldiers: Math.max(defense, template.recommendedSoldiers + Math.max(0, distance - 1) * SOLDIER_SCALE),
     art: SITE_ART[template.type],
     visualOffset: createVisualOffset(x, y, `${template.type}_${naturalName}_${discoveredCount}`),
     discoveredAt: now.toISOString(),
@@ -941,7 +956,7 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
       : { soldiers: expeditionInput },
     territory,
   );
-  const committed = occupationMode === 'settlement' ? 1 : expedition.soldiers;
+  const committed = occupationMode === 'settlement' ? MIN_EXPEDITION_SOLDIERS : expedition.soldiers;
   if (committed > getAvailableSoldiers(gameState)) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
   const soldierAllocations = allocateSoldiersForMission(gameState, committed);
   if (!soldierAllocations) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
@@ -966,8 +981,8 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
   return {
     success: true,
     message: occupationMode === 'settlement'
-      ? `已派出 1 名士兵前往${territory.naturalName}建立据点`
-      : `已派出 ${committed} 名士兵前往${territory.naturalName}`,
+      ? `已派出 ${MIN_EXPEDITION_SOLDIERS} 士兵前往${territory.naturalName}建立据点`
+      : `已派出 ${committed} 士兵前往${territory.naturalName}`,
     mission,
   };
 }
@@ -1125,6 +1140,7 @@ module.exports = {
   DIRECTIONS,
   SITE_ART,
   SITE_TEMPLATES,
+  MIN_EXPEDITION_SOLDIERS,
   SCOUT_DURATION_MS,
   CONQUEST_DURATION_MS,
   MISSION_DURATION_MS: CONQUEST_DURATION_MS,

@@ -32,7 +32,8 @@
         soldierCap: 0,
         trainingProgress: 0,
         trainingIntervalSeconds: 0,
-        defensePerSoldier: 1,
+        trainingBatchSize: 0,
+        defensePerSoldier: 0.01,
         defense: 0,
         ...(this.state.military || {}),
       };

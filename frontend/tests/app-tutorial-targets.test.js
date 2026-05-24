@@ -511,10 +511,11 @@ test('renderMilitary refreshes Canvas military state from backend-provided data'
         conditions: [],
       },
       military: {
-        soldiers: 2,
-        soldierCap: 5,
+        soldiers: 200,
+        soldierCap: 300,
         trainingProgress: 15,
         trainingIntervalSeconds: 30,
+        trainingBatchSize: 10,
         defense: 2,
       },
       buildingEffects: {
@@ -535,9 +536,9 @@ test('renderMilitary refreshes Canvas military state from backend-provided data'
     Game.renderMilitary();
 
     const view = Game.presenter.buildMilitaryViewState(Game.state);
-    assert.equal(view.text.soldierCount, '2/5');
+    assert.equal(view.text.soldierCount, '200/300');
     assert.equal(view.text.militaryDefense, 4);
-    assert.equal(view.text.soldierTrainingText, '下一名 15/30 秒');
+    assert.equal(view.text.soldierTrainingText, '下一批 10 兵 · 15/30 秒');
     assert.equal(view.training.progressWidth, '50%');
     assert.deepEqual(renderCalls, [{ state: Game.state, tab: Game.state.currentTab || 'resources' }]);
   } finally {

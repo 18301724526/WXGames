@@ -1,6 +1,7 @@
 (function (global) {
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
+    static MIN_EXPEDITION_SOLDIERS = 100;
 
     static toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -1023,6 +1024,7 @@
       const parts = [];
       const soldierCaps = Array.isArray(military.soldierCapByLevel) ? military.soldierCapByLevel : [];
       const intervals = Array.isArray(military.trainingIntervalSecondsByLevel) ? military.trainingIntervalSecondsByLevel : [];
+      const batchSizes = Array.isArray(military.trainingBatchSizeByLevel) ? military.trainingBatchSizeByLevel : [];
       const cap = this.toInteger(soldierCaps[currentLevel]);
       const previousCap = previous === null ? null : this.toInteger(soldierCaps[previous]);
       if (cap > 0) {
@@ -1033,7 +1035,9 @@
       const previousInterval = previous === null ? null : this.toInteger(intervals[previous]);
       if (interval > 0) {
         const faster = previousInterval && previousInterval > interval ? previousInterval - interval : 0;
-        parts.push(faster > 0 ? `训练速度 ${interval}秒/人（加快 ${faster}秒）` : `训练速度 ${interval}秒/人`);
+        const batchSize = this.toInteger(batchSizes[currentLevel], 1);
+        const batchText = batchSize > 1 ? `${interval}秒/${batchSize}兵` : `${interval}秒/人`;
+        parts.push(faster > 0 ? `训练速度 ${batchText}（加快 ${faster}秒）` : `训练速度 ${batchText}`);
       }
       return parts;
     }
@@ -1132,10 +1136,11 @@
       const cap = this.toInteger(military.soldierCap);
       const progress = this.toInteger(military.trainingProgress);
       const interval = this.toInteger(military.trainingIntervalSeconds);
+      const batchSize = this.toInteger(military.trainingBatchSize, 1);
       const defense = this.toInteger((military.defense || 0) + (buildingEffects?.threatDefense || 0));
       return [
         `士兵 ${soldiers}/${cap} · 防御 ${defense}`,
-        soldiers >= cap ? '训练已满' : `下一名 ${progress}/${interval}秒`,
+        soldiers >= cap ? '训练已满' : `下一批 ${batchSize} 兵 · ${progress}/${interval}秒`,
       ];
     }
 
@@ -1814,10 +1819,11 @@
       const defense = this.toInteger((military.defense || 0) + (state.buildingEffects?.threatDefense || 0));
       const interval = this.toInteger(military.trainingIntervalSeconds);
       const progress = this.toInteger(military.trainingProgress);
+      const batchSize = this.toInteger(military.trainingBatchSize, 1);
       const availableSoldiers = this.toInteger(state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers);
       const soldiersOnMission = this.toInteger(state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0);
 
-      let trainingText = `下一名 ${progress}/${interval} 秒`;
+      let trainingText = `下一批 ${batchSize} 兵 · ${progress}/${interval} 秒`;
       let trainingProgressWidth = interval > 0
         ? `${Math.max(0, Math.min(100, Math.floor((progress / interval) * 100)))}%`
         : '0%';
@@ -2158,12 +2164,12 @@
     }
 
     static buildWorldExpeditionDraftViewState(site = {}, uiState = {}) {
-      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
+      const recommended = Math.max(this.MIN_EXPEDITION_SOLDIERS, Number(site?.recommendedSoldiers) || Number(site?.defense) || this.MIN_EXPEDITION_SOLDIERS);
       return {
         territoryId: uiState.expeditionConfigSiteId || '',
         troopType: uiState.expeditionTroopType || 'unavailable',
         leader: uiState.expeditionLeader || 'unavailable',
-        soldiers: Math.max(1, Number(uiState.expeditionSoldiers) || recommended),
+        soldiers: Math.max(this.MIN_EXPEDITION_SOLDIERS, Number(uiState.expeditionSoldiers) || recommended),
         recommended,
       };
     }
@@ -2176,7 +2182,7 @@
         draft,
         availableSoldiers,
         disabled: availableSoldiers < draft.soldiers,
-        note: `建议 ${site.recommendedSoldiers || site.defense || 1} 人，当前可用 ${availableSoldiers} 人`,
+        note: `建议 ${site.recommendedSoldiers || site.defense || this.MIN_EXPEDITION_SOLDIERS} 士兵，当前可用 ${availableSoldiers} 士兵`,
         fields: {
           troopType: {
             label: '兵种',
@@ -2193,8 +2199,8 @@
           soldiers: {
             label: '出征数量',
             value: draft.soldiers,
-            min: 1,
-            step: 1,
+            min: this.MIN_EXPEDITION_SOLDIERS,
+            step: this.MIN_EXPEDITION_SOLDIERS,
           },
         },
         buttons: {
@@ -2220,7 +2226,7 @@
       if (site.status === 'discovered') {
         const isOwnedTarget = site.occupationMode === 'conquest';
         const expanded = uiState.expeditionConfigSiteId === site.id;
-        const directDisabled = availableSoldiers < 1;
+        const directDisabled = availableSoldiers < this.MIN_EXPEDITION_SOLDIERS;
         return {
           kind: 'group',
           buttons: [
@@ -2230,7 +2236,7 @@
               disabled: !isOwnedTarget && directDisabled,
             }),
           ],
-          hint: isOwnedTarget ? '该地区已有势力，需要先配置出征队伍。' : '该地区无主，派 1 人即可建立据点。',
+          hint: isOwnedTarget ? '该地区已有势力，需要先配置出征队伍。' : '该地区无主，派出 100 士兵即可建立据点。',
           expeditionConfig: isOwnedTarget && expanded
             ? this.buildWorldExpeditionConfigViewState(site, territoryState, uiState)
             : null,

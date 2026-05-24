@@ -1046,7 +1046,7 @@
         territory.handleAction({ territoryId: action.territoryId, action: 'conquer' });
         return true;
       }
-      return this.finalize(this.runAction(() => this.host.api.startConquest(action.territoryId, { soldiers: 1 })));
+      return this.finalize(this.runAction(() => this.host.api.startConquest(action.territoryId, { soldiers: 100 })));
     }
 
     handle_launchExpedition(action) {
