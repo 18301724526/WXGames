@@ -135,6 +135,67 @@ test('task center view state normalizes tabs, badges, categories, and legacy gui
   assert.equal(fallback.categories.main.tasks[0].action.type, 'goToGuideTaskTarget');
 });
 
+test('home feature view state exposes task, famous person, and guidebook entries', () => {
+  const view = UIStatePresenter.buildHomeFeatureViewState({
+    taskCenter: {
+      visible: true,
+      summary: { claimableCount: 1, activeCount: 2, totalCount: 3 },
+      categories: {},
+    },
+    famousPersons: {
+      count: 2,
+      candidateCount: 1,
+      candidates: [{ id: 'fpc_a' }],
+    },
+  });
+
+  assert.equal(view.title, '功能');
+  assert.equal(view.entries.find((entry) => entry.id === 'tasks').badge, 1);
+  assert.equal(view.entries.find((entry) => entry.id === 'tasks').action.source, 'taskIcon');
+  assert.equal(view.entries.find((entry) => entry.id === 'famousPersons').statusText, '1 候选');
+  assert.deepEqual(view.entries.find((entry) => entry.id === 'famousPersons').action, { type: 'openFamousPersons' });
+  assert.equal(view.entries.find((entry) => entry.id === 'guidebook').action.type, 'openGuidebook');
+});
+
+test('famous person view state maps candidates and joined people into panel cards', () => {
+  const view = UIStatePresenter.buildFamousPersonViewState({
+    currentEra: 3,
+    famousPersons: {
+      count: 1,
+      candidateCount: 1,
+      maxCandidates: 3,
+      seek: { available: true, count: 2, sources: [] },
+      people: [{
+        id: 'fp_a',
+        name: '陆骁',
+        title: '破阵先登',
+        source: { type: 'seek', label: '寻访' },
+        roles: ['military'],
+        attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
+        skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
+        status: { assigned: 'idle' },
+      }],
+      candidates: [{
+        id: 'fpc_b',
+        name: '姜衡',
+        title: '垒门守将',
+        source: { type: 'event', label: '事件投奔' },
+        roles: ['governance'],
+        attributes: { command: 50, force: 30, strategy: 60, governance: 80, craft: 45, charisma: 66 },
+        skills: [{ name: '固阵振军', effects: [{ key: 'shield' }, { key: 'morale' }] }],
+      }],
+    },
+  });
+
+  assert.equal(view.seek.available, true);
+  assert.deepEqual(view.seek.action, { type: 'seekFamousPerson', disabled: false });
+  assert.equal(view.people[0].name, '陆骁');
+  assert.match(view.people[0].skills[0], /吸血/);
+  assert.equal(view.candidates[0].sourceText, '事件投奔');
+  assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'fpc_b' });
+  assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });
+});
+
 test('resource view state is renderer-neutral and formats resource display', () => {
   const view = UIStatePresenter.buildResourceViewState({
     currentEra: 2,

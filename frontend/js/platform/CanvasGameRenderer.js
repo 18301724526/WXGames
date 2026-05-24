@@ -28,6 +28,7 @@
     static getPreloadAssetPaths() {
       return [
         'assets/art/civilization-bg.webp',
+        'assets/art/icon-home-cutout.png',
         'assets/art/icon-fire-cutout.webp',
         'assets/art/icon-wood-cutout.webp',
         'assets/art/icon-iron-cutout.webp',
@@ -1445,6 +1446,258 @@
         this.addHitTarget({ x: plusX, y: controlY, width: controlButtonWidth, height: 22 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
       });
       return y + panelHeight + 12;
+    }
+
+    renderHomeFeatureGrid(state = {}, startY = 400, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildHomeFeatureViewState !== 'function') return startY;
+      const view = this.presenter.buildHomeFeatureViewState(state);
+      const entries = Array.isArray(view.entries) ? view.entries : [];
+      if (!entries.length) return startY;
+      const layout = this.getLayout();
+      const x = layout.contentX;
+      const width = layout.contentWidth;
+      const tabsTop = this.height - 60 - this.bottomSafeArea;
+      const maxBottom = Number(options.maxBottom) || tabsTop - 8;
+      const y = startY;
+      const panelHeight = Math.min(146, Math.max(106, maxBottom - y));
+      if (panelHeight < 86) return startY;
+      this.drawPanel(x, y, width, panelHeight, {
+        fill: this.createGradient(
+          x, y, x + width, y + panelHeight,
+          [
+            [0, 'rgba(44, 35, 25, 0.9)'],
+            [1, 'rgba(20, 18, 14, 0.9)'],
+          ],
+          'rgba(32, 26, 20, 0.9)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.14)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.07)',
+      });
+      this.drawText(view.title || '功能', x + 16, y + 12, { size: 14, bold: true, color: '#ffe6b5' });
+      this.drawText(this.truncateText(view.subtitle || '', width - 92, { size: 10 }), x + 16, y + 32, {
+        size: 10,
+        color: 'rgba(234, 234, 234, 0.58)',
+      });
+
+      const top = y + 52;
+      const availableHeight = Math.max(42, y + panelHeight - top - 12);
+      const visibleEntries = entries.slice(0, 4);
+      const gap = 8;
+      const itemWidth = Math.floor((width - 28 - gap * (visibleEntries.length - 1)) / Math.max(1, visibleEntries.length));
+      const itemHeight = Math.min(76, availableHeight);
+      visibleEntries.forEach((entry, index) => {
+        const itemX = x + 14 + index * (itemWidth + gap);
+        const itemY = top;
+        const disabled = Boolean(entry.disabled || entry.action?.disabled);
+        const active = Boolean(entry.badge);
+        this.drawPanel(itemX, itemY, itemWidth, itemHeight, {
+          fill: active ? 'rgba(76, 50, 30, 0.86)' : 'rgba(27, 23, 18, 0.72)',
+          stroke: active ? 'rgba(240, 180, 91, 0.48)' : 'rgba(255, 226, 177, 0.12)',
+          radius: 8,
+          inset: active ? 'rgba(255, 231, 184, 0.1)' : 'rgba(255, 231, 184, 0.04)',
+        });
+        const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = disabled ? 0.45 : previousAlpha;
+        const iconSize = 34;
+        this.drawAsset(entry.icon, itemX + itemWidth / 2 - iconSize / 2, itemY + 7, iconSize, iconSize);
+        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+        this.drawText(this.truncateText(entry.label || '', itemWidth - 12, { size: 12, bold: true }), itemX + itemWidth / 2, itemY + 44, {
+          size: 12,
+          bold: true,
+          color: disabled ? '#777' : '#fff1cf',
+          align: 'center',
+        });
+        this.drawText(this.truncateText(entry.statusText || '', itemWidth - 10, { size: 9 }), itemX + itemWidth / 2, itemY + 61, {
+          size: 9,
+          color: disabled ? '#666' : '#aeb0b8',
+          align: 'center',
+        });
+        if (entry.badge > 0) {
+          const badgeText = entry.badge > 9 ? '9+' : String(entry.badge);
+          this.drawPanel(itemX + itemWidth - 23, itemY + 4, 22, 18, {
+            fill: '#e94560',
+            stroke: 'rgba(255, 255, 255, 0.16)',
+            radius: 9,
+          });
+          this.drawText(badgeText, itemX + itemWidth - 12, itemY + 13, {
+            size: 9,
+            bold: true,
+            color: '#fff',
+            baseline: 'middle',
+            align: 'center',
+          });
+        }
+        this.addHitTarget(
+          { x: itemX, y: itemY, width: itemWidth, height: itemHeight },
+          { ...(entry.action || { type: 'blockCanvasModal' }), disabled },
+        );
+      });
+      return y + panelHeight + 12;
+    }
+
+    renderFamousPersonItem(card = {}, x, y, width, options = {}) {
+      const candidate = Boolean(options.candidate);
+      const height = candidate ? 118 : 92;
+      this.drawPanel(x, y, width, height, {
+        fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
+        stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
+        radius: 9,
+        inset: candidate ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
+      });
+      const portraitSize = 42;
+      const portraitX = x + 10;
+      const portraitY = y + 12;
+      this.drawPanel(portraitX, portraitY, portraitSize, portraitSize, {
+        fill: 'rgba(80, 54, 33, 0.9)',
+        stroke: 'rgba(240, 180, 91, 0.32)',
+        radius: portraitSize / 2,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.drawText(String(card.name || '名').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
+        size: 18,
+        bold: true,
+        color: '#ffe6b5',
+        baseline: 'middle',
+        align: 'center',
+      });
+      const textX = x + 62;
+      const rightPad = candidate ? 86 : 14;
+      const textWidth = width - (textX - x) - rightPad;
+      this.drawText(this.truncateText(`${card.name || '无名之士'} · ${card.title || '名人'}`, textWidth, { size: 14, bold: true }), textX, y + 10, {
+        size: 14,
+        bold: true,
+        color: '#fff1cf',
+      });
+      this.drawText(this.truncateText(`${card.roleText || '人才'} · ${card.sourceText || ''}`, textWidth, { size: 10 }), textX, y + 31, {
+        size: 10,
+        color: '#cbbd96',
+      });
+      this.drawText(this.truncateText(card.stats || '', width - 28, { size: 10 }), x + 12, y + 62, {
+        size: 10,
+        color: '#aeb0b8',
+      });
+      const skill = Array.isArray(card.skills) ? card.skills[0] : '';
+      this.drawText(this.truncateText(skill || '', width - 28, { size: 10, bold: true }), x + 12, y + 78, {
+        size: 10,
+        bold: true,
+        color: '#74d3a0',
+      });
+      if (candidate) {
+        const buttonW = 66;
+        const acceptX = x + width - buttonW - 12;
+        const dismissX = acceptX;
+        this.drawButton(acceptX, y + 15, buttonW, 28, '接纳', { size: 12, bold: true, active: true, radius: 8 });
+        this.drawButton(dismissX, y + 52, buttonW, 28, '放弃', { size: 12, radius: 8 });
+        this.addHitTarget({ x: acceptX, y: y + 15, width: buttonW, height: 28 }, card.acceptAction);
+        this.addHitTarget({ x: dismissX, y: y + 52, width: buttonW, height: 28 }, card.dismissAction);
+      }
+      return y + height + 10;
+    }
+
+    renderFamousPersonsPanel(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildFamousPersonViewState !== 'function') return;
+      const view = this.presenter.buildFamousPersonViewState(state);
+      const layout = this.getLayout();
+      const panelWidth = Math.min(390, layout.contentWidth - 6);
+      const panelHeight = Math.min(620, Math.max(470, this.height - 112));
+      const x = (this.width - panelWidth) / 2;
+      const y = Math.max(48, (this.height - panelHeight) / 2 - 8);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeFamousPersons' });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(49, 38, 26, 0.99)'],
+            [1, 'rgba(20, 18, 15, 0.99)'],
+          ],
+          'rgba(34, 27, 21, 0.99)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 12,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const backW = 58;
+      this.drawButton(x + 12, y + 12, backW, 30, '返回', { size: 12, radius: 8 });
+      this.addHitTarget({ x: x + 12, y: y + 12, width: backW, height: 30 }, { type: 'closeFamousPersons' });
+      this.drawText(view.title || '名人', x + panelWidth / 2, y + 18, {
+        size: 18,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+      this.drawText(this.truncateText(view.subtitle || '', panelWidth - 32, { size: 11 }), x + panelWidth / 2, y + 46, {
+        size: 11,
+        color: '#cbbd96',
+        align: 'center',
+      });
+
+      const innerX = x + 14;
+      const innerWidth = panelWidth - 28;
+      let cursorY = y + 72;
+      this.drawPanel(innerX, cursorY, innerWidth, 58, {
+        fill: 'rgba(24, 22, 17, 0.62)',
+        stroke: 'rgba(240, 180, 91, 0.2)',
+        radius: 9,
+      });
+      this.drawText(`已加入 ${view.peopleCount} 位 · 候选 ${view.candidateCount}/${view.maxCandidates}`, innerX + 12, cursorY + 10, {
+        size: 12,
+        bold: true,
+        color: '#ffd98a',
+      });
+      this.drawText(this.truncateText(view.seek.message || '', innerWidth - 104, { size: 10 }), innerX + 12, cursorY + 33, {
+        size: 10,
+        color: '#aeb0b8',
+      });
+      const seekW = 82;
+      const seekX = innerX + innerWidth - seekW - 10;
+      this.drawButton(seekX, cursorY + 14, seekW, 30, view.seek.text || '寻访', {
+        disabled: !view.seek.available,
+        active: view.seek.available,
+        size: 12,
+        bold: true,
+        radius: 8,
+      });
+      this.addHitTarget({ x: seekX, y: cursorY + 14, width: seekW, height: 30 }, view.seek.action);
+      cursorY += 72;
+
+      const candidates = Array.isArray(view.candidates) ? view.candidates : [];
+      if (candidates.length) {
+        this.drawText('候选', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+        cursorY += 22;
+        candidates.slice(0, 2).forEach((card) => {
+          if (cursorY + 118 > y + panelHeight - 94) return;
+          cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth, { candidate: true });
+        });
+      }
+
+      const people = Array.isArray(view.people) ? view.people : [];
+      this.drawText('已加入', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+      cursorY += 22;
+      if (!people.length) {
+        this.drawPanel(innerX, cursorY, innerWidth, 78, {
+          fill: 'rgba(27, 23, 18, 0.6)',
+          stroke: 'rgba(255, 226, 177, 0.1)',
+          radius: 9,
+        });
+        this.drawTextLines(this.wrapTextLimit(view.emptyText || '', innerWidth - 28, 2, { size: 12 }), innerX + 14, cursorY + 18, {
+          size: 12,
+          color: '#aeb0b8',
+          lineHeight: 17,
+        });
+      } else {
+        people.slice(0, 3).forEach((card) => {
+          if (cursorY + 92 > y + panelHeight - 18) return;
+          cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
+        });
+      }
     }
 
     renderTalentPolicyPanel(state = {}, options = {}) {
@@ -3909,7 +4162,8 @@
     renderHudTabPage(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
       const tabsTop = this.height - 60 - this.bottomSafeArea;
       if (activeTab === 'resources') {
-        this.renderPopulation(state, topBarBottom);
+        const populationBottom = this.renderPopulation(state, topBarBottom);
+        this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 });
       } else if (activeTab === 'buildings') {
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderBuildings(
@@ -3969,7 +4223,7 @@
 
     renderTabs(activeTab = 'resources', state = {}, options = {}) {
       const tabs = [
-        ['resources', '资源', 'assets/art/icon-food-cutout.webp'],
+        ['resources', '主页', 'assets/art/icon-home-cutout.png'],
         ['buildings', '建造', 'assets/art/building-house-cutout.png'],
         ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
         ['events', '事件', 'assets/art/icon-event-cutout.webp'],
@@ -4745,8 +4999,10 @@
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
-      this.renderTaskCenterButton(state);
-      this.renderGuidebookButton(state);
+      if (activeTab !== 'resources') {
+        this.renderTaskCenterButton(state);
+        this.renderGuidebookButton(state);
+      }
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);
@@ -4768,6 +5024,9 @@
       }
       if (options.showGuidebook) {
         this.renderGuidebookPanel(state, options);
+      }
+      if (options.showFamousPersons) {
+        this.renderFamousPersonsPanel(state, options);
       }
       if (options.showTalentPolicy) {
         this.renderTalentPolicyPanel(state, options);
@@ -5065,9 +5324,14 @@
         return;
       }
       const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
-      const populationBottom = this.renderPopulation(state, topBarBottom);
-      const panelTop = activeTab === 'resources' ? populationBottom : topBarBottom;
       const tabsTop = this.height - 60 - this.bottomSafeArea;
+      const populationBottom = activeTab === 'resources'
+        ? this.renderPopulation(state, topBarBottom)
+        : topBarBottom;
+      const homeFeatureBottom = activeTab === 'resources'
+        ? this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 })
+        : populationBottom;
+      const panelTop = activeTab === 'resources' ? homeFeatureBottom : topBarBottom;
       const advisorOffset = this.presenter && typeof this.presenter.buildAdvisorViewState === 'function' && this.presenter.buildAdvisorViewState(state.softGuide).hidden ? 0 : 52;
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
       const transition = this.getTransitionFrame(options.pageTransition);
@@ -5087,13 +5351,16 @@
         });
       } else if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
-      this.renderTaskCenterButton(state);
-      this.renderGuidebookButton(state);
+      if (activeTab !== 'resources') {
+        this.renderTaskCenterButton(state);
+        this.renderGuidebookButton(state);
+      }
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
+      if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'tech' && (options.techDetailOpen || state.techUiState?.detailOpen)) {

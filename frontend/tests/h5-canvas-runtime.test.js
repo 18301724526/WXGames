@@ -226,6 +226,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       activeTaskCenterTab: 'main',
       showGuidebook: false,
       activeGuidebookTab: 'planning',
+      showFamousPersons: false,
       showTalentPolicy: false,
       talentPolicyUiState: {},
       logs: [],
@@ -1612,6 +1613,59 @@ test('Canvas game shell owns login credentials and dispatches canvas login actio
     rememberPassword: true,
   });
   assert.equal(renderCalls.at(-1).auth.view.loginPanelVisible, true);
+});
+
+test('Canvas game app keeps famous person panel open through seek and accept actions', async () => {
+  const app = new CanvasGameApp({
+    runtime: { getStorage: () => '', setStorage: () => {} },
+    presenter: {},
+    renderer: { render() {} },
+    api: {
+      seekFamousPerson: async () => ({
+        success: true,
+        message: '寻访发现：陆骁',
+        gameState: {
+          currentTab: 'resources',
+          famousPersons: {
+            count: 0,
+            candidateCount: 1,
+            candidates: [{ id: 'fpc_a', name: '陆骁' }],
+            people: [],
+            seek: { available: true },
+          },
+        },
+      }),
+      acceptFamousPerson: async (candidateId) => ({
+        success: true,
+        message: '陆骁已加入文明',
+        gameState: {
+          currentTab: 'resources',
+          famousPersons: {
+            count: 1,
+            candidateCount: 0,
+            candidates: [],
+            people: [{ id: 'fp_a', name: '陆骁', source: { candidateId } }],
+            seek: { available: true },
+          },
+        },
+      }),
+    },
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+  });
+  app.canvasShell = { showFamousPersons: false, showFloatingText: () => true };
+
+  const seekResult = await app.actionController.handle({ type: 'seekFamousPerson' });
+  assert.equal(seekResult, true);
+  assert.equal(app.showFamousPersons, true);
+  assert.equal(app.canvasShell.showFamousPersons, true);
+  assert.equal(app.state.famousPersons.candidateCount, 1);
+
+  const acceptResult = await app.actionController.handle({ type: 'acceptFamousPerson', candidateId: 'fpc_a' });
+  assert.equal(acceptResult, true);
+  assert.equal(app.showFamousPersons, true);
+  assert.equal(app.state.famousPersons.count, 1);
 });
 
 test('Canvas game shell passes shared loading state and preloads assets through renderer', async () => {

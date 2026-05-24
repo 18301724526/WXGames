@@ -8,6 +8,7 @@
     'showTaskCenter',
     'showTalentPolicy',
     'showGuidebook',
+    'showFamousPersons',
     'techDetailOpen',
   ];
 
@@ -321,6 +322,51 @@
     handle_switchGuidebookTab(action) {
       this.host.activeGuidebookTab = action.tab || 'planning';
       return this.afterHandled(action);
+    }
+
+    handle_openFamousPersons(action) {
+      this.host.showFamousPersons = true;
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'showFamousPersons' in game) game.showFamousPersons = true;
+      this.closePanels(['showFamousPersons']);
+      return this.afterHandled(action);
+    }
+
+    handle_closeFamousPersons(action) {
+      this.host.showFamousPersons = false;
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'showFamousPersons' in game) game.showFamousPersons = false;
+      return this.afterHandled(action);
+    }
+
+    handle_seekFamousPerson(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.seekFamousPerson === 'function') {
+        return this.finalize(game.seekFamousPerson(action.source || 'seek'));
+      }
+      return this.finalize(this.runAction(() => this.host.api.seekFamousPerson(action.source || 'seek')));
+    }
+
+    handle_acceptFamousPerson(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.acceptFamousPerson === 'function') {
+        return this.finalize(game.acceptFamousPerson(action.candidateId));
+      }
+      return this.finalize(this.runAction(() => this.host.api.acceptFamousPerson(action.candidateId)));
+    }
+
+    handle_dismissFamousPersonCandidate(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.dismissFamousPersonCandidate === 'function') {
+        return this.finalize(game.dismissFamousPersonCandidate(action.candidateId));
+      }
+      return this.finalize(this.runAction(() => this.host.api.dismissFamousPersonCandidate(action.candidateId)));
     }
 
     handle_openTalentPolicy(action) {

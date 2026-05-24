@@ -170,6 +170,8 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'openTaskCenter',
     'closeTaskCenter',
     'switchTaskCenterTab',
+    'openFamousPersons',
+    'closeFamousPersons',
     'selectBuildingCategory',
     'selectTechNode',
     'closeTechDetail',
@@ -197,6 +199,8 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'openTaskCenter' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeTaskCenter' }), true);
   assert.equal(dispatcher.canHandle({ type: 'switchTaskCenterTab' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openFamousPersons' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeFamousPersons' }), true);
   assert.equal(dispatcher.canHandle({ type: 'selectTechNode' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeTechDetail' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
@@ -461,6 +465,29 @@ test('CanvasActionDispatcher handles task center panel actions through injected 
     ['render', 'switchTaskCenterTab'],
     ['close', 'closeTaskCenter'],
     ['render', 'closeTaskCenter'],
+  ]);
+});
+
+test('CanvasActionDispatcher handles famous person panel visibility only', () => {
+  const dispatcher = new CanvasActionDispatcher();
+  const calls = [];
+
+  assert.equal(dispatcher.handle({ type: 'openFamousPersons' }, {
+    openFamousPersons(action) { calls.push(['open', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.equal(dispatcher.handle({ type: 'closeFamousPersons' }, {
+    closeFamousPersons(action) { calls.push(['close', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.equal(dispatcher.canHandle({ type: 'seekFamousPerson' }), false);
+  assert.deepEqual(calls, [
+    ['open', 'openFamousPersons'],
+    ['render', 'openFamousPersons'],
+    ['close', 'closeFamousPersons'],
+    ['render', 'closeFamousPersons'],
   ]);
 });
 

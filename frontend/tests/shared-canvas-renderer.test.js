@@ -741,6 +741,7 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
     buildAdvisorViewState: () => ({ hidden: true }),
     buildEventViewState: () => ({ badge: { hidden: true } }),
     buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
   });
 
   renderer.render({
@@ -801,6 +802,86 @@ test('CanvasGameRenderer renders task center entry and panel with category tabs'
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeTaskCenter'));
 });
 
+test('CanvasGameRenderer renders homepage feature grid and famous person panel', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: true,
+      hasIron: true,
+      hasStone: true,
+      text: {
+        foodValue: '260',
+        foodRate: '+0/s',
+        knowledgeValue: '80',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
+    buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    currentEra: 3,
+    population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+    famousPersons: {
+      count: 1,
+      candidateCount: 1,
+      maxCandidates: 3,
+      seek: { available: true, count: 1 },
+      people: [{
+        id: 'fp_a',
+        name: '陆骁',
+        title: '破阵先登',
+        source: { type: 'seek', label: '寻访' },
+        roles: ['military'],
+        attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
+        skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
+        status: { assigned: 'idle' },
+      }],
+      candidates: [{
+        id: 'fpc_b',
+        name: '姜衡',
+        title: '垒门守将',
+        source: { type: 'event', label: '事件投奔' },
+        roles: ['governance'],
+        attributes: { command: 50, force: 30, strategy: 60, governance: 80, craft: 45, charisma: 66 },
+        skills: [{ name: '固阵振军', effects: [{ key: 'shield' }, { key: 'morale' }] }],
+      }],
+    },
+  }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showFamousPersons: true,
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主页'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '功能'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '寻访'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openFamousPersons'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'seekFamousPerson'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'acceptFamousPerson' && target.action.candidateId === 'fpc_b'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'dismissFamousPersonCandidate' && target.action.candidateId === 'fpc_b'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeFamousPersons'));
+});
+
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
@@ -828,6 +909,7 @@ test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
     buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
     buildGuidebookViewState: UIStatePresenter.buildGuidebookViewState.bind(UIStatePresenter),
     buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
   });
 
   renderer.render({
@@ -1590,7 +1672,7 @@ test('CanvasGameRenderer HUD overlay mode draws resource population controls on 
   renderer.render({ currentEraName: '原始时代', currentTab: 'resources' }, { activeTab: 'resources', mode: 'hud' });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '粮食'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主页'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'farmer'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'craftsman'));
 });
@@ -1647,7 +1729,7 @@ test('CanvasGameRenderer can draw read-only HUD and tabs from presenter view sta
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '木材'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '铁矿'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '石料'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '资源'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主页'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '建造'));
   assert.ok(renderer.getHitTarget({ x: 30, y: 800 })?.type === 'switchTab');
 });

@@ -200,6 +200,22 @@
         return switched;
       }
 
+      if (action.type === 'openFamousPersons') {
+        const opened = typeof context.openFamousPersons === 'function'
+          ? context.openFamousPersons(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeFamousPersons') {
+        const closed = typeof context.closeFamousPersons === 'function'
+          ? context.closeFamousPersons(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       if (action.type === 'selectBuildingCategory') {
         const selected = typeof context.selectBuildingCategory === 'function'
           ? context.selectBuildingCategory(action) !== false
@@ -252,6 +268,8 @@
         'openTaskCenter',
         'closeTaskCenter',
         'switchTaskCenterTab',
+        'openFamousPersons',
+        'closeFamousPersons',
         'selectBuildingCategory',
         'selectTechNode',
         'closeTechDetail',

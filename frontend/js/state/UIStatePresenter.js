@@ -460,6 +460,133 @@
       };
     }
 
+    static buildHomeFeatureViewState(state = {}) {
+      const tasks = this.buildTaskCenterViewState(state);
+      const famous = state.famousPersons || {};
+      const peopleCount = this.toInteger(famous.count ?? (Array.isArray(famous.people) ? famous.people.length : 0));
+      const candidateCount = this.toInteger(famous.candidateCount ?? (Array.isArray(famous.candidates) ? famous.candidates.length : 0));
+      const entries = [
+        {
+          id: 'tasks',
+          label: '任务',
+          icon: 'assets/art/icon-event-cutout.webp',
+          statusText: tasks.summary?.claimableCount > 0 ? '可领取' : '进行中',
+          badge: this.toInteger(tasks.summary?.claimableCount),
+          action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' },
+        },
+        {
+          id: 'famousPersons',
+          label: '名人',
+          icon: 'assets/art/icon-population-cutout.webp',
+          statusText: candidateCount > 0 ? `${candidateCount} 候选` : `${peopleCount} 位`,
+          badge: candidateCount,
+          action: { type: 'openFamousPersons' },
+        },
+        {
+          id: 'guidebook',
+          label: '攻略',
+          icon: 'assets/art/icon-knowledge-cutout.webp',
+          statusText: '城市规划',
+          badge: 0,
+          action: { type: 'openGuidebook', source: 'homeFeature' },
+        },
+      ];
+      return {
+        title: '功能',
+        subtitle: '从这里进入文明的更多系统',
+        entries,
+      };
+    }
+
+    static formatFamousPersonSource(source = {}) {
+      return source.label || { seek: '寻访', event: '事件投奔', postWar: '战后归附' }[source.type] || '未知来源';
+    }
+
+    static formatFamousPersonSkill(skill = {}) {
+      const effectLabels = {
+        lifesteal: '吸血',
+        combo: '连击',
+        counter: '反击',
+        shield: '护盾',
+        armorBreak: '破甲',
+        burn: '灼烧',
+        poison: '中毒',
+        morale: '士气',
+        heal: '治疗',
+        ambush: '伏击',
+      };
+      const effects = Array.isArray(skill.effects)
+        ? skill.effects.map((effect) => effectLabels[effect.key] || effect.key).filter(Boolean)
+        : [];
+      return effects.length ? `${skill.name || '技能'} · ${effects.join(' / ')}` : (skill.name || '暂无技能');
+    }
+
+    static buildFamousPersonCard(person = {}, options = {}) {
+      const attrs = person.attributes || {};
+      const roleLabels = {
+        military: '军事',
+        governance: '治理',
+        craft: '工巧',
+        knowledge: '知识',
+      };
+      const roles = Array.isArray(person.roles) && person.roles.length
+        ? person.roles.map((role) => roleLabels[role] || role).join(' / ')
+        : (person.archetypeLabel || '人才');
+      const stats = [
+        ['统率', attrs.command],
+        ['武力', attrs.force],
+        ['谋略', attrs.strategy],
+        ['治理', attrs.governance],
+        ['工巧', attrs.craft],
+        ['魅力', attrs.charisma],
+      ].map(([label, value]) => `${label}${this.toInteger(value)}`).join('  ');
+      const skills = Array.isArray(person.skills) && person.skills.length
+        ? person.skills.map((skill) => this.formatFamousPersonSkill(skill))
+        : ['暂无技能'];
+      return {
+        id: person.id || '',
+        name: person.name || '无名之士',
+        title: person.title || person.archetypeLabel || '名人',
+        roleText: roles,
+        sourceText: this.formatFamousPersonSource(person.source),
+        stats,
+        skills,
+        statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
+      };
+    }
+
+    static buildFamousPersonViewState(state = {}) {
+      const famous = state.famousPersons || {};
+      const people = Array.isArray(famous.people) ? famous.people : [];
+      const candidates = Array.isArray(famous.candidates) ? famous.candidates : [];
+      const seek = famous.seek || {};
+      const candidateCount = this.toInteger(famous.candidateCount ?? candidates.length);
+      const maxCandidates = this.toInteger(famous.maxCandidates, 3);
+      const seekAvailable = Boolean(seek.available);
+      const seekText = seekAvailable ? '寻访' : '暂不可寻访';
+      return {
+        title: '名人',
+        subtitle: '通过寻访、事件与投奔加入文明',
+        peopleCount: this.toInteger(famous.count ?? people.length),
+        candidateCount,
+        maxCandidates,
+        seek: {
+          available: seekAvailable,
+          text: seekText,
+          message: seek.message || (seekAvailable ? '可以尝试寻访新的名人。' : `城邦时代后开放寻访。`),
+          count: this.toInteger(seek.count),
+          action: { type: 'seekFamousPerson', disabled: !seekAvailable },
+        },
+        people: people.map((person) => this.buildFamousPersonCard(person)),
+        candidates: candidates.map((person) => ({
+          ...this.buildFamousPersonCard(person, { candidate: true }),
+          acceptAction: { type: 'acceptFamousPerson', candidateId: person.id },
+          dismissAction: { type: 'dismissFamousPersonCandidate', candidateId: person.id },
+        })),
+        emptyText: '暂无名人加入。线索出现后，可以在这里接纳新的领队与人才。',
+      };
+    }
+
     static getDefaultTalentPolicyDraft(state = {}, uiState = {}) {
       const source = state.talentPolicies || {};
       const systemPolicies = Array.isArray(source.systemPolicies) ? source.systemPolicies : [];

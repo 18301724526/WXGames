@@ -44,6 +44,7 @@
       this.activeTaskCenterTab = 'main';
       this.showGuidebook = false;
       this.activeGuidebookTab = 'planning';
+      this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.rewardReveal = null;
@@ -284,6 +285,7 @@
         activeTaskCenterTab: this.activeTaskCenterTab,
         showGuidebook: this.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
+        showFamousPersons: this.showFamousPersons,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
@@ -543,6 +545,7 @@
       this.activeEventId = null;
       this.showTaskCenter = false;
       this.showGuidebook = false;
+      this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
@@ -578,6 +581,7 @@
       this.showCitySwitcher = false;
       this.showTaskCenter = false;
       this.showGuidebook = false;
+      this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
@@ -615,10 +619,11 @@
         inputValue: '',
         submitting: false,
       };
-      this.showResourceDetails = false;
-      this.showCitySwitcher = false;
-      this.activeEventId = null;
-      this.render();
+        this.showResourceDetails = false;
+        this.showCitySwitcher = false;
+        this.activeEventId = null;
+        this.showFamousPersons = false;
+        this.render();
     }
 
     closeNaming() {
@@ -717,6 +722,54 @@
       } catch (error) {
         this.log(error.payload?.message || error.message || '操作失败');
         return null;
+      }
+    }
+
+    async seekFamousPerson(source = 'seek') {
+      try {
+        const result = await this.getGameApi().seekFamousPerson(source);
+        this.applyApiState(result);
+        this.showFamousPersons = true;
+        if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        this.showFloatingText(result.message || '寻访完成');
+        this.log(result.message || '寻访完成');
+        return true;
+      } catch (error) {
+        this.log(`寻访失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    async acceptFamousPerson(candidateId) {
+      try {
+        const result = await this.getGameApi().acceptFamousPerson(candidateId);
+        this.applyApiState(result);
+        this.showFamousPersons = true;
+        if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        this.showFloatingText(result.message || '名人已加入');
+        this.log(result.message || '名人已加入');
+        return true;
+      } catch (error) {
+        this.log(`接纳失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    async dismissFamousPersonCandidate(candidateId) {
+      try {
+        const result = await this.getGameApi().dismissFamousPersonCandidate(candidateId);
+        this.applyApiState(result);
+        this.showFamousPersons = true;
+        if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        this.showFloatingText(result.message || '已放弃候选');
+        this.log(result.message || '已放弃候选');
+        return true;
+      } catch (error) {
+        this.log(`放弃失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
       }
     }
 
@@ -1425,6 +1478,7 @@
         || this.showCitySwitcher
         || this.showTaskCenter
         || this.showGuidebook
+        || this.showFamousPersons
         || this.showTalentPolicy
         || this.techDetailOpen
         || this.activeEventId

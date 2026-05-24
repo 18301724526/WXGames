@@ -45,6 +45,7 @@
       this.activeTaskCenterTab = 'main';
       this.showGuidebook = false;
       this.activeGuidebookTab = 'planning';
+      this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.buildingOffset = 0;
@@ -282,6 +283,19 @@
       return true;
     }
 
+    openFamousPersons() {
+      this.showFamousPersons = true;
+      this.showTaskCenter = false;
+      this.showGuidebook = false;
+      this.showTalentPolicy = false;
+      return true;
+    }
+
+    closeFamousPersons() {
+      this.showFamousPersons = false;
+      return true;
+    }
+
     resetForCanvasTabSwitch() {
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
@@ -294,6 +308,7 @@
       this.buildingTransition = null;
       this.activeEventId = null;
       this.showGuidebook = false;
+      this.showFamousPersons = false;
       this.showTalentPolicy = false;
     }
 
@@ -314,6 +329,7 @@
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.showGuidebook = false;
+      this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
@@ -752,6 +768,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showAdvisor = false;
+      this.showFamousPersons = false;
       this.activeEventId = null;
       this.renderActive();
       return true;
@@ -886,6 +903,7 @@
         activeTaskCenterTab: this.activeTaskCenterTab,
         showGuidebook: this.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
+        showFamousPersons: this.showFamousPersons,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.lastGame?.talentPolicyUiState || this.talentPolicyUiState || {},
         logs: this.lastGame?.requestLogs || [],
