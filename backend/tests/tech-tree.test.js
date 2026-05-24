@@ -176,3 +176,36 @@ test('古典科技可以解锁后续建筑建造校验', () => {
   const unlocked = BuildingActionValidator.validateBuild(state, state.tutorial, 'workshop');
   assert.equal(unlocked.allowed, true);
 });
+
+test('石料和铁矿生产建筑通过科技树解锁', () => {
+  const state = gameStateService.createInitialGameState('tech-resource-buildings-player');
+  state.currentEra = 5;
+  state.tutorial.completed = true;
+  state.resources = { food: 9999, knowledge: 9999, wood: 9999, stone: 9999, iron: 0, metal: 0 };
+  state.techs.points = 5;
+
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'quarry').allowed, false);
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'mine').allowed, false);
+
+  assert.equal(TechTreeService.research(state, 'farming_field_rotation').success, true);
+  assert.equal(TechTreeService.research(state, 'settlement_logging_rights').success, true);
+  const quarryTech = TechTreeService.research(state, 'city_quarry_survey');
+  assert.equal(quarryTech.success, true);
+  assert.deepEqual(quarryTech.tech.unlockedBuildings, ['quarry']);
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'quarry').allowed, true);
+
+  const mineTech = TechTreeService.research(state, 'frontier_bloomery_signs');
+  assert.equal(mineTech.success, true);
+  assert.deepEqual(mineTech.tech.unlockedBuildings, ['mine']);
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'mine').allowed, true);
+});
+
+test('主线时代建筑不再作为科技解锁项重复展示', () => {
+  const mainlineBuildings = new Set(['farm', 'house', 'lumbermill', 'barracks', 'watchtower']);
+  TECHS.forEach((tech) => {
+    const unlocked = tech.effects?.unlockedBuildings || [];
+    unlocked.forEach((buildingId) => {
+      assert.equal(mainlineBuildings.has(buildingId), false, `${tech.id} should not unlock mainline ${buildingId}`);
+    });
+  });
+});

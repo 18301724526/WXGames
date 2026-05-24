@@ -9,6 +9,8 @@ function calculate(buildings) {
     knowledgeOutputMultiplier: 1,
     craftsmanOutputMultiplier: 1,
     woodOutputBase: 0,
+    stoneOutputBase: 0,
+    ironOutputBase: 0,
     offlineEfficiencyBonus: 0,
     defenseLevel: 0,
     threatDefense: 0,
@@ -53,6 +55,16 @@ function calculate(buildings) {
       const bonus = BuildingConfig.calculateEffectBonus(id, 'woodOutputBase', level);
       effects.woodOutputBase += bonus;
       summary.woodOutputBase = bonus;
+    }
+    if (perLevel.stoneOutputBase) {
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'stoneOutputBase', level);
+      effects.stoneOutputBase += bonus;
+      summary.stoneOutputBase = bonus;
+    }
+    if (perLevel.ironOutputBase) {
+      const bonus = BuildingConfig.calculateEffectBonus(id, 'ironOutputBase', level);
+      effects.ironOutputBase += bonus;
+      summary.ironOutputBase = bonus;
     }
     if (perLevel.offlineEfficiency) {
       const bonus = BuildingConfig.calculateEffectBonus(id, 'offlineEfficiency', level);

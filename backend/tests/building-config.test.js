@@ -6,7 +6,7 @@ const path = require('node:path');
 const BuildingConfig = require('../config/BuildingConfig');
 
 test('BuildingConfig 暴露当前配置版本与来源路径', () => {
-  assert.equal(BuildingConfig.getVersion(), '2.2');
+  assert.equal(BuildingConfig.getVersion(), '2.3');
   assert.match(BuildingConfig.getSourcePath(), /shared[\\/]+buildingConfig\.json$/);
   assert.equal(BuildingConfig.getBuildCost('farm').food, 0);
 });
@@ -27,6 +27,25 @@ test('所有建筑配置都有存在的美术资源', () => {
     const assetPath = path.join(projectRoot, 'frontend', building.art);
     assert.equal(fs.existsSync(assetPath), true, `${building.id} art not found: ${building.art}`);
   }
+});
+
+test('采石场和矿场作为科技解锁生产建筑进入配置', () => {
+  const quarry = BuildingConfig.getBuilding('quarry');
+  const mine = BuildingConfig.getBuilding('mine');
+
+  assert.equal(quarry.name, '采石场');
+  assert.equal(quarry.category, 'production');
+  assert.equal(quarry.effects.perLevel.stoneOutputBase, 1.5);
+  assert.deepEqual(quarry.ui.effectText, [
+    { field: 'stoneOutputBase', label: '基础石料', format: 'number' },
+  ]);
+
+  assert.equal(mine.name, '矿场');
+  assert.equal(mine.category, 'production');
+  assert.equal(mine.effects.perLevel.ironOutputBase, 1.2);
+  assert.deepEqual(mine.ui.effectText, [
+    { field: 'ironOutputBase', label: '基础铁矿', format: 'number' },
+  ]);
 });
 
 test('barracks config only exposes soldier training, not output or defense-level bonuses', () => {

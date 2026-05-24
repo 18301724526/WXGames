@@ -185,6 +185,42 @@ test('伐木场与工匠会产出木材并计入离线收益', () => {
   assert.equal(offline.wood, Math.floor(2 * 600 * 0.8));
 });
 
+test('采石场和矿场会产出石料与铁矿并计入离线收益', () => {
+  const state = gameStateService.createInitialGameState('stone-iron-player');
+  state.currentEra = 4;
+  state.population.farmers = 1;
+  state.population.scholars = 1;
+  state.population.craftsmen = 2;
+  state.buildings.quarry = { level: 1, builtAt: new Date().toISOString(), upgradedAt: new Date().toISOString() };
+  state.buildings.mine = { level: 1, builtAt: new Date().toISOString(), upgradedAt: new Date().toISOString() };
+  state.buildingEffects = require('../calculators/BuildingEffectCalculator').calculate(state.buildings);
+
+  const outputs = ResourceTickCalculator.calculateOutputs(state, state.buildingEffects);
+  const offline = gameStateService.calculateOfflineIncome(state, 600);
+
+  assert.equal(Math.round(outputs.stonePerSecond * 10) / 10, 2.4);
+  assert.equal(Math.round(outputs.ironPerSecond * 100) / 100, 1.32);
+  assert.equal(offline.stone, Math.floor(outputs.stonePerSecond * 600 * 0.8));
+  assert.equal(offline.iron, Math.floor(outputs.ironPerSecond * 600 * 0.8));
+});
+
+test('resource buffs apply to stone and iron production', () => {
+  const state = gameStateService.createInitialGameState('stone-iron-buff-player');
+  state.population.craftsmen = 1;
+  state.buildings.quarry = { level: 1 };
+  state.buildings.mine = { level: 1 };
+  state.activeBuffs = [
+    { id: 'stone-buff', type: 'resourceMultiplier', target: 'stone', value: 0.5 },
+    { id: 'iron-buff', type: 'resourceMultiplier', target: 'iron', value: 1 },
+  ];
+  state.buildingEffects = require('../calculators/BuildingEffectCalculator').calculate(state.buildings);
+
+  const outputs = ResourceTickCalculator.calculateOutputs(state, state.buildingEffects);
+
+  assert.equal(Math.round(outputs.stonePerSecond * 100) / 100, 1.8);
+  assert.equal(Math.round(outputs.ironPerSecond * 100) / 100, 1.32);
+});
+
 test('常规事件 buff 会影响资源产出、幸福度和离线效率', () => {
   const state = gameStateService.createInitialGameState('regular-event-buff-output-player');
   state.population.farmers = 2;

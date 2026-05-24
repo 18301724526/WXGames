@@ -90,3 +90,23 @@ test('watchtower grants threat defense for event checks', () => {
   assert.equal(effects.threatDefense, 4);
   assert.equal(effects.byBuilding.watchtower.threatDefenseBonus, 4);
 });
+
+test('quarry and mine grant stone and iron base output', () => {
+  const effects = BuildingEffectCalculator.calculate({
+    farm: null,
+    house: null,
+    workshop: null,
+    academy: null,
+    lumbermill: null,
+    quarry: { level: 2 },
+    mine: { level: 1 },
+    barracks: null,
+    watchtower: null,
+    temple: null,
+  });
+
+  assert.equal(effects.stoneOutputBase, 3);
+  assert.equal(effects.ironOutputBase, 1.2);
+  assert.equal(effects.byBuilding.quarry.stoneOutputBase, 3);
+  assert.equal(effects.byBuilding.mine.ironOutputBase, 1.2);
+});

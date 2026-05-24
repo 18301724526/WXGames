@@ -968,6 +968,8 @@
       if (perLevel.knowledgeOutputMultiplier) summary.knowledgeOutputBonus = this.calculateBuildingEffectBonus(config, 'knowledgeOutputMultiplier', currentLevel);
       if (perLevel.craftsmanOutputMultiplier) summary.craftsmanOutputBonus = this.calculateBuildingEffectBonus(config, 'craftsmanOutputMultiplier', currentLevel);
       if (perLevel.woodOutputBase) summary.woodOutputBase = this.calculateBuildingEffectBonus(config, 'woodOutputBase', currentLevel);
+      if (perLevel.stoneOutputBase) summary.stoneOutputBase = this.calculateBuildingEffectBonus(config, 'stoneOutputBase', currentLevel);
+      if (perLevel.ironOutputBase) summary.ironOutputBase = this.calculateBuildingEffectBonus(config, 'ironOutputBase', currentLevel);
       if (perLevel.offlineEfficiency) summary.offlineEfficiencyBonus = this.calculateBuildingEffectBonus(config, 'offlineEfficiency', currentLevel);
       if (perLevel.defense) summary.defenseLevel = this.calculateBuildingEffectBonus(config, 'defense', currentLevel);
       if (perLevel.threatDefense) summary.threatDefenseBonus = this.calculateBuildingEffectBonus(config, 'threatDefense', currentLevel);
@@ -1559,6 +1561,8 @@
         lumbermill: '伐木场提供稳定木材生产。',
         barracks: '兵营训练士兵，开启基础军事力量。',
         watchtower: '瞭望台提升边境防御能力。',
+        quarry: '采石场提供稳定石料生产。',
+        mine: '矿场提供稳定铁矿生产。',
         workshop: '工坊强化工业生产与后续制造。',
         academy: '学院强化知识积累。',
         temple: '神庙服务后续文化与精神建设。',
@@ -1569,6 +1573,8 @@
         伐木场: buildingEffectById.lumbermill,
         兵营: buildingEffectById.barracks,
         瞭望台: buildingEffectById.watchtower,
+        采石场: buildingEffectById.quarry,
+        矿场: buildingEffectById.mine,
         工坊: buildingEffectById.workshop,
         学院: buildingEffectById.academy,
         神庙: buildingEffectById.temple,

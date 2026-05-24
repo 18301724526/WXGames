@@ -1,5 +1,5 @@
 {
-  "version": "2.2",
+  "version": "2.3",
   "maintenancePolicy": {
     "version": "0.1",
     "active": false,
@@ -201,6 +201,84 @@
         "description": "提供伐木基础产能，工匠越多产量越高",
         "effectText": [
           { "field": "woodOutputBase", "label": "基础木材", "format": "number" }
+        ]
+      }
+    },
+    "quarry": {
+      "id": "quarry",
+      "name": "采石场",
+      "icon": "🪨",
+      "art": "assets/art/icon-stone-cutout.webp",
+      "category": "production",
+      "unlockEra": 3,
+      "maxLevel": 3,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.21,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 3,
+        "perLevelPerMinute": { "food": 0.35, "wood": 0.2 },
+        "habitabilityPressure": 1,
+        "summary": "采石场后续需要食物补给和木材工具维护，适合作为工程扩张的材料基础。"
+      },
+      "buildCost": { "food": 180, "wood": 90, "knowledge": 40 },
+      "upgradeCosts": [
+        { "food": 300, "wood": 150, "knowledge": 90 },
+        { "food": 480, "wood": 260, "knowledge": 160 }
+      ],
+      "effects": {
+        "perLevel": {
+          "stoneOutputBase": 1.5
+        }
+      },
+      "ui": {
+        "color": "#95a5a6",
+        "description": "提供采石基础产能，工匠越多产量越高",
+        "effectText": [
+          { "field": "stoneOutputBase", "label": "基础石料", "format": "number" }
+        ]
+      }
+    },
+    "mine": {
+      "id": "mine",
+      "name": "矿场",
+      "icon": "⛏️",
+      "art": "assets/art/icon-iron-cutout.webp",
+      "category": "production",
+      "unlockEra": 4,
+      "maxLevel": 3,
+      "scalePlan": {
+        "openEnded": true,
+        "currentCapRetained": true,
+        "costGrowth": 1.23,
+        "effectCurve": "diminishing"
+      },
+      "maintenance": {
+        "enabled": false,
+        "startsAtEra": 4,
+        "perLevelPerMinute": { "food": 0.45, "wood": 0.25 },
+        "habitabilityPressure": 2,
+        "summary": "矿场后续需要持续补给和支护材料，产出铁矿但会给生产区带来更高压力。"
+      },
+      "buildCost": { "food": 320, "wood": 180, "stone": 80, "knowledge": 120 },
+      "upgradeCosts": [
+        { "food": 520, "wood": 280, "stone": 140, "knowledge": 220 },
+        { "food": 820, "wood": 420, "stone": 240, "knowledge": 360 }
+      ],
+      "effects": {
+        "perLevel": {
+          "ironOutputBase": 1.2
+        }
+      },
+      "ui": {
+        "color": "#7f8c8d",
+        "description": "提供采矿基础产能，工匠越多产量越高",
+        "effectText": [
+          { "field": "ironOutputBase", "label": "基础铁矿", "format": "number" }
         ]
       }
     },

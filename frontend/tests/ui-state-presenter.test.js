@@ -481,6 +481,46 @@ test('building view state exposes category tabs and filters cards', () => {
   assert.equal(military.categoryTabs.find((tab) => tab.id === 'military').active, true);
 });
 
+test('building view state formats stone and iron base output effects', () => {
+  const view = UIStatePresenter.buildBuildingViewState({
+    unlockedBuildings: ['quarry', 'mine'],
+    resources: { food: 999, wood: 999, knowledge: 999, stone: 999 },
+    buildings: { quarry: { level: 1 }, mine: { level: 1 } },
+    buildingCosts: { quarry: { food: 300, wood: 150, knowledge: 90 }, mine: { food: 520, wood: 280, stone: 140, knowledge: 220 } },
+    buildingEffects: {
+      byBuilding: {
+        quarry: { level: 1, stoneOutputBase: 1.5 },
+        mine: { level: 1, ironOutputBase: 1.2 },
+      },
+    },
+    buildingCategories: {
+      production: { label: '生产', order: 1 },
+    },
+  }, { completed: true }, {
+    quarry: {
+      id: 'quarry',
+      name: '采石场',
+      category: 'production',
+      maxLevel: 3,
+      scalePlan: { openEnded: true, effectCurve: 'diminishing' },
+      effects: { perLevel: { stoneOutputBase: 1.5 } },
+      ui: { effectText: [{ field: 'stoneOutputBase', label: '基础石料', format: 'number' }] },
+    },
+    mine: {
+      id: 'mine',
+      name: '矿场',
+      category: 'production',
+      maxLevel: 3,
+      scalePlan: { openEnded: true, effectCurve: 'diminishing' },
+      effects: { perLevel: { ironOutputBase: 1.2 } },
+      ui: { effectText: [{ field: 'ironOutputBase', label: '基础铁矿', format: 'number' }] },
+    },
+  });
+
+  assert.equal(view.cards.find((card) => card.id === 'quarry').currentEffectText, '当前效果：基础石料 1.5');
+  assert.equal(view.cards.find((card) => card.id === 'mine').currentEffectText, '当前效果：基础铁矿 1.2');
+});
+
 test('building effect text keeps showing progress at high open-ended levels', () => {
   const config = {
     id: 'farm',
@@ -580,7 +620,7 @@ test('tech view state formats knowledge rate for Canvas renderer', () => {
           tree: { column: 1, row: 1, lane: -2, routes: ['agriculture', 'knowledge'], parents: [] },
           parents: [],
           resourceText: '粮食',
-          unlockText: '农田',
+          unlockText: '',
         }],
       }],
     },
@@ -591,16 +631,13 @@ test('tech view state formats knowledge rate for Canvas renderer', () => {
   assert.equal(view.text.points, '科技点 1');
   assert.equal(view.text.available, '可研究 1');
   assert.equal(view.eras[0].techs[0].buttonLabel, '研究');
-  assert.equal(view.eras[0].techs[0].unlockSummary, '解锁建筑：农田 / 研究后：农田提供稳定粮食生产。 / 发展方向：粮食生产');
+  assert.equal(view.eras[0].techs[0].unlockSummary, '发展方向：粮食生产');
   assert.deepEqual(view.eras[0].techs[0].effectRows, [
-    { label: '解锁建筑', text: '农田' },
-    { label: '研究后', text: '农田提供稳定粮食生产。' },
     { label: '发展方向', text: '粮食生产' },
   ]);
   assert.equal(view.detail.title, '田块轮作');
-  assert.deepEqual(view.detail.effectRows.slice(0, 2), [
-    { label: '解锁建筑', text: '农田' },
-    { label: '研究后', text: '农田提供稳定粮食生产。' },
+  assert.deepEqual(view.detail.effectRows, [
+    { label: '发展方向', text: '粮食生产' },
   ]);
   assert.equal(view.detail.canResearch, true);
   assert.equal(view.detail.buttonLabel, '研究');
@@ -635,7 +672,7 @@ test('tech view state exposes selected tech detail and prerequisite status', () 
           parentNames: ['田块轮作'],
           missingParentNames: ['田块轮作'],
           resourceText: '木材',
-          unlockText: '伐木场',
+          unlockText: '',
         }],
       }],
     },
@@ -649,36 +686,37 @@ test('tech view state exposes selected tech detail and prerequisite status', () 
   assert.equal(view.eras[0].techs[0].buttonLabel, '需前置');
 });
 
-test('tech detail describes housing as civilization population capacity', () => {
+test('tech detail describes quarry as a technology-unlocked resource building', () => {
   const view = UIStatePresenter.buildTechViewState({
     techs: {
       points: 1,
       eras: [{
-        era: 1,
-        name: '农耕分支',
+        era: 3,
+        name: '城邦分支',
         choiceLimit: 1,
         choicesUsed: 0,
         techs: [{
-          id: 'farming_household_plots',
-          name: '家户菜圃',
-          routeLabel: '民生',
-          summary: '居住与粮食',
+          id: 'city_quarry_survey',
+          name: '采石踏勘',
+          routeLabel: '工程',
+          summary: '石料来源',
           status: 'available',
           available: true,
-          tree: { column: 1, row: 1, lane: -1, routes: ['livelihood'], parents: [] },
-          resourceText: '粮食',
-          unlockText: '民居',
-          unlockedBuildings: ['house'],
+          tree: { column: 3, row: 3, lane: 1, routes: ['engineering'], parents: [] },
+          resourceText: '石料',
+          unlockText: '采石场',
+          unlockedBuildings: ['quarry'],
         }],
       }],
     },
   });
 
-  assert.deepEqual(view.detail.effectRows.slice(0, 2), [
-    { label: '解锁建筑', text: '民居' },
-    { label: '研究后', text: '民居提升文明人口承载能力。' },
+  assert.deepEqual(view.detail.effectRows, [
+    { label: '解锁建筑', text: '采石场' },
+    { label: '研究后', text: '采石场提供稳定石料生产。' },
+    { label: '发展方向', text: '石料工程' },
   ]);
-  assert.equal(view.detail.unlockSummary, '解锁建筑：民居 / 研究后：民居提升文明人口承载能力。 / 发展方向：粮食生产');
+  assert.equal(view.detail.unlockSummary, '解锁建筑：采石场 / 研究后：采石场提供稳定石料生产。 / 发展方向：石料工程');
 });
 
 test('event modal view state handles multiple and single event options', () => {

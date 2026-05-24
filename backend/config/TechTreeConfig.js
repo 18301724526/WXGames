@@ -26,6 +26,8 @@ const BUILDING_LABELS = {
   farm: '农田',
   house: '民居',
   lumbermill: '伐木场',
+  quarry: '采石场',
+  mine: '矿场',
   barracks: '兵营',
   watchtower: '瞭望台',
   workshop: '工坊',
@@ -46,7 +48,7 @@ const TECH_ERAS = [
         routeLabel: '农业',
         summary: '用轮作整理田地，让粮食来源更稳定。',
         core: '核心入口：粮食稳定',
-        effects: { resourceEntrances: ['food'], unlockedBuildings: ['farm'] },
+        effects: { resourceEntrances: ['food'] },
       },
       {
         id: 'farming_household_plots',
@@ -55,7 +57,7 @@ const TECH_ERAS = [
         routeLabel: '民生',
         summary: '让民居周边保留小块耕地，人口成长更从容。',
         core: '核心入口：居住与粮食',
-        effects: { resourceEntrances: ['food'], unlockedBuildings: ['house'] },
+        effects: { resourceEntrances: ['food'] },
       },
       {
         id: 'farming_seed_selection',
@@ -64,7 +66,7 @@ const TECH_ERAS = [
         routeLabel: '知识',
         summary: '记录更好的种子和季节，为后续知识路线铺底。',
         core: '核心入口：粮食与知识',
-        effects: { resourceEntrances: ['food', 'knowledge'], unlockedBuildings: ['farm'] },
+        effects: { resourceEntrances: ['food', 'knowledge'] },
       },
       {
         id: 'farming_river_ditches',
@@ -73,7 +75,7 @@ const TECH_ERAS = [
         routeLabel: '工程',
         summary: '用沟渠改善田地，后续更容易转向石料与工程建设。',
         core: '核心入口：粮食与工程',
-        effects: { resourceEntrances: ['food', 'stone'], unlockedBuildings: ['farm'] },
+        effects: { resourceEntrances: ['food', 'stone'] },
       },
       {
         id: 'farming_storehouse_rules',
@@ -82,7 +84,7 @@ const TECH_ERAS = [
         routeLabel: '秩序',
         summary: '把收成按规则储备，减少迈入聚落前的波动。',
         core: '核心入口：粮食储备',
-        effects: { resourceEntrances: ['food'], unlockedBuildings: ['house'] },
+        effects: { resourceEntrances: ['food'] },
       },
     ],
   },
@@ -98,7 +100,7 @@ const TECH_ERAS = [
         routeLabel: '工业',
         summary: '明确谁负责砍伐、运输与堆放，木材进入稳定生产。',
         core: '核心入口：木材生产',
-        effects: { resourceEntrances: ['wood'], unlockedBuildings: ['lumbermill'] },
+        effects: { resourceEntrances: ['wood'] },
       },
       {
         id: 'settlement_carpenter_yards',
@@ -107,7 +109,7 @@ const TECH_ERAS = [
         routeLabel: '民生',
         summary: '先把木材用于居住修缮，聚落扩张更平顺。',
         core: '核心入口：木材与民居',
-        effects: { resourceEntrances: ['wood'], unlockedBuildings: ['lumbermill', 'house'] },
+        effects: { resourceEntrances: ['wood'] },
       },
       {
         id: 'settlement_forest_paths',
@@ -116,7 +118,7 @@ const TECH_ERAS = [
         routeLabel: '探索',
         summary: '沿森林路径组织采集，为未来侦察与外部接触预热。',
         core: '核心入口：木材与探索',
-        effects: { resourceEntrances: ['wood'], unlockedBuildings: ['lumbermill'] },
+        effects: { resourceEntrances: ['wood'] },
       },
       {
         id: 'settlement_river_rafts',
@@ -125,7 +127,7 @@ const TECH_ERAS = [
         routeLabel: '贸易',
         summary: '让木材可以顺水运输，适合后续走交换与沿海路线。',
         core: '核心入口：木材流通',
-        effects: { resourceEntrances: ['wood'], unlockedBuildings: ['lumbermill'] },
+        effects: { resourceEntrances: ['wood'] },
       },
       {
         id: 'settlement_communal_labor',
@@ -134,7 +136,7 @@ const TECH_ERAS = [
         routeLabel: '秩序',
         summary: '用共同劳作组织木材采集，后续更容易承接公共工程。',
         core: '核心入口：木材与工程',
-        effects: { resourceEntrances: ['wood', 'stone'], unlockedBuildings: ['lumbermill'] },
+        effects: { resourceEntrances: ['wood', 'stone'] },
       },
     ],
   },
@@ -150,7 +152,7 @@ const TECH_ERAS = [
         routeLabel: '工程',
         summary: '寻找可用石脉，为城墙、道路和公共建筑做准备。',
         core: '核心入口：石料来源',
-        effects: { resourceEntrances: ['stone'] },
+        effects: { resourceEntrances: ['stone'], unlockedBuildings: ['quarry'] },
       },
       {
         id: 'city_masonry_rules',
@@ -159,7 +161,7 @@ const TECH_ERAS = [
         routeLabel: '民生',
         summary: '先把石料用于居住与道路，城市布局更稳。',
         core: '核心入口：石料与民生',
-        effects: { resourceEntrances: ['stone'], unlockedBuildings: ['house'] },
+        effects: { resourceEntrances: ['stone'] },
       },
       {
         id: 'city_hill_paths',
@@ -186,7 +188,7 @@ const TECH_ERAS = [
         routeLabel: '守备',
         summary: '把石料优先用于防护和集会空间，承接边境压力。',
         core: '核心入口：石料与守备',
-        effects: { resourceEntrances: ['stone'], unlockedBuildings: ['barracks'] },
+        effects: { resourceEntrances: ['stone'] },
       },
     ],
   },
@@ -202,7 +204,7 @@ const TECH_ERAS = [
         routeLabel: '工业',
         summary: '尝试从矿石中炼出可用金属，为工坊时代铺路。',
         core: '核心入口：铁矿来源',
-        effects: { resourceEntrances: ['iron'] },
+        effects: { resourceEntrances: ['iron'], unlockedBuildings: ['mine'] },
       },
       {
         id: 'frontier_guard_forges',
@@ -211,7 +213,7 @@ const TECH_ERAS = [
         routeLabel: '军事',
         summary: '把铁优先用于兵器修整，边境防线更有方向。',
         core: '核心入口：铁矿与守备',
-        effects: { resourceEntrances: ['iron'], unlockedBuildings: ['watchtower'] },
+        effects: { resourceEntrances: ['iron'] },
       },
       {
         id: 'frontier_mountain_tracks',
@@ -229,7 +231,7 @@ const TECH_ERAS = [
         routeLabel: '民生',
         summary: '把工具和武备下沉到民户，兼顾生产与自保。',
         core: '核心入口：铁矿与人口',
-        effects: { resourceEntrances: ['iron'], unlockedBuildings: ['barracks'] },
+        effects: { resourceEntrances: ['iron'] },
       },
       {
         id: 'frontier_border_trade',
@@ -290,7 +292,7 @@ const TECH_ERAS = [
         routeLabel: '农业',
         summary: '把铁优先用于农具，农业路线获得后续强化空间。',
         core: '强化入口：农业工具',
-        effects: { resourceEntrances: ['iron', 'food'], unlockedBuildings: ['farm'] },
+        effects: { resourceEntrances: ['iron', 'food'] },
       },
       {
         id: 'classical_grain_administration',
@@ -299,7 +301,7 @@ const TECH_ERAS = [
         routeLabel: '秩序',
         summary: '用册籍管理人口与粮仓，适合稳定推进时代。',
         core: '强化入口：粮食与人口',
-        effects: { resourceEntrances: ['food', 'knowledge'], unlockedBuildings: ['house'] },
+        effects: { resourceEntrances: ['food', 'knowledge'] },
       },
       {
         id: 'classical_border_codes',
@@ -308,7 +310,7 @@ const TECH_ERAS = [
         routeLabel: '军事',
         summary: '把守备制度化，为后续战争系统预留军事路线。',
         core: '强化入口：守备体系',
-        effects: { resourceEntrances: ['iron'], unlockedBuildings: ['barracks', 'watchtower'] },
+        effects: { resourceEntrances: ['iron'] },
       },
       {
         id: 'classical_civic_records',

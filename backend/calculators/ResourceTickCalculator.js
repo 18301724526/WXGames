@@ -71,12 +71,28 @@ function calculateWoodPerSecond(gameState, effects) {
     * withBuffMultiplier(gameState, 'wood');
 }
 
-function calculateIronPerSecond() {
-  return 0;
+function calculateStonePerSecond(gameState, effects) {
+  const craftsmen = gameState?.population?.craftsmen || 0;
+  const baseStone = effects?.stoneOutputBase || 0;
+  if (!craftsmen || !baseStone) return 0;
+  return craftsmen
+    * GameConfig.resources.baseStonePerCraftsman
+    * baseStone
+    * (effects?.craftsmanOutputMultiplier || 1)
+    * (effects?.globalOutputMultiplier || 1)
+    * withBuffMultiplier(gameState, 'stone');
 }
 
-function calculateStonePerSecond() {
-  return 0;
+function calculateIronPerSecond(gameState, effects) {
+  const craftsmen = gameState?.population?.craftsmen || 0;
+  const baseIron = effects?.ironOutputBase || 0;
+  if (!craftsmen || !baseIron) return 0;
+  return craftsmen
+    * GameConfig.resources.baseIronPerCraftsman
+    * baseIron
+    * (effects?.craftsmanOutputMultiplier || 1)
+    * (effects?.globalOutputMultiplier || 1)
+    * withBuffMultiplier(gameState, 'iron');
 }
 
 function calculatePopulationCap(effects) {

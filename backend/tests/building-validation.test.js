@@ -74,3 +74,25 @@ test('边境时代只新增瞭望台，后续建筑不会提前解锁', () => {
     assert.equal(result.code, 'ERA_NOT_UNLOCKED');
   }
 });
+
+test('采石场和矿场只会在对应科技研究后解锁建造', () => {
+  const state = gameStateService.createInitialGameState('resource-tech-unlocks-player');
+  state.currentEra = 5;
+  state.tutorial.completed = true;
+  state.resources = { food: 9999, knowledge: 9999, wood: 9999, stone: 9999, iron: 0, metal: 0 };
+  state.techs.points = 5;
+
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'quarry').allowed, false);
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'mine').allowed, false);
+
+  assert.equal(require('../services/TechTreeService').research(state, 'farming_field_rotation').success, true);
+  assert.equal(require('../services/TechTreeService').research(state, 'settlement_logging_rights').success, true);
+  assert.equal(require('../services/TechTreeService').research(state, 'city_quarry_survey').success, true);
+
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'quarry').allowed, true);
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'mine').allowed, false);
+
+  assert.equal(require('../services/TechTreeService').research(state, 'frontier_bloomery_signs').success, true);
+
+  assert.equal(BuildingActionValidator.validateBuild(state, state.tutorial, 'mine').allowed, true);
+});

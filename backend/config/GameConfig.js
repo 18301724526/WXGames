@@ -4,6 +4,8 @@ module.exports = {
     baseKnowledgePerPerson: 0.05,
     scholarKnowledgeBonus: 0.15,
     baseWoodPerCraftsman: 1.0,
+    baseStonePerCraftsman: 0.8,
+    baseIronPerCraftsman: 0.55,
     foodConsumptionPerPerson: 0.2,
     woodConsumptionPerPerson: 0,
     offlineBaseEfficiency: 0.8,
