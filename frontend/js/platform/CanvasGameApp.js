@@ -444,8 +444,12 @@
     }
 
     startPageTransition(fromTab, toTab, options = {}) {
+      const buildingOffset = this.canvasShell && Number.isFinite(Number(this.canvasShell.buildingOffset))
+        ? Number(this.canvasShell.buildingOffset)
+        : this.buildingOffset;
       if (!fromTab || !toTab || fromTab === toTab) {
         this.pageTransition = null;
+        if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = null;
         return false;
       }
       const tabs = this.getTabOrder();
@@ -457,7 +461,7 @@
         direction: toIndex >= 0 && fromIndex >= 0 && toIndex < fromIndex ? -1 : 1,
         startedAt: this.now(),
         durationMs: this.getTransitionDurationMs(),
-        fromBuildingOffset: options.fromBuildingOffset ?? this.buildingOffset,
+        fromBuildingOffset: options.fromBuildingOffset ?? buildingOffset,
       };
       if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') {
         this.canvasShell.pageTransition = this.pageTransition;
@@ -467,6 +471,12 @@
     }
 
     scrollBuildings(action = {}) {
+      if (this.canvasShell && typeof this.canvasShell.scrollBuildings === 'function') {
+        const scrolled = this.canvasShell.scrollBuildings(action);
+        this.buildingOffset = this.canvasShell.buildingOffset;
+        this.buildingTransition = this.canvasShell.buildingTransition;
+        return scrolled;
+      }
       const fromOffset = Math.max(0, Number(this.buildingOffset) || 0);
       const delta = Number(action.delta) || 0;
       const toOffset = Math.max(0, fromOffset + delta);
@@ -487,6 +497,13 @@
     selectBuildingCategory(action = {}) {
       const category = action.category || 'all';
       const previous = this.activeBuildingCategory || 'all';
+      if (this.canvasShell && typeof this.canvasShell.selectBuildingCategory === 'function') {
+        const changed = this.canvasShell.selectBuildingCategory(action);
+        this.activeBuildingCategory = this.canvasShell.activeBuildingCategory;
+        this.buildingOffset = this.canvasShell.buildingOffset;
+        this.buildingTransition = this.canvasShell.buildingTransition;
+        return changed !== false && category !== previous;
+      }
       this.activeBuildingCategory = category;
       this.buildingOffset = 0;
       this.buildingTransition = null;
@@ -1242,6 +1259,11 @@
     }
 
     showGuideHighlight(target, message, options = {}) {
+      if (this.canvasShell && typeof this.canvasShell.showTutorialHighlight === 'function') {
+        const shown = this.canvasShell.showTutorialHighlight(target, message);
+        this.tutorialHighlight = this.canvasShell.tutorialHighlight || null;
+        return shown;
+      }
       const rect = this.normalizeGuideHighlightRect(target);
       if (!rect) return false;
       const now = this.runtime?.now?.() || Date.now();
@@ -1268,6 +1290,30 @@
         this.render();
       }
       return true;
+    }
+
+    hideGuideHighlight() {
+      if (this.canvasShell && typeof this.canvasShell.hideTutorialHighlight === 'function') {
+        const hidden = this.canvasShell.hideTutorialHighlight();
+        this.tutorialHighlight = this.canvasShell.tutorialHighlight || null;
+        return hidden;
+      }
+      const hadHighlight = Boolean(this.tutorialHighlight);
+      this.tutorialHighlight = null;
+      if (hadHighlight) this.renderCanvasSurface(this.state?.currentTab);
+      return hadHighlight;
+    }
+
+    showGuideControllerHighlight(target, message) {
+      return this.showGuideHighlight(target, message);
+    }
+
+    hideGuideControllerHighlight() {
+      return this.hideGuideHighlight();
+    }
+
+    hasGuideControllerHighlight() {
+      return Boolean(this.canvasShell?.tutorialHighlight || this.tutorialHighlight);
     }
 
     goToGuideTaskTarget(action = {}) {

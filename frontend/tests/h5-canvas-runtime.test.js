@@ -1540,6 +1540,78 @@ test('Canvas game app delegates H5 tab transition animation to the mounted canva
   assert.equal(renderCalls.at(-1).options.pageTransition, app.pageTransition);
 });
 
+test('Canvas game app guide navigation writes Canvas UI state through the mounted shell', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const watchtowerTarget = { x: 228, y: 662, width: 128, height: 26, action: { type: 'buildBuilding', buildingId: 'watchtower' } };
+  const renderer = {
+    hitTargets: [],
+    render(state, options) {
+      renderCalls.push({ state, options });
+      this.hitTargets = state.currentTab === 'buildings'
+        ? [watchtowerTarget]
+        : [{ x: 76, y: 786, width: 58, height: 58, action: { type: 'switchTab', tab: 'buildings' } }];
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+      buildBuildingViewState: () => ({ ids: ['barracks', 'watchtower'], filteredIds: ['barracks', 'watchtower'] }),
+    },
+    initialState: {
+      currentTab: 'resources',
+      resources: {},
+      population: {},
+      softGuide: { mode: 'strong', target: 'card-watchtower', message: '建造瞭望台' },
+      buildingDefinitions: { watchtower: { id: 'watchtower', category: 'military' } },
+      guideTasks: {
+        visible: true,
+        tasks: [{
+          id: 'watchtower_supplies',
+          status: 'active',
+          claimed: true,
+          target: 'card-watchtower',
+          action: { type: 'goToGuideTaskTarget', target: 'card-watchtower' },
+        }],
+      },
+    },
+  });
+  app.tutorialController = { state: { completed: true }, canOpenTab: () => true, render() {} };
+  app.renderMilitaryView = () => {};
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  app.renderCanvasSurface();
+  assert.equal(app.goToGuideTaskTarget({ target: 'card-watchtower' }), true);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.state.currentTab, 'buildings');
+  assert.equal(app.activeBuildingCategory, 'military');
+  assert.equal(app.canvasShell.activeBuildingCategory, 'military');
+  assert.equal(app.buildingOffset, 0);
+  assert.equal(app.canvasShell.buildingOffset, 0);
+  assert.deepEqual(app.canvasShell.tutorialHighlight.rect, {
+    left: watchtowerTarget.x,
+    top: watchtowerTarget.y,
+    width: watchtowerTarget.width,
+    height: watchtowerTarget.height,
+    right: watchtowerTarget.x + watchtowerTarget.width,
+    bottom: watchtowerTarget.y + watchtowerTarget.height,
+  });
+  assert.equal(renderCalls.at(-1).options.activeBuildingCategory, 'military');
+  assert.deepEqual(renderCalls.at(-1).options.tutorialHighlight.rect, app.canvasShell.tutorialHighlight.rect);
+});
+
 test('H5 canvas runtime provides platform text input without exposing DOM input elements', async () => {
   const { document, runtime } = createCanvasHarness();
   const prompts = [];

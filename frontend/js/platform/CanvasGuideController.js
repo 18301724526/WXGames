@@ -74,6 +74,32 @@
       return this.host?.getGuideTutorialState?.() || this.getState()?.tutorial || {};
     }
 
+    getUiHost() {
+      return (this.host?.canvasShell && this.host.canvasShell !== this.host)
+        ? this.host.canvasShell
+        : this.host;
+    }
+
+    getMirrorHost() {
+      const uiHost = this.getUiHost();
+      if (uiHost === this.host) return this.host?.lastGame || null;
+      return this.host || null;
+    }
+
+    getUiField(key, fallback = undefined) {
+      const uiHost = this.getUiHost();
+      if (uiHost && key in uiHost) return uiHost[key];
+      if (this.host && key in this.host) return this.host[key];
+      return fallback;
+    }
+
+    setUiField(key, value) {
+      const uiHost = this.getUiHost();
+      if (uiHost && key in uiHost) uiHost[key] = value;
+      const mirrorHost = this.getMirrorHost();
+      if (mirrorHost && key in mirrorHost) mirrorHost[key] = value;
+    }
+
     render() {
       if (typeof this.host?.renderGuideFrame === 'function') return this.host.renderGuideFrame();
       if (typeof this.host?.render === 'function') return this.host.render();
@@ -247,13 +273,13 @@
 
     clearTransientPanels() {
       ['showAdvisor', 'showSettings', 'showLogs', 'showResourceDetails', 'showCitySwitcher'].forEach((key) => {
-        if (key in this.host) this.host[key] = false;
+        this.setUiField(key, false);
       });
-      if ('activeEventId' in this.host) this.host.activeEventId = null;
+      this.setUiField('activeEventId', null);
     }
 
     setTaskCenterVisible(visible) {
-      if ('showTaskCenter' in this.host) this.host.showTaskCenter = Boolean(visible);
+      this.setUiField('showTaskCenter', Boolean(visible));
     }
 
     ensureTargetVisible(key) {
@@ -262,10 +288,9 @@
       if (!targetBuilding) return false;
       const category = this.getBuildingCategory(targetBuilding);
       let categoryChanged = false;
-      if (category && category !== 'all' && this.host.activeBuildingCategory !== category) {
-        this.host.activeBuildingCategory = category;
-        if (this.host.lastGame && typeof this.host.lastGame === 'object') this.host.lastGame.activeBuildingCategory = category;
-        this.host.buildingOffset = 0;
+      if (category && category !== 'all' && this.getUiField('activeBuildingCategory', 'all') !== category) {
+        this.setUiField('activeBuildingCategory', category);
+        this.setUiField('buildingOffset', 0);
         categoryChanged = true;
       }
       const state = this.getState();
@@ -273,14 +298,14 @@
         state,
         this.getTutorialState(),
         state?.buildingDefinitions || {},
-        { activeCategory: this.host.activeBuildingCategory || 'all' },
+        { activeCategory: this.getUiField('activeBuildingCategory', 'all') || 'all' },
       );
       const ids = view?.filteredIds || view?.ids || [];
       const index = ids.indexOf(targetBuilding);
       if (index < 0) return false;
       const nextOffset = Math.max(0, index - 1);
-      if (this.host.buildingOffset === nextOffset && !categoryChanged) return false;
-      this.host.buildingOffset = nextOffset;
+      if (this.getUiField('buildingOffset', 0) === nextOffset && !categoryChanged) return false;
+      this.setUiField('buildingOffset', nextOffset);
       this.render();
       return true;
     }
@@ -309,7 +334,10 @@
     }
 
     hasHighlight() {
-      return Boolean(this.host?.tutorialHighlight);
+      if (typeof this.host?.hasGuideControllerHighlight === 'function') {
+        return this.host.hasGuideControllerHighlight();
+      }
+      return Boolean(this.getUiField('tutorialHighlight', null));
     }
   }
 
