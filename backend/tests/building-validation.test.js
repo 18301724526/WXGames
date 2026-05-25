@@ -75,6 +75,28 @@ test('边境时代只新增瞭望台，后续建筑不会提前解锁', () => {
   }
 });
 
+test('active guide task target can bypass stale tutorial building lock', () => {
+  const GuideTaskService = require('../services/GuideTaskService');
+  const state = gameStateService.createInitialGameState('watchtower-stale-tutorial-lock');
+  state.currentEra = 4;
+  state.buildings.barracks = { level: 1 };
+  state.resources = { food: 999, knowledge: 999, wood: 999, stone: 0, metal: 0 };
+  state.tutorial.completed = false;
+  state.tutorial.currentStep = 13;
+  state.tutorial.phaseCompleted = { newbie: true, era2: false };
+  gameStateService.normalizeState(state);
+
+  const claim = GuideTaskService.claimReward(state, 'watchtower_supplies');
+  assert.equal(claim.success, true);
+
+  const watchtower = BuildingActionValidator.validateBuild(state, state.tutorial, 'watchtower');
+  const house = BuildingActionValidator.validateBuild(state, state.tutorial, 'house');
+
+  assert.equal(watchtower.allowed, true);
+  assert.equal(house.allowed, false);
+  assert.equal(house.code, 'TUTORIAL_BLOCKED');
+});
+
 test('采石场和矿场只会在对应科技研究后解锁建造', () => {
   const state = gameStateService.createInitialGameState('resource-tech-unlocks-player');
   state.currentEra = 5;

@@ -3,13 +3,18 @@ const BuildingState = require('../domain/BuildingState');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 const TutorialService = require('../services/TutorialService');
+const GuideTaskService = require('../services/GuideTaskService');
 
 function hasEnoughResources(resources, cost) {
   return Object.entries(cost || {}).every(([key, value]) => (resources?.[key] || 0) >= value);
 }
 
 function validateBuild(gameState, tutorialState, buildingId) {
-  const tutorialCheck = TutorialService.validateAction(tutorialState, 'build', { target: buildingId }, gameState);
+  const payload = { target: buildingId };
+  const expectedGuideAction = GuideTaskService.getExpectedAction(gameState);
+  const tutorialCheck = GuideTaskService.matchesExpectedAction(expectedGuideAction, 'build', payload)
+    ? { allowed: true }
+    : TutorialService.validateAction(tutorialState, 'build', payload, gameState);
   if (!tutorialCheck.allowed) return tutorialCheck;
   if (!BuildingConfig.hasBuilding(buildingId)) return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   if (!BuildingUnlockService.isUnlocked(buildingId, gameState.currentEra, gameState)) return { allowed: false, code: 'ERA_NOT_UNLOCKED', message: '时代未解锁' };
@@ -20,7 +25,11 @@ function validateBuild(gameState, tutorialState, buildingId) {
 }
 
 function validateUpgrade(gameState, tutorialState, buildingId) {
-  const tutorialCheck = TutorialService.validateAction(tutorialState, 'upgrade', { target: buildingId }, gameState);
+  const payload = { target: buildingId };
+  const expectedGuideAction = GuideTaskService.getExpectedAction(gameState);
+  const tutorialCheck = GuideTaskService.matchesExpectedAction(expectedGuideAction, 'upgrade', payload)
+    ? { allowed: true }
+    : TutorialService.validateAction(tutorialState, 'upgrade', payload, gameState);
   if (!tutorialCheck.allowed) return tutorialCheck;
   if (!BuildingConfig.hasBuilding(buildingId)) return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   if (!BuildingState.isBuilt(gameState.buildings, buildingId)) return { allowed: false, code: 'BUILDING_NOT_BUILT', message: '建筑尚未建造' };

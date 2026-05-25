@@ -1612,6 +1612,92 @@ test('Canvas game app guide navigation writes Canvas UI state through the mounte
   assert.deepEqual(renderCalls.at(-1).options.tutorialHighlight.rect, app.canvasShell.tutorialHighlight.rect);
 });
 
+test('Canvas game shell refreshes watchtower guide after guided building tab tap', async () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const tabBuildingsTarget = { x: 76, y: 786, width: 58, height: 58, action: { type: 'switchTab', tab: 'buildings' } };
+  const watchtowerTarget = { x: 228, y: 662, width: 128, height: 26, action: { type: 'buildBuilding', buildingId: 'watchtower' } };
+  const renderer = {
+    hitTargets: [tabBuildingsTarget],
+    getHitTarget(point) {
+      return this.hitTargets.find((target) => (
+        point.x >= target.x
+        && point.x <= target.x + target.width
+        && point.y >= target.y
+        && point.y <= target.y + target.height
+      ))?.action || null;
+    },
+    render(state, options) {
+      renderCalls.push({ state, options });
+      this.hitTargets = state.currentTab === 'buildings' ? [watchtowerTarget] : [tabBuildingsTarget];
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+      buildBuildingViewState: () => ({ ids: ['watchtower'], filteredIds: ['watchtower'] }),
+    },
+    initialState: {
+      currentTab: 'resources',
+      resources: {},
+      population: {},
+      softGuide: { mode: 'strong', target: 'card-watchtower', message: '建造瞭望台' },
+      buildingDefinitions: { watchtower: { id: 'watchtower', category: 'military' } },
+      guideTasks: {
+        visible: true,
+        tasks: [{
+          id: 'watchtower_supplies',
+          status: 'active',
+          claimed: true,
+          target: 'card-watchtower',
+          action: { type: 'goToGuideTaskTarget', target: 'card-watchtower' },
+        }],
+      },
+    },
+  });
+  app.tutorialController = {
+    state: { completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } },
+    canOpenTab() { return true; },
+    async onTabClicked() { return true; },
+    render() {},
+  };
+  app.renderMilitaryView = () => {};
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  app.renderCanvasSurface();
+  app.canvasShell.showTutorialHighlight({ getRect: () => ({
+    left: tabBuildingsTarget.x,
+    top: tabBuildingsTarget.y,
+    width: tabBuildingsTarget.width,
+    height: tabBuildingsTarget.height,
+    right: tabBuildingsTarget.x + tabBuildingsTarget.width,
+    bottom: tabBuildingsTarget.y + tabBuildingsTarget.height,
+  }) }, '点击建筑');
+
+  listeners['document:pointerup']({ clientX: 100, clientY: 810, type: 'pointerup', timeStamp: 1000 });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.state.currentTab, 'buildings');
+  assert.deepEqual(renderCalls.at(-1).options.tutorialHighlight.rect, {
+    left: watchtowerTarget.x,
+    top: watchtowerTarget.y,
+    width: watchtowerTarget.width,
+    height: watchtowerTarget.height,
+    right: watchtowerTarget.x + watchtowerTarget.width,
+    bottom: watchtowerTarget.y + watchtowerTarget.height,
+  });
+});
+
 test('H5 canvas runtime provides platform text input without exposing DOM input elements', async () => {
   const { document, runtime } = createCanvasHarness();
   const prompts = [];

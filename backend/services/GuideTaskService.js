@@ -467,6 +467,22 @@ function getExpectedActionForTask(task) {
   return null;
 }
 
+function getExpectedAction(gameState) {
+  const task = getCurrentTaskDefinition(gameState);
+  if (!task) return null;
+  const view = buildTaskView(gameState, task);
+  if (view.status === 'claimable') {
+    return { action: 'claimGuideTaskReward', target: task.id };
+  }
+  return getExpectedActionForTask(task);
+}
+
+function matchesExpectedAction(expected, action, payload = {}) {
+  if (!expected) return false;
+  if (action !== expected.action) return false;
+  return !expected.target || payload.target === expected.target;
+}
+
 function validateAction(gameState, action, payload = {}) {
   if (
     action === 'claimEvent'
@@ -511,6 +527,8 @@ module.exports = {
   getGuide,
   claimReward,
   validateAction,
+  getExpectedAction,
+  matchesExpectedAction,
   formatRewardText,
   getTaskGoAction,
 };

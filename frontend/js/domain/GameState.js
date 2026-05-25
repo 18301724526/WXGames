@@ -17,6 +17,7 @@
     const gameState = (apiResponse && apiResponse.gameState) || {};
     return {
       resources: gameState.resources || {},
+      tutorial: normalizeTutorialState(apiResponse),
       buildings: gameState.buildings || {},
       buildingCosts: gameState.buildingCosts || {},
       buildingDefinitions: gameState.buildingDefinitions || {},

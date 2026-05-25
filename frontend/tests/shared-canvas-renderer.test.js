@@ -605,6 +605,53 @@ test('CanvasGameRenderer tutorial highlight blocks non-target clicks but keeps t
   assert.deepEqual(renderer.getHitTarget({ x: 40, y: 804 }), { type: 'switchTab', tab: 'resources', disabled: false });
 });
 
+test('CanvasGameRenderer tutorial highlight keeps final target actionable during transition', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      hasWood: false,
+      text: {
+        foodValue: '10',
+        foodRate: '+0/s',
+        knowledgeValue: '1',
+        knowledgeRate: '+0/s',
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTutorialHighlightViewState: UIStatePresenter.buildTutorialHighlightViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({ currentTab: 'resources' }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    now: 1000,
+    tutorialHighlight: {
+      rect: { left: 73, top: 786, width: 61, height: 58, right: 134, bottom: 844 },
+      transition: {
+        fromRect: { left: 24, top: 786, width: 57, height: 58, right: 81, bottom: 844 },
+        toRect: { left: 73, top: 786, width: 61, height: 58, right: 134, bottom: 844 },
+        startedAt: 980,
+        durationMs: 260,
+      },
+      message: '点击建筑',
+    },
+  });
+
+  assert.deepEqual(renderer.getHitTarget({ x: 95, y: 804 }), { type: 'switchTab', tab: 'buildings', disabled: false });
+  assert.deepEqual(renderer.getHitTarget({ x: 170, y: 804 }), { type: 'blockCanvasModal' });
+});
+
 test('CanvasGameRenderer renders guide task bar and reward reveal on shared canvas', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

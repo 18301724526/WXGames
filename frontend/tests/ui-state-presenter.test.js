@@ -617,6 +617,51 @@ test('building view state disables build and upgrade actions when resources are 
   assert.equal(view.cards[0].button.label, '资源不足');
 });
 
+test('building view state lets strong guide target bypass stale tutorial building lock', () => {
+  const view = UIStatePresenter.buildBuildingViewState({
+    unlockedBuildings: ['lumbermill', 'watchtower'],
+    resources: { food: 999, wood: 999, knowledge: 999 },
+    buildings: { watchtower: { level: 0 } },
+    buildingCosts: {
+      lumbermill: { food: 50, wood: 15 },
+      watchtower: { food: 180, wood: 120, knowledge: 60 },
+    },
+    softGuide: { mode: 'strong', target: 'card-watchtower' },
+  }, { completed: false, currentStep: 13 }, {
+    lumbermill: {
+      id: 'lumbermill',
+      name: 'Lumbermill',
+      icon: 'L',
+      ui: { description: 'Wood' },
+    },
+    watchtower: {
+      id: 'watchtower',
+      name: 'Watchtower',
+      icon: 'W',
+      ui: { description: 'Defense' },
+    },
+  });
+
+  const watchtower = view.cards.find((card) => card.id === 'watchtower');
+
+  assert.equal(watchtower.button.action, 'build');
+  assert.equal(watchtower.button.disabled, false);
+});
+
+test('frontend game state keeps normalized tutorial on state for canvas building locks', () => {
+  const FrontendGameState = require('../js/domain/GameState');
+  const state = FrontendGameState.normalizeGameState({
+    tutorial: { completed: false, currentStep: 13, phaseCompleted: { newbie: true, era2: false } },
+    gameState: { resources: {}, buildings: {} },
+  });
+
+  assert.deepEqual(state.tutorial, {
+    completed: false,
+    currentStep: 13,
+    phaseCompleted: { newbie: true, era2: false },
+  });
+});
+
 test('event view state is renderer-neutral and formats cards, badge, and history', () => {
   const view = UIStatePresenter.buildEventViewState({
     resources: { knowledgePerSecond: 1.25 },

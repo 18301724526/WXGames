@@ -175,6 +175,8 @@
           const nextTab = resolvedTab && resolvedTab !== previousTab ? resolvedTab : (action.tab || resolvedTab || 'resources');
           if (hostCanAnimate) this.host?.startPageTransition?.(previousTab, nextTab, { fromBuildingOffset: previousBuildingOffset });
           this.afterHandled(action);
+          const guide = (this.host?.getGuideState?.() || this.getState())?.softGuide;
+          if (guide?.mode === 'strong' && guide.target) this.host?.refreshCurrentGuideHighlight?.();
         }
         return allowed !== false;
       }));

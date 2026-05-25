@@ -1285,7 +1285,16 @@
         ? state.buildingCosts[id]
         : undefined;
       const actionLabel = this.getBuildingActionLabel(cost, level);
-      const disabledByTutorial = Boolean(tutorial && !tutorial.completed && (
+      const guideTarget = state.softGuide?.mode === 'strong' ? state.softGuide.target : null;
+      const guidedBuildingId = {
+        'card-farm': 'farm',
+        'card-house': 'house',
+        'card-lumbermill': 'lumbermill',
+        'card-barracks': 'barracks',
+        'card-watchtower': 'watchtower',
+        'card-barracks-upgrade': 'barracks',
+      }[guideTarget] || null;
+      const disabledByTutorial = Boolean(tutorial && !tutorial.completed && guidedBuildingId !== id && (
         (tutorial.currentStep === 5 && id !== 'farm')
         || (tutorial.currentStep === 7 && id !== 'house')
         || (tutorial.currentStep >= 13 && tutorial.currentStep <= 14 && id !== 'lumbermill')

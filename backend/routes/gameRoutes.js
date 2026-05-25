@@ -150,11 +150,15 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    const tutorialCheck = TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
+    const actionPayload = { target, count, step, eventId, optionId, direction, missionId, cityId };
+    const expectedGuideAction = GuideTaskService.getExpectedAction(gameState);
+    const tutorialCheck = GuideTaskService.matchesExpectedAction(expectedGuideAction, action, actionPayload)
+      ? { allowed: true }
+      : TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
     if (!tutorialCheck.allowed) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
     }
-    const guideTaskCheck = GuideTaskService.validateAction(gameState, action, { target, count, step, eventId, optionId, direction, missionId, cityId });
+    const guideTaskCheck = GuideTaskService.validateAction(gameState, action, actionPayload);
     if (!guideTaskCheck.allowed) {
       return res.status(403).json({ success: false, error: guideTaskCheck.code, message: guideTaskCheck.message });
     }

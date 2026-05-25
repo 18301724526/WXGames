@@ -56,6 +56,16 @@
       return Boolean(guideTasks.visible && Array.isArray(guideTasks.tasks) && guideTasks.tasks.length);
     }
 
+    hasActiveGuideTaskNavigation() {
+      const state = this.getState() || {};
+      const tasks = Array.isArray(state.guideTasks?.tasks) ? state.guideTasks.tasks : [];
+      return tasks.some((task) => (
+        task
+        && task.status !== 'claimable'
+        && (task.target || task.action?.target)
+      ));
+    }
+
     syncLocalProgress() {
       this.storage.setProgress(this.state);
     }
@@ -98,6 +108,7 @@
 
     async onTabClicked(tabId) {
       if (this.state.completed) return true;
+      if (this.hasActiveGuideTaskNavigation()) return true;
       if (!this.canOpenTab(tabId)) return false;
       if (this.state.currentStep === 1 && tabId === 'civilization') {
         await this.advanceTo(2);
@@ -153,6 +164,7 @@
 
     canOpenTab(tabId) {
       if (this.state.completed) return true;
+      if (this.hasActiveGuideTaskNavigation()) return true;
       if (this.isSoftGuideStep()) return true;
       const step = this.state.currentStep;
       if (step <= 1) return ['resources', 'civilization'].includes(tabId);
