@@ -173,6 +173,14 @@ test('famous person view state maps candidates and joined people into panel card
         roles: ['military'],
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
+        appearance: {
+          version: 'famous-portrait-v0.1',
+          layers: {
+            body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+            outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+            frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
+          },
+        },
         status: { assigned: 'idle' },
       }],
       candidates: [{
@@ -191,6 +199,7 @@ test('famous person view state maps candidates and joined people into panel card
   assert.deepEqual(view.seek.action, { type: 'seekFamousPerson', disabled: false });
   assert.equal(view.people[0].name, '陆骁');
   assert.match(view.people[0].skills[0], /吸血/);
+  assert.equal(view.people[0].appearance.layers.outfit, 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png');
   assert.equal(view.candidates[0].sourceText, '事件投奔');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'fpc_b' });
   assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });

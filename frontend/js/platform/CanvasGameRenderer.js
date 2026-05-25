@@ -71,6 +71,13 @@
         'assets/art/world-site-outpost-cutout.png',
         'assets/art/world-site-ruins-cutout.png',
         'assets/art/world-site-town-cutout.png',
+        'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+        'assets/art/famous-person/layers/fp-layer-body-skin-02.png',
+        'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
+        'assets/art/famous-person/layers/fp-layer-frontHair-tied-01.png',
+        'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+        'assets/art/famous-person/layers/fp-layer-outfit-scholar-01.png',
+        'assets/art/famous-person/layers/fp-layer-accessory-scar-01.png',
       ];
     }
 
@@ -356,6 +363,47 @@
       }
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
       return true;
+    }
+
+    drawFamousPortrait(card = {}, x, y, size, options = {}) {
+      const appearance = card.appearance || {};
+      const rawLayers = appearance.layers && typeof appearance.layers === 'object' ? appearance.layers : {};
+      const layerOrder = ['backHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
+      const layers = layerOrder.map((key) => rawLayers[key]).filter(Boolean);
+      if (!layers.length || !this.ctx) return false;
+
+      const radius = options.radius ?? Math.max(4, size * 0.18);
+      this.drawPanel(x, y, size, size, {
+        fill: options.fill || 'rgba(80, 54, 33, 0.9)',
+        stroke: options.stroke || 'rgba(240, 180, 91, 0.32)',
+        radius,
+        inset: options.inset || 'rgba(255, 231, 184, 0.08)',
+      });
+
+      const drawLayers = () => {
+        const scale = options.scale || 1.45;
+        const drawSize = size * scale;
+        const drawX = x + (size - drawSize) / 2;
+        const drawY = y + (size - drawSize) / 2 + size * (options.offsetY ?? 0.18);
+        let drawnAny = false;
+        layers.forEach((assetPath) => {
+          drawnAny = this.drawAsset(assetPath, drawX, drawY, drawSize, drawSize) || drawnAny;
+        });
+        return drawnAny;
+      };
+
+      const canClip = typeof this.ctx.save === 'function'
+        && typeof this.ctx.restore === 'function'
+        && typeof this.ctx.clip === 'function';
+      if (!canClip) {
+        return drawLayers();
+      }
+      this.ctx.save();
+      this.roundRectPath(x, y, size, size, radius);
+      this.ctx.clip();
+      const drawnAny = drawLayers();
+      this.ctx.restore();
+      return drawnAny;
     }
 
     clear() {
@@ -1557,13 +1605,22 @@
         radius: portraitSize / 2,
         inset: 'rgba(255, 231, 184, 0.1)',
       });
-      this.drawText(String(card.name || '名').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
-        size: 18,
-        bold: true,
-        color: '#ffe6b5',
-        baseline: 'middle',
-        align: 'center',
+      const portraitDrawn = this.drawFamousPortrait(card, portraitX, portraitY, portraitSize, {
+        radius: portraitSize / 2,
+        scale: 1.92,
+        offsetY: 0.08,
+        fill: 'rgba(80, 54, 33, 0.9)',
+        stroke: 'rgba(240, 180, 91, 0.32)',
       });
+      if (!portraitDrawn) {
+        this.drawText(String(card.name || '名').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
+          size: 18,
+          bold: true,
+          color: '#ffe6b5',
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
       const textX = x + 62;
       const rightPad = candidate ? 86 : 14;
       const textWidth = width - (textX - x) - rightPad;

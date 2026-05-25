@@ -1,8 +1,10 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
+const APPEARANCE_VERSION = 'famous-portrait-v0.1';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
+const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
 
 const SOURCE_TYPES = Object.freeze({
   seek: { label: '寻访', roles: ['military', 'governance', 'craft', 'knowledge'] },
@@ -69,6 +71,27 @@ const ARCHETYPES = Object.freeze([
 
 const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白', '韩', '秦', '苏']);
 
+const APPEARANCE_POOLS = Object.freeze({
+  body: ['fp-layer-body-skin-01.png', 'fp-layer-body-skin-02.png'],
+  frontHair: ['fp-layer-frontHair-short-01.png', 'fp-layer-frontHair-tied-01.png'],
+  outfit: {
+    vanguard: ['fp-layer-outfit-vanguard-01.png'],
+    guardian: ['fp-layer-outfit-vanguard-01.png'],
+    tactician: ['fp-layer-outfit-scholar-01.png'],
+    warden: ['fp-layer-outfit-scholar-01.png'],
+    artisan: ['fp-layer-outfit-vanguard-01.png'],
+    scholar: ['fp-layer-outfit-scholar-01.png'],
+  },
+  accessory: {
+    vanguard: ['fp-layer-accessory-scar-01.png', null],
+    guardian: [null, 'fp-layer-accessory-scar-01.png'],
+    tactician: [null],
+    warden: [null],
+    artisan: [null, 'fp-layer-accessory-scar-01.png'],
+    scholar: [null],
+  },
+});
+
 const EFFECTS = Object.freeze({
   lifesteal: {
     label: '吸血',
@@ -131,6 +154,25 @@ function pick(list, randomSource = Math.random) {
   return list[Math.floor(rollUnit(randomSource) * list.length)];
 }
 
+function hashText(value) {
+  const text = String(value || '');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createSeedRandom(seed) {
+  let state = hashText(seed) || 1;
+  return () => {
+    state = Math.imul(state ^ (state >>> 15), 1 | state);
+    state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
+    return ((state ^ (state >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function sanitizeText(value, fallback = '') {
   const text = typeof value === 'string' ? value.trim() : '';
   return text || fallback;
@@ -173,12 +215,57 @@ function normalizeSkill(raw = {}) {
   };
 }
 
+function layerPath(filename) {
+  return filename ? `${PORTRAIT_LAYER_BASE}${filename}` : null;
+}
+
+function createAppearance(archetype, seed, randomSource = null) {
+  const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(seed);
+  const outfitPool = APPEARANCE_POOLS.outfit[archetype.id] || APPEARANCE_POOLS.outfit.vanguard;
+  const accessoryPool = APPEARANCE_POOLS.accessory[archetype.id] || [null];
+  const layers = {
+    body: layerPath(pick(APPEARANCE_POOLS.body, source)),
+    outfit: layerPath(pick(outfitPool, source)),
+    frontHair: layerPath(pick(APPEARANCE_POOLS.frontHair, source)),
+  };
+  const accessory = pick(accessoryPool, source);
+  if (accessory) layers.accessory = layerPath(accessory);
+  return {
+    version: APPEARANCE_VERSION,
+    seed: sanitizeText(seed, `${archetype.id}:appearance`),
+    palette: archetype.roles.includes('military') ? 'military_red' : 'settlement_blue',
+    layers,
+  };
+}
+
+function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
+  const generated = createAppearance(archetype, source.seed || fallbackSeed);
+  const layers = ['backHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect']
+    .reduce((result, key) => {
+      const value = sanitizeText(rawLayers[key]);
+      if (value) result[key] = value;
+      return result;
+    }, {});
+  return {
+    version: sanitizeText(source.version, APPEARANCE_VERSION),
+    seed: sanitizeText(source.seed, fallbackSeed),
+    palette: sanitizeText(source.palette, generated.palette),
+    layers: {
+      ...generated.layers,
+      ...layers,
+    },
+  };
+}
+
 function normalizePerson(raw = {}, options = {}) {
   if (!raw || typeof raw !== 'object') return null;
   const id = sanitizeText(raw.id);
   if (!id) return null;
   const archetype = ARCHETYPES.find((item) => item.id === raw.archetype) || ARCHETYPES[0];
   const skills = Array.isArray(raw.skills) ? raw.skills.map(normalizeSkill).filter(Boolean).slice(0, 2) : [];
+  const fallbackAppearanceSeed = raw.source?.seed || `${id}:${raw.name || archetype.id}:${raw.createdAt || ''}`;
   return {
     id,
     name: sanitizeText(raw.name, '无名之士').slice(0, 12),
@@ -191,6 +278,7 @@ function normalizePerson(raw = {}, options = {}) {
     attributes: normalizeAttributes(raw.attributes),
     traits: Array.isArray(raw.traits) ? raw.traits.map(String).slice(0, 4) : [],
     skills,
+    appearance: normalizeAppearance(raw.appearance, archetype, fallbackAppearanceSeed),
     status: normalizeStatus(raw.status),
     createdAt: raw.createdAt || new Date().toISOString(),
     joinedAt: options.candidate ? null : (raw.joinedAt || raw.createdAt || new Date().toISOString()),
@@ -292,6 +380,7 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
   const title = pick(archetype.titlePool, randomSource) || archetype.titlePool[0];
   const rollId = Math.floor(rollUnit(randomSource) * 1000000).toString(36).padStart(4, '0');
   const activeCityId = gameState.activeCityId || CityService.CAPITAL_CITY_ID;
+  const seed = `${gameState.playerId || 'player'}:${now.getTime()}:${rollId}`;
   return {
     id: `fpc_${now.getTime().toString(36)}_${rollId}`,
     name: `${surname}${given}`,
@@ -301,7 +390,7 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
       type: sourceType,
       label: SOURCE_TYPES[sourceType].label,
       cityId: activeCityId,
-      seed: `${gameState.playerId || 'player'}:${now.getTime()}:${rollId}`,
+      seed,
     },
     archetype: archetype.id,
     archetypeLabel: archetype.label,
@@ -309,6 +398,7 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
     attributes: createAttributes(archetype, randomSource),
     traits: [archetype.label],
     skills: [createSkill(archetype, randomSource)],
+    appearance: createAppearance(archetype, seed, randomSource),
     status: normalizeStatus({ assigned: 'candidate', loyalty: 55 + Math.floor(rollUnit(randomSource) * 30) }),
     createdAt: now.toISOString(),
     joinedAt: null,
@@ -424,6 +514,7 @@ function getClientState(gameState = {}) {
 
 module.exports = {
   GENERATOR_VERSION,
+  APPEARANCE_VERSION,
   MIN_SEEK_ERA,
   MAX_CANDIDATES,
   ARCHETYPES,

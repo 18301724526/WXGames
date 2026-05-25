@@ -40,6 +40,10 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.archetype, 'vanguard');
   assert.equal(result.candidate.name, '陆骁');
   assert.equal(result.candidate.skills[0].name, '血刃连袭');
+  assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-body-skin-01.png'));
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-01.png'));
+  assert.ok(result.candidate.appearance.layers.frontHair.startsWith('assets/art/famous-person/layers/'));
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
@@ -67,6 +71,7 @@ test('accept moves candidate into cloud-persisted famous people list', () => {
   assert.equal(state.famousPersonState.candidates.length, 0);
   assert.equal(state.famousPeople[0].id.startsWith('fp_'), true);
   assert.equal(state.famousPeople[0].source.candidateId, seek.candidate.id);
+  assert.deepEqual(state.famousPeople[0].appearance, seek.candidate.appearance);
   assert.equal(state.famousPeople[0].status.assigned, 'idle');
   assert.equal(client.count, 1);
   assert.equal(client.candidateCount, 0);
@@ -123,4 +128,7 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
 
   assert.equal(normalized.famousPeople.length, 1);
   assert.equal(normalized.famousPersonState.candidates.length, 0);
+  assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.ok(normalized.famousPeople[0].appearance.layers.body);
+  assert.ok(normalized.famousPeople[0].appearance.layers.outfit);
 });

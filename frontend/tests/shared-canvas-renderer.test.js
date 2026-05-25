@@ -146,6 +146,14 @@ test('CanvasGameRenderer preloads shared assets and reports progress', async () 
   assert.equal(renderer.getAsset('assets/art/icon-fire-cutout.webp'), loadedImages[0]);
 });
 
+test('CanvasGameRenderer preloads famous person portrait layers', () => {
+  const paths = CanvasGameRenderer.getPreloadAssetPaths();
+
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-frontHair-short-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png'));
+});
+
 test('CanvasGameRenderer draws loading page over gameplay until resources are ready', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -884,6 +892,16 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
     buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
     buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
   });
+  [
+    'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+    'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+    'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
+  ].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+  });
 
   renderer.render({
     currentEraName: '城邦时代',
@@ -903,6 +921,14 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         roles: ['military'],
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
+        appearance: {
+          version: 'famous-portrait-v0.1',
+          layers: {
+            body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+            outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+            frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
+          },
+        },
         status: { assigned: 'idle' },
       }],
       candidates: [{
@@ -926,6 +952,11 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '寻访'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
+  assert.ok(calls.some((call) => (
+    call[0] === 'drawImage'
+    && call[1]?.src === 'assets/art/famous-person/layers/fp-layer-body-skin-01.png'
+  )));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '陆'), false);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openFamousPersons'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'seekFamousPerson'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'acceptFamousPerson' && target.action.candidateId === 'fpc_b'));

@@ -551,6 +551,7 @@
         sourceText: this.formatFamousPersonSource(person.source),
         stats,
         skills,
+        appearance: person.appearance && typeof person.appearance === 'object' ? person.appearance : null,
         statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
       };
     }
