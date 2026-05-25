@@ -76,6 +76,7 @@
         'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
         'assets/art/famous-person/layers/fp-layer-frontHair-tied-01.png',
         'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+        'assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png',
         'assets/art/famous-person/layers/fp-layer-outfit-scholar-01.png',
         'assets/art/famous-person/layers/fp-layer-accessory-scar-01.png',
       ];
@@ -372,8 +373,10 @@
       const layers = layerOrder.map((key) => rawLayers[key]).filter(Boolean);
       if (!layers.length || !this.ctx) return false;
 
+      const frameWidth = options.frameWidth || size;
+      const frameHeight = options.frameHeight || size;
       const radius = options.radius ?? Math.max(4, size * 0.18);
-      this.drawPanel(x, y, size, size, {
+      this.drawPanel(x, y, frameWidth, frameHeight, {
         fill: options.fill || 'rgba(80, 54, 33, 0.9)',
         stroke: options.stroke || 'rgba(240, 180, 91, 0.32)',
         radius,
@@ -383,8 +386,8 @@
       const drawLayers = () => {
         const scale = options.scale || 1.45;
         const drawSize = size * scale;
-        const drawX = x + (size - drawSize) / 2;
-        const drawY = y + (size - drawSize) / 2 + size * (options.offsetY ?? 0.18);
+        const drawX = x + (frameWidth - drawSize) / 2;
+        const drawY = y + (frameHeight - drawSize) / 2 + size * (options.offsetY ?? 0.18);
         let drawnAny = false;
         layers.forEach((assetPath) => {
           drawnAny = this.drawAsset(assetPath, drawX, drawY, drawSize, drawSize) || drawnAny;
@@ -399,7 +402,7 @@
         return drawLayers();
       }
       this.ctx.save();
-      this.roundRectPath(x, y, size, size, radius);
+      this.roundRectPath(x, y, frameWidth, frameHeight, radius);
       this.ctx.clip();
       const drawnAny = drawLayers();
       this.ctx.restore();
@@ -1589,31 +1592,34 @@
 
     renderFamousPersonItem(card = {}, x, y, width, options = {}) {
       const candidate = Boolean(options.candidate);
-      const height = candidate ? 118 : 92;
+      const height = candidate ? 132 : 112;
       this.drawPanel(x, y, width, height, {
         fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
         stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
         radius: 9,
         inset: candidate ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
       });
-      const portraitSize = 42;
+      const portraitWidth = 74;
+      const portraitHeight = candidate ? 98 : 88;
       const portraitX = x + 10;
-      const portraitY = y + 12;
-      this.drawPanel(portraitX, portraitY, portraitSize, portraitSize, {
-        fill: 'rgba(80, 54, 33, 0.9)',
+      const portraitY = y + 10;
+      this.drawPanel(portraitX, portraitY, portraitWidth, portraitHeight, {
+        fill: 'rgba(44, 32, 23, 0.94)',
         stroke: 'rgba(240, 180, 91, 0.32)',
-        radius: portraitSize / 2,
+        radius: 10,
         inset: 'rgba(255, 231, 184, 0.1)',
       });
-      const portraitDrawn = this.drawFamousPortrait(card, portraitX, portraitY, portraitSize, {
-        radius: portraitSize / 2,
-        scale: 1.92,
-        offsetY: 0.08,
-        fill: 'rgba(80, 54, 33, 0.9)',
+      const portraitDrawn = this.drawFamousPortrait(card, portraitX, portraitY, Math.min(portraitWidth, portraitHeight), {
+        radius: 10,
+        scale: 1.74,
+        offsetY: 0.14,
+        fill: 'rgba(44, 32, 23, 0.94)',
         stroke: 'rgba(240, 180, 91, 0.32)',
+        frameWidth: portraitWidth,
+        frameHeight: portraitHeight,
       });
       if (!portraitDrawn) {
-        this.drawText(String(card.name || '名').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
+        this.drawText(String(card.name || '名').slice(0, 1), portraitX + portraitWidth / 2, portraitY + portraitHeight / 2, {
           size: 18,
           bold: true,
           color: '#ffe6b5',
@@ -1621,7 +1627,7 @@
           align: 'center',
         });
       }
-      const textX = x + 62;
+      const textX = x + 96;
       const rightPad = candidate ? 86 : 14;
       const textWidth = width - (textX - x) - rightPad;
       this.drawText(this.truncateText(`${card.name || '无名之士'} · ${card.title || '名人'}`, textWidth, { size: 14, bold: true }), textX, y + 10, {
@@ -1633,12 +1639,12 @@
         size: 10,
         color: '#cbbd96',
       });
-      this.drawText(this.truncateText(card.stats || '', width - 28, { size: 10 }), x + 12, y + 62, {
+      this.drawText(this.truncateText(card.stats || '', textWidth, { size: 10 }), textX, y + 55, {
         size: 10,
         color: '#aeb0b8',
       });
       const skill = Array.isArray(card.skills) ? card.skills[0] : '';
-      this.drawText(this.truncateText(skill || '', width - 28, { size: 10, bold: true }), x + 12, y + 78, {
+      this.drawText(this.truncateText(skill || '', textWidth, { size: 10, bold: true }), textX, y + 74, {
         size: 10,
         bold: true,
         color: '#74d3a0',
@@ -1733,7 +1739,7 @@
         this.drawText('候选', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
         cursorY += 22;
         candidates.slice(0, 2).forEach((card) => {
-          if (cursorY + 118 > y + panelHeight - 94) return;
+          if (cursorY + 132 > y + panelHeight - 94) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth, { candidate: true });
         });
       }
@@ -1754,7 +1760,7 @@
         });
       } else {
         people.slice(0, 3).forEach((card) => {
-          if (cursorY + 92 > y + panelHeight - 18) return;
+          if (cursorY + 112 > y + panelHeight - 18) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
         });
       }

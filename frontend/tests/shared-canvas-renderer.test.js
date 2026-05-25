@@ -152,6 +152,7 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-frontHair-short-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png'));
 });
 
 test('CanvasGameRenderer draws loading page over gameplay until resources are ready', () => {
@@ -922,7 +923,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v0.1',
+          version: 'famous-portrait-v0.2',
           layers: {
             body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
             outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
@@ -955,6 +956,11 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => (
     call[0] === 'drawImage'
     && call[1]?.src === 'assets/art/famous-person/layers/fp-layer-body-skin-01.png'
+  )));
+  assert.ok(calls.some((call) => (
+    call[0] === 'roundRect'
+    && call[3] === 74
+    && call[4] === 88
   )));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '陆'), false);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openFamousPersons'));

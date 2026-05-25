@@ -49,6 +49,22 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.famousPersonState.candidateCount, 1);
 });
 
+test('guardian archetype uses its own portrait outfit', () => {
+  const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-guardian-portrait'));
+  state.currentEra = 3;
+
+  const result = FamousPersonService.seekFamousPerson(
+    state,
+    { source: 'seek' },
+    new Date('2026-05-25T03:02:00.000Z'),
+    createRandomSequence([0.2, 0, 0, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.2, 0.3]),
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.candidate.archetype, 'guardian');
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-guardian-01.png'));
+});
+
 test('accept moves candidate into cloud-persisted famous people list', () => {
   const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-accept'));
   state.currentEra = 3;

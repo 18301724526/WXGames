@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.1';
+const APPEARANCE_VERSION = 'famous-portrait-v0.2';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -76,7 +76,7 @@ const APPEARANCE_POOLS = Object.freeze({
   frontHair: ['fp-layer-frontHair-short-01.png', 'fp-layer-frontHair-tied-01.png'],
   outfit: {
     vanguard: ['fp-layer-outfit-vanguard-01.png'],
-    guardian: ['fp-layer-outfit-vanguard-01.png'],
+    guardian: ['fp-layer-outfit-guardian-01.png'],
     tactician: ['fp-layer-outfit-scholar-01.png'],
     warden: ['fp-layer-outfit-scholar-01.png'],
     artisan: ['fp-layer-outfit-vanguard-01.png'],
@@ -242,6 +242,7 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const source = raw && typeof raw === 'object' ? raw : {};
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
+  if (source.version && source.version !== APPEARANCE_VERSION) return generated;
   const layers = ['backHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect']
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);
