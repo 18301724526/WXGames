@@ -1401,6 +1401,101 @@ test('Canvas app continues from border era advance to watchtower task instead of
   assert.ok(renderCalls.some((call) => call.options.activeTab === 'resources'));
 });
 
+test('Canvas app continues from barracks build to border advance task without manual tab switch', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const barracksTarget = { x: 24, y: 236, width: 342, height: 96, action: { type: 'buildBuilding', buildingId: 'barracks' } };
+  const taskIconTarget = { x: 24, y: 404, width: 96, height: 68, action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' } };
+  const renderer = {
+    hitTargets: [barracksTarget],
+    render(state, options) {
+      renderCalls.push({ state, options });
+      this.hitTargets = options.activeTab === 'resources' ? [taskIconTarget] : [barracksTarget];
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+    },
+    initialState: {
+      currentTab: 'buildings',
+      currentEra: 3,
+      resources: {},
+      population: {},
+      guideTasks: {
+        visible: true,
+        tasks: [{ id: 'barracks_supplies', status: 'active', claimed: true, target: 'card-barracks' }],
+      },
+      softGuide: { mode: 'strong', target: 'card-barracks', message: '建造兵营' },
+    },
+  });
+  app.tutorialController = {
+    state: { completed: true, currentStep: 15, phaseCompleted: { newbie: true, era2: true } },
+    canOpenTab: () => true,
+    render() {},
+  };
+  app.renderMilitaryView = () => {};
+  app.api = {
+    async build(buildingId) {
+      assert.equal(buildingId, 'barracks');
+      return {
+        success: true,
+        tutorial: { completed: true, currentStep: 15, phaseCompleted: { newbie: true, era2: true } },
+        gameState: {
+          currentTab: 'buildings',
+          currentEra: 3,
+          resources: {},
+          population: {},
+          guideTasks: {
+            visible: true,
+            tasks: [{ id: 'border_advance_supplies', status: 'claimable', target: 'task-center-main-claim' }],
+          },
+          softGuide: {
+            mode: 'strong',
+            target: 'task-center-main-claim',
+            message: '领取边境进阶物资',
+          },
+        },
+      };
+    },
+  };
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  app.canvasShell.showTutorialHighlight({ getRect: () => ({
+    left: barracksTarget.x,
+    top: barracksTarget.y,
+    width: barracksTarget.width,
+    height: barracksTarget.height,
+    right: barracksTarget.x + barracksTarget.width,
+    bottom: barracksTarget.y + barracksTarget.height,
+  }) }, '建造兵营', { source: 'guide' });
+
+  await app.buildBuilding('barracks');
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.state.currentTab, 'resources');
+  assert.deepEqual(app.canvasShell.tutorialHighlight.rect, {
+    left: taskIconTarget.x,
+    top: taskIconTarget.y,
+    width: taskIconTarget.width,
+    height: taskIconTarget.height,
+    right: taskIconTarget.x + taskIconTarget.width,
+    bottom: taskIconTarget.y + taskIconTarget.height,
+  });
+  assert.notEqual(app.canvasShell.tutorialHighlight.rect.top, barracksTarget.y);
+  assert.ok(renderCalls.some((call) => call.options.activeTab === 'resources'));
+});
+
 test('Canvas game shell keeps strong guide highlight when a transient target is missing', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];

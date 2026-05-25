@@ -833,6 +833,7 @@
       } else {
         this.showFloatingText(action === 'upgrade' ? '升级成功！' : '建造成功！');
       }
+      this.continueCurrentMainTaskTarget();
       this.log(`成功：${result.message || ''}`);
     }
 
