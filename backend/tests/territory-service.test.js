@@ -69,6 +69,37 @@ function addDiscoveredTribeSite(state, options = {}) {
   });
 }
 
+function addFamousLeader(state, options = {}) {
+  state.famousPeople = [{
+    id: options.id || 'fp_luxiao',
+    name: options.name || '陆骁',
+    title: options.title || '破阵先登',
+    source: { type: 'seek' },
+    archetype: 'vanguard',
+    roles: ['military'],
+    attributes: {
+      command: options.command || 82,
+      force: options.force || 86,
+      strategy: options.strategy || 48,
+      governance: 26,
+      craft: 18,
+      charisma: options.charisma || 58,
+    },
+    skills: [{
+      id: 'skill_lifesteal_combo',
+      name: '血刃连袭',
+      type: 'battle',
+      effects: [
+        { key: 'lifesteal', value: 0.16 },
+        { key: 'combo', chance: 0.24, times: 1 },
+      ],
+    }],
+    status: { assigned: 'idle', loyalty: 68 },
+    createdAt: '2026-05-17T07:00:00.000Z',
+    joinedAt: '2026-05-17T07:01:00.000Z',
+  }];
+}
+
 test('古典时代只默认显示首都和八方向侦察入口', () => {
   const state = createClassicalState();
   const territoryState = TerritoryService.getClientTerritoryState(state);
@@ -317,6 +348,46 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   assert.equal(claim.outcome, 'success');
   assert.equal(claim.casualties, 166);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
+});
+
+test('名人领队出征会生成自动回合战报并记录到地点', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addFamousLeader(state);
+  addDiscoveredTribeSite(state, {
+    id: 'leader_battle_site',
+    naturalName: '林地部落',
+    defense: 500,
+    recommendedSoldiers: 500,
+  });
+  gameStateService.normalizeState(state);
+
+  const start = TerritoryService.startConquest(state, 'leader_battle_site', {
+    troopType: 'unavailable',
+    leader: 'fp_luxiao',
+    soldiers: 500,
+  }, now);
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.expedition.leader, 'fp_luxiao');
+  assert.equal(start.mission.expedition.leaderSnapshot.name, '陆骁');
+
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, 'leader_battle_site', now);
+  const site = state.territories.find((item) => item.id === 'leader_battle_site');
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.outcome, 'success');
+  assert.equal(site.lastBattle.mode, 'conquest');
+  assert.equal(site.lastBattle.leaderId, 'fp_luxiao');
+  assert.equal(site.lastBattle.leaderName, '陆骁');
+  assert.equal(site.lastBattle.report.mode, 'auto-round');
+  assert.equal(site.lastBattle.report.attacker.leaderName, '陆骁');
+  assert.equal(site.lastBattle.report.skillName, '血刃连袭');
+  assert.ok(site.lastBattle.report.rounds.length >= 1);
+  assert.ok(site.lastBattle.report.summary.includes('陆骁'));
 });
 
 test('分城可以对共享情报目标发起军事行动并使用全势力兵力', () => {

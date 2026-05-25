@@ -2299,25 +2299,36 @@
       return '';
     }
 
-    static buildWorldExpeditionDraftViewState(site = {}, uiState = {}) {
+    static buildWorldExpeditionDraftViewState(site = {}, uiState = {}, famousPersons = {}) {
       const recommended = Math.max(this.MIN_EXPEDITION_SOLDIERS, Number(site?.recommendedSoldiers) || Number(site?.defense) || this.MIN_EXPEDITION_SOLDIERS);
+      const people = Array.isArray(famousPersons.people) ? famousPersons.people : [];
+      const firstLeader = people.find((person) => Array.isArray(person.roles) && person.roles.includes('military')) || null;
       return {
         territoryId: uiState.expeditionConfigSiteId || '',
         troopType: uiState.expeditionTroopType || 'unavailable',
-        leader: uiState.expeditionLeader || 'unavailable',
+        leader: uiState.expeditionLeader || firstLeader?.id || 'unavailable',
         soldiers: Math.max(this.MIN_EXPEDITION_SOLDIERS, Number(uiState.expeditionSoldiers) || recommended),
         recommended,
       };
     }
 
     static buildWorldExpeditionConfigViewState(site = {}, territoryState = {}, uiState = {}) {
-      const draft = this.buildWorldExpeditionDraftViewState(site, uiState);
+      const draft = this.buildWorldExpeditionDraftViewState(site, uiState, territoryState.famousPersons || {});
       const availableSoldiers = this.toInteger(territoryState.availableSoldiers);
+      const famousPeople = Array.isArray(territoryState.famousPersons?.people) ? territoryState.famousPersons.people : [];
+      const militaryLeaders = famousPeople
+        .filter((person) => Array.isArray(person.roles) && person.roles.includes('military'))
+        .map((person) => ({
+          value: person.id,
+          label: `${person.name || '无名之士'} · ${person.title || person.archetypeLabel || '名人'}`,
+        }));
+      const leaderOptions = militaryLeaders.length ? militaryLeaders : [{ value: 'unavailable', label: '无名领队' }];
+      const hasLeader = leaderOptions.some((option) => option.value === draft.leader);
       return {
         siteId: site.id || '',
         draft,
         availableSoldiers,
-        disabled: availableSoldiers < draft.soldiers,
+        disabled: availableSoldiers < draft.soldiers || !hasLeader,
         note: `建议 ${site.recommendedSoldiers || site.defense || this.MIN_EXPEDITION_SOLDIERS} 士兵，当前可用 ${availableSoldiers} 士兵`,
         fields: {
           troopType: {
@@ -2329,8 +2340,8 @@
           leader: {
             label: '领队',
             value: draft.leader,
-            options: [{ value: 'unavailable', label: '暂未开放' }],
-            note: '暂未开放',
+            options: leaderOptions,
+            note: militaryLeaders.length ? '选择一位名人作为领队' : '临时领队可出征，接纳军事名人后会形成战报特色',
           },
           soldiers: {
             label: '出征数量',
@@ -2417,7 +2428,22 @@
       if (!site.lastBattle) return '';
       if (site.lastBattle.mode === 'settlement') return '最近一次行动已顺利建立据点';
       const result = site.lastBattle.success ? '上次占领成功' : '上次占领失败';
-      return `${result} · 损失 ${site.lastBattle.casualties || 0} 士兵`;
+      const leader = site.lastBattle.leaderName ? ` · ${site.lastBattle.leaderName}率队` : '';
+      return `${result}${leader} · 损失 ${site.lastBattle.casualties || 0} 士兵`;
+    }
+
+    static getWorldSiteBattleReportLines(site = {}) {
+      const report = site.lastBattle?.report;
+      if (!report) return [];
+      const lines = [report.summary || '战斗已经结束。'];
+      if (report.skillName) lines.push(`关键技能：${report.skillName}`);
+      const lastRound = Array.isArray(report.rounds) && report.rounds.length ? report.rounds[report.rounds.length - 1] : null;
+      if (lastRound) {
+        lines.push(`终局兵力：己方 ${lastRound.attackerSoldiers || 0} / 敌方 ${lastRound.defenderSoldiers || 0}`);
+      } else if (report.attacker || report.defender) {
+        lines.push(`终局兵力：己方 ${report.attacker?.soldiersEnd || 0} / 敌方 ${report.defender?.soldiersEnd || 0}`);
+      }
+      return lines.slice(0, 3);
     }
 
     static buildWorldSiteDetailViewState(site = {}, territoryState = {}, uiState = {}) {
@@ -2437,6 +2463,7 @@
           soldiers: `建议 ${site.recommendedSoldiers || 0} 士兵`,
           march: this.getWorldSiteMarchInfo(site, territoryState),
           note: this.getWorldSiteLastBattleNote(site),
+          battleReport: this.getWorldSiteBattleReportLines(site),
         },
         action: this.buildWorldSiteActionViewState(site, territoryState, uiState),
       };

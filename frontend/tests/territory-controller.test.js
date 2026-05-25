@@ -99,6 +99,28 @@ test('territory controller receives expedition draft changes as plain data', () 
   assert.equal(controller.getUiState().expeditionSoldiers, '500');
 });
 
+test('territory controller preselects an accepted famous person as expedition leader', () => {
+  const controller = new TerritoryController({
+    getState: () => ({
+      territoryState: {
+        territories: [{ id: 'site-east', recommendedSoldiers: 500 }],
+      },
+      famousPersons: {
+        people: [{
+          id: 'fp_luxiao',
+          name: '陆骁',
+          roles: ['military'],
+        }],
+      },
+    }),
+  });
+
+  controller.openExpeditionDraft('site-east');
+
+  assert.equal(controller.getUiState().expeditionLeader, 'fp_luxiao');
+  assert.equal(controller.getUiState().expeditionSoldiers, '500');
+});
+
 test('shared canvas action controller maps scout actions to distinct controller payloads', () => {
   const projectRoot = path.join(__dirname, '..', '..');
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');

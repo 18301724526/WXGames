@@ -1078,6 +1078,20 @@
       return this.afterHandled(action);
     }
 
+    handle_changeExpeditionLeader(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const territory = this.getTerritoryController();
+      if (territory?.handleDraftInput) {
+        territory.handleDraftInput({ field: 'leader', value: action.value || action.leaderId });
+        return true;
+      }
+      this.host.territoryUiState = this.host.territoryUiState || {};
+      this.host.territoryUiState.expeditionConfigSiteId = action.siteId || this.host.territoryUiState.expeditionConfigSiteId;
+      this.host.territoryUiState.expeditionLeader = action.value || action.leaderId || 'unavailable';
+      return this.afterHandled(action);
+    }
+
     handle_territoryAction(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;

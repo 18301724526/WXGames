@@ -1011,6 +1011,14 @@ test('world site dialog view state formats details and expedition actions', () =
   const view = UIStatePresenter.buildWorldSiteDialogViewState(territories, {
     availableSoldiers: 400,
     missionDurationSeconds: 90,
+    famousPersons: {
+      people: [{
+        id: 'fp_luxiao',
+        name: '陆骁',
+        title: '破阵先登',
+        roles: ['military'],
+      }],
+    },
   }, {
     selectedSiteId: 'tribe_site',
     expeditionConfigSiteId: 'tribe_site',
@@ -1028,6 +1036,8 @@ test('world site dialog view state formats details and expedition actions', () =
   assert.equal(detail.text.march, '行军耗时 1:30');
   assert.equal(detail.action.kind, 'group');
   assert.equal(detail.action.buttons[2].action, 'open-expedition');
+  assert.equal(detail.action.expeditionConfig.fields.leader.value, 'fp_luxiao');
+  assert.equal(detail.action.expeditionConfig.fields.leader.options[0].label, '陆骁 · 破阵先登');
   assert.equal(detail.action.expeditionConfig.fields.soldiers.value, 600);
   assert.equal(detail.action.expeditionConfig.disabled, true);
 });
@@ -1057,6 +1067,57 @@ test('world site dialog view state formats occupied and contested actions', () =
   assert.deepEqual(occupied.action.buttons.map((button) => button.action), ['manage-city', 'rename-city']);
   assert.equal(ready.text.march, '行军耗时 2:00，已抵达待接管');
   assert.equal(ready.action.buttons[0].action, 'claim');
+});
+
+test('world site dialog view state formats famous leader battle report summary', () => {
+  const view = UIStatePresenter.buildWorldSiteDialogViewState([{
+    id: 'battle_site',
+    status: 'occupied',
+    owner: 'player',
+    naturalName: '林地部落',
+    lastBattle: {
+      mode: 'conquest',
+      success: true,
+      casualties: 46,
+      leaderName: '陆骁',
+      report: {
+        summary: '陆骁率队压制了林地部落。',
+        skillName: '血刃连袭',
+        rounds: [{ round: 3, attackerSoldiers: 454, defenderSoldiers: 0 }],
+      },
+    },
+  }], {}, { selectedSiteId: 'battle_site' });
+  const detail = view.details.find((item) => item.id === 'battle_site');
+
+  assert.equal(detail.text.note, '上次占领成功 · 陆骁率队 · 损失 46 士兵');
+  assert.deepEqual(detail.text.battleReport, [
+    '陆骁率队压制了林地部落。',
+    '关键技能：血刃连袭',
+    '终局兵力：己方 454 / 敌方 0',
+  ]);
+});
+
+test('world expedition config keeps unnamed leader fallback available before famous people join', () => {
+  const view = UIStatePresenter.buildWorldSiteDialogViewState([{
+    id: 'tribe_site',
+    status: 'discovered',
+    owner: 'tribe',
+    occupationMode: 'conquest',
+    naturalName: '山口部落',
+    defense: 500,
+    recommendedSoldiers: 500,
+  }], {
+    availableSoldiers: 600,
+    famousPersons: { people: [] },
+  }, {
+    selectedSiteId: 'tribe_site',
+    expeditionConfigSiteId: 'tribe_site',
+  });
+  const config = view.details.find((item) => item.id === 'tribe_site').action.expeditionConfig;
+
+  assert.equal(config.fields.leader.value, 'unavailable');
+  assert.equal(config.fields.leader.options[0].label, '无名领队');
+  assert.equal(config.disabled, false);
 });
 
 test('population view state formats jobs and button availability', () => {

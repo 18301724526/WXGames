@@ -933,6 +933,87 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeFamousPersons'));
 });
 
+test('CanvasGameRenderer renders famous person leader choices in world expedition config', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      text: {
+        woodValue: '0',
+        woodRate: '+0/s',
+        ironValue: '0',
+        ironRate: '+0/s',
+        stoneValue: '0',
+        stoneRate: '+0/s',
+        foodValue: '0',
+        foodRate: '+0/s',
+        knowledgeValue: '0',
+        knowledgeRate: '+0/s',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildMilitaryNavigationViewState: () => ({ activeView: 'world', tabs: [] }),
+    buildMilitaryViewState: () => ({}),
+    buildScoutControlViewState: () => ({ cells: [] }),
+    buildTerritorySummaryViewState: () => ({
+      text: { polityName: '火种部族', territoryCount: '1/1 已控制' },
+    }),
+    buildWorldRadarViewState: UIStatePresenter.buildWorldRadarViewState.bind(UIStatePresenter),
+    buildWorldSiteDialogViewState: UIStatePresenter.buildWorldSiteDialogViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({
+    currentTab: 'military',
+    territoryState: {
+      availableSoldiers: 800,
+      missionDurationSeconds: 120,
+      famousPersons: {
+        people: [
+          { id: 'fp_luxiao', name: '陆骁', title: '破阵先登', roles: ['military'] },
+          { id: 'fp_jiangheng', name: '姜衡', title: '垒门守将', roles: ['military'] },
+        ],
+      },
+      territories: [{
+        id: 'tribe_site',
+        x: 1,
+        y: 0,
+        status: 'discovered',
+        owner: 'tribe',
+        occupationMode: 'conquest',
+        naturalName: '林地部落',
+        scale: 2,
+        threat: 4,
+        defense: 500,
+        recommendedSoldiers: 500,
+        visualOffset: { x: 0, y: 0 },
+        effects: {},
+      }],
+    },
+  }, {
+    activeTab: 'military',
+    mode: 'hud',
+    activeMilitaryView: 'world',
+    territoryUiState: {
+      selectedSiteId: 'tribe_site',
+      expeditionConfigSiteId: 'tribe_site',
+      expeditionLeader: 'fp_jiangheng',
+      expeditionSoldiers: '500',
+    },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('领队')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('陆骁')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('姜衡')));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'changeExpeditionLeader'
+    && target.action.value === 'fp_luxiao'
+  )));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'launchExpedition'));
+});
+
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

@@ -168,6 +168,14 @@
         return changed;
       }
 
+      if (action.type === 'changeExpeditionLeader') {
+        const changed = typeof context.changeExpeditionLeader === 'function'
+          ? context.changeExpeditionLeader(action) !== false
+          : false;
+        if (changed && typeof context.render === 'function') context.render(action);
+        return changed;
+      }
+
       if (action.type === 'goToGuideTaskTarget') {
         const moved = typeof context.goToGuideTaskTarget === 'function'
           ? context.goToGuideTaskTarget(action) !== false
@@ -264,6 +272,7 @@
         'closeWorldSite',
         'resetWorldPan',
         'changeExpeditionSoldiers',
+        'changeExpeditionLeader',
         'goToGuideTaskTarget',
         'openTaskCenter',
         'closeTaskCenter',

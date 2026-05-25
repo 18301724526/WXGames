@@ -145,10 +145,12 @@
     openExpeditionDraft(territoryId) {
       const territory = (this.getState().territoryState?.territories || []).find((item) => item.id === territoryId);
       if (!territory) return;
+      const people = this.getState().famousPersons?.people || [];
+      const leader = people.find((person) => Array.isArray(person.roles) && person.roles.includes('military')) || people[0] || null;
       this.setExpeditionDraft({
         territoryId,
         troopType: 'unavailable',
-        leader: 'unavailable',
+        leader: leader?.id || 'unavailable',
         soldiers: territory.recommendedSoldiers || territory.defense || TerritoryController.MIN_EXPEDITION_SOLDIERS,
       });
     }

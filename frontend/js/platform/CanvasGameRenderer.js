@@ -4019,15 +4019,36 @@
 
     renderWorldExpeditionConfig(config = {}, x, y, width) {
       if (!config) return y;
-      this.drawPanel(x, y, width, 94, {
+      this.drawPanel(x, y, width, 136, {
         fill: 'rgba(0, 0, 0, 0.16)',
         stroke: 'rgba(240, 180, 91, 0.16)',
         radius: 9,
       });
-      this.drawText(`出征数量 ${config.fields?.soldiers?.value || 1}`, x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
-      this.drawText(config.note || '', x + 12, y + 34, { size: 10, color: '#aeb0b8' });
+      const leaderOptions = config.fields?.leader?.options || [];
+      const activeLeader = leaderOptions.find((option) => option.value === config.fields?.leader?.value) || leaderOptions[0] || null;
+      this.drawText(`领队 ${activeLeader?.label || '暂无可出征名人'}`, x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
+      const leaderY = y + 34;
+      const leaderButtonWidth = Math.max(82, Math.min(118, (width - 24 - 8 * Math.max(0, leaderOptions.length - 1)) / Math.max(1, Math.min(3, leaderOptions.length || 1))));
+      leaderOptions.slice(0, 3).forEach((option, index) => {
+        const buttonX = x + 12 + index * (leaderButtonWidth + 8);
+        const active = option.value === config.fields?.leader?.value;
+        this.drawButton(buttonX, leaderY, leaderButtonWidth, 26, this.truncateText(option.label, leaderButtonWidth - 12, { size: 10 }), {
+          size: 10,
+          radius: 7,
+          active,
+          disabled: false,
+        });
+        this.addHitTarget({ x: buttonX, y: leaderY, width: leaderButtonWidth, height: 26 }, {
+          type: 'changeExpeditionLeader',
+          siteId: config.siteId,
+          value: option.value,
+          disabled: false,
+        });
+      });
+      this.drawText(`出征数量 ${config.fields?.soldiers?.value || 1}`, x + 12, y + 70, { size: 12, bold: true, color: '#f6e8c8' });
+      this.drawText(config.note || '', x + 12, y + 92, { size: 10, color: '#aeb0b8' });
       const value = Number(config.fields?.soldiers?.value) || 1;
-      const controlsY = y + 54;
+      const controlsY = y + 112;
       this.drawButton(x + 12, controlsY, 34, 28, '-', { size: 14, radius: 7, disabled: value <= 1 });
       this.drawButton(x + width - 46, controlsY, 34, 28, '+', { size: 14, radius: 7 });
       this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || '出发', {
@@ -4054,7 +4075,7 @@
         territoryId: config.siteId,
         disabled: config.disabled,
       });
-      return y + 106;
+      return y + 148;
     }
 
     renderWorldSiteModal(state = {}, options = {}) {
@@ -4113,6 +4134,14 @@
       if (detail.text.note) {
         this.drawText(detail.text.note, x + 16, cursorY, { size: 11, color: '#d6b16e' });
         cursorY += 20;
+      }
+      if (Array.isArray(detail.text.battleReport) && detail.text.battleReport.length) {
+        detail.text.battleReport.slice(0, 3).forEach((line) => {
+          const lines = this.wrapTextLimit(line, panelWidth - 32, 1, { size: 11 });
+          this.drawTextLines(lines, x + 16, cursorY, { size: 11, color: '#f0b45b', lineHeight: 15 });
+          cursorY += lines.length * 15 + 3;
+        });
+        cursorY += 6;
       }
       if (detail.action?.hint) {
         const hintLines = this.wrapTextLimit(detail.action.hint, panelWidth - 32, 2, { size: 11 });
