@@ -56,6 +56,54 @@ test('guide task overlay keeps tutorial controller from replacing the strong hig
   }
 });
 
+test('guide task overlay clears stale tutorial-owned highlight before taking over', () => {
+  const originalLocalStorage = global.localStorage;
+  try {
+    global.localStorage = createStorage();
+    delete require.cache[require.resolve('../js/controllers/TutorialController')];
+    const TutorialController = require('../js/controllers/TutorialController');
+    const renderer = {
+      hideCalls: 0,
+      showCalls: [],
+      softCalls: [],
+      clearOwnedHighlight() {
+        this.hideCalls += 1;
+      },
+      hide() {
+        this.hideCalls += 1;
+      },
+      show(target, message) {
+        this.showCalls.push({ target, message });
+      },
+      showSoft(message) {
+        this.softCalls.push(message);
+      },
+    };
+    const state = {
+      guideTasks: {
+        visible: true,
+        tasks: [{ id: 'settlement_advance_supplies', status: 'claimable', target: 'task-center-main-claim' }],
+      },
+    };
+    const controller = new TutorialController({
+      api: { async advanceTutorial(step) { return { tutorial: { completed: false, currentStep: step } }; } },
+      renderer,
+      getTarget: (key) => key,
+      getCurrentTab: () => 'buildings',
+      getState: () => state,
+      onTabLockChange: () => {},
+    });
+
+    controller.setState({ completed: false, currentStep: 8, phaseCompleted: { newbie: true, era2: false } });
+
+    assert.equal(renderer.hideCalls, 1);
+    assert.deepEqual(renderer.showCalls, []);
+    assert.deepEqual(renderer.softCalls, []);
+  } finally {
+    global.localStorage = originalLocalStorage;
+  }
+});
+
 test('guide task overlay lets main task navigation override stale tutorial tab locks', async () => {
   const originalLocalStorage = global.localStorage;
   try {

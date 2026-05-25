@@ -51,6 +51,21 @@ test('soft guide clears canvas highlight and updates advisor advice only', () =>
   assert.equal(advisorMessage, 'Wait for enough resources');
 });
 
+test('guide task takeover does not clear guide-owned canvas highlight', () => {
+  const calls = [];
+  const renderer = new TutorialCanvasRenderer({
+    canvasShell: {
+      tutorialHighlight: { source: 'guide' },
+      hideTutorialHighlight() {
+        calls.push('hide');
+      },
+    },
+  });
+
+  assert.equal(renderer.clearOwnedHighlight(), false);
+  assert.deepEqual(calls, []);
+});
+
 test('tutorial renderer source has no DOM coupling', () => {
   const source = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'TutorialCanvasRenderer.js'), 'utf8');
 

@@ -447,7 +447,7 @@
       };
     }
 
-    showTutorialHighlight(target, message) {
+    showTutorialHighlight(target, message, options = {}) {
       const rect = this.resolveTutorialRect(target);
       if (!rect) {
         if (this.tutorialHighlight) return true;
@@ -465,6 +465,7 @@
           durationMs: 260,
         },
         pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
+        source: options.source || 'guide',
       };
       this.startFloatTimer();
       this.renderActive();

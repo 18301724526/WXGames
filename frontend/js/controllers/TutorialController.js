@@ -243,7 +243,11 @@
 
     render() {
       this.onTabLockChange && this.onTabLockChange();
-      if (this.hasVisibleGuideTask()) return;
+      if (this.hasVisibleGuideTask()) {
+        if (typeof this.renderer.clearOwnedHighlight === 'function') this.renderer.clearOwnedHighlight();
+        else if (this.isSoftGuideStep()) this.renderer.hide?.();
+        return;
+      }
       if (this.state.completed || this.state.currentStep === 0) {
         this.renderer.hide();
         return;

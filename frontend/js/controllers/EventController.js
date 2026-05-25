@@ -33,13 +33,13 @@
     }
 
     async claimActive(optionId = null) {
-      if (!this.activeEventId) return;
+      if (!this.activeEventId) return false;
       const state = this.getState();
       const eventData = (state.eventQueue || []).find((item) => item.id === this.activeEventId);
       const option = optionId
         ? eventData?.options?.find((item) => item.id === optionId)
         : eventData?.options?.[0];
-      if (!eventData || !option) return;
+      if (!eventData || !option) return false;
       try {
         const result = await this.api.claimEvent(this.activeEventId, option.id);
         this.onStateApplied(result);
@@ -47,8 +47,10 @@
         this.close();
         this.onFloatingText(this.formatReward(result.reward));
         this.onLog(`🎁 ${result.message}`);
+        return result;
       } catch (error) {
         this.onLog(`❌ ${error.payload?.message || error.message}`);
+        return false;
       }
     }
   }

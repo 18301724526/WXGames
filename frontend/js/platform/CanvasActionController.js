@@ -133,6 +133,8 @@
 
     async runAction(callback) {
       if (typeof callback !== 'function') return null;
+      const game = this.getGameHost();
+      if (game && game !== this.host && typeof game.runAction === 'function') return game.runAction(callback);
       if (typeof this.host?.runAction === 'function') return this.host.runAction(callback);
       return callback();
     }
@@ -690,10 +692,36 @@
       }
       if (controller?.claim || controller?.claimActive) {
         controller.open?.(action.eventId);
-        controller.claimActive?.(action.optionId);
-        return true;
+        const claimResult = controller.claimActive
+          ? controller.claimActive(action.optionId)
+          : controller.claim(action.eventId, action.optionId);
+        const result = await claimResult;
+        return this.afterEventClaimed(result);
       }
-      await this.runAction(() => this.host.api.claimEvent(action.eventId, action.optionId));
+      const api = this.host.api || this.getGameHost()?.getGameApi?.() || this.getGameHost()?.api;
+      if (!api?.claimEvent) return false;
+      const result = await this.runAction(() => api.claimEvent(action.eventId, action.optionId));
+      return this.afterEventClaimed(result);
+    }
+
+    afterEventClaimed(result) {
+      if (result?.success === false) return false;
+      const game = this.getGameHost();
+      const nextState = result?.gameState || result?.state || null;
+      if (nextState && game?.state && typeof game.state === 'object' && !game.applyState && !game.applyApiState) {
+        game.state = {
+          ...nextState,
+          currentTab: game.state.currentTab || nextState.currentTab,
+        };
+      }
+      if (result?.tutorial) game?.tutorialController?.notifySpecialEventClaimed?.(result.tutorial);
+      if (result?.rewardReveal) this.host.rewardReveal = result.rewardReveal;
+      if (!this.host.refreshCurrentGuideHighlight?.()) {
+        const softGuide = (this.host?.getGuideState?.() || this.getState())?.softGuide || null;
+        if (softGuide?.mode === 'strong' && softGuide.target) this.host.renderSoftGuide?.();
+        else if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
+        else this.host.hideTutorialHighlight?.();
+      }
       return true;
     }
 

@@ -825,6 +825,7 @@
         this.showFloatingText('农田建成！');
       } else if (buildingId === 'house' && action === 'build') {
         this.tutorialController?.notifyHouseBuilt?.(result.tutorial);
+        if (!this.canvasShell?.refreshCurrentGuideHighlight?.()) this.renderSoftGuide();
         this.showFloatingText('民居建成！');
       } else if (buildingId === 'lumbermill' && action === 'build') {
         this.tutorialController?.notifyLumbermillBuilt?.(result.tutorial);
@@ -1263,7 +1264,7 @@
 
     showGuideHighlight(target, message, options = {}) {
       if (this.canvasShell && typeof this.canvasShell.showTutorialHighlight === 'function') {
-        const shown = this.canvasShell.showTutorialHighlight(target, message);
+        const shown = this.canvasShell.showTutorialHighlight(target, message, { source: options.source || 'guide' });
         this.tutorialHighlight = this.canvasShell.tutorialHighlight || null;
         return shown;
       }
@@ -1281,6 +1282,7 @@
           durationMs: 260,
         },
         pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
+        source: options.source || 'guide',
       };
       if (this.highlightTimer) this.runtime?.clearInterval?.(this.highlightTimer);
       if (this.runtime?.setInterval) {

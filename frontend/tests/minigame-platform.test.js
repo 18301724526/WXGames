@@ -596,12 +596,23 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
     assert.equal(requests.some((request) => request.action === 'claimEvent'), false);
     const claimTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'claimEvent' && target.action.optionId === 'collect_wood');
     assert.ok(claimTarget);
+    app.showGuideHighlight({
+      getRect: () => ({
+        left: claimTarget.x,
+        top: claimTarget.y,
+        width: claimTarget.width,
+        height: claimTarget.height,
+        right: claimTarget.x + claimTarget.width,
+        bottom: claimTarget.y + claimTarget.height,
+      }),
+    }, '领取事件奖励', { source: 'tutorial' });
     app.handleTap({
       x: claimTarget.x + claimTarget.width / 2,
       y: claimTarget.y + claimTarget.height / 2,
     });
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(app.activeEventId, null);
+    assert.notEqual(app.tutorialHighlight?.rect?.left, claimTarget.x);
 
     app.switchTab('military');
     app.state = { ...app.state, currentEra: 5, militaryView: 'world' };

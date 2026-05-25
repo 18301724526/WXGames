@@ -19,9 +19,22 @@
       this.activeMessage = '';
     }
 
-    hide() {
+    isOwnedCanvasHighlight() {
+      const highlight = this.canvasShell?.tutorialHighlight;
+      if (!highlight) return Boolean(this.activeTarget || this.activeMessage);
+      return highlight.source === 'tutorial'
+        || (!highlight.source && Boolean(this.activeTarget || this.activeMessage));
+    }
+
+    hide(options = {}) {
+      const shouldHideCanvas = Boolean(options.force) || this.isOwnedCanvasHighlight();
       this.clearHighlight();
-      this.canvasShell?.hideTutorialHighlight?.();
+      if (shouldHideCanvas) this.canvasShell?.hideTutorialHighlight?.();
+      return shouldHideCanvas;
+    }
+
+    clearOwnedHighlight() {
+      return this.hide();
     }
 
     show(target, message) {
@@ -31,11 +44,11 @@
       }
       this.activeTarget = target;
       this.activeMessage = String(message ?? '');
-      this.canvasShell?.showTutorialHighlight?.(target, this.activeMessage);
+      this.canvasShell?.showTutorialHighlight?.(target, this.activeMessage, { source: 'tutorial' });
     }
 
     showSoft(message) {
-      this.hide();
+      this.hide({ force: true });
       if (typeof this.onSoftGuide === 'function') this.onSoftGuide(message);
     }
   }

@@ -1036,6 +1036,90 @@ test('Canvas game shell refreshes guide highlight after task reward is claimed',
   assert.notEqual(renderCalls.at(-1).tutorialHighlight.rect.left, claimTarget.x);
 });
 
+test('Canvas action event claim applies next guide highlight instead of leaving claim button highlighted', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const claimTarget = { x: 36, y: 446, width: 318, height: 92, action: { type: 'claimEvent', eventId: 'evt_settlement_forest_001', optionId: 'opt_collect_wood' } };
+  const taskTarget = { x: 24, y: 404, width: 96, height: 68, action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' } };
+  const renderer = {
+    hitTargets: [claimTarget],
+    getHitTarget: () => claimTarget.action,
+    render(state, options) {
+      renderCalls.push(options);
+      this.hitTargets = [taskTarget];
+    },
+  };
+  const game = {
+    state: {
+      currentTab: 'events',
+      softGuide: null,
+      eventQueue: [{ id: 'evt_settlement_forest_001', options: [{ id: 'opt_collect_wood' }] }],
+      guideTasks: { visible: false, tasks: [] },
+    },
+    tutorialController: {
+      state: { completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } },
+      canOpenTab: () => true,
+      notifySpecialEventClaimed(tutorial) {
+        this.state = tutorial;
+      },
+    },
+    api: {
+      async claimEvent(eventId, optionId) {
+        assert.equal(eventId, 'evt_settlement_forest_001');
+        assert.equal(optionId, 'opt_collect_wood');
+        return {
+          success: true,
+          tutorial: { completed: false, currentStep: 12, phaseCompleted: { newbie: true, era2: false } },
+          gameState: {
+            currentTab: 'events',
+            eventQueue: [],
+            guideTasks: {
+              visible: true,
+              tasks: [{ id: 'lumbermill_supplies', status: 'claimable', target: 'task-center-main-claim' }],
+            },
+            softGuide: {
+              mode: 'strong',
+              target: 'task-center-main-claim',
+              message: '领取主线任务奖励',
+            },
+          },
+        };
+      },
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.showTutorialHighlight({ getRect: () => ({
+    left: claimTarget.x,
+    top: claimTarget.y,
+    width: claimTarget.width,
+    height: claimTarget.height,
+    right: claimTarget.x + claimTarget.width,
+    bottom: claimTarget.y + claimTarget.height,
+  }) }, '领取事件奖励', { source: 'tutorial' });
+
+  await shell.actionController.handle(claimTarget.action);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(shell.activeEventId, null);
+  assert.equal(game.tutorialController.state.currentStep, 12);
+  assert.deepEqual(shell.tutorialHighlight.rect, {
+    left: taskTarget.x,
+    top: taskTarget.y,
+    width: taskTarget.width,
+    height: taskTarget.height,
+    right: taskTarget.x + taskTarget.width,
+    bottom: taskTarget.y + taskTarget.height,
+  });
+  assert.notEqual(renderCalls.at(-1).tutorialHighlight.rect.left, claimTarget.x);
+});
+
 test('Canvas game shell keeps strong guide highlight when a transient target is missing', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];

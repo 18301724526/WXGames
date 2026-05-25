@@ -38,9 +38,10 @@ test('事件控制器按玩家点击的 optionId 提交选择', async () => {
   });
 
   controller.open('evt_regular_hunter');
-  await controller.claimActive('study_trail');
+  const result = await controller.claimActive('study_trail');
 
   assert.deepEqual(claimed, { eventId: 'evt_regular_hunter', optionId: 'study_trail' });
   assert.equal(applied.success, true);
+  assert.equal(result.success, true);
   assert.equal(controller.activeEventId, null);
 });
