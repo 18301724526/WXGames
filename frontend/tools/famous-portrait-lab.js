@@ -502,7 +502,7 @@
     const modeText = {
       split: '模拟衣服前后层：肩甲衣身在后，领口围巾在前。',
       outfitBack: '衣服整体在脸后：脸不被压，但高领会失去遮挡关系。',
-      current: '当前游戏顺序：衣服整层压到脸上，容易切坏下巴。',
+      current: '旧错误示例：衣服整层压到脸上，不能作为成品方案。',
     }[state.mode];
     ctx.fillText(modeText, 592, 466);
 
@@ -511,13 +511,23 @@
       const oldMode = state.mode;
       state.mode = mode;
       const x = 592 + index * 170;
-      drawPanel(x, sampleY, 140, 160, { fill: 'rgba(32, 24, 16, 0.88)', stroke: 'rgba(235, 184, 105, 0.2)', radius: 8 });
+      const isBadExample = mode === 'current';
+      drawPanel(x, sampleY, 140, 160, {
+        fill: isBadExample ? 'rgba(48, 16, 14, 0.9)' : 'rgba(32, 24, 16, 0.88)',
+        stroke: isBadExample ? 'rgba(255, 92, 92, 0.72)' : 'rgba(235, 184, 105, 0.2)',
+        radius: 8,
+      });
       drawPortrait(images, x + 18, sampleY + 18, 104, state, {
         clip: { x: x + 18, y: sampleY + 18, width: 104, height: 124, radius: 10 },
       });
-      ctx.fillStyle = '#c8b58e';
+      if (isBadExample) {
+        ctx.fillStyle = 'rgba(255, 72, 72, 0.84)';
+        ctx.font = '700 12px "Microsoft YaHei", sans-serif';
+        ctx.fillText('不要采用', x + 18, sampleY + 18);
+      }
+      ctx.fillStyle = isBadExample ? '#ff9b8d' : '#c8b58e';
       ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.fillText({ current: '当前', outfitBack: '衣服后置', split: '前后层' }[mode], x + 18, sampleY + 146);
+      ctx.fillText({ current: '旧错误', outfitBack: '衣服后置', split: '前后层' }[mode], x + 18, sampleY + 146);
       state.mode = oldMode;
     });
     drawTrimAudit(entries, 592, 704);

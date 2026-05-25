@@ -12,7 +12,7 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(html, /名人立绘实验台/);
   assert.match(html, /famous-portrait-lab\.js/);
   assert.match(html, /模拟衣服前后层/);
-  assert.match(html, /当前游戏顺序/);
+  assert.match(html, /旧错误示例/);
   assert.match(html, /素材诊断/);
   assert.match(html, /显示透明像素边界/);
 
@@ -26,4 +26,5 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(script, /drawBoundsOverlay/);
   assert.match(script, /drawCropComparison/);
   assert.match(script, /裁边后回 x=256/);
+  assert.match(script, /不要采用/);
 });
