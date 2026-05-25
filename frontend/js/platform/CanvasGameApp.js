@@ -273,6 +273,8 @@
         if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
         if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
         if (this.canvasShell && typeof this.canvasShell.techTreeZoom !== 'undefined') this.canvasShell.techTreeZoom = this.techTreeZoom;
+        if (this.canvasShell && typeof this.canvasShell.buildingOffset !== 'undefined') this.canvasShell.buildingOffset = this.buildingOffset;
+        if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') this.canvasShell.activeBuildingCategory = this.activeBuildingCategory;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         return true;
       }
@@ -1181,11 +1183,12 @@
     }
 
     getGuideCanvasTarget(type, predicate = null) {
-      return this.getCanvasTarget(type, predicate);
+      return this.canvasShell?.getCanvasTarget?.(type, predicate)
+        || this.getCanvasTarget(type, predicate);
     }
 
     renderGuideFrame() {
-      this.render();
+      this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
       return true;
     }
 
@@ -1202,7 +1205,7 @@
     }
 
     getCanvasTarget(type, predicate = null) {
-      const targets = this.renderer?.hitTargets || [];
+      const targets = this.canvasShell?.renderer?.hitTargets || this.renderer?.hitTargets || [];
       const target = targets.find((item) => (
         item.action?.type === type
         && (typeof predicate !== 'function' || predicate(item.action))

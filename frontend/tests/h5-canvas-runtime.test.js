@@ -10,6 +10,7 @@ global.CanvasGameApp = CanvasGameApp;
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
 const CanvasGameShell = require('../js/platform/CanvasGameShell');
+const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
@@ -60,6 +61,42 @@ function createCanvasHarness() {
     },
   };
   return { canvas, ctx, document, runtime, listeners, appended, timers };
+}
+
+function createDrawingContext() {
+  const gradient = { addColorStop() {} };
+  return {
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+    font: '',
+    textBaseline: '',
+    textAlign: '',
+    globalAlpha: 1,
+    scale() {},
+    setTransform() {},
+    clearRect() {},
+    fillRect() {},
+    beginPath() {},
+    rect() {},
+    roundRect() {},
+    moveTo() {},
+    lineTo() {},
+    bezierCurveTo() {},
+    quadraticCurveTo() {},
+    closePath() {},
+    stroke() {},
+    fill() {},
+    save() {},
+    restore() {},
+    clip() {},
+    translate() {},
+    arc() {},
+    createLinearGradient() { return gradient; },
+    measureText(text) { return { width: String(text || '').length * 7 }; },
+    fillText() {},
+    drawImage() {},
+  };
 }
 
 test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
@@ -1543,14 +1580,17 @@ test('Canvas game app delegates H5 tab transition animation to the mounted canva
 test('Canvas game app guide navigation writes Canvas UI state through the mounted shell', async () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
+  const barracksTarget = { x: 228, y: 662, width: 128, height: 26, action: { type: 'upgradeBuilding', buildingId: 'barracks' } };
   const watchtowerTarget = { x: 228, y: 662, width: 128, height: 26, action: { type: 'buildBuilding', buildingId: 'watchtower' } };
   const renderer = {
     hitTargets: [],
     render(state, options) {
       renderCalls.push({ state, options });
-      this.hitTargets = state.currentTab === 'buildings'
-        ? [watchtowerTarget]
-        : [{ x: 76, y: 786, width: 58, height: 58, action: { type: 'switchTab', tab: 'buildings' } }];
+      if (state.currentTab === 'buildings') {
+        this.hitTargets = Number(options.buildingOffset) >= 1 ? [watchtowerTarget] : [barracksTarget];
+      } else {
+        this.hitTargets = [{ x: 76, y: 786, width: 58, height: 58, action: { type: 'switchTab', tab: 'buildings' } }];
+      }
     },
   };
   const app = new CanvasGameApp({
@@ -1598,8 +1638,8 @@ test('Canvas game app guide navigation writes Canvas UI state through the mounte
   assert.equal(app.state.currentTab, 'buildings');
   assert.equal(app.activeBuildingCategory, 'military');
   assert.equal(app.canvasShell.activeBuildingCategory, 'military');
-  assert.equal(app.buildingOffset, 0);
-  assert.equal(app.canvasShell.buildingOffset, 0);
+  assert.equal(app.buildingOffset, 1);
+  assert.equal(app.canvasShell.buildingOffset, 1);
   assert.deepEqual(app.canvasShell.tutorialHighlight.rect, {
     left: watchtowerTarget.x,
     top: watchtowerTarget.y,
@@ -1612,10 +1652,164 @@ test('Canvas game app guide navigation writes Canvas UI state through the mounte
   assert.deepEqual(renderCalls.at(-1).options.tutorialHighlight.rect, app.canvasShell.tutorialHighlight.rect);
 });
 
+test('Canvas guide navigation pages real building layout until watchtower button is visible', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: createDrawingContext(),
+    presenter: {
+      buildAdvisorViewState: () => ({
+        hidden: false,
+        activeAdvisor: { message: '建造瞭望台', target: 'card-watchtower' },
+        text: { message: '建造瞭望台' },
+        goButton: { disabled: false },
+      }),
+      buildResourceViewState: () => ({
+        text: {
+          populationValue: '300',
+          populationStatus: '',
+          woodValue: '0',
+          woodRate: '+0/s',
+          ironValue: '0',
+          ironRate: '+0/s',
+          stoneValue: '0',
+          stoneRate: '+0/s',
+          foodValue: '0',
+          foodRate: '+0/s',
+          knowledgeValue: '0',
+          knowledgeRate: '+0/s',
+        },
+      }),
+      buildCitySwitcherViewState: () => ({ hidden: false, activeCityName: '首都' }),
+      buildTaskCenterViewState: () => ({ summary: { claimableCount: 0 } }),
+      buildGuidebookViewState: () => ({ summary: { attentionCount: 0 } }),
+      buildBuildingViewState: (state, tutorial, definitions, options = {}) => {
+        const cards = [
+          {
+            id: 'barracks',
+            category: 'military',
+            name: '兵营',
+            icon: '',
+            art: '',
+            metaText: '等级 1',
+            currentEffectText: '当前效果：无',
+            nextEffectText: '下一等级效果：无',
+            maintenanceText: '维护所需：无',
+            cityImpactText: '城市影响：稳定',
+            costTitle: '升级所需',
+            button: { action: 'upgrade', label: '升级', disabled: false },
+            cost: { text: '', parts: [], isMax: false },
+          },
+          {
+            id: 'watchtower',
+            category: 'military',
+            name: '瞭望台',
+            icon: '',
+            art: '',
+            metaText: '等级 0',
+            currentEffectText: '当前效果：无',
+            nextEffectText: '建成后效果：边境防御',
+            maintenanceText: '维护所需：无',
+            cityImpactText: '城市影响：稳定',
+            costTitle: '建造所需',
+            button: { action: 'build', label: '建造', disabled: false },
+            cost: { text: '', parts: [], isMax: false },
+          },
+        ];
+        return {
+          ids: cards.map((card) => card.id),
+          filteredIds: cards.map((card) => card.id),
+          isEmpty: false,
+          cards,
+          categoryTabs: [
+            { id: 'all', label: '全部', count: 2, active: options.activeCategory !== 'military' },
+            { id: 'military', label: '军事', count: 2, active: options.activeCategory === 'military' },
+          ],
+        };
+      },
+    },
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+  });
+  const renderCalls = [];
+  const game = {
+    activeTab: 'buildings',
+    buildingOffset: 0,
+    activeBuildingCategory: 'all',
+    presenter: renderer.presenter,
+    state: {
+      currentTab: 'buildings',
+      resources: {},
+      softGuide: { mode: 'strong', target: 'card-watchtower', message: '建造瞭望台' },
+      buildingDefinitions: { watchtower: { id: 'watchtower', category: 'military' } },
+      guideTasks: {
+        visible: true,
+        tasks: [{
+          id: 'watchtower_supplies',
+          status: 'active',
+          title: '边境瞭望',
+          description: '建造瞭望台',
+          target: 'card-watchtower',
+          actionLabel: '前往',
+          action: { type: 'goToGuideTaskTarget', target: 'card-watchtower' },
+        }],
+      },
+    },
+    tutorialController: { state: { completed: true }, canOpenTab: () => true },
+    getActiveTab() { return this.activeTab; },
+    getGuideState() { return this.state; },
+    getGuideActiveTab() { return this.activeTab; },
+    getGuideTutorialState() { return this.tutorialController.state; },
+    getGuideCanvasTarget(type, predicate) {
+      const target = renderer.hitTargets.find((item) => (
+        item.action?.type === type
+        && (typeof predicate !== 'function' || predicate(item.action))
+      ));
+      return target ? {
+        left: target.x,
+        top: target.y,
+        width: target.width,
+        height: target.height,
+        right: target.x + target.width,
+        bottom: target.y + target.height,
+      } : null;
+    },
+    renderGuideFrame() {
+      renderer.render(this.state, {
+        activeTab: 'buildings',
+        buildingOffset: this.buildingOffset,
+        activeBuildingCategory: this.activeBuildingCategory,
+      });
+      renderCalls.push({
+        buildingOffset: this.buildingOffset,
+        activeBuildingCategory: this.activeBuildingCategory,
+        targets: renderer.hitTargets.map((target) => target.action),
+      });
+      return true;
+    },
+    showGuideControllerHighlight(target, message) {
+      this.tutorialHighlight = { rect: target.getRect(), message };
+      return true;
+    },
+  };
+  const GuideController = require('../js/platform/CanvasGuideController');
+  const guide = new GuideController({ host: game });
+
+  game.renderGuideFrame();
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'watchtower'), false);
+
+  assert.equal(guide.ensureTargetVisible('card-watchtower'), true);
+
+  assert.equal(game.activeBuildingCategory, 'military');
+  assert.equal(game.buildingOffset, 1);
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'watchtower'));
+  assert.equal(renderCalls.some((call) => call.buildingOffset === 1), true);
+});
+
 test('Canvas game shell refreshes watchtower guide after guided building tab tap', async () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const renderCalls = [];
   const tabBuildingsTarget = { x: 76, y: 786, width: 58, height: 58, action: { type: 'switchTab', tab: 'buildings' } };
+  const barracksTarget = { x: 228, y: 662, width: 128, height: 26, action: { type: 'upgradeBuilding', buildingId: 'barracks' } };
   const watchtowerTarget = { x: 228, y: 662, width: 128, height: 26, action: { type: 'buildBuilding', buildingId: 'watchtower' } };
   const renderer = {
     hitTargets: [tabBuildingsTarget],
@@ -1629,7 +1823,11 @@ test('Canvas game shell refreshes watchtower guide after guided building tab tap
     },
     render(state, options) {
       renderCalls.push({ state, options });
-      this.hitTargets = state.currentTab === 'buildings' ? [watchtowerTarget] : [tabBuildingsTarget];
+      if (state.currentTab === 'buildings') {
+        this.hitTargets = Number(options.buildingOffset) >= 1 ? [watchtowerTarget] : [barracksTarget];
+      } else {
+        this.hitTargets = [tabBuildingsTarget];
+      }
     },
   };
   const app = new CanvasGameApp({
@@ -1639,7 +1837,7 @@ test('Canvas game shell refreshes watchtower guide after guided building tab tap
     presenter: {
       buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
       buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
-      buildBuildingViewState: () => ({ ids: ['watchtower'], filteredIds: ['watchtower'] }),
+      buildBuildingViewState: () => ({ ids: ['barracks', 'watchtower'], filteredIds: ['barracks', 'watchtower'] }),
     },
     initialState: {
       currentTab: 'resources',
@@ -1688,6 +1886,7 @@ test('Canvas game shell refreshes watchtower guide after guided building tab tap
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(app.state.currentTab, 'buildings');
+  assert.equal(app.canvasShell.buildingOffset, 1);
   assert.deepEqual(renderCalls.at(-1).options.tutorialHighlight.rect, {
     left: watchtowerTarget.x,
     top: watchtowerTarget.y,

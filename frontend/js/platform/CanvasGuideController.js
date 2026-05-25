@@ -132,6 +132,19 @@
       return config?.category || 'all';
     }
 
+    getBuildingActionType(key) {
+      return key === 'card-barracks-upgrade' ? 'upgradeBuilding' : 'buildBuilding';
+    }
+
+    hasBuildingActionTarget(key, buildingId) {
+      const type = this.getBuildingActionType(key);
+      return Boolean(this.getCanvasTarget(type, (action) => action.buildingId === buildingId));
+    }
+
+    isBuildingTarget(key) {
+      return Boolean(BUILDING_TARGETS[key]);
+    }
+
     getBuildingTargetRect(key, type, buildingId) {
       const realTarget = this.getCanvasTarget(type, (action) => action.buildingId === buildingId);
       if (realTarget) return realTarget;
@@ -228,7 +241,9 @@
         this.ensureTargetVisible(targetKey);
         this.render();
         const target = this.getTargetRect(targetKey)
-          || (tabId ? this.getTargetRect(`tab-${tabId}`) : null);
+          || (tabId && (!this.isBuildingTarget(targetKey) || this.getActiveTab() !== tabId)
+            ? this.getTargetRect(`tab-${tabId}`)
+            : null);
         if (target) return this.showHighlight(target, options.message || DEFAULT_GUIDE_MESSAGE);
         if (this.hasHighlight()) {
           this.render();
@@ -303,11 +318,25 @@
       const ids = view?.filteredIds || view?.ids || [];
       const index = ids.indexOf(targetBuilding);
       if (index < 0) return false;
-      const nextOffset = Math.max(0, index - 1);
-      if (this.getUiField('buildingOffset', 0) === nextOffset && !categoryChanged) return false;
-      this.setUiField('buildingOffset', nextOffset);
-      this.render();
-      return true;
+      const currentOffset = Math.max(0, Math.floor(Number(this.getUiField('buildingOffset', 0)) || 0));
+      const candidates = [];
+      const addCandidate = (value) => {
+        const offset = Math.max(0, Math.floor(Number(value) || 0));
+        if (!candidates.includes(offset)) candidates.push(offset);
+      };
+      if (currentOffset <= index) addCandidate(currentOffset);
+      for (let offset = 0; offset <= index; offset += 1) addCandidate(offset);
+
+      let changed = categoryChanged;
+      for (const offset of candidates) {
+        if (Math.max(0, Number(this.getUiField('buildingOffset', 0)) || 0) !== offset) {
+          this.setUiField('buildingOffset', offset);
+          changed = true;
+        }
+        this.render();
+        if (this.hasBuildingActionTarget(key, targetBuilding)) return true;
+      }
+      return changed;
     }
 
     showHighlight(rect, message) {
