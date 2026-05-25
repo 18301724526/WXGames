@@ -1214,6 +1214,193 @@ test('Canvas app continues from wood event claim to main task reward without man
   assert.ok(renderCalls.some((call) => call.options.activeTab === 'resources'));
 });
 
+test('Canvas app continues from craftsman assignment to city advance task without guide gap', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const taskIconTarget = { x: 24, y: 404, width: 96, height: 68, action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' } };
+  const renderer = {
+    hitTargets: [taskIconTarget],
+    render(state, options) {
+      renderCalls.push({ state, options });
+      this.hitTargets = options.activeTab === 'resources' ? [taskIconTarget] : [];
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+    },
+    initialState: {
+      currentTab: 'resources',
+      resources: {},
+      population: { craftsmen: 0, unassigned: 1 },
+      guideTasks: { visible: false, tasks: [] },
+      softGuide: { mode: 'strong', target: 'card-craftsman', message: '分配工匠' },
+    },
+  });
+  let tutorialRenderCalls = 0;
+  app.tutorialController = {
+    state: { completed: false, currentStep: 14, phaseCompleted: { newbie: true, era2: false } },
+    canOpenTab: (tabId) => tabId === 'resources',
+    notifyCraftsmanAssigned(tutorial) {
+      this.state = tutorial;
+    },
+    render() {
+      tutorialRenderCalls += 1;
+      app.canvasShell?.hideTutorialHighlight?.();
+    },
+  };
+  app.renderMilitaryView = () => {};
+  app.api = {
+    async assignJob(job, delta) {
+      assert.equal(job, 'craftsman');
+      assert.equal(delta, 1);
+      return {
+        success: true,
+        tutorial: { completed: true, currentStep: 15, phaseCompleted: { newbie: true, era2: true } },
+        gameState: {
+          currentTab: 'resources',
+          resources: {},
+          population: { craftsmen: 1, unassigned: 0 },
+          guideTasks: {
+            visible: true,
+            tasks: [{ id: 'city_advance_supplies', status: 'claimable', target: 'task-center-main-claim' }],
+          },
+          softGuide: {
+            mode: 'strong',
+            target: 'task-center-main-claim',
+            message: '领取主线任务奖励',
+          },
+        },
+      };
+    },
+  };
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  await app.assignJob('craftsman', 1);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.ok(tutorialRenderCalls > 0);
+  assert.deepEqual(app.canvasShell.tutorialHighlight.rect, {
+    left: taskIconTarget.x,
+    top: taskIconTarget.y,
+    width: taskIconTarget.width,
+    height: taskIconTarget.height,
+    right: taskIconTarget.x + taskIconTarget.width,
+    bottom: taskIconTarget.y + taskIconTarget.height,
+  });
+  assert.ok(renderCalls.some((call) => call.options.tutorialHighlight?.message === '领取主线任务奖励'));
+});
+
+test('Canvas app continues from border era advance to watchtower task instead of stale advance button', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const advanceTarget = { x: 24, y: 610, width: 340, height: 52, action: { type: 'advanceEra' } };
+  const taskIconTarget = { x: 24, y: 404, width: 96, height: 68, action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' } };
+  const renderer = {
+    hitTargets: [advanceTarget],
+    render(state, options) {
+      renderCalls.push({ state, options });
+      this.hitTargets = options.activeTab === 'resources' ? [taskIconTarget] : [advanceTarget];
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+      buildCivilizationViewState: () => ({ advanceButton: { canAdvance: true } }),
+    },
+    initialState: {
+      currentTab: 'civilization',
+      currentEra: 3,
+      resources: {},
+      population: {},
+      guideTasks: {
+        visible: true,
+        tasks: [{ id: 'border_advance_supplies', status: 'active', target: 'btn-advance-era' }],
+      },
+      softGuide: { mode: 'strong', target: 'btn-advance-era', message: '进入边境时代' },
+    },
+  });
+  app.tutorialController = {
+    state: { completed: true, currentStep: 15, phaseCompleted: { newbie: true, era2: true } },
+    canOpenTab: () => true,
+    notifyEraAdvanced(tutorial) {
+      this.state = tutorial;
+    },
+    render() {},
+  };
+  app.renderMilitaryView = () => {};
+  app.api = {
+    async advanceEra() {
+      return {
+        success: true,
+        tutorial: { completed: true, currentStep: 15, phaseCompleted: { newbie: true, era2: true } },
+        gameState: {
+          currentTab: 'civilization',
+          currentEra: 4,
+          resources: {},
+          population: {},
+          guideTasks: {
+            visible: true,
+            tasks: [{ id: 'watchtower_supplies', status: 'claimable', target: 'task-center-main-claim' }],
+          },
+          softGuide: {
+            mode: 'strong',
+            target: 'task-center-main-claim',
+            message: '领取瞭望台物资',
+          },
+        },
+      };
+    },
+  };
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  app.canvasShell.showTutorialHighlight({ getRect: () => ({
+    left: advanceTarget.x,
+    top: advanceTarget.y,
+    width: advanceTarget.width,
+    height: advanceTarget.height,
+    right: advanceTarget.x + advanceTarget.width,
+    bottom: advanceTarget.y + advanceTarget.height,
+  }) }, '进入边境时代', { source: 'guide' });
+
+  await app.advanceEra();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.state.currentEra, 4);
+  assert.equal(app.state.currentTab, 'resources');
+  assert.deepEqual(app.canvasShell.tutorialHighlight.rect, {
+    left: taskIconTarget.x,
+    top: taskIconTarget.y,
+    width: taskIconTarget.width,
+    height: taskIconTarget.height,
+    right: taskIconTarget.x + taskIconTarget.width,
+    bottom: taskIconTarget.y + taskIconTarget.height,
+  });
+  assert.notEqual(app.canvasShell.tutorialHighlight.rect.top, advanceTarget.y);
+  assert.ok(renderCalls.some((call) => call.options.activeTab === 'resources'));
+});
+
 test('Canvas game shell keeps strong guide highlight when a transient target is missing', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];

@@ -879,6 +879,7 @@
         }
         this.applyApiState(result);
         if (job === 'craftsman' && delta > 0) this.tutorialController?.notifyCraftsmanAssigned?.(result.tutorial);
+        this.continueCurrentMainTaskTarget();
         this.log(`人口分配 ${delta > 0 ? '+' : ''}${delta} ${job}`);
         return true;
       } catch (error) {
@@ -987,6 +988,7 @@
         const result = await this.getGameApi().advanceEra();
         this.applyApiState(result);
         this.tutorialController?.notifyEraAdvanced?.(result.tutorial);
+        this.continueCurrentMainTaskTarget();
         this.log(`进入新阶段：${result.message || this.state.currentEraName || ''}`);
         this.showFloatingText(`进入${this.state.currentEraName || '新阶段'}`);
         return true;
@@ -1114,7 +1116,11 @@
     }
 
     moveToCurrentMainTaskTarget() {
-      const tasks = this.state?.guideTasks?.tasks || this.state?.taskCenter?.categories?.main?.tasks || [];
+      const guideTasks = Array.isArray(this.state?.guideTasks?.tasks) ? this.state.guideTasks.tasks : [];
+      const taskCenterTasks = Array.isArray(this.state?.taskCenter?.categories?.main?.tasks)
+        ? this.state.taskCenter.categories.main.tasks
+        : [];
+      const tasks = guideTasks.length ? guideTasks : taskCenterTasks;
       const task = tasks.find((item) => item && item.status !== 'completed' && (item.target || item.action?.target));
       const target = task?.target || task?.action?.target;
       if (!target) return false;
@@ -1123,6 +1129,16 @@
         taskId: task.id,
         target,
       });
+    }
+
+    continueCurrentMainTaskTarget() {
+      if (this.moveToCurrentMainTaskTarget()) return true;
+      const guide = this.state?.softGuide || null;
+      if (!guide || guide.mode !== 'strong') return false;
+      if (!['guide-task-claim', 'task-center-main-claim'].includes(guide.target)) return false;
+      if (this.canvasShell?.refreshCurrentGuideHighlight?.()) return true;
+      this.renderSoftGuide();
+      return true;
     }
 
     getPreferredMilitaryView(tabId) {
