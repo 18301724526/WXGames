@@ -85,6 +85,30 @@
       font-weight: 700;
     }
 
+    .check {
+      display: flex;
+      grid-template-columns: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .check input {
+      width: auto;
+    }
+
+    .audit-output {
+      min-height: 160px;
+      margin: 0;
+      padding: 10px;
+      overflow: auto;
+      color: #d8c399;
+      background: #15100a;
+      border: 1px solid rgba(235, 184, 105, 0.18);
+      border-radius: 6px;
+      font: 12px/1.55 Consolas, "Microsoft YaHei", monospace;
+      white-space: pre-wrap;
+    }
+
     .stage {
       padding: 22px;
       overflow: auto;
@@ -111,7 +135,7 @@
     canvas {
       display: block;
       width: 1180px;
-      height: 760px;
+      height: 1040px;
       background: #17120c;
       border-radius: 6px;
     }
@@ -214,6 +238,19 @@
           <input id="cardHeight" type="range" min="78" max="130" value="104">
         </label>
       </fieldset>
+
+      <fieldset>
+        <legend>素材诊断</legend>
+        <label class="check">
+          <input id="showBounds" type="checkbox" checked>
+          显示透明像素边界
+        </label>
+        <label class="check">
+          <input id="showAnchorLines" type="checkbox" checked>
+          显示中心/下巴/肩线
+        </label>
+        <pre id="audit" class="audit-output">等待素材加载...</pre>
+      </fieldset>
     </aside>
 
     <section class="stage">
@@ -222,7 +259,7 @@
         <span id="status">加载中...</span>
       </div>
       <div class="canvas-wrap">
-        <canvas id="stage" width="1180" height="760"></canvas>
+        <canvas id="stage" width="1180" height="1040"></canvas>
       </div>
       <p class="note">建议先用“模拟衣服前后层”调分界线：衣服后层负责肩甲和衣身，脸和头发在中间，衣服前层只保留真正应该挡住脖子的领口/围巾。确认后再导出真正的 outfitBack / outfitFront PNG。</p>
     </section>
