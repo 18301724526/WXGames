@@ -1120,6 +1120,100 @@ test('Canvas action event claim applies next guide highlight instead of leaving 
   assert.notEqual(renderCalls.at(-1).tutorialHighlight.rect.left, claimTarget.x);
 });
 
+test('Canvas app continues from wood event claim to main task reward without manual tab switch', async () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const taskIconTarget = { x: 24, y: 404, width: 96, height: 68, action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' } };
+  const renderer = {
+    hitTargets: [],
+    render(state, options) {
+      renderCalls.push({ state, options });
+      this.hitTargets = options.activeTab === 'resources' ? [taskIconTarget] : [];
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildTabNavigationViewState: (state, options) => ({ activeTab: options.requestedTab }),
+      buildMilitaryNavigationViewState: () => ({ activeView: 'army' }),
+    },
+    initialState: {
+      currentTab: 'events',
+      resources: {},
+      population: {},
+      eventQueue: [{ id: 'evt_settlement_forest_001', options: [{ id: 'opt_collect_wood' }] }],
+      guideTasks: { visible: false, tasks: [] },
+      softGuide: { mode: 'strong', target: 'btn-claim-event', message: '领取木材' },
+    },
+  });
+  app.tutorialController = {
+    state: { completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } },
+    canOpenTab(tabId) {
+      if (tabId === 'resources') return true;
+      return tabId === 'events';
+    },
+    notifySpecialEventClaimed(tutorial) {
+      this.state = tutorial;
+    },
+    render() {},
+  };
+  app.renderMilitaryView = () => {};
+  app.api = {
+    async claimEvent(eventId, optionId) {
+      assert.equal(eventId, 'evt_settlement_forest_001');
+      assert.equal(optionId, 'opt_collect_wood');
+      return {
+        success: true,
+        tutorial: { completed: false, currentStep: 12, phaseCompleted: { newbie: true, era2: false } },
+        gameState: {
+          currentTab: 'events',
+          resources: { food: 50, wood: 15 },
+          population: {},
+          eventQueue: [],
+          guideTasks: {
+            visible: true,
+            tasks: [{ id: 'lumbermill_supplies', status: 'claimable', target: 'task-center-main-claim' }],
+          },
+          softGuide: {
+            mode: 'strong',
+            target: 'task-center-main-claim',
+            message: '领取主线任务奖励',
+          },
+        },
+      };
+    },
+  };
+  app.canvasShell = CanvasGameShell.mount(app, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+
+  await app.canvasShell.actionController.handle({
+    type: 'claimEvent',
+    eventId: 'evt_settlement_forest_001',
+    optionId: 'opt_collect_wood',
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.state.currentTab, 'resources');
+  assert.equal(app.canvasShell.showTaskCenter, false);
+  assert.deepEqual(app.canvasShell.tutorialHighlight.rect, {
+    left: taskIconTarget.x,
+    top: taskIconTarget.y,
+    width: taskIconTarget.width,
+    height: taskIconTarget.height,
+    right: taskIconTarget.x + taskIconTarget.width,
+    bottom: taskIconTarget.y + taskIconTarget.height,
+  });
+  assert.ok(renderCalls.some((call) => call.options.activeTab === 'resources'));
+});
+
 test('Canvas game shell keeps strong guide highlight when a transient target is missing', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];

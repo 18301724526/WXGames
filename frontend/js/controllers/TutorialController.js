@@ -66,6 +66,17 @@
       ));
     }
 
+    hasClaimableGuideTaskReward() {
+      const state = this.getState() || {};
+      const tasks = Array.isArray(state.guideTasks?.tasks) ? state.guideTasks.tasks : [];
+      return tasks.some((task) => (
+        task
+        && task.status === 'claimable'
+        && !task.claimed
+        && ['guide-task-claim', 'task-center-main-claim'].includes(task.target || task.action?.target)
+      ));
+    }
+
     syncLocalProgress() {
       this.storage.setProgress(this.state);
     }
@@ -165,6 +176,7 @@
     canOpenTab(tabId) {
       if (this.state.completed) return true;
       if (this.hasActiveGuideTaskNavigation()) return true;
+      if (tabId === 'resources' && this.hasClaimableGuideTaskReward()) return true;
       if (this.isSoftGuideStep()) return true;
       const step = this.state.currentStep;
       if (step <= 1) return ['resources', 'civilization'].includes(tabId);

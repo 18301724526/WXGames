@@ -140,7 +140,7 @@ test('guide task overlay lets main task navigation override stale tutorial tab l
   }
 });
 
-test('guide task reward stage keeps stale tutorial tab locks until reward is claimed', () => {
+test('guide task reward stage opens the home task icon while keeping unrelated stale tab locks', () => {
   const originalLocalStorage = global.localStorage;
   try {
     global.localStorage = createStorage();
@@ -163,6 +163,7 @@ test('guide task reward stage keeps stale tutorial tab locks until reward is cla
 
     controller.setState({ completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } });
 
+    assert.equal(controller.canOpenTab('resources'), true);
     assert.equal(controller.canOpenTab('buildings'), false);
   } finally {
     global.localStorage = originalLocalStorage;
