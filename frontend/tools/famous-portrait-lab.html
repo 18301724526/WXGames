@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>名人立绘实验台</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: #f4e7c7;
+      background: #15110c;
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(300px, 360px) 1fr;
+      min-height: 100vh;
+    }
+
+    .panel {
+      padding: 18px;
+      background: #21180f;
+      border-right: 1px solid rgba(235, 184, 105, 0.2);
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    .hint {
+      margin: 0 0 18px;
+      color: #c8b58e;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    fieldset {
+      margin: 0 0 14px;
+      padding: 12px;
+      border: 1px solid rgba(235, 184, 105, 0.22);
+      border-radius: 8px;
+    }
+
+    legend {
+      padding: 0 6px;
+      color: #ffd58c;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      margin: 10px 0;
+      color: #d8c399;
+      font-size: 13px;
+    }
+
+    select,
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select {
+      height: 34px;
+      color: #f4e7c7;
+      background: #2f2418;
+      border: 1px solid rgba(235, 184, 105, 0.3);
+      border-radius: 6px;
+      padding: 0 8px;
+    }
+
+    .value {
+      float: right;
+      color: #8ee0a0;
+      font-weight: 700;
+    }
+
+    .stage {
+      padding: 22px;
+      overflow: auto;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      color: #c8b58e;
+      font-size: 13px;
+    }
+
+    .canvas-wrap {
+      width: max-content;
+      padding: 14px;
+      background: #0f0c08;
+      border: 1px solid rgba(235, 184, 105, 0.16);
+      border-radius: 8px;
+    }
+
+    canvas {
+      display: block;
+      width: 1180px;
+      height: 760px;
+      background: #17120c;
+      border-radius: 6px;
+    }
+
+    .note {
+      margin-top: 12px;
+      max-width: 1180px;
+      color: #aa9a79;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        border-right: 0;
+        border-bottom: 1px solid rgba(235, 184, 105, 0.2);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="panel">
+      <h1>名人立绘实验台</h1>
+      <p class="hint">只用于调试图层关系，不接入游戏数据。先把衣服前后层、裁切和缩放调顺，再迁回正式渲染。</p>
+
+      <fieldset>
+        <legend>组合</legend>
+        <label>
+          服装
+          <select id="outfit">
+            <option value="guardian">守将盔甲</option>
+            <option value="vanguard">突骑战装</option>
+            <option value="scholar">学者长袍</option>
+          </select>
+        </label>
+        <label>
+          肤色
+          <select id="body">
+            <option value="01">肤色 1</option>
+            <option value="02">肤色 2</option>
+          </select>
+        </label>
+        <label>
+          发型
+          <select id="hair">
+            <option value="short">短发</option>
+            <option value="tied">束发</option>
+          </select>
+        </label>
+        <label>
+          配饰
+          <select id="accessory">
+            <option value="none">无</option>
+            <option value="scar">伤疤</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>图层实验</legend>
+        <label>
+          模式
+          <select id="mode">
+            <option value="split">模拟衣服前后层</option>
+            <option value="outfitBack">衣服整体在脸后</option>
+            <option value="current">当前游戏顺序</option>
+          </select>
+        </label>
+        <label>
+          前层分界 Y <span class="value" id="frontCutValue"></span>
+          <input id="frontCutY" type="range" min="170" max="340" value="286">
+        </label>
+        <label>
+          后层分界 Y <span class="value" id="backCutValue"></span>
+          <input id="backCutY" type="range" min="140" max="320" value="252">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>画面参数</legend>
+        <label>
+          缩放 <span class="value" id="scaleValue"></span>
+          <input id="scale" type="range" min="95" max="170" value="130">
+        </label>
+        <label>
+          纵向偏移 <span class="value" id="offsetValue"></span>
+          <input id="offsetY" type="range" min="-80" max="90" value="10">
+        </label>
+        <label>
+          卡片头像宽 <span class="value" id="cardWidthValue"></span>
+          <input id="cardWidth" type="range" min="64" max="110" value="84">
+        </label>
+        <label>
+          卡片头像高 <span class="value" id="cardHeightValue"></span>
+          <input id="cardHeight" type="range" min="78" max="130" value="104">
+        </label>
+      </fieldset>
+    </aside>
+
+    <section class="stage">
+      <div class="toolbar">
+        <span>左侧是大图预览，右侧模拟游戏卡片尺寸。</span>
+        <span id="status">加载中...</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="stage" width="1180" height="760"></canvas>
+      </div>
+      <p class="note">建议先用“模拟衣服前后层”调分界线：衣服后层负责肩甲和衣身，脸和头发在中间，衣服前层只保留真正应该挡住脖子的领口/围巾。确认后再导出真正的 outfitBack / outfitFront PNG。</p>
+    </section>
+  </main>
+
+  <script src="famous-portrait-lab.js"></script>
+</body>
+</html>
