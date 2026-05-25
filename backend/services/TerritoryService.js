@@ -1265,6 +1265,23 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
   return { success, casualties };
 }
 
+function createPostWarCandidate(gameState, mission, territory, result, now = new Date()) {
+  if (!result?.success || mission.mode === 'settlement') return null;
+  const FamousPersonService = require('./FamousPersonService');
+  const famousPersonState = FamousPersonService.ensureFamousPersonState(gameState);
+  if (famousPersonState.candidates.length >= FamousPersonService.MAX_CANDIDATES) return null;
+  const candidate = FamousPersonService.createFamousPersonCandidate(gameState, { source: 'postWar' }, now);
+  candidate.source = {
+    ...candidate.source,
+    territoryId: territory.id,
+    territoryName: territory.naturalName || territory.cityName || '',
+    battleReportId: territory.lastBattle?.report?.id || null,
+    leaderId: territory.lastBattle?.leaderId || mission.expedition?.leader || 'unavailable',
+  };
+  famousPersonState.candidates = [candidate, ...famousPersonState.candidates].slice(0, FamousPersonService.MAX_CANDIDATES);
+  return clone(candidate);
+}
+
 function claimConquest(gameState, territoryId, now = new Date()) {
   normalizeTerritoryState(gameState, now);
   const territory = getTerritory(gameState, territoryId);
@@ -1273,12 +1290,16 @@ function claimConquest(gameState, territoryId, now = new Date()) {
   if (!mission) return { success: false, error: 'MISSION_NOT_FOUND', message: '没有可完成的军事行动' };
   if (mission.status !== 'ready') return { success: false, error: 'MISSION_NOT_READY', message: '军事行动尚未完成' };
   const result = resolveMission(gameState, mission, territory, now);
+  const postWarCandidate = createPostWarCandidate(gameState, mission, territory, result, now);
   gameState.warMissions = (gameState.warMissions || []).filter((item) => item.id !== mission.id);
   return {
     success: true,
-    message: result.success ? `已控制${territory.naturalName}` : `${territory.naturalName}占领失败，士兵正在整队返回`,
+    message: result.success
+      ? `已控制${territory.naturalName}${postWarCandidate ? '，战后有人愿意投奔' : ''}`
+      : `${territory.naturalName}占领失败，士兵正在整队返回`,
     outcome: result.success ? 'success' : 'failure',
     casualties: result.casualties,
+    postWarCandidate,
     territory,
     namingPrompt: getNamingPrompt(gameState),
   };

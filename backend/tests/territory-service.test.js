@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const gameStateService = require('../services/GameStateService');
 const CityService = require('../services/CityService');
 const TerritoryService = require('../services/TerritoryService');
+const FamousPersonService = require('../services/FamousPersonService');
 
 function createClassicalState() {
   const state = gameStateService.createInitialGameState('territory-player');
@@ -388,6 +389,76 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(site.lastBattle.report.skillName, '血刃连袭');
   assert.ok(site.lastBattle.report.rounds.length >= 1);
   assert.ok(site.lastBattle.report.summary.includes('陆骁'));
+});
+
+test('有主地点征服胜利后会生成战后归附候选名人', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addFamousLeader(state);
+  addDiscoveredTribeSite(state, {
+    id: 'post_war_site',
+    naturalName: '北风营帐',
+    defense: 500,
+    recommendedSoldiers: 500,
+  });
+  gameStateService.normalizeState(state);
+
+  const start = TerritoryService.startConquest(state, 'post_war_site', {
+    troopType: 'unavailable',
+    leader: 'fp_luxiao',
+    soldiers: 500,
+  }, now);
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, 'post_war_site', now);
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.outcome, 'success');
+  assert.equal(claim.postWarCandidate.source.type, 'postWar');
+  assert.equal(claim.postWarCandidate.source.territoryId, 'post_war_site');
+  assert.equal(claim.postWarCandidate.source.leaderId, 'fp_luxiao');
+  assert.equal(state.famousPersonState.candidates.length, 1);
+  assert.equal(state.famousPersonState.candidates[0].source.type, 'postWar');
+  assert.equal(state.famousPersonState.candidates[0].roles.includes('military'), true);
+  assert.match(claim.message, /战后有人愿意投奔/);
+});
+
+test('战后候选队列已满时不阻塞征服结算', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addFamousLeader(state);
+  addDiscoveredTribeSite(state, {
+    id: 'full_candidate_site',
+    naturalName: '山脚部族',
+    defense: 500,
+    recommendedSoldiers: 500,
+  });
+  for (let i = 0; i < FamousPersonService.MAX_CANDIDATES; i += 1) {
+    state.famousPersonState.candidates.push(FamousPersonService.createFamousPersonCandidate(
+      state,
+      { source: 'seek' },
+      new Date(`2026-05-17T07:0${i}:00.000Z`),
+      () => 0.1,
+    ));
+  }
+  gameStateService.normalizeState(state);
+
+  const start = TerritoryService.startConquest(state, 'full_candidate_site', {
+    troopType: 'unavailable',
+    leader: 'fp_luxiao',
+    soldiers: 500,
+  }, now);
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, 'full_candidate_site', now);
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.outcome, 'success');
+  assert.equal(claim.postWarCandidate, null);
+  assert.equal(state.famousPersonState.candidates.length, FamousPersonService.MAX_CANDIDATES);
+  assert.equal(state.territories.find((item) => item.id === 'full_candidate_site').owner, 'player');
 });
 
 test('分城可以对共享情报目标发起军事行动并使用全势力兵力', () => {
