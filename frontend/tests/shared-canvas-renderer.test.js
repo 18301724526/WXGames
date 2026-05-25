@@ -652,7 +652,7 @@ test('CanvasGameRenderer tutorial highlight keeps final target actionable during
   assert.deepEqual(renderer.getHitTarget({ x: 170, y: 804 }), { type: 'blockCanvasModal' });
 });
 
-test('CanvasGameRenderer renders guide task bar and reward reveal on shared canvas', () => {
+test('CanvasGameRenderer keeps main tasks out of the home HUD and renders reward reveal', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -697,22 +697,23 @@ test('CanvasGameRenderer renders guide task bar and reward reveal on shared canv
     },
   });
 
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '主线'));
-  assert.ok(renderer.hitTargets.some((target) => (
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '主线'), false);
+  assert.equal(renderer.hitTargets.some((target) => (
     target.action?.type === 'openTaskCenter'
     && target.action.tab === 'main'
     && target.action.source === 'guideTaskBar'
-  )));
+  )), false);
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'claimGuideTaskReward'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '获得奖励'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '收下'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeRewardReveal'));
 });
 
-test('CanvasGameRenderer renders guide task go button for active tasks', () => {
+test('CanvasGameRenderer renders main task go button inside task center panel', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
   renderer.setPresenter({
     buildResourceViewState: () => ({
       hasWood: true,
@@ -728,6 +729,7 @@ test('CanvasGameRenderer renders guide task go button for active tasks', () => {
     buildCitySwitcherViewState: () => ({ hidden: true }),
     buildAdvisorViewState: () => ({ hidden: true }),
     buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
   });
 
   renderer.render({
@@ -753,6 +755,8 @@ test('CanvasGameRenderer renders guide task go button for active tasks', () => {
   }, {
     activeTab: 'resources',
     mode: 'hud',
+    showTaskCenter: true,
+    activeTaskCenterTab: 'main',
   });
 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '前往'));
@@ -1256,15 +1260,9 @@ test('CanvasGameRenderer HUD overlay draws buildings page and build actions on c
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'buildBuilding' && target.action.buildingId === 'farm'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'upgradeBuilding' && target.action.buildingId === 'house'));
   const categoryTargets = renderer.hitTargets.filter((target) => target.action?.type === 'selectBuildingCategory');
-  const taskTarget = renderer.hitTargets.find((target) => target.action?.type === 'openTaskCenter');
-  const guidebookTarget = renderer.hitTargets.find((target) => target.action?.type === 'openGuidebook');
   assert.ok(categoryTargets.length > 0);
-  assert.ok(taskTarget);
-  assert.ok(guidebookTarget);
-  categoryTargets.forEach((target) => {
-    assert.equal(rectsOverlap(target, taskTarget), false);
-    assert.equal(rectsOverlap(target, guidebookTarget), false);
-  });
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'openTaskCenter'), false);
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'openGuidebook'), false);
   const militaryTarget = categoryTargets.find((target) => target.action?.category === 'military');
   assert.ok(militaryTarget);
   assert.ok(militaryTarget.width < 72);

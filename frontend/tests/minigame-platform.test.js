@@ -680,12 +680,6 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       },
     };
     app.switchTab('resources');
-    const guideTaskBarTarget = app.renderer.hitTargets.find((target) => (
-      target.action?.type === 'openTaskCenter'
-      && target.action.tab === 'main'
-      && target.action.source === 'guideTaskBar'
-    ));
-    assert.ok(guideTaskBarTarget);
     const guideTaskTarget = app.renderer.hitTargets.find((target) => (
       target.action?.type === 'openTaskCenter'
       && target.action.source === 'taskIcon'
@@ -753,6 +747,9 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       },
     };
     app.tutorialHighlight = null;
+    app.showTaskCenter = false;
+    app.showGuidebook = false;
+    app.switchTab('resources');
     app.render();
 
     const guidebookTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'openGuidebook');
@@ -779,6 +776,7 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
 
     app.state = {
       ...app.state,
+      taskCenter: null,
       guideTasks: {
         visible: true,
         tasks: [{
@@ -798,6 +796,9 @@ test('Canvas game app dispatches canvas taps to server actions without DOM contr
       },
     };
     app.switchTab('resources');
+    app.showTaskCenter = true;
+    app.activeTaskCenterTab = 'main';
+    app.render();
     const goTarget = app.renderer.hitTargets.find((target) => target.action?.type === 'goToGuideTaskTarget');
     assert.ok(goTarget);
     app.handleTap({

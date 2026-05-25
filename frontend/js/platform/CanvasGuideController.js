@@ -14,6 +14,9 @@
   const TARGET_TABS = {
     'btn-advance-era': 'civilization',
     'card-craftsman': 'resources',
+    'guide-task-claim': 'resources',
+    'task-center-main-claim': 'resources',
+    'task-center-button': 'resources',
     'event-card-special': 'events',
     'btn-claim-event': 'events',
     'tab-territory': 'military',
@@ -214,6 +217,8 @@
       if (!guide || guide.mode !== 'strong' || !guide.target) return this.hideHighlight();
       const targetKey = guide.target;
       if (targetKey !== 'task-center-main-claim' && targetKey !== 'guide-task-claim') {
+        this.setTaskCenterVisible(false);
+      } else if (this.getActiveTab() !== 'resources') {
         this.setTaskCenterVisible(false);
       }
       return this.moveToTarget(targetKey, {

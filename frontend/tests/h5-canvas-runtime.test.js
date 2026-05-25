@@ -825,18 +825,17 @@ test('Canvas game shell highlights first available scout action for the scout gu
 test('Canvas game shell guides claimable main task through task icon then panel claim', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const renderCalls = [];
-  const guideBarTarget = { x: 286, y: 92, width: 82, height: 34, action: { type: 'openTaskCenter', tab: 'main', target: 'task-center-main-claim', source: 'guideTaskBar' } };
   const taskIconTarget = { x: 302, y: 604, width: 48, height: 48, action: { type: 'openTaskCenter', source: 'taskIcon' } };
   const claimTarget = { x: 258, y: 462, width: 78, height: 34, action: { type: 'claimTaskReward', taskId: 'barracks_supplies', category: 'main' } };
   const renderer = {
-    hitTargets: [guideBarTarget, taskIconTarget],
+    hitTargets: [taskIconTarget],
     getHitTarget: () => ({ type: 'openTaskCenter', source: 'taskIcon' }),
     render(state, options) {
       renderCalls.push(options);
       const shouldShowClaim = options.showTaskCenter && options.activeTaskCenterTab === 'main';
       this.hitTargets = shouldShowClaim
-        ? [guideBarTarget, taskIconTarget, claimTarget]
-        : [guideBarTarget, taskIconTarget];
+        ? [taskIconTarget, claimTarget]
+        : [taskIconTarget];
     },
   };
   const game = {
@@ -1696,6 +1695,21 @@ test('Canvas guide navigation pages real building layout until watchtower button
             cityImpactText: '城市影响：稳定',
             costTitle: '升级所需',
             button: { action: 'upgrade', label: '升级', disabled: false },
+            cost: { text: '', parts: [], isMax: false },
+          },
+          {
+            id: 'outpost',
+            category: 'military',
+            name: '哨站',
+            icon: '',
+            art: '',
+            metaText: '等级 0',
+            currentEffectText: '当前效果：无',
+            nextEffectText: '建成后效果：边境预警',
+            maintenanceText: '维护所需：无',
+            cityImpactText: '城市影响：稳定',
+            costTitle: '建造所需',
+            button: { action: 'build', label: '建造', disabled: false },
             cost: { text: '', parts: [], isMax: false },
           },
           {

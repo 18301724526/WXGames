@@ -250,7 +250,7 @@
     isAllowedUnderTutorialShield(action = {}) {
       if (action.type === 'goToGuideTaskTarget') return true;
       if (action.type === 'openTaskCenter') {
-        return action.source === 'taskIcon' || action.source === 'guideTaskBar';
+        return action.source === 'taskIcon';
       }
       if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
         return (action.category || 'main') === 'main';
@@ -816,6 +816,7 @@
     }
 
     renderGuideTasks(state = {}, startY = 0) {
+      return startY;
       const guideTasks = state.guideTasks || {};
       const tasks = Array.isArray(guideTasks.tasks) ? guideTasks.tasks : [];
       if (!guideTasks.visible || !tasks.length) return startY;
@@ -881,11 +882,11 @@
       const buttonLabel = canClaim ? (task.actionLabel || '任务') : (task.actionLabel || '前往');
       const buttonAction = task.action || (
         canClaim
-          ? { type: 'openTaskCenter', tab: 'main', taskId: task.id, target: 'task-center-main-claim', source: 'guideTaskBar' }
+          ? { type: 'openTaskCenter', tab: 'main', taskId: task.id, target: 'task-center-main-claim', source: 'taskIcon' }
           : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
       );
       const hitAction = buttonAction.type === 'openTaskCenter'
-        ? { ...buttonAction, source: buttonAction.source || 'guideTaskBar' }
+        ? { ...buttonAction, source: buttonAction.source || 'taskIcon' }
         : buttonAction;
       this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, buttonLabel, {
         disabled: buttonDisabled,
@@ -903,6 +904,7 @@
     }
 
     renderTaskCenterButton(state = {}) {
+      return;
       if (!this.presenter || typeof this.presenter.buildTaskCenterViewState !== 'function') return;
       const view = this.presenter.buildTaskCenterViewState(state);
       const layout = this.getLayout();
@@ -950,6 +952,7 @@
     }
 
     renderGuidebookButton(state = {}) {
+      return;
       if (!this.presenter || typeof this.presenter.buildGuidebookViewState !== 'function') return;
       const layout = this.getLayout();
       const size = 44;
@@ -984,7 +987,7 @@
         baseline: 'middle',
         align: 'center',
       });
-      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openGuidebook', source: 'guidebookIcon' });
+      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openGuidebook', source: 'homeFeature' });
     }
 
     renderGuidebookPanel(state = {}, options = {}) {
@@ -4997,12 +5000,8 @@
         this.endFrame(options);
         return;
       }
-      const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
+      const topBarBottom = this.renderTopBar(state);
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
-      if (activeTab !== 'resources') {
-        this.renderTaskCenterButton(state);
-        this.renderGuidebookButton(state);
-      }
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);
@@ -5323,7 +5322,7 @@
         this.endFrame(options);
         return;
       }
-      const topBarBottom = this.renderGuideTasks(state, this.renderTopBar(state));
+      const topBarBottom = this.renderTopBar(state);
       const tabsTop = this.height - 60 - this.bottomSafeArea;
       const populationBottom = activeTab === 'resources'
         ? this.renderPopulation(state, topBarBottom)
@@ -5351,10 +5350,6 @@
         });
       } else if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       this.renderAdvisor(state);
-      if (activeTab !== 'resources') {
-        this.renderTaskCenterButton(state);
-        this.renderGuidebookButton(state);
-      }
       this.renderTabs(activeTab, state, options);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
