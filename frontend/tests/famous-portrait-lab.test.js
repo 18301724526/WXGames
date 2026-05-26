@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const projectRoot = path.join(__dirname, '..', '..');
+const famousLayerDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'famous-person', 'layers');
 
 test('famous portrait lab exposes isolated layer order experiments', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
@@ -20,8 +21,8 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(script, /fp-layer-outfit-vanguard-01\.png/);
   assert.match(script, /fp-layer-outfit-scholar-01\.png/);
   assert.match(script, /fp-layer-outfit-guardian-front-candidate-01\.png/);
-  assert.match(script, /fp-layer-outfit-vanguard-front-candidate-01\.png/);
-  assert.match(script, /fp-layer-outfit-scholar-front-candidate-01\.png/);
+  assert.match(script, /fp-layer-outfit-vanguard-front-candidate-02\.png/);
+  assert.match(script, /fp-layer-outfit-scholar-front-candidate-02\.png/);
   assert.match(html, /守将候选-正面甲/);
   assert.match(html, /突骑候选-正面甲/);
   assert.match(html, /学者候选-正面袍/);
@@ -66,4 +67,74 @@ test('famous portrait lab can hide hair and tune individual layer transforms', (
   assert.match(script, /exportData\.value = JSON\.stringify\(buildExportPayload\(state\), null, 2\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
+});
+
+function readPngAlphaBounds(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  assert.equal(buffer.toString('ascii', 1, 4), 'PNG');
+  const width = buffer.readUInt32BE(16);
+  const height = buffer.readUInt32BE(20);
+  let offset = 8;
+  const chunks = [];
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString('ascii', offset + 4, offset + 8);
+    const dataStart = offset + 8;
+    if (type === 'IDAT') chunks.push(buffer.subarray(dataStart, dataStart + length));
+    if (type === 'IEND') break;
+    offset = dataStart + length + 4;
+  }
+  const zlib = require('node:zlib');
+  const raw = zlib.inflateSync(Buffer.concat(chunks));
+  const bytesPerPixel = 4;
+  const stride = width * bytesPerPixel;
+  const rows = [];
+  let cursor = 0;
+  let previous = Buffer.alloc(stride);
+  for (let y = 0; y < height; y += 1) {
+    const filter = raw[cursor];
+    cursor += 1;
+    const scanline = Buffer.from(raw.subarray(cursor, cursor + stride));
+    cursor += stride;
+    for (let i = 0; i < stride; i += 1) {
+      const left = i >= bytesPerPixel ? scanline[i - bytesPerPixel] : 0;
+      const up = previous[i];
+      const upLeft = i >= bytesPerPixel ? previous[i - bytesPerPixel] : 0;
+      if (filter === 1) scanline[i] = (scanline[i] + left) & 255;
+      else if (filter === 2) scanline[i] = (scanline[i] + up) & 255;
+      else if (filter === 3) scanline[i] = (scanline[i] + Math.floor((left + up) / 2)) & 255;
+      else if (filter === 4) {
+        const p = left + up - upLeft;
+        const pa = Math.abs(p - left);
+        const pb = Math.abs(p - up);
+        const pc = Math.abs(p - upLeft);
+        const predictor = pa <= pb && pa <= pc ? left : pb <= pc ? up : upLeft;
+        scanline[i] = (scanline[i] + predictor) & 255;
+      }
+    }
+    rows.push(scanline);
+    previous = scanline;
+  }
+  const bounds = { minX: width, minY: height, maxX: -1, maxY: -1 };
+  rows.forEach((row, y) => {
+    for (let x = 0; x < width; x += 1) {
+      if (row[x * bytesPerPixel + 3] <= 8) continue;
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    }
+  });
+  return bounds;
+}
+
+test('famous portrait candidate outfits share guardian armor alpha bounds', () => {
+  const expected = { minX: 41, minY: 242, maxX: 470, maxY: 511 };
+  [
+    'fp-layer-outfit-guardian-front-candidate-01.png',
+    'fp-layer-outfit-vanguard-front-candidate-02.png',
+    'fp-layer-outfit-scholar-front-candidate-02.png',
+  ].forEach((filename) => {
+    assert.deepEqual(readPngAlphaBounds(path.join(famousLayerDir, filename)), expected, filename);
+  });
 });

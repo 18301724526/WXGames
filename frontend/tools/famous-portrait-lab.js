@@ -2,8 +2,8 @@
   const layerBase = '../assets/art/famous-person/layers/';
   const outfitFiles = {
     guardianCandidate: 'fp-layer-outfit-guardian-front-candidate-01.png',
-    vanguardCandidate: 'fp-layer-outfit-vanguard-front-candidate-01.png',
-    scholarCandidate: 'fp-layer-outfit-scholar-front-candidate-01.png',
+    vanguardCandidate: 'fp-layer-outfit-vanguard-front-candidate-02.png',
+    scholarCandidate: 'fp-layer-outfit-scholar-front-candidate-02.png',
     guardian: 'fp-layer-outfit-guardian-01.png',
     vanguard: 'fp-layer-outfit-vanguard-01.png',
     scholar: 'fp-layer-outfit-scholar-01.png',
