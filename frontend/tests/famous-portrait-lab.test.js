@@ -37,17 +37,33 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(script, /不要采用/);
 });
 
-test('famous portrait lab can hide hair and shrink the base head layer', () => {
+test('famous portrait lab can hide hair and tune individual layer transforms', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
   const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
 
   assert.match(script, /const hairLayerEnabled = false;/);
   assert.match(script, /if \(!hairLayerEnabled && controls\.hair\)/);
+  assert.match(script, /document\.querySelector\('\[data-layer-panel="hair"\]'\)/);
   assert.match(script, /if \(hairLayerEnabled\) layerRequests\.push\(\{ key: 'hair', filename: hairFiles\[state\.hair\] \}\);/);
   assert.match(script, /if \(hairLayerEnabled && images\.hair\) drawLayer\(images\.hair,/);
 
-  assert.match(script, /const bodyLayerScale = 0\.88;/);
+  ['body', 'outfit', 'hair', 'accessory'].forEach((key) => {
+    assert.match(html, new RegExp(`id="${key}Scale"`));
+    assert.match(html, new RegExp(`id="${key}X"`));
+    assert.match(html, new RegExp(`id="${key}Y"`));
+  });
+  assert.match(html, /id="copyExport"/);
+  assert.match(html, /id="exportData"/);
+
+  assert.match(script, /body: \{ scale: 0\.88, x: 0, y: 0 \}/);
+  assert.match(script, /function getLayerTransforms\(\)/);
   assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state\)/);
+  assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
   assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);/);
+  assert.match(script, /drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
+  assert.match(script, /drawLayer\(images\.accessory, accessoryFrame\.x, accessoryFrame\.y, accessoryFrame\.size\);/);
+  assert.match(script, /function buildExportPayload\(state\)/);
+  assert.match(script, /exportData\.value = JSON\.stringify\(buildExportPayload\(state\), null, 2\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
 });

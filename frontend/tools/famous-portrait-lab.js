@@ -32,8 +32,21 @@
     'offsetY',
     'cardWidth',
     'cardHeight',
+    'bodyScale',
+    'bodyX',
+    'bodyY',
+    'outfitScale',
+    'outfitX',
+    'outfitY',
+    'hairScale',
+    'hairX',
+    'hairY',
+    'accessoryScale',
+    'accessoryX',
+    'accessoryY',
     'showBounds',
     'showAnchorLines',
+    'copyExport',
   ].reduce((result, id) => {
     result[id] = document.getElementById(id);
     return result;
@@ -46,16 +59,34 @@
     offsetY: document.getElementById('offsetValue'),
     cardWidth: document.getElementById('cardWidthValue'),
     cardHeight: document.getElementById('cardHeightValue'),
+    bodyScale: document.getElementById('bodyScaleValue'),
+    bodyX: document.getElementById('bodyXValue'),
+    bodyY: document.getElementById('bodyYValue'),
+    outfitScale: document.getElementById('outfitScaleValue'),
+    outfitX: document.getElementById('outfitXValue'),
+    outfitY: document.getElementById('outfitYValue'),
+    hairScale: document.getElementById('hairScaleValue'),
+    hairX: document.getElementById('hairXValue'),
+    hairY: document.getElementById('hairYValue'),
+    accessoryScale: document.getElementById('accessoryScaleValue'),
+    accessoryX: document.getElementById('accessoryXValue'),
+    accessoryY: document.getElementById('accessoryYValue'),
   };
 
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d');
   const status = document.getElementById('status');
   const audit = document.getElementById('audit');
+  const exportData = document.getElementById('exportData');
   const imageCache = new Map();
   const boundsCache = new WeakMap();
   const hairLayerEnabled = false;
-  const bodyLayerScale = 0.88;
+  const defaultLayerTransforms = {
+    body: { scale: 0.88, x: 0, y: 0 },
+    outfit: { scale: 1, x: 0, y: 0 },
+    hair: { scale: 1, x: 0, y: 0 },
+    accessory: { scale: 1, x: 0, y: 0 },
+  };
   const layerColors = {
     body: '#8ee0a0',
     outfit: '#72b2ff',
@@ -67,6 +98,8 @@
     controls.hair.disabled = true;
     const hairField = controls.hair.closest('label');
     if (hairField) hairField.hidden = true;
+    const hairPanel = document.querySelector('[data-layer-panel="hair"]');
+    if (hairPanel) hairPanel.hidden = true;
   }
 
   function isCandidateOutfit(outfitId) {
@@ -90,6 +123,23 @@
     return promise;
   }
 
+  function readLayerTransform(key) {
+    return {
+      scale: Number(controls[`${key}Scale`].value) / 100,
+      x: Number(controls[`${key}X`].value),
+      y: Number(controls[`${key}Y`].value),
+    };
+  }
+
+  function getLayerTransforms() {
+    return {
+      body: readLayerTransform('body'),
+      outfit: readLayerTransform('outfit'),
+      hair: readLayerTransform('hair'),
+      accessory: readLayerTransform('accessory'),
+    };
+  }
+
   function getState() {
     return {
       outfit: controls.outfit.value,
@@ -103,18 +153,56 @@
       offsetY: Number(controls.offsetY.value),
       cardWidth: Number(controls.cardWidth.value),
       cardHeight: Number(controls.cardHeight.value),
+      layerTransforms: getLayerTransforms(),
       showBounds: controls.showBounds.checked,
       showAnchorLines: controls.showAnchorLines.checked,
     };
   }
 
+  function formatPercent(value) {
+    return `${Math.round(value * 100)}%`;
+  }
+
   function syncLabels(state) {
     valueLabels.frontCutY.textContent = state.frontCutY;
     valueLabels.backCutY.textContent = state.backCutY;
-    valueLabels.scale.textContent = `${Math.round(state.scale * 100)}%`;
+    valueLabels.scale.textContent = formatPercent(state.scale);
     valueLabels.offsetY.textContent = state.offsetY;
     valueLabels.cardWidth.textContent = state.cardWidth;
     valueLabels.cardHeight.textContent = state.cardHeight;
+    Object.entries(state.layerTransforms).forEach(([key, transform]) => {
+      valueLabels[`${key}Scale`].textContent = formatPercent(transform.scale);
+      valueLabels[`${key}X`].textContent = transform.x;
+      valueLabels[`${key}Y`].textContent = transform.y;
+    });
+  }
+
+  function buildExportPayload(state) {
+    return {
+      version: 1,
+      note: 'famous portrait lab layer transform',
+      assets: {
+        outfit: state.outfit,
+        body: state.body,
+        hair: hairLayerEnabled ? state.hair : null,
+        accessory: state.accessory,
+      },
+      mode: state.mode,
+      global: {
+        scale: state.scale,
+        offsetY: state.offsetY,
+        frontCutY: state.frontCutY,
+        backCutY: state.backCutY,
+        cardWidth: state.cardWidth,
+        cardHeight: state.cardHeight,
+      },
+      layers: state.layerTransforms,
+    };
+  }
+
+  function updateExportData(state) {
+    if (!exportData) return;
+    exportData.value = JSON.stringify(buildExportPayload(state), null, 2);
   }
 
   function roundRectPath(x, y, width, height, radius) {
@@ -173,12 +261,12 @@
 
   function getLayerDrawFrame(key, x, y, size, state) {
     const frame = getBaseDrawFrame(x, y, size, state);
-    if (key !== 'body') return frame;
-    const bodySize = frame.size * bodyLayerScale;
+    const transform = state.layerTransforms?.[key] || defaultLayerTransforms[key] || defaultLayerTransforms.outfit;
+    const layerSize = frame.size * transform.scale;
     return {
-      x: frame.x + (frame.size - bodySize) / 2,
-      y: frame.y + (frame.size - bodySize) / 2,
-      size: bodySize,
+      x: frame.x + (frame.size - layerSize) / 2 + transform.x,
+      y: frame.y + (frame.size - layerSize) / 2 + transform.y,
+      size: layerSize,
     };
   }
 
@@ -287,8 +375,10 @@
   }
 
   function drawPortrait(images, x, y, size, state, options = {}) {
-    const baseFrame = getBaseDrawFrame(x, y, size, state);
     const bodyFrame = getLayerDrawFrame('body', x, y, size, state);
+    const outfitFrame = getLayerDrawFrame('outfit', x, y, size, state);
+    const hairFrame = getLayerDrawFrame('hair', x, y, size, state);
+    const accessoryFrame = getLayerDrawFrame('accessory', x, y, size, state);
 
     if (options.clip) {
       ctx.save();
@@ -298,20 +388,20 @@
 
     if (state.mode === 'current') {
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      drawLayer(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size);
-      if (hairLayerEnabled && images.hair) drawLayer(images.hair, baseFrame.x, baseFrame.y, baseFrame.size);
+      drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
+      if (hairLayerEnabled && images.hair) drawLayer(images.hair, hairFrame.x, hairFrame.y, hairFrame.size);
     } else if (state.mode === 'outfitBack') {
-      drawLayer(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size);
+      drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      if (hairLayerEnabled && images.hair) drawLayer(images.hair, baseFrame.x, baseFrame.y, baseFrame.size);
+      if (hairLayerEnabled && images.hair) drawLayer(images.hair, hairFrame.x, hairFrame.y, hairFrame.size);
     } else {
-      drawSplitOutfit(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size, state, 'back');
+      drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'back');
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      if (hairLayerEnabled && images.hair) drawLayer(images.hair, baseFrame.x, baseFrame.y, baseFrame.size);
-      drawSplitOutfit(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size, state, 'front');
+      if (hairLayerEnabled && images.hair) drawLayer(images.hair, hairFrame.x, hairFrame.y, hairFrame.size);
+      drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'front');
     }
 
-    if (images.accessory) drawLayer(images.accessory, baseFrame.x, baseFrame.y, baseFrame.size);
+    if (images.accessory) drawLayer(images.accessory, accessoryFrame.x, accessoryFrame.y, accessoryFrame.size);
     if (options.clip) ctx.restore();
   }
 
@@ -348,7 +438,7 @@
   }
 
   function drawGuides(x, y, size, state) {
-    const frame = getBaseDrawFrame(x, y, size, state);
+    const frame = getLayerDrawFrame('outfit', x, y, size, state);
     ctx.save();
     ctx.strokeStyle = 'rgba(142, 224, 160, 0.85)';
     ctx.lineWidth = 2;
@@ -566,6 +656,7 @@
   async function render() {
     const state = getState();
     syncLabels(state);
+    updateExportData(state);
     const layerRequests = [
       { key: 'outfit', filename: outfitFiles[state.outfit] },
       { key: 'body', filename: bodyFiles[state.body] },
@@ -588,9 +679,23 @@
   }
 
   Object.values(controls).forEach((control) => {
+    if (!control || control.type === 'button') return;
     control.addEventListener('input', render);
     control.addEventListener('change', render);
   });
+
+  if (controls.copyExport && exportData) {
+    controls.copyExport.addEventListener('click', async () => {
+      exportData.select();
+      try {
+        await navigator.clipboard.writeText(exportData.value);
+        status.textContent = '已复制参数';
+      } catch (error) {
+        document.execCommand('copy');
+        status.textContent = '已复制参数';
+      }
+    });
+  }
 
   render();
 }());

@@ -66,17 +66,50 @@
     }
 
     select,
+    textarea,
     input[type="range"] {
       width: 100%;
     }
 
-    select {
+    select,
+    button {
       height: 34px;
       color: #f4e7c7;
       background: #2f2418;
       border: 1px solid rgba(235, 184, 105, 0.3);
       border-radius: 6px;
       padding: 0 8px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    textarea {
+      min-height: 190px;
+      resize: vertical;
+      color: #d8c399;
+      background: #15100a;
+      border: 1px solid rgba(235, 184, 105, 0.18);
+      border-radius: 6px;
+      padding: 10px;
+      font: 12px/1.55 Consolas, "Microsoft YaHei", monospace;
+    }
+
+    .layer-adjust {
+      padding: 8px 10px;
+      margin: 10px 0;
+      background: rgba(17, 13, 8, 0.42);
+      border: 1px solid rgba(235, 184, 105, 0.14);
+      border-radius: 8px;
+    }
+
+    .layer-adjust h2 {
+      margin: 0 0 6px;
+      color: #f3d89a;
+      font-size: 13px;
+      letter-spacing: 0;
     }
 
     .value {
@@ -243,6 +276,70 @@
       </fieldset>
 
       <fieldset>
+        <legend>图层微调</legend>
+        <div class="layer-adjust" data-layer-panel="body">
+          <h2>身体/头</h2>
+          <label>
+            缩放 <span class="value" id="bodyScaleValue"></span>
+            <input id="bodyScale" type="range" min="70" max="130" value="88">
+          </label>
+          <label>
+            X <span class="value" id="bodyXValue"></span>
+            <input id="bodyX" type="range" min="-80" max="80" value="0">
+          </label>
+          <label>
+            Y <span class="value" id="bodyYValue"></span>
+            <input id="bodyY" type="range" min="-120" max="120" value="0">
+          </label>
+        </div>
+        <div class="layer-adjust" data-layer-panel="outfit">
+          <h2>衣服</h2>
+          <label>
+            缩放 <span class="value" id="outfitScaleValue"></span>
+            <input id="outfitScale" type="range" min="70" max="130" value="100">
+          </label>
+          <label>
+            X <span class="value" id="outfitXValue"></span>
+            <input id="outfitX" type="range" min="-80" max="80" value="0">
+          </label>
+          <label>
+            Y <span class="value" id="outfitYValue"></span>
+            <input id="outfitY" type="range" min="-120" max="120" value="0">
+          </label>
+        </div>
+        <div class="layer-adjust" data-layer-panel="hair">
+          <h2>发型</h2>
+          <label>
+            缩放 <span class="value" id="hairScaleValue"></span>
+            <input id="hairScale" type="range" min="70" max="130" value="100">
+          </label>
+          <label>
+            X <span class="value" id="hairXValue"></span>
+            <input id="hairX" type="range" min="-80" max="80" value="0">
+          </label>
+          <label>
+            Y <span class="value" id="hairYValue"></span>
+            <input id="hairY" type="range" min="-120" max="120" value="0">
+          </label>
+        </div>
+        <div class="layer-adjust" data-layer-panel="accessory">
+          <h2>配饰</h2>
+          <label>
+            缩放 <span class="value" id="accessoryScaleValue"></span>
+            <input id="accessoryScale" type="range" min="70" max="130" value="100">
+          </label>
+          <label>
+            X <span class="value" id="accessoryXValue"></span>
+            <input id="accessoryX" type="range" min="-80" max="80" value="0">
+          </label>
+          <label>
+            Y <span class="value" id="accessoryYValue"></span>
+            <input id="accessoryY" type="range" min="-120" max="120" value="0">
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>素材诊断</legend>
         <label class="check">
           <input id="showBounds" type="checkbox" checked>
@@ -253,6 +350,12 @@
           显示中心/下巴/肩线
         </label>
         <pre id="audit" class="audit-output">等待素材加载...</pre>
+      </fieldset>
+
+      <fieldset>
+        <legend>导出数据</legend>
+        <button id="copyExport" type="button">复制当前参数</button>
+        <textarea id="exportData" readonly></textarea>
       </fieldset>
     </aside>
 
