@@ -92,11 +92,20 @@
   const imageCache = new Map();
   const boundsCache = new WeakMap();
   const defaultLayerTransforms = {
-    backHair: { scale: 1, x: 0, y: 0 },
+    backHair: { scale: 0.7, x: 0, y: -70 },
     body: { scale: 0.7, x: 0, y: -17 },
     outfit: { scale: 1.21, x: 0, y: 0 },
-    frontHair: { scale: 1, x: 0, y: 0 },
+    frontHair: { scale: 0.7, x: 0, y: -65 },
     accessory: { scale: 1, x: 0, y: 0 },
+  };
+  const gamePortraitPreview = {
+    itemWidth: 356,
+    itemHeight: 132,
+    portraitWidth: 74,
+    portraitHeight: 98,
+    portraitSize: 74,
+    portraitScale: 1.74,
+    portraitOffsetY: 0.14,
   };
   const layerColors = {
     backHair: '#b385ff',
@@ -236,6 +245,7 @@
   }
 
   function drawLayer(image, x, y, size, crop = null) {
+    if (!image || size <= 0) return;
     if (!crop) {
       ctx.drawImage(image, x, y, size, size);
       return;
@@ -449,6 +459,87 @@
     ctx.fillText('守势反击 · 护盾 / 反击', x + state.cardWidth + 28, y + 100);
   }
 
+  function drawGameFamousPortrait(images, x, y, state, options = {}) {
+    const frameWidth = options.frameWidth || gamePortraitPreview.portraitWidth;
+    const frameHeight = options.frameHeight || gamePortraitPreview.portraitHeight;
+    const size = options.size || Math.min(frameWidth, frameHeight);
+    const scale = options.scale || gamePortraitPreview.portraitScale;
+    const offsetY = options.offsetY ?? gamePortraitPreview.portraitOffsetY;
+    const drawSize = size * scale;
+    const drawX = x + (frameWidth - drawSize) / 2;
+    const drawY = y + (frameHeight - drawSize) / 2 + size * offsetY;
+
+    drawPortrait(images, drawX, drawY, drawSize, state, {
+      clip: {
+        x,
+        y,
+        width: frameWidth,
+        height: frameHeight,
+        radius: 10,
+      },
+    });
+  }
+
+  function drawGameFamousPersonItem(images, x, y, state) {
+    const preview = gamePortraitPreview;
+    drawPanel(x, y, preview.itemWidth, preview.itemHeight, {
+      fill: 'rgba(52, 39, 27, 0.86)',
+      stroke: 'rgba(240, 180, 91, 0.34)',
+      radius: 9,
+      inset: 'rgba(255, 231, 184, 0.08)',
+    });
+    const portraitX = x + 10;
+    const portraitY = y + 10;
+    drawPanel(portraitX, portraitY, preview.portraitWidth, preview.portraitHeight, {
+      fill: 'rgba(44, 32, 23, 0.94)',
+      stroke: 'rgba(240, 180, 91, 0.32)',
+      radius: 10,
+      inset: 'rgba(255, 231, 184, 0.1)',
+    });
+    drawGameFamousPortrait(images, portraitX, portraitY, state, {
+      frameWidth: preview.portraitWidth,
+      frameHeight: preview.portraitHeight,
+      size: preview.portraitSize,
+      scale: preview.portraitScale,
+      offsetY: preview.portraitOffsetY,
+    });
+
+    const textX = x + 96;
+    const textWidth = preview.itemWidth - (textX - x) - 86;
+    ctx.fillStyle = '#fff1cf';
+    ctx.font = '700 14px "Microsoft YaHei", sans-serif';
+    ctx.fillText('秦承 · 垒门守将', textX, y + 10, textWidth);
+    ctx.fillStyle = '#cbbd96';
+    ctx.font = '10px "Microsoft YaHei", sans-serif';
+    ctx.fillText('治理 · 事件投奔', textX, y + 31, textWidth);
+    ctx.fillStyle = '#aeb0b8';
+    ctx.fillText('统率50 武力30 谋略60 治理80 工巧45', textX, y + 55, textWidth);
+    ctx.fillStyle = '#74d3a0';
+    ctx.font = '700 10px "Microsoft YaHei", sans-serif';
+    ctx.fillText('固阵振军', textX, y + 74, textWidth);
+
+    drawPanel(x + preview.itemWidth - 78, y + 15, 66, 28, {
+      fill: 'rgba(122, 82, 36, 0.88)',
+      stroke: 'rgba(255, 215, 139, 0.36)',
+      radius: 8,
+    });
+    ctx.fillStyle = '#fff1cf';
+    ctx.font = '700 12px "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('接纳', x + preview.itemWidth - 45, y + 29);
+    drawPanel(x + preview.itemWidth - 78, y + 52, 66, 28, {
+      fill: 'rgba(45, 36, 28, 0.88)',
+      stroke: 'rgba(255, 226, 177, 0.14)',
+      radius: 8,
+    });
+    ctx.fillStyle = '#f4e7c7';
+    ctx.font = '12px "Microsoft YaHei", sans-serif';
+    ctx.fillText('放弃', x + preview.itemWidth - 45, y + 66);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
+
   function drawGuides(x, y, size, state) {
     const frame = getLayerDrawFrame('outfit', x, y, size, state);
     ctx.save();
@@ -625,8 +716,16 @@
     drawCard(images, 592, 246, 520, 126, state, '韩骁 · 山道突骑');
 
     ctx.fillStyle = '#ffe6b5';
+    ctx.font = '700 22px "Microsoft YaHei", sans-serif';
+    ctx.fillText('游戏实显', 592, 414);
+    ctx.fillStyle = '#bda77e';
+    ctx.font = '13px "Microsoft YaHei", sans-serif';
+    ctx.fillText('复刻名人面板候选卡：头像框 74x98，scale 1.74，offsetY 0.14。', 592, 438);
+    drawGameFamousPersonItem(images, 592, 466, state);
+
+    ctx.fillStyle = '#ffe6b5';
     ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('当前模式', 592, 436);
+    ctx.fillText('当前模式', 592, 640);
     ctx.fillStyle = '#c8b58e';
     ctx.font = '14px "Microsoft YaHei", sans-serif';
     const candidateOutfit = isCandidateOutfit(state.outfit);
@@ -637,9 +736,9 @@
         ? '候选素材整层预览：用于检查透明区和锚点，不代表正式分层方案。'
         : '旧错误示例：衣服整层压到脸上，不能作为成品方案。',
     }[state.mode];
-    ctx.fillText(modeText, 592, 466);
+    ctx.fillText(modeText, 592, 670);
 
-    const sampleY = 520;
+    const sampleY = 724;
     ['current', 'outfitBack', 'split'].forEach((mode, index) => {
       const oldMode = state.mode;
       state.mode = mode;
@@ -663,8 +762,8 @@
       ctx.fillText({ current: candidateOutfit ? '候选整层' : '旧错误', outfitBack: '衣服后置', split: '前后层' }[mode], x + 18, sampleY + 146);
       state.mode = oldMode;
     });
-    drawTrimAudit(entries, 592, 704);
-    drawCropComparison(images, entries, 592, 830, state);
+    drawTrimAudit(entries, 592, 908);
+    drawCropComparison(images, entries, 592, 1034, state);
   }
 
   async function render() {

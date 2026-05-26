@@ -56,11 +56,19 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(html, /id="copyExport"/);
   assert.match(html, /id="exportData"/);
 
+  assert.match(html, /id="scale"[^>]*min="0"[^>]*max="200"[^>]*value="130"/);
   assert.match(html, /id="bodyScale"[^>]*value="70"/);
   assert.match(html, /id="bodyY"[^>]*value="-17"/);
   assert.match(html, /id="outfitScale"[^>]*value="121"/);
+  assert.match(html, /id="backHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
+  assert.match(html, /id="backHairY"[^>]*value="-70"/);
+  assert.match(html, /id="frontHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
+  assert.match(html, /id="frontHairY"[^>]*value="-65"/);
+  assert.match(html, /id="accessoryScale"[^>]*min="0"[^>]*max="200"[^>]*value="100"/);
   assert.match(script, /body: \{ scale: 0\.7, x: 0, y: -17 \}/);
   assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 0 \}/);
+  assert.match(script, /backHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
+  assert.match(script, /frontHair: \{ scale: 0\.7, x: 0, y: -65 \}/);
   assert.match(script, /function getLayerTransforms\(\)/);
   assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state\)/);
   assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
@@ -73,6 +81,23 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(script, /exportData\.value = JSON\.stringify\(buildExportPayload\(state\), null, 2\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
+});
+
+test('famous portrait lab shows an in-game candidate card preview', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
+  const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
+
+  assert.match(html, /<canvas id="stage" width="1180" height="1220"><\/canvas>/);
+  assert.match(script, /const gamePortraitPreview = \{/);
+  assert.match(script, /portraitWidth: 74/);
+  assert.match(script, /portraitHeight: 98/);
+  assert.match(script, /portraitScale: 1\.74/);
+  assert.match(script, /portraitOffsetY: 0\.14/);
+  assert.match(script, /function drawGameFamousPortrait\(images, x, y, state, options = \{\}\)/);
+  assert.match(script, /function drawGameFamousPersonItem\(images, x, y, state\)/);
+  assert.match(script, /ctx\.fillText\('游戏实显', 592, 414\)/);
+  assert.match(script, /drawGameFamousPersonItem\(images, 592, 466, state\)/);
+  assert.match(script, /if \(!image \|\| size <= 0\) return;/);
 });
 
 test('famous portrait lab keeps desktop controls scroll isolated from preview', () => {

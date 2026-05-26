@@ -182,7 +182,7 @@
     canvas {
       display: block;
       width: 1180px;
-      height: 1040px;
+      height: 1220px;
       background: #17120c;
       border-radius: 6px;
     }
@@ -296,7 +296,7 @@
         <legend>画面参数</legend>
         <label>
           缩放 <span class="value" id="scaleValue"></span>
-          <input id="scale" type="range" min="95" max="170" value="130">
+          <input id="scale" type="range" min="0" max="200" value="130">
         </label>
         <label>
           纵向偏移 <span class="value" id="offsetValue"></span>
@@ -318,7 +318,7 @@
           <h2>身体/头</h2>
           <label>
             缩放 <span class="value" id="bodyScaleValue"></span>
-            <input id="bodyScale" type="range" min="70" max="130" value="70">
+            <input id="bodyScale" type="range" min="0" max="200" value="70">
           </label>
           <label>
             X <span class="value" id="bodyXValue"></span>
@@ -333,7 +333,7 @@
           <h2>衣服</h2>
           <label>
             缩放 <span class="value" id="outfitScaleValue"></span>
-            <input id="outfitScale" type="range" min="70" max="130" value="121">
+            <input id="outfitScale" type="range" min="0" max="200" value="121">
           </label>
           <label>
             X <span class="value" id="outfitXValue"></span>
@@ -348,7 +348,7 @@
           <h2>后发</h2>
           <label>
             缩放 <span class="value" id="backHairScaleValue"></span>
-            <input id="backHairScale" type="range" min="70" max="130" value="100">
+            <input id="backHairScale" type="range" min="0" max="200" value="70">
           </label>
           <label>
             X <span class="value" id="backHairXValue"></span>
@@ -356,14 +356,14 @@
           </label>
           <label>
             Y <span class="value" id="backHairYValue"></span>
-            <input id="backHairY" type="range" min="-120" max="120" value="0">
+            <input id="backHairY" type="range" min="-120" max="120" value="-70">
           </label>
         </div>
         <div class="layer-adjust" data-layer-panel="frontHair">
           <h2>前发</h2>
           <label>
             缩放 <span class="value" id="frontHairScaleValue"></span>
-            <input id="frontHairScale" type="range" min="70" max="130" value="100">
+            <input id="frontHairScale" type="range" min="0" max="200" value="70">
           </label>
           <label>
             X <span class="value" id="frontHairXValue"></span>
@@ -371,14 +371,14 @@
           </label>
           <label>
             Y <span class="value" id="frontHairYValue"></span>
-            <input id="frontHairY" type="range" min="-120" max="120" value="0">
+            <input id="frontHairY" type="range" min="-120" max="120" value="-65">
           </label>
         </div>
         <div class="layer-adjust" data-layer-panel="accessory">
           <h2>配饰</h2>
           <label>
             缩放 <span class="value" id="accessoryScaleValue"></span>
-            <input id="accessoryScale" type="range" min="70" max="130" value="100">
+            <input id="accessoryScale" type="range" min="0" max="200" value="100">
           </label>
           <label>
             X <span class="value" id="accessoryXValue"></span>
@@ -417,7 +417,7 @@
         <span id="status">加载中...</span>
       </div>
       <div class="canvas-wrap">
-        <canvas id="stage" width="1180" height="1040"></canvas>
+        <canvas id="stage" width="1180" height="1220"></canvas>
       </div>
       <p class="note">建议先用“模拟衣服前后层”调分界线：衣服后层负责肩甲和衣身，脸和头发在中间，衣服前层只保留真正应该挡住脖子的领口/围巾。确认后再导出真正的 outfitBack / outfitFront PNG。</p>
     </section>
