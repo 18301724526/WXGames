@@ -104,7 +104,7 @@
   const boundsCache = new WeakMap();
   const fallbackLayerTransforms = {
     backHair: { scale: 0.7, x: 0, y: -70 },
-    sideHair: { scale: 0.7, x: 0, y: -75 },
+    sideHair: { scale: 0.63, x: 0, y: -98 },
     body: { scale: 0.7, x: 0, y: -17 },
     outfit: { scale: 1.21, x: 0, y: 53 },
     frontHair: { scale: 0.7, x: 0, y: -65 },

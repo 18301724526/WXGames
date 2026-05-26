@@ -164,7 +164,8 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   assert.equal(layout.body.scale, 0.7);
   assert.equal(layout.outfit.scale, 1.21);
   assert.equal(layout.outfit.y, 53);
-  assert.equal(layout.sideHair.y, -75);
+  assert.equal(layout.sideHair.scale, 0.63);
+  assert.equal(layout.sideHair.y, -98);
   assert.equal(layout.frontHair.y, -65);
   const layers = {
     backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',

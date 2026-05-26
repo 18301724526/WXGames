@@ -65,8 +65,8 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(html, /id="outfitScale"[^>]*value="121"/);
   assert.match(html, /id="backHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
   assert.match(html, /id="backHairY"[^>]*value="-70"/);
-  assert.match(html, /id="sideHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
-  assert.match(html, /id="sideHairY"[^>]*value="-75"/);
+  assert.match(html, /id="sideHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="63"/);
+  assert.match(html, /id="sideHairY"[^>]*value="-98"/);
   assert.match(html, /id="frontHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
   assert.match(html, /id="frontHairY"[^>]*value="-65"/);
   assert.match(html, /id="accessoryScale"[^>]*min="0"[^>]*max="200"[^>]*value="100"/);
@@ -77,7 +77,7 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(html, /id="outfitY"[^>]*value="53"/);
   assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 53 \}/);
   assert.match(script, /backHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
-  assert.match(script, /sideHair: \{ scale: 0\.7, x: 0, y: -75 \}/);
+  assert.match(script, /sideHair: \{ scale: 0\.63, x: 0, y: -98 \}/);
   assert.match(script, /frontHair: \{ scale: 0\.7, x: 0, y: -65 \}/);
   assert.match(script, /function getLayerTransforms\(\)/);
   assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state, options = \{\}\)/);
@@ -144,10 +144,11 @@ test('famous portrait split hair assets exist and stay aligned', () => {
 });
 
 test('famous portrait side hair assets are true narrow sideburn details', () => {
+  const shortBounds = readPngAlphaStats(path.join(famousLayerDir, 'fp-layer-sideHair-short-01.png')).bounds;
   [
-    'fp-layer-sideHair-short-01.png',
-    'fp-layer-sideHair-tied-01.png',
-  ].forEach((filename) => {
+    ['fp-layer-sideHair-short-01.png', shortBounds],
+    ['fp-layer-sideHair-tied-01.png', shortBounds],
+  ].forEach(([filename, expectedBounds]) => {
     const alpha = readPngAlphaStats(path.join(famousLayerDir, filename));
     const left = alpha.points.filter((point) => point.x < 226).length;
     const center = alpha.points.filter((point) => point.x >= 226 && point.x <= 286).length;
@@ -156,6 +157,7 @@ test('famous portrait side hair assets are true narrow sideburn details', () => 
     assert.ok(left > 0 && right > 0, filename);
     assert.ok(left / right > 0.9 && left / right < 1.1, filename);
     assert.equal(center, 0, filename);
+    assert.deepEqual(alpha.bounds, expectedBounds, filename);
     assert.ok(alpha.points.length < 3000, filename);
     assert.equal(alpha.bounds.minY >= 150, true, filename);
     assert.equal(alpha.bounds.maxY < 300, true, filename);
@@ -177,16 +179,20 @@ test('famous portrait front hair assets are forehead locks instead of copied bac
     ['fp-layer-frontHair-short-02.png', 'fp-layer-backHair-short-02.png'],
     ['fp-layer-frontHair-tied-02.png', 'fp-layer-backHair-tied-02.png'],
   ].forEach(([filename, backFilename]) => {
-    const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
+    const alpha = readPngAlphaStats(path.join(famousLayerDir, filename));
+    const bounds = alpha.bounds;
     const backBounds = readPngAlphaBounds(path.join(famousLayerDir, backFilename));
     const width = bounds.maxX - bounds.minX + 1;
     const height = bounds.maxY - bounds.minY + 1;
     const backHeight = backBounds.maxY - backBounds.minY + 1;
-    assert.ok(width >= 250 && width <= 270, filename);
-    assert.ok(height >= 90 && height <= 115, filename);
+    const centerYs = alpha.points.filter((point) => Math.abs(point.x - 256) <= 3).map((point) => point.y);
+    assert.ok(width >= 220 && width <= 270, filename);
+    assert.ok(height >= 70 && height <= 115, filename);
     assert.ok(height < backHeight * 0.5, filename);
     assert.ok(bounds.minY > backBounds.minY + 40, filename);
-    assert.ok(bounds.maxY <= 190, filename);
+    assert.equal(Math.min(...centerYs), 76, filename);
+    assert.equal(Math.max(...centerYs), 151, filename);
+    assert.ok(bounds.maxY <= 180, filename);
   });
 });
 
