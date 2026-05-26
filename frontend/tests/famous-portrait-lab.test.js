@@ -36,3 +36,18 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(script, /裁边后回 x=256/);
   assert.match(script, /不要采用/);
 });
+
+test('famous portrait lab can hide hair and shrink the base head layer', () => {
+  const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
+
+  assert.match(script, /const hairLayerEnabled = false;/);
+  assert.match(script, /if \(!hairLayerEnabled && controls\.hair\)/);
+  assert.match(script, /if \(hairLayerEnabled\) layerRequests\.push\(\{ key: 'hair', filename: hairFiles\[state\.hair\] \}\);/);
+  assert.match(script, /if \(hairLayerEnabled && images\.hair\) drawLayer\(images\.hair,/);
+
+  assert.match(script, /const bodyLayerScale = 0\.88;/);
+  assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state\)/);
+  assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);/);
+  assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
+  assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
+});

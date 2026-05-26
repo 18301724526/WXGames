@@ -54,12 +54,20 @@
   const audit = document.getElementById('audit');
   const imageCache = new Map();
   const boundsCache = new WeakMap();
+  const hairLayerEnabled = false;
+  const bodyLayerScale = 0.88;
   const layerColors = {
     body: '#8ee0a0',
     outfit: '#72b2ff',
     hair: '#f0a0ff',
     accessory: '#ffd36f',
   };
+
+  if (!hairLayerEnabled && controls.hair) {
+    controls.hair.disabled = true;
+    const hairField = controls.hair.closest('label');
+    if (hairField) hairField.hidden = true;
+  }
 
   function isCandidateOutfit(outfitId) {
     return /Candidate$/.test(outfitId);
@@ -154,6 +162,26 @@
     );
   }
 
+  function getBaseDrawFrame(x, y, size, state) {
+    const drawSize = size * state.scale;
+    return {
+      x: x + (size - drawSize) / 2,
+      y: y + (size - drawSize) / 2 + state.offsetY,
+      size: drawSize,
+    };
+  }
+
+  function getLayerDrawFrame(key, x, y, size, state) {
+    const frame = getBaseDrawFrame(x, y, size, state);
+    if (key !== 'body') return frame;
+    const bodySize = frame.size * bodyLayerScale;
+    return {
+      x: frame.x + (frame.size - bodySize) / 2,
+      y: frame.y + (frame.size - bodySize) / 2,
+      size: bodySize,
+    };
+  }
+
   function getAlphaBounds(image) {
     if (boundsCache.has(image)) return boundsCache.get(image);
     const width = image.naturalWidth || image.width;
@@ -218,9 +246,9 @@
     return [
       { key: 'body', label: '身体', image: images.body },
       { key: 'outfit', label: '衣服', image: images.outfit },
-      { key: 'hair', label: '发型', image: images.hair },
+      hairLayerEnabled ? { key: 'hair', label: '发型', image: images.hair } : null,
       images.accessory ? { key: 'accessory', label: '配饰', image: images.accessory } : null,
-    ].filter(Boolean).map((entry) => ({
+    ].filter((entry) => entry && entry.image).map((entry) => ({
       ...entry,
       bounds: getAlphaBounds(entry.image),
     }));
@@ -259,9 +287,8 @@
   }
 
   function drawPortrait(images, x, y, size, state, options = {}) {
-    const drawSize = size * state.scale;
-    const drawX = x + (size - drawSize) / 2;
-    const drawY = y + (size - drawSize) / 2 + state.offsetY;
+    const baseFrame = getBaseDrawFrame(x, y, size, state);
+    const bodyFrame = getLayerDrawFrame('body', x, y, size, state);
 
     if (options.clip) {
       ctx.save();
@@ -270,21 +297,21 @@
     }
 
     if (state.mode === 'current') {
-      drawLayer(images.body, drawX, drawY, drawSize);
-      drawLayer(images.outfit, drawX, drawY, drawSize);
-      drawLayer(images.hair, drawX, drawY, drawSize);
+      drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
+      drawLayer(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size);
+      if (hairLayerEnabled && images.hair) drawLayer(images.hair, baseFrame.x, baseFrame.y, baseFrame.size);
     } else if (state.mode === 'outfitBack') {
-      drawLayer(images.outfit, drawX, drawY, drawSize);
-      drawLayer(images.body, drawX, drawY, drawSize);
-      drawLayer(images.hair, drawX, drawY, drawSize);
+      drawLayer(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size);
+      drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
+      if (hairLayerEnabled && images.hair) drawLayer(images.hair, baseFrame.x, baseFrame.y, baseFrame.size);
     } else {
-      drawSplitOutfit(images.outfit, drawX, drawY, drawSize, state, 'back');
-      drawLayer(images.body, drawX, drawY, drawSize);
-      drawLayer(images.hair, drawX, drawY, drawSize);
-      drawSplitOutfit(images.outfit, drawX, drawY, drawSize, state, 'front');
+      drawSplitOutfit(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size, state, 'back');
+      drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
+      if (hairLayerEnabled && images.hair) drawLayer(images.hair, baseFrame.x, baseFrame.y, baseFrame.size);
+      drawSplitOutfit(images.outfit, baseFrame.x, baseFrame.y, baseFrame.size, state, 'front');
     }
 
-    if (images.accessory) drawLayer(images.accessory, drawX, drawY, drawSize);
+    if (images.accessory) drawLayer(images.accessory, baseFrame.x, baseFrame.y, baseFrame.size);
     if (options.clip) ctx.restore();
   }
 
@@ -321,31 +348,27 @@
   }
 
   function drawGuides(x, y, size, state) {
-    const drawSize = size * state.scale;
-    const drawX = x + (size - drawSize) / 2;
-    const drawY = y + (size - drawSize) / 2 + state.offsetY;
+    const frame = getBaseDrawFrame(x, y, size, state);
     ctx.save();
     ctx.strokeStyle = 'rgba(142, 224, 160, 0.85)';
     ctx.lineWidth = 2;
-    const frontY = drawY + (state.frontCutY / 512) * drawSize;
-    const backY = drawY + (state.backCutY / 512) * drawSize;
+    const frontY = frame.y + (state.frontCutY / 512) * frame.size;
+    const backY = frame.y + (state.backCutY / 512) * frame.size;
     ctx.beginPath();
-    ctx.moveTo(drawX, frontY);
-    ctx.lineTo(drawX + drawSize, frontY);
+    ctx.moveTo(frame.x, frontY);
+    ctx.lineTo(frame.x + frame.size, frontY);
     ctx.stroke();
     ctx.strokeStyle = 'rgba(114, 178, 255, 0.85)';
     ctx.beginPath();
-    ctx.moveTo(drawX, backY);
-    ctx.lineTo(drawX + drawSize, backY);
+    ctx.moveTo(frame.x, backY);
+    ctx.lineTo(frame.x + frame.size, backY);
     ctx.stroke();
     ctx.restore();
   }
 
   function drawAnchorGuides(x, y, size, state) {
     if (!state.showAnchorLines) return;
-    const drawSize = size * state.scale;
-    const drawX = x + (size - drawSize) / 2;
-    const drawY = y + (size - drawSize) / 2 + state.offsetY;
+    const frame = getLayerDrawFrame('body', x, y, size, state);
     const guides = [
       { label: 'center', y: 0, color: 'rgba(255, 255, 255, 0.35)' },
       { label: 'chin', y: 246, color: 'rgba(255, 210, 111, 0.78)' },
@@ -354,40 +377,38 @@
     ctx.save();
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
-    const centerX = drawX + drawSize / 2;
+    const centerX = frame.x + frame.size / 2;
     ctx.beginPath();
-    ctx.moveTo(centerX, drawY);
-    ctx.lineTo(centerX, drawY + drawSize);
+    ctx.moveTo(centerX, frame.y);
+    ctx.lineTo(centerX, frame.y + frame.size);
     ctx.stroke();
     guides.slice(1).forEach((guide) => {
-      const lineY = drawY + (guide.y / 512) * drawSize;
+      const lineY = frame.y + (guide.y / 512) * frame.size;
       ctx.strokeStyle = guide.color;
       ctx.beginPath();
-      ctx.moveTo(drawX, lineY);
-      ctx.lineTo(drawX + drawSize, lineY);
+      ctx.moveTo(frame.x, lineY);
+      ctx.lineTo(frame.x + frame.size, lineY);
       ctx.stroke();
       ctx.fillStyle = guide.color;
       ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.fillText(guide.label, drawX + 6, lineY + 4);
+      ctx.fillText(guide.label, frame.x + 6, lineY + 4);
     });
     ctx.restore();
   }
 
   function drawBoundsOverlay(entries, x, y, size, state) {
     if (!state.showBounds) return;
-    const drawSize = size * state.scale;
-    const drawX = x + (size - drawSize) / 2;
-    const drawY = y + (size - drawSize) / 2 + state.offsetY;
     ctx.save();
     ctx.lineWidth = 2;
     entries.forEach((entry, index) => {
       const b = entry.bounds;
       if (!b) return;
       const color = layerColors[entry.key] || '#ffffff';
-      const bx = drawX + (b.x / b.sourceWidth) * drawSize;
-      const by = drawY + (b.y / b.sourceHeight) * drawSize;
-      const bw = (b.width / b.sourceWidth) * drawSize;
-      const bh = (b.height / b.sourceHeight) * drawSize;
+      const frame = getLayerDrawFrame(entry.key, x, y, size, state);
+      const bx = frame.x + (b.x / b.sourceWidth) * frame.size;
+      const by = frame.y + (b.y / b.sourceHeight) * frame.size;
+      const bw = (b.width / b.sourceWidth) * frame.size;
+      const bh = (b.height / b.sourceHeight) * frame.size;
       ctx.strokeStyle = color;
       ctx.strokeRect(bx, by, bw, bh);
       ctx.fillStyle = color;
@@ -404,21 +425,19 @@
   function drawCroppedAlignedLayer(entry, x, y, size, state) {
     const b = entry?.bounds;
     if (!entry || !b) return;
-    const drawSize = size * state.scale;
-    const drawX = x + (size - drawSize) / 2;
-    const drawY = y + (size - drawSize) / 2 + state.offsetY;
+    const frame = getLayerDrawFrame(entry.key, x, y, size, state);
     // This is an audit preview, not the final rule: trim transparent pixels,
     // then shift by the alpha center so every part returns to x=256.
     const shiftX = 256 - b.centerX;
-    const destX = drawX + ((b.x + shiftX) / b.sourceWidth) * drawSize;
-    const destY = drawY + (b.y / b.sourceHeight) * drawSize;
-    const destW = (b.width / b.sourceWidth) * drawSize;
-    const destH = (b.height / b.sourceHeight) * drawSize;
+    const destX = frame.x + ((b.x + shiftX) / b.sourceWidth) * frame.size;
+    const destY = frame.y + (b.y / b.sourceHeight) * frame.size;
+    const destW = (b.width / b.sourceWidth) * frame.size;
+    const destH = (b.height / b.sourceHeight) * frame.size;
     ctx.drawImage(entry.image, b.x, b.y, b.width, b.height, destX, destY, destW, destH);
   }
 
   function drawCroppedAlignedPortrait(entries, x, y, size, state) {
-    const layerOrder = ['body', 'outfit', 'hair', 'accessory'];
+    const layerOrder = hairLayerEnabled ? ['body', 'outfit', 'hair', 'accessory'] : ['body', 'outfit', 'accessory'];
     layerOrder.forEach((key) => drawCroppedAlignedLayer(getEntry(entries, key), x, y, size, state));
   }
 
@@ -547,20 +566,18 @@
   async function render() {
     const state = getState();
     syncLabels(state);
-    const files = [
-      outfitFiles[state.outfit],
-      bodyFiles[state.body],
-      hairFiles[state.hair],
+    const layerRequests = [
+      { key: 'outfit', filename: outfitFiles[state.outfit] },
+      { key: 'body', filename: bodyFiles[state.body] },
     ];
-    if (state.accessory !== 'none') files.push(accessoryFiles[state.accessory]);
+    if (hairLayerEnabled) layerRequests.push({ key: 'hair', filename: hairFiles[state.hair] });
+    if (state.accessory !== 'none') layerRequests.push({ key: 'accessory', filename: accessoryFiles[state.accessory] });
     try {
-      const loaded = await Promise.all(files.map(loadImage));
-      const images = {
-        outfit: loaded[0],
-        body: loaded[1],
-        hair: loaded[2],
-        accessory: state.accessory === 'none' ? null : loaded[3],
-      };
+      const loaded = await Promise.all(layerRequests.map((request) => loadImage(request.filename)));
+      const images = loaded.reduce((result, image, index) => {
+        result[layerRequests[index].key] = image;
+        return result;
+      }, { outfit: null, body: null, hair: null, accessory: null });
       const entries = buildLayerEntries(images);
       updateAudit(entries);
       drawScene(images, state, entries);
