@@ -143,7 +143,7 @@ test('famous portrait split hair assets exist and stay aligned', () => {
   });
 });
 
-test('famous portrait side hair assets are side locks instead of full hair caps', () => {
+test('famous portrait side hair assets are true narrow sideburn details', () => {
   [
     'fp-layer-sideHair-short-01.png',
     'fp-layer-sideHair-tied-01.png',
@@ -156,8 +156,19 @@ test('famous portrait side hair assets are side locks instead of full hair caps'
     assert.ok(left > 0 && right > 0, filename);
     assert.ok(left / right > 0.9 && left / right < 1.1, filename);
     assert.equal(center, 0, filename);
-    assert.equal(alpha.bounds.minY >= 95, true, filename);
-    assert.equal(alpha.bounds.maxY < 320, true, filename);
+    assert.ok(alpha.points.length < 3000, filename);
+    assert.equal(alpha.bounds.minY >= 150, true, filename);
+    assert.equal(alpha.bounds.maxY < 300, true, filename);
+    [left, right].forEach((_, index) => {
+      const isLeft = index === 0;
+      const sidePoints = alpha.points.filter((point) => (isLeft ? point.x < 226 : point.x > 286));
+      const minX = Math.min(...sidePoints.map((point) => point.x));
+      const maxX = Math.max(...sidePoints.map((point) => point.x));
+      const minY = Math.min(...sidePoints.map((point) => point.y));
+      const maxY = Math.max(...sidePoints.map((point) => point.y));
+      assert.ok(maxX - minX + 1 <= 24, filename);
+      assert.ok(maxY - minY + 1 <= 135, filename);
+    });
   });
 });
 
