@@ -257,6 +257,13 @@
           </select>
         </label>
         <label>
+          鬓角
+          <select id="sideHair">
+            <option value="short">短发鬓角</option>
+            <option value="tied">束发鬓角</option>
+          </select>
+        </label>
+        <label>
           前发
           <select id="frontHair">
             <option value="short">短发前层</option>
@@ -357,6 +364,21 @@
           <label>
             Y <span class="value" id="backHairYValue"></span>
             <input id="backHairY" type="range" min="-120" max="120" value="-70">
+          </label>
+        </div>
+        <div class="layer-adjust" data-layer-panel="sideHair">
+          <h2>鬓角</h2>
+          <label>
+            缩放 <span class="value" id="sideHairScaleValue"></span>
+            <input id="sideHairScale" type="range" min="0" max="200" value="70">
+          </label>
+          <label>
+            X <span class="value" id="sideHairXValue"></span>
+            <input id="sideHairX" type="range" min="-80" max="80" value="0">
+          </label>
+          <label>
+            Y <span class="value" id="sideHairYValue"></span>
+            <input id="sideHairY" type="range" min="-120" max="120" value="-70">
           </label>
         </div>
         <div class="layer-adjust" data-layer-panel="frontHair">

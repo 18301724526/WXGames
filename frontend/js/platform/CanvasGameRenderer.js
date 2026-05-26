@@ -73,10 +73,12 @@
         'assets/art/world-site-town-cutout.png',
         'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
         'assets/art/famous-person/layers/fp-layer-body-skin-02.png',
-        'assets/art/famous-person/layers/fp-layer-backHair-short-01.png',
-        'assets/art/famous-person/layers/fp-layer-backHair-tied-01.png',
-        'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
-        'assets/art/famous-person/layers/fp-layer-frontHair-tied-02.png',
+        'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
+        'assets/art/famous-person/layers/fp-layer-backHair-tied-02.png',
+        'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
+        'assets/art/famous-person/layers/fp-layer-sideHair-tied-01.png',
+        'assets/art/famous-person/layers/fp-layer-frontHair-short-03.png',
+        'assets/art/famous-person/layers/fp-layer-frontHair-tied-03.png',
         'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
         'assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png',
         'assets/art/famous-person/layers/fp-layer-outfit-scholar-01.png',
@@ -371,7 +373,7 @@
     drawFamousPortrait(card = {}, x, y, size, options = {}) {
       const appearance = card.appearance || {};
       const rawLayers = appearance.layers && typeof appearance.layers === 'object' ? appearance.layers : {};
-      const layerOrder = ['backHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
+      const layerOrder = ['backHair', 'sideHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
       const layers = layerOrder.map((key) => rawLayers[key]).filter(Boolean);
       if (!layers.length || !this.ctx) return false;
 

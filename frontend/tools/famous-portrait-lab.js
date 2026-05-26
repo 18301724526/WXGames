@@ -13,12 +13,16 @@
     '02': 'fp-layer-body-skin-02.png',
   };
   const backHairFiles = {
-    short: 'fp-layer-backHair-short-01.png',
-    tied: 'fp-layer-backHair-tied-01.png',
+    short: 'fp-layer-backHair-short-02.png',
+    tied: 'fp-layer-backHair-tied-02.png',
+  };
+  const sideHairFiles = {
+    short: 'fp-layer-sideHair-short-01.png',
+    tied: 'fp-layer-sideHair-tied-01.png',
   };
   const frontHairFiles = {
-    short: 'fp-layer-frontHair-short-02.png',
-    tied: 'fp-layer-frontHair-tied-02.png',
+    short: 'fp-layer-frontHair-short-03.png',
+    tied: 'fp-layer-frontHair-tied-03.png',
   };
   const accessoryFiles = {
     scar: 'fp-layer-accessory-scar-01.png',
@@ -28,6 +32,7 @@
     'outfit',
     'body',
     'backHair',
+    'sideHair',
     'frontHair',
     'accessory',
     'mode',
@@ -46,6 +51,9 @@
     'backHairScale',
     'backHairX',
     'backHairY',
+    'sideHairScale',
+    'sideHairX',
+    'sideHairY',
     'frontHairScale',
     'frontHairX',
     'frontHairY',
@@ -76,6 +84,9 @@
     backHairScale: document.getElementById('backHairScaleValue'),
     backHairX: document.getElementById('backHairXValue'),
     backHairY: document.getElementById('backHairYValue'),
+    sideHairScale: document.getElementById('sideHairScaleValue'),
+    sideHairX: document.getElementById('sideHairXValue'),
+    sideHairY: document.getElementById('sideHairYValue'),
     frontHairScale: document.getElementById('frontHairScaleValue'),
     frontHairX: document.getElementById('frontHairXValue'),
     frontHairY: document.getElementById('frontHairYValue'),
@@ -93,6 +104,7 @@
   const boundsCache = new WeakMap();
   const defaultLayerTransforms = {
     backHair: { scale: 0.7, x: 0, y: -70 },
+    sideHair: { scale: 0.7, x: 0, y: -70 },
     body: { scale: 0.7, x: 0, y: -17 },
     outfit: { scale: 1.21, x: 0, y: 0 },
     frontHair: { scale: 0.7, x: 0, y: -65 },
@@ -109,10 +121,11 @@
   };
   const layerColors = {
     backHair: '#b385ff',
+    sideHair: '#ffd36f',
     body: '#8ee0a0',
     outfit: '#72b2ff',
     frontHair: '#f0a0ff',
-    accessory: '#ffd36f',
+    accessory: '#ffffff',
   };
 
   function isCandidateOutfit(outfitId) {
@@ -147,6 +160,7 @@
   function getLayerTransforms() {
     return {
       backHair: readLayerTransform('backHair'),
+      sideHair: readLayerTransform('sideHair'),
       body: readLayerTransform('body'),
       outfit: readLayerTransform('outfit'),
       frontHair: readLayerTransform('frontHair'),
@@ -159,6 +173,7 @@
       outfit: controls.outfit.value,
       body: controls.body.value,
       backHair: controls.backHair.value,
+      sideHair: controls.sideHair.value,
       frontHair: controls.frontHair.value,
       accessory: controls.accessory.value,
       mode: controls.mode.value,
@@ -200,6 +215,7 @@
         outfit: state.outfit,
         body: state.body,
         backHair: state.backHair,
+        sideHair: state.sideHair,
         frontHair: state.frontHair,
         accessory: state.accessory,
       },
@@ -352,6 +368,7 @@
   function buildLayerEntries(images) {
     return [
       { key: 'backHair', label: '后发', image: images.backHair },
+      { key: 'sideHair', label: '鬓角', image: images.sideHair },
       { key: 'body', label: '身体', image: images.body },
       { key: 'outfit', label: '衣服', image: images.outfit },
       { key: 'frontHair', label: '前发', image: images.frontHair },
@@ -399,6 +416,7 @@
     const bodyFrame = getLayerDrawFrame('body', x, y, size, state, frameOptions);
     const outfitFrame = getLayerDrawFrame('outfit', x, y, size, state, frameOptions);
     const backHairFrame = getLayerDrawFrame('backHair', x, y, size, state, frameOptions);
+    const sideHairFrame = getLayerDrawFrame('sideHair', x, y, size, state, frameOptions);
     const frontHairFrame = getLayerDrawFrame('frontHair', x, y, size, state, frameOptions);
     const accessoryFrame = getLayerDrawFrame('accessory', x, y, size, state, frameOptions);
 
@@ -410,16 +428,19 @@
 
     if (state.mode === 'current') {
       drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
+      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
       drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
       drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     } else if (state.mode === 'outfitBack') {
       drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
+      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
       drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     } else {
       drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
+      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'back');
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
       drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'front');
@@ -634,7 +655,7 @@
   }
 
   function drawCroppedAlignedPortrait(entries, x, y, size, state) {
-    const layerOrder = ['backHair', 'body', 'outfit', 'frontHair', 'accessory'];
+    const layerOrder = ['backHair', 'sideHair', 'body', 'outfit', 'frontHair', 'accessory'];
     layerOrder.forEach((key) => drawCroppedAlignedLayer(getEntry(entries, key), x, y, size, state));
   }
 
@@ -776,6 +797,7 @@
     updateExportData(state);
     const layerRequests = [
       { key: 'backHair', filename: backHairFiles[state.backHair] },
+      { key: 'sideHair', filename: sideHairFiles[state.sideHair] },
       { key: 'outfit', filename: outfitFiles[state.outfit] },
       { key: 'body', filename: bodyFiles[state.body] },
       { key: 'frontHair', filename: frontHairFiles[state.frontHair] },
@@ -786,7 +808,7 @@
       const images = loaded.reduce((result, image, index) => {
         result[layerRequests[index].key] = image;
         return result;
-      }, { backHair: null, outfit: null, body: null, frontHair: null, accessory: null });
+      }, { backHair: null, sideHair: null, outfit: null, body: null, frontHair: null, accessory: null });
       const entries = buildLayerEntries(images);
       updateAudit(entries);
       drawScene(images, state, entries);
