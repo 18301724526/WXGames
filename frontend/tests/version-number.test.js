@@ -10,7 +10,7 @@ test('app version is consistent in package metadata', () => {
   const packageLock = JSON.parse(fs.readFileSync(path.join(projectRoot, 'backend', 'package-lock.json'), 'utf8'));
 
   assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
-  assert.equal(packageJson.version, '0.1.126');
+  assert.equal(packageJson.version, '0.1.127');
   assert.equal(packageLock.version, packageJson.version);
   assert.equal(packageLock.packages[''].version, packageJson.version);
 });

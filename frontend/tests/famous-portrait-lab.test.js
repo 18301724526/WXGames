@@ -12,6 +12,7 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
 
   assert.match(html, /名人立绘实验台/);
   assert.match(html, /famous-portrait-lab\.js/);
+  assert.match(html, /\.\.\/js\/config\/FamousPortraitLayout\.js[\s\S]*famous-portrait-lab\.js/);
   assert.match(html, /模拟衣服前后层/);
   assert.match(html, /旧错误示例/);
   assert.match(html, /素材诊断/);
@@ -69,6 +70,9 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(html, /id="frontHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
   assert.match(html, /id="frontHairY"[^>]*value="-65"/);
   assert.match(html, /id="accessoryScale"[^>]*min="0"[^>]*max="200"[^>]*value="100"/);
+  assert.match(script, /const fallbackLayerTransforms = \{/);
+  assert.match(script, /window\.FamousPortraitLayout/);
+  assert.match(script, /function applyDefaultLayerTransforms\(\)/);
   assert.match(script, /body: \{ scale: 0\.7, x: 0, y: -17 \}/);
   assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 0 \}/);
   assert.match(script, /backHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
@@ -101,7 +105,11 @@ test('famous portrait lab shows an in-game candidate card preview', () => {
   assert.match(script, /portraitOffsetY: 0\.14/);
   assert.match(script, /function drawGameFamousPortrait\(images, x, y, state, options = \{\}\)/);
   assert.match(script, /function drawGameFamousPersonItem\(images, x, y, state\)/);
-  assert.match(script, /drawPortrait\(images, drawX, drawY, drawSize, state, \{/);
+  assert.match(script, /const gameState = \{/);
+  assert.match(script, /mode: 'current'/);
+  assert.match(script, /scale: 1/);
+  assert.match(script, /offsetY: 0/);
+  assert.match(script, /drawPortrait\(images, drawX, drawY, drawSize, gameState, \{/);
   assert.match(script, /scaleOffsets: true/);
   assert.match(script, /const offsetScale = options\.scaleOffsets \? frame\.size \/ 512 : 1;/);
   assert.match(script, /ctx\.fillText\('游戏实显', 592, 414\)/);

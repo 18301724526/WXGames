@@ -1,4 +1,16 @@
 (function (global) {
+  const sharedFamousPortraitLayout = (() => {
+    if (global.FamousPortraitLayout) return global.FamousPortraitLayout;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../config/FamousPortraitLayout');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasGameRenderer {
     constructor(options = {}) {
       this.presenter = options.presenter || null;
@@ -23,6 +35,10 @@
       this.showFpsOverlay = options.showFpsOverlay !== false;
       this.lastTechTreeScroll = null;
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
+    }
+
+    static getFamousPortraitLayerLayout() {
+      return sharedFamousPortraitLayout || {};
     }
 
     static getPreloadAssetPaths() {
@@ -374,7 +390,9 @@
       const appearance = card.appearance || {};
       const rawLayers = appearance.layers && typeof appearance.layers === 'object' ? appearance.layers : {};
       const layerOrder = ['backHair', 'sideHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
-      const layers = layerOrder.map((key) => rawLayers[key]).filter(Boolean);
+      const layers = layerOrder
+        .map((key) => ({ key, assetPath: rawLayers[key] }))
+        .filter((entry) => entry.assetPath);
       if (!layers.length || !this.ctx) return false;
 
       const frameWidth = options.frameWidth || size;
@@ -393,8 +411,15 @@
         const drawX = x + (frameWidth - drawSize) / 2;
         const drawY = y + (frameHeight - drawSize) / 2 + size * (options.offsetY ?? 0.18);
         let drawnAny = false;
-        layers.forEach((assetPath) => {
-          drawnAny = this.drawAsset(assetPath, drawX, drawY, drawSize, drawSize) || drawnAny;
+        const layerLayout = this.constructor.getFamousPortraitLayerLayout();
+        layers.forEach(({ key, assetPath }) => {
+          const layout = layerLayout[key] || { scale: 1, x: 0, y: 0 };
+          const layerScale = Number.isFinite(Number(layout.scale)) ? Number(layout.scale) : 1;
+          const layerSize = drawSize * layerScale;
+          const offsetScale = drawSize / 512;
+          const layerX = drawX + (drawSize - layerSize) / 2 + (Number(layout.x) || 0) * offsetScale;
+          const layerY = drawY + (drawSize - layerSize) / 2 + (Number(layout.y) || 0) * offsetScale;
+          drawnAny = this.drawAsset(assetPath, layerX, layerY, layerSize, layerSize) || drawnAny;
         });
         return drawnAny;
       };

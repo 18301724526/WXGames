@@ -300,6 +300,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.doesNotMatch(appSource, /global\.GameConfig|global\.GameAPI|global\.MiniGameCanvasRenderer|global\.PlatformRuntime/);
   assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
+  assert.match(entry, /FamousPortraitLayout/);
   assert.match(entry, /MiniGameCanvasRenderer/);
   assert.match(entry, /CanvasActionController/);
   assert.match(entry, /CanvasGuideController/);

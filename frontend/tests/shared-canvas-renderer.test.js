@@ -157,6 +157,47 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png'));
 });
 
+test('CanvasGameRenderer applies the same famous portrait layer layout as the lab', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
+  assert.equal(layout.body.scale, 0.7);
+  assert.equal(layout.outfit.scale, 1.21);
+  assert.equal(layout.frontHair.y, -65);
+  const layers = {
+    backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
+    sideHair: 'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
+    body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+    outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+    frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-03.png',
+  };
+  Object.values(layers).forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+  });
+
+  const drawn = renderer.drawFamousPortrait({ appearance: { layers } }, 10, 20, 74, {
+    frameWidth: 74,
+    frameHeight: 98,
+    scale: 1.74,
+    offsetY: 0.14,
+  });
+
+  assert.equal(drawn, true);
+  const drawCalls = calls.filter((call) => call[0] === 'drawImage');
+  assert.equal(drawCalls.length, 5);
+  const bodyCall = drawCalls.find((call) => call[1]?.src === layers.body);
+  const outfitCall = drawCalls.find((call) => call[1]?.src === layers.outfit);
+  assert.ok(bodyCall);
+  assert.ok(outfitCall);
+  assert.ok(Math.abs(bodyCall[4] - 90.132) < 0.01);
+  assert.ok(Math.abs(outfitCall[4] - 155.7996) < 0.01);
+  assert.notEqual(bodyCall[2], outfitCall[2]);
+  assert.notEqual(bodyCall[3], outfitCall[3]);
+});
+
 test('CanvasGameRenderer draws loading page over gameplay until resources are ready', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -2706,6 +2747,7 @@ test('H5 entry keeps Canvas as the only business UI after renderer extraction', 
 
 test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const famousLayoutIdx = html.indexOf('js/config/FamousPortraitLayout.js');
   const canvasIdx = html.indexOf('js/platform/CanvasGameRenderer.js');
   const minigameIdx = html.indexOf('js/platform/MiniGameCanvasRenderer.js');
   const h5gameIdx = html.indexOf('js/platform/H5CanvasGameRenderer.js');
@@ -2716,6 +2758,7 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   const shellIdx = html.indexOf('js/platform/CanvasGameShell.js');
   const appIdx = html.indexOf('app.js');
 
+  assert.ok(famousLayoutIdx >= 0);
   assert.ok(canvasIdx >= 0);
   assert.ok(minigameIdx >= 0);
   assert.ok(h5gameIdx >= 0);
@@ -2726,6 +2769,7 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   assert.ok(shellIdx >= 0);
   assert.ok(appIdx >= 0);
 
+  assert.ok(famousLayoutIdx < canvasIdx);
   assert.ok(canvasIdx < minigameIdx);
   assert.ok(canvasIdx < h5gameIdx);
   assert.ok(h5gameIdx < actionControllerIdx);

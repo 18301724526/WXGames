@@ -1,4 +1,5 @@
 require('../js/config/GameConfig');
+require('../js/config/FamousPortraitLayout');
 require('../js/state/UIStatePresenter');
 require('../js/api/GameAPI');
 require('../js/platform/PlatformRuntime');

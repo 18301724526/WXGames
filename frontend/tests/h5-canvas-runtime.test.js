@@ -2722,6 +2722,7 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
+  assert.match(html, /js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-layout-v1[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=famous-portrait-layout-v1/);
   assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1/);
   assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);

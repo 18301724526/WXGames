@@ -102,7 +102,7 @@
   const exportData = document.getElementById('exportData');
   const imageCache = new Map();
   const boundsCache = new WeakMap();
-  const defaultLayerTransforms = {
+  const fallbackLayerTransforms = {
     backHair: { scale: 0.7, x: 0, y: -70 },
     sideHair: { scale: 0.7, x: 0, y: -70 },
     body: { scale: 0.7, x: 0, y: -17 },
@@ -110,6 +110,10 @@
     frontHair: { scale: 0.7, x: 0, y: -65 },
     accessory: { scale: 1, x: 0, y: 0 },
   };
+  const defaultLayerTransforms = (
+    typeof window !== 'undefined'
+      && window.FamousPortraitLayout
+  ) || fallbackLayerTransforms;
   const gamePortraitPreview = {
     itemWidth: 356,
     itemHeight: 132,
@@ -155,6 +159,16 @@
       x: Number(controls[`${key}X`].value),
       y: Number(controls[`${key}Y`].value),
     };
+  }
+
+  function applyDefaultLayerTransforms() {
+    ['body', 'outfit', 'backHair', 'sideHair', 'frontHair', 'accessory'].forEach((key) => {
+      const transform = defaultLayerTransforms[key];
+      if (!transform) return;
+      if (controls[`${key}Scale`]) controls[`${key}Scale`].value = Math.round((Number(transform.scale) || 1) * 100);
+      if (controls[`${key}X`]) controls[`${key}X`].value = Number(transform.x) || 0;
+      if (controls[`${key}Y`]) controls[`${key}Y`].value = Number(transform.y) || 0;
+    });
   }
 
   function getLayerTransforms() {
@@ -492,8 +506,14 @@
     const drawSize = size * scale;
     const drawX = x + (frameWidth - drawSize) / 2;
     const drawY = y + (frameHeight - drawSize) / 2 + size * offsetY;
+    const gameState = {
+      ...state,
+      mode: 'current',
+      scale: 1,
+      offsetY: 0,
+    };
 
-    drawPortrait(images, drawX, drawY, drawSize, state, {
+    drawPortrait(images, drawX, drawY, drawSize, gameState, {
       clip: {
         x,
         y,
@@ -837,5 +857,6 @@
     });
   }
 
+  applyDefaultLayerTransforms();
   render();
 }());
