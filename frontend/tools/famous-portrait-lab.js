@@ -3,7 +3,7 @@
   const outfitFiles = {
     guardianCandidate: 'fp-layer-outfit-guardian-front-candidate-01.png',
     vanguardCandidate: 'fp-layer-outfit-vanguard-front-candidate-02.png',
-    scholarCandidate: 'fp-layer-outfit-scholar-front-candidate-02.png',
+    scholarCandidate: 'fp-layer-outfit-scholar-front-candidate-03.png',
     guardian: 'fp-layer-outfit-guardian-01.png',
     vanguard: 'fp-layer-outfit-vanguard-01.png',
     scholar: 'fp-layer-outfit-scholar-01.png',
@@ -82,8 +82,8 @@
   const boundsCache = new WeakMap();
   const hairLayerEnabled = false;
   const defaultLayerTransforms = {
-    body: { scale: 0.88, x: 0, y: 0 },
-    outfit: { scale: 1, x: 0, y: 0 },
+    body: { scale: 0.7, x: 0, y: -17 },
+    outfit: { scale: 1.21, x: 0, y: 0 },
     hair: { scale: 1, x: 0, y: 0 },
     accessory: { scale: 1, x: 0, y: 0 },
   };

@@ -22,7 +22,7 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(script, /fp-layer-outfit-scholar-01\.png/);
   assert.match(script, /fp-layer-outfit-guardian-front-candidate-01\.png/);
   assert.match(script, /fp-layer-outfit-vanguard-front-candidate-02\.png/);
-  assert.match(script, /fp-layer-outfit-scholar-front-candidate-02\.png/);
+  assert.match(script, /fp-layer-outfit-scholar-front-candidate-03\.png/);
   assert.match(html, /守将候选-正面甲/);
   assert.match(html, /突骑候选-正面甲/);
   assert.match(html, /学者候选-正面袍/);
@@ -56,7 +56,11 @@ test('famous portrait lab can hide hair and tune individual layer transforms', (
   assert.match(html, /id="copyExport"/);
   assert.match(html, /id="exportData"/);
 
-  assert.match(script, /body: \{ scale: 0\.88, x: 0, y: 0 \}/);
+  assert.match(html, /id="bodyScale"[^>]*value="70"/);
+  assert.match(html, /id="bodyY"[^>]*value="-17"/);
+  assert.match(html, /id="outfitScale"[^>]*value="121"/);
+  assert.match(script, /body: \{ scale: 0\.7, x: 0, y: -17 \}/);
+  assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 0 \}/);
   assert.match(script, /function getLayerTransforms\(\)/);
   assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state\)/);
   assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
@@ -133,7 +137,7 @@ test('famous portrait candidate outfits share guardian armor alpha bounds', () =
   [
     'fp-layer-outfit-guardian-front-candidate-01.png',
     'fp-layer-outfit-vanguard-front-candidate-02.png',
-    'fp-layer-outfit-scholar-front-candidate-02.png',
+    'fp-layer-outfit-scholar-front-candidate-03.png',
   ].forEach((filename) => {
     assert.deepEqual(readPngAlphaBounds(path.join(famousLayerDir, filename)), expected, filename);
   });
