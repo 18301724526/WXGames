@@ -163,6 +163,8 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
   assert.equal(layout.body.scale, 0.7);
   assert.equal(layout.outfit.scale, 1.21);
+  assert.equal(layout.outfit.y, 53);
+  assert.equal(layout.sideHair.y, -75);
   assert.equal(layout.frontHair.y, -65);
   const layers = {
     backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
@@ -189,11 +191,15 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   const drawCalls = calls.filter((call) => call[0] === 'drawImage');
   assert.equal(drawCalls.length, 5);
   const bodyCall = drawCalls.find((call) => call[1]?.src === layers.body);
+  const sideHairCall = drawCalls.find((call) => call[1]?.src === layers.sideHair);
   const outfitCall = drawCalls.find((call) => call[1]?.src === layers.outfit);
   assert.ok(bodyCall);
+  assert.ok(sideHairCall);
   assert.ok(outfitCall);
   assert.ok(Math.abs(bodyCall[4] - 90.132) < 0.01);
   assert.ok(Math.abs(outfitCall[4] - 155.7996) < 0.01);
+  assert.ok(drawCalls.indexOf(bodyCall) < drawCalls.indexOf(sideHairCall));
+  assert.ok(drawCalls.indexOf(sideHairCall) < drawCalls.indexOf(outfitCall));
   assert.notEqual(bodyCall[2], outfitCall[2]);
   assert.notEqual(bodyCall[3], outfitCall[3]);
 });

@@ -48,9 +48,9 @@
   },
   "layers": {
     "backHair": { "scale": 0.7, "x": 0, "y": -70 },
-    "sideHair": { "scale": 0.7, "x": 0, "y": -70 },
+    "sideHair": { "scale": 0.7, "x": 0, "y": -75 },
     "body": { "scale": 0.7, "x": 0, "y": -17 },
-    "outfit": { "scale": 1.21, "x": 0, "y": 0 },
+    "outfit": { "scale": 1.21, "x": 0, "y": 53 },
     "frontHair": { "scale": 0.7, "x": 0, "y": -65 },
     "accessory": { "scale": 1, "x": 0, "y": 0 }
   }
@@ -70,7 +70,7 @@
 
 - `frontend/js/platform/CanvasGameRenderer.js`
 - `drawFamousPortrait()` 的层顺序是：
-  `backHair -> sideHair -> body -> face -> outfit -> frontHair -> accessory -> frameEffect`
+  `backHair -> body -> face -> sideHair -> outfit -> frontHair -> accessory -> frameEffect`
 
 后端生成和存档归一：
 

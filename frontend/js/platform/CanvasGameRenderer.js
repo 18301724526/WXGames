@@ -389,7 +389,7 @@
     drawFamousPortrait(card = {}, x, y, size, options = {}) {
       const appearance = card.appearance || {};
       const rawLayers = appearance.layers && typeof appearance.layers === 'object' ? appearance.layers : {};
-      const layerOrder = ['backHair', 'sideHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
+      const layerOrder = ['backHair', 'body', 'face', 'sideHair', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
       const layers = layerOrder
         .map((key) => ({ key, assetPath: rawLayers[key] }))
         .filter((entry) => entry.assetPath);

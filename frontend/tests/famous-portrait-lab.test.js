@@ -66,7 +66,7 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(html, /id="backHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
   assert.match(html, /id="backHairY"[^>]*value="-70"/);
   assert.match(html, /id="sideHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
-  assert.match(html, /id="sideHairY"[^>]*value="-70"/);
+  assert.match(html, /id="sideHairY"[^>]*value="-75"/);
   assert.match(html, /id="frontHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
   assert.match(html, /id="frontHairY"[^>]*value="-65"/);
   assert.match(html, /id="accessoryScale"[^>]*min="0"[^>]*max="200"[^>]*value="100"/);
@@ -74,15 +74,16 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(script, /window\.FamousPortraitLayout/);
   assert.match(script, /function applyDefaultLayerTransforms\(\)/);
   assert.match(script, /body: \{ scale: 0\.7, x: 0, y: -17 \}/);
-  assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 0 \}/);
+  assert.match(html, /id="outfitY"[^>]*value="53"/);
+  assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 53 \}/);
   assert.match(script, /backHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
-  assert.match(script, /sideHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
+  assert.match(script, /sideHair: \{ scale: 0\.7, x: 0, y: -75 \}/);
   assert.match(script, /frontHair: \{ scale: 0\.7, x: 0, y: -65 \}/);
   assert.match(script, /function getLayerTransforms\(\)/);
   assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state, options = \{\}\)/);
   assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
   assert.match(script, /drawLayer\(images\.backHair, backHairFrame\.x, backHairFrame\.y, backHairFrame\.size\);/);
-  assert.match(script, /drawLayer\(images\.sideHair, sideHairFrame\.x, sideHairFrame\.y, sideHairFrame\.size\);/);
+  assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);[\s\S]*drawLayer\(images\.sideHair, sideHairFrame\.x, sideHairFrame\.y, sideHairFrame\.size\);[\s\S]*drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.frontHair, frontHairFrame\.x, frontHairFrame\.y, frontHairFrame\.size\);/);
@@ -132,8 +133,6 @@ test('famous portrait split hair assets exist and stay aligned', () => {
   [
     'fp-layer-backHair-short-02.png',
     'fp-layer-backHair-tied-02.png',
-    'fp-layer-sideHair-short-01.png',
-    'fp-layer-sideHair-tied-01.png',
     'fp-layer-frontHair-short-02.png',
     'fp-layer-frontHair-tied-02.png',
   ].forEach((filename) => {
@@ -141,6 +140,24 @@ test('famous portrait split hair assets exist and stay aligned', () => {
     assert.ok(Math.abs(((bounds.minX + bounds.maxX) / 2) - 256) <= 4, filename);
     assert.equal(bounds.minY < 100, true, filename);
     assert.equal(bounds.maxY < 320, true, filename);
+  });
+});
+
+test('famous portrait side hair assets are side locks instead of full hair caps', () => {
+  [
+    'fp-layer-sideHair-short-01.png',
+    'fp-layer-sideHair-tied-01.png',
+  ].forEach((filename) => {
+    const alpha = readPngAlphaStats(path.join(famousLayerDir, filename));
+    const left = alpha.points.filter((point) => point.x < 226).length;
+    const center = alpha.points.filter((point) => point.x >= 226 && point.x <= 286).length;
+    const right = alpha.points.filter((point) => point.x > 286).length;
+    assert.ok(Math.abs(((alpha.bounds.minX + alpha.bounds.maxX) / 2) - 256) <= 4, filename);
+    assert.ok(left > 0 && right > 0, filename);
+    assert.ok(left / right > 0.9 && left / right < 1.1, filename);
+    assert.equal(center, 0, filename);
+    assert.equal(alpha.bounds.minY >= 95, true, filename);
+    assert.equal(alpha.bounds.maxY < 320, true, filename);
   });
 });
 
@@ -160,6 +177,10 @@ test('famous portrait front hair assets cover full bangs without reaching lower 
 });
 
 function readPngAlphaBounds(filePath) {
+  return readPngAlphaStats(filePath).bounds;
+}
+
+function readPngAlphaStats(filePath) {
   const buffer = fs.readFileSync(filePath);
   assert.equal(buffer.toString('ascii', 1, 4), 'PNG');
   const width = buffer.readUInt32BE(16);
@@ -206,6 +227,7 @@ function readPngAlphaBounds(filePath) {
     previous = scanline;
   }
   const bounds = { minX: width, minY: height, maxX: -1, maxY: -1 };
+  const points = [];
   rows.forEach((row, y) => {
     for (let x = 0; x < width; x += 1) {
       if (row[x * bytesPerPixel + 3] <= 8) continue;
@@ -213,9 +235,10 @@ function readPngAlphaBounds(filePath) {
       bounds.minY = Math.min(bounds.minY, y);
       bounds.maxX = Math.max(bounds.maxX, x);
       bounds.maxY = Math.max(bounds.maxY, y);
+      points.push({ x, y });
     }
   });
-  return bounds;
+  return { bounds, points };
 }
 
 test('famous portrait candidate outfits share guardian armor alpha bounds', () => {

@@ -104,9 +104,9 @@
   const boundsCache = new WeakMap();
   const fallbackLayerTransforms = {
     backHair: { scale: 0.7, x: 0, y: -70 },
-    sideHair: { scale: 0.7, x: 0, y: -70 },
+    sideHair: { scale: 0.7, x: 0, y: -75 },
     body: { scale: 0.7, x: 0, y: -17 },
-    outfit: { scale: 1.21, x: 0, y: 0 },
+    outfit: { scale: 1.21, x: 0, y: 53 },
     frontHair: { scale: 0.7, x: 0, y: -65 },
     accessory: { scale: 1, x: 0, y: 0 },
   };
@@ -442,21 +442,21 @@
 
     if (state.mode === 'current') {
       drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
-      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
+      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
       drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     } else if (state.mode === 'outfitBack') {
       drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
-      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
+      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     } else {
       drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
-      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'back');
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
+      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
       drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'front');
       drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     }
@@ -676,7 +676,7 @@
   }
 
   function drawCroppedAlignedPortrait(entries, x, y, size, state) {
-    const layerOrder = ['backHair', 'sideHair', 'body', 'outfit', 'frontHair', 'accessory'];
+    const layerOrder = ['backHair', 'body', 'sideHair', 'outfit', 'frontHair', 'accessory'];
     layerOrder.forEach((key) => drawCroppedAlignedLayer(getEntry(entries, key), x, y, size, state));
   }
 
