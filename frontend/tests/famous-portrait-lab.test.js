@@ -48,7 +48,7 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(script, /const frontHairFiles = \{/);
   assert.match(script, /fp-layer-backHair-short-02\.png/);
   assert.match(script, /fp-layer-sideHair-short-01\.png/);
-  assert.match(script, /fp-layer-frontHair-short-03\.png/);
+  assert.match(script, /fp-layer-frontHair-short-02\.png/);
   assert.doesNotMatch(script, /hairLayerEnabled/);
 
   ['backHair', 'sideHair', 'body', 'outfit', 'frontHair', 'accessory'].forEach((key) => {
@@ -87,6 +87,7 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(script, /drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.frontHair, frontHairFrame\.x, frontHairFrame\.y, frontHairFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.accessory, accessoryFrame\.x, accessoryFrame\.y, accessoryFrame\.size\);/);
+  assert.match(script, /scaleOffsets: true,\s*\}\);\s*ctx\.fillStyle = '#ffe6b5';/);
   assert.match(script, /function buildExportPayload\(state\)/);
   assert.match(script, /exportData\.value = JSON\.stringify\(buildExportPayload\(state\), null, 2\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
@@ -133,8 +134,8 @@ test('famous portrait split hair assets exist and stay aligned', () => {
     'fp-layer-backHair-tied-02.png',
     'fp-layer-sideHair-short-01.png',
     'fp-layer-sideHair-tied-01.png',
-    'fp-layer-frontHair-short-03.png',
-    'fp-layer-frontHair-tied-03.png',
+    'fp-layer-frontHair-short-02.png',
+    'fp-layer-frontHair-tied-02.png',
   ].forEach((filename) => {
     const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
     assert.ok(Math.abs(((bounds.minX + bounds.maxX) / 2) - 256) <= 4, filename);
@@ -143,18 +144,18 @@ test('famous portrait split hair assets exist and stay aligned', () => {
   });
 });
 
-test('famous portrait front hair assets only cover bangs and forehead', () => {
+test('famous portrait front hair assets cover full bangs without reaching lower face', () => {
   [
-    'fp-layer-frontHair-short-03.png',
-    'fp-layer-frontHair-tied-03.png',
+    'fp-layer-frontHair-short-02.png',
+    'fp-layer-frontHair-tied-02.png',
   ].forEach((filename) => {
     const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
     const width = bounds.maxX - bounds.minX + 1;
     const height = bounds.maxY - bounds.minY + 1;
-    assert.ok(width <= 245, filename);
-    assert.ok(height <= 120, filename);
-    assert.ok(bounds.minY >= 80, filename);
-    assert.ok(bounds.maxY <= 205, filename);
+    assert.ok(width >= 260 && width <= 285, filename);
+    assert.ok(height >= 190 && height <= 205, filename);
+    assert.ok(bounds.minY <= 30, filename);
+    assert.ok(bounds.maxY <= 220, filename);
   });
 });
 

@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.4';
+const APPEARANCE_VERSION = 'famous-portrait-v0.5';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -75,7 +75,7 @@ const APPEARANCE_POOLS = Object.freeze({
   body: ['fp-layer-body-skin-01.png', 'fp-layer-body-skin-02.png'],
   backHair: ['fp-layer-backHair-short-02.png', 'fp-layer-backHair-tied-02.png'],
   sideHair: ['fp-layer-sideHair-short-01.png', 'fp-layer-sideHair-tied-01.png'],
-  frontHair: ['fp-layer-frontHair-short-03.png', 'fp-layer-frontHair-tied-03.png'],
+  frontHair: ['fp-layer-frontHair-short-02.png', 'fp-layer-frontHair-tied-02.png'],
   outfit: {
     vanguard: ['fp-layer-outfit-vanguard-01.png'],
     guardian: ['fp-layer-outfit-guardian-01.png'],

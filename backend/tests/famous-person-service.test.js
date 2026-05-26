@@ -48,7 +48,7 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.ok(result.candidate.appearance.layers.frontHair.startsWith('assets/art/famous-person/layers/fp-layer-frontHair-'));
   assert.match(result.candidate.appearance.layers.backHair, /-02\.png$/);
   assert.match(result.candidate.appearance.layers.sideHair, /-01\.png$/);
-  assert.match(result.candidate.appearance.layers.frontHair, /-03\.png$/);
+  assert.match(result.candidate.appearance.layers.frontHair, /-02\.png$/);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
@@ -182,6 +182,6 @@ test('legacy portrait appearance is regenerated with split hair layers', () => {
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.match(layers.backHair, /fp-layer-backHair-(short|tied)-02\.png$/);
   assert.match(layers.sideHair, /fp-layer-sideHair-(short|tied)-01\.png$/);
-  assert.match(layers.frontHair, /fp-layer-frontHair-(short|tied)-03\.png$/);
+  assert.match(layers.frontHair, /fp-layer-frontHair-(short|tied)-02\.png$/);
   assert.doesNotMatch(layers.frontHair, /frontHair-(short|tied)-01\.png$/);
 });

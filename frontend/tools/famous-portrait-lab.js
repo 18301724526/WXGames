@@ -21,8 +21,8 @@
     tied: 'fp-layer-sideHair-tied-01.png',
   };
   const frontHairFiles = {
-    short: 'fp-layer-frontHair-short-03.png',
-    tied: 'fp-layer-frontHair-tied-03.png',
+    short: 'fp-layer-frontHair-short-02.png',
+    tied: 'fp-layer-frontHair-tied-02.png',
   };
   const accessoryFiles = {
     scar: 'fp-layer-accessory-scar-01.png',
@@ -482,6 +482,7 @@
         height: state.cardHeight,
         radius: 10,
       },
+      scaleOffsets: true,
     });
     ctx.fillStyle = '#ffe6b5';
     ctx.font = '700 18px "Microsoft YaHei", sans-serif';

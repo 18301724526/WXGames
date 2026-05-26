@@ -27,8 +27,8 @@
 - `frontend/assets/art/famous-person/layers/fp-layer-backHair-tied-02.png`
 - `frontend/assets/art/famous-person/layers/fp-layer-sideHair-short-01.png`
 - `frontend/assets/art/famous-person/layers/fp-layer-sideHair-tied-01.png`
-- `frontend/assets/art/famous-person/layers/fp-layer-frontHair-short-03.png`
-- `frontend/assets/art/famous-person/layers/fp-layer-frontHair-tied-03.png`
+- `frontend/assets/art/famous-person/layers/fp-layer-frontHair-short-02.png`
+- `frontend/assets/art/famous-person/layers/fp-layer-frontHair-tied-02.png`
 
 旧素材没有删除，方便回退和对照。
 
@@ -75,9 +75,9 @@
 后端生成和存档归一：
 
 - `backend/services/FamousPersonService.js`
-- `APPEARANCE_VERSION = famous-portrait-v0.4`
+- `APPEARANCE_VERSION = famous-portrait-v0.5`
 - 新生成名人会带 `sideHair`
-- 旧版 `famous-portrait-v0.2/v0.3` 外观会在 normalize 时重新生成到 `v0.4`
+- 旧版 `famous-portrait-v0.2/v0.3/v0.4` 外观会在 normalize 时重新生成到 `v0.5`
 
 测试：
 
@@ -124,7 +124,7 @@ git push https://github.com/18301724526/WXGames.git main
 
 1. 先在公网实验台手机实测短发和束发两套。
 2. 如果鬓角仍贴脸不舒服，优先调 `sideHair` 的 `x/y/scale`，不要再改 `frontHair` 让它承担鬓角。
-3. 如果刘海偏淡，优先微调 `frontHair-*-03.png` 的透明度或对比度，但仍保持边界只覆盖额头和刘海。
+3. 如果刘海偏淡，优先微调 `frontHair-*-02.png` 的透明度或对比度，但仍保持边界覆盖刘海和额头区域，不要压到下半脸。
 4. 如果要继续做更多发型，必须按三层同名规则新增：
    - `fp-layer-backHair-<style>-NN.png`
    - `fp-layer-sideHair-<style>-NN.png`

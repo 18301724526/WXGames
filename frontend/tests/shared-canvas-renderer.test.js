@@ -152,7 +152,7 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-backHair-short-02.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-sideHair-short-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-frontHair-short-03.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-frontHair-short-02.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png'));
 });
@@ -169,7 +169,7 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
     sideHair: 'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
     body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
     outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
-    frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-03.png',
+    frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
   };
   Object.values(layers).forEach((assetPath) => {
     renderer.assetCache.set(assetPath, {
@@ -941,7 +941,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
     'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
     'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
     'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
-    'assets/art/famous-person/layers/fp-layer-frontHair-short-03.png',
+    'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
   ].forEach((assetPath) => {
     renderer.assetCache.set(assetPath, {
       status: 'loaded',
@@ -968,13 +968,13 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v0.4',
+          version: 'famous-portrait-v0.5',
           layers: {
             backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
             sideHair: 'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
             body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
             outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
-            frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-03.png',
+            frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
           },
         },
         status: { assigned: 'idle' },
