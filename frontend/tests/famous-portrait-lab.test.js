@@ -95,6 +95,9 @@ test('famous portrait lab shows an in-game candidate card preview', () => {
   assert.match(script, /portraitOffsetY: 0\.14/);
   assert.match(script, /function drawGameFamousPortrait\(images, x, y, state, options = \{\}\)/);
   assert.match(script, /function drawGameFamousPersonItem\(images, x, y, state\)/);
+  assert.match(script, /\[\s*images\.backHair,\s*images\.body,\s*images\.outfit,\s*images\.frontHair,\s*images\.accessory,\s*\]\.filter\(Boolean\)\.forEach/);
+  assert.match(script, /drawLayer\(image, drawX, drawY, drawSize\);/);
+  assert.doesNotMatch(script, /drawPortrait\(images, drawX, drawY, drawSize, state/);
   assert.match(script, /ctx\.fillText\('游戏实显', 592, 414\)/);
   assert.match(script, /drawGameFamousPersonItem\(images, 592, 466, state\)/);
   assert.match(script, /if \(!image \|\| size <= 0\) return;/);

@@ -469,15 +469,19 @@
     const drawX = x + (frameWidth - drawSize) / 2;
     const drawY = y + (frameHeight - drawSize) / 2 + size * offsetY;
 
-    drawPortrait(images, drawX, drawY, drawSize, state, {
-      clip: {
-        x,
-        y,
-        width: frameWidth,
-        height: frameHeight,
-        radius: 10,
-      },
+    ctx.save();
+    roundRectPath(x, y, frameWidth, frameHeight, 10);
+    ctx.clip();
+    [
+      images.backHair,
+      images.body,
+      images.outfit,
+      images.frontHair,
+      images.accessory,
+    ].filter(Boolean).forEach((image) => {
+      drawLayer(image, drawX, drawY, drawSize);
     });
+    ctx.restore();
   }
 
   function drawGameFamousPersonItem(images, x, y, state) {
