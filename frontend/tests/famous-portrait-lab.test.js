@@ -161,18 +161,21 @@ test('famous portrait side hair assets are side locks instead of full hair caps'
   });
 });
 
-test('famous portrait front hair assets cover full bangs without reaching lower face', () => {
+test('famous portrait front hair assets are forehead locks instead of copied back hair caps', () => {
   [
-    'fp-layer-frontHair-short-02.png',
-    'fp-layer-frontHair-tied-02.png',
-  ].forEach((filename) => {
+    ['fp-layer-frontHair-short-02.png', 'fp-layer-backHair-short-02.png'],
+    ['fp-layer-frontHair-tied-02.png', 'fp-layer-backHair-tied-02.png'],
+  ].forEach(([filename, backFilename]) => {
     const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
+    const backBounds = readPngAlphaBounds(path.join(famousLayerDir, backFilename));
     const width = bounds.maxX - bounds.minX + 1;
     const height = bounds.maxY - bounds.minY + 1;
-    assert.ok(width >= 260 && width <= 285, filename);
-    assert.ok(height >= 190 && height <= 205, filename);
-    assert.ok(bounds.minY <= 30, filename);
-    assert.ok(bounds.maxY <= 220, filename);
+    const backHeight = backBounds.maxY - backBounds.minY + 1;
+    assert.ok(width >= 250 && width <= 270, filename);
+    assert.ok(height >= 90 && height <= 115, filename);
+    assert.ok(height < backHeight * 0.5, filename);
+    assert.ok(bounds.minY > backBounds.minY + 40, filename);
+    assert.ok(bounds.maxY <= 190, filename);
   });
 });
 
