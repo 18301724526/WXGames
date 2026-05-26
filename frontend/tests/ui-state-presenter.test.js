@@ -174,11 +174,12 @@ test('famous person view state maps candidates and joined people into panel card
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v0.2',
+          version: 'famous-portrait-v0.3',
           layers: {
+            backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-01.png',
             body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
             outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
-            frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
+            frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
           },
         },
         status: { assigned: 'idle' },

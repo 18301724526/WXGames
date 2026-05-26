@@ -38,17 +38,17 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(script, /不要采用/);
 });
 
-test('famous portrait lab can hide hair and tune individual layer transforms', () => {
+test('famous portrait lab can tune split hair and individual layer transforms', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
   const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
 
-  assert.match(script, /const hairLayerEnabled = false;/);
-  assert.match(script, /if \(!hairLayerEnabled && controls\.hair\)/);
-  assert.match(script, /document\.querySelector\('\[data-layer-panel="hair"\]'\)/);
-  assert.match(script, /if \(hairLayerEnabled\) layerRequests\.push\(\{ key: 'hair', filename: hairFiles\[state\.hair\] \}\);/);
-  assert.match(script, /if \(hairLayerEnabled && images\.hair\) drawLayer\(images\.hair,/);
+  assert.match(script, /const backHairFiles = \{/);
+  assert.match(script, /const frontHairFiles = \{/);
+  assert.match(script, /fp-layer-backHair-short-01\.png/);
+  assert.match(script, /fp-layer-frontHair-short-02\.png/);
+  assert.doesNotMatch(script, /hairLayerEnabled/);
 
-  ['body', 'outfit', 'hair', 'accessory'].forEach((key) => {
+  ['backHair', 'body', 'outfit', 'frontHair', 'accessory'].forEach((key) => {
     assert.match(html, new RegExp(`id="${key}Scale"`));
     assert.match(html, new RegExp(`id="${key}X"`));
     assert.match(html, new RegExp(`id="${key}Y"`));
@@ -64,13 +64,29 @@ test('famous portrait lab can hide hair and tune individual layer transforms', (
   assert.match(script, /function getLayerTransforms\(\)/);
   assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state\)/);
   assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
+  assert.match(script, /drawLayer\(images\.backHair, backHairFrame\.x, backHairFrame\.y, backHairFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
+  assert.match(script, /drawLayer\(images\.frontHair, frontHairFrame\.x, frontHairFrame\.y, frontHairFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.accessory, accessoryFrame\.x, accessoryFrame\.y, accessoryFrame\.size\);/);
   assert.match(script, /function buildExportPayload\(state\)/);
   assert.match(script, /exportData\.value = JSON\.stringify\(buildExportPayload\(state\), null, 2\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
   assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
+});
+
+test('famous portrait split hair assets exist and stay aligned', () => {
+  [
+    'fp-layer-backHair-short-01.png',
+    'fp-layer-backHair-tied-01.png',
+    'fp-layer-frontHair-short-02.png',
+    'fp-layer-frontHair-tied-02.png',
+  ].forEach((filename) => {
+    const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
+    assert.ok(Math.abs(((bounds.minX + bounds.maxX) / 2) - 256) <= 4, filename);
+    assert.equal(bounds.minY < 100, true, filename);
+    assert.equal(bounds.maxY < 320, true, filename);
+  });
 });
 
 function readPngAlphaBounds(filePath) {

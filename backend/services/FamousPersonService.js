@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.2';
+const APPEARANCE_VERSION = 'famous-portrait-v0.3';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -73,7 +73,8 @@ const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白',
 
 const APPEARANCE_POOLS = Object.freeze({
   body: ['fp-layer-body-skin-01.png', 'fp-layer-body-skin-02.png'],
-  frontHair: ['fp-layer-frontHair-short-01.png', 'fp-layer-frontHair-tied-01.png'],
+  backHair: ['fp-layer-backHair-short-01.png', 'fp-layer-backHair-tied-01.png'],
+  frontHair: ['fp-layer-frontHair-short-02.png', 'fp-layer-frontHair-tied-02.png'],
   outfit: {
     vanguard: ['fp-layer-outfit-vanguard-01.png'],
     guardian: ['fp-layer-outfit-guardian-01.png'],
@@ -224,6 +225,7 @@ function createAppearance(archetype, seed, randomSource = null) {
   const outfitPool = APPEARANCE_POOLS.outfit[archetype.id] || APPEARANCE_POOLS.outfit.vanguard;
   const accessoryPool = APPEARANCE_POOLS.accessory[archetype.id] || [null];
   const layers = {
+    backHair: layerPath(pick(APPEARANCE_POOLS.backHair, source)),
     body: layerPath(pick(APPEARANCE_POOLS.body, source)),
     outfit: layerPath(pick(outfitPool, source)),
     frontHair: layerPath(pick(APPEARANCE_POOLS.frontHair, source)),
@@ -249,14 +251,16 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
       if (value) result[key] = value;
       return result;
     }, {});
+  const mergedLayers = {
+    ...generated.layers,
+    ...layers,
+  };
+  if (source.version === APPEARANCE_VERSION && !sanitizeText(rawLayers.accessory)) delete mergedLayers.accessory;
   return {
     version: sanitizeText(source.version, APPEARANCE_VERSION),
     seed: sanitizeText(source.seed, fallbackSeed),
     palette: sanitizeText(source.palette, generated.palette),
-    layers: {
-      ...generated.layers,
-      ...layers,
-    },
+    layers: mergedLayers,
   };
 }
 
@@ -466,6 +470,7 @@ function acceptFamousPerson(gameState, candidateId, now = new Date()) {
     status: { ...candidate.status, assigned: 'idle' },
     joinedAt: now.toISOString(),
   });
+  person.appearance = clone(candidate.appearance);
   gameState.famousPeople = [person, ...gameState.famousPeople];
   state.candidates = state.candidates.filter((item) => item.id !== candidate.id);
   return {

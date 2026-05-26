@@ -220,10 +220,17 @@
           </select>
         </label>
         <label>
-          发型
-          <select id="hair">
-            <option value="short">短发</option>
-            <option value="tied">束发</option>
+          后发
+          <select id="backHair">
+            <option value="short">短发后层</option>
+            <option value="tied">束发后层</option>
+          </select>
+        </label>
+        <label>
+          前发
+          <select id="frontHair">
+            <option value="short">短发前层</option>
+            <option value="tied">束发前层</option>
           </select>
         </label>
         <label>
@@ -307,19 +314,34 @@
             <input id="outfitY" type="range" min="-120" max="120" value="0">
           </label>
         </div>
-        <div class="layer-adjust" data-layer-panel="hair">
-          <h2>发型</h2>
+        <div class="layer-adjust" data-layer-panel="backHair">
+          <h2>后发</h2>
           <label>
-            缩放 <span class="value" id="hairScaleValue"></span>
-            <input id="hairScale" type="range" min="70" max="130" value="100">
+            缩放 <span class="value" id="backHairScaleValue"></span>
+            <input id="backHairScale" type="range" min="70" max="130" value="100">
           </label>
           <label>
-            X <span class="value" id="hairXValue"></span>
-            <input id="hairX" type="range" min="-80" max="80" value="0">
+            X <span class="value" id="backHairXValue"></span>
+            <input id="backHairX" type="range" min="-80" max="80" value="0">
           </label>
           <label>
-            Y <span class="value" id="hairYValue"></span>
-            <input id="hairY" type="range" min="-120" max="120" value="0">
+            Y <span class="value" id="backHairYValue"></span>
+            <input id="backHairY" type="range" min="-120" max="120" value="0">
+          </label>
+        </div>
+        <div class="layer-adjust" data-layer-panel="frontHair">
+          <h2>前发</h2>
+          <label>
+            缩放 <span class="value" id="frontHairScaleValue"></span>
+            <input id="frontHairScale" type="range" min="70" max="130" value="100">
+          </label>
+          <label>
+            X <span class="value" id="frontHairXValue"></span>
+            <input id="frontHairX" type="range" min="-80" max="80" value="0">
+          </label>
+          <label>
+            Y <span class="value" id="frontHairYValue"></span>
+            <input id="frontHairY" type="range" min="-120" max="120" value="0">
           </label>
         </div>
         <div class="layer-adjust" data-layer-panel="accessory">

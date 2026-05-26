@@ -43,7 +43,9 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-body-skin-01.png'));
   assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-01.png'));
-  assert.ok(result.candidate.appearance.layers.frontHair.startsWith('assets/art/famous-person/layers/'));
+  assert.ok(result.candidate.appearance.layers.backHair.startsWith('assets/art/famous-person/layers/fp-layer-backHair-'));
+  assert.ok(result.candidate.appearance.layers.frontHair.startsWith('assets/art/famous-person/layers/fp-layer-frontHair-'));
+  assert.match(result.candidate.appearance.layers.frontHair, /-02\.png$/);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
@@ -145,6 +147,36 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
   assert.equal(normalized.famousPeople.length, 1);
   assert.equal(normalized.famousPersonState.candidates.length, 0);
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.ok(normalized.famousPeople[0].appearance.layers.backHair);
   assert.ok(normalized.famousPeople[0].appearance.layers.body);
   assert.ok(normalized.famousPeople[0].appearance.layers.outfit);
+  assert.ok(normalized.famousPeople[0].appearance.layers.frontHair);
+});
+
+test('legacy portrait appearance is regenerated with split hair layers', () => {
+  const state = GameStateService.createInitialGameState('fp-legacy-split-hair');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_legacy_hair',
+    name: '韩晓',
+    title: '垒门守将',
+    source: { type: 'seek', seed: 'legacy:hair' },
+    archetype: 'guardian',
+    appearance: {
+      version: 'famous-portrait-v0.2',
+      layers: {
+        body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+        outfit: 'assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png',
+        frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-01.png',
+      },
+    },
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  const layers = normalized.famousPeople[0].appearance.layers;
+
+  assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.match(layers.backHair, /fp-layer-backHair-(short|tied)-01\.png$/);
+  assert.match(layers.frontHair, /fp-layer-frontHair-(short|tied)-02\.png$/);
+  assert.doesNotMatch(layers.frontHair, /frontHair-(short|tied)-01\.png$/);
 });

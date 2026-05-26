@@ -12,9 +12,13 @@
     '01': 'fp-layer-body-skin-01.png',
     '02': 'fp-layer-body-skin-02.png',
   };
-  const hairFiles = {
-    short: 'fp-layer-frontHair-short-01.png',
-    tied: 'fp-layer-frontHair-tied-01.png',
+  const backHairFiles = {
+    short: 'fp-layer-backHair-short-01.png',
+    tied: 'fp-layer-backHair-tied-01.png',
+  };
+  const frontHairFiles = {
+    short: 'fp-layer-frontHair-short-02.png',
+    tied: 'fp-layer-frontHair-tied-02.png',
   };
   const accessoryFiles = {
     scar: 'fp-layer-accessory-scar-01.png',
@@ -23,7 +27,8 @@
   const controls = [
     'outfit',
     'body',
-    'hair',
+    'backHair',
+    'frontHair',
     'accessory',
     'mode',
     'frontCutY',
@@ -38,9 +43,12 @@
     'outfitScale',
     'outfitX',
     'outfitY',
-    'hairScale',
-    'hairX',
-    'hairY',
+    'backHairScale',
+    'backHairX',
+    'backHairY',
+    'frontHairScale',
+    'frontHairX',
+    'frontHairY',
     'accessoryScale',
     'accessoryX',
     'accessoryY',
@@ -65,9 +73,12 @@
     outfitScale: document.getElementById('outfitScaleValue'),
     outfitX: document.getElementById('outfitXValue'),
     outfitY: document.getElementById('outfitYValue'),
-    hairScale: document.getElementById('hairScaleValue'),
-    hairX: document.getElementById('hairXValue'),
-    hairY: document.getElementById('hairYValue'),
+    backHairScale: document.getElementById('backHairScaleValue'),
+    backHairX: document.getElementById('backHairXValue'),
+    backHairY: document.getElementById('backHairYValue'),
+    frontHairScale: document.getElementById('frontHairScaleValue'),
+    frontHairX: document.getElementById('frontHairXValue'),
+    frontHairY: document.getElementById('frontHairYValue'),
     accessoryScale: document.getElementById('accessoryScaleValue'),
     accessoryX: document.getElementById('accessoryXValue'),
     accessoryY: document.getElementById('accessoryYValue'),
@@ -80,27 +91,20 @@
   const exportData = document.getElementById('exportData');
   const imageCache = new Map();
   const boundsCache = new WeakMap();
-  const hairLayerEnabled = false;
   const defaultLayerTransforms = {
+    backHair: { scale: 1, x: 0, y: 0 },
     body: { scale: 0.7, x: 0, y: -17 },
     outfit: { scale: 1.21, x: 0, y: 0 },
-    hair: { scale: 1, x: 0, y: 0 },
+    frontHair: { scale: 1, x: 0, y: 0 },
     accessory: { scale: 1, x: 0, y: 0 },
   };
   const layerColors = {
+    backHair: '#b385ff',
     body: '#8ee0a0',
     outfit: '#72b2ff',
-    hair: '#f0a0ff',
+    frontHair: '#f0a0ff',
     accessory: '#ffd36f',
   };
-
-  if (!hairLayerEnabled && controls.hair) {
-    controls.hair.disabled = true;
-    const hairField = controls.hair.closest('label');
-    if (hairField) hairField.hidden = true;
-    const hairPanel = document.querySelector('[data-layer-panel="hair"]');
-    if (hairPanel) hairPanel.hidden = true;
-  }
 
   function isCandidateOutfit(outfitId) {
     return /Candidate$/.test(outfitId);
@@ -133,9 +137,10 @@
 
   function getLayerTransforms() {
     return {
+      backHair: readLayerTransform('backHair'),
       body: readLayerTransform('body'),
       outfit: readLayerTransform('outfit'),
-      hair: readLayerTransform('hair'),
+      frontHair: readLayerTransform('frontHair'),
       accessory: readLayerTransform('accessory'),
     };
   }
@@ -144,7 +149,8 @@
     return {
       outfit: controls.outfit.value,
       body: controls.body.value,
-      hair: controls.hair.value,
+      backHair: controls.backHair.value,
+      frontHair: controls.frontHair.value,
       accessory: controls.accessory.value,
       mode: controls.mode.value,
       frontCutY: Number(controls.frontCutY.value),
@@ -184,7 +190,8 @@
       assets: {
         outfit: state.outfit,
         body: state.body,
-        hair: hairLayerEnabled ? state.hair : null,
+        backHair: state.backHair,
+        frontHair: state.frontHair,
         accessory: state.accessory,
       },
       mode: state.mode,
@@ -332,9 +339,10 @@
 
   function buildLayerEntries(images) {
     return [
+      { key: 'backHair', label: '后发', image: images.backHair },
       { key: 'body', label: '身体', image: images.body },
       { key: 'outfit', label: '衣服', image: images.outfit },
-      hairLayerEnabled ? { key: 'hair', label: '发型', image: images.hair } : null,
+      { key: 'frontHair', label: '前发', image: images.frontHair },
       images.accessory ? { key: 'accessory', label: '配饰', image: images.accessory } : null,
     ].filter((entry) => entry && entry.image).map((entry) => ({
       ...entry,
@@ -377,7 +385,8 @@
   function drawPortrait(images, x, y, size, state, options = {}) {
     const bodyFrame = getLayerDrawFrame('body', x, y, size, state);
     const outfitFrame = getLayerDrawFrame('outfit', x, y, size, state);
-    const hairFrame = getLayerDrawFrame('hair', x, y, size, state);
+    const backHairFrame = getLayerDrawFrame('backHair', x, y, size, state);
+    const frontHairFrame = getLayerDrawFrame('frontHair', x, y, size, state);
     const accessoryFrame = getLayerDrawFrame('accessory', x, y, size, state);
 
     if (options.clip) {
@@ -387,18 +396,21 @@
     }
 
     if (state.mode === 'current') {
+      drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
       drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
-      if (hairLayerEnabled && images.hair) drawLayer(images.hair, hairFrame.x, hairFrame.y, hairFrame.size);
+      drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     } else if (state.mode === 'outfitBack') {
+      drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
       drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      if (hairLayerEnabled && images.hair) drawLayer(images.hair, hairFrame.x, hairFrame.y, hairFrame.size);
+      drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     } else {
+      drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
       drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'back');
       drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      if (hairLayerEnabled && images.hair) drawLayer(images.hair, hairFrame.x, hairFrame.y, hairFrame.size);
       drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'front');
+      drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
     }
 
     if (images.accessory) drawLayer(images.accessory, accessoryFrame.x, accessoryFrame.y, accessoryFrame.size);
@@ -527,7 +539,7 @@
   }
 
   function drawCroppedAlignedPortrait(entries, x, y, size, state) {
-    const layerOrder = hairLayerEnabled ? ['body', 'outfit', 'hair', 'accessory'] : ['body', 'outfit', 'accessory'];
+    const layerOrder = ['backHair', 'body', 'outfit', 'frontHair', 'accessory'];
     layerOrder.forEach((key) => drawCroppedAlignedLayer(getEntry(entries, key), x, y, size, state));
   }
 
@@ -569,12 +581,14 @@
     ctx.font = '13px "Microsoft YaHei", sans-serif';
     const body = entries.find((entry) => entry.key === 'body')?.bounds;
     const outfit = entries.find((entry) => entry.key === 'outfit')?.bounds;
-    const hair = entries.find((entry) => entry.key === 'hair')?.bounds;
+    const backHair = entries.find((entry) => entry.key === 'backHair')?.bounds;
+    const frontHair = entries.find((entry) => entry.key === 'frontHair')?.bounds;
     const issues = [];
     const outfitHasNeckHole = outfit && getAlphaAt(getEntry(entries, 'outfit')?.image, 256, Math.max(outfit.y + 18, 230)) <= 8;
     if (outfit && outfit.y < 245 && outfitHasNeckHole) issues.push('衣服含背后领/背后空壳，需要重做');
     if (outfit && Math.abs(outfit.centerX - 256) > 12) issues.push('衣服中心偏移偏大');
-    if (hair && body && Math.abs(hair.centerX - body.centerX) > 12) issues.push('发型与身体中心不一致');
+    if (backHair && body && Math.abs(backHair.centerX - body.centerX) > 12) issues.push('后发与身体中心不一致');
+    if (frontHair && body && Math.abs(frontHair.centerX - body.centerX) > 12) issues.push('前发与身体中心不一致');
     if (outfit && outfit.marginTop < 220) issues.push('衣服有效像素过高，容易穿到脸/脖子区域');
     if (outfit && outfit.marginLeft !== outfit.marginRight) issues.push('衣服左右空白不对称');
     if (!issues.length) issues.push('当前只需按统一锚点导出');
@@ -658,17 +672,18 @@
     syncLabels(state);
     updateExportData(state);
     const layerRequests = [
+      { key: 'backHair', filename: backHairFiles[state.backHair] },
       { key: 'outfit', filename: outfitFiles[state.outfit] },
       { key: 'body', filename: bodyFiles[state.body] },
+      { key: 'frontHair', filename: frontHairFiles[state.frontHair] },
     ];
-    if (hairLayerEnabled) layerRequests.push({ key: 'hair', filename: hairFiles[state.hair] });
     if (state.accessory !== 'none') layerRequests.push({ key: 'accessory', filename: accessoryFiles[state.accessory] });
     try {
       const loaded = await Promise.all(layerRequests.map((request) => loadImage(request.filename)));
       const images = loaded.reduce((result, image, index) => {
         result[layerRequests[index].key] = image;
         return result;
-      }, { outfit: null, body: null, hair: null, accessory: null });
+      }, { backHair: null, outfit: null, body: null, frontHair: null, accessory: null });
       const entries = buildLayerEntries(images);
       updateAudit(entries);
       drawScene(images, state, entries);
