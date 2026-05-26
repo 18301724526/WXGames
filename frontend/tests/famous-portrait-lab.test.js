@@ -70,7 +70,7 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.match(script, /backHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
   assert.match(script, /frontHair: \{ scale: 0\.7, x: 0, y: -65 \}/);
   assert.match(script, /function getLayerTransforms\(\)/);
-  assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state\)/);
+  assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state, options = \{\}\)/);
   assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
   assert.match(script, /drawLayer\(images\.backHair, backHairFrame\.x, backHairFrame\.y, backHairFrame\.size\);/);
   assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);/);
@@ -95,9 +95,9 @@ test('famous portrait lab shows an in-game candidate card preview', () => {
   assert.match(script, /portraitOffsetY: 0\.14/);
   assert.match(script, /function drawGameFamousPortrait\(images, x, y, state, options = \{\}\)/);
   assert.match(script, /function drawGameFamousPersonItem\(images, x, y, state\)/);
-  assert.match(script, /\[\s*images\.backHair,\s*images\.body,\s*images\.outfit,\s*images\.frontHair,\s*images\.accessory,\s*\]\.filter\(Boolean\)\.forEach/);
-  assert.match(script, /drawLayer\(image, drawX, drawY, drawSize\);/);
-  assert.doesNotMatch(script, /drawPortrait\(images, drawX, drawY, drawSize, state/);
+  assert.match(script, /drawPortrait\(images, drawX, drawY, drawSize, state, \{/);
+  assert.match(script, /scaleOffsets: true/);
+  assert.match(script, /const offsetScale = options\.scaleOffsets \? frame\.size \/ 512 : 1;/);
   assert.match(script, /ctx\.fillText\('游戏实显', 592, 414\)/);
   assert.match(script, /drawGameFamousPersonItem\(images, 592, 466, state\)/);
   assert.match(script, /if \(!image \|\| size <= 0\) return;/);

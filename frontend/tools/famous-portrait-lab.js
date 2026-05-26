@@ -267,22 +267,24 @@
     );
   }
 
-  function getBaseDrawFrame(x, y, size, state) {
+  function getBaseDrawFrame(x, y, size, state, options = {}) {
     const drawSize = size * state.scale;
+    const offsetScale = options.scaleOffsets ? size / 512 : 1;
     return {
       x: x + (size - drawSize) / 2,
-      y: y + (size - drawSize) / 2 + state.offsetY,
+      y: y + (size - drawSize) / 2 + state.offsetY * offsetScale,
       size: drawSize,
     };
   }
 
-  function getLayerDrawFrame(key, x, y, size, state) {
-    const frame = getBaseDrawFrame(x, y, size, state);
+  function getLayerDrawFrame(key, x, y, size, state, options = {}) {
+    const frame = getBaseDrawFrame(x, y, size, state, options);
     const transform = state.layerTransforms?.[key] || defaultLayerTransforms[key] || defaultLayerTransforms.outfit;
     const layerSize = frame.size * transform.scale;
+    const offsetScale = options.scaleOffsets ? frame.size / 512 : 1;
     return {
-      x: frame.x + (frame.size - layerSize) / 2 + transform.x,
-      y: frame.y + (frame.size - layerSize) / 2 + transform.y,
+      x: frame.x + (frame.size - layerSize) / 2 + transform.x * offsetScale,
+      y: frame.y + (frame.size - layerSize) / 2 + transform.y * offsetScale,
       size: layerSize,
     };
   }
@@ -393,11 +395,12 @@
   }
 
   function drawPortrait(images, x, y, size, state, options = {}) {
-    const bodyFrame = getLayerDrawFrame('body', x, y, size, state);
-    const outfitFrame = getLayerDrawFrame('outfit', x, y, size, state);
-    const backHairFrame = getLayerDrawFrame('backHair', x, y, size, state);
-    const frontHairFrame = getLayerDrawFrame('frontHair', x, y, size, state);
-    const accessoryFrame = getLayerDrawFrame('accessory', x, y, size, state);
+    const frameOptions = { scaleOffsets: Boolean(options.scaleOffsets) };
+    const bodyFrame = getLayerDrawFrame('body', x, y, size, state, frameOptions);
+    const outfitFrame = getLayerDrawFrame('outfit', x, y, size, state, frameOptions);
+    const backHairFrame = getLayerDrawFrame('backHair', x, y, size, state, frameOptions);
+    const frontHairFrame = getLayerDrawFrame('frontHair', x, y, size, state, frameOptions);
+    const accessoryFrame = getLayerDrawFrame('accessory', x, y, size, state, frameOptions);
 
     if (options.clip) {
       ctx.save();
@@ -469,19 +472,16 @@
     const drawX = x + (frameWidth - drawSize) / 2;
     const drawY = y + (frameHeight - drawSize) / 2 + size * offsetY;
 
-    ctx.save();
-    roundRectPath(x, y, frameWidth, frameHeight, 10);
-    ctx.clip();
-    [
-      images.backHair,
-      images.body,
-      images.outfit,
-      images.frontHair,
-      images.accessory,
-    ].filter(Boolean).forEach((image) => {
-      drawLayer(image, drawX, drawY, drawSize);
+    drawPortrait(images, drawX, drawY, drawSize, state, {
+      clip: {
+        x,
+        y,
+        width: frameWidth,
+        height: frameHeight,
+        radius: 10,
+      },
+      scaleOffsets: true,
     });
-    ctx.restore();
   }
 
   function drawGameFamousPersonItem(images, x, y, state) {
