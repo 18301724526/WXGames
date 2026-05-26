@@ -75,6 +75,16 @@ test('famous portrait lab can tune split hair and individual layer transforms', 
   assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
 });
 
+test('famous portrait lab keeps desktop controls scroll isolated from preview', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
+
+  assert.match(html, /html,\s*body\s*\{[\s\S]*?height:\s*100%;[\s\S]*?overflow:\s*hidden;/);
+  assert.match(html, /\.shell\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*hidden;/);
+  assert.match(html, /\.panel\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(html, /\.stage\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
+});
+
 test('famous portrait split hair assets exist and stay aligned', () => {
   [
     'fp-layer-backHair-short-01.png',
