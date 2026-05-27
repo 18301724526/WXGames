@@ -444,12 +444,13 @@
         if (layerLayout.version === 2 || mode === 'cropped') {
           const order = Array.isArray(layerLayout.order)
             ? layerLayout.order
-            : ['outfitBack', 'head', 'hair', 'outfitFront'];
+            : ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'];
           order.forEach((key) => drawLayer(key));
         } else {
           drawLayer('outfitBack');
           drawLayer('head');
-          drawLayer('hair');
+          drawLayer('hairBase');
+          drawLayer('bangs');
           drawLayer('outfitFront');
         }
         return drawnAny;

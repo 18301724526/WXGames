@@ -178,7 +178,8 @@ test('famous person view state maps candidates and joined people into panel card
           layers: {
             outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
             head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
-            hair: 'assets/art/famous-person/layers/fp-layer-v2-art01-hair-bound-topknot-01.png',
+            hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+            bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
             outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
           },
         },

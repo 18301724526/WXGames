@@ -5,11 +5,28 @@
     note: 'famous portrait v2 user-cut layer transform',
     coordinateSize: 512,
     global: { scale: 1, x: 0, y: 0 },
-    order: ['outfitBack', 'head', 'hair', 'outfitFront'],
+    order: ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'],
     layers: {
-      hair: {
-        label: '完整发型',
-        file: 'fp-layer-v2-art01-hair-bound-topknot-01.png',
+      hairBase: {
+        label: '发型底层',
+        file: 'fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+        options: [
+          { label: '束发底层', file: 'fp-layer-v2-art01-hairBase-bound-topknot-01.png' },
+        ],
+        scale: 0.19,
+        x: 135,
+        y: 20,
+        visible: true,
+      },
+      bangs: {
+        label: '刘海',
+        file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png',
+        options: [
+          { label: '原始刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png' },
+          { label: '短刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-short-01.png' },
+          { label: '分缝刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png' },
+          { label: '侧扫刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png' },
+        ],
         scale: 0.19,
         x: 135,
         y: 20,
@@ -87,7 +104,8 @@
   async function loadAssets() {
     const response = await fetch(`${layerBase}fp-layer-v2-manifest.json?ts=${Date.now()}`);
     manifest = await response.json();
-    const files = Object.values(state.layers).map((layer) => layer.file);
+    const files = Object.values(state.layers)
+      .flatMap((layer) => layer.options?.map((option) => option.file) || [layer.file]);
     await Promise.all(files.map((file) => loadImage(layerBase + file)));
   }
 
@@ -143,6 +161,15 @@
         <button data-move="down" title="下移一层">下移</button>
         <label class="toggle"><input data-visible type="checkbox" checked>显示</label>
       </div>
+      ${layer.options ? `
+      <div class="row">
+        <span>文件</span>
+        <select data-control="file">
+          ${layer.options.map((option) => `<option value="${option.file}">${option.label}</option>`).join('')}
+        </select>
+        <span class="value"></span>
+      </div>
+      ` : ''}
       <div class="row">
         <span>缩放</span>
         <input data-control="scale" type="range" min="0" max="200" value="100">
@@ -162,6 +189,14 @@
     item.querySelector('[data-control="scale"]').value = Math.round(layer.scale * 100);
     item.querySelector('[data-control="x"]').value = layer.x;
     item.querySelector('[data-control="y"]').value = layer.y;
+    const fileControl = item.querySelector('[data-control="file"]');
+    if (fileControl) {
+      fileControl.value = layer.file;
+      fileControl.addEventListener('change', (event) => {
+        layer.file = event.target.value;
+        render();
+      });
+    }
     item.querySelector('[data-control="scale"]').addEventListener('input', (event) => {
       layer.scale = Number(event.target.value) / 100;
       render();

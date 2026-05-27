@@ -12,7 +12,8 @@
     order: Object.freeze([
       'outfitBack',
       'head',
-      'hair',
+      'hairBase',
+      'bangs',
       'outfitFront',
     ]),
     layers: Object.freeze({
@@ -30,8 +31,15 @@
         y: 83,
         scale: 0.46,
       }),
-      hair: Object.freeze({
-        file: 'fp-layer-v2-art01-hair-bound-topknot-01.png',
+      hairBase: Object.freeze({
+        file: 'fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+        base: Object.freeze({ x: 0, y: 0, width: 1254, height: 1254 }),
+        x: 135,
+        y: 20,
+        scale: 0.19,
+      }),
+      bangs: Object.freeze({
+        file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png',
         base: Object.freeze({ x: 0, y: 0, width: 1254, height: 1254 }),
         x: 135,
         y: 20,

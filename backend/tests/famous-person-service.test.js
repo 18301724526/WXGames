@@ -44,8 +44,10 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v2.0');
   assert.ok(result.candidate.appearance.layers.outfitBack.endsWith('fp-layer-v2-art01-outfitBack-guardian-01.png'));
   assert.ok(result.candidate.appearance.layers.head.endsWith('fp-layer-v2-art01-head-base-01.png'));
-  assert.ok(result.candidate.appearance.layers.hair.endsWith('fp-layer-v2-art01-hair-bound-topknot-01.png'));
+  assert.ok(result.candidate.appearance.layers.hairBase.endsWith('fp-layer-v2-art01-hairBase-bound-topknot-01.png'));
+  assert.match(result.candidate.appearance.layers.bangs, /fp-layer-v2-art01-bangs-bound-topknot(-short|-parted|-swept)?-01\.png$/);
   assert.ok(result.candidate.appearance.layers.outfitFront.endsWith('fp-layer-v2-art01-outfitFront-guardian-01.png'));
+  assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'hair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'backHair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'frontHair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
@@ -152,7 +154,8 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.ok(normalized.famousPeople[0].appearance.layers.outfitBack);
   assert.ok(normalized.famousPeople[0].appearance.layers.head);
-  assert.ok(normalized.famousPeople[0].appearance.layers.hair);
+  assert.ok(normalized.famousPeople[0].appearance.layers.hairBase);
+  assert.ok(normalized.famousPeople[0].appearance.layers.bangs);
   assert.ok(normalized.famousPeople[0].appearance.layers.outfitFront);
   assert.equal(Object.prototype.hasOwnProperty.call(normalized.famousPeople[0].appearance.layers, 'sideHair'), false);
 });
@@ -182,12 +185,14 @@ test('legacy portrait appearance is regenerated with the anchored complete hair 
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.match(layers.outfitBack, /fp-layer-v2-art01-outfitBack-guardian-01\.png$/);
   assert.match(layers.head, /fp-layer-v2-art01-head-base-01\.png$/);
-  assert.match(layers.hair, /fp-layer-v2-art01-hair-bound-topknot-01\.png$/);
+  assert.match(layers.hairBase, /fp-layer-v2-art01-hairBase-bound-topknot-01\.png$/);
+  assert.match(layers.bangs, /fp-layer-v2-art01-bangs-bound-topknot(-short|-parted|-swept)?-01\.png$/);
   assert.match(layers.outfitFront, /fp-layer-v2-art01-outfitFront-guardian-01\.png$/);
+  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'hair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(layers, 'backHair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(layers, 'sideHair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(layers, 'frontHair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'bangs'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'bangs'), true);
 });
 
 test('unversioned portrait appearance is regenerated away from deleted outfit assets', () => {

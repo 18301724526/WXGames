@@ -73,7 +73,13 @@ const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白',
 
 const APPEARANCE_POOLS = Object.freeze({
   head: ['fp-layer-v2-art01-head-base-01.png'],
-  hair: ['fp-layer-v2-art01-hair-bound-topknot-01.png'],
+  hairBase: ['fp-layer-v2-art01-hairBase-bound-topknot-01.png'],
+  bangs: [
+    'fp-layer-v2-art01-bangs-bound-topknot-01.png',
+    'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',
+    'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png',
+    'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
+  ],
   outfitBack: {
     vanguard: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
     guardian: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
@@ -226,7 +232,8 @@ function createAppearance(archetype, seed, randomSource = null) {
   const layers = {
     outfitBack: layerPath(pick(outfitBackPool, source)),
     head: layerPath(pick(APPEARANCE_POOLS.head, source)),
-    hair: layerPath(pick(APPEARANCE_POOLS.hair, source)),
+    hairBase: layerPath(pick(APPEARANCE_POOLS.hairBase, source)),
+    bangs: layerPath(pick(APPEARANCE_POOLS.bangs, source)),
     outfitFront: layerPath(pick(outfitFrontPool, source)),
   };
   return {
@@ -242,7 +249,7 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
   if (source.version !== APPEARANCE_VERSION) return generated;
-  const layers = ['outfitBack', 'head', 'hair', 'outfitFront']
+  const layers = ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront']
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);
       if (value) result[key] = value;
