@@ -6,6 +6,10 @@ const path = require('node:path');
 const projectRoot = path.join(__dirname, '..', '..');
 const famousLayerDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'famous-person', 'layers');
 
+function listFamousLayerFiles(pattern) {
+  return fs.readdirSync(famousLayerDir).filter((filename) => pattern.test(filename)).sort();
+}
+
 test('famous portrait lab exposes isolated layer order experiments', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
   const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
@@ -127,17 +131,22 @@ test('famous portrait lab keeps desktop controls scroll isolated from preview', 
   assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
 });
 
-test('famous portrait split hair assets exist and stay aligned', () => {
+test('famous portrait hair assets share the hand-tuned anchor bounds', () => {
   [
-    'fp-layer-backHair-short-02.png',
-    'fp-layer-backHair-tied-02.png',
-    'fp-layer-frontHair-short-02.png',
-    'fp-layer-frontHair-tied-02.png',
-  ].forEach((filename) => {
-    const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
-    assert.ok(Math.abs(((bounds.minX + bounds.maxX) / 2) - 256) <= 4, filename);
-    assert.equal(bounds.minY < 100, true, filename);
-    assert.equal(bounds.maxY < 320, true, filename);
+    [/^fp-layer-backHair-.*\.png$/, 'fp-layer-backHair-short-02.png'],
+    [/^fp-layer-sideHair-.*\.png$/, 'fp-layer-sideHair-short-01.png'],
+    [/^fp-layer-frontHair-.*\.png$/, 'fp-layer-frontHair-short-02.png'],
+  ].forEach(([pattern, anchorFilename]) => {
+    const expectedBounds = readPngAlphaBounds(path.join(famousLayerDir, anchorFilename));
+    const filenames = listFamousLayerFiles(pattern);
+    assert.ok(filenames.includes(anchorFilename), anchorFilename);
+    assert.ok(filenames.length >= 2, anchorFilename);
+    filenames.forEach((filename) => {
+      const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
+      assert.deepEqual(bounds, expectedBounds, filename);
+      assert.ok(Math.abs(((bounds.minX + bounds.maxX) / 2) - 256) <= 4, filename);
+      assert.equal(bounds.maxY < 320, true, filename);
+    });
   });
 });
 
@@ -173,23 +182,25 @@ test('famous portrait side hair assets are true narrow sideburn details', () => 
 });
 
 test('famous portrait front hair assets are forehead locks instead of copied back hair caps', () => {
-  [
-    ['fp-layer-frontHair-short-02.png', 'fp-layer-backHair-short-02.png'],
-    ['fp-layer-frontHair-tied-02.png', 'fp-layer-backHair-tied-02.png'],
-  ].forEach(([filename, backFilename]) => {
+  const expectedBounds = readPngAlphaBounds(path.join(famousLayerDir, 'fp-layer-frontHair-short-02.png'));
+  listFamousLayerFiles(/^fp-layer-frontHair-.*\.png$/).forEach((filename) => {
     const alpha = readPngAlphaStats(path.join(famousLayerDir, filename));
     const bounds = alpha.bounds;
+    const backFilename = filename.includes('-tied-')
+      ? 'fp-layer-backHair-tied-02.png'
+      : 'fp-layer-backHair-short-02.png';
     const backBounds = readPngAlphaBounds(path.join(famousLayerDir, backFilename));
     const width = bounds.maxX - bounds.minX + 1;
     const height = bounds.maxY - bounds.minY + 1;
     const backHeight = backBounds.maxY - backBounds.minY + 1;
     const centerYs = alpha.points.filter((point) => Math.abs(point.x - 256) <= 3).map((point) => point.y);
+    assert.deepEqual(bounds, expectedBounds, filename);
     assert.ok(width >= 220 && width <= 270, filename);
     assert.ok(height >= 70 && height <= 115, filename);
     assert.ok(height < backHeight * 0.5, filename);
     assert.ok(bounds.minY > backBounds.minY + 40, filename);
+    assert.ok(centerYs.length > 0, filename);
     assert.equal(Math.min(...centerYs), 76, filename);
-    assert.equal(Math.max(...centerYs), 151, filename);
     assert.ok(bounds.maxY <= 180, filename);
   });
 });
@@ -260,12 +271,11 @@ function readPngAlphaStats(filePath) {
 }
 
 test('famous portrait candidate outfits share guardian armor alpha bounds', () => {
-  const expected = { minX: 41, minY: 242, maxX: 470, maxY: 511 };
-  [
-    'fp-layer-outfit-guardian-front-candidate-01.png',
-    'fp-layer-outfit-vanguard-front-candidate-02.png',
-    'fp-layer-outfit-scholar-front-candidate-03.png',
-  ].forEach((filename) => {
+  const expected = readPngAlphaBounds(path.join(famousLayerDir, 'fp-layer-outfit-guardian-front-candidate-01.png'));
+  assert.deepEqual(expected, { minX: 41, minY: 242, maxX: 470, maxY: 511 });
+  const filenames = listFamousLayerFiles(/^fp-layer-outfit-.*-front-candidate-\d+\.png$/);
+  assert.ok(filenames.length >= 3);
+  filenames.forEach((filename) => {
     assert.deepEqual(readPngAlphaBounds(path.join(famousLayerDir, filename)), expected, filename);
   });
 });

@@ -42,7 +42,7 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.skills[0].name, '血刃连袭');
   assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-body-skin-01.png'));
-  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v0.7');
+  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v0.8');
   assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-front-candidate-02.png'));
   assert.ok(result.candidate.appearance.layers.backHair.startsWith('assets/art/famous-person/layers/fp-layer-backHair-'));
   assert.ok(result.candidate.appearance.layers.sideHair.startsWith('assets/art/famous-person/layers/fp-layer-sideHair-'));

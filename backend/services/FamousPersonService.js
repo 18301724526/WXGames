@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.7';
+const APPEARANCE_VERSION = 'famous-portrait-v0.8';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
