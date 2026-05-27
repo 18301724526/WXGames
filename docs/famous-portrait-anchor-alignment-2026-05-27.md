@@ -1,32 +1,56 @@
-# 名人立绘素材锚点对齐记录 2026-05-27
+# Famous Portrait Anchor Alignment 2026-05-27
 
-## 结论
+## Current Rule
 
-当前只有以下 4 张手动调好的素材作为基准，其他同类素材必须对齐它们：
+Only this hand-tuned set is allowed in the live generation pool for now:
 
-- 衣服基准：`frontend/assets/art/famous-person/layers/fp-layer-outfit-guardian-front-candidate-01.png`
-- 后发基准：`frontend/assets/art/famous-person/layers/fp-layer-backHair-short-02.png`
-- 鬓角基准：`frontend/assets/art/famous-person/layers/fp-layer-sideHair-short-01.png`
-- 前发基准：`frontend/assets/art/famous-person/layers/fp-layer-frontHair-short-02.png`
+- Outfit anchor: `frontend/assets/art/famous-person/layers/fp-layer-outfit-guardian-front-candidate-01.png`
+- Back hair anchor: `frontend/assets/art/famous-person/layers/fp-layer-backHair-short-02.png`
+- Side hair anchor: `frontend/assets/art/famous-person/layers/fp-layer-sideHair-short-01.png`
+- Front hair anchor: `frontend/assets/art/famous-person/layers/fp-layer-frontHair-short-02.png`
 
-## 对齐边界
+The generation code uses `APPEARANCE_POOLS.hairSets` rather than independent `backHair`, `sideHair`, and `frontHair` pools. This prevents bad cross-combinations such as tied back hair with the short front hair.
 
-按 alpha > 8 的透明像素边界统计，当前目标边界如下：
+## Alpha Bounds
 
-- 所有候选衣服：`(41,242)-(470,511)`
-- 所有后发：`(117,14)-(395,259)`
-- 所有鬓角：`(143,173)-(365,283)`
-- 所有前发：`(124,76)-(388,178)`
+Using alpha > 8, the target bounds are:
 
-## 本次处理
+- Candidate outfits: `(41,242)-(470,511)`
+- Back hair: `(117,14)-(395,259)`
+- Side hair: `(143,173)-(365,283)`
+- Front hair: `(124,76)-(388,178)`
 
-- 未改动 4 张手调基准素材。
-- 将其他候选衣服、后发、鬓角、前发 PNG 重采样到上述基准边界。
-- 覆盖了游戏实际使用的 `fp-layer-outfit-vanguard-front-candidate-02.png` 和 `fp-layer-outfit-scholar-front-candidate-03.png`，不是只处理备用图。
-- 将 `FamousPersonService.APPEARANCE_VERSION` 升到 `famous-portrait-v0.8`，让旧存档里的名人和候选人在 normalize 时重新生成外观层数据。
-- `frontend/tests/famous-portrait-lab.test.js` 现在会扫描目录内所有同类素材，确保它们继续匹配 4 张基准素材的边界。
+## Randomization Contract
 
-## 验证命令
+Hair layers must be randomized as a full set:
+
+```js
+{
+  id: 'shortValidated',
+  backHair: 'fp-layer-backHair-short-02.png',
+  sideHair: 'fp-layer-sideHair-short-01.png',
+  frontHair: 'fp-layer-frontHair-short-02.png',
+}
+```
+
+Allowed independent random dimensions:
+
+- `hairSets`
+- `body`
+- `outfit`
+- `accessory`
+
+Not allowed:
+
+- Randomizing `backHair`, `sideHair`, and `frontHair` separately.
+
+## Current Disable
+
+- The tied hair assets are still kept in the repo and lab for inspection.
+- They are removed from the live generation pool until a complete tied hair set is remade and validated in the actual game-card preview.
+- `FamousPersonService.APPEARANCE_VERSION` is bumped to `famous-portrait-v0.9`, so saved famous people and candidates regenerate away from the bad tied combinations.
+
+## Verification
 
 ```bash
 node --test frontend/tests/famous-portrait-lab.test.js backend/tests/famous-person-service.test.js frontend/tests/shared-canvas-renderer.test.js frontend/tests/ui-state-presenter.test.js

@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.8';
+const APPEARANCE_VERSION = 'famous-portrait-v0.9';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -73,9 +73,14 @@ const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白',
 
 const APPEARANCE_POOLS = Object.freeze({
   body: ['fp-layer-body-skin-01.png', 'fp-layer-body-skin-02.png'],
-  backHair: ['fp-layer-backHair-short-02.png', 'fp-layer-backHair-tied-02.png'],
-  sideHair: ['fp-layer-sideHair-short-01.png', 'fp-layer-sideHair-tied-01.png'],
-  frontHair: ['fp-layer-frontHair-short-02.png', 'fp-layer-frontHair-tied-02.png'],
+  hairSets: Object.freeze([
+    Object.freeze({
+      id: 'shortValidated',
+      backHair: 'fp-layer-backHair-short-02.png',
+      sideHair: 'fp-layer-sideHair-short-01.png',
+      frontHair: 'fp-layer-frontHair-short-02.png',
+    }),
+  ]),
   outfit: {
     vanguard: ['fp-layer-outfit-vanguard-front-candidate-02.png'],
     guardian: ['fp-layer-outfit-guardian-front-candidate-01.png'],
@@ -225,12 +230,13 @@ function createAppearance(archetype, seed, randomSource = null) {
   const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(seed);
   const outfitPool = APPEARANCE_POOLS.outfit[archetype.id] || APPEARANCE_POOLS.outfit.vanguard;
   const accessoryPool = APPEARANCE_POOLS.accessory[archetype.id] || [null];
+  const hairSet = pick(APPEARANCE_POOLS.hairSets, source);
   const layers = {
-    backHair: layerPath(pick(APPEARANCE_POOLS.backHair, source)),
-    sideHair: layerPath(pick(APPEARANCE_POOLS.sideHair, source)),
+    backHair: layerPath(hairSet.backHair),
+    sideHair: layerPath(hairSet.sideHair),
     body: layerPath(pick(APPEARANCE_POOLS.body, source)),
     outfit: layerPath(pick(outfitPool, source)),
-    frontHair: layerPath(pick(APPEARANCE_POOLS.frontHair, source)),
+    frontHair: layerPath(hairSet.frontHair),
   };
   const accessory = pick(accessoryPool, source);
   if (accessory) layers.accessory = layerPath(accessory);

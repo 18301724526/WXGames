@@ -42,14 +42,11 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.skills[0].name, '血刃连袭');
   assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-body-skin-01.png'));
-  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v0.8');
+  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v0.9');
   assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-front-candidate-02.png'));
-  assert.ok(result.candidate.appearance.layers.backHair.startsWith('assets/art/famous-person/layers/fp-layer-backHair-'));
-  assert.ok(result.candidate.appearance.layers.sideHair.startsWith('assets/art/famous-person/layers/fp-layer-sideHair-'));
-  assert.ok(result.candidate.appearance.layers.frontHair.startsWith('assets/art/famous-person/layers/fp-layer-frontHair-'));
-  assert.match(result.candidate.appearance.layers.backHair, /-02\.png$/);
-  assert.match(result.candidate.appearance.layers.sideHair, /-01\.png$/);
-  assert.match(result.candidate.appearance.layers.frontHair, /-02\.png$/);
+  assert.ok(result.candidate.appearance.layers.backHair.endsWith('fp-layer-backHair-short-02.png'));
+  assert.ok(result.candidate.appearance.layers.sideHair.endsWith('fp-layer-sideHair-short-01.png'));
+  assert.ok(result.candidate.appearance.layers.frontHair.endsWith('fp-layer-frontHair-short-02.png'));
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
@@ -158,7 +155,7 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
   assert.ok(normalized.famousPeople[0].appearance.layers.frontHair);
 });
 
-test('legacy portrait appearance is regenerated with split hair layers', () => {
+test('legacy portrait appearance is regenerated with the validated short hair set', () => {
   const state = GameStateService.createInitialGameState('fp-legacy-split-hair');
   state.currentEra = 3;
   state.famousPeople = [{
@@ -182,10 +179,12 @@ test('legacy portrait appearance is regenerated with split hair layers', () => {
 
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.match(layers.outfit, /fp-layer-outfit-guardian-front-candidate-01\.png$/);
-  assert.match(layers.backHair, /fp-layer-backHair-(short|tied)-02\.png$/);
-  assert.match(layers.sideHair, /fp-layer-sideHair-(short|tied)-01\.png$/);
-  assert.match(layers.frontHair, /fp-layer-frontHair-(short|tied)-02\.png$/);
-  assert.doesNotMatch(layers.frontHair, /frontHair-(short|tied)-01\.png$/);
+  assert.match(layers.backHair, /fp-layer-backHair-short-02\.png$/);
+  assert.match(layers.sideHair, /fp-layer-sideHair-short-01\.png$/);
+  assert.match(layers.frontHair, /fp-layer-frontHair-short-02\.png$/);
+  assert.doesNotMatch(layers.backHair, /backHair-tied/);
+  assert.doesNotMatch(layers.sideHair, /sideHair-tied/);
+  assert.doesNotMatch(layers.frontHair, /frontHair-tied/);
 });
 
 test('unversioned portrait appearance is regenerated away from deleted outfit assets', () => {
