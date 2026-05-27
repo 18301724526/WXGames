@@ -509,6 +509,7 @@
     const drawY = y + (frameHeight - drawSize) / 2 + size * offsetY;
     const gameState = {
       ...state,
+      mode: 'current',
       scale: 1,
       offsetY: 0,
     };

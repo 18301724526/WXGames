@@ -1,14 +1,5 @@
 (function (global) {
   const FamousPortraitLayout = Object.freeze({
-    mode: 'split',
-    global: Object.freeze({
-      scale: 1.3,
-      offsetY: 10,
-      frontCutY: 286,
-      backCutY: 252,
-      cardWidth: 84,
-      cardHeight: 104,
-    }),
     backHair: Object.freeze({ scale: 0.7, x: 0, y: -70 }),
     sideHair: Object.freeze({ scale: 0.63, x: 0, y: -98 }),
     body: Object.freeze({ scale: 0.7, x: 0, y: -17 }),

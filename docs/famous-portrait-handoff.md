@@ -150,3 +150,11 @@ git push https://github.com/18301724526/WXGames.git main
 - 所有新发型都按短发素材的 `512x512` 锚点规格校准：鬓角边界必须一致；前发美人尖中心锚点必须一致。
 - 束发前发不要复制短发两侧刘海块，只保留中心美人尖/额前束；侧边发型轮廓归 `backHair`。
 - 候选服装继续按守将候选衣服的透明边界规格对齐，避免不同服装在实验台和游戏实显里漂移。
+
+## 2026-05-27 runtime correction
+
+- Commit 893baf4 was the wrong implementation direction because it copied the lab split/crop simulation into CanvasGameRenderer.
+- Runtime must stay aligned with 1577ffb: full-layer draw order only, no mode: split, no frontCutY/backCutY, and no cropped outfit draw calls.
+- The game-side portrait path is backHair -> body -> face -> sideHair -> outfit -> frontHair -> accessory -> frameEffect.
+- FamousPersonService.APPEARANCE_VERSION stays on famous-portrait-v0.5 and generated people use the normal outfit files, not the lab candidate outfit files.
+- The lab may keep crop controls for comparison/export work, but those fields are not part of the runtime rendering contract.
