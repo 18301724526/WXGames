@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v1.1';
+const APPEARANCE_VERSION = 'famous-portrait-v2.0';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -72,24 +72,23 @@ const ARCHETYPES = Object.freeze([
 const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白', '韩', '秦', '苏']);
 
 const APPEARANCE_POOLS = Object.freeze({
-  body: ['fp-layer-v2-art01-body-base-01.png'],
-  innerwear: ['fp-layer-v2-art01-innerwear-guardian-01.png'],
-  hairSets: Object.freeze([
-    Object.freeze({
-      id: 'shortFlatV2',
-      backHair: 'fp-layer-v2-art01-backHair-short-01.png',
-      sideHair: 'fp-layer-v2-art01-sideHair-short-01.png',
-      frontHair: 'fp-layer-v2-art01-frontHair-short-01.png',
-      bangs: 'fp-layer-v2-art01-bangs-short-01.png',
-    }),
-  ]),
-  outfit: {
-    vanguard: ['fp-layer-v2-art01-outfit-guardian-01.png'],
-    guardian: ['fp-layer-v2-art01-outfit-guardian-01.png'],
-    tactician: ['fp-layer-v2-art01-outfit-guardian-01.png'],
-    warden: ['fp-layer-v2-art01-outfit-guardian-01.png'],
-    artisan: ['fp-layer-v2-art01-outfit-guardian-01.png'],
-    scholar: ['fp-layer-v2-art01-outfit-guardian-01.png'],
+  head: ['fp-layer-v2-art01-head-base-01.png'],
+  hair: ['fp-layer-v2-art01-hair-bound-topknot-01.png'],
+  outfitBack: {
+    vanguard: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
+    guardian: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
+    tactician: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
+    warden: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
+    artisan: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
+    scholar: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
+  },
+  outfitFront: {
+    vanguard: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
+    guardian: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
+    tactician: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
+    warden: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
+    artisan: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
+    scholar: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
   },
 });
 
@@ -222,16 +221,13 @@ function layerPath(filename) {
 
 function createAppearance(archetype, seed, randomSource = null) {
   const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(seed);
-  const outfitPool = APPEARANCE_POOLS.outfit[archetype.id] || APPEARANCE_POOLS.outfit.vanguard;
-  const hairSet = pick(APPEARANCE_POOLS.hairSets, source);
+  const outfitFrontPool = APPEARANCE_POOLS.outfitFront[archetype.id] || APPEARANCE_POOLS.outfitFront.vanguard;
+  const outfitBackPool = APPEARANCE_POOLS.outfitBack[archetype.id] || APPEARANCE_POOLS.outfitBack.vanguard;
   const layers = {
-    backHair: layerPath(hairSet.backHair),
-    body: layerPath(pick(APPEARANCE_POOLS.body, source)),
-    innerwear: layerPath(pick(APPEARANCE_POOLS.innerwear, source)),
-    sideHair: layerPath(hairSet.sideHair),
-    frontHair: layerPath(hairSet.frontHair),
-    bangs: layerPath(hairSet.bangs),
-    outfit: layerPath(pick(outfitPool, source)),
+    outfitBack: layerPath(pick(outfitBackPool, source)),
+    head: layerPath(pick(APPEARANCE_POOLS.head, source)),
+    hair: layerPath(pick(APPEARANCE_POOLS.hair, source)),
+    outfitFront: layerPath(pick(outfitFrontPool, source)),
   };
   return {
     version: APPEARANCE_VERSION,
@@ -246,7 +242,7 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
   if (source.version !== APPEARANCE_VERSION) return generated;
-  const layers = ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit']
+  const layers = ['outfitBack', 'head', 'hair', 'outfitFront']
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);
       if (value) result[key] = value;

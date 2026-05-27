@@ -89,7 +89,7 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(html, /id="exportData"/);
   assert.match(html, /直接使用你切好的 PNG 原图/);
   assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
-  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.1\.139-hair-anchor"><\/script>/);
+  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.1\.140-portrait-v2"><\/script>/);
 
   assert.match(script, /fp-layer-v2-manifest\.json/);
   assert.match(script, /order: \['outfitBack', 'head', 'hair', 'outfitFront'\]/);
@@ -97,6 +97,9 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(script, /fp-layer-v2-art01-hair-bound-topknot-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitBack-guardian-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitFront-guardian-01\.png/);
+  assert.match(script, /scale:\s*0\.19/);
+  assert.match(script, /x:\s*135/);
+  assert.match(script, /y:\s*20/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
   assert.match(script, /游戏头像区域预览/);

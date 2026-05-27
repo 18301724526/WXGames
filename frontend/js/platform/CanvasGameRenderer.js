@@ -444,15 +444,13 @@
         if (layerLayout.version === 2 || mode === 'cropped') {
           const order = Array.isArray(layerLayout.order)
             ? layerLayout.order
-            : ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'];
+            : ['outfitBack', 'head', 'hair', 'outfitFront'];
           order.forEach((key) => drawLayer(key));
         } else {
-          drawLayer('backHair');
-          drawLayer('body');
-          drawLayer('face');
-          drawLayer('sideHair');
-          drawLayer('outfit');
-          drawLayer('frontHair');
+          drawLayer('outfitBack');
+          drawLayer('head');
+          drawLayer('hair');
+          drawLayer('outfitFront');
         }
         return drawnAny;
       };

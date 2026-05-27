@@ -150,13 +150,11 @@ test('CanvasGameRenderer preloads shared assets and reports progress', async () 
 test('CanvasGameRenderer preloads famous person portrait layers', () => {
   const paths = CanvasGameRenderer.getPreloadAssetPaths();
 
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-body-base-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-innerwear-guardian-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-backHair-short-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-sideHair-short-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-bangs-short-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfit-guardian-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-hair-bound-topknot-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png'));
+  assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png'));
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
 });
 
@@ -166,29 +164,27 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
   assert.equal(layout.version, 2);
   assert.equal(layout.mode, 'cropped');
-  assert.deepEqual(layout.order, ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit']);
-  assert.deepEqual(layout.layers.body.base, {
-    x: famousManifest.layers['fp-layer-v2-art01-body-base-01.png'].x,
-    y: famousManifest.layers['fp-layer-v2-art01-body-base-01.png'].y,
-    width: famousManifest.layers['fp-layer-v2-art01-body-base-01.png'].width,
-    height: famousManifest.layers['fp-layer-v2-art01-body-base-01.png'].height,
+  assert.deepEqual(layout.order, ['outfitBack', 'head', 'hair', 'outfitFront']);
+  assert.deepEqual(layout.layers.head.base, {
+    x: famousManifest.layers['fp-layer-v2-art01-head-base-01.png'].x,
+    y: famousManifest.layers['fp-layer-v2-art01-head-base-01.png'].y,
+    width: famousManifest.layers['fp-layer-v2-art01-head-base-01.png'].width,
+    height: famousManifest.layers['fp-layer-v2-art01-head-base-01.png'].height,
   });
-  assert.deepEqual(layout.layers.outfit.base, {
-    x: famousManifest.layers['fp-layer-v2-art01-outfit-guardian-01.png'].x,
-    y: famousManifest.layers['fp-layer-v2-art01-outfit-guardian-01.png'].y,
-    width: famousManifest.layers['fp-layer-v2-art01-outfit-guardian-01.png'].width,
-    height: famousManifest.layers['fp-layer-v2-art01-outfit-guardian-01.png'].height,
+  assert.deepEqual(layout.layers.hair.base, {
+    x: famousManifest.layers['fp-layer-v2-art01-hair-bound-topknot-01.png'].x,
+    y: famousManifest.layers['fp-layer-v2-art01-hair-bound-topknot-01.png'].y,
+    width: famousManifest.layers['fp-layer-v2-art01-hair-bound-topknot-01.png'].width,
+    height: famousManifest.layers['fp-layer-v2-art01-hair-bound-topknot-01.png'].height,
   });
-  assert.equal(layout.layers.innerwear.file, 'fp-layer-v2-art01-innerwear-guardian-01.png');
-  assert.equal(layout.layers.bangs.file, 'fp-layer-v2-art01-bangs-short-01.png');
+  assert.equal(layout.layers.hair.scale, 0.19);
+  assert.equal(layout.layers.hair.x, 135);
+  assert.equal(layout.layers.hair.y, 20);
   const layers = {
-    backHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-backHair-short-01.png',
-    body: 'assets/art/famous-person/layers/fp-layer-v2-art01-body-base-01.png',
-    innerwear: 'assets/art/famous-person/layers/fp-layer-v2-art01-innerwear-guardian-01.png',
-    sideHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-sideHair-short-01.png',
-    frontHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png',
-    bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-short-01.png',
-    outfit: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfit-guardian-01.png',
+    outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
+    head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
+    hair: 'assets/art/famous-person/layers/fp-layer-v2-art01-hair-bound-topknot-01.png',
+    outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
   };
   Object.values(layers).forEach((assetPath) => {
     renderer.assetCache.set(assetPath, {
@@ -206,27 +202,21 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
 
   assert.equal(drawn, true);
   const drawCalls = calls.filter((call) => call[0] === 'drawImage');
-  assert.equal(drawCalls.length, 7);
-  const bodyCall = drawCalls.find((call) => call[1]?.src === layers.body);
-  const innerwearCall = drawCalls.find((call) => call[1]?.src === layers.innerwear);
-  const sideHairCall = drawCalls.find((call) => call[1]?.src === layers.sideHair);
-  const frontHairCall = drawCalls.find((call) => call[1]?.src === layers.frontHair);
-  const bangsCall = drawCalls.find((call) => call[1]?.src === layers.bangs);
-  const outfitCall = drawCalls.find((call) => call[1]?.src === layers.outfit);
-  assert.ok(bodyCall);
-  assert.ok(innerwearCall);
-  assert.ok(sideHairCall);
-  assert.ok(frontHairCall);
-  assert.ok(bangsCall);
-  assert.ok(outfitCall);
-  assert.ok(Math.abs(bodyCall[2] - 5.237) < 0.01);
-  assert.ok(Math.abs(bodyCall[3] - 43.739) < 0.01);
-  assert.ok(Math.abs(bodyCall[4] - 89.164) < 0.01);
-  assert.ok(Math.abs(outfitCall[4] - 103.229) < 0.01);
-  assert.ok(drawCalls.indexOf(bodyCall) < drawCalls.indexOf(sideHairCall));
-  assert.ok(drawCalls.indexOf(frontHairCall) < drawCalls.indexOf(bangsCall));
-  assert.ok(drawCalls.indexOf(bangsCall) < drawCalls.indexOf(outfitCall));
-  assert.ok(drawCalls.indexOf(innerwearCall) < drawCalls.indexOf(outfitCall));
+  assert.equal(drawCalls.length, 4);
+  const outfitBackCall = drawCalls.find((call) => call[1]?.src === layers.outfitBack);
+  const headCall = drawCalls.find((call) => call[1]?.src === layers.head);
+  const hairCall = drawCalls.find((call) => call[1]?.src === layers.hair);
+  const outfitFrontCall = drawCalls.find((call) => call[1]?.src === layers.outfitFront);
+  assert.ok(outfitBackCall);
+  assert.ok(headCall);
+  assert.ok(hairCall);
+  assert.ok(outfitFrontCall);
+  assert.ok(Math.abs(hairCall[2] - 16.57) < 0.01);
+  assert.ok(Math.abs(hairCall[3] - 20.01) < 0.01);
+  assert.ok(Math.abs(hairCall[4] - 59.91) < 0.01);
+  assert.ok(drawCalls.indexOf(outfitBackCall) < drawCalls.indexOf(headCall));
+  assert.ok(drawCalls.indexOf(headCall) < drawCalls.indexOf(hairCall));
+  assert.ok(drawCalls.indexOf(hairCall) < drawCalls.indexOf(outfitFrontCall));
 });
 
 test('CanvasGameRenderer draws loading page over gameplay until resources are ready', () => {
@@ -968,13 +958,10 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
     buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
   });
   [
-    'assets/art/famous-person/layers/fp-layer-v2-art01-backHair-short-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-body-base-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-innerwear-guardian-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-sideHair-short-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-short-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-outfit-guardian-01.png',
+    'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
+    'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
+    'assets/art/famous-person/layers/fp-layer-v2-art01-hair-bound-topknot-01.png',
+    'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
   ].forEach((assetPath) => {
     renderer.assetCache.set(assetPath, {
       status: 'loaded',
@@ -1001,15 +988,12 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v1.1',
+          version: 'famous-portrait-v2.0',
           layers: {
-            backHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-backHair-short-01.png',
-            body: 'assets/art/famous-person/layers/fp-layer-v2-art01-body-base-01.png',
-            innerwear: 'assets/art/famous-person/layers/fp-layer-v2-art01-innerwear-guardian-01.png',
-            sideHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-sideHair-short-01.png',
-            frontHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png',
-            bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-short-01.png',
-            outfit: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfit-guardian-01.png',
+            outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
+            head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
+            hair: 'assets/art/famous-person/layers/fp-layer-v2-art01-hair-bound-topknot-01.png',
+            outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
           },
         },
         status: { assigned: 'idle' },
@@ -1037,7 +1021,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
   assert.ok(calls.some((call) => (
     call[0] === 'drawImage'
-    && call[1]?.src === 'assets/art/famous-person/layers/fp-layer-v2-art01-body-base-01.png'
+    && call[1]?.src === 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png'
   )));
   assert.ok(calls.some((call) => (
     call[0] === 'roundRect'

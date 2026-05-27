@@ -174,15 +174,12 @@ test('famous person view state maps candidates and joined people into panel card
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v1.1',
+          version: 'famous-portrait-v2.0',
           layers: {
-            backHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-backHair-short-01.png',
-            body: 'assets/art/famous-person/layers/fp-layer-v2-art01-body-base-01.png',
-            innerwear: 'assets/art/famous-person/layers/fp-layer-v2-art01-innerwear-guardian-01.png',
-            sideHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-sideHair-short-01.png',
-            frontHair: 'assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png',
-            bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-short-01.png',
-            outfit: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfit-guardian-01.png',
+            outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
+            head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
+            hair: 'assets/art/famous-person/layers/fp-layer-v2-art01-hair-bound-topknot-01.png',
+            outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
           },
         },
         status: { assigned: 'idle' },
@@ -203,7 +200,7 @@ test('famous person view state maps candidates and joined people into panel card
   assert.deepEqual(view.seek.action, { type: 'seekFamousPerson', disabled: false });
   assert.equal(view.people[0].name, '陆骁');
   assert.match(view.people[0].skills[0], /吸血/);
-  assert.equal(view.people[0].appearance.layers.outfit, 'assets/art/famous-person/layers/fp-layer-v2-art01-outfit-guardian-01.png');
+  assert.equal(view.people[0].appearance.layers.outfitFront, 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png');
   assert.equal(view.candidates[0].sourceText, '事件投奔');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'fpc_b' });
   assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });
