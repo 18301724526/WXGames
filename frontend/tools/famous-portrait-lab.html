@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Famous Portrait V2 Lab</title>
+  <title>名人立绘分层试验台</title>
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -144,32 +144,32 @@
 <body>
   <div class="shell">
     <aside class="panel">
-      <h1>Famous Portrait V2 Lab</h1>
+      <h1>名人立绘分层试验台</h1>
       <div class="section">
         <div class="row">
-          <span>Global scale</span>
+          <span>整体缩放</span>
           <input id="globalScale" type="range" min="0" max="200" value="100">
           <span class="value" id="globalScaleValue"></span>
         </div>
         <div class="row">
-          <span>Global X</span>
+          <span>整体 X</span>
           <input id="globalX" type="range" min="-180" max="180" value="0">
           <span class="value" id="globalXValue"></span>
         </div>
         <div class="row">
-          <span>Global Y</span>
+          <span>整体 Y</span>
           <input id="globalY" type="range" min="-220" max="220" value="0">
           <span class="value" id="globalYValue"></span>
         </div>
-        <p class="hint">Layer PNG files are cropped to their first/last opaque pixels. Position comes from manifest + transforms, not transparent padding.</p>
+        <p class="hint">这里直接使用你切好的 PNG 原图。先在网页里调位置和缩放，调好后复制下面的 JSON 给我同步到游戏。</p>
       </div>
       <div class="section">
         <div class="layer-list" id="layerList"></div>
       </div>
       <div class="section">
-        <button id="copyExport">Copy Export</button>
-        <button id="resetDefaults">Reset</button>
-        <p class="hint">Export this after manual tuning. I will use it as the fixed spec for the first approved resource set.</p>
+        <button id="copyExport">复制参数</button>
+        <button id="resetDefaults">重置</button>
+        <p class="hint">这份参数只代表试验台调好的层级、缩放和坐标，不会自动改游戏运行时。</p>
         <textarea id="exportData" spellcheck="false"></textarea>
       </div>
     </aside>

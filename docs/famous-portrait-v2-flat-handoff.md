@@ -1,10 +1,12 @@
 # Famous Portrait V2 Flat Handoff
 
-Updated: 2026-05-27
+Updated: 2026-05-28
 
 ## Current Direction
 
-The famous portrait system has been rebuilt around one bitmap PNG resource set.
+The famous portrait system has been rebuilt around bitmap PNG resource layers.
+
+2026-05-28 update: the first outfit/body retake is now a user-cut workflow. Do not auto-split or auto-clean the user's cut layers. The lab loads the user's PNG layers directly so the user can tune `x`, `y`, and `scale` in the browser, then hand the exported JSON back for runtime sync.
 
 This version intentionally removes the old split/crop simulation path. The lab and the game now share the same cropped-layer coordinate model:
 
@@ -29,7 +31,23 @@ The page includes:
 - Per-layer visibility, order, scale, x, and y controls.
 - Export JSON for the approved first resource set.
 
-## V2 Layer Order
+## Lab Layer Order
+
+Current lab order for the user-cut tuning pass:
+
+```text
+backHair -> outfitBack -> head -> sideHair -> frontHair -> bangs -> outfitFront
+```
+
+New user-cut files:
+
+- `fp-layer-v2-art01-head-base-01.png`
+- `fp-layer-v2-art01-outfitBack-guardian-01.png`
+- `fp-layer-v2-art01-outfitFront-guardian-01.png`
+
+These were copied from `.local-logs/portrait-source/` without cleanup, trimming, or rescaling.
+
+## Runtime Layer Order
 
 Runtime and lab order:
 

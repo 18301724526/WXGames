@@ -2,37 +2,37 @@
   const layerBase = '../assets/art/famous-person/layers/';
   const defaultConfig = {
     version: 2,
-    note: 'famous portrait v2 cropped layer transform',
+    note: 'famous portrait v2 user-cut layer transform',
     coordinateSize: 512,
     global: { scale: 1, x: 0, y: 0 },
-    order: ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'],
+    order: ['backHair', 'outfitBack', 'head', 'sideHair', 'frontHair', 'bangs', 'outfitFront'],
     layers: {
       backHair: {
-        label: 'Back hair',
+        label: '后发',
         file: 'fp-layer-v2-art01-backHair-short-01.png',
         scale: 0.66,
         x: 72,
         y: 5,
         visible: true,
       },
-      body: {
-        label: 'Face and body',
-        file: 'fp-layer-v2-art01-body-base-01.png',
-        scale: 0.72,
-        x: 72,
-        y: 18,
+      outfitBack: {
+        label: '后层衣服',
+        file: 'fp-layer-v2-art01-outfitBack-guardian-01.png',
+        scale: 1,
+        x: 90,
+        y: 105,
         visible: true,
       },
-      innerwear: {
-        label: 'Innerwear',
-        file: 'fp-layer-v2-art01-innerwear-guardian-01.png',
-        scale: 0.48,
-        x: 112,
-        y: 80,
+      head: {
+        label: '头和身体',
+        file: 'fp-layer-v2-art01-head-base-01.png',
+        scale: 0.7,
+        x: -4,
+        y: -56,
         visible: true,
       },
       sideHair: {
-        label: 'Side hair',
+        label: '鬓角',
         file: 'fp-layer-v2-art01-sideHair-short-01.png',
         scale: 0.45,
         x: 118,
@@ -40,7 +40,7 @@
         visible: true,
       },
       frontHair: {
-        label: 'Front hair',
+        label: '前发',
         file: 'fp-layer-v2-art01-frontHair-short-01.png',
         scale: 0.44,
         x: 130,
@@ -48,19 +48,19 @@
         visible: true,
       },
       bangs: {
-        label: 'Bangs',
+        label: '刘海',
         file: 'fp-layer-v2-art01-bangs-short-01.png',
         scale: 0.36,
         x: 116,
         y: 65,
         visible: true,
       },
-      outfit: {
-        label: 'Guardian armor',
-        file: 'fp-layer-v2-art01-outfit-guardian-01.png',
-        scale: 0.82,
-        x: 54,
-        y: 160,
+      outfitFront: {
+        label: '前层衣服',
+        file: 'fp-layer-v2-art01-outfitFront-guardian-01.png',
+        scale: 0.5,
+        x: -18,
+        y: 135,
         visible: true,
       },
     },
@@ -163,12 +163,12 @@
     item.innerHTML = `
       <div class="layer-head">
         <div class="layer-name">${layer.label}</div>
-        <button data-move="up" title="Move layer up">Up</button>
-        <button data-move="down" title="Move layer down">Down</button>
-        <label class="toggle"><input data-visible type="checkbox" checked>Visible</label>
+        <button data-move="up" title="上移一层">上移</button>
+        <button data-move="down" title="下移一层">下移</button>
+        <label class="toggle"><input data-visible type="checkbox" checked>显示</label>
       </div>
       <div class="row">
-        <span>Scale</span>
+        <span>缩放</span>
         <input data-control="scale" type="range" min="0" max="200" value="100">
         <span class="value" data-value="scale"></span>
       </div>
@@ -275,7 +275,7 @@
 
     ctx.fillStyle = '#ffe6b5';
     ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('Full 512-coordinate preview', 72, 40);
+    ctx.fillText('完整预览', 72, 40);
     drawPanel(preview.big.x, preview.big.y, preview.big.size, preview.big.size, { fill: '#221b15' });
     await drawPortrait(preview.big.x, preview.big.y, preview.big.size);
 
@@ -286,7 +286,7 @@
 
     ctx.fillStyle = '#ffe6b5';
     ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('Actual game portrait', 650, 84);
+    ctx.fillText('游戏头像区域预览', 650, 84);
     drawPanel(preview.game.x, preview.game.y, preview.game.width, preview.game.height, {
       fill: 'rgba(44,32,23,.94)',
       stroke: 'rgba(240,180,91,.32)',
@@ -316,15 +316,15 @@
     });
     ctx.fillStyle = '#fff1cf';
     ctx.font = '700 14px "Microsoft YaHei", sans-serif';
-    ctx.fillText('Sample Guardian', preview.card.x + 96, preview.card.y + 24);
+    ctx.fillText('守将候选', preview.card.x + 96, preview.card.y + 24);
     ctx.fillStyle = '#cbbd96';
     ctx.font = '10px "Microsoft YaHei", sans-serif';
-    ctx.fillText('Military / Seek', preview.card.x + 96, preview.card.y + 45);
+    ctx.fillText('军事 / 寻访', preview.card.x + 96, preview.card.y + 45);
     ctx.fillStyle = '#aeb0b8';
-    ctx.fillText('Command 76 Force 68 Strategy 51 Governance 42 Craft 33', preview.card.x + 96, preview.card.y + 69);
+    ctx.fillText('统率 76 武力 68 谋略 51 治理 42 工艺 33', preview.card.x + 96, preview.card.y + 69);
     ctx.fillStyle = '#74d3a0';
     ctx.font = '700 10px "Microsoft YaHei", sans-serif';
-    ctx.fillText('Guardian Counter / Shield', preview.card.x + 96, preview.card.y + 88);
+    ctx.fillText('守势反击 / 盾阵', preview.card.x + 96, preview.card.y + 88);
 
     updateLabels();
     updateExport();

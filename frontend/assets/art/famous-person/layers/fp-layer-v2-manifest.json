@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "source": "famous-portrait-layer-sheet-art01.png",
+  "source": "famous-portrait-layer-sheet-art01.png + user-cut portrait-source layers",
   "coordinateSize": 512,
   "layers": {
     "fp-layer-v2-art01-body-base-01.png": {
@@ -72,6 +72,39 @@
       "sourcePixelHeight": 321,
       "sourceSheetX": 670,
       "sourceSheetY": 627
+    },
+    "fp-layer-v2-art01-head-base-01.png": {
+      "x": 0,
+      "y": 0,
+      "width": 530,
+      "height": 750,
+      "sourcePixelWidth": 530,
+      "sourcePixelHeight": 750,
+      "sourceSheetX": 0,
+      "sourceSheetY": 0,
+      "source": "User-cut head layer; copied without cleanup"
+    },
+    "fp-layer-v2-art01-outfitBack-guardian-01.png": {
+      "x": 0,
+      "y": 0,
+      "width": 336,
+      "height": 239,
+      "sourcePixelWidth": 336,
+      "sourcePixelHeight": 239,
+      "sourceSheetX": 0,
+      "sourceSheetY": 0,
+      "source": "User-cut rear outfit layer; copied without cleanup"
+    },
+    "fp-layer-v2-art01-outfitFront-guardian-01.png": {
+      "x": 0,
+      "y": 0,
+      "width": 1084,
+      "height": 950,
+      "sourcePixelWidth": 1084,
+      "sourcePixelHeight": 950,
+      "sourceSheetX": 0,
+      "sourceSheetY": 0,
+      "source": "User-cut foreground outfit layer; copied without cleanup"
     }
   }
 }

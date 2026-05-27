@@ -76,32 +76,32 @@ function readPngAlphaStats(filePath) {
   return { width, height, opaquePixels, edgeAlpha };
 }
 
-test('famous portrait v2 lab exposes single-set cropped layer controls', () => {
+test('famous portrait v2 lab exposes user-cut layer controls', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
   const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
 
-  assert.match(html, /Famous Portrait V2 Lab/);
+  assert.match(html, /名人立绘分层试验台/);
   assert.match(html, /id="globalScale"[^>]*min="0"[^>]*max="200"/);
   assert.match(html, /id="globalX"/);
   assert.match(html, /id="globalY"/);
   assert.match(html, /id="layerList"/);
   assert.match(html, /id="copyExport"/);
   assert.match(html, /id="exportData"/);
-  assert.match(html, /Layer PNG files are cropped to their first\/last opaque pixels/);
+  assert.match(html, /直接使用你切好的 PNG 原图/);
   assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
 
   assert.match(script, /fp-layer-v2-manifest\.json/);
-  assert.match(script, /order: \['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'\]/);
+  assert.match(script, /order: \['backHair', 'outfitBack', 'head', 'sideHair', 'frontHair', 'bangs', 'outfitFront'\]/);
   assert.match(script, /fp-layer-v2-art01-backHair-short-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-body-base-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-innerwear-guardian-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-head-base-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-outfitBack-guardian-01\.png/);
   assert.match(script, /fp-layer-v2-art01-sideHair-short-01\.png/);
   assert.match(script, /fp-layer-v2-art01-frontHair-short-01\.png/);
   assert.match(script, /fp-layer-v2-art01-bangs-short-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-outfit-guardian-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-outfitFront-guardian-01\.png/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
-  assert.match(script, /Actual game portrait/);
+  assert.match(script, /游戏头像区域预览/);
   assert.doesNotMatch(script, /frontCutY|backCutY|drawSplitOutfit|fp-layer-outfit-guardian-front-candidate/);
 });
 
@@ -115,7 +115,7 @@ test('famous portrait lab keeps desktop controls scroll isolated from preview', 
   assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
 });
 
-test('famous portrait v2 manifest matches the single generated resource set', () => {
+test('famous portrait v2 manifest includes the user-cut resource set', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json'), 'utf8'));
   const files = listFamousLayerFiles(/^fp-layer-v2-.*\.png$/);
 
@@ -126,8 +126,11 @@ test('famous portrait v2 manifest matches the single generated resource set', ()
     'fp-layer-v2-art01-bangs-short-01.png',
     'fp-layer-v2-art01-body-base-01.png',
     'fp-layer-v2-art01-frontHair-short-01.png',
+    'fp-layer-v2-art01-head-base-01.png',
     'fp-layer-v2-art01-innerwear-guardian-01.png',
     'fp-layer-v2-art01-outfit-guardian-01.png',
+    'fp-layer-v2-art01-outfitBack-guardian-01.png',
+    'fp-layer-v2-art01-outfitFront-guardian-01.png',
     'fp-layer-v2-art01-sideHair-short-01.png',
   ]);
 
@@ -141,15 +144,11 @@ test('famous portrait v2 manifest matches the single generated resource set', ()
   });
 });
 
-test('famous portrait v2 PNG layers are cropped to opaque edge pixels', () => {
+test('famous portrait v2 PNG layers are non-empty alpha resources', () => {
   listFamousLayerFiles(/^fp-layer-v2-.*\.png$/).forEach((filename) => {
     const stats = readPngAlphaStats(path.join(famousLayerDir, filename));
     assert.ok(stats.width > 0, filename);
     assert.ok(stats.height > 0, filename);
     assert.ok(stats.opaquePixels > 0, filename);
-    assert.ok(stats.edgeAlpha.top > 0, `${filename} top edge`);
-    assert.ok(stats.edgeAlpha.right > 0, `${filename} right edge`);
-    assert.ok(stats.edgeAlpha.bottom > 0, `${filename} bottom edge`);
-    assert.ok(stats.edgeAlpha.left > 0, `${filename} left edge`);
   });
 });
