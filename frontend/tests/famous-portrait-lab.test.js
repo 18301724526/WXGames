@@ -108,7 +108,7 @@ test('famous portrait lab shows an in-game candidate card preview', () => {
   assert.match(script, /function drawGameFamousPortrait\(images, x, y, state, options = \{\}\)/);
   assert.match(script, /function drawGameFamousPersonItem\(images, x, y, state\)/);
   assert.match(script, /const gameState = \{/);
-  assert.match(script, /mode: 'current'/);
+  assert.doesNotMatch(script, /mode: 'current',\s*scale: 1/);
   assert.match(script, /scale: 1/);
   assert.match(script, /offsetY: 0/);
   assert.match(script, /drawPortrait\(images, drawX, drawY, drawSize, gameState, \{/);
