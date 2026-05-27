@@ -91,13 +91,10 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
 
   assert.match(script, /fp-layer-v2-manifest\.json/);
-  assert.match(script, /order: \['backHair', 'outfitBack', 'head', 'sideHair', 'frontHair', 'bangs', 'outfitFront'\]/);
-  assert.match(script, /fp-layer-v2-art01-backHair-short-01\.png/);
+  assert.match(script, /order: \['outfitBack', 'head', 'hair', 'outfitFront'\]/);
   assert.match(script, /fp-layer-v2-art01-head-base-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-hair-bound-topknot-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitBack-guardian-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-sideHair-short-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-frontHair-short-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-bangs-short-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitFront-guardian-01\.png/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
@@ -126,6 +123,7 @@ test('famous portrait v2 manifest includes the user-cut resource set', () => {
     'fp-layer-v2-art01-bangs-short-01.png',
     'fp-layer-v2-art01-body-base-01.png',
     'fp-layer-v2-art01-frontHair-short-01.png',
+    'fp-layer-v2-art01-hair-bound-topknot-01.png',
     'fp-layer-v2-art01-head-base-01.png',
     'fp-layer-v2-art01-innerwear-guardian-01.png',
     'fp-layer-v2-art01-outfit-guardian-01.png',
@@ -161,6 +159,7 @@ test('active famous portrait lab layers preserve source aspect ratio', () => {
     'fp-layer-v2-art01-frontHair-short-01.png',
     'fp-layer-v2-art01-bangs-short-01.png',
     'fp-layer-v2-art01-head-base-01.png',
+    'fp-layer-v2-art01-hair-bound-topknot-01.png',
     'fp-layer-v2-art01-outfitBack-guardian-01.png',
     'fp-layer-v2-art01-outfitFront-guardian-01.png',
   ].forEach((filename) => {

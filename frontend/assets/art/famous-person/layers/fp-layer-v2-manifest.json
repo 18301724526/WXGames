@@ -105,6 +105,17 @@
       "sourceSheetX": 0,
       "sourceSheetY": 0,
       "source": "User-cut foreground outfit layer; copied without cleanup"
+    },
+    "fp-layer-v2-art01-hair-bound-topknot-01.png": {
+      "x": 0,
+      "y": 0,
+      "width": 1254,
+      "height": 1254,
+      "sourcePixelWidth": 1254,
+      "sourcePixelHeight": 1254,
+      "sourceSheetX": 0,
+      "sourceSheetY": 0,
+      "source": "AI generated complete hair layer for anchor prototype"
     }
   }
 }

@@ -5,8 +5,16 @@
     note: 'famous portrait v2 user-cut layer transform',
     coordinateSize: 512,
     global: { scale: 1, x: 0, y: 0 },
-    order: ['backHair', 'outfitBack', 'head', 'sideHair', 'frontHair', 'bangs', 'outfitFront'],
+    order: ['outfitBack', 'head', 'hair', 'outfitFront'],
     layers: {
+      hair: {
+        label: '完整发型',
+        file: 'fp-layer-v2-art01-hair-bound-topknot-01.png',
+        scale: 0.28,
+        x: 63,
+        y: -25,
+        visible: true,
+      },
       backHair: {
         label: '后发',
         file: 'fp-layer-v2-art01-backHair-short-01.png',
