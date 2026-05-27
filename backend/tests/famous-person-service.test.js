@@ -41,12 +41,14 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.name, '陆骁');
   assert.equal(result.candidate.skills[0].name, '血刃连袭');
   assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-body-skin-01.png'));
-  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v0.9');
-  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-front-candidate-02.png'));
-  assert.ok(result.candidate.appearance.layers.backHair.endsWith('fp-layer-backHair-short-02.png'));
-  assert.ok(result.candidate.appearance.layers.sideHair.endsWith('fp-layer-sideHair-short-01.png'));
-  assert.ok(result.candidate.appearance.layers.frontHair.endsWith('fp-layer-frontHair-short-02.png'));
+  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v1.0');
+  assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-v2-body-base-01.png'));
+  assert.ok(result.candidate.appearance.layers.innerwear.endsWith('fp-layer-v2-innerwear-guardian-01.png'));
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-v2-outfit-guardian-01.png'));
+  assert.ok(result.candidate.appearance.layers.backHair.endsWith('fp-layer-v2-backHair-short-01.png'));
+  assert.ok(result.candidate.appearance.layers.sideHair.endsWith('fp-layer-v2-sideHair-short-01.png'));
+  assert.ok(result.candidate.appearance.layers.frontHair.endsWith('fp-layer-v2-frontHair-short-01.png'));
+  assert.ok(result.candidate.appearance.layers.bangs.endsWith('fp-layer-v2-bangs-short-01.png'));
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
@@ -65,7 +67,7 @@ test('guardian archetype uses its own portrait outfit', () => {
 
   assert.equal(result.success, true);
   assert.equal(result.candidate.archetype, 'guardian');
-  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-guardian-front-candidate-01.png'));
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-v2-outfit-guardian-01.png'));
 });
 
 test('accept moves candidate into cloud-persisted famous people list', () => {
@@ -149,10 +151,12 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
   assert.equal(normalized.famousPersonState.candidates.length, 0);
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.ok(normalized.famousPeople[0].appearance.layers.backHair);
-  assert.ok(normalized.famousPeople[0].appearance.layers.sideHair);
   assert.ok(normalized.famousPeople[0].appearance.layers.body);
-  assert.ok(normalized.famousPeople[0].appearance.layers.outfit);
+  assert.ok(normalized.famousPeople[0].appearance.layers.innerwear);
+  assert.ok(normalized.famousPeople[0].appearance.layers.sideHair);
   assert.ok(normalized.famousPeople[0].appearance.layers.frontHair);
+  assert.ok(normalized.famousPeople[0].appearance.layers.bangs);
+  assert.ok(normalized.famousPeople[0].appearance.layers.outfit);
 });
 
 test('legacy portrait appearance is regenerated with the validated short hair set', () => {
@@ -178,10 +182,13 @@ test('legacy portrait appearance is regenerated with the validated short hair se
   const layers = normalized.famousPeople[0].appearance.layers;
 
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.match(layers.outfit, /fp-layer-outfit-guardian-front-candidate-01\.png$/);
-  assert.match(layers.backHair, /fp-layer-backHair-short-02\.png$/);
-  assert.match(layers.sideHair, /fp-layer-sideHair-short-01\.png$/);
-  assert.match(layers.frontHair, /fp-layer-frontHair-short-02\.png$/);
+  assert.match(layers.outfit, /fp-layer-v2-outfit-guardian-01\.png$/);
+  assert.match(layers.backHair, /fp-layer-v2-backHair-short-01\.png$/);
+  assert.match(layers.body, /fp-layer-v2-body-base-01\.png$/);
+  assert.match(layers.innerwear, /fp-layer-v2-innerwear-guardian-01\.png$/);
+  assert.match(layers.sideHair, /fp-layer-v2-sideHair-short-01\.png$/);
+  assert.match(layers.frontHair, /fp-layer-v2-frontHair-short-01\.png$/);
+  assert.match(layers.bangs, /fp-layer-v2-bangs-short-01\.png$/);
   assert.doesNotMatch(layers.backHair, /backHair-tied/);
   assert.doesNotMatch(layers.sideHair, /sideHair-tied/);
   assert.doesNotMatch(layers.frontHair, /frontHair-tied/);
@@ -209,6 +216,6 @@ test('unversioned portrait appearance is regenerated away from deleted outfit as
   const layers = normalized.famousPeople[0].appearance.layers;
 
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.match(layers.outfit, /fp-layer-outfit-guardian-front-candidate-01\.png$/);
+  assert.match(layers.outfit, /fp-layer-v2-outfit-guardian-01\.png$/);
   assert.doesNotMatch(layers.outfit, /fp-layer-outfit-guardian-01\.png$/);
 });

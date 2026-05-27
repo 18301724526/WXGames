@@ -3,446 +3,180 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>名人立绘实验台</title>
+  <title>Famous Portrait V2 Lab</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
       height: 100%;
       overflow: hidden;
-    }
-
-    body {
-      margin: 0;
-      height: 100vh;
-      color: #f4e7c7;
-      background: #15110c;
+      background: #161719;
+      color: #efe5d0;
       font-family: "Microsoft YaHei", Arial, sans-serif;
     }
-
     .shell {
       display: grid;
-      grid-template-columns: minmax(300px, 360px) 1fr;
+      grid-template-columns: minmax(340px, 420px) 1fr;
       height: 100vh;
-      min-height: 0;
       overflow: hidden;
     }
-
     .panel {
       height: 100vh;
-      min-height: 0;
-      padding: 18px;
-      background: #21180f;
-      border-right: 1px solid rgba(235, 184, 105, 0.2);
       overflow-y: auto;
       overscroll-behavior: contain;
+      padding: 16px;
+      background: #202124;
+      border-right: 1px solid rgba(255, 229, 177, 0.14);
     }
-
-    h1 {
-      margin: 0 0 6px;
-      font-size: 22px;
-      letter-spacing: 0;
-    }
-
-    .hint {
-      margin: 0 0 18px;
-      color: #c8b58e;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    fieldset {
-      margin: 0 0 14px;
-      padding: 12px;
-      border: 1px solid rgba(235, 184, 105, 0.22);
-      border-radius: 8px;
-    }
-
-    legend {
-      padding: 0 6px;
-      color: #ffd58c;
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    label {
-      display: grid;
-      gap: 6px;
-      margin: 10px 0;
-      color: #d8c399;
-      font-size: 13px;
-    }
-
-    select,
-    textarea,
-    input[type="range"] {
-      width: 100%;
-    }
-
-    select,
-    button {
-      height: 34px;
-      color: #f4e7c7;
-      background: #2f2418;
-      border: 1px solid rgba(235, 184, 105, 0.3);
-      border-radius: 6px;
-      padding: 0 8px;
-    }
-
-    button {
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    textarea {
-      min-height: 190px;
-      resize: vertical;
-      color: #d8c399;
-      background: #15100a;
-      border: 1px solid rgba(235, 184, 105, 0.18);
-      border-radius: 6px;
-      padding: 10px;
-      font: 12px/1.55 Consolas, "Microsoft YaHei", monospace;
-    }
-
-    .layer-adjust {
-      padding: 8px 10px;
-      margin: 10px 0;
-      background: rgba(17, 13, 8, 0.42);
-      border: 1px solid rgba(235, 184, 105, 0.14);
-      border-radius: 8px;
-    }
-
-    .layer-adjust h2 {
-      margin: 0 0 6px;
-      color: #f3d89a;
-      font-size: 13px;
-      letter-spacing: 0;
-    }
-
-    .value {
-      float: right;
-      color: #8ee0a0;
-      font-weight: 700;
-    }
-
-    .check {
-      display: flex;
-      grid-template-columns: none;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .check input {
-      width: auto;
-    }
-
-    .audit-output {
-      min-height: 160px;
-      margin: 0;
-      padding: 10px;
-      overflow: auto;
-      color: #d8c399;
-      background: #15100a;
-      border: 1px solid rgba(235, 184, 105, 0.18);
-      border-radius: 6px;
-      font: 12px/1.55 Consolas, "Microsoft YaHei", monospace;
-      white-space: pre-wrap;
-    }
-
     .stage {
       height: 100vh;
-      min-height: 0;
-      padding: 22px;
       overflow: auto;
       overscroll-behavior: contain;
+      padding: 18px;
+      background: #101113;
     }
-
-    .toolbar {
-      display: flex;
+    h1 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .section {
+      padding: 12px 0;
+      border-top: 1px solid rgba(255, 229, 177, 0.12);
+    }
+    .section:first-of-type { border-top: 0; }
+    .row {
+      display: grid;
+      grid-template-columns: 88px 1fr 48px;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 16px;
-      color: #c8b58e;
-      font-size: 13px;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 12px;
     }
-
-    .canvas-wrap {
-      width: max-content;
-      padding: 14px;
-      background: #0f0c08;
-      border: 1px solid rgba(235, 184, 105, 0.16);
+    .row input[type="range"] { width: 100%; }
+    .value {
+      text-align: right;
+      color: #ffdfa6;
+      font-variant-numeric: tabular-nums;
+    }
+    .layer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .layer {
+      border: 1px solid rgba(255, 229, 177, 0.14);
       border-radius: 8px;
+      background: #27282c;
+      padding: 10px;
     }
-
+    .layer-head {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .layer-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff0d0;
+    }
+    button {
+      border: 1px solid rgba(255, 229, 177, 0.22);
+      background: #34363c;
+      color: #ffe6b5;
+      border-radius: 6px;
+      padding: 5px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    button:active { transform: translateY(1px); }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #cfc6b2;
+    }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid rgba(255, 229, 177, 0.16);
+      background: #111215;
+      color: #e8dfcf;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
     canvas {
       display: block;
-      width: 1180px;
-      height: 1220px;
-      background: #17120c;
-      border-radius: 6px;
+      background: #17130f;
+      border: 1px solid rgba(255, 229, 177, 0.18);
+      border-radius: 8px;
     }
-
-    .note {
-      margin-top: 12px;
-      max-width: 1180px;
-      color: #aa9a79;
-      font-size: 13px;
-      line-height: 1.7;
+    .hint {
+      margin: 8px 0 0;
+      color: #9fa4aa;
+      font-size: 12px;
+      line-height: 1.5;
     }
-
     @media (max-width: 900px) {
-      html,
-      body {
+      html, body {
         height: auto;
         overflow: auto;
       }
-
       .shell {
-        grid-template-columns: 1fr;
+        display: block;
         height: auto;
-        min-height: 100vh;
         overflow: visible;
       }
-
-      .panel {
+      .panel, .stage {
         height: auto;
-        min-height: 0;
-        border-right: 0;
-        border-bottom: 1px solid rgba(235, 184, 105, 0.2);
-      }
-
-      .stage {
-        height: auto;
-        min-height: 0;
+        overflow: visible;
       }
     }
   </style>
 </head>
 <body>
-  <main class="shell">
+  <div class="shell">
     <aside class="panel">
-      <h1>名人立绘实验台</h1>
-      <p class="hint">只用于诊断坏素材，不是成品效果预览。红色/旧逻辑示例都不要采用，结论以素材诊断为准。</p>
-
-      <fieldset>
-        <legend>组合</legend>
-        <label>
-          服装
-          <select id="outfit">
-            <option value="guardianCandidate">守将候选-正面甲</option>
-            <option value="vanguardCandidate">突骑候选-正面甲</option>
-            <option value="scholarCandidate">学者候选-正面袍</option>
-          </select>
-        </label>
-        <label>
-          肤色
-          <select id="body">
-            <option value="01">肤色 1</option>
-            <option value="02">肤色 2</option>
-          </select>
-        </label>
-        <label>
-          后发
-          <select id="backHair">
-            <option value="short">短发后层</option>
-            <option value="tied">束发后层</option>
-          </select>
-        </label>
-        <label>
-          鬓角
-          <select id="sideHair">
-            <option value="short">短发鬓角</option>
-            <option value="tied">束发鬓角</option>
-          </select>
-        </label>
-        <label>
-          前发
-          <select id="frontHair">
-            <option value="short">短发前层</option>
-            <option value="tied">束发前层</option>
-          </select>
-        </label>
-        <label>
-          配饰
-          <select id="accessory">
-            <option value="none">无</option>
-            <option value="scar">伤疤</option>
-          </select>
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>图层实验</legend>
-        <label>
-          模式
-          <select id="mode">
-            <option value="split">模拟衣服前后层</option>
-            <option value="outfitBack">衣服整体在脸后</option>
-            <option value="current">旧错误示例</option>
-          </select>
-        </label>
-        <label>
-          前层分界 Y <span class="value" id="frontCutValue"></span>
-          <input id="frontCutY" type="range" min="170" max="340" value="286">
-        </label>
-        <label>
-          后层分界 Y <span class="value" id="backCutValue"></span>
-          <input id="backCutY" type="range" min="140" max="320" value="252">
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>画面参数</legend>
-        <label>
-          缩放 <span class="value" id="scaleValue"></span>
-          <input id="scale" type="range" min="0" max="200" value="130">
-        </label>
-        <label>
-          纵向偏移 <span class="value" id="offsetValue"></span>
-          <input id="offsetY" type="range" min="-80" max="90" value="10">
-        </label>
-        <label>
-          卡片头像宽 <span class="value" id="cardWidthValue"></span>
-          <input id="cardWidth" type="range" min="64" max="110" value="84">
-        </label>
-        <label>
-          卡片头像高 <span class="value" id="cardHeightValue"></span>
-          <input id="cardHeight" type="range" min="78" max="130" value="104">
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>图层微调</legend>
-        <div class="layer-adjust" data-layer-panel="body">
-          <h2>身体/头</h2>
-          <label>
-            缩放 <span class="value" id="bodyScaleValue"></span>
-            <input id="bodyScale" type="range" min="0" max="200" value="70">
-          </label>
-          <label>
-            X <span class="value" id="bodyXValue"></span>
-            <input id="bodyX" type="range" min="-80" max="80" value="0">
-          </label>
-          <label>
-            Y <span class="value" id="bodyYValue"></span>
-            <input id="bodyY" type="range" min="-120" max="120" value="-17">
-          </label>
+      <h1>Famous Portrait V2 Lab</h1>
+      <div class="section">
+        <div class="row">
+          <span>Global scale</span>
+          <input id="globalScale" type="range" min="0" max="200" value="100">
+          <span class="value" id="globalScaleValue"></span>
         </div>
-        <div class="layer-adjust" data-layer-panel="outfit">
-          <h2>衣服</h2>
-          <label>
-            缩放 <span class="value" id="outfitScaleValue"></span>
-            <input id="outfitScale" type="range" min="0" max="200" value="121">
-          </label>
-          <label>
-            X <span class="value" id="outfitXValue"></span>
-            <input id="outfitX" type="range" min="-80" max="80" value="0">
-          </label>
-          <label>
-            Y <span class="value" id="outfitYValue"></span>
-            <input id="outfitY" type="range" min="-120" max="120" value="53">
-          </label>
+        <div class="row">
+          <span>Global X</span>
+          <input id="globalX" type="range" min="-180" max="180" value="0">
+          <span class="value" id="globalXValue"></span>
         </div>
-        <div class="layer-adjust" data-layer-panel="backHair">
-          <h2>后发</h2>
-          <label>
-            缩放 <span class="value" id="backHairScaleValue"></span>
-            <input id="backHairScale" type="range" min="0" max="200" value="70">
-          </label>
-          <label>
-            X <span class="value" id="backHairXValue"></span>
-            <input id="backHairX" type="range" min="-80" max="80" value="0">
-          </label>
-          <label>
-            Y <span class="value" id="backHairYValue"></span>
-            <input id="backHairY" type="range" min="-120" max="120" value="-70">
-          </label>
+        <div class="row">
+          <span>Global Y</span>
+          <input id="globalY" type="range" min="-220" max="220" value="0">
+          <span class="value" id="globalYValue"></span>
         </div>
-        <div class="layer-adjust" data-layer-panel="sideHair">
-          <h2>鬓角</h2>
-          <label>
-            缩放 <span class="value" id="sideHairScaleValue"></span>
-            <input id="sideHairScale" type="range" min="0" max="200" value="63">
-          </label>
-          <label>
-            X <span class="value" id="sideHairXValue"></span>
-            <input id="sideHairX" type="range" min="-80" max="80" value="0">
-          </label>
-          <label>
-            Y <span class="value" id="sideHairYValue"></span>
-            <input id="sideHairY" type="range" min="-120" max="120" value="-98">
-          </label>
-        </div>
-        <div class="layer-adjust" data-layer-panel="frontHair">
-          <h2>前发</h2>
-          <label>
-            缩放 <span class="value" id="frontHairScaleValue"></span>
-            <input id="frontHairScale" type="range" min="0" max="200" value="70">
-          </label>
-          <label>
-            X <span class="value" id="frontHairXValue"></span>
-            <input id="frontHairX" type="range" min="-80" max="80" value="0">
-          </label>
-          <label>
-            Y <span class="value" id="frontHairYValue"></span>
-            <input id="frontHairY" type="range" min="-120" max="120" value="-65">
-          </label>
-        </div>
-        <div class="layer-adjust" data-layer-panel="accessory">
-          <h2>配饰</h2>
-          <label>
-            缩放 <span class="value" id="accessoryScaleValue"></span>
-            <input id="accessoryScale" type="range" min="0" max="200" value="100">
-          </label>
-          <label>
-            X <span class="value" id="accessoryXValue"></span>
-            <input id="accessoryX" type="range" min="-80" max="80" value="0">
-          </label>
-          <label>
-            Y <span class="value" id="accessoryYValue"></span>
-            <input id="accessoryY" type="range" min="-120" max="120" value="0">
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>素材诊断</legend>
-        <label class="check">
-          <input id="showBounds" type="checkbox" checked>
-          显示透明像素边界
-        </label>
-        <label class="check">
-          <input id="showAnchorLines" type="checkbox" checked>
-          显示中心/下巴/肩线
-        </label>
-        <pre id="audit" class="audit-output">等待素材加载...</pre>
-      </fieldset>
-
-      <fieldset>
-        <legend>导出数据</legend>
-        <button id="copyExport" type="button">复制当前参数</button>
-        <textarea id="exportData" readonly></textarea>
-      </fieldset>
+        <p class="hint">Layer PNG files are cropped to their first/last opaque pixels. Position comes from manifest + transforms, not transparent padding.</p>
+      </div>
+      <div class="section">
+        <div class="layer-list" id="layerList"></div>
+      </div>
+      <div class="section">
+        <button id="copyExport">Copy Export</button>
+        <button id="resetDefaults">Reset</button>
+        <p class="hint">Export this after manual tuning. I will use it as the fixed spec for the first approved resource set.</p>
+        <textarea id="exportData" spellcheck="false"></textarea>
+      </div>
     </aside>
-
-    <section class="stage">
-      <div class="toolbar">
-        <span>左侧是大图预览，右侧模拟游戏卡片尺寸。</span>
-        <span id="status">加载中...</span>
-      </div>
-      <div class="canvas-wrap">
-        <canvas id="stage" width="1180" height="1220"></canvas>
-      </div>
-      <p class="note">建议先用“模拟衣服前后层”调分界线：衣服后层负责肩甲和衣身，脸和头发在中间，衣服前层只保留真正应该挡住脖子的领口/围巾。确认后再导出真正的 outfitBack / outfitFront PNG。</p>
-    </section>
-  </main>
-
-  <script src="../js/config/FamousPortraitLayout.js"></script>
+    <main class="stage">
+      <canvas id="stage" width="1120" height="900"></canvas>
+    </main>
+  </div>
   <script src="famous-portrait-lab.js"></script>
 </body>
 </html>

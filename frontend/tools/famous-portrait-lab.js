@@ -1,860 +1,368 @@
 (function () {
   const layerBase = '../assets/art/famous-person/layers/';
-  const outfitFiles = {
-    guardianCandidate: 'fp-layer-outfit-guardian-front-candidate-01.png',
-    vanguardCandidate: 'fp-layer-outfit-vanguard-front-candidate-02.png',
-    scholarCandidate: 'fp-layer-outfit-scholar-front-candidate-03.png',
-  };
-  const bodyFiles = {
-    '01': 'fp-layer-body-skin-01.png',
-    '02': 'fp-layer-body-skin-02.png',
-  };
-  const backHairFiles = {
-    short: 'fp-layer-backHair-short-02.png',
-    tied: 'fp-layer-backHair-tied-02.png',
-  };
-  const sideHairFiles = {
-    short: 'fp-layer-sideHair-short-01.png',
-    tied: 'fp-layer-sideHair-tied-01.png',
-  };
-  const frontHairFiles = {
-    short: 'fp-layer-frontHair-short-02.png',
-    tied: 'fp-layer-frontHair-tied-02.png',
-  };
-  const accessoryFiles = {
-    scar: 'fp-layer-accessory-scar-01.png',
+  const defaultConfig = {
+    version: 2,
+    note: 'famous portrait v2 cropped layer transform',
+    coordinateSize: 512,
+    global: { scale: 1, x: 0, y: 0 },
+    order: ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'],
+    layers: {
+      backHair: {
+        label: 'Back hair',
+        file: 'fp-layer-v2-backHair-short-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+      body: {
+        label: 'Face and body',
+        file: 'fp-layer-v2-body-base-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+      innerwear: {
+        label: 'Innerwear',
+        file: 'fp-layer-v2-innerwear-guardian-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+      sideHair: {
+        label: 'Side hair',
+        file: 'fp-layer-v2-sideHair-short-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+      frontHair: {
+        label: 'Front hair',
+        file: 'fp-layer-v2-frontHair-short-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+      bangs: {
+        label: 'Bangs',
+        file: 'fp-layer-v2-bangs-short-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+      outfit: {
+        label: 'Guardian armor',
+        file: 'fp-layer-v2-outfit-guardian-01.png',
+        scale: 1,
+        x: 0,
+        y: 0,
+        visible: true,
+      },
+    },
   };
 
-  const controls = [
-    'outfit',
-    'body',
-    'backHair',
-    'sideHair',
-    'frontHair',
-    'accessory',
-    'mode',
-    'frontCutY',
-    'backCutY',
-    'scale',
-    'offsetY',
-    'cardWidth',
-    'cardHeight',
-    'bodyScale',
-    'bodyX',
-    'bodyY',
-    'outfitScale',
-    'outfitX',
-    'outfitY',
-    'backHairScale',
-    'backHairX',
-    'backHairY',
-    'sideHairScale',
-    'sideHairX',
-    'sideHairY',
-    'frontHairScale',
-    'frontHairX',
-    'frontHairY',
-    'accessoryScale',
-    'accessoryX',
-    'accessoryY',
-    'showBounds',
-    'showAnchorLines',
-    'copyExport',
-  ].reduce((result, id) => {
-    result[id] = document.getElementById(id);
-    return result;
-  }, {});
-
-  const valueLabels = {
-    frontCutY: document.getElementById('frontCutValue'),
-    backCutY: document.getElementById('backCutValue'),
-    scale: document.getElementById('scaleValue'),
-    offsetY: document.getElementById('offsetValue'),
-    cardWidth: document.getElementById('cardWidthValue'),
-    cardHeight: document.getElementById('cardHeightValue'),
-    bodyScale: document.getElementById('bodyScaleValue'),
-    bodyX: document.getElementById('bodyXValue'),
-    bodyY: document.getElementById('bodyYValue'),
-    outfitScale: document.getElementById('outfitScaleValue'),
-    outfitX: document.getElementById('outfitXValue'),
-    outfitY: document.getElementById('outfitYValue'),
-    backHairScale: document.getElementById('backHairScaleValue'),
-    backHairX: document.getElementById('backHairXValue'),
-    backHairY: document.getElementById('backHairYValue'),
-    sideHairScale: document.getElementById('sideHairScaleValue'),
-    sideHairX: document.getElementById('sideHairXValue'),
-    sideHairY: document.getElementById('sideHairYValue'),
-    frontHairScale: document.getElementById('frontHairScaleValue'),
-    frontHairX: document.getElementById('frontHairXValue'),
-    frontHairY: document.getElementById('frontHairYValue'),
-    accessoryScale: document.getElementById('accessoryScaleValue'),
-    accessoryX: document.getElementById('accessoryXValue'),
-    accessoryY: document.getElementById('accessoryYValue'),
+  const preview = {
+    big: { x: 72, y: 64, size: 512 },
+    game: { x: 710, y: 118, width: 74, height: 98, scale: 1.74, offsetY: 0.14 },
+    card: { x: 650, y: 300, width: 356, height: 132 },
   };
 
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d');
-  const status = document.getElementById('status');
-  const audit = document.getElementById('audit');
+  const controls = {
+    globalScale: document.getElementById('globalScale'),
+    globalX: document.getElementById('globalX'),
+    globalY: document.getElementById('globalY'),
+    copyExport: document.getElementById('copyExport'),
+    resetDefaults: document.getElementById('resetDefaults'),
+  };
+  const values = {
+    globalScale: document.getElementById('globalScaleValue'),
+    globalX: document.getElementById('globalXValue'),
+    globalY: document.getElementById('globalYValue'),
+  };
+  const layerList = document.getElementById('layerList');
   const exportData = document.getElementById('exportData');
   const imageCache = new Map();
-  const boundsCache = new WeakMap();
-  const fallbackLayerTransforms = {
-    backHair: { scale: 0.7, x: 0, y: -70 },
-    sideHair: { scale: 0.63, x: 0, y: -98 },
-    body: { scale: 0.7, x: 0, y: -17 },
-    outfit: { scale: 1.21, x: 0, y: 53 },
-    frontHair: { scale: 0.7, x: 0, y: -65 },
-    accessory: { scale: 1, x: 0, y: 0 },
-  };
-  const defaultLayerTransforms = (
-    typeof window !== 'undefined'
-      && window.FamousPortraitLayout
-  ) || fallbackLayerTransforms;
-  const gamePortraitPreview = {
-    itemWidth: 356,
-    itemHeight: 132,
-    portraitWidth: 74,
-    portraitHeight: 98,
-    portraitSize: 74,
-    portraitScale: 1.74,
-    portraitOffsetY: 0.14,
-  };
-  const layerColors = {
-    backHair: '#b385ff',
-    sideHair: '#ffd36f',
-    body: '#8ee0a0',
-    outfit: '#72b2ff',
-    frontHair: '#f0a0ff',
-    accessory: '#ffffff',
-  };
+  let manifest = null;
+  let state = clone(defaultConfig);
 
-  function isCandidateOutfit(outfitId) {
-    return /Candidate$/.test(outfitId);
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
   }
 
-  function imagePath(filename) {
-    return `${layerBase}${filename}`;
-  }
-
-  function loadImage(filename) {
-    const src = imagePath(filename);
+  function loadImage(src) {
     if (imageCache.has(src)) return imageCache.get(src);
     const promise = new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error(`load failed: ${src}`));
+      image.onerror = () => reject(new Error(`Failed to load ${src}`));
       image.src = src;
     });
     imageCache.set(src, promise);
     return promise;
   }
 
-  function readLayerTransform(key) {
+  async function loadAssets() {
+    const response = await fetch(`${layerBase}fp-layer-v2-manifest.json?ts=${Date.now()}`);
+    manifest = await response.json();
+    const files = Object.values(state.layers).map((layer) => layer.file);
+    await Promise.all(files.map((file) => loadImage(layerBase + file)));
+  }
+
+  function getExportPayload() {
     return {
-      scale: Number(controls[`${key}Scale`].value) / 100,
-      x: Number(controls[`${key}X`].value),
-      y: Number(controls[`${key}Y`].value),
+      version: state.version,
+      note: state.note,
+      coordinateSize: state.coordinateSize,
+      global: { ...state.global },
+      order: [...state.order],
+      layers: state.order.reduce((result, key) => {
+        const layer = state.layers[key];
+        result[key] = {
+          file: layer.file,
+          visible: layer.visible,
+          scale: layer.scale,
+          x: layer.x,
+          y: layer.y,
+        };
+        return result;
+      }, {}),
     };
   }
 
-  function applyDefaultLayerTransforms() {
-    ['body', 'outfit', 'backHair', 'sideHair', 'frontHair', 'accessory'].forEach((key) => {
-      const transform = defaultLayerTransforms[key];
-      if (!transform) return;
-      if (controls[`${key}Scale`]) controls[`${key}Scale`].value = Math.round((Number(transform.scale) || 1) * 100);
-      if (controls[`${key}X`]) controls[`${key}X`].value = Number(transform.x) || 0;
-      if (controls[`${key}Y`]) controls[`${key}Y`].value = Number(transform.y) || 0;
+  function updateExport() {
+    exportData.value = JSON.stringify(getExportPayload(), null, 2);
+  }
+
+  function updateLabels() {
+    values.globalScale.textContent = `${Math.round(state.global.scale * 100)}%`;
+    values.globalX.textContent = state.global.x;
+    values.globalY.textContent = state.global.y;
+    state.order.forEach((key) => {
+      const layer = state.layers[key];
+      const root = document.querySelector(`[data-layer="${key}"]`);
+      if (!root) return;
+      root.querySelector('[data-value="scale"]').textContent = `${Math.round(layer.scale * 100)}%`;
+      root.querySelector('[data-value="x"]').textContent = layer.x;
+      root.querySelector('[data-value="y"]').textContent = layer.y;
+      root.querySelector('[data-visible]').checked = layer.visible;
     });
   }
 
-  function getLayerTransforms() {
-    return {
-      backHair: readLayerTransform('backHair'),
-      sideHair: readLayerTransform('sideHair'),
-      body: readLayerTransform('body'),
-      outfit: readLayerTransform('outfit'),
-      frontHair: readLayerTransform('frontHair'),
-      accessory: readLayerTransform('accessory'),
-    };
-  }
-
-  function getState() {
-    return {
-      outfit: controls.outfit.value,
-      body: controls.body.value,
-      backHair: controls.backHair.value,
-      sideHair: controls.sideHair.value,
-      frontHair: controls.frontHair.value,
-      accessory: controls.accessory.value,
-      mode: controls.mode.value,
-      frontCutY: Number(controls.frontCutY.value),
-      backCutY: Number(controls.backCutY.value),
-      scale: Number(controls.scale.value) / 100,
-      offsetY: Number(controls.offsetY.value),
-      cardWidth: Number(controls.cardWidth.value),
-      cardHeight: Number(controls.cardHeight.value),
-      layerTransforms: getLayerTransforms(),
-      showBounds: controls.showBounds.checked,
-      showAnchorLines: controls.showAnchorLines.checked,
-    };
-  }
-
-  function formatPercent(value) {
-    return `${Math.round(value * 100)}%`;
-  }
-
-  function syncLabels(state) {
-    valueLabels.frontCutY.textContent = state.frontCutY;
-    valueLabels.backCutY.textContent = state.backCutY;
-    valueLabels.scale.textContent = formatPercent(state.scale);
-    valueLabels.offsetY.textContent = state.offsetY;
-    valueLabels.cardWidth.textContent = state.cardWidth;
-    valueLabels.cardHeight.textContent = state.cardHeight;
-    Object.entries(state.layerTransforms).forEach(([key, transform]) => {
-      valueLabels[`${key}Scale`].textContent = formatPercent(transform.scale);
-      valueLabels[`${key}X`].textContent = transform.x;
-      valueLabels[`${key}Y`].textContent = transform.y;
+  function createLayerPanel(key) {
+    const layer = state.layers[key];
+    const item = document.createElement('div');
+    item.className = 'layer';
+    item.dataset.layer = key;
+    item.innerHTML = `
+      <div class="layer-head">
+        <div class="layer-name">${layer.label}</div>
+        <button data-move="up" title="Move layer up">Up</button>
+        <button data-move="down" title="Move layer down">Down</button>
+        <label class="toggle"><input data-visible type="checkbox" checked>Visible</label>
+      </div>
+      <div class="row">
+        <span>Scale</span>
+        <input data-control="scale" type="range" min="0" max="220" value="100">
+        <span class="value" data-value="scale"></span>
+      </div>
+      <div class="row">
+        <span>X</span>
+        <input data-control="x" type="range" min="-220" max="220" value="0">
+        <span class="value" data-value="x"></span>
+      </div>
+      <div class="row">
+        <span>Y</span>
+        <input data-control="y" type="range" min="-260" max="260" value="0">
+        <span class="value" data-value="y"></span>
+      </div>
+    `;
+    item.querySelector('[data-control="scale"]').value = Math.round(layer.scale * 100);
+    item.querySelector('[data-control="x"]').value = layer.x;
+    item.querySelector('[data-control="y"]').value = layer.y;
+    item.querySelector('[data-control="scale"]').addEventListener('input', (event) => {
+      layer.scale = Number(event.target.value) / 100;
+      render();
     });
+    item.querySelector('[data-control="x"]').addEventListener('input', (event) => {
+      layer.x = Number(event.target.value);
+      render();
+    });
+    item.querySelector('[data-control="y"]').addEventListener('input', (event) => {
+      layer.y = Number(event.target.value);
+      render();
+    });
+    item.querySelector('[data-visible]').addEventListener('change', (event) => {
+      layer.visible = event.target.checked;
+      render();
+    });
+    item.querySelector('[data-move="up"]').addEventListener('click', () => moveLayer(key, -1));
+    item.querySelector('[data-move="down"]').addEventListener('click', () => moveLayer(key, 1));
+    return item;
   }
 
-  function buildExportPayload(state) {
-    return {
-      version: 1,
-      note: 'famous portrait lab layer transform',
-      assets: {
-        outfit: state.outfit,
-        body: state.body,
-        backHair: state.backHair,
-        sideHair: state.sideHair,
-        frontHair: state.frontHair,
-        accessory: state.accessory,
-      },
-      mode: state.mode,
-      global: {
-        scale: state.scale,
-        offsetY: state.offsetY,
-        frontCutY: state.frontCutY,
-        backCutY: state.backCutY,
-        cardWidth: state.cardWidth,
-        cardHeight: state.cardHeight,
-      },
-      layers: state.layerTransforms,
-    };
+  function rebuildLayerList() {
+    layerList.innerHTML = '';
+    state.order.forEach((key) => layerList.appendChild(createLayerPanel(key)));
+    updateLabels();
   }
 
-  function updateExportData(state) {
-    if (!exportData) return;
-    exportData.value = JSON.stringify(buildExportPayload(state), null, 2);
-  }
-
-  function roundRectPath(x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
+  function moveLayer(key, direction) {
+    const index = state.order.indexOf(key);
+    const next = index + direction;
+    if (index < 0 || next < 0 || next >= state.order.length) return;
+    const [removed] = state.order.splice(index, 1);
+    state.order.splice(next, 0, removed);
+    rebuildLayerList();
+    render();
   }
 
   function drawPanel(x, y, width, height, options = {}) {
-    roundRectPath(x, y, width, height, options.radius || 8);
-    ctx.fillStyle = options.fill || 'rgba(41, 30, 20, 0.92)';
-    ctx.fill();
-    ctx.strokeStyle = options.stroke || 'rgba(235, 184, 105, 0.25)';
-    ctx.lineWidth = options.lineWidth || 1;
-    ctx.stroke();
-  }
-
-  function drawLayer(image, x, y, size, crop = null) {
-    if (!image || size <= 0) return;
-    if (!crop) {
-      ctx.drawImage(image, x, y, size, size);
-      return;
-    }
-    const sx = Math.max(0, crop.sx ?? 0);
-    const sy = Math.max(0, crop.sy ?? 0);
-    const sw = Math.max(1, Math.min(image.width - sx, crop.sw ?? image.width));
-    const sh = Math.max(1, Math.min(image.height - sy, crop.sh ?? image.height));
-    ctx.drawImage(
-      image,
-      sx,
-      sy,
-      sw,
-      sh,
-      x + (sx / image.width) * size,
-      y + (sy / image.height) * size,
-      (sw / image.width) * size,
-      (sh / image.height) * size
-    );
-  }
-
-  function getBaseDrawFrame(x, y, size, state, options = {}) {
-    const drawSize = size * state.scale;
-    const offsetScale = options.scaleOffsets ? size / 512 : 1;
-    return {
-      x: x + (size - drawSize) / 2,
-      y: y + (size - drawSize) / 2 + state.offsetY * offsetScale,
-      size: drawSize,
-    };
-  }
-
-  function getLayerDrawFrame(key, x, y, size, state, options = {}) {
-    const frame = getBaseDrawFrame(x, y, size, state, options);
-    const transform = state.layerTransforms?.[key] || defaultLayerTransforms[key] || defaultLayerTransforms.outfit;
-    const layerSize = frame.size * transform.scale;
-    const offsetScale = options.scaleOffsets ? frame.size / 512 : 1;
-    return {
-      x: frame.x + (frame.size - layerSize) / 2 + transform.x * offsetScale,
-      y: frame.y + (frame.size - layerSize) / 2 + transform.y * offsetScale,
-      size: layerSize,
-    };
-  }
-
-  function getAlphaBounds(image) {
-    if (boundsCache.has(image)) return boundsCache.get(image);
-    const width = image.naturalWidth || image.width;
-    const height = image.naturalHeight || image.height;
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = width;
-    sampleCanvas.height = height;
-    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-    sampleCtx.drawImage(image, 0, 0, width, height);
-    const data = sampleCtx.getImageData(0, 0, width, height).data;
-    let minX = width;
-    let minY = height;
-    let maxX = -1;
-    let maxY = -1;
-    let pixels = 0;
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const alpha = data[(y * width + x) * 4 + 3];
-        if (alpha <= 8) continue;
-        pixels += 1;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-      }
-    }
-    const bounds = maxX < 0 ? null : {
-      x: minX,
-      y: minY,
-      right: maxX,
-      bottom: maxY,
-      width: maxX - minX + 1,
-      height: maxY - minY + 1,
-      centerX: (minX + maxX) / 2,
-      centerY: (minY + maxY) / 2,
-      marginLeft: minX,
-      marginRight: width - maxX - 1,
-      marginTop: minY,
-      marginBottom: height - maxY - 1,
-      coverage: pixels / (width * height),
-      sourceWidth: width,
-      sourceHeight: height,
-    };
-    boundsCache.set(image, bounds);
-    return bounds;
-  }
-
-  function getAlphaAt(image, x, y) {
-    const width = image.naturalWidth || image.width;
-    const height = image.naturalHeight || image.height;
-    const px = Math.max(0, Math.min(width - 1, Math.round(x)));
-    const py = Math.max(0, Math.min(height - 1, Math.round(y)));
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = 1;
-    sampleCanvas.height = 1;
-    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-    sampleCtx.drawImage(image, px, py, 1, 1, 0, 0, 1, 1);
-    return sampleCtx.getImageData(0, 0, 1, 1).data[3];
-  }
-
-  function buildLayerEntries(images) {
-    return [
-      { key: 'backHair', label: '后发', image: images.backHair },
-      { key: 'sideHair', label: '鬓角', image: images.sideHair },
-      { key: 'body', label: '身体', image: images.body },
-      { key: 'outfit', label: '衣服', image: images.outfit },
-      { key: 'frontHair', label: '前发', image: images.frontHair },
-      images.accessory ? { key: 'accessory', label: '配饰', image: images.accessory } : null,
-    ].filter((entry) => entry && entry.image).map((entry) => ({
-      ...entry,
-      bounds: getAlphaBounds(entry.image),
-    }));
-  }
-
-  function formatSigned(value) {
-    const rounded = Math.round(value * 10) / 10;
-    return rounded > 0 ? `+${rounded}` : `${rounded}`;
-  }
-
-  function updateAudit(entries) {
-    const lines = [
-      '透明像素边界 alpha > 8',
-      '目标：同类素材应共享 512x512 坐标系，中心接近 x=256。',
-      '',
-    ];
-    entries.forEach((entry) => {
-      const b = entry.bounds;
-      if (!b) {
-        lines.push(`${entry.label}: 无有效像素`);
-        return;
-      }
-      lines.push(`${entry.label}: bounds (${b.x},${b.y})-(${b.right},${b.bottom}) ${b.width}x${b.height}`);
-      lines.push(`  空白 L/R/T/B ${b.marginLeft}/${b.marginRight}/${b.marginTop}/${b.marginBottom}`);
-      lines.push(`  中心偏移 x=${formatSigned(b.centerX - 256)} y=${formatSigned(b.centerY - 256)} 覆盖 ${(b.coverage * 100).toFixed(1)}%`);
-    });
-    audit.textContent = lines.join('\n');
-  }
-
-  function drawSplitOutfit(outfit, x, y, size, state, section) {
-    if (section === 'back') {
-      drawLayer(outfit, x, y, size, { sx: 0, sy: 0, sw: 512, sh: state.backCutY });
-      return;
-    }
-    drawLayer(outfit, x, y, size, { sx: 0, sy: state.frontCutY, sw: 512, sh: 512 - state.frontCutY });
-  }
-
-  function drawPortrait(images, x, y, size, state, options = {}) {
-    const frameOptions = { scaleOffsets: Boolean(options.scaleOffsets) };
-    const bodyFrame = getLayerDrawFrame('body', x, y, size, state, frameOptions);
-    const outfitFrame = getLayerDrawFrame('outfit', x, y, size, state, frameOptions);
-    const backHairFrame = getLayerDrawFrame('backHair', x, y, size, state, frameOptions);
-    const sideHairFrame = getLayerDrawFrame('sideHair', x, y, size, state, frameOptions);
-    const frontHairFrame = getLayerDrawFrame('frontHair', x, y, size, state, frameOptions);
-    const accessoryFrame = getLayerDrawFrame('accessory', x, y, size, state, frameOptions);
-
-    if (options.clip) {
-      ctx.save();
-      roundRectPath(options.clip.x, options.clip.y, options.clip.width, options.clip.height, options.clip.radius || 10);
-      ctx.clip();
-    }
-
-    if (state.mode === 'current') {
-      drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
-      drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
-      drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
-      drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
-    } else if (state.mode === 'outfitBack') {
-      drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
-      drawLayer(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size);
-      drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
-      drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
-    } else {
-      drawLayer(images.backHair, backHairFrame.x, backHairFrame.y, backHairFrame.size);
-      drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'back');
-      drawLayer(images.body, bodyFrame.x, bodyFrame.y, bodyFrame.size);
-      drawLayer(images.sideHair, sideHairFrame.x, sideHairFrame.y, sideHairFrame.size);
-      drawSplitOutfit(images.outfit, outfitFrame.x, outfitFrame.y, outfitFrame.size, state, 'front');
-      drawLayer(images.frontHair, frontHairFrame.x, frontHairFrame.y, frontHairFrame.size);
-    }
-
-    if (images.accessory) drawLayer(images.accessory, accessoryFrame.x, accessoryFrame.y, accessoryFrame.size);
-    if (options.clip) ctx.restore();
-  }
-
-  function drawCard(images, x, y, width, height, state, title) {
-    drawPanel(x, y, width, height, { fill: 'rgba(42, 31, 20, 0.86)', stroke: 'rgba(240, 180, 91, 0.34)', radius: 9 });
-    const portraitX = x + 12;
-    const portraitY = y + 12;
-    drawPanel(portraitX, portraitY, state.cardWidth, state.cardHeight, {
-      fill: 'rgba(44, 32, 23, 0.94)',
-      stroke: 'rgba(240, 180, 91, 0.32)',
-      radius: 10,
-    });
-    drawPortrait(images, portraitX, portraitY, Math.min(state.cardWidth, state.cardHeight), state, {
-      clip: {
-        x: portraitX,
-        y: portraitY,
-        width: state.cardWidth,
-        height: state.cardHeight,
-        radius: 10,
-      },
-      scaleOffsets: true,
-    });
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText(title, x + state.cardWidth + 28, y + 18);
-    ctx.fillStyle = '#cbbd96';
-    ctx.font = '13px "Microsoft YaHei", sans-serif';
-    ctx.fillText('军事 · 寻访', x + state.cardWidth + 28, y + 46);
-    ctx.fillStyle = '#aeb0b8';
-    ctx.font = '12px "Microsoft YaHei", sans-serif';
-    ctx.fillText('统率76 武力68 谋略51 治理42 工巧33', x + state.cardWidth + 28, y + 76);
-    ctx.fillStyle = '#74d3a0';
-    ctx.font = '700 12px "Microsoft YaHei", sans-serif';
-    ctx.fillText('守势反击 · 护盾 / 反击', x + state.cardWidth + 28, y + 100);
-  }
-
-  function drawGameFamousPortrait(images, x, y, state, options = {}) {
-    const frameWidth = options.frameWidth || gamePortraitPreview.portraitWidth;
-    const frameHeight = options.frameHeight || gamePortraitPreview.portraitHeight;
-    const size = options.size || Math.min(frameWidth, frameHeight);
-    const scale = options.scale || gamePortraitPreview.portraitScale;
-    const offsetY = options.offsetY ?? gamePortraitPreview.portraitOffsetY;
-    const drawSize = size * scale;
-    const drawX = x + (frameWidth - drawSize) / 2;
-    const drawY = y + (frameHeight - drawSize) / 2 + size * offsetY;
-    const gameState = {
-      ...state,
-      mode: 'current',
-      scale: 1,
-      offsetY: 0,
-    };
-
-    drawPortrait(images, drawX, drawY, drawSize, gameState, {
-      clip: {
-        x,
-        y,
-        width: frameWidth,
-        height: frameHeight,
-        radius: 10,
-      },
-      scaleOffsets: true,
-    });
-  }
-
-  function drawGameFamousPersonItem(images, x, y, state) {
-    const preview = gamePortraitPreview;
-    drawPanel(x, y, preview.itemWidth, preview.itemHeight, {
-      fill: 'rgba(52, 39, 27, 0.86)',
-      stroke: 'rgba(240, 180, 91, 0.34)',
-      radius: 9,
-      inset: 'rgba(255, 231, 184, 0.08)',
-    });
-    const portraitX = x + 10;
-    const portraitY = y + 10;
-    drawPanel(portraitX, portraitY, preview.portraitWidth, preview.portraitHeight, {
-      fill: 'rgba(44, 32, 23, 0.94)',
-      stroke: 'rgba(240, 180, 91, 0.32)',
-      radius: 10,
-      inset: 'rgba(255, 231, 184, 0.1)',
-    });
-    drawGameFamousPortrait(images, portraitX, portraitY, state, {
-      frameWidth: preview.portraitWidth,
-      frameHeight: preview.portraitHeight,
-      size: preview.portraitSize,
-      scale: preview.portraitScale,
-      offsetY: preview.portraitOffsetY,
-    });
-
-    const textX = x + 96;
-    const textWidth = preview.itemWidth - (textX - x) - 86;
-    ctx.fillStyle = '#fff1cf';
-    ctx.font = '700 14px "Microsoft YaHei", sans-serif';
-    ctx.fillText('秦承 · 垒门守将', textX, y + 10, textWidth);
-    ctx.fillStyle = '#cbbd96';
-    ctx.font = '10px "Microsoft YaHei", sans-serif';
-    ctx.fillText('治理 · 事件投奔', textX, y + 31, textWidth);
-    ctx.fillStyle = '#aeb0b8';
-    ctx.fillText('统率50 武力30 谋略60 治理80 工巧45', textX, y + 55, textWidth);
-    ctx.fillStyle = '#74d3a0';
-    ctx.font = '700 10px "Microsoft YaHei", sans-serif';
-    ctx.fillText('固阵振军', textX, y + 74, textWidth);
-
-    drawPanel(x + preview.itemWidth - 78, y + 15, 66, 28, {
-      fill: 'rgba(122, 82, 36, 0.88)',
-      stroke: 'rgba(255, 215, 139, 0.36)',
-      radius: 8,
-    });
-    ctx.fillStyle = '#fff1cf';
-    ctx.font = '700 12px "Microsoft YaHei", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('接纳', x + preview.itemWidth - 45, y + 29);
-    drawPanel(x + preview.itemWidth - 78, y + 52, 66, 28, {
-      fill: 'rgba(45, 36, 28, 0.88)',
-      stroke: 'rgba(255, 226, 177, 0.14)',
-      radius: 8,
-    });
-    ctx.fillStyle = '#f4e7c7';
-    ctx.font = '12px "Microsoft YaHei", sans-serif';
-    ctx.fillText('放弃', x + preview.itemWidth - 45, y + 66);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-  }
-
-  function drawGuides(x, y, size, state) {
-    const frame = getLayerDrawFrame('outfit', x, y, size, state);
+    const radius = options.radius || 8;
     ctx.save();
-    ctx.strokeStyle = 'rgba(142, 224, 160, 0.85)';
-    ctx.lineWidth = 2;
-    const frontY = frame.y + (state.frontCutY / 512) * frame.size;
-    const backY = frame.y + (state.backCutY / 512) * frame.size;
-    ctx.beginPath();
-    ctx.moveTo(frame.x, frontY);
-    ctx.lineTo(frame.x + frame.size, frontY);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(114, 178, 255, 0.85)';
-    ctx.beginPath();
-    ctx.moveTo(frame.x, backY);
-    ctx.lineTo(frame.x + frame.size, backY);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawAnchorGuides(x, y, size, state) {
-    if (!state.showAnchorLines) return;
-    const frame = getLayerDrawFrame('body', x, y, size, state);
-    const guides = [
-      { label: 'center', y: 0, color: 'rgba(255, 255, 255, 0.35)' },
-      { label: 'chin', y: 246, color: 'rgba(255, 210, 111, 0.78)' },
-      { label: 'shoulder', y: 330, color: 'rgba(142, 224, 160, 0.78)' },
-    ];
-    ctx.save();
+    ctx.fillStyle = options.fill || '#2a211a';
+    ctx.strokeStyle = options.stroke || 'rgba(240,180,91,.35)';
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
-    const centerX = frame.x + frame.size / 2;
     ctx.beginPath();
-    ctx.moveTo(centerX, frame.y);
-    ctx.lineTo(centerX, frame.y + frame.size);
+    ctx.roundRect(x, y, width, height, radius);
+    ctx.fill();
     ctx.stroke();
-    guides.slice(1).forEach((guide) => {
-      const lineY = frame.y + (guide.y / 512) * frame.size;
-      ctx.strokeStyle = guide.color;
-      ctx.beginPath();
-      ctx.moveTo(frame.x, lineY);
-      ctx.lineTo(frame.x + frame.size, lineY);
-      ctx.stroke();
-      ctx.fillStyle = guide.color;
-      ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.fillText(guide.label, frame.x + 6, lineY + 4);
-    });
     ctx.restore();
   }
 
-  function drawBoundsOverlay(entries, x, y, size, state) {
-    if (!state.showBounds) return;
-    ctx.save();
-    ctx.lineWidth = 2;
-    entries.forEach((entry, index) => {
-      const b = entry.bounds;
-      if (!b) return;
-      const color = layerColors[entry.key] || '#ffffff';
-      const frame = getLayerDrawFrame(entry.key, x, y, size, state);
-      const bx = frame.x + (b.x / b.sourceWidth) * frame.size;
-      const by = frame.y + (b.y / b.sourceHeight) * frame.size;
-      const bw = (b.width / b.sourceWidth) * frame.size;
-      const bh = (b.height / b.sourceHeight) * frame.size;
-      ctx.strokeStyle = color;
-      ctx.strokeRect(bx, by, bw, bh);
-      ctx.fillStyle = color;
-      ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.fillText(`${entry.label} dx ${formatSigned(b.centerX - 256)}`, 44, 620 + index * 18);
-    });
-    ctx.restore();
+  function getLayerFrame(layer, frame) {
+    const base = manifest.layers[layer.file];
+    const globalScale = state.global.scale;
+    const scale = layer.scale * globalScale;
+    return {
+      x: frame.x + (base.x + layer.x + state.global.x) * frame.scale,
+      y: frame.y + (base.y + layer.y + state.global.y) * frame.scale,
+      width: base.width * scale * frame.scale,
+      height: base.height * scale * frame.scale,
+    };
   }
 
-  function getEntry(entries, key) {
-    return entries.find((entry) => entry.key === key) || null;
-  }
-
-  function drawCroppedAlignedLayer(entry, x, y, size, state) {
-    const b = entry?.bounds;
-    if (!entry || !b) return;
-    const frame = getLayerDrawFrame(entry.key, x, y, size, state);
-    // This is an audit preview, not the final rule: trim transparent pixels,
-    // then shift by the alpha center so every part returns to x=256.
-    const shiftX = 256 - b.centerX;
-    const destX = frame.x + ((b.x + shiftX) / b.sourceWidth) * frame.size;
-    const destY = frame.y + (b.y / b.sourceHeight) * frame.size;
-    const destW = (b.width / b.sourceWidth) * frame.size;
-    const destH = (b.height / b.sourceHeight) * frame.size;
-    ctx.drawImage(entry.image, b.x, b.y, b.width, b.height, destX, destY, destW, destH);
-  }
-
-  function drawCroppedAlignedPortrait(entries, x, y, size, state) {
-    const layerOrder = ['backHair', 'body', 'sideHair', 'outfit', 'frontHair', 'accessory'];
-    layerOrder.forEach((key) => drawCroppedAlignedLayer(getEntry(entries, key), x, y, size, state));
-  }
-
-  function drawCropComparison(images, entries, x, y, state) {
-    drawPanel(x, y, 520, 154, { fill: 'rgba(32, 24, 16, 0.88)', stroke: 'rgba(235, 184, 105, 0.2)', radius: 8 });
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 14px "Microsoft YaHei", sans-serif';
-    ctx.fillText('裁剪/锚点对比', x + 14, y + 14);
-    const previewY = y + 42;
-    const previewSize = 96;
-    [
-      { label: '原始 512 画布', mode: 'raw' },
-      { label: '裁边后回 x=256', mode: 'cropped' },
-    ].forEach((item, index) => {
-      const px = x + 16 + index * 126;
-      drawPanel(px, previewY, previewSize, previewSize, { fill: 'rgba(20, 15, 10, 0.8)', stroke: 'rgba(235, 184, 105, 0.18)', radius: 8 });
+  async function drawPortrait(x, y, size, options = {}) {
+    const clip = options.clip || null;
+    const frame = { x, y, scale: size / state.coordinateSize };
+    if (clip) {
       ctx.save();
-      roundRectPath(px, previewY, previewSize, previewSize, 8);
+      ctx.beginPath();
+      ctx.roundRect(clip.x, clip.y, clip.width, clip.height, clip.radius || 8);
       ctx.clip();
-      if (item.mode === 'raw') drawPortrait(images, px, previewY, previewSize, state);
-      else drawCroppedAlignedPortrait(entries, px, previewY, previewSize, state);
-      ctx.restore();
-      ctx.fillStyle = '#c8b58e';
-      ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.fillText(item.label, px, previewY + previewSize + 16);
-    });
-    ctx.fillStyle = '#c8b58e';
-    ctx.font = '13px "Microsoft YaHei", sans-serif';
-    ctx.fillText('如果右侧仍怪，说明不是单纯空白裁剪问题，而是素材构图/背后部分就错了。', x + 270, y + 58);
-    ctx.fillText('最终资源应统一 512 坐标和锚点，再导出透明 PNG。', x + 270, y + 82);
-  }
-
-  function drawTrimAudit(entries, x, y) {
-    drawPanel(x, y, 520, 118, { fill: 'rgba(32, 24, 16, 0.88)', stroke: 'rgba(235, 184, 105, 0.2)', radius: 8 });
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 14px "Microsoft YaHei", sans-serif';
-    ctx.fillText('素材结论', x + 14, y + 14);
-    ctx.fillStyle = '#c8b58e';
-    ctx.font = '13px "Microsoft YaHei", sans-serif';
-    const body = entries.find((entry) => entry.key === 'body')?.bounds;
-    const outfit = entries.find((entry) => entry.key === 'outfit')?.bounds;
-    const backHair = entries.find((entry) => entry.key === 'backHair')?.bounds;
-    const frontHair = entries.find((entry) => entry.key === 'frontHair')?.bounds;
-    const issues = [];
-    const outfitHasNeckHole = outfit && getAlphaAt(getEntry(entries, 'outfit')?.image, 256, Math.max(outfit.y + 18, 230)) <= 8;
-    if (outfit && outfit.y < 245 && outfitHasNeckHole) issues.push('衣服含背后领/背后空壳，需要重做');
-    if (outfit && Math.abs(outfit.centerX - 256) > 12) issues.push('衣服中心偏移偏大');
-    if (backHair && body && Math.abs(backHair.centerX - body.centerX) > 12) issues.push('后发与身体中心不一致');
-    if (frontHair && body && Math.abs(frontHair.centerX - body.centerX) > 12) issues.push('前发与身体中心不一致');
-    if (outfit && outfit.marginTop < 220) issues.push('衣服有效像素过高，容易穿到脸/脖子区域');
-    if (outfit && outfit.marginLeft !== outfit.marginRight) issues.push('衣服左右空白不对称');
-    if (!issues.length) issues.push('当前只需按统一锚点导出');
-    issues.slice(0, 4).forEach((text, index) => {
-      ctx.fillText(`${index + 1}. ${text}`, x + 14, y + 42 + index * 18);
-    });
-  }
-
-  function drawScene(images, state, entries) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#21170f');
-    gradient.addColorStop(1, '#100c08');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 22px "Microsoft YaHei", sans-serif';
-    ctx.fillText('大图预览', 32, 38);
-    ctx.fillStyle = '#bda77e';
-    ctx.font = '13px "Microsoft YaHei", sans-serif';
-    ctx.fillText('绿线：衣服前层分界；蓝线：衣服后层分界。', 32, 62);
-
-    drawPanel(32, 88, 512, 612, { fill: 'rgba(32, 24, 16, 0.88)', stroke: 'rgba(235, 184, 105, 0.24)', radius: 8 });
-    drawPortrait(images, 32, 126, 512, state);
-    drawGuides(32, 126, 512, state);
-    drawAnchorGuides(32, 126, 512, state);
-    drawBoundsOverlay(entries, 32, 126, 512, state);
-
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 22px "Microsoft YaHei", sans-serif';
-    ctx.fillText('卡片尺寸预览', 592, 38);
-    drawCard(images, 592, 88, 520, 136, state, '秦承 · 垒门守将');
-    drawCard(images, 592, 246, 520, 126, state, '韩骁 · 山道突骑');
-
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 22px "Microsoft YaHei", sans-serif';
-    ctx.fillText('游戏实显', 592, 414);
-    ctx.fillStyle = '#bda77e';
-    ctx.font = '13px "Microsoft YaHei", sans-serif';
-    ctx.fillText('复刻名人面板候选卡：头像框 74x98，scale 1.74，offsetY 0.14。', 592, 438);
-    drawGameFamousPersonItem(images, 592, 466, state);
-
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('当前模式', 592, 640);
-    ctx.fillStyle = '#c8b58e';
-    ctx.font = '14px "Microsoft YaHei", sans-serif';
-    const candidateOutfit = isCandidateOutfit(state.outfit);
-    const modeText = {
-      split: '模拟衣服前后层：肩甲衣身在后，领口围巾在前。',
-      outfitBack: '衣服整体在脸后：脸不被压，但高领会失去遮挡关系。',
-      current: candidateOutfit
-        ? '候选素材整层预览：用于检查透明区和锚点，不代表正式分层方案。'
-        : '旧错误示例：衣服整层压到脸上，不能作为成品方案。',
-    }[state.mode];
-    ctx.fillText(modeText, 592, 670);
-
-    const sampleY = 724;
-    ['current', 'outfitBack', 'split'].forEach((mode, index) => {
-      const oldMode = state.mode;
-      state.mode = mode;
-      const x = 592 + index * 170;
-      const isBadExample = mode === 'current' && !candidateOutfit;
-      drawPanel(x, sampleY, 140, 160, {
-        fill: isBadExample ? 'rgba(48, 16, 14, 0.9)' : 'rgba(32, 24, 16, 0.88)',
-        stroke: isBadExample ? 'rgba(255, 92, 92, 0.72)' : 'rgba(235, 184, 105, 0.2)',
-        radius: 8,
-      });
-      drawPortrait(images, x + 18, sampleY + 18, 104, state, {
-        clip: { x: x + 18, y: sampleY + 18, width: 104, height: 124, radius: 10 },
-      });
-      if (isBadExample) {
-        ctx.fillStyle = 'rgba(255, 72, 72, 0.84)';
-        ctx.font = '700 12px "Microsoft YaHei", sans-serif';
-        ctx.fillText('不要采用', x + 18, sampleY + 18);
-      }
-      ctx.fillStyle = isBadExample ? '#ff9b8d' : '#c8b58e';
-      ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.fillText({ current: candidateOutfit ? '候选整层' : '旧错误', outfitBack: '衣服后置', split: '前后层' }[mode], x + 18, sampleY + 146);
-      state.mode = oldMode;
-    });
-    drawTrimAudit(entries, 592, 908);
-    drawCropComparison(images, entries, 592, 1034, state);
+    }
+    for (const key of state.order) {
+      const layer = state.layers[key];
+      if (!layer.visible) continue;
+      const image = await loadImage(layerBase + layer.file);
+      const draw = getLayerFrame(layer, frame);
+      ctx.drawImage(image, draw.x, draw.y, draw.width, draw.height);
+    }
+    if (clip) ctx.restore();
   }
 
   async function render() {
-    const state = getState();
-    syncLabels(state);
-    updateExportData(state);
-    const layerRequests = [
-      { key: 'backHair', filename: backHairFiles[state.backHair] },
-      { key: 'sideHair', filename: sideHairFiles[state.sideHair] },
-      { key: 'outfit', filename: outfitFiles[state.outfit] },
-      { key: 'body', filename: bodyFiles[state.body] },
-      { key: 'frontHair', filename: frontHairFiles[state.frontHair] },
-    ];
-    if (state.accessory !== 'none') layerRequests.push({ key: 'accessory', filename: accessoryFiles[state.accessory] });
-    try {
-      const loaded = await Promise.all(layerRequests.map((request) => loadImage(request.filename)));
-      const images = loaded.reduce((result, image, index) => {
-        result[layerRequests[index].key] = image;
-        return result;
-      }, { backHair: null, sideHair: null, outfit: null, body: null, frontHair: null, accessory: null });
-      const entries = buildLayerEntries(images);
-      updateAudit(entries);
-      drawScene(images, state, entries);
-      status.textContent = '已加载';
-    } catch (error) {
-      status.textContent = error.message;
-    }
-  }
+    if (!manifest) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#101113';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  Object.values(controls).forEach((control) => {
-    if (!control || control.type === 'button') return;
-    control.addEventListener('input', render);
-    control.addEventListener('change', render);
-  });
+    ctx.fillStyle = '#ffe6b5';
+    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
+    ctx.fillText('Full 512-coordinate preview', 72, 40);
+    drawPanel(preview.big.x, preview.big.y, preview.big.size, preview.big.size, { fill: '#221b15' });
+    await drawPortrait(preview.big.x, preview.big.y, preview.big.size);
 
-  if (controls.copyExport && exportData) {
-    controls.copyExport.addEventListener('click', async () => {
-      exportData.select();
-      try {
-        await navigator.clipboard.writeText(exportData.value);
-        status.textContent = '已复制参数';
-      } catch (error) {
-        document.execCommand('copy');
-        status.textContent = '已复制参数';
-      }
+    ctx.strokeStyle = 'rgba(255,255,255,.18)';
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(preview.big.x, preview.big.y, preview.big.size, preview.big.size);
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#ffe6b5';
+    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
+    ctx.fillText('Actual game portrait', 650, 84);
+    drawPanel(preview.game.x, preview.game.y, preview.game.width, preview.game.height, {
+      fill: 'rgba(44,32,23,.94)',
+      stroke: 'rgba(240,180,91,.32)',
+      radius: 10,
     });
+    const gameSize = preview.game.width * preview.game.scale;
+    const gameX = preview.game.x + (preview.game.width - gameSize) / 2;
+    const gameY = preview.game.y + (preview.game.height - gameSize) / 2 + preview.game.width * preview.game.offsetY;
+    await drawPortrait(gameX, gameY, gameSize, {
+      clip: { x: preview.game.x, y: preview.game.y, width: preview.game.width, height: preview.game.height, radius: 10 },
+    });
+
+    drawPanel(preview.card.x, preview.card.y, preview.card.width, preview.card.height, {
+      fill: 'rgba(52,39,27,.86)',
+      stroke: 'rgba(240,180,91,.34)',
+      radius: 9,
+    });
+    const portraitX = preview.card.x + 10;
+    const portraitY = preview.card.y + 10;
+    drawPanel(portraitX, portraitY, preview.game.width, preview.game.height, {
+      fill: 'rgba(44,32,23,.94)',
+      stroke: 'rgba(240,180,91,.32)',
+      radius: 10,
+    });
+    await drawPortrait(gameX + portraitX - preview.game.x, gameY + portraitY - preview.game.y, gameSize, {
+      clip: { x: portraitX, y: portraitY, width: preview.game.width, height: preview.game.height, radius: 10 },
+    });
+    ctx.fillStyle = '#fff1cf';
+    ctx.font = '700 14px "Microsoft YaHei", sans-serif';
+    ctx.fillText('Sample Guardian', preview.card.x + 96, preview.card.y + 24);
+    ctx.fillStyle = '#cbbd96';
+    ctx.font = '10px "Microsoft YaHei", sans-serif';
+    ctx.fillText('Military / Seek', preview.card.x + 96, preview.card.y + 45);
+    ctx.fillStyle = '#aeb0b8';
+    ctx.fillText('Command 76 Force 68 Strategy 51 Governance 42 Craft 33', preview.card.x + 96, preview.card.y + 69);
+    ctx.fillStyle = '#74d3a0';
+    ctx.font = '700 10px "Microsoft YaHei", sans-serif';
+    ctx.fillText('Guardian Counter / Shield', preview.card.x + 96, preview.card.y + 88);
+
+    updateLabels();
+    updateExport();
   }
 
-  applyDefaultLayerTransforms();
-  render();
-}());
+  function reset() {
+    state = clone(defaultConfig);
+    controls.globalScale.value = Math.round(state.global.scale * 100);
+    controls.globalX.value = state.global.x;
+    controls.globalY.value = state.global.y;
+    rebuildLayerList();
+    render();
+  }
+
+  controls.globalScale.addEventListener('input', (event) => {
+    state.global.scale = Number(event.target.value) / 100;
+    render();
+  });
+  controls.globalX.addEventListener('input', (event) => {
+    state.global.x = Number(event.target.value);
+    render();
+  });
+  controls.globalY.addEventListener('input', (event) => {
+    state.global.y = Number(event.target.value);
+    render();
+  });
+  controls.copyExport.addEventListener('click', async () => {
+    updateExport();
+    await navigator.clipboard?.writeText(exportData.value);
+  });
+  controls.resetDefaults.addEventListener('click', reset);
+
+  loadAssets().then(() => {
+    rebuildLayerList();
+    render();
+  }).catch((error) => {
+    ctx.fillStyle = '#ff7b7b';
+    ctx.font = '16px sans-serif';
+    ctx.fillText(error.message, 24, 40);
+  });
+})();

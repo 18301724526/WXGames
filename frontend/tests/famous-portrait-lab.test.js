@@ -2,211 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 const projectRoot = path.join(__dirname, '..', '..');
 const famousLayerDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'famous-person', 'layers');
 
 function listFamousLayerFiles(pattern) {
   return fs.readdirSync(famousLayerDir).filter((filename) => pattern.test(filename)).sort();
-}
-
-test('famous portrait lab exposes isolated layer order experiments', () => {
-  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
-  const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
-
-  assert.match(html, /名人立绘实验台/);
-  assert.match(html, /famous-portrait-lab\.js/);
-  assert.match(html, /\.\.\/js\/config\/FamousPortraitLayout\.js[\s\S]*famous-portrait-lab\.js/);
-  assert.match(html, /模拟衣服前后层/);
-  assert.match(html, /旧错误示例/);
-  assert.match(html, /素材诊断/);
-  assert.match(html, /显示透明像素边界/);
-
-  assert.match(script, /fp-layer-outfit-guardian-front-candidate-01\.png/);
-  assert.match(script, /fp-layer-outfit-vanguard-front-candidate-02\.png/);
-  assert.match(script, /fp-layer-outfit-scholar-front-candidate-03\.png/);
-  assert.match(html, /守将候选-正面甲/);
-  assert.match(html, /突骑候选-正面甲/);
-  assert.match(html, /学者候选-正面袍/);
-  assert.doesNotMatch(html, /旧守将盔甲|旧突骑战装|旧学者长袍/);
-  assert.match(html, /value="split"/);
-  assert.match(script, /state\.mode === 'current'/);
-  assert.match(script, /drawSplitOutfit/);
-  assert.match(script, /getAlphaBounds/);
-  assert.match(script, /drawBoundsOverlay/);
-  assert.match(script, /drawCropComparison/);
-  assert.match(script, /isCandidateOutfit/);
-  assert.match(script, /候选素材整层预览/);
-  assert.match(script, /裁边后回 x=256/);
-  assert.match(script, /不要采用/);
-});
-
-test('famous portrait lab can tune split hair and individual layer transforms', () => {
-  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
-  const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
-
-  assert.match(script, /const backHairFiles = \{/);
-  assert.match(script, /const sideHairFiles = \{/);
-  assert.match(script, /const frontHairFiles = \{/);
-  assert.match(script, /fp-layer-backHair-short-02\.png/);
-  assert.match(script, /fp-layer-sideHair-short-01\.png/);
-  assert.match(script, /fp-layer-frontHair-short-02\.png/);
-  assert.doesNotMatch(script, /hairLayerEnabled/);
-
-  ['backHair', 'sideHair', 'body', 'outfit', 'frontHair', 'accessory'].forEach((key) => {
-    assert.match(html, new RegExp(`id="${key}Scale"`));
-    assert.match(html, new RegExp(`id="${key}X"`));
-    assert.match(html, new RegExp(`id="${key}Y"`));
-  });
-  assert.match(html, /id="copyExport"/);
-  assert.match(html, /id="exportData"/);
-
-  assert.match(html, /id="scale"[^>]*min="0"[^>]*max="200"[^>]*value="130"/);
-  assert.match(html, /id="bodyScale"[^>]*value="70"/);
-  assert.match(html, /id="bodyY"[^>]*value="-17"/);
-  assert.match(html, /id="outfitScale"[^>]*value="121"/);
-  assert.match(html, /id="backHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
-  assert.match(html, /id="backHairY"[^>]*value="-70"/);
-  assert.match(html, /id="sideHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="63"/);
-  assert.match(html, /id="sideHairY"[^>]*value="-98"/);
-  assert.match(html, /id="frontHairScale"[^>]*min="0"[^>]*max="200"[^>]*value="70"/);
-  assert.match(html, /id="frontHairY"[^>]*value="-65"/);
-  assert.match(html, /id="accessoryScale"[^>]*min="0"[^>]*max="200"[^>]*value="100"/);
-  assert.match(script, /const fallbackLayerTransforms = \{/);
-  assert.match(script, /window\.FamousPortraitLayout/);
-  assert.match(script, /function applyDefaultLayerTransforms\(\)/);
-  assert.match(script, /body: \{ scale: 0\.7, x: 0, y: -17 \}/);
-  assert.match(html, /id="outfitY"[^>]*value="53"/);
-  assert.match(script, /outfit: \{ scale: 1\.21, x: 0, y: 53 \}/);
-  assert.match(script, /backHair: \{ scale: 0\.7, x: 0, y: -70 \}/);
-  assert.match(script, /sideHair: \{ scale: 0\.63, x: 0, y: -98 \}/);
-  assert.match(script, /frontHair: \{ scale: 0\.7, x: 0, y: -65 \}/);
-  assert.match(script, /function getLayerTransforms\(\)/);
-  assert.match(script, /function getLayerDrawFrame\(key, x, y, size, state, options = \{\}\)/);
-  assert.match(script, /const transform = state\.layerTransforms\?\.\[key\]/);
-  assert.match(script, /drawLayer\(images\.backHair, backHairFrame\.x, backHairFrame\.y, backHairFrame\.size\);/);
-  assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);[\s\S]*drawLayer\(images\.sideHair, sideHairFrame\.x, sideHairFrame\.y, sideHairFrame\.size\);[\s\S]*drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
-  assert.match(script, /drawLayer\(images\.body, bodyFrame\.x, bodyFrame\.y, bodyFrame\.size\);/);
-  assert.match(script, /drawLayer\(images\.outfit, outfitFrame\.x, outfitFrame\.y, outfitFrame\.size\);/);
-  assert.match(script, /drawLayer\(images\.frontHair, frontHairFrame\.x, frontHairFrame\.y, frontHairFrame\.size\);/);
-  assert.match(script, /drawLayer\(images\.accessory, accessoryFrame\.x, accessoryFrame\.y, accessoryFrame\.size\);/);
-  assert.match(script, /scaleOffsets: true,\s*\}\);\s*ctx\.fillStyle = '#ffe6b5';/);
-  assert.match(script, /function buildExportPayload\(state\)/);
-  assert.match(script, /exportData\.value = JSON\.stringify\(buildExportPayload\(state\), null, 2\);/);
-  assert.doesNotMatch(script, /drawLayer\(images\.body, drawX, drawY, drawSize\);/);
-  assert.doesNotMatch(script, /drawLayer\(images\.hair, drawX, drawY, drawSize\);/);
-});
-
-test('famous portrait lab shows an in-game candidate card preview', () => {
-  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
-  const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
-
-  assert.match(html, /<canvas id="stage" width="1180" height="1220"><\/canvas>/);
-  assert.match(script, /const gamePortraitPreview = \{/);
-  assert.match(script, /portraitWidth: 74/);
-  assert.match(script, /portraitHeight: 98/);
-  assert.match(script, /portraitScale: 1\.74/);
-  assert.match(script, /portraitOffsetY: 0\.14/);
-  assert.match(script, /function drawGameFamousPortrait\(images, x, y, state, options = \{\}\)/);
-  assert.match(script, /function drawGameFamousPersonItem\(images, x, y, state\)/);
-  assert.match(script, /const gameState = \{/);
-  assert.match(script, /mode: 'current'/);
-  assert.match(script, /scale: 1/);
-  assert.match(script, /offsetY: 0/);
-  assert.match(script, /drawPortrait\(images, drawX, drawY, drawSize, gameState, \{/);
-  assert.match(script, /scaleOffsets: true/);
-  assert.match(script, /const offsetScale = options\.scaleOffsets \? frame\.size \/ 512 : 1;/);
-  assert.match(script, /ctx\.fillText\('游戏实显', 592, 414\)/);
-  assert.match(script, /drawGameFamousPersonItem\(images, 592, 466, state\)/);
-  assert.match(script, /if \(!image \|\| size <= 0\) return;/);
-});
-
-test('famous portrait lab keeps desktop controls scroll isolated from preview', () => {
-  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
-
-  assert.match(html, /html,\s*body\s*\{[\s\S]*?height:\s*100%;[\s\S]*?overflow:\s*hidden;/);
-  assert.match(html, /\.shell\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*hidden;/);
-  assert.match(html, /\.panel\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
-  assert.match(html, /\.stage\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
-  assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
-});
-
-test('famous portrait hair assets share the hand-tuned anchor bounds', () => {
-  [
-    [/^fp-layer-backHair-.*\.png$/, 'fp-layer-backHair-short-02.png'],
-    [/^fp-layer-sideHair-.*\.png$/, 'fp-layer-sideHair-short-01.png'],
-    [/^fp-layer-frontHair-.*\.png$/, 'fp-layer-frontHair-short-02.png'],
-  ].forEach(([pattern, anchorFilename]) => {
-    const expectedBounds = readPngAlphaBounds(path.join(famousLayerDir, anchorFilename));
-    const filenames = listFamousLayerFiles(pattern);
-    assert.ok(filenames.includes(anchorFilename), anchorFilename);
-    assert.ok(filenames.length >= 2, anchorFilename);
-    filenames.forEach((filename) => {
-      const bounds = readPngAlphaBounds(path.join(famousLayerDir, filename));
-      assert.deepEqual(bounds, expectedBounds, filename);
-      assert.ok(Math.abs(((bounds.minX + bounds.maxX) / 2) - 256) <= 4, filename);
-      assert.equal(bounds.maxY < 320, true, filename);
-    });
-  });
-});
-
-test('famous portrait side hair assets are true narrow sideburn details', () => {
-  const shortBounds = readPngAlphaStats(path.join(famousLayerDir, 'fp-layer-sideHair-short-01.png')).bounds;
-  [
-    ['fp-layer-sideHair-short-01.png', shortBounds],
-    ['fp-layer-sideHair-tied-01.png', shortBounds],
-  ].forEach(([filename, expectedBounds]) => {
-    const alpha = readPngAlphaStats(path.join(famousLayerDir, filename));
-    const left = alpha.points.filter((point) => point.x < 226).length;
-    const center = alpha.points.filter((point) => point.x >= 226 && point.x <= 286).length;
-    const right = alpha.points.filter((point) => point.x > 286).length;
-    assert.ok(Math.abs(((alpha.bounds.minX + alpha.bounds.maxX) / 2) - 256) <= 4, filename);
-    assert.ok(left > 0 && right > 0, filename);
-    assert.ok(left / right > 0.9 && left / right < 1.1, filename);
-    assert.equal(center, 0, filename);
-    assert.deepEqual(alpha.bounds, expectedBounds, filename);
-    assert.ok(alpha.points.length < 3000, filename);
-    assert.equal(alpha.bounds.minY >= 150, true, filename);
-    assert.equal(alpha.bounds.maxY < 300, true, filename);
-    [left, right].forEach((_, index) => {
-      const isLeft = index === 0;
-      const sidePoints = alpha.points.filter((point) => (isLeft ? point.x < 226 : point.x > 286));
-      const minX = Math.min(...sidePoints.map((point) => point.x));
-      const maxX = Math.max(...sidePoints.map((point) => point.x));
-      const minY = Math.min(...sidePoints.map((point) => point.y));
-      const maxY = Math.max(...sidePoints.map((point) => point.y));
-      assert.ok(maxX - minX + 1 <= 24, filename);
-      assert.ok(maxY - minY + 1 <= 135, filename);
-    });
-  });
-});
-
-test('famous portrait front hair assets are forehead locks instead of copied back hair caps', () => {
-  const expectedBounds = readPngAlphaBounds(path.join(famousLayerDir, 'fp-layer-frontHair-short-02.png'));
-  listFamousLayerFiles(/^fp-layer-frontHair-.*\.png$/).forEach((filename) => {
-    const alpha = readPngAlphaStats(path.join(famousLayerDir, filename));
-    const bounds = alpha.bounds;
-    const backFilename = filename.includes('-tied-')
-      ? 'fp-layer-backHair-tied-02.png'
-      : 'fp-layer-backHair-short-02.png';
-    const backBounds = readPngAlphaBounds(path.join(famousLayerDir, backFilename));
-    const width = bounds.maxX - bounds.minX + 1;
-    const height = bounds.maxY - bounds.minY + 1;
-    const backHeight = backBounds.maxY - backBounds.minY + 1;
-    const centerYs = alpha.points.filter((point) => Math.abs(point.x - 256) <= 3).map((point) => point.y);
-    assert.deepEqual(bounds, expectedBounds, filename);
-    assert.ok(width >= 220 && width <= 270, filename);
-    assert.ok(height >= 70 && height <= 115, filename);
-    assert.ok(height < backHeight * 0.5, filename);
-    assert.ok(bounds.minY > backBounds.minY + 40, filename);
-    assert.ok(centerYs.length > 0, filename);
-    assert.equal(Math.min(...centerYs), 76, filename);
-    assert.ok(bounds.maxY <= 180, filename);
-  });
-});
-
-function readPngAlphaBounds(filePath) {
-  return readPngAlphaStats(filePath).bounds;
 }
 
 function readPngAlphaStats(filePath) {
@@ -224,7 +26,6 @@ function readPngAlphaStats(filePath) {
     if (type === 'IEND') break;
     offset = dataStart + length + 4;
   }
-  const zlib = require('node:zlib');
   const raw = zlib.inflateSync(Buffer.concat(chunks));
   const bytesPerPixel = 4;
   const stride = width * bytesPerPixel;
@@ -255,27 +56,99 @@ function readPngAlphaStats(filePath) {
     rows.push(scanline);
     previous = scanline;
   }
-  const bounds = { minX: width, minY: height, maxX: -1, maxY: -1 };
-  const points = [];
+  const edgeAlpha = {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  };
+  let opaquePixels = 0;
   rows.forEach((row, y) => {
     for (let x = 0; x < width; x += 1) {
       if (row[x * bytesPerPixel + 3] <= 8) continue;
-      bounds.minX = Math.min(bounds.minX, x);
-      bounds.minY = Math.min(bounds.minY, y);
-      bounds.maxX = Math.max(bounds.maxX, x);
-      bounds.maxY = Math.max(bounds.maxY, y);
-      points.push({ x, y });
+      opaquePixels += 1;
+      if (y === 0) edgeAlpha.top += 1;
+      if (x === width - 1) edgeAlpha.right += 1;
+      if (y === height - 1) edgeAlpha.bottom += 1;
+      if (x === 0) edgeAlpha.left += 1;
     }
   });
-  return { bounds, points };
+  return { width, height, opaquePixels, edgeAlpha };
 }
 
-test('famous portrait candidate outfits share guardian armor alpha bounds', () => {
-  const expected = readPngAlphaBounds(path.join(famousLayerDir, 'fp-layer-outfit-guardian-front-candidate-01.png'));
-  assert.deepEqual(expected, { minX: 41, minY: 242, maxX: 470, maxY: 511 });
-  const filenames = listFamousLayerFiles(/^fp-layer-outfit-.*-front-candidate-\d+\.png$/);
-  assert.ok(filenames.length >= 3);
-  filenames.forEach((filename) => {
-    assert.deepEqual(readPngAlphaBounds(path.join(famousLayerDir, filename)), expected, filename);
+test('famous portrait v2 lab exposes single-set cropped layer controls', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
+  const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
+
+  assert.match(html, /Famous Portrait V2 Lab/);
+  assert.match(html, /id="globalScale"[^>]*min="0"[^>]*max="200"/);
+  assert.match(html, /id="globalX"/);
+  assert.match(html, /id="globalY"/);
+  assert.match(html, /id="layerList"/);
+  assert.match(html, /id="copyExport"/);
+  assert.match(html, /id="exportData"/);
+  assert.match(html, /Layer PNG files are cropped to their first\/last opaque pixels/);
+  assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
+
+  assert.match(script, /fp-layer-v2-manifest\.json/);
+  assert.match(script, /order: \['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'\]/);
+  assert.match(script, /fp-layer-v2-backHair-short-01\.png/);
+  assert.match(script, /fp-layer-v2-body-base-01\.png/);
+  assert.match(script, /fp-layer-v2-innerwear-guardian-01\.png/);
+  assert.match(script, /fp-layer-v2-sideHair-short-01\.png/);
+  assert.match(script, /fp-layer-v2-frontHair-short-01\.png/);
+  assert.match(script, /fp-layer-v2-bangs-short-01\.png/);
+  assert.match(script, /fp-layer-v2-outfit-guardian-01\.png/);
+  assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
+  assert.match(script, /Actual game portrait/);
+  assert.doesNotMatch(script, /frontCutY|backCutY|drawSplitOutfit|fp-layer-outfit-guardian-front-candidate/);
+});
+
+test('famous portrait lab keeps desktop controls scroll isolated from preview', () => {
+  const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
+
+  assert.match(html, /html,\s*body\s*\{[\s\S]*?height:\s*100%;[\s\S]*?overflow:\s*hidden;/);
+  assert.match(html, /\.shell\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*hidden;/);
+  assert.match(html, /\.panel\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(html, /\.stage\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
+});
+
+test('famous portrait v2 manifest matches the single generated resource set', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json'), 'utf8'));
+  const files = listFamousLayerFiles(/^fp-layer-v2-.*\.png$/);
+
+  assert.equal(manifest.version, 2);
+  assert.equal(manifest.coordinateSize, 512);
+  assert.deepEqual(files, [
+    'fp-layer-v2-backHair-short-01.png',
+    'fp-layer-v2-bangs-short-01.png',
+    'fp-layer-v2-body-base-01.png',
+    'fp-layer-v2-frontHair-short-01.png',
+    'fp-layer-v2-innerwear-guardian-01.png',
+    'fp-layer-v2-outfit-guardian-01.png',
+    'fp-layer-v2-sideHair-short-01.png',
+  ]);
+
+  files.forEach((filename) => {
+    const entry = manifest.layers[filename];
+    assert.ok(entry, filename);
+    ['x', 'y', 'width', 'height', 'sourcePixelWidth', 'sourcePixelHeight'].forEach((key) => {
+      assert.equal(Number.isFinite(Number(entry[key])), true, `${filename}.${key}`);
+      assert.ok(Number(entry[key]) > 0 || key === 'x' || key === 'y', `${filename}.${key}`);
+    });
+  });
+});
+
+test('famous portrait v2 PNG layers are cropped to opaque edge pixels', () => {
+  listFamousLayerFiles(/^fp-layer-v2-.*\.png$/).forEach((filename) => {
+    const stats = readPngAlphaStats(path.join(famousLayerDir, filename));
+    assert.ok(stats.width > 0, filename);
+    assert.ok(stats.height > 0, filename);
+    assert.ok(stats.opaquePixels > 0, filename);
+    assert.ok(stats.edgeAlpha.top > 0, `${filename} top edge`);
+    assert.ok(stats.edgeAlpha.right > 0, `${filename} right edge`);
+    assert.ok(stats.edgeAlpha.bottom > 0, `${filename} bottom edge`);
+    assert.ok(stats.edgeAlpha.left > 0, `${filename} left edge`);
   });
 });

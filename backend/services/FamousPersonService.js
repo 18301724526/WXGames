@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.9';
+const APPEARANCE_VERSION = 'famous-portrait-v1.0';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -72,30 +72,24 @@ const ARCHETYPES = Object.freeze([
 const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白', '韩', '秦', '苏']);
 
 const APPEARANCE_POOLS = Object.freeze({
-  body: ['fp-layer-body-skin-01.png', 'fp-layer-body-skin-02.png'],
+  body: ['fp-layer-v2-body-base-01.png'],
+  innerwear: ['fp-layer-v2-innerwear-guardian-01.png'],
   hairSets: Object.freeze([
     Object.freeze({
-      id: 'shortValidated',
-      backHair: 'fp-layer-backHair-short-02.png',
-      sideHair: 'fp-layer-sideHair-short-01.png',
-      frontHair: 'fp-layer-frontHair-short-02.png',
+      id: 'shortFlatV2',
+      backHair: 'fp-layer-v2-backHair-short-01.png',
+      sideHair: 'fp-layer-v2-sideHair-short-01.png',
+      frontHair: 'fp-layer-v2-frontHair-short-01.png',
+      bangs: 'fp-layer-v2-bangs-short-01.png',
     }),
   ]),
   outfit: {
-    vanguard: ['fp-layer-outfit-vanguard-front-candidate-02.png'],
-    guardian: ['fp-layer-outfit-guardian-front-candidate-01.png'],
-    tactician: ['fp-layer-outfit-scholar-front-candidate-03.png'],
-    warden: ['fp-layer-outfit-scholar-front-candidate-03.png'],
-    artisan: ['fp-layer-outfit-vanguard-front-candidate-02.png'],
-    scholar: ['fp-layer-outfit-scholar-front-candidate-03.png'],
-  },
-  accessory: {
-    vanguard: ['fp-layer-accessory-scar-01.png', null],
-    guardian: [null, 'fp-layer-accessory-scar-01.png'],
-    tactician: [null],
-    warden: [null],
-    artisan: [null, 'fp-layer-accessory-scar-01.png'],
-    scholar: [null],
+    vanguard: ['fp-layer-v2-outfit-guardian-01.png'],
+    guardian: ['fp-layer-v2-outfit-guardian-01.png'],
+    tactician: ['fp-layer-v2-outfit-guardian-01.png'],
+    warden: ['fp-layer-v2-outfit-guardian-01.png'],
+    artisan: ['fp-layer-v2-outfit-guardian-01.png'],
+    scholar: ['fp-layer-v2-outfit-guardian-01.png'],
   },
 });
 
@@ -229,17 +223,16 @@ function layerPath(filename) {
 function createAppearance(archetype, seed, randomSource = null) {
   const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(seed);
   const outfitPool = APPEARANCE_POOLS.outfit[archetype.id] || APPEARANCE_POOLS.outfit.vanguard;
-  const accessoryPool = APPEARANCE_POOLS.accessory[archetype.id] || [null];
   const hairSet = pick(APPEARANCE_POOLS.hairSets, source);
   const layers = {
     backHair: layerPath(hairSet.backHair),
-    sideHair: layerPath(hairSet.sideHair),
     body: layerPath(pick(APPEARANCE_POOLS.body, source)),
-    outfit: layerPath(pick(outfitPool, source)),
+    innerwear: layerPath(pick(APPEARANCE_POOLS.innerwear, source)),
+    sideHair: layerPath(hairSet.sideHair),
     frontHair: layerPath(hairSet.frontHair),
+    bangs: layerPath(hairSet.bangs),
+    outfit: layerPath(pick(outfitPool, source)),
   };
-  const accessory = pick(accessoryPool, source);
-  if (accessory) layers.accessory = layerPath(accessory);
   return {
     version: APPEARANCE_VERSION,
     seed: sanitizeText(seed, `${archetype.id}:appearance`),
@@ -253,7 +246,7 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
   if (source.version !== APPEARANCE_VERSION) return generated;
-  const layers = ['backHair', 'sideHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect']
+  const layers = ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit']
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);
       if (value) result[key] = value;
@@ -263,7 +256,6 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
     ...generated.layers,
     ...layers,
   };
-  if (source.version === APPEARANCE_VERSION && !sanitizeText(rawLayers.accessory)) delete mergedLayers.accessory;
   return {
     version: sanitizeText(source.version, APPEARANCE_VERSION),
     seed: sanitizeText(source.seed, fallbackSeed),

@@ -87,18 +87,10 @@
         'assets/art/world-site-outpost-cutout.png',
         'assets/art/world-site-ruins-cutout.png',
         'assets/art/world-site-town-cutout.png',
-        'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
-        'assets/art/famous-person/layers/fp-layer-body-skin-02.png',
-        'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
-        'assets/art/famous-person/layers/fp-layer-backHair-tied-02.png',
-        'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
-        'assets/art/famous-person/layers/fp-layer-sideHair-tied-01.png',
-        'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
-        'assets/art/famous-person/layers/fp-layer-frontHair-tied-02.png',
-        'assets/art/famous-person/layers/fp-layer-outfit-vanguard-front-candidate-02.png',
-        'assets/art/famous-person/layers/fp-layer-outfit-guardian-front-candidate-01.png',
-        'assets/art/famous-person/layers/fp-layer-outfit-scholar-front-candidate-03.png',
-        'assets/art/famous-person/layers/fp-layer-accessory-scar-01.png',
+        ...Object.values(this.getFamousPortraitLayerLayout().layers || {})
+          .map((layer) => layer?.file)
+          .filter(Boolean)
+          .map((file) => `assets/art/famous-person/layers/${file}`),
       ];
     }
 
@@ -386,36 +378,36 @@
       return true;
     }
 
-    drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout, crop = null) {
+    drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout) {
       const image = this.getAsset(assetPath);
       if (!image || typeof this.ctx?.drawImage !== 'function') return false;
+      if (layerLayout?.version === 2 || layerLayout?.mode === 'cropped') {
+        const layout = layerLayout.layers?.[key];
+        if (!layout) return false;
+        const base = layout.base || layout;
+        const coordinateSize = Number(layerLayout.coordinateSize) || 512;
+        const globalLayout = layerLayout.global || {};
+        const offsetScale = baseFrame.size / coordinateSize;
+        const globalScale = Number.isFinite(Number(globalLayout.scale)) ? Number(globalLayout.scale) : 1;
+        const layerScale = Number.isFinite(Number(layout.scale)) ? Number(layout.scale) : 1;
+        const sourceX = Number(base.x) || 0;
+        const sourceY = Number(base.y) || 0;
+        const sourceWidth = Number(base.width) || Number(image.naturalWidth || image.width || 0);
+        const sourceHeight = Number(base.height) || Number(image.naturalHeight || image.height || 0);
+        const layerX = baseFrame.x + (sourceX + (Number(layout.x) || 0) + (Number(globalLayout.x) || 0)) * offsetScale;
+        const layerY = baseFrame.y + (sourceY + (Number(layout.y) || 0) + (Number(globalLayout.y) || 0)) * offsetScale;
+        const layerWidth = sourceWidth * globalScale * layerScale * offsetScale;
+        const layerHeight = sourceHeight * globalScale * layerScale * offsetScale;
+        this.ctx.drawImage(image, layerX, layerY, layerWidth, layerHeight);
+        return true;
+      }
       const layout = layerLayout[key] || { scale: 1, x: 0, y: 0 };
       const layerScale = Number.isFinite(Number(layout.scale)) ? Number(layout.scale) : 1;
       const layerSize = baseFrame.size * layerScale;
       const offsetScale = baseFrame.size / 512;
       const layerX = baseFrame.x + (baseFrame.size - layerSize) / 2 + (Number(layout.x) || 0) * offsetScale;
       const layerY = baseFrame.y + (baseFrame.size - layerSize) / 2 + (Number(layout.y) || 0) * offsetScale;
-      if (!crop) {
-        this.ctx.drawImage(image, layerX, layerY, layerSize, layerSize);
-        return true;
-      }
-      const sourceWidth = Number(image.naturalWidth || image.width || 512);
-      const sourceHeight = Number(image.naturalHeight || image.height || 512);
-      const sx = Math.max(0, Math.min(sourceWidth - 1, Number(crop.sx) || 0));
-      const sy = Math.max(0, Math.min(sourceHeight - 1, Number(crop.sy) || 0));
-      const sw = Math.max(1, Math.min(sourceWidth - sx, Number(crop.sw) || sourceWidth));
-      const sh = Math.max(1, Math.min(sourceHeight - sy, Number(crop.sh) || sourceHeight));
-      this.ctx.drawImage(
-        image,
-        sx,
-        sy,
-        sw,
-        sh,
-        layerX + (sx / sourceWidth) * layerSize,
-        layerY + (sy / sourceHeight) * layerSize,
-        (sw / sourceWidth) * layerSize,
-        (sh / sourceHeight) * layerSize,
-      );
+      this.ctx.drawImage(image, layerX, layerY, layerSize, layerSize);
       return true;
     }
 
@@ -442,30 +434,18 @@
         const drawX = x + (frameWidth - drawSize) / 2;
         const drawY = y + (frameHeight - drawSize) / 2 + size * (options.offsetY ?? 0.18);
         const baseFrame = { x: drawX, y: drawY, size: drawSize };
-        const frontCutY = Math.max(0, Math.min(512, Number(globalLayout.frontCutY) || 286));
-        const backCutY = Math.max(0, Math.min(512, Number(globalLayout.backCutY) || 252));
         const mode = options.mode || layerLayout.mode || 'current';
         let drawnAny = false;
-        const drawLayer = (key, crop = null) => {
+        const drawLayer = (key) => {
           const assetPath = rawLayers[key];
           if (!assetPath) return;
-          drawnAny = this.drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout, crop) || drawnAny;
+          drawnAny = this.drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout) || drawnAny;
         };
-        if (mode === 'outfitBack') {
-          drawLayer('backHair');
-          drawLayer('outfit');
-          drawLayer('body');
-          drawLayer('face');
-          drawLayer('sideHair');
-          drawLayer('frontHair');
-        } else if (mode === 'split') {
-          drawLayer('backHair');
-          drawLayer('outfit', { sx: 0, sy: 0, sw: 512, sh: backCutY });
-          drawLayer('body');
-          drawLayer('face');
-          drawLayer('sideHair');
-          drawLayer('outfit', { sx: 0, sy: frontCutY, sw: 512, sh: 512 - frontCutY });
-          drawLayer('frontHair');
+        if (layerLayout.version === 2 || mode === 'cropped') {
+          const order = Array.isArray(layerLayout.order)
+            ? layerLayout.order
+            : ['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'];
+          order.forEach((key) => drawLayer(key));
         } else {
           drawLayer('backHair');
           drawLayer('body');
@@ -474,8 +454,6 @@
           drawLayer('outfit');
           drawLayer('frontHair');
         }
-        drawLayer('accessory');
-        drawLayer('frameEffect');
         return drawnAny;
       };
 
