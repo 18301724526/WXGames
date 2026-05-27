@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v1.0';
+const APPEARANCE_VERSION = 'famous-portrait-v1.1';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -72,24 +72,24 @@ const ARCHETYPES = Object.freeze([
 const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白', '韩', '秦', '苏']);
 
 const APPEARANCE_POOLS = Object.freeze({
-  body: ['fp-layer-v2-body-base-01.png'],
-  innerwear: ['fp-layer-v2-innerwear-guardian-01.png'],
+  body: ['fp-layer-v2-art01-body-base-01.png'],
+  innerwear: ['fp-layer-v2-art01-innerwear-guardian-01.png'],
   hairSets: Object.freeze([
     Object.freeze({
       id: 'shortFlatV2',
-      backHair: 'fp-layer-v2-backHair-short-01.png',
-      sideHair: 'fp-layer-v2-sideHair-short-01.png',
-      frontHair: 'fp-layer-v2-frontHair-short-01.png',
-      bangs: 'fp-layer-v2-bangs-short-01.png',
+      backHair: 'fp-layer-v2-art01-backHair-short-01.png',
+      sideHair: 'fp-layer-v2-art01-sideHair-short-01.png',
+      frontHair: 'fp-layer-v2-art01-frontHair-short-01.png',
+      bangs: 'fp-layer-v2-art01-bangs-short-01.png',
     }),
   ]),
   outfit: {
-    vanguard: ['fp-layer-v2-outfit-guardian-01.png'],
-    guardian: ['fp-layer-v2-outfit-guardian-01.png'],
-    tactician: ['fp-layer-v2-outfit-guardian-01.png'],
-    warden: ['fp-layer-v2-outfit-guardian-01.png'],
-    artisan: ['fp-layer-v2-outfit-guardian-01.png'],
-    scholar: ['fp-layer-v2-outfit-guardian-01.png'],
+    vanguard: ['fp-layer-v2-art01-outfit-guardian-01.png'],
+    guardian: ['fp-layer-v2-art01-outfit-guardian-01.png'],
+    tactician: ['fp-layer-v2-art01-outfit-guardian-01.png'],
+    warden: ['fp-layer-v2-art01-outfit-guardian-01.png'],
+    artisan: ['fp-layer-v2-art01-outfit-guardian-01.png'],
+    scholar: ['fp-layer-v2-art01-outfit-guardian-01.png'],
   },
 });
 

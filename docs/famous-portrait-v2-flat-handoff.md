@@ -4,14 +4,16 @@ Updated: 2026-05-27
 
 ## Current Direction
 
-The famous portrait system has been rebuilt around one approved flat-color resource set.
+The famous portrait system has been rebuilt around one bitmap PNG resource set.
 
 This version intentionally removes the old split/crop simulation path. The lab and the game now share the same cropped-layer coordinate model:
 
-1. Each PNG is tightly cropped to its first and last opaque pixels.
-2. The manifest stores each cropped PNG's base position in a 512 x 512 coordinate space.
-3. Manual tuning is stored as layer `x`, `y`, and `scale` offsets.
-4. Runtime drawing uses the same order and coordinate math as the lab preview.
+1. Art is generated as a bitmap PNG contact sheet, not with code-drawn vector/canvas shapes.
+2. The extraction script only removes the green/white sheet background, crops transparent padding, and writes PNG layers.
+3. Each PNG is tightly cropped to its first and last opaque pixels.
+4. The manifest stores each cropped PNG's base position in a 512 x 512 coordinate space.
+5. Manual tuning is stored as layer `x`, `y`, and `scale` offsets.
+6. Runtime drawing uses the same order and coordinate math as the lab preview.
 
 ## Public Test Entry
 
@@ -49,27 +51,33 @@ Layer meaning:
 
 Only these layer files should exist under `frontend/assets/art/famous-person/layers/`:
 
-- `fp-layer-v2-backHair-short-01.png`
-- `fp-layer-v2-body-base-01.png`
-- `fp-layer-v2-innerwear-guardian-01.png`
-- `fp-layer-v2-sideHair-short-01.png`
-- `fp-layer-v2-frontHair-short-01.png`
-- `fp-layer-v2-bangs-short-01.png`
-- `fp-layer-v2-outfit-guardian-01.png`
+- `fp-layer-v2-art01-backHair-short-01.png`
+- `fp-layer-v2-art01-body-base-01.png`
+- `fp-layer-v2-art01-innerwear-guardian-01.png`
+- `fp-layer-v2-art01-sideHair-short-01.png`
+- `fp-layer-v2-art01-frontHair-short-01.png`
+- `fp-layer-v2-art01-bangs-short-01.png`
+- `fp-layer-v2-art01-outfit-guardian-01.png`
 - `fp-layer-v2-manifest.json`
 
 Old `fp-layer-*` and old preview PNGs were deleted on purpose.
 
+The source sheet is tracked here:
+
+- `frontend/assets/art/famous-person/source/famous-portrait-layer-sheet-art01.png`
+
 ## Code Links
 
-- Resource generator: `scripts/generate-famous-portrait-v2-assets.js`
+- Resource extractor: `scripts/extract-famous-portrait-v2-sheet.js`
 - Lab page: `frontend/tools/famous-portrait-lab.html`
 - Lab logic: `frontend/tools/famous-portrait-lab.js`
 - Shared layout: `frontend/js/config/FamousPortraitLayout.js`
 - Game renderer: `frontend/js/platform/CanvasGameRenderer.js`
 - Backend generation: `backend/services/FamousPersonService.js`
 
-`FamousPersonService.APPEARANCE_VERSION` is now `famous-portrait-v1.0`, so saved v0.9/v0.2/unversioned people regenerate into v2 layers during normalization.
+`FamousPersonService.APPEARANCE_VERSION` is now `famous-portrait-v1.1`, so saved v1.0/v0.9/v0.2/unversioned people regenerate into the `art01` PNG layers during normalization.
+
+Important: do not restore `scripts/generate-famous-portrait-v2-assets.js`. That old path drew placeholder art in code. The approved pipeline is PNG art sheet -> deterministic extraction -> cropped PNG layers.
 
 ## Tests
 

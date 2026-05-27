@@ -92,13 +92,14 @@ test('famous portrait v2 lab exposes single-set cropped layer controls', () => {
 
   assert.match(script, /fp-layer-v2-manifest\.json/);
   assert.match(script, /order: \['backHair', 'body', 'innerwear', 'sideHair', 'frontHair', 'bangs', 'outfit'\]/);
-  assert.match(script, /fp-layer-v2-backHair-short-01\.png/);
-  assert.match(script, /fp-layer-v2-body-base-01\.png/);
-  assert.match(script, /fp-layer-v2-innerwear-guardian-01\.png/);
-  assert.match(script, /fp-layer-v2-sideHair-short-01\.png/);
-  assert.match(script, /fp-layer-v2-frontHair-short-01\.png/);
-  assert.match(script, /fp-layer-v2-bangs-short-01\.png/);
-  assert.match(script, /fp-layer-v2-outfit-guardian-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-backHair-short-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-body-base-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-innerwear-guardian-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-sideHair-short-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-frontHair-short-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-bangs-short-01\.png/);
+  assert.match(script, /fp-layer-v2-art01-outfit-guardian-01\.png/);
+  assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
   assert.match(script, /Actual game portrait/);
   assert.doesNotMatch(script, /frontCutY|backCutY|drawSplitOutfit|fp-layer-outfit-guardian-front-candidate/);
@@ -121,13 +122,13 @@ test('famous portrait v2 manifest matches the single generated resource set', ()
   assert.equal(manifest.version, 2);
   assert.equal(manifest.coordinateSize, 512);
   assert.deepEqual(files, [
-    'fp-layer-v2-backHair-short-01.png',
-    'fp-layer-v2-bangs-short-01.png',
-    'fp-layer-v2-body-base-01.png',
-    'fp-layer-v2-frontHair-short-01.png',
-    'fp-layer-v2-innerwear-guardian-01.png',
-    'fp-layer-v2-outfit-guardian-01.png',
-    'fp-layer-v2-sideHair-short-01.png',
+    'fp-layer-v2-art01-backHair-short-01.png',
+    'fp-layer-v2-art01-bangs-short-01.png',
+    'fp-layer-v2-art01-body-base-01.png',
+    'fp-layer-v2-art01-frontHair-short-01.png',
+    'fp-layer-v2-art01-innerwear-guardian-01.png',
+    'fp-layer-v2-art01-outfit-guardian-01.png',
+    'fp-layer-v2-art01-sideHair-short-01.png',
   ]);
 
   files.forEach((filename) => {
