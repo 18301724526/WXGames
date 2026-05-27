@@ -89,6 +89,7 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(html, /id="exportData"/);
   assert.match(html, /直接使用你切好的 PNG 原图/);
   assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
+  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.1\.139-hair-anchor"><\/script>/);
 
   assert.match(script, /fp-layer-v2-manifest\.json/);
   assert.match(script, /order: \['outfitBack', 'head', 'hair', 'outfitFront'\]/);
