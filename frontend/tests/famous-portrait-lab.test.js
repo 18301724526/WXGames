@@ -152,3 +152,21 @@ test('famous portrait v2 PNG layers are non-empty alpha resources', () => {
     assert.ok(stats.opaquePixels > 0, filename);
   });
 });
+
+test('active famous portrait lab layers preserve source aspect ratio', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json'), 'utf8'));
+  [
+    'fp-layer-v2-art01-backHair-short-01.png',
+    'fp-layer-v2-art01-sideHair-short-01.png',
+    'fp-layer-v2-art01-frontHair-short-01.png',
+    'fp-layer-v2-art01-bangs-short-01.png',
+    'fp-layer-v2-art01-head-base-01.png',
+    'fp-layer-v2-art01-outfitBack-guardian-01.png',
+    'fp-layer-v2-art01-outfitFront-guardian-01.png',
+  ].forEach((filename) => {
+    const entry = manifest.layers[filename];
+    const sourceRatio = entry.sourcePixelWidth / entry.sourcePixelHeight;
+    const drawRatio = entry.width / entry.height;
+    assert.ok(Math.abs(sourceRatio - drawRatio) < 0.002, `${filename} aspect ratio`);
+  });
+});
