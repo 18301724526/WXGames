@@ -152,7 +152,7 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
 
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png'));
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png'));
@@ -173,10 +173,10 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
     height: famousManifest.layers['fp-layer-v2-art01-head-base-01.png'].height,
   });
   assert.deepEqual(layout.layers.hairBase.base, {
-    x: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-01.png'].x,
-    y: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-01.png'].y,
-    width: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-01.png'].width,
-    height: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-01.png'].height,
+    x: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'].x,
+    y: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'].y,
+    width: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'].width,
+    height: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'].height,
   });
   assert.equal(layout.layers.hairBase.scale, 0.19);
   assert.equal(layout.layers.bangs.scale, 0.19);
@@ -187,7 +187,7 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   const layers = {
     outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
     head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
-    hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+    hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
     bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
     outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
   };
@@ -968,7 +968,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   [
     'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
     'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+    'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
     'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
     'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
   ].forEach((assetPath) => {
@@ -997,11 +997,11 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v2.0',
+          version: 'famous-portrait-v2.1',
           layers: {
             outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
             head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
-            hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+            hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
             bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
             outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
           },

@@ -117,7 +117,7 @@
       "sourceSheetY": 0,
       "source": "AI generated complete hair layer for anchor prototype"
     },
-    "fp-layer-v2-art01-hairBase-bound-topknot-01.png": {
+    "fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png": {
       "x": 0,
       "y": 0,
       "width": 1254,
@@ -126,7 +126,7 @@
       "sourcePixelHeight": 1254,
       "sourceSheetX": 0,
       "sourceSheetY": 0,
-      "source": "Derived from validated complete hair layer; replaceable bangs removed for anchor testing"
+      "source": "Derived from validated complete hair layer; filled forehead root base under replaceable bangs"
     },
     "fp-layer-v2-art01-bangs-bound-topknot-01.png": {
       "x": 0,

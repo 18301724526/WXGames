@@ -32,7 +32,7 @@
         scale: 0.46,
       }),
       hairBase: Object.freeze({
-        file: 'fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+        file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
         base: Object.freeze({ x: 0, y: 0, width: 1254, height: 1254 }),
         x: 135,
         y: 20,

@@ -9,9 +9,9 @@
     layers: {
       hairBase: {
         label: '发型底层',
-        file: 'fp-layer-v2-art01-hairBase-bound-topknot-01.png',
+        file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
         options: [
-          { label: '束发底层', file: 'fp-layer-v2-art01-hairBase-bound-topknot-01.png' },
+          { label: '束发底层', file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png' },
         ],
         scale: 0.19,
         x: 135,

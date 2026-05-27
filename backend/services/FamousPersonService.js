@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v2.0';
+const APPEARANCE_VERSION = 'famous-portrait-v2.1';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -73,7 +73,7 @@ const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白',
 
 const APPEARANCE_POOLS = Object.freeze({
   head: ['fp-layer-v2-art01-head-base-01.png'],
-  hairBase: ['fp-layer-v2-art01-hairBase-bound-topknot-01.png'],
+  hairBase: ['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'],
   bangs: [
     'fp-layer-v2-art01-bangs-bound-topknot-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',

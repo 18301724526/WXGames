@@ -41,10 +41,10 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.name, '陆骁');
   assert.equal(result.candidate.skills[0].name, '血刃连袭');
   assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v2.0');
+  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v2.1');
   assert.ok(result.candidate.appearance.layers.outfitBack.endsWith('fp-layer-v2-art01-outfitBack-guardian-01.png'));
   assert.ok(result.candidate.appearance.layers.head.endsWith('fp-layer-v2-art01-head-base-01.png'));
-  assert.ok(result.candidate.appearance.layers.hairBase.endsWith('fp-layer-v2-art01-hairBase-bound-topknot-01.png'));
+  assert.ok(result.candidate.appearance.layers.hairBase.endsWith('fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'));
   assert.match(result.candidate.appearance.layers.bangs, /fp-layer-v2-art01-bangs-bound-topknot(-short|-parted|-swept)?-01\.png$/);
   assert.ok(result.candidate.appearance.layers.outfitFront.endsWith('fp-layer-v2-art01-outfitFront-guardian-01.png'));
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'hair'), false);
@@ -185,7 +185,7 @@ test('legacy portrait appearance is regenerated with the anchored complete hair 
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.match(layers.outfitBack, /fp-layer-v2-art01-outfitBack-guardian-01\.png$/);
   assert.match(layers.head, /fp-layer-v2-art01-head-base-01\.png$/);
-  assert.match(layers.hairBase, /fp-layer-v2-art01-hairBase-bound-topknot-01\.png$/);
+  assert.match(layers.hairBase, /fp-layer-v2-art01-hairBase-bound-topknot-filled-01\.png$/);
   assert.match(layers.bangs, /fp-layer-v2-art01-bangs-bound-topknot(-short|-parted|-swept)?-01\.png$/);
   assert.match(layers.outfitFront, /fp-layer-v2-art01-outfitFront-guardian-01\.png$/);
   assert.equal(Object.prototype.hasOwnProperty.call(layers, 'hair'), false);
