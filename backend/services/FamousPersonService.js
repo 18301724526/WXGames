@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v0.5';
+const APPEARANCE_VERSION = 'famous-portrait-v0.7';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -77,12 +77,12 @@ const APPEARANCE_POOLS = Object.freeze({
   sideHair: ['fp-layer-sideHair-short-01.png', 'fp-layer-sideHair-tied-01.png'],
   frontHair: ['fp-layer-frontHair-short-02.png', 'fp-layer-frontHair-tied-02.png'],
   outfit: {
-    vanguard: ['fp-layer-outfit-vanguard-01.png'],
-    guardian: ['fp-layer-outfit-guardian-01.png'],
-    tactician: ['fp-layer-outfit-scholar-01.png'],
-    warden: ['fp-layer-outfit-scholar-01.png'],
-    artisan: ['fp-layer-outfit-vanguard-01.png'],
-    scholar: ['fp-layer-outfit-scholar-01.png'],
+    vanguard: ['fp-layer-outfit-vanguard-front-candidate-02.png'],
+    guardian: ['fp-layer-outfit-guardian-front-candidate-01.png'],
+    tactician: ['fp-layer-outfit-scholar-front-candidate-03.png'],
+    warden: ['fp-layer-outfit-scholar-front-candidate-03.png'],
+    artisan: ['fp-layer-outfit-vanguard-front-candidate-02.png'],
+    scholar: ['fp-layer-outfit-scholar-front-candidate-03.png'],
   },
   accessory: {
     vanguard: ['fp-layer-accessory-scar-01.png', null],
@@ -246,7 +246,7 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const source = raw && typeof raw === 'object' ? raw : {};
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
-  if (source.version && source.version !== APPEARANCE_VERSION) return generated;
+  if (source.version !== APPEARANCE_VERSION) return generated;
   const layers = ['backHair', 'sideHair', 'body', 'face', 'outfit', 'frontHair', 'accessory', 'frameEffect']
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);

@@ -4,9 +4,6 @@
     guardianCandidate: 'fp-layer-outfit-guardian-front-candidate-01.png',
     vanguardCandidate: 'fp-layer-outfit-vanguard-front-candidate-02.png',
     scholarCandidate: 'fp-layer-outfit-scholar-front-candidate-03.png',
-    guardian: 'fp-layer-outfit-guardian-01.png',
-    vanguard: 'fp-layer-outfit-vanguard-01.png',
-    scholar: 'fp-layer-outfit-scholar-01.png',
   };
   const bodyFiles = {
     '01': 'fp-layer-body-skin-01.png',

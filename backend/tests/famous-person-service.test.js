@@ -42,7 +42,8 @@ test('seek creates a generated candidate with matching skill name and no level f
   assert.equal(result.candidate.skills[0].name, '血刃连袭');
   assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
   assert.ok(result.candidate.appearance.layers.body.endsWith('fp-layer-body-skin-01.png'));
-  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-01.png'));
+  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v0.7');
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-vanguard-front-candidate-02.png'));
   assert.ok(result.candidate.appearance.layers.backHair.startsWith('assets/art/famous-person/layers/fp-layer-backHair-'));
   assert.ok(result.candidate.appearance.layers.sideHair.startsWith('assets/art/famous-person/layers/fp-layer-sideHair-'));
   assert.ok(result.candidate.appearance.layers.frontHair.startsWith('assets/art/famous-person/layers/fp-layer-frontHair-'));
@@ -67,7 +68,7 @@ test('guardian archetype uses its own portrait outfit', () => {
 
   assert.equal(result.success, true);
   assert.equal(result.candidate.archetype, 'guardian');
-  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-guardian-01.png'));
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-outfit-guardian-front-candidate-01.png'));
 });
 
 test('accept moves candidate into cloud-persisted famous people list', () => {
@@ -180,8 +181,35 @@ test('legacy portrait appearance is regenerated with split hair layers', () => {
   const layers = normalized.famousPeople[0].appearance.layers;
 
   assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.match(layers.outfit, /fp-layer-outfit-guardian-front-candidate-01\.png$/);
   assert.match(layers.backHair, /fp-layer-backHair-(short|tied)-02\.png$/);
   assert.match(layers.sideHair, /fp-layer-sideHair-(short|tied)-01\.png$/);
   assert.match(layers.frontHair, /fp-layer-frontHair-(short|tied)-02\.png$/);
   assert.doesNotMatch(layers.frontHair, /frontHair-(short|tied)-01\.png$/);
+});
+
+test('unversioned portrait appearance is regenerated away from deleted outfit assets', () => {
+  const state = GameStateService.createInitialGameState('fp-unversioned-outfit');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_unversioned_outfit',
+    name: '秦承',
+    title: '垒门守将',
+    source: { type: 'seek', seed: 'legacy:unversioned-outfit' },
+    archetype: 'guardian',
+    appearance: {
+      layers: {
+        body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
+        outfit: 'assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png',
+        frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
+      },
+    },
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  const layers = normalized.famousPeople[0].appearance.layers;
+
+  assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.match(layers.outfit, /fp-layer-outfit-guardian-front-candidate-01\.png$/);
+  assert.doesNotMatch(layers.outfit, /fp-layer-outfit-guardian-01\.png$/);
 });

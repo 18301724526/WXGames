@@ -95,9 +95,9 @@
         'assets/art/famous-person/layers/fp-layer-sideHair-tied-01.png',
         'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
         'assets/art/famous-person/layers/fp-layer-frontHair-tied-02.png',
-        'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
-        'assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png',
-        'assets/art/famous-person/layers/fp-layer-outfit-scholar-01.png',
+        'assets/art/famous-person/layers/fp-layer-outfit-vanguard-front-candidate-02.png',
+        'assets/art/famous-person/layers/fp-layer-outfit-guardian-front-candidate-01.png',
+        'assets/art/famous-person/layers/fp-layer-outfit-scholar-front-candidate-03.png',
         'assets/art/famous-person/layers/fp-layer-accessory-scar-01.png',
       ];
     }
@@ -386,14 +386,43 @@
       return true;
     }
 
+    drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout, crop = null) {
+      const image = this.getAsset(assetPath);
+      if (!image || typeof this.ctx?.drawImage !== 'function') return false;
+      const layout = layerLayout[key] || { scale: 1, x: 0, y: 0 };
+      const layerScale = Number.isFinite(Number(layout.scale)) ? Number(layout.scale) : 1;
+      const layerSize = baseFrame.size * layerScale;
+      const offsetScale = baseFrame.size / 512;
+      const layerX = baseFrame.x + (baseFrame.size - layerSize) / 2 + (Number(layout.x) || 0) * offsetScale;
+      const layerY = baseFrame.y + (baseFrame.size - layerSize) / 2 + (Number(layout.y) || 0) * offsetScale;
+      if (!crop) {
+        this.ctx.drawImage(image, layerX, layerY, layerSize, layerSize);
+        return true;
+      }
+      const sourceWidth = Number(image.naturalWidth || image.width || 512);
+      const sourceHeight = Number(image.naturalHeight || image.height || 512);
+      const sx = Math.max(0, Math.min(sourceWidth - 1, Number(crop.sx) || 0));
+      const sy = Math.max(0, Math.min(sourceHeight - 1, Number(crop.sy) || 0));
+      const sw = Math.max(1, Math.min(sourceWidth - sx, Number(crop.sw) || sourceWidth));
+      const sh = Math.max(1, Math.min(sourceHeight - sy, Number(crop.sh) || sourceHeight));
+      this.ctx.drawImage(
+        image,
+        sx,
+        sy,
+        sw,
+        sh,
+        layerX + (sx / sourceWidth) * layerSize,
+        layerY + (sy / sourceHeight) * layerSize,
+        (sw / sourceWidth) * layerSize,
+        (sh / sourceHeight) * layerSize,
+      );
+      return true;
+    }
+
     drawFamousPortrait(card = {}, x, y, size, options = {}) {
       const appearance = card.appearance || {};
       const rawLayers = appearance.layers && typeof appearance.layers === 'object' ? appearance.layers : {};
-      const layerOrder = ['backHair', 'body', 'face', 'sideHair', 'outfit', 'frontHair', 'accessory', 'frameEffect'];
-      const layers = layerOrder
-        .map((key) => ({ key, assetPath: rawLayers[key] }))
-        .filter((entry) => entry.assetPath);
-      if (!layers.length || !this.ctx) return false;
+      if (!Object.values(rawLayers).some(Boolean) || !this.ctx) return false;
 
       const frameWidth = options.frameWidth || size;
       const frameHeight = options.frameHeight || size;
@@ -406,21 +435,47 @@
       });
 
       const drawLayers = () => {
+        const layerLayout = this.constructor.getFamousPortraitLayerLayout();
+        const globalLayout = layerLayout.global || {};
         const scale = options.scale || 1.45;
         const drawSize = size * scale;
         const drawX = x + (frameWidth - drawSize) / 2;
         const drawY = y + (frameHeight - drawSize) / 2 + size * (options.offsetY ?? 0.18);
+        const baseFrame = { x: drawX, y: drawY, size: drawSize };
+        const frontCutY = Math.max(0, Math.min(512, Number(globalLayout.frontCutY) || 286));
+        const backCutY = Math.max(0, Math.min(512, Number(globalLayout.backCutY) || 252));
+        const mode = options.mode || layerLayout.mode || 'current';
         let drawnAny = false;
-        const layerLayout = this.constructor.getFamousPortraitLayerLayout();
-        layers.forEach(({ key, assetPath }) => {
-          const layout = layerLayout[key] || { scale: 1, x: 0, y: 0 };
-          const layerScale = Number.isFinite(Number(layout.scale)) ? Number(layout.scale) : 1;
-          const layerSize = drawSize * layerScale;
-          const offsetScale = drawSize / 512;
-          const layerX = drawX + (drawSize - layerSize) / 2 + (Number(layout.x) || 0) * offsetScale;
-          const layerY = drawY + (drawSize - layerSize) / 2 + (Number(layout.y) || 0) * offsetScale;
-          drawnAny = this.drawAsset(assetPath, layerX, layerY, layerSize, layerSize) || drawnAny;
-        });
+        const drawLayer = (key, crop = null) => {
+          const assetPath = rawLayers[key];
+          if (!assetPath) return;
+          drawnAny = this.drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout, crop) || drawnAny;
+        };
+        if (mode === 'outfitBack') {
+          drawLayer('backHair');
+          drawLayer('outfit');
+          drawLayer('body');
+          drawLayer('face');
+          drawLayer('sideHair');
+          drawLayer('frontHair');
+        } else if (mode === 'split') {
+          drawLayer('backHair');
+          drawLayer('outfit', { sx: 0, sy: 0, sw: 512, sh: backCutY });
+          drawLayer('body');
+          drawLayer('face');
+          drawLayer('sideHair');
+          drawLayer('outfit', { sx: 0, sy: frontCutY, sw: 512, sh: 512 - frontCutY });
+          drawLayer('frontHair');
+        } else {
+          drawLayer('backHair');
+          drawLayer('body');
+          drawLayer('face');
+          drawLayer('sideHair');
+          drawLayer('outfit');
+          drawLayer('frontHair');
+        }
+        drawLayer('accessory');
+        drawLayer('frameEffect');
         return drawnAny;
       };
 
@@ -1629,7 +1684,7 @@
         inset: candidate ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
       });
       const portraitWidth = 74;
-      const portraitHeight = candidate ? 98 : 88;
+      const portraitHeight = 98;
       const portraitX = x + 10;
       const portraitY = y + 10;
       this.drawPanel(portraitX, portraitY, portraitWidth, portraitHeight, {

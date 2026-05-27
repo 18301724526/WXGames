@@ -18,15 +18,13 @@ test('famous portrait lab exposes isolated layer order experiments', () => {
   assert.match(html, /素材诊断/);
   assert.match(html, /显示透明像素边界/);
 
-  assert.match(script, /fp-layer-outfit-guardian-01\.png/);
-  assert.match(script, /fp-layer-outfit-vanguard-01\.png/);
-  assert.match(script, /fp-layer-outfit-scholar-01\.png/);
   assert.match(script, /fp-layer-outfit-guardian-front-candidate-01\.png/);
   assert.match(script, /fp-layer-outfit-vanguard-front-candidate-02\.png/);
   assert.match(script, /fp-layer-outfit-scholar-front-candidate-03\.png/);
   assert.match(html, /守将候选-正面甲/);
   assert.match(html, /突骑候选-正面甲/);
   assert.match(html, /学者候选-正面袍/);
+  assert.doesNotMatch(html, /旧守将盔甲|旧突骑战装|旧学者长袍/);
   assert.match(html, /value="split"/);
   assert.match(script, /state\.mode === 'current'/);
   assert.match(script, /drawSplitOutfit/);

@@ -75,7 +75,7 @@
 后端生成和存档归一：
 
 - `backend/services/FamousPersonService.js`
-- `APPEARANCE_VERSION = famous-portrait-v0.5`
+- `APPEARANCE_VERSION = famous-portrait-v0.7`
 - 新生成名人会带 `sideHair`
 - 旧版 `famous-portrait-v0.2/v0.3/v0.4` 外观会在 normalize 时重新生成到 `v0.5`
 
@@ -154,7 +154,14 @@ git push https://github.com/18301724526/WXGames.git main
 ## 2026-05-27 runtime correction
 
 - Commit 893baf4 was the wrong implementation direction because it copied the lab split/crop simulation into CanvasGameRenderer.
-- Runtime must stay aligned with 1577ffb: full-layer draw order only, no mode: split, no frontCutY/backCutY, and no cropped outfit draw calls.
+- Runtime must stay aligned with the lab game-preview path: default mode current, with split/outfitBack available for lab parity.
 - The game-side portrait path is backHair -> body -> face -> sideHair -> outfit -> frontHair -> accessory -> frameEffect.
-- FamousPersonService.APPEARANCE_VERSION stays on famous-portrait-v0.5 and generated people use the normal outfit files, not the lab candidate outfit files.
+- FamousPersonService.APPEARANCE_VERSION stays on famous-portrait-v0.7 and generated people use the lab candidate outfit files; old formal outfit files are deleted.
 - The lab may keep crop controls for comparison/export work, but those fields are not part of the runtime rendering contract.
+## 2026-05-27 lab runtime correction
+
+- The lab game-preview path is now the authority for famous portrait runtime alignment.
+- Runtime uses the lab-tuned candidate outfit assets: guardian-front-candidate-01, vanguard-front-candidate-02, and scholar-front-candidate-03.
+- The old formal outfit PNGs were wrong for the current portrait contract and should not be referenced or restored.
+- FamousPersonService.APPEARANCE_VERSION is famous-portrait-v0.7 so old saved people regenerate appearance layers through normalization.
+- CanvasGameRenderer supports the lab modes current/outfitBack/split; the default runtime mode is current, matching the lab game-preview area.

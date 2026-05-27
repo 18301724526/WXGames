@@ -153,14 +153,19 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-backHair-short-02.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-sideHair-short-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-frontHair-short-02.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-vanguard-front-candidate-02.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-guardian-front-candidate-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-outfit-scholar-front-candidate-03.png'));
+  assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png'));
 });
 
 test('CanvasGameRenderer applies the same famous portrait layer layout as the lab', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
+  assert.equal(layout.mode, 'current');
+  assert.equal(layout.global.frontCutY, 286);
+  assert.equal(layout.global.backCutY, 252);
   assert.equal(layout.body.scale, 0.7);
   assert.equal(layout.outfit.scale, 1.21);
   assert.equal(layout.outfit.y, 53);
@@ -171,7 +176,7 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
     backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
     sideHair: 'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
     body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
-    outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+    outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-front-candidate-02.png',
     frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
   };
   Object.values(layers).forEach((assetPath) => {
@@ -947,7 +952,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
     'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
     'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
     'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
-    'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+    'assets/art/famous-person/layers/fp-layer-outfit-vanguard-front-candidate-02.png',
     'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
   ].forEach((assetPath) => {
     renderer.assetCache.set(assetPath, {
@@ -975,12 +980,12 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v0.5',
+          version: 'famous-portrait-v0.7',
           layers: {
             backHair: 'assets/art/famous-person/layers/fp-layer-backHair-short-02.png',
             sideHair: 'assets/art/famous-person/layers/fp-layer-sideHair-short-01.png',
             body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
-            outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-01.png',
+            outfit: 'assets/art/famous-person/layers/fp-layer-outfit-vanguard-front-candidate-02.png',
             frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
           },
         },
@@ -1014,7 +1019,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => (
     call[0] === 'roundRect'
     && call[3] === 74
-    && call[4] === 88
+    && call[4] === 98
   )));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '陆'), false);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openFamousPersons'));
