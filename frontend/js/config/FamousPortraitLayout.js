@@ -39,11 +39,11 @@
         scale: 0.19,
       }),
       bangs: Object.freeze({
-        file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png',
+        file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
         base: Object.freeze({ x: 0, y: 0, width: 1254, height: 1254 }),
-        x: 135,
-        y: 20,
-        scale: 0.19,
+        x: 15,
+        y: -40,
+        scale: 0.38,
       }),
       outfitFront: Object.freeze({
         file: 'fp-layer-v2-art01-outfitFront-guardian-01.png',

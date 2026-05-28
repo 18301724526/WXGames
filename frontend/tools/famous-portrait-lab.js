@@ -20,16 +20,16 @@
       },
       bangs: {
         label: '刘海',
-        file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png',
+        file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
         options: [
           { label: '原始刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png' },
           { label: '短刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-short-01.png' },
           { label: '分缝刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png' },
           { label: '侧扫刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png' },
         ],
-        scale: 0.19,
-        x: 135,
-        y: 20,
+        scale: 0.38,
+        x: 15,
+        y: -40,
         visible: true,
       },
       outfitBack: {

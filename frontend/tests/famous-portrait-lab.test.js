@@ -101,9 +101,10 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitBack-guardian-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitFront-guardian-01\.png/);
-  assert.match(script, /scale:\s*0\.19/);
-  assert.match(script, /x:\s*135/);
-  assert.match(script, /y:\s*20/);
+  assert.match(script, /file:\s*'fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png'/);
+  assert.match(script, /scale:\s*0\.38/);
+  assert.match(script, /x:\s*15/);
+  assert.match(script, /y:\s*-40/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /data-control="file"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);

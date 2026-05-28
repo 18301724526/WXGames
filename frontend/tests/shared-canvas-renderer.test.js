@@ -153,7 +153,7 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png'));
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-frontHair-short-01.png'));
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
@@ -179,16 +179,16 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
     height: famousManifest.layers['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'].height,
   });
   assert.equal(layout.layers.hairBase.scale, 0.19);
-  assert.equal(layout.layers.bangs.scale, 0.19);
+  assert.equal(layout.layers.bangs.scale, 0.38);
   assert.equal(layout.layers.hairBase.x, 135);
-  assert.equal(layout.layers.bangs.x, 135);
+  assert.equal(layout.layers.bangs.x, 15);
   assert.equal(layout.layers.hairBase.y, 20);
-  assert.equal(layout.layers.bangs.y, 20);
+  assert.equal(layout.layers.bangs.y, -40);
   const layers = {
     outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
     head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
     hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-    bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
+    bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
     outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
   };
   Object.values(layers).forEach((assetPath) => {
@@ -969,7 +969,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
     'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
     'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
     'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-    'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
+    'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
     'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
   ].forEach((assetPath) => {
     renderer.assetCache.set(assetPath, {
@@ -1002,7 +1002,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
             outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
             head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
             hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-            bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-01.png',
+            bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
             outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
           },
         },
