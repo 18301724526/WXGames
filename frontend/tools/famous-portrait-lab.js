@@ -1,63 +1,34 @@
 (function () {
-  const layerBase = '../assets/art/famous-person/layers/';
   const sharedLayout = window.FamousPortraitLayout || {};
+  const layerBase = `../${sharedLayout.assetBase || 'assets/art/famous-person/layers/'}`;
+  const labels = {
+    outfit: '衣服',
+    face: '脸型',
+    hair: '发型',
+  };
+
   const defaultConfig = {
-    version: sharedLayout.version || 2,
-    note: 'famous portrait v2 user-cut layer transform',
+    version: sharedLayout.version || 3,
+    note: 'famous portrait v3 simple three-layer transform',
     coordinateSize: sharedLayout.coordinateSize || 512,
     global: { scale: 1, x: 0, y: 0, ...(sharedLayout.global || {}) },
-    order: [...(sharedLayout.order || ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'])],
-    layers: {
-      hairBase: {
-        label: '发型底层',
-        file: sharedLayout.layers?.hairBase?.file || 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-        options: [
-          { label: '束发底层', file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png' },
-        ],
-        scale: sharedLayout.layers?.hairBase?.scale ?? 0.19,
-        x: sharedLayout.layers?.hairBase?.x ?? 135,
-        y: sharedLayout.layers?.hairBase?.y ?? 20,
+    order: [...(sharedLayout.order || ['outfit', 'face', 'hair'])],
+    layers: Object.fromEntries((sharedLayout.order || ['outfit', 'face', 'hair']).map((key) => {
+      const layout = sharedLayout.layers?.[key] || {};
+      const options = Array.isArray(layout.options) && layout.options.length ? layout.options : [layout.file].filter(Boolean);
+      return [key, {
+        label: labels[key] || key,
+        file: layout.file || options[0],
+        options: options.map((file, index) => ({
+          label: `${labels[key] || key} ${String(index + 1).padStart(2, '0')}`,
+          file,
+        })),
+        scale: layout.scale ?? 1,
+        x: layout.x ?? 0,
+        y: layout.y ?? 0,
         visible: true,
-      },
-      bangs: {
-        label: '刘海',
-        file: sharedLayout.layers?.bangs?.file || 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-        options: [
-          { label: '原始刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png' },
-          { label: '短刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-short-01.png' },
-          { label: '分缝刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png' },
-          { label: '侧扫刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png' },
-        ],
-        scale: sharedLayout.layers?.bangs?.scale ?? 0.38,
-        x: sharedLayout.layers?.bangs?.x ?? 15,
-        y: sharedLayout.layers?.bangs?.y ?? -40,
-        visible: true,
-      },
-      outfitBack: {
-        label: '后层衣服',
-        file: sharedLayout.layers?.outfitBack?.file || 'fp-layer-v2-art01-outfitBack-guardian-01.png',
-        scale: sharedLayout.layers?.outfitBack?.scale ?? 0.48,
-        x: sharedLayout.layers?.outfitBack?.x ?? 172,
-        y: sharedLayout.layers?.outfitBack?.y ?? 231,
-        visible: true,
-      },
-      head: {
-        label: '头和身体',
-        file: sharedLayout.layers?.head?.file || 'fp-layer-v2-art01-head-base-01.png',
-        scale: sharedLayout.layers?.head?.scale ?? 0.46,
-        x: sharedLayout.layers?.head?.x ?? 133,
-        y: sharedLayout.layers?.head?.y ?? 83,
-        visible: true,
-      },
-      outfitFront: {
-        label: '前层衣服',
-        file: sharedLayout.layers?.outfitFront?.file || 'fp-layer-v2-art01-outfitFront-guardian-01.png',
-        scale: sharedLayout.layers?.outfitFront?.scale ?? 0.48,
-        x: sharedLayout.layers?.outfitFront?.x ?? -5,
-        y: sharedLayout.layers?.outfitFront?.y ?? 249,
-        visible: true,
-      },
-    },
+      }];
+    })),
   };
 
   const preview = {
@@ -83,7 +54,6 @@
   const layerList = document.getElementById('layerList');
   const exportData = document.getElementById('exportData');
   const imageCache = new Map();
-  let manifest = null;
   let state = clone(defaultConfig);
 
   function clone(value) {
@@ -103,10 +73,9 @@
   }
 
   async function loadAssets() {
-    const response = await fetch(`${layerBase}fp-layer-v2-manifest.json?ts=${Date.now()}`);
-    manifest = await response.json();
     const files = Object.values(state.layers)
-      .flatMap((layer) => layer.options?.map((option) => option.file) || [layer.file]);
+      .flatMap((layer) => layer.options?.map((option) => option.file) || [layer.file])
+      .filter(Boolean);
     await Promise.all(files.map((file) => loadImage(layerBase + file)));
   }
 
@@ -162,7 +131,6 @@
         <button data-move="down" title="下移一层">下移</button>
         <label class="toggle"><input data-visible type="checkbox" checked>显示</label>
       </div>
-      ${layer.options ? `
       <div class="row">
         <span>文件</span>
         <select data-control="file">
@@ -170,7 +138,6 @@
         </select>
         <span class="value"></span>
       </div>
-      ` : ''}
       <div class="row">
         <span>缩放</span>
         <input data-control="scale" type="range" min="0" max="200" value="100">
@@ -190,14 +157,11 @@
     item.querySelector('[data-control="scale"]').value = Math.round(layer.scale * 100);
     item.querySelector('[data-control="x"]').value = layer.x;
     item.querySelector('[data-control="y"]').value = layer.y;
-    const fileControl = item.querySelector('[data-control="file"]');
-    if (fileControl) {
-      fileControl.value = layer.file;
-      fileControl.addEventListener('change', (event) => {
-        layer.file = event.target.value;
-        render();
-      });
-    }
+    item.querySelector('[data-control="file"]').value = layer.file;
+    item.querySelector('[data-control="file"]').addEventListener('change', (event) => {
+      layer.file = event.target.value;
+      render();
+    });
     item.querySelector('[data-control="scale"]').addEventListener('input', (event) => {
       layer.scale = Number(event.target.value) / 100;
       render();
@@ -249,14 +213,14 @@
   }
 
   function getLayerFrame(layer, frame) {
-    const base = manifest.layers[layer.file];
     const globalScale = state.global.scale;
     const scale = layer.scale * globalScale;
+    const size = state.coordinateSize * scale * frame.scale;
     return {
-      x: frame.x + (base.x + layer.x + state.global.x) * frame.scale,
-      y: frame.y + (base.y + layer.y + state.global.y) * frame.scale,
-      width: base.width * scale * frame.scale,
-      height: base.height * scale * frame.scale,
+      x: frame.x + (layer.x + state.global.x) * frame.scale,
+      y: frame.y + (layer.y + state.global.y) * frame.scale,
+      width: size,
+      height: size,
     };
   }
 
@@ -280,7 +244,6 @@
   }
 
   async function render() {
-    if (!manifest) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#101113';
     ctx.fillRect(0, 0, canvas.width, canvas.height);

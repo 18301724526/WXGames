@@ -13,6 +13,14 @@ function createRandomSequence(values) {
   };
 }
 
+function assertV3Appearance(appearance) {
+  assert.equal(appearance.version, FamousPersonService.APPEARANCE_VERSION);
+  assert.deepEqual(Object.keys(appearance.layers), ['outfit', 'face', 'hair']);
+  assert.match(appearance.layers.outfit, /assets\/art\/famous-person\/layers\/fp-layer-v3-outfit-\d\d\.png$/);
+  assert.match(appearance.layers.face, /assets\/art\/famous-person\/layers\/fp-layer-v3-face-\d\d\.png$/);
+  assert.match(appearance.layers.hair, /assets\/art\/famous-person\/layers\/fp-layer-v3-hair-\d\d\.png$/);
+}
+
 test('initial game state exposes locked famous person seek state before city era', () => {
   const state = GameStateService.createInitialGameState('fp-initial');
   const client = GameStateService.getClientGameState(state);
@@ -24,7 +32,7 @@ test('initial game state exposes locked famous person seek state before city era
   assert.equal(client.famousPersons.seek.minEra, FamousPersonService.MIN_SEEK_ERA);
 });
 
-test('seek creates a generated candidate with matching skill name and no level field', () => {
+test('seek creates a generated candidate with v3 three-layer portrait and no level field', () => {
   const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-seek'));
   state.currentEra = 3;
 
@@ -32,45 +40,45 @@ test('seek creates a generated candidate with matching skill name and no level f
     state,
     { source: 'seek' },
     new Date('2026-05-25T03:00:00.000Z'),
-    createRandomSequence([0, 0, 0, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.2, 0.3]),
+    createRandomSequence(Array(18).fill(0)),
   );
 
   assert.equal(result.success, true);
   assert.equal(state.famousPersonState.candidates.length, 1);
   assert.equal(result.candidate.archetype, 'vanguard');
-  assert.equal(result.candidate.name, '陆骁');
-  assert.equal(result.candidate.skills[0].name, '血刃连袭');
-  assert.equal(result.candidate.appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v2.2');
-  assert.ok(result.candidate.appearance.layers.outfitBack.endsWith('fp-layer-v2-art01-outfitBack-guardian-01.png'));
-  assert.ok(result.candidate.appearance.layers.head.endsWith('fp-layer-v2-art01-head-base-01.png'));
-  assert.ok(result.candidate.appearance.layers.hairBase.endsWith('fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'));
-  assert.match(result.candidate.appearance.layers.bangs, /fp-layer-v2-art01-bangs-bound-topknot(-short|-parted|-swept)?-01\.png$/);
-  assert.ok(result.candidate.appearance.layers.outfitFront.endsWith('fp-layer-v2-art01-outfitFront-guardian-01.png'));
-  assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'hair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'backHair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'frontHair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(result.candidate.appearance.layers, 'accessory'), false);
+  assert.equal(typeof result.candidate.name, 'string');
+  assert.ok(result.candidate.name.length > 0);
+  assert.equal(result.candidate.skills[0].effects[0].key, 'lifesteal');
+  assert.equal(result.candidate.skills[0].effects[1].key, 'combo');
+  assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v3.0');
+  assertV3Appearance(result.candidate.appearance);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
 });
 
-test('guardian archetype uses its own portrait outfit', () => {
-  const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-guardian-portrait'));
+test('generated portrait can pick across all three v3 layer pools', () => {
+  const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-v3-pools'));
   state.currentEra = 3;
 
   const result = FamousPersonService.seekFamousPerson(
     state,
     { source: 'seek' },
     new Date('2026-05-25T03:02:00.000Z'),
-    createRandomSequence([0.2, 0, 0, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.2, 0.3]),
+    createRandomSequence([
+      0.2, 0, 0, 0.5, 0.4,
+      0.3, 0.2, 0.1, 0.2, 0.3, 0.4,
+      0, 0, 0,
+      0.99, 0.49, 0,
+      0,
+    ]),
   );
 
   assert.equal(result.success, true);
-  assert.equal(result.candidate.archetype, 'guardian');
-  assert.ok(result.candidate.appearance.layers.outfitBack.endsWith('fp-layer-v2-art01-outfitBack-guardian-01.png'));
-  assert.ok(result.candidate.appearance.layers.outfitFront.endsWith('fp-layer-v2-art01-outfitFront-guardian-01.png'));
+  assertV3Appearance(result.candidate.appearance);
+  assert.ok(result.candidate.appearance.layers.outfit.endsWith('fp-layer-v3-outfit-10.png'));
+  assert.ok(result.candidate.appearance.layers.face.endsWith('fp-layer-v3-face-05.png'));
+  assert.ok(result.candidate.appearance.layers.hair.endsWith('fp-layer-v3-hair-01.png'));
 });
 
 test('accept moves candidate into cloud-persisted famous people list', () => {
@@ -80,7 +88,7 @@ test('accept moves candidate into cloud-persisted famous people list', () => {
     state,
     { source: 'seek' },
     new Date('2026-05-25T03:05:00.000Z'),
-    createRandomSequence([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]),
+    createRandomSequence(Array(18).fill(0.2)),
   );
 
   const accepted = FamousPersonService.acceptFamousPerson(
@@ -131,8 +139,8 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
   state.currentEra = 3;
   state.famousPeople = [{
     id: 'fp_abc',
-    name: '陆骁',
-    title: '山道突骑',
+    name: 'legacy_a',
+    title: 'legacy_title',
     source: { type: 'seek', candidateId: 'fpc_abc' },
     archetype: 'vanguard',
     skills: [{ id: 'skill_lifesteal_combo', effects: [{ key: 'lifesteal', value: 0.12 }, { key: 'combo', chance: 0.2 }] }],
@@ -140,8 +148,8 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
   state.famousPersonState = {
     candidates: [{
       id: 'fpc_abc',
-      name: '陆骁',
-      title: '山道突骑',
+      name: 'legacy_a',
+      title: 'legacy_title',
       source: { type: 'seek' },
       archetype: 'vanguard',
       skills: [{ id: 'skill_lifesteal_combo', effects: [{ key: 'lifesteal', value: 0.12 }, { key: 'combo', chance: 0.2 }] }],
@@ -152,23 +160,16 @@ test('normalization removes accepted duplicate candidates from legacy saves', ()
 
   assert.equal(normalized.famousPeople.length, 1);
   assert.equal(normalized.famousPersonState.candidates.length, 0);
-  assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.ok(normalized.famousPeople[0].appearance.layers.outfitBack);
-  assert.ok(normalized.famousPeople[0].appearance.layers.head);
-  assert.ok(normalized.famousPeople[0].appearance.layers.hairBase);
-  assert.ok(normalized.famousPeople[0].appearance.layers.bangs);
-  assert.ok(normalized.famousPeople[0].appearance.layers.outfitFront);
-  assert.equal(Object.prototype.hasOwnProperty.call(normalized.famousPeople[0].appearance.layers, 'sideHair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(normalized.famousPeople[0].appearance.layers, 'accessory'), false);
+  assertV3Appearance(normalized.famousPeople[0].appearance);
 });
 
-test('legacy portrait appearance is regenerated with the anchored complete hair set', () => {
+test('legacy split portrait appearance is regenerated into v3 three-layer set', () => {
   const state = GameStateService.createInitialGameState('fp-legacy-split-hair');
   state.currentEra = 3;
   state.famousPeople = [{
     id: 'fp_legacy_hair',
-    name: '韩晓',
-    title: '垒门守将',
+    name: 'legacy_hair',
+    title: 'legacy_split',
     source: { type: 'seek', seed: 'legacy:hair' },
     archetype: 'guardian',
     appearance: {
@@ -185,55 +186,20 @@ test('legacy portrait appearance is regenerated with the anchored complete hair 
   const normalized = GameStateService.normalizeState(state);
   const layers = normalized.famousPeople[0].appearance.layers;
 
-  assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.match(layers.outfitBack, /fp-layer-v2-art01-outfitBack-guardian-01\.png$/);
-  assert.match(layers.head, /fp-layer-v2-art01-head-base-01\.png$/);
-  assert.match(layers.hairBase, /fp-layer-v2-art01-hairBase-bound-topknot-filled-01\.png$/);
-  assert.match(layers.bangs, /fp-layer-v2-art01-bangs-bound-topknot(-short|-parted|-swept)?-01\.png$/);
-  assert.match(layers.outfitFront, /fp-layer-v2-art01-outfitFront-guardian-01\.png$/);
-  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'hair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'backHair'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'sideHair'), false);
+  assertV3Appearance(normalized.famousPeople[0].appearance);
+  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'body'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(layers, 'frontHair'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(layers, 'accessory'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'bangs'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'bangs'), false);
 });
 
-test('unversioned portrait appearance is regenerated away from deleted outfit assets', () => {
-  const state = GameStateService.createInitialGameState('fp-unversioned-outfit');
-  state.currentEra = 3;
-  state.famousPeople = [{
-    id: 'fp_unversioned_outfit',
-    name: '秦承',
-    title: '垒门守将',
-    source: { type: 'seek', seed: 'legacy:unversioned-outfit' },
-    archetype: 'guardian',
-    appearance: {
-      layers: {
-        body: 'assets/art/famous-person/layers/fp-layer-body-skin-01.png',
-        outfit: 'assets/art/famous-person/layers/fp-layer-outfit-guardian-01.png',
-        frontHair: 'assets/art/famous-person/layers/fp-layer-frontHair-short-02.png',
-        accessory: 'assets/art/famous-person/layers/fp-layer-accessory-scar-01.png',
-      },
-    },
-  }];
-
-  const normalized = GameStateService.normalizeState(state);
-  const layers = normalized.famousPeople[0].appearance.layers;
-
-  assert.equal(normalized.famousPeople[0].appearance.version, FamousPersonService.APPEARANCE_VERSION);
-  assert.match(layers.outfitFront, /fp-layer-v2-art01-outfitFront-guardian-01\.png$/);
-  assert.doesNotMatch(layers.outfitFront, /fp-layer-outfit-guardian-01\.png$/);
-  assert.equal(Object.prototype.hasOwnProperty.call(layers, 'accessory'), false);
-});
-
-test('current portrait normalization keeps only active five layers and drops accessories', () => {
+test('current v3 portrait normalization keeps only outfit face and hair', () => {
   const state = GameStateService.createInitialGameState('fp-current-accessory');
   state.currentEra = 3;
   state.famousPeople = [{
     id: 'fp_current_accessory',
-    name: '绉︽壙',
-    title: '鍨掗棬瀹堝皢',
+    name: 'current_accessory',
+    title: 'current_v3',
     source: { type: 'seek', seed: 'current:accessory' },
     archetype: 'guardian',
     appearance: {
@@ -241,18 +207,16 @@ test('current portrait normalization keeps only active five layers and drops acc
       seed: 'current:accessory',
       palette: 'military_red',
       layers: {
-        outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
-        head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
-        hairBase: 'assets/art/famous-person/layers/fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-        bangs: 'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-        outfitFront: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitFront-guardian-01.png',
+        outfit: 'assets/art/famous-person/layers/fp-layer-v3-outfit-01.png',
+        face: 'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
+        hair: 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png',
         accessory: 'assets/art/famous-person/layers/fp-layer-accessory-scar-01.png',
       },
     },
   }];
 
   const normalized = GameStateService.normalizeState(state);
-  const layers = normalized.famousPeople[0].appearance.layers;
 
-  assert.deepEqual(Object.keys(layers), ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront']);
+  assertV3Appearance(normalized.famousPeople[0].appearance);
+  assert.deepEqual(Object.keys(normalized.famousPeople[0].appearance.layers), ['outfit', 'face', 'hair']);
 });

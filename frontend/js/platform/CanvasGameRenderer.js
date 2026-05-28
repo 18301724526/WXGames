@@ -392,7 +392,7 @@
     drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout) {
       const image = this.getAsset(assetPath);
       if (!image || typeof this.ctx?.drawImage !== 'function') return false;
-      if (layerLayout?.version === 2 || layerLayout?.mode === 'cropped') {
+      if (layerLayout?.version >= 2 || layerLayout?.mode === 'cropped' || layerLayout?.mode === 'stacked') {
         const layout = layerLayout.layers?.[key];
         if (!layout) return false;
         const base = layout.base || layout;
@@ -452,17 +452,15 @@
           if (!assetPath) return;
           drawnAny = this.drawFamousPortraitLayer(assetPath, key, baseFrame, layerLayout) || drawnAny;
         };
-        if (layerLayout.version === 2 || mode === 'cropped') {
+        if (layerLayout.version >= 2 || mode === 'cropped' || mode === 'stacked') {
           const order = Array.isArray(layerLayout.order)
             ? layerLayout.order
-            : ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'];
+            : ['outfit', 'face', 'hair'];
           order.forEach((key) => drawLayer(key));
         } else {
-          drawLayer('outfitBack');
-          drawLayer('head');
-          drawLayer('hairBase');
-          drawLayer('bangs');
-          drawLayer('outfitFront');
+          drawLayer('outfit');
+          drawLayer('face');
+          drawLayer('hair');
         }
         return drawnAny;
       };

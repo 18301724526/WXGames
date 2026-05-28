@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>名人立绘分层试验台</title>
+  <title>名人立绘三层试验台</title>
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -154,7 +154,7 @@
 <body>
   <div class="shell">
     <aside class="panel">
-      <h1>名人立绘分层试验台</h1>
+      <h1>名人立绘三层试验台</h1>
       <div class="section">
         <div class="row">
           <span>整体缩放</span>
@@ -171,7 +171,7 @@
           <input id="globalY" type="range" min="-220" max="220" value="0">
           <span class="value" id="globalYValue"></span>
         </div>
-        <p class="hint">这里直接使用你切好的 PNG 原图。先在网页里调位置和缩放，调好后复制下面的 JSON 给我同步到游戏。</p>
+        <p class="hint">新方案只保留衣服、脸型、发型三层。每层 10 张 PNG，统一 512 画布和同一锚点。</p>
       </div>
       <div class="section">
         <div class="layer-list" id="layerList"></div>
@@ -179,7 +179,7 @@
       <div class="section">
         <button id="copyExport">复制参数</button>
         <button id="resetDefaults">重置</button>
-        <p class="hint">这份参数只代表试验台调好的层级、缩放和坐标，不会自动改游戏运行时。</p>
+        <p class="hint">这里导出的就是游戏使用的三层布局参数。</p>
         <textarea id="exportData" spellcheck="false"></textarea>
       </div>
     </aside>
@@ -187,7 +187,7 @@
       <canvas id="stage" width="1120" height="900"></canvas>
     </main>
   </div>
-  <script src="../js/config/FamousPortraitLayout.js?v=famous-portrait-v2.2-art01-usercut-20260528"></script>
-  <script src="famous-portrait-lab.js?v=0.1.143-shared-layout"></script>
+  <script src="../js/config/FamousPortraitLayout.js?v=famous-portrait-v3-simple-20260528"></script>
+  <script src="famous-portrait-lab.js?v=0.2.0-v3-simple"></script>
 </body>
 </html>

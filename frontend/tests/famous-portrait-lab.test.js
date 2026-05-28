@@ -56,63 +56,39 @@ function readPngAlphaStats(filePath) {
     rows.push(scanline);
     previous = scanline;
   }
-  const edgeAlpha = {
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  };
   let opaquePixels = 0;
-  rows.forEach((row, y) => {
+  rows.forEach((row) => {
     for (let x = 0; x < width; x += 1) {
-      if (row[x * bytesPerPixel + 3] <= 8) continue;
-      opaquePixels += 1;
-      if (y === 0) edgeAlpha.top += 1;
-      if (x === width - 1) edgeAlpha.right += 1;
-      if (y === height - 1) edgeAlpha.bottom += 1;
-      if (x === 0) edgeAlpha.left += 1;
+      if (row[x * bytesPerPixel + 3] > 8) opaquePixels += 1;
     }
   });
-  return { width, height, opaquePixels, edgeAlpha };
+  return { width, height, opaquePixels };
 }
 
-test('famous portrait v2 lab exposes user-cut layer controls', () => {
+test('famous portrait v3 lab exposes simple three-layer controls', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
   const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
 
-  assert.match(html, /名人立绘分层试验台/);
+  assert.match(html, /名人立绘三层试验台/);
   assert.match(html, /id="globalScale"[^>]*min="0"[^>]*max="200"/);
-  assert.match(html, /id="globalX"/);
-  assert.match(html, /id="globalY"/);
   assert.match(html, /id="layerList"/);
   assert.match(html, /id="copyExport"/);
   assert.match(html, /id="exportData"/);
-  assert.match(html, /直接使用你切好的 PNG 原图/);
+  assert.match(html, /衣服、脸型、发型三层/);
   assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
-  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v2\.2-art01-usercut-20260528"><\/script>/);
-  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.1\.143-shared-layout"><\/script>/);
+  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-simple-20260528"><\/script>/);
+  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.2\.0-v3-simple"><\/script>/);
 
-  assert.match(script, /fp-layer-v2-manifest\.json/);
   assert.match(script, /sharedLayout = window\.FamousPortraitLayout/);
-  assert.match(script, /sharedLayout\.order/);
-  assert.match(script, /fp-layer-v2-art01-head-base-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-hairBase-bound-topknot-filled-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-short-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-parted-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-outfitBack-guardian-01\.png/);
-  assert.match(script, /fp-layer-v2-art01-outfitFront-guardian-01\.png/);
-  assert.match(script, /file:\s*sharedLayout\.layers\?\.bangs\?\.file \|\| 'fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png'/);
-  assert.match(script, /scale:\s*sharedLayout\.layers\?\.bangs\?\.scale \?\? 0\.38/);
-  assert.match(script, /x:\s*sharedLayout\.layers\?\.bangs\?\.x \?\? 15/);
-  assert.match(script, /y:\s*sharedLayout\.layers\?\.bangs\?\.y \?\? -40/);
-  assert.match(script, /sharedLayout\.assetVersion/);
+  assert.match(script, /labels = \{/);
+  assert.match(script, /outfit: '衣服'/);
+  assert.match(script, /face: '脸型'/);
+  assert.match(script, /hair: '发型'/);
+  assert.match(script, /sharedLayout\.order \|\| \['outfit', 'face', 'hair'\]/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
-  assert.match(script, /data-control="file"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
   assert.match(script, /游戏头像区域预览/);
-  assert.doesNotMatch(script, /frontCutY|backCutY|drawSplitOutfit|fp-layer-outfit-guardian-front-candidate/);
+  assert.doesNotMatch(script, /fp-layer-v2|fp-layer-v2-manifest|hairBase|bangs|outfitBack|outfitFront|frontCutY|backCutY/);
 });
 
 test('famous portrait lab keeps desktop controls scroll isolated from preview', () => {
@@ -125,57 +101,22 @@ test('famous portrait lab keeps desktop controls scroll isolated from preview', 
   assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
 });
 
-test('famous portrait v2 manifest includes the user-cut resource set', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json'), 'utf8'));
-  const files = listFamousLayerFiles(/^fp-layer-v2-.*\.png$/);
+test('famous portrait v3 resource directory contains only three simple layer pools', () => {
+  const files = listFamousLayerFiles(/^fp-layer-v3-.*\.png$/);
+  const expected = ['face', 'hair', 'outfit'].flatMap((type) => (
+    Array.from({ length: 10 }, (_, index) => `fp-layer-v3-${type}-${String(index + 1).padStart(2, '0')}.png`)
+  )).sort();
 
-  assert.equal(manifest.version, 2);
-  assert.equal(manifest.coordinateSize, 512);
-  assert.deepEqual(files, [
-    'fp-layer-v2-art01-bangs-bound-topknot-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-    'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-    'fp-layer-v2-art01-head-base-01.png',
-    'fp-layer-v2-art01-outfitBack-guardian-01.png',
-    'fp-layer-v2-art01-outfitFront-guardian-01.png',
-  ]);
-
-  files.forEach((filename) => {
-    const entry = manifest.layers[filename];
-    assert.ok(entry, filename);
-    ['x', 'y', 'width', 'height', 'sourcePixelWidth', 'sourcePixelHeight'].forEach((key) => {
-      assert.equal(Number.isFinite(Number(entry[key])), true, `${filename}.${key}`);
-      assert.ok(Number(entry[key]) > 0 || key === 'x' || key === 'y', `${filename}.${key}`);
-    });
-  });
+  assert.deepEqual(files, expected);
+  assert.deepEqual(listFamousLayerFiles(/^fp-layer-v2-.*\.png$/), []);
+  assert.equal(fs.existsSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json')), false);
 });
 
-test('famous portrait v2 PNG layers are non-empty alpha resources', () => {
-  listFamousLayerFiles(/^fp-layer-v2-.*\.png$/).forEach((filename) => {
+test('famous portrait v3 PNG layers are non-empty 512 alpha resources', () => {
+  listFamousLayerFiles(/^fp-layer-v3-.*\.png$/).forEach((filename) => {
     const stats = readPngAlphaStats(path.join(famousLayerDir, filename));
-    assert.ok(stats.width > 0, filename);
-    assert.ok(stats.height > 0, filename);
+    assert.equal(stats.width, 512, filename);
+    assert.equal(stats.height, 512, filename);
     assert.ok(stats.opaquePixels > 0, filename);
-  });
-});
-
-test('active famous portrait lab layers preserve source aspect ratio', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json'), 'utf8'));
-  [
-    'fp-layer-v2-art01-head-base-01.png',
-    'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-    'fp-layer-v2-art01-outfitBack-guardian-01.png',
-    'fp-layer-v2-art01-outfitFront-guardian-01.png',
-  ].forEach((filename) => {
-    const entry = manifest.layers[filename];
-    const sourceRatio = entry.sourcePixelWidth / entry.sourcePixelHeight;
-    const drawRatio = entry.width / entry.height;
-    assert.ok(Math.abs(sourceRatio - drawRatio) < 0.002, `${filename} aspect ratio`);
   });
 });

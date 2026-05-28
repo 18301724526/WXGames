@@ -1,9 +1,18 @@
 (function (global) {
+  const makeFiles = (type) => Object.freeze(Array.from({ length: 10 }, (_, index) => (
+    `fp-layer-v3-${type}-${String(index + 1).padStart(2, '0')}.png`
+  )));
+
+  const outfitFiles = makeFiles('outfit');
+  const faceFiles = makeFiles('face');
+  const hairFiles = makeFiles('hair');
+  const fullCanvas = Object.freeze({ x: 0, y: 0, width: 512, height: 512 });
+
   const FamousPortraitLayout = Object.freeze({
-    version: 2,
-    mode: 'cropped',
+    version: 3,
+    mode: 'stacked',
     coordinateSize: 512,
-    assetVersion: 'famous-portrait-v2.2-art01-usercut-20260528',
+    assetVersion: 'famous-portrait-v3-simple-20260528',
     assetBase: 'assets/art/famous-person/layers/',
     global: Object.freeze({
       scale: 1,
@@ -11,47 +20,34 @@
       y: 0,
     }),
     order: Object.freeze([
-      'outfitBack',
-      'head',
-      'hairBase',
-      'bangs',
-      'outfitFront',
+      'outfit',
+      'face',
+      'hair',
     ]),
     layers: Object.freeze({
-      outfitBack: Object.freeze({
-        file: 'fp-layer-v2-art01-outfitBack-guardian-01.png',
-        base: Object.freeze({ x: 0, y: 0, width: 336, height: 239 }),
-        x: 172,
-        y: 231,
-        scale: 0.48,
+      outfit: Object.freeze({
+        file: outfitFiles[0],
+        options: outfitFiles,
+        base: fullCanvas,
+        x: 0,
+        y: 0,
+        scale: 1,
       }),
-      head: Object.freeze({
-        file: 'fp-layer-v2-art01-head-base-01.png',
-        base: Object.freeze({ x: 0, y: 0, width: 530, height: 750 }),
-        x: 133,
-        y: 83,
-        scale: 0.46,
+      face: Object.freeze({
+        file: faceFiles[0],
+        options: faceFiles,
+        base: fullCanvas,
+        x: 0,
+        y: 0,
+        scale: 1,
       }),
-      hairBase: Object.freeze({
-        file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-        base: Object.freeze({ x: 0, y: 0, width: 1254, height: 1254 }),
-        x: 135,
-        y: 20,
-        scale: 0.19,
-      }),
-      bangs: Object.freeze({
-        file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-        base: Object.freeze({ x: 0, y: 0, width: 1254, height: 1254 }),
-        x: 15,
-        y: -40,
-        scale: 0.38,
-      }),
-      outfitFront: Object.freeze({
-        file: 'fp-layer-v2-art01-outfitFront-guardian-01.png',
-        base: Object.freeze({ x: 0, y: 0, width: 1084, height: 950 }),
-        x: -5,
-        y: 249,
-        scale: 0.48,
+      hair: Object.freeze({
+        file: hairFiles[0],
+        options: hairFiles,
+        base: fullCanvas,
+        x: 0,
+        y: 0,
+        scale: 1,
       }),
     }),
   });

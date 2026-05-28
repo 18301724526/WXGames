@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v2.2';
+const APPEARANCE_VERSION = 'famous-portrait-v3.0';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -72,30 +72,9 @@ const ARCHETYPES = Object.freeze([
 const SURNAMES = Object.freeze(['陆', '姜', '林', '石', '孟', '许', '白', '韩', '秦', '苏']);
 
 const APPEARANCE_POOLS = Object.freeze({
-  head: ['fp-layer-v2-art01-head-base-01.png'],
-  hairBase: ['fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png'],
-  bangs: [
-    'fp-layer-v2-art01-bangs-bound-topknot-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png',
-    'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-  ],
-  outfitBack: {
-    vanguard: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
-    guardian: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
-    tactician: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
-    warden: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
-    artisan: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
-    scholar: ['fp-layer-v2-art01-outfitBack-guardian-01.png'],
-  },
-  outfitFront: {
-    vanguard: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
-    guardian: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
-    tactician: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
-    warden: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
-    artisan: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
-    scholar: ['fp-layer-v2-art01-outfitFront-guardian-01.png'],
-  },
+  outfit: Array.from({ length: 10 }, (_, index) => `fp-layer-v3-outfit-${String(index + 1).padStart(2, '0')}.png`),
+  face: Array.from({ length: 10 }, (_, index) => `fp-layer-v3-face-${String(index + 1).padStart(2, '0')}.png`),
+  hair: Array.from({ length: 10 }, (_, index) => `fp-layer-v3-hair-${String(index + 1).padStart(2, '0')}.png`),
 });
 
 const EFFECTS = Object.freeze({
@@ -227,14 +206,10 @@ function layerPath(filename) {
 
 function createAppearance(archetype, seed, randomSource = null) {
   const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(seed);
-  const outfitFrontPool = APPEARANCE_POOLS.outfitFront[archetype.id] || APPEARANCE_POOLS.outfitFront.vanguard;
-  const outfitBackPool = APPEARANCE_POOLS.outfitBack[archetype.id] || APPEARANCE_POOLS.outfitBack.vanguard;
   const layers = {
-    outfitBack: layerPath(pick(outfitBackPool, source)),
-    head: layerPath(pick(APPEARANCE_POOLS.head, source)),
-    hairBase: layerPath(pick(APPEARANCE_POOLS.hairBase, source)),
-    bangs: layerPath(pick(APPEARANCE_POOLS.bangs, source)),
-    outfitFront: layerPath(pick(outfitFrontPool, source)),
+    outfit: layerPath(pick(APPEARANCE_POOLS.outfit, source)),
+    face: layerPath(pick(APPEARANCE_POOLS.face, source)),
+    hair: layerPath(pick(APPEARANCE_POOLS.hair, source)),
   };
   return {
     version: APPEARANCE_VERSION,
@@ -249,7 +224,7 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
   if (source.version !== APPEARANCE_VERSION) return generated;
-  const allowedLayerKeys = ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'];
+  const allowedLayerKeys = ['outfit', 'face', 'hair'];
   const layers = allowedLayerKeys
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);
