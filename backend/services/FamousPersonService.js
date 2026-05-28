@@ -1,7 +1,7 @@
 const CityService = require('./CityService');
 
 const GENERATOR_VERSION = 'famous-person-v0.1';
-const APPEARANCE_VERSION = 'famous-portrait-v2.1';
+const APPEARANCE_VERSION = 'famous-portrait-v2.2';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
@@ -249,7 +249,8 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
   const rawLayers = source.layers && typeof source.layers === 'object' ? source.layers : {};
   const generated = createAppearance(archetype, source.seed || fallbackSeed);
   if (source.version !== APPEARANCE_VERSION) return generated;
-  const layers = ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront']
+  const allowedLayerKeys = ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'];
+  const layers = allowedLayerKeys
     .reduce((result, key) => {
       const value = sanitizeText(rawLayers[key]);
       if (value) result[key] = value;

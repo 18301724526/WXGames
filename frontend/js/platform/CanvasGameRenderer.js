@@ -41,6 +41,16 @@
       return sharedFamousPortraitLayout || {};
     }
 
+    static getAssetRequestPath(assetPath) {
+      if (!assetPath) return assetPath;
+      const layout = this.getFamousPortraitLayerLayout();
+      const assetVersion = layout.assetVersion;
+      if (!assetVersion || typeof assetPath !== 'string') return assetPath;
+      if (!assetPath.startsWith('assets/art/famous-person/layers/')) return assetPath;
+      const separator = assetPath.includes('?') ? '&' : '?';
+      return `${assetPath}${separator}v=${encodeURIComponent(assetVersion)}`;
+    }
+
     static getPreloadAssetPaths() {
       return [
         'assets/art/civilization-bg.webp',
@@ -193,8 +203,9 @@
           };
           image.onload = (event) => complete('loaded', previousOnload, event);
           image.onerror = (event) => complete('error', previousOnerror, event);
-          if (!cached) image.src = assetPath;
-          else if (!image.src) image.src = assetPath;
+          const requestPath = this.constructor.getAssetRequestPath(assetPath);
+          if (!cached) image.src = requestPath;
+          else if (!image.src) image.src = requestPath;
         });
       });
     }
@@ -219,7 +230,7 @@
       image.onerror = () => {
         record.status = 'error';
       };
-      image.src = assetPath;
+      image.src = this.constructor.getAssetRequestPath(assetPath);
       return null;
     }
 

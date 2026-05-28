@@ -42,6 +42,10 @@
       }
       return null;
     }
+
+    static getAssetRequestPath(assetPath) {
+      return assetPath;
+    }
   }
 
   global.MiniGameCanvasRenderer = MiniGameCanvasRenderer;

@@ -3,6 +3,7 @@
     version: 2,
     mode: 'cropped',
     coordinateSize: 512,
+    assetVersion: 'famous-portrait-v2.2-art01-usercut-20260528',
     assetBase: 'assets/art/famous-person/layers/',
     global: Object.freeze({
       scale: 1,

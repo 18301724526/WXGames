@@ -89,10 +89,12 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(html, /id="exportData"/);
   assert.match(html, /直接使用你切好的 PNG 原图/);
   assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
-  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.1\.142-hairbase-fill"><\/script>/);
+  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v2\.2-art01-usercut-20260528"><\/script>/);
+  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.1\.143-shared-layout"><\/script>/);
 
   assert.match(script, /fp-layer-v2-manifest\.json/);
-  assert.match(script, /order: \['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'\]/);
+  assert.match(script, /sharedLayout = window\.FamousPortraitLayout/);
+  assert.match(script, /sharedLayout\.order/);
   assert.match(script, /fp-layer-v2-art01-head-base-01\.png/);
   assert.match(script, /fp-layer-v2-art01-hairBase-bound-topknot-filled-01\.png/);
   assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-01\.png/);
@@ -101,10 +103,11 @@ test('famous portrait v2 lab exposes user-cut layer controls', () => {
   assert.match(script, /fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitBack-guardian-01\.png/);
   assert.match(script, /fp-layer-v2-art01-outfitFront-guardian-01\.png/);
-  assert.match(script, /file:\s*'fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png'/);
-  assert.match(script, /scale:\s*0\.38/);
-  assert.match(script, /x:\s*15/);
-  assert.match(script, /y:\s*-40/);
+  assert.match(script, /file:\s*sharedLayout\.layers\?\.bangs\?\.file \|\| 'fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png'/);
+  assert.match(script, /scale:\s*sharedLayout\.layers\?\.bangs\?\.scale \?\? 0\.38/);
+  assert.match(script, /x:\s*sharedLayout\.layers\?\.bangs\?\.x \?\? 15/);
+  assert.match(script, /y:\s*sharedLayout\.layers\?\.bangs\?\.y \?\? -40/);
+  assert.match(script, /sharedLayout\.assetVersion/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /data-control="file"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);

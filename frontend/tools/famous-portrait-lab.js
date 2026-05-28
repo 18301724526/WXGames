@@ -1,59 +1,60 @@
 (function () {
   const layerBase = '../assets/art/famous-person/layers/';
+  const sharedLayout = window.FamousPortraitLayout || {};
   const defaultConfig = {
-    version: 2,
+    version: sharedLayout.version || 2,
     note: 'famous portrait v2 user-cut layer transform',
-    coordinateSize: 512,
-    global: { scale: 1, x: 0, y: 0 },
-    order: ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'],
+    coordinateSize: sharedLayout.coordinateSize || 512,
+    global: { scale: 1, x: 0, y: 0, ...(sharedLayout.global || {}) },
+    order: [...(sharedLayout.order || ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront'])],
     layers: {
       hairBase: {
         label: '发型底层',
-        file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
+        file: sharedLayout.layers?.hairBase?.file || 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
         options: [
           { label: '束发底层', file: 'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png' },
         ],
-        scale: 0.19,
-        x: 135,
-        y: 20,
+        scale: sharedLayout.layers?.hairBase?.scale ?? 0.19,
+        x: sharedLayout.layers?.hairBase?.x ?? 135,
+        y: sharedLayout.layers?.hairBase?.y ?? 20,
         visible: true,
       },
       bangs: {
         label: '刘海',
-        file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
+        file: sharedLayout.layers?.bangs?.file || 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
         options: [
           { label: '原始刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-01.png' },
           { label: '短刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-short-01.png' },
           { label: '分缝刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png' },
           { label: '侧扫刘海', file: 'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png' },
         ],
-        scale: 0.38,
-        x: 15,
-        y: -40,
+        scale: sharedLayout.layers?.bangs?.scale ?? 0.38,
+        x: sharedLayout.layers?.bangs?.x ?? 15,
+        y: sharedLayout.layers?.bangs?.y ?? -40,
         visible: true,
       },
       outfitBack: {
         label: '后层衣服',
-        file: 'fp-layer-v2-art01-outfitBack-guardian-01.png',
-        scale: 0.48,
-        x: 172,
-        y: 231,
+        file: sharedLayout.layers?.outfitBack?.file || 'fp-layer-v2-art01-outfitBack-guardian-01.png',
+        scale: sharedLayout.layers?.outfitBack?.scale ?? 0.48,
+        x: sharedLayout.layers?.outfitBack?.x ?? 172,
+        y: sharedLayout.layers?.outfitBack?.y ?? 231,
         visible: true,
       },
       head: {
         label: '头和身体',
-        file: 'fp-layer-v2-art01-head-base-01.png',
-        scale: 0.46,
-        x: 133,
-        y: 83,
+        file: sharedLayout.layers?.head?.file || 'fp-layer-v2-art01-head-base-01.png',
+        scale: sharedLayout.layers?.head?.scale ?? 0.46,
+        x: sharedLayout.layers?.head?.x ?? 133,
+        y: sharedLayout.layers?.head?.y ?? 83,
         visible: true,
       },
       outfitFront: {
         label: '前层衣服',
-        file: 'fp-layer-v2-art01-outfitFront-guardian-01.png',
-        scale: 0.48,
-        x: -5,
-        y: 249,
+        file: sharedLayout.layers?.outfitFront?.file || 'fp-layer-v2-art01-outfitFront-guardian-01.png',
+        scale: sharedLayout.layers?.outfitFront?.scale ?? 0.48,
+        x: sharedLayout.layers?.outfitFront?.x ?? -5,
+        y: sharedLayout.layers?.outfitFront?.y ?? 249,
         visible: true,
       },
     },
@@ -95,7 +96,7 @@
       const image = new Image();
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error(`Failed to load ${src}`));
-      image.src = src;
+      image.src = `${src}?v=${encodeURIComponent(sharedLayout.assetVersion || Date.now())}`;
     });
     imageCache.set(src, promise);
     return promise;

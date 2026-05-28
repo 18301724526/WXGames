@@ -5,6 +5,7 @@ const path = require('path');
 
 const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
 const H5CanvasGameRenderer = require('../js/platform/H5CanvasGameRenderer');
+const MiniGameCanvasRenderer = require('../js/platform/MiniGameCanvasRenderer');
 const famousManifest = require('../assets/art/famous-person/layers/fp-layer-v2-manifest.json');
 
 function makeCtx() {
@@ -159,12 +160,41 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
 });
 
+test('CanvasGameRenderer cache-busts famous person portrait layer image requests', async () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const createdImages = [];
+  renderer.createImage = () => {
+    const image = { src: '', onload: null, onerror: null };
+    createdImages.push(image);
+    return image;
+  };
+
+  const pending = renderer.preloadAssets([
+    'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
+    'assets/art/icon-food-cutout.webp',
+  ]);
+
+  assert.match(createdImages[0].src, /fp-layer-v2-art01-bangs-bound-topknot-swept-01\.png\?v=famous-portrait-v2\.2-art01-usercut-20260528$/);
+  assert.equal(createdImages[1].src, 'assets/art/icon-food-cutout.webp');
+  createdImages.forEach((image) => image.onload?.());
+  await pending;
+});
+
+test('MiniGameCanvasRenderer keeps bundled asset paths unchanged', () => {
+  assert.equal(
+    MiniGameCanvasRenderer.getAssetRequestPath('assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png'),
+    'assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
+  );
+});
+
 test('CanvasGameRenderer applies the same famous portrait layer layout as the lab', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
   assert.equal(layout.version, 2);
   assert.equal(layout.mode, 'cropped');
+  assert.equal(layout.assetVersion, 'famous-portrait-v2.2-art01-usercut-20260528');
   assert.deepEqual(layout.order, ['outfitBack', 'head', 'hairBase', 'bangs', 'outfitFront']);
   assert.deepEqual(layout.layers.head.base, {
     x: famousManifest.layers['fp-layer-v2-art01-head-base-01.png'].x,
@@ -997,7 +1027,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
         skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
         appearance: {
-          version: 'famous-portrait-v2.1',
+          version: 'famous-portrait-v2.2',
           layers: {
             outfitBack: 'assets/art/famous-person/layers/fp-layer-v2-art01-outfitBack-guardian-01.png',
             head: 'assets/art/famous-person/layers/fp-layer-v2-art01-head-base-01.png',
