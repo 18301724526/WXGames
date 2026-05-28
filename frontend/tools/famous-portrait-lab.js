@@ -38,10 +38,10 @@
   };
 
   const preview = {
-    big: { x: 54, y: 62, size: 512 },
-    game: { x: 704, y: 112, width: 74, height: 98, scale: 1.74, offsetY: 0.14 },
-    card: { x: 654, y: 300, width: 372, height: 132 },
-    grid: { x: 52, y: 640, cell: 180, gapX: 22, gapY: 34, columns: 5 },
+    big: { x: 36, y: 58, size: 512 },
+    game: { x: 592, y: 82, width: 74, height: 98, scale: 1.74, offsetY: 0.14 },
+    card: { x: 704, y: 82, width: 372, height: 132 },
+    grid: { x: 592, y: 284, cell: 94, gapX: 18, gapY: 28, columns: 5 },
   };
 
   const canvas = document.getElementById('stage');
@@ -53,6 +53,7 @@
     globalY: document.getElementById('globalY'),
     copyExport: document.getElementById('copyExport'),
     applyImport: document.getElementById('applyImport'),
+    reloadAssets: document.getElementById('reloadAssets'),
     resetDefaults: document.getElementById('resetDefaults'),
   };
   const values = {
@@ -64,6 +65,7 @@
   const layerList = document.getElementById('layerList');
   const exportData = document.getElementById('exportData');
   const imageCache = new Map();
+  let assetReloadVersion = 0;
   let selectedVariant = 1;
   let state = clone(defaultConfig);
 
@@ -77,13 +79,17 @@
     return layer.options?.[index]?.file || layer.file;
   }
 
+  function getLayerFile(key) {
+    return state.layers[key]?.file || getVariantFile(key, selectedVariant);
+  }
+
   function loadImage(src) {
     if (imageCache.has(src)) return imageCache.get(src);
     const promise = new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error(`Failed to load ${src}`));
-      image.src = `${src}?v=${encodeURIComponent(sharedLayout.assetVersion || Date.now())}`;
+      image.src = `${src}?v=${encodeURIComponent(`${sharedLayout.assetVersion || 'local'}-${assetReloadVersion}`)}`;
     });
     imageCache.set(src, promise);
     return promise;
@@ -106,7 +112,7 @@
       layers: state.order.reduce((result, key) => {
         const layer = state.layers[key];
         result[key] = {
-          file: getVariantFile(key, 1),
+          file: getLayerFile(key),
           visible: layer.visible,
           scale: layer.scale,
           x: layer.x,
@@ -131,6 +137,9 @@
     if (payload.layers && typeof payload.layers === 'object') {
       Object.entries(payload.layers).forEach(([key, layer]) => {
         if (!state.layers[key] || !layer || typeof layer !== 'object') return;
+        if (layer.file && state.layers[key].options.some((option) => option.file === layer.file)) {
+          state.layers[key].file = layer.file;
+        }
         state.layers[key].scale = Number(layer.scale ?? state.layers[key].scale);
         state.layers[key].x = Number(layer.x ?? state.layers[key].x);
         state.layers[key].y = Number(layer.y ?? state.layers[key].y);
@@ -156,6 +165,7 @@
       root.querySelector('[data-value="x"]').textContent = layer.x;
       root.querySelector('[data-value="y"]').textContent = layer.y;
       root.querySelector('[data-visible]').checked = layer.visible;
+      root.querySelector('[data-file-label]').textContent = getLayerFile(key).match(/-(\d+)\.png$/)?.[1] || '';
     });
   }
 
@@ -176,7 +186,7 @@
         <select data-control="file">
           ${layer.options.map((option) => `<option value="${option.file}">${option.label}</option>`).join('')}
         </select>
-        <span class="value"></span>
+        <span class="value" data-file-label></span>
       </div>
       <div class="row">
         <span>缩放</span>
@@ -197,13 +207,9 @@
     item.querySelector('[data-control="scale"]').value = Math.round(layer.scale * 100);
     item.querySelector('[data-control="x"]').value = layer.x;
     item.querySelector('[data-control="y"]').value = layer.y;
-    item.querySelector('[data-control="file"]').value = getVariantFile(key, selectedVariant);
+    item.querySelector('[data-control="file"]').value = getLayerFile(key);
     item.querySelector('[data-control="file"]').addEventListener('change', (event) => {
-      const selectedIndex = layer.options.findIndex((option) => option.file === event.target.value);
-      if (selectedIndex >= 0) {
-        selectedVariant = selectedIndex + 1;
-        controls.variantIndex.value = selectedVariant;
-      }
+      layer.file = event.target.value;
       render();
     });
     item.querySelector('[data-control="scale"]').addEventListener('input', (event) => {
@@ -256,12 +262,19 @@
     ctx.restore();
   }
 
+  function drawLabel(text, x, y, options = {}) {
+    ctx.fillStyle = options.color || '#ffe6b5';
+    ctx.font = options.font || '700 16px "Microsoft YaHei", sans-serif';
+    ctx.fillText(text, x, y);
+  }
+
   function getLayerFrame(layer, frame) {
     const scale = layer.scale * state.global.scale;
     const size = state.coordinateSize * scale * frame.scale;
+    const centerOffset = ((state.coordinateSize * frame.scale) - size) / 2;
     return {
-      x: frame.x + (layer.x + state.global.x) * frame.scale,
-      y: frame.y + (layer.y + state.global.y) * frame.scale,
+      x: frame.x + centerOffset + (layer.x + state.global.x) * frame.scale,
+      y: frame.y + centerOffset + (layer.y + state.global.y) * frame.scale,
       width: size,
       height: size,
     };
@@ -269,7 +282,7 @@
 
   async function drawPortrait(x, y, size, options = {}) {
     const clip = options.clip || null;
-    const variant = options.variant || selectedVariant;
+    const variant = options.variant || null;
     const frame = { x, y, scale: size / state.coordinateSize };
     if (clip) {
       ctx.save();
@@ -280,7 +293,7 @@
     for (const key of state.order) {
       const layer = state.layers[key];
       if (!layer.visible) continue;
-      const image = await loadImage(layerBase + getVariantFile(key, variant));
+      const image = await loadImage(layerBase + (variant ? getVariantFile(key, variant) : getLayerFile(key)));
       const draw = getLayerFrame(layer, frame);
       ctx.drawImage(image, draw.x, draw.y, draw.width, draw.height);
     }
@@ -288,10 +301,8 @@
   }
 
   async function drawCurrentPreviews() {
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText(`当前套装 ${String(selectedVariant).padStart(2, '0')}`, 54, 38);
-    drawPanel(preview.big.x, preview.big.y, preview.big.size, preview.big.size, { fill: '#221b15' });
+    drawLabel('完整预览', preview.big.x, 34, { font: '700 18px "Microsoft YaHei", sans-serif' });
+    drawPanel(preview.big.x, preview.big.y, preview.big.size, preview.big.size, { fill: '#221b15', radius: 10 });
     await drawPortrait(preview.big.x, preview.big.y, preview.big.size);
 
     ctx.strokeStyle = 'rgba(255,255,255,.18)';
@@ -299,9 +310,7 @@
     ctx.strokeRect(preview.big.x, preview.big.y, preview.big.size, preview.big.size);
     ctx.setLineDash([]);
 
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('游戏头像区域预览', 654, 84);
+    drawLabel('游戏头像区域', preview.game.x - 6, 70, { font: '700 15px "Microsoft YaHei", sans-serif' });
     drawPanel(preview.game.x, preview.game.y, preview.game.width, preview.game.height, {
       fill: 'rgba(44,32,23,.94)',
       stroke: 'rgba(240,180,91,.32)',
@@ -314,6 +323,7 @@
       clip: { x: preview.game.x, y: preview.game.y, width: preview.game.width, height: preview.game.height, radius: 10 },
     });
 
+    drawLabel('卡片实显', preview.card.x, preview.card.y - 16, { font: '700 15px "Microsoft YaHei", sans-serif' });
     drawPanel(preview.card.x, preview.card.y, preview.card.width, preview.card.height, {
       fill: 'rgba(52,39,27,.86)',
       stroke: 'rgba(240,180,91,.34)',
@@ -343,9 +353,7 @@
   }
 
   async function drawVariantGrid() {
-    ctx.fillStyle = '#ffe6b5';
-    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('全部 10 套规格检查', preview.grid.x, preview.grid.y - 24);
+    drawLabel('10 套规格检查', preview.grid.x, preview.grid.y - 16, { font: '700 15px "Microsoft YaHei", sans-serif' });
     for (let variant = 1; variant <= 10; variant += 1) {
       const col = (variant - 1) % preview.grid.columns;
       const row = Math.floor((variant - 1) / preview.grid.columns);
@@ -367,7 +375,7 @@
     state.order.forEach((key) => {
       const root = document.querySelector(`[data-layer="${key}"]`);
       const select = root?.querySelector('[data-control="file"]');
-      if (select) select.value = getVariantFile(key, selectedVariant);
+      if (select) select.value = getLayerFile(key);
     });
   }
 
@@ -395,6 +403,9 @@
 
   controls.variantIndex.addEventListener('input', (event) => {
     selectedVariant = Number(event.target.value);
+    state.order.forEach((key) => {
+      state.layers[key].file = getVariantFile(key, selectedVariant);
+    });
     render();
   });
   controls.globalScale.addEventListener('input', (event) => {
@@ -424,6 +435,12 @@
     } catch (error) {
       exportData.value = `${exportData.value}\n\n导入失败: ${error.message}`;
     }
+  });
+  controls.reloadAssets.addEventListener('click', async () => {
+    assetReloadVersion += 1;
+    imageCache.clear();
+    await loadAssets();
+    render();
   });
   controls.resetDefaults.addEventListener('click', reset);
 

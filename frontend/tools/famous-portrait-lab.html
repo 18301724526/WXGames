@@ -16,7 +16,7 @@
     }
     .shell {
       display: grid;
-      grid-template-columns: minmax(360px, 440px) 1fr;
+      grid-template-columns: minmax(360px, 430px) 1fr;
       height: 100vh;
       overflow: hidden;
     }
@@ -30,10 +30,13 @@
     }
     .stage {
       height: 100vh;
-      overflow: auto;
+      overflow: hidden;
       overscroll-behavior: contain;
       padding: 18px;
       background: #101113;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     h1 { margin: 0 0 12px; font-size: 18px; letter-spacing: 0; }
     .section { padding: 12px 0; border-top: 1px solid rgba(255, 229, 177, 0.12); }
@@ -102,6 +105,9 @@
       background: #17130f;
       border: 1px solid rgba(255, 229, 177, 0.18);
       border-radius: 8px;
+      width: min(100%, calc((100vh - 36px) * 1.474));
+      max-height: calc(100vh - 36px);
+      height: auto;
     }
     .hint { margin: 8px 0 0; color: #9fa4aa; font-size: 12px; line-height: 1.5; }
     @media (max-width: 900px) {
@@ -136,7 +142,7 @@
           <input id="globalY" type="range" min="-220" max="220" value="0">
           <span class="value" id="globalYValue"></span>
         </div>
-        <p class="hint">现在只校准三层：衣服、脸型、发型。左侧调一套参数，右侧同时显示当前套装、游戏头像区域和全部 10 套合成。</p>
+        <p class="hint">套装编号会快速载入同编号三层；每层文件仍可单独切换。缩放锚点固定为 512 画布中心。</p>
       </div>
       <div class="section">
         <div class="layer-list" id="layerList"></div>
@@ -144,16 +150,17 @@
       <div class="section">
         <button id="copyExport">复制参数</button>
         <button id="applyImport">导入参数</button>
+        <button id="reloadAssets">刷新图片</button>
         <button id="resetDefaults">重置</button>
         <p class="hint">导出的 JSON 就是可以写回 `FamousPortraitLayout.js` 的坐标模型。你调完发我这段，我再实装到游戏默认参数。</p>
         <textarea id="exportData" spellcheck="false"></textarea>
       </div>
     </aside>
     <main class="stage">
-      <canvas id="stage" width="1320" height="1160"></canvas>
+      <canvas id="stage" width="1120" height="760"></canvas>
     </main>
   </div>
   <script src="../js/config/FamousPortraitLayout.js?v=famous-portrait-v3-fixedgrid-20260528"></script>
-  <script src="famous-portrait-lab.js?v=0.3.0-v3-calibration"></script>
+  <script src="famous-portrait-lab.js?v=0.3.1-v3-workbench"></script>
 </body>
 </html>

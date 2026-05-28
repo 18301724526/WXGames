@@ -405,10 +405,12 @@
         const sourceY = Number(base.y) || 0;
         const sourceWidth = Number(base.width) || Number(image.naturalWidth || image.width || 0);
         const sourceHeight = Number(base.height) || Number(image.naturalHeight || image.height || 0);
-        const layerX = baseFrame.x + (sourceX + (Number(layout.x) || 0) + (Number(globalLayout.x) || 0)) * offsetScale;
-        const layerY = baseFrame.y + (sourceY + (Number(layout.y) || 0) + (Number(globalLayout.y) || 0)) * offsetScale;
         const layerWidth = sourceWidth * globalScale * layerScale * offsetScale;
         const layerHeight = sourceHeight * globalScale * layerScale * offsetScale;
+        const centerOffsetX = ((sourceWidth * offsetScale) - layerWidth) / 2;
+        const centerOffsetY = ((sourceHeight * offsetScale) - layerHeight) / 2;
+        const layerX = baseFrame.x + sourceX * offsetScale + centerOffsetX + ((Number(layout.x) || 0) + (Number(globalLayout.x) || 0)) * offsetScale;
+        const layerY = baseFrame.y + sourceY * offsetScale + centerOffsetY + ((Number(layout.y) || 0) + (Number(globalLayout.y) || 0)) * offsetScale;
         this.ctx.drawImage(image, layerX, layerY, layerWidth, layerHeight);
         return true;
       }

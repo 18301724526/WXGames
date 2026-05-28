@@ -75,11 +75,12 @@ test('famous portrait v3 lab exposes three-layer calibration controls', () => {
   assert.match(html, /id="layerList"/);
   assert.match(html, /id="copyExport"/);
   assert.match(html, /id="applyImport"/);
+  assert.match(html, /id="reloadAssets"/);
   assert.match(html, /id="exportData"/);
-  assert.match(html, /衣服、脸型、发型/);
-  assert.match(html, /<canvas id="stage" width="1320" height="1160"><\/canvas>/);
+  assert.match(html, /缩放锚点固定为 512 画布中心/);
+  assert.match(html, /<canvas id="stage" width="1120" height="760"><\/canvas>/);
   assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-fixedgrid-20260528"><\/script>/);
-  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.3\.0-v3-calibration"><\/script>/);
+  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.3\.1-v3-workbench"><\/script>/);
 
   assert.match(script, /sharedLayout = window\.FamousPortraitLayout/);
   assert.match(script, /dataset\.famousPortraitAssetVersion = sharedLayout\.assetVersion \|\| 'fallback'/);
@@ -88,21 +89,26 @@ test('famous portrait v3 lab exposes three-layer calibration controls', () => {
   assert.match(script, /face: '脸型'/);
   assert.match(script, /hair: '发型'/);
   assert.match(script, /function getVariantFile\(key, variant\)/);
+  assert.match(script, /function getLayerFile\(key\)/);
   assert.match(script, /async function drawVariantGrid\(\)/);
+  assert.match(script, /reloadAssets\.addEventListener/);
+  assert.match(script, /centerOffset = \(\(state\.coordinateSize \* frame\.scale\) - size\) \/ 2/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
-  assert.match(script, /游戏头像区域预览/);
-  assert.match(script, /全部 10 套规格检查/);
+  assert.match(script, /游戏头像区域/);
+  assert.match(script, /10 套规格检查/);
   assert.doesNotMatch(script, /fp-layer-v2|fp-layer-v2-manifest|hairBase|bangs|outfitBack|outfitFront|frontCutY|backCutY/);
 });
 
-test('famous portrait lab keeps desktop controls scroll isolated from preview', () => {
+test('famous portrait lab keeps desktop controls scroll isolated from fixed preview', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
 
   assert.match(html, /html,\s*body\s*\{[\s\S]*?height:\s*100%;[\s\S]*?overflow:\s*hidden;/);
   assert.match(html, /\.shell\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*hidden;/);
   assert.match(html, /\.panel\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
-  assert.match(html, /\.stage\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(html, /\.stage\s*\{[\s\S]*?height:\s*100vh;[\s\S]*?overflow:\s*hidden;[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(html, /\.stage\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*center;[\s\S]*?justify-content:\s*center;/);
+  assert.match(html, /width:\s*min\(100%,\s*calc\(\(100vh - 36px\) \* 1\.474\)\);/);
   assert.match(html, /@media \(max-width:\s*900px\)\s*\{[\s\S]*?html,\s*body\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*auto;/);
 });
 

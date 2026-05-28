@@ -227,8 +227,43 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   assert.ok(Math.abs(outfitCall[2] - -17.38) < 0.01);
   assert.ok(Math.abs(outfitCall[3] - 14.98) < 0.01);
   assert.ok(Math.abs(outfitCall[4] - 128.76) < 0.01);
+  assert.ok(Math.abs(outfitCall[5] - 128.76) < 0.01);
   assert.ok(drawCalls.indexOf(outfitCall) < drawCalls.indexOf(faceCall));
   assert.ok(drawCalls.indexOf(faceCall) < drawCalls.indexOf(hairCall));
+});
+
+test('CanvasGameRenderer scales famous portrait layers around the layer center', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const assetPath = 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png';
+  renderer.assetCache.set(assetPath, {
+    status: 'loaded',
+    image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+  });
+  const layout = {
+    version: 3,
+    mode: 'stacked',
+    coordinateSize: 512,
+    global: { scale: 1, x: 0, y: 0 },
+    layers: {
+      hair: {
+        base: { x: 0, y: 0, width: 512, height: 512 },
+        x: 0,
+        y: 0,
+        scale: 0.5,
+      },
+    },
+  };
+
+  const drawn = renderer.drawFamousPortraitLayer(assetPath, 'hair', { x: 10, y: 20, size: 100 }, layout);
+
+  assert.equal(drawn, true);
+  const drawCall = calls.find((call) => call[0] === 'drawImage');
+  assert.ok(drawCall);
+  assert.ok(Math.abs(drawCall[2] - 35) < 0.01);
+  assert.ok(Math.abs(drawCall[3] - 45) < 0.01);
+  assert.ok(Math.abs(drawCall[4] - 50) < 0.01);
+  assert.ok(Math.abs(drawCall[5] - 50) < 0.01);
 });
 
 test('CanvasGameRenderer draws loading page over gameplay until resources are ready', () => {
