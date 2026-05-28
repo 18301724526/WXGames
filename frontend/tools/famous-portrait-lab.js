@@ -1,21 +1,27 @@
 (function () {
   const sharedLayout = window.FamousPortraitLayout || {};
+  document.documentElement.dataset.famousPortraitAssetVersion = sharedLayout.assetVersion || 'fallback';
   const layerBase = `../${sharedLayout.assetBase || 'assets/art/famous-person/layers/'}`;
+  const layerKeys = ['outfit', 'face', 'hair'];
   const labels = {
     outfit: '衣服',
     face: '脸型',
     hair: '发型',
   };
 
+  const makeFiles = (type) => Array.from({ length: 10 }, (_, index) => (
+    `fp-layer-v3-${type}-${String(index + 1).padStart(2, '0')}.png`
+  ));
+
   const defaultConfig = {
     version: sharedLayout.version || 3,
-    note: 'famous portrait v3 simple three-layer transform',
+    note: 'famous portrait v3 calibrated three-layer transform',
     coordinateSize: sharedLayout.coordinateSize || 512,
     global: { scale: 1, x: 0, y: 0, ...(sharedLayout.global || {}) },
-    order: [...(sharedLayout.order || ['outfit', 'face', 'hair'])],
-    layers: Object.fromEntries((sharedLayout.order || ['outfit', 'face', 'hair']).map((key) => {
+    order: [...(sharedLayout.order || layerKeys)],
+    layers: Object.fromEntries((sharedLayout.order || layerKeys).map((key) => {
       const layout = sharedLayout.layers?.[key] || {};
-      const options = Array.isArray(layout.options) && layout.options.length ? layout.options : [layout.file].filter(Boolean);
+      const options = Array.isArray(layout.options) && layout.options.length ? layout.options : makeFiles(key);
       return [key, {
         label: labels[key] || key,
         file: layout.file || options[0],
@@ -32,21 +38,25 @@
   };
 
   const preview = {
-    big: { x: 72, y: 64, size: 512 },
-    game: { x: 710, y: 118, width: 74, height: 98, scale: 1.74, offsetY: 0.14 },
-    card: { x: 650, y: 300, width: 356, height: 132 },
+    big: { x: 54, y: 62, size: 512 },
+    game: { x: 704, y: 112, width: 74, height: 98, scale: 1.74, offsetY: 0.14 },
+    card: { x: 654, y: 300, width: 372, height: 132 },
+    grid: { x: 52, y: 640, cell: 180, gapX: 22, gapY: 34, columns: 5 },
   };
 
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d');
   const controls = {
+    variantIndex: document.getElementById('variantIndex'),
     globalScale: document.getElementById('globalScale'),
     globalX: document.getElementById('globalX'),
     globalY: document.getElementById('globalY'),
     copyExport: document.getElementById('copyExport'),
+    applyImport: document.getElementById('applyImport'),
     resetDefaults: document.getElementById('resetDefaults'),
   };
   const values = {
+    variantIndex: document.getElementById('variantIndexValue'),
     globalScale: document.getElementById('globalScaleValue'),
     globalX: document.getElementById('globalXValue'),
     globalY: document.getElementById('globalYValue'),
@@ -54,10 +64,17 @@
   const layerList = document.getElementById('layerList');
   const exportData = document.getElementById('exportData');
   const imageCache = new Map();
+  let selectedVariant = 1;
   let state = clone(defaultConfig);
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function getVariantFile(key, variant) {
+    const layer = state.layers[key];
+    const index = Math.max(0, Math.min((layer.options?.length || 1) - 1, variant - 1));
+    return layer.options?.[index]?.file || layer.file;
   }
 
   function loadImage(src) {
@@ -89,7 +106,7 @@
       layers: state.order.reduce((result, key) => {
         const layer = state.layers[key];
         result[key] = {
-          file: layer.file,
+          file: getVariantFile(key, 1),
           visible: layer.visible,
           scale: layer.scale,
           x: layer.x,
@@ -100,11 +117,34 @@
     };
   }
 
+  function applyPayload(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (payload.global && typeof payload.global === 'object') {
+      state.global.scale = Number(payload.global.scale ?? state.global.scale);
+      state.global.x = Number(payload.global.x ?? state.global.x);
+      state.global.y = Number(payload.global.y ?? state.global.y);
+    }
+    if (Array.isArray(payload.order)) {
+      const nextOrder = payload.order.filter((key) => state.layers[key]);
+      if (nextOrder.length) state.order = nextOrder;
+    }
+    if (payload.layers && typeof payload.layers === 'object') {
+      Object.entries(payload.layers).forEach(([key, layer]) => {
+        if (!state.layers[key] || !layer || typeof layer !== 'object') return;
+        state.layers[key].scale = Number(layer.scale ?? state.layers[key].scale);
+        state.layers[key].x = Number(layer.x ?? state.layers[key].x);
+        state.layers[key].y = Number(layer.y ?? state.layers[key].y);
+        state.layers[key].visible = layer.visible !== false;
+      });
+    }
+  }
+
   function updateExport() {
     exportData.value = JSON.stringify(getExportPayload(), null, 2);
   }
 
   function updateLabels() {
+    values.variantIndex.textContent = String(selectedVariant).padStart(2, '0');
     values.globalScale.textContent = `${Math.round(state.global.scale * 100)}%`;
     values.globalX.textContent = state.global.x;
     values.globalY.textContent = state.global.y;
@@ -145,21 +185,25 @@
       </div>
       <div class="row">
         <span>X</span>
-        <input data-control="x" type="range" min="-220" max="220" value="0">
+        <input data-control="x" type="range" min="-260" max="260" value="0">
         <span class="value" data-value="x"></span>
       </div>
       <div class="row">
         <span>Y</span>
-        <input data-control="y" type="range" min="-260" max="260" value="0">
+        <input data-control="y" type="range" min="-320" max="320" value="0">
         <span class="value" data-value="y"></span>
       </div>
     `;
     item.querySelector('[data-control="scale"]').value = Math.round(layer.scale * 100);
     item.querySelector('[data-control="x"]').value = layer.x;
     item.querySelector('[data-control="y"]').value = layer.y;
-    item.querySelector('[data-control="file"]').value = layer.file;
+    item.querySelector('[data-control="file"]').value = getVariantFile(key, selectedVariant);
     item.querySelector('[data-control="file"]').addEventListener('change', (event) => {
-      layer.file = event.target.value;
+      const selectedIndex = layer.options.findIndex((option) => option.file === event.target.value);
+      if (selectedIndex >= 0) {
+        selectedVariant = selectedIndex + 1;
+        controls.variantIndex.value = selectedVariant;
+      }
       render();
     });
     item.querySelector('[data-control="scale"]').addEventListener('input', (event) => {
@@ -213,8 +257,7 @@
   }
 
   function getLayerFrame(layer, frame) {
-    const globalScale = state.global.scale;
-    const scale = layer.scale * globalScale;
+    const scale = layer.scale * state.global.scale;
     const size = state.coordinateSize * scale * frame.scale;
     return {
       x: frame.x + (layer.x + state.global.x) * frame.scale,
@@ -226,6 +269,7 @@
 
   async function drawPortrait(x, y, size, options = {}) {
     const clip = options.clip || null;
+    const variant = options.variant || selectedVariant;
     const frame = { x, y, scale: size / state.coordinateSize };
     if (clip) {
       ctx.save();
@@ -236,21 +280,17 @@
     for (const key of state.order) {
       const layer = state.layers[key];
       if (!layer.visible) continue;
-      const image = await loadImage(layerBase + layer.file);
+      const image = await loadImage(layerBase + getVariantFile(key, variant));
       const draw = getLayerFrame(layer, frame);
       ctx.drawImage(image, draw.x, draw.y, draw.width, draw.height);
     }
     if (clip) ctx.restore();
   }
 
-  async function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#101113';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+  async function drawCurrentPreviews() {
     ctx.fillStyle = '#ffe6b5';
     ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('完整预览', 72, 40);
+    ctx.fillText(`当前套装 ${String(selectedVariant).padStart(2, '0')}`, 54, 38);
     drawPanel(preview.big.x, preview.big.y, preview.big.size, preview.big.size, { fill: '#221b15' });
     await drawPortrait(preview.big.x, preview.big.y, preview.big.size);
 
@@ -261,7 +301,7 @@
 
     ctx.fillStyle = '#ffe6b5';
     ctx.font = '700 18px "Microsoft YaHei", sans-serif';
-    ctx.fillText('游戏头像区域预览', 650, 84);
+    ctx.fillText('游戏头像区域预览', 654, 84);
     drawPanel(preview.game.x, preview.game.y, preview.game.width, preview.game.height, {
       fill: 'rgba(44,32,23,.94)',
       stroke: 'rgba(240,180,91,.32)',
@@ -300,13 +340,52 @@
     ctx.fillStyle = '#74d3a0';
     ctx.font = '700 10px "Microsoft YaHei", sans-serif';
     ctx.fillText('守势反击 / 盾阵', preview.card.x + 96, preview.card.y + 88);
+  }
 
+  async function drawVariantGrid() {
+    ctx.fillStyle = '#ffe6b5';
+    ctx.font = '700 18px "Microsoft YaHei", sans-serif';
+    ctx.fillText('全部 10 套规格检查', preview.grid.x, preview.grid.y - 24);
+    for (let variant = 1; variant <= 10; variant += 1) {
+      const col = (variant - 1) % preview.grid.columns;
+      const row = Math.floor((variant - 1) / preview.grid.columns);
+      const x = preview.grid.x + col * (preview.grid.cell + preview.grid.gapX);
+      const y = preview.grid.y + row * (preview.grid.cell + preview.grid.gapY);
+      drawPanel(x, y, preview.grid.cell, preview.grid.cell, {
+        fill: variant === selectedVariant ? '#2f271f' : '#1c1e22',
+        stroke: variant === selectedVariant ? '#f0b45b' : 'rgba(255,255,255,.18)',
+        radius: 8,
+      });
+      await drawPortrait(x, y, preview.grid.cell, { variant });
+      ctx.fillStyle = '#cbbd96';
+      ctx.font = '11px "Microsoft YaHei", sans-serif';
+      ctx.fillText(String(variant).padStart(2, '0'), x + 8, y + preview.grid.cell - 8);
+    }
+  }
+
+  function rebuildFileSelections() {
+    state.order.forEach((key) => {
+      const root = document.querySelector(`[data-layer="${key}"]`);
+      const select = root?.querySelector('[data-control="file"]');
+      if (select) select.value = getVariantFile(key, selectedVariant);
+    });
+  }
+
+  async function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#101113';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await drawCurrentPreviews();
+    await drawVariantGrid();
     updateLabels();
     updateExport();
+    rebuildFileSelections();
   }
 
   function reset() {
+    selectedVariant = 1;
     state = clone(defaultConfig);
+    controls.variantIndex.value = selectedVariant;
     controls.globalScale.value = Math.round(state.global.scale * 100);
     controls.globalX.value = state.global.x;
     controls.globalY.value = state.global.y;
@@ -314,6 +393,10 @@
     render();
   }
 
+  controls.variantIndex.addEventListener('input', (event) => {
+    selectedVariant = Number(event.target.value);
+    render();
+  });
   controls.globalScale.addEventListener('input', (event) => {
     state.global.scale = Number(event.target.value) / 100;
     render();
@@ -330,12 +413,21 @@
     updateExport();
     await navigator.clipboard?.writeText(exportData.value);
   });
+  controls.applyImport.addEventListener('click', () => {
+    try {
+      applyPayload(JSON.parse(exportData.value));
+      controls.globalScale.value = Math.round(state.global.scale * 100);
+      controls.globalX.value = state.global.x;
+      controls.globalY.value = state.global.y;
+      rebuildLayerList();
+      render();
+    } catch (error) {
+      exportData.value = `${exportData.value}\n\n导入失败: ${error.message}`;
+    }
+  });
   controls.resetDefaults.addEventListener('click', reset);
 
-  loadAssets().then(() => {
-    rebuildLayerList();
-    render();
-  }).catch((error) => {
+  loadAssets().then(reset).catch((error) => {
     ctx.fillStyle = '#ff7b7b';
     ctx.font = '16px sans-serif';
     ctx.fillText(error.message, 24, 40);

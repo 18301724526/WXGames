@@ -172,7 +172,7 @@ test('CanvasGameRenderer cache-busts famous person portrait layer image requests
     'assets/art/icon-food-cutout.webp',
   ]);
 
-  assert.match(createdImages[0].src, /fp-layer-v3-hair-01\.png\?v=famous-portrait-v3-simple-20260528$/);
+  assert.match(createdImages[0].src, /fp-layer-v3-hair-01\.png\?v=famous-portrait-v3-fixedgrid-20260528$/);
   assert.equal(createdImages[1].src, 'assets/art/icon-food-cutout.webp');
   createdImages.forEach((image) => image.onload?.());
   await pending;
@@ -191,7 +191,7 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
   assert.equal(layout.version, 3);
   assert.equal(layout.mode, 'stacked');
-  assert.equal(layout.assetVersion, 'famous-portrait-v3-simple-20260528');
+  assert.equal(layout.assetVersion, 'famous-portrait-v3-fixedgrid-20260528');
   assert.deepEqual(layout.order, ['outfit', 'face', 'hair']);
   assert.deepEqual(layout.layers.outfit.base, { x: 0, y: 0, width: 512, height: 512 });
   assert.deepEqual(layout.layers.face.base, { x: 0, y: 0, width: 512, height: 512 });

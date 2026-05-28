@@ -12,7 +12,7 @@
     version: 3,
     mode: 'stacked',
     coordinateSize: 512,
-    assetVersion: 'famous-portrait-v3-simple-20260528',
+    assetVersion: 'famous-portrait-v3-fixedgrid-20260528',
     assetBase: 'assets/art/famous-person/layers/',
     global: Object.freeze({
       scale: 1,

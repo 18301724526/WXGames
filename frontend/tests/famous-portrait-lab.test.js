@@ -65,29 +65,34 @@ function readPngAlphaStats(filePath) {
   return { width, height, opaquePixels };
 }
 
-test('famous portrait v3 lab exposes simple three-layer controls', () => {
+test('famous portrait v3 lab exposes three-layer calibration controls', () => {
   const html = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.html'), 'utf8');
   const script = fs.readFileSync(path.join(projectRoot, 'frontend', 'tools', 'famous-portrait-lab.js'), 'utf8');
 
-  assert.match(html, /名人立绘三层试验台/);
+  assert.match(html, /名人立绘三层校准台/);
+  assert.match(html, /id="variantIndex"/);
   assert.match(html, /id="globalScale"[^>]*min="0"[^>]*max="200"/);
   assert.match(html, /id="layerList"/);
   assert.match(html, /id="copyExport"/);
+  assert.match(html, /id="applyImport"/);
   assert.match(html, /id="exportData"/);
-  assert.match(html, /衣服、脸型、发型三层/);
-  assert.match(html, /<canvas id="stage" width="1120" height="900"><\/canvas>/);
-  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-simple-20260528"><\/script>/);
-  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.2\.0-v3-simple"><\/script>/);
+  assert.match(html, /衣服、脸型、发型/);
+  assert.match(html, /<canvas id="stage" width="1320" height="1160"><\/canvas>/);
+  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-fixedgrid-20260528"><\/script>/);
+  assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.3\.0-v3-calibration"><\/script>/);
 
   assert.match(script, /sharedLayout = window\.FamousPortraitLayout/);
+  assert.match(script, /dataset\.famousPortraitAssetVersion = sharedLayout\.assetVersion \|\| 'fallback'/);
   assert.match(script, /labels = \{/);
   assert.match(script, /outfit: '衣服'/);
   assert.match(script, /face: '脸型'/);
   assert.match(script, /hair: '发型'/);
-  assert.match(script, /sharedLayout\.order \|\| \['outfit', 'face', 'hair'\]/);
+  assert.match(script, /function getVariantFile\(key, variant\)/);
+  assert.match(script, /async function drawVariantGrid\(\)/);
   assert.match(script, /data-control="scale" type="range" min="0" max="200"/);
   assert.match(script, /function drawPortrait\(x, y, size, options = \{\}\)/);
   assert.match(script, /游戏头像区域预览/);
+  assert.match(script, /全部 10 套规格检查/);
   assert.doesNotMatch(script, /fp-layer-v2|fp-layer-v2-manifest|hairBase|bangs|outfitBack|outfitFront|frontCutY|backCutY/);
 });
 
