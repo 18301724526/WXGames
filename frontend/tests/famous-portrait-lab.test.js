@@ -114,9 +114,12 @@ test('famous portrait v3 resource directory contains only three simple layer poo
 
 test('famous portrait v3 PNG layers are non-empty 512 alpha resources', () => {
   listFamousLayerFiles(/^fp-layer-v3-.*\.png$/).forEach((filename) => {
+    const filePath = path.join(famousLayerDir, filename);
+    const fileSize = fs.statSync(filePath).size;
     const stats = readPngAlphaStats(path.join(famousLayerDir, filename));
     assert.equal(stats.width, 512, filename);
     assert.equal(stats.height, 512, filename);
     assert.ok(stats.opaquePixels > 0, filename);
+    assert.ok(fileSize > (filename.includes('-outfit-') ? 100000 : 50000), filename);
   });
 });
