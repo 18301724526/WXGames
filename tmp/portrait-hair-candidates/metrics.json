@@ -1,0 +1,217 @@
+[
+  {
+    "key": "hairBase",
+    "outFile": "fp-layer-v2-art01-hairBase-bound-topknot-filled-candidate-01.png",
+    "sourceFile": "ig_024aa8bb521ca7fc016a17dc9438f0819bae4fd15731fa3bbb.png",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBounds": {
+      "minX": 218,
+      "minY": 93,
+      "maxX": 1028,
+      "maxY": 1085,
+      "width": 811,
+      "height": 993,
+      "opaquePixels": 332675
+    },
+    "referenceFile": "fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png",
+    "referenceBounds": {
+      "minX": 245,
+      "minY": 92,
+      "maxX": 1008,
+      "maxY": 1104,
+      "width": 764,
+      "height": 1013,
+      "opaquePixels": 276838
+    },
+    "draw": {
+      "x": 245,
+      "y": 131,
+      "width": 764,
+      "height": 935
+    },
+    "finalBounds": {
+      "minX": 245,
+      "minY": 131,
+      "maxX": 1008,
+      "maxY": 1062,
+      "width": 764,
+      "height": 932,
+      "opaquePixels": 295061
+    }
+  },
+  {
+    "key": "bangsStraight",
+    "outFile": "fp-layer-v2-art01-bangs-bound-topknot-candidate-01.png",
+    "sourceFile": "ig_024aa8bb521ca7fc016a17dcc1da48819b99e10cff7fe9c8b4.png",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBounds": {
+      "minX": 226,
+      "minY": 317,
+      "maxX": 1021,
+      "maxY": 820,
+      "width": 796,
+      "height": 504,
+      "opaquePixels": 235609
+    },
+    "referenceFile": "fp-layer-v2-art01-bangs-bound-topknot-01.png",
+    "referenceBounds": {
+      "minX": 354,
+      "minY": 354,
+      "maxX": 901,
+      "maxY": 619,
+      "width": 548,
+      "height": 266,
+      "opaquePixels": 64856
+    },
+    "draw": {
+      "x": 418,
+      "y": 354,
+      "width": 420,
+      "height": 266
+    },
+    "finalBounds": {
+      "minX": 418,
+      "minY": 354,
+      "maxX": 837,
+      "maxY": 619,
+      "width": 420,
+      "height": 266,
+      "opaquePixels": 65606
+    }
+  },
+  {
+    "key": "bangsShort",
+    "outFile": "fp-layer-v2-art01-bangs-bound-topknot-short-candidate-01.png",
+    "sourceFile": "ig_024aa8bb521ca7fc016a17dd0940bc819b9641061fd61bb331.png",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBounds": {
+      "minX": 229,
+      "minY": 342,
+      "maxX": 1026,
+      "maxY": 778,
+      "width": 798,
+      "height": 437,
+      "opaquePixels": 183854
+    },
+    "referenceFile": "fp-layer-v2-art01-bangs-bound-topknot-short-01.png",
+    "referenceBounds": {
+      "minX": 354,
+      "minY": 354,
+      "maxX": 901,
+      "maxY": 619,
+      "width": 548,
+      "height": 266,
+      "opaquePixels": 64750
+    },
+    "draw": {
+      "x": 385,
+      "y": 354,
+      "width": 486,
+      "height": 266
+    },
+    "finalBounds": {
+      "minX": 385,
+      "minY": 354,
+      "maxX": 869,
+      "maxY": 619,
+      "width": 485,
+      "height": 266,
+      "opaquePixels": 68170
+    }
+  },
+  {
+    "key": "bangsParted",
+    "outFile": "fp-layer-v2-art01-bangs-bound-topknot-parted-candidate-01.png",
+    "sourceFile": "ig_024aa8bb521ca7fc016a17dd4a1ed4819b85c87c6209695816.png",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBounds": {
+      "minX": 242,
+      "minY": 339,
+      "maxX": 1010,
+      "maxY": 856,
+      "width": 769,
+      "height": 518,
+      "opaquePixels": 217254
+    },
+    "referenceFile": "fp-layer-v2-art01-bangs-bound-topknot-parted-01.png",
+    "referenceBounds": {
+      "minX": 354,
+      "minY": 354,
+      "maxX": 901,
+      "maxY": 619,
+      "width": 548,
+      "height": 266,
+      "opaquePixels": 64719
+    },
+    "draw": {
+      "x": 431,
+      "y": 354,
+      "width": 395,
+      "height": 266
+    },
+    "finalBounds": {
+      "minX": 431,
+      "minY": 354,
+      "maxX": 825,
+      "maxY": 618,
+      "width": 395,
+      "height": 265,
+      "opaquePixels": 57249
+    }
+  },
+  {
+    "key": "bangsSwept",
+    "outFile": "fp-layer-v2-art01-bangs-bound-topknot-swept-candidate-01.png",
+    "sourceFile": "ig_024aa8bb521ca7fc016a17dd7248d8819bbd514bf536c0861c.png",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBounds": {
+      "minX": 249,
+      "minY": 344,
+      "maxX": 985,
+      "maxY": 765,
+      "width": 737,
+      "height": 422,
+      "opaquePixels": 176941
+    },
+    "referenceFile": "fp-layer-v2-art01-bangs-bound-topknot-swept-01.png",
+    "referenceBounds": {
+      "minX": 359,
+      "minY": 354,
+      "maxX": 906,
+      "maxY": 625,
+      "width": 548,
+      "height": 272,
+      "opaquePixels": 66125
+    },
+    "draw": {
+      "x": 396,
+      "y": 354,
+      "width": 475,
+      "height": 272
+    },
+    "finalBounds": {
+      "minX": 396,
+      "minY": 354,
+      "maxX": 870,
+      "maxY": 625,
+      "width": 475,
+      "height": 272,
+      "opaquePixels": 73512
+    }
+  }
+]

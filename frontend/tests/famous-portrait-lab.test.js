@@ -128,22 +128,14 @@ test('famous portrait v2 manifest includes the user-cut resource set', () => {
   assert.equal(manifest.version, 2);
   assert.equal(manifest.coordinateSize, 512);
   assert.deepEqual(files, [
-    'fp-layer-v2-art01-backHair-short-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-swept-01.png',
-    'fp-layer-v2-art01-bangs-short-01.png',
-    'fp-layer-v2-art01-body-base-01.png',
-    'fp-layer-v2-art01-frontHair-short-01.png',
-    'fp-layer-v2-art01-hair-bound-topknot-01.png',
     'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
     'fp-layer-v2-art01-head-base-01.png',
-    'fp-layer-v2-art01-innerwear-guardian-01.png',
-    'fp-layer-v2-art01-outfit-guardian-01.png',
     'fp-layer-v2-art01-outfitBack-guardian-01.png',
     'fp-layer-v2-art01-outfitFront-guardian-01.png',
-    'fp-layer-v2-art01-sideHair-short-01.png',
   ]);
 
   files.forEach((filename) => {
@@ -168,13 +160,8 @@ test('famous portrait v2 PNG layers are non-empty alpha resources', () => {
 test('active famous portrait lab layers preserve source aspect ratio', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json'), 'utf8'));
   [
-    'fp-layer-v2-art01-backHair-short-01.png',
-    'fp-layer-v2-art01-sideHair-short-01.png',
-    'fp-layer-v2-art01-frontHair-short-01.png',
-    'fp-layer-v2-art01-bangs-short-01.png',
     'fp-layer-v2-art01-head-base-01.png',
     'fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png',
-    'fp-layer-v2-art01-hair-bound-topknot-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-short-01.png',
     'fp-layer-v2-art01-bangs-bound-topknot-parted-01.png',

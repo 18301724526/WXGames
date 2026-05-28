@@ -1,78 +1,8 @@
 {
   "version": 2,
-  "source": "famous-portrait-layer-sheet-art01.png + user-cut portrait-source layers",
+  "source": "user-cut portrait-source layers",
   "coordinateSize": 512,
   "layers": {
-    "fp-layer-v2-art01-body-base-01.png": {
-      "x": 17.936,
-      "y": 96.357,
-      "width": 492.433,
-      "height": 348.683,
-      "sourcePixelWidth": 302,
-      "sourcePixelHeight": 427,
-      "sourceSheetX": 11,
-      "sourceSheetY": 118
-    },
-    "fp-layer-v2-art01-innerwear-guardian-01.png": {
-      "x": 1.636,
-      "y": 226.195,
-      "width": 510.364,
-      "height": 285.805,
-      "sourcePixelWidth": 312,
-      "sourcePixelHeight": 350,
-      "sourceSheetX": 315,
-      "sourceSheetY": 277
-    },
-    "fp-layer-v2-art01-outfit-guardian-01.png": {
-      "x": 0,
-      "y": 7.349,
-      "width": 500.586,
-      "height": 504.651,
-      "sourcePixelWidth": 307,
-      "sourcePixelHeight": 618,
-      "sourceSheetX": 627,
-      "sourceSheetY": 9
-    },
-    "fp-layer-v2-art01-backHair-short-01.png": {
-      "x": 67.067,
-      "y": 81.659,
-      "width": 173.063,
-      "height": 311.936,
-      "sourcePixelWidth": 212,
-      "sourcePixelHeight": 382,
-      "sourceSheetX": 982,
-      "sourceSheetY": 100
-    },
-    "fp-layer-v2-art01-sideHair-short-01.png": {
-      "x": 47.287,
-      "y": 133.92,
-      "width": 211.506,
-      "height": 203.33,
-      "sourcePixelWidth": 259,
-      "sourcePixelHeight": 249,
-      "sourceSheetX": 29,
-      "sourceSheetY": 791
-    },
-    "fp-layer-v2-art01-frontHair-short-01.png": {
-      "x": 11.45,
-      "y": 0,
-      "width": 249.017,
-      "height": 343.783,
-      "sourcePixelWidth": 305,
-      "sourcePixelHeight": 421,
-      "sourceSheetX": 321,
-      "sourceSheetY": 627
-    },
-    "fp-layer-v2-art01-bangs-short-01.png": {
-      "x": 70.115,
-      "y": 0,
-      "width": 221.313,
-      "height": 262.124,
-      "sourcePixelWidth": 271,
-      "sourcePixelHeight": 321,
-      "sourceSheetX": 670,
-      "sourceSheetY": 627
-    },
     "fp-layer-v2-art01-head-base-01.png": {
       "x": 0,
       "y": 0,
@@ -105,17 +35,6 @@
       "sourceSheetX": 0,
       "sourceSheetY": 0,
       "source": "User-cut foreground outfit layer; copied without cleanup"
-    },
-    "fp-layer-v2-art01-hair-bound-topknot-01.png": {
-      "x": 0,
-      "y": 0,
-      "width": 1254,
-      "height": 1254,
-      "sourcePixelWidth": 1254,
-      "sourcePixelHeight": 1254,
-      "sourceSheetX": 0,
-      "sourceSheetY": 0,
-      "source": "AI generated complete hair layer for anchor prototype"
     },
     "fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png": {
       "x": 0,

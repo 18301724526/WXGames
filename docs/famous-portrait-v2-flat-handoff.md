@@ -6,16 +6,15 @@ Updated: 2026-05-28
 
 The famous portrait system has been rebuilt around bitmap PNG resource layers.
 
-2026-05-28 update: the first outfit/body retake is now a user-cut workflow. Do not auto-split or auto-clean the user's cut layers. The lab loads the user's PNG layers directly so the user can tune `x`, `y`, and `scale` in the browser, then hand the exported JSON back for runtime sync.
+2026-05-28 update: the active implementation is now a five-layer anchored portrait workflow. The lab loads the current PNG layers directly so the user can tune `x`, `y`, and `scale` in the browser, then hand the exported JSON back for runtime sync.
 
 This version intentionally removes the old split/crop simulation path. The lab and the game now share the same cropped-layer coordinate model:
 
-1. Art is generated as a bitmap PNG contact sheet, not with code-drawn vector/canvas shapes.
-2. The extraction script only removes the green/white sheet background, crops transparent padding, and writes PNG layers.
-3. Each PNG is tightly cropped to its first and last opaque pixels.
-4. The manifest stores each cropped PNG's base position in a 512 x 512 coordinate space.
-5. Manual tuning is stored as layer `x`, `y`, and `scale` offsets.
-6. Runtime drawing uses the same order and coordinate math as the lab preview.
+1. Art is generated as bitmap PNG resources, not with code-drawn vector/canvas shapes.
+2. Each PNG should be tightly cropped to its first and last opaque pixels.
+3. The manifest stores each cropped PNG's base position in a 512 x 512 coordinate space.
+4. Manual tuning is stored as layer `x`, `y`, and `scale` offsets.
+5. Runtime drawing uses the same order and coordinate math as the lab preview.
 
 ## Public Test Entry
 
@@ -36,66 +35,63 @@ The page includes:
 Current lab order for the user-cut tuning pass:
 
 ```text
-backHair -> outfitBack -> head -> sideHair -> frontHair -> bangs -> outfitFront
+outfitBack -> head -> hairBase -> bangs -> outfitFront
 ```
 
-New user-cut files:
+Current active files:
 
 - `fp-layer-v2-art01-head-base-01.png`
 - `fp-layer-v2-art01-outfitBack-guardian-01.png`
 - `fp-layer-v2-art01-outfitFront-guardian-01.png`
-
-These were copied from `.local-logs/portrait-source/` without cleanup, trimming, or rescaling.
+- `fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-short-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-parted-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-swept-01.png`
 
 ## Runtime Layer Order
 
 Runtime and lab order:
 
 ```text
-backHair -> body -> innerwear -> sideHair -> frontHair -> bangs -> outfit
+outfitBack -> head -> hairBase -> bangs -> outfitFront
 ```
 
 Layer meaning:
 
-- `backHair`: rear hair silhouette and outer hair volume.
-- `body`: face, neck, ears, shoulders, and base skin.
-- `innerwear`: collar/chest cloth under armor.
-- `sideHair`: sideburn and face-side hair pieces.
-- `frontHair`: forehead/front hair mass, not bangs.
-- `bangs`: bangs only.
-- `outfit`: armor/outfit shell.
+- `outfitBack`: rear outfit layer.
+- `head`: head, face, neck, and base body layer.
+- `hairBase`: anchored hair base under the replaceable bangs.
+- `bangs`: replaceable bangs variants.
+- `outfitFront`: foreground outfit layer.
 
 ## Current Resource Files
 
 Only these layer files should exist under `frontend/assets/art/famous-person/layers/`:
 
-- `fp-layer-v2-art01-backHair-short-01.png`
-- `fp-layer-v2-art01-body-base-01.png`
-- `fp-layer-v2-art01-innerwear-guardian-01.png`
-- `fp-layer-v2-art01-sideHair-short-01.png`
-- `fp-layer-v2-art01-frontHair-short-01.png`
-- `fp-layer-v2-art01-bangs-short-01.png`
-- `fp-layer-v2-art01-outfit-guardian-01.png`
+- `fp-layer-v2-art01-outfitBack-guardian-01.png`
+- `fp-layer-v2-art01-head-base-01.png`
+- `fp-layer-v2-art01-hairBase-bound-topknot-filled-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-short-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-parted-01.png`
+- `fp-layer-v2-art01-bangs-bound-topknot-swept-01.png`
+- `fp-layer-v2-art01-outfitFront-guardian-01.png`
 - `fp-layer-v2-manifest.json`
 
-Old `fp-layer-*` and old preview PNGs were deleted on purpose.
-
-The source sheet is tracked here:
-
-- `frontend/assets/art/famous-person/source/famous-portrait-layer-sheet-art01.png`
+Old seven-layer files, the complete-hair prototype, old `fp-layer-*` files, old preview PNGs, and the old source sheet were deleted on purpose.
 
 ## Code Links
 
-- Resource extractor: `scripts/extract-famous-portrait-v2-sheet.js`
 - Lab page: `frontend/tools/famous-portrait-lab.html`
 - Lab logic: `frontend/tools/famous-portrait-lab.js`
 - Shared layout: `frontend/js/config/FamousPortraitLayout.js`
 - Game renderer: `frontend/js/platform/CanvasGameRenderer.js`
 - Backend generation: `backend/services/FamousPersonService.js`
 
-`FamousPersonService.APPEARANCE_VERSION` is now `famous-portrait-v1.1`, so saved v1.0/v0.9/v0.2/unversioned people regenerate into the `art01` PNG layers during normalization.
+`FamousPersonService.APPEARANCE_VERSION` is now `famous-portrait-v2.1`, so old saved people regenerate into the current `art01` PNG layers during normalization.
 
-Important: do not restore `scripts/generate-famous-portrait-v2-assets.js`. That old path drew placeholder art in code. The approved pipeline is PNG art sheet -> deterministic extraction -> cropped PNG layers.
+Important: do not restore `scripts/generate-famous-portrait-v2-assets.js`, `scripts/extract-famous-portrait-v2-sheet.js`, or `scripts/preview-famous-portrait-v2-composite.js`. Those paths either drew placeholder art in code or regenerate the obsolete seven-layer resource set.
 
 ## Tests
 
