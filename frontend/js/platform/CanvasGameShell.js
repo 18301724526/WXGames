@@ -89,6 +89,7 @@
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
       this.rewardReveal = null;
+      this.battleScene = null;
       const GuideControllerCtor = global.CanvasGuideController || (typeof require === 'function' ? require('./CanvasGuideController') : null);
       this.guideController = options.guideController || (GuideControllerCtor ? new GuideControllerCtor({
         host: this,
@@ -153,6 +154,7 @@
         || this.techDetailOpen
         || this.activeEventId
         || this.naming.visible
+        || this.battleScene?.visible
         || this.rewardReveal);
     }
 
@@ -237,6 +239,11 @@
 
     getCanvasActionState() {
       return this.lastGame?.state || {};
+    }
+
+    runAction(callback) {
+      if (typeof this.lastGame?.runAction === 'function') return this.lastGame.runAction(callback);
+      return typeof callback === 'function' ? callback() : null;
     }
 
     selectBuildingCategory(action = {}) {
@@ -920,6 +927,7 @@
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
         territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
+        ...((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {}),
         tabLocks: this.getTabLocks(state),
         naming: this.naming,
         auth: this.auth,
@@ -929,6 +937,21 @@
         rewardReveal: this.rewardReveal,
       });
       return true;
+    }
+
+    startBattleScene(report = null) {
+      if (!report) return false;
+      this.battleScene = {
+        visible: true,
+        report,
+        turnIndex: 0,
+      };
+      return this.renderActive();
+    }
+
+    closeBattleScene() {
+      this.battleScene = null;
+      return this.renderActive();
     }
 
     getTabLocks(state = {}) {

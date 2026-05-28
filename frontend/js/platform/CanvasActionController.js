@@ -1165,6 +1165,45 @@
       return this.finalize(this.runAction(() => this.host.api.claimConquest(action.territoryId)));
     }
 
+    handle_enterBattleScene(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const territory = this.getTerritoryController();
+      if (territory?.handleAction) {
+        territory.handleAction({ territoryId: action.territoryId, action: 'enter-battle' });
+        return true;
+      }
+      const game = this.getGameHost();
+      const api = game?.getGameApi?.() || game?.api || this.host?.api;
+      if (!api?.claimConquest) return false;
+      const run = async () => {
+        const result = await this.runAction(() => api.claimConquest(action.territoryId));
+        if (result?.battleReport && typeof game?.startBattleScene === 'function') {
+          game.startBattleScene(result.battleReport);
+        } else if (result?.battleReport && typeof this.host?.startBattleScene === 'function') {
+          this.host.startBattleScene(result.battleReport);
+        }
+        return true;
+      };
+      return this.finalize(run());
+    }
+
+    handle_closeBattleScene(action) {
+      const game = this.getGameHost();
+      const closed = typeof game?.closeBattleScene === 'function'
+        ? game.closeBattleScene()
+        : this.host?.closeBattleScene?.();
+      return closed !== false;
+    }
+
+    handle_skipBattleScene(action) {
+      const game = this.getGameHost();
+      const skipped = typeof game?.skipBattleScene === 'function'
+        ? game.skipBattleScene()
+        : this.host?.skipBattleScene?.();
+      return skipped !== false;
+    }
+
     handle_manageCity(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;

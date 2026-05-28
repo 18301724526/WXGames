@@ -113,6 +113,7 @@ class H5GameHost extends CanvasGameAppBase {
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
       onCityRenameRequested: (prompt) => this.requestCityRename(prompt),
+      onBattleSceneRequested: (report) => this.startBattleScene(report),
     });
 
     this.gameModules?.mount?.(this);

@@ -2391,9 +2391,10 @@
         };
       }
       if (site.status === 'contested' && mission?.status === 'ready') {
+        const action = mission.mode === 'settlement' ? 'claim' : 'enter-battle';
         return {
           kind: 'single',
-          buttons: [this.makeWorldSiteActionButton('完成占领', 'claim', site.id)],
+          buttons: [this.makeWorldSiteActionButton(action === 'claim' ? '完成占领' : '进入战斗', action, site.id)],
           hint: '',
           expeditionConfig: null,
         };
@@ -2437,7 +2438,9 @@
       const report = site.lastBattle?.report;
       if (!report) return [];
       const lines = [report.summary || '战斗已经结束。'];
-      if (report.skillName) lines.push(`关键技能：${report.skillName}`);
+      if (report.system === 'speed-basic-attack-v1' || report.system === 'speed-skill-cooldown-v1') {
+        lines.push(`速度：己方 ${report.attacker?.speed || 0} / 敌方 ${report.defender?.speed || 0}`);
+      } else if (report.skillName) lines.push(`关键技能：${report.skillName}`);
       const lastRound = Array.isArray(report.rounds) && report.rounds.length ? report.rounds[report.rounds.length - 1] : null;
       if (lastRound) {
         lines.push(`终局兵力：己方 ${lastRound.attackerSoldiers || 0} / 敌方 ${lastRound.defenderSoldiers || 0}`);
@@ -2445,6 +2448,83 @@
         lines.push(`终局兵力：己方 ${report.attacker?.soldiersEnd || 0} / 敌方 ${report.defender?.soldiersEnd || 0}`);
       }
       return lines.slice(0, 3);
+    }
+
+    static makeVisualGroups(soldiers, groupSize = 100) {
+      const total = Math.max(0, this.toInteger(soldiers));
+      const size = Math.max(1, this.toInteger(groupSize, 100));
+      if (total <= 0) return [];
+      return Array.from({ length: Math.ceil(total / size) }, (_, index) => {
+        const remaining = total - index * size;
+        return {
+          index: index + 1,
+          soldiers: Math.max(0, Math.min(size, remaining)),
+          capacity: size,
+          ratio: Math.max(0, Math.min(1, Math.max(0, Math.min(size, remaining)) / size)),
+        };
+      });
+    }
+
+    static buildBattleSceneViewState(battle = {}, options = {}) {
+      const report = battle.report || battle;
+      if (!report || typeof report !== 'object') return { visible: false };
+      const turns = Array.isArray(report.turns) ? report.turns : [];
+      const requestedTurn = this.toInteger(options.turnIndex, 0);
+      const turnIndex = Math.max(0, Math.min(turns.length, requestedTurn));
+      const activeTurn = turns[Math.max(0, turnIndex - 1)] || null;
+      const groupSize = this.toInteger(report.groupSize || report.visual?.groupSize, 100);
+      const attackerSoldiers = activeTurn
+        ? this.toInteger(activeTurn.attackerSoldiersAfter)
+        : this.toInteger(report.attacker?.soldiersStart);
+      const defenderSoldiers = activeTurn
+        ? this.toInteger(activeTurn.defenderSoldiersAfter)
+        : this.toInteger(report.defender?.soldiersStart);
+      const ended = turnIndex >= turns.length && turns.length > 0;
+      const resultText = report.result === 'victory' ? '胜利' : report.result === 'defeat' ? '失败' : '交战中';
+      return {
+        visible: true,
+        id: report.id || '',
+        title: `${report.attacker?.leaderName || '己方'}队 vs ${report.defender?.name || '守军'}队`,
+        resultText,
+        ended,
+        map: report.visual?.map || {
+          id: 'frontier-field',
+          name: '边境战场',
+          background: 'assets/art/battle/battlefield-forest-camp.png',
+          soldierSprites: {
+            attacker: 'assets/art/battle/soldier-player-sheet.png',
+            defender: 'assets/art/battle/soldier-enemy-sheet.png',
+          },
+          palette: ['#2f3d30', '#667245', '#9a7848'],
+        },
+        turnIndex,
+        turnCount: turns.length,
+        activeTurn,
+        logLines: turns.slice(Math.max(0, turnIndex - 4), turnIndex).map((turn) => turn.text).filter(Boolean),
+        attacker: {
+          side: 'attacker',
+          name: `${report.attacker?.leaderName || '己方'}队`,
+          leaderName: report.attacker?.leaderName || '无名领队',
+          leaderTitle: report.attacker?.leaderTitle || '',
+          appearance: report.attacker?.appearance || {},
+          sprite: report.visual?.map?.soldierSprites?.attacker || 'assets/art/battle/soldier-player-sheet.png',
+          speed: this.toInteger(report.attacker?.speed),
+          soldiersStart: this.toInteger(report.attacker?.soldiersStart),
+          soldiers: attackerSoldiers,
+          groups: this.makeVisualGroups(attackerSoldiers, groupSize),
+        },
+        defender: {
+          side: 'defender',
+          name: `${report.defender?.name || '守军'}队`,
+          leaderName: report.defender?.name || '守军',
+          leaderTitle: '守军',
+          sprite: report.visual?.map?.soldierSprites?.defender || 'assets/art/battle/soldier-enemy-sheet.png',
+          speed: this.toInteger(report.defender?.speed),
+          soldiersStart: this.toInteger(report.defender?.soldiersStart),
+          soldiers: defenderSoldiers,
+          groups: this.makeVisualGroups(defenderSoldiers, groupSize),
+        },
+      };
     }
 
     static buildWorldSiteDetailViewState(site = {}, territoryState = {}, uiState = {}) {

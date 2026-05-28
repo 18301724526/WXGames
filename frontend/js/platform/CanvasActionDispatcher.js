@@ -176,6 +176,30 @@
         return changed;
       }
 
+      if (action.type === 'enterBattleScene') {
+        const entered = typeof context.enterBattleScene === 'function'
+          ? context.enterBattleScene(action) !== false
+          : false;
+        if (entered && typeof context.render === 'function') context.render(action);
+        return entered;
+      }
+
+      if (action.type === 'closeBattleScene') {
+        const closed = typeof context.closeBattleScene === 'function'
+          ? context.closeBattleScene(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
+      if (action.type === 'skipBattleScene') {
+        const skipped = typeof context.skipBattleScene === 'function'
+          ? context.skipBattleScene(action) !== false
+          : false;
+        if (skipped && typeof context.render === 'function') context.render(action);
+        return skipped;
+      }
+
       if (action.type === 'goToGuideTaskTarget') {
         const moved = typeof context.goToGuideTaskTarget === 'function'
           ? context.goToGuideTaskTarget(action) !== false
@@ -273,6 +297,9 @@
         'resetWorldPan',
         'changeExpeditionSoldiers',
         'changeExpeditionLeader',
+        'enterBattleScene',
+        'closeBattleScene',
+        'skipBattleScene',
         'goToGuideTaskTarget',
         'openTaskCenter',
         'closeTaskCenter',

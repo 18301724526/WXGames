@@ -167,6 +167,9 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'resetWorldPan',
     'changeExpeditionSoldiers',
     'changeExpeditionLeader',
+    'enterBattleScene',
+    'closeBattleScene',
+    'skipBattleScene',
     'goToGuideTaskTarget',
     'openTaskCenter',
     'closeTaskCenter',
@@ -537,6 +540,65 @@ test('CanvasActionController selects tech node before research confirmation', ()
     ['select', 'farming_field_rotation'],
     ['render', 'selectTechNode'],
   ]);
+});
+
+test('CanvasActionController enters battle scene through game host API from shell host', async () => {
+  const report = {
+    id: 'battle_1',
+    turns: [],
+    attacker: { leaderName: '陆骁', soldiersStart: 500 },
+    defender: { name: '林地部落', soldiersStart: 500 },
+  };
+  const calls = [];
+  const game = {
+    state: {},
+    getGameApi() {
+      return {
+        async claimConquest(territoryId) {
+          calls.push(['claimConquest', territoryId]);
+          return { success: true, battleReport: report };
+        },
+      };
+    },
+    async runAction(callback) {
+      const result = await callback();
+      calls.push(['runAction', result.success]);
+      return result;
+    },
+    startBattleScene(battleReport) {
+      calls.push(['startBattleScene', battleReport.id]);
+      return true;
+    },
+  };
+  const shell = {
+    getCanvasGameHost: () => game,
+  };
+  const controller = new CanvasActionController({ host: shell, awaitAsync: true });
+
+  const handled = await controller.handle({ type: 'enterBattleScene', territoryId: 'site-east' });
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [
+    ['claimConquest', 'site-east'],
+    ['runAction', true],
+    ['startBattleScene', 'battle_1'],
+  ]);
+});
+
+test('CanvasActionController can skip and close battle scene on game host', () => {
+  const calls = [];
+  const game = {
+    state: {},
+    skipBattleScene() { calls.push('skip'); return true; },
+    closeBattleScene() { calls.push('close'); return true; },
+  };
+  const controller = new CanvasActionController({
+    host: { getCanvasGameHost: () => game },
+  });
+
+  assert.equal(controller.handle({ type: 'skipBattleScene' }), true);
+  assert.equal(controller.handle({ type: 'closeBattleScene' }), true);
+  assert.deepEqual(calls, ['skip', 'close']);
 });
 
 test('CanvasActionDispatcher handles building category filter when used as a compatibility dispatcher', () => {

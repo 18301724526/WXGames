@@ -347,7 +347,9 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
 
   assert.equal(claim.success, true);
   assert.equal(claim.outcome, 'success');
-  assert.equal(claim.casualties, 166);
+  assert.equal(claim.battleReport.system, 'speed-skill-cooldown-v1');
+  assert.ok(claim.casualties > 0);
+  assert.ok(claim.casualties < 600);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
 });
 
@@ -386,9 +388,47 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(site.lastBattle.leaderName, '陆骁');
   assert.equal(site.lastBattle.report.mode, 'auto-round');
   assert.equal(site.lastBattle.report.attacker.leaderName, '陆骁');
-  assert.equal(site.lastBattle.report.skillName, '血刃连袭');
+  assert.equal(site.lastBattle.report.system, 'speed-skill-cooldown-v1');
+  assert.equal(site.lastBattle.report.turns[0].actor, 'attacker');
+  assert.equal(site.lastBattle.report.turns[0].action, 'skill');
+  assert.equal(site.lastBattle.report.turns[1].action, 'skill');
+  assert.ok(site.lastBattle.report.turns.some((turn) => turn.action === 'basicAttack'));
+  assert.equal(site.lastBattle.report.skillRules.openingSkill, true);
+  assert.equal(site.lastBattle.report.visual.map.background, 'assets/art/battle/battlefield-forest-camp.png');
+  assert.ok(site.lastBattle.report.attacker.speed >= site.lastBattle.report.defender.speed);
   assert.ok(site.lastBattle.report.rounds.length >= 1);
+  assert.equal(site.lastBattle.report.attacker.groupsStart.length, 5);
   assert.ok(site.lastBattle.report.summary.includes('陆骁'));
+});
+
+test('战斗报告按精确兵力结算但按 100 兵向上取整显示小人组', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addFamousLeader(state);
+  addDiscoveredTribeSite(state, {
+    id: 'visual_group_site',
+    naturalName: '林地部落',
+    defense: 500,
+    recommendedSoldiers: 500,
+  });
+  state.military.soldiers = 700;
+  gameStateService.normalizeState(state);
+
+  const start = TerritoryService.startConquest(state, 'visual_group_site', {
+    troopType: 'unavailable',
+    leader: 'fp_luxiao',
+    soldiers: 501,
+  }, now);
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, 'visual_group_site', now);
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.battleReport.attacker.soldiersStart, 501);
+  assert.equal(claim.battleReport.attacker.groupsStart.length, 6);
+  assert.equal(claim.battleReport.attacker.groupsStart[5].soldiers, 1);
+  assert.ok(claim.battleReport.turns.length >= 1);
 });
 
 test('有主地点征服胜利后会生成战后归附候选名人', () => {

@@ -150,6 +150,9 @@ test('CanvasGameRenderer preloads shared assets and reports progress', async () 
 test('CanvasGameRenderer preloads famous person portrait layers', () => {
   const paths = CanvasGameRenderer.getPreloadAssetPaths();
 
+  assert.ok(paths.includes('assets/art/battle/battlefield-forest-camp.png'));
+  assert.ok(paths.includes('assets/art/battle/soldier-player-sheet.png'));
+  assert.ok(paths.includes('assets/art/battle/soldier-enemy-sheet.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-outfit-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-face-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-hair-10.png'));
@@ -1168,6 +1171,101 @@ test('CanvasGameRenderer renders famous person leader choices in world expeditio
     && target.action.value === 'fp_luxiao'
   )));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'launchExpedition'));
+});
+
+test('CanvasGameRenderer renders animated battle scene with visual soldier groups', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.assetCache.set('assets/art/battle/battlefield-forest-camp.png', {
+    status: 'loaded',
+    image: { width: 1448, height: 1086, naturalWidth: 1448, naturalHeight: 1086 },
+  });
+  renderer.assetCache.set('assets/art/battle/soldier-player-sheet.png', {
+    status: 'loaded',
+    image: { width: 1254, height: 1254, naturalWidth: 1254, naturalHeight: 1254 },
+  });
+  renderer.assetCache.set('assets/art/battle/soldier-enemy-sheet.png', {
+    status: 'loaded',
+    image: { width: 1254, height: 1254, naturalWidth: 1254, naturalHeight: 1254 },
+  });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildBattleSceneViewState: UIStatePresenter.buildBattleSceneViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({}, {
+    mode: 'hud',
+    now: 1000,
+    battleScene: {
+      visible: true,
+      turnIndex: 1,
+      report: {
+        id: 'battle_1',
+        result: 'victory',
+        groupSize: 100,
+        attacker: {
+          leaderName: '陆骁',
+          leaderTitle: '破阵先登',
+          speed: 76,
+          soldiersStart: 501,
+          appearance: {
+            layers: {
+              outfit: 'assets/art/famous-person/layers/fp-layer-v3-outfit-01.png',
+              face: 'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
+              hair: 'assets/art/famous-person/layers/fp-layer-v3-hair-10.png',
+            },
+          },
+        },
+        defender: {
+          name: '林地部落',
+          speed: 53,
+          soldiersStart: 500,
+        },
+        turns: [{
+          index: 1,
+          round: 1,
+          actor: 'attacker',
+          target: 'defender',
+          action: 'skill',
+          skillName: '血刃连袭',
+          text: '陆骁队发起普攻，林地部落损失 43 士兵',
+          attackerSoldiersAfter: 501,
+          defenderSoldiersAfter: 457,
+        }],
+        visual: {
+          map: {
+            id: 'forest-camp',
+            background: 'assets/art/battle/battlefield-forest-camp.png',
+            soldierSprites: {
+              attacker: 'assets/art/battle/soldier-player-sheet.png',
+              defender: 'assets/art/battle/soldier-enemy-sheet.png',
+            },
+            palette: ['#283f2e', '#526a3b', '#8b6f3a'],
+          },
+        },
+      },
+    },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('陆骁队 vs 林地部落队')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('501/501')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('457/500')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('陆骁队发起普攻')));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'skipBattleScene' || target.action?.type === 'closeBattleScene'));
+  assert.ok(calls.some((call) => call[0] === 'drawImage' && call.length >= 10));
+});
+
+test('CanvasGameRenderer battle unit poses include idle move attack and hit phases', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const turn = { actor: 'attacker', target: 'defender' };
+
+  assert.equal(renderer.getBattleUnitPose('attacker', null), 'idle');
+  assert.equal(renderer.getBattleUnitPose('attacker', turn, 'move'), 'move');
+  assert.equal(renderer.getBattleUnitPose('attacker', turn, 'impact'), 'attack');
+  assert.equal(renderer.getBattleUnitPose('defender', turn, 'move'), 'idle');
+  assert.equal(renderer.getBattleUnitPose('defender', turn, 'impact'), 'hit');
 });
 
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {

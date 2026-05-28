@@ -1075,7 +1075,8 @@ test('world site dialog view state formats occupied and contested actions', () =
   assert.equal(occupied.text.note, '上次占领失败 · 损失 2 士兵');
   assert.deepEqual(occupied.action.buttons.map((button) => button.action), ['manage-city', 'rename-city']);
   assert.equal(ready.text.march, '行军耗时 2:00，已抵达待接管');
-  assert.equal(ready.action.buttons[0].action, 'claim');
+  assert.equal(ready.action.buttons[0].action, 'enter-battle');
+  assert.equal(ready.action.buttons[0].label, '进入战斗');
 });
 
 test('world site dialog view state formats famous leader battle report summary', () => {
@@ -1104,6 +1105,40 @@ test('world site dialog view state formats famous leader battle report summary',
     '关键技能：血刃连袭',
     '终局兵力：己方 454 / 敌方 0',
   ]);
+});
+
+test('battle scene view uses 100 soldiers only as visual group size', () => {
+  const view = UIStatePresenter.buildBattleSceneViewState({
+    id: 'battle_1',
+    result: 'victory',
+    groupSize: 100,
+    attacker: {
+      leaderName: '陆骁',
+      leaderTitle: '破阵先登',
+      speed: 76,
+      soldiersStart: 501,
+    },
+    defender: {
+      name: '林地部落',
+      speed: 53,
+      soldiersStart: 500,
+    },
+    turns: [{
+      index: 1,
+      actor: 'attacker',
+      target: 'defender',
+      text: '陆骁队发起普攻，林地部落损失 43 士兵',
+      attackerSoldiersAfter: 501,
+      defenderSoldiersAfter: 457,
+    }],
+    visual: { map: { id: 'forest-camp', palette: ['#111', '#222', '#333'] } },
+  }, { turnIndex: 1 });
+
+  assert.equal(view.attacker.groups.length, 6);
+  assert.equal(view.attacker.groups[5].soldiers, 1);
+  assert.equal(view.defender.groups.length, 5);
+  assert.equal(view.activeTurn.actor, 'attacker');
+  assert.equal(view.title, '陆骁队 vs 林地部落队');
 });
 
 test('world expedition config keeps unnamed leader fallback available before famous people join', () => {

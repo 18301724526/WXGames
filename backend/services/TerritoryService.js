@@ -9,7 +9,7 @@ const SCOUT_SITE_CHANCE_STEP = 0.14;
 const SCOUT_SITE_GUARANTEE_AFTER = 4;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
-const MAX_BATTLE_ROUNDS = 8;
+const MAX_BATTLE_ROUNDS = 20;
 
 const DIRECTIONS = {
   n: { label: '北方', dx: 0, dy: -1 },
@@ -534,20 +534,41 @@ function getLeaderSnapshot(gameState, leaderId) {
       strategy: toInteger(attributes.strategy, 50),
       charisma: toInteger(attributes.charisma, 50),
     },
+    appearance: clone(person.appearance || {}),
     skills: Array.isArray(person.skills) ? clone(person.skills).slice(0, 2) : [],
   };
 }
 
-function getPrimaryBattleSkill(leader) {
-  if (!leader || !Array.isArray(leader.skills)) return null;
-  return leader.skills.find((skill) => Array.isArray(skill.effects) && skill.effects.length) || null;
+function getLeaderSnapshotFromMission(mission) {
+  const raw = mission?.expedition?.leaderSnapshot;
+  if (!raw || typeof raw !== 'object') return null;
+  const attributes = raw.attributes || {};
+  return {
+    id: raw.id || mission.expedition?.leader || 'unavailable',
+    name: raw.name || '无名之士',
+    title: raw.title || raw.archetypeLabel || '名人',
+    archetype: raw.archetype || '',
+    attributes: {
+      command: toInteger(attributes.command, 50),
+      force: toInteger(attributes.force, 50),
+      strategy: toInteger(attributes.strategy, 50),
+      charisma: toInteger(attributes.charisma, 50),
+    },
+    appearance: clone(raw.appearance || {}),
+    skills: Array.isArray(raw.skills) ? clone(raw.skills).slice(0, 2) : [],
+  };
 }
 
-function getSkillEffect(skill, key) {
-  return (Array.isArray(skill?.effects) ? skill.effects : []).find((effect) => effect?.key === key) || null;
+function getBattleSpeed(unit) {
+  const attributes = unit.attributes || {};
+  const force = toInteger(attributes.force, 45);
+  const strategy = toInteger(attributes.strategy, 45);
+  const command = toInteger(attributes.command, 45);
+  const charisma = toInteger(attributes.charisma, 45);
+  return Math.max(10, Math.round(force * 0.34 + command * 0.34 + strategy * 0.18 + charisma * 0.14));
 }
 
-function getAttackPower(unit, skill = null, options = {}) {
+function getAttackPower(unit) {
   const soldiers = Math.max(0, toInteger(unit.soldiers, 0));
   const attributes = unit.attributes || {};
   const force = toInteger(attributes.force, 45);
@@ -556,15 +577,57 @@ function getAttackPower(unit, skill = null, options = {}) {
   const soldierScale = Math.max(1, soldiers / SOLDIER_SCALE);
   const attrScore = force * 0.6 + strategy * 0.25 + command * 0.15;
   const moraleFactor = Math.max(0.75, Math.min(1.25, (unit.morale || 100) / 100));
-  let multiplier = 1;
-  if (skill) {
-    const morale = getSkillEffect(skill, 'morale');
-    const armorBreak = getSkillEffect(skill, 'armorBreak');
-    if (morale) multiplier += Number(morale.value) || 0;
-    if (armorBreak) multiplier += Number(armorBreak.value) || 0;
+  return Math.max(8, Math.round((soldierScale * 14 + attrScore * 0.32) * moraleFactor));
+}
+
+function getBattleSkill(unit, role = 'attacker') {
+  if (Array.isArray(unit.leader?.skills) && unit.leader.skills.length) {
+    return clone(unit.leader.skills[0]);
   }
-  if (options.ambush) multiplier += 0.22;
-  return Math.max(8, Math.round((soldierScale * 14 + attrScore * 0.32) * moraleFactor * multiplier));
+  return {
+    id: role === 'attacker' ? 'fallback_assault' : 'fallback_guard_thrust',
+    name: role === 'attacker' ? '奋击' : '守势突刺',
+    type: 'battle',
+    cooldown: 3,
+    effects: role === 'attacker'
+      ? [{ key: 'morale', value: 0.08 }]
+      : [{ key: 'shield', value: 0.08 }],
+  };
+}
+
+function getSkillCooldown(skill = {}) {
+  return Math.max(2, toInteger(skill.cooldown, 3));
+}
+
+function getSkillPower(unit, skill = {}) {
+  const base = getAttackPower(unit);
+  const effects = Array.isArray(skill.effects) ? skill.effects : [];
+  const hasDamageAmplifier = effects.some((effect) => ['combo', 'armorBreak', 'ambush', 'burn', 'poison'].includes(effect.key));
+  const hasSupportEffect = effects.some((effect) => ['shield', 'heal', 'morale'].includes(effect.key));
+  const multiplier = hasDamageAmplifier ? 1.55 : (hasSupportEffect ? 1.32 : 1.4);
+  return Math.max(10, Math.round(base * multiplier));
+}
+
+function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
+  const effects = Array.isArray(skill.effects) ? skill.effects : [];
+  const notes = [];
+  effects.forEach((effect) => {
+    if (!effect || typeof effect !== 'object') return;
+    if (effect.key === 'lifesteal') {
+      const recovered = healSoldiers(unit, Math.round(dealt * (Number(effect.value) || 0)));
+      if (recovered > 0) notes.push(`恢复 ${recovered} 士兵`);
+    } else if (effect.key === 'heal') {
+      const recovered = healSoldiers(unit, Math.round(unit.maxSoldiers * (Number(effect.value) || 0)));
+      if (recovered > 0) notes.push(`整队恢复 ${recovered} 士兵`);
+    } else if (effect.key === 'shield') {
+      const shield = Math.round(getAttackPower(target) * (Number(effect.value) || 0));
+      if (shield > 0) notes.push(`护势抵消约 ${shield} 伤害`);
+    } else if (effect.key === 'morale') {
+      unit.morale = Math.min(130, Math.round((unit.morale || 100) * (1 + (Number(effect.value) || 0))));
+      notes.push('士气上扬');
+    }
+  });
+  return notes;
 }
 
 function applyDamage(target, damage) {
@@ -597,6 +660,7 @@ function getDefenderProfile(territory) {
       force: profile.force,
       strategy: profile.strategy,
       command: profile.command,
+      charisma: 42,
     },
   };
 }
@@ -621,85 +685,126 @@ function createLegacyBattleReport(mission, territory, result, now = new Date()) 
       soldiersStart: territory.defense || 0,
       soldiersEnd: result.success ? 0 : Math.max(0, (territory.defense || 0) - Math.floor(mission.soldiersCommitted / 2)),
     },
+    visual: {
+      groupSize: SOLDIER_SCALE,
+      map: getBattleMapForTerritory(territory),
+    },
+  };
+}
+
+function getBattleMapForTerritory(territory = {}) {
+  const mapByType = {
+    camp: { id: 'forest-camp', name: '林地营地', palette: ['#283f2e', '#526a3b', '#8b6f3a'] },
+    city: { id: 'stone-gate', name: '城邦外墙', palette: ['#343d46', '#6b7478', '#9c8055'] },
+    ruins: { id: 'old-ruins', name: '古代遗迹', palette: ['#30353a', '#65615b', '#8c805f'] },
+    town: { id: 'river-town', name: '河湾村镇', palette: ['#324b47', '#5f7659', '#9b7d45'] },
+    outpost: { id: 'frontier-outpost', name: '边境据点', palette: ['#34412e', '#687448', '#a4834c'] },
+  };
+  return mapByType[territory.type] || { id: 'frontier-field', name: '边境战场', palette: ['#2f3d30', '#667245', '#9a7848'] };
+}
+
+function getBattleStageForTerritory(territory = {}) {
+  return {
+    ...getBattleMapForTerritory(territory),
+    background: 'assets/art/battle/battlefield-forest-camp.png',
+    soldierSprites: {
+      attacker: 'assets/art/battle/soldier-player-sheet.png',
+      defender: 'assets/art/battle/soldier-enemy-sheet.png',
+    },
+  };
+}
+
+function getBattleVisualGroups(soldiers, groupSize = SOLDIER_SCALE) {
+  const total = Math.max(0, toInteger(soldiers, 0));
+  if (total <= 0) return [];
+  const count = Math.ceil(total / groupSize);
+  return Array.from({ length: count }, (_, index) => {
+    const remaining = total - index * groupSize;
+    return {
+      index: index + 1,
+      soldiers: Math.max(0, Math.min(groupSize, remaining)),
+      capacity: groupSize,
+    };
+  });
+}
+
+function makeBattleSideSnapshot(unit, role) {
+  const soldiers = Math.max(0, toInteger(unit.soldiers, 0));
+  return {
+    role,
+    id: unit.leader?.id || unit.id || role,
+    name: unit.leader?.name || unit.name || (role === 'attacker' ? '己方部队' : '守军'),
+    leaderId: unit.leader?.id || unit.id || '',
+    leaderName: unit.leader?.name || unit.name || '',
+    leaderTitle: unit.leader?.title || '',
+    appearance: clone(unit.leader?.appearance || {}),
+    soldiers,
+    maxSoldiers: Math.max(soldiers, toInteger(unit.maxSoldiers, soldiers)),
+    speed: getBattleSpeed(unit),
+    groups: getBattleVisualGroups(soldiers),
   };
 }
 
 function simulateBattle(gameState, mission, territory, now = new Date()) {
-  const leader = getLeaderSnapshot(gameState, mission.expedition?.leader);
-  if (!leader) return null;
-  const skill = getPrimaryBattleSkill(leader);
+  const leader = getLeaderSnapshot(gameState, mission.expedition?.leader)
+    || getLeaderSnapshotFromMission(mission);
+  const fallbackLeader = leader || {
+    id: 'unavailable',
+    name: '无名领队',
+    title: '临时领队',
+    attributes: { command: 45, force: 45, strategy: 40, charisma: 42 },
+    appearance: {},
+  };
   const attacker = {
-    leader,
+    leader: fallbackLeader,
+    name: fallbackLeader.name,
     soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, toInteger(mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
     maxSoldiers: Math.max(MIN_EXPEDITION_SOLDIERS, toInteger(mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
-    morale: 100 + Math.floor((leader.attributes.charisma - 50) / 5),
-    attributes: leader.attributes,
+    morale: 100 + Math.floor((fallbackLeader.attributes.charisma - 50) / 5),
+    attributes: fallbackLeader.attributes,
   };
   const defender = getDefenderProfile(territory);
+  const turns = [];
   const rounds = [];
-  const burn = getSkillEffect(skill, 'burn');
-  const poison = getSkillEffect(skill, 'poison');
-  let defenderDot = 0;
-  let defenderDotTurns = 0;
+  const attackerFirst = getBattleSpeed(attacker) >= getBattleSpeed(defender);
+  const order = attackerFirst
+    ? [{ key: 'attacker', unit: attacker, target: defender }, { key: 'defender', unit: defender, target: attacker }]
+    : [{ key: 'defender', unit: defender, target: attacker }, { key: 'attacker', unit: attacker, target: defender }];
 
   for (let round = 1; round <= MAX_BATTLE_ROUNDS; round += 1) {
     const events = [];
-    if (defenderDotTurns > 0 && defender.soldiers > 0) {
-      const dotDamage = applyDamage(defender, defenderDot);
-      if (dotDamage > 0) events.push(`持续压制造成 ${dotDamage} 损失`);
-      defenderDotTurns -= 1;
+    for (const actor of order) {
+      if (attacker.soldiers <= 0 || defender.soldiers <= 0) break;
+      const beforeAttacker = attacker.soldiers;
+      const beforeDefender = defender.soldiers;
+      const damage = getAttackPower(actor.unit);
+      const dealt = applyDamage(actor.target, damage);
+      const actorName = actor.key === 'attacker' ? fallbackLeader.name : defender.name;
+      const targetName = actor.key === 'attacker' ? defender.name : fallbackLeader.name;
+      const text = actor.key === 'attacker'
+        ? `${actorName}队发起普攻，${targetName}损失 ${dealt} 士兵`
+        : `${actorName}反击，${targetName}队损失 ${dealt} 士兵`;
+      events.push(text);
+      turns.push({
+        index: turns.length + 1,
+        round,
+        actor: actor.key,
+        target: actor.key === 'attacker' ? 'defender' : 'attacker',
+        action: 'basicAttack',
+        actorName,
+        targetName,
+        damage: dealt,
+        text,
+        attackerSoldiersBefore: beforeAttacker,
+        defenderSoldiersBefore: beforeDefender,
+        attackerSoldiersAfter: attacker.soldiers,
+        defenderSoldiersAfter: defender.soldiers,
+        attackerGroupsAfter: getBattleVisualGroups(attacker.soldiers),
+        defenderGroupsAfter: getBattleVisualGroups(defender.soldiers),
+      });
     }
-
-    const ambush = round === 1 && Boolean(getSkillEffect(skill, 'ambush'));
-    let attackDamage = getAttackPower(attacker, skill, { ambush });
-    const shield = getSkillEffect(skill, 'shield');
-    const shieldReduction = shield ? Math.round((Number(shield.value) || 0) * 100) : 0;
-    const dealt = applyDamage(defender, attackDamage);
-    events.push(skill ? `${leader.name}施展${skill.name}，敌方损失 ${dealt}` : `${leader.name}率队突击，敌方损失 ${dealt}`);
-
-    const lifesteal = getSkillEffect(skill, 'lifesteal');
-    if (lifesteal && dealt > 0) {
-      const healed = healSoldiers(attacker, dealt * (Number(lifesteal.value) || 0));
-      if (healed > 0) events.push(`己方重整 ${healed} 士兵`);
-    }
-
-    const combo = getSkillEffect(skill, 'combo');
-    if (combo && defender.soldiers > 0 && round % 3 === 1) {
-      const comboDamage = applyDamage(defender, Math.max(6, Math.round(attackDamage * 0.45)));
-      events.push(`追击奏效，敌方追加损失 ${comboDamage}`);
-    }
-
-    if ((burn || poison) && defender.soldiers > 0 && defenderDotTurns <= 0) {
-      const effect = burn || poison;
-      defenderDot = Math.max(4, Math.round(attackDamage * (Number(effect.value) || 0.08)));
-      defenderDotTurns = Math.max(1, toInteger(effect.turns, 2));
-      events.push(burn ? '火势扰乱了敌阵' : '毒伤削弱了敌阵');
-    }
-
-    if (defender.soldiers <= 0) {
-      rounds.push({ round, attackerSoldiers: attacker.soldiers, defenderSoldiers: defender.soldiers, events });
-      break;
-    }
-
-    let counterDamage = getAttackPower(defender) * 0.82;
-    if (shieldReduction > 0) counterDamage = Math.max(1, Math.round(counterDamage * (1 - shieldReduction / 100)));
-    const attackerLoss = applyDamage(attacker, counterDamage);
-    events.push(`守军反扑，己方损失 ${attackerLoss}`);
-
-    const counter = getSkillEffect(skill, 'counter');
-    if (counter && defender.soldiers > 0 && round % 2 === 0) {
-      const counterStrike = applyDamage(defender, Math.max(5, Math.round(attackerLoss * 0.45)));
-      events.push(`反击压回敌阵，敌方损失 ${counterStrike}`);
-    }
-
-    const heal = getSkillEffect(skill, 'heal');
-    if (heal && attacker.soldiers > 0 && round % 2 === 1) {
-      const healed = healSoldiers(attacker, attacker.maxSoldiers * (Number(heal.value) || 0.1));
-      if (healed > 0) events.push(`队伍休整恢复 ${healed} 士兵`);
-    }
-
     rounds.push({ round, attackerSoldiers: attacker.soldiers, defenderSoldiers: defender.soldiers, events });
-    if (attacker.soldiers <= 0) break;
+    if (attacker.soldiers <= 0 || defender.soldiers <= 0) break;
   }
 
   const success = defender.soldiers <= 0 || (attacker.soldiers > 0 && attacker.soldiers >= defender.soldiers);
@@ -710,21 +815,170 @@ function simulateBattle(gameState, mission, territory, now = new Date()) {
     maxRounds: MAX_BATTLE_ROUNDS,
     result: success ? 'victory' : 'defeat',
     summary: success
-      ? `${leader.name}率队压制了${territory.naturalName}。`
-      : `${leader.name}未能突破${territory.naturalName}的防线。`,
-    skillName: skill?.name || '',
+      ? `${fallbackLeader.name}队压制了${territory.naturalName}。`
+      : `${fallbackLeader.name}队未能突破${territory.naturalName}的防线。`,
+    system: 'speed-basic-attack-v1',
+    groupSize: SOLDIER_SCALE,
+    firstActor: attackerFirst ? 'attacker' : 'defender',
+    turns,
     rounds,
     attacker: {
-      leaderId: leader.id,
-      leaderName: leader.name,
-      leaderTitle: leader.title,
+      leaderId: fallbackLeader.id,
+      leaderName: fallbackLeader.name,
+      leaderTitle: fallbackLeader.title,
+      speed: getBattleSpeed(attacker),
       soldiersStart: attacker.maxSoldiers,
       soldiersEnd: attacker.soldiers,
+      groupsStart: getBattleVisualGroups(attacker.maxSoldiers),
+      groupsEnd: getBattleVisualGroups(attacker.soldiers),
+      appearance: clone(fallbackLeader.appearance || {}),
     },
     defender: {
       name: defender.name,
+      speed: getBattleSpeed(defender),
       soldiersStart: defender.maxSoldiers,
       soldiersEnd: defender.soldiers,
+      groupsStart: getBattleVisualGroups(defender.maxSoldiers),
+      groupsEnd: getBattleVisualGroups(defender.soldiers),
+    },
+    visual: {
+      groupSize: SOLDIER_SCALE,
+      map: getBattleMapForTerritory(territory),
+    },
+  };
+  return { success, casualties, report };
+}
+
+function simulateBattleV2(gameState, mission, territory, now = new Date()) {
+  const leader = getLeaderSnapshot(gameState, mission.expedition?.leader)
+    || getLeaderSnapshotFromMission(mission);
+  const fallbackLeader = leader || {
+    id: 'unavailable',
+    name: '无名领队',
+    title: '临时领队',
+    attributes: { command: 45, force: 45, strategy: 40, charisma: 42 },
+    appearance: {},
+    skills: [],
+  };
+  const attacker = {
+    leader: fallbackLeader,
+    name: fallbackLeader.name,
+    soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, toInteger(mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
+    maxSoldiers: Math.max(MIN_EXPEDITION_SOLDIERS, toInteger(mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
+    morale: 100 + Math.floor((fallbackLeader.attributes.charisma - 50) / 5),
+    attributes: fallbackLeader.attributes,
+    skill: getBattleSkill({ leader: fallbackLeader }, 'attacker'),
+    skillCooldownRemaining: 0,
+  };
+  const defender = {
+    ...getDefenderProfile(territory),
+    skill: getBattleSkill({}, 'defender'),
+    skillCooldownRemaining: 0,
+  };
+  const turns = [];
+  const rounds = [];
+  const attackerFirst = getBattleSpeed(attacker) >= getBattleSpeed(defender);
+  const order = attackerFirst
+    ? [{ key: 'attacker', unit: attacker, target: defender }, { key: 'defender', unit: defender, target: attacker }]
+    : [{ key: 'defender', unit: defender, target: attacker }, { key: 'attacker', unit: attacker, target: defender }];
+
+  const recordAction = (actor, round) => {
+    const beforeAttacker = attacker.soldiers;
+    const beforeDefender = defender.soldiers;
+    const actorName = actor.key === 'attacker' ? fallbackLeader.name : defender.name;
+    const targetName = actor.key === 'attacker' ? defender.name : fallbackLeader.name;
+    const useSkill = actor.unit.skillCooldownRemaining <= 0;
+    const action = useSkill ? 'skill' : 'basicAttack';
+    const skill = useSkill ? actor.unit.skill : null;
+    const damage = useSkill ? getSkillPower(actor.unit, skill) : getAttackPower(actor.unit);
+    const dealt = applyDamage(actor.target, damage);
+    const notes = useSkill ? applySkillSideEffects(actor.unit, actor.target, skill, dealt) : [];
+    const cooldownBefore = actor.unit.skillCooldownRemaining;
+    if (useSkill) actor.unit.skillCooldownRemaining = getSkillCooldown(skill);
+    else actor.unit.skillCooldownRemaining = Math.max(0, actor.unit.skillCooldownRemaining - 1);
+    const cooldownAfter = actor.unit.skillCooldownRemaining;
+    const text = useSkill
+      ? `${actorName}队释放${skill?.name || '技能'}，${targetName}损失 ${dealt} 士兵${notes.length ? `，${notes.join('，')}` : ''}`
+      : `${actorName}队普攻接战，${targetName}损失 ${dealt} 士兵`;
+    turns.push({
+      index: turns.length + 1,
+      round,
+      actor: actor.key,
+      target: actor.key === 'attacker' ? 'defender' : 'attacker',
+      action,
+      actorName,
+      targetName,
+      damage: dealt,
+      skillId: skill?.id || '',
+      skillName: skill?.name || '',
+      skillCooldown: useSkill ? getSkillCooldown(skill) : getSkillCooldown(actor.unit.skill),
+      cooldownBefore,
+      cooldownAfter,
+      text,
+      attackerSoldiersBefore: beforeAttacker,
+      defenderSoldiersBefore: beforeDefender,
+      attackerSoldiersAfter: attacker.soldiers,
+      defenderSoldiersAfter: defender.soldiers,
+      attackerGroupsAfter: getBattleVisualGroups(attacker.soldiers),
+      defenderGroupsAfter: getBattleVisualGroups(defender.soldiers),
+    });
+    return text;
+  };
+
+  for (let round = 1; round <= MAX_BATTLE_ROUNDS; round += 1) {
+    const events = [];
+    for (const actor of order) {
+      if (attacker.soldiers <= 0 || defender.soldiers <= 0) break;
+      events.push(recordAction(actor, round));
+    }
+    rounds.push({ round, attackerSoldiers: attacker.soldiers, defenderSoldiers: defender.soldiers, events });
+    if (attacker.soldiers <= 0 || defender.soldiers <= 0) break;
+  }
+
+  const success = defender.soldiers <= 0 || (attacker.soldiers > 0 && attacker.soldiers >= defender.soldiers);
+  const casualties = Math.max(0, attacker.maxSoldiers - attacker.soldiers);
+  const report = {
+    id: `battle_${territory.id}_${now.getTime()}`,
+    mode: 'auto-round',
+    maxRounds: MAX_BATTLE_ROUNDS,
+    result: success ? 'victory' : 'defeat',
+    summary: success
+      ? `${fallbackLeader.name}队压制了${territory.naturalName}。`
+      : `${fallbackLeader.name}队未能突破${territory.naturalName}的防线。`,
+    system: 'speed-skill-cooldown-v1',
+    groupSize: SOLDIER_SCALE,
+    firstActor: attackerFirst ? 'attacker' : 'defender',
+    skillRules: {
+      openingSkill: true,
+      cooldownTicksOnOwnTurnOnly: true,
+      fallbackAction: 'basicAttack',
+    },
+    turns,
+    rounds,
+    attacker: {
+      leaderId: fallbackLeader.id,
+      leaderName: fallbackLeader.name,
+      leaderTitle: fallbackLeader.title,
+      speed: getBattleSpeed(attacker),
+      soldiersStart: attacker.maxSoldiers,
+      soldiersEnd: attacker.soldiers,
+      groupsStart: getBattleVisualGroups(attacker.maxSoldiers),
+      groupsEnd: getBattleVisualGroups(attacker.soldiers),
+      appearance: clone(fallbackLeader.appearance || {}),
+      skill: clone(attacker.skill || {}),
+    },
+    defender: {
+      name: defender.name,
+      speed: getBattleSpeed(defender),
+      soldiersStart: defender.maxSoldiers,
+      soldiersEnd: defender.soldiers,
+      groupsStart: getBattleVisualGroups(defender.maxSoldiers),
+      groupsEnd: getBattleVisualGroups(defender.soldiers),
+      skill: clone(defender.skill || {}),
+    },
+    visual: {
+      groupSize: SOLDIER_SCALE,
+      map: getBattleStageForTerritory(territory),
     },
   };
   return { success, casualties, report };
@@ -1222,7 +1476,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     territory.cityName = null;
     return { success: true, casualties: 0 };
   }
-  const battle = simulateBattle(gameState, mission, territory, now);
+  const battle = simulateBattleV2(gameState, mission, territory, now);
   const success = battle ? battle.success : mission.soldiersCommitted >= territory.defense;
   const casualties = battle
     ? battle.casualties
@@ -1299,6 +1553,7 @@ function claimConquest(gameState, territoryId, now = new Date()) {
       : `${territory.naturalName}占领失败，士兵正在整队返回`,
     outcome: result.success ? 'success' : 'failure',
     casualties: result.casualties,
+    battleReport: territory.lastBattle?.report || null,
     postWarCandidate,
     territory,
     namingPrompt: getNamingPrompt(gameState),

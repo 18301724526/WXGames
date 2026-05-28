@@ -11,6 +11,7 @@
       this.onFloatingText = options.onFloatingText || (() => {});
       this.onLog = options.onLog || (() => {});
       this.onCityRenameRequested = options.onCityRenameRequested || (() => null);
+      this.onBattleSceneRequested = options.onBattleSceneRequested || (() => false);
       this.dragState = null;
       this.uiState = {
         selectedSiteId: '',
@@ -225,6 +226,12 @@
         if (action === 'claim') {
           this.clearExpeditionDraft();
           return this.api.claimConquest(territoryId);
+        }
+        if (action === 'enter-battle') {
+          this.clearExpeditionDraft();
+          const result = await this.api.claimConquest(territoryId);
+          if (result?.battleReport) this.onBattleSceneRequested(result.battleReport);
+          return result;
         }
         if (action === 'manage-city') {
           const result = await this.api.switchCity(territoryId);

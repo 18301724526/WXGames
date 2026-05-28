@@ -97,6 +97,9 @@
         'assets/art/world-site-outpost-cutout.png',
         'assets/art/world-site-ruins-cutout.png',
         'assets/art/world-site-town-cutout.png',
+        'assets/art/battle/battlefield-forest-camp.png',
+        'assets/art/battle/soldier-player-sheet.png',
+        'assets/art/battle/soldier-enemy-sheet.png',
         ...Object.values(this.getFamousPortraitLayerLayout().layers || {})
           .map((layer) => layer?.file)
           .filter(Boolean)
@@ -479,6 +482,253 @@
       const drawnAny = drawLayers();
       this.ctx.restore();
       return drawnAny;
+    }
+
+    getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
+      if (!activeTurn) return 'idle';
+      if (activeTurn.actor === side) return phase === 'move' ? 'move' : 'attack';
+      if (activeTurn.target === side) return phase === 'impact' ? 'hit' : 'idle';
+      return 'idle';
+    }
+
+    getBattleSpriteSpec(side = 'attacker') {
+      return {
+        path: side === 'attacker'
+          ? 'assets/art/battle/soldier-player-sheet.png'
+          : 'assets/art/battle/soldier-enemy-sheet.png',
+        columns: 4,
+        rows: 4,
+        frameWidth: 313.5,
+        frameHeight: 313.5,
+        poses: { idle: 0, move: 1, attack: 2, skill: 2, hit: 3, defeated: 3 },
+      };
+    }
+
+    getBattleSideSpritePath(sideView = {}, side = 'attacker') {
+      return sideView.sprite || this.getBattleSpriteSpec(side).path;
+    }
+
+    drawBattleMapBackground(map = {}) {
+      const path = map.background || 'assets/art/battle/battlefield-forest-camp.png';
+      if (this.drawCoverAsset(path, 0, 0, this.width, this.height)) return;
+      this.ctx.fillStyle = '#1d2119';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+    }
+
+    drawBattleSoldierSprite(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '') {
+      if (!this.ctx) return;
+      const spec = this.getBattleSpriteSpec(side);
+      const image = this.getAsset(spritePath || spec.path);
+      const alpha = Math.max(0.25, Math.min(1, Number(ratio) || 1));
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
+      const spritePose = spec.poses[pose] !== undefined ? pose : 'idle';
+      const row = spec.poses[spritePose] || 0;
+      const column = Math.abs(Math.floor(Number(frame) || 0)) % spec.columns;
+      const sw = spec.frameWidth;
+      const sh = spec.frameHeight;
+      const dw = sw * scale;
+      const dh = sh * scale;
+      if (image && typeof this.ctx.drawImage === 'function') {
+        this.ctx.drawImage(image, column * sw, row * sh, sw, sh, x - dw / 2, y - dh, dw, dh);
+      } else {
+        const color = side === 'attacker' ? '#74d3a0' : '#e07b62';
+        this.drawCircle(x, y - 18, 5, { fill: color });
+        this.drawPanel(x - 6, y - 14, 12, 16, { fill: color, radius: 2 });
+      }
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+    }
+
+    drawBattleSoldier(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22) {
+      return this.drawBattleSoldierSprite(x, y, side, pose, frame, ratio, scale);
+    }
+
+    drawBattleArmy(sideView = {}, area = {}, options = {}) {
+      const groups = sideView.groups || [];
+      const side = sideView.side || 'attacker';
+      const pose = options.pose || 'idle';
+      const frame = Number(options.frame) || 0;
+      const progress = Math.max(0, Math.min(1, Number(options.progress) || 0));
+      const actionType = options.actionType || '';
+      const columns = Math.max(1, Math.floor(area.width / 34));
+      const dir = side === 'attacker' ? 1 : -1;
+      const actionAdvance = pose === 'move'
+        ? progress * 46 * dir
+        : (pose === 'attack' || pose === 'skill' ? (10 + Math.sin(frame / 1.8) * 4) * dir : 0);
+      const hitOffset = pose === 'hit' ? (Math.sin(frame / 1.5) * 8 - 4) * dir : 0;
+      groups.slice(0, 18).forEach((group, index) => {
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        const x = side === 'attacker'
+          ? area.x + col * 30 + 22
+          : area.x + area.width - col * 30 - 22;
+        const y = area.y + row * 34 + 72 + (col % 2) * 5;
+        const activePose = index === 0 ? pose : 'idle';
+        const activeOffset = index === 0 ? actionAdvance + hitOffset : 0;
+        const scale = actionType === 'skill' && index === 0 ? 0.245 : 0.21;
+        this.drawBattleSoldierSprite(
+          x + activeOffset,
+          y,
+          side,
+          activePose,
+          frame + index,
+          group.ratio,
+          scale,
+          this.getBattleSideSpritePath(sideView, side),
+        );
+      });
+      if (groups.length > 18) {
+        this.drawText(`+${groups.length - 18}`, side === 'attacker' ? area.x + area.width - 28 : area.x + 10, area.y + area.height - 22, {
+          size: 12,
+          bold: true,
+          color: '#f6e8c8',
+        });
+      }
+      this.drawText(`${sideView.soldiers || 0}/${sideView.soldiersStart || 0}`, area.x + area.width / 2, area.y + area.height + 6, {
+        size: 12,
+        bold: true,
+        color: side === 'attacker' ? '#74d3a0' : '#e07b62',
+        align: 'center',
+      });
+    }
+
+    drawBattleActionEffect(activeTurn = null, progress = 0) {
+      if (!activeTurn) return;
+      const isSkill = activeTurn.action === 'skill';
+      const impactProgress = Math.max(0, Math.min(1, (progress - 0.45) / 0.45));
+      if (impactProgress <= 0) return;
+      const x = activeTurn.target === 'defender' ? this.width * 0.58 : this.width * 0.42;
+      const y = Math.max(270, this.height * 0.48);
+      const pulse = Math.sin(impactProgress * Math.PI);
+      this.drawCircle(x, y, (isSkill ? 42 : 24) * pulse, {
+        fill: isSkill ? 'rgba(255, 196, 76, 0.20)' : 'rgba(255, 245, 210, 0.14)',
+        stroke: isSkill ? 'rgba(255, 226, 122, 0.72)' : 'rgba(255, 245, 210, 0.42)',
+        width: isSkill ? 3 : 2,
+      });
+      if (isSkill) {
+        this.drawText(activeTurn.skillName || '技能', x, y - 54 * pulse, {
+          size: 14,
+          bold: true,
+          color: '#ffe6b5',
+          align: 'center',
+        });
+      }
+    }
+
+    drawBattleLeader(sideView = {}, x, y, side = 'attacker') {
+      const radius = 32;
+      this.drawCircle(x, y, radius + 5, {
+        fill: side === 'attacker' ? 'rgba(116, 211, 160, 0.12)' : 'rgba(224, 123, 98, 0.12)',
+        stroke: side === 'attacker' ? 'rgba(116, 211, 160, 0.58)' : 'rgba(224, 123, 98, 0.58)',
+        width: 2,
+      });
+      const portrait = side === 'attacker'
+        ? this.drawFamousPortrait(sideView, x - radius, y - radius, radius * 2, {
+          frameWidth: radius * 2,
+          frameHeight: radius * 2,
+          radius,
+          scale: 1.58,
+          offsetY: 0.12,
+        })
+        : false;
+      if (!portrait) {
+        this.drawCircle(x, y, radius, {
+          fill: side === 'attacker' ? '#2f6f59' : '#7f3d32',
+          stroke: 'rgba(255, 226, 177, 0.5)',
+          width: 2,
+        });
+        this.drawText(String(sideView.leaderName || sideView.name || '将').slice(0, 1), x, y, {
+          size: 22,
+          bold: true,
+          color: '#f6e8c8',
+          align: 'center',
+          baseline: 'middle',
+        });
+      }
+      this.drawText(this.truncateText(sideView.leaderName || sideView.name || '', 96, { size: 12, bold: true }), x, y + radius + 10, {
+        size: 12,
+        bold: true,
+        color: '#f6e8c8',
+        align: 'center',
+      });
+    }
+
+    renderBattleSceneOverlay(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildBattleSceneViewState !== 'function') return;
+      const view = this.presenter.buildBattleSceneViewState(options.battleScene || {}, {
+        turnIndex: options.battleScene?.turnIndex || 0,
+      });
+      if (!view.visible) return;
+      this.setHitTargets([]);
+      this.drawBattleMapBackground(view.map);
+      const frame = Math.floor((this.getNow() || 0) / 140);
+      const activeTurn = view.activeTurn;
+      const turnDuration = Math.max(1, Number(options.battleScene?.turnDurationMs) || 720);
+      const turnStartedAt = Number(options.battleScene?.turnStartedAt) || this.getNow();
+      const turnElapsed = ((this.getNow() - turnStartedAt) % turnDuration + turnDuration) % turnDuration;
+      const turnProgress = turnElapsed / turnDuration;
+      const turnPhase = activeTurn && turnElapsed < turnDuration * 0.42 ? 'move' : 'impact';
+      const attackerPose = this.getBattleUnitPose('attacker', activeTurn, turnPhase);
+      const defenderPose = this.getBattleUnitPose('defender', activeTurn, turnPhase);
+      const topY = 20;
+      this.drawPanel(16, topY, this.width - 32, 68, {
+        fill: 'rgba(20, 16, 12, 0.72)',
+        stroke: 'rgba(255, 226, 177, 0.22)',
+        radius: 10,
+      });
+      this.drawText(this.truncateText(view.title, this.width - 80, { size: 18, bold: true }), this.width / 2, topY + 12, {
+        size: 18,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+      this.drawText(`第 ${Math.min(view.turnIndex + 1, Math.max(1, view.turnCount))}/${Math.max(1, view.turnCount)} 手 · ${view.resultText}`, this.width / 2, topY + 40, {
+        size: 12,
+        color: '#d6b16e',
+        align: 'center',
+      });
+
+      const fieldTop = 116;
+      const logH = 122;
+      const logY = this.height - logH - 70;
+      const armyTop = fieldTop + 138;
+      const armyHeight = Math.max(120, logY - armyTop - 28);
+      const laneWidth = Math.min(170, this.width * 0.42);
+      this.drawBattleLeader(view.attacker, 72, fieldTop + 64, 'attacker');
+      this.drawBattleLeader(view.defender, this.width - 72, fieldTop + 64, 'defender');
+      this.drawBattleArmy(view.attacker, {
+        x: 18,
+        y: armyTop,
+        width: laneWidth,
+        height: armyHeight,
+      }, { pose: attackerPose, frame, progress: turnProgress, actionType: activeTurn?.action });
+      this.drawBattleArmy(view.defender, {
+        x: this.width - laneWidth - 18,
+        y: armyTop,
+        width: laneWidth,
+        height: armyHeight,
+      }, { pose: defenderPose, frame, progress: turnProgress, actionType: activeTurn?.action });
+      this.drawBattleActionEffect(activeTurn, turnProgress);
+
+      this.drawPanel(16, logY, this.width - 32, logH, {
+        fill: 'rgba(20, 16, 12, 0.76)',
+        stroke: 'rgba(255, 226, 177, 0.18)',
+        radius: 10,
+      });
+      const lines = view.logLines.length ? view.logLines : ['双方列阵，战斗即将开始。'];
+      lines.slice(-4).forEach((line, index) => {
+        this.drawText(this.truncateText(line, this.width - 56, { size: 12 }), 28, logY + 14 + index * 24, {
+          size: 12,
+          color: index === lines.slice(-4).length - 1 ? '#f6e8c8' : '#aeb0b8',
+        });
+      });
+
+      const buttonY = this.height - 54;
+      this.drawButton(18, buttonY, 88, 36, '返回', { size: 12, radius: 8 });
+      this.addHitTarget({ x: 18, y: buttonY, width: 88, height: 36 }, { type: 'closeBattleScene' });
+      const primaryLabel = view.ended ? '完成' : '跳过';
+      this.drawButton(this.width - 106, buttonY, 88, 36, primaryLabel, { size: 12, radius: 8, active: true });
+      this.addHitTarget({ x: this.width - 106, y: buttonY, width: 88, height: 36 }, { type: view.ended ? 'closeBattleScene' : 'skipBattleScene' });
     }
 
     clear() {
@@ -4141,6 +4391,7 @@
           type: button.action === 'conquer' ? 'conquer' :
                button.action === 'launch-expedition' ? 'launchExpedition' :
                button.action === 'claim' ? 'claimConquest' :
+               button.action === 'enter-battle' ? 'enterBattleScene' :
                button.action === 'manage-city' ? 'manageCity' :
                button.action === 'rename-city' ? 'renameCity' :
                button.action === 'open-expedition' ? 'openExpedition' :
@@ -5164,6 +5415,11 @@
         this.endFrame(options);
         return;
       }
+      if (options.battleScene?.visible) {
+        this.renderBattleSceneOverlay(state, options);
+        this.endFrame(options);
+        return;
+      }
       const topBarBottom = this.renderTopBar(state);
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
@@ -5483,6 +5739,11 @@
       }
       if (options.loading?.visible) {
         this.renderLoadingScreen(options.loading);
+        this.endFrame(options);
+        return;
+      }
+      if (options.battleScene?.visible) {
+        this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);
         return;
       }

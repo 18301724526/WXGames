@@ -48,6 +48,9 @@
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.rewardReveal = null;
+      this.battleScene = null;
+      this.battleSceneTimer = null;
+      this.battleAnimationTimer = null;
       this.tutorialHighlight = null;
       this.highlightTimer = null;
       this.skipNextSoftGuideRender = false;
@@ -302,6 +305,7 @@
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
         territoryUiState: this.territoryUiState,
+        ...(this.battleScene ? { battleScene: this.battleScene } : {}),
         naming: this.naming,
         tutorialHighlight: this.tutorialHighlight,
         loading: this.loading,
@@ -417,6 +421,139 @@
       if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
       this.lastAnimationRenderAt = now;
       return this.renderCanvasSurface(activeTab);
+    }
+
+    getBattleTurnDurationMs() {
+      return 720;
+    }
+
+    startBattleScene(report = null) {
+      if (!report) return false;
+      this.battleScene = {
+        visible: true,
+        report,
+        turnIndex: 0,
+        startedAt: this.now(),
+        turnStartedAt: this.now(),
+        turnDurationMs: this.getBattleTurnDurationMs(),
+      };
+      this.canvasShell?.startBattleScene?.(report);
+      this.startBattleSceneTimer();
+      this.startBattleAnimationTimer();
+      this.renderCanvasSurface(this.state?.currentTab || 'military');
+      return true;
+    }
+
+    stopBattleSceneTimer() {
+      if (!this.battleSceneTimer) return;
+      if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleSceneTimer);
+      else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleSceneTimer);
+      else if (typeof clearInterval === 'function') clearInterval(this.battleSceneTimer);
+      this.battleSceneTimer = null;
+    }
+
+    stopBattleAnimationTimer() {
+      if (!this.battleAnimationTimer) return;
+      if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleAnimationTimer);
+      else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleAnimationTimer);
+      else if (typeof clearInterval === 'function') clearInterval(this.battleAnimationTimer);
+      this.battleAnimationTimer = null;
+    }
+
+    startBattleAnimationTimer() {
+      this.stopBattleAnimationTimer();
+      const timerHost = typeof this.scheduler?.setInterval === 'function'
+        ? this.scheduler
+        : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
+      const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
+      if (!setIntervalFn) return false;
+      this.battleAnimationTimer = timerHost
+        ? setIntervalFn.call(timerHost, () => {
+          if (!this.battleScene?.visible) {
+            this.stopBattleAnimationTimer();
+            return;
+          }
+          this.renderAnimationFrame(this.state?.currentTab || 'military');
+        }, this.getAnimationFrameMs())
+        : setIntervalFn(() => {
+          if (!this.battleScene?.visible) {
+            this.stopBattleAnimationTimer();
+            return;
+          }
+          this.renderAnimationFrame(this.state?.currentTab || 'military');
+        }, this.getAnimationFrameMs());
+      return true;
+    }
+
+    startBattleSceneTimer() {
+      this.stopBattleSceneTimer();
+      const timerHost = typeof this.scheduler?.setInterval === 'function'
+        ? this.scheduler
+        : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
+      const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
+      if (!setIntervalFn) return false;
+      this.battleSceneTimer = timerHost
+        ? setIntervalFn.call(timerHost, () => {
+          if (!this.battleScene?.visible) {
+            this.stopBattleSceneTimer();
+            return;
+          }
+          const turns = this.battleScene.report?.turns || [];
+          if (this.battleScene.turnIndex < turns.length) {
+            this.battleScene = {
+              ...this.battleScene,
+              turnIndex: this.battleScene.turnIndex + 1,
+              turnStartedAt: this.now(),
+            };
+            if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+            this.renderAnimationFrame(this.state?.currentTab || 'military');
+            return;
+          }
+          this.stopBattleSceneTimer();
+        }, this.getBattleTurnDurationMs())
+        : setIntervalFn(() => {
+        if (!this.battleScene?.visible) {
+          this.stopBattleSceneTimer();
+          return;
+        }
+        const turns = this.battleScene.report?.turns || [];
+        if (this.battleScene.turnIndex < turns.length) {
+          this.battleScene = {
+            ...this.battleScene,
+            turnIndex: this.battleScene.turnIndex + 1,
+            turnStartedAt: this.now(),
+          };
+          if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+          this.renderAnimationFrame(this.state?.currentTab || 'military');
+          return;
+        }
+        this.stopBattleSceneTimer();
+      }, this.getBattleTurnDurationMs());
+      return true;
+    }
+
+    closeBattleScene() {
+      this.stopBattleSceneTimer();
+      this.stopBattleAnimationTimer();
+      this.battleScene = null;
+      this.canvasShell?.closeBattleScene?.();
+      this.renderCanvasSurface(this.state?.currentTab || 'military');
+      return true;
+    }
+
+    skipBattleScene() {
+      if (!this.battleScene?.visible) return false;
+      const turns = this.battleScene.report?.turns || [];
+      this.battleScene = {
+        ...this.battleScene,
+        turnIndex: turns.length,
+        turnStartedAt: this.now(),
+      };
+      if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+      this.stopBattleSceneTimer();
+      this.stopBattleAnimationTimer();
+      this.renderCanvasSurface(this.state?.currentTab || 'military');
+      return true;
     }
 
     startTransitionTimer() {
@@ -1551,6 +1688,7 @@
         || this.techDetailOpen
         || this.activeEventId
         || this.naming?.visible
+        || this.battleScene?.visible
         || this.rewardReveal);
     }
 
