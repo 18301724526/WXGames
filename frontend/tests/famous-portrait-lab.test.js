@@ -79,7 +79,7 @@ test('famous portrait v3 lab exposes three-layer calibration controls', () => {
   assert.match(html, /id="exportData"/);
   assert.match(html, /缩放锚点固定为 512 画布中心/);
   assert.match(html, /<canvas id="stage" width="1120" height="760"><\/canvas>/);
-  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-fixedgrid-20260528"><\/script>/);
+  assert.match(html, /<script src="\.\.\/js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-upperbody-20260529"><\/script>/);
   assert.match(html, /<script src="famous-portrait-lab\.js\?v=0\.3\.1-v3-workbench"><\/script>/);
 
   assert.match(script, /sharedLayout = window\.FamousPortraitLayout/);
@@ -123,13 +123,14 @@ test('famous portrait v3 resource directory contains only three simple layer poo
   assert.equal(fs.existsSync(path.join(famousLayerDir, 'fp-layer-v2-manifest.json')), false);
 });
 
-test('famous portrait v3 PNG layers are non-empty 512 alpha resources', () => {
+test('famous portrait v3 PNG layers are non-empty alpha resources', () => {
   listFamousLayerFiles(/^fp-layer-v3-.*\.png$/).forEach((filename) => {
     const filePath = path.join(famousLayerDir, filename);
     const fileSize = fs.statSync(filePath).size;
     const stats = readPngAlphaStats(path.join(famousLayerDir, filename));
-    assert.equal(stats.width, 512, filename);
-    assert.equal(stats.height, 512, filename);
+    const expectedSize = filename.includes('-face-') ? 1254 : filename.includes('-hair-') ? 720 : 512;
+    assert.equal(stats.width, expectedSize, filename);
+    assert.equal(stats.height, expectedSize, filename);
     assert.ok(stats.opaquePixels > 0, filename);
     assert.ok(fileSize > (filename.includes('-outfit-') ? 100000 : 50000), filename);
   });

@@ -152,7 +152,7 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
 
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-outfit-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-face-01.png'));
-  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-hair-01.png'));
+  assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-hair-10.png'));
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-v2-art01-bangs-bound-topknot-swept-01.png'));
   assert.ok(!paths.includes('assets/art/famous-person/layers/fp-layer-body-skin-01.png'));
 });
@@ -172,7 +172,7 @@ test('CanvasGameRenderer cache-busts famous person portrait layer image requests
     'assets/art/icon-food-cutout.webp',
   ]);
 
-  assert.match(createdImages[0].src, /fp-layer-v3-hair-01\.png\?v=famous-portrait-v3-fixedgrid-20260528$/);
+  assert.match(createdImages[0].src, /fp-layer-v3-hair-01\.png\?v=famous-portrait-v3-upperbody-20260529$/);
   assert.equal(createdImages[1].src, 'assets/art/icon-food-cutout.webp');
   createdImages.forEach((image) => image.onload?.());
   await pending;
@@ -191,8 +191,8 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   const layout = CanvasGameRenderer.getFamousPortraitLayerLayout();
   assert.equal(layout.version, 3);
   assert.equal(layout.mode, 'stacked');
-  assert.equal(layout.assetVersion, 'famous-portrait-v3-fixedgrid-20260528');
-  assert.deepEqual(layout.order, ['outfit', 'face', 'hair']);
+  assert.equal(layout.assetVersion, 'famous-portrait-v3-upperbody-20260529');
+  assert.deepEqual(layout.order, ['face', 'outfit', 'hair']);
   assert.deepEqual(layout.layers.outfit.base, { x: 0, y: 0, width: 512, height: 512 });
   assert.deepEqual(layout.layers.face.base, { x: 0, y: 0, width: 512, height: 512 });
   assert.deepEqual(layout.layers.hair.base, { x: 0, y: 0, width: 512, height: 512 });
@@ -224,12 +224,20 @@ test('CanvasGameRenderer applies the same famous portrait layer layout as the la
   assert.ok(outfitCall);
   assert.ok(faceCall);
   assert.ok(hairCall);
-  assert.ok(Math.abs(outfitCall[2] - -17.38) < 0.01);
-  assert.ok(Math.abs(outfitCall[3] - 14.98) < 0.01);
-  assert.ok(Math.abs(outfitCall[4] - 128.76) < 0.01);
-  assert.ok(Math.abs(outfitCall[5] - 128.76) < 0.01);
-  assert.ok(drawCalls.indexOf(outfitCall) < drawCalls.indexOf(faceCall));
-  assert.ok(drawCalls.indexOf(faceCall) < drawCalls.indexOf(hairCall));
+  assert.ok(Math.abs(faceCall[2] - -9.65) < 0.01);
+  assert.ok(Math.abs(faceCall[3] - 23.46) < 0.01);
+  assert.ok(Math.abs(faceCall[4] - 113.31) < 0.01);
+  assert.ok(Math.abs(faceCall[5] - 113.31) < 0.01);
+  assert.ok(Math.abs(outfitCall[2] - -81.76) < 0.01);
+  assert.ok(Math.abs(outfitCall[3] - -28.53) < 0.01);
+  assert.ok(Math.abs(outfitCall[4] - 257.52) < 0.01);
+  assert.ok(Math.abs(outfitCall[5] - 257.52) < 0.01);
+  assert.ok(Math.abs(hairCall[2] - -7.64) < 0.01);
+  assert.ok(Math.abs(hairCall[3] - 0.07) < 0.01);
+  assert.ok(Math.abs(hairCall[4] - 113.31) < 0.01);
+  assert.ok(Math.abs(hairCall[5] - 113.31) < 0.01);
+  assert.ok(drawCalls.indexOf(faceCall) < drawCalls.indexOf(outfitCall));
+  assert.ok(drawCalls.indexOf(outfitCall) < drawCalls.indexOf(hairCall));
 });
 
 test('CanvasGameRenderer scales famous portrait layers around the layer center', () => {
