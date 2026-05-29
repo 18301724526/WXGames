@@ -1125,6 +1125,45 @@
       if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
     }
 
+    drawBattleStatusFloatingTexts(activeTurn = null, phase = 'prepare', phaseProgress = 0, areas = {}) {
+      if (!activeTurn || !['prepare', 'impact', 'settle'].includes(phase)) return;
+      const texts = Array.isArray(activeTurn.floatingTexts) ? activeTurn.floatingTexts : [];
+      if (!texts.length) return;
+      const progress = Math.max(0, Math.min(1, Number(phaseProgress) || 0));
+      const phaseOffset = phase === 'prepare' ? 0 : (phase === 'impact' ? 0.34 : 0.68);
+      const alpha = Math.max(0, Math.min(1, 1 - Math.max(0, phaseOffset + progress - 0.72) / 0.28));
+      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
+      texts.slice(0, 4).forEach((item, index) => {
+        const target = item?.target === 'attacker' ? 'attacker' : 'defender';
+        const area = target === 'attacker' ? areas.attacker : areas.defender;
+        if (!area) return;
+        const kind = item.kind || 'status';
+        const color = kind === 'shield'
+          ? '#84d7ff'
+          : (kind === 'damageOverTime' ? '#ffb45e' : '#d9c6ff');
+        const x = area.x + area.width / 2 + (target === 'attacker' ? -18 : 18);
+        const y = area.y + Math.max(22, area.height * 0.16) - progress * 28 - index * 17;
+        const text = String(item.text || '').trim();
+        if (!text) return;
+        this.drawText(text, x + 1, y + 1, {
+          size: 13,
+          bold: true,
+          color: 'rgba(19, 14, 10, 0.86)',
+          align: 'center',
+          baseline: 'middle',
+        });
+        this.drawText(text, x, y, {
+          size: 13,
+          bold: true,
+          color,
+          align: 'center',
+          baseline: 'middle',
+        });
+      });
+      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+    }
+
     drawBattleLeader(sideView = {}, x, y, side = 'attacker') {
       const radius = 32;
       this.drawCircle(x, y, radius + 5, {
@@ -1238,6 +1277,10 @@
         phaseProgress,
         activeTurn?.target === 'attacker' ? attackerArea : defenderArea,
       );
+      this.drawBattleStatusFloatingTexts(activeTurn, turnPhase, phaseProgress, {
+        attacker: attackerArea,
+        defender: defenderArea,
+      });
 
       this.drawPanel(16, logY, this.width - 32, logH, {
         fill: 'rgba(20, 16, 12, 0.76)',

@@ -15,7 +15,38 @@ const DAMAGE_TYPE_LABELS = {
   guard: '守御效果',
 };
 
-const BATTLE_RULE_VERSION = 'battle-rules-v2';
+const BATTLE_RULE_VERSION = 'battle-rules-v3';
+
+const STATUS_RULES = Object.freeze({
+  shield: {
+    label: '守御',
+    defaultValue: 0.08,
+    defaultTurns: 2,
+    maxValuePct: 0.3,
+    maxStacks: 1,
+  },
+  armorBreak: {
+    label: '破甲',
+    defaultValue: 0.12,
+    defaultTurns: 2,
+    maxStacks: 3,
+    maxTotalValue: 0.3,
+  },
+  burn: {
+    label: '灼烧',
+    defaultValue: 0.12,
+    defaultTurns: 2,
+    maxStacks: 3,
+    damageType: 'strategy',
+  },
+  poison: {
+    label: '中毒',
+    defaultValue: 0.12,
+    defaultTurns: 2,
+    maxStacks: 3,
+    damageType: 'strategy',
+  },
+});
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -164,6 +195,81 @@ function getSkillCooldown(skill = {}) {
   return Math.max(2, toInteger(skill.cooldown, 3));
 }
 
+function getStatusRule(key = '') {
+  return STATUS_RULES[key] || null;
+}
+
+function getStatusLabel(key = '') {
+  return getStatusRule(key)?.label || key || '状态';
+}
+
+function createFloatingText(text, target, kind = 'status') {
+  return {
+    text,
+    target,
+    kind,
+  };
+}
+
+function getStatusTurns(effect = {}) {
+  const rule = getStatusRule(effect.key);
+  const turns = toInteger(effect.turns ?? effect.duration ?? effect.turnsRemaining, rule?.defaultTurns || 2);
+  return Math.max(1, turns);
+}
+
+function getStatusValue(effect = {}) {
+  const rule = getStatusRule(effect.key);
+  const value = Number(effect.value ?? effect.multiplier);
+  return Number.isFinite(value) ? value : (rule?.defaultValue || 0);
+}
+
+function normalizeStatus(raw = {}, fallback = {}) {
+  const key = raw.key || fallback.key || '';
+  const rule = getStatusRule(key);
+  if (!rule) return null;
+  const value = Number(raw.value ?? fallback.value ?? rule.defaultValue);
+  const stacks = Math.max(1, toInteger(raw.stacks ?? fallback.stacks, 1));
+  const maxStacks = Math.max(1, toInteger(raw.maxStacks ?? fallback.maxStacks, rule.maxStacks || 1));
+  return {
+    key,
+    label: raw.label || rule.label,
+    sourceSkillId: raw.sourceSkillId || fallback.sourceSkillId || '',
+    sourceSkillName: raw.sourceSkillName || fallback.sourceSkillName || '',
+    sourceSide: raw.sourceSide || fallback.sourceSide || '',
+    targetSide: raw.targetSide || fallback.targetSide || '',
+    turnsRemaining: Math.max(0, toInteger(raw.turnsRemaining ?? fallback.turnsRemaining, rule.defaultTurns || 1)),
+    stacks: Math.min(maxStacks, stacks),
+    maxStacks,
+    value: Number.isFinite(value) ? value : rule.defaultValue,
+    stackPolicy: raw.stackPolicy || fallback.stackPolicy || (key === 'shield' ? 'value' : 'stack'),
+    appliedAtRound: toInteger(raw.appliedAtRound ?? fallback.appliedAtRound, 0),
+    sourceAttributes: raw.sourceAttributes || fallback.sourceAttributes ? clone(raw.sourceAttributes || fallback.sourceAttributes) : null,
+    shieldRemaining: Math.max(0, toInteger(raw.shieldRemaining ?? fallback.shieldRemaining, 0)),
+    maxShield: Math.max(0, toInteger(raw.maxShield ?? fallback.maxShield, 0)),
+  };
+}
+
+function normalizeStatuses(statuses = []) {
+  if (!Array.isArray(statuses)) return [];
+  return statuses.map((status) => normalizeStatus(status)).filter(Boolean);
+}
+
+function sanitizeStatuses(statuses = []) {
+  return normalizeStatuses(statuses).filter((status) => (
+    status
+    && (status.key === 'shield' ? status.shieldRemaining > 0 : status.turnsRemaining > 0)
+  ));
+}
+
+function getStatusTotalValue(unit, key) {
+  const rule = getStatusRule(key);
+  if (!rule || !Array.isArray(unit.statuses)) return 0;
+  const total = unit.statuses
+    .filter((status) => status?.key === key)
+    .reduce((sum, status) => sum + (Number(status.value) || 0) * Math.max(1, toInteger(status.stacks, 1)), 0);
+  return Number.isFinite(rule.maxTotalValue) ? Math.min(rule.maxTotalValue, total) : total;
+}
+
 function calculateDamage(attacker, defender, options = {}) {
   const damageType = options.damageType || 'blade';
   const multiplier = Number.isFinite(Number(options.multiplier)) ? Number(options.multiplier) : 1;
@@ -175,7 +281,8 @@ function calculateDamage(attacker, defender, options = {}) {
   const attackFactor = 0.75 + effectiveAttack / 120;
   const damageReduction = clamp(effectiveDefense / (effectiveDefense + 180), 0.05, 0.6);
   const moraleFactor = MORALE_EFFECT_ENABLED ? clamp((attacker.morale || 100) / 100, 0.75, 1.25) : 1;
-  const rawDamage = 35 * soldierFactor * attackFactor * (1 - damageReduction) * moraleFactor * multiplier;
+  const armorBreakFactor = damageType === 'blade' ? 1 + getStatusTotalValue(defender, 'armorBreak') : 1;
+  const rawDamage = 35 * soldierFactor * attackFactor * (1 - damageReduction) * moraleFactor * multiplier * armorBreakFactor;
   return Math.max(1, Math.min(defender.soldiers, Math.round(rawDamage)));
 }
 
@@ -185,10 +292,190 @@ function applyDamage(target, damage) {
   return actual;
 }
 
+function consumeShield(target, incomingDamage) {
+  let remaining = Math.max(0, Math.floor(Number(incomingDamage) || 0));
+  let absorbed = 0;
+  if (!remaining || !Array.isArray(target.statuses)) return { damage: remaining, absorbed, events: [] };
+  const events = [];
+  target.statuses.forEach((status) => {
+    if (status?.key !== 'shield' || status.shieldRemaining <= 0 || remaining <= 0) return;
+    const used = Math.min(status.shieldRemaining, remaining);
+    status.shieldRemaining -= used;
+    remaining -= used;
+    absorbed += used;
+    events.push({
+      type: 'shieldAbsorb',
+      key: 'shield',
+      target: target.side,
+      targetName: target.name,
+      value: used,
+      remaining: status.shieldRemaining,
+      text: `[${target.name}] 守御抵消 ${used} 伤害`,
+      floatingText: createFloatingText(`守御抵消 ${used}`, target.side, 'shield'),
+    });
+  });
+  target.statuses = target.statuses.filter((status) => status?.key !== 'shield' || status.shieldRemaining > 0);
+  return { damage: remaining, absorbed, events };
+}
+
+function applyDamageWithStatuses(target, damage) {
+  const shield = consumeShield(target, damage);
+  const dealt = applyDamage(target, shield.damage);
+  return {
+    attempted: Math.max(0, Math.floor(Number(damage) || 0)),
+    dealt,
+    absorbed: shield.absorbed,
+    shieldEvents: shield.events,
+  };
+}
+
 function healSoldiers(unit, amount) {
   const recovered = Math.max(0, Math.min(unit.maxSoldiers - unit.soldiers, Math.floor(Number(amount) || 0)));
   unit.soldiers += recovered;
   return recovered;
+}
+
+function removeExpiredStatuses(unit) {
+  const removed = [];
+  unit.statuses = normalizeStatuses(unit.statuses).filter((status) => {
+    const keep = status.key === 'shield' ? status.shieldRemaining > 0 : status.turnsRemaining > 0;
+    if (!keep) {
+      removed.push({
+        type: 'statusExpired',
+        key: status.key,
+        label: status.label || getStatusLabel(status.key),
+        target: unit.side,
+        targetName: unit.name,
+        text: `[${unit.name}] ${status.label || getStatusLabel(status.key)}结束`,
+      });
+    }
+    return keep;
+  });
+  return removed;
+}
+
+function clearUnitStatuses(unit, reason = 'defeated') {
+  const statuses = sanitizeStatuses(unit.statuses);
+  unit.statuses = [];
+  if (!statuses.length) return [];
+  return statuses.map((status) => ({
+    type: 'statusCleared',
+    key: status.key,
+    label: status.label || getStatusLabel(status.key),
+    target: unit.side,
+    targetName: unit.name,
+    reason,
+    text: `[${unit.name}] ${status.label || getStatusLabel(status.key)}消散`,
+  }));
+}
+
+function clearDefeatedStatuses(attacker, defender) {
+  return [
+    ...(attacker.soldiers <= 0 ? clearUnitStatuses(attacker, 'defeated') : []),
+    ...(defender.soldiers <= 0 ? clearUnitStatuses(defender, 'defeated') : []),
+  ];
+}
+
+function applyStatusToUnit(unit, statusInput = {}) {
+  const status = normalizeStatus(statusInput);
+  if (!status) return null;
+  unit.statuses = sanitizeStatuses(unit.statuses);
+  const rule = getStatusRule(status.key);
+  const existing = unit.statuses.find((item) => item.key === status.key);
+  if (status.key === 'shield') {
+    const maxShield = Math.max(1, Math.round(unit.maxSoldiers * (rule.maxValuePct || 0.3)));
+    const addValue = Math.max(1, Math.round(unit.maxSoldiers * Math.max(0, status.value || rule.defaultValue)));
+    const before = existing?.shieldRemaining || 0;
+    const after = Math.min(maxShield, before + addValue);
+    if (existing) {
+      existing.shieldRemaining = after;
+      existing.maxShield = maxShield;
+      existing.turnsRemaining = Math.max(existing.turnsRemaining, status.turnsRemaining);
+      existing.sourceSkillId = status.sourceSkillId || existing.sourceSkillId;
+      existing.sourceSkillName = status.sourceSkillName || existing.sourceSkillName;
+      existing.sourceSide = status.sourceSide || existing.sourceSide;
+    } else {
+      unit.statuses.push({
+        ...status,
+        stacks: 1,
+        maxStacks: 1,
+        shieldRemaining: after,
+        maxShield,
+      });
+    }
+    return {
+      type: 'statusApplied',
+      key: 'shield',
+      label: rule.label,
+      target: unit.side,
+      targetName: unit.name,
+      value: after - before,
+      total: after,
+      text: `[${unit.name}] 获得守御 ${after - before}（${after}）`,
+      floatingText: createFloatingText(`守御 +${after - before}`, unit.side, 'shield'),
+    };
+  }
+  if (existing) {
+    existing.stacks = Math.min(existing.maxStacks || rule.maxStacks || 1, (existing.stacks || 1) + 1);
+    existing.turnsRemaining = Math.max(existing.turnsRemaining || 0, status.turnsRemaining || rule.defaultTurns || 1);
+    existing.value = Math.max(Number(existing.value) || 0, Number(status.value) || rule.defaultValue || 0);
+    existing.sourceSkillId = status.sourceSkillId || existing.sourceSkillId;
+    existing.sourceSkillName = status.sourceSkillName || existing.sourceSkillName;
+    existing.sourceSide = status.sourceSide || existing.sourceSide;
+  } else {
+    unit.statuses.push(status);
+  }
+  const current = existing || status;
+  return {
+    type: 'statusApplied',
+    key: status.key,
+    label: rule.label,
+    target: unit.side,
+    targetName: unit.name,
+    value: current.value,
+    stacks: current.stacks,
+    turnsRemaining: current.turnsRemaining,
+    text: `[${unit.name}] 受到${rule.label}${current.stacks > 1 ? ` x${current.stacks}` : ''}`,
+    floatingText: createFloatingText(rule.label, unit.side, 'status'),
+  };
+}
+
+function tickStatusesAtActionStart(unit) {
+  unit.statuses = sanitizeStatuses(unit.statuses);
+  const events = [];
+  unit.statuses.forEach((status) => {
+    if (!status || status.key === 'shield') return;
+    const rule = getStatusRule(status.key);
+    if (!rule) return;
+    if (status.key === 'burn' || status.key === 'poison') {
+      const source = {
+        soldiers: Math.max(DEFAULT_SOLDIER_SCALE, unit.maxSoldiers),
+        morale: 100,
+        attributes: status.sourceAttributes || unit.attributes,
+      };
+      const multiplier = Math.max(0.05, (Number(status.value) || rule.defaultValue) * Math.max(1, toInteger(status.stacks, 1)));
+      const rawDamage = calculateDamage(source, unit, { damageType: rule.damageType || 'strategy', multiplier });
+      const damageResult = applyDamageWithStatuses(unit, rawDamage);
+      if (damageResult.dealt > 0 || damageResult.absorbed > 0) {
+        events.push(...damageResult.shieldEvents);
+        events.push({
+          type: 'statusTick',
+          key: status.key,
+          label: rule.label,
+          target: unit.side,
+          targetName: unit.name,
+          damage: damageResult.dealt,
+          absorbed: damageResult.absorbed,
+          soldiersAfter: unit.soldiers,
+          text: `[${unit.name}] ${rule.label}造成 ${damageResult.dealt} 伤害（${unit.soldiers}）`,
+          floatingText: createFloatingText(`${rule.label} -${damageResult.dealt}`, unit.side, 'damageOverTime'),
+        });
+      }
+    }
+    status.turnsRemaining = Math.max(0, toInteger(status.turnsRemaining, 0) - 1);
+  });
+  events.push(...removeExpiredStatuses(unit));
+  return events;
 }
 
 function getSkillEffectMultiplier(skill = {}, key, fallback = 0) {
@@ -265,23 +552,65 @@ function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
         structured.push({ type: 'heal', target: unit.side, value: recovered, text: `[${unit.name}] 整队恢复兵力 ${recovered}（${unit.soldiers}）` });
       }
     } else if (effect.key === 'shield') {
-      const shield = Math.round(unit.maxSoldiers * (Number(effect.value) || 0.08));
-      if (shield > 0) {
-        notes.push(`护势抵消约 ${shield} 伤害`);
-        structured.push({ type: 'shield', target: unit.side, value: shield, text: `[${unit.name}] 获得守御，预计抵消 ${shield} 伤害` });
+      const applied = applyStatusToUnit(unit, {
+        key: 'shield',
+        value: getStatusValue(effect),
+        turnsRemaining: getStatusTurns(effect),
+        sourceSkillId: skill.id || '',
+        sourceSkillName: skill.name || '',
+        sourceSide: unit.side,
+        targetSide: unit.side,
+      });
+      if (applied) {
+        notes.push(`获得守御 ${applied.value}`);
+        structured.push(applied);
       }
     } else if (effect.key === 'attributeBonus') {
-      structured.push({ type: 'buff', target: unit.side, key: effect.key, attribute: effect.attribute || '', value: effect.value || 0, text: `[${unit.name}] ${effect.attribute || '属性'}修正 ${effect.value || 0}` });
-      notes.push('属性修正');
+      const applied = applyAttributeBonus(unit, effect);
+      if (applied) {
+        structured.push({
+          ...applied,
+          type: 'buff',
+          floatingText: createFloatingText(`${applied.attribute} +${applied.value}`, unit.side, 'buff'),
+        });
+        notes.push('属性提升');
+      }
     } else if (effect.key === 'morale') {
       structured.push({ type: 'morale', target: unit.side, value: unit.morale, text: `[${unit.name}] 士气保持 ${unit.morale}` });
       notes.push('士气保持');
     } else if (effect.key === 'armorBreak') {
-      structured.push({ type: 'debuff', target: target.side, key: effect.key, value: effect.value || 0, text: `[${target.name}] 受到破甲压制` });
-      notes.push('破甲压制');
+      const applied = applyStatusToUnit(target, {
+        key: 'armorBreak',
+        value: getStatusValue(effect),
+        turnsRemaining: getStatusTurns(effect),
+        maxStacks: effect.maxStacks,
+        sourceSkillId: skill.id || '',
+        sourceSkillName: skill.name || '',
+        sourceSide: unit.side,
+        targetSide: target.side,
+        appliedAtRound: unit.ownActionCount + 1,
+      });
+      if (applied) {
+        structured.push(applied);
+        notes.push('破甲');
+      }
     } else if (effect.key === 'burn' || effect.key === 'poison') {
-      structured.push({ type: 'debuff', target: target.side, key: effect.key, value: effect.value || 0, text: `[${target.name}] 受到${effect.key === 'burn' ? '灼烧' : '中毒'}影响` });
-      notes.push(effect.key === 'burn' ? '灼烧' : '中毒');
+      const applied = applyStatusToUnit(target, {
+        key: effect.key,
+        value: getStatusValue(effect),
+        turnsRemaining: getStatusTurns(effect),
+        maxStacks: effect.maxStacks,
+        sourceSkillId: skill.id || '',
+        sourceSkillName: skill.name || '',
+        sourceSide: unit.side,
+        targetSide: target.side,
+        sourceAttributes: clone(unit.attributes || {}),
+        appliedAtRound: unit.ownActionCount + 1,
+      });
+      if (applied) {
+        structured.push(applied);
+        notes.push(getStatusLabel(effect.key));
+      }
     }
   });
   return { notes, structured };
@@ -513,8 +842,96 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
   const recordAction = (actor, round) => {
     const beforeAttacker = attacker.soldiers;
     const beforeDefender = defender.soldiers;
+    const statusesBefore = { attacker: sanitizeStatuses(attacker.statuses), defender: sanitizeStatuses(defender.statuses) };
     const actorName = actor.unit.name;
     const targetName = actor.target.name;
+    const statusEventsBefore = tickStatusesAtActionStart(actor.unit);
+    const defeatedByStatus = actor.unit.soldiers <= 0;
+    const statusClearEventsBefore = clearDefeatedStatuses(attacker, defender);
+    if (defeatedByStatus) {
+      const statusLines = [...statusEventsBefore, ...statusClearEventsBefore].map((event) => event.text).filter(Boolean);
+      const turn = {
+        index: turns.length + 1,
+        round,
+        actor: actor.key,
+        target: actor.key,
+        action: 'statusTick',
+        actionType: 'statusTick',
+        actorName,
+        targetName: actorName,
+        damage: Math.max(0, (actor.key === 'attacker' ? beforeAttacker : beforeDefender) - actor.unit.soldiers),
+        damageType: 'strategy',
+        damageLabel: '状态伤害',
+        skillId: '',
+        skillName: '',
+        skillCooldown: actor.unit.skill ? getSkillCooldown(actor.unit.skill) : 0,
+        cooldownBefore: actor.unit.skillCooldownRemaining,
+        cooldownAfter: actor.unit.skillCooldownRemaining,
+        cooldownTicked: false,
+        ownActionCountBefore: toInteger(actor.unit.ownActionCount, 0),
+        ownActionCountAfter: toInteger(actor.unit.ownActionCount, 0),
+        castPolicy: '',
+        castConditions: actor.unit.skill?.castConditions || [],
+        actionDecision: {
+          skillId: actor.unit.skill?.id || '',
+          skillName: actor.unit.skill?.name || '',
+          canCast: false,
+          reason: 'defeatedByStatus',
+          conditionResults: [],
+          cooldownRemaining: Math.max(0, toInteger(actor.unit.skillCooldownRemaining, 0)),
+          ownActionCountBefore: toInteger(actor.unit.ownActionCount, 0),
+        },
+        extraHits: [],
+        statusEvents: [...statusEventsBefore, ...statusClearEventsBefore],
+        floatingTexts: [...statusEventsBefore, ...statusClearEventsBefore].map((event) => event.floatingText).filter(Boolean),
+        actorPortrait: null,
+        presentation: { cutIn: false, showSkillName: false, emphasis: 'status' },
+        morale: {
+          actor: actor.unit.morale,
+          target: actor.target.morale,
+          effectEnabled: MORALE_EFFECT_ENABLED,
+        },
+        statusesBefore,
+        soldiersBefore: { attacker: beforeAttacker, defender: beforeDefender },
+        soldiersAfter: { attacker: attacker.soldiers, defender: defender.soldiers },
+        statusesAfter: { attacker: sanitizeStatuses(attacker.statuses), defender: sanitizeStatuses(defender.statuses) },
+        lines: [
+          `[${actorName}] 开始行动`,
+          ...statusLines,
+          `[${actorName}] 因状态败退，无法继续行动`,
+        ],
+        text: `${actorName}队因状态伤害败退`,
+        attackerSoldiersBefore: beforeAttacker,
+        defenderSoldiersBefore: beforeDefender,
+        attackerSoldiersAfter: attacker.soldiers,
+        defenderSoldiersAfter: defender.soldiers,
+        attackerGroupsAfter: getBattleVisualGroups(attacker.soldiers),
+        defenderGroupsAfter: getBattleVisualGroups(defender.soldiers),
+      };
+      turns.push(turn);
+      detailEvents.push({
+        round,
+        actor: turn.actor,
+        actorName,
+        target: turn.target,
+        targetName: actorName,
+        actionType: turn.action,
+        skillName: '',
+        damageType: 'strategy',
+        damage: turn.damage,
+        actorPortrait: null,
+        presentation: turn.presentation,
+        extraHits: [],
+        statusEvents: turn.statusEvents,
+        actionDecision: turn.actionDecision,
+        soldiersBefore: turn.soldiersBefore,
+        soldiersAfter: turn.soldiersAfter,
+        statusesBefore: turn.statusesBefore,
+        statusesAfter: turn.statusesAfter,
+        lines: turn.lines,
+      });
+      return turn.text;
+    }
     const actionDecision = describeActionDecision(actor.unit, actor.target, actor.unit.skill);
     const useSkill = canCastSkill(actor.unit, actor.target, actor.unit.skill);
     const action = useSkill ? 'skill' : 'basicAttack';
@@ -522,24 +939,46 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     const damageType = useSkill ? skill.damageType : 'blade';
     const multiplier = useSkill ? skill.multiplier : 1;
     const damage = calculateDamage(actor.unit, actor.target, { damageType, multiplier });
-    const dealt = applyDamage(actor.target, damage);
+    const damageResult = applyDamageWithStatuses(actor.target, damage);
+    const dealt = damageResult.dealt;
     const secondHitMultiplier = useSkill ? getSkillEffectMultiplier(skill, 'secondHit', 0) : 0;
     const firstStrikeMultiplier = useSkill && toInteger(actor.unit.ownActionCount, 0) === 0
       ? getSkillEffectMultiplier(skill, 'firstStrike', 0)
       : 0;
     const extraHits = [];
+    const hitStatusEvents = [...damageResult.shieldEvents];
     if (secondHitMultiplier > 0 && actor.target.soldiers > 0) {
       const extraDamage = calculateDamage(actor.unit, actor.target, { damageType, multiplier: secondHitMultiplier });
-      const extraDealt = applyDamage(actor.target, extraDamage);
+      const extraResult = applyDamageWithStatuses(actor.target, extraDamage);
+      const extraDealt = extraResult.dealt;
+      hitStatusEvents.push(...extraResult.shieldEvents);
       if (extraDealt > 0) extraHits.push({ key: 'secondHit', label: '二段伤害', damage: extraDealt, remaining: actor.target.soldiers });
     }
     if (firstStrikeMultiplier > 0 && actor.target.soldiers > 0) {
       const extraDamage = calculateDamage(actor.unit, actor.target, { damageType, multiplier: firstStrikeMultiplier });
-      const extraDealt = applyDamage(actor.target, extraDamage);
+      const extraResult = applyDamageWithStatuses(actor.target, extraDamage);
+      const extraDealt = extraResult.dealt;
+      hitStatusEvents.push(...extraResult.shieldEvents);
       if (extraDealt > 0) extraHits.push({ key: 'firstStrike', label: '先机伤害', damage: extraDealt, remaining: actor.target.soldiers });
     }
     const totalDealt = dealt + extraHits.reduce((sum, hit) => sum + hit.damage, 0);
     const sideEffects = useSkill ? applySkillSideEffects(actor.unit, actor.target, skill, totalDealt) : { notes: [], structured: [] };
+    const statusClearEventsAfter = clearDefeatedStatuses(attacker, defender);
+    const statusEvents = [
+      ...statusEventsBefore,
+      ...hitStatusEvents,
+      ...sideEffects.structured.filter((effect) => (
+        ['statusApplied', 'shieldAbsorb', 'statusExpired', 'statusCleared'].includes(effect.type)
+      )),
+      ...statusClearEventsAfter,
+    ];
+    const floatingTexts = [
+      ...statusEvents,
+      ...sideEffects.structured.filter((effect) => (
+        effect.floatingText
+        && !['statusApplied', 'shieldAbsorb', 'statusExpired', 'statusCleared'].includes(effect.type)
+      )),
+    ].map((event) => event.floatingText).filter(Boolean);
     const cooldownBefore = actor.unit.skillCooldownRemaining;
     const ownActionCountBefore = toInteger(actor.unit.ownActionCount, 0);
     if (useSkill) actor.unit.skillCooldownRemaining = getSkillCooldown(skill);
@@ -555,10 +994,13 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     const extraLines = extraHits.map((hit) => `[${targetName}] 受到${hit.label} ${hit.damage}（${hit.remaining}）`);
     const lines = [
       `[${actorName}] 开始行动`,
+      ...statusEventsBefore.map((event) => event.text).filter(Boolean),
       actionLine,
+      ...hitStatusEvents.map((event) => event.text).filter(Boolean),
       damageLine,
       ...extraLines,
       ...sideEffects.structured.map((effect) => effect.text),
+      ...statusClearEventsAfter.map((event) => event.text).filter(Boolean),
     ];
     const text = useSkill
       ? `${actorName}队发动${skill?.name || '技能'}，${targetName}损失 ${totalDealt} 士兵${sideEffects.notes.length ? `，${sideEffects.notes.join('，')}` : ''}`
@@ -593,6 +1035,8 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       castConditions: actor.unit.skill?.castConditions || [],
       actionDecision,
       extraHits,
+      statusEvents,
+      floatingTexts,
       actorPortrait,
       presentation,
       morale: {
@@ -600,8 +1044,10 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
         target: actor.target.morale,
         effectEnabled: MORALE_EFFECT_ENABLED,
       },
+      statusesBefore,
       soldiersBefore: { attacker: beforeAttacker, defender: beforeDefender },
       soldiersAfter: { attacker: attacker.soldiers, defender: defender.soldiers },
+      statusesAfter: { attacker: sanitizeStatuses(attacker.statuses), defender: sanitizeStatuses(defender.statuses) },
       lines,
       text,
       attackerSoldiersBefore: beforeAttacker,
@@ -625,9 +1071,13 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       actorPortrait,
       presentation,
       extraHits,
+      statusEvents,
+      floatingTexts,
       actionDecision,
       soldiersBefore: turn.soldiersBefore,
       soldiersAfter: turn.soldiersAfter,
+      statusesBefore: turn.statusesBefore,
+      statusesAfter: turn.statusesAfter,
       lines,
     });
     return text;
@@ -713,4 +1163,10 @@ module.exports = {
   getBattleStageForTerritory,
   createLegacyBattleReport,
   simulateConquestBattle,
+  _test: {
+    applyDamageWithStatuses,
+    applyStatusToUnit,
+    tickStatusesAtActionStart,
+    makeUnit,
+  },
 };

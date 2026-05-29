@@ -17,6 +17,8 @@ const SKILL_RULES = {
   activeSkillSlots: 1,
   passiveTraitSlots: 1,
   randomTriggerEnabled: false,
+  statusSystemEnabled: true,
+  statusTicksOnTargetOwnTurnOnly: true,
 };
 
 const FALLBACK_LEADER = {

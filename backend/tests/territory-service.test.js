@@ -421,7 +421,7 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(site.lastBattle.report.mode, 'auto-round');
   assert.equal(site.lastBattle.report.attacker.leaderName, '陆骁');
   assert.equal(site.lastBattle.report.system, 'attribute-auto-battle-v2');
-  assert.equal(site.lastBattle.report.ruleVersion, 'battle-rules-v2');
+  assert.equal(site.lastBattle.report.ruleVersion, 'battle-rules-v3');
   assert.equal(site.lastBattle.report.turns[0].actor, 'attacker');
   assert.equal(site.lastBattle.report.turns[0].action, 'skill');
   assert.equal(site.lastBattle.report.turns[0].skillName, '血刃破阵');

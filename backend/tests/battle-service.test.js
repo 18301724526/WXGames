@@ -87,7 +87,7 @@ test('simulateConquestBattle emits attribute battle report without mutating inpu
   assert.equal(result.success, true);
   assert.ok(result.casualties >= 0);
   assert.equal(result.report.system, 'attribute-auto-battle-v2');
-  assert.equal(result.report.ruleVersion, 'battle-rules-v2');
+  assert.equal(result.report.ruleVersion, 'battle-rules-v3');
   assert.deepEqual(result.report.actionOrder, ['attacker', 'defender']);
   assert.equal(result.report.attacker.leaderName, '陆骁');
   assert.equal(result.report.attacker.soldiersStart, 501);
@@ -108,6 +108,7 @@ test('simulateConquestBattle emits attribute battle report without mutating inpu
   assert.equal(result.report.skillRules.speedSortPerRound, true);
   assert.equal(result.report.skillRules.strategyDefenseAttribute, 'intelligence');
   assert.equal(result.report.skillRules.randomTriggerEnabled, false);
+  assert.equal(result.report.skillRules.statusSystemEnabled, true);
   assert.equal(mission.soldiersCommitted, 501);
   assert.equal(territory.owner, 'tribe');
 });
@@ -328,6 +329,120 @@ test('attribute damage uses force vs command and intelligence vs intelligence de
   assert.equal(blade, strategy);
   assert.ok(strategy > strategyDefended);
   assert.ok(BattleService.getEffectiveAttribute(200) < 200);
+});
+
+test('shield status absorbs incoming battle damage and records status events', () => {
+  const gameState = createLeaderState();
+  const active = gameState.famousPeople[0].abilityKit.abilities[0];
+  active.name = '固阵压前';
+  active.damageType = 'blade';
+  active.multiplier = 1.1;
+  active.cooldown = 2;
+  active.effects = [{ key: 'directDamage', value: 1.1 }, { key: 'shield', value: 0.12 }];
+  gameState.famousPeople[0].skills[0] = active;
+
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission({ soldiersCommitted: 700 }),
+    createTerritory({ defense: 900 }),
+    new Date('2026-05-30T08:00:00.000Z'),
+  );
+  const shieldApplyTurn = result.report.turns.find((turn) => (
+    turn.actor === 'attacker'
+    && turn.statusEvents?.some((event) => event.key === 'shield' && event.type === 'statusApplied')
+  ));
+  const shieldAbsorbTurn = result.report.turns.find((turn) => (
+    turn.statusEvents?.some((event) => event.type === 'shieldAbsorb' && event.target === 'attacker')
+  ));
+
+  assert.ok(shieldApplyTurn);
+  assert.ok(shieldApplyTurn.floatingTexts.some((item) => /守御 \+/.test(item.text)));
+  assert.ok(shieldAbsorbTurn);
+  assert.ok(shieldAbsorbTurn.lines.some((line) => line.includes('守御抵消')));
+  assert.ok(shieldAbsorbTurn.statusesBefore.attacker.some((status) => status.key === 'shield'));
+});
+
+test('burn and poison tick on the target own action before it acts', () => {
+  const gameState = createLeaderState();
+  const active = gameState.famousPeople[0].abilityKit.abilities[0];
+  active.name = '火毒奇策';
+  active.damageType = 'strategy';
+  active.multiplier = 1.05;
+  active.cooldown = 2;
+  active.effects = [
+    { key: 'directDamage', value: 1.05 },
+    { key: 'burn', value: 0.16, turns: 2 },
+    { key: 'poison', value: 0.14, turns: 2 },
+  ];
+  gameState.famousPeople[0].attributes.intelligence = 90;
+  gameState.famousPeople[0].attributes.strategy = 90;
+  gameState.famousPeople[0].skills[0] = active;
+
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission({ soldiersCommitted: 800 }),
+    createTerritory({ defense: 1000 }),
+    new Date('2026-05-30T08:01:00.000Z'),
+  );
+  const applyTurn = result.report.turns.find((turn) => (
+    turn.actor === 'attacker'
+    && turn.statusEvents?.some((event) => event.key === 'burn' && event.type === 'statusApplied')
+    && turn.statusEvents?.some((event) => event.key === 'poison' && event.type === 'statusApplied')
+  ));
+  const defenderStatusTurn = result.report.turns.find((turn) => (
+    turn.actor === 'defender'
+    && turn.statusEvents?.some((event) => event.type === 'statusTick' && event.key === 'burn')
+    && turn.statusEvents?.some((event) => event.type === 'statusTick' && event.key === 'poison')
+  ));
+
+  assert.ok(applyTurn);
+  assert.ok(applyTurn.statusesAfter.defender.some((status) => status.key === 'burn'));
+  assert.ok(defenderStatusTurn);
+  assert.equal(defenderStatusTurn.lines[0], '[林地部落] 开始行动');
+  assert.ok(defenderStatusTurn.lines.some((line) => line.includes('灼烧造成')));
+  assert.ok(defenderStatusTurn.lines.some((line) => line.includes('中毒造成')));
+  assert.ok(defenderStatusTurn.floatingTexts.some((item) => /灼烧 -/.test(item.text)));
+  assert.ok(defenderStatusTurn.damage > 0);
+});
+
+test('armorBreak increases following blade damage while active', () => {
+  const attacker = BattleService._test.makeUnit('attacker', {
+    name: '测试攻击方',
+    soldiers: 500,
+    maxSoldiers: 500,
+    morale: 100,
+    attributes: { force: 80, command: 50, intelligence: 50, speed: 50 },
+  });
+  const normalTarget = BattleService._test.makeUnit('defender', {
+    name: '普通目标',
+    soldiers: 500,
+    maxSoldiers: 500,
+    morale: 100,
+    attributes: { command: 60, force: 50, intelligence: 50, speed: 50 },
+  });
+  const brokenTarget = BattleService._test.makeUnit('defender', {
+    name: '破甲目标',
+    soldiers: 500,
+    maxSoldiers: 500,
+    morale: 100,
+    attributes: { command: 60, force: 50, intelligence: 50, speed: 50 },
+  });
+
+  const applied = BattleService._test.applyStatusToUnit(brokenTarget, {
+    key: 'armorBreak',
+    value: 0.2,
+    turnsRemaining: 2,
+    sourceSide: 'attacker',
+    targetSide: 'defender',
+  });
+  const normalDamage = BattleService.calculateDamage(attacker, normalTarget, { damageType: 'blade', multiplier: 1 });
+  const brokenDamage = BattleService.calculateDamage(attacker, brokenTarget, { damageType: 'blade', multiplier: 1 });
+  const strategyDamage = BattleService.calculateDamage(attacker, brokenTarget, { damageType: 'strategy', multiplier: 1 });
+  const normalStrategyDamage = BattleService.calculateDamage(attacker, normalTarget, { damageType: 'strategy', multiplier: 1 });
+
+  assert.equal(applied.key, 'armorBreak');
+  assert.ok(brokenDamage > normalDamage);
+  assert.equal(strategyDamage, normalStrategyDamage);
 });
 
 test('battle config owns defender, visual, and fallback skill templates', () => {

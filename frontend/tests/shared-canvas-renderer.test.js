@@ -1590,6 +1590,34 @@ test('CanvasGameRenderer derives and draws battle damage floats during impact', 
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[2] > renderer.width / 2));
 });
 
+test('CanvasGameRenderer draws battle status floating texts from report events', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const turn = {
+    actor: 'attacker',
+    target: 'defender',
+    floatingTexts: [
+      { target: 'attacker', kind: 'shield', text: '守御 +84' },
+      { target: 'defender', kind: 'damageOverTime', text: '灼烧 -18' },
+      { target: 'defender', kind: 'status', text: '破甲' },
+    ],
+  };
+
+  renderer.drawBattleStatusFloatingTexts(turn, 'move', 0.5, {
+    attacker: { x: 18, y: 260, width: 150, height: 180 },
+    defender: { x: 222, y: 260, width: 150, height: 180 },
+  });
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /守御/.test(call[1])), false);
+
+  renderer.drawBattleStatusFloatingTexts(turn, 'impact', 0.2, {
+    attacker: { x: 18, y: 260, width: 150, height: 180 },
+    defender: { x: 222, y: 260, width: 150, height: 180 },
+  });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '守御 +84'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '灼烧 -18'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '破甲'));
+});
+
 test('CanvasGameRenderer moves soldiers into engagement without attack dash offsets', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });

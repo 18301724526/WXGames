@@ -43,6 +43,9 @@ const EFFECT_LABELS = Object.freeze({
   lifesteal: '吸血',
   heal: '治疗',
   shield: '护盾',
+  armorBreak: '破甲',
+  burn: '灼烧',
+  poison: '中毒',
   attributeBonus: '属性修正',
   resourceOutputPct: '资源产出',
   allBasicOutputPct: '基础产出',
@@ -369,6 +372,26 @@ function normalizeEffect(raw = {}) {
       ...(migratedFrom ? { migratedFrom } : {}),
     };
   }
+  if (key === 'armorBreak') {
+    const value = Number(raw.value);
+    return {
+      key,
+      value: Number.isFinite(value) ? round2(Math.max(0.06, Math.min(0.3, value))) : 0.12,
+      turns: Math.max(1, Math.floor(Number(raw.turns ?? raw.duration) || 2)),
+      maxStacks: Math.max(1, Math.min(3, Math.floor(Number(raw.maxStacks) || 3))),
+      ...(migratedFrom ? { migratedFrom } : {}),
+    };
+  }
+  if (key === 'burn' || key === 'poison') {
+    const value = Number(raw.value);
+    return {
+      key,
+      value: Number.isFinite(value) ? round2(Math.max(0.06, Math.min(0.3, value))) : 0.12,
+      turns: Math.max(1, Math.floor(Number(raw.turns ?? raw.duration) || 2)),
+      maxStacks: Math.max(1, Math.min(3, Math.floor(Number(raw.maxStacks) || 3))),
+      ...(migratedFrom ? { migratedFrom } : {}),
+    };
+  }
   return {
     ...raw,
     key,
@@ -421,6 +444,9 @@ function describeEffectSentence(effect = {}, ability = {}) {
   if (effect.key === 'lifesteal') return '施加倒戈（倒戈：将敌方本次损失兵力的一部分转换为自己的兵力）。';
   if (effect.key === 'heal') return '恢复我方一部分兵力。';
   if (effect.key === 'shield') return '获得守御，可抵消一部分伤害。';
+  if (effect.key === 'armorBreak') return '对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。';
+  if (effect.key === 'burn') return '对目标施加灼烧（灼烧：目标行动前会损失兵力）。';
+  if (effect.key === 'poison') return '对目标施加中毒（中毒：目标行动前会持续损失兵力）。';
   if (effect.key === 'attributeBonus') {
     const attribute = getAttributeLabel(effect.attribute || effect.keyAttribute);
     const value = Math.round(Number(effect.value) || 0);
