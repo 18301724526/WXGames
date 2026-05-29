@@ -1201,6 +1201,69 @@ test('CanvasGameRenderer shows famous skill detail only from hover or tap toolti
   assert.ok(calls.some((call) => call[0] === 'fillText' && /效果：直接伤害 \/ 吸血/.test(call[1])));
 });
 
+test('CanvasGameRenderer closes pinned famous skill detail from badge toggle or panel blank tap', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
+    buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
+  });
+  const state = {
+    currentTab: 'resources',
+    currentEra: 3,
+    population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+    famousPersons: {
+      count: 1,
+      candidateCount: 0,
+      maxCandidates: 3,
+      seek: { available: true, count: 1 },
+      people: [{
+        id: 'fp_a',
+        name: 'Leader A',
+        title: 'Vanguard',
+        source: { type: 'seek', label: 'Seek' },
+        roles: ['military'],
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
+        abilityKit: {
+          abilities: [
+            { id: 'skill_a', name: 'Blade Rush', slot: 'activeSkill', kind: 'active', cooldown: 3, effects: [{ key: 'directDamage' }] },
+            { id: 'trait_a', name: 'Sharp Edge', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
+          ],
+        },
+      }],
+      candidates: [],
+    },
+  };
+
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  const skillTarget = renderer.hitTargets.find((target) => target.action?.type === 'showFamousSkillTooltip');
+  assert.ok(skillTarget);
+
+  assert.equal(renderer.setPinnedFamousSkillTooltip(skillTarget.action), true);
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  assert.ok(renderer.pinnedFamousSkillTooltip);
+  const clearTarget = renderer.hitTargets.find((target) => target.action?.type === 'clearFamousSkillTooltip');
+  assert.ok(clearTarget);
+  assert.deepEqual(
+    renderer.getHitTarget({ x: clearTarget.x + 4, y: clearTarget.y + 4 }),
+    { type: 'clearFamousSkillTooltip' },
+  );
+
+  assert.equal(renderer.setPinnedFamousSkillTooltip(skillTarget.action), true);
+  assert.equal(renderer.pinnedFamousSkillTooltip, null);
+  renderer.setPinnedFamousSkillTooltip(skillTarget.action);
+  assert.equal(renderer.clearFamousSkillTooltip(), true);
+  assert.equal(renderer.pinnedFamousSkillTooltip, null);
+});
+
 test('CanvasGameRenderer renders famous person leader choices in world expedition config', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

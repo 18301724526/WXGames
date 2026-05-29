@@ -213,6 +213,13 @@
         if (handled) this.renderActive();
         return handled;
       }
+      if (action.type === 'clearFamousSkillTooltip') {
+        const handled = typeof this.renderer.clearFamousSkillTooltip === 'function'
+          ? this.renderer.clearFamousSkillTooltip()
+          : false;
+        if (handled) this.renderActive();
+        return handled;
+      }
       const handled = this.handleAction(action, event);
       if (handled && event?.preventDefault) event.preventDefault();
       if (handled && event?.stopPropagation) event.stopPropagation();
@@ -318,6 +325,7 @@
 
     closeFamousPersons() {
       this.showFamousPersons = false;
+      this.renderer?.clearFamousSkillTooltip?.();
       return true;
     }
 
@@ -335,6 +343,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.renderer?.clearFamousSkillTooltip?.();
     }
 
     resetLocalViewToResources(options = {}) {
@@ -356,6 +365,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
       const game = this.lastGame;

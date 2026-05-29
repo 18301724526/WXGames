@@ -345,10 +345,28 @@
       return true;
     }
 
+    isSameFamousSkillTooltipAction(left = null, right = null) {
+      return Boolean(left && right
+        && left.type === 'showFamousSkillTooltip'
+        && right.type === 'showFamousSkillTooltip'
+        && left.cardId === right.cardId
+        && left.skillIndex === right.skillIndex);
+    }
+
+    clearFamousSkillTooltip() {
+      const changed = Boolean(this.hoverPoint || this.activeFamousSkillTooltip || this.pinnedFamousSkillTooltip);
+      this.hoverPoint = null;
+      this.activeFamousSkillTooltip = null;
+      this.pinnedFamousSkillTooltip = null;
+      return changed;
+    }
+
     setPinnedFamousSkillTooltip(action = null) {
       if (!action || action.type !== 'showFamousSkillTooltip') {
-        this.pinnedFamousSkillTooltip = null;
-        return false;
+        return this.clearFamousSkillTooltip();
+      }
+      if (this.isSameFamousSkillTooltipAction(this.pinnedFamousSkillTooltip, action)) {
+        return this.clearFamousSkillTooltip();
       }
       this.pinnedFamousSkillTooltip = { ...action };
       return true;
@@ -2590,7 +2608,10 @@
         radius: 12,
         inset: 'rgba(255, 231, 184, 0.1)',
       });
-      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+      this.addHitTarget(
+        { x, y, width: panelWidth, height: panelHeight },
+        this.pinnedFamousSkillTooltip ? { type: 'clearFamousSkillTooltip' } : { type: 'blockCanvasModal' },
+      );
 
       const backW = 58;
       this.drawButton(x + 12, y + 12, backW, 30, '返回', { size: 12, radius: 8 });
@@ -2670,8 +2691,7 @@
       if (hoverTooltip) this.activeFamousSkillTooltip = hoverTooltip;
       const pinnedStillVisible = this.pinnedFamousSkillTooltip
         && this.famousSkillHitTargets.some((target) => (
-          target.action?.cardId === this.pinnedFamousSkillTooltip.cardId
-          && target.action?.skillIndex === this.pinnedFamousSkillTooltip.skillIndex
+          this.isSameFamousSkillTooltipAction(target.action, this.pinnedFamousSkillTooltip)
         ));
       if (!pinnedStillVisible) this.pinnedFamousSkillTooltip = null;
       this.renderFamousSkillTooltip(this.activeFamousSkillTooltip || this.pinnedFamousSkillTooltip);

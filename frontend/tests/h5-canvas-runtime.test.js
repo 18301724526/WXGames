@@ -370,6 +370,74 @@ test('Canvas game shell bridges canvas tab taps only when input is explicitly en
   assert.equal(actions.length, 1);
 });
 
+test('Canvas game shell toggles and clears famous skill tooltip taps locally', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const skillAction = {
+    type: 'showFamousSkillTooltip',
+    cardId: 'fp_a',
+    skillIndex: 0,
+    skill: { name: 'Blade Rush' },
+  };
+  const hitActions = [
+    skillAction,
+    skillAction,
+    skillAction,
+    { type: 'clearFamousSkillTooltip' },
+  ];
+  const renderCalls = [];
+  const pinCalls = [];
+  const clearCalls = [];
+  const dispatched = [];
+  let pinned = null;
+  const renderer = {
+    getHitTarget: () => hitActions.shift(),
+    setPinnedFamousSkillTooltip(action) {
+      pinCalls.push(action);
+      if (pinned && pinned.cardId === action.cardId && pinned.skillIndex === action.skillIndex) {
+        pinned = null;
+      } else {
+        pinned = { ...action };
+      }
+      return true;
+    },
+    clearFamousSkillTooltip() {
+      clearCalls.push('clear');
+      const changed = Boolean(pinned);
+      pinned = null;
+      return changed;
+    },
+    render(state, options) {
+      renderCalls.push({ state, options });
+    },
+  };
+  CanvasGameShell.mount({ state: { currentTab: 'resources' } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(pinCalls.length, 1);
+  assert.ok(pinned);
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(pinCalls.length, 2);
+  assert.equal(pinned, null);
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1600 });
+  assert.ok(pinned);
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1900 });
+  assert.equal(clearCalls.length, 1);
+  assert.equal(pinned, null);
+  assert.deepEqual(dispatched, []);
+  assert.ok(renderCalls.length >= 5);
+});
+
 test('H5 canvas runtime ignores duplicate compatibility events for the same tap', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const h5Runtime = new H5CanvasRuntime({ document, runtime });

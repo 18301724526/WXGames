@@ -716,6 +716,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.renderer?.clearFamousSkillTooltip?.();
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
       this.techTreePanX = 0;
@@ -752,6 +753,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
       this.activeGuideNavigation = null;
@@ -1715,6 +1717,11 @@
       if (!action || action.disabled) return;
       if (action.type === 'showFamousSkillTooltip') {
         this.renderer.setPinnedFamousSkillTooltip?.(action);
+        this.render();
+        return;
+      }
+      if (action.type === 'clearFamousSkillTooltip') {
+        this.renderer.clearFamousSkillTooltip?.();
         this.render();
         return;
       }
