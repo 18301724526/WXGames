@@ -20,6 +20,7 @@ function makeCtx() {
       strokeStyle: '',
       lineWidth: 1,
       font: '',
+      filter: 'none',
       textBaseline: '',
       textAlign: '',
       globalAlpha: 1,
@@ -151,8 +152,11 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   const paths = CanvasGameRenderer.getPreloadAssetPaths();
 
   assert.ok(paths.includes('assets/art/battle/battlefield-forest-camp.png'));
-  assert.ok(paths.includes('assets/art/battle/soldier-player-sheet.png'));
-  assert.ok(paths.includes('assets/art/battle/soldier-enemy-sheet.png'));
+  assert.ok(paths.includes('assets/art/battle/units/player/idle/01.png'));
+  assert.ok(paths.includes('assets/art/battle/units/player/attack/04.png'));
+  assert.ok(paths.includes('assets/art/battle/units/enemy/die/04.png'));
+  assert.equal(paths.includes('assets/art/battle/soldier-player-sheet.png'), false);
+  assert.equal(paths.includes('assets/art/battle/soldier-enemy-sheet.png'), false);
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-outfit-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-face-01.png'));
   assert.ok(paths.includes('assets/art/famous-person/layers/fp-layer-v3-hair-10.png'));
@@ -181,10 +185,31 @@ test('CanvasGameRenderer cache-busts famous person portrait layer image requests
   await pending;
 });
 
+test('CanvasGameRenderer cache-busts split battle unit frames on H5', async () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const createdImages = [];
+  renderer.createImage = () => {
+    const image = { src: '', onload: null, onerror: null };
+    createdImages.push(image);
+    return image;
+  };
+
+  const pending = renderer.preloadAssets(['assets/art/battle/units/player/attack/04.png']);
+
+  assert.match(createdImages[0].src, /assets\/art\/battle\/units\/player\/attack\/04\.png\?v=battle-units-split-v1-20260529$/);
+  createdImages[0].onload?.();
+  await pending;
+});
+
 test('MiniGameCanvasRenderer keeps bundled asset paths unchanged', () => {
   assert.equal(
     MiniGameCanvasRenderer.getAssetRequestPath('assets/art/famous-person/layers/fp-layer-v3-hair-01.png'),
     'assets/art/famous-person/layers/fp-layer-v3-hair-01.png',
+  );
+  assert.equal(
+    MiniGameCanvasRenderer.getAssetRequestPath('assets/art/battle/units/player/idle/01.png'),
+    'assets/art/battle/units/player/idle/01.png',
   );
 });
 
@@ -1181,13 +1206,11 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
     status: 'loaded',
     image: { width: 1448, height: 1086, naturalWidth: 1448, naturalHeight: 1086 },
   });
-  renderer.assetCache.set('assets/art/battle/soldier-player-sheet.png', {
-    status: 'loaded',
-    image: { width: 1254, height: 1254, naturalWidth: 1254, naturalHeight: 1254 },
-  });
-  renderer.assetCache.set('assets/art/battle/soldier-enemy-sheet.png', {
-    status: 'loaded',
-    image: { width: 1254, height: 1254, naturalWidth: 1254, naturalHeight: 1254 },
+  CanvasGameRenderer.getBattleUnitFramePaths().forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 500, height: 400, naturalWidth: 500, naturalHeight: 400 },
+    });
   });
   const UIStatePresenter = require('../js/state/UIStatePresenter');
   renderer.setPresenter({
@@ -1239,8 +1262,8 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
             id: 'forest-camp',
             background: 'assets/art/battle/battlefield-forest-camp.png',
             soldierSprites: {
-              attacker: 'assets/art/battle/soldier-player-sheet.png',
-              defender: 'assets/art/battle/soldier-enemy-sheet.png',
+              attacker: 'assets/art/battle/units/player',
+              defender: 'assets/art/battle/units/enemy',
             },
             palette: ['#283f2e', '#526a3b', '#8b6f3a'],
           },
@@ -1255,7 +1278,54 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('[陆骁] 开始行动')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('受到兵刃伤害')));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'skipBattleScene' || target.action?.type === 'closeBattleScene'));
-  assert.ok(calls.some((call) => call[0] === 'drawImage' && call.length >= 10));
+  assert.ok(calls.some((call) => (
+    call[0] === 'drawImage'
+    && call[1]?.src?.startsWith('assets/art/battle/units/')
+    && call.length === 6
+  )));
+});
+
+test('CanvasGameRenderer maps split battle frame poses without hit frames or death offsets', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  CanvasGameRenderer.getBattleUnitFramePaths().forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 500, height: 400, naturalWidth: 500, naturalHeight: 400 },
+    });
+  });
+
+  assert.equal(
+    renderer.getBattleFrameSpritePath('attacker', 'hit', 0, 'assets/art/battle/units/player', 0.5),
+    'assets/art/battle/units/player/idle/01.png',
+  );
+  assert.equal(
+    renderer.getBattleFrameSpritePath('defender', 'skill', 0, 'assets/art/battle/units/enemy', 1),
+    'assets/art/battle/units/enemy/attack/04.png',
+  );
+  assert.equal(
+    renderer.getBattleFrameSpritePath('attacker', 'defeated', 0, 'assets/art/battle/units/player', 0.75),
+    'assets/art/battle/units/player/die/04.png',
+  );
+
+  renderer.drawBattleSoldierSprite(160, 280, 'attacker', 'die', 0, 1, 0.21, 'assets/art/battle/units/player', 0.5);
+  renderer.drawBattleSoldierSprite(240, 280, 'defender', 'hit', 2, 1, 0.21, 'assets/art/battle/units/enemy', 0.5);
+  renderer.drawBattleArmy({ side: 'defender', soldiers: 0, soldiersStart: 12, groups: [] }, {
+    x: 200,
+    y: 260,
+    width: 120,
+    height: 120,
+  }, { pose: 'die', frame: 0, progress: 0.5 });
+
+  const dieCall = calls.find((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/battle/units/player/die/03.png');
+  const emptyGroupDieCall = calls.find((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/battle/units/enemy/die/03.png');
+  const hitCalls = calls.filter((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/battle/units/enemy/idle/03.png');
+  assert.ok(dieCall);
+  assert.ok(emptyGroupDieCall);
+  assert.equal(dieCall[2], 160 - (500 * 0.21) / 2);
+  assert.equal(dieCall[3], 280 - 400 * 0.21);
+  assert.ok(hitCalls.length >= 2);
+  assert.equal(calls.some((call) => call[0] === 'drawImage' && String(call[1]?.src || '').includes('/hit/')), false);
 });
 
 test('CanvasGameRenderer battle unit poses include idle move attack and hit phases', () => {
@@ -1270,6 +1340,12 @@ test('CanvasGameRenderer battle unit poses include idle move attack and hit phas
   assert.equal(renderer.getBattleUnitPose('attacker', turn, 'settle'), 'idle');
   assert.equal(renderer.getBattleUnitPose('defender', turn, 'move'), 'idle');
   assert.equal(renderer.getBattleUnitPose('defender', turn, 'impact'), 'hit');
+  assert.equal(renderer.getBattleUnitPose('defender', {
+    actor: 'attacker',
+    target: 'defender',
+    defenderSoldiersBefore: 12,
+    defenderSoldiersAfter: 0,
+  }, 'impact'), 'die');
 });
 
 test('CanvasGameRenderer battle playback phases normalize each action stage', () => {

@@ -63,8 +63,8 @@ const DEFAULT_BATTLE_MAP = {
 const BATTLE_STAGE_ASSETS = {
   background: 'assets/art/battle/battlefield-forest-camp.png',
   soldierSprites: {
-    attacker: 'assets/art/battle/soldier-player-sheet.png',
-    defender: 'assets/art/battle/soldier-enemy-sheet.png',
+    attacker: 'assets/art/battle/units/player',
+    defender: 'assets/art/battle/units/enemy',
   },
 };
 

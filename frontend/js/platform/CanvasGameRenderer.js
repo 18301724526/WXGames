@@ -42,13 +42,54 @@
     }
 
     static getAssetRequestPath(assetPath) {
-      if (!assetPath) return assetPath;
+      if (!assetPath || typeof assetPath !== 'string') return assetPath;
+      if (assetPath.startsWith('assets/art/battle/units/')) {
+        const separator = assetPath.includes('?') ? '&' : '?';
+        return `${assetPath}${separator}v=${encodeURIComponent(this.getBattleUnitAssetVersion())}`;
+      }
       const layout = this.getFamousPortraitLayerLayout();
       const assetVersion = layout.assetVersion;
-      if (!assetVersion || typeof assetPath !== 'string') return assetPath;
+      if (!assetVersion) return assetPath;
       if (!assetPath.startsWith('assets/art/famous-person/layers/')) return assetPath;
       const separator = assetPath.includes('?') ? '&' : '?';
       return `${assetPath}${separator}v=${encodeURIComponent(assetVersion)}`;
+    }
+
+    static getBattleUnitAssetVersion() {
+      return 'battle-units-split-v1-20260529';
+    }
+
+    static getBattleUnitFrameCount() {
+      return 4;
+    }
+
+    static getBattleUnitKey(side = 'attacker') {
+      return side === 'attacker' ? 'player' : 'enemy';
+    }
+
+    static getBattleUnitFramePath(unit = 'player', pose = 'idle', frameIndex = 0, rootPath = '') {
+      const safeUnit = unit === 'enemy' ? 'enemy' : 'player';
+      const safePose = ['idle', 'move', 'attack', 'die'].includes(pose) ? pose : 'idle';
+      const count = this.getBattleUnitFrameCount();
+      const index = Math.max(0, Math.min(count - 1, Math.floor(Number(frameIndex) || 0)));
+      const file = `${String(index + 1).padStart(2, '0')}.png`;
+      const root = rootPath && !String(rootPath).endsWith('.png')
+        ? String(rootPath).replace(/\/+$/, '')
+        : `assets/art/battle/units/${safeUnit}`;
+      return `${root}/${safePose}/${file}`;
+    }
+
+    static getBattleUnitFramePaths() {
+      const poses = ['idle', 'move', 'attack', 'die'];
+      const paths = [];
+      ['player', 'enemy'].forEach((unit) => {
+        poses.forEach((pose) => {
+          for (let index = 0; index < this.getBattleUnitFrameCount(); index += 1) {
+            paths.push(this.getBattleUnitFramePath(unit, pose, index));
+          }
+        });
+      });
+      return paths;
     }
 
     static getPreloadAssetPaths() {
@@ -98,8 +139,7 @@
         'assets/art/world-site-ruins-cutout.png',
         'assets/art/world-site-town-cutout.png',
         'assets/art/battle/battlefield-forest-camp.png',
-        'assets/art/battle/soldier-player-sheet.png',
-        'assets/art/battle/soldier-enemy-sheet.png',
+        ...this.getBattleUnitFramePaths(),
         ...Object.values(this.getFamousPortraitLayerLayout().layers || {})
           .map((layer) => layer?.file)
           .filter(Boolean)
@@ -488,8 +528,25 @@
       if (!activeTurn) return 'idle';
       if (phase === 'prepare' || phase === 'settle') return 'idle';
       if (activeTurn.actor === side) return phase === 'move' ? 'move' : 'attack';
-      if (activeTurn.target === side) return phase === 'impact' ? 'hit' : 'idle';
+      if (activeTurn.target === side) {
+        if (phase === 'impact' && this.isBattleSideDefeatedByTurn(side, activeTurn)) return 'die';
+        return phase === 'impact' ? 'hit' : 'idle';
+      }
       return 'idle';
+    }
+
+    getBattleTurnSoldierCount(turn = {}, side = 'attacker', timing = 'after', fallback = 0) {
+      const nested = turn?.[`soldiers${timing === 'after' ? 'After' : 'Before'}`]?.[side];
+      if (nested !== undefined && nested !== null) return Number(nested) || 0;
+      const legacyKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
+      if (turn?.[legacyKey] !== undefined && turn?.[legacyKey] !== null) return Number(turn[legacyKey]) || 0;
+      return Number(fallback) || 0;
+    }
+
+    isBattleSideDefeatedByTurn(side = 'attacker', turn = {}) {
+      const before = this.getBattleTurnSoldierCount(turn, side, 'before', 1);
+      const after = this.getBattleTurnSoldierCount(turn, side, 'after', before);
+      return before > 0 && after <= 0;
     }
 
     getBattlePlaybackPhase(progress = 0, activeTurn = null) {
@@ -522,8 +579,43 @@
       };
     }
 
+    getBattleUnitSpec(side = 'attacker', spritePath = '') {
+      const unit = this.constructor.getBattleUnitKey(side);
+      const root = spritePath && !String(spritePath).endsWith('.png') ? spritePath : `assets/art/battle/units/${unit}`;
+      return {
+        unit,
+        root,
+        frameCount: this.constructor.getBattleUnitFrameCount(),
+        width: 500,
+        height: 400,
+      };
+    }
+
+    getBattleFramePose(pose = 'idle') {
+      if (pose === 'skill') return 'attack';
+      if (pose === 'hit') return 'idle';
+      if (pose === 'defeated') return 'die';
+      if (pose === 'die') return 'die';
+      return ['idle', 'move', 'attack'].includes(pose) ? pose : 'idle';
+    }
+
+    getBattleFrameIndex(pose = 'idle', frame = 0, progress = 0) {
+      const count = this.constructor.getBattleUnitFrameCount();
+      if (pose === 'attack' || pose === 'skill' || pose === 'die' || pose === 'defeated') {
+        return Math.max(0, Math.min(count - 1, Math.floor(Math.max(0, Math.min(1, Number(progress) || 0)) * count)));
+      }
+      return Math.abs(Math.floor(Number(frame) || 0)) % count;
+    }
+
+    getBattleFrameSpritePath(side = 'attacker', pose = 'idle', frame = 0, spritePath = '', progress = 0) {
+      const spec = this.getBattleUnitSpec(side, spritePath);
+      const framePose = this.getBattleFramePose(pose);
+      const frameIndex = this.getBattleFrameIndex(pose, frame, progress);
+      return this.constructor.getBattleUnitFramePath(spec.unit, framePose, frameIndex, spec.root);
+    }
+
     getBattleSideSpritePath(sideView = {}, side = 'attacker') {
-      return sideView.sprite || this.getBattleSpriteSpec(side).path;
+      return sideView.sprite || `assets/art/battle/units/${this.constructor.getBattleUnitKey(side)}`;
     }
 
     drawBattleMapBackground(map = {}) {
@@ -533,7 +625,37 @@
       this.ctx.fillRect(0, 0, this.width, this.height);
     }
 
-    drawBattleSoldierSprite(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '') {
+    drawBattleSoldierFrame(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
+      const spec = this.getBattleUnitSpec(side, spritePath);
+      const path = this.getBattleFrameSpritePath(side, pose, frame, spritePath, progress);
+      const image = this.getAsset(path);
+      if (!image || typeof this.ctx?.drawImage !== 'function') return false;
+      const alpha = Math.max(0.25, Math.min(1, Number(ratio) || 1));
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
+      const sourceWidth = Number(image.naturalWidth || image.width || spec.width);
+      const sourceHeight = Number(image.naturalHeight || image.height || spec.height);
+      const dw = sourceWidth * scale;
+      const dh = sourceHeight * scale;
+      const drawX = x - dw / 2;
+      const drawY = y - dh;
+      this.ctx.drawImage(image, drawX, drawY, dw, dh);
+      if (pose === 'hit') {
+        const flashAlpha = Math.max(0, Math.sin(Math.max(0, Math.min(1, Number(progress) || 0)) * Math.PI)) * 0.36;
+        if (flashAlpha > 0.01 && typeof this.ctx.filter === 'string') {
+          const afterImageAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : previousAlpha;
+          this.ctx.globalAlpha = afterImageAlpha * flashAlpha;
+          const previousFilter = this.ctx.filter;
+          this.ctx.filter = 'brightness(2.4) saturate(0)';
+          this.ctx.drawImage(image, drawX, drawY, dw, dh);
+          this.ctx.filter = previousFilter;
+        }
+      }
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return true;
+    }
+
+    drawBattleSpriteSheet(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '') {
       if (!this.ctx) return;
       const spec = this.getBattleSpriteSpec(side);
       const image = this.getAsset(spritePath || spec.path);
@@ -557,25 +679,35 @@
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
     }
 
+    drawBattleSoldierSprite(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
+      if (this.drawBattleSoldierFrame(x, y, side, pose, frame, ratio, scale, spritePath, progress)) return;
+      this.drawBattleSpriteSheet(x, y, side, pose, frame, ratio, scale, spritePath && String(spritePath).endsWith('.png') ? spritePath : '');
+    }
+
     drawBattleSoldier(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22) {
       return this.drawBattleSoldierSprite(x, y, side, pose, frame, ratio, scale);
     }
 
     drawBattleArmy(sideView = {}, area = {}, options = {}) {
       const groups = sideView.groups || [];
-      const side = sideView.side || 'attacker';
       const pose = options.pose || 'idle';
+      const visualGroups = groups.length || !(pose === 'die' || pose === 'defeated')
+        ? groups
+        : [{ ratio: 1, soldiers: 0, capacity: 1 }];
+      const side = sideView.side || 'attacker';
       const frame = Number(options.frame) || 0;
       const progress = Math.max(0, Math.min(1, Number(options.progress) || 0));
       const actionType = options.actionType || '';
       const columns = Math.max(1, Math.floor(area.width / 34));
       const dir = side === 'attacker' ? 1 : -1;
-      const activeCount = pose === 'idle' ? 0 : Math.min(groups.length, actionType === 'skill' ? 5 : 3);
-      const actionAdvance = pose === 'move'
-        ? progress * 46 * dir
-        : (pose === 'attack' || pose === 'skill' ? (10 + Math.sin(frame / 1.8) * 4) * dir : 0);
-      const hitOffset = pose === 'hit' ? (Math.sin(frame / 1.5) * 8 - 4) * dir : 0;
-      groups.slice(0, 18).forEach((group, index) => {
+      const activeCount = pose === 'idle' ? 0 : Math.min(visualGroups.length, actionType === 'skill' ? 5 : 3);
+      const contactX = side === 'attacker' ? this.width * 0.52 : this.width * 0.48;
+      const activeProgress = Math.max(0, Math.min(1, progress));
+      const attackReachProgress = pose === 'attack' || pose === 'skill'
+        ? Math.min(1, activeProgress / 0.8)
+        : 0;
+      const hitOffset = pose === 'hit' ? Math.sin(frame * 2.2) * 5 * dir : 0;
+      visualGroups.slice(0, 18).forEach((group, index) => {
         const col = index % columns;
         const row = Math.floor(index / columns);
         const x = side === 'attacker'
@@ -585,8 +717,17 @@
         const isActiveSoldier = index < activeCount;
         const stagger = isActiveSoldier ? Math.max(0, 1 - index * 0.12) : 0;
         const activePose = isActiveSoldier ? pose : 'idle';
-        const activeOffset = isActiveSoldier ? (actionAdvance + hitOffset) * stagger : 0;
         const scale = actionType === 'skill' && isActiveSoldier ? 0.245 : 0.21;
+        const unitHalfWidth = 500 * scale / 2;
+        const contactCenterX = contactX - dir * unitHalfWidth;
+        const contactDistance = contactCenterX - x;
+        const moveDistance = contactDistance * 0.68;
+        const actionAdvance = pose === 'move'
+          ? moveDistance * activeProgress
+          : ((pose === 'attack' || pose === 'skill')
+            ? moveDistance + (contactDistance - moveDistance) * attackReachProgress
+            : 0);
+        const activeOffset = isActiveSoldier ? (actionAdvance + hitOffset) * stagger : 0;
         this.drawBattleSoldierSprite(
           x + activeOffset,
           y,
@@ -596,6 +737,7 @@
           group.ratio,
           scale,
           this.getBattleSideSpritePath(sideView, side),
+          progress,
         );
       });
       if (groups.length > 18) {

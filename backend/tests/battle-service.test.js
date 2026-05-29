@@ -139,6 +139,6 @@ test('battle config owns defender, visual, and fallback skill templates', () => 
   assert.equal(BattleService.getBattleMapForTerritory({ type: 'camp' }).id, 'forest-camp');
   assert.equal(
     BattleService.getBattleStageForTerritory({ type: 'camp' }).soldierSprites.attacker,
-    'assets/art/battle/soldier-player-sheet.png',
+    'assets/art/battle/units/player',
   );
 });
