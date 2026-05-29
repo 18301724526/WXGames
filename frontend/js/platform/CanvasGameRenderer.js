@@ -2549,8 +2549,8 @@
       if (!skill || !this.ctx) return;
       const width = Math.min(300, Math.max(238, this.width - 44));
       const lines = [
-        skill.description ? `说明：${skill.description}` : '',
-        skill.meta ? `规则：${skill.meta}` : '',
+        skill.description ? `效果：${skill.description}` : '',
+        skill.meta ? skill.meta : '',
       ].filter(Boolean);
       const wrapped = lines.flatMap((line) => this.wrapTextLimit(line, width - 28, 4, { size: 11 }));
       const height = Math.min(164, 50 + wrapped.length * 16);

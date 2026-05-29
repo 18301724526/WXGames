@@ -569,20 +569,29 @@
       const labels = {
         cooldownReady: '',
         targetAlive: '',
-        firstOwnAction: '只在第一次出手时会放',
-        selfSoldierBelowPct: `我方兵力低于${percent}%才会放`,
-        selfSoldierAbovePct: `我方兵力高于${percent}%才会放`,
-        targetSoldierBelowPct: `目标兵力低于${percent}%才会放`,
-        targetHasStatus: `目标有${condition.status || '状态'}`,
-        selfHasStatus: `我方有${condition.status || '状态'}`,
+        firstOwnAction: '时机：首次出手',
+        selfSoldierBelowPct: `发动条件：我方兵力低于 ${percent}%`,
+        selfSoldierAbovePct: `发动条件：我方兵力高于 ${percent}%`,
+        targetSoldierBelowPct: `发动条件：目标兵力低于 ${percent}%`,
+        targetHasStatus: `发动条件：目标带有${condition.status || '指定状态'}`,
+        selfHasStatus: `发动条件：我方带有${condition.status || '指定状态'}`,
       };
       return Object.prototype.hasOwnProperty.call(labels, condition.type) ? labels[condition.type] : '';
     }
 
     static formatFamousPersonCooldownText(cooldown, skill = {}) {
       if (cooldown === null || skill.kind !== 'active') return '';
-      if (cooldown <= 0) return '满足条件时可释放';
-      return `再次释放前，需等待 ${cooldown} 次出手机会`;
+      if (cooldown <= 0) return '冷却：无';
+      return `冷却：${cooldown} 回合`;
+    }
+
+    static formatFamousPersonCastRate(skill = {}) {
+      if (skill.kind !== 'active') return '';
+      const raw = skill.castRate ?? skill.triggerRate ?? skill.probability ?? skill.chance ?? skill.rate;
+      const numeric = Number(raw);
+      if (!Number.isFinite(numeric)) return '发动率：100%';
+      const normalized = numeric > 1 ? numeric / 100 : numeric;
+      return `发动率：${Math.max(0, Math.min(100, Math.round(normalized * 100)))}%`;
     }
 
     static formatFamousPersonEffectSentence(effect = {}, skill = {}) {
@@ -657,11 +666,12 @@
       const kindText = this.formatFamousPersonSkillKind(skill);
       const effectText = effects.length ? effects.join(' / ') : '暂无效果';
       const cooldownText = this.formatFamousPersonCooldownText(cooldown, skill);
+      const castRateText = this.formatFamousPersonCastRate(skill);
       const triggerText = skill.trigger === 'preBattle'
-        ? '战前生效'
-        : (skill.trigger === 'passiveStored' ? '已加入名人档案' : conditions.join(' / '));
+        ? '时机：战斗开始'
+        : (skill.trigger === 'passiveStored' ? '状态：已加入名人档案' : conditions.join(' · '));
       const statusText = skill.implementationStatus === 'storedOnly' ? '暂未接入实际收益' : '';
-      const meta = [cooldownText, triggerText, statusText].filter(Boolean).join(' · ');
+      const meta = [cooldownText, castRateText, triggerText, statusText].filter(Boolean).join(' · ');
       const description = this.sanitizeFamousPersonSkillDescription(skill) || this.buildFamousPersonSkillDescription(skill);
       return {
         id: skill.id || skill.name || '',

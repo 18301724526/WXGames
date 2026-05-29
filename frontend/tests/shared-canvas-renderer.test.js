@@ -1192,10 +1192,11 @@ test('CanvasGameRenderer shows famous skill detail only from hover or tap toolti
   calls.length = 0;
   renderer.setHoverPoint({ x: skillTarget.x + 4, y: skillTarget.y + 4 });
   renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /说明：发动战法攻击目标/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /效果：发动战法攻击目标/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /倒戈/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /规则：再次释放前，需等待 3 次出手机会/.test(call[1])));
-  assert.equal(calls.some((call) => call[0] === 'fillText' && /效果：|直接伤害|属性修正|自身行动|冷却就绪|目标存活|cooldownReady|targetAlive|条件：/.test(call[1])), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /冷却：3 回合/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /发动率：100%/.test(call[1])));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /规则：|说明：|直接伤害|属性修正|自身行动|出手机会|冷却就绪|目标存活|cooldownReady|targetAlive|条件：/.test(call[1])), false);
 
   calls.length = 0;
   renderer.setHoverPoint(null);
