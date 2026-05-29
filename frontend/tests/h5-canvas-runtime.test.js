@@ -264,6 +264,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       showGuidebook: false,
       activeGuidebookTab: 'planning',
       showFamousPersons: false,
+      famousPersonsPage: 0,
       showTalentPolicy: false,
       talentPolicyUiState: {},
       logs: [],
@@ -436,6 +437,46 @@ test('Canvas game shell toggles and clears famous skill tooltip taps locally', (
   assert.equal(pinned, null);
   assert.deepEqual(dispatched, []);
   assert.ok(renderCalls.length >= 5);
+});
+
+test('Canvas game shell changes famous person pages locally', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const hitActions = [
+    { type: 'changeFamousPersonsPage', delta: 1 },
+    { type: 'changeFamousPersonsPage', delta: -1 },
+  ];
+  const renderCalls = [];
+  const clearCalls = [];
+  const dispatched = [];
+  const renderer = {
+    getHitTarget: () => hitActions.shift(),
+    clearFamousSkillTooltip() { clearCalls.push('clear'); },
+    render(state, options) { renderCalls.push({ state, options }); },
+  };
+  const shell = CanvasGameShell.mount({ state: { currentTab: 'resources', famousPersons: { people: [] } } }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+  shell.showFamousPersons = true;
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
+  assert.equal(shell.famousPersonsPage, 1);
+  assert.equal(clearCalls.length, 1);
+  assert.equal(renderCalls.at(-1).options.famousPersonsPage, 1);
+
+  listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1300 });
+  assert.equal(shell.famousPersonsPage, 0);
+  assert.equal(clearCalls.length, 2);
+  assert.equal(renderCalls.at(-1).options.famousPersonsPage, 0);
+  assert.deepEqual(dispatched, []);
 });
 
 test('H5 canvas runtime ignores duplicate compatibility events for the same tap', () => {

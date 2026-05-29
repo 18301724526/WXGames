@@ -67,7 +67,8 @@ test('seek creates a generated candidate with v3 three-layer portrait and no lev
   assert.equal(result.candidate.abilityKit.budgetChecks.every((check) => check.withinLimit), true);
   assert.equal(result.candidate.abilityKit.abilities[0].slot, 'activeSkill');
   assert.equal(typeof result.candidate.abilityKit.abilities[0].description, 'string');
-  assert.match(result.candidate.abilityKit.abilities[0].description, /冷却/);
+  assert.match(result.candidate.abilityKit.abilities[0].description, /再出手|条件满足/);
+  assert.doesNotMatch(result.candidate.abilityKit.abilities[0].description, /自身行动|冷却\s*\d+\s*次/);
   assert.equal(result.candidate.skills[0].effects[0].key, 'directDamage');
   assert.ok(SkillGeneratorService.FIRST_BATCH_BATTLE_EFFECTS.includes(result.candidate.skills[0].effects[0].key));
   assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v3.0');

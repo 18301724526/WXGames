@@ -548,17 +548,31 @@
     }
 
     static formatFamousPersonCastCondition(condition = {}) {
+      const percent = Math.round(Number(condition.value ?? condition.pct ?? 0) * 100);
       const labels = {
-        cooldownReady: '冷却就绪',
-        targetAlive: '目标存活',
-        firstOwnAction: '首次行动',
-        selfSoldierBelowPct: `自身兵力低于${Math.round(Number(condition.value ?? condition.pct ?? 0) * 100)}%`,
-        selfSoldierAbovePct: `自身兵力高于${Math.round(Number(condition.value ?? condition.pct ?? 0) * 100)}%`,
-        targetSoldierBelowPct: `目标兵力低于${Math.round(Number(condition.value ?? condition.pct ?? 0) * 100)}%`,
+        cooldownReady: '',
+        targetAlive: '目标未败',
+        firstOwnAction: '只在首次出手时释放',
+        selfSoldierBelowPct: `我方兵力低于${percent}%时释放`,
+        selfSoldierAbovePct: `我方兵力高于${percent}%时释放`,
+        targetSoldierBelowPct: `目标兵力低于${percent}%时释放`,
         targetHasStatus: `目标有${condition.status || '状态'}`,
-        selfHasStatus: `自身有${condition.status || '状态'}`,
+        selfHasStatus: `我方有${condition.status || '状态'}`,
       };
       return labels[condition.type] || condition.type || '';
+    }
+
+    static formatFamousPersonCooldownText(cooldown, skill = {}) {
+      if (cooldown === null || skill.kind !== 'active') return '';
+      if (cooldown <= 0) return '可连续释放';
+      return `释放后，需要等自己再出手 ${cooldown} 次`;
+    }
+
+    static sanitizeFamousPersonSkillDescription(skill = {}) {
+      const text = String(skill.description || '').trim();
+      if (!text) return '';
+      if (/自身行动|冷却\s*\d+\s*次|冷却就绪|目标存活/.test(text)) return '';
+      return text;
     }
 
     static formatFamousPersonSkillDetail(skill = {}) {
@@ -572,19 +586,20 @@
       const cooldown = Number.isFinite(Number(skill.cooldown)) ? Math.max(0, Math.floor(Number(skill.cooldown))) : null;
       const kindText = this.formatFamousPersonSkillKind(skill);
       const effectText = effects.length ? effects.join(' / ') : '暂无效果';
-      const cooldownText = cooldown === null ? '' : `冷却${cooldown}次自身行动`;
+      const cooldownText = this.formatFamousPersonCooldownText(cooldown, skill);
       const triggerText = skill.trigger === 'preBattle'
         ? '战前生效'
-        : (skill.trigger === 'passiveStored' ? '已挂载展示' : conditions.join(' / '));
+        : (skill.trigger === 'passiveStored' ? '已加入名人档案' : conditions.join(' / '));
       const statusText = skill.implementationStatus === 'storedOnly' ? '当前仅展示' : '';
       const meta = [cooldownText, triggerText, statusText].filter(Boolean).join(' · ');
+      const description = this.sanitizeFamousPersonSkillDescription(skill);
       return {
         id: skill.id || skill.name || '',
         name: skill.name || '技能',
         kindText,
         effectText,
         meta,
-        description: skill.description || '',
+        description,
         summary: `${skill.name || '技能'} · ${effectText}`,
       };
     }

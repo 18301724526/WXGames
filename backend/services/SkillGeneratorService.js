@@ -405,7 +405,10 @@ function describeAbility(ability = {}) {
     return `${ability.name || '被动特质'}：${effectsText || '战前效果'}，${ability.trigger === 'preBattle' ? '战前生效' : '按触发条件生效'}。`;
   }
   const cooldown = Number.isFinite(Number(ability.cooldown)) ? Number(ability.cooldown) : 0;
-  return `${ability.name || '主动战法'}：${effectsText || '战斗效果'}，冷却 ${cooldown} 次自身行动。`;
+  const cooldownText = cooldown > 0
+    ? `释放后，要等该名人再出手 ${cooldown} 次才能再放`
+    : '只要轮到该名人且条件满足，就能释放';
+  return `${ability.name || '主动战法'}：${effectsText || '战斗效果'}，${cooldownText}。`;
 }
 
 function withAbilityDescription(ability = {}) {

@@ -182,6 +182,7 @@ test('famous person view state maps candidates and joined people into panel card
               cooldown: 3,
               castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }],
               effects: [{ key: 'directDamage' }, { key: 'lifesteal' }],
+              description: '血刃破阵：吸血，冷却 3 次自身行动。',
             },
             { id: 'trait_vanguard_edge', name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
           ],
@@ -227,8 +228,10 @@ test('famous person view state maps candidates and joined people into panel card
   assert.match(view.people[0].skills[1], /属性修正/);
   assert.deepEqual(view.people[0].skillBadges.map((item) => item.text), ['主动战法：血刃破阵', '战斗被动：锐锋']);
   assert.equal(view.people[0].skillDetails[0].kindText, '主动战法');
-  assert.match(view.people[0].skillDetails[0].meta, /冷却3次自身行动/);
-  assert.match(view.people[0].skillDetails[0].meta, /冷却就绪/);
+  assert.match(view.people[0].skillDetails[0].meta, /等自己再出手 3 次/);
+  assert.match(view.people[0].skillDetails[0].meta, /目标未败/);
+  assert.doesNotMatch(view.people[0].skillDetails[0].meta, /自身行动|冷却就绪|目标存活/);
+  assert.equal(view.people[0].skillDetails[0].description, '');
   assert.equal(view.people[0].skillDetails[1].kindText, '战斗被动');
   assert.match(view.people[0].skillDetails[1].meta, /战前生效/);
   assert.equal(view.people[0].appearance.layers.hair, 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png');

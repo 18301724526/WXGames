@@ -2550,11 +2550,11 @@
       const width = Math.min(300, Math.max(238, this.width - 44));
       const lines = [
         skill.effectText ? `效果：${skill.effectText}` : '',
-        skill.meta ? `条件：${skill.meta}` : '',
+        skill.meta ? `规则：${skill.meta}` : '',
         skill.description || '',
       ].filter(Boolean);
-      const wrapped = lines.flatMap((line) => this.wrapTextLimit(line, width - 28, 2, { size: 11 }));
-      const height = Math.min(132, 50 + wrapped.length * 16);
+      const wrapped = lines.flatMap((line) => this.wrapTextLimit(line, width - 28, 3, { size: 11 }));
+      const height = Math.min(148, 50 + wrapped.length * 16);
       const anchor = this.famousSkillHitTargets.find((target) => (
         target.action?.cardId === action.cardId
         && target.action?.skillIndex === action.skillIndex
@@ -2579,6 +2579,33 @@
         color: '#cbd6c8',
         lineHeight: 16,
       });
+    }
+
+    normalizeFamousPersonsPage(total, page, pageSize) {
+      const pages = Math.max(1, Math.ceil(Math.max(0, Number(total) || 0) / Math.max(1, pageSize)));
+      const index = Math.max(0, Math.min(pages - 1, Math.floor(Number(page) || 0)));
+      return { index, pages };
+    }
+
+    renderFamousPersonsPager(x, y, width, page, pages) {
+      if (pages <= 1) return;
+      const buttonW = 64;
+      const buttonH = 24;
+      const prevX = x;
+      const nextX = x + width - buttonW;
+      const canPrev = page > 0;
+      const canNext = page < pages - 1;
+      this.drawButton(prevX, y, buttonW, buttonH, '上一页', { disabled: !canPrev, size: 11, radius: 7 });
+      this.drawText(`${page + 1}/${pages}`, x + width / 2, y + buttonH / 2, {
+        size: 11,
+        bold: true,
+        color: '#ffe6b5',
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.drawButton(nextX, y, buttonW, buttonH, '下一页', { disabled: !canNext, size: 11, radius: 7 });
+      this.addHitTarget({ x: prevX, y, width: buttonW, height: buttonH }, { type: 'changeFamousPersonsPage', delta: -1, disabled: !canPrev });
+      this.addHitTarget({ x: nextX, y, width: buttonW, height: buttonH }, { type: 'changeFamousPersonsPage', delta: 1, disabled: !canNext });
     }
 
     renderFamousPersonsPanel(state = {}, options = {}) {
@@ -2682,10 +2709,16 @@
           lineHeight: 17,
         });
       } else {
-        people.slice(0, 3).forEach((card) => {
-          if (cursorY + 124 > y + panelHeight - 18) return;
+        const itemHeight = 134;
+        const pagerReserve = people.length > 3 ? 34 : 0;
+        const availableHeight = Math.max(0, y + panelHeight - 18 - pagerReserve - cursorY);
+        const visibleCount = Math.max(1, Math.min(3, Math.floor(availableHeight / itemHeight)));
+        const pageInfo = this.normalizeFamousPersonsPage(people.length, options.famousPersonsPage, visibleCount);
+        people.slice(pageInfo.index * visibleCount, pageInfo.index * visibleCount + visibleCount).forEach((card) => {
+          if (cursorY + 124 > y + panelHeight - 18 - pagerReserve) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
         });
+        if (pageInfo.pages > 1) this.renderFamousPersonsPager(innerX, y + panelHeight - 42, innerWidth, pageInfo.index, pageInfo.pages);
       }
       const hoverTooltip = this.hoverPoint ? this.getFamousSkillTooltipAction(this.hoverPoint) : null;
       if (hoverTooltip) this.activeFamousSkillTooltip = hoverTooltip;

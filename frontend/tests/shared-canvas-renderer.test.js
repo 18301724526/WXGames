@@ -1192,13 +1192,76 @@ test('CanvasGameRenderer shows famous skill detail only from hover or tap toolti
   calls.length = 0;
   renderer.setHoverPoint({ x: skillTarget.x + 4, y: skillTarget.y + 4 });
   renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /条件：冷却3次自身行动/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /规则：释放后，需要等自己再出手 3 次/.test(call[1])));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /自身行动|冷却就绪|目标存活|条件：/.test(call[1])), false);
 
   calls.length = 0;
   renderer.setHoverPoint(null);
   renderer.setPinnedFamousSkillTooltip(skillTarget.action);
   renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
   assert.ok(calls.some((call) => call[0] === 'fillText' && /效果：直接伤害 \/ 吸血/.test(call[1])));
+});
+
+test('CanvasGameRenderer paginates joined famous people in famous person panel', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
+    buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
+  });
+  const makePerson = (index) => ({
+    id: `fp_${index}`,
+    name: `名人${index}`,
+    title: `称号${index}`,
+    source: { type: 'seek', label: '寻访' },
+    roles: ['military'],
+    attributes: { command: 50 + index, force: 50, intelligence: 50, politics: 50, charisma: 50, speed: 50 },
+    abilityKit: {
+      abilities: [
+        { id: `skill_${index}`, name: `战法${index}`, slot: 'activeSkill', kind: 'active', cooldown: 2, effects: [{ key: 'directDamage' }] },
+        { id: `trait_${index}`, name: `特质${index}`, slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
+      ],
+    },
+    appearance: { version: 'famous-portrait-v3.0', layers: {} },
+  });
+  const state = {
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    currentEra: 3,
+    population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+    famousPersons: {
+      count: 6,
+      candidateCount: 0,
+      maxCandidates: 3,
+      seek: { available: true, count: 1 },
+      people: [1, 2, 3, 4, 5, 6].map(makePerson),
+      candidates: [],
+    },
+  };
+
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, famousPersonsPage: 0 });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人1'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '名人6'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '1/2'));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'changeFamousPersonsPage'
+    && target.action.delta === 1
+    && target.action.disabled === false
+  )));
+
+  calls.length = 0;
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, famousPersonsPage: 5 });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人6'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '名人1'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '2/2'));
 });
 
 test('CanvasGameRenderer closes pinned famous skill detail from badge toggle or panel blank tap', () => {

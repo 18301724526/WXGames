@@ -45,6 +45,7 @@
       this.showGuidebook = false;
       this.activeGuidebookTab = 'planning';
       this.showFamousPersons = false;
+      this.famousPersonsPage = 0;
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.rewardReveal = null;
@@ -291,6 +292,7 @@
         showGuidebook: this.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
         showFamousPersons: this.showFamousPersons,
+        famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
@@ -716,6 +718,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.famousPersonsPage = 0;
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
@@ -753,6 +756,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.famousPersonsPage = 0;
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
@@ -901,7 +905,9 @@
         const result = await this.getGameApi().seekFamousPerson(source);
         this.applyApiState(result);
         this.showFamousPersons = true;
+        this.famousPersonsPage = 0;
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
         this.showFloatingText(result.message || '寻访完成');
         this.log(result.message || '寻访完成');
         return true;
@@ -917,7 +923,9 @@
         const result = await this.getGameApi().acceptFamousPerson(candidateId);
         this.applyApiState(result);
         this.showFamousPersons = true;
+        this.famousPersonsPage = 0;
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
         this.showFloatingText(result.message || '名人已加入');
         this.log(result.message || '名人已加入');
         return true;

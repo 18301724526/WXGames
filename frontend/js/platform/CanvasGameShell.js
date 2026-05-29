@@ -47,6 +47,7 @@
       this.showGuidebook = false;
       this.activeGuidebookTab = 'planning';
       this.showFamousPersons = false;
+      this.famousPersonsPage = 0;
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.buildingOffset = 0;
@@ -317,6 +318,7 @@
 
     openFamousPersons() {
       this.showFamousPersons = true;
+      this.famousPersonsPage = 0;
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showTalentPolicy = false;
@@ -325,7 +327,16 @@
 
     closeFamousPersons() {
       this.showFamousPersons = false;
+      this.famousPersonsPage = 0;
       this.renderer?.clearFamousSkillTooltip?.();
+      return true;
+    }
+
+    changeFamousPersonsPage(action = {}) {
+      const delta = Number(action.delta) || 0;
+      this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
+      this.renderer?.clearFamousSkillTooltip?.();
+      this.renderActive();
       return true;
     }
 
@@ -343,6 +354,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.famousPersonsPage = 0;
       this.renderer?.clearFamousSkillTooltip?.();
     }
 
@@ -365,6 +377,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.famousPersonsPage = 0;
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
@@ -944,6 +957,7 @@
         showGuidebook: this.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
         showFamousPersons: this.showFamousPersons,
+        famousPersonsPage: this.famousPersonsPage,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.lastGame?.talentPolicyUiState || this.talentPolicyUiState || {},
         logs: this.lastGame?.requestLogs || [],

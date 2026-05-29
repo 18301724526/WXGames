@@ -809,6 +809,17 @@
       return this.afterHandled(action);
     }
 
+    handle_changeFamousPersonsPage(action) {
+      if (typeof this.host?.changeFamousPersonsPage === 'function') {
+        this.host.changeFamousPersonsPage(action);
+      } else {
+        this.host.famousPersonsPage = Math.max(0, (Number(this.host.famousPersonsPage) || 0) + (Number(action.delta) || 0));
+        this.host.renderer?.clearFamousSkillTooltip?.();
+        this.afterHandled(action);
+      }
+      return true;
+    }
+
     handle_selectBuildingCategory(action) {
       if (typeof this.host?.selectBuildingCategory === 'function') {
         this.host.selectBuildingCategory(action);
