@@ -2661,6 +2661,89 @@
       return this.toInteger(fallback);
     }
 
+    static getBattleStatusLabel(status = {}) {
+      const labels = {
+        shield: '守御',
+        armorBreak: '破甲',
+        burn: '灼烧',
+        poison: '中毒',
+      };
+      return status.label || labels[status.key] || status.key || '状态';
+    }
+
+    static getBattleStatusTone(status = {}) {
+      if (status.key === 'shield') return 'guard';
+      if (status.key === 'burn' || status.key === 'poison') return 'dot';
+      if (status.key === 'armorBreak') return 'break';
+      return 'status';
+    }
+
+    static formatBattleStatusBadge(status = {}) {
+      const key = status.key || '';
+      const label = this.getBattleStatusLabel(status);
+      const turns = Math.max(0, this.toInteger(status.turnsRemaining, 0));
+      const stacks = Math.max(1, this.toInteger(status.stacks, 1));
+      if (key === 'shield') {
+        const shield = Math.max(0, this.toInteger(status.shieldRemaining ?? status.value, 0));
+        return {
+          key,
+          label,
+          text: shield > 0 ? `${label} ${shield}` : label,
+          tone: this.getBattleStatusTone(status),
+          turns,
+          stacks,
+          shield,
+        };
+      }
+      return {
+        key,
+        label,
+        text: `${label}${stacks > 1 ? ` x${stacks}` : ''}${turns > 0 ? ` ${turns}回合` : ''}`,
+        tone: this.getBattleStatusTone(status),
+        turns,
+        stacks,
+        shield: 0,
+      };
+    }
+
+    static buildBattleStatusBadges(statuses = []) {
+      if (!Array.isArray(statuses)) return [];
+      return statuses
+        .map((status) => this.formatBattleStatusBadge(status))
+        .filter((badge) => badge.text)
+        .slice(0, 4);
+    }
+
+    static buildBattleSkillState(report = {}, turns = [], side = 'attacker', activeTurn = null, turnIndex = 0, showActionResult = false, ended = false) {
+      const sideReport = report?.[side] || {};
+      const skill = sideReport.skill && typeof sideReport.skill === 'object' ? sideReport.skill : {};
+      const skillName = skill.name || (activeTurn?.actor === side ? activeTurn.skillName || activeTurn.actionDecision?.skillName : '');
+      if (!skillName) return null;
+      const isActiveSide = activeTurn?.actor === side;
+      let remaining = 0;
+      let state = 'ready';
+      if (isActiveSide) {
+        const before = Math.max(0, this.toInteger(activeTurn.cooldownBefore, 0));
+        const after = Math.max(0, this.toInteger(activeTurn.cooldownAfter, before));
+        const isSkillTurn = activeTurn.action === 'skill' || activeTurn.actionType === 'skill';
+        remaining = showActionResult ? after : before;
+        state = isSkillTurn && !showActionResult ? 'casting' : (remaining > 0 ? 'cooldown' : 'ready');
+      } else {
+        const searchEnd = ended ? turns.length - 1 : Math.max(-1, turnIndex - 1);
+        const previousOwnTurn = turns.slice(0, searchEnd + 1).reverse().find((turn) => turn?.actor === side);
+        remaining = Math.max(0, this.toInteger(previousOwnTurn?.cooldownAfter, 0));
+        state = remaining > 0 ? 'cooldown' : 'ready';
+      }
+      return {
+        skillName,
+        cooldown: Math.max(0, this.toInteger(skill.cooldown, activeTurn?.skillCooldown || 0)),
+        remaining,
+        state,
+        stateText: state === 'casting' ? '正在释放' : (remaining > 0 ? `冷却 ${remaining} 回合` : '可释放'),
+        active: isActiveSide,
+      };
+    }
+
     static getBattleTurnLines(turn = {}, options = {}) {
       const lines = Array.isArray(turn.lines) && turn.lines.length ? turn.lines : [turn.text].filter(Boolean);
       if (!options.active) return lines;
@@ -2713,6 +2796,18 @@
       ));
       const activeLines = activeTurn ? this.getBattleTurnLines(activeTurn, { active: true, phase }) : [];
       const fallbackLines = turns.length === 0 && report.summary ? [report.summary] : [];
+      const statusesTiming = showActionResult ? 'After' : 'Before';
+      const activeStatuses = activeTurn?.[`statuses${statusesTiming}`] || {};
+      const previousStatuses = previousTurn?.statusesAfter || {};
+      const lastStatuses = lastTurn?.statusesAfter || {};
+      const attackerStatuses = ended
+        ? (lastStatuses.attacker || [])
+        : (activeStatuses.attacker || previousStatuses.attacker || []);
+      const defenderStatuses = ended
+        ? (lastStatuses.defender || [])
+        : (activeStatuses.defender || previousStatuses.defender || []);
+      const attackerSkill = this.buildBattleSkillState(report, turns, 'attacker', activeTurn, turnIndex, showActionResult, ended);
+      const defenderSkill = this.buildBattleSkillState(report, turns, 'defender', activeTurn, turnIndex, showActionResult, ended);
       return {
         visible: true,
         id: report.id || '',
@@ -2745,6 +2840,8 @@
           soldiersStart: this.toInteger(report.attacker?.soldiersStart),
           soldiers: attackerSoldiers,
           groups: this.makeVisualGroups(attackerSoldiers, groupSize),
+          statuses: this.buildBattleStatusBadges(attackerStatuses),
+          skillState: attackerSkill,
         },
         defender: {
           side: 'defender',
@@ -2756,6 +2853,8 @@
           soldiersStart: this.toInteger(report.defender?.soldiersStart),
           soldiers: defenderSoldiers,
           groups: this.makeVisualGroups(defenderSoldiers, groupSize),
+          statuses: this.buildBattleStatusBadges(defenderStatuses),
+          skillState: defenderSkill,
         },
       };
     }

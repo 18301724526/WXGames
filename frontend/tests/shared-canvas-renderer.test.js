@@ -1469,6 +1469,8 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
           actionType: 'skill',
           skillName: '血刃破阵',
           damage: 43,
+          cooldownBefore: 0,
+          cooldownAfter: 3,
           actorName: '陆骁',
           actorPortrait: {
             layers: {
@@ -1484,6 +1486,11 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
           defenderSoldiersBefore: 500,
           attackerSoldiersAfter: 501,
           defenderSoldiersAfter: 457,
+          statusesBefore: { attacker: [], defender: [] },
+          statusesAfter: {
+            attacker: [{ key: 'shield', label: '守御', shieldRemaining: 42, turnsRemaining: 2 }],
+            defender: [{ key: 'armorBreak', label: '破甲', turnsRemaining: 2, stacks: 1 }],
+          },
         }],
         visual: {
           map: {
@@ -1505,6 +1512,9 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('457/500')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('[陆骁] 开始行动')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('血刃破阵')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('冷却 3 回合')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('守御 42')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('破甲 2回合')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('受到兵刃伤害')));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'skipBattleScene' || target.action?.type === 'closeBattleScene'));
   assert.ok(calls.some((call) => (

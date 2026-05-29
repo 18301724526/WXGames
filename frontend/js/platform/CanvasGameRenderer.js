@@ -954,6 +954,90 @@
       });
     }
 
+    getBattleStatusBadgeColors(tone = 'status') {
+      if (tone === 'guard') return {
+        fill: 'rgba(26, 64, 72, 0.84)',
+        stroke: 'rgba(132, 215, 255, 0.56)',
+        color: '#bdeaff',
+      };
+      if (tone === 'dot') return {
+        fill: 'rgba(82, 50, 26, 0.86)',
+        stroke: 'rgba(255, 180, 94, 0.58)',
+        color: '#ffd0a0',
+      };
+      if (tone === 'break') return {
+        fill: 'rgba(78, 34, 34, 0.86)',
+        stroke: 'rgba(255, 138, 114, 0.58)',
+        color: '#ffb3a0',
+      };
+      return {
+        fill: 'rgba(52, 43, 76, 0.84)',
+        stroke: 'rgba(217, 198, 255, 0.50)',
+        color: '#dfd2ff',
+      };
+    }
+
+    drawBattleSideState(sideView = {}, area = {}, side = 'attacker') {
+      const panelWidth = Math.min(154, Math.max(128, area.width + 8));
+      const panelHeight = 72;
+      const x = side === 'attacker' ? area.x : area.x + area.width - panelWidth;
+      const y = Math.max(92, area.y - 74);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(18, 14, 10, 0.64)',
+        stroke: side === 'attacker' ? 'rgba(116, 211, 160, 0.28)' : 'rgba(224, 123, 98, 0.28)',
+        radius: 8,
+        inset: 'rgba(255, 231, 184, 0.06)',
+      });
+      const skillState = sideView.skillState || null;
+      const skillName = skillState?.skillName ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true }) : '无战法';
+      this.drawText(skillName, x + 10, y + 11, {
+        size: 11,
+        bold: true,
+        color: skillState?.active ? '#ffe6b5' : '#cbbd96',
+      });
+      const stateText = skillState?.stateText || '只普攻';
+      this.drawText(this.truncateText(stateText, 68, { size: 10, bold: true }), x + panelWidth - 10, y + 11, {
+        size: 10,
+        bold: true,
+        color: skillState?.state === 'ready' ? '#74d3a0' : (skillState?.state === 'casting' ? '#ffd66e' : '#aeb0b8'),
+        align: 'right',
+      });
+      const statuses = Array.isArray(sideView.statuses) ? sideView.statuses : [];
+      if (!statuses.length) {
+        this.drawText('状态：无', x + 10, y + 42, {
+          size: 11,
+          color: '#8d8f99',
+        });
+        return;
+      }
+      let cursorX = x + 10;
+      let cursorY = y + 40;
+      statuses.slice(0, 4).forEach((status) => {
+        const label = this.truncateText(status.text || status.label || '状态', 68, { size: 10, bold: true });
+        const width = Math.min(74, Math.max(38, this.measureTextWidth(label, { size: 10, bold: true }) + 14));
+        if (cursorX + width > x + panelWidth - 8) {
+          cursorX = x + 10;
+          cursorY += 20;
+        }
+        if (cursorY > y + panelHeight - 17) return;
+        const colors = this.getBattleStatusBadgeColors(status.tone);
+        this.drawPanel(cursorX, cursorY, width, 16, {
+          fill: colors.fill,
+          stroke: colors.stroke,
+          radius: 5,
+          inset: 'rgba(255, 255, 255, 0.04)',
+        });
+        this.drawText(label, cursorX + width / 2, cursorY + 8, {
+          size: 10,
+          bold: true,
+          color: colors.color,
+          align: 'center',
+          baseline: 'middle',
+        });
+        cursorX += width + 5;
+      });
+    }
+
     drawBattleActionEffect(activeTurn = null, progress = 0) {
       if (!activeTurn) return;
       const isSkill = activeTurn.action === 'skill' || activeTurn.actionType === 'skill';
@@ -1267,6 +1351,8 @@
       };
       this.drawBattleLeader(view.attacker, 72, fieldTop + 64, 'attacker');
       this.drawBattleLeader(view.defender, this.width - 72, fieldTop + 64, 'defender');
+      this.drawBattleSideState(view.attacker, attackerArea, 'attacker');
+      this.drawBattleSideState(view.defender, defenderArea, 'defender');
       this.drawBattleArmy(view.attacker, attackerArea, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleArmy(view.defender, defenderArea, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);

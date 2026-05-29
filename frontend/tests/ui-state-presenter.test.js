@@ -1227,6 +1227,75 @@ test('battle scene view keeps pre-impact soldiers until action settles', () => {
   assert.equal(ended.defender.soldiers, 457);
 });
 
+test('battle scene view exposes visible status badges and skill cooldown state', () => {
+  const report = {
+    id: 'battle_status_1',
+    result: 'victory',
+    groupSize: 100,
+    attacker: {
+      leaderName: '陆骁',
+      soldiersStart: 501,
+      soldiersEnd: 501,
+      skill: { name: '血刃破阵', cooldown: 3 },
+    },
+    defender: {
+      name: '林地部落',
+      soldiersStart: 500,
+      soldiersEnd: 428,
+      skill: { name: '守军奋击', cooldown: 3 },
+    },
+    turns: [{
+      index: 1,
+      actor: 'attacker',
+      target: 'defender',
+      action: 'skill',
+      actionType: 'skill',
+      skillName: '血刃破阵',
+      cooldownBefore: 0,
+      cooldownAfter: 3,
+      attackerSoldiersBefore: 501,
+      defenderSoldiersBefore: 500,
+      attackerSoldiersAfter: 501,
+      defenderSoldiersAfter: 457,
+      statusesBefore: { attacker: [], defender: [] },
+      statusesAfter: {
+        attacker: [{ key: 'shield', label: '守御', shieldRemaining: 42, turnsRemaining: 2 }],
+        defender: [{ key: 'armorBreak', label: '破甲', turnsRemaining: 2, stacks: 1 }],
+      },
+    }, {
+      index: 2,
+      actor: 'defender',
+      target: 'attacker',
+      action: 'basicAttack',
+      actionType: 'basicAttack',
+      cooldownBefore: 0,
+      cooldownAfter: 0,
+      attackerSoldiersBefore: 501,
+      defenderSoldiersBefore: 457,
+      attackerSoldiersAfter: 492,
+      defenderSoldiersAfter: 457,
+      statusesBefore: {
+        attacker: [{ key: 'shield', label: '守御', shieldRemaining: 42, turnsRemaining: 2 }],
+        defender: [{ key: 'armorBreak', label: '破甲', turnsRemaining: 2, stacks: 1 }],
+      },
+      statusesAfter: {
+        attacker: [{ key: 'shield', label: '守御', shieldRemaining: 33, turnsRemaining: 2 }],
+        defender: [{ key: 'armorBreak', label: '破甲', turnsRemaining: 1, stacks: 1 }],
+      },
+    }],
+  };
+
+  const impacted = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 0, phase: 'impact' });
+  const nextTurn = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 1, phase: 'prepare' });
+
+  assert.deepEqual(impacted.attacker.statuses.map((status) => status.text), ['守御 42']);
+  assert.deepEqual(impacted.defender.statuses.map((status) => status.text), ['破甲 2回合']);
+  assert.equal(impacted.attacker.skillState.stateText, '冷却 3 回合');
+  assert.equal(impacted.attacker.skillState.active, true);
+  assert.equal(nextTurn.attacker.skillState.stateText, '冷却 3 回合');
+  assert.equal(nextTurn.defender.skillState.stateText, '可释放');
+});
+
 test('world expedition config keeps unnamed leader fallback available before famous people join', () => {
   const view = UIStatePresenter.buildWorldSiteDialogViewState([{
     id: 'tribe_site',
