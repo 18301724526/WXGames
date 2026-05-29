@@ -1092,7 +1092,10 @@ test('world site dialog view state formats famous leader battle report summary',
       leaderName: '陆骁',
       report: {
         summary: '陆骁率队压制了林地部落。',
-        skillName: '血刃连袭',
+        system: 'attribute-auto-battle-v1',
+        moraleEffectEnabled: false,
+        attacker: { speed: 76 },
+        defender: { speed: 53 },
         rounds: [{ round: 3, attackerSoldiers: 454, defenderSoldiers: 0 }],
       },
     },
@@ -1102,7 +1105,8 @@ test('world site dialog view state formats famous leader battle report summary',
   assert.equal(detail.text.note, '上次占领成功 · 陆骁率队 · 损失 46 士兵');
   assert.deepEqual(detail.text.battleReport, [
     '陆骁率队压制了林地部落。',
-    '关键技能：血刃连袭',
+    '速度：己方 76 / 敌方 53',
+    '士气：已记录，暂不影响伤害',
     '终局兵力：己方 454 / 敌方 0',
   ]);
 });
@@ -1128,6 +1132,7 @@ test('battle scene view uses 100 soldiers only as visual group size', () => {
       actor: 'attacker',
       target: 'defender',
       text: '陆骁队发起普攻，林地部落损失 43 士兵',
+      lines: ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）'],
       attackerSoldiersAfter: 501,
       defenderSoldiersAfter: 457,
     }],
@@ -1139,6 +1144,7 @@ test('battle scene view uses 100 soldiers only as visual group size', () => {
   assert.equal(view.defender.groups.length, 5);
   assert.equal(view.activeTurn.actor, 'attacker');
   assert.equal(view.title, '陆骁队 vs 林地部落队');
+  assert.deepEqual(view.logLines, ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）']);
 });
 
 test('world expedition config keeps unnamed leader fallback available before famous people join', () => {

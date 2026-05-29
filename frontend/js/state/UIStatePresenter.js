@@ -2438,8 +2438,9 @@
       const report = site.lastBattle?.report;
       if (!report) return [];
       const lines = [report.summary || '战斗已经结束。'];
-      if (report.system === 'speed-basic-attack-v1' || report.system === 'speed-skill-cooldown-v1') {
+      if (['speed-basic-attack-v1', 'speed-skill-cooldown-v1', 'attribute-auto-battle-v1'].includes(report.system)) {
         lines.push(`速度：己方 ${report.attacker?.speed || 0} / 敌方 ${report.defender?.speed || 0}`);
+        if (report.moraleEffectEnabled === false) lines.push('士气：已记录，暂不影响伤害');
       } else if (report.skillName) lines.push(`关键技能：${report.skillName}`);
       const lastRound = Array.isArray(report.rounds) && report.rounds.length ? report.rounds[report.rounds.length - 1] : null;
       if (lastRound) {
@@ -2447,7 +2448,7 @@
       } else if (report.attacker || report.defender) {
         lines.push(`终局兵力：己方 ${report.attacker?.soldiersEnd || 0} / 敌方 ${report.defender?.soldiersEnd || 0}`);
       }
-      return lines.slice(0, 3);
+      return lines.slice(0, 4);
     }
 
     static makeVisualGroups(soldiers, groupSize = 100) {
@@ -2500,7 +2501,9 @@
         turnIndex,
         turnCount: turns.length,
         activeTurn,
-        logLines: turns.slice(Math.max(0, turnIndex - 4), turnIndex).map((turn) => turn.text).filter(Boolean),
+        logLines: turns.slice(Math.max(0, turnIndex - 4), turnIndex).flatMap((turn) => (
+          Array.isArray(turn.lines) && turn.lines.length ? turn.lines : [turn.text]
+        )).filter(Boolean),
         attacker: {
           side: 'attacker',
           name: `${report.attacker?.leaderName || '己方'}队`,

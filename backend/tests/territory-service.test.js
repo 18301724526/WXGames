@@ -347,7 +347,9 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
 
   assert.equal(claim.success, true);
   assert.equal(claim.outcome, 'success');
-  assert.equal(claim.battleReport.system, 'speed-skill-cooldown-v1');
+  assert.equal(claim.battleReport.system, 'attribute-auto-battle-v1');
+  assert.equal(claim.battleReport.moraleEffectEnabled, false);
+  assert.ok(claim.battleReport.experience.total > 0);
   assert.ok(claim.casualties > 0);
   assert.ok(claim.casualties < 600);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
@@ -388,12 +390,16 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(site.lastBattle.leaderName, '陆骁');
   assert.equal(site.lastBattle.report.mode, 'auto-round');
   assert.equal(site.lastBattle.report.attacker.leaderName, '陆骁');
-  assert.equal(site.lastBattle.report.system, 'speed-skill-cooldown-v1');
+  assert.equal(site.lastBattle.report.system, 'attribute-auto-battle-v1');
   assert.equal(site.lastBattle.report.turns[0].actor, 'attacker');
   assert.equal(site.lastBattle.report.turns[0].action, 'skill');
+  assert.equal(site.lastBattle.report.turns[0].damageType, 'blade');
   assert.equal(site.lastBattle.report.turns[1].action, 'skill');
   assert.ok(site.lastBattle.report.turns.some((turn) => turn.action === 'basicAttack'));
   assert.equal(site.lastBattle.report.skillRules.openingSkill, true);
+  assert.equal(site.lastBattle.report.skillRules.randomTriggerEnabled, false);
+  assert.ok(site.lastBattle.report.preparation[0].lines.some((line) => line.includes('士气影响：未启用')));
+  assert.ok(site.lastBattle.report.detailEvents[0].lines.some((line) => line.includes('开始行动')));
   assert.equal(site.lastBattle.report.visual.map.background, 'assets/art/battle/battlefield-forest-camp.png');
   assert.ok(site.lastBattle.report.attacker.speed >= site.lastBattle.report.defender.speed);
   assert.ok(site.lastBattle.report.rounds.length >= 1);

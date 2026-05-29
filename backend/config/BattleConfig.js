@@ -2,19 +2,23 @@ const DEFAULT_SOLDIER_SCALE = 100;
 const MIN_BATTLE_SOLDIERS = 100;
 const MAX_BATTLE_ROUNDS = 20;
 
-const BATTLE_SYSTEM = 'speed-skill-cooldown-v1';
+const BATTLE_SYSTEM = 'attribute-auto-battle-v1';
+const MORALE_EFFECT_ENABLED = false;
 
 const SKILL_RULES = {
   openingSkill: true,
   cooldownTicksOnOwnTurnOnly: true,
   fallbackAction: 'basicAttack',
+  activeSkillSlots: 1,
+  passiveTraitSlots: 1,
+  randomTriggerEnabled: false,
 };
 
 const FALLBACK_LEADER = {
   id: 'unavailable',
   name: '无名领队',
   title: '临时领队',
-  attributes: { command: 45, force: 45, strategy: 40, charisma: 42 },
+  attributes: { command: 45, force: 45, intelligence: 40, strategy: 40, charisma: 42, politics: 40, speed: 45 },
   appearance: {},
   skills: [],
 };
@@ -24,13 +28,19 @@ const FALLBACK_SKILLS = {
     id: 'fallback_assault',
     name: '奋击',
     type: 'battle',
+    category: 'blade',
+    damageType: 'blade',
+    multiplier: 1.25,
     cooldown: 3,
-    effects: [{ key: 'morale', value: 0.08 }],
+    effects: [],
   },
   defender: {
     id: 'fallback_guard_thrust',
     name: '守势突刺',
     type: 'battle',
+    category: 'blade',
+    damageType: 'blade',
+    multiplier: 1.2,
     cooldown: 3,
     effects: [{ key: 'shield', value: 0.08 }],
   },
@@ -59,17 +69,20 @@ const BATTLE_STAGE_ASSETS = {
 };
 
 const DEFENDER_PROFILES_BY_OWNER = {
-  tribe: { defaultName: '部落营地', force: 54, strategy: 38, command: 48, morale: 92 },
-  city_state: { defaultName: '城邦守军', force: 58, strategy: 52, command: 62, morale: 100 },
-  ruin_guardians: { defaultName: '遗迹守军', force: 64, strategy: 62, command: 55, morale: 96 },
+  tribe: { defaultName: '部落营地', command: 48, force: 54, intelligence: 38, charisma: 42, politics: 36, speed: 44, morale: 100 },
+  city_state: { defaultName: '城邦守军', command: 62, force: 58, intelligence: 52, charisma: 44, politics: 48, speed: 48, morale: 100 },
+  ruin_guardians: { defaultName: '遗迹守军', command: 55, force: 64, intelligence: 62, charisma: 40, politics: 42, speed: 46, morale: 100 },
 };
 
 const DEFAULT_DEFENDER_PROFILE = {
   defaultName: '守军',
-  force: 48,
-  strategy: 42,
   command: 45,
-  morale: 88,
+  force: 48,
+  intelligence: 42,
+  charisma: 40,
+  politics: 40,
+  speed: 42,
+  morale: 100,
 };
 
 function clone(value) {
@@ -99,9 +112,13 @@ function getDefenderProfileForOwner(owner, territoryName) {
   const profile = DEFENDER_PROFILES_BY_OWNER[owner] || DEFAULT_DEFENDER_PROFILE;
   return {
     name: territoryName || profile.defaultName,
-    force: profile.force,
-    strategy: profile.strategy,
     command: profile.command,
+    force: profile.force,
+    intelligence: profile.intelligence,
+    strategy: profile.intelligence,
+    charisma: profile.charisma,
+    politics: profile.politics,
+    speed: profile.speed,
     morale: profile.morale,
   };
 }
@@ -112,6 +129,7 @@ function getBattleRules() {
     minBattleSoldiers: MIN_BATTLE_SOLDIERS,
     maxBattleRounds: MAX_BATTLE_ROUNDS,
     system: BATTLE_SYSTEM,
+    moraleEffectEnabled: MORALE_EFFECT_ENABLED,
     skillRules: clone(SKILL_RULES),
   };
 }
@@ -134,6 +152,7 @@ module.exports = {
   MIN_BATTLE_SOLDIERS,
   MAX_BATTLE_ROUNDS,
   BATTLE_SYSTEM,
+  MORALE_EFFECT_ENABLED,
   SKILL_RULES,
   getBattleRules,
   getFallbackLeader,

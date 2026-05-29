@@ -1230,6 +1230,7 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
           action: 'skill',
           skillName: '血刃连袭',
           text: '陆骁队发起普攻，林地部落损失 43 士兵',
+          lines: ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）'],
           attackerSoldiersAfter: 501,
           defenderSoldiersAfter: 457,
         }],
@@ -1251,7 +1252,8 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('陆骁队 vs 林地部落队')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('501/501')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('457/500')));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('陆骁队发起普攻')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('[陆骁] 开始行动')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('受到兵刃伤害')));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'skipBattleScene' || target.action?.type === 'closeBattleScene'));
   assert.ok(calls.some((call) => call[0] === 'drawImage' && call.length >= 10));
 });

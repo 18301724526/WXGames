@@ -48,7 +48,7 @@ function createTerritory(overrides = {}) {
   };
 }
 
-test('simulateConquestBattle emits speed-skill-cooldown report without mutating inputs', () => {
+test('simulateConquestBattle emits attribute battle report without mutating inputs', () => {
   const gameState = createLeaderState();
   const mission = createMission();
   const territory = createTerritory();
@@ -61,24 +61,34 @@ test('simulateConquestBattle emits speed-skill-cooldown report without mutating 
 
   assert.equal(result.success, true);
   assert.ok(result.casualties >= 0);
-  assert.equal(result.report.system, 'speed-skill-cooldown-v1');
+  assert.equal(result.report.system, 'attribute-auto-battle-v1');
   assert.equal(result.report.attacker.leaderName, '陆骁');
   assert.equal(result.report.attacker.soldiersStart, 501);
   assert.equal(result.report.attacker.groupsStart.length, 6);
   assert.equal(result.report.attacker.groupsStart[5].soldiers, 1);
   assert.equal(result.report.turns[0].action, 'skill');
   assert.equal(result.report.turns[0].skillName, '血刃连袭');
+  assert.equal(result.report.turns[0].damageType, 'blade');
+  assert.equal(result.report.moraleEffectEnabled, false);
+  assert.ok(result.report.preparation[0].lines.some((line) => line.includes('士气影响：未启用')));
+  assert.ok(result.report.detailEvents[0].lines.some((line) => line.includes('开始行动')));
+  assert.equal(result.report.experience.enemyLoss, 500);
+  assert.ok(result.report.experience.total >= 500);
   assert.equal(result.report.skillRules.cooldownTicksOnOwnTurnOnly, true);
+  assert.equal(result.report.skillRules.randomTriggerEnabled, false);
   assert.equal(mission.soldiersCommitted, 501);
   assert.equal(territory.owner, 'tribe');
 });
 
-test('getLeaderSnapshot supports live famous people and ignores unavailable leader', () => {
+test('getLeaderSnapshot supports live famous people and maps strategy to intelligence', () => {
   const gameState = createLeaderState();
   const snapshot = BattleService.getLeaderSnapshot(gameState, 'fp_luxiao');
 
   assert.equal(snapshot.name, '陆骁');
   assert.equal(snapshot.attributes.force, 88);
+  assert.equal(snapshot.attributes.intelligence, 46);
+  assert.equal(snapshot.attributes.strategy, 46);
+  assert.ok(snapshot.attributes.speed > 0);
   assert.equal(snapshot.skills[0].name, '血刃连袭');
   assert.equal(BattleService.getLeaderSnapshot(gameState, 'unavailable'), null);
 });
@@ -97,12 +107,35 @@ test('createLegacyBattleReport remains available for historical fallback', () =>
   assert.equal(report.attacker.soldiersEnd, 150);
 });
 
+test('attribute damage uses force and intelligence against command defense', () => {
+  const blade = BattleService.calculateDamage(
+    { soldiers: 500, morale: 100, attributes: { force: 90, intelligence: 30 } },
+    { soldiers: 500, morale: 100, attributes: { command: 50 } },
+    { damageType: 'blade', multiplier: 1 },
+  );
+  const strategy = BattleService.calculateDamage(
+    { soldiers: 500, morale: 100, attributes: { force: 30, intelligence: 90 } },
+    { soldiers: 500, morale: 100, attributes: { command: 50 } },
+    { damageType: 'strategy', multiplier: 1 },
+  );
+  const defended = BattleService.calculateDamage(
+    { soldiers: 500, morale: 100, attributes: { force: 90, intelligence: 30 } },
+    { soldiers: 500, morale: 100, attributes: { command: 120 } },
+    { damageType: 'blade', multiplier: 1 },
+  );
+
+  assert.ok(blade > defended);
+  assert.equal(blade, strategy);
+  assert.ok(BattleService.getEffectiveAttribute(200) < 200);
+});
+
 test('battle config owns defender, visual, and fallback skill templates', () => {
   const fallbackSkill = BattleConfig.getFallbackSkill('defender');
   fallbackSkill.name = 'mutated';
 
   assert.equal(BattleConfig.getFallbackSkill('defender').name, '守势突刺');
   assert.equal(BattleConfig.getDefenderProfileForOwner('city_state', '').name, '城邦守军');
+  assert.equal(BattleConfig.getDefenderProfileForOwner('city_state', '').intelligence, 52);
   assert.equal(BattleService.getBattleMapForTerritory({ type: 'camp' }).id, 'forest-camp');
   assert.equal(
     BattleService.getBattleStageForTerritory({ type: 'camp' }).soldierSprites.attacker,

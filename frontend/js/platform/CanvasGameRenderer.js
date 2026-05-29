@@ -4522,7 +4522,7 @@
         cursorY += 20;
       }
       if (Array.isArray(detail.text.battleReport) && detail.text.battleReport.length) {
-        detail.text.battleReport.slice(0, 3).forEach((line) => {
+        detail.text.battleReport.slice(0, 4).forEach((line) => {
           const lines = this.wrapTextLimit(line, panelWidth - 32, 1, { size: 11 });
           this.drawTextLines(lines, x + 16, cursorY, { size: 11, color: '#f0b45b', lineHeight: 15 });
           cursorY += lines.length * 15 + 3;
