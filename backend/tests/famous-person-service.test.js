@@ -372,6 +372,65 @@ test('accept moves candidate into cloud-persisted famous people list', () => {
   assert.equal(client.candidateCount, 0);
 });
 
+test('joined famous people normalize level progression and receive battle experience', () => {
+  const state = GameStateService.createInitialGameState('fp-growth');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_growth',
+    name: 'growth',
+    title: 'growth_title',
+    source: { type: 'seek', seed: 'growth:seed' },
+    archetype: 'vanguard',
+    skills: [{ id: 'skill_growth', name: '血刃连袭', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] }],
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  const person = normalized.famousPeople[0];
+
+  assert.equal(FamousPersonService.getLevelUpExperience(1), 140);
+  assert.equal(FamousPersonService.getLevelUpExperience(10), 640);
+  assert.equal(person.level, 1);
+  assert.equal(person.experience, 0);
+  assert.equal(person.totalExperience, 0);
+  assert.equal(person.freeAttributePoints, 0);
+  assert.equal(person.nextLevelExperience, 140);
+
+  const firstGrowth = FamousPersonService.grantBattleExperience(
+    normalized,
+    'fp_growth',
+    { total: 150 },
+    new Date('2026-05-30T01:00:00.000Z'),
+  );
+
+  assert.equal(firstGrowth.applied, true);
+  assert.equal(firstGrowth.experienceGained, 150);
+  assert.equal(firstGrowth.levelBefore, 1);
+  assert.equal(firstGrowth.levelAfter, 2);
+  assert.equal(firstGrowth.experienceAfter, 10);
+  assert.equal(normalized.famousPeople[0].level, 2);
+  assert.equal(normalized.famousPeople[0].experience, 10);
+  assert.equal(normalized.famousPeople[0].totalExperience, 150);
+  assert.equal(normalized.famousPeople[0].nextLevelExperience, 190);
+
+  normalized.famousPeople[0].level = 9;
+  normalized.famousPeople[0].experience = FamousPersonService.getLevelUpExperience(9) - 5;
+  normalized.famousPeople[0].freeAttributePoints = 2;
+  normalized.famousPeople[0].earnedAttributePoints = 2;
+
+  const milestoneGrowth = FamousPersonService.grantBattleExperience(
+    normalized,
+    'fp_growth',
+    { total: 10 },
+    new Date('2026-05-30T01:01:00.000Z'),
+  );
+
+  assert.equal(milestoneGrowth.levelBefore, 9);
+  assert.equal(milestoneGrowth.levelAfter, 10);
+  assert.equal(milestoneGrowth.freeAttributePointsGained, 10);
+  assert.equal(normalized.famousPeople[0].freeAttributePoints, 12);
+  assert.equal(normalized.famousPeople[0].earnedAttributePoints, 12);
+});
+
 test('candidate queue is capped and must be cleared before more seek results', () => {
   const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-cap'));
   state.currentEra = 3;

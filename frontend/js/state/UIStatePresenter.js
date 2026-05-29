@@ -727,12 +727,27 @@
         name: skill.name || '技能',
         text: `${skill.kindText || '技能'}：${skill.name || '技能'}`,
       }));
+      const isCandidate = Boolean(options.candidate);
+      const level = Math.max(1, this.toInteger(person.level, 1));
+      const experience = Math.max(0, this.toInteger(person.experience, 0));
+      const nextLevelExperience = Math.max(0, this.toInteger(person.nextLevelExperience, 0));
+      const freeAttributePoints = Math.max(0, this.toInteger(person.freeAttributePoints, 0));
+      const growthText = !isCandidate
+        ? (nextLevelExperience > 0 ? `等级 ${level} · 经验 ${experience}/${nextLevelExperience}` : `等级 ${level}`)
+        : '';
+      const pointText = !isCandidate && freeAttributePoints > 0 ? `可分配属性点 ${freeAttributePoints}` : '';
       return {
         id: person.id || '',
         name: person.name || '无名之士',
         title: person.title || person.archetypeLabel || '名人',
         roleText: roles,
         sourceText: this.formatFamousPersonSource(person.source),
+        level: isCandidate ? null : level,
+        experience: isCandidate ? null : experience,
+        nextLevelExperience: isCandidate ? null : nextLevelExperience,
+        freeAttributePoints: isCandidate ? null : freeAttributePoints,
+        growthText,
+        pointText,
         stats,
         attributes,
         skills,

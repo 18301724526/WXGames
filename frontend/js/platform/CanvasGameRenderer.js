@@ -2574,7 +2574,7 @@
 
     renderFamousPersonItem(card = {}, x, y, width, options = {}) {
       const candidate = Boolean(options.candidate);
-      const height = candidate ? 136 : 124;
+      const height = candidate ? 136 : (card.pointText ? 136 : 124);
       this.drawPanel(x, y, width, height, {
         fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
         stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
@@ -2625,6 +2625,20 @@
         size: 10,
         color: '#cbbd96',
       });
+      if (!candidate && card.growthText) {
+        const growthColor = card.pointText ? '#f4c86d' : 'rgba(234, 234, 234, 0.64)';
+        this.drawText(this.truncateText(card.growthText, textWidth, { size: 10 }), textX, y + 48, {
+          size: 10,
+          color: growthColor,
+        });
+        if (card.pointText) {
+          this.drawText(this.truncateText(card.pointText, textWidth, { size: 10, bold: true }), textX, y + 61, {
+            size: 10,
+            bold: true,
+            color: '#f4c86d',
+          });
+        }
+      }
       this.drawFamousAttributeRadar(card.attributes || [], radarX, radarY, radarSize);
       const skillDetails = Array.isArray(card.skillDetails) && card.skillDetails.length
         ? card.skillDetails
@@ -2639,7 +2653,7 @@
         }));
       skillBadges.slice(0, 2).forEach((badge, index) => {
         const skill = skillDetails[index] || {};
-        const badgeY = y + 58 + index * 27;
+        const badgeY = y + (candidate ? 58 : (card.pointText ? 76 : 64)) + index * 27;
         const badgeH = 22;
         this.drawPanel(textX, badgeY, textWidth, badgeH, {
           fill: index === 0 ? 'rgba(47, 92, 69, 0.54)' : 'rgba(96, 73, 35, 0.54)',
@@ -2837,13 +2851,14 @@
           lineHeight: 17,
         });
       } else {
-        const itemHeight = 134;
+        const itemHeight = people.some((card) => card?.pointText) ? 146 : 134;
         const pagerReserve = people.length > 3 ? 34 : 0;
         const availableHeight = Math.max(0, y + panelHeight - 18 - pagerReserve - cursorY);
         const visibleCount = Math.max(1, Math.min(3, Math.floor(availableHeight / itemHeight)));
         const pageInfo = this.normalizeFamousPersonsPage(people.length, options.famousPersonsPage, visibleCount);
         people.slice(pageInfo.index * visibleCount, pageInfo.index * visibleCount + visibleCount).forEach((card) => {
-          if (cursorY + 124 > y + panelHeight - 18 - pagerReserve) return;
+          const cardHeight = card?.pointText ? 136 : 124;
+          if (cursorY + cardHeight > y + panelHeight - 18 - pagerReserve) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
         });
         if (pageInfo.pages > 1) this.renderFamousPersonsPager(innerX, y + panelHeight - 42, innerWidth, pageInfo.index, pageInfo.pages);

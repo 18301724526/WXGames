@@ -170,6 +170,10 @@ test('famous person view state maps candidates and joined people into panel card
         name: '陆骁',
         title: '破阵先登',
         source: { type: 'seek', label: '寻访' },
+        level: 2,
+        experience: 35,
+        nextLevelExperience: 190,
+        freeAttributePoints: 4,
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
         abilityKit: {
@@ -219,6 +223,9 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.seek.available, true);
   assert.deepEqual(view.seek.action, { type: 'seekFamousPerson', disabled: false });
   assert.equal(view.people[0].name, '陆骁');
+  assert.equal(view.people[0].growthText, '等级 2 · 经验 35/190');
+  assert.equal(view.people[0].pointText, '可分配属性点 4');
+  assert.equal(view.people[0].level, 2);
   assert.match(view.people[0].stats, /智40/);
   assert.match(view.people[0].stats, /速66/);
   assert.deepEqual(view.people[0].attributes.map((item) => item.label), ['统帅', '武力', '智力', '政治', '魅力', '速度']);
@@ -238,6 +245,8 @@ test('famous person view state maps candidates and joined people into panel card
   assert.match(view.people[0].skillDetails[1].description, /战斗开始前/);
   assert.equal(view.people[0].appearance.layers.hair, 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png');
   assert.equal(view.candidates[0].sourceText, '事件投奔');
+  assert.equal(view.candidates[0].growthText, '');
+  assert.equal(view.candidates[0].level, null);
   assert.match(view.candidates[0].skills[0], /资源产出/);
   assert.equal(view.candidates[0].skillDetails[0].kindText, '内政主技');
   assert.match(view.candidates[0].skillDetails[0].meta, /暂未接入实际收益/);

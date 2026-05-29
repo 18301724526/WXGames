@@ -1039,6 +1039,15 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     leaderName: battle?.report?.attacker?.leaderName || mission.expedition?.leaderSnapshot?.name || '',
     report: battle?.report || BattleService.createLegacyBattleReport(mission, territory, { success, casualties }, now),
   };
+  const FamousPersonService = require('./FamousPersonService');
+  const leaderGrowth = FamousPersonService.grantBattleExperience(
+    gameState,
+    mission.expedition?.leader,
+    territory.lastBattle.report?.experience,
+    now,
+  );
+  territory.lastBattle.leaderGrowth = leaderGrowth;
+  if (territory.lastBattle.report) territory.lastBattle.report.leaderGrowth = leaderGrowth;
   if (success) {
     territory.status = 'occupied';
     territory.owner = 'player';

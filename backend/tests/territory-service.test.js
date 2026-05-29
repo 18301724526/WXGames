@@ -440,6 +440,12 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.ok(site.lastBattle.report.rounds.length >= 1);
   assert.equal(site.lastBattle.report.attacker.groupsStart.length, 5);
   assert.ok(site.lastBattle.report.summary.includes('陆骁'));
+  assert.equal(site.lastBattle.leaderGrowth.applied, true);
+  assert.equal(site.lastBattle.leaderGrowth.leaderId, 'fp_luxiao');
+  assert.equal(site.lastBattle.leaderGrowth.experienceGained, site.lastBattle.report.experience.total);
+  assert.deepEqual(site.lastBattle.report.leaderGrowth, site.lastBattle.leaderGrowth);
+  assert.ok(state.famousPeople[0].totalExperience >= site.lastBattle.report.experience.total);
+  assert.equal(state.famousPeople[0].nextLevelExperience, FamousPersonService.getLevelUpExperience(state.famousPeople[0].level));
 });
 
 test('战斗报告按精确兵力结算但按 100 兵向上取整显示小人组', () => {

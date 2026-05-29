@@ -1066,6 +1066,10 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         name: '陆骁',
         title: '破阵先登',
         source: { type: 'seek', label: '寻访' },
+        level: 2,
+        experience: 35,
+        nextLevelExperience: 190,
+        freeAttributePoints: 4,
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
         abilityKit: {
@@ -1114,6 +1118,8 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法：血刃破阵/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动：锐锋/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /等级 2 · 经验 35\/190/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /可分配属性点 4/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /内政主技：督田理赋/.test(call[1])));
   assert.equal(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])), false);
   assert.equal(calls.some((call) => call[0] === 'fillText' && /当前仅展示/.test(call[1])), false);

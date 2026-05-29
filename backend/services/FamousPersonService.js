@@ -7,6 +7,9 @@ const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
 const ENABLED_SOURCE_TYPES = Object.freeze(['seek']);
+const BASE_LEVEL = 1;
+const ATTRIBUTE_POINT_MILESTONE = 10;
+const ATTRIBUTE_POINTS_PER_MILESTONE = 10;
 
 const SOURCE_TYPES = Object.freeze({
   seek: { label: '寻访', roles: ['military', 'governance', 'knowledge'] },
@@ -212,6 +215,31 @@ function toInteger(value, fallback = 0) {
   return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
+function roundToNearestTen(value) {
+  return Math.max(10, Math.round((Number(value) || 0) / 10) * 10);
+}
+
+function getLevelUpExperience(level = BASE_LEVEL) {
+  const currentLevel = Math.max(BASE_LEVEL, toInteger(level, BASE_LEVEL));
+  return roundToNearestTen(100 + 35 * currentLevel + 6 * Math.pow(currentLevel, 1.5));
+}
+
+function normalizeProgression(raw = {}) {
+  const level = Math.max(BASE_LEVEL, toInteger(raw.level, BASE_LEVEL));
+  const experience = Math.max(0, toInteger(raw.experience, 0));
+  const totalExperience = Math.max(experience, toInteger(raw.totalExperience, experience));
+  const freeAttributePoints = Math.max(0, toInteger(raw.freeAttributePoints, 0));
+  const earnedAttributePoints = Math.max(freeAttributePoints, toInteger(raw.earnedAttributePoints, freeAttributePoints));
+  return {
+    level,
+    experience,
+    totalExperience,
+    freeAttributePoints,
+    earnedAttributePoints,
+    nextLevelExperience: getLevelUpExperience(level),
+  };
+}
+
 function normalizeStatus(raw = {}) {
   return {
     assigned: sanitizeText(raw.assigned, 'idle'),
@@ -352,7 +380,7 @@ function normalizePerson(raw = {}, options = {}) {
   const activeSkill = normalizeSkill(SkillGeneratorService.getActiveBattleSkill(abilityKit) || {});
   const skills = abilityKit.battlePolicy === 'basicAttackOnly' || !activeSkill ? [] : [activeSkill];
   const fallbackAppearanceSeed = raw.source?.seed || `${id}:${raw.name || archetype.id}:${raw.createdAt || ''}`;
-  return {
+  const person = {
     id,
     name: sanitizeText(raw.name, '无名之士').slice(0, 12),
     title: sanitizeText(raw.title, archetype.titlePool[0]).slice(0, 16),
@@ -374,6 +402,10 @@ function normalizePerson(raw = {}, options = {}) {
     joinedAt: options.candidate ? null : (raw.joinedAt || raw.createdAt || new Date().toISOString()),
     generatorVersion: sanitizeText(raw.generatorVersion, GENERATOR_VERSION),
   };
+  if (!options.candidate) {
+    Object.assign(person, normalizeProgression(raw));
+  }
+  return person;
 }
 
 function normalizeFamousPeople(rawPeople = []) {
@@ -415,6 +447,55 @@ function ensureFamousPersonState(gameState) {
     !acceptedCandidateIds.has(candidate.id)
   ));
   return gameState.famousPersonState;
+}
+
+function grantBattleExperience(gameState, leaderId, experienceSummary = {}, now = new Date()) {
+  const id = sanitizeText(leaderId);
+  if (!gameState || !id || id === 'unavailable') return null;
+  gameState.famousPeople = normalizeFamousPeople(gameState.famousPeople);
+  const person = gameState.famousPeople.find((item) => item.id === id);
+  if (!person) return null;
+
+  const gained = Math.max(0, toInteger(experienceSummary?.total, 0));
+  const before = normalizeProgression(person);
+  person.level = before.level;
+  person.experience = before.experience + gained;
+  person.totalExperience = before.totalExperience + gained;
+  person.freeAttributePoints = before.freeAttributePoints;
+  person.earnedAttributePoints = before.earnedAttributePoints;
+
+  let freeAttributePointsGained = 0;
+  while (person.experience >= getLevelUpExperience(person.level)) {
+    person.experience -= getLevelUpExperience(person.level);
+    person.level += 1;
+    if (person.level % ATTRIBUTE_POINT_MILESTONE === 0) {
+      freeAttributePointsGained += ATTRIBUTE_POINTS_PER_MILESTONE;
+    }
+  }
+  if (freeAttributePointsGained > 0) {
+    person.freeAttributePoints += freeAttributePointsGained;
+    person.earnedAttributePoints += freeAttributePointsGained;
+  }
+  person.nextLevelExperience = getLevelUpExperience(person.level);
+  const growthDate = now instanceof Date ? now : new Date(now);
+  person.lastGrowthAt = Number.isFinite(growthDate.getTime()) ? growthDate.toISOString() : new Date().toISOString();
+
+  return {
+    applied: true,
+    leaderId: person.id,
+    leaderName: person.name,
+    experienceGained: gained,
+    levelBefore: before.level,
+    levelAfter: person.level,
+    leveledUp: person.level > before.level,
+    experienceBefore: before.experience,
+    experienceAfter: person.experience,
+    totalExperience: person.totalExperience,
+    nextLevelExperience: person.nextLevelExperience,
+    freeAttributePointsBefore: before.freeAttributePoints,
+    freeAttributePointsAfter: person.freeAttributePoints,
+    freeAttributePointsGained,
+  };
 }
 
 function getCandidateIdAsPersonId(candidateId) {
@@ -618,8 +699,14 @@ module.exports = {
   MIN_SEEK_ERA,
   MAX_CANDIDATES,
   ENABLED_SOURCE_TYPES,
+  BASE_LEVEL,
+  ATTRIBUTE_POINT_MILESTONE,
+  ATTRIBUTE_POINTS_PER_MILESTONE,
   ARCHETYPES,
   EFFECTS,
+  getLevelUpExperience,
+  normalizeProgression,
+  grantBattleExperience,
   createInitialFamousPersonState,
   normalizeFamousPeople,
   normalizeFamousPersonState,
