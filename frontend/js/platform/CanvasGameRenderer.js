@@ -486,9 +486,27 @@
 
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
       if (!activeTurn) return 'idle';
+      if (phase === 'prepare' || phase === 'settle') return 'idle';
       if (activeTurn.actor === side) return phase === 'move' ? 'move' : 'attack';
       if (activeTurn.target === side) return phase === 'impact' ? 'hit' : 'idle';
       return 'idle';
+    }
+
+    getBattlePlaybackPhase(progress = 0, activeTurn = null) {
+      if (!activeTurn) {
+        return { phase: 'ended', phaseProgress: 1 };
+      }
+      const value = Math.max(0, Math.min(1, Number(progress) || 0));
+      if (value < 0.12) {
+        return { phase: 'prepare', phaseProgress: value / 0.12 };
+      }
+      if (value < 0.48) {
+        return { phase: 'move', phaseProgress: (value - 0.12) / 0.36 };
+      }
+      if (value < 0.82) {
+        return { phase: 'impact', phaseProgress: (value - 0.48) / 0.34 };
+      }
+      return { phase: 'settle', phaseProgress: (value - 0.82) / 0.18 };
     }
 
     getBattleSpriteSpec(side = 'attacker') {
@@ -552,6 +570,7 @@
       const actionType = options.actionType || '';
       const columns = Math.max(1, Math.floor(area.width / 34));
       const dir = side === 'attacker' ? 1 : -1;
+      const activeCount = pose === 'idle' ? 0 : Math.min(groups.length, actionType === 'skill' ? 5 : 3);
       const actionAdvance = pose === 'move'
         ? progress * 46 * dir
         : (pose === 'attack' || pose === 'skill' ? (10 + Math.sin(frame / 1.8) * 4) * dir : 0);
@@ -563,9 +582,11 @@
           ? area.x + col * 30 + 22
           : area.x + area.width - col * 30 - 22;
         const y = area.y + row * 34 + 72 + (col % 2) * 5;
-        const activePose = index === 0 ? pose : 'idle';
-        const activeOffset = index === 0 ? actionAdvance + hitOffset : 0;
-        const scale = actionType === 'skill' && index === 0 ? 0.245 : 0.21;
+        const isActiveSoldier = index < activeCount;
+        const stagger = isActiveSoldier ? Math.max(0, 1 - index * 0.12) : 0;
+        const activePose = isActiveSoldier ? pose : 'idle';
+        const activeOffset = isActiveSoldier ? (actionAdvance + hitOffset) * stagger : 0;
+        const scale = actionType === 'skill' && isActiveSoldier ? 0.245 : 0.21;
         this.drawBattleSoldierSprite(
           x + activeOffset,
           y,
@@ -595,7 +616,7 @@
     drawBattleActionEffect(activeTurn = null, progress = 0) {
       if (!activeTurn) return;
       const isSkill = activeTurn.action === 'skill';
-      const impactProgress = Math.max(0, Math.min(1, (progress - 0.45) / 0.45));
+      const impactProgress = Math.max(0, Math.min(1, Number(progress) || 0));
       if (impactProgress <= 0) return;
       const x = activeTurn.target === 'defender' ? this.width * 0.58 : this.width * 0.42;
       const y = Math.max(270, this.height * 0.48);
@@ -655,19 +676,25 @@
 
     renderBattleSceneOverlay(state = {}, options = {}) {
       if (!this.presenter || typeof this.presenter.buildBattleSceneViewState !== 'function') return;
-      const view = this.presenter.buildBattleSceneViewState(options.battleScene || {}, {
-        turnIndex: options.battleScene?.turnIndex || 0,
-      });
-      if (!view.visible) return;
-      this.setHitTargets([]);
-      this.drawBattleMapBackground(view.map);
       const frame = Math.floor((this.getNow() || 0) / 140);
-      const activeTurn = view.activeTurn;
       const turnDuration = Math.max(1, Number(options.battleScene?.turnDurationMs) || 720);
       const turnStartedAt = Number(options.battleScene?.turnStartedAt) || this.getNow();
       const turnElapsed = ((this.getNow() - turnStartedAt) % turnDuration + turnDuration) % turnDuration;
       const turnProgress = turnElapsed / turnDuration;
-      const turnPhase = activeTurn && turnElapsed < turnDuration * 0.42 ? 'move' : 'impact';
+      const reportTurns = options.battleScene?.report?.turns || [];
+      const requestedTurnIndex = Math.max(0, Math.min(reportTurns.length, Number(options.battleScene?.turnIndex) || 0));
+      const rawActiveTurn = requestedTurnIndex < reportTurns.length ? reportTurns[requestedTurnIndex] : null;
+      const playback = this.getBattlePlaybackPhase(turnProgress, rawActiveTurn);
+      const view = this.presenter.buildBattleSceneViewState(options.battleScene || {}, {
+        turnIndex: requestedTurnIndex,
+        phase: playback.phase,
+      });
+      if (!view.visible) return;
+      this.setHitTargets([]);
+      this.drawBattleMapBackground(view.map);
+      const activeTurn = view.activeTurn;
+      const turnPhase = playback.phase;
+      const phaseProgress = playback.phaseProgress;
       const attackerPose = this.getBattleUnitPose('attacker', activeTurn, turnPhase);
       const defenderPose = this.getBattleUnitPose('defender', activeTurn, turnPhase);
       const topY = 20;
@@ -682,7 +709,10 @@
         color: '#ffe6b5',
         align: 'center',
       });
-      this.drawText(`第 ${Math.min(view.turnIndex + 1, Math.max(1, view.turnCount))}/${Math.max(1, view.turnCount)} 手 · ${view.resultText}`, this.width / 2, topY + 40, {
+      const currentTurnText = view.ended
+        ? `第 ${Math.max(1, view.turnCount)}/${Math.max(1, view.turnCount)} 手`
+        : `第 ${Math.min(view.turnIndex + 1, Math.max(1, view.turnCount))}/${Math.max(1, view.turnCount)} 手`;
+      this.drawText(`${currentTurnText} · ${view.resultText}`, this.width / 2, topY + 40, {
         size: 12,
         color: '#d6b16e',
         align: 'center',
@@ -701,14 +731,14 @@
         y: armyTop,
         width: laneWidth,
         height: armyHeight,
-      }, { pose: attackerPose, frame, progress: turnProgress, actionType: activeTurn?.action });
+      }, { pose: attackerPose, frame, progress: phaseProgress, actionType: activeTurn?.action });
       this.drawBattleArmy(view.defender, {
         x: this.width - laneWidth - 18,
         y: armyTop,
         width: laneWidth,
         height: armyHeight,
-      }, { pose: defenderPose, frame, progress: turnProgress, actionType: activeTurn?.action });
-      this.drawBattleActionEffect(activeTurn, turnProgress);
+      }, { pose: defenderPose, frame, progress: phaseProgress, actionType: activeTurn?.action });
+      this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
 
       this.drawPanel(16, logY, this.width - 32, logH, {
         fill: 'rgba(20, 16, 12, 0.76)',

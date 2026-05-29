@@ -1264,10 +1264,26 @@ test('CanvasGameRenderer battle unit poses include idle move attack and hit phas
   const turn = { actor: 'attacker', target: 'defender' };
 
   assert.equal(renderer.getBattleUnitPose('attacker', null), 'idle');
+  assert.equal(renderer.getBattleUnitPose('attacker', turn, 'prepare'), 'idle');
   assert.equal(renderer.getBattleUnitPose('attacker', turn, 'move'), 'move');
   assert.equal(renderer.getBattleUnitPose('attacker', turn, 'impact'), 'attack');
+  assert.equal(renderer.getBattleUnitPose('attacker', turn, 'settle'), 'idle');
   assert.equal(renderer.getBattleUnitPose('defender', turn, 'move'), 'idle');
   assert.equal(renderer.getBattleUnitPose('defender', turn, 'impact'), 'hit');
+});
+
+test('CanvasGameRenderer battle playback phases normalize each action stage', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const turn = { actor: 'attacker', target: 'defender' };
+
+  assert.deepEqual(renderer.getBattlePlaybackPhase(0.06, turn), { phase: 'prepare', phaseProgress: 0.5 });
+  assert.equal(renderer.getBattlePlaybackPhase(0.30, turn).phase, 'move');
+  assert.ok(renderer.getBattlePlaybackPhase(0.30, turn).phaseProgress > 0.49);
+  assert.ok(renderer.getBattlePlaybackPhase(0.30, turn).phaseProgress < 0.51);
+  assert.equal(renderer.getBattlePlaybackPhase(0.60, turn).phase, 'impact');
+  assert.equal(renderer.getBattlePlaybackPhase(0.90, turn).phase, 'settle');
+  assert.deepEqual(renderer.getBattlePlaybackPhase(0.30, null), { phase: 'ended', phaseProgress: 1 });
 });
 
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {

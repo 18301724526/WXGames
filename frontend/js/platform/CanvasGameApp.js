@@ -427,6 +427,10 @@
       return 720;
     }
 
+    syncBattleSceneToShell() {
+      if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+    }
+
     startBattleScene(report = null) {
       if (!report) return false;
       this.battleScene = {
@@ -438,6 +442,7 @@
         turnDurationMs: this.getBattleTurnDurationMs(),
       };
       this.canvasShell?.startBattleScene?.(report);
+      this.syncBattleSceneToShell();
       this.startBattleSceneTimer();
       this.startBattleAnimationTimer();
       this.renderCanvasSurface(this.state?.currentTab || 'military');
@@ -505,11 +510,12 @@
               turnIndex: this.battleScene.turnIndex + 1,
               turnStartedAt: this.now(),
             };
-            if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+            this.syncBattleSceneToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
             return;
           }
           this.stopBattleSceneTimer();
+          this.stopBattleAnimationTimer();
         }, this.getBattleTurnDurationMs())
         : setIntervalFn(() => {
         if (!this.battleScene?.visible) {
@@ -523,11 +529,12 @@
             turnIndex: this.battleScene.turnIndex + 1,
             turnStartedAt: this.now(),
           };
-          if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+          this.syncBattleSceneToShell();
           this.renderAnimationFrame(this.state?.currentTab || 'military');
           return;
         }
         this.stopBattleSceneTimer();
+        this.stopBattleAnimationTimer();
       }, this.getBattleTurnDurationMs());
       return true;
     }
@@ -549,7 +556,7 @@
         turnIndex: turns.length,
         turnStartedAt: this.now(),
       };
-      if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
+      this.syncBattleSceneToShell();
       this.stopBattleSceneTimer();
       this.stopBattleAnimationTimer();
       this.renderCanvasSurface(this.state?.currentTab || 'military');

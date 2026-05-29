@@ -2466,22 +2466,61 @@
       });
     }
 
+    static getBattleTurnSoldiers(turn = {}, side = 'attacker', timing = 'before', fallback = 0) {
+      const nested = turn?.[`soldiers${timing === 'after' ? 'After' : 'Before'}`]?.[side];
+      if (nested !== undefined && nested !== null) return this.toInteger(nested);
+      const legacyKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
+      if (turn?.[legacyKey] !== undefined && turn?.[legacyKey] !== null) return this.toInteger(turn[legacyKey]);
+      return this.toInteger(fallback);
+    }
+
+    static getBattleTurnLines(turn = {}, options = {}) {
+      const lines = Array.isArray(turn.lines) && turn.lines.length ? turn.lines : [turn.text].filter(Boolean);
+      if (!options.active) return lines;
+      const phase = options.phase || 'prepare';
+      if (phase === 'prepare') return lines.slice(0, 1);
+      if (phase === 'move') return lines.slice(0, Math.min(2, lines.length));
+      return lines;
+    }
+
     static buildBattleSceneViewState(battle = {}, options = {}) {
       const report = battle.report || battle;
       if (!report || typeof report !== 'object') return { visible: false };
       const turns = Array.isArray(report.turns) ? report.turns : [];
       const requestedTurn = this.toInteger(options.turnIndex, 0);
       const turnIndex = Math.max(0, Math.min(turns.length, requestedTurn));
-      const activeTurn = turns[Math.max(0, turnIndex - 1)] || null;
+      const ended = turns.length === 0 || turnIndex >= turns.length;
+      const activeTurn = ended ? null : turns[turnIndex] || null;
+      const previousTurn = turnIndex > 0 ? turns[turnIndex - 1] : null;
       const groupSize = this.toInteger(report.groupSize || report.visual?.groupSize, 100);
-      const attackerSoldiers = activeTurn
-        ? this.toInteger(activeTurn.attackerSoldiersAfter)
-        : this.toInteger(report.attacker?.soldiersStart);
-      const defenderSoldiers = activeTurn
-        ? this.toInteger(activeTurn.defenderSoldiersAfter)
-        : this.toInteger(report.defender?.soldiersStart);
-      const ended = turnIndex >= turns.length && turns.length > 0;
+      const phase = options.phase || options.playbackPhase || 'prepare';
+      const showActionResult = Boolean(activeTurn && (phase === 'impact' || phase === 'settle'));
+      const attackerStart = this.toInteger(report.attacker?.soldiersStart);
+      const defenderStart = this.toInteger(report.defender?.soldiersStart);
+      const lastTurn = turns[turns.length - 1] || null;
+      const attackerFallback = previousTurn
+        ? this.getBattleTurnSoldiers(previousTurn, 'attacker', 'after', attackerStart)
+        : attackerStart;
+      const defenderFallback = previousTurn
+        ? this.getBattleTurnSoldiers(previousTurn, 'defender', 'after', defenderStart)
+        : defenderStart;
+      const attackerSoldiers = ended
+        ? (lastTurn ? this.getBattleTurnSoldiers(lastTurn, 'attacker', 'after', this.toInteger(report.attacker?.soldiersEnd, attackerStart)) : this.toInteger(report.attacker?.soldiersEnd, attackerStart))
+        : (showActionResult
+          ? this.getBattleTurnSoldiers(activeTurn, 'attacker', 'after', attackerFallback)
+          : this.getBattleTurnSoldiers(activeTurn, 'attacker', 'before', attackerFallback));
+      const defenderSoldiers = ended
+        ? (lastTurn ? this.getBattleTurnSoldiers(lastTurn, 'defender', 'after', this.toInteger(report.defender?.soldiersEnd, defenderStart)) : this.toInteger(report.defender?.soldiersEnd, defenderStart))
+        : (showActionResult
+          ? this.getBattleTurnSoldiers(activeTurn, 'defender', 'after', defenderFallback)
+          : this.getBattleTurnSoldiers(activeTurn, 'defender', 'before', defenderFallback));
       const resultText = report.result === 'victory' ? '胜利' : report.result === 'defeat' ? '失败' : '交战中';
+      const completedLogEnd = ended ? turns.length : turnIndex;
+      const previousLines = turns.slice(Math.max(0, completedLogEnd - 3), completedLogEnd).flatMap((turn) => (
+        this.getBattleTurnLines(turn)
+      ));
+      const activeLines = activeTurn ? this.getBattleTurnLines(activeTurn, { active: true, phase }) : [];
+      const fallbackLines = turns.length === 0 && report.summary ? [report.summary] : [];
       return {
         visible: true,
         id: report.id || '',
@@ -2500,10 +2539,9 @@
         },
         turnIndex,
         turnCount: turns.length,
+        phase,
         activeTurn,
-        logLines: turns.slice(Math.max(0, turnIndex - 4), turnIndex).flatMap((turn) => (
-          Array.isArray(turn.lines) && turn.lines.length ? turn.lines : [turn.text]
-        )).filter(Boolean),
+        logLines: [...previousLines, ...activeLines, ...fallbackLines].filter(Boolean),
         attacker: {
           side: 'attacker',
           name: `${report.attacker?.leaderName || '己方'}队`,

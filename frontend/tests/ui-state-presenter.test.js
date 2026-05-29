@@ -1137,7 +1137,7 @@ test('battle scene view uses 100 soldiers only as visual group size', () => {
       defenderSoldiersAfter: 457,
     }],
     visual: { map: { id: 'forest-camp', palette: ['#111', '#222', '#333'] } },
-  }, { turnIndex: 1 });
+  }, { turnIndex: 0, phase: 'impact' });
 
   assert.equal(view.attacker.groups.length, 6);
   assert.equal(view.attacker.groups[5].soldiers, 1);
@@ -1145,6 +1145,42 @@ test('battle scene view uses 100 soldiers only as visual group size', () => {
   assert.equal(view.activeTurn.actor, 'attacker');
   assert.equal(view.title, '陆骁队 vs 林地部落队');
   assert.deepEqual(view.logLines, ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）']);
+});
+
+test('battle scene view keeps pre-impact soldiers until action settles', () => {
+  const report = {
+    id: 'battle_1',
+    result: 'victory',
+    groupSize: 100,
+    attacker: { leaderName: '陆骁', soldiersStart: 501, soldiersEnd: 501 },
+    defender: { name: '林地部落', soldiersStart: 500, soldiersEnd: 457 },
+    turns: [{
+      index: 1,
+      actor: 'attacker',
+      target: 'defender',
+      action: 'skill',
+      skillName: '血刃连袭',
+      lines: ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃连袭]', '[林地部落] 受到兵刃伤害 43（457）'],
+      attackerSoldiersBefore: 501,
+      defenderSoldiersBefore: 500,
+      attackerSoldiersAfter: 501,
+      defenderSoldiersAfter: 457,
+    }],
+  };
+
+  const moving = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 0, phase: 'move' });
+  const impacted = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 0, phase: 'impact' });
+  const ended = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 1, phase: 'ended' });
+
+  assert.equal(moving.activeTurn.actor, 'attacker');
+  assert.equal(moving.defender.soldiers, 500);
+  assert.equal(moving.defender.groups.length, 5);
+  assert.deepEqual(moving.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃连袭]']);
+  assert.equal(impacted.defender.soldiers, 457);
+  assert.deepEqual(impacted.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃连袭]', '[林地部落] 受到兵刃伤害 43（457）']);
+  assert.equal(ended.activeTurn, null);
+  assert.equal(ended.ended, true);
+  assert.equal(ended.defender.soldiers, 457);
 });
 
 test('world expedition config keeps unnamed leader fallback available before famous people join', () => {
