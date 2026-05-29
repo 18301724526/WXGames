@@ -2036,7 +2036,7 @@ test('Canvas game app delegates H5 tab transition animation to the mounted canva
   assert.equal(renderCalls.at(-1).options.pageTransition, app.pageTransition);
 });
 
-test('Canvas game app gives each battle turn enough time for skill cut-ins', () => {
+test('Canvas game app keeps normal battle fast while skill cut-ins get pause time', () => {
   const app = new CanvasGameApp({
     runtimeRequired: false,
     apiRequired: false,
@@ -2045,7 +2045,12 @@ test('Canvas game app gives each battle turn enough time for skill cut-ins', () 
     initialState: { currentTab: 'military', resources: {}, population: {} },
   });
 
-  assert.ok(app.getBattleTurnDurationMs() >= 4000);
+  const skillTurn = { action: 'skill', presentation: { cutIn: true } };
+  assert.equal(app.getBattleTurnDurationMs(), 900);
+  assert.equal(app.getBattleTurnDurationMs({ action: 'attack' }), 900);
+  assert.equal(app.getBattleSkillCutInDurationMs(), 2200);
+  assert.equal(app.getBattleTurnDurationMs(skillTurn), 3100);
+  assert.ok(app.getBattleSkillCutInDurationMs() >= 2000);
 });
 
 test('Canvas game app guide navigation writes Canvas UI state through the mounted shell', async () => {
@@ -2733,7 +2738,7 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
-  assert.match(html, /js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-upperbody-20260529[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=battle-cutin-timing-v1/);
+  assert.match(html, /js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-upperbody-20260529[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=battle-skill-pause-v1/);
   assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1/);
   assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);

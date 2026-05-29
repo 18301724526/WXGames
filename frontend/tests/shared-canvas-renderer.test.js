@@ -1231,11 +1231,12 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
 
   renderer.render({}, {
     mode: 'hud',
-    now: 1000,
+    now: 4000,
     battleScene: {
       visible: true,
       turnIndex: 0,
-      turnStartedAt: 600,
+      turnStartedAt: 1200,
+      turnDurationMs: 3100,
       report: {
         id: 'battle_1',
         result: 'victory',
@@ -1435,6 +1436,7 @@ test('CanvasGameRenderer battle unit poses include idle move attack and hit phas
   const turn = { actor: 'attacker', target: 'defender' };
 
   assert.equal(renderer.getBattleUnitPose('attacker', null), 'idle');
+  assert.equal(renderer.getBattleUnitPose('attacker', turn, 'cutin'), 'idle');
   assert.equal(renderer.getBattleUnitPose('attacker', turn, 'prepare'), 'idle');
   assert.equal(renderer.getBattleUnitPose('attacker', turn, 'move'), 'move');
   assert.equal(renderer.getBattleUnitPose('attacker', turn, 'impact'), 'attack');
@@ -1456,8 +1458,8 @@ test('CanvasGameRenderer battle playback phases normalize each action stage', ()
 
   assert.deepEqual(renderer.getBattlePlaybackPhase(0.06, turn), { phase: 'prepare', phaseProgress: 0.5 });
   assert.equal(renderer.getBattlePlaybackPhase(0.20, turn).phase, 'move');
-  assert.ok(renderer.getBattlePlaybackPhase(0.20, turn).phaseProgress > 0.49);
-  assert.ok(renderer.getBattlePlaybackPhase(0.20, turn).phaseProgress < 0.51);
+  assert.ok(renderer.getBattlePlaybackPhase(0.20, turn).phaseProgress > 0.23);
+  assert.ok(renderer.getBattlePlaybackPhase(0.20, turn).phaseProgress < 0.24);
   assert.equal(renderer.getBattlePlaybackPhase(0.60, turn).phase, 'impact');
   assert.equal(renderer.getBattlePlaybackPhase(0.90, turn).phase, 'settle');
   assert.deepEqual(renderer.getBattlePlaybackPhase(0.30, null), { phase: 'ended', phaseProgress: 1 });
@@ -1467,17 +1469,46 @@ test('CanvasGameRenderer battle playback phases normalize each action stage', ()
   assert.equal(renderer.getBattleEngagementProgress(1, 'prepare', 0, turn), 1);
 });
 
-test('CanvasGameRenderer keeps skill impact visible long enough for cut-in reading', () => {
+test('CanvasGameRenderer keeps skill cut-in visible while normal attacks stay fast', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   const turn = { actor: 'attacker', target: 'defender', action: 'skill', presentation: { cutIn: true } };
-  const turnDurationMs = 4000;
-  const impactStart = 0.28;
-  const impactEnd = 0.84;
+  const turnDurationMs = 3100;
+  const cutInEnd = 0.70;
 
-  assert.equal(renderer.getBattlePlaybackPhase(impactStart + 0.01, turn).phase, 'impact');
-  assert.equal(renderer.getBattlePlaybackPhase(impactEnd - 0.01, turn).phase, 'impact');
-  assert.ok((impactEnd - impactStart) * turnDurationMs >= 2000);
+  assert.equal(renderer.getBattlePlaybackPhase(0.35, turn).phase, 'cutin');
+  assert.equal(renderer.getBattlePlaybackPhase(0.72, turn).phase, 'prepare');
+  assert.equal(renderer.getBattlePlaybackPhase(0.80, turn).phase, 'move');
+  assert.equal(renderer.getBattlePlaybackPhase(0.90, turn).phase, 'impact');
+  assert.ok(cutInEnd * turnDurationMs >= 2000);
+});
+
+test('CanvasGameRenderer skill cut-in flies portrait from left and skill text from right', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const turn = {
+    actor: 'attacker',
+    actorName: '陆骁',
+    skillName: '血刃破阵',
+    presentation: { cutIn: true },
+  };
+
+  renderer.drawBattleSkillCutIn(turn, 0.05);
+  const earlySkillText = calls.find((call) => call[0] === 'fillText' && call[1] === '血刃破阵');
+  const earlyPortraitPanel = calls.find((call) => call[0] === 'roundRect' && call[3] >= 104 && call[4] >= 104);
+  calls.length = 0;
+  renderer.drawBattleSkillCutIn(turn, 0.50);
+  const holdSkillText = calls.find((call) => call[0] === 'fillText' && call[1] === '血刃破阵');
+  const holdPortraitPanel = calls.find((call) => call[0] === 'roundRect' && call[3] >= 104 && call[4] >= 104);
+  calls.length = 0;
+  renderer.drawBattleSkillCutIn(turn, 0.95);
+  const exitSkillText = calls.find((call) => call[0] === 'fillText' && call[1] === '血刃破阵');
+  const exitPortraitPanel = calls.find((call) => call[0] === 'roundRect' && call[3] >= 104 && call[4] >= 104);
+
+  assert.ok(earlyPortraitPanel[1] < holdPortraitPanel[1], 'portrait should enter from the left');
+  assert.ok(earlySkillText[2] > holdSkillText[2], 'skill text should enter from the right');
+  assert.ok(exitPortraitPanel[1] > holdPortraitPanel[1], 'portrait should fly out to the right after the hold');
+  assert.ok(exitSkillText[2] < holdSkillText[2], 'skill text should fly out to the left after the hold');
 });
 
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {

@@ -1185,9 +1185,12 @@ test('battle scene view keeps pre-impact soldiers until action settles', () => {
   };
 
   const moving = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 0, phase: 'move' });
+  const cutIn = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 0, phase: 'cutin' });
   const impacted = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 0, phase: 'impact' });
   const ended = UIStatePresenter.buildBattleSceneViewState(report, { turnIndex: 1, phase: 'ended' });
 
+  assert.equal(cutIn.defender.soldiers, 500);
+  assert.deepEqual(cutIn.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃破阵]']);
   assert.equal(moving.activeTurn.actor, 'attacker');
   assert.equal(moving.defender.soldiers, 500);
   assert.equal(moving.defender.groups.length, 5);

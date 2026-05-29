@@ -2505,6 +2505,11 @@
       const lines = Array.isArray(turn.lines) && turn.lines.length ? turn.lines : [turn.text].filter(Boolean);
       if (!options.active) return lines;
       const phase = options.phase || 'prepare';
+      if (phase === 'cutin') {
+        const skillLineIndex = lines.findIndex((line) => /发动战法|释放技能|技能|战法/.test(String(line)));
+        if (skillLineIndex >= 0) return lines.slice(0, skillLineIndex + 1);
+        return lines.slice(0, 1);
+      }
       if (phase === 'prepare') return lines.slice(0, 1);
       if (phase === 'move') return lines.slice(0, Math.min(2, lines.length));
       return lines;

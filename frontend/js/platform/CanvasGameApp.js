@@ -423,8 +423,23 @@
       return this.renderCanvasSurface(activeTab);
     }
 
-    getBattleTurnDurationMs() {
-      return 4000;
+    getBattleBaseTurnDurationMs() {
+      return 900;
+    }
+
+    getBattleSkillCutInDurationMs() {
+      return 2200;
+    }
+
+    getBattleTurnDurationMs(turn = null) {
+      const isSkill = turn && (turn.action === 'skill' || turn.actionType === 'skill' || turn.presentation?.cutIn);
+      return this.getBattleBaseTurnDurationMs() + (isSkill ? this.getBattleSkillCutInDurationMs() : 0);
+    }
+
+    getCurrentBattleTurnDurationMs(scene = this.battleScene) {
+      const turns = scene?.report?.turns || [];
+      const index = Math.max(0, Math.min(turns.length, Number(scene?.turnIndex) || 0));
+      return this.getBattleTurnDurationMs(index < turns.length ? turns[index] : null);
     }
 
     syncBattleSceneToShell() {
@@ -439,7 +454,7 @@
         turnIndex: 0,
         startedAt: this.now(),
         turnStartedAt: this.now(),
-        turnDurationMs: this.getBattleTurnDurationMs(),
+        turnDurationMs: this.getBattleTurnDurationMs(report.turns?.[0] || null),
       };
       this.canvasShell?.startBattleScene?.(report);
       this.syncBattleSceneToShell();
@@ -451,7 +466,10 @@
 
     stopBattleSceneTimer() {
       if (!this.battleSceneTimer) return;
-      if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleSceneTimer);
+      if (typeof this.scheduler?.clearTimeout === 'function') this.scheduler.clearTimeout(this.battleSceneTimer);
+      else if (typeof this.runtime?.clearTimeout === 'function') this.runtime.clearTimeout(this.battleSceneTimer);
+      else if (typeof clearTimeout === 'function') clearTimeout(this.battleSceneTimer);
+      else if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleSceneTimer);
       else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleSceneTimer);
       else if (typeof clearInterval === 'function') clearInterval(this.battleSceneTimer);
       this.battleSceneTimer = null;
@@ -490,52 +508,40 @@
       return true;
     }
 
+    advanceBattleSceneTurn() {
+      if (!this.battleScene?.visible) {
+        this.stopBattleSceneTimer();
+        return false;
+      }
+      const turns = this.battleScene.report?.turns || [];
+      if (this.battleScene.turnIndex < turns.length) {
+        const nextTurnIndex = this.battleScene.turnIndex + 1;
+        this.battleScene = {
+          ...this.battleScene,
+          turnIndex: nextTurnIndex,
+          turnStartedAt: this.now(),
+          turnDurationMs: this.getBattleTurnDurationMs(nextTurnIndex < turns.length ? turns[nextTurnIndex] : null),
+        };
+        this.syncBattleSceneToShell();
+        this.renderAnimationFrame(this.state?.currentTab || 'military');
+        this.startBattleSceneTimer();
+        return true;
+      }
+      this.stopBattleSceneTimer();
+      this.stopBattleAnimationTimer();
+      return false;
+    }
+
     startBattleSceneTimer() {
       this.stopBattleSceneTimer();
-      const timerHost = typeof this.scheduler?.setInterval === 'function'
+      const timerHost = typeof this.scheduler?.setTimeout === 'function'
         ? this.scheduler
-        : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
-      const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
-      if (!setIntervalFn) return false;
+        : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
+      const setTimeoutFn = timerHost?.setTimeout || (typeof setTimeout === 'function' ? setTimeout : null);
+      if (!setTimeoutFn) return false;
       this.battleSceneTimer = timerHost
-        ? setIntervalFn.call(timerHost, () => {
-          if (!this.battleScene?.visible) {
-            this.stopBattleSceneTimer();
-            return;
-          }
-          const turns = this.battleScene.report?.turns || [];
-          if (this.battleScene.turnIndex < turns.length) {
-            this.battleScene = {
-              ...this.battleScene,
-              turnIndex: this.battleScene.turnIndex + 1,
-              turnStartedAt: this.now(),
-            };
-            this.syncBattleSceneToShell();
-            this.renderAnimationFrame(this.state?.currentTab || 'military');
-            return;
-          }
-          this.stopBattleSceneTimer();
-          this.stopBattleAnimationTimer();
-        }, this.getBattleTurnDurationMs())
-        : setIntervalFn(() => {
-        if (!this.battleScene?.visible) {
-          this.stopBattleSceneTimer();
-          return;
-        }
-        const turns = this.battleScene.report?.turns || [];
-        if (this.battleScene.turnIndex < turns.length) {
-          this.battleScene = {
-            ...this.battleScene,
-            turnIndex: this.battleScene.turnIndex + 1,
-            turnStartedAt: this.now(),
-          };
-          this.syncBattleSceneToShell();
-          this.renderAnimationFrame(this.state?.currentTab || 'military');
-          return;
-        }
-        this.stopBattleSceneTimer();
-        this.stopBattleAnimationTimer();
-      }, this.getBattleTurnDurationMs());
+        ? setTimeoutFn.call(timerHost, () => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs())
+        : setTimeoutFn(() => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs());
       return true;
     }
 

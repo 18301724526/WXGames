@@ -526,7 +526,7 @@
 
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
       if (!activeTurn) return 'idle';
-      if (phase === 'prepare' || phase === 'settle') return 'idle';
+      if (phase === 'prepare' || phase === 'cutin' || phase === 'settle') return 'idle';
       if (activeTurn.actor === side) return phase === 'move' ? 'move' : 'attack';
       if (activeTurn.target === side) {
         if (phase === 'impact' && this.isBattleSideDefeatedByTurn(side, activeTurn)) return 'die';
@@ -554,16 +554,32 @@
         return { phase: 'ended', phaseProgress: 1 };
       }
       const value = Math.max(0, Math.min(1, Number(progress) || 0));
+      const isSkill = activeTurn.action === 'skill' || activeTurn.actionType === 'skill' || activeTurn.presentation?.cutIn;
+      if (isSkill) {
+        if (value < 0.70) {
+          return { phase: 'cutin', phaseProgress: value / 0.70 };
+        }
+        if (value < 0.76) {
+          return { phase: 'prepare', phaseProgress: (value - 0.70) / 0.06 };
+        }
+        if (value < 0.84) {
+          return { phase: 'move', phaseProgress: (value - 0.76) / 0.08 };
+        }
+        if (value < 0.96) {
+          return { phase: 'impact', phaseProgress: (value - 0.84) / 0.12 };
+        }
+        return { phase: 'settle', phaseProgress: (value - 0.96) / 0.04 };
+      }
       if (value < 0.12) {
         return { phase: 'prepare', phaseProgress: value / 0.12 };
       }
-      if (value < 0.28) {
-        return { phase: 'move', phaseProgress: (value - 0.12) / 0.16 };
+      if (value < 0.46) {
+        return { phase: 'move', phaseProgress: (value - 0.12) / 0.34 };
       }
-      if (value < 0.84) {
-        return { phase: 'impact', phaseProgress: (value - 0.28) / 0.56 };
+      if (value < 0.82) {
+        return { phase: 'impact', phaseProgress: (value - 0.46) / 0.36 };
       }
-      return { phase: 'settle', phaseProgress: (value - 0.84) / 0.16 };
+      return { phase: 'settle', phaseProgress: (value - 0.82) / 0.18 };
     }
 
     getBattleEngagementProgress(turnIndex = 0, phase = 'prepare', phaseProgress = 0, activeTurn = null) {
@@ -828,34 +844,55 @@
     }
 
     drawBattleSkillCutIn(activeTurn = null, progress = 0) {
-      if (!activeTurn?.presentation?.cutIn) return;
-      const impactProgress = Math.max(0, Math.min(1, Number(progress) || 0));
-      if (impactProgress <= 0) return;
+      const shouldShowCutIn = activeTurn?.presentation?.cutIn || activeTurn?.action === 'skill' || activeTurn?.actionType === 'skill';
+      if (!shouldShowCutIn) return;
+      const cutInProgress = Math.max(0, Math.min(1, Number(progress) || 0));
+      if (cutInProgress <= 0) return;
       const actorSide = activeTurn.actor === 'defender' ? 'defender' : 'attacker';
-      const panelWidth = Math.min(184, this.width * 0.46);
-      const panelHeight = 102;
-      const enterProgress = Math.min(1, impactProgress / 0.18);
-      const slide = 1 - Math.pow(1 - enterProgress, 3);
-      const baseX = actorSide === 'attacker'
-        ? 18 - panelWidth * (1 - slide)
-        : this.width - 18 - panelWidth + panelWidth * (1 - slide);
-      const y = Math.max(98, this.height * 0.18);
+      const easeOut = (value) => 1 - Math.pow(1 - Math.max(0, Math.min(1, value)), 3);
+      const easeIn = (value) => Math.pow(Math.max(0, Math.min(1, value)), 3);
+      const getFlyProgress = (value) => {
+        if (value < 0.28) return { stage: 'enter', ratio: easeOut(value / 0.28) };
+        if (value < 0.76) return { stage: 'hold', ratio: 1 };
+        return { stage: 'exit', ratio: easeIn((value - 0.76) / 0.24) };
+      };
+      const flyProgress = getFlyProgress(cutInProgress);
+      const fadeIn = Math.min(1, cutInProgress / 0.16);
+      const fadeOut = cutInProgress < 0.82 ? 1 : Math.max(0, 1 - (cutInProgress - 0.82) / 0.18);
+      const alpha = Math.max(0, Math.min(1, fadeIn * fadeOut));
+      const portraitSize = Math.min(142, Math.max(104, this.width * 0.34));
+      const portraitY = Math.max(104, this.height * 0.25);
+      const portraitCenterX = this.width / 2 - Math.min(84, this.width * 0.22);
+      const portraitHoldX = portraitCenterX - portraitSize / 2;
+      const portraitStartX = -portraitSize - 28;
+      const portraitEndX = this.width + 28;
+      const portraitX = flyProgress.stage === 'exit'
+        ? portraitHoldX + (portraitEndX - portraitHoldX) * flyProgress.ratio
+        : portraitStartX + (portraitHoldX - portraitStartX) * flyProgress.ratio;
+      const titleWidth = Math.min(238, this.width * 0.58);
+      const titleHeight = 72;
+      const titleY = portraitY + portraitSize * 0.3;
+      const titleCenterX = this.width / 2 + Math.min(74, this.width * 0.19);
+      const titleHoldX = titleCenterX - titleWidth / 2;
+      const titleStartX = this.width + 28;
+      const titleEndX = -titleWidth - 28;
+      const titleX = flyProgress.stage === 'exit'
+        ? titleHoldX + (titleEndX - titleHoldX) * flyProgress.ratio
+        : titleStartX + (titleHoldX - titleStartX) * flyProgress.ratio;
       const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (this.ctx && typeof this.ctx.globalAlpha === 'number') {
-        this.ctx.globalAlpha = previousAlpha * Math.min(1, enterProgress * 1.5);
+        this.ctx.globalAlpha = previousAlpha * alpha;
       }
-      this.drawPanel(baseX, y, panelWidth, panelHeight, {
-        fill: actorSide === 'attacker' ? 'rgba(20, 56, 45, 0.84)' : 'rgba(84, 40, 32, 0.84)',
-        stroke: 'rgba(255, 226, 177, 0.34)',
-        radius: 8,
-      });
-      const portraitSize = 78;
-      const portraitX = actorSide === 'attacker' ? baseX + 10 : baseX + panelWidth - portraitSize - 10;
-      const portraitY = y + 12;
+
+      if (this.ctx && typeof this.ctx.fillRect === 'function') {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
+        this.ctx.fillRect(0, Math.max(0, portraitY - 34), this.width, portraitSize + 70);
+      }
       this.drawPanel(portraitX, portraitY, portraitSize, portraitSize, {
-        fill: 'rgba(0, 0, 0, 0.18)',
-        stroke: 'rgba(255, 226, 177, 0.26)',
-        radius: 8,
+        fill: actorSide === 'attacker' ? 'rgba(20, 56, 45, 0.90)' : 'rgba(84, 40, 32, 0.90)',
+        stroke: 'rgba(255, 226, 177, 0.44)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.12)',
       });
       const portraitDrawn = this.drawFamousPortrait(
         { appearance: activeTurn.actorPortrait || {} },
@@ -865,7 +902,7 @@
         {
           frameWidth: portraitSize,
           frameHeight: portraitSize,
-          radius: 8,
+          radius: 10,
           scale: 1.7,
           offsetY: 0.12,
         },
@@ -879,21 +916,30 @@
           baseline: 'middle',
         });
       }
-      const textX = actorSide === 'attacker' ? portraitX + portraitSize + 12 : baseX + 12;
-      const textWidth = panelWidth - portraitSize - 34;
-      this.drawText(this.truncateText(activeTurn.actorName || '', textWidth, { size: 12, bold: true }), textX, y + 23, {
-        size: 12,
+
+      this.drawPanel(titleX, titleY, titleWidth, titleHeight, {
+        fill: 'rgba(20, 16, 12, 0.88)',
+        stroke: actorSide === 'attacker' ? 'rgba(116, 211, 160, 0.48)' : 'rgba(224, 123, 98, 0.48)',
+        radius: 8,
+        inset: 'rgba(255, 231, 184, 0.10)',
+      });
+      const accentX = actorSide === 'attacker' ? titleX + 10 : titleX + titleWidth - 14;
+      this.drawPanel(accentX, titleY + 12, 4, titleHeight - 24, {
+        fill: actorSide === 'attacker' ? '#74d3a0' : '#e07b62',
+        stroke: actorSide === 'attacker' ? '#74d3a0' : '#e07b62',
+        radius: 2,
+      });
+      const textX = titleX + (actorSide === 'attacker' ? 24 : 14);
+      const textWidth = titleWidth - 38;
+      this.drawText(this.truncateText(activeTurn.actorName || '', textWidth, { size: 13, bold: true }), textX, titleY + 12, {
+        size: 13,
         bold: true,
         color: '#cbbd96',
       });
-      this.drawText(this.truncateText(activeTurn.skillName || '战法', textWidth, { size: 18, bold: true }), textX, y + 50, {
-        size: 18,
+      this.drawText(this.truncateText(activeTurn.skillName || '战法', textWidth, { size: 24, bold: true }), textX, titleY + 36, {
+        size: 24,
         bold: true,
         color: '#ffe6b5',
-      });
-      this.drawText('发动战法', textX, y + 76, {
-        size: 11,
-        color: 'rgba(246, 232, 200, 0.72)',
       });
       if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
     }
@@ -1051,7 +1097,7 @@
       this.drawBattleArmy(view.attacker, attackerArea, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleArmy(view.defender, defenderArea, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
-      this.drawBattleSkillCutIn(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
+      this.drawBattleSkillCutIn(turnPhase === 'cutin' ? activeTurn : null, phaseProgress);
       this.drawBattleDamageFloat(
         activeTurn,
         turnPhase,
