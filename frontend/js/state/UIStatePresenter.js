@@ -576,7 +576,7 @@
         targetHasStatus: `目标有${condition.status || '状态'}`,
         selfHasStatus: `我方有${condition.status || '状态'}`,
       };
-      return labels[condition.type] || condition.type || '';
+      return Object.prototype.hasOwnProperty.call(labels, condition.type) ? labels[condition.type] : '';
     }
 
     static formatFamousPersonCooldownText(cooldown, skill = {}) {

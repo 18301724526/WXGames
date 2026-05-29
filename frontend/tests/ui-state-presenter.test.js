@@ -231,7 +231,7 @@ test('famous person view state maps candidates and joined people into panel card
   assert.match(view.people[0].skillDetails[0].description, /倒戈/);
   assert.doesNotMatch(view.people[0].skillDetails[0].description, /直接伤害|属性修正|冷却/);
   assert.match(view.people[0].skillDetails[0].meta, /等待 3 次出手机会/);
-  assert.doesNotMatch(view.people[0].skillDetails[0].meta, /自身行动|冷却就绪|目标存活/);
+  assert.doesNotMatch(view.people[0].skillDetails[0].meta, /自身行动|冷却就绪|目标存活|cooldownReady|targetAlive/);
   assert.equal(view.people[0].skillDetails[1].kindText, '战斗被动');
   assert.match(view.people[0].skillDetails[1].meta, /战前生效/);
   assert.match(view.people[0].skillDetails[1].description, /战斗开始前/);
