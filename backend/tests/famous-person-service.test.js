@@ -203,6 +203,97 @@ test('legacy famous person skill effects migrate to first batch deterministic at
   assert.match(ability.description, /二段伤害/);
   assert.match(ability.description, /先手/);
   assert.match(ability.description, /属性修正/);
+  assert.deepEqual(person.abilityKit.abilities.map((item) => item.slot), ['activeSkill', 'passiveTrait']);
+  assert.equal(person.abilityKit.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
+  assert.equal(person.abilityKit.generatorInput.seed, 'legacy:skill');
+  assert.equal(person.abilityKit.budgetChecks.length, 2);
+  assert.equal(person.abilityKit.budgetStatus, 'withinLimit');
+  assert.equal(person.abilityKit.abilities[1].kind, 'passive');
+  assert.equal(person.abilityKit.abilities[1].trigger, 'preBattle');
+  assert.equal(typeof person.abilityKit.abilities[1].description, 'string');
+  assert.equal(person.abilityKit.abilities[1].generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
+});
+
+test('legacy civil famous people upgrade to stored civil abilities without battle skills', () => {
+  const state = GameStateService.createInitialGameState('fp-legacy-civil-upgrade');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_legacy_envoy',
+    name: 'legacy_envoy',
+    title: 'legacy_civil',
+    source: { type: 'seek', seed: 'legacy:civil' },
+    archetype: 'envoy',
+    abilityArchetype: 'charmer',
+    skills: [{
+      id: 'skill_legacy_morale_heal',
+      name: '振军疗伤',
+      type: 'battle',
+      effects: [
+        { key: 'morale', value: 0.12 },
+        { key: 'heal', value: 0.1 },
+      ],
+    }],
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  const person = normalized.famousPeople[0];
+
+  assert.equal(person.abilityKit.domain, 'civil');
+  assert.equal(person.abilityKit.battlePolicy, 'basicAttackOnly');
+  assert.deepEqual(person.abilityKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
+  assert.equal(person.abilityKit.abilities.every((ability) => ability.kind === 'civil'), true);
+  assert.equal(person.abilityKit.abilities.every((ability) => ability.implementationStatus === 'storedOnly'), true);
+  assert.equal(person.abilityKit.abilities.every((ability) => ability.description.includes('当前阶段只展示')), true);
+  assert.deepEqual(person.skills, []);
+  assert.equal(person.abilityKit.generatorInput.seed, 'legacy:civil');
+  assert.equal(person.abilityKit.budgetChecks.length, 2);
+});
+
+test('legacy scout candidates upgrade to active skill plus scout trait', () => {
+  const state = GameStateService.createInitialGameState('fp-legacy-scout-candidate-upgrade');
+  state.currentEra = 3;
+  state.famousPersonState = {
+    candidates: [{
+      id: 'fpc_legacy_scout',
+      name: 'legacy_scout',
+      title: 'legacy_candidate',
+      source: { type: 'seek', seed: 'legacy:scout' },
+      archetype: 'scout',
+      abilityKit: {
+        archetype: 'scout',
+        quality: 'good',
+        source: 'seek',
+        seed: 'legacy:scout:kit',
+        abilities: [{
+          id: 'skill_legacy_scout_ambush',
+          name: '伏击连袭',
+          type: 'battle',
+          kind: 'active',
+          effects: [
+            { key: 'ambush', chance: 0.2 },
+            { key: 'combo', chance: 0.24 },
+          ],
+        }],
+      },
+    }],
+  };
+
+  const normalized = GameStateService.normalizeState(state);
+  const candidate = normalized.famousPersonState.candidates[0];
+  const active = candidate.abilityKit.abilities[0];
+  const trait = candidate.abilityKit.abilities[1];
+
+  assert.equal(candidate.abilityKit.domain, 'hybrid');
+  assert.deepEqual(candidate.abilityKit.abilities.map((ability) => ability.slot), ['activeSkill', 'scoutTrait']);
+  assert.deepEqual(active.effects.map((effect) => effect.key), ['firstStrike', 'secondHit']);
+  assert.deepEqual(active.effects.map((effect) => effect.migratedFrom), ['ambush', 'combo']);
+  assert.equal(active.castPolicy, 'conditional');
+  assert.deepEqual(active.castConditions.map((condition) => condition.type), ['cooldownReady', 'targetAlive']);
+  assert.equal(trait.implementationStatus, 'storedOnly');
+  assert.equal(trait.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
+  assert.equal(candidate.skills.length, 1);
+  assert.equal(candidate.abilityKit.generatorInput.seed, 'legacy:scout:kit');
+  assert.equal(candidate.abilityKit.budgetChecks.length, 2);
 });
 
 test('famous person generation currently exposes only seek source', () => {

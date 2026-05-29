@@ -332,7 +332,7 @@ function normalizeGeneratorInput(raw = {}, fallback = {}) {
     source: sanitizeText(source.source || fallback.source, 'seek'),
     seed: sanitizeText(source.seed || fallback.seed, `${source.source || fallback.source || 'seek'}:${abilityArchetype}:${quality}`),
     availableEffectPool: normalizeEffectPool(source.availableEffectPool || fallback.availableEffectPool, meta.domain),
-    generatorVersion: sanitizeText(source.generatorVersion, GENERATOR_VERSION),
+    generatorVersion: GENERATOR_VERSION,
   };
 }
 
@@ -559,6 +559,134 @@ function summarizeBudgetStatus(checks = []) {
   return checks.every((check) => check.withinLimit) ? 'withinLimit' : 'overLimit';
 }
 
+function findAbilityBySlot(abilities = [], slot) {
+  return abilities.find((ability) => ability?.slot === slot) || null;
+}
+
+function findActiveAbility(abilities = []) {
+  return findAbilityBySlot(abilities, 'activeSkill')
+    || abilities.find((ability) => ability?.kind === 'active' || ability?.type === 'battle')
+    || null;
+}
+
+function findPassiveAbility(abilities = []) {
+  return findAbilityBySlot(abilities, 'passiveTrait')
+    || abilities.find((ability) => ability?.kind === 'passive' && ability?.trigger === 'preBattle')
+    || null;
+}
+
+function findCivilAbility(abilities = [], slot) {
+  return findAbilityBySlot(abilities, slot)
+    || abilities.find((ability) => ability?.kind === 'civil' && !['civilPrimary', 'civilSecondary'].includes(ability?.slot))
+    || null;
+}
+
+function normalizeActiveAbility(raw = {}) {
+  const normalized = normalizeAbility({
+    ...raw,
+    type: 'battle',
+    slot: 'activeSkill',
+    kind: 'active',
+  });
+  if (!normalized) return null;
+  if (!Array.isArray(normalized.effects) || !normalized.effects.length) return null;
+  const cooldown = Number(normalized.cooldown);
+  return withAbilityDescription({
+    ...normalized,
+    type: 'battle',
+    slot: 'activeSkill',
+    kind: 'active',
+    cooldown: Number.isFinite(cooldown) ? Math.max(1, Math.floor(cooldown)) : 3,
+    castPolicy: sanitizeText(normalized.castPolicy, 'conditional'),
+    castConditions: addBaseConditions(normalized.castConditions),
+    generatorVersion: GENERATOR_VERSION,
+  });
+}
+
+function normalizeBattlePassive(raw = {}) {
+  const normalized = normalizeAbility({
+    ...raw,
+    slot: 'passiveTrait',
+    kind: 'passive',
+    trigger: 'preBattle',
+  });
+  if (!normalized) return null;
+  return withAbilityDescription({
+    ...normalized,
+    slot: 'passiveTrait',
+    kind: 'passive',
+    trigger: 'preBattle',
+    generatorVersion: GENERATOR_VERSION,
+  });
+}
+
+function normalizeCivilStoredAbility(raw = {}, slot) {
+  const normalized = normalizeAbility({
+    ...raw,
+    slot,
+    kind: 'civil',
+    trigger: 'passiveStored',
+    implementationStatus: 'storedOnly',
+  });
+  if (!normalized) return null;
+  return withAbilityDescription({
+    ...normalized,
+    slot,
+    kind: 'civil',
+    trigger: 'passiveStored',
+    implementationStatus: 'storedOnly',
+    generatorVersion: GENERATOR_VERSION,
+  });
+}
+
+function normalizeScoutTrait(raw = {}) {
+  const normalized = normalizeAbility({
+    ...raw,
+    slot: 'scoutTrait',
+    kind: 'passive',
+    trigger: 'passiveStored',
+    implementationStatus: 'storedOnly',
+  });
+  if (!normalized) return null;
+  return withAbilityDescription({
+    ...normalized,
+    slot: 'scoutTrait',
+    kind: 'passive',
+    trigger: 'passiveStored',
+    implementationStatus: 'storedOnly',
+    generatorVersion: GENERATOR_VERSION,
+  });
+}
+
+function completeAbilitySlots(abilities = [], abilityArchetype, quality, meta, generatorInput) {
+  const source = createSeedRandom(`${generatorInput.seed}:ability-kit-upgrade:${abilityArchetype}:${quality}`);
+  const effectPool = generatorInput.availableEffectPool;
+  if (meta.domain === 'civil') {
+    const rawPrimary = findCivilAbility(abilities, 'civilPrimary');
+    const rawSecondary = findCivilAbility(
+      abilities.filter((ability) => ability !== rawPrimary),
+      'civilSecondary',
+    );
+    const primary = normalizeCivilStoredAbility(rawPrimary, 'civilPrimary')
+      || createCivilAbility(abilityArchetype, 'civilPrimary', quality, source, effectPool);
+    const secondary = normalizeCivilStoredAbility(rawSecondary, 'civilSecondary')
+      || createCivilAbility(abilityArchetype, 'civilSecondary', quality, source, effectPool);
+    return [primary, secondary];
+  }
+  if (meta.domain === 'hybrid') {
+    const active = normalizeActiveAbility(findActiveAbility(abilities))
+      || createActiveSkill('scout', quality, source, effectPool);
+    const scoutTrait = normalizeScoutTrait(findAbilityBySlot(abilities, 'scoutTrait'))
+      || createScoutTrait(quality, source, effectPool);
+    return [active, scoutTrait];
+  }
+  const active = normalizeActiveAbility(findActiveAbility(abilities))
+    || createActiveSkill(abilityArchetype, quality, source, effectPool);
+  const passive = normalizeBattlePassive(findPassiveAbility(abilities))
+    || createBattlePassive(abilityArchetype, quality, source, effectPool);
+  return [active, passive];
+}
+
 function createAbilityKit(options = {}, randomSource = null) {
   const abilityArchetype = normalizeAbilityArchetype(options.abilityArchetype || options.archetype);
   const quality = normalizeQuality(options.quality);
@@ -616,7 +744,7 @@ function normalizeAbility(raw = {}) {
   });
 }
 
-function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = []) {
+function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [], fallback = {}) {
   const activeSkill = Array.isArray(skills) ? skills.find((skill) => skill?.type === 'battle' || skill?.kind === 'active') : null;
   const meta = getAbilityMeta(abilityArchetype);
   const abilities = [];
@@ -633,11 +761,12 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
   const generatorInput = normalizeGeneratorInput(archetype?.generatorInput, {
     abilityArchetype,
     quality,
-    source: archetype?.source,
-    seed: archetype?.seed,
-    availableEffectPool: archetype?.availableEffectPool,
+    source: archetype?.source || fallback.source,
+    seed: archetype?.seed || fallback.seed,
+    availableEffectPool: archetype?.availableEffectPool || fallback.availableEffectPool,
   });
-  const budgetChecks = createBudgetChecks(abilities);
+  const upgradedAbilities = completeAbilitySlots(abilities, abilityArchetype, quality, meta, generatorInput);
+  const budgetChecks = createBudgetChecks(upgradedAbilities);
   return {
     archetype: normalizeAbilityArchetype(abilityArchetype),
     quality: normalizeQuality(quality),
@@ -647,12 +776,12 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
     source: generatorInput.source,
     seed: generatorInput.seed,
     generatorInput,
-    abilities,
+    abilities: upgradedAbilities,
     budget: clone(QUALITY_BUDGETS[normalizeQuality(quality)]),
     budgetChecks,
     budgetStatus: summarizeBudgetStatus(budgetChecks),
     availableEffectPool: [...generatorInput.availableEffectPool],
-    generatorVersion: sanitizeText(archetype?.generatorVersion, GENERATOR_VERSION),
+    generatorVersion: GENERATOR_VERSION,
   };
 }
 
@@ -664,40 +793,38 @@ function normalizeAbilityKit(raw = {}, options = {}) {
   const quality = normalizeQuality(raw?.quality || options.quality);
   const meta = getAbilityMeta(abilityArchetype);
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.abilities)) {
-    return createLegacyAbilityKit(raw, abilityArchetype, quality, options.skills);
+    return createLegacyAbilityKit(raw, abilityArchetype, quality, options.skills, options);
   }
-  const abilities = raw.abilities.map(normalizeAbility).filter(Boolean);
   const generatorInput = normalizeGeneratorInput(raw.generatorInput, {
     abilityArchetype,
     quality,
-    source: raw.source,
-    seed: raw.seed,
-    availableEffectPool: raw.availableEffectPool,
+    source: raw.source || options.source,
+    seed: raw.seed || options.seed,
+    availableEffectPool: raw.availableEffectPool || options.availableEffectPool,
   });
-  const budgetChecks = Array.isArray(raw.budgetChecks) && raw.budgetChecks.length
-    ? raw.budgetChecks.map((check) => ({
-      slot: sanitizeText(check.slot),
-      id: sanitizeText(check.id),
-      cost: Number(check.cost) || 0,
-      limit: Number(check.limit) || 0,
-      withinLimit: Boolean(check.withinLimit),
-    }))
-    : createBudgetChecks(abilities);
+  const abilities = completeAbilitySlots(
+    raw.abilities.map(normalizeAbility).filter(Boolean),
+    abilityArchetype,
+    quality,
+    meta,
+    generatorInput,
+  );
+  const budgetChecks = createBudgetChecks(abilities);
   return {
     archetype: abilityArchetype,
     quality,
-    qualityLabel: sanitizeText(raw.qualityLabel, getQualityLabel(quality)),
-    domain: sanitizeText(raw.domain, meta.domain),
-    battlePolicy: sanitizeText(raw.battlePolicy, meta.battlePolicy),
+    qualityLabel: getQualityLabel(quality),
+    domain: meta.domain,
+    battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,
     generatorInput,
     abilities,
     budget: raw.budget && typeof raw.budget === 'object' ? clone(raw.budget) : clone(QUALITY_BUDGETS[quality]),
     budgetChecks,
-    budgetStatus: sanitizeText(raw.budgetStatus, summarizeBudgetStatus(budgetChecks)),
+    budgetStatus: summarizeBudgetStatus(budgetChecks),
     availableEffectPool: [...generatorInput.availableEffectPool],
-    generatorVersion: sanitizeText(raw.generatorVersion, GENERATOR_VERSION),
+    generatorVersion: GENERATOR_VERSION,
   };
 }
 

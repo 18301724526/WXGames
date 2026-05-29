@@ -339,6 +339,8 @@ function normalizePerson(raw = {}, options = {}) {
     abilityArchetype,
     quality,
     skills: rawSkills,
+    source: raw.source?.type,
+    seed: raw.source?.seed || raw.source?.candidateId || id,
   });
   const activeSkill = normalizeSkill(SkillGeneratorService.getActiveBattleSkill(abilityKit) || {});
   const skills = abilityKit.battlePolicy === 'basicAttackOnly' || !activeSkill ? [] : [activeSkill];
