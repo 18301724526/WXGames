@@ -1455,9 +1455,9 @@ test('CanvasGameRenderer battle playback phases normalize each action stage', ()
   const turn = { actor: 'attacker', target: 'defender' };
 
   assert.deepEqual(renderer.getBattlePlaybackPhase(0.06, turn), { phase: 'prepare', phaseProgress: 0.5 });
-  assert.equal(renderer.getBattlePlaybackPhase(0.30, turn).phase, 'move');
-  assert.ok(renderer.getBattlePlaybackPhase(0.30, turn).phaseProgress > 0.49);
-  assert.ok(renderer.getBattlePlaybackPhase(0.30, turn).phaseProgress < 0.51);
+  assert.equal(renderer.getBattlePlaybackPhase(0.20, turn).phase, 'move');
+  assert.ok(renderer.getBattlePlaybackPhase(0.20, turn).phaseProgress > 0.49);
+  assert.ok(renderer.getBattlePlaybackPhase(0.20, turn).phaseProgress < 0.51);
   assert.equal(renderer.getBattlePlaybackPhase(0.60, turn).phase, 'impact');
   assert.equal(renderer.getBattlePlaybackPhase(0.90, turn).phase, 'settle');
   assert.deepEqual(renderer.getBattlePlaybackPhase(0.30, null), { phase: 'ended', phaseProgress: 1 });
@@ -1465,6 +1465,19 @@ test('CanvasGameRenderer battle playback phases normalize each action stage', ()
   assert.equal(renderer.getBattleEngagementProgress(0, 'move', 0.5, turn), 0.5);
   assert.equal(renderer.getBattleEngagementProgress(0, 'impact', 0.1, turn), 1);
   assert.equal(renderer.getBattleEngagementProgress(1, 'prepare', 0, turn), 1);
+});
+
+test('CanvasGameRenderer keeps skill impact visible long enough for cut-in reading', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const turn = { actor: 'attacker', target: 'defender', action: 'skill', presentation: { cutIn: true } };
+  const turnDurationMs = 4000;
+  const impactStart = 0.28;
+  const impactEnd = 0.84;
+
+  assert.equal(renderer.getBattlePlaybackPhase(impactStart + 0.01, turn).phase, 'impact');
+  assert.equal(renderer.getBattlePlaybackPhase(impactEnd - 0.01, turn).phase, 'impact');
+  assert.ok((impactEnd - impactStart) * turnDurationMs >= 2000);
 });
 
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {

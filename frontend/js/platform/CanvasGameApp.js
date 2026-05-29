@@ -424,7 +424,7 @@
     }
 
     getBattleTurnDurationMs() {
-      return 720;
+      return 4000;
     }
 
     syncBattleSceneToShell() {

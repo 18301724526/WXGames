@@ -557,13 +557,13 @@
       if (value < 0.12) {
         return { phase: 'prepare', phaseProgress: value / 0.12 };
       }
-      if (value < 0.48) {
-        return { phase: 'move', phaseProgress: (value - 0.12) / 0.36 };
+      if (value < 0.28) {
+        return { phase: 'move', phaseProgress: (value - 0.12) / 0.16 };
       }
-      if (value < 0.82) {
-        return { phase: 'impact', phaseProgress: (value - 0.48) / 0.34 };
+      if (value < 0.84) {
+        return { phase: 'impact', phaseProgress: (value - 0.28) / 0.56 };
       }
-      return { phase: 'settle', phaseProgress: (value - 0.82) / 0.18 };
+      return { phase: 'settle', phaseProgress: (value - 0.84) / 0.16 };
     }
 
     getBattleEngagementProgress(turnIndex = 0, phase = 'prepare', phaseProgress = 0, activeTurn = null) {
@@ -834,14 +834,15 @@
       const actorSide = activeTurn.actor === 'defender' ? 'defender' : 'attacker';
       const panelWidth = Math.min(184, this.width * 0.46);
       const panelHeight = 102;
-      const slide = 1 - Math.pow(1 - impactProgress, 3);
+      const enterProgress = Math.min(1, impactProgress / 0.18);
+      const slide = 1 - Math.pow(1 - enterProgress, 3);
       const baseX = actorSide === 'attacker'
         ? 18 - panelWidth * (1 - slide)
         : this.width - 18 - panelWidth + panelWidth * (1 - slide);
       const y = Math.max(98, this.height * 0.18);
       const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (this.ctx && typeof this.ctx.globalAlpha === 'number') {
-        this.ctx.globalAlpha = previousAlpha * Math.min(1, impactProgress * 1.4);
+        this.ctx.globalAlpha = previousAlpha * Math.min(1, enterProgress * 1.5);
       }
       this.drawPanel(baseX, y, panelWidth, panelHeight, {
         fill: actorSide === 'attacker' ? 'rgba(20, 56, 45, 0.84)' : 'rgba(84, 40, 32, 0.84)',
