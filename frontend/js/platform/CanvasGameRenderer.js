@@ -566,6 +566,73 @@
       return { phase: 'settle', phaseProgress: (value - 0.82) / 0.18 };
     }
 
+    getBattleEngagementProgress(turnIndex = 0, phase = 'prepare', phaseProgress = 0, activeTurn = null) {
+      if (!activeTurn) return 1;
+      const index = Math.max(0, Math.floor(Number(turnIndex) || 0));
+      if (index > 0) return 1;
+      if (phase === 'prepare') return 0;
+      if (phase === 'move') return Math.max(0, Math.min(1, Number(phaseProgress) || 0));
+      return 1;
+    }
+
+    getBattleUnitFormationPosition(side = 'attacker', area = {}, index = 0, columns = 1) {
+      const safeColumns = Math.max(1, Math.floor(Number(columns) || 1));
+      const col = index % safeColumns;
+      const row = Math.floor(index / safeColumns);
+      return {
+        col,
+        row,
+        x: side === 'attacker'
+          ? area.x + col * 30 + 22
+          : area.x + area.width - col * 30 - 22,
+        y: area.y + row * 34 + 72 + (col % 2) * 5,
+      };
+    }
+
+    getBattleUnitEngagementPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21) {
+      const formation = this.getBattleUnitFormationPosition(side, area, index, columns);
+      const centerX = this.width / 2;
+      const laneCenter = (Math.max(1, columns) - 1) / 2;
+      const laneOffset = (formation.col - laneCenter) * 7 + (((index * 13) % 5) - 2) * 2;
+      const frontGap = 20 + Math.min(10, formation.row * 3);
+      return {
+        x: centerX + (side === 'attacker' ? -frontGap : frontGap) + laneOffset,
+        y: formation.y + (((index * 7) % 5) - 2) * 2,
+        scale,
+      };
+    }
+
+    easeBattleUnitProgress(progress = 0) {
+      const value = Math.max(0, Math.min(1, Number(progress) || 0));
+      return 1 - Math.pow(1 - value, 3);
+    }
+
+    getBattleUnitEngagementDelay(index = 0) {
+      const row = Math.floor(Math.max(0, Number(index) || 0) / 5);
+      return Math.min(0.34, (Math.max(0, Number(index) || 0) % 5) * 0.045 + row * 0.035);
+    }
+
+    getBattleUnitEngagementRatio(index = 0, engagementProgress = 1) {
+      const progress = Math.max(0, Math.min(1, Number(engagementProgress) || 0));
+      if (progress >= 1) return 1;
+      if (progress <= 0) return 0;
+      const delay = this.getBattleUnitEngagementDelay(index);
+      return this.easeBattleUnitProgress((progress - delay) / Math.max(0.01, 1 - delay));
+    }
+
+    getBattleUnitBattlefieldPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21, engagementProgress = 1) {
+      const formation = this.getBattleUnitFormationPosition(side, area, index, columns);
+      const engaged = this.getBattleUnitEngagementPosition(side, area, index, columns, scale);
+      const ratio = this.getBattleUnitEngagementRatio(index, engagementProgress);
+      return {
+        x: formation.x + (engaged.x - formation.x) * ratio,
+        y: formation.y + (engaged.y - formation.y) * ratio,
+        formation,
+        engaged,
+        ratio,
+      };
+    }
+
     getBattleSpriteSpec(side = 'attacker') {
       return {
         path: side === 'attacker'
@@ -697,40 +764,22 @@
       const side = sideView.side || 'attacker';
       const frame = Number(options.frame) || 0;
       const progress = Math.max(0, Math.min(1, Number(options.progress) || 0));
+      const engagementProgress = Math.max(0, Math.min(1, Number(options.engagementProgress ?? 1) || 0));
       const actionType = options.actionType || '';
       const columns = Math.max(1, Math.floor(area.width / 34));
       const dir = side === 'attacker' ? 1 : -1;
       const activeCount = pose === 'idle' ? 0 : Math.min(visualGroups.length, actionType === 'skill' ? 5 : 3);
-      const contactX = side === 'attacker' ? this.width * 0.52 : this.width * 0.48;
-      const activeProgress = Math.max(0, Math.min(1, progress));
-      const attackReachProgress = pose === 'attack' || pose === 'skill'
-        ? Math.min(1, activeProgress / 0.8)
-        : 0;
       const hitOffset = pose === 'hit' ? Math.sin(frame * 2.2) * 5 * dir : 0;
       visualGroups.slice(0, 18).forEach((group, index) => {
-        const col = index % columns;
-        const row = Math.floor(index / columns);
-        const x = side === 'attacker'
-          ? area.x + col * 30 + 22
-          : area.x + area.width - col * 30 - 22;
-        const y = area.y + row * 34 + 72 + (col % 2) * 5;
         const isActiveSoldier = index < activeCount;
         const stagger = isActiveSoldier ? Math.max(0, 1 - index * 0.12) : 0;
         const activePose = isActiveSoldier ? pose : 'idle';
         const scale = actionType === 'skill' && isActiveSoldier ? 0.245 : 0.21;
-        const unitHalfWidth = 500 * scale / 2;
-        const contactCenterX = contactX - dir * unitHalfWidth;
-        const contactDistance = contactCenterX - x;
-        const moveDistance = contactDistance * 0.68;
-        const actionAdvance = pose === 'move'
-          ? moveDistance * activeProgress
-          : ((pose === 'attack' || pose === 'skill')
-            ? moveDistance + (contactDistance - moveDistance) * attackReachProgress
-            : 0);
-        const activeOffset = isActiveSoldier ? (actionAdvance + hitOffset) * stagger : 0;
+        const position = this.getBattleUnitBattlefieldPosition(side, area, index, columns, scale, engagementProgress);
+        const activeOffset = isActiveSoldier ? hitOffset * stagger : 0;
         this.drawBattleSoldierSprite(
-          x + activeOffset,
-          y,
+          position.x + activeOffset,
+          position.y,
           side,
           activePose,
           frame + index,
@@ -837,6 +886,7 @@
       const activeTurn = view.activeTurn;
       const turnPhase = playback.phase;
       const phaseProgress = playback.phaseProgress;
+      const engagementProgress = this.getBattleEngagementProgress(requestedTurnIndex, turnPhase, phaseProgress, activeTurn);
       const attackerPose = this.getBattleUnitPose('attacker', activeTurn, turnPhase);
       const defenderPose = this.getBattleUnitPose('defender', activeTurn, turnPhase);
       const topY = 20;
@@ -873,13 +923,13 @@
         y: armyTop,
         width: laneWidth,
         height: armyHeight,
-      }, { pose: attackerPose, frame, progress: phaseProgress, actionType: activeTurn?.action });
+      }, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleArmy(view.defender, {
         x: this.width - laneWidth - 18,
         y: armyTop,
         width: laneWidth,
         height: armyHeight,
-      }, { pose: defenderPose, frame, progress: phaseProgress, actionType: activeTurn?.action });
+      }, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
 
       this.drawPanel(16, logY, this.width - 32, logH, {

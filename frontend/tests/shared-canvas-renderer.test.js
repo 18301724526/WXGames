@@ -1328,6 +1328,47 @@ test('CanvasGameRenderer maps split battle frame poses without hit frames or dea
   assert.equal(calls.some((call) => call[0] === 'drawImage' && String(call[1]?.src || '').includes('/hit/')), false);
 });
 
+test('CanvasGameRenderer moves soldiers into engagement without attack dash offsets', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  CanvasGameRenderer.getBattleUnitFramePaths().forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 500, height: 400, naturalWidth: 500, naturalHeight: 400 },
+    });
+  });
+  const area = { x: 18, y: 260, width: 150, height: 180 };
+  const groups = Array.from({ length: 4 }, () => ({ ratio: 1, soldiers: 100, capacity: 100 }));
+  const start = renderer.getBattleUnitBattlefieldPosition('attacker', area, 0, 4, 0.21, 0);
+  const midFirst = renderer.getBattleUnitBattlefieldPosition('attacker', area, 0, 4, 0.21, 0.5);
+  const engaged = renderer.getBattleUnitBattlefieldPosition('attacker', area, 0, 4, 0.21, 1);
+
+  assert.ok(midFirst.x > start.x);
+  assert.ok(engaged.x > midFirst.x);
+  assert.ok(
+    renderer.getBattleUnitEngagementRatio(0, 0.5) > renderer.getBattleUnitEngagementRatio(1, 0.5),
+    'later units should lag behind early units during engagement',
+  );
+
+  renderer.drawBattleArmy({ side: 'attacker', soldiers: 400, soldiersStart: 400, groups }, area, {
+    pose: 'idle',
+    frame: 0,
+    engagementProgress: 1,
+  });
+  renderer.drawBattleArmy({ side: 'attacker', soldiers: 400, soldiersStart: 400, groups }, area, {
+    pose: 'attack',
+    frame: 0,
+    progress: 0.8,
+    engagementProgress: 1,
+  });
+
+  const idleCall = calls.find((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/battle/units/player/idle/01.png');
+  const attackCall = calls.find((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/battle/units/player/attack/04.png');
+  assert.ok(idleCall);
+  assert.ok(attackCall);
+  assert.equal(attackCall[2], idleCall[2], 'attack should use the same engaged x position as idle');
+});
+
 test('CanvasGameRenderer battle unit poses include idle move attack and hit phases', () => {
   const { ctx } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -1360,6 +1401,10 @@ test('CanvasGameRenderer battle playback phases normalize each action stage', ()
   assert.equal(renderer.getBattlePlaybackPhase(0.60, turn).phase, 'impact');
   assert.equal(renderer.getBattlePlaybackPhase(0.90, turn).phase, 'settle');
   assert.deepEqual(renderer.getBattlePlaybackPhase(0.30, null), { phase: 'ended', phaseProgress: 1 });
+  assert.equal(renderer.getBattleEngagementProgress(0, 'prepare', 0.9, turn), 0);
+  assert.equal(renderer.getBattleEngagementProgress(0, 'move', 0.5, turn), 0.5);
+  assert.equal(renderer.getBattleEngagementProgress(0, 'impact', 0.1, turn), 1);
+  assert.equal(renderer.getBattleEngagementProgress(1, 'prepare', 0, turn), 1);
 });
 
 test('CanvasGameRenderer renders guidebook entry and planning panel', () => {
