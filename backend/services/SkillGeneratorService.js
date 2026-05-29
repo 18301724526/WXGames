@@ -28,6 +28,39 @@ const CIVIL_EFFECTS = Object.freeze([
   'cityStabilityPct',
 ]);
 
+const SCOUT_EFFECTS = Object.freeze([
+  'firstStrike',
+  'directDamage',
+  'secondHit',
+  'attributeBonus',
+  'scoutReportBonusPct',
+]);
+
+const EFFECT_LABELS = Object.freeze({
+  directDamage: '直接伤害',
+  secondHit: '二段伤害',
+  firstStrike: '先手',
+  lifesteal: '吸血',
+  heal: '治疗',
+  shield: '护盾',
+  attributeBonus: '属性修正',
+  resourceOutputPct: '资源产出',
+  allBasicOutputPct: '基础产出',
+  constructionSpeedPct: '建造速度',
+  constructionCostPct: '建造消耗',
+  knowledgeOutputPct: '知识产出',
+  populationCapPct: '人口上限',
+  happinessFlat: '幸福度',
+  trainingSpeedPct: '训练速度',
+  eventRewardPct: '事件收益',
+  eventRiskReductionPct: '事件风险',
+  settlementPacifyPct: '安抚效率',
+  famousRetentionPct: '名人说服',
+  diplomacyBonusPct: '外交加成',
+  scoutReportBonusPct: '侦查情报',
+  cityStabilityPct: '城市稳定',
+});
+
 const QUALITY_BUDGETS = Object.freeze({
   common: { active: 100, passive: 40, scoutActive: 85, scoutTrait: 45, civilPrimary: 60, civilSecondary: 35 },
   good: { active: 120, passive: 50, scoutActive: 100, scoutTrait: 55, civilPrimary: 80, civilSecondary: 45 },
@@ -210,6 +243,25 @@ function sanitizeText(value, fallback = '') {
   return text || fallback;
 }
 
+function hashText(value) {
+  const text = String(value || '');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createSeedRandom(seed) {
+  let state = hashText(seed) || 1;
+  return () => {
+    state = Math.imul(state ^ (state >>> 15), 1 | state);
+    state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
+    return ((state ^ (state >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function normalizeQuality(value) {
   return Object.prototype.hasOwnProperty.call(QUALITY_BUDGETS, value) ? value : 'common';
 }
@@ -234,6 +286,49 @@ function getAbilityMeta(abilityArchetype) {
   return ARCHETYPE_DOMAINS[normalizeAbilityArchetype(abilityArchetype)] || ARCHETYPE_DOMAINS.vanguard;
 }
 
+function getDefaultEffectPool(domain) {
+  if (domain === 'civil') return [...CIVIL_EFFECTS];
+  if (domain === 'hybrid') return [...SCOUT_EFFECTS];
+  return [...FIRST_BATCH_BATTLE_EFFECTS];
+}
+
+function normalizeEffectPool(pool, domain) {
+  const allowed = new Set(getDefaultEffectPool(domain));
+  const requested = Array.isArray(pool)
+    ? pool.map(String).filter((key) => allowed.has(key))
+    : [];
+  const unique = [...new Set(requested)];
+  return unique.length ? unique : getDefaultEffectPool(domain);
+}
+
+function createGeneratorInput(options = {}, abilityArchetype, quality, meta) {
+  const source = sanitizeText(options.source, 'seek');
+  const seed = sanitizeText(options.seed, `${source}:${abilityArchetype}:${quality}`);
+  return {
+    quality,
+    archetype: abilityArchetype,
+    source,
+    seed,
+    availableEffectPool: normalizeEffectPool(options.availableEffectPool, meta.domain),
+    generatorVersion: GENERATOR_VERSION,
+  };
+}
+
+function normalizeGeneratorInput(raw = {}, fallback = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const abilityArchetype = normalizeAbilityArchetype(source.archetype || fallback.abilityArchetype || fallback.archetype);
+  const quality = normalizeQuality(source.quality || fallback.quality);
+  const meta = getAbilityMeta(abilityArchetype);
+  return {
+    quality,
+    archetype: abilityArchetype,
+    source: sanitizeText(source.source || fallback.source, 'seek'),
+    seed: sanitizeText(source.seed || fallback.seed, `${source.source || fallback.source || 'seek'}:${abilityArchetype}:${quality}`),
+    availableEffectPool: normalizeEffectPool(source.availableEffectPool || fallback.availableEffectPool, meta.domain),
+    generatorVersion: sanitizeText(source.generatorVersion, GENERATOR_VERSION),
+  };
+}
+
 function addBaseConditions(conditions = []) {
   const result = [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
   conditions.forEach((condition) => {
@@ -242,6 +337,47 @@ function addBaseConditions(conditions = []) {
     result.push({ ...condition });
   });
   return result;
+}
+
+function describeEffects(effects = []) {
+  return effects
+    .map((effect) => EFFECT_LABELS[effect?.key] || effect?.key)
+    .filter(Boolean)
+    .join(' / ');
+}
+
+function describeAbility(ability = {}) {
+  const effectsText = describeEffects(ability.effects);
+  if (ability.kind === 'civil') {
+    return `${ability.name || '内政技能'}：${effectsText || '内政效果'}，已生成并挂载，当前阶段只展示。`;
+  }
+  if (ability.slot === 'scoutTrait') {
+    return `${ability.name || '斥候特质'}：${effectsText || '侦查/行军效果'}，当前阶段先存档展示。`;
+  }
+  if (ability.kind === 'passive') {
+    return `${ability.name || '被动特质'}：${effectsText || '战前效果'}，${ability.trigger === 'preBattle' ? '战前生效' : '按触发条件生效'}。`;
+  }
+  const cooldown = Number.isFinite(Number(ability.cooldown)) ? Number(ability.cooldown) : 0;
+  return `${ability.name || '主动战法'}：${effectsText || '战斗效果'}，冷却 ${cooldown} 次自身行动。`;
+}
+
+function withAbilityDescription(ability = {}) {
+  return {
+    ...ability,
+    description: sanitizeText(ability.description, describeAbility(ability)),
+  };
+}
+
+function templateFitsEffectPool(template = {}, effectPool = []) {
+  const allowed = new Set(Array.isArray(effectPool) ? effectPool : []);
+  if (!allowed.size) return true;
+  const effects = Array.isArray(template.effects) ? template.effects : [];
+  return effects.every((effect) => allowed.has(effect.key));
+}
+
+function filterTemplatesForPool(templates = [], effectPool = []) {
+  const filtered = templates.filter((template) => templateFitsEffectPool(template, effectPool));
+  return filtered.length ? filtered : templates;
 }
 
 function clampActiveForQuality(template, quality, scout = false) {
@@ -261,13 +397,13 @@ function clampActiveForQuality(template, quality, scout = false) {
   return { active, limit };
 }
 
-function createActiveSkill(abilityArchetype, quality, randomSource = Math.random) {
+function createActiveSkill(abilityArchetype, quality, randomSource = Math.random, effectPool = null) {
   const archetype = normalizeAbilityArchetype(abilityArchetype);
   const scout = archetype === 'scout';
-  const templates = ACTIVE_TEMPLATES[archetype] || ACTIVE_TEMPLATES.vanguard;
+  const templates = filterTemplatesForPool(ACTIVE_TEMPLATES[archetype] || ACTIVE_TEMPLATES.vanguard, effectPool);
   const template = pick(templates, randomSource) || templates[0];
   const { active, limit } = clampActiveForQuality(template, quality, scout);
-  return {
+  return withAbilityDescription({
     id: `skill_${archetype}_${active.id}`,
     name: active.name,
     slot: 'activeSkill',
@@ -286,15 +422,15 @@ function createActiveSkill(abilityArchetype, quality, randomSource = Math.random
       limit,
     },
     generatorVersion: GENERATOR_VERSION,
-  };
+  });
 }
 
-function createBattlePassive(abilityArchetype, quality, randomSource = Math.random) {
+function createBattlePassive(abilityArchetype, quality, randomSource = Math.random, effectPool = null) {
   const archetype = normalizeAbilityArchetype(abilityArchetype);
-  const templates = PASSIVE_TEMPLATES[archetype] || PASSIVE_TEMPLATES.vanguard;
+  const templates = filterTemplatesForPool(PASSIVE_TEMPLATES[archetype] || PASSIVE_TEMPLATES.vanguard, effectPool);
   const template = clone(pick(templates, randomSource) || templates[0]);
   const limit = QUALITY_BUDGETS[normalizeQuality(quality)].passive;
-  return {
+  return withAbilityDescription({
     id: `trait_${archetype}_${template.id}`,
     name: template.name,
     slot: 'passiveTrait',
@@ -307,17 +443,18 @@ function createBattlePassive(abilityArchetype, quality, randomSource = Math.rand
       limit,
     },
     generatorVersion: GENERATOR_VERSION,
-  };
+  });
 }
 
-function createCivilAbility(abilityArchetype, slot, quality, randomSource = Math.random) {
+function createCivilAbility(abilityArchetype, slot, quality, randomSource = Math.random, effectPool = null) {
   const archetype = normalizeAbilityArchetype(abilityArchetype, 'governor');
   const templateGroup = CIVIL_TEMPLATES[archetype] || CIVIL_TEMPLATES.governor;
   const groupKey = slot === 'civilSecondary' ? 'secondary' : 'primary';
-  const template = clone(pick(templateGroup[groupKey], randomSource) || templateGroup[groupKey][0]);
+  const templates = filterTemplatesForPool(templateGroup[groupKey], effectPool);
+  const template = clone(pick(templates, randomSource) || templates[0]);
   const limitKey = slot === 'civilSecondary' ? 'civilSecondary' : 'civilPrimary';
   const limit = QUALITY_BUDGETS[normalizeQuality(quality)][limitKey];
-  return {
+  return withAbilityDescription({
     id: `civil_${archetype}_${template.id}`,
     name: template.name,
     slot,
@@ -332,13 +469,14 @@ function createCivilAbility(abilityArchetype, slot, quality, randomSource = Math
       limit,
     },
     generatorVersion: GENERATOR_VERSION,
-  };
+  });
 }
 
-function createScoutTrait(quality, randomSource = Math.random) {
-  const template = clone(pick(SCOUT_TRAITS, randomSource) || SCOUT_TRAITS[0]);
+function createScoutTrait(quality, randomSource = Math.random, effectPool = null) {
+  const templates = filterTemplatesForPool(SCOUT_TRAITS, effectPool);
+  const template = clone(pick(templates, randomSource) || templates[0]);
   const limit = QUALITY_BUDGETS[normalizeQuality(quality)].scoutTrait;
-  return {
+  return withAbilityDescription({
     id: `trait_scout_${template.id}`,
     name: template.name,
     slot: 'scoutTrait',
@@ -353,41 +491,65 @@ function createScoutTrait(quality, randomSource = Math.random) {
       limit,
     },
     generatorVersion: GENERATOR_VERSION,
-  };
+  });
 }
 
-function createAbilityKit(options = {}, randomSource = Math.random) {
+function createBudgetChecks(abilities = []) {
+  return abilities.map((ability) => {
+    const cost = Number(ability?.budget?.cost) || 0;
+    const limit = Number(ability?.budget?.limit) || 0;
+    return {
+      slot: ability?.slot || '',
+      id: ability?.id || '',
+      cost,
+      limit,
+      withinLimit: limit <= 0 ? true : cost <= limit,
+    };
+  });
+}
+
+function summarizeBudgetStatus(checks = []) {
+  return checks.every((check) => check.withinLimit) ? 'withinLimit' : 'overLimit';
+}
+
+function createAbilityKit(options = {}, randomSource = null) {
   const abilityArchetype = normalizeAbilityArchetype(options.abilityArchetype || options.archetype);
   const quality = normalizeQuality(options.quality);
   const meta = getAbilityMeta(abilityArchetype);
+  const generatorInput = createGeneratorInput(options, abilityArchetype, quality, meta);
+  const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(generatorInput.seed);
   const abilities = [];
   if (meta.domain === 'civil') {
-    abilities.push(createCivilAbility(abilityArchetype, 'civilPrimary', quality, randomSource));
-    abilities.push(createCivilAbility(abilityArchetype, 'civilSecondary', quality, randomSource));
+    abilities.push(createCivilAbility(abilityArchetype, 'civilPrimary', quality, source, generatorInput.availableEffectPool));
+    abilities.push(createCivilAbility(abilityArchetype, 'civilSecondary', quality, source, generatorInput.availableEffectPool));
   } else if (meta.domain === 'hybrid') {
-    abilities.push(createActiveSkill('scout', quality, randomSource));
-    abilities.push(createScoutTrait(quality, randomSource));
+    abilities.push(createActiveSkill('scout', quality, source, generatorInput.availableEffectPool));
+    abilities.push(createScoutTrait(quality, source, generatorInput.availableEffectPool));
   } else {
-    abilities.push(createActiveSkill(abilityArchetype, quality, randomSource));
-    abilities.push(createBattlePassive(abilityArchetype, quality, randomSource));
+    abilities.push(createActiveSkill(abilityArchetype, quality, source, generatorInput.availableEffectPool));
+    abilities.push(createBattlePassive(abilityArchetype, quality, source, generatorInput.availableEffectPool));
   }
+  const budgetChecks = createBudgetChecks(abilities);
   return {
     archetype: abilityArchetype,
     quality,
     qualityLabel: getQualityLabel(quality),
     domain: meta.domain,
     battlePolicy: meta.battlePolicy,
+    source: generatorInput.source,
+    seed: generatorInput.seed,
+    generatorInput,
     abilities,
     budget: clone(QUALITY_BUDGETS[quality]),
-    availableEffectPool: [...FIRST_BATCH_BATTLE_EFFECTS],
+    budgetChecks,
+    budgetStatus: summarizeBudgetStatus(budgetChecks),
+    availableEffectPool: [...generatorInput.availableEffectPool],
     generatorVersion: GENERATOR_VERSION,
   };
 }
 
 function isKnownEffect(effect = {}) {
-  return Boolean(effect && typeof effect === 'object' && (
-    FIRST_BATCH_BATTLE_EFFECTS.includes(effect.key) || CIVIL_EFFECTS.includes(effect.key)
-  ));
+  return Boolean(effect && typeof effect === 'object' && EFFECT_LABELS[effect.key]);
 }
 
 function normalizeAbility(raw = {}) {
@@ -396,7 +558,7 @@ function normalizeAbility(raw = {}) {
     ? raw.effects.filter(isKnownEffect).map((effect) => ({ ...effect }))
     : [];
   if (!effects.length && raw.kind !== 'active') return null;
-  return {
+  return withAbilityDescription({
     ...raw,
     id: sanitizeText(raw.id, 'ability_generated'),
     name: sanitizeText(raw.name, '能力'),
@@ -404,7 +566,7 @@ function normalizeAbility(raw = {}) {
     kind: sanitizeText(raw.kind, raw.type === 'battle' ? 'active' : 'passive'),
     effects,
     generatorVersion: sanitizeText(raw.generatorVersion, GENERATOR_VERSION),
-  };
+  });
 }
 
 function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = []) {
@@ -421,15 +583,28 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
       generatorVersion: activeSkill.generatorVersion || 'legacy-skill',
     });
   }
+  const generatorInput = normalizeGeneratorInput(archetype?.generatorInput, {
+    abilityArchetype,
+    quality,
+    source: archetype?.source,
+    seed: archetype?.seed,
+    availableEffectPool: archetype?.availableEffectPool,
+  });
+  const budgetChecks = createBudgetChecks(abilities);
   return {
     archetype: normalizeAbilityArchetype(abilityArchetype),
     quality: normalizeQuality(quality),
     qualityLabel: getQualityLabel(quality),
     domain: meta.domain,
     battlePolicy: meta.battlePolicy,
+    source: generatorInput.source,
+    seed: generatorInput.seed,
+    generatorInput,
     abilities,
     budget: clone(QUALITY_BUDGETS[normalizeQuality(quality)]),
-    availableEffectPool: [...FIRST_BATCH_BATTLE_EFFECTS],
+    budgetChecks,
+    budgetStatus: summarizeBudgetStatus(budgetChecks),
+    availableEffectPool: [...generatorInput.availableEffectPool],
     generatorVersion: sanitizeText(archetype?.generatorVersion, GENERATOR_VERSION),
   };
 }
@@ -445,15 +620,36 @@ function normalizeAbilityKit(raw = {}, options = {}) {
     return createLegacyAbilityKit(raw, abilityArchetype, quality, options.skills);
   }
   const abilities = raw.abilities.map(normalizeAbility).filter(Boolean);
+  const generatorInput = normalizeGeneratorInput(raw.generatorInput, {
+    abilityArchetype,
+    quality,
+    source: raw.source,
+    seed: raw.seed,
+    availableEffectPool: raw.availableEffectPool,
+  });
+  const budgetChecks = Array.isArray(raw.budgetChecks) && raw.budgetChecks.length
+    ? raw.budgetChecks.map((check) => ({
+      slot: sanitizeText(check.slot),
+      id: sanitizeText(check.id),
+      cost: Number(check.cost) || 0,
+      limit: Number(check.limit) || 0,
+      withinLimit: Boolean(check.withinLimit),
+    }))
+    : createBudgetChecks(abilities);
   return {
     archetype: abilityArchetype,
     quality,
     qualityLabel: sanitizeText(raw.qualityLabel, getQualityLabel(quality)),
     domain: sanitizeText(raw.domain, meta.domain),
     battlePolicy: sanitizeText(raw.battlePolicy, meta.battlePolicy),
+    source: generatorInput.source,
+    seed: generatorInput.seed,
+    generatorInput,
     abilities,
     budget: raw.budget && typeof raw.budget === 'object' ? clone(raw.budget) : clone(QUALITY_BUDGETS[quality]),
-    availableEffectPool: Array.isArray(raw.availableEffectPool) ? [...raw.availableEffectPool] : [...FIRST_BATCH_BATTLE_EFFECTS],
+    budgetChecks,
+    budgetStatus: sanitizeText(raw.budgetStatus, summarizeBudgetStatus(budgetChecks)),
+    availableEffectPool: [...generatorInput.availableEffectPool],
     generatorVersion: sanitizeText(raw.generatorVersion, GENERATOR_VERSION),
   };
 }
@@ -472,14 +668,15 @@ module.exports = {
   GENERATOR_VERSION,
   FIRST_BATCH_BATTLE_EFFECTS,
   CIVIL_EFFECTS,
+  SCOUT_EFFECTS,
   QUALITY_BUDGETS,
   QUALITY_LABELS,
   rollQuality,
   getQualityLabel,
   normalizeQuality,
   normalizeAbilityArchetype,
+  getDefaultEffectPool,
   createAbilityKit,
   normalizeAbilityKit,
   getActiveBattleSkill,
 };
-

@@ -53,7 +53,21 @@ test('seek creates a generated candidate with v3 three-layer portrait and no lev
   assert.equal(result.candidate.abilityKit.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
   assert.equal(result.candidate.abilityKit.domain, 'battle');
   assert.equal(result.candidate.abilityKit.battlePolicy, 'useBattleSkill');
+  assert.equal(result.candidate.abilityKit.source, 'seek');
+  assert.equal(result.candidate.abilityKit.seed, result.candidate.source.seed);
+  assert.deepEqual(result.candidate.abilityKit.generatorInput, {
+    quality: 'common',
+    archetype: 'vanguard',
+    source: 'seek',
+    seed: result.candidate.source.seed,
+    availableEffectPool: SkillGeneratorService.FIRST_BATCH_BATTLE_EFFECTS,
+    generatorVersion: SkillGeneratorService.GENERATOR_VERSION,
+  });
+  assert.equal(result.candidate.abilityKit.budgetStatus, 'withinLimit');
+  assert.equal(result.candidate.abilityKit.budgetChecks.every((check) => check.withinLimit), true);
   assert.equal(result.candidate.abilityKit.abilities[0].slot, 'activeSkill');
+  assert.equal(typeof result.candidate.abilityKit.abilities[0].description, 'string');
+  assert.match(result.candidate.abilityKit.abilities[0].description, /冷却/);
   assert.equal(result.candidate.skills[0].effects[0].key, 'directDamage');
   assert.ok(SkillGeneratorService.FIRST_BATCH_BATTLE_EFFECTS.includes(result.candidate.skills[0].effects[0].key));
   assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v3.0');
@@ -85,8 +99,11 @@ test('civil famous person receives stored civil abilities and no battle skill fa
   assert.equal(result.candidate.archetype, 'warden');
   assert.equal(result.candidate.abilityKit.domain, 'civil');
   assert.equal(result.candidate.abilityKit.battlePolicy, 'basicAttackOnly');
+  assert.deepEqual(result.candidate.abilityKit.availableEffectPool, SkillGeneratorService.CIVIL_EFFECTS);
   assert.deepEqual(result.candidate.abilityKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
   assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.kind === 'civil'), true);
+  assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.implementationStatus === 'storedOnly'), true);
+  assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.description.includes('当前阶段只展示')), true);
   assert.deepEqual(result.candidate.skills, []);
 });
 
@@ -112,9 +129,44 @@ test('scout famous person receives a light active skill and scout trait', () => 
   assert.equal(result.candidate.archetype, 'scout');
   assert.equal(result.candidate.abilityKit.domain, 'hybrid');
   assert.equal(result.candidate.abilityKit.battlePolicy, 'useBattleSkill');
+  assert.deepEqual(result.candidate.abilityKit.availableEffectPool, SkillGeneratorService.SCOUT_EFFECTS);
   assert.deepEqual(result.candidate.abilityKit.abilities.map((ability) => ability.slot), ['activeSkill', 'scoutTrait']);
   assert.equal(result.candidate.skills.length, 1);
   assert.equal(result.candidate.skills[0].castPolicy, 'conditional');
+  assert.equal(result.candidate.abilityKit.abilities[1].implementationStatus, 'storedOnly');
+});
+
+test('skill generator can build deterministic ability kits from source seed and filtered effect pool', () => {
+  const first = SkillGeneratorService.createAbilityKit({
+    abilityArchetype: 'vanguard',
+    quality: 'great',
+    source: 'seek',
+    seed: 'same-seed',
+    availableEffectPool: ['directDamage', 'secondHit', 'burn'],
+  });
+  const second = SkillGeneratorService.createAbilityKit({
+    abilityArchetype: 'vanguard',
+    quality: 'great',
+    source: 'seek',
+    seed: 'same-seed',
+    availableEffectPool: ['directDamage', 'secondHit', 'burn'],
+  });
+  const different = SkillGeneratorService.createAbilityKit({
+    abilityArchetype: 'vanguard',
+    quality: 'great',
+    source: 'seek',
+    seed: 'seed-a',
+  });
+
+  assert.deepEqual(first.abilities.map((ability) => ability.id), second.abilities.map((ability) => ability.id));
+  assert.notDeepEqual(first.abilities.map((ability) => ability.id), different.abilities.map((ability) => ability.id));
+  assert.deepEqual(first.availableEffectPool, ['directDamage', 'secondHit']);
+  assert.deepEqual(first.generatorInput.availableEffectPool, ['directDamage', 'secondHit']);
+  assert.equal(first.abilities[0].id, 'skill_vanguard_double_cleave');
+  assert.deepEqual(first.abilities[0].effects.map((effect) => effect.key), ['directDamage', 'secondHit']);
+  assert.equal(first.generatorInput.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
+  assert.equal(first.budgetStatus, 'withinLimit');
+  assert.equal(first.budgetChecks.length, first.abilities.length);
 });
 
 test('famous person generation currently exposes only seek source', () => {
