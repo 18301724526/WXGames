@@ -61,6 +61,13 @@ const EFFECT_LABELS = Object.freeze({
   cityStabilityPct: '城市稳定',
 });
 
+const LEGACY_EFFECT_MIGRATIONS = Object.freeze({
+  combo: 'secondHit',
+  ambush: 'firstStrike',
+  morale: 'attributeBonus',
+  counter: null,
+});
+
 const QUALITY_BUDGETS = Object.freeze({
   common: { active: 100, passive: 40, scoutActive: 85, scoutTrait: 45, civilPrimary: 60, civilSecondary: 35 },
   good: { active: 120, passive: 50, scoutActive: 100, scoutTrait: 55, civilPrimary: 80, civilSecondary: 45 },
@@ -329,6 +336,46 @@ function normalizeGeneratorInput(raw = {}, fallback = {}) {
   };
 }
 
+function normalizeEffect(raw = {}) {
+  if (!raw || typeof raw !== 'object') return null;
+  const legacyKey = raw.key;
+  const key = Object.prototype.hasOwnProperty.call(LEGACY_EFFECT_MIGRATIONS, legacyKey)
+    ? LEGACY_EFFECT_MIGRATIONS[legacyKey]
+    : legacyKey;
+  if (!key || !EFFECT_LABELS[key]) return null;
+  const migratedFrom = key !== legacyKey ? legacyKey : raw.migratedFrom;
+  if (key === 'secondHit') {
+    const multiplier = Number(raw.multiplier ?? raw.value ?? raw.chance);
+    return {
+      key,
+      multiplier: Number.isFinite(multiplier) ? round2(Math.max(0.18, Math.min(0.36, multiplier))) : 0.3,
+      ...(migratedFrom ? { migratedFrom } : {}),
+    };
+  }
+  if (key === 'firstStrike') {
+    const value = Number(raw.value ?? raw.chance);
+    return {
+      key,
+      value: Number.isFinite(value) ? round2(Math.max(0.16, Math.min(0.32, value))) : 0.22,
+      ...(migratedFrom ? { migratedFrom } : {}),
+    };
+  }
+  if (key === 'attributeBonus') {
+    const value = Number(raw.value);
+    return {
+      key,
+      attribute: raw.attribute || raw.keyAttribute || 'command',
+      value: Number.isFinite(value) && Math.abs(value) >= 1 ? Math.round(value) : 5,
+      ...(migratedFrom ? { migratedFrom } : {}),
+    };
+  }
+  return {
+    ...raw,
+    key,
+    ...(migratedFrom ? { migratedFrom } : {}),
+  };
+}
+
 function addBaseConditions(conditions = []) {
   const result = [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
   conditions.forEach((condition) => {
@@ -549,13 +596,13 @@ function createAbilityKit(options = {}, randomSource = null) {
 }
 
 function isKnownEffect(effect = {}) {
-  return Boolean(effect && typeof effect === 'object' && EFFECT_LABELS[effect.key]);
+  return Boolean(normalizeEffect(effect));
 }
 
 function normalizeAbility(raw = {}) {
   if (!raw || typeof raw !== 'object') return null;
   const effects = Array.isArray(raw.effects)
-    ? raw.effects.filter(isKnownEffect).map((effect) => ({ ...effect }))
+    ? raw.effects.map(normalizeEffect).filter(Boolean)
     : [];
   if (!effects.length && raw.kind !== 'active') return null;
   return withAbilityDescription({
@@ -669,12 +716,14 @@ module.exports = {
   FIRST_BATCH_BATTLE_EFFECTS,
   CIVIL_EFFECTS,
   SCOUT_EFFECTS,
+  LEGACY_EFFECT_MIGRATIONS,
   QUALITY_BUDGETS,
   QUALITY_LABELS,
   rollQuality,
   getQualityLabel,
   normalizeQuality,
   normalizeAbilityArchetype,
+  normalizeEffect,
   getDefaultEffectPool,
   createAbilityKit,
   normalizeAbilityKit,

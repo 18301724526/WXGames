@@ -260,7 +260,7 @@ function normalizeAttributes(raw = {}) {
 
 function normalizeSkill(raw = {}) {
   const effects = Array.isArray(raw.effects)
-    ? raw.effects.filter((effect) => effect && typeof effect === 'object' && EFFECTS[effect.key]).map((effect) => ({ ...effect }))
+    ? raw.effects.map((effect) => SkillGeneratorService.normalizeEffect(effect)).filter(Boolean)
     : [];
   if (!effects.length) return null;
   return {

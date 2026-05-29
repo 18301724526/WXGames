@@ -169,6 +169,42 @@ test('skill generator can build deterministic ability kits from source seed and 
   assert.equal(first.budgetChecks.length, first.abilities.length);
 });
 
+test('legacy famous person skill effects migrate to first batch deterministic atoms', () => {
+  const state = GameStateService.createInitialGameState('fp-legacy-skill-migration');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_legacy_combo',
+    name: 'legacy_combo',
+    title: 'legacy_skill',
+    source: { type: 'seek', seed: 'legacy:skill' },
+    archetype: 'vanguard',
+    skills: [{
+      id: 'skill_legacy_combo_ambush',
+      name: '伏击连袭',
+      type: 'battle',
+      effects: [
+        { key: 'combo', chance: 0.24 },
+        { key: 'ambush', chance: 0.2 },
+        { key: 'morale', value: 0.12 },
+        { key: 'counter', chance: 0.2 },
+      ],
+    }],
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  const person = normalized.famousPeople[0];
+  const skill = person.skills[0];
+  const ability = person.abilityKit.abilities[0];
+
+  assert.deepEqual(skill.effects.map((effect) => effect.key), ['secondHit', 'firstStrike', 'attributeBonus']);
+  assert.deepEqual(skill.effects.map((effect) => effect.migratedFrom), ['combo', 'ambush', 'morale']);
+  assert.equal(skill.effects.some((effect) => effect.key === 'counter'), false);
+  assert.deepEqual(ability.effects.map((effect) => effect.key), ['secondHit', 'firstStrike', 'attributeBonus']);
+  assert.match(ability.description, /二段伤害/);
+  assert.match(ability.description, /先手/);
+  assert.match(ability.description, /属性修正/);
+});
+
 test('famous person generation currently exposes only seek source', () => {
   const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-source-lock'));
   state.currentEra = 3;
