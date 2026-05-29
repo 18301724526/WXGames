@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const BattleConfig = require('../config/BattleConfig');
 const BattleService = require('../services/BattleService');
 
 function createLeaderState() {
@@ -94,4 +95,17 @@ test('createLegacyBattleReport remains available for historical fallback', () =>
   assert.equal(report.result, 'defeat');
   assert.equal(report.visual.groupSize, BattleService.DEFAULT_SOLDIER_SCALE);
   assert.equal(report.attacker.soldiersEnd, 150);
+});
+
+test('battle config owns defender, visual, and fallback skill templates', () => {
+  const fallbackSkill = BattleConfig.getFallbackSkill('defender');
+  fallbackSkill.name = 'mutated';
+
+  assert.equal(BattleConfig.getFallbackSkill('defender').name, '守势突刺');
+  assert.equal(BattleConfig.getDefenderProfileForOwner('city_state', '').name, '城邦守军');
+  assert.equal(BattleService.getBattleMapForTerritory({ type: 'camp' }).id, 'forest-camp');
+  assert.equal(
+    BattleService.getBattleStageForTerritory({ type: 'camp' }).soldierSprites.attacker,
+    'assets/art/battle/soldier-player-sheet.png',
+  );
 });

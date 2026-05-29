@@ -1,6 +1,11 @@
-const DEFAULT_SOLDIER_SCALE = 100;
-const MIN_BATTLE_SOLDIERS = 100;
-const MAX_BATTLE_ROUNDS = 20;
+const BattleConfig = require('../config/BattleConfig');
+
+const {
+  DEFAULT_SOLDIER_SCALE,
+  MIN_BATTLE_SOLDIERS,
+  MAX_BATTLE_ROUNDS,
+  BATTLE_SYSTEM,
+} = BattleConfig;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -83,15 +88,7 @@ function getBattleSkill(unit, role = 'attacker') {
   if (Array.isArray(unit.leader?.skills) && unit.leader.skills.length) {
     return clone(unit.leader.skills[0]);
   }
-  return {
-    id: role === 'attacker' ? 'fallback_assault' : 'fallback_guard_thrust',
-    name: role === 'attacker' ? '奋击' : '守势突刺',
-    type: 'battle',
-    cooldown: 3,
-    effects: role === 'attacker'
-      ? [{ key: 'morale', value: 0.08 }]
-      : [{ key: 'shield', value: 0.08 }],
-  };
+  return BattleConfig.getFallbackSkill(role);
 }
 
 function getSkillCooldown(skill = {}) {
@@ -142,25 +139,11 @@ function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
 }
 
 function getBattleMapForTerritory(territory = {}) {
-  const mapByType = {
-    camp: { id: 'forest-camp', name: '林地营地', palette: ['#283f2e', '#526a3b', '#8b6f3a'] },
-    city: { id: 'stone-gate', name: '城邦外墙', palette: ['#343d46', '#6b7478', '#9c8055'] },
-    ruins: { id: 'old-ruins', name: '古代遗迹', palette: ['#30353a', '#65615b', '#8c805f'] },
-    town: { id: 'river-town', name: '河湾村镇', palette: ['#324b47', '#5f7659', '#9b7d45'] },
-    outpost: { id: 'frontier-outpost', name: '边境据点', palette: ['#34412e', '#687448', '#a4834c'] },
-  };
-  return mapByType[territory.type] || { id: 'frontier-field', name: '边境战场', palette: ['#2f3d30', '#667245', '#9a7848'] };
+  return BattleConfig.getBattleMapForType(territory.type);
 }
 
 function getBattleStageForTerritory(territory = {}) {
-  return {
-    ...getBattleMapForTerritory(territory),
-    background: 'assets/art/battle/battlefield-forest-camp.png',
-    soldierSprites: {
-      attacker: 'assets/art/battle/soldier-player-sheet.png',
-      defender: 'assets/art/battle/soldier-enemy-sheet.png',
-    },
-  };
+  return BattleConfig.getBattleStageForType(territory.type);
 }
 
 function getBattleVisualGroups(soldiers, groupSize = DEFAULT_SOLDIER_SCALE) {
@@ -178,12 +161,7 @@ function getBattleVisualGroups(soldiers, groupSize = DEFAULT_SOLDIER_SCALE) {
 }
 
 function getDefenderProfile(territory) {
-  const ownerProfiles = {
-    tribe: { name: territory.naturalName || '部落营地', force: 54, strategy: 38, command: 48, morale: 92 },
-    city_state: { name: territory.naturalName || '城邦守军', force: 58, strategy: 52, command: 62, morale: 100 },
-    ruin_guardians: { name: territory.naturalName || '遗迹守军', force: 64, strategy: 62, command: 55, morale: 96 },
-  };
-  const profile = ownerProfiles[territory.owner] || { name: territory.naturalName || '守军', force: 48, strategy: 42, command: 45, morale: 88 };
+  const profile = BattleConfig.getDefenderProfileForOwner(territory.owner, territory.naturalName);
   const soldiers = Math.max(MIN_BATTLE_SOLDIERS, toInteger(territory.defense, MIN_BATTLE_SOLDIERS));
   return {
     id: territory.id,
@@ -230,14 +208,7 @@ function createLegacyBattleReport(mission, territory, result, now = new Date()) 
 function simulateConquestBattle(gameState, mission, territory, now = new Date()) {
   const leader = getLeaderSnapshot(gameState, mission.expedition?.leader)
     || getLeaderSnapshotFromMission(mission);
-  const fallbackLeader = leader || {
-    id: 'unavailable',
-    name: '无名领队',
-    title: '临时领队',
-    attributes: { command: 45, force: 45, strategy: 40, charisma: 42 },
-    appearance: {},
-    skills: [],
-  };
+  const fallbackLeader = leader || BattleConfig.getFallbackLeader();
   const attacker = {
     leader: fallbackLeader,
     name: fallbackLeader.name,
@@ -323,14 +294,10 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     summary: success
       ? `${fallbackLeader.name}队压制了${territory.naturalName}。`
       : `${fallbackLeader.name}队未能突破${territory.naturalName}的防线。`,
-    system: 'speed-skill-cooldown-v1',
+    system: BATTLE_SYSTEM,
     groupSize: DEFAULT_SOLDIER_SCALE,
     firstActor: attackerFirst ? 'attacker' : 'defender',
-    skillRules: {
-      openingSkill: true,
-      cooldownTicksOnOwnTurnOnly: true,
-      fallbackAction: 'basicAttack',
-    },
+    skillRules: BattleConfig.getBattleRules().skillRules,
     turns,
     rounds,
     attacker: {
