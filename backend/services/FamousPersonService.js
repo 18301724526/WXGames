@@ -5,6 +5,7 @@ const APPEARANCE_VERSION = 'famous-portrait-v3.0';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
 const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
+const ENABLED_SOURCE_TYPES = Object.freeze(['seek']);
 
 const SOURCE_TYPES = Object.freeze({
   seek: { label: '寻访', roles: ['military', 'governance', 'craft', 'knowledge'] },
@@ -356,7 +357,8 @@ function getArchetypePool(sourceType) {
 }
 
 function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), randomSource = Math.random) {
-  const sourceType = SOURCE_TYPES[payload.source] ? payload.source : 'seek';
+  const requestedSource = SOURCE_TYPES[payload.source] ? payload.source : 'seek';
+  const sourceType = ENABLED_SOURCE_TYPES.includes(requestedSource) ? requestedSource : 'seek';
   const pool = getArchetypePool(sourceType);
   const archetype = pick(pool, randomSource) || ARCHETYPES[0];
   const surname = pick(SURNAMES, randomSource) || SURNAMES[0];
@@ -492,7 +494,7 @@ function getClientState(gameState = {}) {
       minEra: MIN_SEEK_ERA,
       count: state.seek.count,
       lastAt: state.seek.lastAt,
-      sources: Object.entries(SOURCE_TYPES).map(([id, source]) => ({ id, label: source.label })),
+      sources: ENABLED_SOURCE_TYPES.map((id) => ({ id, label: SOURCE_TYPES[id].label })),
     },
   };
 }
@@ -502,6 +504,7 @@ module.exports = {
   APPEARANCE_VERSION,
   MIN_SEEK_ERA,
   MAX_CANDIDATES,
+  ENABLED_SOURCE_TYPES,
   ARCHETYPES,
   EFFECTS,
   createInitialFamousPersonState,

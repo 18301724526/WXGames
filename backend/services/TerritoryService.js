@@ -9,6 +9,7 @@ const MAX_ACTIVE_SCOUTS = 2;
 const SCOUT_SITE_BASE_CHANCE = 0.32;
 const SCOUT_SITE_CHANCE_STEP = 0.14;
 const SCOUT_SITE_GUARANTEE_AFTER = 4;
+const POST_WAR_FAMOUS_PERSON_ENABLED = false;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
 
@@ -1050,6 +1051,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
 }
 
 function createPostWarCandidate(gameState, mission, territory, result, now = new Date()) {
+  if (!POST_WAR_FAMOUS_PERSON_ENABLED) return null;
   if (!result?.success || mission.mode === 'settlement') return null;
   const FamousPersonService = require('./FamousPersonService');
   const famousPersonState = FamousPersonService.ensureFamousPersonState(gameState);

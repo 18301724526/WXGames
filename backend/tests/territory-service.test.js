@@ -437,7 +437,7 @@ test('战斗报告按精确兵力结算但按 100 兵向上取整显示小人组
   assert.ok(claim.battleReport.turns.length >= 1);
 });
 
-test('有主地点征服胜利后会生成战后归附候选名人', () => {
+test('有主地点征服胜利后暂不生成战后归附候选名人', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
   addFamousLeader(state);
@@ -461,13 +461,9 @@ test('有主地点征服胜利后会生成战后归附候选名人', () => {
 
   assert.equal(claim.success, true);
   assert.equal(claim.outcome, 'success');
-  assert.equal(claim.postWarCandidate.source.type, 'postWar');
-  assert.equal(claim.postWarCandidate.source.territoryId, 'post_war_site');
-  assert.equal(claim.postWarCandidate.source.leaderId, 'fp_luxiao');
-  assert.equal(state.famousPersonState.candidates.length, 1);
-  assert.equal(state.famousPersonState.candidates[0].source.type, 'postWar');
-  assert.equal(state.famousPersonState.candidates[0].roles.includes('military'), true);
-  assert.match(claim.message, /战后有人愿意投奔/);
+  assert.equal(claim.postWarCandidate, null);
+  assert.equal(state.famousPersonState.candidates.length, 0);
+  assert.doesNotMatch(claim.message, /战后有人愿意投奔/);
 });
 
 test('战后候选队列已满时不阻塞征服结算', () => {

@@ -57,6 +57,23 @@ test('seek creates a generated candidate with v3 three-layer portrait and no lev
   assert.equal(result.famousPersonState.candidateCount, 1);
 });
 
+test('famous person generation currently exposes only seek source', () => {
+  const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-source-lock'));
+  state.currentEra = 3;
+
+  const result = FamousPersonService.seekFamousPerson(
+    state,
+    { source: 'postWar' },
+    new Date('2026-05-25T03:01:00.000Z'),
+    createRandomSequence(Array(18).fill(0.1)),
+  );
+  const client = FamousPersonService.getClientState(state);
+
+  assert.equal(result.success, true);
+  assert.equal(result.candidate.source.type, 'seek');
+  assert.deepEqual(client.seek.sources, [{ id: 'seek', label: '寻访' }]);
+});
+
 test('generated portrait can pick across all three v3 layer pools', () => {
   const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-v3-pools'));
   state.currentEra = 3;
