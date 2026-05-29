@@ -171,8 +171,14 @@ test('famous person view state maps candidates and joined people into panel card
         title: '破阵先登',
         source: { type: 'seek', label: '寻访' },
         roles: ['military'],
-        attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
-        skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, craft: 22, charisma: 55, speed: 66 },
+        abilityKit: {
+          abilities: [
+            { name: '血刃破阵', kind: 'active', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
+            { name: '锐锋', kind: 'passive', effects: [{ key: 'attributeBonus' }] },
+          ],
+        },
+        skills: [{ name: '血刃破阵', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] }],
         appearance: {
           version: 'famous-portrait-v3.0',
           layers: {
@@ -189,8 +195,14 @@ test('famous person view state maps candidates and joined people into panel card
         title: '垒门守将',
         source: { type: 'event', label: '事件投奔' },
         roles: ['governance'],
-        attributes: { command: 50, force: 30, strategy: 60, governance: 80, craft: 45, charisma: 66 },
-        skills: [{ name: '固阵振军', effects: [{ key: 'shield' }, { key: 'morale' }] }],
+        attributes: { command: 50, force: 30, intelligence: 60, politics: 80, craft: 45, charisma: 66, speed: 42 },
+        abilityKit: {
+          abilities: [
+            { name: '督田理赋', kind: 'civil', effects: [{ key: 'resourceOutputPct' }] },
+            { name: '仓廪整备', kind: 'civil', effects: [{ key: 'populationCapPct' }] },
+          ],
+        },
+        skills: [],
       }],
     },
   });
@@ -198,9 +210,13 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.seek.available, true);
   assert.deepEqual(view.seek.action, { type: 'seekFamousPerson', disabled: false });
   assert.equal(view.people[0].name, '陆骁');
+  assert.match(view.people[0].stats, /智力40/);
+  assert.match(view.people[0].stats, /速度66/);
   assert.match(view.people[0].skills[0], /吸血/);
+  assert.match(view.people[0].skills[1], /属性修正/);
   assert.equal(view.people[0].appearance.layers.hair, 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png');
   assert.equal(view.candidates[0].sourceText, '事件投奔');
+  assert.match(view.candidates[0].skills[0], /资源产出/);
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'fpc_b' });
   assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });
 });
@@ -1159,8 +1175,8 @@ test('battle scene view keeps pre-impact soldiers until action settles', () => {
       actor: 'attacker',
       target: 'defender',
       action: 'skill',
-      skillName: '血刃连袭',
-      lines: ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃连袭]', '[林地部落] 受到兵刃伤害 43（457）'],
+      skillName: '血刃破阵',
+      lines: ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃破阵]', '[林地部落] 受到兵刃伤害 43（457）'],
       attackerSoldiersBefore: 501,
       defenderSoldiersBefore: 500,
       attackerSoldiersAfter: 501,
@@ -1175,9 +1191,9 @@ test('battle scene view keeps pre-impact soldiers until action settles', () => {
   assert.equal(moving.activeTurn.actor, 'attacker');
   assert.equal(moving.defender.soldiers, 500);
   assert.equal(moving.defender.groups.length, 5);
-  assert.deepEqual(moving.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃连袭]']);
+  assert.deepEqual(moving.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃破阵]']);
   assert.equal(impacted.defender.soldiers, 457);
-  assert.deepEqual(impacted.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃连袭]', '[林地部落] 受到兵刃伤害 43（457）']);
+  assert.deepEqual(impacted.logLines, ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃破阵]', '[林地部落] 受到兵刃伤害 43（457）']);
   assert.equal(ended.activeTurn, null);
   assert.equal(ended.ended, true);
   assert.equal(ended.defender.soldiers, 457);

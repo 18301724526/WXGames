@@ -6,7 +6,9 @@ const BATTLE_SYSTEM = 'attribute-auto-battle-v1';
 const MORALE_EFFECT_ENABLED = false;
 
 const SKILL_RULES = {
-  openingSkill: true,
+  openingSkill: false,
+  castPolicy: 'conditional',
+  conditionalCasting: true,
   cooldownTicksOnOwnTurnOnly: true,
   fallbackAction: 'basicAttack',
   activeSkillSlots: 1,

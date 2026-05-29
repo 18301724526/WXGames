@@ -81,18 +81,48 @@ function addFamousLeader(state, options = {}) {
     attributes: {
       command: options.command || 82,
       force: options.force || 86,
+      intelligence: options.strategy || 48,
       strategy: options.strategy || 48,
+      politics: 26,
       governance: 26,
       craft: 18,
       charisma: options.charisma || 58,
+      speed: 76,
+    },
+    abilityKit: {
+      archetype: 'vanguard',
+      domain: 'battle',
+      battlePolicy: 'useBattleSkill',
+      abilities: [{
+        id: 'skill_vanguard_blood_assault',
+        name: '血刃破阵',
+        slot: 'activeSkill',
+        kind: 'active',
+        type: 'battle',
+        category: 'blade',
+        damageType: 'blade',
+        multiplier: 1.42,
+        cooldown: 3,
+        castPolicy: 'conditional',
+        castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }],
+        effects: [
+          { key: 'directDamage', value: 1.42 },
+          { key: 'lifesteal', value: 0.12 },
+        ],
+      }],
     },
     skills: [{
-      id: 'skill_lifesteal_combo',
-      name: '血刃连袭',
+      id: 'skill_vanguard_blood_assault',
+      name: '血刃破阵',
       type: 'battle',
+      damageType: 'blade',
+      multiplier: 1.42,
+      cooldown: 3,
+      castPolicy: 'conditional',
+      castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }],
       effects: [
+        { key: 'directDamage', value: 1.42 },
         { key: 'lifesteal', value: 0.16 },
-        { key: 'combo', chance: 0.24, times: 1 },
       ],
     }],
     status: { assigned: 'idle', loyalty: 68 },
@@ -393,10 +423,13 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(site.lastBattle.report.system, 'attribute-auto-battle-v1');
   assert.equal(site.lastBattle.report.turns[0].actor, 'attacker');
   assert.equal(site.lastBattle.report.turns[0].action, 'skill');
+  assert.equal(site.lastBattle.report.turns[0].skillName, '血刃破阵');
+  assert.equal(site.lastBattle.report.turns[0].presentation.cutIn, true);
+  assert.ok(site.lastBattle.report.turns[0].actorPortrait);
   assert.equal(site.lastBattle.report.turns[0].damageType, 'blade');
-  assert.equal(site.lastBattle.report.turns[1].action, 'skill');
   assert.ok(site.lastBattle.report.turns.some((turn) => turn.action === 'basicAttack'));
-  assert.equal(site.lastBattle.report.skillRules.openingSkill, true);
+  assert.equal(site.lastBattle.report.skillRules.openingSkill, false);
+  assert.equal(site.lastBattle.report.skillRules.castPolicy, 'conditional');
   assert.equal(site.lastBattle.report.skillRules.randomTriggerEnabled, false);
   assert.ok(site.lastBattle.report.preparation[0].lines.some((line) => line.includes('士气影响：未启用')));
   assert.ok(site.lastBattle.report.detailEvents[0].lines.some((line) => line.includes('开始行动')));

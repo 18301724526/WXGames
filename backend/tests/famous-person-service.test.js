@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const GameStateService = require('../services/GameStateService');
 const FamousPersonService = require('../services/FamousPersonService');
+const SkillGeneratorService = require('../services/SkillGeneratorService');
 
 function createRandomSequence(values) {
   let index = 0;
@@ -48,13 +49,72 @@ test('seek creates a generated candidate with v3 three-layer portrait and no lev
   assert.equal(result.candidate.archetype, 'vanguard');
   assert.equal(typeof result.candidate.name, 'string');
   assert.ok(result.candidate.name.length > 0);
-  assert.equal(result.candidate.skills[0].effects[0].key, 'lifesteal');
-  assert.equal(result.candidate.skills[0].effects[1].key, 'combo');
+  assert.equal(result.candidate.quality, 'common');
+  assert.equal(result.candidate.abilityKit.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
+  assert.equal(result.candidate.abilityKit.domain, 'battle');
+  assert.equal(result.candidate.abilityKit.battlePolicy, 'useBattleSkill');
+  assert.equal(result.candidate.abilityKit.abilities[0].slot, 'activeSkill');
+  assert.equal(result.candidate.skills[0].effects[0].key, 'directDamage');
+  assert.ok(SkillGeneratorService.FIRST_BATCH_BATTLE_EFFECTS.includes(result.candidate.skills[0].effects[0].key));
   assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v3.0');
   assertV3Appearance(result.candidate.appearance);
   assert.equal(Object.prototype.hasOwnProperty.call(result.candidate, 'level'), false);
   assert.equal(result.candidate.source.type, 'seek');
   assert.equal(result.famousPersonState.candidateCount, 1);
+});
+
+test('civil famous person receives stored civil abilities and no battle skill fallback', () => {
+  const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-civil-kit'));
+  state.currentEra = 3;
+
+  const result = FamousPersonService.seekFamousPerson(
+    state,
+    { source: 'seek' },
+    new Date('2026-05-25T03:00:30.000Z'),
+    createRandomSequence([
+      0.4,
+      0.2,
+      0, 0, 0, 0,
+      0.2,
+      0.2, 0.2,
+      0, 0, 0,
+    ]),
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.candidate.archetype, 'warden');
+  assert.equal(result.candidate.abilityKit.domain, 'civil');
+  assert.equal(result.candidate.abilityKit.battlePolicy, 'basicAttackOnly');
+  assert.deepEqual(result.candidate.abilityKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
+  assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.kind === 'civil'), true);
+  assert.deepEqual(result.candidate.skills, []);
+});
+
+test('scout famous person receives a light active skill and scout trait', () => {
+  const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-scout-kit'));
+  state.currentEra = 3;
+
+  const result = FamousPersonService.seekFamousPerson(
+    state,
+    { source: 'seek' },
+    new Date('2026-05-25T03:00:45.000Z'),
+    createRandomSequence([
+      0.92,
+      0.1,
+      0, 0, 0, 0,
+      0.2,
+      0.2, 0.2,
+      0, 0, 0,
+    ]),
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.candidate.archetype, 'scout');
+  assert.equal(result.candidate.abilityKit.domain, 'hybrid');
+  assert.equal(result.candidate.abilityKit.battlePolicy, 'useBattleSkill');
+  assert.deepEqual(result.candidate.abilityKit.abilities.map((ability) => ability.slot), ['activeSkill', 'scoutTrait']);
+  assert.equal(result.candidate.skills.length, 1);
+  assert.equal(result.candidate.skills[0].castPolicy, 'conditional');
 });
 
 test('famous person generation currently exposes only seek source', () => {
@@ -85,6 +145,7 @@ test('generated portrait can pick across all three v3 layer pools', () => {
     createRandomSequence([
       0.2, 0, 0, 0.5, 0.4,
       0.3, 0.2, 0.1, 0.2, 0.3, 0.4,
+      0, 0, 0,
       0, 0, 0,
       0.99, 0.49, 0,
       0,

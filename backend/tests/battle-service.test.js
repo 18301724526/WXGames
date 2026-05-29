@@ -14,13 +14,38 @@ function createLeaderState() {
         archetype: 'vanguard',
         attributes: { command: 72, force: 88, strategy: 46, charisma: 60 },
         appearance: { version: 'famous-portrait-v3.0', layers: {} },
+        abilityKit: {
+          archetype: 'vanguard',
+          domain: 'battle',
+          battlePolicy: 'useBattleSkill',
+          abilities: [
+            {
+              id: 'skill_blood_assault',
+              name: '血刃破阵',
+              slot: 'activeSkill',
+              kind: 'active',
+              type: 'battle',
+              category: 'blade',
+              damageType: 'blade',
+              multiplier: 1.42,
+              cooldown: 3,
+              castPolicy: 'conditional',
+              castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }],
+              effects: [{ key: 'directDamage', value: 1.42 }, { key: 'lifesteal', value: 0.12 }],
+            },
+          ],
+        },
         skills: [
           {
-            id: 'skill_blood_combo',
-            name: '血刃连袭',
+            id: 'skill_blood_assault',
+            name: '血刃破阵',
             type: 'battle',
+            damageType: 'blade',
+            multiplier: 1.42,
             cooldown: 3,
-            effects: [{ key: 'lifesteal', value: 0.12 }, { key: 'combo', chance: 0.2, times: 1 }],
+            castPolicy: 'conditional',
+            castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }],
+            effects: [{ key: 'directDamage', value: 1.42 }, { key: 'lifesteal', value: 0.12 }],
           },
         ],
       },
@@ -67,8 +92,11 @@ test('simulateConquestBattle emits attribute battle report without mutating inpu
   assert.equal(result.report.attacker.groupsStart.length, 6);
   assert.equal(result.report.attacker.groupsStart[5].soldiers, 1);
   assert.equal(result.report.turns[0].action, 'skill');
-  assert.equal(result.report.turns[0].skillName, '血刃连袭');
+  assert.equal(result.report.turns[0].skillName, '血刃破阵');
   assert.equal(result.report.turns[0].damageType, 'blade');
+  assert.equal(result.report.turns[0].presentation.cutIn, true);
+  assert.equal(result.report.turns[0].presentation.showSkillName, true);
+  assert.deepEqual(result.report.turns.find((turn) => turn.action === 'basicAttack').presentation.cutIn, false);
   assert.equal(result.report.moraleEffectEnabled, false);
   assert.ok(result.report.preparation[0].lines.some((line) => line.includes('士气影响：未启用')));
   assert.ok(result.report.detailEvents[0].lines.some((line) => line.includes('开始行动')));
@@ -89,8 +117,97 @@ test('getLeaderSnapshot supports live famous people and maps strategy to intelli
   assert.equal(snapshot.attributes.intelligence, 46);
   assert.equal(snapshot.attributes.strategy, 46);
   assert.ok(snapshot.attributes.speed > 0);
-  assert.equal(snapshot.skills[0].name, '血刃连袭');
+  assert.equal(snapshot.skills[0].name, '血刃破阵');
+  assert.equal(snapshot.abilityKit.battlePolicy, 'useBattleSkill');
   assert.equal(BattleService.getLeaderSnapshot(gameState, 'unavailable'), null);
+});
+
+test('conditional skill falls back to basic attack when conditions fail', () => {
+  const gameState = createLeaderState();
+  const active = gameState.famousPeople[0].abilityKit.abilities[0];
+  active.name = '收割追击';
+  active.castConditions = [
+    { type: 'cooldownReady' },
+    { type: 'targetAlive' },
+    { type: 'targetSoldierBelowPct', value: 0.2 },
+  ];
+  gameState.famousPeople[0].skills[0] = active;
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission(),
+    createTerritory(),
+    new Date('2026-05-29T12:02:00.000Z'),
+  );
+
+  assert.equal(result.report.turns[0].actor, 'attacker');
+  assert.equal(result.report.turns[0].action, 'basicAttack');
+  assert.equal(result.report.turns[0].skillName, '');
+  assert.equal(result.report.turns[0].presentation.cutIn, false);
+  assert.ok(result.report.turns.some((turn) => turn.action === 'skill' && turn.skillName === '收割追击'));
+});
+
+test('basicAttackOnly famous leader never receives fallback battle skill', () => {
+  const gameState = createLeaderState();
+  gameState.famousPeople[0].abilityKit = {
+    archetype: 'governor',
+    domain: 'civil',
+    battlePolicy: 'basicAttackOnly',
+    abilities: [
+      { id: 'civil_governor_field_admin', name: '督田理赋', slot: 'civilPrimary', kind: 'civil', effects: [{ key: 'resourceOutputPct', value: 0.1 }] },
+      { id: 'civil_governor_granary_order', name: '仓廪整备', slot: 'civilSecondary', kind: 'civil', effects: [{ key: 'populationCapPct', value: 0.06 }] },
+    ],
+  };
+  gameState.famousPeople[0].skills = [];
+
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission(),
+    createTerritory(),
+    new Date('2026-05-29T12:03:00.000Z'),
+  );
+
+  const attackerTurns = result.report.turns.filter((turn) => turn.actor === 'attacker');
+  assert.ok(attackerTurns.length > 0);
+  assert.equal(attackerTurns.every((turn) => turn.action === 'basicAttack'), true);
+  assert.equal(result.report.attacker.skill.id, undefined);
+});
+
+test('firstOwnAction skill only casts on the first own action', () => {
+  const gameState = createLeaderState();
+  const active = {
+    id: 'skill_scout_first_probe',
+    name: '先机穿插',
+    slot: 'activeSkill',
+    kind: 'active',
+    type: 'battle',
+    category: 'strategy',
+    damageType: 'strategy',
+    multiplier: 1.18,
+    cooldown: 2,
+    castPolicy: 'conditional',
+    castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }, { type: 'firstOwnAction' }],
+    effects: [{ key: 'firstStrike', value: 0.22 }, { key: 'directDamage', value: 1.18 }],
+  };
+  gameState.famousPeople[0].abilityKit = {
+    archetype: 'scout',
+    domain: 'hybrid',
+    battlePolicy: 'useBattleSkill',
+    abilities: [active, { id: 'trait_scout_trail_reader', name: '识径', slot: 'scoutTrait', kind: 'passive', effects: [{ key: 'scoutReportBonusPct', value: 0.08 }] }],
+  };
+  gameState.famousPeople[0].skills = [active];
+
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission(),
+    createTerritory({ defense: 900 }),
+    new Date('2026-05-29T12:04:00.000Z'),
+  );
+  const skillTurns = result.report.turns.filter((turn) => turn.actor === 'attacker' && turn.action === 'skill');
+
+  assert.equal(skillTurns.length, 1);
+  assert.equal(skillTurns[0].skillName, '先机穿插');
+  assert.ok(skillTurns[0].extraHits.some((hit) => hit.key === 'firstStrike'));
+  assert.equal(skillTurns[0].presentation.cutIn, true);
 });
 
 test('createLegacyBattleReport remains available for historical fallback', () => {

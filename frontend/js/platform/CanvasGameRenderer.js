@@ -806,7 +806,7 @@
 
     drawBattleActionEffect(activeTurn = null, progress = 0) {
       if (!activeTurn) return;
-      const isSkill = activeTurn.action === 'skill';
+      const isSkill = activeTurn.action === 'skill' || activeTurn.actionType === 'skill';
       const impactProgress = Math.max(0, Math.min(1, Number(progress) || 0));
       if (impactProgress <= 0) return;
       const x = activeTurn.target === 'defender' ? this.width * 0.58 : this.width * 0.42;
@@ -825,6 +825,76 @@
           align: 'center',
         });
       }
+    }
+
+    drawBattleSkillCutIn(activeTurn = null, progress = 0) {
+      if (!activeTurn?.presentation?.cutIn) return;
+      const impactProgress = Math.max(0, Math.min(1, Number(progress) || 0));
+      if (impactProgress <= 0) return;
+      const actorSide = activeTurn.actor === 'defender' ? 'defender' : 'attacker';
+      const panelWidth = Math.min(184, this.width * 0.46);
+      const panelHeight = 102;
+      const slide = 1 - Math.pow(1 - impactProgress, 3);
+      const baseX = actorSide === 'attacker'
+        ? 18 - panelWidth * (1 - slide)
+        : this.width - 18 - panelWidth + panelWidth * (1 - slide);
+      const y = Math.max(98, this.height * 0.18);
+      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (this.ctx && typeof this.ctx.globalAlpha === 'number') {
+        this.ctx.globalAlpha = previousAlpha * Math.min(1, impactProgress * 1.4);
+      }
+      this.drawPanel(baseX, y, panelWidth, panelHeight, {
+        fill: actorSide === 'attacker' ? 'rgba(20, 56, 45, 0.84)' : 'rgba(84, 40, 32, 0.84)',
+        stroke: 'rgba(255, 226, 177, 0.34)',
+        radius: 8,
+      });
+      const portraitSize = 78;
+      const portraitX = actorSide === 'attacker' ? baseX + 10 : baseX + panelWidth - portraitSize - 10;
+      const portraitY = y + 12;
+      this.drawPanel(portraitX, portraitY, portraitSize, portraitSize, {
+        fill: 'rgba(0, 0, 0, 0.18)',
+        stroke: 'rgba(255, 226, 177, 0.26)',
+        radius: 8,
+      });
+      const portraitDrawn = this.drawFamousPortrait(
+        { appearance: activeTurn.actorPortrait || {} },
+        portraitX,
+        portraitY,
+        portraitSize,
+        {
+          frameWidth: portraitSize,
+          frameHeight: portraitSize,
+          radius: 8,
+          scale: 1.7,
+          offsetY: 0.12,
+        },
+      );
+      if (!portraitDrawn) {
+        this.drawText(String(activeTurn.actorName || '将').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
+          size: 26,
+          bold: true,
+          color: '#f6e8c8',
+          align: 'center',
+          baseline: 'middle',
+        });
+      }
+      const textX = actorSide === 'attacker' ? portraitX + portraitSize + 12 : baseX + 12;
+      const textWidth = panelWidth - portraitSize - 34;
+      this.drawText(this.truncateText(activeTurn.actorName || '', textWidth, { size: 12, bold: true }), textX, y + 23, {
+        size: 12,
+        bold: true,
+        color: '#cbbd96',
+      });
+      this.drawText(this.truncateText(activeTurn.skillName || '战法', textWidth, { size: 18, bold: true }), textX, y + 50, {
+        size: 18,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      this.drawText('发动战法', textX, y + 76, {
+        size: 11,
+        color: 'rgba(246, 232, 200, 0.72)',
+      });
+      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
     }
 
     getBattleTurnDamage(turn = null) {
@@ -980,6 +1050,7 @@
       this.drawBattleArmy(view.attacker, attackerArea, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleArmy(view.defender, defenderArea, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
+      this.drawBattleSkillCutIn(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
       this.drawBattleDamageFloat(
         activeTurn,
         turnPhase,

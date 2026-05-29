@@ -1,6 +1,7 @@
 const CityService = require('./CityService');
+const SkillGeneratorService = require('./SkillGeneratorService');
 
-const GENERATOR_VERSION = 'famous-person-v0.1';
+const GENERATOR_VERSION = 'famous-person-v0.2';
 const APPEARANCE_VERSION = 'famous-portrait-v3.0';
 const MIN_SEEK_ERA = 3;
 const MAX_CANDIDATES = 3;
@@ -20,7 +21,8 @@ const ARCHETYPES = Object.freeze([
     roles: ['military'],
     titlePool: ['山道突骑', '破阵先登', '血刃游侠'],
     namePool: ['骁', '峻', '烈', '岚', '锋'],
-    attributes: { command: 66, force: 78, strategy: 42, governance: 26, craft: 18, charisma: 52 },
+    abilityArchetype: 'vanguard',
+    attributes: { command: 66, force: 78, intelligence: 42, strategy: 42, politics: 26, governance: 26, craft: 18, charisma: 52, speed: 64 },
     skillPairs: [['lifesteal', 'combo'], ['combo', 'armorBreak'], ['ambush', 'combo']],
   },
   {
@@ -29,7 +31,8 @@ const ARCHETYPES = Object.freeze([
     roles: ['military'],
     titlePool: ['垒门守将', '铁壁护军', '边墙执盾'],
     namePool: ['衡', '坚', '岳', '承', '镇'],
-    attributes: { command: 76, force: 62, strategy: 48, governance: 34, craft: 22, charisma: 58 },
+    abilityArchetype: 'commander',
+    attributes: { command: 76, force: 62, intelligence: 48, strategy: 48, politics: 34, governance: 34, craft: 22, charisma: 58, speed: 52 },
     skillPairs: [['shield', 'counter'], ['shield', 'morale'], ['counter', 'heal']],
   },
   {
@@ -38,7 +41,8 @@ const ARCHETYPES = Object.freeze([
     roles: ['military', 'knowledge'],
     titlePool: ['火计谋士', '雾林策士', '伏兵参谋'],
     namePool: ['策', '玄', '微', '昭', '临'],
-    attributes: { command: 58, force: 34, strategy: 82, governance: 44, craft: 20, charisma: 56 },
+    abilityArchetype: 'strategist',
+    attributes: { command: 58, force: 34, intelligence: 82, strategy: 82, politics: 44, governance: 44, craft: 20, charisma: 56, speed: 50 },
     skillPairs: [['burn', 'ambush'], ['poison', 'armorBreak'], ['morale', 'combo']],
   },
   {
@@ -47,7 +51,8 @@ const ARCHETYPES = Object.freeze([
     roles: ['governance'],
     titlePool: ['聚落执政', '仓廪主事', '民生长者'],
     namePool: ['宁', '禾', '安', '序', '清'],
-    attributes: { command: 38, force: 24, strategy: 54, governance: 82, craft: 42, charisma: 66 },
+    abilityArchetype: 'governor',
+    attributes: { command: 38, force: 24, intelligence: 54, strategy: 54, politics: 82, governance: 82, craft: 42, charisma: 66, speed: 38 },
     skillPairs: [['morale', 'heal'], ['shield', 'heal'], ['morale', 'shield']],
   },
   {
@@ -56,7 +61,8 @@ const ARCHETYPES = Object.freeze([
     roles: ['craft'],
     titlePool: ['炉火匠首', '石工督造', '木作名匠'],
     namePool: ['钧', '砺', '椽', '铎', '工'],
-    attributes: { command: 34, force: 32, strategy: 46, governance: 58, craft: 82, charisma: 42 },
+    abilityArchetype: 'governor',
+    attributes: { command: 34, force: 32, intelligence: 46, strategy: 46, politics: 58, governance: 58, craft: 82, charisma: 42, speed: 36 },
     skillPairs: [['armorBreak', 'shield'], ['burn', 'morale'], ['counter', 'armorBreak']],
   },
   {
@@ -65,8 +71,29 @@ const ARCHETYPES = Object.freeze([
     roles: ['knowledge'],
     titlePool: ['观星学者', '古卷译者', '火种记史'],
     namePool: ['闻', '简', '知', '言', '书'],
-    attributes: { command: 28, force: 18, strategy: 74, governance: 64, craft: 40, charisma: 54 },
+    abilityArchetype: 'strategist',
+    attributes: { command: 28, force: 18, intelligence: 74, strategy: 74, politics: 64, governance: 64, craft: 40, charisma: 54, speed: 42 },
     skillPairs: [['morale', 'ambush'], ['poison', 'heal'], ['shield', 'morale']],
+  },
+  {
+    id: 'envoy',
+    label: '魅力人才',
+    roles: ['governance', 'charisma'],
+    titlePool: ['游说名士', '盟会使者', '乡望长者'],
+    namePool: ['望', '舒', '容', '信', '和'],
+    abilityArchetype: 'charmer',
+    attributes: { command: 34, force: 22, intelligence: 58, strategy: 58, politics: 66, governance: 66, craft: 30, charisma: 84, speed: 42 },
+    skillPairs: [['morale', 'heal'], ['shield', 'morale'], ['heal', 'shield']],
+  },
+  {
+    id: 'scout',
+    label: '斥候游骑',
+    roles: ['military', 'knowledge'],
+    titlePool: ['山林斥候', '疾行游骑', '探路前锋'],
+    namePool: ['迅', '隼', '遥', '踪', '越'],
+    abilityArchetype: 'scout',
+    attributes: { command: 44, force: 48, intelligence: 62, strategy: 62, politics: 28, governance: 28, craft: 24, charisma: 52, speed: 82 },
+    skillPairs: [['ambush', 'combo'], ['morale', 'ambush'], ['combo', 'shield']],
   },
 ]);
 
@@ -79,6 +106,22 @@ const APPEARANCE_POOLS = Object.freeze({
 });
 
 const EFFECTS = Object.freeze({
+  directDamage: {
+    label: '直接伤害',
+    create: (roll) => ({ key: 'directDamage', value: round2(1.2 + roll * 0.3) }),
+  },
+  secondHit: {
+    label: '二段伤害',
+    create: (roll) => ({ key: 'secondHit', multiplier: round2(0.22 + roll * 0.14) }),
+  },
+  firstStrike: {
+    label: '先手',
+    create: (roll) => ({ key: 'firstStrike', value: round2(0.18 + roll * 0.12) }),
+  },
+  attributeBonus: {
+    label: '属性修正',
+    create: (roll) => ({ key: 'attributeBonus', attribute: 'force', value: 5 + Math.floor(roll * 5) }),
+  },
   lifesteal: {
     label: '吸血',
     create: (roll) => ({ key: 'lifesteal', value: round2(0.12 + roll * 0.08) }),
@@ -181,9 +224,36 @@ function normalizeStatus(raw = {}) {
 }
 
 function normalizeAttributes(raw = {}) {
-  const defaults = { command: 50, force: 50, strategy: 50, governance: 50, craft: 50, charisma: 50 };
+  const strategy = raw.intelligence ?? raw.strategy;
+  const politics = raw.politics ?? raw.governance;
+  const speed = raw.speed ?? Math.round(
+    toInteger(raw.force, 50) * 0.28
+    + toInteger(raw.command, 50) * 0.24
+    + toInteger(strategy, 50) * 0.18
+    + toInteger(raw.charisma, 50) * 0.14
+    + toInteger(politics, 50) * 0.06,
+  );
+  const defaults = {
+    command: 50,
+    force: 50,
+    intelligence: 50,
+    strategy: 50,
+    politics: 50,
+    governance: 50,
+    craft: 50,
+    charisma: 50,
+    speed: 50,
+  };
+  const source = {
+    ...raw,
+    intelligence: strategy,
+    strategy,
+    politics,
+    governance: politics,
+    speed,
+  };
   return Object.keys(defaults).reduce((result, key) => {
-    result[key] = Math.max(1, Math.min(99, toInteger(raw[key], defaults[key])));
+    result[key] = Math.max(1, Math.min(99, toInteger(source[key], defaults[key])));
     return result;
   }, {});
 }
@@ -197,7 +267,17 @@ function normalizeSkill(raw = {}) {
     id: sanitizeText(raw.id, `skill_${effects.map((effect) => effect.key).join('_')}`),
     name: sanitizeText(raw.name, makeSkillName(effects)),
     type: sanitizeText(raw.type, 'battle'),
+    slot: sanitizeText(raw.slot, raw.kind === 'active' ? 'activeSkill' : ''),
+    kind: sanitizeText(raw.kind, raw.type === 'battle' ? 'active' : ''),
+    category: sanitizeText(raw.category, raw.damageType || 'blade'),
+    damageType: sanitizeText(raw.damageType, raw.category || 'blade'),
+    multiplier: Number.isFinite(Number(raw.multiplier)) ? Number(raw.multiplier) : undefined,
+    cooldown: Number.isFinite(Number(raw.cooldown)) ? Math.max(1, toInteger(raw.cooldown, 3)) : undefined,
+    castPolicy: sanitizeText(raw.castPolicy, ''),
+    castConditions: Array.isArray(raw.castConditions) ? raw.castConditions.map((condition) => ({ ...condition })) : undefined,
     effects,
+    budget: raw.budget && typeof raw.budget === 'object' ? { ...raw.budget } : undefined,
+    generatorVersion: sanitizeText(raw.generatorVersion, ''),
   };
 }
 
@@ -249,7 +329,19 @@ function normalizePerson(raw = {}, options = {}) {
   const id = sanitizeText(raw.id);
   if (!id) return null;
   const archetype = ARCHETYPES.find((item) => item.id === raw.archetype) || ARCHETYPES[0];
-  const skills = Array.isArray(raw.skills) ? raw.skills.map(normalizeSkill).filter(Boolean).slice(0, 2) : [];
+  const quality = SkillGeneratorService.normalizeQuality(raw.quality);
+  const abilityArchetype = SkillGeneratorService.normalizeAbilityArchetype(
+    raw.abilityArchetype || raw.abilityKit?.archetype || archetype.abilityArchetype || archetype.id,
+  );
+  const rawSkills = Array.isArray(raw.skills) ? raw.skills.map(normalizeSkill).filter(Boolean).slice(0, 2) : [];
+  const abilityKit = SkillGeneratorService.normalizeAbilityKit(raw.abilityKit, {
+    archetype: archetype.id,
+    abilityArchetype,
+    quality,
+    skills: rawSkills,
+  });
+  const activeSkill = normalizeSkill(SkillGeneratorService.getActiveBattleSkill(abilityKit) || {});
+  const skills = abilityKit.battlePolicy === 'basicAttackOnly' || !activeSkill ? [] : [activeSkill];
   const fallbackAppearanceSeed = raw.source?.seed || `${id}:${raw.name || archetype.id}:${raw.createdAt || ''}`;
   return {
     id,
@@ -259,9 +351,13 @@ function normalizePerson(raw = {}, options = {}) {
     source: raw.source && typeof raw.source === 'object' ? { ...raw.source } : { type: 'seek' },
     archetype: archetype.id,
     archetypeLabel: archetype.label,
+    abilityArchetype,
+    quality,
+    qualityLabel: SkillGeneratorService.getQualityLabel(quality),
     roles: Array.isArray(raw.roles) && raw.roles.length ? raw.roles.map(String) : [...archetype.roles],
     attributes: normalizeAttributes(raw.attributes),
     traits: Array.isArray(raw.traits) ? raw.traits.map(String).slice(0, 4) : [],
+    abilityKit,
     skills,
     appearance: normalizeAppearance(raw.appearance, archetype, fallbackAppearanceSeed),
     status: normalizeStatus(raw.status),
@@ -361,12 +457,16 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
   const sourceType = ENABLED_SOURCE_TYPES.includes(requestedSource) ? requestedSource : 'seek';
   const pool = getArchetypePool(sourceType);
   const archetype = pick(pool, randomSource) || ARCHETYPES[0];
+  const quality = SkillGeneratorService.rollQuality(randomSource);
   const surname = pick(SURNAMES, randomSource) || SURNAMES[0];
   const given = pick(archetype.namePool, randomSource) || archetype.namePool[0];
   const title = pick(archetype.titlePool, randomSource) || archetype.titlePool[0];
   const rollId = Math.floor(rollUnit(randomSource) * 1000000).toString(36).padStart(4, '0');
   const activeCityId = gameState.activeCityId || CityService.CAPITAL_CITY_ID;
   const seed = `${gameState.playerId || 'player'}:${now.getTime()}:${rollId}`;
+  const abilityArchetype = SkillGeneratorService.normalizeAbilityArchetype(archetype.abilityArchetype || archetype.id);
+  const abilityKit = SkillGeneratorService.createAbilityKit({ archetype: archetype.id, abilityArchetype, quality, source: sourceType, seed }, randomSource);
+  const activeSkill = SkillGeneratorService.getActiveBattleSkill(abilityKit);
   return {
     id: `fpc_${now.getTime().toString(36)}_${rollId}`,
     name: `${surname}${given}`,
@@ -380,10 +480,14 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
     },
     archetype: archetype.id,
     archetypeLabel: archetype.label,
+    abilityArchetype,
+    quality,
+    qualityLabel: SkillGeneratorService.getQualityLabel(quality),
     roles: [...archetype.roles],
     attributes: createAttributes(archetype, randomSource),
-    traits: [archetype.label],
-    skills: [createSkill(archetype, randomSource)],
+    traits: [archetype.label, SkillGeneratorService.getQualityLabel(quality)],
+    abilityKit,
+    skills: activeSkill ? [activeSkill] : [],
     appearance: createAppearance(archetype, seed, randomSource),
     status: normalizeStatus({ assigned: 'candidate', loyalty: 55 + Math.floor(rollUnit(randomSource) * 30) }),
     createdAt: now.toISOString(),

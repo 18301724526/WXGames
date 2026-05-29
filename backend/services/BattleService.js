@@ -63,8 +63,11 @@ function getLeaderSnapshot(gameState, leaderId) {
     name: person.name || '无名之士',
     title: person.title || person.archetypeLabel || '名人',
     archetype: person.archetype || '',
+    abilityArchetype: person.abilityArchetype || person.abilityKit?.archetype || person.archetype || '',
+    quality: person.quality || 'common',
     attributes: normalizeAttributes(person.attributes || {}),
     appearance: clone(person.appearance || {}),
+    abilityKit: person.abilityKit && typeof person.abilityKit === 'object' ? clone(person.abilityKit) : null,
     skills: Array.isArray(person.skills) ? clone(person.skills).slice(0, 2) : [],
   };
 }
@@ -77,8 +80,11 @@ function getLeaderSnapshotFromMission(mission) {
     name: raw.name || '无名之士',
     title: raw.title || raw.archetypeLabel || '名人',
     archetype: raw.archetype || '',
+    abilityArchetype: raw.abilityArchetype || raw.abilityKit?.archetype || raw.archetype || '',
+    quality: raw.quality || 'common',
     attributes: normalizeAttributes(raw.attributes || {}),
     appearance: clone(raw.appearance || {}),
+    abilityKit: raw.abilityKit && typeof raw.abilityKit === 'object' ? clone(raw.abilityKit) : null,
     skills: Array.isArray(raw.skills) ? clone(raw.skills).slice(0, 2) : [],
   };
 }
@@ -94,14 +100,28 @@ function getBattleSpeed(unit) {
 }
 
 function inferDamageTypeFromEffects(effects = []) {
-  if (effects.some((effect) => ['burn', 'poison', 'ambush'].includes(effect.key))) return 'strategy';
+  if (effects.some((effect) => ['burn', 'poison', 'ambush', 'firstStrike'].includes(effect.key))) return 'strategy';
   return 'blade';
 }
 
+function getActiveSkillFromAbilityKit(abilityKit = {}) {
+  if (abilityKit?.battlePolicy === 'basicAttackOnly') return null;
+  const abilities = Array.isArray(abilityKit?.abilities) ? abilityKit.abilities : [];
+  return abilities.find((ability) => (
+    ability
+    && ability.kind === 'active'
+    && (ability.type === 'battle' || ability.slot === 'activeSkill')
+  )) || null;
+}
+
 function getBattleSkill(unit, role = 'attacker') {
+  const activeAbility = getActiveSkillFromAbilityKit(unit.leader?.abilityKit);
+  if (activeAbility) return normalizeBattleSkill(clone(activeAbility));
+  if (unit.leader?.abilityKit?.battlePolicy === 'basicAttackOnly') return null;
   if (Array.isArray(unit.leader?.skills) && unit.leader.skills.length) {
     return normalizeBattleSkill(clone(unit.leader.skills[0]));
   }
+  if (unit.leader && unit.leader.id && unit.leader.id !== 'unavailable') return null;
   return normalizeBattleSkill(BattleConfig.getFallbackSkill(role));
 }
 
@@ -121,8 +141,10 @@ function normalizeBattleSkill(skill = {}) {
 
 function inferSkillMultiplier(effects = []) {
   const keys = effects.map((effect) => effect.key);
-  if (keys.some((key) => ['combo', 'armorBreak', 'ambush', 'burn', 'poison'].includes(key))) return 1.45;
-  if (keys.some((key) => ['shield', 'heal', 'morale'].includes(key))) return 1.2;
+  const directDamage = effects.find((effect) => effect.key === 'directDamage');
+  if (directDamage && Number.isFinite(Number(directDamage.value))) return Number(directDamage.value);
+  if (keys.some((key) => ['combo', 'armorBreak', 'ambush', 'burn', 'poison', 'secondHit', 'firstStrike'].includes(key))) return 1.45;
+  if (keys.some((key) => ['shield', 'heal', 'morale', 'attributeBonus'].includes(key))) return 1.2;
   return 1.35;
 }
 
@@ -156,6 +178,12 @@ function healSoldiers(unit, amount) {
   return recovered;
 }
 
+function getSkillEffectMultiplier(skill = {}, key, fallback = 0) {
+  const effect = Array.isArray(skill.effects) ? skill.effects.find((item) => item?.key === key) : null;
+  const value = effect?.multiplier ?? effect?.value;
+  return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
 function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
   const effects = Array.isArray(skill.effects) ? skill.effects : [];
   const notes = [];
@@ -175,11 +203,14 @@ function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
         structured.push({ type: 'heal', target: unit.side, value: recovered, text: `[${unit.name}] 整队恢复兵力 ${recovered}（${unit.soldiers}）` });
       }
     } else if (effect.key === 'shield') {
-      const shield = Math.round(calculateDamage(target, unit, { damageType: 'blade', multiplier: Number(effect.value) || 0.08 }));
+      const shield = Math.round(unit.maxSoldiers * (Number(effect.value) || 0.08));
       if (shield > 0) {
         notes.push(`护势抵消约 ${shield} 伤害`);
         structured.push({ type: 'shield', target: unit.side, value: shield, text: `[${unit.name}] 获得守御，预计抵消 ${shield} 伤害` });
       }
+    } else if (effect.key === 'attributeBonus') {
+      structured.push({ type: 'buff', target: unit.side, key: effect.key, attribute: effect.attribute || '', value: effect.value || 0, text: `[${unit.name}] ${effect.attribute || '属性'}修正 ${effect.value || 0}` });
+      notes.push('属性修正');
     } else if (effect.key === 'morale') {
       structured.push({ type: 'morale', target: unit.side, value: unit.morale, text: `[${unit.name}] 士气保持 ${unit.morale}` });
       notes.push('士气保持');
@@ -192,6 +223,48 @@ function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
     }
   });
   return { notes, structured };
+}
+
+function getSoldierRatio(unit) {
+  return unit.maxSoldiers > 0 ? unit.soldiers / unit.maxSoldiers : 0;
+}
+
+function hasStatus(unit, key) {
+  if (!key) return false;
+  return Array.isArray(unit.statuses) && unit.statuses.some((status) => status?.key === key);
+}
+
+function isCastConditionMet(condition = {}, unit, target) {
+  if (!condition || typeof condition !== 'object') return true;
+  const threshold = Number(condition.value ?? condition.pct ?? condition.threshold);
+  switch (condition.type) {
+    case 'cooldownReady':
+      return unit.skillCooldownRemaining <= 0;
+    case 'targetAlive':
+      return target.soldiers > 0;
+    case 'selfSoldierBelowPct':
+      return getSoldierRatio(unit) < (Number.isFinite(threshold) ? threshold : 1);
+    case 'selfSoldierAbovePct':
+      return getSoldierRatio(unit) > (Number.isFinite(threshold) ? threshold : 0);
+    case 'targetSoldierBelowPct':
+      return getSoldierRatio(target) < (Number.isFinite(threshold) ? threshold : 1);
+    case 'targetHasStatus':
+      return hasStatus(target, condition.key || condition.status);
+    case 'selfHasStatus':
+      return hasStatus(unit, condition.key || condition.status);
+    case 'firstOwnAction':
+      return toInteger(unit.ownActionCount, 0) === 0;
+    default:
+      return true;
+  }
+}
+
+function canCastSkill(unit, target, skill = null) {
+  if (!skill || unit.skillCooldownRemaining > 0 || target.soldiers <= 0) return false;
+  const conditions = Array.isArray(skill.castConditions) && skill.castConditions.length
+    ? skill.castConditions
+    : [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
+  return conditions.every((condition) => isCastConditionMet(condition, unit, target));
 }
 
 function getBattleMapForTerritory(territory = {}) {
@@ -264,6 +337,8 @@ function makeUnit(side, base) {
     moraleEffectEnabled: MORALE_EFFECT_ENABLED,
     attributes: normalizeAttributes(base.attributes || {}),
     skillCooldownRemaining: 0,
+    ownActionCount: 0,
+    statuses: Array.isArray(base.statuses) ? clone(base.statuses) : [],
   };
 }
 
@@ -333,31 +408,56 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     const beforeDefender = defender.soldiers;
     const actorName = actor.unit.name;
     const targetName = actor.target.name;
-    const useSkill = actor.unit.skillCooldownRemaining <= 0;
+    const useSkill = canCastSkill(actor.unit, actor.target, actor.unit.skill);
     const action = useSkill ? 'skill' : 'basicAttack';
     const skill = useSkill ? actor.unit.skill : null;
     const damageType = useSkill ? skill.damageType : 'blade';
     const multiplier = useSkill ? skill.multiplier : 1;
     const damage = calculateDamage(actor.unit, actor.target, { damageType, multiplier });
     const dealt = applyDamage(actor.target, damage);
-    const sideEffects = useSkill ? applySkillSideEffects(actor.unit, actor.target, skill, dealt) : { notes: [], structured: [] };
+    const secondHitMultiplier = useSkill ? getSkillEffectMultiplier(skill, 'secondHit', 0) : 0;
+    const firstStrikeMultiplier = useSkill && toInteger(actor.unit.ownActionCount, 0) === 0
+      ? getSkillEffectMultiplier(skill, 'firstStrike', 0)
+      : 0;
+    const extraHits = [];
+    if (secondHitMultiplier > 0 && actor.target.soldiers > 0) {
+      const extraDamage = calculateDamage(actor.unit, actor.target, { damageType, multiplier: secondHitMultiplier });
+      const extraDealt = applyDamage(actor.target, extraDamage);
+      if (extraDealt > 0) extraHits.push({ key: 'secondHit', label: '二段伤害', damage: extraDealt, remaining: actor.target.soldiers });
+    }
+    if (firstStrikeMultiplier > 0 && actor.target.soldiers > 0) {
+      const extraDamage = calculateDamage(actor.unit, actor.target, { damageType, multiplier: firstStrikeMultiplier });
+      const extraDealt = applyDamage(actor.target, extraDamage);
+      if (extraDealt > 0) extraHits.push({ key: 'firstStrike', label: '先机伤害', damage: extraDealt, remaining: actor.target.soldiers });
+    }
+    const totalDealt = dealt + extraHits.reduce((sum, hit) => sum + hit.damage, 0);
+    const sideEffects = useSkill ? applySkillSideEffects(actor.unit, actor.target, skill, totalDealt) : { notes: [], structured: [] };
     const cooldownBefore = actor.unit.skillCooldownRemaining;
     if (useSkill) actor.unit.skillCooldownRemaining = getSkillCooldown(skill);
     else actor.unit.skillCooldownRemaining = Math.max(0, actor.unit.skillCooldownRemaining - 1);
     const cooldownAfter = actor.unit.skillCooldownRemaining;
+    actor.unit.ownActionCount = toInteger(actor.unit.ownActionCount, 0) + 1;
     const actionLine = useSkill
       ? `[${actorName}] 发动战法 [${skill?.name || '技能'}]`
       : `[${actorName}] 对 [${targetName}] 发动普通攻击`;
     const damageLine = formatDamageLine(targetName, damageType, dealt, actor.target.soldiers);
+    const extraLines = extraHits.map((hit) => `[${targetName}] 受到${hit.label} ${hit.damage}（${hit.remaining}）`);
     const lines = [
       `[${actorName}] 开始行动`,
       actionLine,
       damageLine,
+      ...extraLines,
       ...sideEffects.structured.map((effect) => effect.text),
     ];
     const text = useSkill
-      ? `${actorName}队发动${skill?.name || '技能'}，${targetName}损失 ${dealt} 士兵${sideEffects.notes.length ? `，${sideEffects.notes.join('，')}` : ''}`
-      : `${actorName}队普攻接战，${targetName}损失 ${dealt} 士兵`;
+      ? `${actorName}队发动${skill?.name || '技能'}，${targetName}损失 ${totalDealt} 士兵${sideEffects.notes.length ? `，${sideEffects.notes.join('，')}` : ''}`
+      : `${actorName}队普攻接战，${targetName}损失 ${totalDealt} 士兵`;
+    const actorPortrait = useSkill
+      ? clone(actor.unit.leader?.appearance || {})
+      : null;
+    const presentation = useSkill
+      ? { cutIn: true, showSkillName: true, emphasis: 'skill' }
+      : { cutIn: false, showSkillName: false, emphasis: 'basicAttack' };
     const turn = {
       index: turns.length + 1,
       round,
@@ -367,14 +467,19 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       actionType: action,
       actorName,
       targetName,
-      damage: dealt,
+      damage: totalDealt,
       damageType,
       damageLabel: DAMAGE_TYPE_LABELS[damageType] || '伤害',
       skillId: skill?.id || '',
       skillName: skill?.name || '',
-      skillCooldown: useSkill ? getSkillCooldown(skill) : getSkillCooldown(actor.unit.skill),
+      skillCooldown: actor.unit.skill ? getSkillCooldown(actor.unit.skill) : 0,
       cooldownBefore,
       cooldownAfter,
+      castPolicy: skill?.castPolicy || '',
+      castConditions: skill?.castConditions || [],
+      extraHits,
+      actorPortrait,
+      presentation,
       morale: {
         actor: actor.unit.morale,
         target: actor.target.morale,
@@ -401,7 +506,10 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       actionType: action,
       skillName: turn.skillName,
       damageType,
-      damage: dealt,
+      damage: totalDealt,
+      actorPortrait,
+      presentation,
+      extraHits,
       soldiersBefore: turn.soldiersBefore,
       soldiersAfter: turn.soldiersAfter,
       lines,

@@ -504,6 +504,9 @@
 
     static formatFamousPersonSkill(skill = {}) {
       const effectLabels = {
+        directDamage: '直接伤害',
+        secondHit: '二段伤害',
+        firstStrike: '先手',
         lifesteal: '吸血',
         combo: '连击',
         counter: '反击',
@@ -514,11 +517,33 @@
         morale: '士气',
         heal: '治疗',
         ambush: '伏击',
+        attributeBonus: '属性修正',
+        resourceOutputPct: '资源产出',
+        allBasicOutputPct: '基础产出',
+        constructionSpeedPct: '建造速度',
+        constructionCostPct: '建造消耗',
+        knowledgeOutputPct: '知识产出',
+        populationCapPct: '人口上限',
+        happinessFlat: '幸福度',
+        trainingSpeedPct: '训练速度',
+        eventRewardPct: '事件收益',
+        eventRiskReductionPct: '事件风险',
+        settlementPacifyPct: '安抚效率',
+        famousRetentionPct: '名人说服',
+        diplomacyBonusPct: '外交加成',
+        scoutReportBonusPct: '侦查情报',
+        cityStabilityPct: '城市稳定',
       };
       const effects = Array.isArray(skill.effects)
         ? skill.effects.map((effect) => effectLabels[effect.key] || effect.key).filter(Boolean)
         : [];
       return effects.length ? `${skill.name || '技能'} · ${effects.join(' / ')}` : (skill.name || '暂无技能');
+    }
+
+    static getFamousPersonAbilities(person = {}) {
+      const abilities = Array.isArray(person.abilityKit?.abilities) ? person.abilityKit.abilities : [];
+      if (abilities.length) return abilities;
+      return Array.isArray(person.skills) ? person.skills : [];
     }
 
     static buildFamousPersonCard(person = {}, options = {}) {
@@ -535,13 +560,15 @@
       const stats = [
         ['统率', attrs.command],
         ['武力', attrs.force],
-        ['谋略', attrs.strategy],
-        ['治理', attrs.governance],
+        ['智力', attrs.intelligence ?? attrs.strategy],
+        ['政治', attrs.politics ?? attrs.governance],
         ['工巧', attrs.craft],
         ['魅力', attrs.charisma],
+        ['速度', attrs.speed],
       ].map(([label, value]) => `${label}${this.toInteger(value)}`).join('  ');
-      const skills = Array.isArray(person.skills) && person.skills.length
-        ? person.skills.map((skill) => this.formatFamousPersonSkill(skill))
+      const abilities = this.getFamousPersonAbilities(person);
+      const skills = abilities.length
+        ? abilities.map((skill) => this.formatFamousPersonSkill(skill))
         : ['暂无技能'];
       return {
         id: person.id || '',

@@ -1067,8 +1067,14 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         title: '破阵先登',
         source: { type: 'seek', label: '寻访' },
         roles: ['military'],
-        attributes: { command: 70, force: 82, strategy: 40, governance: 28, craft: 22, charisma: 55 },
-        skills: [{ name: '血刃连袭', effects: [{ key: 'lifesteal' }, { key: 'combo' }] }],
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, craft: 22, charisma: 55, speed: 66 },
+        abilityKit: {
+          abilities: [
+            { name: '血刃破阵', kind: 'active', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
+            { name: '锐锋', kind: 'passive', effects: [{ key: 'attributeBonus' }] },
+          ],
+        },
+        skills: [{ name: '血刃破阵', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] }],
         appearance: {
           version: 'famous-portrait-v3.0',
           layers: {
@@ -1085,8 +1091,14 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         title: '垒门守将',
         source: { type: 'event', label: '事件投奔' },
         roles: ['governance'],
-        attributes: { command: 50, force: 30, strategy: 60, governance: 80, craft: 45, charisma: 66 },
-        skills: [{ name: '固阵振军', effects: [{ key: 'shield' }, { key: 'morale' }] }],
+        attributes: { command: 50, force: 30, intelligence: 60, politics: 80, craft: 45, charisma: 66, speed: 42 },
+        abilityKit: {
+          abilities: [
+            { name: '督田理赋', kind: 'civil', effects: [{ key: 'resourceOutputPct' }] },
+            { name: '仓廪整备', kind: 'civil', effects: [{ key: 'populationCapPct' }] },
+          ],
+        },
+        skills: [],
       }],
     },
   }, {
@@ -1252,10 +1264,20 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
           actor: 'attacker',
           target: 'defender',
           action: 'skill',
-          skillName: '血刃连袭',
+          actionType: 'skill',
+          skillName: '血刃破阵',
           damage: 43,
-          text: '陆骁队发起普攻，林地部落损失 43 士兵',
-          lines: ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）'],
+          actorName: '陆骁',
+          actorPortrait: {
+            layers: {
+              outfit: 'assets/art/famous-person/layers/fp-layer-v3-outfit-01.png',
+              face: 'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
+              hair: 'assets/art/famous-person/layers/fp-layer-v3-hair-10.png',
+            },
+          },
+          presentation: { cutIn: true, showSkillName: true, emphasis: 'skill' },
+          text: '陆骁队发动血刃破阵，林地部落损失 43 士兵',
+          lines: ['[陆骁] 开始行动', '[陆骁] 发动战法 [血刃破阵]', '[林地部落] 受到兵刃伤害 43（457）'],
           attackerSoldiersBefore: 501,
           defenderSoldiersBefore: 500,
           attackerSoldiersAfter: 501,
@@ -1280,6 +1302,7 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('501/501')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('457/500')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('[陆骁] 开始行动')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('血刃破阵')));
   assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('受到兵刃伤害')));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'skipBattleScene' || target.action?.type === 'closeBattleScene'));
   assert.ok(calls.some((call) => (
