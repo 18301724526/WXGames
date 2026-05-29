@@ -34,6 +34,7 @@
       this.tapDisposer = null;
       this.dragDisposer = null;
       this.gestureDisposer = null;
+      this.pointerMoveDisposer = null;
       this.effectTimer = null;
       this.floatTimer = null;
       this.showSettings = false;
@@ -139,7 +140,17 @@
       if (this.runtime.onGesture && !this.gestureDisposer) {
         this.gestureDisposer = this.runtime.onGesture((gesture, event) => this.handleGesture(gesture, event));
       }
+      if (this.runtime.onPointerMove && !this.pointerMoveDisposer) {
+        this.pointerMoveDisposer = this.runtime.onPointerMove((point) => this.handlePointerMove(point));
+      }
       return true;
+    }
+
+    handlePointerMove(point) {
+      if (!this.renderer || typeof this.renderer.setHoverPoint !== 'function') return false;
+      const changed = this.renderer.setHoverPoint(point);
+      if (changed && this.showFamousPersons) this.renderActive();
+      return changed;
     }
 
     hasBlockingOverlayOpen() {
@@ -195,6 +206,13 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return false;
+      if (action.type === 'showFamousSkillTooltip') {
+        const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
+          ? this.renderer.setPinnedFamousSkillTooltip(action)
+          : false;
+        if (handled) this.renderActive();
+        return handled;
+      }
       const handled = this.handleAction(action, event);
       if (handled && event?.preventDefault) event.preventDefault();
       if (handled && event?.stopPropagation) event.stopPropagation();
@@ -844,6 +862,10 @@
       if (!this.inputEnabled && this.gestureDisposer) {
         this.gestureDisposer();
         this.gestureDisposer = null;
+      }
+      if (!this.inputEnabled && this.pointerMoveDisposer) {
+        this.pointerMoveDisposer();
+        this.pointerMoveDisposer = null;
       }
       if (this.inputEnabled) this.bindInput();
     }

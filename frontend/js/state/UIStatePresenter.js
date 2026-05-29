@@ -604,21 +604,21 @@
       const roleLabels = {
         military: '军事',
         governance: '治理',
-        craft: '工巧',
         knowledge: '知识',
+        charisma: '魅力',
       };
       const roles = Array.isArray(person.roles) && person.roles.length
         ? person.roles.map((role) => roleLabels[role] || role).join(' / ')
         : (person.archetypeLabel || '人才');
-      const stats = [
-        ['统率', attrs.command],
-        ['武力', attrs.force],
-        ['智力', attrs.intelligence ?? attrs.strategy],
-        ['政治', attrs.politics ?? attrs.governance],
-        ['工巧', attrs.craft],
-        ['魅力', attrs.charisma],
-        ['速度', attrs.speed],
-      ].map(([label, value]) => `${label}${this.toInteger(value)}`).join('  ');
+      const attributes = [
+        { key: 'command', label: '统帅', shortLabel: '统', value: this.toInteger(attrs.command) },
+        { key: 'force', label: '武力', shortLabel: '武', value: this.toInteger(attrs.force) },
+        { key: 'intelligence', label: '智力', shortLabel: '智', value: this.toInteger(attrs.intelligence ?? attrs.strategy) },
+        { key: 'politics', label: '政治', shortLabel: '政', value: this.toInteger(attrs.politics ?? attrs.governance) },
+        { key: 'charisma', label: '魅力', shortLabel: '魅', value: this.toInteger(attrs.charisma) },
+        { key: 'speed', label: '速度', shortLabel: '速', value: this.toInteger(attrs.speed) },
+      ];
+      const stats = attributes.map((item) => `${item.shortLabel}${item.value}`).join('  ');
       const abilities = this.getFamousPersonAbilities(person);
       const skills = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkill(skill))
@@ -626,6 +626,12 @@
       const skillDetails = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkillDetail(skill))
         : [{ id: 'none', name: '暂无技能', kindText: '技能', effectText: '暂无效果', meta: '', description: '', summary: '暂无技能' }];
+      const skillBadges = skillDetails.slice(0, 2).map((skill) => ({
+        id: skill.id,
+        label: skill.kindText || '技能',
+        name: skill.name || '技能',
+        text: `${skill.kindText || '技能'}：${skill.name || '技能'}`,
+      }));
       return {
         id: person.id || '',
         name: person.name || '无名之士',
@@ -633,8 +639,10 @@
         roleText: roles,
         sourceText: this.formatFamousPersonSource(person.source),
         stats,
+        attributes,
         skills,
         skillDetails,
+        skillBadges,
         appearance: person.appearance && typeof person.appearance === 'object' ? person.appearance : null,
         statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
       };
@@ -651,7 +659,7 @@
       const seekText = seekAvailable ? '寻访' : '暂不可寻访';
       return {
         title: '名人',
-        subtitle: '通过寻访、事件与投奔加入文明',
+        subtitle: '查看名人能力与六维属性',
         peopleCount: this.toInteger(famous.count ?? people.length),
         candidateCount,
         maxCandidates,

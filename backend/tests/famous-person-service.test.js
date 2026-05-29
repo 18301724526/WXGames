@@ -224,6 +224,8 @@ test('legacy civil famous people upgrade to stored civil abilities without battl
     source: { type: 'seek', seed: 'legacy:civil' },
     archetype: 'envoy',
     abilityArchetype: 'charmer',
+    roles: ['craft'],
+    attributes: { command: 34, force: 22, intelligence: 58, politics: 66, craft: 84, charisma: 84, speed: 42 },
     skills: [{
       id: 'skill_legacy_morale_heal',
       name: '振军疗伤',
@@ -240,6 +242,8 @@ test('legacy civil famous people upgrade to stored civil abilities without battl
 
   assert.equal(person.abilityKit.domain, 'civil');
   assert.equal(person.abilityKit.battlePolicy, 'basicAttackOnly');
+  assert.deepEqual(person.roles, ['governance']);
+  assert.equal(Object.prototype.hasOwnProperty.call(person.attributes, 'craft'), false);
   assert.deepEqual(person.abilityKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
   assert.equal(person.abilityKit.abilities.every((ability) => ability.kind === 'civil'), true);
   assert.equal(person.abilityKit.abilities.every((ability) => ability.implementationStatus === 'storedOnly'), true);
@@ -325,8 +329,8 @@ test('generated portrait can pick across all three v3 layer pools', () => {
       0.2, 0, 0, 0.5, 0.4,
       0.3, 0.2, 0.1, 0.2, 0.3, 0.4,
       0, 0, 0,
-      0, 0, 0,
-      0.99, 0.49, 0,
+      0, 0, 0.99,
+      0.49, 0, 0,
       0,
     ]),
   );

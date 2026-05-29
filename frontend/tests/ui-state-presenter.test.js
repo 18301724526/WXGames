@@ -171,7 +171,7 @@ test('famous person view state maps candidates and joined people into panel card
         title: '破阵先登',
         source: { type: 'seek', label: '寻访' },
         roles: ['military'],
-        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, craft: 22, charisma: 55, speed: 66 },
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
         abilityKit: {
           abilities: [
             {
@@ -203,7 +203,7 @@ test('famous person view state maps candidates and joined people into panel card
         title: '垒门守将',
         source: { type: 'event', label: '事件投奔' },
         roles: ['governance'],
-        attributes: { command: 50, force: 30, intelligence: 60, politics: 80, craft: 45, charisma: 66, speed: 42 },
+        attributes: { command: 50, force: 30, intelligence: 60, politics: 80, charisma: 66, speed: 42 },
         abilityKit: {
           abilities: [
             { id: 'civil_governor_field_admin', name: '督田理赋', slot: 'civilPrimary', kind: 'civil', trigger: 'passiveStored', implementationStatus: 'storedOnly', effects: [{ key: 'resourceOutputPct' }] },
@@ -218,10 +218,14 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.seek.available, true);
   assert.deepEqual(view.seek.action, { type: 'seekFamousPerson', disabled: false });
   assert.equal(view.people[0].name, '陆骁');
-  assert.match(view.people[0].stats, /智力40/);
-  assert.match(view.people[0].stats, /速度66/);
+  assert.match(view.people[0].stats, /智40/);
+  assert.match(view.people[0].stats, /速66/);
+  assert.deepEqual(view.people[0].attributes.map((item) => item.label), ['统帅', '武力', '智力', '政治', '魅力', '速度']);
+  assert.equal(view.people[0].attributes.find((item) => item.key === 'speed').value, 66);
+  assert.equal(view.people[0].attributes.some((item) => item.key === 'craft'), false);
   assert.match(view.people[0].skills[0], /吸血/);
   assert.match(view.people[0].skills[1], /属性修正/);
+  assert.deepEqual(view.people[0].skillBadges.map((item) => item.text), ['主动战法：血刃破阵', '战斗被动：锐锋']);
   assert.equal(view.people[0].skillDetails[0].kindText, '主动战法');
   assert.match(view.people[0].skillDetails[0].meta, /冷却3次自身行动/);
   assert.match(view.people[0].skillDetails[0].meta, /冷却就绪/);

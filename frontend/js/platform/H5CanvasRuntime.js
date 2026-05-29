@@ -15,6 +15,7 @@
       this.tapHandlers = [];
       this.dragHandlers = [];
       this.gestureHandlers = [];
+      this.pointerMoveHandlers = [];
       this.pointerDown = null;
       this.dragActive = false;
       this.dragMoved = false;
@@ -248,9 +249,10 @@
     }
 
     handlePointerMove(event) {
+      const point = this.toCanvasPoint(event);
+      this.pointerMoveHandlers.forEach((handler) => handler(point, event));
       if (this.activePinch) return false;
       if (!this.pointerDown || !this.dragActive) return false;
-      const point = this.toCanvasPoint(event);
       const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown.pointerId;
       if (pointerId !== this.pointerDown.pointerId) return false;
       if (Math.abs(point.x - this.pointerDown.x) > 3 || Math.abs(point.y - this.pointerDown.y) > 3) this.dragMoved = true;
@@ -384,6 +386,14 @@
       this.gestureHandlers.push(handler);
       return () => {
         this.gestureHandlers = this.gestureHandlers.filter((item) => item !== handler);
+      };
+    }
+
+    onPointerMove(handler) {
+      if (typeof handler !== 'function') return () => {};
+      this.pointerMoveHandlers.push(handler);
+      return () => {
+        this.pointerMoveHandlers = this.pointerMoveHandlers.filter((item) => item !== handler);
       };
     }
 

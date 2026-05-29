@@ -25,6 +25,10 @@
       this.assetCache = new Map();
       this.assetsChangedHandler = null;
       this.hitTargets = [];
+      this.hoverPoint = null;
+      this.famousSkillHitTargets = [];
+      this.activeFamousSkillTooltip = null;
+      this.pinnedFamousSkillTooltip = null;
       this.suppressHitTargets = false;
       this.frameNow = 0;
       this.fpsLastFrameAt = 0;
@@ -321,6 +325,44 @@
       return backgroundAction;
     }
 
+    containsPoint(rect = {}, point = {}) {
+      const x = Number(point.x);
+      const y = Number(point.y);
+      return Number.isFinite(x)
+        && Number.isFinite(y)
+        && x >= Number(rect.x)
+        && x <= Number(rect.x) + Number(rect.width)
+        && y >= Number(rect.y)
+        && y <= Number(rect.y) + Number(rect.height);
+    }
+
+    setHoverPoint(point = null) {
+      if (!point || !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))) {
+        this.hoverPoint = null;
+        return false;
+      }
+      this.hoverPoint = { x: Number(point.x), y: Number(point.y) };
+      return true;
+    }
+
+    setPinnedFamousSkillTooltip(action = null) {
+      if (!action || action.type !== 'showFamousSkillTooltip') {
+        this.pinnedFamousSkillTooltip = null;
+        return false;
+      }
+      this.pinnedFamousSkillTooltip = { ...action };
+      return true;
+    }
+
+    getFamousSkillTooltipAction(point = {}) {
+      if (!point) return null;
+      for (let index = this.famousSkillHitTargets.length - 1; index >= 0; index -= 1) {
+        const target = this.famousSkillHitTargets[index];
+        if (this.containsPoint(target, point)) return target.action || null;
+      }
+      return null;
+    }
+
     isAllowedUnderTutorialShield(action = {}) {
       if (action.type === 'goToGuideTaskTarget') return true;
       if (action.type === 'openTaskCenter') {
@@ -522,6 +564,80 @@
       const drawnAny = drawLayers();
       this.ctx.restore();
       return drawnAny;
+    }
+
+    drawFamousAttributeRadar(attributes = [], x, y, size) {
+      if (!this.ctx) return;
+      const items = Array.isArray(attributes) ? attributes.slice(0, 6) : [];
+      if (items.length < 3) return;
+      const cx = x + size / 2;
+      const cy = y + size / 2;
+      const radius = size * 0.34;
+      const start = -Math.PI / 2;
+      const makePoints = (scale, useValues = false) => items.map((item, index) => {
+        const angle = start + (Math.PI * 2 * index) / items.length;
+        const valueRatio = useValues ? Math.max(0, Math.min(1, (Number(item.value) || 0) / 100)) : 1;
+        const r = radius * scale * valueRatio;
+        return {
+          x: cx + Math.cos(angle) * r,
+          y: cy + Math.sin(angle) * r,
+          item,
+        };
+      });
+      const drawPolygon = (points, fill, stroke, lineWidth = 1) => {
+        if (!points.length || !this.ctx) return;
+        this.ctx.beginPath();
+        this.ctx.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach((point) => this.ctx.lineTo(point.x, point.y));
+        if (typeof this.ctx.closePath === 'function') this.ctx.closePath();
+        else this.ctx.lineTo(points[0].x, points[0].y);
+        if (fill) {
+          this.ctx.fillStyle = fill;
+          this.ctx.fill();
+        }
+        if (stroke) {
+          this.ctx.strokeStyle = stroke;
+          this.ctx.lineWidth = lineWidth;
+          this.ctx.stroke();
+        }
+      };
+      [1, 0.66, 0.33].forEach((scale) => {
+        drawPolygon(makePoints(scale), '', scale === 1 ? 'rgba(255, 226, 177, 0.22)' : 'rgba(255, 226, 177, 0.1)');
+      });
+      items.forEach((item, index) => {
+        const angle = start + (Math.PI * 2 * index) / items.length;
+        this.drawLine(cx, cy, cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, {
+          color: 'rgba(255, 226, 177, 0.1)',
+          width: 1,
+        });
+      });
+      const valuePoints = makePoints(1, true);
+      drawPolygon(valuePoints, 'rgba(116, 211, 160, 0.24)', '#74d3a0', 1.4);
+      valuePoints.forEach((point) => {
+        this.drawPanel(point.x - 2.5, point.y - 2.5, 5, 5, {
+          fill: '#ffd98a',
+          stroke: 'rgba(0, 0, 0, 0.22)',
+          radius: 3,
+        });
+      });
+      items.forEach((item, index) => {
+        const angle = start + (Math.PI * 2 * index) / items.length;
+        const labelX = cx + Math.cos(angle) * radius * 1.28;
+        const labelY = cy + Math.sin(angle) * radius * 1.28;
+        this.drawText(item.shortLabel || item.label || '', labelX, labelY - 5, {
+          size: 8,
+          bold: true,
+          color: '#d8c8a0',
+          align: 'center',
+          baseline: 'middle',
+        });
+        this.drawText(String(Math.floor(Number(item.value) || 0)), labelX, labelY + 6, {
+          size: 8,
+          color: '#8fa0a4',
+          align: 'center',
+          baseline: 'middle',
+        });
+      });
     }
 
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
@@ -1272,6 +1388,8 @@
       const optionNow = Number(options.now);
       const now = Number.isFinite(optionNow) ? optionNow : Date.now();
       this.frameNow = now;
+      this.famousSkillHitTargets = [];
+      this.activeFamousSkillTooltip = null;
       this.updateFps(now);
       return now;
     }
@@ -2309,11 +2427,11 @@
 
     renderFamousPersonItem(card = {}, x, y, width, options = {}) {
       const candidate = Boolean(options.candidate);
-      const height = candidate ? 158 : 138;
+      const height = candidate ? 136 : 124;
       this.drawPanel(x, y, width, height, {
         fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
         stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
-        radius: 9,
+        radius: 8,
         inset: candidate ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
       });
       const portraitWidth = 74;
@@ -2345,48 +2463,104 @@
         });
       }
       const textX = x + 96;
-      const rightPad = candidate ? 86 : 14;
-      const textWidth = width - (textX - x) - rightPad;
-      this.drawText(this.truncateText(`${card.name || '无名之士'} · ${card.title || '名人'}`, textWidth, { size: 14, bold: true }), textX, y + 10, {
-        size: 14,
+      const buttonW = candidate ? 58 : 0;
+      const actionPad = candidate ? buttonW + 20 : 0;
+      const radarSize = Math.min(92, Math.max(74, width * 0.24));
+      const radarX = x + width - radarSize - 10 - actionPad;
+      const radarY = y + (height - radarSize) / 2 + (candidate ? -3 : 0);
+      const textWidth = Math.max(112, radarX - textX - 10);
+      this.drawText(this.truncateText(card.name || '无名之士', textWidth, { size: 15, bold: true }), textX, y + 13, {
+        size: 15,
         bold: true,
         color: '#fff1cf',
       });
-      this.drawText(this.truncateText(`${card.roleText || '人才'} · ${card.sourceText || ''}`, textWidth, { size: 10 }), textX, y + 31, {
+      this.drawText(this.truncateText(card.title || '名人', textWidth, { size: 10 }), textX, y + 35, {
         size: 10,
         color: '#cbbd96',
       });
-      this.drawText(this.truncateText(card.stats || '', textWidth, { size: 10 }), textX, y + 55, {
-        size: 10,
-        color: '#aeb0b8',
-      });
+      this.drawFamousAttributeRadar(card.attributes || [], radarX, radarY, radarSize);
       const skillDetails = Array.isArray(card.skillDetails) && card.skillDetails.length
         ? card.skillDetails
         : (Array.isArray(card.skills) ? card.skills.map((skill) => ({ name: skill, kindText: '技能', effectText: '', meta: '', summary: skill })) : []);
-      skillDetails.slice(0, 2).forEach((skill, index) => {
-        const skillY = y + 76 + index * 28;
-        const label = `${skill.kindText || '技能'} · ${skill.name || '技能'}`;
-        const meta = skill.meta || skill.effectText || skill.summary || '';
-        this.drawText(this.truncateText(label, textWidth, { size: 10, bold: true }), textX, skillY, {
+      const skillBadges = Array.isArray(card.skillBadges) && card.skillBadges.length
+        ? card.skillBadges
+        : skillDetails.map((skill) => ({
+          id: skill.id,
+          label: skill.kindText || '技能',
+          name: skill.name || '技能',
+          text: `${skill.kindText || '技能'}：${skill.name || '技能'}`,
+        }));
+      skillBadges.slice(0, 2).forEach((badge, index) => {
+        const skill = skillDetails[index] || {};
+        const badgeY = y + 58 + index * 27;
+        const badgeH = 22;
+        this.drawPanel(textX, badgeY, textWidth, badgeH, {
+          fill: index === 0 ? 'rgba(47, 92, 69, 0.54)' : 'rgba(96, 73, 35, 0.54)',
+          stroke: index === 0 ? 'rgba(116, 211, 160, 0.28)' : 'rgba(255, 217, 138, 0.28)',
+          radius: 7,
+        });
+        this.drawText(this.truncateText(badge.text || skill.name || '技能', textWidth - 16, { size: 10, bold: true }), textX + 8, badgeY + badgeH / 2, {
           size: 10,
           bold: true,
-          color: index === 0 ? '#74d3a0' : '#ffd98a',
+          color: index === 0 ? '#bdf2cf' : '#ffe0a3',
+          baseline: 'middle',
         });
-        this.drawText(this.truncateText(meta, textWidth, { size: 9 }), textX, skillY + 14, {
-          size: 9,
-          color: '#aeb0b8',
-        });
+        const action = {
+          type: 'showFamousSkillTooltip',
+          cardId: card.id || '',
+          skillIndex: index,
+          skill,
+        };
+        const rect = { x: textX, y: badgeY, width: textWidth, height: badgeH };
+        this.famousSkillHitTargets.push({ ...rect, action });
+        this.addHitTarget(rect, action);
+        if (this.hoverPoint && this.containsPoint(rect, this.hoverPoint)) this.activeFamousSkillTooltip = action;
       });
       if (candidate) {
-        const buttonW = 66;
-        const acceptX = x + width - buttonW - 12;
-        const dismissX = acceptX;
-        this.drawButton(acceptX, y + 22, buttonW, 28, '接纳', { size: 12, bold: true, active: true, radius: 8 });
-        this.drawButton(dismissX, y + 62, buttonW, 28, '放弃', { size: 12, radius: 8 });
-        this.addHitTarget({ x: acceptX, y: y + 22, width: buttonW, height: 28 }, card.acceptAction);
-        this.addHitTarget({ x: dismissX, y: y + 62, width: buttonW, height: 28 }, card.dismissAction);
+        const acceptX = x + width - buttonW - 10;
+        this.drawButton(acceptX, y + 30, buttonW, 28, '接纳', { size: 12, bold: true, active: true, radius: 8 });
+        this.drawButton(acceptX, y + 70, buttonW, 28, '放弃', { size: 12, radius: 8 });
+        this.addHitTarget({ x: acceptX, y: y + 30, width: buttonW, height: 28 }, card.acceptAction);
+        this.addHitTarget({ x: acceptX, y: y + 70, width: buttonW, height: 28 }, card.dismissAction);
       }
       return y + height + 10;
+    }
+
+    renderFamousSkillTooltip(action = null) {
+      const skill = action?.skill;
+      if (!skill || !this.ctx) return;
+      const width = Math.min(300, Math.max(238, this.width - 44));
+      const lines = [
+        skill.effectText ? `效果：${skill.effectText}` : '',
+        skill.meta ? `条件：${skill.meta}` : '',
+        skill.description || '',
+      ].filter(Boolean);
+      const wrapped = lines.flatMap((line) => this.wrapTextLimit(line, width - 28, 2, { size: 11 }));
+      const height = Math.min(132, 50 + wrapped.length * 16);
+      const anchor = this.famousSkillHitTargets.find((target) => (
+        target.action?.cardId === action.cardId
+        && target.action?.skillIndex === action.skillIndex
+      ));
+      const preferredX = anchor ? anchor.x : Math.max(16, (this.width - width) / 2);
+      const preferredY = anchor ? anchor.y - height - 8 : 80;
+      const tooltipX = Math.max(14, Math.min(this.width - width - 14, preferredX));
+      const tooltipY = Math.max(58, Math.min(this.height - height - 18, preferredY));
+      this.drawPanel(tooltipX, tooltipY, width, height, {
+        fill: 'rgba(16, 18, 16, 0.96)',
+        stroke: 'rgba(116, 211, 160, 0.36)',
+        radius: 8,
+        inset: 'rgba(255, 255, 255, 0.05)',
+      });
+      this.drawText(`${skill.kindText || '技能'} · ${skill.name || '技能'}`, tooltipX + 14, tooltipY + 14, {
+        size: 13,
+        bold: true,
+        color: '#fff1cf',
+      });
+      this.drawTextLines(wrapped.slice(0, 5), tooltipX + 14, tooltipY + 38, {
+        size: 11,
+        color: '#cbd6c8',
+        lineHeight: 16,
+      });
     }
 
     renderFamousPersonsPanel(state = {}, options = {}) {
@@ -2488,10 +2662,19 @@
         });
       } else {
         people.slice(0, 3).forEach((card) => {
-          if (cursorY + 138 > y + panelHeight - 18) return;
+          if (cursorY + 124 > y + panelHeight - 18) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
         });
       }
+      const hoverTooltip = this.hoverPoint ? this.getFamousSkillTooltipAction(this.hoverPoint) : null;
+      if (hoverTooltip) this.activeFamousSkillTooltip = hoverTooltip;
+      const pinnedStillVisible = this.pinnedFamousSkillTooltip
+        && this.famousSkillHitTargets.some((target) => (
+          target.action?.cardId === this.pinnedFamousSkillTooltip.cardId
+          && target.action?.skillIndex === this.pinnedFamousSkillTooltip.skillIndex
+        ));
+      if (!pinnedStillVisible) this.pinnedFamousSkillTooltip = null;
+      this.renderFamousSkillTooltip(this.activeFamousSkillTooltip || this.pinnedFamousSkillTooltip);
     }
 
     renderTalentPolicyPanel(state = {}, options = {}) {

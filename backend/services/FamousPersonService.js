@@ -9,7 +9,7 @@ const PORTRAIT_LAYER_BASE = 'assets/art/famous-person/layers/';
 const ENABLED_SOURCE_TYPES = Object.freeze(['seek']);
 
 const SOURCE_TYPES = Object.freeze({
-  seek: { label: '寻访', roles: ['military', 'governance', 'craft', 'knowledge'] },
+  seek: { label: '寻访', roles: ['military', 'governance', 'knowledge'] },
   event: { label: '事件投奔', roles: ['military', 'governance'] },
   postWar: { label: '战后归附', roles: ['military'] },
 });
@@ -22,7 +22,7 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['山道突骑', '破阵先登', '血刃游侠'],
     namePool: ['骁', '峻', '烈', '岚', '锋'],
     abilityArchetype: 'vanguard',
-    attributes: { command: 66, force: 78, intelligence: 42, strategy: 42, politics: 26, governance: 26, craft: 18, charisma: 52, speed: 64 },
+    attributes: { command: 66, force: 78, intelligence: 42, strategy: 42, politics: 26, governance: 26, charisma: 52, speed: 64 },
     skillPairs: [['lifesteal', 'combo'], ['combo', 'armorBreak'], ['ambush', 'combo']],
   },
   {
@@ -32,7 +32,7 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['垒门守将', '铁壁护军', '边墙执盾'],
     namePool: ['衡', '坚', '岳', '承', '镇'],
     abilityArchetype: 'commander',
-    attributes: { command: 76, force: 62, intelligence: 48, strategy: 48, politics: 34, governance: 34, craft: 22, charisma: 58, speed: 52 },
+    attributes: { command: 76, force: 62, intelligence: 48, strategy: 48, politics: 34, governance: 34, charisma: 58, speed: 52 },
     skillPairs: [['shield', 'counter'], ['shield', 'morale'], ['counter', 'heal']],
   },
   {
@@ -42,7 +42,7 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['火计谋士', '雾林策士', '伏兵参谋'],
     namePool: ['策', '玄', '微', '昭', '临'],
     abilityArchetype: 'strategist',
-    attributes: { command: 58, force: 34, intelligence: 82, strategy: 82, politics: 44, governance: 44, craft: 20, charisma: 56, speed: 50 },
+    attributes: { command: 58, force: 34, intelligence: 82, strategy: 82, politics: 44, governance: 44, charisma: 56, speed: 50 },
     skillPairs: [['burn', 'ambush'], ['poison', 'armorBreak'], ['morale', 'combo']],
   },
   {
@@ -52,17 +52,17 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['聚落执政', '仓廪主事', '民生长者'],
     namePool: ['宁', '禾', '安', '序', '清'],
     abilityArchetype: 'governor',
-    attributes: { command: 38, force: 24, intelligence: 54, strategy: 54, politics: 82, governance: 82, craft: 42, charisma: 66, speed: 38 },
+    attributes: { command: 38, force: 24, intelligence: 54, strategy: 54, politics: 82, governance: 82, charisma: 66, speed: 38 },
     skillPairs: [['morale', 'heal'], ['shield', 'heal'], ['morale', 'shield']],
   },
   {
     id: 'artisan',
-    label: '工巧人才',
-    roles: ['craft'],
+    label: '营造人才',
+    roles: ['governance'],
     titlePool: ['炉火匠首', '石工督造', '木作名匠'],
     namePool: ['钧', '砺', '椽', '铎', '工'],
     abilityArchetype: 'governor',
-    attributes: { command: 34, force: 32, intelligence: 46, strategy: 46, politics: 58, governance: 58, craft: 82, charisma: 42, speed: 36 },
+    attributes: { command: 34, force: 32, intelligence: 46, strategy: 46, politics: 82, governance: 82, charisma: 42, speed: 36 },
     skillPairs: [['armorBreak', 'shield'], ['burn', 'morale'], ['counter', 'armorBreak']],
   },
   {
@@ -72,7 +72,7 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['观星学者', '古卷译者', '火种记史'],
     namePool: ['闻', '简', '知', '言', '书'],
     abilityArchetype: 'strategist',
-    attributes: { command: 28, force: 18, intelligence: 74, strategy: 74, politics: 64, governance: 64, craft: 40, charisma: 54, speed: 42 },
+    attributes: { command: 28, force: 18, intelligence: 74, strategy: 74, politics: 64, governance: 64, charisma: 54, speed: 42 },
     skillPairs: [['morale', 'ambush'], ['poison', 'heal'], ['shield', 'morale']],
   },
   {
@@ -82,7 +82,7 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['游说名士', '盟会使者', '乡望长者'],
     namePool: ['望', '舒', '容', '信', '和'],
     abilityArchetype: 'charmer',
-    attributes: { command: 34, force: 22, intelligence: 58, strategy: 58, politics: 66, governance: 66, craft: 30, charisma: 84, speed: 42 },
+    attributes: { command: 34, force: 22, intelligence: 58, strategy: 58, politics: 66, governance: 66, charisma: 84, speed: 42 },
     skillPairs: [['morale', 'heal'], ['shield', 'morale'], ['heal', 'shield']],
   },
   {
@@ -92,7 +92,7 @@ const ARCHETYPES = Object.freeze([
     titlePool: ['山林斥候', '疾行游骑', '探路前锋'],
     namePool: ['迅', '隼', '遥', '踪', '越'],
     abilityArchetype: 'scout',
-    attributes: { command: 44, force: 48, intelligence: 62, strategy: 62, politics: 28, governance: 28, craft: 24, charisma: 52, speed: 82 },
+    attributes: { command: 44, force: 48, intelligence: 62, strategy: 62, politics: 28, governance: 28, charisma: 52, speed: 82 },
     skillPairs: [['ambush', 'combo'], ['morale', 'ambush'], ['combo', 'shield']],
   },
 ]);
@@ -240,7 +240,6 @@ function normalizeAttributes(raw = {}) {
     strategy: 50,
     politics: 50,
     governance: 50,
-    craft: 50,
     charisma: 50,
     speed: 50,
   };
@@ -256,6 +255,14 @@ function normalizeAttributes(raw = {}) {
     result[key] = Math.max(1, Math.min(99, toInteger(source[key], defaults[key])));
     return result;
   }, {});
+}
+
+function normalizeRoles(rawRoles = [], fallbackRoles = []) {
+  const source = Array.isArray(rawRoles) && rawRoles.length ? rawRoles : fallbackRoles;
+  const roles = source
+    .map((role) => (String(role) === 'craft' ? 'governance' : String(role)))
+    .filter(Boolean);
+  return [...new Set(roles.length ? roles : fallbackRoles.map(String))];
 }
 
 function normalizeSkill(raw = {}) {
@@ -356,7 +363,7 @@ function normalizePerson(raw = {}, options = {}) {
     abilityArchetype,
     quality,
     qualityLabel: SkillGeneratorService.getQualityLabel(quality),
-    roles: Array.isArray(raw.roles) && raw.roles.length ? raw.roles.map(String) : [...archetype.roles],
+    roles: normalizeRoles(raw.roles, archetype.roles),
     attributes: normalizeAttributes(raw.attributes),
     traits: Array.isArray(raw.traits) ? raw.traits.map(String).slice(0, 4) : [],
     abilityKit,

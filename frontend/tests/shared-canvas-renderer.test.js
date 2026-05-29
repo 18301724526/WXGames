@@ -1067,7 +1067,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         title: '破阵先登',
         source: { type: 'seek', label: '寻访' },
         roles: ['military'],
-        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, craft: 22, charisma: 55, speed: 66 },
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
         abilityKit: {
           abilities: [
             { name: '血刃破阵', slot: 'activeSkill', kind: 'active', cooldown: 3, castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }], effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
@@ -1091,7 +1091,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         title: '垒门守将',
         source: { type: 'event', label: '事件投奔' },
         roles: ['governance'],
-        attributes: { command: 50, force: 30, intelligence: 60, politics: 80, craft: 45, charisma: 66, speed: 42 },
+        attributes: { command: 50, force: 30, intelligence: 60, politics: 80, charisma: 66, speed: 42 },
         abilityKit: {
           abilities: [
             { name: '督田理赋', slot: 'civilPrimary', kind: 'civil', trigger: 'passiveStored', implementationStatus: 'storedOnly', effects: [{ key: 'resourceOutputPct' }] },
@@ -1112,11 +1112,16 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '寻访'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法 · 血刃破阵/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动 · 锐锋/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /内政主技 · 督田理赋/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /当前仅展示/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法：血刃破阵/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动：锐锋/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /内政主技：督田理赋/.test(call[1])));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /当前仅展示/.test(call[1])), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '速'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '66'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '工巧'), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '工'), false);
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'showFamousSkillTooltip'));
   assert.ok(calls.some((call) => (
     call[0] === 'drawImage'
     && call[1]?.src === 'assets/art/famous-person/layers/fp-layer-v3-face-01.png'
@@ -1132,6 +1137,68 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'acceptFamousPerson' && target.action.candidateId === 'fpc_b'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'dismissFamousPersonCandidate' && target.action.candidateId === 'fpc_b'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeFamousPersons'));
+});
+
+test('CanvasGameRenderer shows famous skill detail only from hover or tap tooltip', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
+    buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
+  });
+
+  const state = {
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    currentEra: 3,
+    population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+    famousPersons: {
+      count: 1,
+      candidateCount: 0,
+      maxCandidates: 3,
+      seek: { available: true, count: 1 },
+      people: [{
+        id: 'fp_a',
+        name: '陆骁',
+        title: '破阵先登',
+        source: { type: 'seek', label: '寻访' },
+        roles: ['military'],
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
+        abilityKit: {
+          abilities: [
+            { id: 'skill_a', name: '血刃破阵', slot: 'activeSkill', kind: 'active', cooldown: 3, castConditions: [{ type: 'cooldownReady' }], effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
+            { id: 'trait_a', name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
+          ],
+        },
+        appearance: { version: 'famous-portrait-v3.0', layers: {} },
+      }],
+      candidates: [],
+    },
+  };
+
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])), false);
+  const skillTarget = renderer.hitTargets.find((target) => target.action?.type === 'showFamousSkillTooltip');
+  assert.ok(skillTarget);
+
+  calls.length = 0;
+  renderer.setHoverPoint({ x: skillTarget.x + 4, y: skillTarget.y + 4 });
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /条件：冷却3次自身行动/.test(call[1])));
+
+  calls.length = 0;
+  renderer.setHoverPoint(null);
+  renderer.setPinnedFamousSkillTooltip(skillTarget.action);
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /效果：直接伤害 \/ 吸血/.test(call[1])));
 });
 
 test('CanvasGameRenderer renders famous person leader choices in world expedition config', () => {

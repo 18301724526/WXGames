@@ -1713,6 +1713,11 @@
     async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) return;
+      if (action.type === 'showFamousSkillTooltip') {
+        this.renderer.setPinnedFamousSkillTooltip?.(action);
+        this.render();
+        return;
+      }
       await this.actionController?.handle?.(action);
     }
     start() {
