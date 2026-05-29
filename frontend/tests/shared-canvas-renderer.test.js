@@ -1070,8 +1070,8 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, craft: 22, charisma: 55, speed: 66 },
         abilityKit: {
           abilities: [
-            { name: '血刃破阵', kind: 'active', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
-            { name: '锐锋', kind: 'passive', effects: [{ key: 'attributeBonus' }] },
+            { name: '血刃破阵', slot: 'activeSkill', kind: 'active', cooldown: 3, castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }], effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
+            { name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
           ],
         },
         skills: [{ name: '血刃破阵', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] }],
@@ -1094,8 +1094,8 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         attributes: { command: 50, force: 30, intelligence: 60, politics: 80, craft: 45, charisma: 66, speed: 42 },
         abilityKit: {
           abilities: [
-            { name: '督田理赋', kind: 'civil', effects: [{ key: 'resourceOutputPct' }] },
-            { name: '仓廪整备', kind: 'civil', effects: [{ key: 'populationCapPct' }] },
+            { name: '督田理赋', slot: 'civilPrimary', kind: 'civil', trigger: 'passiveStored', implementationStatus: 'storedOnly', effects: [{ key: 'resourceOutputPct' }] },
+            { name: '仓廪整备', slot: 'civilSecondary', kind: 'civil', trigger: 'passiveStored', implementationStatus: 'storedOnly', effects: [{ key: 'populationCapPct' }] },
           ],
         },
         skills: [],
@@ -1112,6 +1112,11 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '寻访'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法 · 血刃破阵/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动 · 锐锋/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /内政主技 · 督田理赋/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /当前仅展示/.test(call[1])));
   assert.ok(calls.some((call) => (
     call[0] === 'drawImage'
     && call[1]?.src === 'assets/art/famous-person/layers/fp-layer-v3-face-01.png'

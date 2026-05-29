@@ -2309,7 +2309,7 @@
 
     renderFamousPersonItem(card = {}, x, y, width, options = {}) {
       const candidate = Boolean(options.candidate);
-      const height = candidate ? 132 : 112;
+      const height = candidate ? 158 : 138;
       this.drawPanel(x, y, width, height, {
         fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
         stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
@@ -2360,20 +2360,31 @@
         size: 10,
         color: '#aeb0b8',
       });
-      const skill = Array.isArray(card.skills) ? card.skills[0] : '';
-      this.drawText(this.truncateText(skill || '', textWidth, { size: 10, bold: true }), textX, y + 74, {
-        size: 10,
-        bold: true,
-        color: '#74d3a0',
+      const skillDetails = Array.isArray(card.skillDetails) && card.skillDetails.length
+        ? card.skillDetails
+        : (Array.isArray(card.skills) ? card.skills.map((skill) => ({ name: skill, kindText: '技能', effectText: '', meta: '', summary: skill })) : []);
+      skillDetails.slice(0, 2).forEach((skill, index) => {
+        const skillY = y + 76 + index * 28;
+        const label = `${skill.kindText || '技能'} · ${skill.name || '技能'}`;
+        const meta = skill.meta || skill.effectText || skill.summary || '';
+        this.drawText(this.truncateText(label, textWidth, { size: 10, bold: true }), textX, skillY, {
+          size: 10,
+          bold: true,
+          color: index === 0 ? '#74d3a0' : '#ffd98a',
+        });
+        this.drawText(this.truncateText(meta, textWidth, { size: 9 }), textX, skillY + 14, {
+          size: 9,
+          color: '#aeb0b8',
+        });
       });
       if (candidate) {
         const buttonW = 66;
         const acceptX = x + width - buttonW - 12;
         const dismissX = acceptX;
-        this.drawButton(acceptX, y + 15, buttonW, 28, '接纳', { size: 12, bold: true, active: true, radius: 8 });
-        this.drawButton(dismissX, y + 52, buttonW, 28, '放弃', { size: 12, radius: 8 });
-        this.addHitTarget({ x: acceptX, y: y + 15, width: buttonW, height: 28 }, card.acceptAction);
-        this.addHitTarget({ x: dismissX, y: y + 52, width: buttonW, height: 28 }, card.dismissAction);
+        this.drawButton(acceptX, y + 22, buttonW, 28, '接纳', { size: 12, bold: true, active: true, radius: 8 });
+        this.drawButton(dismissX, y + 62, buttonW, 28, '放弃', { size: 12, radius: 8 });
+        this.addHitTarget({ x: acceptX, y: y + 22, width: buttonW, height: 28 }, card.acceptAction);
+        this.addHitTarget({ x: dismissX, y: y + 62, width: buttonW, height: 28 }, card.dismissAction);
       }
       return y + height + 10;
     }
@@ -2456,7 +2467,7 @@
         this.drawText('候选', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
         cursorY += 22;
         candidates.slice(0, 2).forEach((card) => {
-          if (cursorY + 132 > y + panelHeight - 94) return;
+          if (cursorY + 158 > y + panelHeight - 94) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth, { candidate: true });
         });
       }
@@ -2477,7 +2488,7 @@
         });
       } else {
         people.slice(0, 3).forEach((card) => {
-          if (cursorY + 112 > y + panelHeight - 18) return;
+          if (cursorY + 138 > y + panelHeight - 18) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
         });
       }

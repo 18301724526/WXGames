@@ -502,8 +502,8 @@
       return source.label || { seek: '寻访', event: '事件投奔', postWar: '战后归附' }[source.type] || '未知来源';
     }
 
-    static formatFamousPersonSkill(skill = {}) {
-      const effectLabels = {
+    static getFamousPersonEffectLabels() {
+      return {
         directDamage: '直接伤害',
         secondHit: '二段伤害',
         firstStrike: '先手',
@@ -534,10 +534,63 @@
         scoutReportBonusPct: '侦查情报',
         cityStabilityPct: '城市稳定',
       };
+    }
+
+    static formatFamousPersonSkillKind(skill = {}) {
+      if (skill.slot === 'activeSkill' || skill.kind === 'active') return '主动战法';
+      if (skill.slot === 'passiveTrait') return '战斗被动';
+      if (skill.slot === 'civilPrimary') return '内政主技';
+      if (skill.slot === 'civilSecondary') return '内政副技';
+      if (skill.slot === 'scoutTrait') return '斥候特质';
+      if (skill.kind === 'civil') return '内政技能';
+      if (skill.kind === 'passive') return '被动特质';
+      return '技能';
+    }
+
+    static formatFamousPersonCastCondition(condition = {}) {
+      const labels = {
+        cooldownReady: '冷却就绪',
+        targetAlive: '目标存活',
+        firstOwnAction: '首次行动',
+        selfSoldierBelowPct: `自身兵力低于${Math.round(Number(condition.value ?? condition.pct ?? 0) * 100)}%`,
+        selfSoldierAbovePct: `自身兵力高于${Math.round(Number(condition.value ?? condition.pct ?? 0) * 100)}%`,
+        targetSoldierBelowPct: `目标兵力低于${Math.round(Number(condition.value ?? condition.pct ?? 0) * 100)}%`,
+        targetHasStatus: `目标有${condition.status || '状态'}`,
+        selfHasStatus: `自身有${condition.status || '状态'}`,
+      };
+      return labels[condition.type] || condition.type || '';
+    }
+
+    static formatFamousPersonSkillDetail(skill = {}) {
+      const effectLabels = this.getFamousPersonEffectLabels();
       const effects = Array.isArray(skill.effects)
         ? skill.effects.map((effect) => effectLabels[effect.key] || effect.key).filter(Boolean)
         : [];
-      return effects.length ? `${skill.name || '技能'} · ${effects.join(' / ')}` : (skill.name || '暂无技能');
+      const conditions = Array.isArray(skill.castConditions)
+        ? skill.castConditions.map((condition) => this.formatFamousPersonCastCondition(condition)).filter(Boolean)
+        : [];
+      const cooldown = Number.isFinite(Number(skill.cooldown)) ? Math.max(0, Math.floor(Number(skill.cooldown))) : null;
+      const kindText = this.formatFamousPersonSkillKind(skill);
+      const effectText = effects.length ? effects.join(' / ') : '暂无效果';
+      const cooldownText = cooldown === null ? '' : `冷却${cooldown}次自身行动`;
+      const triggerText = skill.trigger === 'preBattle'
+        ? '战前生效'
+        : (skill.trigger === 'passiveStored' ? '已挂载展示' : conditions.join(' / '));
+      const statusText = skill.implementationStatus === 'storedOnly' ? '当前仅展示' : '';
+      const meta = [cooldownText, triggerText, statusText].filter(Boolean).join(' · ');
+      return {
+        id: skill.id || skill.name || '',
+        name: skill.name || '技能',
+        kindText,
+        effectText,
+        meta,
+        description: skill.description || '',
+        summary: `${skill.name || '技能'} · ${effectText}`,
+      };
+    }
+
+    static formatFamousPersonSkill(skill = {}) {
+      return this.formatFamousPersonSkillDetail(skill).summary;
     }
 
     static getFamousPersonAbilities(person = {}) {
@@ -570,6 +623,9 @@
       const skills = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkill(skill))
         : ['暂无技能'];
+      const skillDetails = abilities.length
+        ? abilities.map((skill) => this.formatFamousPersonSkillDetail(skill))
+        : [{ id: 'none', name: '暂无技能', kindText: '技能', effectText: '暂无效果', meta: '', description: '', summary: '暂无技能' }];
       return {
         id: person.id || '',
         name: person.name || '无名之士',
@@ -578,6 +634,7 @@
         sourceText: this.formatFamousPersonSource(person.source),
         stats,
         skills,
+        skillDetails,
         appearance: person.appearance && typeof person.appearance === 'object' ? person.appearance : null,
         statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
       };
