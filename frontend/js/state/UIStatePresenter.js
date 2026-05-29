@@ -536,6 +536,23 @@
       };
     }
 
+    static getFamousPersonAttributeLabel(key = '') {
+      return {
+        command: '统帅',
+        force: '武力',
+        intelligence: '智力',
+        strategy: '智力',
+        politics: '政治',
+        charisma: '魅力',
+        speed: '速度',
+      }[key] || key || '属性';
+    }
+
+    static formatFamousPersonPercent(value, fallback = 0) {
+      const numeric = Number.isFinite(Number(value)) ? Number(value) : fallback;
+      return `${Math.round(numeric * 100)}%`;
+    }
+
     static formatFamousPersonSkillKind(skill = {}) {
       if (skill.slot === 'activeSkill' || skill.kind === 'active') return '主动战法';
       if (skill.slot === 'passiveTrait') return '战斗被动';
@@ -551,11 +568,11 @@
       const percent = Math.round(Number(condition.value ?? condition.pct ?? 0) * 100);
       const labels = {
         cooldownReady: '',
-        targetAlive: '目标未败',
-        firstOwnAction: '只在首次出手时释放',
-        selfSoldierBelowPct: `我方兵力低于${percent}%时释放`,
-        selfSoldierAbovePct: `我方兵力高于${percent}%时释放`,
-        targetSoldierBelowPct: `目标兵力低于${percent}%时释放`,
+        targetAlive: '',
+        firstOwnAction: '只在第一次出手时会放',
+        selfSoldierBelowPct: `我方兵力低于${percent}%才会放`,
+        selfSoldierAbovePct: `我方兵力高于${percent}%才会放`,
+        targetSoldierBelowPct: `目标兵力低于${percent}%才会放`,
         targetHasStatus: `目标有${condition.status || '状态'}`,
         selfHasStatus: `我方有${condition.status || '状态'}`,
       };
@@ -564,14 +581,67 @@
 
     static formatFamousPersonCooldownText(cooldown, skill = {}) {
       if (cooldown === null || skill.kind !== 'active') return '';
-      if (cooldown <= 0) return '可连续释放';
-      return `释放后，需要等自己再出手 ${cooldown} 次`;
+      if (cooldown <= 0) return '满足条件时可释放';
+      return `再次释放前，需等待 ${cooldown} 次出手机会`;
+    }
+
+    static formatFamousPersonEffectSentence(effect = {}, skill = {}) {
+      const key = effect?.key || '';
+      if (key === 'directDamage') {
+        return skill.damageType === 'strategy'
+          ? '发动战法攻击目标，造成一次谋略伤害。'
+          : '发动战法攻击目标，造成一次兵刃伤害。';
+      }
+      if (key === 'secondHit') return '造成伤害后追加一次追击（追击：根据本次攻击的一部分伤害再次打击目标）。';
+      if (key === 'firstStrike') return '首次出手时抢先压制目标，并追加一次先机打击。';
+      if (key === 'lifesteal') return '施加倒戈（倒戈：将敌方本次损失兵力的一部分转换为自己的兵力）。';
+      if (key === 'heal') return `恢复我方一部分兵力。`;
+      if (key === 'shield') return '获得守御，可抵消一部分伤害。';
+      if (key === 'attributeBonus') {
+        const attribute = this.getFamousPersonAttributeLabel(effect.attribute || effect.keyAttribute);
+        const value = Math.round(Number(effect.value) || 0);
+        if (skill.kind === 'passive' || skill.slot === 'passiveTrait') {
+          return `战斗开始前，自己的${attribute}提高 ${value} 点。`;
+        }
+        return `发动后，本场战斗中自己的${attribute}提高 ${value} 点。`;
+      }
+      if (key === 'resourceOutputPct') return `${effect.resource === 'food' ? '粮食' : '资源'}产出提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'allBasicOutputPct') return `基础资源产出提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'constructionSpeedPct') return `建造速度提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'constructionCostPct') return `建造消耗降低 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'knowledgeOutputPct') return `知识产出提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'populationCapPct') return `人口上限提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'happinessFlat') return `幸福度提高 ${Math.round(Number(effect.value) || 0)} 点。`;
+      if (key === 'trainingSpeedPct') return `训练速度提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'eventRewardPct') return `事件奖励提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'eventRiskReductionPct') return `事件风险降低 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'settlementPacifyPct') return `安抚效率提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'famousRetentionPct') return `名人说服成功率提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'diplomacyBonusPct') return `外交收益提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'scoutReportBonusPct') return `侦查情报质量提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'cityStabilityPct') return `城市稳定提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      return '';
+    }
+
+    static buildFamousPersonSkillDescription(skill = {}) {
+      const effects = Array.isArray(skill.effects) ? skill.effects : [];
+      if (!effects.length) return '暂无具体效果。';
+      const hasDirectDamage = effects.some((effect) => effect?.key === 'directDamage');
+      const hasLifesteal = effects.some((effect) => effect?.key === 'lifesteal');
+      if (hasDirectDamage && hasLifesteal) {
+        const damageText = skill.damageType === 'strategy' ? '谋略伤害' : '兵刃伤害';
+        return `发动战法攻击目标，造成一次${damageText}，并施加倒戈（倒戈：将敌方本次损失兵力的一部分转换为自己的兵力）。`;
+      }
+      return effects
+        .map((effect) => this.formatFamousPersonEffectSentence(effect, skill))
+        .filter(Boolean)
+        .join('');
     }
 
     static sanitizeFamousPersonSkillDescription(skill = {}) {
       const text = String(skill.description || '').trim();
       if (!text) return '';
-      if (/自身行动|冷却\s*\d+\s*次|冷却就绪|目标存活/.test(text)) return '';
+      if (/自身行动|冷却\s*\d*\s*次|冷却就绪|目标存活|直接伤害|属性修正|二段伤害|吸血|当前阶段|当前仅展示|后续接入|实际收益|实际侦查|再次释放|等自己出手|再出手|才能再放|再放前/.test(text)) return '';
       return text;
     }
 
@@ -590,9 +660,9 @@
       const triggerText = skill.trigger === 'preBattle'
         ? '战前生效'
         : (skill.trigger === 'passiveStored' ? '已加入名人档案' : conditions.join(' / '));
-      const statusText = skill.implementationStatus === 'storedOnly' ? '当前仅展示' : '';
+      const statusText = skill.implementationStatus === 'storedOnly' ? '暂未接入实际收益' : '';
       const meta = [cooldownText, triggerText, statusText].filter(Boolean).join(' · ');
-      const description = this.sanitizeFamousPersonSkillDescription(skill);
+      const description = this.sanitizeFamousPersonSkillDescription(skill) || this.buildFamousPersonSkillDescription(skill);
       return {
         id: skill.id || skill.name || '',
         name: skill.name || '技能',
@@ -600,7 +670,7 @@
         effectText,
         meta,
         description,
-        summary: `${skill.name || '技能'} · ${effectText}`,
+        summary: `${skill.name || '技能'} · ${description}`,
       };
     }
 

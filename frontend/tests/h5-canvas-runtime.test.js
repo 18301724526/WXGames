@@ -479,6 +479,79 @@ test('Canvas game shell changes famous person pages locally', () => {
   assert.deepEqual(dispatched, []);
 });
 
+test('Canvas shell click on famous person pager changes the rendered page', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  const ctx = createDrawingContext();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
+    buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
+  });
+  const originalRender = renderer.render.bind(renderer);
+  renderer.render = (state, options) => {
+    renderCalls.push({ state, options });
+    return originalRender(state, options);
+  };
+  const makePerson = (index) => ({
+    id: `fp_${index}`,
+    name: `名人${index}`,
+    title: `称号${index}`,
+    source: { type: 'seek', label: '寻访' },
+    roles: ['military'],
+    attributes: { command: 50, force: 50, intelligence: 50, politics: 50, charisma: 50, speed: 50 },
+    abilityKit: {
+      abilities: [
+        { id: `skill_${index}`, name: `战法${index}`, slot: 'activeSkill', kind: 'active', cooldown: 2, effects: [{ key: 'directDamage' }] },
+        { id: `trait_${index}`, name: `特质${index}`, slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus', attribute: 'force', value: 4 }] },
+      ],
+    },
+  });
+  const shell = CanvasGameShell.mount({
+    state: {
+      currentTab: 'resources',
+      currentEra: 3,
+      population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+      famousPersons: {
+        count: 6,
+        candidateCount: 0,
+        maxCandidates: 3,
+        seek: { available: true, count: 1 },
+        people: [1, 2, 3, 4, 5, 6].map(makePerson),
+        candidates: [],
+      },
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.showFamousPersons = true;
+  shell.renderActive();
+  const nextTarget = renderer.hitTargets.find((target) => target.action?.type === 'changeFamousPersonsPage' && target.action.delta === 1);
+  assert.ok(nextTarget);
+
+  listeners['document:pointerup']({
+    clientX: 10 + nextTarget.x + nextTarget.width / 2,
+    clientY: 20 + nextTarget.y + nextTarget.height / 2,
+    type: 'pointerup',
+    timeStamp: 1000,
+  });
+
+  assert.equal(shell.famousPersonsPage, 1);
+  assert.equal(renderCalls.at(-1).options.famousPersonsPage, 1);
+});
+
 test('H5 canvas runtime ignores duplicate compatibility events for the same tap', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const h5Runtime = new H5CanvasRuntime({ document, runtime });
@@ -2847,9 +2920,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
-  assert.match(html, /js\/config\/FamousPortraitLayout\.js\?v=famous-portrait-v3-upperbody-20260529[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=battle-skill-pause-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=tech-tree-zoom-gestures-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=famous-skill-readable-v2[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=famous-skill-readable-v2/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=famous-person-pager-v2[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=famous-person-pager-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

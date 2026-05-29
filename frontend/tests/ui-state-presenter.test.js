@@ -184,7 +184,7 @@ test('famous person view state maps candidates and joined people into panel card
               effects: [{ key: 'directDamage' }, { key: 'lifesteal' }],
               description: '血刃破阵：吸血，冷却 3 次自身行动。',
             },
-            { id: 'trait_vanguard_edge', name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
+            { id: 'trait_vanguard_edge', name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus', attribute: 'force', value: 6 }] },
           ],
         },
         skills: [{ name: '血刃破阵', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] }],
@@ -224,21 +224,22 @@ test('famous person view state maps candidates and joined people into panel card
   assert.deepEqual(view.people[0].attributes.map((item) => item.label), ['统帅', '武力', '智力', '政治', '魅力', '速度']);
   assert.equal(view.people[0].attributes.find((item) => item.key === 'speed').value, 66);
   assert.equal(view.people[0].attributes.some((item) => item.key === 'craft'), false);
-  assert.match(view.people[0].skills[0], /吸血/);
-  assert.match(view.people[0].skills[1], /属性修正/);
+  assert.match(view.people[0].skills[0], /倒戈/);
+  assert.match(view.people[0].skills[1], /武力提高/);
   assert.deepEqual(view.people[0].skillBadges.map((item) => item.text), ['主动战法：血刃破阵', '战斗被动：锐锋']);
   assert.equal(view.people[0].skillDetails[0].kindText, '主动战法');
-  assert.match(view.people[0].skillDetails[0].meta, /等自己再出手 3 次/);
-  assert.match(view.people[0].skillDetails[0].meta, /目标未败/);
+  assert.match(view.people[0].skillDetails[0].description, /倒戈/);
+  assert.doesNotMatch(view.people[0].skillDetails[0].description, /直接伤害|属性修正|冷却/);
+  assert.match(view.people[0].skillDetails[0].meta, /等待 3 次出手机会/);
   assert.doesNotMatch(view.people[0].skillDetails[0].meta, /自身行动|冷却就绪|目标存活/);
-  assert.equal(view.people[0].skillDetails[0].description, '');
   assert.equal(view.people[0].skillDetails[1].kindText, '战斗被动');
   assert.match(view.people[0].skillDetails[1].meta, /战前生效/);
+  assert.match(view.people[0].skillDetails[1].description, /战斗开始前/);
   assert.equal(view.people[0].appearance.layers.hair, 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png');
   assert.equal(view.candidates[0].sourceText, '事件投奔');
   assert.match(view.candidates[0].skills[0], /资源产出/);
   assert.equal(view.candidates[0].skillDetails[0].kindText, '内政主技');
-  assert.match(view.candidates[0].skillDetails[0].meta, /当前仅展示/);
+  assert.match(view.candidates[0].skillDetails[0].meta, /暂未接入实际收益/);
   assert.equal(view.candidates[0].skillDetails[1].kindText, '内政副技');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'fpc_b' });
   assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });

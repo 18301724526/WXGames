@@ -176,6 +176,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'switchTaskCenterTab',
     'openFamousPersons',
     'closeFamousPersons',
+    'changeFamousPersonsPage',
     'selectBuildingCategory',
     'selectTechNode',
     'closeTechDetail',
@@ -206,6 +207,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'switchTaskCenterTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openFamousPersons' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeFamousPersons' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'changeFamousPersonsPage' }), true);
   assert.equal(dispatcher.canHandle({ type: 'selectTechNode' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeTechDetail' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
@@ -488,7 +490,7 @@ test('CanvasActionDispatcher handles task center panel actions through injected 
   ]);
 });
 
-test('CanvasActionDispatcher handles famous person panel visibility only', () => {
+test('CanvasActionDispatcher handles famous person panel visibility and page changes', () => {
   const dispatcher = new CanvasActionDispatcher();
   const calls = [];
 
@@ -502,12 +504,19 @@ test('CanvasActionDispatcher handles famous person panel visibility only', () =>
     render(action) { calls.push(['render', action.type]); },
   }), true);
 
+  assert.equal(dispatcher.handle({ type: 'changeFamousPersonsPage', delta: 1 }, {
+    changeFamousPersonsPage(action) { calls.push(['page', action.delta]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
   assert.equal(dispatcher.canHandle({ type: 'seekFamousPerson' }), false);
   assert.deepEqual(calls, [
     ['open', 'openFamousPersons'],
     ['render', 'openFamousPersons'],
     ['close', 'closeFamousPersons'],
     ['render', 'closeFamousPersons'],
+    ['page', 1],
+    ['render', 'changeFamousPersonsPage'],
   ]);
 });
 

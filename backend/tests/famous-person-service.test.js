@@ -67,8 +67,8 @@ test('seek creates a generated candidate with v3 three-layer portrait and no lev
   assert.equal(result.candidate.abilityKit.budgetChecks.every((check) => check.withinLimit), true);
   assert.equal(result.candidate.abilityKit.abilities[0].slot, 'activeSkill');
   assert.equal(typeof result.candidate.abilityKit.abilities[0].description, 'string');
-  assert.match(result.candidate.abilityKit.abilities[0].description, /再出手|条件满足/);
-  assert.doesNotMatch(result.candidate.abilityKit.abilities[0].description, /自身行动|冷却\s*\d+\s*次/);
+  assert.match(result.candidate.abilityKit.abilities[0].description, /发动战法|倒戈|追击/);
+  assert.doesNotMatch(result.candidate.abilityKit.abilities[0].description, /自身行动|冷却\s*\d+\s*次|直接伤害|属性修正/);
   assert.equal(result.candidate.skills[0].effects[0].key, 'directDamage');
   assert.ok(SkillGeneratorService.FIRST_BATCH_BATTLE_EFFECTS.includes(result.candidate.skills[0].effects[0].key));
   assert.equal(FamousPersonService.APPEARANCE_VERSION, 'famous-portrait-v3.0');
@@ -104,7 +104,7 @@ test('civil famous person receives stored civil abilities and no battle skill fa
   assert.deepEqual(result.candidate.abilityKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
   assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.kind === 'civil'), true);
   assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.implementationStatus === 'storedOnly'), true);
-  assert.equal(result.candidate.abilityKit.abilities.every((ability) => ability.description.includes('当前阶段只展示')), true);
+  assert.equal(result.candidate.abilityKit.abilities.every((ability) => /提高|降低/.test(ability.description)), true);
   assert.deepEqual(result.candidate.skills, []);
 });
 
@@ -201,9 +201,10 @@ test('legacy famous person skill effects migrate to first batch deterministic at
   assert.deepEqual(skill.effects.map((effect) => effect.migratedFrom), ['combo', 'ambush', 'morale']);
   assert.equal(skill.effects.some((effect) => effect.key === 'counter'), false);
   assert.deepEqual(ability.effects.map((effect) => effect.key), ['secondHit', 'firstStrike', 'attributeBonus']);
-  assert.match(ability.description, /二段伤害/);
-  assert.match(ability.description, /先手/);
-  assert.match(ability.description, /属性修正/);
+  assert.match(ability.description, /追击/);
+  assert.match(ability.description, /先机打击/);
+  assert.match(ability.description, /统帅提高/);
+  assert.doesNotMatch(ability.description, /二段伤害|属性修正/);
   assert.deepEqual(person.abilityKit.abilities.map((item) => item.slot), ['activeSkill', 'passiveTrait']);
   assert.equal(person.abilityKit.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);
   assert.equal(person.abilityKit.generatorInput.seed, 'legacy:skill');
@@ -248,7 +249,7 @@ test('legacy civil famous people upgrade to stored civil abilities without battl
   assert.deepEqual(person.abilityKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
   assert.equal(person.abilityKit.abilities.every((ability) => ability.kind === 'civil'), true);
   assert.equal(person.abilityKit.abilities.every((ability) => ability.implementationStatus === 'storedOnly'), true);
-  assert.equal(person.abilityKit.abilities.every((ability) => ability.description.includes('当前阶段只展示')), true);
+  assert.equal(person.abilityKit.abilities.every((ability) => /提高|降低/.test(ability.description)), true);
   assert.deepEqual(person.skills, []);
   assert.equal(person.abilityKit.generatorInput.seed, 'legacy:civil');
   assert.equal(person.abilityKit.budgetChecks.length, 2);

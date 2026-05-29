@@ -279,6 +279,7 @@
         if (this.canvasShell && typeof this.canvasShell.techTreeZoom !== 'undefined') this.canvasShell.techTreeZoom = this.techTreeZoom;
         if (this.canvasShell && typeof this.canvasShell.buildingOffset !== 'undefined') this.canvasShell.buildingOffset = this.buildingOffset;
         if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') this.canvasShell.activeBuildingCategory = this.activeBuildingCategory;
+        if (this.canvasShell && typeof this.canvasShell.famousPersonsPage !== 'undefined') this.famousPersonsPage = this.canvasShell.famousPersonsPage;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         return true;
       }
@@ -707,6 +708,16 @@
     }
 
     renderCanvasAction() {
+      return this.renderCanvasSurface();
+    }
+
+    changeFamousPersonsPage(action = {}) {
+      const delta = Number(action.delta) || 0;
+      this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
+      if (this.canvasShell && typeof this.canvasShell === 'object') {
+        this.canvasShell.famousPersonsPage = this.famousPersonsPage;
+      }
+      this.renderer?.clearFamousSkillTooltip?.();
       return this.renderCanvasSurface();
     }
 

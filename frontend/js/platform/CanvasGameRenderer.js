@@ -2549,12 +2549,11 @@
       if (!skill || !this.ctx) return;
       const width = Math.min(300, Math.max(238, this.width - 44));
       const lines = [
-        skill.effectText ? `效果：${skill.effectText}` : '',
+        skill.description ? `说明：${skill.description}` : '',
         skill.meta ? `规则：${skill.meta}` : '',
-        skill.description || '',
       ].filter(Boolean);
-      const wrapped = lines.flatMap((line) => this.wrapTextLimit(line, width - 28, 3, { size: 11 }));
-      const height = Math.min(148, 50 + wrapped.length * 16);
+      const wrapped = lines.flatMap((line) => this.wrapTextLimit(line, width - 28, 4, { size: 11 }));
+      const height = Math.min(164, 50 + wrapped.length * 16);
       const anchor = this.famousSkillHitTargets.find((target) => (
         target.action?.cardId === action.cardId
         && target.action?.skillIndex === action.skillIndex
@@ -2574,7 +2573,7 @@
         bold: true,
         color: '#fff1cf',
       });
-      this.drawTextLines(wrapped.slice(0, 5), tooltipX + 14, tooltipY + 38, {
+      this.drawTextLines(wrapped.slice(0, 7), tooltipX + 14, tooltipY + 38, {
         size: 11,
         color: '#cbd6c8',
         lineHeight: 16,

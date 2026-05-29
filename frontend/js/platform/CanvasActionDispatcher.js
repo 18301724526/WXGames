@@ -248,6 +248,14 @@
         return closed;
       }
 
+      if (action.type === 'changeFamousPersonsPage') {
+        const changed = typeof context.changeFamousPersonsPage === 'function'
+          ? context.changeFamousPersonsPage(action) !== false
+          : false;
+        if (changed && typeof context.render === 'function') context.render(action);
+        return changed;
+      }
+
       if (action.type === 'selectBuildingCategory') {
         const selected = typeof context.selectBuildingCategory === 'function'
           ? context.selectBuildingCategory(action) !== false
@@ -306,6 +314,7 @@
         'switchTaskCenterTab',
         'openFamousPersons',
         'closeFamousPersons',
+        'changeFamousPersonsPage',
         'selectBuildingCategory',
         'selectTechNode',
         'closeTechDetail',
