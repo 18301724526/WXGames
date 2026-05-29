@@ -1108,7 +1108,7 @@ test('world site dialog view state formats famous leader battle report summary',
       leaderName: '陆骁',
       report: {
         summary: '陆骁率队压制了林地部落。',
-        system: 'attribute-auto-battle-v1',
+        system: 'attribute-auto-battle-v2',
         moraleEffectEnabled: false,
         attacker: { speed: 76 },
         defender: { speed: 53 },

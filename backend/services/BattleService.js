@@ -15,6 +15,8 @@ const DAMAGE_TYPE_LABELS = {
   guard: '守御效果',
 };
 
+const BATTLE_RULE_VERSION = 'battle-rules-v2';
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -114,6 +116,16 @@ function getActiveSkillFromAbilityKit(abilityKit = {}) {
   )) || null;
 }
 
+function getPassiveTraitsFromAbilityKit(abilityKit = {}) {
+  const abilities = Array.isArray(abilityKit?.abilities) ? abilityKit.abilities : [];
+  return abilities.filter((ability) => (
+    ability
+    && ability.kind === 'passive'
+    && ability.trigger === 'preBattle'
+    && (ability.slot === 'passiveTrait' || ability.type === 'battle' || ability.category === 'guard' || ability.category === 'support')
+  )).map((ability) => clone(ability));
+}
+
 function getBattleSkill(unit, role = 'attacker') {
   const activeAbility = getActiveSkillFromAbilityKit(unit.leader?.abilityKit);
   if (activeAbility) return normalizeBattleSkill(clone(activeAbility));
@@ -156,8 +168,9 @@ function calculateDamage(attacker, defender, options = {}) {
   const damageType = options.damageType || 'blade';
   const multiplier = Number.isFinite(Number(options.multiplier)) ? Number(options.multiplier) : 1;
   const attackAttributeKey = damageType === 'strategy' ? 'intelligence' : 'force';
+  const defenseAttributeKey = damageType === 'strategy' ? 'intelligence' : 'command';
   const effectiveAttack = getEffectiveAttribute(attacker.attributes?.[attackAttributeKey] ?? 45);
-  const effectiveDefense = getEffectiveAttribute(defender.attributes?.command ?? 45);
+  const effectiveDefense = getEffectiveAttribute(defender.attributes?.[defenseAttributeKey] ?? 45);
   const soldierFactor = Math.pow(Math.max(1, attacker.soldiers) / DEFAULT_SOLDIER_SCALE, 0.65);
   const attackFactor = 0.75 + effectiveAttack / 120;
   const damageReduction = clamp(effectiveDefense / (effectiveDefense + 180), 0.05, 0.6);
@@ -182,6 +195,55 @@ function getSkillEffectMultiplier(skill = {}, key, fallback = 0) {
   const effect = Array.isArray(skill.effects) ? skill.effects.find((item) => item?.key === key) : null;
   const value = effect?.multiplier ?? effect?.value;
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+function applyAttributeBonus(unit, effect = {}) {
+  const attribute = effect.attribute || effect.keyAttribute;
+  const value = toInteger(effect.value, 0);
+  if (!attribute || value === 0) return null;
+  const before = toInteger(unit.attributes?.[attribute], 0);
+  unit.attributes = { ...unit.attributes, [attribute]: before + value };
+  if (attribute === 'intelligence') unit.attributes.strategy = unit.attributes.intelligence;
+  if (attribute === 'strategy') unit.attributes.intelligence = unit.attributes.strategy;
+  return {
+    type: 'attributeBonus',
+    target: unit.side,
+    attribute,
+    value,
+    before,
+    after: unit.attributes[attribute],
+    text: `[${unit.name}] ${attribute} +${value}（${unit.attributes[attribute]}）`,
+  };
+}
+
+function applyPreBattlePassives(unit) {
+  const traits = getPassiveTraitsFromAbilityKit(unit.leader?.abilityKit);
+  const events = [];
+  traits.forEach((trait) => {
+    const effects = Array.isArray(trait.effects) ? trait.effects : [];
+    const applied = effects
+      .map((effect) => {
+        if (effect?.key === 'attributeBonus') return applyAttributeBonus(unit, effect);
+        return null;
+      })
+      .filter(Boolean);
+    if (applied.length) {
+      events.push({
+        phase: 'preparation',
+        type: 'passiveTrait',
+        actor: unit.side,
+        actorName: unit.name,
+        traitId: trait.id || '',
+        traitName: trait.name || '被动特质',
+        effects: applied,
+        lines: [
+          `[${unit.name}] 触发被动 [${trait.name || '被动特质'}]`,
+          ...applied.map((effect) => effect.text),
+        ],
+      });
+    }
+  });
+  return events;
 }
 
 function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
@@ -265,6 +327,47 @@ function canCastSkill(unit, target, skill = null) {
     ? skill.castConditions
     : [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
   return conditions.every((condition) => isCastConditionMet(condition, unit, target));
+}
+
+function getSkillCastConditionResults(unit, target, skill = null) {
+  if (!skill) return [];
+  const conditions = Array.isArray(skill.castConditions) && skill.castConditions.length
+    ? skill.castConditions
+    : [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
+  return conditions.map((condition) => ({
+    ...condition,
+    met: isCastConditionMet(condition, unit, target),
+  }));
+}
+
+function describeActionDecision(unit, target, skill = null) {
+  if (!skill) {
+    return {
+      skillId: '',
+      skillName: '',
+      canCast: false,
+      reason: 'noActiveSkill',
+      conditionResults: [],
+      cooldownRemaining: 0,
+      ownActionCountBefore: toInteger(unit.ownActionCount, 0),
+    };
+  }
+  const conditionResults = getSkillCastConditionResults(unit, target, skill);
+  const cooldownRemaining = Math.max(0, toInteger(unit.skillCooldownRemaining, 0));
+  const targetAlive = target.soldiers > 0;
+  const canCast = cooldownRemaining <= 0 && targetAlive && conditionResults.every((condition) => condition.met);
+  const failed = conditionResults.find((condition) => !condition.met);
+  return {
+    skillId: skill.id || '',
+    skillName: skill.name || '',
+    canCast,
+    reason: canCast
+      ? 'castSkill'
+      : (cooldownRemaining > 0 ? 'cooldownNotReady' : (!targetAlive ? 'targetDefeated' : `conditionNotMet:${failed?.type || 'unknown'}`)),
+    conditionResults,
+    cooldownRemaining,
+    ownActionCountBefore: toInteger(unit.ownActionCount, 0),
+  };
 }
 
 function getBattleMapForTerritory(territory = {}) {
@@ -397,7 +500,11 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
   const turns = [];
   const rounds = [];
   const detailEvents = [];
-  const preparation = createPreparationEvents(attacker, defender);
+  const preparation = [
+    ...createPreparationEvents(attacker, defender),
+    ...applyPreBattlePassives(attacker),
+    ...applyPreBattlePassives(defender),
+  ];
   const attackerFirst = getBattleSpeed(attacker) >= getBattleSpeed(defender);
   const order = attackerFirst
     ? [{ key: 'attacker', unit: attacker, target: defender }, { key: 'defender', unit: defender, target: attacker }]
@@ -408,6 +515,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     const beforeDefender = defender.soldiers;
     const actorName = actor.unit.name;
     const targetName = actor.target.name;
+    const actionDecision = describeActionDecision(actor.unit, actor.target, actor.unit.skill);
     const useSkill = canCastSkill(actor.unit, actor.target, actor.unit.skill);
     const action = useSkill ? 'skill' : 'basicAttack';
     const skill = useSkill ? actor.unit.skill : null;
@@ -433,10 +541,13 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     const totalDealt = dealt + extraHits.reduce((sum, hit) => sum + hit.damage, 0);
     const sideEffects = useSkill ? applySkillSideEffects(actor.unit, actor.target, skill, totalDealt) : { notes: [], structured: [] };
     const cooldownBefore = actor.unit.skillCooldownRemaining;
+    const ownActionCountBefore = toInteger(actor.unit.ownActionCount, 0);
     if (useSkill) actor.unit.skillCooldownRemaining = getSkillCooldown(skill);
     else actor.unit.skillCooldownRemaining = Math.max(0, actor.unit.skillCooldownRemaining - 1);
     const cooldownAfter = actor.unit.skillCooldownRemaining;
     actor.unit.ownActionCount = toInteger(actor.unit.ownActionCount, 0) + 1;
+    const ownActionCountAfter = actor.unit.ownActionCount;
+    const cooldownTicked = !useSkill && cooldownBefore !== cooldownAfter;
     const actionLine = useSkill
       ? `[${actorName}] 发动战法 [${skill?.name || '技能'}]`
       : `[${actorName}] 对 [${targetName}] 发动普通攻击`;
@@ -475,8 +586,12 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       skillCooldown: actor.unit.skill ? getSkillCooldown(actor.unit.skill) : 0,
       cooldownBefore,
       cooldownAfter,
+      cooldownTicked,
+      ownActionCountBefore,
+      ownActionCountAfter,
       castPolicy: skill?.castPolicy || '',
-      castConditions: skill?.castConditions || [],
+      castConditions: actor.unit.skill?.castConditions || [],
+      actionDecision,
       extraHits,
       actorPortrait,
       presentation,
@@ -510,6 +625,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       actorPortrait,
       presentation,
       extraHits,
+      actionDecision,
       soldiersBefore: turn.soldiersBefore,
       soldiersAfter: turn.soldiersAfter,
       lines,
@@ -539,8 +655,10 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       ? `${fallbackLeader.name}队压制了${territory.naturalName}。`
       : `${fallbackLeader.name}队未能突破${territory.naturalName}的防线。`,
     system: BATTLE_SYSTEM,
+    ruleVersion: BATTLE_RULE_VERSION,
     groupSize: DEFAULT_SOLDIER_SCALE,
     firstActor: attackerFirst ? 'attacker' : 'defender',
+    actionOrder: order.map((actor) => actor.key),
     moraleEffectEnabled: MORALE_EFFECT_ENABLED,
     skillRules: BattleConfig.getBattleRules().skillRules,
     preparation,

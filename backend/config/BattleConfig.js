@@ -2,7 +2,7 @@ const DEFAULT_SOLDIER_SCALE = 100;
 const MIN_BATTLE_SOLDIERS = 100;
 const MAX_BATTLE_ROUNDS = 20;
 
-const BATTLE_SYSTEM = 'attribute-auto-battle-v1';
+const BATTLE_SYSTEM = 'attribute-auto-battle-v2';
 const MORALE_EFFECT_ENABLED = false;
 
 const SKILL_RULES = {
@@ -10,6 +10,9 @@ const SKILL_RULES = {
   castPolicy: 'conditional',
   conditionalCasting: true,
   cooldownTicksOnOwnTurnOnly: true,
+  speedSortPerRound: true,
+  preBattlePassivesEnabled: true,
+  strategyDefenseAttribute: 'intelligence',
   fallbackAction: 'basicAttack',
   activeSkillSlots: 1,
   passiveTraitSlots: 1,

@@ -86,7 +86,9 @@ test('simulateConquestBattle emits attribute battle report without mutating inpu
 
   assert.equal(result.success, true);
   assert.ok(result.casualties >= 0);
-  assert.equal(result.report.system, 'attribute-auto-battle-v1');
+  assert.equal(result.report.system, 'attribute-auto-battle-v2');
+  assert.equal(result.report.ruleVersion, 'battle-rules-v2');
+  assert.deepEqual(result.report.actionOrder, ['attacker', 'defender']);
   assert.equal(result.report.attacker.leaderName, '陆骁');
   assert.equal(result.report.attacker.soldiersStart, 501);
   assert.equal(result.report.attacker.groupsStart.length, 6);
@@ -103,6 +105,8 @@ test('simulateConquestBattle emits attribute battle report without mutating inpu
   assert.equal(result.report.experience.enemyLoss, 500);
   assert.ok(result.report.experience.total >= 500);
   assert.equal(result.report.skillRules.cooldownTicksOnOwnTurnOnly, true);
+  assert.equal(result.report.skillRules.speedSortPerRound, true);
+  assert.equal(result.report.skillRules.strategyDefenseAttribute, 'intelligence');
   assert.equal(result.report.skillRules.randomTriggerEnabled, false);
   assert.equal(mission.soldiersCommitted, 501);
   assert.equal(territory.owner, 'tribe');
@@ -143,7 +147,81 @@ test('conditional skill falls back to basic attack when conditions fail', () => 
   assert.equal(result.report.turns[0].action, 'basicAttack');
   assert.equal(result.report.turns[0].skillName, '');
   assert.equal(result.report.turns[0].presentation.cutIn, false);
+  assert.equal(result.report.turns[0].actionDecision.reason, 'conditionNotMet:targetSoldierBelowPct');
+  assert.equal(result.report.turns[0].actionDecision.canCast, false);
   assert.ok(result.report.turns.some((turn) => turn.action === 'skill' && turn.skillName === '收割追击'));
+});
+
+test('skill cooldown only ticks on the actor own turns and recasts when ready', () => {
+  const gameState = createLeaderState();
+  gameState.famousPeople[0].abilityKit.abilities[0].cooldown = 2;
+  gameState.famousPeople[0].skills[0].cooldown = 2;
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission({ soldiersCommitted: 1000 }),
+    createTerritory({ defense: 1400 }),
+    new Date('2026-05-29T12:02:30.000Z'),
+  );
+  const attackerTurns = result.report.turns.filter((turn) => turn.actor === 'attacker').slice(0, 4);
+  const defenderTurnsBetween = result.report.turns.filter((turn) => turn.actor === 'defender' && turn.index < attackerTurns[1].index);
+
+  assert.equal(attackerTurns[0].action, 'skill');
+  assert.equal(attackerTurns[0].cooldownBefore, 0);
+  assert.equal(attackerTurns[0].cooldownAfter, 2);
+  assert.equal(attackerTurns[0].ownActionCountBefore, 0);
+  assert.equal(attackerTurns[1].action, 'basicAttack');
+  assert.equal(attackerTurns[1].actionDecision.reason, 'cooldownNotReady');
+  assert.equal(attackerTurns[1].cooldownBefore, 2);
+  assert.equal(attackerTurns[1].cooldownAfter, 1);
+  assert.equal(attackerTurns[2].cooldownBefore, 1);
+  assert.equal(attackerTurns[2].cooldownAfter, 0);
+  assert.equal(attackerTurns[3].action, 'skill');
+  assert.equal(attackerTurns[3].cooldownBefore, 0);
+  assert.equal(attackerTurns[3].actionDecision.canCast, true);
+  assert.equal(defenderTurnsBetween.length, 1);
+  assert.equal(attackerTurns[1].cooldownBefore, attackerTurns[0].cooldownAfter);
+});
+
+test('slower famous leader acts after faster defender each round', () => {
+  const gameState = createLeaderState();
+  gameState.famousPeople[0].attributes.speed = 20;
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission(),
+    createTerritory(),
+    new Date('2026-05-29T12:02:45.000Z'),
+  );
+
+  assert.deepEqual(result.report.actionOrder, ['defender', 'attacker']);
+  assert.equal(result.report.firstActor, 'defender');
+  assert.equal(result.report.turns[0].actor, 'defender');
+});
+
+test('pre-battle passive traits apply before speed and damage are reported', () => {
+  const gameState = createLeaderState();
+  gameState.famousPeople[0].abilityKit.abilities.push({
+    id: 'trait_vanguard_speed_drill',
+    name: '疾斗',
+    slot: 'passiveTrait',
+    kind: 'passive',
+    trigger: 'preBattle',
+    effects: [{ key: 'attributeBonus', attribute: 'speed', value: 40 }],
+  });
+  gameState.famousPeople[0].attributes.speed = 20;
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission(),
+    createTerritory(),
+    new Date('2026-05-29T12:02:50.000Z'),
+  );
+
+  assert.equal(result.report.firstActor, 'attacker');
+  assert.equal(result.report.attacker.attributes.speed, 60);
+  assert.ok(result.report.preparation.some((event) => (
+    event.type === 'passiveTrait'
+    && event.traitName === '疾斗'
+    && event.lines.some((line) => line.includes('speed +40'))
+  )));
 });
 
 test('basicAttackOnly famous leader never receives fallback battle skill', () => {
@@ -224,25 +302,31 @@ test('createLegacyBattleReport remains available for historical fallback', () =>
   assert.equal(report.attacker.soldiersEnd, 150);
 });
 
-test('attribute damage uses force and intelligence against command defense', () => {
+test('attribute damage uses force vs command and intelligence vs intelligence defense', () => {
   const blade = BattleService.calculateDamage(
     { soldiers: 500, morale: 100, attributes: { force: 90, intelligence: 30 } },
-    { soldiers: 500, morale: 100, attributes: { command: 50 } },
+    { soldiers: 500, morale: 100, attributes: { command: 50, intelligence: 50 } },
     { damageType: 'blade', multiplier: 1 },
   );
   const strategy = BattleService.calculateDamage(
     { soldiers: 500, morale: 100, attributes: { force: 30, intelligence: 90 } },
-    { soldiers: 500, morale: 100, attributes: { command: 50 } },
+    { soldiers: 500, morale: 100, attributes: { command: 50, intelligence: 50 } },
     { damageType: 'strategy', multiplier: 1 },
   );
   const defended = BattleService.calculateDamage(
     { soldiers: 500, morale: 100, attributes: { force: 90, intelligence: 30 } },
-    { soldiers: 500, morale: 100, attributes: { command: 120 } },
+    { soldiers: 500, morale: 100, attributes: { command: 120, intelligence: 50 } },
     { damageType: 'blade', multiplier: 1 },
+  );
+  const strategyDefended = BattleService.calculateDamage(
+    { soldiers: 500, morale: 100, attributes: { force: 30, intelligence: 90 } },
+    { soldiers: 500, morale: 100, attributes: { command: 50, intelligence: 120 } },
+    { damageType: 'strategy', multiplier: 1 },
   );
 
   assert.ok(blade > defended);
   assert.equal(blade, strategy);
+  assert.ok(strategy > strategyDefended);
   assert.ok(BattleService.getEffectiveAttribute(200) < 200);
 });
 

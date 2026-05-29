@@ -2465,7 +2465,7 @@
       const report = site.lastBattle?.report;
       if (!report) return [];
       const lines = [report.summary || '战斗已经结束。'];
-      if (['speed-basic-attack-v1', 'speed-skill-cooldown-v1', 'attribute-auto-battle-v1'].includes(report.system)) {
+      if (['speed-basic-attack-v1', 'speed-skill-cooldown-v1', 'attribute-auto-battle-v1', 'attribute-auto-battle-v2'].includes(report.system)) {
         lines.push(`速度：己方 ${report.attacker?.speed || 0} / 敌方 ${report.defender?.speed || 0}`);
         if (report.moraleEffectEnabled === false) lines.push('士气：已记录，暂不影响伤害');
       } else if (report.skillName) lines.push(`关键技能：${report.skillName}`);
