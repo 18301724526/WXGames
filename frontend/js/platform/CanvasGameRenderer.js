@@ -827,6 +827,53 @@
       }
     }
 
+    getBattleTurnDamage(turn = null) {
+      if (!turn) return 0;
+      const explicitDamage = Number(turn.damage);
+      if (Number.isFinite(explicitDamage) && explicitDamage > 0) return Math.floor(explicitDamage);
+      const target = turn.target === 'attacker' ? 'attacker' : 'defender';
+      const before = this.getBattleTurnSoldierCount(turn, target, 'before', 0);
+      const after = this.getBattleTurnSoldierCount(turn, target, 'after', before);
+      return Math.max(0, before - after);
+    }
+
+    getBattleDamageFloatText(turn = null) {
+      const damage = this.getBattleTurnDamage(turn);
+      if (damage <= 0) return '';
+      if (turn?.action === 'skill' && turn?.damageLabel) return `${turn.damageLabel} -${damage}`;
+      return `-${damage}`;
+    }
+
+    drawBattleDamageFloat(activeTurn = null, phase = 'prepare', phaseProgress = 0, targetArea = null) {
+      if (!activeTurn || phase !== 'impact' || !targetArea) return;
+      const text = this.getBattleDamageFloatText(activeTurn);
+      if (!text) return;
+      const progress = Math.max(0, Math.min(1, Number(phaseProgress) || 0));
+      const rise = progress * 42;
+      const pop = 1 + Math.sin(progress * Math.PI) * 0.16;
+      const alpha = Math.max(0, Math.min(1, 1 - Math.max(0, progress - 0.68) / 0.32));
+      const isSkill = activeTurn.action === 'skill';
+      const x = this.width / 2 + (activeTurn.target === 'defender' ? 34 : -34);
+      const y = targetArea.y + Math.max(34, targetArea.height * 0.22) - rise;
+      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
+      this.drawText(text, x + 1, y + 1, {
+        size: Math.round(19 * pop),
+        bold: true,
+        color: 'rgba(24, 15, 10, 0.82)',
+        align: 'center',
+        baseline: 'middle',
+      });
+      this.drawText(text, x, y, {
+        size: Math.round(19 * pop),
+        bold: true,
+        color: isSkill ? '#ffd66e' : '#ff8a72',
+        align: 'center',
+        baseline: 'middle',
+      });
+      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+    }
+
     drawBattleLeader(sideView = {}, x, y, side = 'attacker') {
       const radius = 32;
       this.drawCircle(x, y, radius + 5, {
@@ -916,21 +963,29 @@
       const armyTop = fieldTop + 138;
       const armyHeight = Math.max(120, logY - armyTop - 28);
       const laneWidth = Math.min(170, this.width * 0.42);
-      this.drawBattleLeader(view.attacker, 72, fieldTop + 64, 'attacker');
-      this.drawBattleLeader(view.defender, this.width - 72, fieldTop + 64, 'defender');
-      this.drawBattleArmy(view.attacker, {
+      const attackerArea = {
         x: 18,
         y: armyTop,
         width: laneWidth,
         height: armyHeight,
-      }, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
-      this.drawBattleArmy(view.defender, {
+      };
+      const defenderArea = {
         x: this.width - laneWidth - 18,
         y: armyTop,
         width: laneWidth,
         height: armyHeight,
-      }, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
+      };
+      this.drawBattleLeader(view.attacker, 72, fieldTop + 64, 'attacker');
+      this.drawBattleLeader(view.defender, this.width - 72, fieldTop + 64, 'defender');
+      this.drawBattleArmy(view.attacker, attackerArea, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
+      this.drawBattleArmy(view.defender, defenderArea, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
+      this.drawBattleDamageFloat(
+        activeTurn,
+        turnPhase,
+        phaseProgress,
+        activeTurn?.target === 'attacker' ? attackerArea : defenderArea,
+      );
 
       this.drawPanel(16, logY, this.width - 32, logH, {
         fill: 'rgba(20, 16, 12, 0.76)',

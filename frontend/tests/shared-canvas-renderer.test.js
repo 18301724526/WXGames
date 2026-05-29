@@ -1222,7 +1222,8 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
     now: 1000,
     battleScene: {
       visible: true,
-      turnIndex: 1,
+      turnIndex: 0,
+      turnStartedAt: 600,
       report: {
         id: 'battle_1',
         result: 'victory',
@@ -1252,8 +1253,11 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
           target: 'defender',
           action: 'skill',
           skillName: '血刃连袭',
+          damage: 43,
           text: '陆骁队发起普攻，林地部落损失 43 士兵',
           lines: ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）'],
+          attackerSoldiersBefore: 501,
+          defenderSoldiersBefore: 500,
           attackerSoldiersAfter: 501,
           defenderSoldiersAfter: 457,
         }],
@@ -1283,6 +1287,7 @@ test('CanvasGameRenderer renders animated battle scene with visual soldier group
     && call[1]?.src?.startsWith('assets/art/battle/units/')
     && call.length === 6
   )));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('-43')));
 });
 
 test('CanvasGameRenderer maps split battle frame poses without hit frames or death offsets', () => {
@@ -1326,6 +1331,38 @@ test('CanvasGameRenderer maps split battle frame poses without hit frames or dea
   assert.equal(dieCall[3], 280 - 400 * 0.21);
   assert.ok(hitCalls.length >= 2);
   assert.equal(calls.some((call) => call[0] === 'drawImage' && String(call[1]?.src || '').includes('/hit/')), false);
+});
+
+test('CanvasGameRenderer derives and draws battle damage floats during impact', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const skillTurn = {
+    actor: 'attacker',
+    target: 'defender',
+    action: 'skill',
+    damageLabel: '谋略伤害',
+    soldiersBefore: { attacker: 501, defender: 500 },
+    soldiersAfter: { attacker: 501, defender: 457 },
+  };
+  const basicTurn = {
+    actor: 'defender',
+    target: 'attacker',
+    action: 'basicAttack',
+    damage: 12,
+    attackerSoldiersBefore: 501,
+    attackerSoldiersAfter: 489,
+  };
+
+  assert.equal(renderer.getBattleTurnDamage(skillTurn), 43);
+  assert.equal(renderer.getBattleDamageFloatText(skillTurn), '谋略伤害 -43');
+  assert.equal(renderer.getBattleDamageFloatText(basicTurn), '-12');
+
+  renderer.drawBattleDamageFloat(skillTurn, 'prepare', 0.5, { x: 200, y: 260, width: 150, height: 180 });
+  assert.equal(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('-43')), false);
+
+  renderer.drawBattleDamageFloat(skillTurn, 'impact', 0.25, { x: 200, y: 260, width: 150, height: 180 });
+  assert.ok(calls.some((call) => call[0] === 'fillText' && String(call[1]).includes('谋略伤害 -43')));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[2] > renderer.width / 2));
 });
 
 test('CanvasGameRenderer moves soldiers into engagement without attack dash offsets', () => {
