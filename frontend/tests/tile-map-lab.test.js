@@ -17,6 +17,7 @@ test('tile map lab is an art-resource stitching page', () => {
     'tile-map/tile-terrain-river.png',
     'tile-map/tile-terrain-waste.png',
     'tile-map/tile-terrain-mountain.png',
+    'tile-map/tile-feature-tree-cluster.png',
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -25,7 +26,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.173-tile-map-lab-site-scale-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.174-tile-map-lab-tree-sprites-v1/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /imageMetrics = new Map/);
@@ -34,6 +35,9 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /syncGridToEffectiveTile/);
   assert.match(js, /effectiveTile/);
   assert.match(js, /effectiveSites/);
+  assert.match(js, /FEATURE_ASSETS/);
+  assert.match(js, /drawTreeFeature/);
+  assert.match(js, /effectiveFeatures/);
   assert.match(js, /valueNoise/);
   assert.match(js, /drawTerrainFeature/);
   assert.match(js, /TERRAIN_FEATURES/);
@@ -44,6 +48,7 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /tileSize\.width \* state\.siteScale/);
   assert.match(js, /ctx\.ellipse\(baseX/);
   assert.match(js, /ctx\.drawImage\(image/);
+  assert.doesNotMatch(js, /forest: \{ chance:/);
   assert.match(js, /pointerdown/);
   assert.match(js, /wheel/);
   assert.doesNotMatch(js, /territory-plains-cutout|territory-forest-cutout|territory-hills-cutout|territory-ruins-cutout/);

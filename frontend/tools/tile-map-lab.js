@@ -18,9 +18,11 @@
     ruins: { label: '遗迹', file: 'world-site-ruins-cutout.png' },
     town: { label: '城镇', file: 'world-site-town-cutout.png' },
   };
+  const FEATURE_ASSETS = {
+    treeCluster: { label: 'tree cluster', file: 'tile-map/tile-feature-tree-cluster.png' },
+  };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
-    forest: { chance: 0.56, scale: 0.54, alpha: 0.72, lift: 0.1, squash: 0.72 },
     hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
     waste: { chance: 0.32, scale: 0.48, alpha: 0.58, lift: 0.06, squash: 0.7 },
     mountain: { chance: 0.38, scale: 0.52, alpha: 0.7, lift: 0.12, squash: 0.72 },
@@ -311,6 +313,7 @@
     const files = [
       ...Object.values(TERRAIN_ASSETS).map((item) => item.file),
       ...Object.values(SITE_ASSETS).map((item) => item.file),
+      ...Object.values(FEATURE_ASSETS).map((item) => item.file),
     ];
     const results = await Promise.all(files.map(loadImage));
     const failed = results.filter((item) => !item.ok).map((item) => item.file);
@@ -415,6 +418,10 @@
 
   function drawTerrainFeature(tile) {
     if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river') return;
+    if (tile.terrain === 'forest') {
+      drawTreeFeature(tile);
+      return;
+    }
     const profile = TERRAIN_FEATURES[tile.terrain];
     const terrain = TERRAIN_ASSETS[tile.terrain];
     if (!profile || !terrain) return;
@@ -450,6 +457,44 @@
     ctx.clip();
     ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, drawX, drawY, drawW, drawH);
     ctx.restore();
+  }
+
+  function drawTreeFeature(tile) {
+    const treeAsset = FEATURE_ASSETS.treeCluster;
+    const image = images.get(treeAsset.file);
+    if (!image || !image.complete) return;
+    if (random01(state.seed, tile.q, tile.r, 'tree-feature-visible') > 0.82) return;
+    const projected = getProjectedPosition(tile);
+    const tileSize = getTileDrawSize('plains');
+    const metrics = getImageMetrics(treeAsset.file);
+    const count = random01(state.seed, tile.q, tile.r, 'tree-feature-count') > 0.68 ? 2 : 1;
+    for (let i = 0; i < count; i += 1) {
+      const jitterX = (random01(state.seed, tile.q, tile.r, `tree-feature-x-${i}`) - 0.5) * state.stepX * state.zoom * 0.62;
+      const jitterY = (random01(state.seed, tile.q, tile.r, `tree-feature-y-${i}`) - 0.5) * state.stepY * state.zoom * 0.42;
+      const scale = (0.38 + random01(state.seed, tile.q, tile.r, `tree-feature-scale-${i}`) * 0.13) * (count > 1 ? 0.82 : 1);
+      const drawW = tileSize.width * scale * state.zoom;
+      const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+      const baseX = projected.x + jitterX;
+      const baseY = projected.y + state.stepY * state.zoom * 0.1 + jitterY;
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = 'rgba(3, 7, 4, 0.58)';
+      ctx.beginPath();
+      ctx.ellipse(baseX, baseY + drawH * 0.03, drawW * 0.34, drawH * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.drawImage(
+        image,
+        metrics.x,
+        metrics.y,
+        metrics.width,
+        metrics.height,
+        baseX - drawW * 0.5,
+        baseY - drawH * 0.9,
+        drawW,
+        drawH
+      );
+    }
   }
 
   function drawRiverLayer(sortedTiles) {
@@ -612,6 +657,9 @@
       },
       effectiveSites: Object.fromEntries(
         Object.entries(SITE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
+      effectiveFeatures: Object.fromEntries(
+        Object.entries(FEATURE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
       stepX: state.stepX,
       stepY: state.stepY,
