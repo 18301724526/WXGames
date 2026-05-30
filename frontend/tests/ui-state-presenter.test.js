@@ -174,6 +174,7 @@ test('famous person view state maps candidates and joined people into panel card
         experience: 35,
         nextLevelExperience: 190,
         freeAttributePoints: 4,
+        autoAttributeGrowth: { command: 1, force: 4, charisma: 1, speed: 2 },
         quality: 'great',
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
@@ -227,6 +228,8 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.people[0].growthText, '等级 2 · 经验 35/190');
   assert.equal(view.people[0].pointText, '可分配属性点 4');
   assert.equal(view.people[0].attributePointHint, '可分配 4 点');
+  assert.equal(view.people[0].autoGrowthTotal, 8);
+  assert.equal(view.people[0].autoGrowthText, '自动成长 8 点 · 武+4 速+2 统+1 魅+1');
   assert.equal(view.people[0].qualityLabel, '英杰');
   assert.equal(view.people[0].qualityFrame, 'purple');
   assert.equal(view.people[0].qualityRank, 3);
@@ -260,6 +263,8 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.people[0].appearance.layers.hair, 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png');
   assert.equal(view.candidates[0].sourceText, '事件投奔');
   assert.equal(view.candidates[0].growthText, '');
+  assert.equal(view.candidates[0].autoGrowthText, '');
+  assert.equal(view.candidates[0].autoGrowthTotal, 0);
   assert.equal(view.candidates[0].level, null);
   assert.deepEqual(view.candidates[0].attributeActions, []);
   assert.equal(view.candidates[0].openDetailAction, null);

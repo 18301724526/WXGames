@@ -851,7 +851,7 @@
 
     renderFamousPersonDetail(card = {}, x, y, width, height) {
       const style = this.getFamousQualityStyle(card.qualityFrame);
-      const headerH = 126;
+      const headerH = 144;
       this.drawPanel(x, y, width, height, {
         fill: 'rgba(23, 21, 18, 0.74)',
         stroke: style.stroke,
@@ -905,6 +905,12 @@
         this.drawText(this.truncateText(card.attributePointHint, textWidth, { size: 10 }), textX, y + 118, {
           size: 10,
           color: Number(card.freeAttributePoints) > 0 ? '#ffd98a' : '#aeb0b8',
+        });
+      }
+      if (card.autoGrowthText) {
+        this.drawText(this.truncateText(card.autoGrowthText, textWidth, { size: 10 }), textX, y + 136, {
+          size: 10,
+          color: '#74d3a0',
         });
       }
 

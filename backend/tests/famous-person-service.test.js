@@ -381,6 +381,9 @@ test('joined famous people normalize level progression and receive battle experi
     title: 'growth_title',
     source: { type: 'seek', seed: 'growth:seed' },
     archetype: 'vanguard',
+    abilityArchetype: 'vanguard',
+    quality: 'great',
+    attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
     skills: [{ id: 'skill_growth', name: '血刃连袭', effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] }],
   }];
 
@@ -393,6 +396,9 @@ test('joined famous people normalize level progression and receive battle experi
   assert.equal(person.experience, 0);
   assert.equal(person.totalExperience, 0);
   assert.equal(person.freeAttributePoints, 0);
+  assert.deepEqual(person.autoAttributeGrowth, {});
+  assert.equal(person.earnedAutoAttributePoints, 0);
+  assert.deepEqual(person.autoGrowthMilestones, []);
   assert.equal(person.nextLevelExperience, 140);
 
   const firstGrowth = FamousPersonService.grantBattleExperience(
@@ -427,8 +433,76 @@ test('joined famous people normalize level progression and receive battle experi
   assert.equal(milestoneGrowth.levelBefore, 9);
   assert.equal(milestoneGrowth.levelAfter, 10);
   assert.equal(milestoneGrowth.freeAttributePointsGained, 10);
+  assert.deepEqual(milestoneGrowth.autoGrowthMilestones, [10]);
+  assert.equal(milestoneGrowth.autoAttributeGrowthTotal, 8);
+  assert.deepEqual(milestoneGrowth.autoAttributeGrowthGained, {
+    command: 1,
+    force: 4,
+    charisma: 1,
+    speed: 2,
+  });
   assert.equal(normalized.famousPeople[0].freeAttributePoints, 12);
   assert.equal(normalized.famousPeople[0].earnedAttributePoints, 12);
+  assert.equal(normalized.famousPeople[0].attributes.command, 71);
+  assert.equal(normalized.famousPeople[0].attributes.force, 86);
+  assert.equal(normalized.famousPeople[0].attributes.charisma, 56);
+  assert.equal(normalized.famousPeople[0].attributes.speed, 68);
+  assert.equal(normalized.famousPeople[0].earnedAutoAttributePoints, 8);
+  assert.deepEqual(normalized.famousPeople[0].autoAttributeGrowth, {
+    command: 1,
+    force: 4,
+    charisma: 1,
+    speed: 2,
+  });
+  assert.deepEqual(normalized.famousPeople[0].autoGrowthMilestones, [10]);
+
+  const noDuplicate = GameStateService.normalizeState(normalized);
+  assert.equal(noDuplicate.famousPeople[0].attributes.force, 86);
+  assert.equal(noDuplicate.famousPeople[0].earnedAutoAttributePoints, 8);
+  assert.deepEqual(noDuplicate.famousPeople[0].autoGrowthMilestones, [10]);
+});
+
+test('legacy joined famous people backfill pending auto attribute growth once', () => {
+  const state = GameStateService.createInitialGameState('fp-auto-growth-backfill');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_backfill',
+    name: 'backfill',
+    title: 'backfill_title',
+    source: { type: 'seek', seed: 'backfill:seed' },
+    archetype: 'tactician',
+    abilityArchetype: 'strategist',
+    quality: 'good',
+    attributes: { command: 50, force: 50, intelligence: 50, politics: 50, charisma: 50, speed: 50 },
+    level: 20,
+    experience: 0,
+    totalExperience: 6000,
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  const person = normalized.famousPeople[0];
+
+  assert.deepEqual(person.autoGrowthMilestones, [10, 20]);
+  assert.equal(person.earnedAutoAttributePoints, 12);
+  assert.deepEqual(person.autoAttributeGrowth, {
+    command: 2,
+    intelligence: 6,
+    politics: 2,
+    charisma: 2,
+  });
+  assert.equal(person.attributes.command, 52);
+  assert.equal(person.attributes.force, 50);
+  assert.equal(person.attributes.intelligence, 56);
+  assert.equal(person.attributes.strategy, 56);
+  assert.equal(person.attributes.politics, 52);
+  assert.equal(person.attributes.governance, 52);
+  assert.equal(person.attributes.charisma, 52);
+  assert.equal(person.attributes.speed, 50);
+
+  const renormalized = GameStateService.normalizeState(normalized);
+  assert.equal(renormalized.famousPeople[0].attributes.intelligence, 56);
+  assert.equal(renormalized.famousPeople[0].earnedAutoAttributePoints, 12);
+  assert.deepEqual(renormalized.famousPeople[0].autoGrowthMilestones, [10, 20]);
 });
 
 test('joined famous people can assign free attribute points beyond initial cap', () => {
@@ -446,6 +520,9 @@ test('joined famous people can assign free attribute points beyond initial cap',
     totalExperience: 3000,
     freeAttributePoints: 2,
     earnedAttributePoints: 10,
+    autoAttributeGrowth: { command: 1, force: 2, speed: 1 },
+    earnedAutoAttributePoints: 4,
+    autoGrowthMilestones: [10],
   }];
 
   const normalized = GameStateService.normalizeState(state);
@@ -466,6 +543,9 @@ test('joined famous people can assign free attribute points beyond initial cap',
   assert.equal(normalized.famousPeople[0].freeAttributePoints, 1);
   assert.equal(normalized.famousPeople[0].earnedAttributePoints, 10);
   assert.equal(normalized.famousPeople[0].assignedAttributePoints.command, 1);
+  assert.deepEqual(normalized.famousPeople[0].autoAttributeGrowth, { command: 1, force: 2, speed: 1 });
+  assert.equal(normalized.famousPeople[0].earnedAutoAttributePoints, 4);
+  assert.deepEqual(normalized.famousPeople[0].autoGrowthMilestones, [10]);
 
   const renormalized = GameStateService.normalizeState(normalized);
   assert.equal(renormalized.famousPeople[0].attributes.command, 100);

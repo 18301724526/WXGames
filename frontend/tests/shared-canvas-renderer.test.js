@@ -1070,6 +1070,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         experience: 35,
         nextLevelExperience: 190,
         freeAttributePoints: 4,
+        autoAttributeGrowth: { command: 1, force: 4, charisma: 1, speed: 2 },
         quality: 'legendary',
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
@@ -1174,6 +1175,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         experience: 35,
         nextLevelExperience: 190,
         freeAttributePoints: 4,
+        autoAttributeGrowth: { command: 1, force: 4, charisma: 1, speed: 2 },
         quality: 'legendary',
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
@@ -1205,6 +1207,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && /等级 2 · 经验 35\/190/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /可分配属性点 4/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /可分配 4 点/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /自动成长 8 点/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法：血刃破阵/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动：锐锋/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '+'));

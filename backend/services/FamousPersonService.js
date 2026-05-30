@@ -14,6 +14,20 @@ const ATTRIBUTE_MIN_VALUE = 1;
 const ATTRIBUTE_INITIAL_MAX_VALUE = 99;
 const ATTRIBUTE_MAX_VALUE = 9999;
 const ATTRIBUTE_KEYS = Object.freeze(['command', 'force', 'intelligence', 'politics', 'charisma', 'speed']);
+const QUALITY_AUTO_GROWTH_POINTS = Object.freeze({
+  common: 4,
+  good: 6,
+  great: 8,
+  legendary: 10,
+});
+const AUTO_GROWTH_WEIGHTS = Object.freeze({
+  commander: Object.freeze({ command: 0.45, force: 0.15, intelligence: 0.1, politics: 0.1, charisma: 0.1, speed: 0.1 }),
+  vanguard: Object.freeze({ command: 0.15, force: 0.45, intelligence: 0.05, politics: 0.05, charisma: 0.1, speed: 0.2 }),
+  strategist: Object.freeze({ command: 0.1, force: 0.05, intelligence: 0.5, politics: 0.15, charisma: 0.1, speed: 0.1 }),
+  governor: Object.freeze({ command: 0.05, force: 0.05, intelligence: 0.15, politics: 0.5, charisma: 0.2, speed: 0.05 }),
+  charmer: Object.freeze({ command: 0.1, force: 0.05, intelligence: 0.15, politics: 0.2, charisma: 0.45, speed: 0.05 }),
+  scout: Object.freeze({ command: 0.1, force: 0.1, intelligence: 0.2, politics: 0.05, charisma: 0.15, speed: 0.4 }),
+});
 
 const SOURCE_TYPES = Object.freeze({
   seek: { label: '寻访', roles: ['military', 'governance', 'knowledge'] },
@@ -232,19 +246,60 @@ function getLevelUpExperience(level = BASE_LEVEL) {
   return roundToNearestTen(100 + 35 * currentLevel + 6 * Math.pow(currentLevel, 1.5));
 }
 
+function normalizeAttributePointMap(raw = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  return ATTRIBUTE_KEYS.reduce((result, key) => {
+    const value = Math.max(0, toInteger(source[key], 0));
+    if (value > 0) result[key] = value;
+    return result;
+  }, {});
+}
+
+function createEmptyAttributePointMap() {
+  return ATTRIBUTE_KEYS.reduce((result, key) => {
+    result[key] = 0;
+    return result;
+  }, {});
+}
+
+function sumAttributePoints(points = {}) {
+  return ATTRIBUTE_KEYS.reduce((sum, key) => sum + Math.max(0, toInteger(points[key], 0)), 0);
+}
+
+function getAutoGrowthMilestoneLevels(level = BASE_LEVEL) {
+  const currentLevel = Math.max(BASE_LEVEL, toInteger(level, BASE_LEVEL));
+  const levels = [];
+  for (let milestone = ATTRIBUTE_POINT_MILESTONE; milestone <= currentLevel; milestone += ATTRIBUTE_POINT_MILESTONE) {
+    levels.push(milestone);
+  }
+  return levels;
+}
+
+function normalizeAutoGrowthMilestones(raw = [], level = BASE_LEVEL) {
+  if (!Array.isArray(raw)) return [];
+  const currentLevel = Math.max(BASE_LEVEL, toInteger(level, BASE_LEVEL));
+  return [...new Set(raw
+    .map((item) => toInteger(item, 0))
+    .filter((item) => item >= ATTRIBUTE_POINT_MILESTONE && item <= currentLevel && item % ATTRIBUTE_POINT_MILESTONE === 0))]
+    .sort((a, b) => a - b);
+}
+
 function normalizeProgression(raw = {}) {
   const level = Math.max(BASE_LEVEL, toInteger(raw.level, BASE_LEVEL));
   const experience = Math.max(0, toInteger(raw.experience, 0));
   const totalExperience = Math.max(experience, toInteger(raw.totalExperience, experience));
   const freeAttributePoints = Math.max(0, toInteger(raw.freeAttributePoints, 0));
   const earnedAttributePoints = Math.max(freeAttributePoints, toInteger(raw.earnedAttributePoints, freeAttributePoints));
-  const assignedAttributePoints = raw.assignedAttributePoints && typeof raw.assignedAttributePoints === 'object'
-    ? ATTRIBUTE_KEYS.reduce((result, key) => {
-      const value = Math.max(0, toInteger(raw.assignedAttributePoints[key], 0));
-      if (value > 0) result[key] = value;
-      return result;
-    }, {})
-    : {};
+  const assignedAttributePoints = normalizeAttributePointMap(raw.assignedAttributePoints);
+  const autoAttributeGrowth = normalizeAttributePointMap(raw.autoAttributeGrowth);
+  const rawMilestones = raw.autoGrowthMilestones ?? raw.autoAttributeGrowthMilestones;
+  const hasMilestoneLedger = Array.isArray(rawMilestones);
+  const autoGrowthTotal = sumAttributePoints(autoAttributeGrowth);
+  const normalizedMilestones = hasMilestoneLedger ? normalizeAutoGrowthMilestones(rawMilestones, level) : [];
+  const autoGrowthMilestones = hasMilestoneLedger && (normalizedMilestones.length > 0 || autoGrowthTotal === 0)
+    ? normalizedMilestones
+    : (autoGrowthTotal > 0 ? getAutoGrowthMilestoneLevels(level) : []);
+  const earnedAutoAttributePoints = Math.max(autoGrowthTotal, toInteger(raw.earnedAutoAttributePoints, autoGrowthTotal));
   return {
     level,
     experience,
@@ -252,6 +307,9 @@ function normalizeProgression(raw = {}) {
     freeAttributePoints,
     earnedAttributePoints,
     assignedAttributePoints,
+    autoAttributeGrowth,
+    earnedAutoAttributePoints,
+    autoGrowthMilestones,
     nextLevelExperience: getLevelUpExperience(level),
   };
 }
@@ -300,6 +358,110 @@ function normalizeAttributes(raw = {}, options = {}) {
     result[key] = clampAttributeValue(source[key], defaults[key], max);
     return result;
   }, {});
+}
+
+function syncAttributeAliases(attributes = {}) {
+  if (Object.prototype.hasOwnProperty.call(attributes, 'intelligence')) {
+    attributes.strategy = attributes.intelligence;
+  }
+  if (Object.prototype.hasOwnProperty.call(attributes, 'politics')) {
+    attributes.governance = attributes.politics;
+  }
+  return attributes;
+}
+
+function getAutoGrowthPointsForQuality(quality = 'common') {
+  return QUALITY_AUTO_GROWTH_POINTS[SkillGeneratorService.normalizeQuality(quality)] || QUALITY_AUTO_GROWTH_POINTS.common;
+}
+
+function getAutoGrowthWeightsForArchetype(abilityArchetype = 'vanguard') {
+  const key = SkillGeneratorService.normalizeAbilityArchetype(abilityArchetype);
+  return AUTO_GROWTH_WEIGHTS[key] || AUTO_GROWTH_WEIGHTS.vanguard;
+}
+
+function calculateAutoAttributeGrowth(quality = 'common', abilityArchetype = 'vanguard') {
+  const total = getAutoGrowthPointsForQuality(quality);
+  const weights = getAutoGrowthWeightsForArchetype(abilityArchetype);
+  const growth = createEmptyAttributePointMap();
+  const fractional = ATTRIBUTE_KEYS.map((key, index) => {
+    const weight = Number(weights[key]) || 0;
+    const exact = total * weight;
+    const floor = Math.floor(exact);
+    growth[key] = floor;
+    return {
+      key,
+      weight,
+      remainder: exact - floor,
+      index,
+    };
+  });
+  let remaining = total - sumAttributePoints(growth);
+  fractional
+    .sort((a, b) => b.remainder - a.remainder || b.weight - a.weight || a.index - b.index)
+    .forEach((item) => {
+      if (remaining <= 0) return;
+      growth[item.key] += 1;
+      remaining -= 1;
+    });
+  return normalizeAttributePointMap(growth);
+}
+
+function mergeAttributePointMaps(left = {}, right = {}) {
+  return normalizeAttributePointMap(ATTRIBUTE_KEYS.reduce((result, key) => {
+    result[key] = Math.max(0, toInteger(left[key], 0)) + Math.max(0, toInteger(right[key], 0));
+    return result;
+  }, {}));
+}
+
+function addAutoAttributeGrowthToAttributes(attributes = {}, growth = {}) {
+  const normalized = normalizeAttributes(attributes || {});
+  ATTRIBUTE_KEYS.forEach((key) => {
+    const value = Math.max(0, toInteger(growth[key], 0));
+    if (value > 0) {
+      normalized[key] = clampAttributeValue(normalized[key] + value, normalized[key]);
+    }
+  });
+  return syncAttributeAliases(normalized);
+}
+
+function applyAutoAttributeGrowth(person, milestoneLevels = []) {
+  if (!person || !Array.isArray(milestoneLevels) || !milestoneLevels.length) {
+    return { total: 0, attributes: {}, milestones: [] };
+  }
+  const progression = normalizeProgression(person);
+  const applied = new Set(progression.autoGrowthMilestones);
+  const milestones = [...new Set(milestoneLevels
+    .map((item) => toInteger(item, 0))
+    .filter((item) => item >= ATTRIBUTE_POINT_MILESTONE && item % ATTRIBUTE_POINT_MILESTONE === 0 && !applied.has(item)))]
+    .sort((a, b) => a - b);
+  if (!milestones.length) return { total: 0, attributes: {}, milestones: [] };
+
+  const gained = createEmptyAttributePointMap();
+  milestones.forEach(() => {
+    const growth = calculateAutoAttributeGrowth(person.quality, person.abilityArchetype);
+    ATTRIBUTE_KEYS.forEach((key) => {
+      gained[key] += Math.max(0, toInteger(growth[key], 0));
+    });
+  });
+  const normalizedGained = normalizeAttributePointMap(gained);
+  const gainedTotal = sumAttributePoints(normalizedGained);
+  person.attributes = addAutoAttributeGrowthToAttributes(person.attributes, normalizedGained);
+  person.autoAttributeGrowth = mergeAttributePointMaps(progression.autoAttributeGrowth, normalizedGained);
+  person.earnedAutoAttributePoints = progression.earnedAutoAttributePoints + gainedTotal;
+  person.autoGrowthMilestones = [...new Set([...progression.autoGrowthMilestones, ...milestones])].sort((a, b) => a - b);
+  return {
+    total: gainedTotal,
+    attributes: normalizedGained,
+    milestones,
+  };
+}
+
+function applyPendingAutoAttributeGrowth(person) {
+  if (!person) return { total: 0, attributes: {}, milestones: [] };
+  const progression = normalizeProgression(person);
+  const applied = new Set(progression.autoGrowthMilestones);
+  const pending = getAutoGrowthMilestoneLevels(progression.level).filter((level) => !applied.has(level));
+  return applyAutoAttributeGrowth(person, pending);
 }
 
 function normalizeRoles(rawRoles = [], fallbackRoles = []) {
@@ -421,6 +583,7 @@ function normalizePerson(raw = {}, options = {}) {
   };
   if (!options.candidate) {
     Object.assign(person, normalizeProgression(raw));
+    applyPendingAutoAttributeGrowth(person);
   }
   return person;
 }
@@ -480,19 +643,26 @@ function grantBattleExperience(gameState, leaderId, experienceSummary = {}, now 
   person.totalExperience = before.totalExperience + gained;
   person.freeAttributePoints = before.freeAttributePoints;
   person.earnedAttributePoints = before.earnedAttributePoints;
+  person.assignedAttributePoints = before.assignedAttributePoints;
+  person.autoAttributeGrowth = before.autoAttributeGrowth;
+  person.earnedAutoAttributePoints = before.earnedAutoAttributePoints;
+  person.autoGrowthMilestones = before.autoGrowthMilestones;
 
   let freeAttributePointsGained = 0;
+  const autoGrowthMilestoneLevels = [];
   while (person.experience >= getLevelUpExperience(person.level)) {
     person.experience -= getLevelUpExperience(person.level);
     person.level += 1;
     if (person.level % ATTRIBUTE_POINT_MILESTONE === 0) {
       freeAttributePointsGained += ATTRIBUTE_POINTS_PER_MILESTONE;
+      autoGrowthMilestoneLevels.push(person.level);
     }
   }
   if (freeAttributePointsGained > 0) {
     person.freeAttributePoints += freeAttributePointsGained;
     person.earnedAttributePoints += freeAttributePointsGained;
   }
+  const autoGrowth = applyAutoAttributeGrowth(person, autoGrowthMilestoneLevels);
   person.nextLevelExperience = getLevelUpExperience(person.level);
   const growthDate = now instanceof Date ? now : new Date(now);
   person.lastGrowthAt = Number.isFinite(growthDate.getTime()) ? growthDate.toISOString() : new Date().toISOString();
@@ -512,6 +682,11 @@ function grantBattleExperience(gameState, leaderId, experienceSummary = {}, now 
     freeAttributePointsBefore: before.freeAttributePoints,
     freeAttributePointsAfter: person.freeAttributePoints,
     freeAttributePointsGained,
+    autoAttributeGrowthBefore: before.autoAttributeGrowth,
+    autoAttributeGrowthAfter: person.autoAttributeGrowth,
+    autoAttributeGrowthGained: autoGrowth.attributes,
+    autoAttributeGrowthTotal: autoGrowth.total,
+    autoGrowthMilestones: autoGrowth.milestones,
   };
 }
 
@@ -537,13 +712,16 @@ function assignAttributePoint(gameState, personId, attributeKey, now = new Date(
   const attributes = normalizeAttributes(person.attributes || {});
   const before = attributes[key];
   attributes[key] = clampAttributeValue(before + 1, before);
-  person.attributes = attributes;
+  person.attributes = syncAttributeAliases(attributes);
   person.freeAttributePoints = progression.freeAttributePoints - 1;
   person.earnedAttributePoints = progression.earnedAttributePoints;
   person.assignedAttributePoints = {
     ...progression.assignedAttributePoints,
     [key]: Math.max(0, toInteger(progression.assignedAttributePoints[key], 0)) + 1,
   };
+  person.autoAttributeGrowth = progression.autoAttributeGrowth;
+  person.earnedAutoAttributePoints = progression.earnedAutoAttributePoints;
+  person.autoGrowthMilestones = progression.autoGrowthMilestones;
   person.nextLevelExperience = getLevelUpExperience(progression.level);
   const assignedDate = now instanceof Date ? now : new Date(now);
   person.lastAttributeAssignedAt = Number.isFinite(assignedDate.getTime()) ? assignedDate.toISOString() : new Date().toISOString();
@@ -776,11 +954,15 @@ module.exports = {
   BASE_LEVEL,
   ATTRIBUTE_POINT_MILESTONE,
   ATTRIBUTE_POINTS_PER_MILESTONE,
+  QUALITY_AUTO_GROWTH_POINTS,
+  AUTO_GROWTH_WEIGHTS,
   ATTRIBUTE_KEYS,
   ARCHETYPES,
   EFFECTS,
   getLevelUpExperience,
   normalizeProgression,
+  calculateAutoAttributeGrowth,
+  applyAutoAttributeGrowth,
   grantBattleExperience,
   assignAttributePoint,
   createInitialFamousPersonState,

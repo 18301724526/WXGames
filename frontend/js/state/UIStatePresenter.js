@@ -722,6 +722,25 @@
       });
     }
 
+    static formatFamousAutoGrowthText(autoAttributeGrowth = {}, attributes = []) {
+      const items = (Array.isArray(attributes) ? attributes : [])
+        .map((attr, index) => ({
+          key: attr.key,
+          label: attr.shortLabel || attr.label || attr.key,
+          value: Math.max(0, this.toInteger(autoAttributeGrowth?.[attr.key], 0)),
+          index,
+        }))
+        .filter((item) => item.value > 0);
+      const total = items.reduce((sum, item) => sum + item.value, 0);
+      if (total <= 0) return '';
+      const detail = items
+        .sort((a, b) => b.value - a.value || a.index - b.index)
+        .slice(0, 4)
+        .map((item) => `${item.label}+${item.value}`)
+        .join(' ');
+      return detail ? `自动成长 ${total} 点 · ${detail}` : `自动成长 ${total} 点`;
+    }
+
     static buildFamousPersonCard(person = {}, options = {}) {
       const attrs = person.attributes || {};
       const roleLabels = {
@@ -769,6 +788,10 @@
       const attributePointHint = !isCandidate
         ? (freeAttributePoints > 0 ? `可分配 ${freeAttributePoints} 点` : `下次属性点：Lv.${nextAttributePointLevel}`)
         : '';
+      const autoGrowthText = !isCandidate ? this.formatFamousAutoGrowthText(person.autoAttributeGrowth, attributes) : '';
+      const autoGrowthTotal = !isCandidate
+        ? attributes.reduce((sum, item) => sum + Math.max(0, this.toInteger(person.autoAttributeGrowth?.[item.key], 0)), 0)
+        : 0;
       const attributeActions = !isCandidate && freeAttributePoints > 0
         ? attributes.map((item) => ({
           type: 'assignFamousAttributePoint',
@@ -793,6 +816,8 @@
         freeAttributePoints: isCandidate ? null : freeAttributePoints,
         nextAttributePointLevel,
         attributePointHint,
+        autoGrowthText,
+        autoGrowthTotal,
         growthText,
         pointText,
         stats,
