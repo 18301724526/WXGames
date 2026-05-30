@@ -31,8 +31,8 @@
     layoutMode: 'iso',
     radius: 5,
     tileSize: 192,
-    stepX: 91,
-    stepY: 46,
+    stepX: 95,
+    stepY: 70,
     anchorY: 0.5,
     siteScale: 0.26,
     zoom: 1.05,
@@ -50,11 +50,13 @@
   const hoverInfo = document.getElementById('hoverInfo');
   const exportData = document.getElementById('exportData');
   const images = new Map();
+  const imageMetrics = new Map();
   const controls = {};
   let tiles = [];
   let isDragging = false;
   let dragStart = null;
   let needsRender = true;
+  let effectiveGridSynced = false;
 
   function hashString(input) {
     let hash = 2166136261;
@@ -208,14 +210,97 @@
         bestDistance = distance;
       }
     }
-    const limit = Math.pow(state.tileSize * state.zoom * 0.34, 2);
+    const tileSize = getTileDrawSize();
+    const limit = Math.pow(Math.max(tileSize.width, tileSize.height) * state.zoom * 0.36, 2);
     return bestDistance <= limit ? best : null;
+  }
+
+  function getFallbackMetrics(image) {
+    const width = image?.naturalWidth || image?.width || 1;
+    const height = image?.naturalHeight || image?.height || 1;
+    return {
+      x: 0,
+      y: 0,
+      width,
+      height,
+      sourceWidth: width,
+      sourceHeight: height,
+    };
+  }
+
+  function analyzeAlphaBounds(image) {
+    const fallback = getFallbackMetrics(image);
+    if (!fallback.width || !fallback.height) return fallback;
+    const probe = document.createElement('canvas');
+    probe.width = fallback.width;
+    probe.height = fallback.height;
+    const probeCtx = probe.getContext('2d', { willReadFrequently: true });
+    if (!probeCtx) return fallback;
+    try {
+      probeCtx.clearRect(0, 0, probe.width, probe.height);
+      probeCtx.drawImage(image, 0, 0);
+      const data = probeCtx.getImageData(0, 0, probe.width, probe.height).data;
+      let minX = probe.width;
+      let minY = probe.height;
+      let maxX = -1;
+      let maxY = -1;
+      for (let y = 0; y < probe.height; y += 1) {
+        for (let x = 0; x < probe.width; x += 1) {
+          const alpha = data[(y * probe.width + x) * 4 + 3];
+          if (alpha <= 8) continue;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      if (maxX < minX || maxY < minY) return fallback;
+      return {
+        x: minX,
+        y: minY,
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+        sourceWidth: probe.width,
+        sourceHeight: probe.height,
+      };
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function getImageMetrics(file) {
+    const image = images.get(file);
+    return imageMetrics.get(file) || getFallbackMetrics(image);
+  }
+
+  function getTerrainMetrics(type = 'plains') {
+    const terrain = TERRAIN_ASSETS[type] || TERRAIN_ASSETS.plains;
+    return getImageMetrics(terrain.file);
+  }
+
+  function getTileDrawSize(type = 'plains') {
+    const metrics = getTerrainMetrics(type);
+    return {
+      width: state.tileSize,
+      height: state.tileSize * (metrics.height / Math.max(1, metrics.width)),
+      metrics,
+    };
+  }
+
+  function syncGridToEffectiveTile() {
+    const tileSize = getTileDrawSize('plains');
+    state.stepX = Math.max(1, Math.round(tileSize.width * 0.5) - 1);
+    state.stepY = Math.max(1, Math.round(tileSize.height * 0.5) - 1);
+    state.anchorY = 0.5;
   }
 
   function loadImage(file) {
     return new Promise((resolve) => {
       const image = new Image();
-      image.onload = () => resolve({ file, image, ok: true });
+      image.onload = () => {
+        imageMetrics.set(file, analyzeAlphaBounds(image));
+        resolve({ file, image, ok: true });
+      };
       image.onerror = () => resolve({ file, image, ok: false });
       image.src = `${ASSET_ROOT}${file}`;
       images.set(file, image);
@@ -230,6 +315,12 @@
     const results = await Promise.all(files.map(loadImage));
     const failed = results.filter((item) => !item.ok).map((item) => item.file);
     if (failed.length) hoverInfo.textContent = `资源加载失败：${failed.join(', ')}`;
+    if (!effectiveGridSynced) {
+      effectiveGridSynced = true;
+      syncGridToEffectiveTile();
+      syncControls();
+      fitMap();
+    }
     markDirty();
   }
 
@@ -283,20 +374,22 @@
     const baseImage = images.get(TERRAIN_ASSETS.plains.file);
     if (!baseImage || !baseImage.complete) return;
     const projected = getProjectedPosition(tile);
-    const size = state.tileSize * state.zoom;
-    const trim = 2;
-    const drawX = projected.x - size * 0.5;
-    const drawY = projected.y - size * state.anchorY;
+    const tileSize = getTileDrawSize('plains');
+    const metrics = tileSize.metrics;
+    const drawW = tileSize.width * state.zoom;
+    const drawH = tileSize.height * state.zoom;
+    const drawX = projected.x - drawW * 0.5;
+    const drawY = projected.y - drawH * state.anchorY;
     ctx.drawImage(
       baseImage,
-      trim,
-      trim,
-      baseImage.naturalWidth - trim * 2,
-      baseImage.naturalHeight - trim * 2,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
       drawX,
       drawY,
-      size,
-      size
+      drawW,
+      drawH
     );
 
     if (state.hoverTileId === tile.id) {
@@ -329,7 +422,8 @@
     const image = images.get(terrain.file);
     if (!image || !image.complete) return;
     const projected = getProjectedPosition(tile);
-    const size = state.tileSize * state.zoom;
+    const tileSize = getTileDrawSize(tile.terrain);
+    const size = Math.max(tileSize.width, tileSize.height) * state.zoom;
     const jitterX = (random01(state.seed, tile.q, tile.r, 'terrain-feature-x') - 0.5) * state.stepX * state.zoom * 0.34;
     const jitterY = (random01(state.seed, tile.q, tile.r, 'terrain-feature-y') - 0.5) * state.stepY * state.zoom * 0.46;
     const drawW = size * profile.scale;
@@ -487,6 +581,11 @@
       layoutMode: state.layoutMode,
       radius: state.radius,
       tileSize: state.tileSize,
+      effectiveTile: {
+        width: Math.round(getTileDrawSize('plains').width),
+        height: Math.round(getTileDrawSize('plains').height),
+        alphaBounds: getTerrainMetrics('plains'),
+      },
       stepX: state.stepX,
       stepY: state.stepY,
       anchorY: Number(state.anchorY.toFixed(2)),
@@ -543,7 +642,8 @@
     state.panX = 0;
     state.panY = 18;
     const mapWidth = Math.max(1, state.radius * state.stepX * 3.25);
-    const mapHeight = Math.max(1, state.radius * state.stepY * 2.85 + state.tileSize * 0.8);
+    const tileSize = getTileDrawSize();
+    const mapHeight = Math.max(1, state.radius * state.stepY * 2.85 + tileSize.height * 0.9);
     const zoomX = canvas.clientWidth / mapWidth;
     const zoomY = canvas.clientHeight / mapHeight;
     state.zoom = Math.min(1.16, Math.max(0.45, Math.min(zoomX, zoomY)));
@@ -575,7 +675,10 @@
     controls.showLabels.addEventListener('change', () => { state.showLabels = controls.showLabels.checked; markDirty(); });
 
     bindRange('radius', (value) => { state.radius = value; buildTiles(); });
-    bindRange('tileSize', (value) => { state.tileSize = value; });
+    bindRange('tileSize', (value) => {
+      state.tileSize = value;
+      syncGridToEffectiveTile();
+    });
     bindRange('stepX', (value) => { state.stepX = value; });
     bindRange('stepY', (value) => { state.stepY = value; });
     bindRange('anchorY', (value) => { state.anchorY = value / 100; });
@@ -586,6 +689,7 @@
       state.panX = 0;
       state.panY = 12;
       state.zoom = 0.92;
+      syncGridToEffectiveTile();
       syncControls();
       markDirty();
     });
@@ -672,11 +776,13 @@
     syncControls();
     resizeCanvas();
     loadAssets();
-    fitMap();
     window.TileMapLab = {
       state,
       buildTiles,
       getParamsSnapshot,
+      analyzeAlphaBounds,
+      getTerrainMetrics,
+      getTileDrawSize,
       terrainAssets: TERRAIN_ASSETS,
       siteAssets: SITE_ASSETS,
     };
