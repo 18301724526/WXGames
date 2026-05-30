@@ -22,7 +22,8 @@
     treeCluster: { label: 'tree cluster', file: 'tile-map/tile-feature-tree-cluster.png' },
     mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
     riverStraight: { label: 'river straight', file: 'tile-map/tile-river-straight.png' },
-    riverNodeCap: { label: 'river node cap', file: 'tile-map/tile-river-node-cap.png' },
+    riverJunctionWater: { label: 'river junction water', file: 'tile-map/tile-river-junction-water.png' },
+    pond: { label: 'pond', file: 'tile-map/tile-feature-pond.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
@@ -129,6 +130,16 @@
     return tiles.find((item) => item.q === tile.q + dir.dq && item.r === tile.r + dir.dr);
   }
 
+  function hasRiverNearby(q, r, radius = 1) {
+    if (isRiverTile(q, r)) return true;
+    if (radius <= 0) return false;
+    return RIVER_DIRECTIONS.some((dir) => isRiverTile(q + dir.dq, r + dir.dr));
+  }
+
+  function isRiverBlockedCoord(q, r) {
+    return getHexDistance({ q, r }, { q: 0, r: 0 }) <= 1;
+  }
+
   function getDirectionAngle(directionIndex) {
     const center = getTilePosition({ q: 0, r: 0 });
     const dir = RIVER_DIRECTIONS[directionIndex % RIVER_DIRECTIONS.length];
@@ -152,6 +163,7 @@
 
   function chooseSite(q, r, terrain, ring) {
     if (q === 0 && r === 0) return { type: 'city', owner: 'player', label: '首都' };
+    if (hasRiverNearby(q, r, 1)) return null;
     const chance = q === 0 && r === 0 ? 1 : Math.min(0.018 + ring * 0.012, 0.08);
     if (random01(state.seed, q, r, 'site') > chance) return null;
     const roll = random01(state.seed, q, r, 'site-type');
@@ -168,6 +180,13 @@
           ? 'city_state'
           : 'tribe';
     return { type, owner, label: SITE_ASSETS[type].label };
+  }
+
+  function choosePond(q, r, terrain, ring) {
+    if (q === 0 && r === 0) return false;
+    if (ring < 2 || hasRiverNearby(q, r, 1)) return false;
+    if (terrain === 'mountain' || terrain === 'hills' || terrain === 'waste') return false;
+    return random01(state.seed, q, r, 'pond-feature') < 0.035;
   }
 
   function isCoordInRadius(q, r, radius) {
@@ -197,6 +216,7 @@
           r: current.r + dir.dr,
         }))
         .filter((item) => isCoordInRadius(item.q, item.r, radius))
+        .filter((item) => !isRiverBlockedCoord(item.q, item.r))
         .map((item) => {
           const id = getTileId(item.q, item.r);
           const distance = getHexDistance(item, target);
@@ -250,6 +270,7 @@
   function buildTiles() {
     const nextTiles = [];
     const radius = state.radius;
+    riverConnections = createRiverConnections(radius);
     for (let q = -radius; q <= radius; q += 1) {
       const minR = Math.max(-radius, -q - radius);
       const maxR = Math.min(radius, -q + radius);
@@ -257,7 +278,8 @@
         const s = -q - r;
         const ring = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
         const terrain = chooseTerrain(q, r);
-        const site = chooseSite(q, r, terrain, ring);
+        const pond = choosePond(q, r, terrain, ring);
+        const site = pond ? null : chooseSite(q, r, terrain, ring);
         nextTiles.push({
           id: getTileId(q, r),
           q,
@@ -265,11 +287,11 @@
           s,
           ring,
           terrain,
+          pond,
           site,
         });
       }
     }
-    riverConnections = createRiverConnections(radius);
     nextTiles.forEach((tile) => {
       tile.riverConnections = getRiverConnections(tile);
     });
@@ -525,6 +547,7 @@
 
   function drawTerrainFeature(tile) {
     if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river') return;
+    if (hasRiverNearby(tile.q, tile.r, 1)) return;
     if (tile.terrain === 'forest') {
       drawTreeFeature(tile);
       return;
@@ -698,17 +721,51 @@
     ctx.restore();
   }
 
+  function shouldDrawRiverJunction(tile) {
+    const connections = getRiverConnections(tile);
+    if (connections.length !== 2) return true;
+    return (Math.abs(connections[0] - connections[1]) % 3) !== 0;
+  }
+
   function drawRiverNode(tile) {
-    const asset = FEATURE_ASSETS.riverNodeCap;
+    if (!shouldDrawRiverJunction(tile)) return;
+    const asset = FEATURE_ASSETS.riverJunctionWater;
     const image = images.get(asset.file);
     if (!image || !image.complete) return;
     const projected = getProjectedPosition(tile);
     const metrics = getImageMetrics(asset.file);
-    const drawW = state.stepX * state.zoom * 0.62;
+    const connectionCount = getRiverConnections(tile).length;
+    const drawW = state.stepX * state.zoom * (connectionCount >= 3 ? 0.9 : 0.68);
     const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
     ctx.save();
     ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
-    ctx.globalAlpha = 0.82;
+    ctx.globalAlpha = connectionCount >= 3 ? 0.78 : 0.66;
+    ctx.drawImage(
+      image,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      -drawW * 0.5,
+      -drawH * 0.5,
+      drawW,
+      drawH
+    );
+    ctx.restore();
+  }
+
+  function drawPond(tile) {
+    if (!tile.pond) return;
+    const asset = FEATURE_ASSETS.pond;
+    const image = images.get(asset.file);
+    if (!image || !image.complete) return;
+    const projected = getProjectedPosition(tile);
+    const metrics = getImageMetrics(asset.file);
+    const drawW = state.stepX * state.zoom * 0.76;
+    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    ctx.save();
+    ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.02);
+    ctx.globalAlpha = 0.88;
     ctx.drawImage(
       image,
       metrics.x,
@@ -810,6 +867,7 @@
       return pa.y - pb.y || pa.x - pb.x || a.ring - b.ring;
     });
     for (const tile of sorted) drawTile(tile);
+    for (const tile of sorted) drawPond(tile);
     drawRiverLayer(sorted);
     for (const tile of sorted) drawTerrainFeature(tile);
     for (const tile of sorted) drawRegionTint(tile);
@@ -854,6 +912,8 @@
       effectiveFeatures: Object.fromEntries(
         Object.entries(FEATURE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
+      riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
+      pondTiles: tiles.filter((tile) => tile.pond).length,
       stepX: state.stepX,
       stepY: state.stepY,
       anchorY: Number(state.anchorY.toFixed(2)),
@@ -1050,7 +1110,8 @@
       getParamsSnapshot,
       analyzeAlphaBounds,
       getRiverConnections,
-      getRiverPiece,
+      hasRiverNearby,
+      get tiles() { return tiles; },
       getTerrainMetrics,
       getTileDrawSize,
       terrainAssets: TERRAIN_ASSETS,

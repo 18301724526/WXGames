@@ -19,8 +19,9 @@ test('tile map lab is an art-resource stitching page', () => {
     'tile-map/tile-terrain-mountain.png',
     'tile-map/tile-feature-tree-cluster.png',
     'tile-map/tile-feature-mountain-ridge.png',
+    'tile-map/tile-feature-pond.png',
     'tile-map/tile-river-straight.png',
-    'tile-map/tile-river-node-cap.png',
+    'tile-map/tile-river-junction-water.png',
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -29,7 +30,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.176-tile-map-lab-river-pixel-ports-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.177-tile-map-lab-river-avoidance-v1/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /imageMetrics = new Map/);
@@ -42,16 +43,22 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /drawTreeFeature/);
   assert.match(js, /drawMountainFeature/);
   assert.match(js, /tile-map\/tile-feature-mountain-ridge\.png/);
+  assert.match(js, /tile-map\/tile-feature-pond\.png/);
   assert.match(js, /tile-map\/tile-river-straight\.png/);
-  assert.match(js, /tile-map\/tile-river-node-cap\.png/);
+  assert.match(js, /tile-map\/tile-river-junction-water\.png/);
   assert.match(js, /RIVER_DIRECTIONS/);
+  assert.match(js, /hasRiverNearby/);
+  assert.match(js, /isRiverBlockedCoord/);
   assert.match(js, /createRiverConnections/);
   assert.match(js, /buildRiverPath/);
   assert.match(js, /addRiverConnection/);
   assert.match(js, /riverConnections = createRiverConnections/);
+  assert.match(js, /choosePond/);
+  assert.match(js, /drawPond/);
   assert.match(js, /getRiverConnections/);
   assert.match(js, /drawRiverSegments/);
   assert.match(js, /drawRiverSegmentBetween/);
+  assert.match(js, /shouldDrawRiverJunction/);
   assert.match(js, /drawRiverNode/);
   assert.match(js, /effectiveFeatures/);
   assert.match(js, /valueNoise/);
@@ -68,7 +75,13 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.doesNotMatch(js, /forest: \{ chance:/);
   assert.match(js, /pointerdown/);
   assert.match(js, /wheel/);
+  assert.match(js, /if \(hasRiverNearby\(q, r, 1\)\) return null;/);
+  assert.match(js, /if \(ring < 2 \|\| hasRiverNearby\(q, r, 1\)\) return false;/);
+  assert.match(js, /if \(hasRiverNearby\(tile\.q, tile\.r, 1\)\) return;/);
+  assert.match(js, /if \(!shouldDrawRiverJunction\(tile\)\) return;/);
+  assert.match(js, /\.filter\(\(item\) => !isRiverBlockedCoord\(item\.q, item\.r\)\)/);
   assert.doesNotMatch(js, /territory-plains-cutout|territory-forest-cutout|territory-hills-cutout|territory-ruins-cutout/);
+  assert.doesNotMatch(js, /riverNodeCap|getRiverPiece|tile-river-node-cap/);
 
   for (const asset of artAssets) {
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', ...asset.split('/'))), true, asset);
