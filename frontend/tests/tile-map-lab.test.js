@@ -21,7 +21,10 @@ test('tile map lab is an art-resource stitching page', () => {
     'tile-map/tile-feature-mountain-ridge.png',
     'tile-map/tile-feature-pond.png',
     'tile-map/tile-river-straight.png',
+    'tile-map/tile-river-straight-water.png',
+    'tile-map/tile-river-straight-water-fade.png',
     'tile-map/tile-river-junction-water.png',
+    'tile-map/tile-river-junction-water-clean.png',
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -30,7 +33,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.177-tile-map-lab-river-avoidance-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.178-tile-map-lab-river-loop-v1/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /imageMetrics = new Map/);
@@ -45,7 +48,10 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /tile-map\/tile-feature-mountain-ridge\.png/);
   assert.match(js, /tile-map\/tile-feature-pond\.png/);
   assert.match(js, /tile-map\/tile-river-straight\.png/);
+  assert.match(js, /tile-map\/tile-river-straight-water\.png/);
+  assert.match(js, /tile-map\/tile-river-straight-water-fade\.png/);
   assert.match(js, /tile-map\/tile-river-junction-water\.png/);
+  assert.match(js, /tile-map\/tile-river-junction-water-clean\.png/);
   assert.match(js, /RIVER_DIRECTIONS/);
   assert.match(js, /hasRiverNearby/);
   assert.match(js, /isRiverBlockedCoord/);
@@ -58,6 +64,8 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /getRiverConnections/);
   assert.match(js, /drawRiverSegments/);
   assert.match(js, /drawRiverSegmentBetween/);
+  assert.match(js, /drawTiledRiverStrip/);
+  assert.match(js, /drawRiverWaterCaps/);
   assert.match(js, /shouldDrawRiverJunction/);
   assert.match(js, /drawRiverNode/);
   assert.match(js, /effectiveFeatures/);

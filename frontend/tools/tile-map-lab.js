@@ -23,6 +23,9 @@
     mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
     riverStraight: { label: 'river straight', file: 'tile-map/tile-river-straight.png' },
     riverJunctionWater: { label: 'river junction water', file: 'tile-map/tile-river-junction-water.png' },
+    riverStraightWater: { label: 'river straight water fill', file: 'tile-map/tile-river-straight-water.png' },
+    riverStraightWaterFade: { label: 'river straight water feather', file: 'tile-map/tile-river-straight-water-fade.png' },
+    riverJunctionWaterClean: { label: 'river junction water clean', file: 'tile-map/tile-river-junction-water-clean.png' },
     pond: { label: 'pond', file: 'tile-map/tile-feature-pond.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
@@ -359,6 +362,93 @@
     };
   }
 
+  function isOpaquePixel(data, index) {
+    return data[index + 3] > 8;
+  }
+
+  function isWaterPixel(data, index) {
+    const red = data[index];
+    const green = data[index + 1];
+    const blue = data[index + 2];
+    const alpha = data[index + 3];
+    return alpha > 40 && blue > red + 25 && blue > green - 12 && green > red + 10;
+  }
+
+  function measurePixelBounds(data, width, height, predicate) {
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    let count = 0;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        if (!predicate(data, index)) continue;
+        count += 1;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    if (maxX < minX || maxY < minY) return null;
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX + 1,
+      height: maxY - minY + 1,
+      count,
+      sourceWidth: width,
+      sourceHeight: height,
+    };
+  }
+
+  function measureEdgePort(data, width, bounds, predicate, side, band = 3) {
+    if (!bounds) return { run: 0, center: 0.5 };
+    const coords = [];
+    if (side === 'left' || side === 'right') {
+      const minX = bounds.x;
+      const maxX = bounds.x + bounds.width - 1;
+      const xStart = side === 'left' ? minX : Math.max(minX, maxX - band + 1);
+      const xEnd = side === 'left' ? Math.min(maxX, minX + band - 1) : maxX;
+      for (let y = bounds.y; y < bounds.y + bounds.height; y += 1) {
+        let touched = false;
+        for (let x = xStart; x <= xEnd; x += 1) {
+          if (predicate(data, (y * width + x) * 4)) touched = true;
+        }
+        if (touched) coords.push(y);
+      }
+      if (!coords.length) return { run: 0, center: 0.5 };
+      const first = coords[0];
+      const last = coords[coords.length - 1];
+      return { run: coords.length, first, last, center: ((first + last) * 0.5 - bounds.y) / Math.max(1, bounds.height) };
+    }
+    const minY = bounds.y;
+    const maxY = bounds.y + bounds.height - 1;
+    const yStart = side === 'top' ? minY : Math.max(minY, maxY - band + 1);
+    const yEnd = side === 'top' ? Math.min(maxY, minY + band - 1) : maxY;
+    for (let x = bounds.x; x < bounds.x + bounds.width; x += 1) {
+      let touched = false;
+      for (let y = yStart; y <= yEnd; y += 1) {
+        if (predicate(data, (y * width + x) * 4)) touched = true;
+      }
+      if (touched) coords.push(x);
+    }
+    if (!coords.length) return { run: 0, center: 0.5 };
+    const first = coords[0];
+    const last = coords[coords.length - 1];
+    return { run: coords.length, first, last, center: ((first + last) * 0.5 - bounds.x) / Math.max(1, bounds.width) };
+  }
+
+  function measurePorts(data, width, bounds, predicate) {
+    return {
+      left: measureEdgePort(data, width, bounds, predicate, 'left'),
+      right: measureEdgePort(data, width, bounds, predicate, 'right'),
+      top: measureEdgePort(data, width, bounds, predicate, 'top'),
+      bottom: measureEdgePort(data, width, bounds, predicate, 'bottom'),
+    };
+  }
+
   function analyzeAlphaBounds(image) {
     const fallback = getFallbackMetrics(image);
     if (!fallback.width || !fallback.height) return fallback;
@@ -371,28 +461,14 @@
       probeCtx.clearRect(0, 0, probe.width, probe.height);
       probeCtx.drawImage(image, 0, 0);
       const data = probeCtx.getImageData(0, 0, probe.width, probe.height).data;
-      let minX = probe.width;
-      let minY = probe.height;
-      let maxX = -1;
-      let maxY = -1;
-      for (let y = 0; y < probe.height; y += 1) {
-        for (let x = 0; x < probe.width; x += 1) {
-          const alpha = data[(y * probe.width + x) * 4 + 3];
-          if (alpha <= 8) continue;
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-      if (maxX < minX || maxY < minY) return fallback;
+      const alphaBounds = measurePixelBounds(data, probe.width, probe.height, isOpaquePixel);
+      if (!alphaBounds) return fallback;
+      const waterBounds = measurePixelBounds(data, probe.width, probe.height, isWaterPixel);
       return {
-        x: minX,
-        y: minY,
-        width: maxX - minX + 1,
-        height: maxY - minY + 1,
-        sourceWidth: probe.width,
-        sourceHeight: probe.height,
+        ...alphaBounds,
+        waterBounds,
+        alphaPorts: measurePorts(data, probe.width, alphaBounds, isOpaquePixel),
+        waterPorts: measurePorts(data, probe.width, waterBounds, isWaterPixel),
       };
     } catch (_) {
       return fallback;
@@ -678,6 +754,7 @@
     for (const tile of sortedTiles) {
       if (!isRiverTile(tile.q, tile.r)) continue;
       drawRiverNode(tile);
+      drawRiverWaterCaps(tile);
     }
   }
 
@@ -701,23 +778,88 @@
     const distance = Math.max(1, Math.hypot(dx, dy));
     const angle = Math.atan2(dy, dx);
     const metrics = getImageMetrics(asset.file);
-    const drawW = distance * 1.18;
-    const drawH = Math.max(state.stepY * state.zoom * 1.04, drawW * (metrics.height / Math.max(1, metrics.width)));
+    const profile = getRiverSegmentDrawProfile(metrics);
+    const drawW = distance + profile.bankOverlap * 2;
     ctx.save();
     ctx.translate((from.x + to.x) * 0.5, (from.y + to.y) * 0.5 - state.stepY * state.zoom * 0.03);
     ctx.rotate(angle);
-    ctx.globalAlpha = 0.94;
-    ctx.drawImage(
-      image,
-      metrics.x,
-      metrics.y,
-      metrics.width,
-      metrics.height,
-      -drawW * 0.5,
-      -drawH * 0.5,
-      drawW,
-      drawH
-    );
+    ctx.globalAlpha = 0.96;
+    drawTiledRiverStrip(image, metrics, drawW, profile.drawH, fromTile.id, toTile.id);
+    ctx.restore();
+  }
+
+  function getRiverSegmentDrawProfile(metrics) {
+    const alphaRun = Math.max(metrics.alphaPorts?.left?.run || 0, metrics.alphaPorts?.right?.run || 0, metrics.height * 0.75);
+    const waterRun = Math.max(metrics.waterPorts?.left?.run || 0, metrics.waterPorts?.right?.run || 0, alphaRun * 0.72);
+    const drawH = Math.max(state.stepY * state.zoom * 1.04, state.stepY * state.zoom * (alphaRun / Math.max(1, metrics.height)) * 1.22);
+    const scale = drawH / Math.max(1, metrics.height);
+    const bankOverlap = Math.max(state.stepY * state.zoom * 0.16, alphaRun * scale * 0.34);
+    const waterOverlap = Math.max(bankOverlap * 2.35, waterRun * scale * 1.72, state.stepY * state.zoom * 0.66);
+    const waterH = Math.max(1, waterRun * scale * 1.22);
+    return {
+      drawH,
+      waterH,
+      scale,
+      bankOverlap,
+      waterOverlap,
+      cycleW: metrics.width * scale,
+    };
+  }
+
+  function drawTiledRiverStrip(image, metrics, drawW, drawH, fromId, toId) {
+    const scale = drawH / Math.max(1, metrics.height);
+    const cycleW = Math.max(1, metrics.width * scale);
+    const phase = 0;
+    const step = Math.max(1, cycleW - 0.75);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-drawW * 0.5, -drawH * 0.5, drawW, drawH);
+    ctx.clip();
+    for (let x = -drawW * 0.5 - phase - cycleW; x < drawW * 0.5 + cycleW; x += step) {
+      ctx.drawImage(
+        image,
+        metrics.x,
+        metrics.y,
+        metrics.width,
+        metrics.height,
+        x,
+        -drawH * 0.5,
+        cycleW + 1.5,
+        drawH
+      );
+    }
+    ctx.restore();
+  }
+
+  function drawRiverWaterCaps(tile) {
+    if (!shouldDrawRiverJunction(tile)) return;
+    const asset = FEATURE_ASSETS.riverStraightWaterFade;
+    const image = images.get(asset.file);
+    if (!image || !image.complete) return;
+    const metrics = getImageMetrics(asset.file);
+    const projected = getProjectedPosition(tile);
+    const profile = getRiverSegmentDrawProfile(getImageMetrics(FEATURE_ASSETS.riverStraight.file));
+    const capW = profile.waterOverlap * 2.62;
+    const capH = profile.waterH * 1.18;
+    ctx.save();
+    ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
+    ctx.globalAlpha = 0.9;
+    for (const directionIndex of getRiverConnections(tile)) {
+      ctx.save();
+      ctx.rotate(getDirectionAngle(directionIndex));
+      ctx.drawImage(
+        image,
+        metrics.x,
+        metrics.y,
+        metrics.width,
+        metrics.height,
+        -profile.waterOverlap * 0.94,
+        -capH * 0.5,
+        capW,
+        capH
+      );
+      ctx.restore();
+    }
     ctx.restore();
   }
 
@@ -729,17 +871,19 @@
 
   function drawRiverNode(tile) {
     if (!shouldDrawRiverJunction(tile)) return;
-    const asset = FEATURE_ASSETS.riverJunctionWater;
+    const asset = FEATURE_ASSETS.riverJunctionWaterClean;
     const image = images.get(asset.file);
     if (!image || !image.complete) return;
     const projected = getProjectedPosition(tile);
     const metrics = getImageMetrics(asset.file);
+    const riverMetrics = getImageMetrics(FEATURE_ASSETS.riverStraight.file);
     const connectionCount = getRiverConnections(tile).length;
-    const drawW = state.stepX * state.zoom * (connectionCount >= 3 ? 0.9 : 0.68);
-    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    const profile = getRiverSegmentDrawProfile(riverMetrics);
+    const drawH = Math.max(profile.waterH * (connectionCount >= 3 ? 2.08 : 1.52), profile.waterOverlap * 1.08);
+    const drawW = drawH * (metrics.width / Math.max(1, metrics.height));
     ctx.save();
     ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
-    ctx.globalAlpha = connectionCount >= 3 ? 0.78 : 0.66;
+    ctx.globalAlpha = connectionCount >= 3 ? 0.78 : 0.56;
     ctx.drawImage(
       image,
       metrics.x,

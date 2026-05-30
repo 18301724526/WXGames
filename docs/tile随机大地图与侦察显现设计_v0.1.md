@@ -467,6 +467,7 @@ territoryState: {
 - `0.1.175` 增加山川/河流验证：新增 `tile-feature-mountain-ridge.png`、`tile-river-straight.png`、`tile-river-bend.png` 透明美术资源；山地改为透明山脊 sprite 叠加；河流从调试线条改为按路径连接关系选择直线/弯道贴片并旋转绘制。
 - `0.1.176` 修正河流素材判定与路径生成：`0.1.175` 的河流图虽然是透明 PNG，但像素端口不合格，直河左右端口中心分别约为 `0.266 / 0.749`，弯河端口只有零星 `2-7px` 触边，不能稳定拼接。测试页改为先用 alpha 有效像素检测端口，再用左右端口一致的 `tile-river-straight.png` 在相邻 tile 中心之间铺段，并用 `tile-river-node-cap.png` 覆盖节点接缝。同时河流生成从“每格独立判定是否有河”改为确定性 path graph，避免出现孤立水坑。后续河流连接件都必须同时满足端口中心、宽度、触边规则和路径连通规则，不能只凭视觉感觉接入。
 - `0.1.177` 拆分河道衔接与池塘语义：带岸边的圆形水体不再作为河流节点遮罩，改名为 `tile-feature-pond.png`，只在非河流缓冲区少量生成；河流端点、转角、汇流改用无岸边水面 `tile-river-junction-water.png` 做衔接，直线河段中部不重复盖节点水面。地点、树丛、山脉等地表元素第一版必须避开河流 tile 及相邻缓冲格，河流路径本身也要避开首都安全圈，避免建筑或装饰压在河道上。
+- `0.1.178` 校准河流循环衔接：测试页不再只扫描 alpha 外框，而是额外按像素颜色识别水体有效范围和上下左右水体端口，直线河段按测得的水体宽度、岸边宽度和缩放比例在两个 tile 中心之间循环铺 `tile-river-straight.png`，避免把整张 PNG 拉伸成一次性贴片。交叉、转角和端点暂用从现有河流素材拆出的 `tile-river-straight-water.png`、`tile-river-straight-water-fade.png`、`tile-river-junction-water-clean.png` 做无边框水面补缝；这只是当前素材条件下的可用验证方案，正式美术仍需要独立的 bend / confluence / source / mouth 河流连接件，并且每张连接件都必须通过实际像素端口检测后才能接入。
 - 后续正式美术应继续沿用“地表 tile / POI / 军队或事件标记”三层结构，不再把建筑、农田、遗迹直接画进每一块基础 tile。
 - 河流、道路和边界过渡需要单独美术资源或过渡 tile，不能用程序线条或单个河流 tile 直接硬拼。
 
