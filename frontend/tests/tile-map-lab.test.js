@@ -25,7 +25,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.172-tile-map-lab-alpha-bounds-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.173-tile-map-lab-site-scale-v1/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /imageMetrics = new Map/);
@@ -33,6 +33,7 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /getTileDrawSize/);
   assert.match(js, /syncGridToEffectiveTile/);
   assert.match(js, /effectiveTile/);
+  assert.match(js, /effectiveSites/);
   assert.match(js, /valueNoise/);
   assert.match(js, /drawTerrainFeature/);
   assert.match(js, /TERRAIN_FEATURES/);
@@ -40,6 +41,8 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /if \(!state\.showDebug\) return;/);
   assert.match(js, /metrics\.x/);
   assert.match(js, /metrics\.height/);
+  assert.match(js, /tileSize\.width \* state\.siteScale/);
+  assert.match(js, /ctx\.ellipse\(baseX/);
   assert.match(js, /ctx\.drawImage\(image/);
   assert.match(js, /pointerdown/);
   assert.match(js, /wheel/);

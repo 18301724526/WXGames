@@ -34,7 +34,7 @@
     stepX: 95,
     stepY: 70,
     anchorY: 0.5,
-    siteScale: 0.26,
+    siteScale: 0.46,
     zoom: 1.05,
     panX: 0,
     panY: 12,
@@ -517,9 +517,33 @@
     const image = images.get(siteAsset.file);
     if (!image || !image.complete) return;
     const projected = getProjectedPosition(tile);
-    const size = state.tileSize * state.siteScale * state.zoom;
-    const lift = state.tileSize * state.zoom * 0.34;
-    ctx.drawImage(image, projected.x - size * 0.5, projected.y - lift - size * 0.6, size, size);
+    const tileSize = getTileDrawSize('plains');
+    const metrics = getImageMetrics(siteAsset.file);
+    const drawW = tileSize.width * state.siteScale * state.zoom;
+    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    const lift = tileSize.height * state.zoom * 0.16;
+    const baseX = projected.x;
+    const baseY = projected.y - lift;
+    const drawX = baseX - drawW * 0.5;
+    const drawY = baseY - drawH * 0.86;
+    ctx.save();
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = 'rgba(4, 6, 5, 0.62)';
+    ctx.beginPath();
+    ctx.ellipse(baseX, baseY + drawH * 0.03, drawW * 0.36, drawH * 0.12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.drawImage(
+      image,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      drawX,
+      drawY,
+      drawW,
+      drawH
+    );
     ctx.save();
     ctx.globalAlpha = 0.82;
     ctx.fillStyle = tile.site.owner === 'player'
@@ -528,7 +552,7 @@
         ? '#e8edf1'
         : '#f0c45f';
     ctx.beginPath();
-    ctx.arc(projected.x + size * 0.25, projected.y - lift - size * 0.12, Math.max(3, size * 0.045), 0, Math.PI * 2);
+    ctx.arc(drawX + drawW * 0.78, drawY + drawH * 0.78, Math.max(3, drawW * 0.035), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -586,6 +610,9 @@
         height: Math.round(getTileDrawSize('plains').height),
         alphaBounds: getTerrainMetrics('plains'),
       },
+      effectiveSites: Object.fromEntries(
+        Object.entries(SITE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
       stepX: state.stepX,
       stepY: state.stepY,
       anchorY: Number(state.anchorY.toFixed(2)),
