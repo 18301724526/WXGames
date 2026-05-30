@@ -20,13 +20,23 @@
   };
   const FEATURE_ASSETS = {
     treeCluster: { label: 'tree cluster', file: 'tile-map/tile-feature-tree-cluster.png' },
+    mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
+    riverStraight: { label: 'river straight', file: 'tile-map/tile-river-straight.png' },
+    riverBend: { label: 'river bend', file: 'tile-map/tile-river-bend.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
     hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
     waste: { chance: 0.32, scale: 0.48, alpha: 0.58, lift: 0.06, squash: 0.7 },
-    mountain: { chance: 0.38, scale: 0.52, alpha: 0.7, lift: 0.12, squash: 0.72 },
   };
+  const RIVER_DIRECTIONS = [
+    { dq: 1, dr: 0 },
+    { dq: 1, dr: -1 },
+    { dq: 0, dr: -1 },
+    { dq: -1, dr: 0 },
+    { dq: -1, dr: 1 },
+    { dq: 0, dr: 1 },
+  ];
 
   const state = {
     seed: 'scout-tile-v1',
@@ -110,6 +120,42 @@
     return Math.abs(point.y - center) < width;
   }
 
+  function getRiverConnections(tile) {
+    return RIVER_DIRECTIONS
+      .map((dir, index) => ({ index, q: tile.q + dir.dq, r: tile.r + dir.dr }))
+      .filter((next) => isRiverTile(next.q, next.r))
+      .map((next) => next.index);
+  }
+
+  function getDirectionAngle(directionIndex) {
+    const center = getTilePosition({ q: 0, r: 0 });
+    const dir = RIVER_DIRECTIONS[directionIndex % RIVER_DIRECTIONS.length];
+    const next = getTilePosition({ q: dir.dq, r: dir.dr });
+    return Math.atan2(next.y - center.y, next.x - center.x);
+  }
+
+  function getRiverPiece(tile) {
+    const connections = getRiverConnections(tile);
+    if (!connections.length) {
+      return { asset: 'riverStraight', angle: getDirectionAngle(0), endCount: 0 };
+    }
+    if (connections.length === 1) {
+      return { asset: 'riverStraight', angle: getDirectionAngle(connections[0]), endCount: 1 };
+    }
+    const [first, second] = connections;
+    const diff = Math.abs(first - second);
+    const distance = Math.min(diff, 6 - diff);
+    if (distance === 3) {
+      return { asset: 'riverStraight', angle: getDirectionAngle(first), endCount: connections.length };
+    }
+    const start = (first + 6 - second) % 6 === 1 ? second : first;
+    const end = start === first ? second : first;
+    const startAngle = getDirectionAngle(start);
+    const endAngle = getDirectionAngle(end);
+    const angle = Math.atan2(Math.sin(startAngle) + Math.sin(endAngle), Math.cos(startAngle) + Math.cos(endAngle));
+    return { asset: 'riverBend', angle, endCount: connections.length };
+  }
+
   function chooseTerrain(q, r) {
     if (q === 0 && r === 0) return 'capital';
     const point = axialToMapPoint(q, r);
@@ -117,7 +163,7 @@
     const stone = valueNoise((point.x + 7) / 3.7, (point.y - 3) / 3.7, 'stone-region');
     const dry = valueNoise((point.x - 5) / 4.4, (point.y + 2) / 4.4, 'dry-region');
     const mountain = valueNoise((point.x + 2) / 5.0, (point.y + 5) / 5.0, 'mountain-region');
-    if (mountain > 0.82) return 'mountain';
+    if (mountain > 0.76) return 'mountain';
     if (stone > 0.78) return 'hills';
     if (forest > 0.68) return 'forest';
     if (dry > 0.8) return 'waste';
@@ -422,6 +468,10 @@
       drawTreeFeature(tile);
       return;
     }
+    if (tile.terrain === 'mountain') {
+      drawMountainFeature(tile);
+      return;
+    }
     const profile = TERRAIN_FEATURES[tile.terrain];
     const terrain = TERRAIN_ASSETS[tile.terrain];
     if (!profile || !terrain) return;
@@ -497,36 +547,78 @@
     }
   }
 
-  function drawRiverLayer(sortedTiles) {
-    if (!state.showDebug) return;
-    const riverTiles = sortedTiles
-      .filter((tile) => isRiverTile(tile.q, tile.r))
-      .map((tile) => getProjectedPosition(tile))
-      .sort((a, b) => a.x - b.x || a.y - b.y);
-    if (riverTiles.length < 2) return;
+  function drawMountainFeature(tile) {
+    const mountainAsset = FEATURE_ASSETS.mountainRidge;
+    const image = images.get(mountainAsset.file);
+    if (!image || !image.complete) return;
+    const neighbors = RIVER_DIRECTIONS
+      .map((dir) => chooseTerrain(tile.q + dir.dq, tile.r + dir.dr))
+      .filter((terrain) => terrain === 'mountain').length;
+    const visibleChance = neighbors >= 2 ? 0.98 : 0.78;
+    if (random01(state.seed, tile.q, tile.r, 'mountain-feature-visible') > visibleChance) return;
+    const projected = getProjectedPosition(tile);
+    const tileSize = getTileDrawSize('plains');
+    const metrics = getImageMetrics(mountainAsset.file);
+    const jitterX = (random01(state.seed, tile.q, tile.r, 'mountain-feature-x') - 0.5) * state.stepX * state.zoom * 0.28;
+    const jitterY = (random01(state.seed, tile.q, tile.r, 'mountain-feature-y') - 0.5) * state.stepY * state.zoom * 0.2;
+    const scale = (neighbors >= 2 ? 1.02 : 0.86) + random01(state.seed, tile.q, tile.r, 'mountain-feature-scale') * 0.12;
+    const drawW = tileSize.width * scale * state.zoom;
+    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    const baseX = projected.x + jitterX;
+    const baseY = projected.y + state.stepY * state.zoom * 0.18 + jitterY;
     ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(22, 68, 72, 0.92)';
-    ctx.lineWidth = Math.max(6, state.stepY * state.zoom * 0.34);
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = 'rgba(5, 5, 4, 0.62)';
     ctx.beginPath();
-    ctx.moveTo(riverTiles[0].x, riverTiles[0].y);
-    for (let i = 1; i < riverTiles.length; i += 1) {
-      const prev = riverTiles[i - 1];
-      const point = riverTiles[i];
-      const midX = (prev.x + point.x) * 0.5;
-      const midY = (prev.y + point.y) * 0.5;
-      ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+    ctx.ellipse(baseX, baseY + drawH * 0.02, drawW * 0.42, drawH * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.drawImage(
+      image,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      baseX - drawW * 0.5,
+      baseY - drawH * 0.82,
+      drawW,
+      drawH
+    );
+  }
+
+  function drawRiverLayer(sortedTiles) {
+    for (const tile of sortedTiles) {
+      if (!isRiverTile(tile.q, tile.r)) continue;
+      drawRiverPiece(tile);
     }
-    const last = riverTiles[riverTiles.length - 1];
-    ctx.lineTo(last.x, last.y);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(69, 164, 176, 0.92)';
-    ctx.lineWidth = Math.max(4, state.stepY * state.zoom * 0.24);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(174, 232, 225, 0.72)';
-    ctx.lineWidth = Math.max(1.5, state.stepY * state.zoom * 0.055);
-    ctx.stroke();
+  }
+
+  function drawRiverPiece(tile) {
+    const piece = getRiverPiece(tile);
+    const asset = FEATURE_ASSETS[piece.asset];
+    const image = images.get(asset.file);
+    if (!image || !image.complete) return;
+    const projected = getProjectedPosition(tile);
+    const tileSize = getTileDrawSize('plains');
+    const metrics = getImageMetrics(asset.file);
+    const baseScale = piece.asset === 'riverBend' ? 0.96 : 1.1;
+    const drawW = tileSize.width * baseScale * state.zoom;
+    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    ctx.save();
+    ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
+    ctx.rotate(piece.angle);
+    ctx.globalAlpha = piece.endCount >= 3 ? 0.88 : 0.94;
+    ctx.drawImage(
+      image,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      -drawW * 0.5,
+      -drawH * 0.5,
+      drawW,
+      drawH
+    );
     ctx.restore();
   }
 
@@ -617,9 +709,9 @@
       return pa.y - pb.y || pa.x - pb.x || a.ring - b.ring;
     });
     for (const tile of sorted) drawTile(tile);
+    drawRiverLayer(sorted);
     for (const tile of sorted) drawTerrainFeature(tile);
     for (const tile of sorted) drawRegionTint(tile);
-    drawRiverLayer(sorted);
     for (const tile of sorted) drawSite(tile);
     if (state.showFog) drawFog(width, height);
     updateHud();
@@ -856,10 +948,13 @@
       buildTiles,
       getParamsSnapshot,
       analyzeAlphaBounds,
+      getRiverConnections,
+      getRiverPiece,
       getTerrainMetrics,
       getTileDrawSize,
       terrainAssets: TERRAIN_ASSETS,
       siteAssets: SITE_ASSETS,
+      featureAssets: FEATURE_ASSETS,
     };
   }
 

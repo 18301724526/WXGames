@@ -18,6 +18,9 @@ test('tile map lab is an art-resource stitching page', () => {
     'tile-map/tile-terrain-waste.png',
     'tile-map/tile-terrain-mountain.png',
     'tile-map/tile-feature-tree-cluster.png',
+    'tile-map/tile-feature-mountain-ridge.png',
+    'tile-map/tile-river-straight.png',
+    'tile-map/tile-river-bend.png',
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -26,7 +29,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.174-tile-map-lab-tree-sprites-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.175-tile-map-lab-river-mountain-v1/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /imageMetrics = new Map/);
@@ -37,11 +40,20 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /effectiveSites/);
   assert.match(js, /FEATURE_ASSETS/);
   assert.match(js, /drawTreeFeature/);
+  assert.match(js, /drawMountainFeature/);
+  assert.match(js, /tile-map\/tile-feature-mountain-ridge\.png/);
+  assert.match(js, /tile-map\/tile-river-straight\.png/);
+  assert.match(js, /tile-map\/tile-river-bend\.png/);
+  assert.match(js, /RIVER_DIRECTIONS/);
+  assert.match(js, /getRiverConnections/);
+  assert.match(js, /getRiverPiece/);
+  assert.match(js, /drawRiverPiece/);
   assert.match(js, /effectiveFeatures/);
   assert.match(js, /valueNoise/);
   assert.match(js, /drawTerrainFeature/);
   assert.match(js, /TERRAIN_FEATURES/);
   assert.match(js, /drawRegionTint/);
+  assert.doesNotMatch(js, /if \(!state\.showDebug\) return;\s*const riverTiles/);
   assert.match(js, /if \(!state\.showDebug\) return;/);
   assert.match(js, /metrics\.x/);
   assert.match(js, /metrics\.height/);
