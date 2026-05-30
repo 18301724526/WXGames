@@ -3,11 +3,13 @@
 
   const ASSET_ROOT = '../assets/art/';
   const TERRAIN_ASSETS = {
-    plains: { label: '平原', file: 'territory-plains-cutout.png', weight: 34 },
-    forest: { label: '森林', file: 'territory-forest-cutout.png', weight: 24 },
-    hills: { label: '丘陵', file: 'territory-hills-cutout.png', weight: 18 },
-    ruins: { label: '遗迹', file: 'territory-ruins-cutout.png', weight: 10 },
-    capital: { label: '首都', file: 'territory-capital-cutout.png', weight: 0 },
+    plains: { label: '平原', file: 'tile-map/tile-terrain-plains.png', weight: 34 },
+    forest: { label: '森林', file: 'tile-map/tile-terrain-forest.png', weight: 24 },
+    hills: { label: '丘陵', file: 'tile-map/tile-terrain-hills.png', weight: 16 },
+    river: { label: '河岸', file: 'tile-map/tile-terrain-river.png', weight: 12 },
+    waste: { label: '荒地', file: 'tile-map/tile-terrain-waste.png', weight: 8 },
+    mountain: { label: '山地', file: 'tile-map/tile-terrain-mountain.png', weight: 6 },
+    capital: { label: '首都', file: 'tile-map/tile-terrain-plains.png', weight: 0 },
   };
   const SITE_ASSETS = {
     camp: { label: '营地', file: 'world-site-camp-cutout.png' },
@@ -16,18 +18,18 @@
     ruins: { label: '遗迹', file: 'world-site-ruins-cutout.png' },
     town: { label: '城镇', file: 'world-site-town-cutout.png' },
   };
-  const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'ruins'];
+  const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
 
   const state = {
     seed: 'scout-tile-v1',
     layoutMode: 'iso',
     radius: 5,
-    tileSize: 206,
-    stepX: 116,
-    stepY: 60,
-    anchorY: 0.62,
-    siteScale: 0.43,
-    zoom: 0.92,
+    tileSize: 192,
+    stepX: 91,
+    stepY: 46,
+    anchorY: 0.5,
+    siteScale: 0.26,
+    zoom: 1.05,
     panX: 0,
     panY: 12,
     showSites: true,
@@ -75,14 +77,14 @@
 
   function chooseSite(q, r, terrain, ring) {
     if (q === 0 && r === 0) return { type: 'city', owner: 'player', label: '首都' };
-    const chance = Math.min(0.1 + ring * 0.055, 0.42);
+    const chance = q === 0 && r === 0 ? 1 : Math.min(0.025 + ring * 0.016, 0.12);
     if (random01(state.seed, q, r, 'site') > chance) return null;
     const roll = random01(state.seed, q, r, 'site-type');
     let type = 'outpost';
-    if (terrain === 'forest') type = roll < 0.58 ? 'camp' : 'outpost';
-    else if (terrain === 'hills') type = roll < 0.46 ? 'ruins' : 'city';
-    else if (terrain === 'ruins') type = roll < 0.68 ? 'ruins' : 'camp';
-    else type = roll < 0.42 ? 'town' : roll < 0.7 ? 'outpost' : 'city';
+    if (terrain === 'forest') type = roll < 0.62 ? 'camp' : 'outpost';
+    else if (terrain === 'hills' || terrain === 'mountain') type = roll < 0.52 ? 'ruins' : 'city';
+    else if (terrain === 'waste') type = roll < 0.62 ? 'ruins' : 'camp';
+    else type = roll < 0.45 ? 'town' : roll < 0.78 ? 'outpost' : 'city';
     const owner = type === 'outpost' || type === 'town'
       ? (ring >= 4 && roll > 0.72 ? 'city_state' : 'neutral')
       : type === 'ruins'
@@ -238,9 +240,20 @@
     if (!image || !image.complete) return;
     const projected = getProjectedPosition(tile);
     const size = state.tileSize * state.zoom;
+    const trim = 2;
     const drawX = projected.x - size * 0.5;
     const drawY = projected.y - size * state.anchorY;
-    ctx.drawImage(image, drawX, drawY, size, size);
+    ctx.drawImage(
+      image,
+      trim,
+      trim,
+      image.naturalWidth - trim * 2,
+      image.naturalHeight - trim * 2,
+      drawX,
+      drawY,
+      size,
+      size
+    );
 
     if (state.hoverTileId === tile.id) {
       drawDebugDiamond(projected.x, projected.y, state.stepX * state.zoom * 1.4, state.stepY * state.zoom * 1.5, 'rgba(255, 226, 146, 0.72)');

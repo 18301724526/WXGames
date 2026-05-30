@@ -424,10 +424,16 @@ territoryState: {
 ### 第零批：美术 tile 拼接验证
 
 - 先做独立测试页，不接真实存档和侦察逻辑。
-- 使用现有 PNG 美术资源验证 tile 拼接、遮挡排序、地点图标层级、拖拽和缩放。
+- 使用低信息密度 terrain PNG 资源验证 tile 拼接、遮挡排序、地点图标层级、拖拽和缩放。
 - 测试页路径：`frontend/tools/tile-map-lab.html`。
 - 程序只负责坐标排布和视口交互，不用程序绘制地形图案。
-- 通过验证后，再决定现有 `territory-*.png` 能否直接升级为正式大地图 tile，或是否需要新出一批六边形/等距地形资源。
+- `territory-*.png` 这类独立场景小地块不适合直接做底层大地图 tile；底层应使用 `frontend/assets/art/tile-map/tile-terrain-*.png` 这类低信息密度地形片，城池/营地/遗迹作为稀疏 POI 叠加。
+
+### 第零批修正记录
+
+- `0.1.169` 首版验证页错误复用了 `territory-*.png` 独立场景地块，实际铺开后每格都像完整小景点，信息密度过高。
+- `0.1.170` 改为新增 `frontend/assets/art/tile-map/tile-terrain-*.png` 地表 tile，默认只铺地形底层，并把 `world-site-*.png` 作为低密度 POI 叠加。
+- 后续正式美术应继续沿用“地表 tile / POI / 军队或事件标记”三层结构，不再把建筑、农田、遗迹直接画进每一块基础 tile。
 
 ### 第一批：文档和接口底座
 

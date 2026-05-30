@@ -11,11 +11,12 @@ test('tile map lab is an art-resource stitching page', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const js = fs.readFileSync(jsPath, 'utf8');
   const artAssets = [
-    'territory-plains-cutout.png',
-    'territory-forest-cutout.png',
-    'territory-hills-cutout.png',
-    'territory-ruins-cutout.png',
-    'territory-capital-cutout.png',
+    'tile-map/tile-terrain-plains.png',
+    'tile-map/tile-terrain-forest.png',
+    'tile-map/tile-terrain-hills.png',
+    'tile-map/tile-terrain-river.png',
+    'tile-map/tile-terrain-waste.png',
+    'tile-map/tile-terrain-mountain.png',
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -24,14 +25,16 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.169-tile-map-lab-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.170-tile-map-lab-surface-v1/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
+  assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /ctx\.drawImage\(image/);
   assert.match(js, /pointerdown/);
   assert.match(js, /wheel/);
+  assert.doesNotMatch(js, /territory-plains-cutout|territory-forest-cutout|territory-hills-cutout|territory-ruins-cutout/);
 
   for (const asset of artAssets) {
-    assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', asset)), true, asset);
+    assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', ...asset.split('/'))), true, asset);
     assert.match(js, new RegExp(asset.replace('.', '\\.')));
   }
 });
