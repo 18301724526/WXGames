@@ -22,7 +22,7 @@
     treeCluster: { label: 'tree cluster', file: 'tile-map/tile-feature-tree-cluster.png' },
     mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
     riverStraight: { label: 'river straight', file: 'tile-map/tile-river-straight.png' },
-    riverBend: { label: 'river bend', file: 'tile-map/tile-river-bend.png' },
+    riverNodeCap: { label: 'river node cap', file: 'tile-map/tile-river-node-cap.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
@@ -65,6 +65,7 @@
   const imageMetrics = new Map();
   const controls = {};
   let tiles = [];
+  let riverConnections = new Map();
   let isDragging = false;
   let dragStart = null;
   let needsRender = true;
@@ -111,20 +112,21 @@
     };
   }
 
+  function getTileId(q, r) {
+    return `tile_${q}_${r}`;
+  }
+
   function isRiverTile(q, r) {
-    const point = axialToMapPoint(q, r);
-    const phase = random01(state.seed, 0, 0, 'river-phase') * 4 - 2;
-    const bend = Math.sin((point.x + phase) * 0.55) * 1.4;
-    const center = bend + random01(state.seed, Math.round(point.x / 3), 0, 'river-drift') * 1.2 - 0.6;
-    const width = 0.28 + random01(state.seed, Math.round(point.x / 4), 1, 'river-width') * 0.14;
-    return Math.abs(point.y - center) < width;
+    return riverConnections.has(getTileId(q, r));
   }
 
   function getRiverConnections(tile) {
-    return RIVER_DIRECTIONS
-      .map((dir, index) => ({ index, q: tile.q + dir.dq, r: tile.r + dir.dr }))
-      .filter((next) => isRiverTile(next.q, next.r))
-      .map((next) => next.index);
+    return riverConnections.get(tile.id) || [];
+  }
+
+  function getRiverNeighbor(tile, directionIndex) {
+    const dir = RIVER_DIRECTIONS[directionIndex % RIVER_DIRECTIONS.length];
+    return tiles.find((item) => item.q === tile.q + dir.dq && item.r === tile.r + dir.dr);
   }
 
   function getDirectionAngle(directionIndex) {
@@ -132,28 +134,6 @@
     const dir = RIVER_DIRECTIONS[directionIndex % RIVER_DIRECTIONS.length];
     const next = getTilePosition({ q: dir.dq, r: dir.dr });
     return Math.atan2(next.y - center.y, next.x - center.x);
-  }
-
-  function getRiverPiece(tile) {
-    const connections = getRiverConnections(tile);
-    if (!connections.length) {
-      return { asset: 'riverStraight', angle: getDirectionAngle(0), endCount: 0 };
-    }
-    if (connections.length === 1) {
-      return { asset: 'riverStraight', angle: getDirectionAngle(connections[0]), endCount: 1 };
-    }
-    const [first, second] = connections;
-    const diff = Math.abs(first - second);
-    const distance = Math.min(diff, 6 - diff);
-    if (distance === 3) {
-      return { asset: 'riverStraight', angle: getDirectionAngle(first), endCount: connections.length };
-    }
-    const start = (first + 6 - second) % 6 === 1 ? second : first;
-    const end = start === first ? second : first;
-    const startAngle = getDirectionAngle(start);
-    const endAngle = getDirectionAngle(end);
-    const angle = Math.atan2(Math.sin(startAngle) + Math.sin(endAngle), Math.cos(startAngle) + Math.cos(endAngle));
-    return { asset: 'riverBend', angle, endCount: connections.length };
   }
 
   function chooseTerrain(q, r) {
@@ -190,6 +170,83 @@
     return { type, owner, label: SITE_ASSETS[type].label };
   }
 
+  function isCoordInRadius(q, r, radius) {
+    const s = -q - r;
+    return Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) <= radius;
+  }
+
+  function getHexDistance(from, to) {
+    return Math.max(
+      Math.abs(from.q - to.q),
+      Math.abs(from.r - to.r),
+      Math.abs((-from.q - from.r) - (-to.q - to.r))
+    );
+  }
+
+  function buildRiverPath(start, target, radius, salt) {
+    const path = [{ q: start.q, r: start.r }];
+    const visited = new Set([getTileId(start.q, start.r)]);
+    let current = { q: start.q, r: start.r };
+    const maxSteps = radius * 8;
+    for (let step = 0; step < maxSteps; step += 1) {
+      if (current.q === target.q && current.r === target.r) break;
+      const candidates = RIVER_DIRECTIONS
+        .map((dir, index) => ({
+          index,
+          q: current.q + dir.dq,
+          r: current.r + dir.dr,
+        }))
+        .filter((item) => isCoordInRadius(item.q, item.r, radius))
+        .map((item) => {
+          const id = getTileId(item.q, item.r);
+          const distance = getHexDistance(item, target);
+          const revisited = visited.has(id) && !(item.q === target.q && item.r === target.r);
+          const wobble = random01(state.seed, item.q, item.r, `${salt}-wobble-${step}`);
+          const flowBias = Math.abs(item.index - 5) * 0.08;
+          return { ...item, score: distance * 10 + wobble * 3 + flowBias + (revisited ? 40 : 0) };
+        })
+        .sort((a, b) => a.score - b.score);
+      const next = candidates[0];
+      if (!next) break;
+      current = { q: next.q, r: next.r };
+      path.push(current);
+      visited.add(getTileId(current.q, current.r));
+    }
+    return path;
+  }
+
+  function getDirectionIndex(from, to) {
+    return RIVER_DIRECTIONS.findIndex((dir) => from.q + dir.dq === to.q && from.r + dir.dr === to.r);
+  }
+
+  function addRiverConnection(connections, from, to) {
+    const fromDirection = getDirectionIndex(from, to);
+    const toDirection = getDirectionIndex(to, from);
+    if (fromDirection < 0 || toDirection < 0) return;
+    const fromId = getTileId(from.q, from.r);
+    const toId = getTileId(to.q, to.r);
+    if (!connections.has(fromId)) connections.set(fromId, new Set());
+    if (!connections.has(toId)) connections.set(toId, new Set());
+    connections.get(fromId).add(fromDirection);
+    connections.get(toId).add(toDirection);
+  }
+
+  function createRiverConnections(radius) {
+    const connections = new Map();
+    const mainStart = { q: -Math.max(1, Math.floor(radius * 0.42)), r: -radius + Math.max(1, Math.floor(radius * 0.42)) };
+    const mainTarget = { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) };
+    const mainPath = buildRiverPath(mainStart, mainTarget, radius, 'river-main');
+    const branchStart = mainPath[Math.max(1, Math.floor(mainPath.length * 0.52))] || mainPath[0];
+    const branchTarget = { q: radius, r: -Math.max(0, Math.floor(radius * 0.18)) };
+    const branchPath = buildRiverPath(branchStart, branchTarget, radius, 'river-branch');
+    for (const path of [mainPath, branchPath]) {
+      for (let i = 1; i < path.length; i += 1) addRiverConnection(connections, path[i - 1], path[i]);
+    }
+    return new Map(
+      Array.from(connections.entries()).map(([id, dirs]) => [id, Array.from(dirs).sort((a, b) => a - b)])
+    );
+  }
+
   function buildTiles() {
     const nextTiles = [];
     const radius = state.radius;
@@ -202,7 +259,7 @@
         const terrain = chooseTerrain(q, r);
         const site = chooseSite(q, r, terrain, ring);
         nextTiles.push({
-          id: `tile_${q}_${r}`,
+          id: getTileId(q, r),
           q,
           r,
           s,
@@ -212,6 +269,10 @@
         });
       }
     }
+    riverConnections = createRiverConnections(radius);
+    nextTiles.forEach((tile) => {
+      tile.riverConnections = getRiverConnections(tile);
+    });
     tiles = nextTiles;
     markDirty();
   }
@@ -589,25 +650,65 @@
   function drawRiverLayer(sortedTiles) {
     for (const tile of sortedTiles) {
       if (!isRiverTile(tile.q, tile.r)) continue;
-      drawRiverPiece(tile);
+      drawRiverSegments(tile);
+    }
+    for (const tile of sortedTiles) {
+      if (!isRiverTile(tile.q, tile.r)) continue;
+      drawRiverNode(tile);
     }
   }
 
-  function drawRiverPiece(tile) {
-    const piece = getRiverPiece(tile);
-    const asset = FEATURE_ASSETS[piece.asset];
+  function drawRiverSegments(tile) {
+    const connections = getRiverConnections(tile);
+    for (const directionIndex of connections) {
+      const neighbor = getRiverNeighbor(tile, directionIndex);
+      if (!neighbor || tile.id > neighbor.id) continue;
+      drawRiverSegmentBetween(tile, neighbor);
+    }
+  }
+
+  function drawRiverSegmentBetween(fromTile, toTile) {
+    const asset = FEATURE_ASSETS.riverStraight;
+    const image = images.get(asset.file);
+    if (!image || !image.complete) return;
+    const from = getProjectedPosition(fromTile);
+    const to = getProjectedPosition(toTile);
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const metrics = getImageMetrics(asset.file);
+    const drawW = distance * 1.18;
+    const drawH = Math.max(state.stepY * state.zoom * 1.04, drawW * (metrics.height / Math.max(1, metrics.width)));
+    ctx.save();
+    ctx.translate((from.x + to.x) * 0.5, (from.y + to.y) * 0.5 - state.stepY * state.zoom * 0.03);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.94;
+    ctx.drawImage(
+      image,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      -drawW * 0.5,
+      -drawH * 0.5,
+      drawW,
+      drawH
+    );
+    ctx.restore();
+  }
+
+  function drawRiverNode(tile) {
+    const asset = FEATURE_ASSETS.riverNodeCap;
     const image = images.get(asset.file);
     if (!image || !image.complete) return;
     const projected = getProjectedPosition(tile);
-    const tileSize = getTileDrawSize('plains');
     const metrics = getImageMetrics(asset.file);
-    const baseScale = piece.asset === 'riverBend' ? 0.96 : 1.1;
-    const drawW = tileSize.width * baseScale * state.zoom;
+    const drawW = state.stepX * state.zoom * 0.62;
     const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
     ctx.save();
     ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
-    ctx.rotate(piece.angle);
-    ctx.globalAlpha = piece.endCount >= 3 ? 0.88 : 0.94;
+    ctx.globalAlpha = 0.82;
     ctx.drawImage(
       image,
       metrics.x,
