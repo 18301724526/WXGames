@@ -25,9 +25,14 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.170-tile-map-lab-surface-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.171-tile-map-lab-regions-v2/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
+  assert.match(js, /valueNoise/);
+  assert.match(js, /drawTerrainFeature/);
+  assert.match(js, /TERRAIN_FEATURES/);
+  assert.match(js, /drawRegionTint/);
+  assert.match(js, /if \(!state\.showDebug\) return;/);
   assert.match(js, /ctx\.drawImage\(image/);
   assert.match(js, /pointerdown/);
   assert.match(js, /wheel/);

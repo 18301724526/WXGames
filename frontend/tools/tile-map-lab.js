@@ -19,6 +19,12 @@
     town: { label: '城镇', file: 'world-site-town-cutout.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
+  const TERRAIN_FEATURES = {
+    forest: { chance: 0.56, scale: 0.54, alpha: 0.72, lift: 0.1, squash: 0.72 },
+    hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
+    waste: { chance: 0.32, scale: 0.48, alpha: 0.58, lift: 0.06, squash: 0.7 },
+    mountain: { chance: 0.38, scale: 0.52, alpha: 0.7, lift: 0.12, squash: 0.72 },
+  };
 
   const state = {
     seed: 'scout-tile-v1',
@@ -64,20 +70,59 @@
     return value / 4294967295;
   }
 
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function smoothStep(t) {
+    return t * t * (3 - 2 * t);
+  }
+
+  function valueNoise(x, y, salt) {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const tx = smoothStep(x - x0);
+    const ty = smoothStep(y - y0);
+    const a = random01(state.seed, x0, y0, salt);
+    const b = random01(state.seed, x0 + 1, y0, salt);
+    const c = random01(state.seed, x0, y0 + 1, salt);
+    const d = random01(state.seed, x0 + 1, y0 + 1, salt);
+    return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+  }
+
+  function axialToMapPoint(q, r) {
+    return {
+      x: q + r * 0.5,
+      y: r * 0.86,
+    };
+  }
+
+  function isRiverTile(q, r) {
+    const point = axialToMapPoint(q, r);
+    const phase = random01(state.seed, 0, 0, 'river-phase') * 4 - 2;
+    const bend = Math.sin((point.x + phase) * 0.55) * 1.4;
+    const center = bend + random01(state.seed, Math.round(point.x / 3), 0, 'river-drift') * 1.2 - 0.6;
+    const width = 0.28 + random01(state.seed, Math.round(point.x / 4), 1, 'river-width') * 0.14;
+    return Math.abs(point.y - center) < width;
+  }
+
   function chooseTerrain(q, r) {
     if (q === 0 && r === 0) return 'capital';
-    const roll = random01(state.seed, q, r, 'terrain') * 100;
-    let cursor = 0;
-    for (const type of TERRAIN_TYPES) {
-      cursor += TERRAIN_ASSETS[type].weight;
-      if (roll <= cursor) return type;
-    }
+    const point = axialToMapPoint(q, r);
+    const forest = valueNoise(point.x / 3.2, point.y / 3.2, 'forest-region');
+    const stone = valueNoise((point.x + 7) / 3.7, (point.y - 3) / 3.7, 'stone-region');
+    const dry = valueNoise((point.x - 5) / 4.4, (point.y + 2) / 4.4, 'dry-region');
+    const mountain = valueNoise((point.x + 2) / 5.0, (point.y + 5) / 5.0, 'mountain-region');
+    if (mountain > 0.82) return 'mountain';
+    if (stone > 0.78) return 'hills';
+    if (forest > 0.68) return 'forest';
+    if (dry > 0.8) return 'waste';
     return 'plains';
   }
 
   function chooseSite(q, r, terrain, ring) {
     if (q === 0 && r === 0) return { type: 'city', owner: 'player', label: '首都' };
-    const chance = q === 0 && r === 0 ? 1 : Math.min(0.025 + ring * 0.016, 0.12);
+    const chance = q === 0 && r === 0 ? 1 : Math.min(0.018 + ring * 0.012, 0.08);
     if (random01(state.seed, q, r, 'site') > chance) return null;
     const roll = random01(state.seed, q, r, 'site-type');
     let type = 'outpost';
@@ -235,20 +280,19 @@
   }
 
   function drawTile(tile) {
-    const terrain = TERRAIN_ASSETS[tile.terrain] || TERRAIN_ASSETS.plains;
-    const image = images.get(terrain.file);
-    if (!image || !image.complete) return;
+    const baseImage = images.get(TERRAIN_ASSETS.plains.file);
+    if (!baseImage || !baseImage.complete) return;
     const projected = getProjectedPosition(tile);
     const size = state.tileSize * state.zoom;
     const trim = 2;
     const drawX = projected.x - size * 0.5;
     const drawY = projected.y - size * state.anchorY;
     ctx.drawImage(
-      image,
+      baseImage,
       trim,
       trim,
-      image.naturalWidth - trim * 2,
-      image.naturalHeight - trim * 2,
+      baseImage.naturalWidth - trim * 2,
+      baseImage.naturalHeight - trim * 2,
       drawX,
       drawY,
       size,
@@ -274,6 +318,102 @@
       ctx.fillStyle = 'rgba(255, 242, 216, 0.78)';
       ctx.fillText(`${tile.q},${tile.r}`, projected.x, projected.y + 4);
     }
+  }
+
+  function drawTerrainFeature(tile) {
+    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river') return;
+    const profile = TERRAIN_FEATURES[tile.terrain];
+    const terrain = TERRAIN_ASSETS[tile.terrain];
+    if (!profile || !terrain) return;
+    if (random01(state.seed, tile.q, tile.r, 'terrain-feature-visible') > profile.chance) return;
+    const image = images.get(terrain.file);
+    if (!image || !image.complete) return;
+    const projected = getProjectedPosition(tile);
+    const size = state.tileSize * state.zoom;
+    const jitterX = (random01(state.seed, tile.q, tile.r, 'terrain-feature-x') - 0.5) * state.stepX * state.zoom * 0.34;
+    const jitterY = (random01(state.seed, tile.q, tile.r, 'terrain-feature-y') - 0.5) * state.stepY * state.zoom * 0.46;
+    const drawW = size * profile.scale;
+    const drawH = drawW * profile.squash;
+    const drawX = projected.x - drawW * 0.5 + jitterX;
+    const drawY = projected.y - size * profile.lift - drawH * 0.5 + jitterY;
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+    const sourceW = Math.floor(sourceSize * 0.36);
+    const sourceH = Math.floor(sourceSize * 0.26);
+    const sourceX = Math.floor(image.naturalWidth * 0.5 - sourceW * 0.5);
+    const sourceY = Math.floor(image.naturalHeight * 0.52 - sourceH * 0.5);
+    ctx.save();
+    ctx.globalAlpha = profile.alpha;
+    ctx.beginPath();
+    ctx.ellipse(
+      projected.x + jitterX,
+      projected.y - size * profile.lift + jitterY,
+      drawW * 0.48,
+      drawH * 0.48,
+      (random01(state.seed, tile.q, tile.r, 'terrain-feature-rot') - 0.5) * 0.36,
+      0,
+      Math.PI * 2
+    );
+    ctx.clip();
+    ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, drawX, drawY, drawW, drawH);
+    ctx.restore();
+  }
+
+  function drawRiverLayer(sortedTiles) {
+    if (!state.showDebug) return;
+    const riverTiles = sortedTiles
+      .filter((tile) => isRiverTile(tile.q, tile.r))
+      .map((tile) => getProjectedPosition(tile))
+      .sort((a, b) => a.x - b.x || a.y - b.y);
+    if (riverTiles.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(22, 68, 72, 0.92)';
+    ctx.lineWidth = Math.max(6, state.stepY * state.zoom * 0.34);
+    ctx.beginPath();
+    ctx.moveTo(riverTiles[0].x, riverTiles[0].y);
+    for (let i = 1; i < riverTiles.length; i += 1) {
+      const prev = riverTiles[i - 1];
+      const point = riverTiles[i];
+      const midX = (prev.x + point.x) * 0.5;
+      const midY = (prev.y + point.y) * 0.5;
+      ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+    }
+    const last = riverTiles[riverTiles.length - 1];
+    ctx.lineTo(last.x, last.y);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(69, 164, 176, 0.92)';
+    ctx.lineWidth = Math.max(4, state.stepY * state.zoom * 0.24);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(174, 232, 225, 0.72)';
+    ctx.lineWidth = Math.max(1.5, state.stepY * state.zoom * 0.055);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawRegionTint(tile) {
+    if (!state.showDebug) return;
+    const projected = getProjectedPosition(tile);
+    const width = state.stepX * state.zoom * 1.35;
+    const height = state.stepY * state.zoom * 1.45;
+    const colors = {
+      forest: 'rgba(17, 59, 34, 0.24)',
+      hills: 'rgba(125, 124, 102, 0.16)',
+      waste: 'rgba(145, 99, 45, 0.18)',
+      mountain: 'rgba(100, 109, 110, 0.2)',
+    };
+    const color = colors[tile.terrain];
+    if (!color) return;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(projected.x, projected.y - height * 0.5);
+    ctx.lineTo(projected.x + width * 0.5, projected.y);
+    ctx.lineTo(projected.x, projected.y + height * 0.5);
+    ctx.lineTo(projected.x - width * 0.5, projected.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawSite(tile) {
@@ -314,6 +454,9 @@
       return pa.y - pb.y || pa.x - pb.x || a.ring - b.ring;
     });
     for (const tile of sorted) drawTile(tile);
+    for (const tile of sorted) drawTerrainFeature(tile);
+    for (const tile of sorted) drawRegionTint(tile);
+    drawRiverLayer(sorted);
     for (const tile of sorted) drawSite(tile);
     if (state.showFog) drawFog(width, height);
     updateHud();
@@ -333,7 +476,8 @@
     }
     const terrain = TERRAIN_ASSETS[tile.terrain]?.label || tile.terrain;
     const site = tile.site ? `${tile.site.label} / ${tile.site.owner}` : '无地点';
-    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}<br>地点 ${site}`;
+    const river = isRiverTile(tile.q, tile.r) ? '<br>河流 穿过附近' : '';
+    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}<br>地点 ${site}`;
   }
 
   function getParamsSnapshot() {
