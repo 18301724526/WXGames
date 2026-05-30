@@ -551,6 +551,26 @@ test('CanvasActionController selects tech node before research confirmation', ()
   ]);
 });
 
+test('CanvasActionController forwards famous attribute point assignment', async () => {
+  const calls = [];
+  const game = {
+    assignFamousAttributePoint(personId, attribute) {
+      calls.push([personId, attribute]);
+      return Promise.resolve(true);
+    },
+  };
+  const controller = new CanvasActionController({
+    host: {
+      getCanvasGameHost: () => game,
+    },
+  });
+
+  const handled = await controller.handle({ type: 'assignFamousAttributePoint', personId: 'fp_a', attribute: 'command' });
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [['fp_a', 'command']]);
+});
+
 test('CanvasActionController enters battle scene through game host API from shell host', async () => {
   const report = {
     id: 'battle_1',

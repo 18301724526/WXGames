@@ -132,6 +132,8 @@ function registerGameRoutes(app, deps) {
       techId,
       tech,
       candidateId,
+      personId,
+      attribute,
       source,
       basePolicyId,
       tiers,
@@ -151,7 +153,7 @@ function registerGameRoutes(app, deps) {
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    const actionPayload = { target, count, step, eventId, optionId, direction, missionId, cityId };
+    const actionPayload = { target, count, step, eventId, optionId, direction, missionId, cityId, personId, attribute };
     const expectedGuideAction = GuideTaskService.getExpectedAction(gameState);
     const tutorialCheck = GuideTaskService.matchesExpectedAction(expectedGuideAction, action, actionPayload)
       ? { allowed: true }
@@ -195,6 +197,8 @@ function registerGameRoutes(app, deps) {
       result = FamousPersonService.acceptFamousPerson(gameState, candidateId || target);
     } else if (action === 'dismissFamousPersonCandidate') {
       result = FamousPersonService.dismissFamousPersonCandidate(gameState, candidateId || target);
+    } else if (action === 'assignFamousAttributePoint') {
+      result = FamousPersonService.assignAttributePoint(gameState, personId || target, attribute);
     }
     gameState.tutorial = tutorial;
     eraProgress = gameStateService.calculateEraProgress(gameState);

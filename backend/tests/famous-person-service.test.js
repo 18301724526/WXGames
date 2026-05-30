@@ -431,6 +431,51 @@ test('joined famous people normalize level progression and receive battle experi
   assert.equal(normalized.famousPeople[0].earnedAttributePoints, 12);
 });
 
+test('joined famous people can assign free attribute points beyond initial cap', () => {
+  const state = GameStateService.createInitialGameState('fp-attribute-points');
+  state.currentEra = 3;
+  state.famousPeople = [{
+    id: 'fp_points',
+    name: 'points',
+    title: 'points_title',
+    source: { type: 'seek', seed: 'points:seed' },
+    archetype: 'vanguard',
+    attributes: { command: 99, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
+    level: 10,
+    experience: 0,
+    totalExperience: 3000,
+    freeAttributePoints: 2,
+    earnedAttributePoints: 10,
+  }];
+
+  const normalized = GameStateService.normalizeState(state);
+  assert.equal(normalized.famousPeople[0].attributes.command, 99);
+
+  const result = FamousPersonService.assignAttributePoint(
+    normalized,
+    'fp_points',
+    'command',
+    new Date('2026-05-30T02:00:00.000Z'),
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.assignment.attribute, 'command');
+  assert.equal(result.assignment.before, 99);
+  assert.equal(result.assignment.after, 100);
+  assert.equal(normalized.famousPeople[0].attributes.command, 100);
+  assert.equal(normalized.famousPeople[0].freeAttributePoints, 1);
+  assert.equal(normalized.famousPeople[0].earnedAttributePoints, 10);
+  assert.equal(normalized.famousPeople[0].assignedAttributePoints.command, 1);
+
+  const renormalized = GameStateService.normalizeState(normalized);
+  assert.equal(renormalized.famousPeople[0].attributes.command, 100);
+
+  renormalized.famousPeople[0].freeAttributePoints = 0;
+  const blocked = FamousPersonService.assignAttributePoint(renormalized, 'fp_points', 'force');
+  assert.equal(blocked.success, false);
+  assert.equal(blocked.error, 'NO_FREE_ATTRIBUTE_POINTS');
+});
+
 test('candidate queue is capped and must be cleared before more seek results', () => {
   const state = GameStateService.normalizeState(GameStateService.createInitialGameState('fp-cap'));
   state.currentEra = 3;

@@ -10,6 +10,10 @@ const ENABLED_SOURCE_TYPES = Object.freeze(['seek']);
 const BASE_LEVEL = 1;
 const ATTRIBUTE_POINT_MILESTONE = 10;
 const ATTRIBUTE_POINTS_PER_MILESTONE = 10;
+const ATTRIBUTE_MIN_VALUE = 1;
+const ATTRIBUTE_INITIAL_MAX_VALUE = 99;
+const ATTRIBUTE_MAX_VALUE = 9999;
+const ATTRIBUTE_KEYS = Object.freeze(['command', 'force', 'intelligence', 'politics', 'charisma', 'speed']);
 
 const SOURCE_TYPES = Object.freeze({
   seek: { label: '寻访', roles: ['military', 'governance', 'knowledge'] },
@@ -215,6 +219,10 @@ function toInteger(value, fallback = 0) {
   return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
+function clampAttributeValue(value, fallback = 50, max = ATTRIBUTE_MAX_VALUE) {
+  return Math.max(ATTRIBUTE_MIN_VALUE, Math.min(max, toInteger(value, fallback)));
+}
+
 function roundToNearestTen(value) {
   return Math.max(10, Math.round((Number(value) || 0) / 10) * 10);
 }
@@ -230,12 +238,20 @@ function normalizeProgression(raw = {}) {
   const totalExperience = Math.max(experience, toInteger(raw.totalExperience, experience));
   const freeAttributePoints = Math.max(0, toInteger(raw.freeAttributePoints, 0));
   const earnedAttributePoints = Math.max(freeAttributePoints, toInteger(raw.earnedAttributePoints, freeAttributePoints));
+  const assignedAttributePoints = raw.assignedAttributePoints && typeof raw.assignedAttributePoints === 'object'
+    ? ATTRIBUTE_KEYS.reduce((result, key) => {
+      const value = Math.max(0, toInteger(raw.assignedAttributePoints[key], 0));
+      if (value > 0) result[key] = value;
+      return result;
+    }, {})
+    : {};
   return {
     level,
     experience,
     totalExperience,
     freeAttributePoints,
     earnedAttributePoints,
+    assignedAttributePoints,
     nextLevelExperience: getLevelUpExperience(level),
   };
 }
@@ -251,7 +267,7 @@ function normalizeStatus(raw = {}) {
   };
 }
 
-function normalizeAttributes(raw = {}) {
+function normalizeAttributes(raw = {}, options = {}) {
   const strategy = raw.intelligence ?? raw.strategy;
   const politics = raw.politics ?? raw.governance;
   const speed = raw.speed ?? Math.round(
@@ -279,8 +295,9 @@ function normalizeAttributes(raw = {}) {
     governance: politics,
     speed,
   };
+  const max = options.initial ? ATTRIBUTE_INITIAL_MAX_VALUE : ATTRIBUTE_MAX_VALUE;
   return Object.keys(defaults).reduce((result, key) => {
-    result[key] = Math.max(1, Math.min(99, toInteger(source[key], defaults[key])));
+    result[key] = clampAttributeValue(source[key], defaults[key], max);
     return result;
   }, {});
 }
@@ -498,6 +515,63 @@ function grantBattleExperience(gameState, leaderId, experienceSummary = {}, now 
   };
 }
 
+function assignAttributePoint(gameState, personId, attributeKey, now = new Date()) {
+  const id = sanitizeText(personId);
+  const key = sanitizeText(attributeKey);
+  if (!gameState || !id) {
+    return { success: false, error: 'FAMOUS_PERSON_NOT_FOUND', message: '名人不存在' };
+  }
+  if (!ATTRIBUTE_KEYS.includes(key)) {
+    return { success: false, error: 'INVALID_ATTRIBUTE', message: '请选择可分配的六维属性' };
+  }
+  gameState.famousPeople = normalizeFamousPeople(gameState.famousPeople);
+  const person = gameState.famousPeople.find((item) => item.id === id);
+  if (!person) {
+    return { success: false, error: 'FAMOUS_PERSON_NOT_FOUND', message: '名人不存在' };
+  }
+  const progression = normalizeProgression(person);
+  if (progression.freeAttributePoints <= 0) {
+    return { success: false, error: 'NO_FREE_ATTRIBUTE_POINTS', message: '没有可分配属性点' };
+  }
+
+  const attributes = normalizeAttributes(person.attributes || {});
+  const before = attributes[key];
+  attributes[key] = clampAttributeValue(before + 1, before);
+  person.attributes = attributes;
+  person.freeAttributePoints = progression.freeAttributePoints - 1;
+  person.earnedAttributePoints = progression.earnedAttributePoints;
+  person.assignedAttributePoints = {
+    ...progression.assignedAttributePoints,
+    [key]: Math.max(0, toInteger(progression.assignedAttributePoints[key], 0)) + 1,
+  };
+  person.nextLevelExperience = getLevelUpExperience(progression.level);
+  const assignedDate = now instanceof Date ? now : new Date(now);
+  person.lastAttributeAssignedAt = Number.isFinite(assignedDate.getTime()) ? assignedDate.toISOString() : new Date().toISOString();
+
+  const label = {
+    command: '统帅',
+    force: '武力',
+    intelligence: '智力',
+    politics: '政治',
+    charisma: '魅力',
+    speed: '速度',
+  }[key] || key;
+  return {
+    success: true,
+    message: `${person.name} ${label} +1`,
+    famousPerson: clone(person),
+    famousPersonState: getClientState(gameState),
+    assignment: {
+      personId: person.id,
+      attribute: key,
+      attributeLabel: label,
+      before,
+      after: attributes[key],
+      freeAttributePoints: person.freeAttributePoints,
+    },
+  };
+}
+
 function getCandidateIdAsPersonId(candidateId) {
   return String(candidateId || '').replace(/^fpc_/, 'fp_');
 }
@@ -532,7 +606,7 @@ function createSkill(archetype, randomSource = Math.random) {
 function createAttributes(archetype, randomSource = Math.random) {
   return Object.entries(archetype.attributes).reduce((result, [key, base]) => {
     const variance = Math.floor(rollUnit(randomSource) * 15) - 4;
-    result[key] = Math.max(1, Math.min(99, base + variance));
+    result[key] = clampAttributeValue(base + variance, base, ATTRIBUTE_INITIAL_MAX_VALUE);
     return result;
   }, {});
 }
@@ -702,11 +776,13 @@ module.exports = {
   BASE_LEVEL,
   ATTRIBUTE_POINT_MILESTONE,
   ATTRIBUTE_POINTS_PER_MILESTONE,
+  ATTRIBUTE_KEYS,
   ARCHETYPES,
   EFFECTS,
   getLevelUpExperience,
   normalizeProgression,
   grantBattleExperience,
+  assignAttributePoint,
   createInitialFamousPersonState,
   normalizeFamousPeople,
   normalizeFamousPersonState,

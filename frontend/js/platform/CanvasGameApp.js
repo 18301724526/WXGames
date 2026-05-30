@@ -963,6 +963,22 @@
       }
     }
 
+    async assignFamousAttributePoint(personId, attribute) {
+      try {
+        const result = await this.getGameApi().assignFamousAttributePoint(personId, attribute);
+        this.applyApiState(result);
+        this.showFamousPersons = true;
+        if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        this.showFloatingText(result.message || '属性已提升');
+        this.log(result.message || '属性已提升');
+        return true;
+      } catch (error) {
+        this.log(`加点失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
     async apiGet(path) {
       const api = this.getGameApi();
       const startedAt = Date.now();

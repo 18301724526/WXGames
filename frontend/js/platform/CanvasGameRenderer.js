@@ -658,6 +658,55 @@
       });
     }
 
+    drawFamousAttributePointControls(card = {}, x, y, width) {
+      if (!this.ctx || !card || !Array.isArray(card.attributes) || !card.freeAttributePoints) return 0;
+      const actions = Array.isArray(card.attributeActions) ? card.attributeActions : [];
+      if (!actions.length) return 0;
+      const itemGap = 4;
+      const itemHeight = 20;
+      const colGap = 6;
+      const colWidth = Math.max(44, Math.floor((width - colGap) / 2));
+      const rows = Math.ceil(card.attributes.length / 2);
+      card.attributes.forEach((attr, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const itemX = x + col * (colWidth + colGap);
+        const itemY = y + row * (itemHeight + itemGap);
+        const action = actions.find((entry) => entry.attribute === attr.key) || {
+          type: 'assignFamousAttributePoint',
+          personId: card.id || '',
+          attribute: attr.key,
+        };
+        this.drawPanel(itemX, itemY, colWidth, itemHeight, {
+          fill: 'rgba(31, 52, 41, 0.56)',
+          stroke: 'rgba(116, 211, 160, 0.22)',
+          radius: 6,
+        });
+        this.drawText(`${attr.shortLabel || attr.label || ''}${Math.floor(Number(attr.value) || 0)}`, itemX + 6, itemY + itemHeight / 2, {
+          size: 10,
+          color: '#d8e8d5',
+          baseline: 'middle',
+        });
+        const plusSize = 16;
+        const plusX = itemX + colWidth - plusSize - 3;
+        const plusY = itemY + 2;
+        this.drawPanel(plusX, plusY, plusSize, plusSize, {
+          fill: '#74d3a0',
+          stroke: 'rgba(255, 255, 255, 0.18)',
+          radius: 5,
+        });
+        this.drawText('+', plusX + plusSize / 2, plusY + plusSize / 2 - 1, {
+          size: 13,
+          bold: true,
+          color: '#132218',
+          align: 'center',
+          baseline: 'middle',
+        });
+        this.addHitTarget({ x: itemX, y: itemY, width: colWidth, height: itemHeight }, action);
+      });
+      return rows * itemHeight + Math.max(0, rows - 1) * itemGap;
+    }
+
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
       if (!activeTurn) return 'idle';
       if (phase === 'prepare' || phase === 'cutin' || phase === 'settle') return 'idle';
@@ -2574,7 +2623,8 @@
 
     renderFamousPersonItem(card = {}, x, y, width, options = {}) {
       const candidate = Boolean(options.candidate);
-      const height = candidate ? 136 : (card.pointText ? 136 : 124);
+      const hasAttributeControls = !candidate && Number(card.freeAttributePoints) > 0 && Array.isArray(card.attributeActions) && card.attributeActions.length > 0;
+      const height = candidate ? 136 : (hasAttributeControls ? 204 : (card.pointText ? 136 : 124));
       this.drawPanel(x, y, width, height, {
         fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
         stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
@@ -2640,6 +2690,9 @@
         }
       }
       this.drawFamousAttributeRadar(card.attributes || [], radarX, radarY, radarSize);
+      const attributeControlHeight = hasAttributeControls
+        ? this.drawFamousAttributePointControls(card, textX, y + 78, textWidth)
+        : 0;
       const skillDetails = Array.isArray(card.skillDetails) && card.skillDetails.length
         ? card.skillDetails
         : (Array.isArray(card.skills) ? card.skills.map((skill) => ({ name: skill, kindText: '技能', effectText: '', meta: '', summary: skill })) : []);
@@ -2653,7 +2706,13 @@
         }));
       skillBadges.slice(0, 2).forEach((badge, index) => {
         const skill = skillDetails[index] || {};
-        const badgeY = y + (candidate ? 58 : (card.pointText ? 76 : 64)) + index * 27;
+        const badgeY = y + (
+          candidate
+            ? 58
+            : hasAttributeControls
+              ? 86 + attributeControlHeight
+              : (card.pointText ? 76 : 64)
+        ) + index * 27;
         const badgeH = 22;
         this.drawPanel(textX, badgeY, textWidth, badgeH, {
           fill: index === 0 ? 'rgba(47, 92, 69, 0.54)' : 'rgba(96, 73, 35, 0.54)',
@@ -2851,13 +2910,13 @@
           lineHeight: 17,
         });
       } else {
-        const itemHeight = people.some((card) => card?.pointText) ? 146 : 134;
+        const itemHeight = people.some((card) => card?.freeAttributePoints > 0) ? 214 : (people.some((card) => card?.pointText) ? 146 : 134);
         const pagerReserve = people.length > 3 ? 34 : 0;
         const availableHeight = Math.max(0, y + panelHeight - 18 - pagerReserve - cursorY);
         const visibleCount = Math.max(1, Math.min(3, Math.floor(availableHeight / itemHeight)));
         const pageInfo = this.normalizeFamousPersonsPage(people.length, options.famousPersonsPage, visibleCount);
         people.slice(pageInfo.index * visibleCount, pageInfo.index * visibleCount + visibleCount).forEach((card) => {
-          const cardHeight = card?.pointText ? 136 : 124;
+          const cardHeight = card?.freeAttributePoints > 0 ? 204 : (card?.pointText ? 136 : 124);
           if (cursorY + cardHeight > y + panelHeight - 18 - pagerReserve) return;
           cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
         });

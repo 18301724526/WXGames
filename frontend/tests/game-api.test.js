@@ -146,11 +146,13 @@ test('famous person APIs use shared action endpoint', async () => {
   await api.seekFamousPerson();
   await api.acceptFamousPerson('fpc_a');
   await api.dismissFamousPersonCandidate('fpc_b');
+  await api.assignFamousAttributePoint('fp_a', 'command');
 
   assert.deepEqual(requests, [
     { action: 'seekFamousPerson', source: 'seek' },
     { action: 'acceptFamousPerson', candidateId: 'fpc_a' },
     { action: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' },
+    { action: 'assignFamousAttributePoint', personId: 'fp_a', attribute: 'command' },
   ]);
 });
 

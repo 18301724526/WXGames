@@ -226,6 +226,14 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.people[0].growthText, '等级 2 · 经验 35/190');
   assert.equal(view.people[0].pointText, '可分配属性点 4');
   assert.equal(view.people[0].level, 2);
+  assert.deepEqual(view.people[0].attributeActions.map((item) => [item.type, item.personId, item.attribute]), [
+    ['assignFamousAttributePoint', 'fp_a', 'command'],
+    ['assignFamousAttributePoint', 'fp_a', 'force'],
+    ['assignFamousAttributePoint', 'fp_a', 'intelligence'],
+    ['assignFamousAttributePoint', 'fp_a', 'politics'],
+    ['assignFamousAttributePoint', 'fp_a', 'charisma'],
+    ['assignFamousAttributePoint', 'fp_a', 'speed'],
+  ]);
   assert.match(view.people[0].stats, /智40/);
   assert.match(view.people[0].stats, /速66/);
   assert.deepEqual(view.people[0].attributes.map((item) => item.label), ['统帅', '武力', '智力', '政治', '魅力', '速度']);
@@ -247,6 +255,7 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.candidates[0].sourceText, '事件投奔');
   assert.equal(view.candidates[0].growthText, '');
   assert.equal(view.candidates[0].level, null);
+  assert.deepEqual(view.candidates[0].attributeActions, []);
   assert.match(view.candidates[0].skills[0], /资源产出/);
   assert.equal(view.candidates[0].skillDetails[0].kindText, '内政主技');
   assert.match(view.candidates[0].skillDetails[0].meta, /暂未接入实际收益/);

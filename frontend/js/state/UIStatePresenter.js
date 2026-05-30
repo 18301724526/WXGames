@@ -736,6 +736,14 @@
         ? (nextLevelExperience > 0 ? `等级 ${level} · 经验 ${experience}/${nextLevelExperience}` : `等级 ${level}`)
         : '';
       const pointText = !isCandidate && freeAttributePoints > 0 ? `可分配属性点 ${freeAttributePoints}` : '';
+      const attributeActions = !isCandidate && freeAttributePoints > 0
+        ? attributes.map((item) => ({
+          type: 'assignFamousAttributePoint',
+          personId: person.id || '',
+          attribute: item.key,
+          disabled: false,
+        }))
+        : [];
       return {
         id: person.id || '',
         name: person.name || '无名之士',
@@ -750,6 +758,7 @@
         pointText,
         stats,
         attributes,
+        attributeActions,
         skills,
         skillDetails,
         skillBadges,

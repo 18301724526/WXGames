@@ -2679,6 +2679,26 @@ test('Canvas game app keeps famous person panel open through seek and accept act
           },
         },
       }),
+      assignFamousAttributePoint: async (personId, attribute) => ({
+        success: true,
+        message: 'attribute assigned',
+        gameState: {
+          currentTab: 'resources',
+          famousPersons: {
+            count: 1,
+            candidateCount: 0,
+            candidates: [],
+            people: [{
+              id: personId,
+              name: 'fp',
+              freeAttributePoints: 1,
+              attributes: { command: 71, force: 50, intelligence: 50, politics: 50, charisma: 50, speed: 50 },
+              lastAssignedAttribute: attribute,
+            }],
+            seek: { available: true },
+          },
+        },
+      }),
     },
     runtimeRequired: false,
     apiRequired: false,
@@ -2696,6 +2716,13 @@ test('Canvas game app keeps famous person panel open through seek and accept act
   assert.equal(acceptResult, true);
   assert.equal(app.showFamousPersons, true);
   assert.equal(app.state.famousPersons.count, 1);
+
+  const assignResult = await app.actionController.handle({ type: 'assignFamousAttributePoint', personId: 'fp_a', attribute: 'command' });
+  assert.equal(assignResult, true);
+  assert.equal(app.showFamousPersons, true);
+  assert.equal(app.canvasShell.showFamousPersons, true);
+  assert.equal(app.state.famousPersons.people[0].freeAttributePoints, 1);
+  assert.equal(app.state.famousPersons.people[0].attributes.command, 71);
 });
 
 test('Canvas game shell passes shared loading state and preloads assets through renderer', async () => {
@@ -2920,8 +2947,8 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
-  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=famous-growth-v1[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=famous-growth-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=famous-person-pager-v2[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=famous-person-pager-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2/);
+  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=famous-attribute-points-v1[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=famous-attribute-points-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=famous-attribute-points-v1[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=famous-person-pager-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2/);
   assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);

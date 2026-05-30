@@ -379,6 +379,16 @@
       return this.finalize(this.runAction(() => this.host.api.dismissFamousPersonCandidate(action.candidateId)));
     }
 
+    handle_assignFamousAttributePoint(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.assignFamousAttributePoint === 'function') {
+        return this.finalize(game.assignFamousAttributePoint(action.personId, action.attribute));
+      }
+      return this.finalize(this.runAction(() => this.host.api.assignFamousAttributePoint(action.personId, action.attribute)));
+    }
+
     handle_openTalentPolicy(action) {
       this.host.showTalentPolicy = true;
       this.closePanels(['showTalentPolicy']);

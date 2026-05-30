@@ -494,6 +494,7 @@ function validateAction(gameState, action, payload = {}) {
     || action === 'seekFamousPerson'
     || action === 'acceptFamousPerson'
     || action === 'dismissFamousPersonCandidate'
+    || action === 'assignFamousAttributePoint'
   ) return { allowed: true };
   const task = getCurrentTaskDefinition(gameState);
   if (!task) return { allowed: true };

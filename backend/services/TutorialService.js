@@ -105,6 +105,7 @@ function validateAction(tutorialState, action, payload, gameState) {
     'seekFamousPerson',
     'acceptFamousPerson',
     'dismissFamousPersonCandidate',
+    'assignFamousAttributePoint',
   ].includes(action)) return { allowed: true };
   if (tutorial.completed) return { allowed: true };
   const step = tutorial.currentStep;
