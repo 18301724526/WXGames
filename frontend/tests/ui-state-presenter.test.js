@@ -1113,6 +1113,20 @@ test('world site dialog view state formats details and expedition actions', () =
       defense: 500,
       recommendedSoldiers: 500,
       effects: { foodOutputMultiplier: 0.1 },
+      defenderLeader: {
+        name: '拓锋',
+        title: '营帐战首',
+        qualityLabel: '良才',
+        abilityKit: {
+          abilities: [{
+            id: 'skill_enemy_rending_charge',
+            name: '裂甲猛冲',
+            slot: 'activeSkill',
+            kind: 'active',
+            effects: [{ key: 'directDamage', value: 1.32 }, { key: 'armorBreak', value: 0.12 }],
+          }],
+        },
+      },
     },
     {
       id: 'neutral_site',
@@ -1149,6 +1163,8 @@ test('world site dialog view state formats details and expedition actions', () =
   assert.equal(detail.text.status, '已发现');
   assert.equal(detail.text.owner, '有主 · 部落');
   assert.equal(detail.text.summary, '食物 +10%');
+  assert.equal(detail.text.defenderLeader, '守将 拓锋 · 营帐战首 · 良才');
+  assert.equal(detail.text.defenderSkill, '敌方战法 裂甲猛冲');
   assert.equal(detail.text.march, '行军耗时 1:30');
   assert.equal(detail.action.kind, 'group');
   assert.equal(detail.action.buttons[2].action, 'open-expedition');
@@ -1231,6 +1247,12 @@ test('battle scene view uses 100 soldiers only as visual group size', () => {
     },
     defender: {
       name: '林地部落',
+      leaderName: '拓锋',
+      leaderTitle: '营帐战首',
+      appearance: {
+        version: 'famous-portrait-v3.0',
+        layers: { face: 'assets/art/famous-person/layers/fp-layer-v3-face-02.png' },
+      },
       speed: 53,
       soldiersStart: 500,
     },
@@ -1250,7 +1272,10 @@ test('battle scene view uses 100 soldiers only as visual group size', () => {
   assert.equal(view.attacker.groups[5].soldiers, 1);
   assert.equal(view.defender.groups.length, 5);
   assert.equal(view.activeTurn.actor, 'attacker');
-  assert.equal(view.title, '陆骁队 vs 林地部落队');
+  assert.equal(view.title, '陆骁队 vs 拓锋队');
+  assert.equal(view.defender.leaderName, '拓锋');
+  assert.equal(view.defender.leaderTitle, '营帐战首');
+  assert.equal(view.defender.appearance.layers.face, 'assets/art/famous-person/layers/fp-layer-v3-face-02.png');
   assert.deepEqual(view.logLines, ['[陆骁] 开始行动', '[林地部落] 受到兵刃伤害 43（457）']);
 });
 

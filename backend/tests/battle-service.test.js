@@ -73,6 +73,51 @@ function createTerritory(overrides = {}) {
   };
 }
 
+function createTerritoryWithDefenderLeader(overrides = {}) {
+  return createTerritory({
+    defenderLeader: {
+      id: 'df_tuofeng',
+      name: '拓锋',
+      title: '营帐战首',
+      archetype: 'vanguard',
+      abilityArchetype: 'vanguard',
+      quality: 'good',
+      qualityLabel: '良才',
+      level: 11,
+      attributes: { command: 62, force: 74, intelligence: 42, politics: 34, charisma: 46, speed: 98 },
+      appearance: {
+        version: 'famous-portrait-v3.0',
+        layers: {
+          outfit: 'assets/art/famous-person/layers/fp-layer-v3-outfit-02.png',
+          face: 'assets/art/famous-person/layers/fp-layer-v3-face-02.png',
+          hair: 'assets/art/famous-person/layers/fp-layer-v3-hair-02.png',
+        },
+      },
+      abilityKit: {
+        archetype: 'vanguard',
+        domain: 'battle',
+        battlePolicy: 'useBattleSkill',
+        abilities: [{
+          id: 'skill_enemy_rending_charge',
+          name: '裂甲猛冲',
+          slot: 'activeSkill',
+          kind: 'active',
+          type: 'battle',
+          category: 'blade',
+          damageType: 'blade',
+          multiplier: 1.32,
+          cooldown: 3,
+          castPolicy: 'conditional',
+          castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }],
+          effects: [{ key: 'directDamage', value: 1.32 }, { key: 'armorBreak', value: 0.12, turns: 2 }],
+        }],
+      },
+      skills: [],
+    },
+    ...overrides,
+  });
+}
+
 test('simulateConquestBattle emits attribute battle report without mutating inputs', () => {
   const gameState = createLeaderState();
   const mission = createMission();
@@ -196,6 +241,29 @@ test('slower famous leader acts after faster defender each round', () => {
   assert.deepEqual(result.report.actionOrder, ['defender', 'attacker']);
   assert.equal(result.report.firstActor, 'defender');
   assert.equal(result.report.turns[0].actor, 'defender');
+});
+
+test('defender leader ability kit drives enemy skill turns and cut-in portrait', () => {
+  const gameState = createLeaderState();
+  gameState.famousPeople[0].attributes.speed = 20;
+  const result = BattleService.simulateConquestBattle(
+    gameState,
+    createMission({ soldiersCommitted: 700 }),
+    createTerritoryWithDefenderLeader({ defense: 900 }),
+    new Date('2026-05-30T09:00:00.000Z'),
+  );
+  const defenderTurn = result.report.turns.find((turn) => turn.actor === 'defender' && turn.action === 'skill');
+
+  assert.equal(result.report.firstActor, 'defender');
+  assert.equal(result.report.defender.leaderId, 'df_tuofeng');
+  assert.equal(result.report.defender.leaderName, '拓锋');
+  assert.equal(result.report.defender.leaderTitle, '营帐战首');
+  assert.equal(result.report.defender.skill.name, '裂甲猛冲');
+  assert.ok(defenderTurn);
+  assert.equal(defenderTurn.skillName, '裂甲猛冲');
+  assert.equal(defenderTurn.presentation.cutIn, true);
+  assert.equal(defenderTurn.actorPortrait.layers.face, 'assets/art/famous-person/layers/fp-layer-v3-face-02.png');
+  assert.ok(defenderTurn.statusEvents.some((event) => event.key === 'armorBreak' && event.target === 'attacker'));
 });
 
 test('pre-battle passive traits apply before speed and damage are reported', () => {

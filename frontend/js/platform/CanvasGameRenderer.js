@@ -5646,6 +5646,14 @@
       cursorY += summaryLines.length * 17 + 12;
       this.drawText(`${detail.text.defense} · ${detail.text.soldiers}`, x + 16, cursorY, { size: 12, color: '#74d3a0' });
       cursorY += 22;
+      if (detail.text.defenderLeader) {
+        this.drawText(detail.text.defenderLeader, x + 16, cursorY, { size: 11, color: '#ffba8a' });
+        cursorY += 18;
+      }
+      if (detail.text.defenderSkill) {
+        this.drawText(detail.text.defenderSkill, x + 16, cursorY, { size: 11, color: '#d6b16e' });
+        cursorY += 18;
+      }
       if (detail.text.march) {
         this.drawText(detail.text.march, x + 16, cursorY, { size: 11, color: '#d6b16e' });
         cursorY += 20;

@@ -7,6 +7,9 @@ const FIRST_BATCH_BATTLE_EFFECTS = Object.freeze([
   'lifesteal',
   'heal',
   'shield',
+  'armorBreak',
+  'burn',
+  'poison',
   'attributeBonus',
 ]);
 
@@ -116,6 +119,16 @@ const ACTIVE_TEMPLATES = Object.freeze({
       cost: 110,
       effects: [{ key: 'directDamage', value: 1.36 }, { key: 'attributeBonus', attribute: 'command', value: 6 }],
     },
+    {
+      id: 'sunder_order',
+      name: '压阵破甲',
+      category: 'blade',
+      damageType: 'blade',
+      multiplier: 1.24,
+      cooldown: 3,
+      cost: 108,
+      effects: [{ key: 'directDamage', value: 1.24 }, { key: 'armorBreak', value: 0.1, turns: 2 }],
+    },
   ],
   vanguard: [
     {
@@ -138,6 +151,16 @@ const ACTIVE_TEMPLATES = Object.freeze({
       cost: 112,
       effects: [{ key: 'directDamage', value: 1.28 }, { key: 'secondHit', multiplier: 0.32 }],
     },
+    {
+      id: 'rending_charge',
+      name: '裂甲猛冲',
+      category: 'blade',
+      damageType: 'blade',
+      multiplier: 1.32,
+      cooldown: 3,
+      cost: 114,
+      effects: [{ key: 'directDamage', value: 1.32 }, { key: 'armorBreak', value: 0.12, turns: 2 }],
+    },
   ],
   strategist: [
     {
@@ -159,6 +182,26 @@ const ACTIVE_TEMPLATES = Object.freeze({
       cooldown: 3,
       cost: 112,
       effects: [{ key: 'directDamage', value: 1.26 }, { key: 'secondHit', multiplier: 0.28 }],
+    },
+    {
+      id: 'fire_trap',
+      name: '伏火断阵',
+      category: 'strategy',
+      damageType: 'strategy',
+      multiplier: 1.2,
+      cooldown: 3,
+      cost: 118,
+      effects: [{ key: 'directDamage', value: 1.2 }, { key: 'burn', value: 0.12, turns: 2 }],
+    },
+    {
+      id: 'poison_mist',
+      name: '毒雾缠阵',
+      category: 'strategy',
+      damageType: 'strategy',
+      multiplier: 1.16,
+      cooldown: 3,
+      cost: 116,
+      effects: [{ key: 'directDamage', value: 1.16 }, { key: 'poison', value: 0.11, turns: 3 }],
     },
   ],
   scout: [

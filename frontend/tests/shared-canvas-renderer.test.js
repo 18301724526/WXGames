@@ -3319,6 +3319,8 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
           summary: '食物 +10%',
           defense: '防御 0',
           soldiers: '建议 100 士兵',
+          defenderLeader: '守将 拓锋 · 营帐战首 · 良才',
+          defenderSkill: '敌方战法 裂甲猛冲',
           march: '行军耗时 1:30',
           note: '',
         },
@@ -3358,6 +3360,8 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   });
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '赤火联盟'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '守将 拓锋 · 营帐战首 · 良才'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '敌方战法 裂甲猛冲'));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察报告'), false);
   const radarDragTarget = renderer.hitTargets.find((target) => target.action?.type === 'worldRadarDrag');
   assert.ok(radarDragTarget);

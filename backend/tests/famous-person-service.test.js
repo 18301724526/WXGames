@@ -161,8 +161,8 @@ test('skill generator can build deterministic ability kits from source seed and 
 
   assert.deepEqual(first.abilities.map((ability) => ability.id), second.abilities.map((ability) => ability.id));
   assert.notDeepEqual(first.abilities.map((ability) => ability.id), different.abilities.map((ability) => ability.id));
-  assert.deepEqual(first.availableEffectPool, ['directDamage', 'secondHit']);
-  assert.deepEqual(first.generatorInput.availableEffectPool, ['directDamage', 'secondHit']);
+  assert.deepEqual(first.availableEffectPool, ['directDamage', 'secondHit', 'burn']);
+  assert.deepEqual(first.generatorInput.availableEffectPool, ['directDamage', 'secondHit', 'burn']);
   assert.equal(first.abilities[0].id, 'skill_vanguard_double_cleave');
   assert.deepEqual(first.abilities[0].effects.map((effect) => effect.key), ['directDamage', 'secondHit']);
   assert.equal(first.generatorInput.generatorVersion, SkillGeneratorService.GENERATOR_VERSION);

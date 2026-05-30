@@ -1,4 +1,5 @@
 const BattleService = require('./BattleService');
+const DefenderLeaderService = require('./DefenderLeaderService');
 
 const SCOUT_DURATION_MS = 60 * 1000;
 const CONQUEST_DURATION_MS = 2 * 60 * 1000;
@@ -283,7 +284,7 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
   const recommendedSoldiers = rawRecommended > 0 && rawRecommended < MIN_EXPEDITION_SOLDIERS
     ? rawRecommended * SOLDIER_SCALE
     : Math.max(MIN_EXPEDITION_SOLDIERS, rawRecommended);
-  return {
+  const normalized = {
     id: typeof rawTerritory.id === 'string' && rawTerritory.id ? rawTerritory.id : `site_${x}_${y}`,
     x,
     y,
@@ -307,7 +308,12 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
     effects: clone(rawTerritory.effects || {}),
     summary: rawTerritory.summary || '',
     lastBattle: rawTerritory.lastBattle || null,
+    defenderLeader: rawTerritory.defenderLeader || null,
   };
+  normalized.defenderLeader = DefenderLeaderService.ensureDefenderLeader(normalized, {
+    createdAt: normalized.discoveredAt || now,
+  });
+  return normalized;
 }
 
 function normalizeWarMissions(rawMissions) {
@@ -812,6 +818,9 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
     summary,
     lastBattle: null,
   };
+  site.defenderLeader = DefenderLeaderService.ensureDefenderLeader(site, {
+    createdAt: now.toISOString(),
+  });
   const report = {
     id: `report_${site.id}_${now.getTime()}`,
     siteId: site.id,
@@ -1051,6 +1060,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
   if (success) {
     territory.status = 'occupied';
     territory.owner = 'player';
+    territory.defenderLeader = null;
     territory.occupiedAt = now.toISOString();
     territory.cityName = null;
   } else {

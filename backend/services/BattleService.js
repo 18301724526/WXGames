@@ -122,6 +122,26 @@ function getLeaderSnapshotFromMission(mission) {
   };
 }
 
+function getDefenderLeaderSnapshot(territory = {}) {
+  const raw = territory.defenderLeader;
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id || `df_${territory.id || 'site'}`,
+    name: raw.name || territory.naturalName || '守军',
+    title: raw.title || raw.archetypeLabel || '守军',
+    archetype: raw.archetype || '',
+    archetypeLabel: raw.archetypeLabel || '',
+    abilityArchetype: raw.abilityArchetype || raw.abilityKit?.archetype || raw.archetype || '',
+    quality: raw.quality || 'common',
+    qualityLabel: raw.qualityLabel || '',
+    level: toInteger(raw.level, 1),
+    attributes: normalizeAttributes(raw.attributes || {}),
+    appearance: clone(raw.appearance || {}),
+    abilityKit: raw.abilityKit && typeof raw.abilityKit === 'object' ? clone(raw.abilityKit) : null,
+    skills: Array.isArray(raw.skills) ? clone(raw.skills).slice(0, 2) : [],
+  };
+}
+
 function getEffectiveAttribute(value) {
   const attribute = Math.max(1, Number(value) || 1);
   if (attribute <= 100) return attribute;
@@ -727,10 +747,26 @@ function getDefenderProfile(territory) {
   return {
     id: territory.id,
     name: profile.name,
+    leader: null,
     soldiers,
     maxSoldiers: soldiers,
     morale: profile.morale,
     attributes: normalizeAttributes(profile),
+    skill: getBattleSkill({}, 'defender'),
+  };
+}
+
+function getDefenderBattleProfile(territory) {
+  const fallback = getDefenderProfile(territory);
+  const leader = getDefenderLeaderSnapshot(territory);
+  if (!leader) return fallback;
+  return {
+    ...fallback,
+    id: leader.id,
+    name: leader.name,
+    leader,
+    attributes: leader.attributes,
+    skill: getBattleSkill({ leader }, 'defender'),
   };
 }
 
@@ -822,8 +858,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     skill: getBattleSkill({ leader: fallbackLeader }, 'attacker'),
   });
   const defender = makeUnit('defender', {
-    ...getDefenderProfile(territory),
-    skill: getBattleSkill({}, 'defender'),
+    ...getDefenderBattleProfile(territory),
   });
 
   const turns = [];
@@ -1103,7 +1138,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     result: success ? 'victory' : 'defeat',
     summary: success
       ? `${fallbackLeader.name}队压制了${territory.naturalName}。`
-      : `${fallbackLeader.name}队未能突破${territory.naturalName}的防线。`,
+      : `${fallbackLeader.name}队未能突破${defender.name}的防线。`,
     system: BATTLE_SYSTEM,
     ruleVersion: BATTLE_RULE_VERSION,
     groupSize: DEFAULT_SOLDIER_SCALE,
@@ -1132,7 +1167,13 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       skill: clone(attacker.skill || {}),
     },
     defender: {
+      leaderId: defender.leader?.id || '',
       name: defender.name,
+      leaderName: defender.name,
+      leaderTitle: defender.leader?.title || '守军',
+      quality: defender.leader?.quality || '',
+      qualityLabel: defender.leader?.qualityLabel || '',
+      level: defender.leader?.level || 1,
       speed: getBattleSpeed(defender),
       morale: defender.morale,
       moraleEffectEnabled: MORALE_EFFECT_ENABLED,
@@ -1141,6 +1182,8 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       soldiersEnd: defender.soldiers,
       groupsStart: getBattleVisualGroups(defender.maxSoldiers),
       groupsEnd: getBattleVisualGroups(defender.soldiers),
+      appearance: clone(defender.leader?.appearance || {}),
+      abilityKit: defender.leader?.abilityKit ? clone(defender.leader.abilityKit) : null,
       skill: clone(defender.skill || {}),
     },
     visual: {
@@ -1156,6 +1199,7 @@ module.exports = {
   MIN_BATTLE_SOLDIERS,
   MAX_BATTLE_ROUNDS,
   getLeaderSnapshot,
+  getDefenderLeaderSnapshot,
   getEffectiveAttribute,
   calculateDamage,
   getBattleVisualGroups,

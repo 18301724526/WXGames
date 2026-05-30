@@ -53,18 +53,18 @@ function addDiscoveredTribeSite(state, options = {}) {
     y: Number.isFinite(options.y) ? options.y : 0,
     naturalName: options.naturalName || '东境营地',
     cityName: null,
-    type: 'camp',
-    owner: 'tribe',
+    type: options.type || 'camp',
+    owner: options.owner || 'tribe',
     status: 'discovered',
-    scale: 2,
-    threat: 4,
-    defense: 500,
-    recommendedSoldiers: 500,
-    art: 'assets/art/world-site-camp-cutout.png',
+    scale: options.scale || 2,
+    threat: options.threat || 4,
+    defense: options.defense || 500,
+    recommendedSoldiers: options.recommendedSoldiers || 500,
+    art: options.art || 'assets/art/world-site-camp-cutout.png',
     visualOffset: { x: 0, y: 0 },
     discoveredAt: '2026-05-17T08:04:00.000Z',
     occupiedAt: null,
-    effects: { woodOutputMultiplier: 0.08 },
+    effects: options.effects || { woodOutputMultiplier: 0.08 },
     summary: '东境外的部落营地。',
     lastBattle: null,
   });
@@ -201,6 +201,55 @@ test('侦察到空地后会标记坐标并跳过该坐标', () => {
   assert.equal(start.mission.targetY, 0);
 });
 
+test('敌对据点会稳定生成守军名人，归一化后继续保留', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const scout = TerritoryService.startScout(state, 'e', now);
+  state.warMissions[0].completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimScout(
+    state,
+    scout.mission.id,
+    now,
+    createSequenceRandom([0.1, 0.1, 0.2]),
+  );
+  const site = claim.site;
+  const firstLeader = site.defenderLeader;
+
+  assert.equal(claim.success, true);
+  assert.equal(site.owner, 'tribe');
+  assert.ok(firstLeader);
+  assert.equal(firstLeader.source.type, 'defender');
+  assert.equal(firstLeader.source.territoryId, site.id);
+  assert.equal(firstLeader.abilityKit.battlePolicy, 'useBattleSkill');
+  assert.equal(firstLeader.skills.length, 1);
+
+  const normalized = gameStateService.normalizeState(state);
+  const normalizedLeader = normalized.territories.find((item) => item.id === site.id).defenderLeader;
+  assert.equal(normalizedLeader.id, firstLeader.id);
+  assert.equal(normalizedLeader.name, firstLeader.name);
+  assert.equal(normalizedLeader.skills[0].id, firstLeader.skills[0].id);
+});
+
+test('中立建立据点目标不会生成守军名人', () => {
+  const state = createClassicalState();
+  addDiscoveredTribeSite(state, {
+    id: 'neutral_town',
+    type: 'town',
+    owner: 'neutral',
+    threat: 2,
+    defense: 100,
+    recommendedSoldiers: 100,
+  });
+
+  const normalized = gameStateService.normalizeState(state);
+  const site = normalized.territories.find((item) => item.id === 'neutral_town');
+
+  assert.equal(site.owner, 'neutral');
+  assert.equal(site.defenderLeader, null);
+});
+
 test('分城侦察会以当前分城坐标作为出发原点', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
@@ -334,6 +383,8 @@ test('无主地区占领时会自动按 100 士兵建立据点处理', () => {
 test('有主地区占领时会保留出征配置并按人数进行战斗结算', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
+  state.military.soldiers = 800;
+  if (state.cities?.capital?.military) state.cities.capital.military.soldiers = 800;
   state.territories.push({
     id: 'tribe_site',
     x: 0,
@@ -359,7 +410,7 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   const start = TerritoryService.startConquest(state, 'tribe_site', {
     troopType: 'unavailable',
     leader: 'unavailable',
-    soldiers: 600,
+    soldiers: 800,
   }, now);
 
   assert.equal(start.success, true);
@@ -367,7 +418,7 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   assert.deepEqual(start.mission.expedition, {
     troopType: 'unavailable',
     leader: 'unavailable',
-    soldiers: 600,
+    soldiers: 800,
   });
 
   const mission = state.warMissions.find((item) => item.id === start.mission.id);
@@ -381,7 +432,7 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   assert.equal(claim.battleReport.moraleEffectEnabled, false);
   assert.ok(claim.battleReport.experience.total > 0);
   assert.ok(claim.casualties > 0);
-  assert.ok(claim.casualties < 600);
+  assert.ok(claim.casualties < 800);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
 });
 
@@ -420,6 +471,10 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(site.lastBattle.leaderName, '陆骁');
   assert.equal(site.lastBattle.report.mode, 'auto-round');
   assert.equal(site.lastBattle.report.attacker.leaderName, '陆骁');
+  assert.ok(site.lastBattle.report.defender.leaderId);
+  assert.ok(site.lastBattle.report.defender.leaderName);
+  assert.ok(site.lastBattle.report.defender.skill.name);
+  assert.equal(site.defenderLeader, null);
   assert.equal(site.lastBattle.report.system, 'attribute-auto-battle-v2');
   assert.equal(site.lastBattle.report.ruleVersion, 'battle-rules-v3');
   assert.equal(site.lastBattle.report.turns[0].actor, 'attacker');

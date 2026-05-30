@@ -606,6 +606,9 @@
       if (key === 'lifesteal') return '施加倒戈（倒戈：将敌方本次损失兵力的一部分转换为自己的兵力）。';
       if (key === 'heal') return `恢复我方一部分兵力。`;
       if (key === 'shield') return '获得守御，可抵消一部分伤害。';
+      if (key === 'armorBreak') return '对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。';
+      if (key === 'burn') return '对目标施加灼烧（灼烧：目标行动前会损失兵力）。';
+      if (key === 'poison') return '对目标施加中毒（中毒：目标行动前会持续损失兵力）。';
       if (key === 'attributeBonus') {
         const attribute = this.getFamousPersonAttributeLabel(effect.attribute || effect.keyAttribute);
         const value = Math.round(Number(effect.value) || 0);
@@ -2733,6 +2736,26 @@
       return lines.slice(0, 4);
     }
 
+    static getWorldSiteDefenderLeaderLine(site = {}) {
+      const leader = site.defenderLeader;
+      if (!leader || typeof leader !== 'object') return '';
+      const title = leader.title ? ` · ${leader.title}` : '';
+      const quality = leader.qualityLabel ? ` · ${leader.qualityLabel}` : '';
+      return `守将 ${leader.name || '未知'}${title}${quality}`;
+    }
+
+    static getWorldSiteDefenderSkillLine(site = {}) {
+      const leader = site.defenderLeader;
+      if (!leader || typeof leader !== 'object') return '';
+      const active = Array.isArray(leader.abilityKit?.abilities)
+        ? leader.abilityKit.abilities.find((ability) => ability?.slot === 'activeSkill' || ability?.kind === 'active')
+        : null;
+      const fallback = Array.isArray(leader.skills) ? leader.skills[0] : null;
+      const skill = active || fallback;
+      if (!skill) return '';
+      return `敌方战法 ${skill.name || '未知战法'}`;
+    }
+
     static makeVisualGroups(soldiers, groupSize = 100) {
       const total = Math.max(0, this.toInteger(soldiers));
       const size = Math.max(1, this.toInteger(groupSize, 100));
@@ -2906,7 +2929,7 @@
       return {
         visible: true,
         id: report.id || '',
-        title: `${report.attacker?.leaderName || '己方'}队 vs ${report.defender?.name || '守军'}队`,
+        title: `${report.attacker?.leaderName || '己方'}队 vs ${report.defender?.leaderName || report.defender?.name || '守军'}队`,
         resultText,
         ended,
         map: report.visual?.map || {
@@ -2940,9 +2963,10 @@
         },
         defender: {
           side: 'defender',
-          name: `${report.defender?.name || '守军'}队`,
-          leaderName: report.defender?.name || '守军',
-          leaderTitle: '守军',
+          name: `${report.defender?.leaderName || report.defender?.name || '守军'}队`,
+          leaderName: report.defender?.leaderName || report.defender?.name || '守军',
+          leaderTitle: report.defender?.leaderTitle || '守军',
+          appearance: report.defender?.appearance || {},
           sprite: report.visual?.map?.soldierSprites?.defender || 'assets/art/battle/units/enemy',
           speed: this.toInteger(report.defender?.speed),
           soldiersStart: this.toInteger(report.defender?.soldiersStart),
@@ -2969,6 +2993,8 @@
           summary: site.summary || this.formatWorldSiteEffect(site.effects),
           defense: `防御 ${site.defense || 0}`,
           soldiers: `建议 ${site.recommendedSoldiers || 0} 士兵`,
+          defenderLeader: this.getWorldSiteDefenderLeaderLine(site),
+          defenderSkill: this.getWorldSiteDefenderSkillLine(site),
           march: this.getWorldSiteMarchInfo(site, territoryState),
           note: this.getWorldSiteLastBattleNote(site),
           battleReport: this.getWorldSiteBattleReportLines(site),
