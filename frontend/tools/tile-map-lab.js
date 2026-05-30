@@ -23,22 +23,79 @@
     mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
     pond: { label: 'pond', file: 'tile-map/tile-feature-pond.png' },
   };
+  const WATER_TEXTURE_ASSETS = {
+    river: { label: 'river uv loop water', file: 'tile-map/tile-water-river-loop.png', uvScale: 0.72, speedX: -18, speedY: 7, alpha: 0.94 },
+    ocean: { label: 'ocean uv loop water', file: 'tile-map/tile-water-ocean-loop.png', uvScale: 1.16, speedX: -4, speedY: 2, alpha: 0.9 },
+  };
+  const WATER_ANIMATION_FPS = 18;
   const RIVER_TEMPLATE_ASSETS = {
-    nw: { label: 'river template ai nw', file: 'tile-map/river-template/tile-river-template-ai-nw.png' },
-    ne: { label: 'river template ai ne', file: 'tile-map/river-template/tile-river-template-ai-ne.png' },
-    se: { label: 'river template ai se', file: 'tile-map/river-template/tile-river-template-ai-se.png' },
-    sw: { label: 'river template ai sw', file: 'tile-map/river-template/tile-river-template-ai-sw.png' },
-    'nw-ne': { label: 'river template ai nw-ne', file: 'tile-map/river-template/tile-river-template-ai-nw-ne.png' },
-    'nw-se': { label: 'river template ai nw-se', file: 'tile-map/river-template/tile-river-template-ai-nw-se.png' },
-    'nw-sw': { label: 'river template ai nw-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-sw.png' },
-    'ne-se': { label: 'river template ai ne-se', file: 'tile-map/river-template/tile-river-template-ai-ne-se.png' },
-    'ne-sw': { label: 'river template ai ne-sw', file: 'tile-map/river-template/tile-river-template-ai-ne-sw.png' },
-    'se-sw': { label: 'river template ai se-sw', file: 'tile-map/river-template/tile-river-template-ai-se-sw.png' },
-    'nw-ne-se': { label: 'river template ai nw-ne-se', file: 'tile-map/river-template/tile-river-template-ai-nw-ne-se.png' },
-    'nw-ne-sw': { label: 'river template ai nw-ne-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-ne-sw.png' },
-    'nw-se-sw': { label: 'river template ai nw-se-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-se-sw.png' },
-    'ne-se-sw': { label: 'river template ai ne-se-sw', file: 'tile-map/river-template/tile-river-template-ai-ne-se-sw.png' },
-    'nw-ne-se-sw': { label: 'river template ai nw-ne-se-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-ne-se-sw.png' },
+    nw: { label: 'river bank uv nw', file: 'tile-map/river-template/tile-river-bank-uv-nw.png' },
+    ne: { label: 'river bank uv ne', file: 'tile-map/river-template/tile-river-bank-uv-ne.png' },
+    se: { label: 'river bank uv se', file: 'tile-map/river-template/tile-river-bank-uv-se.png' },
+    sw: { label: 'river bank uv sw', file: 'tile-map/river-template/tile-river-bank-uv-sw.png' },
+    'nw-ne': { label: 'river bank uv nw-ne', file: 'tile-map/river-template/tile-river-bank-uv-nw-ne.png' },
+    'nw-se': { label: 'river bank uv nw-se', file: 'tile-map/river-template/tile-river-bank-uv-nw-se.png' },
+    'nw-sw': { label: 'river bank uv nw-sw', file: 'tile-map/river-template/tile-river-bank-uv-nw-sw.png' },
+    'ne-se': { label: 'river bank uv ne-se', file: 'tile-map/river-template/tile-river-bank-uv-ne-se.png' },
+    'ne-sw': { label: 'river bank uv ne-sw', file: 'tile-map/river-template/tile-river-bank-uv-ne-sw.png' },
+    'se-sw': { label: 'river bank uv se-sw', file: 'tile-map/river-template/tile-river-bank-uv-se-sw.png' },
+    'nw-ne-se': { label: 'river bank uv nw-ne-se', file: 'tile-map/river-template/tile-river-bank-uv-nw-ne-se.png' },
+    'nw-ne-sw': { label: 'river bank uv nw-ne-sw', file: 'tile-map/river-template/tile-river-bank-uv-nw-ne-sw.png' },
+    'nw-se-sw': { label: 'river bank uv nw-se-sw', file: 'tile-map/river-template/tile-river-bank-uv-nw-se-sw.png' },
+    'ne-se-sw': { label: 'river bank uv ne-se-sw', file: 'tile-map/river-template/tile-river-bank-uv-ne-se-sw.png' },
+    'nw-ne-se-sw': { label: 'river bank uv nw-ne-se-sw', file: 'tile-map/river-template/tile-river-bank-uv-nw-ne-se-sw.png' },
+  };
+  const OCEAN_TEMPLATE_ASSETS = {
+    full: { label: 'ocean template full', file: 'tile-map/ocean-template/tile-ocean-template-full.png' },
+    nw: { label: 'ocean coast nw', file: 'tile-map/ocean-template/tile-ocean-template-nw.png' },
+    ne: { label: 'ocean coast ne', file: 'tile-map/ocean-template/tile-ocean-template-ne.png' },
+    se: { label: 'ocean coast se', file: 'tile-map/ocean-template/tile-ocean-template-se.png' },
+    sw: { label: 'ocean coast sw', file: 'tile-map/ocean-template/tile-ocean-template-sw.png' },
+    'nw-ne': { label: 'ocean coast nw-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne.png' },
+    'nw-se': { label: 'ocean coast nw-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-se.png' },
+    'nw-sw': { label: 'ocean coast nw-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-sw.png' },
+    'ne-se': { label: 'ocean coast ne-se', file: 'tile-map/ocean-template/tile-ocean-template-ne-se.png' },
+    'ne-sw': { label: 'ocean coast ne-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-sw.png' },
+    'se-sw': { label: 'ocean coast se-sw', file: 'tile-map/ocean-template/tile-ocean-template-se-sw.png' },
+    'nw-ne-se': { label: 'ocean coast nw-ne-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se.png' },
+    'nw-ne-sw': { label: 'ocean coast nw-ne-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw.png' },
+    'nw-se-sw': { label: 'ocean coast nw-se-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw.png' },
+    'ne-se-sw': { label: 'ocean coast ne-se-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw.png' },
+    'nw-ne-se-sw': { label: 'ocean coast nw-ne-se-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw.png' },
+  };
+  const OCEAN_MOUTH_TEMPLATE_ASSETS = {
+    'ne-mouth-ne': { label: 'ocean ne-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-mouth-ne.png' },
+    'ne-se-mouth-ne': { label: 'ocean ne-se-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-mouth-ne.png' },
+    'ne-se-mouth-se': { label: 'ocean ne-se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-mouth-se.png' },
+    'ne-se-sw-mouth-ne': { label: 'ocean ne-se-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw-mouth-ne.png' },
+    'ne-se-sw-mouth-se': { label: 'ocean ne-se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw-mouth-se.png' },
+    'ne-se-sw-mouth-sw': { label: 'ocean ne-se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw-mouth-sw.png' },
+    'ne-sw-mouth-ne': { label: 'ocean ne-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-sw-mouth-ne.png' },
+    'ne-sw-mouth-sw': { label: 'ocean ne-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-sw-mouth-sw.png' },
+    'nw-mouth-nw': { label: 'ocean nw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-mouth-nw.png' },
+    'nw-ne-mouth-ne': { label: 'ocean nw-ne-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-mouth-ne.png' },
+    'nw-ne-mouth-nw': { label: 'ocean nw-ne-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-mouth-nw.png' },
+    'nw-ne-se-mouth-ne': { label: 'ocean nw-ne-se-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-mouth-ne.png' },
+    'nw-ne-se-mouth-nw': { label: 'ocean nw-ne-se-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-mouth-nw.png' },
+    'nw-ne-se-mouth-se': { label: 'ocean nw-ne-se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-mouth-se.png' },
+    'nw-ne-se-sw-mouth-ne': { label: 'ocean nw-ne-se-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-ne.png' },
+    'nw-ne-se-sw-mouth-nw': { label: 'ocean nw-ne-se-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-nw.png' },
+    'nw-ne-se-sw-mouth-se': { label: 'ocean nw-ne-se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-se.png' },
+    'nw-ne-se-sw-mouth-sw': { label: 'ocean nw-ne-se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-sw.png' },
+    'nw-ne-sw-mouth-ne': { label: 'ocean nw-ne-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw-mouth-ne.png' },
+    'nw-ne-sw-mouth-nw': { label: 'ocean nw-ne-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw-mouth-nw.png' },
+    'nw-ne-sw-mouth-sw': { label: 'ocean nw-ne-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw-mouth-sw.png' },
+    'nw-se-mouth-nw': { label: 'ocean nw-se-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-mouth-nw.png' },
+    'nw-se-mouth-se': { label: 'ocean nw-se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-mouth-se.png' },
+    'nw-se-sw-mouth-nw': { label: 'ocean nw-se-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw-mouth-nw.png' },
+    'nw-se-sw-mouth-se': { label: 'ocean nw-se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw-mouth-se.png' },
+    'nw-se-sw-mouth-sw': { label: 'ocean nw-se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw-mouth-sw.png' },
+    'nw-sw-mouth-nw': { label: 'ocean nw-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-sw-mouth-nw.png' },
+    'nw-sw-mouth-sw': { label: 'ocean nw-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-sw-mouth-sw.png' },
+    'se-mouth-se': { label: 'ocean se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-se-mouth-se.png' },
+    'se-sw-mouth-se': { label: 'ocean se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-se-sw-mouth-se.png' },
+    'se-sw-mouth-sw': { label: 'ocean se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-se-sw-mouth-sw.png' },
+    'sw-mouth-sw': { label: 'ocean sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-sw-mouth-sw.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
@@ -60,6 +117,13 @@
     5: 'sw',
   };
   const RIVER_TEMPLATE_DIRECTION_INDICES = Object.keys(RIVER_TEMPLATE_DIRECTION_SIDES).map(Number);
+  const OCEAN_SIDE_DIRECTIONS = {
+    nw: { dq: -1, dr: 0 },
+    ne: { dq: 0, dr: -1 },
+    se: { dq: 1, dr: 0 },
+    sw: { dq: 0, dr: 1 },
+  };
+  const TILE_SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
 
   const state = {
     seed: 'scout-tile-v1',
@@ -77,6 +141,7 @@
     showFog: true,
     showDebug: false,
     showLabels: false,
+    animateWater: true,
     hoverTileId: '',
   };
 
@@ -86,13 +151,27 @@
   const exportData = document.getElementById('exportData');
   const images = new Map();
   const imageMetrics = new Map();
+  const waterMasks = new Map();
+  const waterMaskMetrics = new Map();
+  const dryTemplateCanvases = new Map();
+  const staticBaseCanvas = document.createElement('canvas');
+  const staticBaseCtx = staticBaseCanvas.getContext('2d');
+  const waterCompositeCanvas = document.createElement('canvas');
+  const waterCompositeCtx = waterCompositeCanvas.getContext('2d');
+  const waterLayerCanvas = document.createElement('canvas');
+  const waterLayerCtx = waterLayerCanvas.getContext('2d');
   const controls = {};
   let tiles = [];
   let riverConnections = new Map();
   let isDragging = false;
   let dragStart = null;
   let needsRender = true;
+  let staticBaseDirty = true;
+  let waterLayerDirty = true;
+  let lastWaterFrame = -1;
+  let lastRenderedWaterFrame = -1;
   let effectiveGridSynced = false;
+  let animationStartMs = performance.now();
 
   function hashString(input) {
     let hash = 2166136261;
@@ -158,6 +237,51 @@
   function getRiverTemplateAsset(tile) {
     const key = getRiverTemplateKey(tile);
     return RIVER_TEMPLATE_ASSETS[key] || null;
+  }
+
+  function isOceanCoord(q, r, radius = state.radius) {
+    if (!isCoordInRadius(q, r, radius)) return false;
+    const distance = getHexDistance({ q, r }, { q: 0, r: 0 });
+    if (q === radius - 2 && (r === -1 || r === 0)) return false;
+    if (q >= radius - 2 && r >= -radius + 1) return true;
+    if (r >= radius - 1 && q >= -radius + 2) return true;
+    if (q >= 1 && r >= radius - 2) return true;
+    if (distance >= radius && q + r >= Math.floor(radius * 0.45)) return true;
+    return false;
+  }
+
+  function getOceanCoastSides(tile) {
+    return TILE_SIDE_ORDER.filter((side) => {
+      const dir = OCEAN_SIDE_DIRECTIONS[side];
+      return !isOceanCoord(tile.q + dir.dq, tile.r + dir.dr, state.radius);
+    });
+  }
+
+  function getOceanTemplateKey(tile) {
+    const coastSides = getOceanCoastSides(tile);
+    return coastSides.length ? coastSides.join('-') : 'full';
+  }
+
+  function getOceanMouthSide(tile) {
+    if (tile.terrain !== 'ocean') return '';
+    const coastSides = getOceanCoastSides(tile);
+    return coastSides.find((side) => {
+      const dir = OCEAN_SIDE_DIRECTIONS[side];
+      return isRiverTile(tile.q + dir.dq, tile.r + dir.dr);
+    }) || '';
+  }
+
+  function getOceanTemplateVariantKey(tile) {
+    const baseKey = getOceanTemplateKey(tile);
+    const mouthSide = getOceanMouthSide(tile);
+    const mouthKey = mouthSide ? `${baseKey}-mouth-${mouthSide}` : '';
+    return OCEAN_MOUTH_TEMPLATE_ASSETS[mouthKey] ? mouthKey : baseKey;
+  }
+
+  function getOceanTemplateAsset(tile) {
+    if (tile.terrain !== 'ocean') return null;
+    const key = getOceanTemplateVariantKey(tile);
+    return OCEAN_MOUTH_TEMPLATE_ASSETS[key] || OCEAN_TEMPLATE_ASSETS[key] || OCEAN_TEMPLATE_ASSETS.full;
   }
 
   function hasRiverNearby(q, r, radius = 1) {
@@ -240,6 +364,7 @@
         }))
         .filter((item) => RIVER_TEMPLATE_DIRECTION_INDICES.includes(item.index))
         .filter((item) => isCoordInRadius(item.q, item.r, radius))
+        .filter((item) => !isOceanCoord(item.q, item.r, radius))
         .filter((item) => !isRiverBlockedCoord(item.q, item.r))
         .map((item) => {
           const id = getTileId(item.q, item.r);
@@ -257,6 +382,33 @@
       visited.add(getTileId(current.q, current.r));
     }
     return path;
+  }
+
+  function isCoastalLandCoord(q, r, radius) {
+    if (!isCoordInRadius(q, r, radius) || isOceanCoord(q, r, radius) || isRiverBlockedCoord(q, r)) return false;
+    return TILE_SIDE_ORDER.some((side) => {
+      const dir = OCEAN_SIDE_DIRECTIONS[side];
+      return isOceanCoord(q + dir.dq, r + dir.dr, radius);
+    });
+  }
+
+  function findRiverMouthTarget(preferredTarget, radius, salt) {
+    const candidates = [];
+    for (let q = -radius; q <= radius; q += 1) {
+      const minR = Math.max(-radius, -q - radius);
+      const maxR = Math.min(radius, -q + radius);
+      for (let r = minR; r <= maxR; r += 1) {
+        if (!isCoastalLandCoord(q, r, radius)) continue;
+        const wobble = random01(state.seed, q, r, `${salt}-target`);
+        candidates.push({
+          q,
+          r,
+          score: getHexDistance({ q, r }, preferredTarget) * 10 + wobble,
+        });
+      }
+    }
+    candidates.sort((a, b) => a.score - b.score);
+    return candidates[0] || preferredTarget;
   }
 
   function getDirectionIndex(from, to) {
@@ -278,10 +430,18 @@
   function createRiverConnections(radius) {
     const connections = new Map();
     const mainStart = { q: -Math.max(1, Math.floor(radius * 0.42)), r: -radius + Math.max(1, Math.floor(radius * 0.42)) };
-    const mainTarget = { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) };
+    const mainTarget = findRiverMouthTarget(
+      { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) },
+      radius,
+      'river-main'
+    );
     const mainPath = buildRiverPath(mainStart, mainTarget, radius, 'river-main');
     const branchStart = mainPath[Math.max(1, Math.floor(mainPath.length * 0.52))] || mainPath[0];
-    const branchTarget = { q: radius, r: -Math.max(0, Math.floor(radius * 0.18)) };
+    const branchTarget = findRiverMouthTarget(
+      { q: radius, r: -Math.max(0, Math.floor(radius * 0.18)) },
+      radius,
+      'river-branch'
+    );
     const branchPath = buildRiverPath(branchStart, branchTarget, radius, 'river-branch');
     for (const path of [mainPath, branchPath]) {
       for (let i = 1; i < path.length; i += 1) addRiverConnection(connections, path[i - 1], path[i]);
@@ -301,9 +461,9 @@
       for (let r = minR; r <= maxR; r += 1) {
         const s = -q - r;
         const ring = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
-        const terrain = chooseTerrain(q, r);
-        const pond = choosePond(q, r, terrain, ring);
-        const site = pond ? null : chooseSite(q, r, terrain, ring);
+        const terrain = isOceanCoord(q, r, radius) ? 'ocean' : chooseTerrain(q, r);
+        const pond = terrain === 'ocean' ? false : choosePond(q, r, terrain, ring);
+        const site = terrain === 'ocean' || pond ? null : chooseSite(q, r, terrain, ring);
         nextTiles.push({
           id: getTileId(q, r),
           q,
@@ -320,6 +480,7 @@
       tile.riverConnections = getRiverConnections(tile);
     });
     tiles = nextTiles;
+    waterLayerDirty = true;
     markDirty();
   }
 
@@ -387,6 +548,19 @@
     return data[index + 3] > 8;
   }
 
+  function isTemplateWaterPixel(data, index) {
+    const red = data[index];
+    const green = data[index + 1];
+    const blue = data[index + 2];
+    const alpha = data[index + 3];
+    if (alpha <= 56 || blue <= 70) return false;
+    return blue > red + 12 && blue > green - 3 && (green > red + 18 || blue > 112);
+  }
+
+  function isWaterTemplateFile(file) {
+    return file.includes('river-template/') || file.includes('ocean-template/');
+  }
+
   function measurePixelBounds(data, width, height, predicate) {
     let minX = width;
     let minY = height;
@@ -435,6 +609,115 @@
     }
   }
 
+  function createColorWaterMaskCanvas(image) {
+    const fallback = getFallbackMetrics(image);
+    const mask = document.createElement('canvas');
+    mask.width = fallback.sourceWidth || fallback.width;
+    mask.height = fallback.sourceHeight || fallback.height;
+    const maskCtx = mask.getContext('2d', { willReadFrequently: true });
+    if (!maskCtx) return { canvas: mask, metrics: null };
+    const probe = document.createElement('canvas');
+    probe.width = mask.width;
+    probe.height = mask.height;
+    const probeCtx = probe.getContext('2d', { willReadFrequently: true });
+    if (!probeCtx) return { canvas: mask, metrics: null };
+    try {
+      probeCtx.drawImage(image, 0, 0);
+      const source = probeCtx.getImageData(0, 0, probe.width, probe.height);
+      const output = maskCtx.createImageData(probe.width, probe.height);
+      for (let index = 0; index < source.data.length; index += 4) {
+        if (!isTemplateWaterPixel(source.data, index)) continue;
+        output.data[index] = 255;
+        output.data[index + 1] = 255;
+        output.data[index + 2] = 255;
+        output.data[index + 3] = Math.min(255, Math.round(source.data[index + 3] * 1.18));
+      }
+      maskCtx.putImageData(output, 0, 0);
+      return {
+        canvas: mask,
+        metrics: measurePixelBounds(output.data, probe.width, probe.height, isOpaquePixel),
+      };
+    } catch (_) {
+      return { canvas: mask, metrics: null };
+    }
+  }
+
+  function isInsideTemplateDiamond(x, y, metrics) {
+    const centerX = metrics.x + metrics.width * 0.5;
+    const centerY = metrics.y + metrics.height * 0.5;
+    const halfW = metrics.width * 0.5;
+    const halfH = metrics.height * 0.5;
+    return Math.abs(x - centerX) / Math.max(1, halfW) + Math.abs(y - centerY) / Math.max(1, halfH) <= 1.03;
+  }
+
+  function createTransparentRiverWaterMask(image) {
+    const fallback = getFallbackMetrics(image);
+    const mask = document.createElement('canvas');
+    mask.width = fallback.sourceWidth || fallback.width;
+    mask.height = fallback.sourceHeight || fallback.height;
+    const maskCtx = mask.getContext('2d', { willReadFrequently: true });
+    if (!maskCtx) return { canvas: mask, metrics: null };
+    const probe = document.createElement('canvas');
+    probe.width = mask.width;
+    probe.height = mask.height;
+    const probeCtx = probe.getContext('2d', { willReadFrequently: true });
+    if (!probeCtx) return { canvas: mask, metrics: null };
+    try {
+      probeCtx.drawImage(image, 0, 0);
+      const source = probeCtx.getImageData(0, 0, probe.width, probe.height);
+      const terrainImage = images.get(TERRAIN_ASSETS.plains.file);
+      let terrainData = null;
+      if (terrainImage?.complete && terrainImage.naturalWidth === probe.width && terrainImage.naturalHeight === probe.height) {
+        probeCtx.clearRect(0, 0, probe.width, probe.height);
+        probeCtx.drawImage(terrainImage, 0, 0);
+        terrainData = probeCtx.getImageData(0, 0, probe.width, probe.height).data;
+      }
+      const terrainBounds = measurePixelBounds(source.data, probe.width, probe.height, isOpaquePixel) || fallback;
+      const output = maskCtx.createImageData(probe.width, probe.height);
+      for (let y = 0; y < probe.height; y += 1) {
+        for (let x = 0; x < probe.width; x += 1) {
+          const index = (y * probe.width + x) * 4;
+          const insideTerrain = terrainData ? terrainData[index + 3] > 32 : isInsideTemplateDiamond(x, y, terrainBounds);
+          if (source.data[index + 3] > 8 || !insideTerrain) continue;
+          output.data[index] = 255;
+          output.data[index + 1] = 255;
+          output.data[index + 2] = 255;
+          output.data[index + 3] = 255;
+        }
+      }
+      maskCtx.putImageData(output, 0, 0);
+      return {
+        canvas: mask,
+        metrics: measurePixelBounds(output.data, probe.width, probe.height, isOpaquePixel),
+      };
+    } catch (_) {
+      return { canvas: mask, metrics: null };
+    }
+  }
+
+  function createWaterMaskCanvas(image, file) {
+    if (file.includes('river-template/tile-river-bank-uv-')) return createTransparentRiverWaterMask(image);
+    return createColorWaterMaskCanvas(image);
+  }
+
+  function createDryTemplateCanvas(image, mask) {
+    const fallback = getFallbackMetrics(image);
+    const canvasElement = document.createElement('canvas');
+    canvasElement.width = fallback.sourceWidth || fallback.width;
+    canvasElement.height = fallback.sourceHeight || fallback.height;
+    const dryCtx = canvasElement.getContext('2d');
+    if (!dryCtx) return canvasElement;
+    try {
+      dryCtx.drawImage(image, 0, 0);
+      dryCtx.globalCompositeOperation = 'destination-out';
+      dryCtx.drawImage(mask, 0, 0);
+      dryCtx.globalCompositeOperation = 'source-over';
+      return canvasElement;
+    } catch (_) {
+      return canvasElement;
+    }
+  }
+
   function getImageMetrics(file) {
     const image = images.get(file);
     return imageMetrics.get(file) || getFallbackMetrics(image);
@@ -474,14 +757,33 @@
     });
   }
 
+  function rebuildWaterTemplateCaches(files) {
+    waterMasks.clear();
+    waterMaskMetrics.clear();
+    dryTemplateCanvases.clear();
+    for (const file of files) {
+      if (!isWaterTemplateFile(file)) continue;
+      const image = images.get(file);
+      if (!image?.complete) continue;
+      const mask = createWaterMaskCanvas(image, file);
+      waterMasks.set(file, mask.canvas);
+      if (mask.metrics) waterMaskMetrics.set(file, mask.metrics);
+      dryTemplateCanvases.set(file, createDryTemplateCanvas(image, mask.canvas));
+    }
+  }
+
   async function loadAssets() {
     const files = [
       ...Object.values(TERRAIN_ASSETS).map((item) => item.file),
       ...Object.values(SITE_ASSETS).map((item) => item.file),
       ...Object.values(FEATURE_ASSETS).map((item) => item.file),
+      ...Object.values(WATER_TEXTURE_ASSETS).map((item) => item.file),
       ...Object.values(RIVER_TEMPLATE_ASSETS).map((item) => item.file),
+      ...Object.values(OCEAN_TEMPLATE_ASSETS).map((item) => item.file),
+      ...Object.values(OCEAN_MOUTH_TEMPLATE_ASSETS).map((item) => item.file),
     ];
     const results = await Promise.all(files.map(loadImage));
+    rebuildWaterTemplateCaches(files);
     const failed = results.filter((item) => !item.ok).map((item) => item.file);
     if (failed.length) hoverInfo.textContent = `资源加载失败：${failed.join(', ')}`;
     if (!effectiveGridSynced) {
@@ -490,6 +792,7 @@
       syncControls();
       fitMap();
     }
+    waterLayerDirty = true;
     markDirty();
   }
 
@@ -502,27 +805,28 @@
       canvas.width = width;
       canvas.height = height;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      waterLayerDirty = true;
       markDirty();
     }
   }
 
-  function drawBackground(width, height) {
-    ctx.fillStyle = '#0c1011';
-    ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = 'rgba(255, 236, 196, 0.035)';
-    for (let y = -120 + (state.panY % 120); y < height + 120; y += 120) ctx.fillRect(0, y, width, 1);
-    for (let x = -160 + (state.panX % 160); x < width + 160; x += 160) ctx.fillRect(x, 0, 1, height);
+  function drawBackground(width, height, targetCtx = ctx) {
+    targetCtx.fillStyle = '#0c1011';
+    targetCtx.fillRect(0, 0, width, height);
+    targetCtx.fillStyle = 'rgba(255, 236, 196, 0.035)';
+    for (let y = -120 + (state.panY % 120); y < height + 120; y += 120) targetCtx.fillRect(0, y, width, 1);
+    for (let x = -160 + (state.panX % 160); x < width + 160; x += 160) targetCtx.fillRect(x, 0, 1, height);
   }
 
-  function drawFog(width, height) {
+  function drawFog(width, height, targetCtx = ctx) {
     const radius = Math.max(width, height) * 0.52;
     const centerX = width * 0.5 + state.panX * 0.08;
     const centerY = height * 0.52 + state.panY * 0.08;
-    const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.48, centerX, centerY, radius);
+    const gradient = targetCtx.createRadialGradient(centerX, centerY, radius * 0.48, centerX, centerY, radius);
     gradient.addColorStop(0, 'rgba(8, 11, 12, 0)');
     gradient.addColorStop(1, 'rgba(8, 11, 12, 0.72)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    targetCtx.fillStyle = gradient;
+    targetCtx.fillRect(0, 0, width, height);
   }
 
   function drawDebugDiamond(x, y, width, height, color) {
@@ -539,11 +843,144 @@
     ctx.restore();
   }
 
-  function drawTile(tile) {
-    const templateAsset = getRiverTemplateAsset(tile);
+  function positiveModulo(value, size) {
+    return ((value % size) + size) % size;
+  }
+
+  function getWaterKind(tile) {
+    if (tile.terrain === 'ocean') return 'ocean';
+    if (isRiverTile(tile.q, tile.r)) return 'river';
+    return '';
+  }
+
+  function getWaterSeconds() {
+    return Math.max(0, (performance.now() - animationStartMs) / 1000);
+  }
+
+  function getWaterAnimationFrame() {
+    if (!state.animateWater) return 0;
+    return Math.floor(getWaterSeconds() * WATER_ANIMATION_FPS);
+  }
+
+  function fillLoopWaterTexture(targetCtx, tile, kind, width, height) {
+    const profile = WATER_TEXTURE_ASSETS[kind];
+    if (!profile || !targetCtx) return false;
+    const texture = images.get(profile.file);
+    if (!texture || !texture.complete) return false;
+    const tileSize = getTileDrawSize('plains');
+    const position = getTilePosition(tile);
+    const worldLeft = position.x - tileSize.width * 0.5;
+    const worldTop = position.y - tileSize.height * state.anchorY;
+    const seconds = state.animateWater ? getWaterSeconds() : 0;
+    const periodW = Math.max(1, texture.naturalWidth * profile.uvScale * state.zoom);
+    const periodH = Math.max(1, texture.naturalHeight * profile.uvScale * state.zoom);
+    const phaseX = seconds * profile.speedX * state.zoom;
+    const phaseY = seconds * profile.speedY * state.zoom;
+    const startX = -positiveModulo(worldLeft * state.zoom + phaseX, periodW);
+    const startY = -positiveModulo(worldTop * state.zoom + phaseY, periodH);
+    for (let y = startY; y < height; y += periodH) {
+      for (let x = startX; x < width; x += periodW) {
+        targetCtx.drawImage(texture, x, y, periodW + 0.5, periodH + 0.5);
+      }
+    }
+    return true;
+  }
+
+  function drawWaterToLayer(tile, templateAsset, metrics, drawX, drawY, drawW, drawH) {
+    const kind = getWaterKind(tile);
+    if (!kind || !templateAsset || !waterCompositeCtx) return;
+    const mask = waterMasks.get(templateAsset.file);
+    const profile = WATER_TEXTURE_ASSETS[kind];
+    if (!mask || !profile) return;
+    const localW = Math.max(1, Math.ceil(drawW));
+    const localH = Math.max(1, Math.ceil(drawH));
+    if (waterCompositeCanvas.width !== localW) waterCompositeCanvas.width = localW;
+    if (waterCompositeCanvas.height !== localH) waterCompositeCanvas.height = localH;
+    waterCompositeCtx.setTransform(1, 0, 0, 1, 0, 0);
+    waterCompositeCtx.globalAlpha = 1;
+    waterCompositeCtx.globalCompositeOperation = 'source-over';
+    waterCompositeCtx.clearRect(0, 0, localW, localH);
+    if (!fillLoopWaterTexture(waterCompositeCtx, tile, kind, localW, localH)) return;
+    waterCompositeCtx.globalCompositeOperation = 'destination-in';
+    waterCompositeCtx.drawImage(
+      mask,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      0,
+      0,
+      localW,
+      localH
+    );
+    waterCompositeCtx.globalCompositeOperation = 'source-over';
+    waterLayerCtx.save();
+    waterLayerCtx.globalAlpha = profile.alpha;
+    waterLayerCtx.drawImage(waterCompositeCanvas, drawX, drawY, drawW, drawH);
+    waterLayerCtx.restore();
+  }
+
+  function ensureWaterLayer(sortedTiles) {
+    if (!waterLayerCtx) return;
+    const width = Math.max(1, canvas.clientWidth);
+    const height = Math.max(1, canvas.clientHeight);
+    const waterFrame = getWaterAnimationFrame();
+    const sizeChanged = waterLayerCanvas.width !== width || waterLayerCanvas.height !== height;
+    if (!waterLayerDirty && !sizeChanged && lastWaterFrame === waterFrame) return;
+    if (sizeChanged) {
+      waterLayerCanvas.width = width;
+      waterLayerCanvas.height = height;
+    }
+    waterLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
+    waterLayerCtx.clearRect(0, 0, width, height);
+    for (const tile of sortedTiles) {
+      const templateAsset = getOceanTemplateAsset(tile) || getRiverTemplateAsset(tile);
+      if (!templateAsset || !getWaterKind(tile)) continue;
+      const projected = getProjectedPosition(tile);
+      const tileSize = getTileDrawSize('plains');
+      const metrics = getImageMetrics(templateAsset.file);
+      const drawW = tileSize.width * state.zoom;
+      const drawH = tileSize.height * state.zoom;
+      drawWaterToLayer(
+        tile,
+        templateAsset,
+        metrics,
+        projected.x - drawW * 0.5,
+        projected.y - drawH * state.anchorY,
+        drawW,
+        drawH
+      );
+    }
+    waterLayerDirty = false;
+    lastWaterFrame = waterFrame;
+  }
+
+  function ensureStaticBaseLayer(sortedTiles) {
+    if (!staticBaseCtx) return;
+    const width = Math.max(1, canvas.clientWidth);
+    const height = Math.max(1, canvas.clientHeight);
+    const sizeChanged = staticBaseCanvas.width !== width || staticBaseCanvas.height !== height;
+    if (!staticBaseDirty && !sizeChanged) return;
+    if (sizeChanged) {
+      staticBaseCanvas.width = width;
+      staticBaseCanvas.height = height;
+    }
+    staticBaseCtx.setTransform(1, 0, 0, 1, 0, 0);
+    staticBaseCtx.clearRect(0, 0, width, height);
+    drawBackground(width, height, staticBaseCtx);
+    for (const tile of sortedTiles) drawTile(staticBaseCtx, tile);
+    for (const tile of sortedTiles) drawPond(tile, staticBaseCtx);
+    for (const tile of sortedTiles) drawTerrainFeature(staticBaseCtx, tile);
+    for (const tile of sortedTiles) drawSite(tile, staticBaseCtx);
+    staticBaseDirty = false;
+  }
+
+  function drawTile(targetCtx, tile) {
+    const templateAsset = getOceanTemplateAsset(tile) || getRiverTemplateAsset(tile);
     const baseFile = templateAsset?.file || TERRAIN_ASSETS.plains.file;
     const baseImage = images.get(baseFile);
     if (!baseImage || !baseImage.complete) return;
+    const sourceImage = dryTemplateCanvases.get(baseFile) || baseImage;
     const projected = getProjectedPosition(tile);
     const tileSize = getTileDrawSize('plains');
     const metrics = templateAsset ? getImageMetrics(templateAsset.file) : tileSize.metrics;
@@ -551,8 +988,8 @@
     const drawH = tileSize.height * state.zoom;
     const drawX = projected.x - drawW * 0.5;
     const drawY = projected.y - drawH * state.anchorY;
-    ctx.drawImage(
-      baseImage,
+    targetCtx.drawImage(
+      sourceImage,
       metrics.x,
       metrics.y,
       metrics.width,
@@ -584,15 +1021,15 @@
     }
   }
 
-  function drawTerrainFeature(tile) {
-    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river') return;
+  function drawTerrainFeature(targetCtx, tile) {
+    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river' || tile.terrain === 'ocean') return;
     if (hasRiverNearby(tile.q, tile.r, 1)) return;
     if (tile.terrain === 'forest') {
-      drawTreeFeature(tile);
+      drawTreeFeature(targetCtx, tile);
       return;
     }
     if (tile.terrain === 'mountain') {
-      drawMountainFeature(tile);
+      drawMountainFeature(targetCtx, tile);
       return;
     }
     const profile = TERRAIN_FEATURES[tile.terrain];
@@ -615,10 +1052,10 @@
     const sourceH = Math.floor(sourceSize * 0.26);
     const sourceX = Math.floor(image.naturalWidth * 0.5 - sourceW * 0.5);
     const sourceY = Math.floor(image.naturalHeight * 0.52 - sourceH * 0.5);
-    ctx.save();
-    ctx.globalAlpha = profile.alpha;
-    ctx.beginPath();
-    ctx.ellipse(
+    targetCtx.save();
+    targetCtx.globalAlpha = profile.alpha;
+    targetCtx.beginPath();
+    targetCtx.ellipse(
       projected.x + jitterX,
       projected.y - size * profile.lift + jitterY,
       drawW * 0.48,
@@ -627,12 +1064,12 @@
       0,
       Math.PI * 2
     );
-    ctx.clip();
-    ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, drawX, drawY, drawW, drawH);
-    ctx.restore();
+    targetCtx.clip();
+    targetCtx.drawImage(image, sourceX, sourceY, sourceW, sourceH, drawX, drawY, drawW, drawH);
+    targetCtx.restore();
   }
 
-  function drawTreeFeature(tile) {
+  function drawTreeFeature(targetCtx, tile) {
     const treeAsset = FEATURE_ASSETS.treeCluster;
     const image = images.get(treeAsset.file);
     if (!image || !image.complete) return;
@@ -649,14 +1086,14 @@
       const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
       const baseX = projected.x + jitterX;
       const baseY = projected.y + state.stepY * state.zoom * 0.1 + jitterY;
-      ctx.save();
-      ctx.globalAlpha = 0.3;
-      ctx.fillStyle = 'rgba(3, 7, 4, 0.58)';
-      ctx.beginPath();
-      ctx.ellipse(baseX, baseY + drawH * 0.03, drawW * 0.34, drawH * 0.09, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      ctx.drawImage(
+      targetCtx.save();
+      targetCtx.globalAlpha = 0.3;
+      targetCtx.fillStyle = 'rgba(3, 7, 4, 0.58)';
+      targetCtx.beginPath();
+      targetCtx.ellipse(baseX, baseY + drawH * 0.03, drawW * 0.34, drawH * 0.09, 0, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.restore();
+      targetCtx.drawImage(
         image,
         metrics.x,
         metrics.y,
@@ -670,7 +1107,7 @@
     }
   }
 
-  function drawMountainFeature(tile) {
+  function drawMountainFeature(targetCtx, tile) {
     const mountainAsset = FEATURE_ASSETS.mountainRidge;
     const image = images.get(mountainAsset.file);
     if (!image || !image.complete) return;
@@ -689,14 +1126,14 @@
     const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
     const baseX = projected.x + jitterX;
     const baseY = projected.y + state.stepY * state.zoom * 0.18 + jitterY;
-    ctx.save();
-    ctx.globalAlpha = 0.34;
-    ctx.fillStyle = 'rgba(5, 5, 4, 0.62)';
-    ctx.beginPath();
-    ctx.ellipse(baseX, baseY + drawH * 0.02, drawW * 0.42, drawH * 0.1, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.drawImage(
+    targetCtx.save();
+    targetCtx.globalAlpha = 0.34;
+    targetCtx.fillStyle = 'rgba(5, 5, 4, 0.62)';
+    targetCtx.beginPath();
+    targetCtx.ellipse(baseX, baseY + drawH * 0.02, drawW * 0.42, drawH * 0.1, 0, 0, Math.PI * 2);
+    targetCtx.fill();
+    targetCtx.restore();
+    targetCtx.drawImage(
       image,
       metrics.x,
       metrics.y,
@@ -709,29 +1146,29 @@
     );
   }
 
-  function drawRiverLayer(sortedTiles) {
+  function drawRiverLayer(sortedTiles, targetCtx = ctx) {
     if (!state.showDebug) return;
     for (const tile of sortedTiles) {
       if (!isRiverTile(tile.q, tile.r)) continue;
-      drawRiverTemplatePorts(tile);
+      drawRiverTemplatePorts(tile, targetCtx);
     }
   }
 
-  function drawRiverTemplatePorts(tile) {
+  function drawRiverTemplatePorts(tile, targetCtx = ctx) {
     const projected = getProjectedPosition(tile);
     const label = getRiverTemplateKey(tile);
-    ctx.save();
-    ctx.fillStyle = 'rgba(8, 18, 20, 0.7)';
-    ctx.strokeStyle = 'rgba(255, 240, 160, 0.9)';
-    ctx.lineWidth = 1;
-    ctx.font = '10px Consolas, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(label || 'river?', projected.x, projected.y + state.stepY * state.zoom * 0.62);
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.fillStyle = 'rgba(8, 18, 20, 0.7)';
+    targetCtx.strokeStyle = 'rgba(255, 240, 160, 0.9)';
+    targetCtx.lineWidth = 1;
+    targetCtx.font = '10px Consolas, monospace';
+    targetCtx.textAlign = 'center';
+    targetCtx.fillText(label || 'river?', projected.x, projected.y + state.stepY * state.zoom * 0.62);
+    targetCtx.restore();
   }
 
-  function drawPond(tile) {
-    if (!tile.pond) return;
+  function drawPond(tile, targetCtx = ctx) {
+    if (!tile.pond || tile.terrain === 'ocean') return;
     const asset = FEATURE_ASSETS.pond;
     const image = images.get(asset.file);
     if (!image || !image.complete) return;
@@ -739,10 +1176,10 @@
     const metrics = getImageMetrics(asset.file);
     const drawW = state.stepX * state.zoom * 0.76;
     const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
-    ctx.save();
-    ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.02);
-    ctx.globalAlpha = 0.88;
-    ctx.drawImage(
+    targetCtx.save();
+    targetCtx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.02);
+    targetCtx.globalAlpha = 0.88;
+    targetCtx.drawImage(
       image,
       metrics.x,
       metrics.y,
@@ -753,10 +1190,10 @@
       drawW,
       drawH
     );
-    ctx.restore();
+    targetCtx.restore();
   }
 
-  function drawRegionTint(tile) {
+  function drawRegionTint(tile, targetCtx = ctx) {
     if (!state.showDebug) return;
     const projected = getProjectedPosition(tile);
     const width = state.stepX * state.zoom * 1.35;
@@ -766,22 +1203,23 @@
       hills: 'rgba(125, 124, 102, 0.16)',
       waste: 'rgba(145, 99, 45, 0.18)',
       mountain: 'rgba(100, 109, 110, 0.2)',
+      ocean: 'rgba(46, 145, 184, 0.18)',
     };
     const color = colors[tile.terrain];
     if (!color) return;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(projected.x, projected.y - height * 0.5);
-    ctx.lineTo(projected.x + width * 0.5, projected.y);
-    ctx.lineTo(projected.x, projected.y + height * 0.5);
-    ctx.lineTo(projected.x - width * 0.5, projected.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.fillStyle = color;
+    targetCtx.beginPath();
+    targetCtx.moveTo(projected.x, projected.y - height * 0.5);
+    targetCtx.lineTo(projected.x + width * 0.5, projected.y);
+    targetCtx.lineTo(projected.x, projected.y + height * 0.5);
+    targetCtx.lineTo(projected.x - width * 0.5, projected.y);
+    targetCtx.closePath();
+    targetCtx.fill();
+    targetCtx.restore();
   }
 
-  function drawSite(tile) {
+  function drawSite(tile, targetCtx = ctx) {
     if (!state.showSites || !tile.site) return;
     const siteAsset = SITE_ASSETS[tile.site.type];
     if (!siteAsset) return;
@@ -797,14 +1235,14 @@
     const baseY = projected.y - lift;
     const drawX = baseX - drawW * 0.5;
     const drawY = baseY - drawH * 0.86;
-    ctx.save();
-    ctx.globalAlpha = 0.34;
-    ctx.fillStyle = 'rgba(4, 6, 5, 0.62)';
-    ctx.beginPath();
-    ctx.ellipse(baseX, baseY + drawH * 0.03, drawW * 0.36, drawH * 0.12, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.drawImage(
+    targetCtx.save();
+    targetCtx.globalAlpha = 0.34;
+    targetCtx.fillStyle = 'rgba(4, 6, 5, 0.62)';
+    targetCtx.beginPath();
+    targetCtx.ellipse(baseX, baseY + drawH * 0.03, drawW * 0.36, drawH * 0.12, 0, 0, Math.PI * 2);
+    targetCtx.fill();
+    targetCtx.restore();
+    targetCtx.drawImage(
       image,
       metrics.x,
       metrics.y,
@@ -815,46 +1253,52 @@
       drawW,
       drawH
     );
-    ctx.save();
-    ctx.globalAlpha = 0.82;
-    ctx.fillStyle = tile.site.owner === 'player'
+    targetCtx.save();
+    targetCtx.globalAlpha = 0.82;
+    targetCtx.fillStyle = tile.site.owner === 'player'
       ? '#7fdca0'
       : tile.site.owner === 'neutral'
         ? '#e8edf1'
         : '#f0c45f';
-    ctx.beginPath();
-    ctx.arc(drawX + drawW * 0.78, drawY + drawH * 0.78, Math.max(3, drawW * 0.035), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    targetCtx.beginPath();
+    targetCtx.arc(drawX + drawW * 0.78, drawY + drawH * 0.78, Math.max(3, drawW * 0.035), 0, Math.PI * 2);
+    targetCtx.fill();
+    targetCtx.restore();
   }
 
   function render() {
-    if (!needsRender) return;
+    const waterFrame = getWaterAnimationFrame();
+    if (!needsRender && (!state.animateWater || lastRenderedWaterFrame === waterFrame)) {
+      if (state.animateWater) requestAnimationFrame(render);
+      return;
+    }
     needsRender = false;
     resizeCanvas();
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
-    ctx.clearRect(0, 0, width, height);
-    drawBackground(width, height);
 
     const sorted = tiles.slice().sort((a, b) => {
       const pa = getTilePosition(a);
       const pb = getTilePosition(b);
       return pa.y - pb.y || pa.x - pb.x || a.ring - b.ring;
     });
-    for (const tile of sorted) drawTile(tile);
-    for (const tile of sorted) drawPond(tile);
+    ensureStaticBaseLayer(sorted);
+    ensureWaterLayer(sorted);
+    ctx.clearRect(0, 0, width, height);
+    if (staticBaseCtx) ctx.drawImage(staticBaseCanvas, 0, 0);
+    if (waterLayerCtx) ctx.drawImage(waterLayerCanvas, 0, 0);
     drawRiverLayer(sorted);
-    for (const tile of sorted) drawTerrainFeature(tile);
     for (const tile of sorted) drawRegionTint(tile);
-    for (const tile of sorted) drawSite(tile);
     if (state.showFog) drawFog(width, height);
     updateHud();
-    requestAnimationFrame(render);
+    lastRenderedWaterFrame = waterFrame;
+    if (state.animateWater) requestAnimationFrame(render);
   }
 
   function markDirty() {
     needsRender = true;
+    staticBaseDirty = true;
+    waterLayerDirty = true;
     requestAnimationFrame(render);
   }
 
@@ -867,7 +1311,8 @@
     const terrain = TERRAIN_ASSETS[tile.terrain]?.label || tile.terrain;
     const site = tile.site ? `${tile.site.label} / ${tile.site.owner}` : '无地点';
     const river = isRiverTile(tile.q, tile.r) ? '<br>河流 穿过附近' : '';
-    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}<br>地点 ${site}`;
+    const ocean = tile.terrain === 'ocean' ? `<br>海岸 ${getOceanTemplateKey(tile)}` : '';
+    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}${ocean}<br>地点 ${site}`;
   }
 
   function getParamsSnapshot() {
@@ -888,12 +1333,25 @@
       effectiveFeatures: Object.fromEntries(
         Object.entries(FEATURE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
+      effectiveWaterTextures: Object.fromEntries(
+        Object.entries(WATER_TEXTURE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
+      waterMaskTemplates: waterMasks.size,
+      effectiveOceanTemplates: Object.fromEntries(
+        Object.entries(OCEAN_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
+      effectiveOceanMouthTemplates: Object.fromEntries(
+        Object.entries(OCEAN_MOUTH_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
       riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
+      oceanTiles: tiles.filter((tile) => tile.terrain === 'ocean').length,
+      riverMouthOceanTiles: tiles.filter((tile) => tile.terrain === 'ocean' && getOceanMouthSide(tile)).length,
       pondTiles: tiles.filter((tile) => tile.pond).length,
       stepX: state.stepX,
       stepY: state.stepY,
       anchorY: Number(state.anchorY.toFixed(2)),
       siteScale: Number(state.siteScale.toFixed(2)),
+      animateWater: state.animateWater,
       zoom: Number(state.zoom.toFixed(2)),
       panX: Math.round(state.panX),
       panY: Math.round(state.panY),
@@ -928,6 +1386,7 @@
     controls.showFog.checked = state.showFog;
     controls.showDebug.checked = state.showDebug;
     controls.showLabels.checked = state.showLabels;
+    controls.animateWater.checked = state.animateWater;
     updateValueLabels();
     updateExport();
   }
@@ -962,6 +1421,7 @@
     controls.showFog = document.getElementById('showFog');
     controls.showDebug = document.getElementById('showDebug');
     controls.showLabels = document.getElementById('showLabels');
+    controls.animateWater = document.getElementById('animateWater');
 
     controls.seed.addEventListener('change', () => {
       state.seed = controls.seed.value.trim() || 'scout-tile-v1';
@@ -970,6 +1430,7 @@
     });
     controls.layoutMode.addEventListener('change', () => {
       state.layoutMode = controls.layoutMode.value;
+      waterLayerDirty = true;
       updateExport();
       markDirty();
     });
@@ -977,6 +1438,11 @@
     controls.showFog.addEventListener('change', () => { state.showFog = controls.showFog.checked; markDirty(); });
     controls.showDebug.addEventListener('change', () => { state.showDebug = controls.showDebug.checked; markDirty(); });
     controls.showLabels.addEventListener('change', () => { state.showLabels = controls.showLabels.checked; markDirty(); });
+    controls.animateWater.addEventListener('change', () => {
+      state.animateWater = controls.animateWater.checked;
+      if (state.animateWater) animationStartMs = performance.now();
+      markDirty();
+    });
 
     bindRange('radius', (value) => { state.radius = value; buildTiles(); });
     bindRange('tileSize', (value) => {
@@ -1086,6 +1552,10 @@
       getParamsSnapshot,
       analyzeAlphaBounds,
       getRiverConnections,
+      getOceanTemplateKey,
+      getOceanMouthSide,
+      getOceanTemplateVariantKey,
+      getWaterKind,
       hasRiverNearby,
       get tiles() { return tiles; },
       getTerrainMetrics,
@@ -1093,6 +1563,9 @@
       terrainAssets: TERRAIN_ASSETS,
       siteAssets: SITE_ASSETS,
       featureAssets: FEATURE_ASSETS,
+      waterTextureAssets: WATER_TEXTURE_ASSETS,
+      oceanTemplateAssets: OCEAN_TEMPLATE_ASSETS,
+      oceanMouthTemplateAssets: OCEAN_MOUTH_TEMPLATE_ASSETS,
     };
   }
 
