@@ -21,12 +21,24 @@
   const FEATURE_ASSETS = {
     treeCluster: { label: 'tree cluster', file: 'tile-map/tile-feature-tree-cluster.png' },
     mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
-    riverStraight: { label: 'river straight', file: 'tile-map/tile-river-straight.png' },
-    riverJunctionWater: { label: 'river junction water', file: 'tile-map/tile-river-junction-water.png' },
-    riverStraightWater: { label: 'river straight water fill', file: 'tile-map/tile-river-straight-water.png' },
-    riverStraightWaterFade: { label: 'river straight water feather', file: 'tile-map/tile-river-straight-water-fade.png' },
-    riverJunctionWaterClean: { label: 'river junction water clean', file: 'tile-map/tile-river-junction-water-clean.png' },
     pond: { label: 'pond', file: 'tile-map/tile-feature-pond.png' },
+  };
+  const RIVER_TEMPLATE_ASSETS = {
+    nw: { label: 'river template ai nw', file: 'tile-map/river-template/tile-river-template-ai-nw.png' },
+    ne: { label: 'river template ai ne', file: 'tile-map/river-template/tile-river-template-ai-ne.png' },
+    se: { label: 'river template ai se', file: 'tile-map/river-template/tile-river-template-ai-se.png' },
+    sw: { label: 'river template ai sw', file: 'tile-map/river-template/tile-river-template-ai-sw.png' },
+    'nw-ne': { label: 'river template ai nw-ne', file: 'tile-map/river-template/tile-river-template-ai-nw-ne.png' },
+    'nw-se': { label: 'river template ai nw-se', file: 'tile-map/river-template/tile-river-template-ai-nw-se.png' },
+    'nw-sw': { label: 'river template ai nw-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-sw.png' },
+    'ne-se': { label: 'river template ai ne-se', file: 'tile-map/river-template/tile-river-template-ai-ne-se.png' },
+    'ne-sw': { label: 'river template ai ne-sw', file: 'tile-map/river-template/tile-river-template-ai-ne-sw.png' },
+    'se-sw': { label: 'river template ai se-sw', file: 'tile-map/river-template/tile-river-template-ai-se-sw.png' },
+    'nw-ne-se': { label: 'river template ai nw-ne-se', file: 'tile-map/river-template/tile-river-template-ai-nw-ne-se.png' },
+    'nw-ne-sw': { label: 'river template ai nw-ne-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-ne-sw.png' },
+    'nw-se-sw': { label: 'river template ai nw-se-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-se-sw.png' },
+    'ne-se-sw': { label: 'river template ai ne-se-sw', file: 'tile-map/river-template/tile-river-template-ai-ne-se-sw.png' },
+    'nw-ne-se-sw': { label: 'river template ai nw-ne-se-sw', file: 'tile-map/river-template/tile-river-template-ai-nw-ne-se-sw.png' },
   };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
@@ -41,6 +53,13 @@
     { dq: -1, dr: 1 },
     { dq: 0, dr: 1 },
   ];
+  const RIVER_TEMPLATE_DIRECTION_SIDES = {
+    0: 'se',
+    2: 'ne',
+    3: 'nw',
+    5: 'sw',
+  };
+  const RIVER_TEMPLATE_DIRECTION_INDICES = Object.keys(RIVER_TEMPLATE_DIRECTION_SIDES).map(Number);
 
   const state = {
     seed: 'scout-tile-v1',
@@ -128,9 +147,17 @@
     return riverConnections.get(tile.id) || [];
   }
 
-  function getRiverNeighbor(tile, directionIndex) {
-    const dir = RIVER_DIRECTIONS[directionIndex % RIVER_DIRECTIONS.length];
-    return tiles.find((item) => item.q === tile.q + dir.dq && item.r === tile.r + dir.dr);
+  function getRiverTemplateKey(tile) {
+    const sides = getRiverConnections(tile)
+      .map((directionIndex) => RIVER_TEMPLATE_DIRECTION_SIDES[directionIndex])
+      .filter(Boolean)
+      .sort((a, b) => ['nw', 'ne', 'se', 'sw'].indexOf(a) - ['nw', 'ne', 'se', 'sw'].indexOf(b));
+    return sides.join('-');
+  }
+
+  function getRiverTemplateAsset(tile) {
+    const key = getRiverTemplateKey(tile);
+    return RIVER_TEMPLATE_ASSETS[key] || null;
   }
 
   function hasRiverNearby(q, r, radius = 1) {
@@ -141,13 +168,6 @@
 
   function isRiverBlockedCoord(q, r) {
     return getHexDistance({ q, r }, { q: 0, r: 0 }) <= 1;
-  }
-
-  function getDirectionAngle(directionIndex) {
-    const center = getTilePosition({ q: 0, r: 0 });
-    const dir = RIVER_DIRECTIONS[directionIndex % RIVER_DIRECTIONS.length];
-    const next = getTilePosition({ q: dir.dq, r: dir.dr });
-    return Math.atan2(next.y - center.y, next.x - center.x);
   }
 
   function chooseTerrain(q, r) {
@@ -218,6 +238,7 @@
           q: current.q + dir.dq,
           r: current.r + dir.dr,
         }))
+        .filter((item) => RIVER_TEMPLATE_DIRECTION_INDICES.includes(item.index))
         .filter((item) => isCoordInRadius(item.q, item.r, radius))
         .filter((item) => !isRiverBlockedCoord(item.q, item.r))
         .map((item) => {
@@ -225,7 +246,7 @@
           const distance = getHexDistance(item, target);
           const revisited = visited.has(id) && !(item.q === target.q && item.r === target.r);
           const wobble = random01(state.seed, item.q, item.r, `${salt}-wobble-${step}`);
-          const flowBias = Math.abs(item.index - 5) * 0.08;
+          const flowBias = RIVER_TEMPLATE_DIRECTION_INDICES.indexOf(item.index) * 0.08;
           return { ...item, score: distance * 10 + wobble * 3 + flowBias + (revisited ? 40 : 0) };
         })
         .sort((a, b) => a.score - b.score);
@@ -366,14 +387,6 @@
     return data[index + 3] > 8;
   }
 
-  function isWaterPixel(data, index) {
-    const red = data[index];
-    const green = data[index + 1];
-    const blue = data[index + 2];
-    const alpha = data[index + 3];
-    return alpha > 40 && blue > red + 25 && blue > green - 12 && green > red + 10;
-  }
-
   function measurePixelBounds(data, width, height, predicate) {
     let minX = width;
     let minY = height;
@@ -403,52 +416,6 @@
     };
   }
 
-  function measureEdgePort(data, width, bounds, predicate, side, band = 3) {
-    if (!bounds) return { run: 0, center: 0.5 };
-    const coords = [];
-    if (side === 'left' || side === 'right') {
-      const minX = bounds.x;
-      const maxX = bounds.x + bounds.width - 1;
-      const xStart = side === 'left' ? minX : Math.max(minX, maxX - band + 1);
-      const xEnd = side === 'left' ? Math.min(maxX, minX + band - 1) : maxX;
-      for (let y = bounds.y; y < bounds.y + bounds.height; y += 1) {
-        let touched = false;
-        for (let x = xStart; x <= xEnd; x += 1) {
-          if (predicate(data, (y * width + x) * 4)) touched = true;
-        }
-        if (touched) coords.push(y);
-      }
-      if (!coords.length) return { run: 0, center: 0.5 };
-      const first = coords[0];
-      const last = coords[coords.length - 1];
-      return { run: coords.length, first, last, center: ((first + last) * 0.5 - bounds.y) / Math.max(1, bounds.height) };
-    }
-    const minY = bounds.y;
-    const maxY = bounds.y + bounds.height - 1;
-    const yStart = side === 'top' ? minY : Math.max(minY, maxY - band + 1);
-    const yEnd = side === 'top' ? Math.min(maxY, minY + band - 1) : maxY;
-    for (let x = bounds.x; x < bounds.x + bounds.width; x += 1) {
-      let touched = false;
-      for (let y = yStart; y <= yEnd; y += 1) {
-        if (predicate(data, (y * width + x) * 4)) touched = true;
-      }
-      if (touched) coords.push(x);
-    }
-    if (!coords.length) return { run: 0, center: 0.5 };
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    return { run: coords.length, first, last, center: ((first + last) * 0.5 - bounds.x) / Math.max(1, bounds.width) };
-  }
-
-  function measurePorts(data, width, bounds, predicate) {
-    return {
-      left: measureEdgePort(data, width, bounds, predicate, 'left'),
-      right: measureEdgePort(data, width, bounds, predicate, 'right'),
-      top: measureEdgePort(data, width, bounds, predicate, 'top'),
-      bottom: measureEdgePort(data, width, bounds, predicate, 'bottom'),
-    };
-  }
-
   function analyzeAlphaBounds(image) {
     const fallback = getFallbackMetrics(image);
     if (!fallback.width || !fallback.height) return fallback;
@@ -462,14 +429,7 @@
       probeCtx.drawImage(image, 0, 0);
       const data = probeCtx.getImageData(0, 0, probe.width, probe.height).data;
       const alphaBounds = measurePixelBounds(data, probe.width, probe.height, isOpaquePixel);
-      if (!alphaBounds) return fallback;
-      const waterBounds = measurePixelBounds(data, probe.width, probe.height, isWaterPixel);
-      return {
-        ...alphaBounds,
-        waterBounds,
-        alphaPorts: measurePorts(data, probe.width, alphaBounds, isOpaquePixel),
-        waterPorts: measurePorts(data, probe.width, waterBounds, isWaterPixel),
-      };
+      return alphaBounds || fallback;
     } catch (_) {
       return fallback;
     }
@@ -486,7 +446,7 @@
   }
 
   function getTileDrawSize(type = 'plains') {
-    const metrics = getTerrainMetrics(type);
+    const metrics = getTerrainMetrics('plains');
     return {
       width: state.tileSize,
       height: state.tileSize * (metrics.height / Math.max(1, metrics.width)),
@@ -519,6 +479,7 @@
       ...Object.values(TERRAIN_ASSETS).map((item) => item.file),
       ...Object.values(SITE_ASSETS).map((item) => item.file),
       ...Object.values(FEATURE_ASSETS).map((item) => item.file),
+      ...Object.values(RIVER_TEMPLATE_ASSETS).map((item) => item.file),
     ];
     const results = await Promise.all(files.map(loadImage));
     const failed = results.filter((item) => !item.ok).map((item) => item.file);
@@ -579,11 +540,13 @@
   }
 
   function drawTile(tile) {
-    const baseImage = images.get(TERRAIN_ASSETS.plains.file);
+    const templateAsset = getRiverTemplateAsset(tile);
+    const baseFile = templateAsset?.file || TERRAIN_ASSETS.plains.file;
+    const baseImage = images.get(baseFile);
     if (!baseImage || !baseImage.complete) return;
     const projected = getProjectedPosition(tile);
     const tileSize = getTileDrawSize('plains');
-    const metrics = tileSize.metrics;
+    const metrics = templateAsset ? getImageMetrics(templateAsset.file) : tileSize.metrics;
     const drawW = tileSize.width * state.zoom;
     const drawH = tileSize.height * state.zoom;
     const drawX = projected.x - drawW * 0.5;
@@ -747,154 +710,23 @@
   }
 
   function drawRiverLayer(sortedTiles) {
+    if (!state.showDebug) return;
     for (const tile of sortedTiles) {
       if (!isRiverTile(tile.q, tile.r)) continue;
-      drawRiverSegments(tile);
-    }
-    for (const tile of sortedTiles) {
-      if (!isRiverTile(tile.q, tile.r)) continue;
-      drawRiverNode(tile);
-      drawRiverWaterCaps(tile);
+      drawRiverTemplatePorts(tile);
     }
   }
 
-  function drawRiverSegments(tile) {
-    const connections = getRiverConnections(tile);
-    for (const directionIndex of connections) {
-      const neighbor = getRiverNeighbor(tile, directionIndex);
-      if (!neighbor || tile.id > neighbor.id) continue;
-      drawRiverSegmentBetween(tile, neighbor);
-    }
-  }
-
-  function drawRiverSegmentBetween(fromTile, toTile) {
-    const asset = FEATURE_ASSETS.riverStraight;
-    const image = images.get(asset.file);
-    if (!image || !image.complete) return;
-    const from = getProjectedPosition(fromTile);
-    const to = getProjectedPosition(toTile);
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const distance = Math.max(1, Math.hypot(dx, dy));
-    const angle = Math.atan2(dy, dx);
-    const metrics = getImageMetrics(asset.file);
-    const profile = getRiverSegmentDrawProfile(metrics);
-    const drawW = distance + profile.bankOverlap * 2;
-    ctx.save();
-    ctx.translate((from.x + to.x) * 0.5, (from.y + to.y) * 0.5 - state.stepY * state.zoom * 0.03);
-    ctx.rotate(angle);
-    ctx.globalAlpha = 0.96;
-    drawTiledRiverStrip(image, metrics, drawW, profile.drawH, fromTile.id, toTile.id);
-    ctx.restore();
-  }
-
-  function getRiverSegmentDrawProfile(metrics) {
-    const alphaRun = Math.max(metrics.alphaPorts?.left?.run || 0, metrics.alphaPorts?.right?.run || 0, metrics.height * 0.75);
-    const waterRun = Math.max(metrics.waterPorts?.left?.run || 0, metrics.waterPorts?.right?.run || 0, alphaRun * 0.72);
-    const drawH = Math.max(state.stepY * state.zoom * 1.04, state.stepY * state.zoom * (alphaRun / Math.max(1, metrics.height)) * 1.22);
-    const scale = drawH / Math.max(1, metrics.height);
-    const bankOverlap = Math.max(state.stepY * state.zoom * 0.16, alphaRun * scale * 0.34);
-    const waterOverlap = Math.max(bankOverlap * 2.35, waterRun * scale * 1.72, state.stepY * state.zoom * 0.66);
-    const waterH = Math.max(1, waterRun * scale * 1.22);
-    return {
-      drawH,
-      waterH,
-      scale,
-      bankOverlap,
-      waterOverlap,
-      cycleW: metrics.width * scale,
-    };
-  }
-
-  function drawTiledRiverStrip(image, metrics, drawW, drawH, fromId, toId) {
-    const scale = drawH / Math.max(1, metrics.height);
-    const cycleW = Math.max(1, metrics.width * scale);
-    const phase = 0;
-    const step = Math.max(1, cycleW - 0.75);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(-drawW * 0.5, -drawH * 0.5, drawW, drawH);
-    ctx.clip();
-    for (let x = -drawW * 0.5 - phase - cycleW; x < drawW * 0.5 + cycleW; x += step) {
-      ctx.drawImage(
-        image,
-        metrics.x,
-        metrics.y,
-        metrics.width,
-        metrics.height,
-        x,
-        -drawH * 0.5,
-        cycleW + 1.5,
-        drawH
-      );
-    }
-    ctx.restore();
-  }
-
-  function drawRiverWaterCaps(tile) {
-    if (!shouldDrawRiverJunction(tile)) return;
-    const asset = FEATURE_ASSETS.riverStraightWaterFade;
-    const image = images.get(asset.file);
-    if (!image || !image.complete) return;
-    const metrics = getImageMetrics(asset.file);
+  function drawRiverTemplatePorts(tile) {
     const projected = getProjectedPosition(tile);
-    const profile = getRiverSegmentDrawProfile(getImageMetrics(FEATURE_ASSETS.riverStraight.file));
-    const capW = profile.waterOverlap * 2.62;
-    const capH = profile.waterH * 1.18;
+    const label = getRiverTemplateKey(tile);
     ctx.save();
-    ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
-    ctx.globalAlpha = 0.9;
-    for (const directionIndex of getRiverConnections(tile)) {
-      ctx.save();
-      ctx.rotate(getDirectionAngle(directionIndex));
-      ctx.drawImage(
-        image,
-        metrics.x,
-        metrics.y,
-        metrics.width,
-        metrics.height,
-        -profile.waterOverlap * 0.94,
-        -capH * 0.5,
-        capW,
-        capH
-      );
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  function shouldDrawRiverJunction(tile) {
-    const connections = getRiverConnections(tile);
-    if (connections.length !== 2) return true;
-    return (Math.abs(connections[0] - connections[1]) % 3) !== 0;
-  }
-
-  function drawRiverNode(tile) {
-    if (!shouldDrawRiverJunction(tile)) return;
-    const asset = FEATURE_ASSETS.riverJunctionWaterClean;
-    const image = images.get(asset.file);
-    if (!image || !image.complete) return;
-    const projected = getProjectedPosition(tile);
-    const metrics = getImageMetrics(asset.file);
-    const riverMetrics = getImageMetrics(FEATURE_ASSETS.riverStraight.file);
-    const connectionCount = getRiverConnections(tile).length;
-    const profile = getRiverSegmentDrawProfile(riverMetrics);
-    const drawH = Math.max(profile.waterH * (connectionCount >= 3 ? 2.08 : 1.52), profile.waterOverlap * 1.08);
-    const drawW = drawH * (metrics.width / Math.max(1, metrics.height));
-    ctx.save();
-    ctx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.03);
-    ctx.globalAlpha = connectionCount >= 3 ? 0.78 : 0.56;
-    ctx.drawImage(
-      image,
-      metrics.x,
-      metrics.y,
-      metrics.width,
-      metrics.height,
-      -drawW * 0.5,
-      -drawH * 0.5,
-      drawW,
-      drawH
-    );
+    ctx.fillStyle = 'rgba(8, 18, 20, 0.7)';
+    ctx.strokeStyle = 'rgba(255, 240, 160, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.font = '10px Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label || 'river?', projected.x, projected.y + state.stepY * state.zoom * 0.62);
     ctx.restore();
   }
 

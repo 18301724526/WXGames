@@ -6,6 +6,23 @@ const test = require('node:test');
 const projectRoot = path.join(__dirname, '..', '..');
 const htmlPath = path.join(projectRoot, 'frontend', 'tools', 'tile-map-lab.html');
 const jsPath = path.join(projectRoot, 'frontend', 'tools', 'tile-map-lab.js');
+const riverTemplateKeys = [
+  'nw',
+  'ne',
+  'se',
+  'sw',
+  'nw-ne',
+  'nw-se',
+  'nw-sw',
+  'ne-se',
+  'ne-sw',
+  'se-sw',
+  'nw-ne-se',
+  'nw-ne-sw',
+  'nw-se-sw',
+  'ne-se-sw',
+  'nw-ne-se-sw',
+];
 
 test('tile map lab is an art-resource stitching page', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -20,11 +37,7 @@ test('tile map lab is an art-resource stitching page', () => {
     'tile-map/tile-feature-tree-cluster.png',
     'tile-map/tile-feature-mountain-ridge.png',
     'tile-map/tile-feature-pond.png',
-    'tile-map/tile-river-straight.png',
-    'tile-map/tile-river-straight-water.png',
-    'tile-map/tile-river-straight-water-fade.png',
-    'tile-map/tile-river-junction-water.png',
-    'tile-map/tile-river-junction-water-clean.png',
+    ...riverTemplateKeys.map((key) => `tile-map/river-template/tile-river-template-ai-${key}.png`),
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -33,7 +46,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.178-tile-map-lab-river-loop-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-river-ai-mask-v2/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
   assert.match(js, /imageMetrics = new Map/);
@@ -47,12 +60,12 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /drawMountainFeature/);
   assert.match(js, /tile-map\/tile-feature-mountain-ridge\.png/);
   assert.match(js, /tile-map\/tile-feature-pond\.png/);
-  assert.match(js, /tile-map\/tile-river-straight\.png/);
-  assert.match(js, /tile-map\/tile-river-straight-water\.png/);
-  assert.match(js, /tile-map\/tile-river-straight-water-fade\.png/);
-  assert.match(js, /tile-map\/tile-river-junction-water\.png/);
-  assert.match(js, /tile-map\/tile-river-junction-water-clean\.png/);
+  assert.match(js, /RIVER_TEMPLATE_ASSETS/);
+  assert.match(js, /getRiverTemplateKey/);
+  assert.match(js, /getRiverTemplateAsset/);
   assert.match(js, /RIVER_DIRECTIONS/);
+  assert.match(js, /RIVER_TEMPLATE_DIRECTION_SIDES/);
+  assert.match(js, /RIVER_TEMPLATE_DIRECTION_INDICES/);
   assert.match(js, /hasRiverNearby/);
   assert.match(js, /isRiverBlockedCoord/);
   assert.match(js, /createRiverConnections/);
@@ -62,12 +75,7 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /choosePond/);
   assert.match(js, /drawPond/);
   assert.match(js, /getRiverConnections/);
-  assert.match(js, /drawRiverSegments/);
-  assert.match(js, /drawRiverSegmentBetween/);
-  assert.match(js, /drawTiledRiverStrip/);
-  assert.match(js, /drawRiverWaterCaps/);
-  assert.match(js, /shouldDrawRiverJunction/);
-  assert.match(js, /drawRiverNode/);
+  assert.match(js, /drawRiverTemplatePorts/);
   assert.match(js, /effectiveFeatures/);
   assert.match(js, /valueNoise/);
   assert.match(js, /drawTerrainFeature/);
@@ -86,10 +94,11 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /if \(hasRiverNearby\(q, r, 1\)\) return null;/);
   assert.match(js, /if \(ring < 2 \|\| hasRiverNearby\(q, r, 1\)\) return false;/);
   assert.match(js, /if \(hasRiverNearby\(tile\.q, tile\.r, 1\)\) return;/);
-  assert.match(js, /if \(!shouldDrawRiverJunction\(tile\)\) return;/);
+  assert.match(js, /templateAsset \? getImageMetrics\(templateAsset\.file\) : tileSize\.metrics/);
   assert.match(js, /\.filter\(\(item\) => !isRiverBlockedCoord\(item\.q, item\.r\)\)/);
   assert.doesNotMatch(js, /territory-plains-cutout|territory-forest-cutout|territory-hills-cutout|territory-ruins-cutout/);
-  assert.doesNotMatch(js, /riverNodeCap|getRiverPiece|tile-river-node-cap/);
+  assert.doesNotMatch(js, /drawRiverSegments|drawRiverSegmentBetween|drawTiledRiverStrip|drawRiverWaterCaps|shouldDrawRiverJunction|drawRiverNode/);
+  assert.doesNotMatch(js, /riverNodeCap|getRiverPiece|tile-river-node-cap|tile-river-straight-water|tile-river-junction-water/);
 
   for (const asset of artAssets) {
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', ...asset.split('/'))), true, asset);
@@ -97,24 +106,27 @@ test('tile map lab is an art-resource stitching page', () => {
   }
 });
 
-function getAlphaBounds(alpha, width, height) {
+function getPixelBounds(rgba, width, height, predicate) {
   let minX = width;
   let minY = height;
   let maxX = -1;
   let maxY = -1;
+  let count = 0;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      if (alpha[y * width + x] <= 32) continue;
+      const index = (y * width + x) * 4;
+      if (!predicate(rgba[index], rgba[index + 1], rgba[index + 2], rgba[index + 3])) continue;
+      count += 1;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       maxX = Math.max(maxX, x);
       maxY = Math.max(maxY, y);
     }
   }
-  return maxX >= minX ? { minX, minY, maxX, maxY } : null;
+  return maxX >= minX ? { minX, minY, maxX, maxY, count } : null;
 }
 
-function readPngSizeAndAlpha(buffer) {
+function readPngRgba(buffer) {
   assert.equal(buffer.toString('ascii', 1, 4), 'PNG');
   const width = buffer.readUInt32BE(16);
   const height = buffer.readUInt32BE(20);
@@ -129,7 +141,7 @@ function readPngSizeAndAlpha(buffer) {
   }
   const inflated = zlib.inflateSync(Buffer.concat(chunks));
   const stride = width * 4;
-  const rows = [];
+  const rgba = new Uint8Array(width * height * 4);
   let cursor = 0;
   let prev = Buffer.alloc(stride);
   for (let y = 0; y < height; y += 1) {
@@ -157,52 +169,80 @@ function readPngSizeAndAlpha(buffer) {
         throw new Error(`unsupported PNG filter ${filter}`);
       }
     }
-    rows.push(out);
+    rgba.set(out, y * stride);
     prev = out;
   }
-  const alpha = new Uint8Array(width * height);
-  for (let y = 0; y < height; y += 1) {
-    const row = rows[y];
-    for (let x = 0; x < width; x += 1) {
-      alpha[y * width + x] = row[x * 4 + 3];
-    }
-  }
-  return { width, height, alpha };
+  return { width, height, rgba };
 }
 
-function edgeRun(alpha, width, bbox, side) {
-  const coords = [];
-  const band = 2;
-  if (side === 'left' || side === 'right') {
-    const xStart = side === 'left' ? bbox.minX : Math.max(bbox.minX, bbox.maxX - band + 1);
-    const xEnd = side === 'left' ? Math.min(bbox.maxX, bbox.minX + band - 1) : bbox.maxX;
-    for (let y = bbox.minY; y <= bbox.maxY; y += 1) {
-      let touched = false;
-      for (let x = xStart; x <= xEnd; x += 1) {
-        if (alpha[y * width + x] > 32) touched = true;
+function isWaterPixel(red, green, blue, alpha) {
+  return alpha > 80 && blue > red + 18 && blue > green + 4 && blue > 70;
+}
+
+function sideSampleCenters(alphaBounds) {
+  const centerX = (alphaBounds.minX + alphaBounds.maxX) * 0.5;
+  const centerY = (alphaBounds.minY + alphaBounds.maxY) * 0.5;
+  const halfW = (alphaBounds.maxX - alphaBounds.minX) * 0.5;
+  const halfH = (alphaBounds.maxY - alphaBounds.minY) * 0.5;
+  return {
+    nw: [Math.round(centerX - halfW * 0.5), Math.round(centerY - halfH * 0.5)],
+    ne: [Math.round(centerX + halfW * 0.5), Math.round(centerY - halfH * 0.5)],
+    se: [Math.round(centerX + halfW * 0.5), Math.round(centerY + halfH * 0.5)],
+    sw: [Math.round(centerX - halfW * 0.5), Math.round(centerY + halfH * 0.5)],
+  };
+}
+
+function countWaterNear(rgba, width, height, centerX, centerY, radius = 14) {
+  let count = 0;
+  for (let y = centerY - radius; y <= centerY + radius; y += 1) {
+    for (let x = centerX - radius; x <= centerX + radius; x += 1) {
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      const index = (y * width + x) * 4;
+      if (isWaterPixel(rgba[index], rgba[index + 1], rgba[index + 2], rgba[index + 3])) count += 1;
+    }
+  }
+  return count;
+}
+
+test('AI river template assets keep water ports on diamond side centers', () => {
+  const templateDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map', 'river-template');
+  let expectedAlphaBounds = null;
+  for (const key of riverTemplateKeys) {
+    const file = path.join(templateDir, `tile-river-template-ai-${key}.png`);
+    const { width, height, rgba } = readPngRgba(fs.readFileSync(file));
+    const alphaBounds = getPixelBounds(rgba, width, height, (red, green, blue, alpha) => alpha > 32);
+    const waterBounds = getPixelBounds(rgba, width, height, isWaterPixel);
+    assert.ok(alphaBounds, key);
+    assert.ok(waterBounds, key);
+    assert.ok(waterBounds.count >= 120, key);
+    if (!expectedAlphaBounds) {
+      expectedAlphaBounds = alphaBounds;
+    } else {
+      assert.deepEqual(
+        {
+          minX: alphaBounds.minX,
+          minY: alphaBounds.minY,
+          maxX: alphaBounds.maxX,
+          maxY: alphaBounds.maxY,
+        },
+        {
+          minX: expectedAlphaBounds.minX,
+          minY: expectedAlphaBounds.minY,
+          maxX: expectedAlphaBounds.maxX,
+          maxY: expectedAlphaBounds.maxY,
+        },
+        key
+      );
+    }
+    const connectedSides = new Set(key.split('-'));
+    const samples = sideSampleCenters(alphaBounds);
+    for (const [side, [x, y]] of Object.entries(samples)) {
+      const waterCount = countWaterNear(rgba, width, height, x, y);
+      if (connectedSides.has(side)) {
+        assert.ok(waterCount >= 80, `${key} missing ${side} water port`);
+      } else {
+        assert.ok(waterCount <= 8, `${key} leaks water into ${side} port`);
       }
-      if (touched) coords.push(y);
     }
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    return {
-      width: coords.length,
-      center: ((first + last) * 0.5 - bbox.minY) / (bbox.maxY - bbox.minY + 1),
-    };
   }
-  return { width: 0, center: 0 };
-}
-
-test('river straight asset has matching left and right pixel ports', () => {
-  const buffer = fs.readFileSync(path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map', 'tile-river-straight.png'));
-  const { width, height, alpha } = readPngSizeAndAlpha(buffer);
-  const bbox = getAlphaBounds(alpha, width, height);
-  assert.ok(bbox);
-  const left = edgeRun(alpha, width, bbox, 'left');
-  const right = edgeRun(alpha, width, bbox, 'right');
-  assert.ok(left.width > 40);
-  assert.ok(right.width > 40);
-  assert.ok(Math.abs(left.width - right.width) <= 2);
-  assert.ok(Math.abs(left.center - right.center) <= 0.02);
-  assert.ok(Math.abs(left.center - 0.5) <= 0.04);
 });
