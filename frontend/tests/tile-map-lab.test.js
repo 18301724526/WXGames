@@ -85,7 +85,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-river-bank-api-refine-v2/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-ocean-mouth-bridge-v2/);
   assert.match(html, /id="animateWater"/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
@@ -132,6 +132,9 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /OCEAN_MOUTH_TEMPLATE_ASSETS/);
   assert.match(js, /OCEAN_SIDE_DIRECTIONS/);
   assert.match(js, /findRiverMouthTarget/);
+  assert.match(js, /addRiverMouthConnection/);
+  assert.match(js, /isOceanPaddingCoord/);
+  assert.match(js, /isPadding/);
   assert.match(js, /getOceanTemplateKey/);
   assert.match(js, /getOceanMouthSide/);
   assert.match(js, /getOceanTemplateVariantKey/);
@@ -151,6 +154,7 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /effectiveOceanMouthTemplates/);
   assert.match(js, /oceanTiles/);
   assert.match(js, /riverMouthOceanTiles/);
+  assert.match(js, /oceanPaddingTiles/);
   assert.match(js, /effectiveFeatures/);
   assert.match(js, /effectiveWaterTextures/);
   assert.match(js, /waterMaskTemplates/);

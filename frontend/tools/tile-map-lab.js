@@ -222,8 +222,12 @@
     return riverConnections.has(getTileId(q, r));
   }
 
+  function getRiverConnectionsByCoord(q, r) {
+    return riverConnections.get(getTileId(q, r)) || [];
+  }
+
   function getRiverConnections(tile) {
-    return riverConnections.get(tile.id) || [];
+    return getRiverConnectionsByCoord(tile.q, tile.r);
   }
 
   function getRiverTemplateKey(tile) {
@@ -258,16 +262,19 @@
   }
 
   function getOceanTemplateKey(tile) {
+    if (tile.isPadding) return 'full';
     const coastSides = getOceanCoastSides(tile);
     return coastSides.length ? coastSides.join('-') : 'full';
   }
 
   function getOceanMouthSide(tile) {
-    if (tile.terrain !== 'ocean') return '';
+    if (tile.terrain !== 'ocean' || tile.isPadding) return '';
     const coastSides = getOceanCoastSides(tile);
     return coastSides.find((side) => {
       const dir = OCEAN_SIDE_DIRECTIONS[side];
-      return isRiverTile(tile.q + dir.dq, tile.r + dir.dr);
+      const land = { q: tile.q + dir.dq, r: tile.r + dir.dr };
+      const directionToOcean = getDirectionIndex(land, tile);
+      return getRiverConnectionsByCoord(land.q, land.r).includes(directionToOcean);
     }) || '';
   }
 
@@ -427,18 +434,42 @@
     connections.get(toId).add(toDirection);
   }
 
+  function addRiverMouthConnection(connections, land, preferredOcean, radius, salt) {
+    if (!land) return;
+    const candidates = RIVER_TEMPLATE_DIRECTION_INDICES
+      .map((index) => {
+        const dir = RIVER_DIRECTIONS[index];
+        const ocean = { q: land.q + dir.dq, r: land.r + dir.dr };
+        if (!isOceanCoord(ocean.q, ocean.r, radius)) return null;
+        return {
+          index,
+          ocean,
+          score: getHexDistance(ocean, preferredOcean) * 10 + random01(state.seed, ocean.q, ocean.r, `${salt}-mouth`),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score);
+    const mouth = candidates[0];
+    if (!mouth) return;
+    const id = getTileId(land.q, land.r);
+    if (!connections.has(id)) connections.set(id, new Set());
+    connections.get(id).add(mouth.index);
+  }
+
   function createRiverConnections(radius) {
     const connections = new Map();
     const mainStart = { q: -Math.max(1, Math.floor(radius * 0.42)), r: -radius + Math.max(1, Math.floor(radius * 0.42)) };
+    const mainPreferredTarget = { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) };
     const mainTarget = findRiverMouthTarget(
-      { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) },
+      mainPreferredTarget,
       radius,
       'river-main'
     );
     const mainPath = buildRiverPath(mainStart, mainTarget, radius, 'river-main');
     const branchStart = mainPath[Math.max(1, Math.floor(mainPath.length * 0.52))] || mainPath[0];
+    const branchPreferredTarget = { q: radius, r: -Math.max(0, Math.floor(radius * 0.18)) };
     const branchTarget = findRiverMouthTarget(
-      { q: radius, r: -Math.max(0, Math.floor(radius * 0.18)) },
+      branchPreferredTarget,
       radius,
       'river-branch'
     );
@@ -446,15 +477,23 @@
     for (const path of [mainPath, branchPath]) {
       for (let i = 1; i < path.length; i += 1) addRiverConnection(connections, path[i - 1], path[i]);
     }
+    addRiverMouthConnection(connections, mainPath[mainPath.length - 1], mainPreferredTarget, radius, 'river-main');
+    addRiverMouthConnection(connections, branchPath[branchPath.length - 1], branchPreferredTarget, radius, 'river-branch');
     return new Map(
       Array.from(connections.entries()).map(([id, dirs]) => [id, Array.from(dirs).sort((a, b) => a - b)])
     );
+  }
+
+  function isOceanPaddingCoord(q, r, radius, realOceanIds) {
+    if (isCoordInRadius(q, r, radius)) return false;
+    return RIVER_DIRECTIONS.some((dir) => realOceanIds.has(getTileId(q + dir.dq, r + dir.dr)));
   }
 
   function buildTiles() {
     const nextTiles = [];
     const radius = state.radius;
     riverConnections = createRiverConnections(radius);
+    const realOceanIds = new Set();
     for (let q = -radius; q <= radius; q += 1) {
       const minR = Math.max(-radius, -q - radius);
       const maxR = Math.min(radius, -q + radius);
@@ -462,6 +501,7 @@
         const s = -q - r;
         const ring = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
         const terrain = isOceanCoord(q, r, radius) ? 'ocean' : chooseTerrain(q, r);
+        if (terrain === 'ocean') realOceanIds.add(getTileId(q, r));
         const pond = terrain === 'ocean' ? false : choosePond(q, r, terrain, ring);
         const site = terrain === 'ocean' || pond ? null : chooseSite(q, r, terrain, ring);
         nextTiles.push({
@@ -473,6 +513,24 @@
           terrain,
           pond,
           site,
+        });
+      }
+    }
+    for (let q = -radius - 1; q <= radius + 1; q += 1) {
+      const minR = Math.max(-radius - 1, -q - radius - 1);
+      const maxR = Math.min(radius + 1, -q + radius + 1);
+      for (let r = minR; r <= maxR; r += 1) {
+        if (!isOceanPaddingCoord(q, r, radius, realOceanIds)) continue;
+        nextTiles.push({
+          id: getTileId(q, r),
+          q,
+          r,
+          s: -q - r,
+          ring: radius + 1,
+          terrain: 'ocean',
+          pond: false,
+          site: null,
+          isPadding: true,
         });
       }
     }
@@ -517,6 +575,7 @@
     let best = null;
     let bestDistance = Infinity;
     for (const tile of tiles) {
+      if (tile.isPadding) continue;
       const projected = getProjectedPosition(tile);
       const dx = point.x - projected.x;
       const dy = point.y - projected.y;
@@ -968,7 +1027,9 @@
     staticBaseCtx.setTransform(1, 0, 0, 1, 0, 0);
     staticBaseCtx.clearRect(0, 0, width, height);
     drawBackground(width, height, staticBaseCtx);
-    for (const tile of sortedTiles) drawTile(staticBaseCtx, tile);
+    for (const tile of sortedTiles) {
+      if (!tile.isPadding) drawTile(staticBaseCtx, tile);
+    }
     for (const tile of sortedTiles) drawPond(tile, staticBaseCtx);
     for (const tile of sortedTiles) drawTerrainFeature(staticBaseCtx, tile);
     for (const tile of sortedTiles) drawSite(tile, staticBaseCtx);
@@ -1278,6 +1339,7 @@
     const height = canvas.clientHeight;
 
     const sorted = tiles.slice().sort((a, b) => {
+      if (a.isPadding !== b.isPadding) return a.isPadding ? -1 : 1;
       const pa = getTilePosition(a);
       const pb = getTilePosition(b);
       return pa.y - pb.y || pa.x - pb.x || a.ring - b.ring;
@@ -1343,9 +1405,10 @@
       effectiveOceanMouthTemplates: Object.fromEntries(
         Object.entries(OCEAN_MOUTH_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
-      riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
-      oceanTiles: tiles.filter((tile) => tile.terrain === 'ocean').length,
-      riverMouthOceanTiles: tiles.filter((tile) => tile.terrain === 'ocean' && getOceanMouthSide(tile)).length,
+      riverTiles: tiles.filter((tile) => !tile.isPadding && isRiverTile(tile.q, tile.r)).length,
+      oceanTiles: tiles.filter((tile) => !tile.isPadding && tile.terrain === 'ocean').length,
+      oceanPaddingTiles: tiles.filter((tile) => tile.isPadding).length,
+      riverMouthOceanTiles: tiles.filter((tile) => !tile.isPadding && tile.terrain === 'ocean' && getOceanMouthSide(tile)).length,
       pondTiles: tiles.filter((tile) => tile.pond).length,
       stepX: state.stepX,
       stepY: state.stepY,
