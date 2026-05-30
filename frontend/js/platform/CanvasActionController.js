@@ -331,9 +331,11 @@
     handle_openFamousPersons(action) {
       this.host.showFamousPersons = true;
       this.host.famousPersonsPage = 0;
+      this.host.selectedFamousPersonId = '';
       const game = this.getGameHost();
       if (game && game !== this.host && 'showFamousPersons' in game) game.showFamousPersons = true;
       if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
+      if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       this.host.renderer?.clearFamousSkillTooltip?.();
       this.closePanels(['showFamousPersons']);
       return this.afterHandled(action);
@@ -342,9 +344,27 @@
     handle_closeFamousPersons(action) {
       this.host.showFamousPersons = false;
       this.host.famousPersonsPage = 0;
+      this.host.selectedFamousPersonId = '';
       const game = this.getGameHost();
       if (game && game !== this.host && 'showFamousPersons' in game) game.showFamousPersons = false;
       if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
+      if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
+      this.host.renderer?.clearFamousSkillTooltip?.();
+      return this.afterHandled(action);
+    }
+
+    handle_openFamousPersonDetail(action) {
+      this.host.selectedFamousPersonId = action.personId || '';
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = action.personId || '';
+      this.host.renderer?.clearFamousSkillTooltip?.();
+      return this.afterHandled(action);
+    }
+
+    handle_closeFamousPersonDetail(action) {
+      this.host.selectedFamousPersonId = '';
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       this.host.renderer?.clearFamousSkillTooltip?.();
       return this.afterHandled(action);
     }
@@ -830,6 +850,7 @@
         return this.host.changeFamousPersonsPage(action) !== false;
       } else {
         this.host.famousPersonsPage = Math.max(0, (Number(this.host.famousPersonsPage) || 0) + (Number(action.delta) || 0));
+        this.host.selectedFamousPersonId = '';
         this.host.renderer?.clearFamousSkillTooltip?.();
         this.afterHandled(action);
       }

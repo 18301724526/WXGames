@@ -1070,6 +1070,7 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
         experience: 35,
         nextLevelExperience: 190,
         freeAttributePoints: 4,
+        quality: 'legendary',
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
         abilityKit: {
@@ -1116,15 +1117,18 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '寻访'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '接纳'));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法：血刃破阵/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动：锐锋/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /等级 2 · 经验 35\/190/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && /可分配属性点 4/.test(call[1])));
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '+'));
-  assert.ok(renderer.hitTargets.some((target) => (
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '传奇'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === 'Lv.2'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /等级 2 · 经验 35\/190/.test(call[1])), false);
+  assert.equal(calls.some((call) => call[0] === 'fillText' && /可分配属性点 4/.test(call[1])), false);
+  assert.equal(renderer.hitTargets.some((target) => (
     target.action?.type === 'assignFamousAttributePoint'
     && target.action.personId === 'fp_a'
     && target.action.attribute === 'command'
+  )), false);
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'openFamousPersonDetail'
+    && target.action.personId === 'fp_a'
   )));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /内政主技：督田理赋/.test(call[1])));
   assert.equal(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])), false);
@@ -1149,6 +1153,68 @@ test('CanvasGameRenderer renders homepage feature grid and famous person panel',
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'acceptFamousPerson' && target.action.candidateId === 'fpc_b'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'dismissFamousPersonCandidate' && target.action.candidateId === 'fpc_b'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeFamousPersons'));
+
+  calls.length = 0;
+  renderer.render({
+    currentEraName: '城邦时代',
+    currentTab: 'resources',
+    currentEra: 3,
+    population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+    famousPersons: {
+      count: 1,
+      candidateCount: 0,
+      maxCandidates: 3,
+      seek: { available: true, count: 1 },
+      people: [{
+        id: 'fp_a',
+        name: '陆骁',
+        title: '破阵先登',
+        source: { type: 'seek', label: '寻访' },
+        level: 2,
+        experience: 35,
+        nextLevelExperience: 190,
+        freeAttributePoints: 4,
+        quality: 'legendary',
+        roles: ['military'],
+        attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
+        abilityKit: {
+          abilities: [
+            { name: '血刃破阵', slot: 'activeSkill', kind: 'active', cooldown: 3, castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }], effects: [{ key: 'directDamage' }, { key: 'lifesteal' }] },
+            { name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
+          ],
+        },
+        appearance: {
+          version: 'famous-portrait-v3.0',
+          layers: {
+            outfit: 'assets/art/famous-person/layers/fp-layer-v3-outfit-01.png',
+            face: 'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
+            hair: 'assets/art/famous-person/layers/fp-layer-v3-hair-01.png',
+          },
+        },
+        status: { assigned: 'idle' },
+      }],
+      candidates: [],
+    },
+  }, {
+    activeTab: 'resources',
+    mode: 'hud',
+    showFamousPersons: true,
+    selectedFamousPersonId: 'fp_a',
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /等级 2 · 经验 35\/190/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /可分配属性点 4/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /可分配 4 点/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /主动战法：血刃破阵/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && /战斗被动：锐锋/.test(call[1])));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '+'));
+  assert.ok(renderer.hitTargets.some((target) => (
+    target.action?.type === 'assignFamousAttributePoint'
+    && target.action.personId === 'fp_a'
+    && target.action.attribute === 'command'
+  )));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeFamousPersonDetail'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'showFamousSkillTooltip'));
 });
 
 test('CanvasGameRenderer shows famous skill detail only from hover or tap tooltip', () => {
@@ -1196,14 +1262,14 @@ test('CanvasGameRenderer shows famous skill detail only from hover or tap toolti
     },
   };
 
-  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, selectedFamousPersonId: 'fp_a' });
   assert.equal(calls.some((call) => call[0] === 'fillText' && /冷却3次自身行动/.test(call[1])), false);
   const skillTarget = renderer.hitTargets.find((target) => target.action?.type === 'showFamousSkillTooltip');
   assert.ok(skillTarget);
 
   calls.length = 0;
   renderer.setHoverPoint({ x: skillTarget.x + 4, y: skillTarget.y + 4 });
-  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, selectedFamousPersonId: 'fp_a' });
   assert.ok(calls.some((call) => call[0] === 'fillText' && /效果：发动战法攻击目标/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /倒戈/.test(call[1])));
   assert.ok(calls.some((call) => call[0] === 'fillText' && /冷却：3 回合/.test(call[1])));
@@ -1213,7 +1279,7 @@ test('CanvasGameRenderer shows famous skill detail only from hover or tap toolti
   calls.length = 0;
   renderer.setHoverPoint(null);
   renderer.setPinnedFamousSkillTooltip(skillTarget.action);
-  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, selectedFamousPersonId: 'fp_a' });
   assert.ok(calls.some((call) => call[0] === 'fillText' && /倒戈/.test(call[1])));
 });
 
@@ -1234,7 +1300,7 @@ test('CanvasGameRenderer paginates joined famous people in famous person panel',
   });
   const makePerson = (index) => ({
     id: `fp_${index}`,
-    name: `名人${index}`,
+    name: `名人${String(index).padStart(2, '0')}`,
     title: `称号${index}`,
     source: { type: 'seek', label: '寻访' },
     roles: ['military'],
@@ -1253,18 +1319,18 @@ test('CanvasGameRenderer paginates joined famous people in famous person panel',
     currentEra: 3,
     population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
     famousPersons: {
-      count: 6,
+      count: 10,
       candidateCount: 0,
       maxCandidates: 3,
       seek: { available: true, count: 1 },
-      people: [1, 2, 3, 4, 5, 6].map(makePerson),
+      people: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(makePerson),
       candidates: [],
     },
   };
 
   renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, famousPersonsPage: 0 });
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人1'));
-  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '名人6'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人01'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '名人10'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '1/2'));
   assert.ok(renderer.hitTargets.some((target) => (
     target.action?.type === 'changeFamousPersonsPage'
@@ -1274,8 +1340,8 @@ test('CanvasGameRenderer paginates joined famous people in famous person panel',
 
   calls.length = 0;
   renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, famousPersonsPage: 5 });
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人6'));
-  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '名人1'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '名人10'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '名人01'), false);
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '2/2'));
 });
 
@@ -1321,12 +1387,12 @@ test('CanvasGameRenderer closes pinned famous skill detail from badge toggle or 
     },
   };
 
-  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, selectedFamousPersonId: 'fp_a' });
   const skillTarget = renderer.hitTargets.find((target) => target.action?.type === 'showFamousSkillTooltip');
   assert.ok(skillTarget);
 
   assert.equal(renderer.setPinnedFamousSkillTooltip(skillTarget.action), true);
-  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true });
+  renderer.render(state, { activeTab: 'resources', mode: 'hud', showFamousPersons: true, selectedFamousPersonId: 'fp_a' });
   assert.ok(renderer.pinnedFamousSkillTooltip);
   const clearTarget = renderer.hitTargets.find((target) => target.action?.type === 'clearFamousSkillTooltip');
   assert.ok(clearTarget);

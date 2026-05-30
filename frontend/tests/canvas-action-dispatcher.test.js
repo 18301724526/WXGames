@@ -177,6 +177,8 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'openFamousPersons',
     'closeFamousPersons',
     'changeFamousPersonsPage',
+    'openFamousPersonDetail',
+    'closeFamousPersonDetail',
     'selectBuildingCategory',
     'selectTechNode',
     'closeTechDetail',
@@ -208,6 +210,8 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'openFamousPersons' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeFamousPersons' }), true);
   assert.equal(dispatcher.canHandle({ type: 'changeFamousPersonsPage' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openFamousPersonDetail' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeFamousPersonDetail' }), true);
   assert.equal(dispatcher.canHandle({ type: 'selectTechNode' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeTechDetail' }), true);
   assert.equal(dispatcher.canHandle({ type: 'claimScout' }), false);
@@ -509,7 +513,18 @@ test('CanvasActionDispatcher handles famous person panel visibility and page cha
     render(action) { calls.push(['render', action.type]); },
   }), true);
 
+  assert.equal(dispatcher.handle({ type: 'openFamousPersonDetail', personId: 'fp_a' }, {
+    openFamousPersonDetail(action) { calls.push(['detail', action.personId]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.equal(dispatcher.handle({ type: 'closeFamousPersonDetail' }, {
+    closeFamousPersonDetail(action) { calls.push(['detailClose', action.type]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
   assert.equal(dispatcher.canHandle({ type: 'seekFamousPerson' }), false);
+  assert.equal(dispatcher.canHandle({ type: 'openFamousPersonDetail' }), true);
   assert.deepEqual(calls, [
     ['open', 'openFamousPersons'],
     ['render', 'openFamousPersons'],
@@ -517,7 +532,30 @@ test('CanvasActionDispatcher handles famous person panel visibility and page cha
     ['render', 'closeFamousPersons'],
     ['page', 1],
     ['render', 'changeFamousPersonsPage'],
+    ['detail', 'fp_a'],
+    ['render', 'openFamousPersonDetail'],
+    ['detailClose', 'closeFamousPersonDetail'],
+    ['render', 'closeFamousPersonDetail'],
   ]);
+});
+
+test('CanvasActionController syncs famous person detail selection locally', () => {
+  const game = { selectedFamousPersonId: '' };
+  const host = {
+    selectedFamousPersonId: '',
+    renderer: { clearFamousSkillTooltip() {} },
+    getCanvasGameHost: () => game,
+    renderCanvasAction() { return true; },
+  };
+  const controller = new CanvasActionController({ host });
+
+  assert.equal(controller.handle({ type: 'openFamousPersonDetail', personId: 'fp_a' }), true);
+  assert.equal(host.selectedFamousPersonId, 'fp_a');
+  assert.equal(game.selectedFamousPersonId, 'fp_a');
+
+  assert.equal(controller.handle({ type: 'closeFamousPersonDetail' }), true);
+  assert.equal(host.selectedFamousPersonId, '');
+  assert.equal(game.selectedFamousPersonId, '');
 });
 
 test('CanvasActionController handles building category filter through shared canvas action controller', () => {

@@ -256,6 +256,22 @@
         return changed;
       }
 
+      if (action.type === 'openFamousPersonDetail') {
+        const opened = typeof context.openFamousPersonDetail === 'function'
+          ? context.openFamousPersonDetail(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeFamousPersonDetail') {
+        const closed = typeof context.closeFamousPersonDetail === 'function'
+          ? context.closeFamousPersonDetail(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       if (action.type === 'selectBuildingCategory') {
         const selected = typeof context.selectBuildingCategory === 'function'
           ? context.selectBuildingCategory(action) !== false
@@ -315,6 +331,8 @@
         'openFamousPersons',
         'closeFamousPersons',
         'changeFamousPersonsPage',
+        'openFamousPersonDetail',
+        'closeFamousPersonDetail',
         'selectBuildingCategory',
         'selectTechNode',
         'closeTechDetail',

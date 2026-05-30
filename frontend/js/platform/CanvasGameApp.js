@@ -46,6 +46,7 @@
       this.activeGuidebookTab = 'planning';
       this.showFamousPersons = false;
       this.famousPersonsPage = 0;
+      this.selectedFamousPersonId = '';
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
       this.rewardReveal = null;
@@ -280,6 +281,7 @@
         if (this.canvasShell && typeof this.canvasShell.buildingOffset !== 'undefined') this.canvasShell.buildingOffset = this.buildingOffset;
         if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') this.canvasShell.activeBuildingCategory = this.activeBuildingCategory;
         if (this.canvasShell && typeof this.canvasShell.famousPersonsPage !== 'undefined') this.famousPersonsPage = this.canvasShell.famousPersonsPage;
+        if (this.canvasShell && typeof this.canvasShell.selectedFamousPersonId !== 'undefined') this.selectedFamousPersonId = this.canvasShell.selectedFamousPersonId;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         return true;
       }
@@ -294,6 +296,7 @@
         activeGuidebookTab: this.activeGuidebookTab,
         showFamousPersons: this.showFamousPersons,
         famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
+        selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.talentPolicyUiState,
         rewardReveal: this.rewardReveal,
@@ -714,8 +717,28 @@
     changeFamousPersonsPage(action = {}) {
       const delta = Number(action.delta) || 0;
       this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
+      this.selectedFamousPersonId = '';
       if (this.canvasShell && typeof this.canvasShell === 'object') {
         this.canvasShell.famousPersonsPage = this.famousPersonsPage;
+        if ('selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+      }
+      this.renderer?.clearFamousSkillTooltip?.();
+      return this.renderCanvasSurface();
+    }
+
+    openFamousPersonDetail(action = {}) {
+      this.selectedFamousPersonId = action.personId || '';
+      if (this.canvasShell && typeof this.canvasShell === 'object' && 'selectedFamousPersonId' in this.canvasShell) {
+        this.canvasShell.selectedFamousPersonId = this.selectedFamousPersonId;
+      }
+      this.renderer?.clearFamousSkillTooltip?.();
+      return this.renderCanvasSurface();
+    }
+
+    closeFamousPersonDetail() {
+      this.selectedFamousPersonId = '';
+      if (this.canvasShell && typeof this.canvasShell === 'object' && 'selectedFamousPersonId' in this.canvasShell) {
+        this.canvasShell.selectedFamousPersonId = '';
       }
       this.renderer?.clearFamousSkillTooltip?.();
       return this.renderCanvasSurface();
@@ -730,6 +753,8 @@
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.famousPersonsPage = 0;
+      this.selectedFamousPersonId = '';
+      if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
@@ -768,6 +793,7 @@
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.famousPersonsPage = 0;
+      this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
@@ -776,6 +802,7 @@
       this.buildingTransition = null;
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
       if (this.canvasShell) this.canvasShell.techDetailOpen = false;
+      if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
       if (this.state && typeof this.state === 'object') {
         this.state = {
           ...this.state,
@@ -917,8 +944,10 @@
         this.applyApiState(result);
         this.showFamousPersons = true;
         this.famousPersonsPage = 0;
+        this.selectedFamousPersonId = '';
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
         if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
+        if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
         this.showFloatingText(result.message || '寻访完成');
         this.log(result.message || '寻访完成');
         return true;
@@ -935,8 +964,10 @@
         this.applyApiState(result);
         this.showFamousPersons = true;
         this.famousPersonsPage = 0;
+        this.selectedFamousPersonId = '';
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
         if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
+        if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
         this.showFloatingText(result.message || '名人已加入');
         this.log(result.message || '名人已加入');
         return true;
@@ -952,7 +983,9 @@
         const result = await this.getGameApi().dismissFamousPersonCandidate(candidateId);
         this.applyApiState(result);
         this.showFamousPersons = true;
+        this.selectedFamousPersonId = '';
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
         this.showFloatingText(result.message || '已放弃候选');
         this.log(result.message || '已放弃候选');
         return true;
@@ -969,6 +1002,8 @@
         this.applyApiState(result);
         this.showFamousPersons = true;
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+        if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
+        this.selectedFamousPersonId = personId;
         this.showFloatingText(result.message || '属性已提升');
         this.log(result.message || '属性已提升');
         return true;

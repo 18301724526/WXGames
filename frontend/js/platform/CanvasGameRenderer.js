@@ -707,6 +707,270 @@
       return rows * itemHeight + Math.max(0, rows - 1) * itemGap;
     }
 
+    getFamousQualityStyle(frame = 'white') {
+      const styles = {
+        gold: {
+          fill: 'rgba(66, 49, 24, 0.96)',
+          stroke: '#f2c45f',
+          inset: 'rgba(255, 237, 160, 0.38)',
+          glow: 'rgba(242, 196, 95, 0.22)',
+          text: '#ffe6a3',
+        },
+        purple: {
+          fill: 'rgba(48, 35, 63, 0.96)',
+          stroke: '#b68cff',
+          inset: 'rgba(214, 182, 255, 0.28)',
+          glow: 'rgba(182, 140, 255, 0.18)',
+          text: '#dec7ff',
+        },
+        blue: {
+          fill: 'rgba(28, 45, 67, 0.96)',
+          stroke: '#77b7ff',
+          inset: 'rgba(145, 198, 255, 0.24)',
+          glow: 'rgba(119, 183, 255, 0.16)',
+          text: '#b9dcff',
+        },
+        white: {
+          fill: 'rgba(43, 43, 42, 0.96)',
+          stroke: '#d9d8cf',
+          inset: 'rgba(255, 255, 255, 0.18)',
+          glow: 'rgba(255, 255, 255, 0.1)',
+          text: '#eeeee8',
+        },
+      };
+      return styles[frame] || styles.white;
+    }
+
+    drawFamousAvatarCard(card = {}, x, y, width, height, options = {}) {
+      const style = this.getFamousQualityStyle(card.qualityFrame);
+      const selected = Boolean(options.selected);
+      this.drawPanel(x - 2, y - 2, width + 4, height + 4, {
+        fill: selected ? style.glow : 'rgba(0, 0, 0, 0.18)',
+        stroke: selected ? style.stroke : 'rgba(255, 255, 255, 0.06)',
+        radius: 10,
+      });
+      this.drawPanel(x, y, width, height, {
+        fill: style.fill,
+        stroke: style.stroke,
+        radius: 9,
+        inset: style.inset,
+      });
+      const portraitSize = Math.min(width - 14, height - 42);
+      const portraitX = x + (width - portraitSize) / 2;
+      const portraitY = y + 7;
+      const portraitDrawn = this.drawFamousPortrait(card, portraitX, portraitY, portraitSize, {
+        radius: 8,
+        scale: 1.84,
+        offsetY: 0.12,
+        fill: 'rgba(23, 20, 17, 0.8)',
+        stroke: style.stroke,
+      });
+      if (!portraitDrawn) {
+        this.drawText(String(card.name || '名').slice(0, 1), x + width / 2, portraitY + portraitSize / 2, {
+          size: 18,
+          bold: true,
+          color: style.text,
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
+      const badgeText = card.qualityLabel || '';
+      if (badgeText) {
+        const badgeW = Math.min(width - 16, Math.max(34, badgeText.length * 12 + 12));
+        this.drawPanel(x + 6, y + 6, badgeW, 18, {
+          fill: 'rgba(15, 14, 12, 0.7)',
+          stroke: style.stroke,
+          radius: 6,
+        });
+        this.drawText(badgeText, x + 6 + badgeW / 2, y + 15, {
+          size: 9,
+          bold: true,
+          color: style.text,
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
+      const freePoints = Number(card.freeAttributePoints) || 0;
+      if (freePoints > 0) {
+        const dotSize = 22;
+        this.drawPanel(x + width - dotSize - 4, y + 4, dotSize, dotSize, {
+          fill: '#e94560',
+          stroke: 'rgba(255, 255, 255, 0.24)',
+          radius: 11,
+        });
+        this.drawText(String(Math.min(99, freePoints)), x + width - dotSize / 2 - 4, y + 15, {
+          size: 10,
+          bold: true,
+          color: '#fff',
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
+      this.drawText(this.truncateText(card.name || '无名之士', width - 10, { size: 11, bold: true }), x + width / 2, y + height - 28, {
+        size: 11,
+        bold: true,
+        color: '#fff1cf',
+        align: 'center',
+      });
+      this.drawText(`Lv.${card.level || 1}`, x + width / 2, y + height - 12, {
+        size: 9,
+        color: freePoints > 0 ? '#f4c86d' : 'rgba(234, 234, 234, 0.62)',
+        align: 'center',
+      });
+      this.addHitTarget(
+        { x, y, width, height },
+        card.openDetailAction || { type: 'openFamousPersonDetail', personId: card.id || '' },
+      );
+    }
+
+    renderFamousRosterGrid(people = [], x, y, width, maxBottom, page = 0) {
+      if (!Array.isArray(people) || !people.length) return { nextY: y, pageInfo: { index: 0, pages: 1 } };
+      const gap = 8;
+      const columns = width >= 330 ? 3 : 2;
+      const cardWidth = Math.floor((width - gap * (columns - 1)) / columns);
+      const cardHeight = 118;
+      const rowHeight = cardHeight + gap;
+      const pagerReserve = people.length > columns * 2 ? 34 : 0;
+      const availableHeight = Math.max(rowHeight, maxBottom - y - pagerReserve);
+      const rows = Math.max(1, Math.floor(availableHeight / rowHeight));
+      const pageSize = Math.max(columns, columns * rows);
+      const pageInfo = this.normalizeFamousPersonsPage(people.length, page, pageSize);
+      people.slice(pageInfo.index * pageSize, pageInfo.index * pageSize + pageSize).forEach((card, index) => {
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        const cardX = x + col * (cardWidth + gap);
+        const cardY = y + row * rowHeight;
+        this.drawFamousAvatarCard(card, cardX, cardY, cardWidth, cardHeight);
+      });
+      const usedRows = Math.ceil(Math.min(pageSize, people.length - pageInfo.index * pageSize) / columns);
+      return {
+        nextY: y + usedRows * rowHeight,
+        pageInfo,
+      };
+    }
+
+    renderFamousPersonDetail(card = {}, x, y, width, height) {
+      const style = this.getFamousQualityStyle(card.qualityFrame);
+      const headerH = 126;
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(23, 21, 18, 0.74)',
+        stroke: style.stroke,
+        radius: 10,
+        inset: style.inset,
+      });
+      const portraitW = 96;
+      const portraitH = 116;
+      const portraitX = x + 12;
+      const portraitY = y + 10;
+      this.drawPanel(portraitX, portraitY, portraitW, portraitH, {
+        fill: style.fill,
+        stroke: style.stroke,
+        radius: 10,
+        inset: style.inset,
+      });
+      this.drawFamousPortrait(card, portraitX, portraitY, Math.min(portraitW, portraitH), {
+        radius: 10,
+        scale: 1.75,
+        offsetY: 0.12,
+        frameWidth: portraitW,
+        frameHeight: portraitH,
+        fill: style.fill,
+        stroke: style.stroke,
+      });
+      const textX = portraitX + portraitW + 12;
+      const textWidth = width - portraitW - 38;
+      this.drawText(this.truncateText(card.name || '无名之士', textWidth, { size: 18, bold: true }), textX, y + 15, {
+        size: 18,
+        bold: true,
+        color: '#fff1cf',
+      });
+      this.drawText(this.truncateText(card.title || '名人', textWidth, { size: 11 }), textX, y + 41, {
+        size: 11,
+        color: '#cbbd96',
+      });
+      this.drawText(`${card.qualityLabel || '一般'} · ${card.roleText || '人才'} · ${card.statusText || '待命'}`, textX, y + 61, {
+        size: 10,
+        color: style.text,
+      });
+      this.drawText(card.growthText || `等级 ${card.level || 1}`, textX, y + 82, {
+        size: 11,
+        color: '#f4c86d',
+      });
+      this.drawText(card.pointText || '可分配属性点 0', textX, y + 101, {
+        size: 11,
+        bold: true,
+        color: Number(card.freeAttributePoints) > 0 ? '#f4c86d' : 'rgba(234, 234, 234, 0.62)',
+      });
+      if (card.attributePointHint) {
+        this.drawText(this.truncateText(card.attributePointHint, textWidth, { size: 10 }), textX, y + 118, {
+          size: 10,
+          color: Number(card.freeAttributePoints) > 0 ? '#ffd98a' : '#aeb0b8',
+        });
+      }
+
+      const radarSize = 118;
+      const radarX = x + width - radarSize - 14;
+      const radarY = y + headerH + 12;
+      this.drawFamousAttributeRadar(card.attributes || [], radarX, radarY, radarSize);
+      const attrX = x + 14;
+      const attrY = y + headerH + 14;
+      const attrWidth = Math.max(150, radarX - attrX - 12);
+      this.drawText('六维', attrX, attrY - 2, { size: 13, bold: true, color: '#ffe6b5' });
+      const controlsHeight = this.drawFamousAttributePointControls(card, attrX, attrY + 18, attrWidth);
+      if (!controlsHeight) {
+        const rowGap = 6;
+        const rowH = 22;
+        const colW = Math.floor((attrWidth - 8) / 2);
+        (card.attributes || []).forEach((attr, index) => {
+          const col = index % 2;
+          const row = Math.floor(index / 2);
+          const itemX = attrX + col * (colW + 8);
+          const itemY = attrY + 18 + row * (rowH + rowGap);
+          this.drawPanel(itemX, itemY, colW, rowH, {
+            fill: 'rgba(31, 52, 41, 0.42)',
+            stroke: 'rgba(116, 211, 160, 0.16)',
+            radius: 6,
+          });
+          this.drawText(`${attr.label || ''} ${Math.floor(Number(attr.value) || 0)}`, itemX + 7, itemY + rowH / 2, {
+            size: 10,
+            color: '#d8e8d5',
+            baseline: 'middle',
+          });
+        });
+      }
+
+      const skillY = Math.min(y + height - 92, y + headerH + 150);
+      this.drawText('技能', x + 14, skillY, { size: 13, bold: true, color: '#ffe6b5' });
+      const skillDetails = Array.isArray(card.skillDetails) ? card.skillDetails : [];
+      const badges = Array.isArray(card.skillBadges) ? card.skillBadges : [];
+      badges.slice(0, 2).forEach((badge, index) => {
+        const skill = skillDetails[index] || {};
+        const badgeY = skillY + 20 + index * 30;
+        const badgeH = 24;
+        this.drawPanel(x + 14, badgeY, width - 28, badgeH, {
+          fill: index === 0 ? 'rgba(47, 92, 69, 0.54)' : 'rgba(96, 73, 35, 0.54)',
+          stroke: index === 0 ? 'rgba(116, 211, 160, 0.28)' : 'rgba(255, 217, 138, 0.28)',
+          radius: 7,
+        });
+        this.drawText(this.truncateText(badge.text || skill.name || '技能', width - 46, { size: 11, bold: true }), x + 24, badgeY + badgeH / 2, {
+          size: 11,
+          bold: true,
+          color: index === 0 ? '#bdf2cf' : '#ffe0a3',
+          baseline: 'middle',
+        });
+        const action = {
+          type: 'showFamousSkillTooltip',
+          cardId: card.id || '',
+          skillIndex: index,
+          skill,
+        };
+        const rect = { x: x + 14, y: badgeY, width: width - 28, height: badgeH };
+        this.famousSkillHitTargets.push({ ...rect, action });
+        this.addHitTarget(rect, action);
+        if (this.hoverPoint && this.containsPoint(rect, this.hoverPoint)) this.activeFamousSkillTooltip = action;
+      });
+    }
+
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
       if (!activeTurn) return 'idle';
       if (phase === 'prepare' || phase === 'cutin' || phase === 'settle') return 'idle';
@@ -2811,12 +3075,15 @@
 
     renderFamousPersonsPanel(state = {}, options = {}) {
       if (!this.presenter || typeof this.presenter.buildFamousPersonViewState !== 'function') return;
-      const view = this.presenter.buildFamousPersonViewState(state);
+      const view = this.presenter.buildFamousPersonViewState(state, {
+        selectedPersonId: options.selectedFamousPersonId,
+      });
       const layout = this.getLayout();
       const panelWidth = Math.min(390, layout.contentWidth - 6);
       const panelHeight = Math.min(620, Math.max(470, this.height - 112));
       const x = (this.width - panelWidth) / 2;
       const y = Math.max(48, (this.height - panelHeight) / 2 - 8);
+      const selectedPerson = view.selectedPerson || null;
 
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeFamousPersons' });
       if (this.ctx) {
@@ -2843,7 +3110,10 @@
 
       const backW = 58;
       this.drawButton(x + 12, y + 12, backW, 30, '返回', { size: 12, radius: 8 });
-      this.addHitTarget({ x: x + 12, y: y + 12, width: backW, height: 30 }, { type: 'closeFamousPersons' });
+      this.addHitTarget(
+        { x: x + 12, y: y + 12, width: backW, height: 30 },
+        selectedPerson ? { type: 'closeFamousPersonDetail' } : { type: 'closeFamousPersons' },
+      );
       this.drawText(view.title || '名人', x + panelWidth / 2, y + 18, {
         size: 18,
         bold: true,
@@ -2859,6 +3129,20 @@
       const innerX = x + 14;
       const innerWidth = panelWidth - 28;
       let cursorY = y + 72;
+
+      if (selectedPerson) {
+        this.renderFamousPersonDetail(selectedPerson, innerX, cursorY, innerWidth, y + panelHeight - 90 - cursorY);
+        const hoverTooltip = this.hoverPoint ? this.getFamousSkillTooltipAction(this.hoverPoint) : null;
+        if (hoverTooltip) this.activeFamousSkillTooltip = hoverTooltip;
+        const pinnedStillVisible = this.pinnedFamousSkillTooltip
+          && this.famousSkillHitTargets.some((target) => (
+            this.isSameFamousSkillTooltipAction(target.action, this.pinnedFamousSkillTooltip)
+          ));
+        if (!pinnedStillVisible) this.pinnedFamousSkillTooltip = null;
+        this.renderFamousSkillTooltip(this.activeFamousSkillTooltip || this.pinnedFamousSkillTooltip);
+        return;
+      }
+
       this.drawPanel(innerX, cursorY, innerWidth, 58, {
         fill: 'rgba(24, 22, 17, 0.62)',
         stroke: 'rgba(240, 180, 91, 0.2)',
@@ -2910,16 +3194,15 @@
           lineHeight: 17,
         });
       } else {
-        const itemHeight = people.some((card) => card?.freeAttributePoints > 0) ? 214 : (people.some((card) => card?.pointText) ? 146 : 134);
-        const pagerReserve = people.length > 3 ? 34 : 0;
-        const availableHeight = Math.max(0, y + panelHeight - 18 - pagerReserve - cursorY);
-        const visibleCount = Math.max(1, Math.min(3, Math.floor(availableHeight / itemHeight)));
-        const pageInfo = this.normalizeFamousPersonsPage(people.length, options.famousPersonsPage, visibleCount);
-        people.slice(pageInfo.index * visibleCount, pageInfo.index * visibleCount + visibleCount).forEach((card) => {
-          const cardHeight = card?.freeAttributePoints > 0 ? 204 : (card?.pointText ? 136 : 124);
-          if (cursorY + cardHeight > y + panelHeight - 18 - pagerReserve) return;
-          cursorY = this.renderFamousPersonItem(card, innerX, cursorY, innerWidth);
-        });
+        const grid = this.renderFamousRosterGrid(
+          people,
+          innerX,
+          cursorY,
+          innerWidth,
+          y + panelHeight - 52,
+          options.famousPersonsPage,
+        );
+        const pageInfo = grid.pageInfo;
         if (pageInfo.pages > 1) this.renderFamousPersonsPager(innerX, y + panelHeight - 42, innerWidth, pageInfo.index, pageInfo.pages);
       }
       const hoverTooltip = this.hoverPoint ? this.getFamousSkillTooltipAction(this.hoverPoint) : null;

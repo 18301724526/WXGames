@@ -694,6 +694,34 @@
       return Array.isArray(person.skills) ? person.skills : [];
     }
 
+    static getFamousPersonQualityInfo(quality = '') {
+      const key = String(quality || 'common').trim() || 'common';
+      const map = {
+        legendary: { key: 'legendary', label: '传奇', rank: 4, frame: 'gold' },
+        great: { key: 'great', label: '英杰', rank: 3, frame: 'purple' },
+        good: { key: 'good', label: '良才', rank: 2, frame: 'blue' },
+        common: { key: 'common', label: '一般', rank: 1, frame: 'white' },
+      };
+      return map[key] || map.common;
+    }
+
+    static getNextFamousAttributePointLevel(level = 1) {
+      const current = Math.max(1, this.toInteger(level, 1));
+      return Math.max(10, Math.ceil((current + 1) / 10) * 10);
+    }
+
+    static sortFamousPeopleForRoster(people = []) {
+      return [...people].sort((a, b) => {
+        const rankA = this.getFamousPersonQualityInfo(a?.quality).rank;
+        const rankB = this.getFamousPersonQualityInfo(b?.quality).rank;
+        if (rankA !== rankB) return rankB - rankA;
+        const levelA = this.toInteger(a?.level, 1);
+        const levelB = this.toInteger(b?.level, 1);
+        if (levelA !== levelB) return levelB - levelA;
+        return String(a?.name || '').localeCompare(String(b?.name || ''), 'zh-CN');
+      });
+    }
+
     static buildFamousPersonCard(person = {}, options = {}) {
       const attrs = person.attributes || {};
       const roleLabels = {
@@ -732,10 +760,15 @@
       const experience = Math.max(0, this.toInteger(person.experience, 0));
       const nextLevelExperience = Math.max(0, this.toInteger(person.nextLevelExperience, 0));
       const freeAttributePoints = Math.max(0, this.toInteger(person.freeAttributePoints, 0));
+      const qualityInfo = this.getFamousPersonQualityInfo(person.quality);
       const growthText = !isCandidate
         ? (nextLevelExperience > 0 ? `等级 ${level} · 经验 ${experience}/${nextLevelExperience}` : `等级 ${level}`)
         : '';
-      const pointText = !isCandidate && freeAttributePoints > 0 ? `可分配属性点 ${freeAttributePoints}` : '';
+      const nextAttributePointLevel = isCandidate ? null : this.getNextFamousAttributePointLevel(level);
+      const pointText = !isCandidate ? `可分配属性点 ${freeAttributePoints}` : '';
+      const attributePointHint = !isCandidate
+        ? (freeAttributePoints > 0 ? `可分配 ${freeAttributePoints} 点` : `下次属性点：Lv.${nextAttributePointLevel}`)
+        : '';
       const attributeActions = !isCandidate && freeAttributePoints > 0
         ? attributes.map((item) => ({
           type: 'assignFamousAttributePoint',
@@ -748,12 +781,18 @@
         id: person.id || '',
         name: person.name || '无名之士',
         title: person.title || person.archetypeLabel || '名人',
+        quality: qualityInfo.key,
+        qualityLabel: person.qualityLabel || qualityInfo.label,
+        qualityRank: qualityInfo.rank,
+        qualityFrame: qualityInfo.frame,
         roleText: roles,
         sourceText: this.formatFamousPersonSource(person.source),
         level: isCandidate ? null : level,
         experience: isCandidate ? null : experience,
         nextLevelExperience: isCandidate ? null : nextLevelExperience,
         freeAttributePoints: isCandidate ? null : freeAttributePoints,
+        nextAttributePointLevel,
+        attributePointHint,
         growthText,
         pointText,
         stats,
@@ -764,10 +803,11 @@
         skillBadges,
         appearance: person.appearance && typeof person.appearance === 'object' ? person.appearance : null,
         statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
+        openDetailAction: isCandidate ? null : { type: 'openFamousPersonDetail', personId: person.id || '' },
       };
     }
 
-    static buildFamousPersonViewState(state = {}) {
+    static buildFamousPersonViewState(state = {}, options = {}) {
       const famous = state.famousPersons || {};
       const people = Array.isArray(famous.people) ? famous.people : [];
       const candidates = Array.isArray(famous.candidates) ? famous.candidates : [];
@@ -776,9 +816,14 @@
       const maxCandidates = this.toInteger(famous.maxCandidates, 3);
       const seekAvailable = Boolean(seek.available);
       const seekText = seekAvailable ? '寻访' : '暂不可寻访';
+      const sortedPeople = this.sortFamousPeopleForRoster(people).map((person) => this.buildFamousPersonCard(person));
+      const selectedPersonId = String(options.selectedPersonId || '');
+      const selectedPerson = selectedPersonId
+        ? sortedPeople.find((person) => person.id === selectedPersonId) || null
+        : null;
       return {
         title: '名人',
-        subtitle: '查看名人能力与六维属性',
+        subtitle: '按品质查看名人，点击头像查看详情与加点',
         peopleCount: this.toInteger(famous.count ?? people.length),
         candidateCount,
         maxCandidates,
@@ -789,7 +834,8 @@
           count: this.toInteger(seek.count),
           action: { type: 'seekFamousPerson', disabled: !seekAvailable },
         },
-        people: people.map((person) => this.buildFamousPersonCard(person)),
+        people: sortedPeople,
+        selectedPerson,
         candidates: candidates.map((person) => ({
           ...this.buildFamousPersonCard(person, { candidate: true }),
           acceptAction: { type: 'acceptFamousPerson', candidateId: person.id },

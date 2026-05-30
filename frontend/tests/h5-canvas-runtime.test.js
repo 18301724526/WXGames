@@ -265,6 +265,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       activeGuidebookTab: 'planning',
       showFamousPersons: false,
       famousPersonsPage: 0,
+      selectedFamousPersonId: '',
       showTalentPolicy: false,
       talentPolicyUiState: {},
       logs: [],
@@ -466,11 +467,14 @@ test('Canvas game shell changes famous person pages locally', () => {
     },
   });
   shell.showFamousPersons = true;
+  shell.selectedFamousPersonId = 'fp_a';
 
   listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1000 });
   assert.equal(shell.famousPersonsPage, 1);
+  assert.equal(shell.selectedFamousPersonId, '');
   assert.equal(clearCalls.length, 1);
   assert.equal(renderCalls.at(-1).options.famousPersonsPage, 1);
+  assert.equal(renderCalls.at(-1).options.selectedFamousPersonId, '');
 
   listeners['document:pointerup']({ clientX: 205, clientY: 442, type: 'pointerup', timeStamp: 1300 });
   assert.equal(shell.famousPersonsPage, 0);
@@ -520,11 +524,11 @@ test('Canvas shell click on famous person pager changes the rendered page', () =
       currentEra: 3,
       population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
       famousPersons: {
-        count: 6,
+        count: 10,
         candidateCount: 0,
         maxCandidates: 3,
         seek: { available: true, count: 1 },
-        people: [1, 2, 3, 4, 5, 6].map(makePerson),
+        people: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(makePerson),
         candidates: [],
       },
     },
@@ -550,6 +554,81 @@ test('Canvas shell click on famous person pager changes the rendered page', () =
 
   assert.equal(shell.famousPersonsPage, 1);
   assert.equal(renderCalls.at(-1).options.famousPersonsPage, 1);
+});
+
+test('Canvas shell click on famous avatar opens detail page locally', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const renderCalls = [];
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  const ctx = createDrawingContext();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ text: { foodValue: '0', foodRate: '+0/s', knowledgeValue: '0', knowledgeRate: '+0/s' } }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildTaskCenterViewState: UIStatePresenter.buildTaskCenterViewState.bind(UIStatePresenter),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildHomeFeatureViewState: UIStatePresenter.buildHomeFeatureViewState.bind(UIStatePresenter),
+    buildFamousPersonViewState: UIStatePresenter.buildFamousPersonViewState.bind(UIStatePresenter),
+  });
+  const originalRender = renderer.render.bind(renderer);
+  renderer.render = (state, options) => {
+    renderCalls.push({ state, options });
+    return originalRender(state, options);
+  };
+  const shell = CanvasGameShell.mount({
+    state: {
+      currentTab: 'resources',
+      currentEra: 3,
+      population: { total: 3, unassigned: 1, farmers: 1, scholars: 1, craftsmen: 1 },
+      famousPersons: {
+        count: 1,
+        candidateCount: 0,
+        maxCandidates: 3,
+        seek: { available: true, count: 1 },
+        people: [{
+          id: 'fp_a',
+          name: '陆骁',
+          title: '破阵先登',
+          quality: 'legendary',
+          level: 10,
+          freeAttributePoints: 10,
+          attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
+          abilityKit: {
+            abilities: [
+              { id: 'skill_a', name: '血刃破阵', slot: 'activeSkill', kind: 'active', cooldown: 3, effects: [{ key: 'directDamage' }] },
+              { id: 'trait_a', name: '锐锋', slot: 'passiveTrait', kind: 'passive', trigger: 'preBattle', effects: [{ key: 'attributeBonus' }] },
+            ],
+          },
+        }],
+        candidates: [],
+      },
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.showFamousPersons = true;
+  shell.renderActive();
+  const avatarTarget = renderer.hitTargets.find((target) => target.action?.type === 'openFamousPersonDetail' && target.action.personId === 'fp_a');
+  assert.ok(avatarTarget);
+
+  listeners['document:pointerup']({
+    clientX: 10 + avatarTarget.x + avatarTarget.width / 2,
+    clientY: 20 + avatarTarget.y + avatarTarget.height / 2,
+    type: 'pointerup',
+    timeStamp: 1000,
+  });
+
+  assert.equal(shell.selectedFamousPersonId, 'fp_a');
+  assert.equal(renderCalls.at(-1).options.selectedFamousPersonId, 'fp_a');
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignFamousAttributePoint' && target.action.personId === 'fp_a'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeFamousPersonDetail'));
 });
 
 test('H5 canvas runtime ignores duplicate compatibility events for the same tap', () => {
@@ -2704,23 +2783,28 @@ test('Canvas game app keeps famous person panel open through seek and accept act
     apiRequired: false,
     rendererRequired: false,
   });
-  app.canvasShell = { showFamousPersons: false, showFloatingText: () => true };
+  app.canvasShell = { showFamousPersons: false, selectedFamousPersonId: '', showFloatingText: () => true };
 
   const seekResult = await app.actionController.handle({ type: 'seekFamousPerson' });
   assert.equal(seekResult, true);
   assert.equal(app.showFamousPersons, true);
   assert.equal(app.canvasShell.showFamousPersons, true);
+  assert.equal(app.selectedFamousPersonId, '');
+  assert.equal(app.canvasShell.selectedFamousPersonId, '');
   assert.equal(app.state.famousPersons.candidateCount, 1);
 
   const acceptResult = await app.actionController.handle({ type: 'acceptFamousPerson', candidateId: 'fpc_a' });
   assert.equal(acceptResult, true);
   assert.equal(app.showFamousPersons, true);
+  assert.equal(app.selectedFamousPersonId, '');
   assert.equal(app.state.famousPersons.count, 1);
 
   const assignResult = await app.actionController.handle({ type: 'assignFamousAttributePoint', personId: 'fp_a', attribute: 'command' });
   assert.equal(assignResult, true);
   assert.equal(app.showFamousPersons, true);
   assert.equal(app.canvasShell.showFamousPersons, true);
+  assert.equal(app.selectedFamousPersonId, 'fp_a');
+  assert.equal(app.canvasShell.selectedFamousPersonId, 'fp_a');
   assert.equal(app.state.famousPersons.people[0].freeAttributePoints, 1);
   assert.equal(app.state.famousPersons.people[0].attributes.command, 71);
 });
@@ -2947,9 +3031,9 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
-  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=famous-attribute-points-v1[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=famous-attribute-points-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=famous-attribute-points-v1[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=famous-person-pager-v2[\s\S]*js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=famous-person-pager-v2[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=famous-roster-detail-v1[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=famous-roster-detail-v1/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=famous-roster-detail-v1[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=famous-roster-detail-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=famous-roster-detail-v1/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=famous-roster-detail-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

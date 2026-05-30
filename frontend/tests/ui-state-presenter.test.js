@@ -174,6 +174,7 @@ test('famous person view state maps candidates and joined people into panel card
         experience: 35,
         nextLevelExperience: 190,
         freeAttributePoints: 4,
+        quality: 'great',
         roles: ['military'],
         attributes: { command: 70, force: 82, intelligence: 40, politics: 28, charisma: 55, speed: 66 },
         abilityKit: {
@@ -225,6 +226,11 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.people[0].name, '陆骁');
   assert.equal(view.people[0].growthText, '等级 2 · 经验 35/190');
   assert.equal(view.people[0].pointText, '可分配属性点 4');
+  assert.equal(view.people[0].attributePointHint, '可分配 4 点');
+  assert.equal(view.people[0].qualityLabel, '英杰');
+  assert.equal(view.people[0].qualityFrame, 'purple');
+  assert.equal(view.people[0].qualityRank, 3);
+  assert.deepEqual(view.people[0].openDetailAction, { type: 'openFamousPersonDetail', personId: 'fp_a' });
   assert.equal(view.people[0].level, 2);
   assert.deepEqual(view.people[0].attributeActions.map((item) => [item.type, item.personId, item.attribute]), [
     ['assignFamousAttributePoint', 'fp_a', 'command'],
@@ -256,12 +262,49 @@ test('famous person view state maps candidates and joined people into panel card
   assert.equal(view.candidates[0].growthText, '');
   assert.equal(view.candidates[0].level, null);
   assert.deepEqual(view.candidates[0].attributeActions, []);
+  assert.equal(view.candidates[0].openDetailAction, null);
   assert.match(view.candidates[0].skills[0], /资源产出/);
   assert.equal(view.candidates[0].skillDetails[0].kindText, '内政主技');
   assert.match(view.candidates[0].skillDetails[0].meta, /暂未接入实际收益/);
   assert.equal(view.candidates[0].skillDetails[1].kindText, '内政副技');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'fpc_b' });
   assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });
+});
+
+test('famous person view state sorts joined roster by quality and exposes detail selection hints', () => {
+  const makePerson = (id, name, quality, level, freeAttributePoints = 0) => ({
+    id,
+    name,
+    quality,
+    level,
+    freeAttributePoints,
+    attributes: { command: 50, force: 50, intelligence: 50, politics: 50, charisma: 50, speed: 50 },
+    abilityKit: { abilities: [] },
+  });
+  const state = {
+    famousPersons: {
+      seek: { available: true },
+      people: [
+        makePerson('fp_good_high', '蓝高', 'good', 16),
+        makePerson('fp_legend', '金将', 'legendary', 3),
+        makePerson('fp_common', '白将', 'common', 99),
+        makePerson('fp_good_low', '蓝低', 'good', 4),
+      ],
+      candidates: [],
+    },
+  };
+  const view = UIStatePresenter.buildFamousPersonViewState(state, { selectedPersonId: 'fp_good_low' });
+
+  assert.deepEqual(view.people.map((person) => person.id), ['fp_legend', 'fp_good_high', 'fp_good_low', 'fp_common']);
+  assert.equal(view.people[0].qualityFrame, 'gold');
+  assert.equal(view.people[1].qualityFrame, 'blue');
+  assert.equal(view.people[2].pointText, '可分配属性点 0');
+  assert.equal(view.people[2].attributePointHint, '下次属性点：Lv.10');
+  assert.equal(view.people[2].nextAttributePointLevel, 10);
+  assert.equal(view.people[1].attributePointHint, '下次属性点：Lv.20');
+  assert.equal(view.people[1].nextAttributePointLevel, 20);
+  assert.equal(view.selectedPerson.id, 'fp_good_low');
+  assert.deepEqual(view.selectedPerson.openDetailAction, { type: 'openFamousPersonDetail', personId: 'fp_good_low' });
 });
 
 test('resource view state is renderer-neutral and formats resource display', () => {
