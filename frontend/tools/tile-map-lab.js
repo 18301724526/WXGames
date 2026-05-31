@@ -97,6 +97,23 @@
     'se-sw-mouth-sw': { label: 'ocean se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-se-sw-mouth-sw.png' },
     'sw-mouth-sw': { label: 'ocean sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-sw-mouth-sw.png' },
   };
+  const COAST_TEMPLATE_ASSETS = {
+    nw: { label: 'land coast nw', file: 'tile-map/coast-template/tile-coast-template-nw.png' },
+    ne: { label: 'land coast ne', file: 'tile-map/coast-template/tile-coast-template-ne.png' },
+    se: { label: 'land coast se', file: 'tile-map/coast-template/tile-coast-template-se.png' },
+    sw: { label: 'land coast sw', file: 'tile-map/coast-template/tile-coast-template-sw.png' },
+    'nw-ne': { label: 'land coast nw-ne', file: 'tile-map/coast-template/tile-coast-template-nw-ne.png' },
+    'nw-se': { label: 'land coast nw-se', file: 'tile-map/coast-template/tile-coast-template-nw-se.png' },
+    'nw-sw': { label: 'land coast nw-sw', file: 'tile-map/coast-template/tile-coast-template-nw-sw.png' },
+    'ne-se': { label: 'land coast ne-se', file: 'tile-map/coast-template/tile-coast-template-ne-se.png' },
+    'ne-sw': { label: 'land coast ne-sw', file: 'tile-map/coast-template/tile-coast-template-ne-sw.png' },
+    'se-sw': { label: 'land coast se-sw', file: 'tile-map/coast-template/tile-coast-template-se-sw.png' },
+    'nw-ne-se': { label: 'land coast nw-ne-se', file: 'tile-map/coast-template/tile-coast-template-nw-ne-se.png' },
+    'nw-ne-sw': { label: 'land coast nw-ne-sw', file: 'tile-map/coast-template/tile-coast-template-nw-ne-sw.png' },
+    'nw-se-sw': { label: 'land coast nw-se-sw', file: 'tile-map/coast-template/tile-coast-template-nw-se-sw.png' },
+    'ne-se-sw': { label: 'land coast ne-se-sw', file: 'tile-map/coast-template/tile-coast-template-ne-se-sw.png' },
+    'nw-ne-se-sw': { label: 'land coast nw-ne-se-sw', file: 'tile-map/coast-template/tile-coast-template-nw-ne-se-sw.png' },
+  };
   const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
     hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
@@ -257,18 +274,19 @@
   function getOceanCoastSides(tile) {
     return TILE_SIDE_ORDER.filter((side) => {
       const dir = OCEAN_SIDE_DIRECTIONS[side];
-      return !isOceanCoord(tile.q + dir.dq, tile.r + dir.dr, state.radius);
+      const q = tile.q + dir.dq;
+      const r = tile.r + dir.dr;
+      return isCoordInRadius(q, r, state.radius) && !isOceanCoord(q, r, state.radius);
     });
   }
 
   function getOceanTemplateKey(tile) {
-    if (tile.isPadding) return 'full';
     const coastSides = getOceanCoastSides(tile);
     return coastSides.length ? coastSides.join('-') : 'full';
   }
 
   function getOceanMouthSide(tile) {
-    if (tile.terrain !== 'ocean' || tile.isPadding) return '';
+    if (tile.terrain !== 'ocean') return '';
     const coastSides = getOceanCoastSides(tile);
     return coastSides.find((side) => {
       const dir = OCEAN_SIDE_DIRECTIONS[side];
@@ -289,6 +307,28 @@
     if (tile.terrain !== 'ocean') return null;
     const key = getOceanTemplateVariantKey(tile);
     return OCEAN_MOUTH_TEMPLATE_ASSETS[key] || OCEAN_TEMPLATE_ASSETS[key] || OCEAN_TEMPLATE_ASSETS.full;
+  }
+
+  function getLandCoastSides(tile) {
+    if (tile.terrain === 'ocean' || isRiverTile(tile.q, tile.r)) return [];
+    return TILE_SIDE_ORDER.filter((side) => {
+      const dir = OCEAN_SIDE_DIRECTIONS[side];
+      return isOceanCoord(tile.q + dir.dq, tile.r + dir.dr, state.radius);
+    });
+  }
+
+  function getCoastTemplateKey(tile) {
+    const sides = getLandCoastSides(tile);
+    return sides.length ? sides.join('-') : '';
+  }
+
+  function getCoastTemplateAsset(tile) {
+    const key = getCoastTemplateKey(tile);
+    return key ? COAST_TEMPLATE_ASSETS[key] || null : null;
+  }
+
+  function getTileTemplateAsset(tile) {
+    return getOceanTemplateAsset(tile) || getRiverTemplateAsset(tile) || getCoastTemplateAsset(tile);
   }
 
   function hasRiverNearby(q, r, radius = 1) {
@@ -484,16 +524,10 @@
     );
   }
 
-  function isOceanPaddingCoord(q, r, radius, realOceanIds) {
-    if (isCoordInRadius(q, r, radius)) return false;
-    return RIVER_DIRECTIONS.some((dir) => realOceanIds.has(getTileId(q + dir.dq, r + dir.dr)));
-  }
-
   function buildTiles() {
     const nextTiles = [];
     const radius = state.radius;
     riverConnections = createRiverConnections(radius);
-    const realOceanIds = new Set();
     for (let q = -radius; q <= radius; q += 1) {
       const minR = Math.max(-radius, -q - radius);
       const maxR = Math.min(radius, -q + radius);
@@ -501,7 +535,6 @@
         const s = -q - r;
         const ring = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
         const terrain = isOceanCoord(q, r, radius) ? 'ocean' : chooseTerrain(q, r);
-        if (terrain === 'ocean') realOceanIds.add(getTileId(q, r));
         const pond = terrain === 'ocean' ? false : choosePond(q, r, terrain, ring);
         const site = terrain === 'ocean' || pond ? null : chooseSite(q, r, terrain, ring);
         nextTiles.push({
@@ -513,24 +546,6 @@
           terrain,
           pond,
           site,
-        });
-      }
-    }
-    for (let q = -radius - 1; q <= radius + 1; q += 1) {
-      const minR = Math.max(-radius - 1, -q - radius - 1);
-      const maxR = Math.min(radius + 1, -q + radius + 1);
-      for (let r = minR; r <= maxR; r += 1) {
-        if (!isOceanPaddingCoord(q, r, radius, realOceanIds)) continue;
-        nextTiles.push({
-          id: getTileId(q, r),
-          q,
-          r,
-          s: -q - r,
-          ring: radius + 1,
-          terrain: 'ocean',
-          pond: false,
-          site: null,
-          isPadding: true,
         });
       }
     }
@@ -575,7 +590,6 @@
     let best = null;
     let bestDistance = Infinity;
     for (const tile of tiles) {
-      if (tile.isPadding) continue;
       const projected = getProjectedPosition(tile);
       const dx = point.x - projected.x;
       const dy = point.y - projected.y;
@@ -617,7 +631,9 @@
   }
 
   function isWaterTemplateFile(file) {
-    return file.includes('river-template/') || file.includes('ocean-template/');
+    return file.includes('river-template/')
+      || file.includes('ocean-template/')
+      || file.includes('coast-template/');
   }
 
   function measurePixelBounds(data, width, height, predicate) {
@@ -782,6 +798,11 @@
     return imageMetrics.get(file) || getFallbackMetrics(image);
   }
 
+  function getTemplateDrawMetrics(templateAsset) {
+    if (templateAsset?.file?.includes('coast-template/tile-coast-template-')) return getTerrainMetrics('plains');
+    return getImageMetrics(templateAsset.file);
+  }
+
   function getTerrainMetrics(type = 'plains') {
     const terrain = TERRAIN_ASSETS[type] || TERRAIN_ASSETS.plains;
     return getImageMetrics(terrain.file);
@@ -840,6 +861,7 @@
       ...Object.values(RIVER_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(OCEAN_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(OCEAN_MOUTH_TEMPLATE_ASSETS).map((item) => item.file),
+      ...Object.values(COAST_TEMPLATE_ASSETS).map((item) => item.file),
     ];
     const results = await Promise.all(files.map(loadImage));
     rebuildWaterTemplateCaches(files);
@@ -908,6 +930,7 @@
 
   function getWaterKind(tile) {
     if (tile.terrain === 'ocean') return 'ocean';
+    if (getCoastTemplateAsset(tile)) return 'ocean';
     if (isRiverTile(tile.q, tile.r)) return 'river';
     return '';
   }
@@ -993,11 +1016,11 @@
     waterLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
     waterLayerCtx.clearRect(0, 0, width, height);
     for (const tile of sortedTiles) {
-      const templateAsset = getOceanTemplateAsset(tile) || getRiverTemplateAsset(tile);
+      const templateAsset = getTileTemplateAsset(tile);
       if (!templateAsset || !getWaterKind(tile)) continue;
       const projected = getProjectedPosition(tile);
       const tileSize = getTileDrawSize('plains');
-      const metrics = getImageMetrics(templateAsset.file);
+      const metrics = getTemplateDrawMetrics(templateAsset);
       const drawW = tileSize.width * state.zoom;
       const drawH = tileSize.height * state.zoom;
       drawWaterToLayer(
@@ -1027,9 +1050,7 @@
     staticBaseCtx.setTransform(1, 0, 0, 1, 0, 0);
     staticBaseCtx.clearRect(0, 0, width, height);
     drawBackground(width, height, staticBaseCtx);
-    for (const tile of sortedTiles) {
-      if (!tile.isPadding) drawTile(staticBaseCtx, tile);
-    }
+    for (const tile of sortedTiles) drawTile(staticBaseCtx, tile);
     for (const tile of sortedTiles) drawPond(tile, staticBaseCtx);
     for (const tile of sortedTiles) drawTerrainFeature(staticBaseCtx, tile);
     for (const tile of sortedTiles) drawSite(tile, staticBaseCtx);
@@ -1037,14 +1058,14 @@
   }
 
   function drawTile(targetCtx, tile) {
-    const templateAsset = getOceanTemplateAsset(tile) || getRiverTemplateAsset(tile);
+    const templateAsset = getTileTemplateAsset(tile);
     const baseFile = templateAsset?.file || TERRAIN_ASSETS.plains.file;
     const baseImage = images.get(baseFile);
     if (!baseImage || !baseImage.complete) return;
     const sourceImage = dryTemplateCanvases.get(baseFile) || baseImage;
     const projected = getProjectedPosition(tile);
     const tileSize = getTileDrawSize('plains');
-    const metrics = templateAsset ? getImageMetrics(templateAsset.file) : tileSize.metrics;
+    const metrics = templateAsset ? getTemplateDrawMetrics(templateAsset) : tileSize.metrics;
     const drawW = tileSize.width * state.zoom;
     const drawH = tileSize.height * state.zoom;
     const drawX = projected.x - drawW * 0.5;
@@ -1339,7 +1360,6 @@
     const height = canvas.clientHeight;
 
     const sorted = tiles.slice().sort((a, b) => {
-      if (a.isPadding !== b.isPadding) return a.isPadding ? -1 : 1;
       const pa = getTilePosition(a);
       const pb = getTilePosition(b);
       return pa.y - pb.y || pa.x - pb.x || a.ring - b.ring;
@@ -1405,10 +1425,13 @@
       effectiveOceanMouthTemplates: Object.fromEntries(
         Object.entries(OCEAN_MOUTH_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
-      riverTiles: tiles.filter((tile) => !tile.isPadding && isRiverTile(tile.q, tile.r)).length,
-      oceanTiles: tiles.filter((tile) => !tile.isPadding && tile.terrain === 'ocean').length,
-      oceanPaddingTiles: tiles.filter((tile) => tile.isPadding).length,
-      riverMouthOceanTiles: tiles.filter((tile) => !tile.isPadding && tile.terrain === 'ocean' && getOceanMouthSide(tile)).length,
+      effectiveCoastTemplates: Object.fromEntries(
+        Object.entries(COAST_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
+      riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
+      oceanTiles: tiles.filter((tile) => tile.terrain === 'ocean').length,
+      landCoastTiles: tiles.filter((tile) => tile.terrain !== 'ocean' && getCoastTemplateKey(tile)).length,
+      riverMouthOceanTiles: tiles.filter((tile) => tile.terrain === 'ocean' && getOceanMouthSide(tile)).length,
       pondTiles: tiles.filter((tile) => tile.pond).length,
       stepX: state.stepX,
       stepY: state.stepY,
@@ -1618,6 +1641,7 @@
       getOceanTemplateKey,
       getOceanMouthSide,
       getOceanTemplateVariantKey,
+      getCoastTemplateKey,
       getWaterKind,
       hasRiverNearby,
       get tiles() { return tiles; },
@@ -1629,6 +1653,7 @@
       waterTextureAssets: WATER_TEXTURE_ASSETS,
       oceanTemplateAssets: OCEAN_TEMPLATE_ASSETS,
       oceanMouthTemplateAssets: OCEAN_MOUTH_TEMPLATE_ASSETS,
+      coastTemplateAssets: COAST_TEMPLATE_ASSETS,
     };
   }
 

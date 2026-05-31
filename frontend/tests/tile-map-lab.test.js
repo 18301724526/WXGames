@@ -24,6 +24,7 @@ const riverTemplateKeys = [
   'nw-ne-se-sw',
 ];
 const oceanTemplateKeys = ['full', ...riverTemplateKeys];
+const coastTemplateKeys = riverTemplateKeys;
 const oceanMouthTemplateKeys = [
   'ne-mouth-ne',
   'ne-se-mouth-ne',
@@ -77,6 +78,7 @@ test('tile map lab is an art-resource stitching page', () => {
     ...riverTemplateKeys.map((key) => `tile-map/river-template/tile-river-bank-uv-${key}.png`),
     ...oceanTemplateKeys.map((key) => `tile-map/ocean-template/tile-ocean-template-${key}.png`),
     ...oceanMouthTemplateKeys.map((key) => `tile-map/ocean-template/tile-ocean-template-${key}.png`),
+    ...coastTemplateKeys.map((key) => `tile-map/coast-template/tile-coast-template-${key}.png`),
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -85,7 +87,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-ocean-mouth-bridge-v2/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-land-coast-template-v1/);
   assert.match(html, /id="animateWater"/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
@@ -130,11 +132,14 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /RIVER_TEMPLATE_DIRECTION_INDICES/);
   assert.match(js, /OCEAN_TEMPLATE_ASSETS/);
   assert.match(js, /OCEAN_MOUTH_TEMPLATE_ASSETS/);
+  assert.match(js, /COAST_TEMPLATE_ASSETS/);
+  assert.match(js, /tile-map\/coast-template\/tile-coast-template-/);
   assert.match(js, /OCEAN_SIDE_DIRECTIONS/);
   assert.match(js, /findRiverMouthTarget/);
   assert.match(js, /addRiverMouthConnection/);
-  assert.match(js, /isOceanPaddingCoord/);
-  assert.match(js, /isPadding/);
+  assert.match(js, /getCoastTemplateKey/);
+  assert.match(js, /getCoastTemplateAsset/);
+  assert.match(js, /getTileTemplateAsset/);
   assert.match(js, /getOceanTemplateKey/);
   assert.match(js, /getOceanMouthSide/);
   assert.match(js, /getOceanTemplateVariantKey/);
@@ -152,9 +157,10 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /drawRiverTemplatePorts/);
   assert.match(js, /effectiveOceanTemplates/);
   assert.match(js, /effectiveOceanMouthTemplates/);
+  assert.match(js, /effectiveCoastTemplates/);
   assert.match(js, /oceanTiles/);
   assert.match(js, /riverMouthOceanTiles/);
-  assert.match(js, /oceanPaddingTiles/);
+  assert.match(js, /landCoastTiles/);
   assert.match(js, /effectiveFeatures/);
   assert.match(js, /effectiveWaterTextures/);
   assert.match(js, /waterMaskTemplates/);
@@ -175,15 +181,17 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /if \(hasRiverNearby\(q, r, 1\)\) return null;/);
   assert.match(js, /if \(ring < 2 \|\| hasRiverNearby\(q, r, 1\)\) return false;/);
   assert.match(js, /if \(hasRiverNearby\(tile\.q, tile\.r, 1\)\) return;/);
-  assert.match(js, /getOceanTemplateAsset\(tile\) \|\| getRiverTemplateAsset\(tile\)/);
+  assert.match(js, /getOceanTemplateAsset\(tile\) \|\| getRiverTemplateAsset\(tile\) \|\| getCoastTemplateAsset\(tile\)/);
   assert.match(js, /\.filter\(\(item\) => !isOceanCoord\(item\.q, item\.r, radius\)\)/);
-  assert.match(js, /templateAsset \? getImageMetrics\(templateAsset\.file\) : tileSize\.metrics/);
+  assert.match(js, /getTemplateDrawMetrics/);
+  assert.match(js, /templateAsset \? getTemplateDrawMetrics\(templateAsset\) : tileSize\.metrics/);
   assert.match(js, /\.filter\(\(item\) => !isRiverBlockedCoord\(item\.q, item\.r\)\)/);
   assert.doesNotMatch(js, /territory-plains-cutout|territory-forest-cutout|territory-hills-cutout|territory-ruins-cutout/);
   assert.doesNotMatch(js, /drawRiverSegments|drawRiverSegmentBetween|drawTiledRiverStrip|drawRiverWaterCaps|shouldDrawRiverJunction|drawRiverNode/);
   assert.doesNotMatch(js, /riverNodeCap|getRiverPiece|tile-river-node-cap|tile-river-straight-water|tile-river-junction-water/);
   assert.doesNotMatch(js, /createRiverGeometryWaterMask|RIVER_TEMPLATE_FILE_KEYS|getTemplateSidePoints/);
   assert.doesNotMatch(js, /tile-river-template-ai-/);
+  assert.doesNotMatch(js, /isOceanPaddingCoord|isPadding|oceanPaddingTiles/);
 
   for (const asset of artAssets) {
     assert.equal(fs.existsSync(path.join(projectRoot, 'frontend', 'assets', 'art', ...asset.split('/'))), true, asset);
@@ -375,6 +383,46 @@ test('ocean template assets share the same diamond alpha bounds as terrain tiles
       },
       key
     );
+  }
+});
+
+test('land coast templates share terrain alpha bounds and carry water on declared sides', () => {
+  const plainsFile = path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map', 'tile-terrain-plains.png');
+  const plains = readPngRgba(fs.readFileSync(plainsFile));
+  const expectedBounds = getPixelBounds(plains.rgba, plains.width, plains.height, (red, green, blue, alpha) => alpha > 32);
+  assert.ok(expectedBounds);
+  const samples = sideSampleCenters(expectedBounds);
+  const templateDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map', 'coast-template');
+  for (const key of coastTemplateKeys) {
+    const file = path.join(templateDir, `tile-coast-template-${key}.png`);
+    const { width, height, rgba } = readPngRgba(fs.readFileSync(file));
+    const alphaBounds = getPixelBounds(rgba, width, height, (red, green, blue, alpha) => alpha > 32);
+    const waterBounds = getPixelBounds(rgba, width, height, isWaterPixel);
+    assert.ok(waterBounds, key);
+    assert.deepEqual(
+      {
+        minX: alphaBounds.minX,
+        minY: alphaBounds.minY,
+        maxX: alphaBounds.maxX,
+        maxY: alphaBounds.maxY,
+      },
+      {
+        minX: expectedBounds.minX,
+        minY: expectedBounds.minY,
+        maxX: expectedBounds.maxX,
+        maxY: expectedBounds.maxY,
+      },
+      key
+    );
+    const connectedSides = new Set(key.split('-'));
+    for (const [side, [x, y]] of Object.entries(samples).filter(([side]) => side !== 'center')) {
+      const waterCount = countWaterNear(rgba, width, height, x, y, 18);
+      if (connectedSides.has(side)) {
+        assert.ok(waterCount >= 420, `${key} missing ${side} ocean water edge`);
+      } else {
+        assert.ok(waterCount <= 120, `${key} leaks ocean water into ${side} land edge`);
+      }
+    }
   }
 });
 
