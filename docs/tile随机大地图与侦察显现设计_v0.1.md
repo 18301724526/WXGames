@@ -479,6 +479,7 @@ territoryState: {
 - `0.1.179-river-bank-api-refine-v2` 重生成 15 张正式河岸模板：`v1` 直接把透明水洞输入给图片编辑模型，模型会把透明/黑底理解成暗色河道或阴影，导致黑块、硬直沟槽和脏边；`v2` 改为从 `asset-backup-before-api-refine` 的干净标准模板重新开始，API 输入阶段临时把透明水道铺成蓝色 UV 水面帮助模型识别“河”，mask 仍只开放河岸外圈，返回后再按标准透明水孔把水面强制扣回透明，同时过滤可见蓝青残留和近黑错误像素。正式资源仍是 `frontend/assets/art/tile-map/river-template/tile-river-bank-uv-*.png`，水面继续只由前端 UV 层渲染；测试页缓存串更新为 `river-bank-api-refine-v2`。
 - `0.1.179-ocean-mouth-bridge-v2` 已废弃：该版本尝试用只参与渲染的 `isPadding` 外圈海水格填补海岸转角黑洞，结果会在地图外侧制造肉眼可见的新海洋菱形块，属于遮挡问题而不是解决问题。该方向不得继续沿用，测试页和统计字段不再保留 `isPadding / oceanPaddingTiles`。
 - `0.1.179-land-coast-template-v1` 修正海岸尖角路线：海岸缺口改由陆地边缘格自身承担，新增 `frontend/assets/art/tile-map/coast-template/tile-coast-template-*.png` 15 张陆地侧海岸模板，覆盖 `nw / ne / se / sw` 全连接组合。每张模板都以平原 tile 的真实 alpha 有效像素范围为边界，格内按声明方向生成一半海水、一半草地和中间海岸过渡；前端遇到陆地 tile 相邻海洋时直接替换为对应 coast 模板，水面仍由现有 ocean UV 层渲染。河流入海仍保留“陆地河流格追加朝海虚拟出口 + 海洋河口模板”的思路，但不再靠外圈补丁修尖角。后续 AI mask 细化只能在 coast 模板的既定几何上做草地、沙滩和侵蚀过渡，不能改变 alpha 边界、声明水域方向和 tile 拼接端口。
+- `0.1.179-land-coast-template-v2` 明确海岸归属：正式测试页改为“陆地格一半海一半草”路线，海洋 tile 只渲染 `tile-ocean-template-full.png` 纯海，不再根据相邻陆地选择海岸 bitmask，也暂不在海洋 tile 上启用 `*-mouth-*` 河口岸线模板。这样避免陆地 coast 模板和海洋 coast 模板重复画同一条岸线造成白边、折线和 V 形尖角过亮。后续如果需要河流入海视觉，应在陆地 coast/river mouth 侧补资源或做专门 corner/mouth 陆地模板，而不是让海洋 tile 重新画岸线。
 - 后续正式美术应继续沿用“地表 tile / POI / 军队或事件标记”三层结构，不再把建筑、农田、遗迹直接画进每一块基础 tile。
 - 河流、道路和边界过渡需要单独美术资源或过渡 tile，不能用程序线条或单个河流 tile 直接硬拼。
 

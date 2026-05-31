@@ -87,7 +87,7 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-land-coast-template-v1/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-land-coast-template-v2/);
   assert.match(html, /id="animateWater"/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
@@ -144,6 +144,8 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /getOceanMouthSide/);
   assert.match(js, /getOceanTemplateVariantKey/);
   assert.match(js, /getOceanTemplateAsset/);
+  assert.match(js, /return tile\.terrain === 'ocean' \? 'full' : ''/);
+  assert.match(js, /return OCEAN_TEMPLATE_ASSETS\.full/);
   assert.match(js, /isOceanCoord/);
   assert.match(js, /hasRiverNearby/);
   assert.match(js, /isRiverBlockedCoord/);
@@ -429,6 +431,13 @@ test('land coast templates share terrain alpha bounds and carry water on declare
 test('ocean mouth template set covers every coastal side variant', () => {
   const expectedMouthKeys = riverTemplateKeys.flatMap((key) => key.split('-').map((side) => `${key}-mouth-${side}`));
   assert.deepEqual([...oceanMouthTemplateKeys].sort(), expectedMouthKeys.sort());
+});
+
+test('ocean rendering delegates coastlines to land coast templates', () => {
+  const js = fs.readFileSync(jsPath, 'utf8');
+  assert.match(js, /function getOceanTemplateKey\(tile\) \{\s*return tile\.terrain === 'ocean' \? 'full' : '';\s*\}/);
+  assert.match(js, /function getOceanMouthSide\(tile\) \{\s*return '';\s*\}/);
+  assert.match(js, /function getOceanTemplateAsset\(tile\) \{\s*if \(tile\.terrain !== 'ocean'\) return null;\s*return OCEAN_TEMPLATE_ASSETS\.full;\s*\}/);
 });
 
 test('water loop textures are seamless on opposite edges', () => {

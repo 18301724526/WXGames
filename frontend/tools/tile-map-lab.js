@@ -281,19 +281,11 @@
   }
 
   function getOceanTemplateKey(tile) {
-    const coastSides = getOceanCoastSides(tile);
-    return coastSides.length ? coastSides.join('-') : 'full';
+    return tile.terrain === 'ocean' ? 'full' : '';
   }
 
   function getOceanMouthSide(tile) {
-    if (tile.terrain !== 'ocean') return '';
-    const coastSides = getOceanCoastSides(tile);
-    return coastSides.find((side) => {
-      const dir = OCEAN_SIDE_DIRECTIONS[side];
-      const land = { q: tile.q + dir.dq, r: tile.r + dir.dr };
-      const directionToOcean = getDirectionIndex(land, tile);
-      return getRiverConnectionsByCoord(land.q, land.r).includes(directionToOcean);
-    }) || '';
+    return '';
   }
 
   function getOceanTemplateVariantKey(tile) {
@@ -305,8 +297,7 @@
 
   function getOceanTemplateAsset(tile) {
     if (tile.terrain !== 'ocean') return null;
-    const key = getOceanTemplateVariantKey(tile);
-    return OCEAN_MOUTH_TEMPLATE_ASSETS[key] || OCEAN_TEMPLATE_ASSETS[key] || OCEAN_TEMPLATE_ASSETS.full;
+    return OCEAN_TEMPLATE_ASSETS.full;
   }
 
   function getLandCoastSides(tile) {
