@@ -152,6 +152,9 @@ test('CanvasGameRenderer preloads famous person portrait layers', () => {
   const paths = CanvasGameRenderer.getPreloadAssetPaths();
 
   assert.ok(paths.includes('assets/art/battle/battlefield-forest-camp.png'));
+  assert.ok(paths.includes('assets/art/tile-map/tile-terrain-plains.png'));
+  assert.ok(paths.includes('assets/art/tile-map/tile-terrain-forest.png'));
+  assert.ok(paths.includes('assets/art/tile-map/tile-feature-tree-cluster.png'));
   assert.ok(paths.includes('assets/art/battle/units/player/idle/01.png'));
   assert.ok(paths.includes('assets/art/battle/units/player/attack/04.png'));
   assert.ok(paths.includes('assets/art/battle/units/enemy/die/04.png'));
@@ -3298,6 +3301,30 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
       ],
     }),
     buildTerritorySummaryViewState: () => ({ text: { polityName: '赤火联盟', territoryCount: '1/2 已控制' } }),
+    buildWorldTileMapViewState: () => ({
+      pan: { x: 0, y: 0 },
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+        {
+          id: 'tile_1_0',
+          q: 1,
+          r: 0,
+          terrain: 'forest',
+          terrainAsset: 'assets/art/tile-map/tile-terrain-forest.png',
+          feature: { asset: 'assets/art/tile-map/tile-feature-tree-cluster.png', scale: 0.44, offset: { x: 0, y: 4 } },
+          site: { id: 'site-east', status: 'discovered', owner: 'neutral', type: 'town', name: '涓滃哺', title: '涓滃哺', art: 'assets/art/world-site-town-cutout.png', offset: { x: 0, y: 26 } },
+        },
+      ],
+      activeScouts: [{
+        id: 'scout-e',
+        status: 'active',
+        route: [
+          { q: 1, r: 0, step: 1, revealed: true },
+          { q: 2, r: 0, step: 2, revealed: false },
+        ],
+      }],
+    }),
     buildWorldRadarViewState: () => ({
       sites: [
         { id: 'capital', status: 'occupied', owner: 'player', type: 'capital', name: '首都', title: '首都', art: 'assets/art/world-site-city-cutout.png', position: { left: '50', top: '50' } },
@@ -3363,9 +3390,10 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '守将 拓锋 · 营帐战首 · 良才'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '敌方战法 裂甲猛冲'));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察报告'), false);
-  const radarDragTarget = renderer.hitTargets.find((target) => target.action?.type === 'worldRadarDrag');
-  assert.ok(radarDragTarget);
-  assert.ok(radarDragTarget.width > 286);
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '2 tiles'));
+  const worldMapDragTarget = renderer.hitTargets.find((target) => target.action?.type === 'worldMapDrag');
+  assert.ok(worldMapDragTarget);
+  assert.ok(worldMapDragTarget.width > 286);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'conquer'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));

@@ -1,4 +1,28 @@
 (function (global) {
+  const sharedTileMapManifest = (() => {
+    if (global.TileMapAssetManifest) return global.TileMapAssetManifest;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../config/TileMapAssetManifest');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const sharedTileMapGeometry = (() => {
+    if (global.TileMapGeometry) return global.TileMapGeometry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/TileMapGeometry');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
     static MIN_EXPEDITION_SOLDIERS = 100;
@@ -3043,6 +3067,138 @@
             position,
           };
         }),
+      };
+    }
+
+    static getTileMapManifest() {
+      return sharedTileMapManifest || {};
+    }
+
+    static getTileMapGeometry() {
+      return sharedTileMapGeometry || null;
+    }
+
+    static getWorldTileMapSignature(territoryState = {}) {
+      const worldMap = territoryState.worldMap || {};
+      const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+      const sites = Array.isArray(territoryState.territories) ? territoryState.territories : [];
+      const missions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
+      return JSON.stringify({
+        version: worldMap.version || 0,
+        seed: worldMap.seed || '',
+        tiles: tiles.map((tile) => ({
+          id: tile.id,
+          q: tile.q,
+          r: tile.r,
+          terrain: tile.terrain,
+          discovered: tile.discovered !== false,
+          visible: tile.visible !== false,
+          siteId: tile.siteId || null,
+          riverPorts: tile.riverPorts || [],
+          oceanTemplates: tile.oceanTemplates || [],
+        })),
+        sites: sites.map((site) => ({
+          id: site.id,
+          x: site.x,
+          y: site.y,
+          status: site.status,
+          owner: site.owner,
+          type: site.type,
+          art: site.art,
+          name: site.cityName || site.naturalName,
+        })),
+        missions: missions.map((mission) => ({
+          id: mission.id,
+          status: mission.status,
+          route: mission.route || [],
+          revealedTileIds: mission.revealedTileIds || [],
+          actionPointsRemaining: mission.actionPointsRemaining,
+        })),
+      });
+    }
+
+    static normalizeWorldTile(tile = {}, siteById = new Map()) {
+      const manifest = this.getTileMapManifest();
+      const terrain = tile.terrain || 'plains';
+      const terrainAsset = manifest.getTerrainAsset?.(terrain) || manifest.terrain?.[terrain] || manifest.terrain?.plains || {};
+      const featureAsset = terrainAsset.feature ? manifest.getFeatureAsset?.(terrainAsset.feature) : null;
+      const site = tile.siteId ? siteById.get(tile.siteId) : null;
+      return {
+        id: tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`,
+        q: this.toInteger(tile.q),
+        r: this.toInteger(tile.r),
+        terrain,
+        terrainLabel: terrainAsset.label || terrain,
+        terrainAsset: terrainAsset.path || '',
+        waterAsset: terrainAsset.water ? manifest.getWaterAsset?.(terrainAsset.water)?.path || '' : '',
+        feature: featureAsset ? {
+          key: terrainAsset.feature,
+          asset: featureAsset.path || '',
+          scale: featureAsset.scale || 0.5,
+          offset: manifest.getOverlayOffset?.(featureAsset.overlayKey) || { x: 0, y: 0 },
+        } : null,
+        discovered: tile.discovered !== false,
+        visible: tile.visible !== false,
+        siteId: tile.siteId || null,
+        site: site ? {
+          id: site.id || '',
+          type: site.type || '',
+          status: site.status || '',
+          owner: site.owner || '',
+          name: site.cityName || site.naturalName || '',
+          title: site.naturalName || site.cityName || '',
+          art: site.art || '',
+          offset: manifest.getOverlayOffset?.(manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`) || { x: 0, y: 0 },
+        } : null,
+      };
+    }
+
+    static buildWorldTileMapViewState(territoryState = {}, options = {}) {
+      const worldMap = territoryState.worldMap || {};
+      const rawTiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+      const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
+      const siteById = new Map(territories.map((site) => [site.id, site]));
+      const geometry = this.getTileMapGeometry();
+      const normalizedTiles = rawTiles.map((tile) => this.normalizeWorldTile(tile, siteById));
+      const sortedTiles = geometry?.sortTilesForIsoDraw
+        ? geometry.sortTilesForIsoDraw(normalizedTiles)
+        : normalizedTiles;
+      const activeScouts = (Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [])
+        .filter((mission) => mission.kind === 'scout' && ['active', 'ready'].includes(mission.status))
+        .map((mission) => ({
+          id: mission.id || '',
+          direction: mission.direction || '',
+          status: mission.status || '',
+          actionPoints: this.toInteger(mission.actionPoints),
+          actionPointsRemaining: this.toInteger(mission.actionPointsRemaining),
+          route: (Array.isArray(mission.route) ? mission.route : []).map((step) => ({
+            q: this.toInteger(step.q),
+            r: this.toInteger(step.r),
+            step: this.toInteger(step.step),
+            tileId: step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
+            revealed: Boolean(step.revealed),
+          })),
+          revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
+        }));
+      const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
+      return {
+        signature: this.getWorldTileMapSignature(territoryState),
+        version: worldMap.version || 0,
+        seed: worldMap.seed || '',
+        pan: {
+          x: this.toNumber(options.panX),
+          y: this.toNumber(options.panY),
+        },
+        geometry: geometry?.DEFAULT_GEOMETRY || { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+        bounds,
+        tiles: sortedTiles,
+        sites: sortedTiles.filter((tile) => tile.site).map((tile) => ({
+          ...tile.site,
+          tileId: tile.id,
+          q: tile.q,
+          r: tile.r,
+        })),
+        activeScouts,
       };
     }
   }

@@ -11,6 +11,30 @@
     return null;
   })();
 
+  const sharedTileMapManifest = (() => {
+    if (global.TileMapAssetManifest) return global.TileMapAssetManifest;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../config/TileMapAssetManifest');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const sharedTileMapGeometry = (() => {
+    if (global.TileMapGeometry) return global.TileMapGeometry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/TileMapGeometry');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasGameRenderer {
     constructor(options = {}) {
       this.presenter = options.presenter || null;
@@ -43,6 +67,14 @@
 
     static getFamousPortraitLayerLayout() {
       return sharedFamousPortraitLayout || {};
+    }
+
+    static getTileMapAssetManifest() {
+      return sharedTileMapManifest || {};
+    }
+
+    static getTileMapGeometry() {
+      return sharedTileMapGeometry || null;
     }
 
     static getAssetRequestPath(assetPath) {
@@ -138,6 +170,7 @@
         'assets/art/world-site-ruins-cutout.png',
         'assets/art/world-site-town-cutout.png',
         'assets/art/battle/battlefield-forest-camp.png',
+        ...(this.getTileMapAssetManifest().getPreloadAssetPaths?.() || []),
         ...this.getBattleUnitFramePaths(),
         ...Object.values(this.getFamousPortraitLayerLayout().layers || {})
           .map((layer) => layer?.file)
@@ -5376,6 +5409,175 @@
       });
     }
 
+    getWorldTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
+      const helper = this.constructor.getTileMapGeometry();
+      if (helper?.getTileScreenCenter) return helper.getTileScreenCenter(tile, viewport, geometry);
+      const stepX = Number(geometry.stepX) || 96;
+      const stepY = Number(geometry.stepY) || 48;
+      const q = Number(tile.q) || 0;
+      const r = Number(tile.r) || 0;
+      return {
+        x: viewport.originX + viewport.panX + (q - r) * stepX * viewport.scale,
+        y: viewport.originY + viewport.panY + (q + r) * stepY * viewport.scale,
+      };
+    }
+
+    drawIsoDiamond(cx, cy, width, height, options = {}) {
+      if (!this.ctx) return;
+      this.ctx.fillStyle = options.fill || 'rgba(71, 97, 67, 0.72)';
+      this.ctx.strokeStyle = options.stroke || 'rgba(255, 226, 177, 0.14)';
+      this.ctx.lineWidth = options.width || 1;
+      this.ctx.beginPath();
+      this.ctx.moveTo(cx, cy - height * 0.5);
+      this.ctx.lineTo(cx + width * 0.5, cy);
+      this.ctx.lineTo(cx, cy + height * 0.5);
+      this.ctx.lineTo(cx - width * 0.5, cy);
+      if (typeof this.ctx.closePath === 'function') this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+    }
+
+    getFallbackTerrainFill(terrain = 'plains') {
+      const fills = {
+        capital: 'rgba(98, 124, 76, 0.94)',
+        plains: 'rgba(90, 122, 70, 0.9)',
+        forest: 'rgba(45, 91, 63, 0.94)',
+        hills: 'rgba(126, 114, 75, 0.92)',
+        mountain: 'rgba(104, 104, 96, 0.94)',
+        waste: 'rgba(112, 96, 78, 0.9)',
+        desert: 'rgba(165, 132, 78, 0.9)',
+        river: 'rgba(54, 116, 139, 0.92)',
+        ocean: 'rgba(35, 87, 120, 0.94)',
+      };
+      return fills[terrain] || fills.plains;
+    }
+
+    renderWorldScoutRoutes(tileMapView = {}, viewport = {}) {
+      const geometry = tileMapView.geometry || {};
+      (tileMapView.activeScouts || []).forEach((mission) => {
+        const points = (mission.route || []).map((step) => this.getWorldTileScreenCenter(step, viewport, geometry));
+        if (points.length >= 2) {
+          this.drawPolyline(points, {
+            color: mission.status === 'ready' ? 'rgba(116, 211, 160, 0.72)' : 'rgba(240, 180, 91, 0.78)',
+            width: 2,
+          });
+        }
+        points.forEach((point, index) => {
+          const step = mission.route[index] || {};
+          const fill = step.revealed ? 'rgba(116, 211, 160, 0.84)' : 'rgba(240, 180, 91, 0.52)';
+          this.drawPanel(point.x - 4, point.y - 4, 8, 8, {
+            fill,
+            stroke: 'rgba(11, 18, 14, 0.54)',
+            radius: 4,
+          });
+        });
+      });
+    }
+
+    renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}) {
+      const tiles = tileMapView.tiles || [];
+      const geometry = tileMapView.geometry || {};
+      const scale = Math.max(0.38, Math.min(0.72, Math.min(width / 520, height / 420)));
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const viewport = {
+        originX: x + width * 0.5,
+        originY: y + height * 0.42,
+        panX: Number(tileMapView.pan?.x) || 0,
+        panY: Number(tileMapView.pan?.y) || 0,
+        scale,
+      };
+
+      this.drawPanel(x, y, width, height, {
+        fill: this.createGradient(
+          x, y, x, y + height,
+          [
+            [0, 'rgba(30, 43, 45, 0.88)'],
+            [1, 'rgba(18, 17, 14, 0.94)'],
+          ],
+          'rgba(25, 31, 30, 0.92)',
+        ),
+        stroke: 'rgba(240, 180, 91, 0.18)',
+        radius: 8,
+        inset: 'rgba(255, 231, 184, 0.06)',
+      });
+      this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true });
+
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
+      this.ctx.clip();
+
+      this.renderWorldScoutRoutes(tileMapView, viewport);
+      tiles.forEach((tile) => {
+        const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
+        const drawX = center.x - tileWidth * 0.5;
+        const drawY = center.y - tileHeight * 0.5;
+        const selected = uiState.selectedSiteId && tile.site?.id === uiState.selectedSiteId;
+        const inView = drawX < x + width + tileWidth
+          && drawX + tileWidth > x - tileWidth
+          && drawY < y + height + tileHeight
+          && drawY + tileHeight > y - tileHeight;
+        if (!inView) return;
+        if (!this.drawAsset(tile.terrainAsset || '', drawX, drawY, tileWidth, tileHeight)) {
+          this.drawIsoDiamond(center.x, center.y, tileWidth, tileHeight, {
+            fill: this.getFallbackTerrainFill(tile.terrain),
+            stroke: selected ? 'rgba(116, 211, 160, 0.78)' : 'rgba(255, 226, 177, 0.14)',
+          });
+        }
+        if (selected) {
+          this.drawIsoDiamond(center.x, center.y, tileWidth * 1.04, tileHeight * 1.04, {
+            fill: 'rgba(0, 0, 0, 0)',
+            stroke: 'rgba(116, 211, 160, 0.86)',
+            width: 2,
+          });
+        }
+        if (tile.feature?.asset) {
+          const offset = tile.feature.offset || {};
+          const featureW = tileWidth * (Number(tile.feature.scale) || 0.5);
+          const featureH = featureW;
+          const featureX = center.x + (Number(offset.x) || 0) * scale - featureW * 0.5;
+          const featureY = center.y + (Number(offset.y) || 0) * scale - featureH * 0.76;
+          this.drawAsset(tile.feature.asset, featureX, featureY, featureW, featureH, 0.92);
+        }
+      });
+
+      tiles.filter((tile) => tile.site).forEach((tile) => {
+        const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
+        const site = tile.site;
+        const offset = site.offset || {};
+        const iconSize = Math.max(26, tileWidth * 0.26);
+        const siteX = center.x + (Number(offset.x) || 0) * scale - iconSize * 0.5;
+        const siteY = center.y + (Number(offset.y) || 0) * scale - iconSize * 0.88;
+        const selected = uiState.selectedSiteId === site.id;
+        this.drawPanel(siteX - 3, siteY - 3, iconSize + 6, iconSize + 6, {
+          fill: selected ? 'rgba(116, 211, 160, 0.26)' : 'rgba(16, 18, 15, 0.32)',
+          stroke: selected ? 'rgba(116, 211, 160, 0.76)' : 'rgba(240, 180, 91, 0.22)',
+          radius: 8,
+        });
+        if (!this.drawAsset(site.art, siteX, siteY, iconSize, iconSize)) {
+          this.drawText(site.owner === 'player' ? '◆' : '◇', siteX + iconSize / 2, siteY + iconSize / 2, {
+            size: 15,
+            color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
+            align: 'center',
+            baseline: 'middle',
+          });
+        }
+        this.drawText(this.truncateText(site.name || site.title || 'Site', 74, { size: 9 }), siteX + iconSize / 2, siteY + iconSize + 11, {
+          size: 9,
+          color: '#f6e8c8',
+          align: 'center',
+        });
+        this.addHitTarget({ x: siteX - 8, y: siteY - 8, width: iconSize + 16, height: iconSize + 26 }, {
+          type: 'openWorldSite',
+          siteId: site.id,
+          tileId: tile.id,
+        });
+      });
+
+      this.ctx.restore();
+    }
+
     renderMilitaryWorldView(state = {}, x, y, width, height, options = {}) {
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
@@ -5396,6 +5598,28 @@
           size: 13,
           color: '#cbbd96',
           lineHeight: 18,
+        });
+        return;
+      }
+
+      const tileMapView = this.presenter.buildWorldTileMapViewState
+        ? this.presenter.buildWorldTileMapViewState(territoryState, {
+          panX: uiState.worldPanX || 0,
+          panY: uiState.worldPanY || 0,
+        })
+        : null;
+      if (tileMapView?.tiles?.length) {
+        const mapX = x + 12;
+        const mapY = y + 46;
+        const mapW = width - 24;
+        const mapH = Math.max(160, height - 58);
+        this.renderWorldTileMap(tileMapView, mapX, mapY, mapW, mapH, uiState);
+        const resetW = 76;
+        this.drawButton(mapX + mapW - resetW - 8, mapY + 8, resetW, 28, '回到本城', { size: 11, radius: 8 });
+        this.addHitTarget({ x: mapX + mapW - resetW - 8, y: mapY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
+        this.drawText(`${tileMapView.tiles.length} tiles`, mapX + 12, mapY + mapH - 14, {
+          size: 10,
+          color: 'rgba(246, 232, 200, 0.68)',
         });
         return;
       }

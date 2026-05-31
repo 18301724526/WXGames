@@ -165,6 +165,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'openWorldSite',
     'closeWorldSite',
     'resetWorldPan',
+    'worldMapDrag',
     'changeExpeditionSoldiers',
     'changeExpeditionLeader',
     'enterBattleScene',
@@ -201,6 +202,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'openWorldSite' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeWorldSite' }), true);
   assert.equal(dispatcher.canHandle({ type: 'resetWorldPan' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'worldMapDrag' }), true);
   assert.equal(dispatcher.canHandle({ type: 'changeExpeditionSoldiers' }), true);
   assert.equal(dispatcher.canHandle({ type: 'changeExpeditionLeader' }), true);
   assert.equal(dispatcher.canHandle({ type: 'goToGuideTaskTarget' }), true);

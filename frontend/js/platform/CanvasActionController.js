@@ -911,6 +911,10 @@
     }
 
     handle_worldRadarDrag(action) {
+      return this.handle_worldMapDrag({ ...action, type: 'worldMapDrag' });
+    }
+
+    handle_worldMapDrag(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;
       const territory = this.getTerritoryController();

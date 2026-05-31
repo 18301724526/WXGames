@@ -183,6 +183,10 @@
       <div class="row">
         <span>样例</span>
         <select id="mapPreset">
+          <option value="overlay-calibration">物件校准</option>
+          <option value="ocean-missing-11">11 补块验证</option>
+          <option value="ocean9">内陆海 9 格</option>
+          <option value="ocean-combos">海洋组合验证</option>
           <option value="micro">微缩地形</option>
           <option value="random">随机地图</option>
         </select>
@@ -199,7 +203,7 @@
       <h2>拼接参数</h2>
       <div class="row">
         <span>地图半径</span>
-        <input id="radius" type="range" min="2" max="9" value="5">
+        <input id="radius" type="range" min="2" max="9" value="6">
         <span class="value" id="radiusValue"></span>
       </div>
       <div class="row">
@@ -209,12 +213,12 @@
       </div>
       <div class="row">
         <span>横向步距</span>
-        <input id="stepX" type="range" min="54" max="180" value="95">
+        <input id="stepX" type="range" min="54" max="180" value="96">
         <span class="value" id="stepXValue"></span>
       </div>
       <div class="row">
         <span>纵向步距</span>
-        <input id="stepY" type="range" min="26" max="120" value="70">
+        <input id="stepY" type="range" min="26" max="120" value="48">
         <span class="value" id="stepYValue"></span>
       </div>
       <div class="row">
@@ -227,6 +231,21 @@
         <input id="siteScale" type="range" min="24" max="86" value="46">
         <span class="value" id="siteScaleValue"></span>
       </div>
+      <div class="row">
+        <span>物件</span>
+        <select id="overlayOffsetTarget"></select>
+        <span class="value">offset</span>
+      </div>
+      <div class="row">
+        <span>物件 X</span>
+        <input id="overlayOffsetX" type="range" min="-80" max="80" value="0">
+        <span class="value" id="overlayOffsetXValue"></span>
+      </div>
+      <div class="row">
+        <span>物件 Y</span>
+        <input id="overlayOffsetY" type="range" min="-80" max="80" value="0">
+        <span class="value" id="overlayOffsetYValue"></span>
+      </div>
       <h2>视口</h2>
       <div class="row">
         <span>缩放</span>
@@ -235,7 +254,7 @@
       </div>
       <div class="checks">
         <label class="check"><input id="showSites" type="checkbox" checked> 地点</label>
-        <label class="check"><input id="showFog" type="checkbox" checked> 雾边</label>
+        <label class="check"><input id="showFog" type="checkbox"> 雾边</label>
         <label class="check"><input id="showDebug" type="checkbox"> 锚点</label>
         <label class="check"><input id="showLabels" type="checkbox"> 坐标</label>
         <label class="check"><input id="animateWater" type="checkbox" checked> 水面</label>
@@ -247,13 +266,13 @@
         <button id="fitMap">适配画面</button>
       </div>
       <textarea id="exportData" spellcheck="false"></textarea>
-      <p class="hint">这里验证的是图片资源在地图上的拼接效果：拖动画面、滚轮缩放，调步距看接缝和遮挡；当前只保留正确河道 UV 方案，海岸和海洋素材已经全部下线重做。</p>
+      <p class="hint">这里验证的是图片资源在地图上的拼接效果：拖动画面、滚轮缩放，调步距看接缝和遮挡；当前只保留正确河道 UV 方案，海岸和海洋素材先在本地重做验证。</p>
     </aside>
     <main class="stage">
       <canvas id="tileCanvas"></canvas>
       <div class="hud" id="hoverInfo">加载资源中...</div>
     </main>
   </div>
-  <script src="tile-map-lab.js?v=0.1.185-river-only-reset-v1"></script>
+  <script src="tile-map-lab.js?v=local-overlay-calibration-v21"></script>
 </body>
 </html>

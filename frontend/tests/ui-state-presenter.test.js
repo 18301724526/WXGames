@@ -1099,6 +1099,48 @@ test('world radar view state places sites and exposes map signature', () => {
   assert.ok(Math.hypot(Number(siteA.position.left) - Number(siteB.position.left), Number(siteA.position.top) - Number(siteB.position.top)) >= 9.5);
 });
 
+test('world tile map view state is built from persisted worldMap tiles', () => {
+  const view = UIStatePresenter.buildWorldTileMapViewState({
+    worldMap: {
+      version: 1,
+      seed: 'world-test',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', discovered: true, visible: true },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', siteId: 'site-east', discovered: true, visible: true },
+      ],
+    },
+    territories: [
+      { id: 'capital', x: 0, y: 0, type: 'capital', owner: 'player', status: 'occupied', art: 'capital.png', naturalName: 'Capital' },
+      { id: 'site-east', x: 1, y: 0, type: 'town', owner: 'neutral', status: 'discovered', art: 'town.png', naturalName: 'Town' },
+    ],
+    scoutMissions: [{
+      id: 'scout_e_1',
+      kind: 'scout',
+      direction: 'e',
+      status: 'active',
+      actionPoints: 5,
+      actionPointsRemaining: 3,
+      route: [
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: true },
+        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+      ],
+      revealedTileIds: ['tile_1_0'],
+    }],
+  }, { panX: 8, panY: -6 });
+
+  assert.equal(view.version, 1);
+  assert.equal(view.seed, 'world-test');
+  assert.equal(view.pan.x, 8);
+  assert.equal(view.geometry.tileWidth, 192);
+  assert.equal(view.tiles.length, 2);
+  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').terrainAsset, 'assets/art/tile-map/tile-terrain-forest.png');
+  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.id, 'site-east');
+  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.offset.y, 26);
+  assert.equal(view.sites.length, 2);
+  assert.equal(view.activeScouts[0].route[1].tileId, 'tile_2_0');
+  assert.match(view.signature, /world-test/);
+});
+
 test('world site dialog view state formats details and expedition actions', () => {
   const territories = [
     {

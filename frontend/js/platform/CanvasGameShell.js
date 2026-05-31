@@ -181,6 +181,7 @@
           const action = this.renderer.getHitTarget(point);
           if (
           action?.type !== 'worldRadarDrag'
+          && action?.type !== 'worldMapDrag'
           && action?.type !== 'openWorldSite'
           && action?.type !== 'techTreeDrag'
           && action?.dragType !== 'techTreeDrag'
@@ -189,7 +190,9 @@
         }
       }
       if (!this.dragAction) return false;
-      const dragType = this.dragAction.type === 'techTreeDrag' ? 'techTreeDrag' : 'worldRadarDrag';
+      const dragType = this.dragAction.type === 'techTreeDrag'
+        ? 'techTreeDrag'
+        : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
       if (phase === 'end') this.dragAction = null;
       return handled;

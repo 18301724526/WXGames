@@ -109,6 +109,54 @@ test('save and findByPlayerId round-trip military state', () => {
   db.close();
 });
 
+test('save and findByPlayerId round-trip world map state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  insertPlayer(db, 'player-world-map', 'device-world-map');
+  repository.save({
+    playerId: 'player-world-map',
+    resources: {},
+    buildings: {},
+    population: {},
+    techs: {},
+    techEffects: {},
+    currentEra: 5,
+    eraHistory: [],
+    happiness: 100,
+    gameDay: 1,
+    eventQueue: [],
+    eventHistory: [],
+    offlineSnapshot: {},
+    offlineEventLog: [],
+    negativeStreak: 0,
+    lastEventAt: 0,
+    tutorial: { completed: true, currentStep: 15 },
+    softGuideState: {},
+    military: {},
+    worldMap: {
+      version: 1,
+      seed: 'world-player-world-map',
+      origin: { q: 0, r: 0 },
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', discovered: true, visible: true, siteId: 'capital' },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', discovered: true, visible: true, siteId: 'site_1_0' },
+      ],
+      scoutTrails: [{ missionId: 'scout_e_1', direction: 'e', tileIds: ['tile_1_0'], returned: true }],
+    },
+  });
+
+  const result = repository.findByPlayerId('player-world-map');
+
+  assert.equal(result.worldMap.seed, 'world-player-world-map');
+  assert.equal(result.worldMap.tiles.length, 2);
+  assert.equal(result.worldMap.tiles[1].id, 'tile_1_0');
+  assert.deepEqual(result.worldMap.scoutTrails, [{ missionId: 'scout_e_1', direction: 'e', tileIds: ['tile_1_0'], returned: true }]);
+
+  db.close();
+});
+
 test('save and findByPlayerId round-trip regular event state and active buffs', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);

@@ -1760,7 +1760,7 @@
         return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
       }
       if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
-      return this.actionController?.handle?.({ type: 'worldRadarDrag', phase, pointer: point }) || false;
+      return this.actionController?.handle?.({ type: 'worldMapDrag', phase, pointer: point }) || false;
     }
 
     hasBlockingOverlayOpen() {

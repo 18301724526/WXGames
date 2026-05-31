@@ -22,10 +22,10 @@
   const FEATURE_ASSETS = {
     treeCluster: { label: 'tree cluster', file: 'tile-map/tile-feature-tree-cluster.png' },
     mountainRidge: { label: 'mountain ridge', file: 'tile-map/tile-feature-mountain-ridge.png' },
-    pond: { label: 'pond', file: 'tile-map/tile-feature-pond.png' },
   };
   const WATER_TEXTURE_ASSETS = {
     river: { label: 'river uv loop water', file: 'tile-map/tile-water-river-loop.png', uvScale: 0.72, speedX: -18, speedY: 7, alpha: 0.94 },
+    ocean: { label: 'ocean uv loop water', file: 'tile-map/tile-water-ocean-loop.png', uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
   };
   const WATER_ANIMATION_FPS = 18;
   const TEMPLATE_SIDE_KEYS = [
@@ -62,6 +62,49 @@
     'ne-se-sw': { label: 'river bank uv ne-se-sw', file: 'tile-map/river-template/tile-river-bank-uv-ne-se-sw.png' },
     'nw-ne-se-sw': { label: 'river bank uv nw-ne-se-sw', file: 'tile-map/river-template/tile-river-bank-uv-nw-ne-se-sw.png' },
   };
+  const OCEAN_WATER_TEMPLATE_ASSETS = {
+    full: { label: 'ocean water full', file: 'tile-map/ocean-template/tile-ocean-water-full.png' },
+  };
+  const OCEAN_SHORE_EDGE_ASSETS = {
+    nw: { label: 'ocean shore edge nw', file: 'tile-map/ocean-template/tile-ocean-shore-edge-nw.png' },
+    ne: { label: 'ocean shore edge ne', file: 'tile-map/ocean-template/tile-ocean-shore-edge-ne.png' },
+    se: { label: 'ocean shore edge se', file: 'tile-map/ocean-template/tile-ocean-shore-edge-se.png' },
+    sw: { label: 'ocean shore edge sw', file: 'tile-map/ocean-template/tile-ocean-shore-edge-sw.png' },
+    'nw-ne': { label: 'ocean shore edges nw-ne', file: 'tile-map/ocean-template/tile-ocean-shore-edges-nw-ne.png' },
+    'ne-se': { label: 'ocean shore edges ne-se', file: 'tile-map/ocean-template/tile-ocean-shore-edges-ne-se.png' },
+    'se-sw': { label: 'ocean shore edges se-sw', file: 'tile-map/ocean-template/tile-ocean-shore-edges-se-sw.png' },
+    'nw-sw': { label: 'ocean shore edges nw-sw', file: 'tile-map/ocean-template/tile-ocean-shore-edges-nw-sw.png' },
+  };
+  const OCEAN_SHORE_CORNER_ASSETS = {
+    'corner-n': { label: 'ocean shore corner n', file: 'tile-map/ocean-template/tile-ocean-shore-corner-n.png' },
+    'corner-e': { label: 'ocean shore corner e', file: 'tile-map/ocean-template/tile-ocean-shore-corner-e.png' },
+    'corner-s': { label: 'ocean shore corner s', file: 'tile-map/ocean-template/tile-ocean-shore-corner-s.png' },
+    'corner-w': { label: 'ocean shore corner w', file: 'tile-map/ocean-template/tile-ocean-shore-corner-w.png' },
+  };
+  const OCEAN_RIVER_MOUTH_ASSETS = {
+    'river-mouth-nw': { label: 'ocean river mouth nw', file: 'tile-map/ocean-template/tile-ocean-river-mouth-nw.png' },
+    'river-mouth-ne': { label: 'ocean river mouth ne', file: 'tile-map/ocean-template/tile-ocean-river-mouth-ne.png' },
+    'river-mouth-se': { label: 'ocean river mouth se', file: 'tile-map/ocean-template/tile-ocean-river-mouth-se.png' },
+    'river-mouth-sw': { label: 'ocean river mouth sw', file: 'tile-map/ocean-template/tile-ocean-river-mouth-sw.png' },
+  };
+  const OCEAN_TEMPLATE_ASSETS = {
+    ...OCEAN_WATER_TEMPLATE_ASSETS,
+    ...OCEAN_SHORE_EDGE_ASSETS,
+    ...OCEAN_SHORE_CORNER_ASSETS,
+    ...OCEAN_RIVER_MOUTH_ASSETS,
+  };
+  const OCEAN_SHORE_EDGE_KEYS = ['nw', 'ne', 'se', 'sw', 'nw-ne', 'ne-se', 'se-sw', 'nw-sw'];
+  const OCEAN_SHORE_CORNER_KEYS = ['corner-n', 'corner-e', 'corner-s', 'corner-w'];
+  const OCEAN_RIVER_MOUTH_KEYS = ['river-mouth-nw', 'river-mouth-ne', 'river-mouth-se', 'river-mouth-sw'];
+  const OCEAN_TEMPLATE_SAMPLE_KEYS = [
+    'full',
+    ...OCEAN_SHORE_EDGE_KEYS,
+    ...OCEAN_RIVER_MOUTH_KEYS,
+    ...OCEAN_SHORE_CORNER_KEYS,
+  ];
+  const OCEAN_TEMPLATE_SAMPLE_IDS = Object.fromEntries(
+    OCEAN_TEMPLATE_SAMPLE_KEYS.map((key, index) => [key, `S${index + 1}`])
+  );
   const TERRAIN_TRANSITION_TEMPLATE_ASSETS = {
     nw: { label: 'plains desert transition nw', file: 'tile-map/transition-template/tile-transition-plains-desert-nw.png' },
     ne: { label: 'plains desert transition ne', file: 'tile-map/transition-template/tile-transition-plains-desert-ne.png' },
@@ -80,10 +123,41 @@
     'nw-ne-se-sw': { label: 'plains desert transition nw-ne-se-sw', file: 'tile-map/transition-template/tile-transition-plains-desert-nw-ne-se-sw.png' },
   };
   const TERRAIN_TYPES = ['plains', 'desert', 'forest', 'hills', 'river', 'waste', 'mountain'];
+  const STANDARD_ISO_ASPECT = 0.5;
+  const TILE_EDGE_OVERDRAW = 1.5;
   const TERRAIN_FEATURES = {
     hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
     waste: { chance: 0.32, scale: 0.48, alpha: 0.58, lift: 0.06, squash: 0.7 },
   };
+  const OVERLAY_OFFSET_TARGETS = [
+    ...Object.entries(SITE_ASSETS).map(([key, asset]) => ({ key: `site:${key}`, label: asset.label })),
+    { key: 'feature:treeCluster', label: 'tree cluster' },
+    { key: 'feature:mountainRidge', label: 'mountain ridge' },
+    ...Object.keys(TERRAIN_FEATURES).map((key) => ({ key: `terrain:${key}`, label: `${key} terrain feature` })),
+  ];
+  const DEFAULT_OVERLAY_OFFSETS = {
+    'site:camp': { x: -1, y: 28 },
+    'site:city': { x: -2, y: 27 },
+    'site:outpost': { x: 0, y: 29 },
+    'site:ruins': { x: 0, y: 27 },
+    'site:town': { x: 0, y: 26 },
+    'feature:treeCluster': { x: 0, y: 4 },
+    'feature:mountainRidge': { x: 0, y: 0 },
+    'terrain:hills': { x: 0, y: 13 },
+    'terrain:waste': { x: 0, y: 9 },
+  };
+  const DEFAULT_OVERLAY_OFFSET_TARGET = OVERLAY_OFFSET_TARGETS[0]?.key || '';
+  const OVERLAY_CALIBRATION_TILES = [
+    { q: -2, r: 1, target: 'site:camp', terrain: 'plains', site: { type: 'camp', owner: 'neutral', label: SITE_ASSETS.camp.label } },
+    { q: -1, r: 0, target: 'site:city', terrain: 'plains', site: { type: 'city', owner: 'city_state', label: SITE_ASSETS.city.label } },
+    { q: 0, r: -1, target: 'site:outpost', terrain: 'plains', site: { type: 'outpost', owner: 'neutral', label: SITE_ASSETS.outpost.label } },
+    { q: 1, r: -2, target: 'site:ruins', terrain: 'plains', site: { type: 'ruins', owner: 'ruin_guardians', label: SITE_ASSETS.ruins.label } },
+    { q: 2, r: -3, target: 'site:town', terrain: 'plains', site: { type: 'town', owner: 'neutral', label: SITE_ASSETS.town.label } },
+    { q: -1, r: 2, target: 'feature:treeCluster', terrain: 'forest' },
+    { q: 0, r: 1, target: 'feature:mountainRidge', terrain: 'mountain' },
+    { q: 1, r: 0, target: 'terrain:hills', terrain: 'hills' },
+    { q: 2, r: -1, target: 'terrain:waste', terrain: 'waste' },
+  ];
   const RIVER_DIRECTIONS = [
     { dq: 1, dr: 0 },
     { dq: 1, dr: -1 },
@@ -112,6 +186,18 @@
     nw: 3,
     sw: 5,
   };
+  const RIVER_MOUTH_INLAND_SIDE_BY_SHORE_SIDE = {
+    nw: 'se',
+    ne: 'sw',
+    se: 'nw',
+    sw: 'ne',
+  };
+  const RIVER_MOUTH_RIVER_TEMPLATE_KEY_BY_SHORE_SIDE = {
+    nw: 'nw-se',
+    ne: 'ne-sw',
+    se: 'nw-se',
+    sw: 'ne-sw',
+  };
   const MICRO_TERRAIN_OVERRIDES = {
     'tile_-4_-1': 'desert',
     'tile_-4_0': 'desert',
@@ -121,28 +207,96 @@
     'tile_-2_0': 'desert',
     'tile_-1_-1': 'desert',
   };
+  const MICRO_OCEAN_CORE_TILE_IDS = new Set([
+    // Western coast.
+    'tile_-6_1', 'tile_-6_2', 'tile_-6_3', 'tile_-6_4', 'tile_-6_5',
+    'tile_-5_1', 'tile_-5_2', 'tile_-5_3', 'tile_-5_4',
+    'tile_-4_2', 'tile_-4_3', 'tile_-4_4',
+    'tile_-3_3', 'tile_-3_4',
+    // Central lake.
+    'tile_1_-1', 'tile_2_-1',
+    'tile_1_0', 'tile_2_0',
+    'tile_1_1', 'tile_2_1',
+    // Small eastern bay.
+    'tile_4_-2', 'tile_5_-2',
+    'tile_4_-1', 'tile_5_-1',
+    'tile_4_0',
+  ]);
   const MICRO_RIVER_PATHS = [
-    { path: [{ q: 2, r: -4 }, { q: 2, r: -3 }, { q: 2, r: -2 }], outletSide: 'se' },
-    { path: [{ q: -2, r: 3 }, { q: -1, r: 3 }, { q: 0, r: 3 }], outletSide: 'se' },
-    { path: [{ q: -1, r: 2 }, { q: 0, r: 2 }, { q: 1, r: 2 }, { q: 2, r: 2 }], outletSide: 'se' },
-    { path: [{ q: 1, r: 0 }, { q: 2, r: 0 }, { q: 3, r: 0 }], outletSide: '' },
+    {
+      path: [
+        { q: 4, r: 2 }, { q: 4, r: 1 },
+      ],
+      outletSide: 'ne',
+    },
   ];
+  const OCEAN_LAB_CORE_TILE_IDS = new Set(['tile_0_0']);
+  const OCEAN_REFERENCE_GRID_SIZE = 6;
+  const OCEAN_REFERENCE_FULL_NUMBERS = new Set([15]);
+  const OCEAN_REFERENCE_TEMPLATE_OVERRIDES = new Map([
+    [8, 'corner-n'],
+    [10, 'corner-e'],
+    [20, 'corner-w'],
+    [22, 'corner-s'],
+  ]);
+  const OCEAN_SHORE_EDGE_BY_CORE_OFFSET = {
+    '-1,0': 'nw',
+    '0,-1': 'ne',
+    '1,0': 'se',
+    '0,1': 'sw',
+  };
+  const OCEAN_CORNER_BY_CORE_OFFSET = {
+    '1,1': 'corner-n',
+    '-1,1': 'corner-e',
+    '-1,-1': 'corner-s',
+    '1,-1': 'corner-w',
+  };
+  const OCEAN_COMBO_CORE_TILE_IDS = new Set([
+    // 1x4 thin strip.
+    'tile_-8_0', 'tile_-7_0', 'tile_-6_0', 'tile_-5_0',
+    // 2x2 block.
+    'tile_-8_3', 'tile_-7_3', 'tile_-8_4', 'tile_-7_4',
+    // L shape.
+    'tile_-3_-6', 'tile_-2_-6', 'tile_-1_-6', 'tile_-3_-5', 'tile_-3_-4',
+    // 3x3 inland sea.
+    'tile_-1_-1', 'tile_0_-1', 'tile_1_-1',
+    'tile_-1_0', 'tile_0_0', 'tile_1_0',
+    'tile_-1_1', 'tile_0_1', 'tile_1_1',
+    // U shape.
+    'tile_2_3', 'tile_3_3', 'tile_4_3',
+    'tile_2_4', 'tile_4_4',
+    'tile_2_5', 'tile_3_5', 'tile_4_5',
+    // 3x2 block.
+    'tile_5_-4', 'tile_6_-4', 'tile_7_-4',
+    'tile_5_-3', 'tile_6_-3', 'tile_7_-3',
+    // Vertical strip.
+    'tile_4_-8', 'tile_4_-7', 'tile_4_-6', 'tile_4_-5',
+    // Plus shape.
+    'tile_7_-1', 'tile_6_0', 'tile_7_0', 'tile_8_0', 'tile_7_1',
+    // Stair shape.
+    'tile_-7_6', 'tile_-6_5', 'tile_-5_4', 'tile_-4_3',
+  ]);
 
   const state = {
     seed: 'scout-tile-v1',
-    mapPreset: 'micro',
+    mapPreset: 'overlay-calibration',
     layoutMode: 'iso',
-    radius: 5,
+    radius: 6,
     tileSize: 192,
-    stepX: 95,
-    stepY: 70,
+    stepX: 96,
+    stepY: 48,
     anchorY: 0.5,
     siteScale: 0.46,
-    zoom: 1.05,
-    panX: 0,
-    panY: 12,
+    selectedOverlayOffsetTarget: DEFAULT_OVERLAY_OFFSET_TARGET,
+    overlayOffsets: Object.fromEntries(OVERLAY_OFFSET_TARGETS.map((target) => [
+      target.key,
+      { ...(DEFAULT_OVERLAY_OFFSETS[target.key] || { x: 0, y: 0 }) },
+    ])),
+    zoom: 0.78,
+    panX: -150,
+    panY: 68,
     showSites: true,
-    showFog: true,
+    showFog: false,
     showDebug: false,
     showLabels: false,
     animateWater: true,
@@ -162,6 +316,8 @@
   const staticBaseCtx = staticBaseCanvas.getContext('2d');
   const waterCompositeCanvas = document.createElement('canvas');
   const waterCompositeCtx = waterCompositeCanvas.getContext('2d');
+  const dryCompositeCanvas = document.createElement('canvas');
+  const dryCompositeCtx = dryCompositeCanvas.getContext('2d');
   const waterLayerCanvas = document.createElement('canvas');
   const waterLayerCtx = waterLayerCanvas.getContext('2d');
   const controls = {};
@@ -223,6 +379,12 @@
     return `tile_${q}_${r}`;
   }
 
+  function parseTileId(id) {
+    const match = /^tile_(-?\d+)_(-?\d+)$/.exec(String(id));
+    if (!match) return null;
+    return { q: Number(match[1]), r: Number(match[2]) };
+  }
+
   function isRiverTile(q, r) {
     return riverConnections.has(getTileId(q, r));
   }
@@ -235,11 +397,15 @@
     return getRiverConnectionsByCoord(tile.q, tile.r);
   }
 
-  function getRiverPorts(tile) {
-    return getRiverConnections(tile)
+  function getRiverPortsByCoord(q, r) {
+    return getRiverConnectionsByCoord(q, r)
       .map((directionIndex) => RIVER_TEMPLATE_DIRECTION_SIDES[directionIndex])
       .filter(Boolean)
       .sort((a, b) => ['nw', 'ne', 'se', 'sw'].indexOf(a) - ['nw', 'ne', 'se', 'sw'].indexOf(b));
+  }
+
+  function getRiverPorts(tile) {
+    return getRiverPortsByCoord(tile.q, tile.r);
   }
 
   function getRiverTemplateKey(tile) {
@@ -250,6 +416,63 @@
   function getRiverTemplateAsset(tile) {
     const key = getRiverTemplateKey(tile);
     return RIVER_TEMPLATE_ASSETS[key] || null;
+  }
+
+  function getRiverMouthTemplateKey(q, r, shoreSide) {
+    const riverSides = getRiverPortsByCoord(q, r);
+    const inlandSide = RIVER_MOUTH_INLAND_SIDE_BY_SHORE_SIDE[shoreSide];
+    return riverSides.length === 2 && riverSides.includes(shoreSide) && riverSides.includes(inlandSide)
+      ? `river-mouth-${shoreSide}`
+      : '';
+  }
+
+  function getOceanRiverMouthSide(templateAsset) {
+    return Object.entries(OCEAN_RIVER_MOUTH_ASSETS)
+      .find(([_key, asset]) => asset.file === templateAsset?.file)?.[0]
+      ?.replace('river-mouth-', '') || '';
+  }
+
+  function getRiverMouthShoreEdgeAsset(templateAsset) {
+    const side = getOceanRiverMouthSide(templateAsset);
+    return side ? OCEAN_SHORE_EDGE_ASSETS[side] || null : null;
+  }
+
+  function getRiverMouthRiverTemplateAsset(templateAsset) {
+    const side = getOceanRiverMouthSide(templateAsset);
+    const riverKey = RIVER_MOUTH_RIVER_TEMPLATE_KEY_BY_SHORE_SIDE[side];
+    return riverKey ? RIVER_TEMPLATE_ASSETS[riverKey] || null : null;
+  }
+
+  function isOceanTile(tile) {
+    return tile?.terrain === 'ocean';
+  }
+
+  function getOceanTemplateKey(tile) {
+    return getOceanTemplateKeys(tile)[0] || '';
+  }
+
+  function isOceanTemplateAvailable(key) {
+    return !!OCEAN_TEMPLATE_ASSETS[key];
+  }
+
+  function getOceanTemplateKeys(tile) {
+    if (!isOceanTile(tile)) return [];
+    if (Array.isArray(tile.oceanTemplates)) return tile.oceanTemplates.filter(Boolean);
+    return tile.oceanTemplate ? [tile.oceanTemplate] : ['full'];
+  }
+
+  function getOceanTemplateAssets(tile) {
+    return getOceanTemplateKeys(tile)
+      .map((key) => OCEAN_TEMPLATE_ASSETS[key])
+      .filter(Boolean);
+  }
+
+  function getOceanTemplateAsset(tile) {
+    return getOceanTemplateAssets(tile)[0] || null;
+  }
+
+  function getOceanTemplateSampleId(key) {
+    return OCEAN_TEMPLATE_SAMPLE_IDS[key] || 'S?';
   }
 
   function getSortedSideKey(sides) {
@@ -283,8 +506,16 @@
   }
 
   function getTileTemplateAsset(tile) {
-    return getRiverTemplateAsset(tile)
+    return getOceanTemplateAsset(tile)
+      || getRiverTemplateAsset(tile)
       || getTerrainTransitionTemplateAsset(tile);
+  }
+
+  function getTileTemplateAssets(tile) {
+    const oceanAssets = getOceanTemplateAssets(tile);
+    if (oceanAssets.length) return oceanAssets;
+    const templateAsset = getRiverTemplateAsset(tile) || getTerrainTransitionTemplateAsset(tile);
+    return templateAsset ? [templateAsset] : [];
   }
 
   function hasRiverNearby(q, r, radius = 1) {
@@ -294,7 +525,8 @@
   }
 
   function isRiverBlockedCoord(q, r) {
-    return getHexDistance({ q, r }, { q: 0, r: 0 }) <= 1;
+    return getHexDistance({ q, r }, { q: 0, r: 0 }) <= 1
+      || isOceanShoreCornerCoord(q, r);
   }
 
   function chooseTerrain(q, r) {
@@ -332,13 +564,6 @@
     return { type, owner, label: SITE_ASSETS[type].label };
   }
 
-  function choosePond(q, r, terrain, ring) {
-    if (q === 0 && r === 0) return false;
-    if (ring < 2 || hasRiverNearby(q, r, 1)) return false;
-    if (terrain === 'mountain' || terrain === 'hills' || terrain === 'waste') return false;
-    return random01(state.seed, q, r, 'pond-feature') < 0.035;
-  }
-
   function isCoordInRadius(q, r, radius) {
     const s = -q - r;
     return Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) <= radius;
@@ -367,7 +592,6 @@
         }))
         .filter((item) => RIVER_TEMPLATE_DIRECTION_INDICES.includes(item.index))
         .filter((item) => isCoordInRadius(item.q, item.r, radius))
-        .filter((item) => !isOceanCoord(item.q, item.r, radius))
         .filter((item) => !isRiverBlockedCoord(item.q, item.r))
         .map((item) => {
           const id = getTileId(item.q, item.r);
@@ -412,7 +636,38 @@
     connections.get(id).add(direction);
   }
 
-  function createMicroRiverConnections() {
+  function normalizeRiverConnections(connections, radius) {
+    const normalized = new Map();
+    for (const [id, dirs] of connections.entries()) {
+      const coord = parseTileId(id);
+      if (!coord) continue;
+      if (isOceanShoreCornerCoord(coord.q, coord.r)) continue;
+      const nextDirs = new Set();
+      for (const directionIndex of dirs) {
+        if (!RIVER_TEMPLATE_DIRECTION_INDICES.includes(directionIndex)) continue;
+        const dir = RIVER_DIRECTIONS[directionIndex];
+        const neighbor = { q: coord.q + dir.dq, r: coord.r + dir.dr };
+        const neighborInsideMap = isCoordInRadius(neighbor.q, neighbor.r, radius);
+        if (!neighborInsideMap) {
+          nextDirs.add(directionIndex);
+          continue;
+        }
+        if (isOceanShoreCornerCoord(neighbor.q, neighbor.r)) continue;
+        const neighborId = getTileId(neighbor.q, neighbor.r);
+        const oppositeDirection = (directionIndex + 3) % 6;
+        if ((state.mapPreset === 'micro' && isOceanCoreCoord(neighbor.q, neighbor.r))
+          || connections.get(neighborId)?.has(oppositeDirection)) {
+          nextDirs.add(directionIndex);
+        }
+      }
+      if (nextDirs.size) normalized.set(id, nextDirs);
+    }
+    return new Map(
+      Array.from(normalized.entries()).map(([entryId, dirs]) => [entryId, Array.from(dirs).sort((a, b) => a - b)])
+    );
+  }
+
+  function createMicroRiverConnections(radius) {
     const connections = new Map();
     for (const item of MICRO_RIVER_PATHS) {
       for (let index = 1; index < item.path.length; index += 1) {
@@ -420,13 +675,12 @@
       }
       addRiverSideConnection(connections, item.path[item.path.length - 1], item.outletSide);
     }
-    return new Map(
-      Array.from(connections.entries()).map(([id, dirs]) => [id, Array.from(dirs).sort((a, b) => a - b)])
-    );
+    return normalizeRiverConnections(connections, radius);
   }
 
   function createRiverConnections(radius) {
-    if (state.mapPreset === 'micro') return createMicroRiverConnections();
+    if (state.mapPreset === 'ocean9' || state.mapPreset === 'ocean-combos' || state.mapPreset === 'ocean-missing-11') return new Map();
+    if (state.mapPreset === 'micro') return createMicroRiverConnections(radius);
     const connections = new Map();
     const mainStart = { q: -Math.max(1, Math.floor(radius * 0.42)), r: -radius + Math.max(1, Math.floor(radius * 0.42)) };
     const mainPreferredTarget = { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) };
@@ -438,9 +692,7 @@
     for (const path of [mainPath, branchPath]) {
       for (let i = 1; i < path.length; i += 1) addRiverConnection(connections, path[i - 1], path[i]);
     }
-    return new Map(
-      Array.from(connections.entries()).map(([id, dirs]) => [id, Array.from(dirs).sort((a, b) => a - b)])
-    );
+    return normalizeRiverConnections(connections, radius);
   }
 
   function chooseMicroTerrain(q, r) {
@@ -456,19 +708,148 @@
     return 'plains';
   }
 
+  function getOceanCoreSet() {
+    if (state.mapPreset === 'micro') return MICRO_OCEAN_CORE_TILE_IDS;
+    return state.mapPreset === 'ocean-combos' ? OCEAN_COMBO_CORE_TILE_IDS : OCEAN_LAB_CORE_TILE_IDS;
+  }
+
+  function getOceanReferenceNumber(q, r) {
+    if (q < 0 || q >= OCEAN_REFERENCE_GRID_SIZE || r < 0 || r >= OCEAN_REFERENCE_GRID_SIZE) return 0;
+    return r * OCEAN_REFERENCE_GRID_SIZE + q + 1;
+  }
+
+  function isOceanReferenceFullCoord(q, r) {
+    return OCEAN_REFERENCE_FULL_NUMBERS.has(getOceanReferenceNumber(q, r));
+  }
+
+  function getOceanReferenceLabel(q, r) {
+    const number = getOceanReferenceNumber(q, r);
+    if (!number) return '';
+    return String(number);
+  }
+
+  function getOceanReferenceTemplateOverride(q, r) {
+    if (state.mapPreset !== 'ocean-missing-11') return '';
+    return OCEAN_REFERENCE_TEMPLATE_OVERRIDES.get(getOceanReferenceNumber(q, r)) || '';
+  }
+
+  function isOceanCoreCoord(q, r) {
+    if (state.mapPreset === 'ocean-missing-11') return isOceanReferenceFullCoord(q, r);
+    return getOceanCoreSet().has(getTileId(q, r));
+  }
+
+  function getAdjacentOceanSides(q, r) {
+    const sides = new Set();
+    for (const [offsetKey, side] of Object.entries(OCEAN_SHORE_EDGE_BY_CORE_OFFSET)) {
+      const [dq, dr] = offsetKey.split(',').map(Number);
+      if (!isOceanCoreCoord(q + dq, r + dr)) continue;
+      sides.add(side);
+    }
+    return TILE_SIDE_ORDER.filter((side) => sides.has(side));
+  }
+
+  function getAdjacentOceanCorners(q, r) {
+    const corners = [];
+    for (const [offsetKey, corner] of Object.entries(OCEAN_CORNER_BY_CORE_OFFSET)) {
+      const [dq, dr] = offsetKey.split(',').map(Number);
+      if (isOceanCoreCoord(q + dq, r + dr)) corners.push(corner);
+    }
+    return corners;
+  }
+
+  function isOceanShoreCornerCoord(q, r) {
+    if (state.mapPreset !== 'micro' || isOceanCoreCoord(q, r)) return false;
+    return getAdjacentOceanCorners(q, r).length > 0;
+  }
+
+  function getOceanShoreEdgeTemplateKeys(sides) {
+    const key = TILE_SIDE_ORDER.filter((side) => sides.includes(side)).join('-');
+    if (!key) return [];
+    if (OCEAN_SHORE_EDGE_ASSETS[key]) return [key];
+    return TILE_SIDE_ORDER.filter((side) => sides.includes(side) && OCEAN_SHORE_EDGE_ASSETS[side]);
+  }
+
+  function getOceanShoreEdgeOrRiverMouthTemplateKeys(q, r, sides) {
+    const blocksRiverMouth = isOceanShoreCornerCoord(q, r);
+    return getOceanShoreEdgeTemplateKeys(sides).flatMap((key) => {
+      const mouthKey = !blocksRiverMouth && sides.length === 1 ? getRiverMouthTemplateKey(q, r, key) : '';
+      return mouthKey && OCEAN_RIVER_MOUTH_ASSETS[mouthKey] ? [mouthKey] : [key];
+    });
+  }
+
+  function chooseOceanTemplates(q, r) {
+    const referenceOverride = getOceanReferenceTemplateOverride(q, r);
+    if (referenceOverride) return [referenceOverride];
+    if (isOceanCoreCoord(q, r)) return ['full'];
+    const templates = [];
+    const adjacentOceanSides = getAdjacentOceanSides(q, r);
+    templates.push(...getOceanShoreEdgeOrRiverMouthTemplateKeys(q, r, adjacentOceanSides));
+    for (const corner of getAdjacentOceanCorners(q, r)) {
+      if (OCEAN_SHORE_CORNER_ASSETS[corner]) templates.push(corner);
+    }
+    return templates;
+  }
+
+  function chooseOceanTemplate(q, r) {
+    return chooseOceanTemplates(q, r)[0] || '';
+  }
+
+  function chooseOceanTerrain(q, r) {
+    return chooseOceanTemplates(q, r).length ? 'ocean' : 'plains';
+  }
+
+  function buildOverlayCalibrationTiles() {
+    riverConnections = new Map();
+    tiles = OVERLAY_CALIBRATION_TILES.map((item) => {
+      const s = -item.q - item.r;
+      return {
+        id: getTileId(item.q, item.r),
+        q: item.q,
+        r: item.r,
+        s,
+        ring: Math.max(Math.abs(item.q), Math.abs(item.r), Math.abs(s)),
+        terrain: item.terrain,
+        oceanTemplate: '',
+        oceanTemplates: [],
+        site: item.site || null,
+        overlayCalibrationTarget: item.target,
+        riverConnections: [],
+      };
+    });
+    waterLayerDirty = true;
+    loadAssets();
+    markDirty();
+  }
+
   function buildTiles() {
+    if (state.mapPreset === 'overlay-calibration') {
+      buildOverlayCalibrationTiles();
+      return;
+    }
     const nextTiles = [];
     const radius = state.radius;
     riverConnections = createRiverConnections(radius);
-    for (let q = -radius; q <= radius; q += 1) {
-      const minR = Math.max(-radius, -q - radius);
-      const maxR = Math.min(radius, -q + radius);
+    const minQ = state.mapPreset === 'ocean-missing-11' ? 0 : -radius;
+    const maxQ = state.mapPreset === 'ocean-missing-11' ? OCEAN_REFERENCE_GRID_SIZE - 1 : radius;
+    for (let q = minQ; q <= maxQ; q += 1) {
+      const minR = state.mapPreset === 'ocean-missing-11' ? 0 : Math.max(-radius, -q - radius);
+      const maxR = state.mapPreset === 'ocean-missing-11' ? OCEAN_REFERENCE_GRID_SIZE - 1 : Math.min(radius, -q + radius);
       for (let r = minR; r <= maxR; r += 1) {
         const s = -q - r;
         const ring = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
-        const terrain = state.mapPreset === 'micro' ? chooseMicroTerrain(q, r) : chooseTerrain(q, r);
-        const pond = choosePond(q, r, terrain, ring);
-        const site = pond ? null : chooseSite(q, r, terrain, ring);
+        const terrain = state.mapPreset === 'ocean-missing-11'
+          ? chooseOceanTerrain(q, r)
+          : state.mapPreset === 'ocean-combos'
+          ? chooseOceanTerrain(q, r)
+          : state.mapPreset === 'ocean9'
+            ? chooseOceanTerrain(q, r)
+          : state.mapPreset === 'micro'
+            ? (chooseOceanTemplate(q, r) ? 'ocean' : chooseMicroTerrain(q, r))
+            : chooseTerrain(q, r);
+        const oceanTemplates = terrain === 'ocean' ? chooseOceanTemplates(q, r) : [];
+        const oceanTemplate = oceanTemplates[0] || '';
+        const isOceanLabPreset = state.mapPreset === 'ocean9' || state.mapPreset === 'ocean-combos' || state.mapPreset === 'ocean-missing-11';
+        const site = isOceanLabPreset || terrain === 'ocean' ? null : chooseSite(q, r, terrain, ring);
         nextTiles.push({
           id: getTileId(q, r),
           q,
@@ -476,7 +857,8 @@
           s,
           ring,
           terrain,
-          pond,
+          oceanTemplate,
+          oceanTemplates,
           site,
         });
       }
@@ -495,6 +877,13 @@
       return {
         x: tile.q * state.stepX + tile.r * state.stepX * 0.5,
         y: tile.r * state.stepY,
+      };
+    }
+    if (state.mapPreset === 'ocean-missing-11') {
+      const center = (OCEAN_REFERENCE_GRID_SIZE - 1) * 0.5;
+      return {
+        x: (tile.q - tile.r) * state.stepX,
+        y: ((tile.q + tile.r) - center * 2) * state.stepY,
       };
     }
     return {
@@ -517,6 +906,24 @@
       x: canvas.clientWidth * 0.5 + state.panX + pos.x * state.zoom,
       y: canvas.clientHeight * 0.5 + state.panY + pos.y * state.zoom,
     };
+  }
+
+  function getOverlayOffset(targetKey) {
+    if (!state.overlayOffsets[targetKey]) state.overlayOffsets[targetKey] = { x: 0, y: 0 };
+    return state.overlayOffsets[targetKey];
+  }
+
+  function getOverlayAnchor(tile, targetKey) {
+    const projected = getProjectedPosition(tile);
+    const offset = getOverlayOffset(targetKey);
+    return {
+      x: projected.x + offset.x * state.zoom,
+      y: projected.y + offset.y * state.zoom,
+    };
+  }
+
+  function isOverlayCalibrationPreset() {
+    return state.mapPreset === 'overlay-calibration';
   }
 
   function findNearestTile(point) {
@@ -565,6 +972,7 @@
 
   function isWaterTemplateFile(file) {
     return file.includes('river-template/')
+      || file.includes('ocean-template/')
       || file.includes('transition-template/');
   }
 
@@ -703,7 +1111,9 @@
   }
 
   function createWaterMaskCanvas(image, file) {
-    if (file.includes('river-template/tile-river-bank-uv-')) return createTransparentRiverWaterMask(image);
+    if (file.includes('river-template/tile-river-bank-uv-') || file.includes('ocean-template/tile-ocean-')) {
+      return createTransparentRiverWaterMask(image);
+    }
     return createColorWaterMaskCanvas(image);
   }
 
@@ -735,6 +1145,7 @@
   }
 
   function getTemplateDrawMetrics(templateAsset) {
+    if (templateAsset?.file?.includes('ocean-template/')) return getTerrainMetrics('plains');
     if (templateAsset?.file?.includes('transition-template/')) return getTerrainMetrics('plains');
     return getImageMetrics(templateAsset.file);
   }
@@ -748,12 +1159,13 @@
     const metrics = getTerrainMetrics('plains');
     return {
       width: state.tileSize,
-      height: state.tileSize * (metrics.height / Math.max(1, metrics.width)),
+      height: state.tileSize * STANDARD_ISO_ASPECT,
       metrics,
     };
   }
 
   function getBaseTerrainFile(tile) {
+    if (tile.terrain === 'ocean') return TERRAIN_ASSETS.plains.file;
     if (tile.terrain === 'desert') {
       return TERRAIN_ASSETS[tile.terrain]?.file || TERRAIN_ASSETS.plains.file;
     }
@@ -762,9 +1174,20 @@
 
   function syncGridToEffectiveTile() {
     const tileSize = getTileDrawSize('plains');
-    state.stepX = Math.max(1, Math.round(tileSize.width * 0.5) - 1);
-    state.stepY = Math.max(1, Math.round(tileSize.height * 0.5) - 1);
+    state.stepX = Math.max(1, Math.round(tileSize.width * 0.5));
+    state.stepY = Math.max(1, Math.round(tileSize.height * 0.5));
     state.anchorY = 0.5;
+  }
+
+  function getTileDrawRect(projected, tileSize) {
+    const drawW = (tileSize.width + TILE_EDGE_OVERDRAW * 2) * state.zoom;
+    const drawH = (tileSize.height + TILE_EDGE_OVERDRAW) * state.zoom;
+    return {
+      width: drawW,
+      height: drawH,
+      x: projected.x - drawW * 0.5,
+      y: projected.y - drawH * state.anchorY,
+    };
   }
 
   function loadImage(file) {
@@ -789,9 +1212,24 @@
       ...Object.values(FEATURE_ASSETS).map((item) => item.file),
       ...Object.values(WATER_TEXTURE_ASSETS).map((item) => item.file),
     ]);
+    if (state.mapPreset === 'ocean-missing-11') {
+      Object.values(OCEAN_TEMPLATE_ASSETS).forEach((item) => files.add(item.file));
+    }
     for (const tile of tiles) {
-      const templateAsset = getTileTemplateAsset(tile);
-      files.add(templateAsset?.file || getBaseTerrainFile(tile));
+      const templateAssets = getTileTemplateAssets(tile);
+      if (templateAssets.length) {
+        templateAssets.forEach((templateAsset) => {
+          files.add(templateAsset.file);
+          if (isOceanRiverMouthAsset(templateAsset)) {
+            const shoreEdgeAsset = getRiverMouthShoreEdgeAsset(templateAsset);
+            const riverAsset = getRiverMouthRiverTemplateAsset(templateAsset);
+            if (shoreEdgeAsset) files.add(shoreEdgeAsset.file);
+            if (riverAsset) files.add(riverAsset.file);
+          }
+        });
+      } else {
+        files.add(getBaseTerrainFile(tile));
+      }
       if (tile.site) files.add(SITE_ASSETS[tile.site.type]?.file);
     }
     return Array.from(files).filter(Boolean);
@@ -826,6 +1264,7 @@
       syncControls();
       fitMap();
     }
+    updateExport();
     waterLayerDirty = true;
     markDirty();
   }
@@ -882,6 +1321,7 @@
   }
 
   function getWaterKind(tile) {
+    if (isOceanTile(tile)) return 'ocean';
     if (isRiverTile(tile.q, tile.r)) return 'river';
     return '';
   }
@@ -925,10 +1365,10 @@
     drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind);
   }
 
-  function drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind) {
+  function drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind, targetCtx = waterLayerCtx) {
     const mask = waterMasks.get(getWaterMaskFile(templateAsset.file, kind));
     const profile = WATER_TEXTURE_ASSETS[kind];
-    if (!mask || !profile) return;
+    if (!mask || !profile || !targetCtx) return;
     const localW = Math.max(1, Math.ceil(drawW));
     const localH = Math.max(1, Math.ceil(drawH));
     if (waterCompositeCanvas.width !== localW) waterCompositeCanvas.width = localW;
@@ -951,10 +1391,68 @@
       localH
     );
     waterCompositeCtx.globalCompositeOperation = 'source-over';
-    waterLayerCtx.save();
-    waterLayerCtx.globalAlpha = profile.alpha;
-    waterLayerCtx.drawImage(waterCompositeCanvas, drawX, drawY, drawW, drawH);
-    waterLayerCtx.restore();
+    targetCtx.save();
+    targetCtx.globalAlpha = profile.alpha;
+    targetCtx.drawImage(waterCompositeCanvas, drawX, drawY, drawW, drawH);
+    targetCtx.restore();
+  }
+
+  function getTemplateBaseSource(templateAssets) {
+    if (!templateAssets.length) return null;
+    const baseAsset = templateAssets.find(isOceanRiverMouthAsset)
+      || templateAssets.find((asset) => asset.file !== OCEAN_WATER_TEMPLATE_ASSETS.full.file)
+      || templateAssets[0];
+    const sourceImage = dryTemplateCanvases.get(baseAsset.file) || images.get(baseAsset.file);
+    return sourceImage ? { asset: baseAsset, image: sourceImage } : null;
+  }
+
+  function isDrawableImage(image) {
+    return !!image && image.complete !== false;
+  }
+
+  function drawTemplateSource(targetCtx, sourceImage, metrics, drawRect) {
+    targetCtx.drawImage(
+      sourceImage,
+      metrics.x,
+      metrics.y,
+      metrics.width,
+      metrics.height,
+      drawRect.x,
+      drawRect.y,
+      drawRect.width,
+      drawRect.height
+    );
+  }
+
+  function drawTemplateComposite(targetCtx, templateAssets, metrics, drawRect) {
+    const baseSource = getTemplateBaseSource(templateAssets);
+    if (!baseSource || !isDrawableImage(baseSource.image)) return false;
+    if (templateAssets.length === 1) {
+      drawTemplateSource(targetCtx, baseSource.image, metrics, drawRect);
+      return true;
+    }
+    const sourceWidth = metrics.sourceWidth || baseSource.image.naturalWidth || baseSource.image.width || 1;
+    const sourceHeight = metrics.sourceHeight || baseSource.image.naturalHeight || baseSource.image.height || 1;
+    if (!dryCompositeCtx) return false;
+    if (dryCompositeCanvas.width !== sourceWidth) dryCompositeCanvas.width = sourceWidth;
+    if (dryCompositeCanvas.height !== sourceHeight) dryCompositeCanvas.height = sourceHeight;
+    dryCompositeCtx.setTransform(1, 0, 0, 1, 0, 0);
+    dryCompositeCtx.globalAlpha = 1;
+    dryCompositeCtx.globalCompositeOperation = 'source-over';
+    dryCompositeCtx.clearRect(0, 0, sourceWidth, sourceHeight);
+    dryCompositeCtx.drawImage(baseSource.image, 0, 0);
+    dryCompositeCtx.globalCompositeOperation = 'destination-out';
+    for (const templateAsset of templateAssets) {
+      const mask = waterMasks.get(templateAsset.file);
+      if (mask) dryCompositeCtx.drawImage(mask, 0, 0);
+    }
+    dryCompositeCtx.globalCompositeOperation = 'source-over';
+    drawTemplateSource(targetCtx, dryCompositeCanvas, metrics, drawRect);
+    return true;
+  }
+
+  function isOceanRiverMouthAsset(templateAsset) {
+    return !!templateAsset?.file?.includes('tile-ocean-river-mouth-');
   }
 
   function ensureWaterLayer(sortedTiles) {
@@ -971,22 +1469,26 @@
     waterLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
     waterLayerCtx.clearRect(0, 0, width, height);
     for (const tile of sortedTiles) {
-      const templateAsset = getTileTemplateAsset(tile);
+      const templateAssets = getTileTemplateAssets(tile);
       const projected = getProjectedPosition(tile);
       const tileSize = getTileDrawSize('plains');
-      const drawW = tileSize.width * state.zoom;
-      const drawH = tileSize.height * state.zoom;
-      if (templateAsset && getWaterKind(tile)) {
-        const metrics = getTemplateDrawMetrics(templateAsset);
-        drawWaterToLayer(
-          tile,
-          templateAsset,
-          metrics,
-          projected.x - drawW * 0.5,
-          projected.y - drawH * state.anchorY,
-          drawW,
-          drawH
-        );
+      const drawRect = getTileDrawRect(projected, tileSize);
+      if (templateAssets.length && getWaterKind(tile)) {
+        for (const templateAsset of templateAssets) {
+          const metrics = getTemplateDrawMetrics(templateAsset);
+          if (isOceanRiverMouthAsset(templateAsset)) {
+            const shoreEdgeAsset = getRiverMouthShoreEdgeAsset(templateAsset);
+            const riverAsset = getRiverMouthRiverTemplateAsset(templateAsset);
+            if (shoreEdgeAsset) {
+              drawWaterToLayerWithKind(tile, shoreEdgeAsset, metrics, drawRect.x, drawRect.y, drawRect.width, drawRect.height, 'ocean');
+            }
+            if (riverAsset) {
+              drawWaterToLayerWithKind(tile, riverAsset, metrics, drawRect.x, drawRect.y, drawRect.width, drawRect.height, 'river');
+            }
+          } else {
+            drawWaterToLayer(tile, templateAsset, metrics, drawRect.x, drawRect.y, drawRect.width, drawRect.height);
+          }
+        }
       }
     }
     waterLayerDirty = false;
@@ -1007,40 +1509,30 @@
     staticBaseCtx.clearRect(0, 0, width, height);
     drawBackground(width, height, staticBaseCtx);
     for (const tile of sortedTiles) drawTile(staticBaseCtx, tile);
-    for (const tile of sortedTiles) drawPond(tile, staticBaseCtx);
     for (const tile of sortedTiles) drawTerrainFeature(staticBaseCtx, tile);
     for (const tile of sortedTiles) drawSite(tile, staticBaseCtx);
     staticBaseDirty = false;
   }
 
   function drawTile(targetCtx, tile) {
-    const templateAsset = getTileTemplateAsset(tile);
+    const templateAssets = getTileTemplateAssets(tile);
+    const templateAsset = templateAssets[0] || null;
     const baseFile = templateAsset?.file || getBaseTerrainFile(tile);
     const baseImage = images.get(baseFile);
     if (!baseImage || !baseImage.complete) return;
-    const sourceImage = dryTemplateCanvases.get(baseFile) || baseImage;
     const projected = getProjectedPosition(tile);
     const tileSize = getTileDrawSize('plains');
     const metrics = templateAsset ? getTemplateDrawMetrics(templateAsset) : tileSize.metrics;
-    const drawW = tileSize.width * state.zoom;
-    const drawH = tileSize.height * state.zoom;
-    const drawX = projected.x - drawW * 0.5;
-    const drawY = projected.y - drawH * state.anchorY;
-    targetCtx.drawImage(
-      sourceImage,
-      metrics.x,
-      metrics.y,
-      metrics.width,
-      metrics.height,
-      drawX,
-      drawY,
-      drawW,
-      drawH
-    );
+    const drawRect = getTileDrawRect(projected, tileSize);
+    if (templateAssets.length) {
+      drawTemplateComposite(targetCtx, templateAssets, metrics, drawRect);
+    } else {
+      drawTemplateSource(targetCtx, baseImage, metrics, drawRect);
+    }
     if (state.hoverTileId === tile.id) {
-      drawDebugDiamond(projected.x, projected.y, state.stepX * state.zoom * 1.4, state.stepY * state.zoom * 1.5, 'rgba(255, 226, 146, 0.72)');
+      drawDebugDiamond(projected.x, projected.y, tileSize.width * state.zoom * 1.02, tileSize.height * state.zoom * 1.02, 'rgba(255, 226, 146, 0.72)');
     } else if (state.showDebug) {
-      drawDebugDiamond(projected.x, projected.y, state.stepX * state.zoom * 1.35, state.stepY * state.zoom * 1.45, 'rgba(160, 212, 255, 0.26)');
+      drawDebugDiamond(projected.x, projected.y, tileSize.width * state.zoom, tileSize.height * state.zoom, 'rgba(160, 212, 255, 0.26)');
     }
 
     if (state.showDebug) {
@@ -1059,8 +1551,9 @@
   }
 
   function drawTerrainFeature(targetCtx, tile) {
-    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river' || tile.terrain === 'desert') return;
-    if (hasRiverNearby(tile.q, tile.r, 1)) return;
+    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river' || tile.terrain === 'desert' || tile.terrain === 'ocean') return;
+    const isCalibration = isOverlayCalibrationPreset();
+    if (!isCalibration && hasRiverNearby(tile.q, tile.r, 1)) return;
     if (tile.terrain === 'forest') {
       drawTreeFeature(targetCtx, tile);
       return;
@@ -1072,14 +1565,14 @@
     const profile = TERRAIN_FEATURES[tile.terrain];
     const terrain = TERRAIN_ASSETS[tile.terrain];
     if (!profile || !terrain) return;
-    if (random01(state.seed, tile.q, tile.r, 'terrain-feature-visible') > profile.chance) return;
+    if (!isCalibration && random01(state.seed, tile.q, tile.r, 'terrain-feature-visible') > profile.chance) return;
     const image = images.get(terrain.file);
     if (!image || !image.complete) return;
-    const projected = getProjectedPosition(tile);
+    const projected = getOverlayAnchor(tile, `terrain:${tile.terrain}`);
     const tileSize = getTileDrawSize(tile.terrain);
     const size = Math.max(tileSize.width, tileSize.height) * state.zoom;
-    const jitterX = (random01(state.seed, tile.q, tile.r, 'terrain-feature-x') - 0.5) * state.stepX * state.zoom * 0.34;
-    const jitterY = (random01(state.seed, tile.q, tile.r, 'terrain-feature-y') - 0.5) * state.stepY * state.zoom * 0.46;
+    const jitterX = isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, 'terrain-feature-x') - 0.5) * state.stepX * state.zoom * 0.34;
+    const jitterY = isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, 'terrain-feature-y') - 0.5) * state.stepY * state.zoom * 0.46;
     const drawW = size * profile.scale;
     const drawH = drawW * profile.squash;
     const drawX = projected.x - drawW * 0.5 + jitterX;
@@ -1097,7 +1590,7 @@
       projected.y - size * profile.lift + jitterY,
       drawW * 0.48,
       drawH * 0.48,
-      (random01(state.seed, tile.q, tile.r, 'terrain-feature-rot') - 0.5) * 0.36,
+      isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, 'terrain-feature-rot') - 0.5) * 0.36,
       0,
       Math.PI * 2
     );
@@ -1110,15 +1603,16 @@
     const treeAsset = FEATURE_ASSETS.treeCluster;
     const image = images.get(treeAsset.file);
     if (!image || !image.complete) return;
-    if (random01(state.seed, tile.q, tile.r, 'tree-feature-visible') > 0.82) return;
-    const projected = getProjectedPosition(tile);
+    const isCalibration = isOverlayCalibrationPreset();
+    if (!isCalibration && random01(state.seed, tile.q, tile.r, 'tree-feature-visible') > 0.82) return;
+    const projected = getOverlayAnchor(tile, 'feature:treeCluster');
     const tileSize = getTileDrawSize('plains');
     const metrics = getImageMetrics(treeAsset.file);
-    const count = random01(state.seed, tile.q, tile.r, 'tree-feature-count') > 0.68 ? 2 : 1;
+    const count = isCalibration ? 1 : (random01(state.seed, tile.q, tile.r, 'tree-feature-count') > 0.68 ? 2 : 1);
     for (let i = 0; i < count; i += 1) {
-      const jitterX = (random01(state.seed, tile.q, tile.r, `tree-feature-x-${i}`) - 0.5) * state.stepX * state.zoom * 0.62;
-      const jitterY = (random01(state.seed, tile.q, tile.r, `tree-feature-y-${i}`) - 0.5) * state.stepY * state.zoom * 0.42;
-      const scale = (0.38 + random01(state.seed, tile.q, tile.r, `tree-feature-scale-${i}`) * 0.13) * (count > 1 ? 0.82 : 1);
+      const jitterX = isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, `tree-feature-x-${i}`) - 0.5) * state.stepX * state.zoom * 0.62;
+      const jitterY = isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, `tree-feature-y-${i}`) - 0.5) * state.stepY * state.zoom * 0.42;
+      const scale = (isCalibration ? 0.5 : 0.38 + random01(state.seed, tile.q, tile.r, `tree-feature-scale-${i}`) * 0.13) * (count > 1 ? 0.82 : 1);
       const drawW = tileSize.width * scale * state.zoom;
       const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
       const baseX = projected.x + jitterX;
@@ -1148,17 +1642,18 @@
     const mountainAsset = FEATURE_ASSETS.mountainRidge;
     const image = images.get(mountainAsset.file);
     if (!image || !image.complete) return;
+    const isCalibration = isOverlayCalibrationPreset();
     const neighbors = RIVER_DIRECTIONS
       .map((dir) => chooseTerrain(tile.q + dir.dq, tile.r + dir.dr))
       .filter((terrain) => terrain === 'mountain').length;
     const visibleChance = neighbors >= 2 ? 0.98 : 0.78;
-    if (random01(state.seed, tile.q, tile.r, 'mountain-feature-visible') > visibleChance) return;
-    const projected = getProjectedPosition(tile);
+    if (!isCalibration && random01(state.seed, tile.q, tile.r, 'mountain-feature-visible') > visibleChance) return;
+    const projected = getOverlayAnchor(tile, 'feature:mountainRidge');
     const tileSize = getTileDrawSize('plains');
     const metrics = getImageMetrics(mountainAsset.file);
-    const jitterX = (random01(state.seed, tile.q, tile.r, 'mountain-feature-x') - 0.5) * state.stepX * state.zoom * 0.28;
-    const jitterY = (random01(state.seed, tile.q, tile.r, 'mountain-feature-y') - 0.5) * state.stepY * state.zoom * 0.2;
-    const scale = (neighbors >= 2 ? 1.02 : 0.86) + random01(state.seed, tile.q, tile.r, 'mountain-feature-scale') * 0.12;
+    const jitterX = isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, 'mountain-feature-x') - 0.5) * state.stepX * state.zoom * 0.28;
+    const jitterY = isCalibration ? 0 : (random01(state.seed, tile.q, tile.r, 'mountain-feature-y') - 0.5) * state.stepY * state.zoom * 0.2;
+    const scale = isCalibration ? 0.96 : (neighbors >= 2 ? 1.02 : 0.86) + random01(state.seed, tile.q, tile.r, 'mountain-feature-scale') * 0.12;
     const drawW = tileSize.width * scale * state.zoom;
     const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
     const baseX = projected.x + jitterX;
@@ -1184,10 +1679,16 @@
   }
 
   function drawRiverLayer(sortedTiles, targetCtx = ctx) {
-    if (!state.showDebug) return;
+    if (state.showDebug) {
+      for (const tile of sortedTiles) {
+        if (!isRiverTile(tile.q, tile.r)) continue;
+        drawRiverTemplatePorts(tile, targetCtx);
+      }
+    }
+    if (!state.showDebug && state.mapPreset !== 'ocean-missing-11') return;
     for (const tile of sortedTiles) {
-      if (!isRiverTile(tile.q, tile.r)) continue;
-      drawRiverTemplatePorts(tile, targetCtx);
+      if (!isOceanTile(tile)) continue;
+      drawOceanTemplateKey(tile, targetCtx);
     }
   }
 
@@ -1204,29 +1705,93 @@
     targetCtx.restore();
   }
 
-  function drawPond(tile, targetCtx = ctx) {
-    if (!tile.pond) return;
-    const asset = FEATURE_ASSETS.pond;
-    const image = images.get(asset.file);
-    if (!image || !image.complete) return;
+  function drawOceanTemplateKey(tile, targetCtx = ctx) {
     const projected = getProjectedPosition(tile);
-    const metrics = getImageMetrics(asset.file);
-    const drawW = state.stepX * state.zoom * 0.76;
-    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    const keys = getOceanTemplateKeys(tile);
+    const key = keys.join('+') || 'none';
+    const missingKeys = keys.filter((item) => !isOceanTemplateAvailable(item));
+    const missing = missingKeys.length > 0;
     targetCtx.save();
-    targetCtx.translate(projected.x, projected.y - state.stepY * state.zoom * 0.02);
-    targetCtx.globalAlpha = 0.88;
-    targetCtx.drawImage(
-      image,
-      metrics.x,
-      metrics.y,
-      metrics.width,
-      metrics.height,
-      -drawW * 0.5,
-      -drawH * 0.5,
-      drawW,
-      drawH
-    );
+    targetCtx.font = missing || keys.length > 1 ? '700 13px Consolas, monospace' : '700 16px Consolas, monospace';
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'middle';
+    targetCtx.fillStyle = missing ? 'rgba(255, 92, 92, 0.95)' : 'rgba(255, 244, 214, 0.96)';
+    targetCtx.strokeStyle = 'rgba(4, 7, 8, 0.72)';
+    targetCtx.lineWidth = 4;
+    const sampleLabel = missing
+      ? `MISS:${missingKeys.join('+')}`
+      : keys.map((item) => getOceanTemplateSampleId(item)).join('+');
+    targetCtx.strokeText(sampleLabel, projected.x, projected.y);
+    targetCtx.fillText(sampleLabel, projected.x, projected.y);
+    targetCtx.restore();
+  }
+
+  function drawOceanTemplateLegend(targetCtx = ctx) {
+    if (state.mapPreset !== 'ocean-missing-11') return;
+    const usedKeys = OCEAN_TEMPLATE_SAMPLE_KEYS;
+    const panelX = Math.max(420, canvas.clientWidth - 410);
+    const panelY = 18;
+    const sampleW = 72;
+    const sampleH = 54;
+    const gapX = 14;
+    const gapY = 19;
+    const cols = 4;
+    const rows = Math.ceil(usedKeys.length / cols);
+    const panelW = 382;
+    const panelH = 46 + rows * (sampleH + gapY);
+    targetCtx.save();
+    targetCtx.fillStyle = 'rgba(11, 14, 13, 0.78)';
+    targetCtx.strokeStyle = 'rgba(255, 228, 164, 0.28)';
+    targetCtx.lineWidth = 1;
+    targetCtx.beginPath();
+    targetCtx.roundRect(panelX, panelY, panelW, panelH, 8);
+    targetCtx.fill();
+    targetCtx.stroke();
+    targetCtx.fillStyle = 'rgba(255, 238, 196, 0.96)';
+    targetCtx.font = '700 14px "Microsoft YaHei", sans-serif';
+    targetCtx.textAlign = 'left';
+    targetCtx.textBaseline = 'top';
+    targetCtx.fillText('海洋地块编号', panelX + 14, panelY + 12);
+    usedKeys.forEach((key, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const x = panelX + 14 + col * (sampleW + gapX);
+      const y = panelY + 42 + row * (sampleH + gapY);
+      const asset = OCEAN_TEMPLATE_ASSETS[key];
+      const baseImage = images.get(asset.file);
+      const sourceImage = dryTemplateCanvases.get(asset.file) || baseImage;
+      const metrics = getTerrainMetrics('plains');
+      targetCtx.save();
+      targetCtx.beginPath();
+      targetCtx.moveTo(x + sampleW * 0.5, y);
+      targetCtx.lineTo(x + sampleW, y + sampleH * 0.5);
+      targetCtx.lineTo(x + sampleW * 0.5, y + sampleH);
+      targetCtx.lineTo(x, y + sampleH * 0.5);
+      targetCtx.closePath();
+      targetCtx.clip();
+      targetCtx.fillStyle = 'rgba(24, 145, 226, 0.92)';
+      targetCtx.fillRect(x, y, sampleW, sampleH);
+      targetCtx.restore();
+      if (sourceImage && baseImage?.complete) {
+        targetCtx.drawImage(sourceImage, metrics.x, metrics.y, metrics.width, metrics.height, x, y, sampleW, sampleH);
+      }
+      targetCtx.fillStyle = 'rgba(255, 244, 214, 0.98)';
+      targetCtx.strokeStyle = 'rgba(5, 8, 8, 0.82)';
+      targetCtx.lineWidth = 4;
+      targetCtx.font = '700 13px Consolas, monospace';
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+      const label = getOceanTemplateSampleId(key);
+      targetCtx.strokeText(label, x + sampleW * 0.5, y + sampleH * 0.5);
+      targetCtx.fillText(label, x + sampleW * 0.5, y + sampleH * 0.5);
+      targetCtx.fillStyle = 'rgba(226, 235, 210, 0.92)';
+      targetCtx.font = '11px Consolas, monospace';
+      targetCtx.textBaseline = 'top';
+      targetCtx.strokeStyle = 'rgba(5, 8, 8, 0.74)';
+      targetCtx.lineWidth = 3;
+      targetCtx.strokeText(key, x + sampleW * 0.5, y + sampleH + 2);
+      targetCtx.fillText(key, x + sampleW * 0.5, y + sampleH + 2);
+    });
     targetCtx.restore();
   }
 
@@ -1257,12 +1822,12 @@
   }
 
   function drawSite(tile, targetCtx = ctx) {
-    if (!state.showSites || !tile.site) return;
+    if ((!state.showSites && !isOverlayCalibrationPreset()) || !tile.site) return;
     const siteAsset = SITE_ASSETS[tile.site.type];
     if (!siteAsset) return;
     const image = images.get(siteAsset.file);
     if (!image || !image.complete) return;
-    const projected = getProjectedPosition(tile);
+    const projected = getOverlayAnchor(tile, `site:${tile.site.type}`);
     const tileSize = getTileDrawSize('plains');
     const metrics = getImageMetrics(siteAsset.file);
     const drawW = tileSize.width * state.siteScale * state.zoom;
@@ -1303,6 +1868,21 @@
     targetCtx.restore();
   }
 
+  function drawOverlayCalibrationSelection(targetCtx = ctx) {
+    if (!isOverlayCalibrationPreset()) return;
+    const tile = tiles.find((item) => item.overlayCalibrationTarget === state.selectedOverlayOffsetTarget);
+    if (!tile) return;
+    const projected = getProjectedPosition(tile);
+    const tileSize = getTileDrawSize('plains');
+    drawDebugDiamond(
+      projected.x,
+      projected.y,
+      tileSize.width * state.zoom * 1.08,
+      tileSize.height * state.zoom * 1.08,
+      'rgba(255, 226, 126, 0.96)'
+    );
+  }
+
   function render() {
     const waterFrame = getWaterAnimationFrame();
     if (!needsRender && (!state.animateWater || lastRenderedWaterFrame === waterFrame)) {
@@ -1324,9 +1904,11 @@
     ctx.clearRect(0, 0, width, height);
     if (staticBaseCtx) ctx.drawImage(staticBaseCanvas, 0, 0);
     if (waterLayerCtx) ctx.drawImage(waterLayerCanvas, 0, 0);
-    drawRiverLayer(sorted);
     for (const tile of sorted) drawRegionTint(tile);
+    drawOverlayCalibrationSelection(ctx);
+    drawRiverLayer(sorted);
     if (state.showFog) drawFog(width, height);
+    drawOceanTemplateLegend(ctx);
     updateHud();
     lastRenderedWaterFrame = waterFrame;
     if (state.animateWater) requestAnimationFrame(render);
@@ -1374,18 +1956,38 @@
       effectiveWaterTextures: Object.fromEntries(
         Object.entries(WATER_TEXTURE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
+      effectiveOceanTemplates: Object.fromEntries(
+        Object.entries(OCEAN_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
       waterMaskTemplates: waterMasks.size,
       effectiveTerrainTransitions: Object.fromEntries(
         Object.entries(TERRAIN_TRANSITION_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
       riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
+      oceanTiles: tiles.filter((tile) => isOceanTile(tile)).length,
+      missingOceanTemplates: tiles
+        .map((tile) => ({
+          tile,
+          missingKeys: getOceanTemplateKeys(tile).filter((key) => !isOceanTemplateAvailable(key)),
+        }))
+        .filter((item) => isOceanTile(item.tile) && item.missingKeys.length)
+        .map((item) => ({ id: item.tile.id, q: item.tile.q, r: item.tile.r, keys: item.missingKeys })),
       desertTiles: tiles.filter((tile) => tile.terrain === 'desert').length,
       terrainTransitionTiles: tiles.filter((tile) => getTerrainTransitionTemplateKey(tile)).length,
-      pondTiles: tiles.filter((tile) => tile.pond).length,
       stepX: state.stepX,
       stepY: state.stepY,
       anchorY: Number(state.anchorY.toFixed(2)),
       siteScale: Number(state.siteScale.toFixed(2)),
+      selectedOverlayOffsetTarget: state.selectedOverlayOffsetTarget,
+      overlayOffsets: Object.fromEntries(
+        OVERLAY_OFFSET_TARGETS.map((target) => [
+          target.key,
+          {
+            x: Math.round(getOverlayOffset(target.key).x),
+            y: Math.round(getOverlayOffset(target.key).y),
+          },
+        ])
+      ),
       animateWater: state.animateWater,
       zoom: Number(state.zoom.toFixed(2)),
       panX: Math.round(state.panX),
@@ -1404,6 +2006,9 @@
     document.getElementById('stepYValue').textContent = `${state.stepY}`;
     document.getElementById('anchorYValue').textContent = state.anchorY.toFixed(2);
     document.getElementById('siteScaleValue').textContent = state.siteScale.toFixed(2);
+    const overlayOffset = getOverlayOffset(state.selectedOverlayOffsetTarget);
+    document.getElementById('overlayOffsetXValue').textContent = `${overlayOffset.x}`;
+    document.getElementById('overlayOffsetYValue').textContent = `${overlayOffset.y}`;
     document.getElementById('zoomValue').textContent = state.zoom.toFixed(2);
   }
 
@@ -1417,6 +2022,10 @@
     controls.stepY.value = state.stepY;
     controls.anchorY.value = Math.round(state.anchorY * 100);
     controls.siteScale.value = Math.round(state.siteScale * 100);
+    controls.overlayOffsetTarget.value = state.selectedOverlayOffsetTarget;
+    const overlayOffset = getOverlayOffset(state.selectedOverlayOffsetTarget);
+    controls.overlayOffsetX.value = overlayOffset.x;
+    controls.overlayOffsetY.value = overlayOffset.y;
     controls.zoom.value = Math.round(state.zoom * 100);
     controls.showSites.checked = state.showSites;
     controls.showFog.checked = state.showFog;
@@ -1438,6 +2047,22 @@
   }
 
   function fitMap() {
+    if (state.mapPreset === 'ocean-missing-11') {
+      state.panX = -190;
+      state.panY = 56;
+      state.zoom = 0.72;
+      syncControls();
+      markDirty();
+      return;
+    }
+    if (state.mapPreset === 'overlay-calibration') {
+      state.panX = 0;
+      state.panY = 12;
+      state.zoom = 0.66;
+      syncControls();
+      markDirty();
+      return;
+    }
     state.panX = 0;
     state.panY = 18;
     const mapWidth = Math.max(1, state.radius * state.stepX * 3.25);
@@ -1459,6 +2084,10 @@
     controls.showDebug = document.getElementById('showDebug');
     controls.showLabels = document.getElementById('showLabels');
     controls.animateWater = document.getElementById('animateWater');
+    controls.overlayOffsetTarget = document.getElementById('overlayOffsetTarget');
+    controls.overlayOffsetTarget.innerHTML = OVERLAY_OFFSET_TARGETS
+      .map((target) => `<option value="${target.key}">${target.label}</option>`)
+      .join('');
 
     controls.seed.addEventListener('change', () => {
       state.seed = controls.seed.value.trim() || 'scout-tile-v1';
@@ -1468,7 +2097,7 @@
     controls.mapPreset.addEventListener('change', () => {
       state.mapPreset = controls.mapPreset.value;
       buildTiles();
-      syncControls();
+      fitMap();
     });
     controls.layoutMode.addEventListener('change', () => {
       state.layoutMode = controls.layoutMode.value;
@@ -1485,6 +2114,11 @@
       if (state.animateWater) animationStartMs = performance.now();
       markDirty();
     });
+    controls.overlayOffsetTarget.addEventListener('change', () => {
+      state.selectedOverlayOffsetTarget = controls.overlayOffsetTarget.value;
+      syncControls();
+      markDirty();
+    });
 
     bindRange('radius', (value) => { state.radius = value; buildTiles(); });
     bindRange('tileSize', (value) => {
@@ -1495,15 +2129,13 @@
     bindRange('stepY', (value) => { state.stepY = value; });
     bindRange('anchorY', (value) => { state.anchorY = value / 100; });
     bindRange('siteScale', (value) => { state.siteScale = value / 100; });
+    bindRange('overlayOffsetX', (value) => { getOverlayOffset(state.selectedOverlayOffsetTarget).x = value; });
+    bindRange('overlayOffsetY', (value) => { getOverlayOffset(state.selectedOverlayOffsetTarget).y = value; });
     bindRange('zoom', (value) => { state.zoom = value / 100; });
 
     document.getElementById('resetView').addEventListener('click', () => {
-      state.panX = 0;
-      state.panY = 12;
-      state.zoom = 0.92;
       syncGridToEffectiveTile();
-      syncControls();
-      markDirty();
+      fitMap();
     });
     document.getElementById('randomSeed').addEventListener('click', () => {
       state.seed = `scout-${Date.now().toString(36).slice(-6)}`;
@@ -1599,10 +2231,15 @@
       get tiles() { return tiles; },
       getTerrainMetrics,
       getTileDrawSize,
+      chooseOceanTemplates,
+      getOceanTemplateKeys,
       terrainAssets: TERRAIN_ASSETS,
       siteAssets: SITE_ASSETS,
       featureAssets: FEATURE_ASSETS,
       waterTextureAssets: WATER_TEXTURE_ASSETS,
+      oceanTemplateAssets: OCEAN_TEMPLATE_ASSETS,
+      oceanShoreEdgeAssets: OCEAN_SHORE_EDGE_ASSETS,
+      oceanShoreCornerAssets: OCEAN_SHORE_CORNER_ASSETS,
       terrainTransitionTemplateAssets: TERRAIN_TRANSITION_TEMPLATE_ASSETS,
     };
   }

@@ -40,6 +40,7 @@ class GameStateRepository {
         military TEXT,
         polity TEXT,
         territories TEXT,
+        worldMap TEXT,
         activeCityId TEXT,
         cities TEXT,
         scoutedCoordinates TEXT,
@@ -83,6 +84,9 @@ class GameStateRepository {
     }
     if (!columns.some((column) => column.name === 'territories')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN territories TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'worldMap')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMap TEXT').run();
     }
     if (!columns.some((column) => column.name === 'activeCityId')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN activeCityId TEXT').run();
@@ -135,6 +139,7 @@ class GameStateRepository {
       military: row.military ? JSON.parse(row.military) : null,
       polity: row.polity ? JSON.parse(row.polity) : null,
       territories: row.territories ? JSON.parse(row.territories) : null,
+      worldMap: row.worldMap ? JSON.parse(row.worldMap) : null,
       activeCityId: row.activeCityId || null,
       cities: row.cities ? JSON.parse(row.cities) : null,
       scoutedCoordinates: row.scoutedCoordinates ? JSON.parse(row.scoutedCoordinates) : null,
@@ -161,9 +166,9 @@ class GameStateRepository {
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
         famousPeople, famousPersonState, military,
-        regularEventState, threatEventState, activeBuffs, polity, territories, activeCityId, cities,
+        regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -192,6 +197,7 @@ class GameStateRepository {
       JSON.stringify(gameState.activeBuffs || []),
       JSON.stringify(gameState.polity || {}),
       JSON.stringify(gameState.territories || []),
+      JSON.stringify(gameState.worldMap || {}),
       gameState.activeCityId || 'capital',
       JSON.stringify(gameState.cities || {}),
       JSON.stringify(gameState.scoutedCoordinates || []),

@@ -11,6 +11,7 @@ const GameConfig = require('../config/GameConfig');
 const MilitaryService = require('./MilitaryService');
 const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
+const WorldMapService = require('./WorldMapService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const CityPlanningService = require('./CityPlanningService');
@@ -50,6 +51,7 @@ function createInitialGameState(playerId) {
     military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     polity: TerritoryService.createInitialPolity(),
     territories: TerritoryService.createInitialTerritories(),
+    worldMap: WorldMapService.createInitialWorldMap(`world-${playerId}`),
     activeCityId: CityService.CAPITAL_CITY_ID,
     cities: {},
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
@@ -100,6 +102,7 @@ function normalizeState(rawState) {
   state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
   state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
   FamousPersonService.ensureFamousPersonState(state);
+  WorldMapService.ensureWorldMap(state);
   TerritoryService.normalizeTerritoryState(state);
   CityService.normalizeCities(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];

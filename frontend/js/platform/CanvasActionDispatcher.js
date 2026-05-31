@@ -160,6 +160,14 @@
         return reset;
       }
 
+      if (action.type === 'worldMapDrag') {
+        const dragged = typeof context.worldMapDrag === 'function'
+          ? context.worldMapDrag(action) !== false
+          : false;
+        if (dragged && typeof context.render === 'function') context.render(action);
+        return dragged;
+      }
+
       if (action.type === 'changeExpeditionSoldiers') {
         const changed = typeof context.changeExpeditionSoldiers === 'function'
           ? context.changeExpeditionSoldiers(action) !== false
@@ -319,6 +327,7 @@
         'openWorldSite',
         'closeWorldSite',
         'resetWorldPan',
+        'worldMapDrag',
         'changeExpeditionSoldiers',
         'changeExpeditionLeader',
         'enterBattleScene',
