@@ -489,6 +489,7 @@ territoryState: {
 - `0.1.182-coast-corner-template-v1` 是错误尝试：把角海岸做成 4 张运行时覆盖补丁会在实际拼接中出现三角盖片、直线切边和 PNG 外框错觉，不能作为正式路线保留。
 - `0.1.183-coast-shape-template-v1` 修正海岸角路线：`coastPorts` 仍表示菱形边中点是否临海，`coastCorners` 表示菱形四个角外侧是否临海；两者必须合成为完整 tile 资源，而不是运行时补丁。新增 `frontend/assets/art/tile-map/coast-shape-template/tile-coast-shape-edge-{edgeKey}-corner-{cornerKey}.png` 240 张完整普通陆地海岸模板，覆盖 `16` 个边海岸组合与 `15` 个角海岸组合。模板以平原 tile 真实 alpha 有效像素范围为边界，边海岸部分复用现有 `coast-template` 美术，角海岸写入同一张完整 tile；前端只替换整块 tile 资源并用其水色 mask 铺 ocean UV，不再叠加角海岸补丁。
 - `0.1.184-coastal-river-shape-v1` 补齐沿海河流角海岸规格：沿海河流也必须同时表达 `riverPorts + coastPorts + coastCorners`，不能在河流格上退回“内陆源头圆头河”或用角补丁盖。新增 `frontend/assets/art/tile-map/coastal-river-shape-template/tile-coastal-river-shape-coast-{coastKey}-corner-{cornerKey}-river-{riverKey}.png` 2175 张完整 tile，数量来自有效 `coastPorts + coastCorners` 组合过滤后再乘以 15 个 `riverPorts`。生成时用现有沿海河流完整 tile 保留河道透明口和海岸水色，再把普通完整海岸 shape 的角海岸写入同一张 tile；前端优先使用该完整资源，且按当前地图实际用到的模板按需加载，避免一次预载完整矩阵导致卡顿。
+- `0.1.185-river-only-reset-v1` 按当前命令下线所有海岸/海洋/沿海河流相关资源与测试页逻辑，删除 `ocean-template`、`coast-template`、`coast-shape-template`、`coastal-river-template`、`coastal-river-shape-template`、`tile-water-ocean-loop.png`、`tile-terrain-beach.png` 及沿海河流生成脚本。当前 `frontend/tools/tile-map-lab.html` 只保留已经确认可用的内陆河道 UV 方案：15 张 `river-template/tile-river-bank-uv-*.png` 加 `tile-water-river-loop.png`。`0.1.179` 到 `0.1.184` 的海岸/海洋/沿海河流内容只作为历史讨论记录保留，不能作为当前实现或素材验收依据；海岸体系等待后续按新命令重做。
 - 后续正式美术应继续沿用“地表 tile / POI / 军队或事件标记”三层结构，不再把建筑、农田、遗迹直接画进每一块基础 tile。
 - 河流、道路和边界过渡需要单独美术资源或过渡 tile，不能用程序线条或单个河流 tile 直接硬拼。
 
@@ -505,6 +506,8 @@ territoryState: {
 
 ### 沙滩与海岸规则
 
+> 历史记录：本节是 `0.1.179` 到 `0.1.184` 的海岸探索说明。自 `0.1.185-river-only-reset-v1` 起，这些海岸/海洋/沿海河流资源和测试页逻辑已经下线，不能作为当前实现依据。
+
 沙滩有两种角色：
 
 - 海岸过渡沙滩：出现在陆地临海格内，由 `coast-template` 承担，一格内同时包含海水、沙滩/岸线过渡和陆地。
@@ -513,6 +516,8 @@ territoryState: {
 海岸线归属继续保持 `0.1.179-land-coast-template-v2` 的结论：海洋 tile 只渲染纯海，陆地边缘 tile 负责岸线。这样可以避免海洋格和陆地格重复画同一条海岸，产生白边、尖角和双重折线。
 
 ### 内陆河与沿海河规则
+
+> 当前有效范围：只保留内陆河流 tile，使用 `river-template/tile-river-bank-uv-{riverKey}.png` 与 `tile-water-river-loop.png`。沿海河流矩阵是历史探索记录，已随 `0.1.185-river-only-reset-v1` 下线，等待后续按新命令重做。
 
 河流不再只有一类模板。正式规格拆成两种：
 
