@@ -181,6 +181,14 @@
         <span class="value">seed</span>
       </div>
       <div class="row">
+        <span>样例</span>
+        <select id="mapPreset">
+          <option value="micro">微缩地形</option>
+          <option value="random">随机地图</option>
+        </select>
+        <span class="value">preset</span>
+      </div>
+      <div class="row">
         <span>排布</span>
         <select id="layoutMode">
           <option value="iso">等距菱形</option>
@@ -239,13 +247,13 @@
         <button id="fitMap">适配画面</button>
       </div>
       <textarea id="exportData" spellcheck="false"></textarea>
-      <p class="hint">这里验证的是图片资源在地图上的拼接效果：拖动画面、滚轮缩放，调步距看接缝和遮挡；山脉、森林、河流都走透明美术叠加层。正式逻辑后续再接侦察显现。</p>
+      <p class="hint">这里验证的是图片资源在地图上的拼接效果：拖动画面、滚轮缩放，调步距看接缝和遮挡；微缩地形样例会同时放海岸过渡、独立沙滩、沙漠过渡和河流入海。正式逻辑后续再接侦察显现。</p>
     </aside>
     <main class="stage">
       <canvas id="tileCanvas"></canvas>
       <div class="hud" id="hoverInfo">加载资源中...</div>
     </main>
   </div>
-  <script src="tile-map-lab.js?v=0.1.179-tile-map-lab-land-coast-template-v2"></script>
+  <script src="tile-map-lab.js?v=0.1.180-tile-map-lab-micro-terrain-v1"></script>
 </body>
 </html>

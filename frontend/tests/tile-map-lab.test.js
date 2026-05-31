@@ -25,6 +25,12 @@ const riverTemplateKeys = [
 ];
 const oceanTemplateKeys = ['full', ...riverTemplateKeys];
 const coastTemplateKeys = riverTemplateKeys;
+const transitionTemplateKeys = riverTemplateKeys;
+const riverMouthTemplateKeys = [
+  'coast-se-river-ne-se',
+  'coast-se-sw-river-nw-se',
+  'coast-ne-se-sw-river-nw-se',
+];
 const oceanMouthTemplateKeys = [
   'ne-mouth-ne',
   'ne-se-mouth-ne',
@@ -65,6 +71,8 @@ test('tile map lab is an art-resource stitching page', () => {
   const js = fs.readFileSync(jsPath, 'utf8');
   const artAssets = [
     'tile-map/tile-terrain-plains.png',
+    'tile-map/tile-terrain-beach.png',
+    'tile-map/tile-terrain-desert.png',
     'tile-map/tile-terrain-forest.png',
     'tile-map/tile-terrain-hills.png',
     'tile-map/tile-terrain-river.png',
@@ -79,6 +87,8 @@ test('tile map lab is an art-resource stitching page', () => {
     ...oceanTemplateKeys.map((key) => `tile-map/ocean-template/tile-ocean-template-${key}.png`),
     ...oceanMouthTemplateKeys.map((key) => `tile-map/ocean-template/tile-ocean-template-${key}.png`),
     ...coastTemplateKeys.map((key) => `tile-map/coast-template/tile-coast-template-${key}.png`),
+    ...transitionTemplateKeys.map((key) => `tile-map/transition-template/tile-transition-plains-desert-${key}.png`),
+    ...riverMouthTemplateKeys.map((key) => `tile-map/river-mouth-template/tile-river-mouth-${key}.png`),
     'world-site-camp-cutout.png',
     'world-site-city-cutout.png',
     'world-site-outpost-cutout.png',
@@ -87,10 +97,13 @@ test('tile map lab is an art-resource stitching page', () => {
   ];
 
   assert.match(html, /<canvas id="tileCanvas"/);
-  assert.match(html, /tile-map-lab\.js\?v=0\.1\.179-tile-map-lab-land-coast-template-v2/);
+  assert.match(html, /tile-map-lab\.js\?v=0\.1\.180-tile-map-lab-micro-terrain-v1/);
+  assert.match(html, /id="mapPreset"/);
   assert.match(html, /id="animateWater"/);
   assert.match(js, /ASSET_ROOT = '\.\.\/assets\/art\/'/);
   assert.match(js, /tile-map\/tile-terrain-plains\.png/);
+  assert.match(js, /tile-map\/tile-terrain-beach\.png/);
+  assert.match(js, /tile-map\/tile-terrain-desert\.png/);
   assert.match(js, /imageMetrics = new Map/);
   assert.match(js, /analyzeAlphaBounds/);
   assert.match(js, /getTileDrawSize/);
@@ -134,11 +147,21 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /OCEAN_MOUTH_TEMPLATE_ASSETS/);
   assert.match(js, /COAST_TEMPLATE_ASSETS/);
   assert.match(js, /tile-map\/coast-template\/tile-coast-template-/);
+  assert.match(js, /TERRAIN_TRANSITION_TEMPLATE_ASSETS/);
+  assert.match(js, /tile-map\/transition-template\/tile-transition-plains-desert-/);
+  assert.match(js, /RIVER_MOUTH_TEMPLATE_ASSETS/);
+  assert.match(js, /tile-map\/river-mouth-template\/tile-river-mouth-/);
+  assert.match(js, /mapPreset: 'micro'/);
+  assert.match(js, /MICRO_RIVER_PATHS/);
+  assert.match(js, /MICRO_OCEAN_OVERRIDES/);
   assert.match(js, /OCEAN_SIDE_DIRECTIONS/);
   assert.match(js, /findRiverMouthTarget/);
   assert.match(js, /addRiverMouthConnection/);
+  assert.match(js, /createMicroRiverConnections/);
   assert.match(js, /getCoastTemplateKey/);
   assert.match(js, /getCoastTemplateAsset/);
+  assert.match(js, /getTerrainTransitionTemplateKey/);
+  assert.match(js, /getRiverMouthTemplateKey/);
   assert.match(js, /getTileTemplateAsset/);
   assert.match(js, /getOceanTemplateKey/);
   assert.match(js, /getOceanMouthSide/);
@@ -160,8 +183,14 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /effectiveOceanTemplates/);
   assert.match(js, /effectiveOceanMouthTemplates/);
   assert.match(js, /effectiveCoastTemplates/);
+  assert.match(js, /effectiveTerrainTransitions/);
+  assert.match(js, /effectiveRiverMouthTemplates/);
   assert.match(js, /oceanTiles/);
   assert.match(js, /riverMouthOceanTiles/);
+  assert.match(js, /riverMouthLandTiles/);
+  assert.match(js, /beachTiles/);
+  assert.match(js, /desertTiles/);
+  assert.match(js, /terrainTransitionTiles/);
   assert.match(js, /landCoastTiles/);
   assert.match(js, /effectiveFeatures/);
   assert.match(js, /effectiveWaterTextures/);
@@ -183,7 +212,7 @@ test('tile map lab is an art-resource stitching page', () => {
   assert.match(js, /if \(hasRiverNearby\(q, r, 1\)\) return null;/);
   assert.match(js, /if \(ring < 2 \|\| hasRiverNearby\(q, r, 1\)\) return false;/);
   assert.match(js, /if \(hasRiverNearby\(tile\.q, tile\.r, 1\)\) return;/);
-  assert.match(js, /getOceanTemplateAsset\(tile\) \|\| getRiverTemplateAsset\(tile\) \|\| getCoastTemplateAsset\(tile\)/);
+  assert.match(js, /getOceanTemplateAsset\(tile\)[\s\S]*getRiverMouthTemplateAsset\(tile\)[\s\S]*getRiverTemplateAsset\(tile\)[\s\S]*getCoastTemplateAsset\(tile\)[\s\S]*getTerrainTransitionTemplateAsset\(tile\)/);
   assert.match(js, /\.filter\(\(item\) => !isOceanCoord\(item\.q, item\.r, radius\)\)/);
   assert.match(js, /getTemplateDrawMetrics/);
   assert.match(js, /templateAsset \? getTemplateDrawMetrics\(templateAsset\) : tileSize\.metrics/);
@@ -312,6 +341,28 @@ function countTransparentTerrainNear(rgba, terrainRgba, width, height, centerX, 
   return count;
 }
 
+function assertSameAlphaBounds(file, expectedBounds, label) {
+  const image = readPngRgba(fs.readFileSync(file));
+  const alphaBounds = getPixelBounds(image.rgba, image.width, image.height, (red, green, blue, alpha) => alpha > 32);
+  assert.ok(alphaBounds, label);
+  assert.deepEqual(
+    {
+      minX: alphaBounds.minX,
+      minY: alphaBounds.minY,
+      maxX: alphaBounds.maxX,
+      maxY: alphaBounds.maxY,
+    },
+    {
+      minX: expectedBounds.minX,
+      minY: expectedBounds.minY,
+      maxX: expectedBounds.maxX,
+      maxY: expectedBounds.maxY,
+    },
+    label
+  );
+  return image;
+}
+
 test('river bank UV templates keep transparent water ports on standard template shapes', () => {
   const plainsFile = path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map', 'tile-terrain-plains.png');
   const plains = readPngRgba(fs.readFileSync(plainsFile));
@@ -428,6 +479,66 @@ test('land coast templates share terrain alpha bounds and carry water on declare
   }
 });
 
+test('new beach, desert, and plains-desert transition templates use real terrain alpha bounds', () => {
+  const tileMapDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map');
+  const plains = readPngRgba(fs.readFileSync(path.join(tileMapDir, 'tile-terrain-plains.png')));
+  const expectedBounds = getPixelBounds(plains.rgba, plains.width, plains.height, (red, green, blue, alpha) => alpha > 32);
+  assert.ok(expectedBounds);
+  for (const name of ['tile-terrain-beach.png', 'tile-terrain-desert.png']) {
+    assertSameAlphaBounds(path.join(tileMapDir, name), expectedBounds, name);
+  }
+  const samples = sideSampleCenters(expectedBounds);
+  const transitionDir = path.join(tileMapDir, 'transition-template');
+  for (const key of transitionTemplateKeys) {
+    const file = path.join(transitionDir, `tile-transition-plains-desert-${key}.png`);
+    const image = assertSameAlphaBounds(file, expectedBounds, key);
+    const connectedSides = new Set(key.split('-'));
+    for (const [side, [x, y]] of Object.entries(samples).filter(([side]) => side !== 'center')) {
+      let warmCount = 0;
+      for (let sampleY = y - 18; sampleY <= y + 18; sampleY += 1) {
+        for (let sampleX = x - 18; sampleX <= x + 18; sampleX += 1) {
+          if (sampleX < 0 || sampleY < 0 || sampleX >= image.width || sampleY >= image.height) continue;
+          const index = (sampleY * image.width + sampleX) * 4;
+          if (image.rgba[index + 3] > 32 && image.rgba[index] > image.rgba[index + 2] + 42) warmCount += 1;
+        }
+      }
+      if (connectedSides.has(side)) {
+        assert.ok(warmCount >= 250, `${key} missing warm desert transition on ${side}`);
+      }
+    }
+  }
+});
+
+test('land-side river mouth templates align coast water and transparent river ports', () => {
+  const tileMapDir = path.join(projectRoot, 'frontend', 'assets', 'art', 'tile-map');
+  const plains = readPngRgba(fs.readFileSync(path.join(tileMapDir, 'tile-terrain-plains.png')));
+  const expectedBounds = getPixelBounds(plains.rgba, plains.width, plains.height, (red, green, blue, alpha) => alpha > 32);
+  assert.ok(expectedBounds);
+  const samples = sideSampleCenters(expectedBounds);
+  const cases = {
+    'coast-se-river-ne-se': { coast: ['se'], river: ['ne', 'se'] },
+    'coast-se-sw-river-nw-se': { coast: ['se', 'sw'], river: ['nw', 'se'] },
+    'coast-ne-se-sw-river-nw-se': { coast: ['ne', 'se', 'sw'], river: ['nw', 'se'] },
+  };
+  const templateDir = path.join(tileMapDir, 'river-mouth-template');
+  for (const key of riverMouthTemplateKeys) {
+    const image = assertSameAlphaBounds(path.join(templateDir, `tile-river-mouth-${key}.png`), expectedBounds, key);
+    const spec = cases[key];
+    assert.ok(spec, key);
+    for (const side of spec.coast) {
+      const [x, y] = samples[side];
+      const waterCount = countWaterNear(image.rgba, image.width, image.height, x, y, 18);
+      const transparentCount = countTransparentTerrainNear(image.rgba, plains.rgba, image.width, image.height, x, y, 18);
+      assert.ok(waterCount + transparentCount >= 260, `${key} missing coast water or river-mouth water opening on ${side}`);
+    }
+    for (const side of spec.river) {
+      const [x, y] = samples[side];
+      const transparentCount = countTransparentTerrainNear(image.rgba, plains.rgba, image.width, image.height, x, y, 18);
+      assert.ok(transparentCount >= 260, `${key} missing transparent river port on ${side}`);
+    }
+  }
+});
+
 test('ocean mouth template set covers every coastal side variant', () => {
   const expectedMouthKeys = riverTemplateKeys.flatMap((key) => key.split('-').map((side) => `${key}-mouth-${side}`));
   assert.deepEqual([...oceanMouthTemplateKeys].sort(), expectedMouthKeys.sort());
@@ -438,6 +549,8 @@ test('ocean rendering delegates coastlines to land coast templates', () => {
   assert.match(js, /function getOceanTemplateKey\(tile\) \{\s*return tile\.terrain === 'ocean' \? 'full' : '';\s*\}/);
   assert.match(js, /function getOceanMouthSide\(tile\) \{\s*return '';\s*\}/);
   assert.match(js, /function getOceanTemplateAsset\(tile\) \{\s*if \(tile\.terrain !== 'ocean'\) return null;\s*return OCEAN_TEMPLATE_ASSETS\.full;\s*\}/);
+  assert.match(js, /function getRiverMouthTemplateKey\(tile\)[\s\S]*getOceanNeighborSides\(tile\)/);
+  assert.doesNotMatch(js, /function getRiverMouthTemplateKey\(tile\)[\s\S]*getLandCoastSides\(\{ \.\.\.tile/);
 });
 
 test('water loop textures are seamless on opposite edges', () => {
