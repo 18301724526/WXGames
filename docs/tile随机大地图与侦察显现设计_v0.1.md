@@ -410,7 +410,8 @@ Tile
 - `river-bend`：相邻方向连接。
 - `river-source`：单端源头，后续可加。
 - `river-confluence`：三向汇流，后续可加。
-- `river-mouth/lake`：河口或湖泊，后续可加。
+- `coastal-river`：沿海河流格，必须同时声明河流连接边和海岸连接边。
+- `lake/pond`：湖泊或池塘，后续可加。
 - `bridge/ford`：桥和浅滩属于交互/道路层，后续在地点或道路系统需要时再加。
 
 测试页当前只需要验证 `river-straight` 与 `river-bend` 两类连接件的方向、旋转、层级和尺寸；正式资源齐全前，不把程序绘制线条当作最终画面。河流路径可以由确定性 seed 生成，但前端只负责根据后端返回的 river tile 与连接方向选择贴片。
@@ -483,7 +484,8 @@ territoryState: {
 - `0.1.179-ocean-mouth-bridge-v2` 已废弃：该版本尝试用只参与渲染的 `isPadding` 外圈海水格填补海岸转角黑洞，结果会在地图外侧制造肉眼可见的新海洋菱形块，属于遮挡问题而不是解决问题。该方向不得继续沿用，测试页和统计字段不再保留 `isPadding / oceanPaddingTiles`。
 - `0.1.179-land-coast-template-v1` 修正海岸尖角路线：海岸缺口改由陆地边缘格自身承担，新增 `frontend/assets/art/tile-map/coast-template/tile-coast-template-*.png` 15 张陆地侧海岸模板，覆盖 `nw / ne / se / sw` 全连接组合。每张模板都以平原 tile 的真实 alpha 有效像素范围为边界，格内按声明方向生成一半海水、一半草地和中间海岸过渡；前端遇到陆地 tile 相邻海洋时直接替换为对应 coast 模板，水面仍由现有 ocean UV 层渲染。河流入海仍保留“陆地河流格追加朝海虚拟出口 + 海洋河口模板”的思路，但不再靠外圈补丁修尖角。后续 AI mask 细化只能在 coast 模板的既定几何上做草地、沙滩和侵蚀过渡，不能改变 alpha 边界、声明水域方向和 tile 拼接端口。
 - `0.1.179-land-coast-template-v2` 明确海岸归属：正式测试页改为“陆地格一半海一半草”路线，海洋 tile 只渲染 `tile-ocean-template-full.png` 纯海，不再根据相邻陆地选择海岸 bitmask，也暂不在海洋 tile 上启用 `*-mouth-*` 河口岸线模板。这样避免陆地 coast 模板和海洋 coast 模板重复画同一条岸线造成白边、折线和 V 形尖角过亮。后续如果需要河流入海视觉，应在陆地 coast/river mouth 侧补资源或做专门 corner/mouth 陆地模板，而不是让海洋 tile 重新画岸线。
-- `0.1.180-micro-terrain-v1` 增加完整 tile 系统微缩验证：测试页新增 `微缩地形 / 随机地图` 模式，默认微缩地形会同时摆出纯海、陆地侧海岸过渡、独立沙滩地形、沙漠地形、平原到沙漠过渡、河流入海的单面/双面/三面向海样例。新增 `tile-terrain-beach.png`、`tile-terrain-desert.png`、`transition-template/tile-transition-plains-desert-*.png` 和 `river-mouth-template/tile-river-mouth-*.png`，全部由平原 tile 的真实 alpha 有效像素范围生成，不按 512 PNG 外框计算。河流入海继续由陆地侧模板负责：海洋 tile 仍只渲染纯海，河口格使用透明河道端口和海岸水域 mask 混合后交给 UV 水面层渲染。测试用例补充检查新地形/过渡/河口模板的有效 alpha 范围、声明方向过渡、河口透明端口和海岸水域，防止后续 AI 细化破坏拼接。
+- `0.1.180-micro-terrain-v1` 增加完整 tile 系统微缩验证：测试页新增 `微缩地形 / 随机地图` 模式，默认微缩地形会同时摆出纯海、陆地侧海岸过渡、独立沙滩地形、沙漠地形、平原到沙漠过渡、河流入海的单面/双面/三面向海样例。新增 `tile-terrain-beach.png`、`tile-terrain-desert.png`、`transition-template/tile-transition-plains-desert-*.png` 和三张 `river-mouth-template/tile-river-mouth-*.png` 试验图，全部由平原 tile 的真实 alpha 有效像素范围生成，不按 512 PNG 外框计算。该版本证明“河流入海要由陆地侧负责”方向正确，但三张河口特例规格不足，不能覆盖随机地图的真实组合。
+- `0.1.181-coastal-river-spec-v1` 修正河流规格：河流正式分为内陆河流和沿海河流。内陆河流只声明 `riverPorts`，沿海河流必须同时声明 `riverPorts` 与 `coastPorts`，因此沿海河模板不再是少量“河口特例”，而是 `coastPorts × riverPorts` 的完整组合矩阵。第一版生成 `frontend/assets/art/tile-map/coastal-river-template/tile-coastal-river-coast-{coastKey}-river-{riverKey}.png` 225 张模板，替换旧三张 `river-mouth-template` 资源；模板仍以平原 tile 真实 alpha 有效像素范围为边界，海洋 tile 继续只渲染纯海，沿海河 tile 自己负责海岸、河岸、海水 mask 和河水透明端口。前端水面层对沿海河拆成 ocean UV 与 river UV 两次渲染，防止河水和海水纹理混成一层。
 - 后续正式美术应继续沿用“地表 tile / POI / 军队或事件标记”三层结构，不再把建筑、农田、遗迹直接画进每一块基础 tile。
 - 河流、道路和边界过渡需要单独美术资源或过渡 tile，不能用程序线条或单个河流 tile 直接硬拼。
 
@@ -507,25 +509,31 @@ territoryState: {
 
 海岸线归属继续保持 `0.1.179-land-coast-template-v2` 的结论：海洋 tile 只渲染纯海，陆地边缘 tile 负责岸线。这样可以避免海洋格和陆地格重复画同一条海岸，产生白边、尖角和双重折线。
 
-### 河流入海规则
+### 内陆河与沿海河规则
 
-河流入海由陆地侧河口模板承担，不再使用海洋侧 `*-mouth-*` 岸线模板。河口模板必须同时满足：
+河流不再只有一类模板。正式规格拆成两种：
 
-- 自身仍是陆地格，且相邻一个或多个方向为海洋。
-- 河道连接方向继续使用 `nw / ne / se / sw` 四个菱形边中点，禁止使用角点方向。
-- 水面区域保持透明或由水色 mask 标识，渲染时统一铺 UV 水面。
-- 单面向海、双面向海、三面向海都需要模板覆盖，避免海湾、半岛尖角或河口沙洲断开。
-- 河道入海口宽度必须和当前 `tile-river-bank-uv-*` 河道端口一致，不能只按视觉感觉对齐。
+- 内陆河流 tile：只声明 `riverPorts`，使用 `frontend/assets/art/tile-map/river-template/tile-river-bank-uv-{riverKey}.png`。
+- 沿海河流 tile：同时声明 `riverPorts` 和 `coastPorts`，使用 `frontend/assets/art/tile-map/coastal-river-template/tile-coastal-river-coast-{coastKey}-river-{riverKey}.png`。
 
-第一批验证模板暂定：
+`riverPorts` 表示河道经过哪些菱形边中点，合法边仍是 `nw / ne / se / sw`，禁止使用角点方向。`coastPorts` 表示该陆地格哪些边相邻海洋。沿海河流不是“河口特例图”，而是“河流连接 + 海岸连接”的组合模板，因此必须能覆盖单面向海、双面向海、三面向海、四面环海陆洲等情况，也要能覆盖单端河、直河、弯河、T 型和十字河。
 
-| 模板 | 用途 |
-| --- | --- |
-| `tile-river-mouth-coast-se-river-ne-se.png` | 单面向海，河从内陆 `ne` 方向流向 `se` 海边。 |
-| `tile-river-mouth-coast-se-sw-river-nw-se.png` | 双面向海，河从 `nw` 方向流向 `se` 海边。 |
-| `tile-river-mouth-coast-ne-se-sw-river-nw-se.png` | 三面向海，河从 `nw` 方向流向半岛/沙洲外海。 |
+第一版规格矩阵：
 
-后续如果地图生成器产生更多组合，再按相同规则补模板，而不是临时让海洋格画缺口。
+| 类型 | 组合数 | 路径 |
+| --- | ---: | --- |
+| 内陆河流 | 15 | `river-template/tile-river-bank-uv-{riverKey}.png` |
+| 沿海河流 | 225 | `coastal-river-template/tile-coastal-river-coast-{coastKey}-river-{riverKey}.png` |
+
+渲染规则：
+
+- 海洋 tile 仍只渲染纯海，不再画海岸线，也不再启用海洋侧 `*-mouth-*` 岸线模板。
+- 普通临海陆地格使用 `coast-template`，负责海水、沙滩/岸线和陆地过渡。
+- 内陆河流格使用 `river-template`，水面孔洞保持透明，前端铺 river UV。
+- 沿海河流格使用 `coastal-river-template`，模板内同时保留海岸水色 mask 和透明河道端口，前端分两次铺 ocean UV 与 river UV。
+- 所有模板必须以平原 tile 的真实 alpha 有效像素范围为边界，端口检测也必须按有效菱形像素抽样，不能只看 PNG 文件宽高。
+
+旧 `river-mouth-template` 三张试验图已废弃，因为它只能覆盖少量样例，无法表达完整的 `riverPorts + coastPorts` 规格。后续 AI 细化必须在这套矩阵基础上做草地、沙滩、岸线侵蚀和浅滩过渡，不允许改写透明边界、河道端口、海岸端口和水面 mask。
 
 ### 第一批：文档和接口底座
 

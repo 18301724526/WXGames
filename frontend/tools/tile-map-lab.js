@@ -66,55 +66,6 @@
   };
   const OCEAN_TEMPLATE_ASSETS = {
     full: { label: 'ocean template full', file: 'tile-map/ocean-template/tile-ocean-template-full.png' },
-    nw: { label: 'ocean coast nw', file: 'tile-map/ocean-template/tile-ocean-template-nw.png' },
-    ne: { label: 'ocean coast ne', file: 'tile-map/ocean-template/tile-ocean-template-ne.png' },
-    se: { label: 'ocean coast se', file: 'tile-map/ocean-template/tile-ocean-template-se.png' },
-    sw: { label: 'ocean coast sw', file: 'tile-map/ocean-template/tile-ocean-template-sw.png' },
-    'nw-ne': { label: 'ocean coast nw-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne.png' },
-    'nw-se': { label: 'ocean coast nw-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-se.png' },
-    'nw-sw': { label: 'ocean coast nw-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-sw.png' },
-    'ne-se': { label: 'ocean coast ne-se', file: 'tile-map/ocean-template/tile-ocean-template-ne-se.png' },
-    'ne-sw': { label: 'ocean coast ne-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-sw.png' },
-    'se-sw': { label: 'ocean coast se-sw', file: 'tile-map/ocean-template/tile-ocean-template-se-sw.png' },
-    'nw-ne-se': { label: 'ocean coast nw-ne-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se.png' },
-    'nw-ne-sw': { label: 'ocean coast nw-ne-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw.png' },
-    'nw-se-sw': { label: 'ocean coast nw-se-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw.png' },
-    'ne-se-sw': { label: 'ocean coast ne-se-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw.png' },
-    'nw-ne-se-sw': { label: 'ocean coast nw-ne-se-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw.png' },
-  };
-  const OCEAN_MOUTH_TEMPLATE_ASSETS = {
-    'ne-mouth-ne': { label: 'ocean ne-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-mouth-ne.png' },
-    'ne-se-mouth-ne': { label: 'ocean ne-se-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-mouth-ne.png' },
-    'ne-se-mouth-se': { label: 'ocean ne-se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-mouth-se.png' },
-    'ne-se-sw-mouth-ne': { label: 'ocean ne-se-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw-mouth-ne.png' },
-    'ne-se-sw-mouth-se': { label: 'ocean ne-se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw-mouth-se.png' },
-    'ne-se-sw-mouth-sw': { label: 'ocean ne-se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-se-sw-mouth-sw.png' },
-    'ne-sw-mouth-ne': { label: 'ocean ne-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-ne-sw-mouth-ne.png' },
-    'ne-sw-mouth-sw': { label: 'ocean ne-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-ne-sw-mouth-sw.png' },
-    'nw-mouth-nw': { label: 'ocean nw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-mouth-nw.png' },
-    'nw-ne-mouth-ne': { label: 'ocean nw-ne-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-mouth-ne.png' },
-    'nw-ne-mouth-nw': { label: 'ocean nw-ne-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-mouth-nw.png' },
-    'nw-ne-se-mouth-ne': { label: 'ocean nw-ne-se-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-mouth-ne.png' },
-    'nw-ne-se-mouth-nw': { label: 'ocean nw-ne-se-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-mouth-nw.png' },
-    'nw-ne-se-mouth-se': { label: 'ocean nw-ne-se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-mouth-se.png' },
-    'nw-ne-se-sw-mouth-ne': { label: 'ocean nw-ne-se-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-ne.png' },
-    'nw-ne-se-sw-mouth-nw': { label: 'ocean nw-ne-se-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-nw.png' },
-    'nw-ne-se-sw-mouth-se': { label: 'ocean nw-ne-se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-se.png' },
-    'nw-ne-se-sw-mouth-sw': { label: 'ocean nw-ne-se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-se-sw-mouth-sw.png' },
-    'nw-ne-sw-mouth-ne': { label: 'ocean nw-ne-sw-mouth-ne', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw-mouth-ne.png' },
-    'nw-ne-sw-mouth-nw': { label: 'ocean nw-ne-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw-mouth-nw.png' },
-    'nw-ne-sw-mouth-sw': { label: 'ocean nw-ne-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-ne-sw-mouth-sw.png' },
-    'nw-se-mouth-nw': { label: 'ocean nw-se-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-mouth-nw.png' },
-    'nw-se-mouth-se': { label: 'ocean nw-se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-mouth-se.png' },
-    'nw-se-sw-mouth-nw': { label: 'ocean nw-se-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw-mouth-nw.png' },
-    'nw-se-sw-mouth-se': { label: 'ocean nw-se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw-mouth-se.png' },
-    'nw-se-sw-mouth-sw': { label: 'ocean nw-se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-se-sw-mouth-sw.png' },
-    'nw-sw-mouth-nw': { label: 'ocean nw-sw-mouth-nw', file: 'tile-map/ocean-template/tile-ocean-template-nw-sw-mouth-nw.png' },
-    'nw-sw-mouth-sw': { label: 'ocean nw-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-nw-sw-mouth-sw.png' },
-    'se-mouth-se': { label: 'ocean se-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-se-mouth-se.png' },
-    'se-sw-mouth-se': { label: 'ocean se-sw-mouth-se', file: 'tile-map/ocean-template/tile-ocean-template-se-sw-mouth-se.png' },
-    'se-sw-mouth-sw': { label: 'ocean se-sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-se-sw-mouth-sw.png' },
-    'sw-mouth-sw': { label: 'ocean sw-mouth-sw', file: 'tile-map/ocean-template/tile-ocean-template-sw-mouth-sw.png' },
   };
   const COAST_TEMPLATE_ASSETS = {
     nw: { label: 'land coast nw', file: 'tile-map/coast-template/tile-coast-template-nw.png' },
@@ -150,20 +101,18 @@
     'ne-se-sw': { label: 'plains desert transition ne-se-sw', file: 'tile-map/transition-template/tile-transition-plains-desert-ne-se-sw.png' },
     'nw-ne-se-sw': { label: 'plains desert transition nw-ne-se-sw', file: 'tile-map/transition-template/tile-transition-plains-desert-nw-ne-se-sw.png' },
   };
-  const RIVER_MOUTH_TEMPLATE_ASSETS = {
-    'coast-se-river-ne-se': {
-      label: 'river mouth single se / river ne-se',
-      file: 'tile-map/river-mouth-template/tile-river-mouth-coast-se-river-ne-se.png',
-    },
-    'coast-se-sw-river-nw-se': {
-      label: 'river mouth double se-sw / river nw-se',
-      file: 'tile-map/river-mouth-template/tile-river-mouth-coast-se-sw-river-nw-se.png',
-    },
-    'coast-ne-se-sw-river-nw-se': {
-      label: 'river mouth triple ne-se-sw / river nw-se',
-      file: 'tile-map/river-mouth-template/tile-river-mouth-coast-ne-se-sw-river-nw-se.png',
-    },
-  };
+  const COASTAL_RIVER_TEMPLATE_ASSETS = Object.fromEntries(
+    TEMPLATE_SIDE_KEYS.flatMap((coastKey) => TEMPLATE_SIDE_KEYS.map((riverKey) => {
+      const key = `coast-${coastKey}-river-${riverKey}`;
+      return [
+        key,
+        {
+          label: `coastal river ${key}`,
+          file: `tile-map/coastal-river-template/tile-coastal-river-${key}.png`,
+        },
+      ];
+    }))
+  );
   const TERRAIN_TYPES = ['plains', 'beach', 'desert', 'forest', 'hills', 'river', 'waste', 'mountain'];
   const TERRAIN_FEATURES = {
     hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
@@ -212,9 +161,10 @@
   };
   const MICRO_OCEAN_OVERRIDES = new Set(['tile_2_1']);
   const MICRO_RIVER_PATHS = [
-    { path: [{ q: 2, r: -4 }, { q: 2, r: -3 }, { q: 2, r: -2 }], mouthSide: 'se' },
-    { path: [{ q: -2, r: 3 }, { q: -1, r: 3 }, { q: 0, r: 3 }], mouthSide: 'se' },
-    { path: [{ q: -1, r: 2 }, { q: 0, r: 2 }, { q: 1, r: 2 }, { q: 2, r: 2 }], mouthSide: 'se' },
+    { path: [{ q: 2, r: -4 }, { q: 2, r: -3 }, { q: 2, r: -2 }], outletSide: 'se' },
+    { path: [{ q: -2, r: 3 }, { q: -1, r: 3 }, { q: 0, r: 3 }], outletSide: 'se' },
+    { path: [{ q: -1, r: 2 }, { q: 0, r: 2 }, { q: 1, r: 2 }, { q: 2, r: 2 }], outletSide: 'se' },
+    { path: [{ q: 1, r: 0 }, { q: 2, r: 0 }, { q: 3, r: 0 }], outletSide: '' },
   ];
 
   const state = {
@@ -323,11 +273,15 @@
     return getRiverConnectionsByCoord(tile.q, tile.r);
   }
 
-  function getRiverTemplateKey(tile) {
-    const sides = getRiverConnections(tile)
+  function getRiverPorts(tile) {
+    return getRiverConnections(tile)
       .map((directionIndex) => RIVER_TEMPLATE_DIRECTION_SIDES[directionIndex])
       .filter(Boolean)
       .sort((a, b) => ['nw', 'ne', 'se', 'sw'].indexOf(a) - ['nw', 'ne', 'se', 'sw'].indexOf(b));
+  }
+
+  function getRiverTemplateKey(tile) {
+    const sides = getRiverPorts(tile);
     return sides.join('-');
   }
 
@@ -372,17 +326,6 @@
     return tile.terrain === 'ocean' ? 'full' : '';
   }
 
-  function getOceanMouthSide(tile) {
-    return '';
-  }
-
-  function getOceanTemplateVariantKey(tile) {
-    const baseKey = getOceanTemplateKey(tile);
-    const mouthSide = getOceanMouthSide(tile);
-    const mouthKey = mouthSide ? `${baseKey}-mouth-${mouthSide}` : '';
-    return OCEAN_MOUTH_TEMPLATE_ASSETS[mouthKey] ? mouthKey : baseKey;
-  }
-
   function getOceanTemplateAsset(tile) {
     if (tile.terrain !== 'ocean') return null;
     return OCEAN_TEMPLATE_ASSETS.full;
@@ -398,6 +341,10 @@
       const dir = OCEAN_SIDE_DIRECTIONS[side];
       return isOceanCoord(tile.q + dir.dq, tile.r + dir.dr, state.radius);
     });
+  }
+
+  function getCoastPorts(tile) {
+    return getOceanNeighborSides(tile);
   }
 
   function getCoastTemplateKey(tile) {
@@ -429,23 +376,23 @@
     return key ? TERRAIN_TRANSITION_TEMPLATE_ASSETS[key] || null : null;
   }
 
-  function getRiverMouthTemplateKey(tile) {
+  function getCoastalRiverTemplateKey(tile) {
     if (!isRiverTile(tile.q, tile.r) || tile.terrain === 'ocean') return '';
-    const coastKey = getSortedSideKey(getOceanNeighborSides(tile));
+    const coastKey = getSortedSideKey(getCoastPorts(tile));
     if (!coastKey) return '';
-    const riverKey = getRiverTemplateKey(tile);
+    const riverKey = getSortedSideKey(getRiverPorts(tile));
     const key = `coast-${coastKey}-river-${riverKey}`;
-    return RIVER_MOUTH_TEMPLATE_ASSETS[key] ? key : '';
+    return COASTAL_RIVER_TEMPLATE_ASSETS[key] ? key : '';
   }
 
-  function getRiverMouthTemplateAsset(tile) {
-    const key = getRiverMouthTemplateKey(tile);
-    return key ? RIVER_MOUTH_TEMPLATE_ASSETS[key] || null : null;
+  function getCoastalRiverTemplateAsset(tile) {
+    const key = getCoastalRiverTemplateKey(tile);
+    return key ? COASTAL_RIVER_TEMPLATE_ASSETS[key] || null : null;
   }
 
   function getTileTemplateAsset(tile) {
     return getOceanTemplateAsset(tile)
-      || getRiverMouthTemplateAsset(tile)
+      || getCoastalRiverTemplateAsset(tile)
       || getRiverTemplateAsset(tile)
       || getCoastTemplateAsset(tile)
       || getTerrainTransitionTemplateAsset(tile);
@@ -559,7 +506,7 @@
     });
   }
 
-  function findRiverMouthTarget(preferredTarget, radius, salt) {
+  function findCoastalRiverTarget(preferredTarget, radius, salt) {
     const candidates = [];
     for (let q = -radius; q <= radius; q += 1) {
       const minR = Math.max(-radius, -q - radius);
@@ -595,6 +542,7 @@
   }
 
   function addRiverSideConnection(connections, tile, side) {
+    if (!side) return;
     const direction = RIVER_DIRECTION_BY_SIDE[side];
     if (direction === undefined) return;
     const id = getTileId(tile.q, tile.r);
@@ -602,7 +550,7 @@
     connections.get(id).add(direction);
   }
 
-  function addRiverMouthConnection(connections, land, preferredOcean, radius, salt) {
+  function addCoastalRiverOutletConnection(connections, land, preferredOcean, radius, salt) {
     if (!land) return;
     const candidates = RIVER_TEMPLATE_DIRECTION_INDICES
       .map((index) => {
@@ -612,16 +560,16 @@
         return {
           index,
           ocean,
-          score: getHexDistance(ocean, preferredOcean) * 10 + random01(state.seed, ocean.q, ocean.r, `${salt}-mouth`),
+          score: getHexDistance(ocean, preferredOcean) * 10 + random01(state.seed, ocean.q, ocean.r, `${salt}-outlet`),
         };
       })
       .filter(Boolean)
       .sort((a, b) => a.score - b.score);
-    const mouth = candidates[0];
-    if (!mouth) return;
+    const outlet = candidates[0];
+    if (!outlet) return;
     const id = getTileId(land.q, land.r);
     if (!connections.has(id)) connections.set(id, new Set());
-    connections.get(id).add(mouth.index);
+    connections.get(id).add(outlet.index);
   }
 
   function createMicroRiverConnections() {
@@ -630,7 +578,7 @@
       for (let index = 1; index < item.path.length; index += 1) {
         addRiverConnection(connections, item.path[index - 1], item.path[index]);
       }
-      addRiverSideConnection(connections, item.path[item.path.length - 1], item.mouthSide);
+      addRiverSideConnection(connections, item.path[item.path.length - 1], item.outletSide);
     }
     return new Map(
       Array.from(connections.entries()).map(([id, dirs]) => [id, Array.from(dirs).sort((a, b) => a - b)])
@@ -642,7 +590,7 @@
     const connections = new Map();
     const mainStart = { q: -Math.max(1, Math.floor(radius * 0.42)), r: -radius + Math.max(1, Math.floor(radius * 0.42)) };
     const mainPreferredTarget = { q: Math.max(1, Math.floor(radius * 0.42)), r: radius - Math.max(1, Math.floor(radius * 0.42)) };
-    const mainTarget = findRiverMouthTarget(
+    const mainTarget = findCoastalRiverTarget(
       mainPreferredTarget,
       radius,
       'river-main'
@@ -650,7 +598,7 @@
     const mainPath = buildRiverPath(mainStart, mainTarget, radius, 'river-main');
     const branchStart = mainPath[Math.max(1, Math.floor(mainPath.length * 0.52))] || mainPath[0];
     const branchPreferredTarget = { q: radius, r: -Math.max(0, Math.floor(radius * 0.18)) };
-    const branchTarget = findRiverMouthTarget(
+    const branchTarget = findCoastalRiverTarget(
       branchPreferredTarget,
       radius,
       'river-branch'
@@ -659,8 +607,8 @@
     for (const path of [mainPath, branchPath]) {
       for (let i = 1; i < path.length; i += 1) addRiverConnection(connections, path[i - 1], path[i]);
     }
-    addRiverMouthConnection(connections, mainPath[mainPath.length - 1], mainPreferredTarget, radius, 'river-main');
-    addRiverMouthConnection(connections, branchPath[branchPath.length - 1], branchPreferredTarget, radius, 'river-branch');
+    addCoastalRiverOutletConnection(connections, mainPath[mainPath.length - 1], mainPreferredTarget, radius, 'river-main');
+    addCoastalRiverOutletConnection(connections, branchPath[branchPath.length - 1], branchPreferredTarget, radius, 'river-branch');
     return new Map(
       Array.from(connections.entries()).map(([id, dirs]) => [id, Array.from(dirs).sort((a, b) => a - b)])
     );
@@ -790,7 +738,7 @@
     return file.includes('river-template/')
       || file.includes('ocean-template/')
       || file.includes('coast-template/')
-      || file.includes('river-mouth-template/');
+      || file.includes('coastal-river-template/');
   }
 
   function measurePixelBounds(data, width, height, predicate) {
@@ -928,14 +876,16 @@
   }
 
   function createWaterMaskCanvas(image, file) {
-    if (file.includes('river-mouth-template/')) return createRiverMouthWaterMaskCanvas(image);
+    if (file.includes('coastal-river-template/')) return createCoastalRiverWaterMaskCanvas(image, file);
     if (file.includes('river-template/tile-river-bank-uv-')) return createTransparentRiverWaterMask(image);
     return createColorWaterMaskCanvas(image);
   }
 
-  function createRiverMouthWaterMaskCanvas(image) {
+  function createCoastalRiverWaterMaskCanvas(image, file) {
     const transparentMask = createTransparentRiverWaterMask(image);
     const colorMask = createColorWaterMaskCanvas(image);
+    if (file.includes('__river-mask__')) return transparentMask;
+    if (file.includes('__ocean-mask__')) return colorMask;
     const mask = document.createElement('canvas');
     mask.width = transparentMask.canvas.width || colorMask.canvas.width;
     mask.height = transparentMask.canvas.height || colorMask.canvas.height;
@@ -953,6 +903,11 @@
     } catch (_) {
       return { canvas: mask, metrics: transparentMask.metrics || colorMask.metrics || null };
     }
+  }
+
+  function getWaterMaskFile(file, kind) {
+    if (!file.includes('coastal-river-template/')) return file;
+    return kind === 'river' ? `${file}__river-mask__` : `${file}__ocean-mask__`;
   }
 
   function createDryTemplateCanvas(image, mask) {
@@ -981,7 +936,7 @@
   function getTemplateDrawMetrics(templateAsset) {
     if (templateAsset?.file?.includes('coast-template/tile-coast-template-')
       || templateAsset?.file?.includes('transition-template/')
-      || templateAsset?.file?.includes('river-mouth-template/')) return getTerrainMetrics('plains');
+      || templateAsset?.file?.includes('coastal-river-template/')) return getTerrainMetrics('plains');
     return getImageMetrics(templateAsset.file);
   }
 
@@ -1038,6 +993,14 @@
       waterMasks.set(file, mask.canvas);
       if (mask.metrics) waterMaskMetrics.set(file, mask.metrics);
       dryTemplateCanvases.set(file, createDryTemplateCanvas(image, mask.canvas));
+      if (file.includes('coastal-river-template/')) {
+        const riverMask = createWaterMaskCanvas(image, `${file}__river-mask__`);
+        const oceanMask = createWaterMaskCanvas(image, `${file}__ocean-mask__`);
+        waterMasks.set(getWaterMaskFile(file, 'river'), riverMask.canvas);
+        waterMasks.set(getWaterMaskFile(file, 'ocean'), oceanMask.canvas);
+        if (riverMask.metrics) waterMaskMetrics.set(getWaterMaskFile(file, 'river'), riverMask.metrics);
+        if (oceanMask.metrics) waterMaskMetrics.set(getWaterMaskFile(file, 'ocean'), oceanMask.metrics);
+      }
     }
   }
 
@@ -1049,10 +1012,9 @@
       ...Object.values(WATER_TEXTURE_ASSETS).map((item) => item.file),
       ...Object.values(RIVER_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(OCEAN_TEMPLATE_ASSETS).map((item) => item.file),
-      ...Object.values(OCEAN_MOUTH_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(COAST_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(TERRAIN_TRANSITION_TEMPLATE_ASSETS).map((item) => item.file),
-      ...Object.values(RIVER_MOUTH_TEMPLATE_ASSETS).map((item) => item.file),
+      ...Object.values(COASTAL_RIVER_TEMPLATE_ASSETS).map((item) => item.file),
     ];
     const results = await Promise.all(files.map(loadImage));
     rebuildWaterTemplateCaches(files);
@@ -1121,7 +1083,7 @@
 
   function getWaterKind(tile) {
     if (tile.terrain === 'ocean') return 'ocean';
-    if (getRiverMouthTemplateAsset(tile)) return 'ocean';
+    if (getCoastalRiverTemplateAsset(tile)) return 'coastal-river';
     if (getCoastTemplateAsset(tile)) return 'ocean';
     if (isRiverTile(tile.q, tile.r)) return 'river';
     return '';
@@ -1163,7 +1125,16 @@
   function drawWaterToLayer(tile, templateAsset, metrics, drawX, drawY, drawW, drawH) {
     const kind = getWaterKind(tile);
     if (!kind || !templateAsset || !waterCompositeCtx) return;
-    const mask = waterMasks.get(templateAsset.file);
+    if (kind === 'coastal-river') {
+      drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, 'ocean');
+      drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, 'river');
+      return;
+    }
+    drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind);
+  }
+
+  function drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind) {
+    const mask = waterMasks.get(getWaterMaskFile(templateAsset.file, kind));
     const profile = WATER_TEXTURE_ASSETS[kind];
     if (!mask || !profile) return;
     const localW = Math.max(1, Math.ceil(drawW));
@@ -1590,8 +1561,8 @@
     const ocean = tile.terrain === 'ocean' ? `<br>海岸 ${getOceanTemplateKey(tile)}` : '';
     const coast = getCoastTemplateKey(tile) ? `<br>陆地海岸 ${getCoastTemplateKey(tile)}` : '';
     const transition = getTerrainTransitionTemplateKey(tile) ? `<br>地形过渡 ${getTerrainTransitionTemplateKey(tile)}` : '';
-    const mouth = getRiverMouthTemplateKey(tile) ? `<br>入海口 ${getRiverMouthTemplateKey(tile)}` : '';
-    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}${ocean}${coast}${transition}${mouth}<br>地点 ${site}`;
+    const coastalRiver = getCoastalRiverTemplateKey(tile) ? `<br>沿海河流 ${getCoastalRiverTemplateKey(tile)}` : '';
+    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}${ocean}${coast}${transition}${coastalRiver}<br>地点 ${site}`;
   }
 
   function getParamsSnapshot() {
@@ -1620,17 +1591,14 @@
       effectiveOceanTemplates: Object.fromEntries(
         Object.entries(OCEAN_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
-      effectiveOceanMouthTemplates: Object.fromEntries(
-        Object.entries(OCEAN_MOUTH_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
-      ),
       effectiveCoastTemplates: Object.fromEntries(
         Object.entries(COAST_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
       effectiveTerrainTransitions: Object.fromEntries(
         Object.entries(TERRAIN_TRANSITION_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
-      effectiveRiverMouthTemplates: Object.fromEntries(
-        Object.entries(RIVER_MOUTH_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      effectiveCoastalRiverTemplates: Object.fromEntries(
+        Object.entries(COASTAL_RIVER_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
       riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
       oceanTiles: tiles.filter((tile) => tile.terrain === 'ocean').length,
@@ -1638,8 +1606,7 @@
       beachTiles: tiles.filter((tile) => tile.terrain === 'beach').length,
       desertTiles: tiles.filter((tile) => tile.terrain === 'desert').length,
       terrainTransitionTiles: tiles.filter((tile) => getTerrainTransitionTemplateKey(tile)).length,
-      riverMouthLandTiles: tiles.filter((tile) => getRiverMouthTemplateKey(tile)).length,
-      riverMouthOceanTiles: tiles.filter((tile) => tile.terrain === 'ocean' && getOceanMouthSide(tile)).length,
+      coastalRiverTiles: tiles.filter((tile) => getCoastalRiverTemplateKey(tile)).length,
       pondTiles: tiles.filter((tile) => tile.pond).length,
       stepX: state.stepX,
       stepY: state.stepY,
@@ -1854,11 +1821,9 @@
       analyzeAlphaBounds,
       getRiverConnections,
       getOceanTemplateKey,
-      getOceanMouthSide,
-      getOceanTemplateVariantKey,
       getCoastTemplateKey,
       getTerrainTransitionTemplateKey,
-      getRiverMouthTemplateKey,
+      getCoastalRiverTemplateKey,
       getWaterKind,
       hasRiverNearby,
       get tiles() { return tiles; },
@@ -1869,10 +1834,9 @@
       featureAssets: FEATURE_ASSETS,
       waterTextureAssets: WATER_TEXTURE_ASSETS,
       oceanTemplateAssets: OCEAN_TEMPLATE_ASSETS,
-      oceanMouthTemplateAssets: OCEAN_MOUTH_TEMPLATE_ASSETS,
       coastTemplateAssets: COAST_TEMPLATE_ASSETS,
       terrainTransitionTemplateAssets: TERRAIN_TRANSITION_TEMPLATE_ASSETS,
-      riverMouthTemplateAssets: RIVER_MOUTH_TEMPLATE_ASSETS,
+      coastalRiverTemplateAssets: COASTAL_RIVER_TEMPLATE_ASSETS,
     };
   }
 
