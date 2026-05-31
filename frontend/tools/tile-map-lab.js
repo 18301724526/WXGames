@@ -84,6 +84,25 @@
     'ne-se-sw': { label: 'land coast ne-se-sw', file: 'tile-map/coast-template/tile-coast-template-ne-se-sw.png' },
     'nw-ne-se-sw': { label: 'land coast nw-ne-se-sw', file: 'tile-map/coast-template/tile-coast-template-nw-ne-se-sw.png' },
   };
+  const COAST_CORNER_TEMPLATE_ASSETS = {
+    n: { label: 'land coast corner n', file: 'tile-map/coast-corner-template/tile-coast-corner-template-n.png' },
+    e: { label: 'land coast corner e', file: 'tile-map/coast-corner-template/tile-coast-corner-template-e.png' },
+    s: { label: 'land coast corner s', file: 'tile-map/coast-corner-template/tile-coast-corner-template-s.png' },
+    w: { label: 'land coast corner w', file: 'tile-map/coast-corner-template/tile-coast-corner-template-w.png' },
+  };
+  const COAST_CORNER_DIAGONALS = {
+    n: { dq: -1, dr: -1 },
+    e: { dq: 1, dr: -1 },
+    s: { dq: 1, dr: 1 },
+    w: { dq: -1, dr: 1 },
+  };
+  const COAST_CORNER_ADJACENT_SIDES = {
+    n: ['nw', 'ne'],
+    e: ['ne', 'se'],
+    s: ['se', 'sw'],
+    w: ['sw', 'nw'],
+  };
+  const COAST_CORNER_KEYS = ['n', 'e', 's', 'w'];
   const TERRAIN_TRANSITION_TEMPLATE_ASSETS = {
     nw: { label: 'plains desert transition nw', file: 'tile-map/transition-template/tile-transition-plains-desert-nw.png' },
     ne: { label: 'plains desert transition ne', file: 'tile-map/transition-template/tile-transition-plains-desert-ne.png' },
@@ -345,6 +364,18 @@
 
   function getCoastPorts(tile) {
     return getOceanNeighborSides(tile);
+  }
+
+  function getCoastCornerKeys(tile) {
+    if (tile.terrain === 'ocean') return [];
+    const edgeSides = new Set(getOceanNeighborSides(tile));
+    return COAST_CORNER_KEYS.filter((corner) => {
+      const diagonal = COAST_CORNER_DIAGONALS[corner];
+      const adjacentSides = COAST_CORNER_ADJACENT_SIDES[corner];
+      if (!diagonal || !adjacentSides) return false;
+      if (!isOceanCoord(tile.q + diagonal.dq, tile.r + diagonal.dr, state.radius)) return false;
+      return !(edgeSides.has(adjacentSides[0]) && edgeSides.has(adjacentSides[1]));
+    });
   }
 
   function getCoastTemplateKey(tile) {
@@ -738,6 +769,7 @@
     return file.includes('river-template/')
       || file.includes('ocean-template/')
       || file.includes('coast-template/')
+      || file.includes('coast-corner-template/')
       || file.includes('coastal-river-template/');
   }
 
@@ -935,6 +967,7 @@
 
   function getTemplateDrawMetrics(templateAsset) {
     if (templateAsset?.file?.includes('coast-template/tile-coast-template-')
+      || templateAsset?.file?.includes('coast-corner-template/')
       || templateAsset?.file?.includes('transition-template/')
       || templateAsset?.file?.includes('coastal-river-template/')) return getTerrainMetrics('plains');
     return getImageMetrics(templateAsset.file);
@@ -1013,6 +1046,7 @@
       ...Object.values(RIVER_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(OCEAN_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(COAST_TEMPLATE_ASSETS).map((item) => item.file),
+      ...Object.values(COAST_CORNER_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(TERRAIN_TRANSITION_TEMPLATE_ASSETS).map((item) => item.file),
       ...Object.values(COASTAL_RIVER_TEMPLATE_ASSETS).map((item) => item.file),
     ];
@@ -1133,6 +1167,17 @@
     drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind);
   }
 
+  function drawCoastCornerWaterToLayer(tile, drawX, drawY, drawW, drawH) {
+    const corners = getCoastCornerKeys(tile);
+    if (!corners.length || !waterCompositeCtx) return;
+    const metrics = getTerrainMetrics('plains');
+    for (const corner of corners) {
+      const asset = COAST_CORNER_TEMPLATE_ASSETS[corner];
+      if (!asset) continue;
+      drawWaterToLayerWithKind(tile, asset, metrics, drawX, drawY, drawW, drawH, 'ocean');
+    }
+  }
+
   function drawWaterToLayerWithKind(tile, templateAsset, metrics, drawX, drawY, drawW, drawH, kind) {
     const mask = waterMasks.get(getWaterMaskFile(templateAsset.file, kind));
     const profile = WATER_TEXTURE_ASSETS[kind];
@@ -1180,16 +1225,24 @@
     waterLayerCtx.clearRect(0, 0, width, height);
     for (const tile of sortedTiles) {
       const templateAsset = getTileTemplateAsset(tile);
-      if (!templateAsset || !getWaterKind(tile)) continue;
       const projected = getProjectedPosition(tile);
       const tileSize = getTileDrawSize('plains');
-      const metrics = getTemplateDrawMetrics(templateAsset);
       const drawW = tileSize.width * state.zoom;
       const drawH = tileSize.height * state.zoom;
-      drawWaterToLayer(
+      if (templateAsset && getWaterKind(tile)) {
+        const metrics = getTemplateDrawMetrics(templateAsset);
+        drawWaterToLayer(
+          tile,
+          templateAsset,
+          metrics,
+          projected.x - drawW * 0.5,
+          projected.y - drawH * state.anchorY,
+          drawW,
+          drawH
+        );
+      }
+      drawCoastCornerWaterToLayer(
         tile,
-        templateAsset,
-        metrics,
         projected.x - drawW * 0.5,
         projected.y - drawH * state.anchorY,
         drawW,
@@ -1244,6 +1297,7 @@
       drawW,
       drawH
     );
+    drawCoastCornerOverlays(targetCtx, tile, drawX, drawY, drawW, drawH);
 
     if (state.hoverTileId === tile.id) {
       drawDebugDiamond(projected.x, projected.y, state.stepX * state.zoom * 1.4, state.stepY * state.zoom * 1.5, 'rgba(255, 226, 146, 0.72)');
@@ -1263,6 +1317,29 @@
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(255, 242, 216, 0.78)';
       ctx.fillText(`${tile.q},${tile.r}`, projected.x, projected.y + 4);
+    }
+  }
+
+  function drawCoastCornerOverlays(targetCtx, tile, drawX, drawY, drawW, drawH) {
+    const corners = getCoastCornerKeys(tile);
+    if (!corners.length) return;
+    for (const corner of corners) {
+      const asset = COAST_CORNER_TEMPLATE_ASSETS[corner];
+      const image = images.get(asset?.file);
+      if (!image || !image.complete) continue;
+      const sourceImage = dryTemplateCanvases.get(asset.file) || image;
+      const metrics = getTerrainMetrics('plains');
+      targetCtx.drawImage(
+        sourceImage,
+        metrics.x,
+        metrics.y,
+        metrics.width,
+        metrics.height,
+        drawX,
+        drawY,
+        drawW,
+        drawH
+      );
     }
   }
 
@@ -1560,9 +1637,10 @@
     const river = isRiverTile(tile.q, tile.r) ? '<br>河流 穿过附近' : '';
     const ocean = tile.terrain === 'ocean' ? `<br>海岸 ${getOceanTemplateKey(tile)}` : '';
     const coast = getCoastTemplateKey(tile) ? `<br>陆地海岸 ${getCoastTemplateKey(tile)}` : '';
+    const coastCorners = getCoastCornerKeys(tile).length ? `<br>角海岸 ${getCoastCornerKeys(tile).join('-')}` : '';
     const transition = getTerrainTransitionTemplateKey(tile) ? `<br>地形过渡 ${getTerrainTransitionTemplateKey(tile)}` : '';
     const coastalRiver = getCoastalRiverTemplateKey(tile) ? `<br>沿海河流 ${getCoastalRiverTemplateKey(tile)}` : '';
-    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}${ocean}${coast}${transition}${coastalRiver}<br>地点 ${site}`;
+    hoverInfo.innerHTML = `坐标 ${tile.q}, ${tile.r}<br>地形 ${terrain}${river}${ocean}${coast}${coastCorners}${transition}${coastalRiver}<br>地点 ${site}`;
   }
 
   function getParamsSnapshot() {
@@ -1594,6 +1672,9 @@
       effectiveCoastTemplates: Object.fromEntries(
         Object.entries(COAST_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
+      effectiveCoastCornerTemplates: Object.fromEntries(
+        Object.entries(COAST_CORNER_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
+      ),
       effectiveTerrainTransitions: Object.fromEntries(
         Object.entries(TERRAIN_TRANSITION_TEMPLATE_ASSETS).map(([type, asset]) => [type, getImageMetrics(asset.file)])
       ),
@@ -1603,6 +1684,7 @@
       riverTiles: tiles.filter((tile) => isRiverTile(tile.q, tile.r)).length,
       oceanTiles: tiles.filter((tile) => tile.terrain === 'ocean').length,
       landCoastTiles: tiles.filter((tile) => tile.terrain !== 'ocean' && getCoastTemplateKey(tile)).length,
+      coastCornerTiles: tiles.filter((tile) => getCoastCornerKeys(tile).length).length,
       beachTiles: tiles.filter((tile) => tile.terrain === 'beach').length,
       desertTiles: tiles.filter((tile) => tile.terrain === 'desert').length,
       terrainTransitionTiles: tiles.filter((tile) => getTerrainTransitionTemplateKey(tile)).length,
@@ -1822,6 +1904,7 @@
       getRiverConnections,
       getOceanTemplateKey,
       getCoastTemplateKey,
+      getCoastCornerKeys,
       getTerrainTransitionTemplateKey,
       getCoastalRiverTemplateKey,
       getWaterKind,
@@ -1835,6 +1918,7 @@
       waterTextureAssets: WATER_TEXTURE_ASSETS,
       oceanTemplateAssets: OCEAN_TEMPLATE_ASSETS,
       coastTemplateAssets: COAST_TEMPLATE_ASSETS,
+      coastCornerTemplateAssets: COAST_CORNER_TEMPLATE_ASSETS,
       terrainTransitionTemplateAssets: TERRAIN_TRANSITION_TEMPLATE_ASSETS,
       coastalRiverTemplateAssets: COASTAL_RIVER_TEMPLATE_ASSETS,
     };
