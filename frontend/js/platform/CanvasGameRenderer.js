@@ -132,11 +132,6 @@
         'assets/art/building-workshop-cutout.png',
         'assets/art/building-temple-cutout.png',
         'assets/art/building-watchtower-cutout.png',
-        'assets/art/territory-capital-cutout.png',
-        'assets/art/territory-forest-cutout.png',
-        'assets/art/territory-hills-cutout.png',
-        'assets/art/territory-plains-cutout.png',
-        'assets/art/territory-ruins-cutout.png',
         'assets/art/world-site-camp-cutout.png',
         'assets/art/world-site-city-cutout.png',
         'assets/art/world-site-outpost-cutout.png',
@@ -1102,19 +1097,6 @@
       };
     }
 
-    getBattleSpriteSpec(side = 'attacker') {
-      return {
-        path: side === 'attacker'
-          ? 'assets/art/battle/soldier-player-sheet.png'
-          : 'assets/art/battle/soldier-enemy-sheet.png',
-        columns: 4,
-        rows: 4,
-        frameWidth: 313.5,
-        frameHeight: 313.5,
-        poses: { idle: 0, move: 1, attack: 2, skill: 2, hit: 3, defeated: 3 },
-      };
-    }
-
     getBattleUnitSpec(side = 'attacker', spritePath = '') {
       const unit = this.constructor.getBattleUnitKey(side);
       const root = spritePath && !String(spritePath).endsWith('.png') ? spritePath : `assets/art/battle/units/${unit}`;
@@ -1191,33 +1173,20 @@
       return true;
     }
 
-    drawBattleSpriteSheet(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '') {
+    drawBattleSoldierFallback(x, y, side = 'attacker', ratio = 1) {
       if (!this.ctx) return;
-      const spec = this.getBattleSpriteSpec(side);
-      const image = this.getAsset(spritePath || spec.path);
       const alpha = Math.max(0.25, Math.min(1, Number(ratio) || 1));
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
-      const spritePose = spec.poses[pose] !== undefined ? pose : 'idle';
-      const row = spec.poses[spritePose] || 0;
-      const column = Math.abs(Math.floor(Number(frame) || 0)) % spec.columns;
-      const sw = spec.frameWidth;
-      const sh = spec.frameHeight;
-      const dw = sw * scale;
-      const dh = sh * scale;
-      if (image && typeof this.ctx.drawImage === 'function') {
-        this.ctx.drawImage(image, column * sw, row * sh, sw, sh, x - dw / 2, y - dh, dw, dh);
-      } else {
-        const color = side === 'attacker' ? '#74d3a0' : '#e07b62';
-        this.drawCircle(x, y - 18, 5, { fill: color });
-        this.drawPanel(x - 6, y - 14, 12, 16, { fill: color, radius: 2 });
-      }
+      const color = side === 'attacker' ? '#74d3a0' : '#e07b62';
+      this.drawCircle(x, y - 18, 5, { fill: color });
+      this.drawPanel(x - 6, y - 14, 12, 16, { fill: color, radius: 2 });
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
     }
 
     drawBattleSoldierSprite(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
       if (this.drawBattleSoldierFrame(x, y, side, pose, frame, ratio, scale, spritePath, progress)) return;
-      this.drawBattleSpriteSheet(x, y, side, pose, frame, ratio, scale, spritePath && String(spritePath).endsWith('.png') ? spritePath : '');
+      this.drawBattleSoldierFallback(x, y, side, ratio);
     }
 
     drawBattleSoldier(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22) {
