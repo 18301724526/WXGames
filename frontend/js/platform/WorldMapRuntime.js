@@ -23,6 +23,7 @@
       this.waterTimeMs = null;
       this.dragLayerOffset = { x: 0, y: 0 };
       this.renderOnDrag = options.renderOnDrag !== false;
+      this.lastMapDataSignature = '';
     }
 
     setRenderer(renderer) {
@@ -127,6 +128,65 @@
       if (Number.isFinite(nextX)) this.camera.x = nextX;
       if (Number.isFinite(nextY)) this.camera.y = nextY;
       return this.camera;
+    }
+
+    getMapDataSignature(state = this.getState()) {
+      const territoryState = state?.territoryState || {};
+      if (typeof this.presenter?.getWorldTileMapSignature === 'function') {
+        return this.presenter.getWorldTileMapSignature(territoryState);
+      }
+      const worldMap = territoryState.worldMap || {};
+      const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+      const sites = Array.isArray(territoryState.territories) ? territoryState.territories : [];
+      const missions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
+      return JSON.stringify({
+        version: worldMap.version || 0,
+        seed: worldMap.seed || '',
+        tiles: tiles.map((tile) => ({
+          id: tile.id,
+          q: tile.q,
+          r: tile.r,
+          terrain: tile.terrain,
+          discovered: tile.discovered !== false,
+          visible: tile.visible !== false,
+          siteId: tile.siteId || null,
+          riverPorts: tile.riverPorts || [],
+          oceanTemplates: tile.oceanTemplates || [],
+          transitionKey: tile.transitionKey || '',
+        })),
+        sites: sites.map((site) => ({
+          id: site.id,
+          x: site.x,
+          y: site.y,
+          status: site.status,
+          owner: site.owner,
+          type: site.type,
+          art: site.art,
+          name: site.cityName || site.naturalName,
+        })),
+        missions: missions.map((mission) => ({
+          id: mission.id,
+          status: mission.status,
+          route: mission.route || [],
+          revealedTileIds: mission.revealedTileIds || [],
+          actionPointsRemaining: mission.actionPointsRemaining,
+        })),
+      });
+    }
+
+    syncMapDataSignature(state = this.getState()) {
+      const signature = this.getMapDataSignature(state);
+      if (signature === this.lastMapDataSignature) return false;
+      const hadPreviousSignature = Boolean(this.lastMapDataSignature);
+      this.lastMapDataSignature = signature;
+      if (hadPreviousSignature) {
+        if (typeof this.renderer?.invalidateWorldTileCaches === 'function') {
+          this.renderer.invalidateWorldTileCaches();
+        } else if (typeof this.renderer?.invalidateWorldTileViewCache === 'function') {
+          this.renderer.invalidateWorldTileViewCache();
+        }
+      }
+      return hadPreviousSignature;
     }
 
     resetCamera(options = {}) {
@@ -247,8 +307,10 @@
       if (!this.canRender(state)) {
         this.renderer?.clearAll?.();
         this.hitTargets = [];
+        this.lastMapDataSignature = '';
         return false;
       }
+      this.syncMapDataSignature(state);
       const now = this.now();
       if (!options.force && this.lastRenderAt && now - this.lastRenderAt < Math.max(1, this.frameMs - 1)) return false;
       this.lastRenderAt = now;

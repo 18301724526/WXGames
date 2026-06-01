@@ -5,6 +5,7 @@ require('../js/api/GameAPI');
 require('../js/platform/PlatformRuntime');
 require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/WorldMapRuntime');
+require('../js/platform/WorldMapRuntimeCoordinator');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/CanvasActionController');
 require('../js/platform/CanvasGuideController');

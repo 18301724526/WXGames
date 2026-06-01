@@ -492,6 +492,48 @@ test('CanvasGameRenderer uses tile lab draw size overdraw for world tile maps', 
   assert.equal(rect.y, 55.625);
 });
 
+test('CanvasGameRenderer caches world tile local entries across camera pan', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const tileMapView = {
+    signature: 'local-entry-cache-test',
+    version: 1,
+    seed: 'seed',
+    geometry,
+    tiles: [
+      { id: 'tile_0_0', q: 0, r: 0 },
+      { id: 'tile_1_0', q: 1, r: 0 },
+      { id: 'tile_0_1', q: 0, r: 1 },
+    ],
+  };
+  const viewport = { originX: 120, originY: 180, panX: 0, panY: 0, scale: 0.62, geometry };
+  let centerCalls = 0;
+  const originalGetWorldTileScreenCenter = renderer.getWorldTileScreenCenter.bind(renderer);
+  renderer.getWorldTileScreenCenter = (...args) => {
+    centerCalls += 1;
+    return originalGetWorldTileScreenCenter(...args);
+  };
+
+  const firstEntries = renderer.getWorldTileLocalEntries(tileMapView, viewport, geometry);
+  const pannedEntries = renderer.getWorldTileLocalEntries(tileMapView, {
+    ...viewport,
+    originX: 180,
+    originY: 220,
+    panX: 42,
+    panY: -18,
+  }, geometry);
+  const changedEntries = renderer.getWorldTileLocalEntries({
+    ...tileMapView,
+    signature: 'local-entry-cache-test-updated',
+  }, viewport, geometry);
+
+  assert.equal(firstEntries.length, tileMapView.tiles.length);
+  assert.equal(pannedEntries, firstEntries);
+  assert.notEqual(changedEntries, firstEntries);
+  assert.equal(centerCalls, tileMapView.tiles.length * 2);
+});
+
 test('CanvasGameRenderer draws world overlays from lab alpha metrics instead of square icons', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
@@ -4244,6 +4286,8 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const famousLayoutIdx = html.indexOf('js/config/FamousPortraitLayout.js');
   const canvasIdx = html.indexOf('js/platform/CanvasGameRenderer.js');
+  const worldMapRuntimeIdx = html.indexOf('js/platform/WorldMapRuntime.js');
+  const worldMapCoordinatorIdx = html.indexOf('js/platform/WorldMapRuntimeCoordinator.js');
   const minigameIdx = html.indexOf('js/platform/MiniGameCanvasRenderer.js');
   const h5gameIdx = html.indexOf('js/platform/H5CanvasGameRenderer.js');
   const actionControllerIdx = html.indexOf('js/platform/CanvasActionController.js');
@@ -4255,6 +4299,8 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
 
   assert.ok(famousLayoutIdx >= 0);
   assert.ok(canvasIdx >= 0);
+  assert.ok(worldMapRuntimeIdx >= 0);
+  assert.ok(worldMapCoordinatorIdx >= 0);
   assert.ok(minigameIdx >= 0);
   assert.ok(h5gameIdx >= 0);
   assert.ok(actionControllerIdx >= 0);
@@ -4265,6 +4311,9 @@ test('Canvas renderers are loaded in correct order in H5 index.html', () => {
   assert.ok(appIdx >= 0);
 
   assert.ok(famousLayoutIdx < canvasIdx);
+  assert.ok(canvasIdx < worldMapRuntimeIdx);
+  assert.ok(worldMapRuntimeIdx < worldMapCoordinatorIdx);
+  assert.ok(worldMapCoordinatorIdx < appCoreIdx);
   assert.ok(canvasIdx < minigameIdx);
   assert.ok(canvasIdx < h5gameIdx);
   assert.ok(h5gameIdx < actionControllerIdx);

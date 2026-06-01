@@ -10,6 +10,8 @@ const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
 const WorldMapRuntime = require('../js/platform/WorldMapRuntime');
 global.WorldMapRuntime = WorldMapRuntime;
+const WorldMapRuntimeCoordinator = require('../js/platform/WorldMapRuntimeCoordinator');
+global.WorldMapRuntimeCoordinator = WorldMapRuntimeCoordinator;
 const CanvasGameApp = require('../js/platform/CanvasGameApp');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -411,6 +413,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /FamousPortraitLayout/);
   assert.match(entry, /WorldMapRuntime/);
+  assert.match(entry, /WorldMapRuntimeCoordinator/);
   assert.match(entry, /MiniGameCanvasRenderer/);
   assert.match(entry, /CanvasActionController/);
   assert.match(entry, /CanvasGuideController/);
@@ -419,6 +422,17 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.match(entry, /config: globalThis\.GameConfig/);
   assert.match(entry, /apiClass: globalThis\.GameAPI/);
   assert.match(entry, /rendererClass: globalThis\.MiniGameCanvasRenderer/);
+});
+
+test('map-home runtime orchestration stays shared between H5 and minigame hosts', () => {
+  const projectRoot = path.join(__dirname, '..', '..');
+  const appSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
+  const shellSource = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameShell.js'), 'utf8');
+
+  assert.match(appSource, /WorldMapRuntimeCoordinator/);
+  assert.match(shellSource, /WorldMapRuntimeCoordinator/);
+  assert.doesNotMatch(appSource, /new\s+(WorldMapRuntime|RuntimeCtor)\s*\(/);
+  assert.doesNotMatch(shellSource, /new\s+WorldMapRuntime\s*\(/);
 });
 
 test('CanvasGameApp routes map-home drags through WorldMapRuntime without global world drag actions', () => {

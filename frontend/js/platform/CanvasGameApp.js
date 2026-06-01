@@ -1,7 +1,7 @@
 (function (global) {
-  var WorldMapRuntimeBase = global.WorldMapRuntime;
-  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeBase) {
-    WorldMapRuntimeBase = require('./WorldMapRuntime');
+  var WorldMapRuntimeCoordinatorBase = global.WorldMapRuntimeCoordinator;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
+    WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
 
   class CanvasGameApp {
@@ -128,6 +128,7 @@
       this.territoryController = options.territoryController || null;
       this.canvasShell = options.canvasShell || null;
       this.worldMapRuntime = options.worldMapRuntime || null;
+      this.worldMapRuntimeCoordinator = options.worldMapRuntimeCoordinator || null;
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
       this.syncService = options.syncService || null;
       this.updateChecker = options.updateChecker || null;
@@ -355,10 +356,11 @@
         return true;
       }
       if (!this.renderer?.render) return false;
-      if (homeView.isMapHome && this.worldMapRuntime?.canRender?.(this.state)) {
+      const runtimeOwnsWorldMap = Boolean(homeView.isMapHome
+        && this.ensureWorldMapRuntimeCoordinator()?.canRender(this.state));
+      if (runtimeOwnsWorldMap) {
         this.renderRuntimeWorldMap();
       }
-      const runtimeOwnsWorldMap = Boolean(homeView.isMapHome && this.worldMapRuntime?.canRender?.(this.state));
       this.renderer.render(this.state, {
         activeTab: resolvedActiveTab,
         isMapHome: homeView.isMapHome,
@@ -554,33 +556,38 @@
       return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
     }
 
-    ensureWorldMapRuntime() {
-      if (!this.useWorldMapRuntime || this.worldMapRuntime || !this.renderer) return this.worldMapRuntime;
-      const RuntimeCtor = WorldMapRuntimeBase || global.WorldMapRuntime;
-      if (!RuntimeCtor) return null;
-      this.worldMapRuntime = new RuntimeCtor({
-        runtime: this.runtime,
-        renderer: this.renderer,
-        presenter: this.presenter,
+    ensureWorldMapRuntimeCoordinator() {
+      if (this.worldMapRuntimeCoordinator) return this.worldMapRuntimeCoordinator;
+      const CoordinatorCtor = WorldMapRuntimeCoordinatorBase || global.WorldMapRuntimeCoordinator;
+      if (!CoordinatorCtor) return null;
+      this.worldMapRuntimeCoordinator = new CoordinatorCtor({
+        host: this,
+        worldMapRuntime: this.worldMapRuntime,
+        useWorldMapRuntime: this.useWorldMapRuntime,
+        getRenderer: () => this.renderer,
+        getPresenter: () => this.presenter,
         getState: () => this.state || {},
         getBaseUiState: () => this.territoryController?.getUiState?.() || this.territoryUiState || {},
-        getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
-          ? this.renderer.getTopBarBottom(state)
-          : 84),
+        getLocalUiState: () => this.territoryUiState || {},
+        getTerritoryController: () => this.territoryController,
+        getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
+        getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
+        getForceMapHome: () => this.mapHomeActive,
         onAction: (action) => this.actionController?.handle?.(action),
-        onCameraChanged: (camera) => {
-          if (this.territoryController?.uiState) {
-            this.territoryController.uiState.worldPanX = camera.x;
-            this.territoryController.uiState.worldPanY = camera.y;
-          }
-          this.territoryUiState.worldPanX = camera.x;
-          this.territoryUiState.worldPanY = camera.y;
-        },
       });
+      return this.worldMapRuntimeCoordinator;
+    }
+
+    ensureWorldMapRuntime() {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (!coordinator) return this.worldMapRuntime;
+      this.worldMapRuntime = coordinator.ensureRuntime();
       return this.worldMapRuntime;
     }
 
     isWorldMapHomeActive() {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (coordinator) return coordinator.isMapHomeActive(this.state);
       const homeView = this.resolveMapHomeViewState(this.state, {
         requestedTab: this.state?.currentTab || this.activeTab || 'resources',
         militaryView: this.state?.militaryView || this.militaryView,
@@ -590,13 +597,11 @@
     }
 
     renderRuntimeWorldMap(options = {}) {
-      const runtime = this.ensureWorldMapRuntime();
-      if (!runtime?.canRender?.(this.state)) return false;
-      return runtime.render({
-        ...options,
-        state: this.state,
-        force: options.force !== false,
-      });
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (!coordinator) return false;
+      const rendered = coordinator.render(this.state, options);
+      this.worldMapRuntime = coordinator.getMapRuntime();
+      return rendered;
     }
 
     getRequestAnimationFrame() {
@@ -1989,11 +1994,10 @@
       if (
         this.isWorldMapHomeActive()
         && !this.hasBlockingOverlayOpen()
-        && this.worldMapRuntime?.canRender?.(this.state)
       ) {
-        const canRouteMapDrag = this.worldMapRuntime.isPointInMap?.(point, this.state)
-          || (this.worldMapRuntime.isDragging?.() && (phase === 'move' || phase === 'end' || phase === 'cancel'));
-        return canRouteMapDrag ? this.worldMapRuntime.handleDrag(phase, point) : false;
+        const handled = this.ensureWorldMapRuntimeCoordinator()?.handleDrag(phase, point) || false;
+        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        return handled;
       }
       return this.actionController?.handle?.({ type: 'worldMapDrag', phase, pointer: point }) || false;
     }
@@ -2020,14 +2024,8 @@
     async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) {
-        if (
-          this.isWorldMapHomeActive()
-          && !this.hasBlockingOverlayOpen()
-          && this.worldMapRuntime?.canRender?.(this.state)
-          && this.worldMapRuntime.isPointInMap?.(point, this.state)
-        ) {
-          this.worldMapRuntime.handleTap(point);
-        }
+        this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
+        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         return;
       }
       if (action.type === 'showFamousSkillTooltip') {

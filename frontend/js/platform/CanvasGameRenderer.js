@@ -6101,9 +6101,9 @@
       return this.hashString(`${seed || 'scout-tile-v1'}|${q}|${r}|${salt}`) / 4294967295;
     }
 
-    getWorldOverlayAnchor(tile = {}, viewport = {}, geometry = {}, targetKey = '', explicitOffset = null) {
+    getWorldOverlayAnchor(tile = {}, viewport = {}, geometry = {}, targetKey = '', explicitOffset = null, centerOverride = null) {
       const manifest = this.constructor.getTileMapAssetManifest();
-      const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
+      const center = centerOverride || this.getWorldTileScreenCenter(tile, viewport, geometry);
       const offset = explicitOffset || manifest.getOverlayOffset?.(targetKey) || { x: 0, y: 0 };
       const scale = Number(viewport.scale) || 1;
       return {
@@ -6259,20 +6259,45 @@
       return this.drawWorldOverlayAsset(feature.asset, metrics, anchor.x - drawW * 0.5, anchor.y - drawH * 0.5, drawW, drawH, 0.92);
     }
 
-    drawWorldTileSite(tile = {}, viewport = {}, geometry = {}, tileWidth = 192, tileHeight = 96, uiState = {}) {
+    getWorldTileSiteLayout(tile = {}, viewport = {}, geometry = {}, tileWidth = 192, tileHeight = 96, center = null) {
       const site = tile.site || null;
-      if (!site?.art) return false;
-      const scale = Number(viewport.scale) || 1;
+      if (!site?.art) return null;
       const metrics = this.analyzeAssetAlphaBounds(site.art);
-      if (!metrics) return false;
+      if (!metrics) return null;
       const targetKey = site.overlayKey || this.constructor.getTileMapAssetManifest().getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`;
-      const anchor = this.getWorldOverlayAnchor(tile, viewport, geometry, targetKey, site.offset);
+      const anchor = this.getWorldOverlayAnchor(tile, viewport, geometry, targetKey, site.offset, center);
       const drawW = tileWidth * (Number(site.scale) || 0.46);
       const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
       const baseX = anchor.x;
       const baseY = anchor.y - tileHeight * 0.16;
       const drawX = baseX - drawW * 0.5;
       const drawY = baseY - drawH * 0.86;
+      return {
+        site,
+        metrics,
+        baseX,
+        baseY,
+        drawX,
+        drawY,
+        drawW,
+        drawH,
+        hitRect: { x: drawX - 8, y: drawY - 8, width: drawW + 16, height: drawH + 26 },
+      };
+    }
+
+    drawWorldTileSite(tile = {}, viewport = {}, geometry = {}, tileWidth = 192, tileHeight = 96, uiState = {}, options = {}) {
+      const layout = this.getWorldTileSiteLayout(tile, viewport, geometry, tileWidth, tileHeight, options.center);
+      if (!layout) return false;
+      const {
+        site,
+        metrics,
+        baseX,
+        baseY,
+        drawX,
+        drawY,
+        drawW,
+        drawH,
+      } = layout;
       const selected = uiState.selectedSiteId === site.id;
       if (selected) {
         this.drawIsoDiamond(baseX, baseY, drawW * 1.16, Math.max(18, drawH * 0.32), {
@@ -6312,11 +6337,13 @@
         color: '#f6e8c8',
         align: 'center',
       });
-      this.addHitTarget({ x: drawX - 8, y: drawY - 8, width: drawW + 16, height: drawH + 26 }, {
-        type: 'openWorldSite',
-        siteId: site.id,
-        tileId: tile.id,
-      });
+      if (options.addHitTarget !== false) {
+        this.addHitTarget(layout.hitRect, {
+          type: 'openWorldSite',
+          siteId: site.id,
+          tileId: tile.id,
+        });
+      }
       return true;
     }
 
@@ -6389,7 +6416,7 @@
         panX: 0,
         panY: 0,
       };
-      return tiles.map((tile) => {
+      const entries = tiles.map((tile) => {
         const center = this.getWorldTileScreenCenter(tile, localViewport, geometry);
         const drawRect = this.getWorldTileDrawRect(center, scale, geometry);
         return { tile, center, drawRect, inView: true };
@@ -6736,7 +6763,9 @@
           work.ctx.save?.();
           work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
           this.withSuppressedHitTargets(() => {
-            this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState);
+            this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
+              addHitTargets: false,
+            });
           });
           work.ctx.restore?.();
           this.worldTileStaticCacheKey = cacheKey;
@@ -6909,7 +6938,7 @@
       return this.drawWorldTileLayerCache(work, layout, frame);
     }
 
-    renderWorldTileStaticEntries(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
+    renderWorldTileStaticEntries(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}, options = {}) {
       const geometry = tileMapView.geometry || {};
       const scale = Number(viewport.scale) || 1;
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
@@ -6934,8 +6963,11 @@
         this.drawWorldTerrainFeature(tile, viewport, geometry, tileWidth, tileHeight);
         if (tile.feature?.asset) this.drawWorldTileFeature(tile, viewport, geometry, tileWidth, tileHeight);
       });
-      entries.filter(({ tile }) => tile.site).forEach(({ tile }) => {
-        this.drawWorldTileSite(tile, viewport, geometry, tileWidth, tileHeight, uiState);
+      entries.filter(({ tile }) => tile.site).forEach(({ tile, center }) => {
+        this.drawWorldTileSite(tile, viewport, geometry, tileWidth, tileHeight, uiState, {
+          center,
+          addHitTarget: options.addHitTargets !== false,
+        });
       });
     }
 
@@ -6951,22 +6983,12 @@
       const scale = Number(viewport.scale) || 1;
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
       const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      entries.filter(({ tile }) => tile.site).forEach(({ tile }) => {
-        const site = tile.site || null;
-        if (!site?.art) return;
-        const metrics = this.analyzeAssetAlphaBounds(site.art);
-        if (!metrics) return;
-        const targetKey = site.overlayKey || this.constructor.getTileMapAssetManifest().getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`;
-        const anchor = this.getWorldOverlayAnchor(tile, viewport, geometry, targetKey, site.offset);
-        const drawW = tileWidth * (Number(site.scale) || 0.46);
-        const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
-        const baseX = anchor.x;
-        const baseY = anchor.y - tileHeight * 0.16;
-        const drawX = baseX - drawW * 0.5;
-        const drawY = baseY - drawH * 0.86;
-        this.addHitTarget({ x: drawX - 8, y: drawY - 8, width: drawW + 16, height: drawH + 26 }, {
+      entries.filter(({ tile }) => tile.site).forEach(({ tile, center }) => {
+        const layout = this.getWorldTileSiteLayout(tile, viewport, geometry, tileWidth, tileHeight, center);
+        if (!layout) return;
+        this.addHitTarget(layout.hitRect, {
           type: 'openWorldSite',
-          siteId: site.id,
+          siteId: layout.site.id,
           tileId: tile.id,
         });
       });
@@ -7059,7 +7081,9 @@
           this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries, this.getWorldTileWaterTimeMs());
         }
         if (!this.renderWorldTileStaticLayer(tileMapView, viewport, frame, visibleEntries, uiState)) {
-          this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState);
+          this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState, {
+            addHitTargets: false,
+          });
         } else if (!this.worldTileFastDragActive) {
           compositeLayout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, visibleEntries);
         }

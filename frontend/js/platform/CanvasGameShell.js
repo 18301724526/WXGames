@@ -3,9 +3,9 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBase) {
     CanvasGameAppBase = require('./CanvasGameApp');
   }
-  var WorldMapRuntimeBase = global.WorldMapRuntime;
-  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeBase) {
-    WorldMapRuntimeBase = require('./WorldMapRuntime');
+  var WorldMapRuntimeCoordinatorBase = global.WorldMapRuntimeCoordinator;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
+    WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
 
   class CanvasGameShell extends (CanvasGameAppBase || class {}) {
@@ -23,6 +23,7 @@
       this.renderer = options.renderer || null;
       this.worldMapRenderer = options.worldMapRenderer || null;
       this.worldMapRuntime = options.worldMapRuntime || null;
+      this.worldMapRuntimeCoordinator = options.worldMapRuntimeCoordinator || null;
       this.presenter = options.presenter || null;
       this.previewEnabled = Boolean(options.previewEnabled);
       this.inputEnabled = Boolean(options.inputEnabled);
@@ -188,31 +189,55 @@
       return this.renderer;
     }
 
-    ensureWorldMapRuntime() {
-      if (!this.useWorldMapRuntime || this.worldMapRuntime || !this.worldMapRenderer) return this.worldMapRuntime;
-      const RuntimeCtor = WorldMapRuntimeBase || global.WorldMapRuntime;
-      if (!RuntimeCtor) return null;
-      this.worldMapRuntime = new RuntimeCtor({
-        runtime: this.runtime,
-        renderer: this.worldMapRenderer,
-        presenter: this.presenter || this.renderer?.presenter,
+    ensureWorldMapRuntimeCoordinator() {
+      if (this.worldMapRuntimeCoordinator) return this.worldMapRuntimeCoordinator;
+      const CoordinatorCtor = WorldMapRuntimeCoordinatorBase || global.WorldMapRuntimeCoordinator;
+      if (!CoordinatorCtor) return null;
+      this.worldMapRuntimeCoordinator = new CoordinatorCtor({
+        host: this,
+        worldMapRuntime: this.worldMapRuntime,
+        useWorldMapRuntime: this.useWorldMapRuntime,
+        renderOnDrag: false,
+        consumeDragEvent: true,
+        getRenderer: () => this.worldMapRenderer,
+        getPresenter: () => this.presenter || this.renderer?.presenter,
         getState: () => this.lastGame?.state || {},
         getBaseUiState: () => this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
+        getLocalUiState: () => this.territoryUiState || {},
+        getTerritoryController: () => this.lastGame?.territoryController || null,
         getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
           ? this.renderer.getTopBarBottom(state)
           : 84),
+        getRequestedTab: (state = this.lastGame?.state || {}) => this.lastGame?.getActiveTab?.()
+          || this.lastGame?.activeTab
+          || state.currentTab
+          || 'resources',
+        getMilitaryView: (state = this.lastGame?.state || {}) => state.militaryView || this.lastGame?.militaryView,
+        getForceMapHome: () => Boolean(this.lastGame?.mapHomeActive),
         onAction: (action, event) => this.handleAction(action, event),
-        renderOnDrag: false,
-        onCameraChanged: (camera) => {
-          const territory = this.lastGame?.territoryController;
-          if (territory?.uiState) {
-            territory.uiState.worldPanX = camera.x;
-            territory.uiState.worldPanY = camera.y;
+        onBeforeRender: () => this.syncWorldMapRendererLayerMetrics(),
+        onBeforeDrag: ({ phase, point }) => {
+          if (phase === 'start') this.startWorldMapCompositeDrag(point);
+        },
+        onAfterDrag: ({ phase, point, runtime, handled }) => {
+          if (handled && runtime?.isDragging?.() && this.updateWorldMapCompositeDrag(point)) {
+            runtime.setDragLayerOffset?.(this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
+          } else if (handled && phase === 'move') {
+            this.requestWorldMapRenderAnimationFrame();
           }
-          this.territoryUiState.worldPanX = camera.x;
-          this.territoryUiState.worldPanY = camera.y;
+          if (handled && (phase === 'end' || phase === 'cancel')) {
+            runtime?.setDragLayerOffset?.(this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
+            this.finishWorldMapCompositeDrag();
+          }
         },
       });
+      return this.worldMapRuntimeCoordinator;
+    }
+
+    ensureWorldMapRuntime() {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (!coordinator) return this.worldMapRuntime;
+      this.worldMapRuntime = coordinator.ensureRuntime();
       return this.worldMapRuntime;
     }
 
@@ -273,6 +298,8 @@
     }
 
     isWorldMapHomeActive() {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (coordinator) return coordinator.isMapHomeActive(this.lastGame?.state || {});
       const state = this.lastGame?.state || {};
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: this.lastGame?.getActiveTab?.()
@@ -286,32 +313,18 @@
     }
 
     canRouteWorldMapRuntimeDrag(point = {}) {
-      return Boolean(this.isWorldMapHomeActive()
-        && !this.hasBlockingOverlayOpen()
-        && this.worldMapRuntime?.canRender?.(this.lastGame?.state)
-        && this.worldMapRuntime.isPointInMap?.(point, this.lastGame?.state));
+      return Boolean(this.ensureWorldMapRuntimeCoordinator()?.canRouteDrag('start', point, this.lastGame?.state));
     }
 
     handleWorldMapRuntimeDrag(phase, point = {}, event) {
-      if (phase === 'start') this.startWorldMapCompositeDrag(point);
-      const handled = this.worldMapRuntime.handleDrag(phase, point, event);
-      if (handled && this.worldMapRuntime.isDragging?.() && this.updateWorldMapCompositeDrag(point)) {
-        this.worldMapRuntime.setDragLayerOffset?.(this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
-      } else if (handled && phase === 'move') {
-        this.requestWorldMapRenderAnimationFrame();
-      }
-      if (handled && (phase === 'end' || phase === 'cancel')) {
-        this.worldMapRuntime.setDragLayerOffset?.(this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
-        this.finishWorldMapCompositeDrag();
-      }
-      if (handled && event?.preventDefault) event.preventDefault();
-      if (handled && event?.stopPropagation) event.stopPropagation();
+      const handled = this.ensureWorldMapRuntimeCoordinator()?.handleDrag(phase, point, event) || false;
+      this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
       return handled;
     }
 
     handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
-      if (this.canRouteWorldMapRuntimeDrag(point) || (this.worldMapRuntime?.isDragging?.() && (phase === 'move' || phase === 'end' || phase === 'cancel'))) {
+      if (this.ensureWorldMapRuntimeCoordinator()?.canRouteDrag(phase, point, this.lastGame?.state)) {
         return this.handleWorldMapRuntimeDrag(phase, point, event);
       }
       if (phase === 'start') {
@@ -359,15 +372,9 @@
       if (this.hasPendingWorldMapCompositeCommit()) this.commitWorldMapCompositeDrag();
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) {
-        if (
-          this.isWorldMapHomeActive()
-          && !this.hasBlockingOverlayOpen()
-          && this.worldMapRuntime?.canRender?.(this.lastGame?.state)
-          && this.worldMapRuntime.isPointInMap?.(point, this.lastGame?.state)
-        ) {
-          return this.worldMapRuntime.handleTap(point, event);
-        }
-        return false;
+        const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        return handled;
       }
       if (action.type === 'showFamousSkillTooltip') {
         const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
@@ -755,15 +762,12 @@
     }
 
     renderRuntimeWorldMap(state = this.lastGame?.state, options = {}) {
-      if (!this.worldMapRuntime || !state) return false;
-      this.syncWorldMapRendererLayerMetrics();
-      this.worldMapRuntime.setRenderer?.(this.worldMapRenderer);
-      this.worldMapRuntime.setPresenter?.(this.presenter || this.renderer?.presenter);
-      return this.worldMapRuntime.render({
-        ...options,
-        state,
-        force: options.force !== false,
-      });
+      if (!state) return false;
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (!coordinator) return false;
+      const rendered = coordinator.render(state, options);
+      this.worldMapRuntime = coordinator.getMapRuntime();
+      return rendered;
     }
 
     getFrozenWorldMapWaterTimeMs() {
@@ -944,13 +948,16 @@
 
     renderWorldMapLayerFrame(options = {}) {
       if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
-      if (this.isWorldMapHomeActive() && this.worldMapRuntime?.canRender?.(this.lastGame.state)) {
-        const waterTimeMs = this.isWorldMapDragging() || this.worldMapRuntime.isDragging?.()
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (this.isWorldMapHomeActive() && coordinator?.canRender(this.lastGame.state)) {
+        const runtimeDragging = Boolean(runtime?.isDragging?.());
+        const waterTimeMs = this.isWorldMapDragging() || runtimeDragging
           ? this.getFrozenWorldMapWaterTimeMs()
           : null;
         return this.renderRuntimeWorldMap(this.lastGame.state, {
           ...options,
-          reuseCachedWorldTileView: Boolean(this.worldMapDragFrameActive || this.worldMapRuntime.isDragging?.()),
+          reuseCachedWorldTileView: Boolean(this.worldMapDragFrameActive || runtimeDragging),
           waterTimeMs,
         });
       }
@@ -1502,7 +1509,7 @@
         activeTab: homeView.activeTab,
         isMapHome: homeView.isMapHome,
       };
-      if (homeView.isMapHome && this.worldMapRuntime?.canRender?.(state)) {
+      if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
         this.renderRuntimeWorldMap(state, renderOptions);
       } else {
         this.renderWorldMapLayer(state, renderOptions);
@@ -1517,7 +1524,7 @@
 
     renderWorldMapLayer(state = this.lastGame?.state, options = null) {
       if (!this.previewEnabled || !this.worldMapRenderer || !state) return false;
-      if (this.isWorldMapHomeActive() && this.worldMapRuntime?.canRender?.(state)) {
+      if (this.isWorldMapHomeActive() && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
         return this.renderRuntimeWorldMap(state, options || {});
       }
       this.syncWorldMapRendererLayerMetrics();

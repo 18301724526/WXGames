@@ -12,6 +12,8 @@ global.CanvasActionDispatcher = CanvasActionDispatcher;
 const CanvasGameShell = require('../js/platform/CanvasGameShell');
 const WorldMapRuntime = require('../js/platform/WorldMapRuntime');
 global.WorldMapRuntime = WorldMapRuntime;
+const WorldMapRuntimeCoordinator = require('../js/platform/WorldMapRuntimeCoordinator');
+global.WorldMapRuntimeCoordinator = WorldMapRuntimeCoordinator;
 const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
 const UIStatePresenter = require('../js/state/UIStatePresenter');
 class TestH5CanvasGameRenderer extends CanvasGameRenderer {
@@ -2326,6 +2328,68 @@ test('Canvas game shell routes map-home drags through WorldMapRuntime without gl
   assert.equal(uiState.worldPanY, 18);
   assert.equal(layerCalls.length > 0, true);
   assert.equal(renderCalls.length, 1);
+});
+
+test('WorldMapRuntime invalidates tile caches only when map data changes', () => {
+  let invalidateCount = 0;
+  const renderCalls = [];
+  const state = {
+    currentEra: 5,
+    territoryState: {
+      worldMap: {
+        version: 1,
+        seed: 'runtime-dirty-test',
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', discovered: true, visible: true }],
+      },
+      territories: [],
+      scoutMissions: [],
+    },
+  };
+  const uiState = { worldPanX: 0, worldPanY: 0 };
+  const runtime = new WorldMapRuntime({
+    runtime: {
+      requestAnimationFrame(callback) {
+        callback();
+        return 1;
+      },
+    },
+    presenter: UIStatePresenter,
+    getState: () => state,
+    getBaseUiState: () => uiState,
+    renderer: {
+      presenter: UIStatePresenter,
+      renderWorldMapLayer(renderState, options) {
+        renderCalls.push({ renderState, options });
+        return true;
+      },
+      getWorldMapLayerLayout: () => ({ map: { x: 0, y: 84, width: 390, height: 700 } }),
+      invalidateWorldTileCaches() {
+        invalidateCount += 1;
+      },
+      hitTargets: [],
+    },
+  });
+
+  assert.equal(runtime.render({ state, force: true }), true);
+  assert.equal(invalidateCount, 0);
+
+  uiState.worldPanX = 32;
+  uiState.worldPanY = -12;
+  runtime.syncCameraFromUi(uiState);
+  assert.equal(runtime.render({ state, force: true }), true);
+  assert.equal(invalidateCount, 0);
+
+  state.territoryState.scoutMissions = [{
+    id: 'scout_e_1',
+    kind: 'scout',
+    status: 'active',
+    route: [{ q: 1, r: 0, tileId: 'tile_1_0', revealed: false }],
+    revealedTileIds: [],
+    actionPointsRemaining: 2,
+  }];
+  assert.equal(runtime.render({ state, force: true }), true);
+  assert.equal(invalidateCount, 1);
+  assert.equal(renderCalls.at(-1).options.territoryUiState.worldPanX, 32);
 });
 
 test('Canvas game shell keeps compositor drag on release and commits after a quiet window', () => {
