@@ -58,6 +58,16 @@ function registerGameRoutes(app, deps) {
     });
   });
 
+  app.get('/api/game/heartbeat', authMiddleware, (req, res) => {
+    const now = new Date();
+    repository.touchPlayerActiveAt(req.playerId);
+    return res.json({
+      type: 'heartbeat',
+      serverTime: now.toISOString(),
+      heartbeatSeq: now.getTime(),
+    });
+  });
+
   app.get('/api/game/tasks', authMiddleware, (req, res) => {
     const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
     if (!gameState) {

@@ -43,6 +43,7 @@
     }
 
     getState() { return this.request('GET', '/game/state'); }
+    heartbeat() { return this.request('GET', '/game/heartbeat'); }
     getTasks() { return this.request('GET', '/game/tasks'); }
     getVersion() { return this.request('GET', '/version'); }
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }

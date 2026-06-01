@@ -8831,6 +8831,67 @@
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'blockCanvasModal' });
     }
 
+    renderNetworkOverlay(network = {}) {
+      if (!network || network.status !== 'reconnecting') return false;
+      const ctx = this.ctx;
+      if (!ctx) return false;
+      ctx.save?.();
+      ctx.fillStyle = 'rgba(8, 10, 12, 0.46)';
+      ctx.fillRect(0, 0, this.width, this.height);
+      ctx.restore?.();
+
+      const panelWidth = Math.min(320, Math.max(240, this.width - 48));
+      const panelHeight = 118;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.floor((this.height - panelHeight) / 2);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(20, 24, 26, 0.92)',
+        stroke: 'rgba(255, 226, 177, 0.26)',
+        radius: 12,
+        inset: 'rgba(255, 255, 255, 0.06)',
+      });
+
+      const now = this.getNow();
+      const cx = x + 44;
+      const cy = y + 42;
+      const radius = 16;
+      if (ctx.beginPath && ctx.arc) {
+        ctx.save?.();
+        ctx.strokeStyle = 'rgba(255, 217, 138, 0.22)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = '#ffd98a';
+        ctx.lineCap = 'round';
+        const start = (now / 180) % (Math.PI * 2);
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, start, start + Math.PI * 1.35);
+        ctx.stroke();
+        ctx.restore?.();
+      }
+
+      this.drawText('网络连接不稳定', x + 76, y + 28, {
+        size: 15,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      this.drawText('正在重连中', x + 76, y + 54, {
+        size: 12,
+        color: '#cbbd96',
+      });
+      const failText = Number(network.failureCount) > 0 ? `连续丢失 ${Number(network.failureCount)} 次心跳` : '';
+      if (failText) {
+        this.drawText(failText, x + panelWidth / 2, y + 88, {
+          size: 11,
+          color: 'rgba(234, 234, 234, 0.56)',
+          align: 'center',
+        });
+      }
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'blockCanvasModal' });
+      return true;
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.beginFrame(options);
@@ -8907,6 +8968,7 @@
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
+      this.renderNetworkOverlay(options.network || null);
       this.endFrame(options);
     }
 
@@ -9198,6 +9260,7 @@
         this.renderTutorialHighlight(options.tutorialHighlight || null);
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);
+        this.renderNetworkOverlay(options.network || null);
         this.endFrame(options);
         return;
       }
@@ -9252,6 +9315,7 @@
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
+      this.renderNetworkOverlay(options.network || null);
       this.endFrame(options);
     }
   }

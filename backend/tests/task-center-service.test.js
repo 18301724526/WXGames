@@ -150,3 +150,30 @@ test('game task routes expose task center and claim endpoint snapshots', async (
   assert.equal(claimResponse.payload.taskCenter.categories.main.tasks[0].status, 'active');
   assert.ok(repository.savedState);
 });
+
+test('heartbeat route returns only server time without touching full game state payload', async () => {
+  const state = createBarracksTaskState('heartbeat-player');
+  state.currentEra = 5;
+  const { routes, repository } = createRouteHarness(state);
+  let findCalls = 0;
+  repository.findByPlayerId = () => {
+    findCalls += 1;
+    throw new Error('heartbeat must not load game state');
+  };
+
+  const response = await callRoute(routes['GET /api/game/heartbeat'], {
+    playerId: state.playerId,
+    query: {},
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.payload.type, 'heartbeat');
+  assert.equal(typeof response.payload.serverTime, 'string');
+  assert.equal(typeof response.payload.heartbeatSeq, 'number');
+  assert.equal(response.payload.revisions, undefined);
+  assert.equal(response.payload.gameState, undefined);
+  assert.equal(response.payload.territoryState, undefined);
+  assert.equal(response.payload.worldMap, undefined);
+  assert.equal(repository.savedState, null);
+  assert.equal(findCalls, 0);
+});

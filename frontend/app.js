@@ -61,7 +61,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.gameAPI = new constructors.GameAPI(this.apiBase, this.token);
     this.api = this.gameAPI;
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
-    this.syncService = new constructors.GameStateSync(this.gameAPI, this.config?.SYNC_INTERVAL_MS, this.scheduler);
+    this.syncService = new constructors.GameStateSync(this.gameAPI, this.config?.HEARTBEAT_INTERVAL_MS || 1000, this.scheduler);
     this.updateChecker = new constructors.UpdateChecker({
       api: { getVersion: () => this.apiGet('/version') },
       intervalMs: this.config?.UPDATE_CHECK_INTERVAL_MS,
@@ -117,7 +117,8 @@ class H5GameHost extends CanvasGameAppBase {
     });
 
     this.gameModules?.mount?.(this);
-    this.syncService.onState = (data) => this.applyApiState(data);
+    this.syncService.onHeartbeat = (data) => this.applyHeartbeat(data);
+    this.syncService.onConnectionState = (state) => this.applyConnectionState(state);
     this.syncService.onError = (error) => {
       if (error.payload && error.payload.error && this.handleAuthError) this.handleAuthError(error.payload);
     };

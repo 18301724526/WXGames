@@ -2,6 +2,7 @@ require('../js/config/GameConfig');
 require('../js/config/FamousPortraitLayout');
 require('../js/state/UIStatePresenter');
 require('../js/api/GameAPI');
+require('../js/services/GameStateSync');
 require('../js/platform/PlatformRuntime');
 require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/WorldMapRuntime');

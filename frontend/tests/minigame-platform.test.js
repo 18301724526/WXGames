@@ -415,6 +415,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.match(entry, /WorldMapRuntime/);
   assert.match(entry, /WorldMapRuntimeCoordinator/);
   assert.match(entry, /MiniGameCanvasRenderer/);
+  assert.match(entry, /GameStateSync/);
   assert.match(entry, /CanvasActionController/);
   assert.match(entry, /CanvasGuideController/);
   assert.match(entry, /CanvasGameApp/);
@@ -422,6 +423,21 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.match(entry, /config: globalThis\.GameConfig/);
   assert.match(entry, /apiClass: globalThis\.GameAPI/);
   assert.match(entry, /rendererClass: globalThis\.MiniGameCanvasRenderer/);
+});
+
+test('Canvas game app stops heartbeat sync service on teardown', () => {
+  let stopped = 0;
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    syncService: { start() {}, stop() { stopped += 1; } },
+    initialState: { currentEra: 0, currentTab: 'resources', resources: {}, population: {} },
+  });
+
+  app.stop();
+
+  assert.equal(stopped, 1);
 });
 
 test('map-home runtime orchestration stays shared between H5 and minigame hosts', () => {

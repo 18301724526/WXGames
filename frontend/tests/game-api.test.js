@@ -228,3 +228,27 @@ test('GameAPI can use platform transport without browser fetch', async () => {
   const result = await api.getState();
   assert.deepEqual(result, { gameState: { currentEra: 2 } });
 });
+
+test('GameAPI heartbeat uses lightweight heartbeat endpoint', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', 'token-h', {
+    transport: {
+      async request(options) {
+        requests.push(options);
+        return {
+          ok: true,
+          async json() {
+            return { type: 'heartbeat', serverTime: '2026-06-02T00:00:00.000Z' };
+          },
+        };
+      },
+    },
+  });
+
+  const result = await api.heartbeat();
+
+  assert.deepEqual(result, { type: 'heartbeat', serverTime: '2026-06-02T00:00:00.000Z' });
+  assert.equal(requests[0].url, '/api/game/heartbeat');
+  assert.equal(requests[0].method, 'GET');
+  assert.equal(requests[0].headers.Authorization, 'Bearer token-h');
+});

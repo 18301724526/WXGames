@@ -447,6 +447,10 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
         percentage: 0,
         message: '',
       },
+      network: {
+        status: 'online',
+        failureCount: 0,
+      },
       floatingTexts: [],
       tutorialHighlight: null,
       rewardReveal: null,
@@ -2246,6 +2250,63 @@ test('Canvas game shell does not redraw the passive world map layer during drag 
   assert.equal(mapLayerCalls.length, 0);
   assert.equal(worldMapLayer.style.transform, 'translate3d(0px, 0px, 0)');
   assert.equal(worldMapLayer.style.willChange, 'transform');
+});
+
+test('Canvas renderer draws reconnecting network overlay on canvas and blocks input', () => {
+  const ctx = createDrawingContext();
+  const texts = [];
+  ctx.fillText = (text) => texts.push(String(text));
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+
+  renderer.renderNetworkOverlay({ status: 'reconnecting', failureCount: 4 });
+
+  assert.ok(texts.some((text) => text.includes('网络连接不稳定')));
+  assert.ok(texts.some((text) => text.includes('正在重连中')));
+  assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), { type: 'blockCanvasModal' });
+});
+
+test('network reconnect overlay remains canvas-only with no DOM modal path', () => {
+  const rendererJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameRenderer.js'), 'utf8');
+  const shellJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameShell.js'), 'utf8');
+  const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
+  const indexHtml = fs.readFileSync(path.join(projectRoot, 'frontend', 'index.html'), 'utf8');
+  const overlaySource = rendererJs.match(/    renderNetworkOverlay\(network = \{\}\) \{[\s\S]*?\n    renderHudOverlay/)[0];
+  const networkShellSource = shellJs.match(/    setNetworkState\(state = \{\}\) \{[\s\S]*?\n    renderActive/)[0];
+
+  assert.match(rendererJs, /renderNetworkOverlay/);
+  assert.match(overlaySource, /fillRect\(0, 0, this\.width, this\.height\)/);
+  assert.doesNotMatch(overlaySource, /document\.createElement|appendChild|innerHTML|querySelector|getElementById|classList/);
+  assert.doesNotMatch(networkShellSource, /document\.createElement|appendChild|innerHTML|querySelector|getElementById|classList/);
+  assert.doesNotMatch(appJs, /network.*document|document.*network|innerHTML|appendChild/);
+  assert.doesNotMatch(indexHtml, /network-overlay|reconnect|offlineModal|modal-overlay/);
+});
+
+test('CanvasGameApp heartbeat updates connection metadata without applying full state', () => {
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'resources', resources: {}, population: {} },
+  });
+  let applied = 0;
+  let rendered = 0;
+  app.applyApiState = () => { applied += 1; };
+  app.canvasShell = {
+    setNetworkState(state) {
+      rendered += state.status === 'online' ? 0 : 1;
+    },
+  };
+
+  app.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-02T00:00:00.000Z',
+    heartbeatSeq: 1024,
+  });
+
+  assert.equal(applied, 0);
+  assert.equal(rendered, 0);
+  assert.equal(app.networkState.status, 'online');
+  assert.equal(app.networkState.revisions, undefined);
 });
 
 test('Canvas game shell routes map-home drags through WorldMapRuntime without global world drag actions', () => {
@@ -4207,7 +4268,7 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=[^"]+/);
   assert.match(html, /js\/state\/UIStatePresenter\.js\?v=[^"]+[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=[^"]+/);
   assert.match(html, /js\/platform\/CanvasActionController\.js\?v=[^"]+[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=[^"]+[\s\S]*js\/platform\/CanvasGameShell\.js\?v=[^"]+/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=[^"]+[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=[^"]+[\s\S]*app\.js\?v=[^"]+/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

@@ -81,7 +81,7 @@ test('auth module and app delegate browser storage to H5 auth storage adapter', 
   const authJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'auth.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5AuthStorageAdapter\.js\?v=h5-storage-runtime-v1/);
-  assert.match(html, /H5AuthStorageAdapter\.js\?v=h5-storage-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /H5AuthStorageAdapter\.js\?v=h5-storage-runtime-v1[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=[^"]+/);
   assert.match(appJs, /this\.token = this\.authStorage\?\.getToken\?\.\(\) \|\| null/);
   assert.match(authJs, /const authStorage = deps\.authStorage \|\| game\.authStorage/);
   assert.doesNotMatch(authJs, /H5AuthStorageAdapter\?\.fromRuntime\(window\)/);

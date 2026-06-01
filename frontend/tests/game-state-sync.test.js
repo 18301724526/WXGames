@@ -16,7 +16,7 @@ test('setIntervalMs stores a new interval without starting a stopped sync timer'
     },
   };
 
-  const sync = new GameStateSync({ async getState() { return {}; } }, 2000, scheduler);
+  const sync = new GameStateSync({ async heartbeat() { return {}; } }, 2000, scheduler);
   sync.setIntervalMs(500);
 
   assert.equal(sync.intervalMs, 500);
@@ -42,7 +42,7 @@ test('setIntervalMs restarts an active sync timer with the new interval', () => 
     },
   };
 
-  const sync = new GameStateSync({ async getState() { return {}; } }, 2000, scheduler);
+  const sync = new GameStateSync({ async heartbeat() { return {}; } }, 2000, scheduler);
   sync.start();
   const firstTimer = sync.timer;
 
@@ -58,7 +58,7 @@ test('setIntervalMs restarts an active sync timer with the new interval', () => 
 
 test('GameStateSync uses injected scheduler instead of global timers', () => {
   const scheduled = [];
-  const sync = new GameStateSync({ async getState() { return {}; } }, 1500, {
+  const sync = new GameStateSync({ async heartbeat() { return {}; } }, 1500, {
     setInterval(callback, intervalMs) {
       const timer = { callback, intervalMs };
       scheduled.push(timer);
@@ -77,8 +77,62 @@ test('app injects the shell scheduler into GameStateSync', () => {
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const serviceJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'services', 'GameStateSync.js'), 'utf8');
 
-  assert.match(appJs, /new constructors\.GameStateSync\(this\.gameAPI, this\.config\?\.SYNC_INTERVAL_MS, this\.scheduler\)/);
+  assert.match(appJs, /new constructors\.GameStateSync\(this\.gameAPI, this\.config\?\.HEARTBEAT_INTERVAL_MS \|\| 1000, this\.scheduler\)/);
   assert.doesNotMatch(appJs, /new window\./);
   assert.doesNotMatch(appJs, /window\.GameConfig/);
   assert.doesNotMatch(serviceJs, /global\.setInterval|global\.clearInterval/);
+});
+
+test('GameStateSync sends lightweight heartbeat instead of full game state', async () => {
+  const calls = [];
+  const seen = [];
+  const sync = new GameStateSync({
+    async heartbeat() {
+      calls.push('heartbeat');
+      return { type: 'heartbeat', serverTime: '2026-06-02T00:00:00.000Z' };
+    },
+    async getState() {
+      calls.push('getState');
+      return { gameState: { territoryState: { worldMap: { tiles: [] } } } };
+    },
+  }, 1000, {});
+  sync.onHeartbeat = (data) => seen.push(data);
+
+  const data = await sync.fetchNow();
+
+  assert.equal(data.type, 'heartbeat');
+  assert.deepEqual(calls, ['heartbeat']);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].gameState, undefined);
+  assert.equal(seen[0].revisions, undefined);
+});
+
+test('GameStateSync does not fall back to full state when heartbeat is missing', async () => {
+  const calls = [];
+  const sync = new GameStateSync({
+    async getState() {
+      calls.push('getState');
+      return { gameState: { resources: {} } };
+    },
+  }, 1000, {});
+
+  await assert.rejects(() => sync.fetchNow(), /requires a lightweight heartbeat endpoint/);
+  assert.deepEqual(calls, []);
+});
+
+test('GameStateSync reports reconnecting after repeated missed heartbeats', async () => {
+  const states = [];
+  const sync = new GameStateSync({
+    async heartbeat() {
+      throw new Error('offline');
+    },
+  }, 1000, { reconnectThreshold: 3 });
+  sync.onConnectionState = (state) => states.push(state.status);
+
+  await assert.rejects(() => sync.fetchNow(), /offline/);
+  await assert.rejects(() => sync.fetchNow(), /offline/);
+  await assert.rejects(() => sync.fetchNow(), /offline/);
+
+  assert.deepEqual(states, ['reconnecting']);
+  assert.equal(sync.reconnecting, true);
 });

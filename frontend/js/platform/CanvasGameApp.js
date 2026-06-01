@@ -129,13 +129,31 @@
       this.canvasShell = options.canvasShell || null;
       this.worldMapRuntime = options.worldMapRuntime || null;
       this.worldMapRuntimeCoordinator = options.worldMapRuntimeCoordinator || null;
+      this.scheduler = options.scheduler || this.runtime || null;
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
       this.worldMapPinchDragging = false;
       this.worldMapDragWaterTimeMs = null;
       this.worldMapDragCooldownUntil = 0;
-      this.syncService = options.syncService || null;
+      const SyncCtor = options.syncClass || global.GameStateSync || null;
+      this.syncService = options.syncService || (SyncCtor && this.api
+        ? new SyncCtor(this.api, this.config?.HEARTBEAT_INTERVAL_MS || 1000, this.scheduler || this.runtime || {})
+        : null);
+      if (this.syncService) {
+        if (!this.syncService.onHeartbeat) this.syncService.onHeartbeat = (data) => this.applyHeartbeat(data);
+        if (!this.syncService.onConnectionState) this.syncService.onConnectionState = (state) => this.applyConnectionState(state);
+        if (!this.syncService.onError) {
+          this.syncService.onError = (error) => {
+            if (error?.payload?.error && this.handleAuthError) this.handleAuthError(error.payload);
+          };
+        }
+      }
       this.updateChecker = options.updateChecker || null;
-      this.scheduler = options.scheduler || this.runtime || null;
+      this.networkState = {
+        status: 'online',
+        failureCount: 0,
+        serverTime: null,
+        heartbeatSeq: 0,
+      };
       this.requestLogs = [];
       this.recentLogs = [];
       this.activeAdvisor = null;
@@ -259,6 +277,35 @@
 
     updateSyncInterval() {
       this.syncService?.setIntervalMs?.(this.getSyncInterval());
+    }
+
+    applyHeartbeat(data = {}) {
+      if (!data || data.gameState) return data;
+      const wasReconnecting = this.networkState?.status === 'reconnecting';
+      this.networkState = {
+        ...(this.networkState || {}),
+        status: 'online',
+        failureCount: 0,
+        serverTime: data.serverTime || this.networkState?.serverTime || null,
+        heartbeatSeq: Number(data.heartbeatSeq) || this.networkState?.heartbeatSeq || 0,
+      };
+      if (this.canvasShell?.setNetworkState) this.canvasShell.setNetworkState(this.networkState);
+      else if (wasReconnecting) this.renderCanvasSurface(this.state?.currentTab);
+      return data;
+    }
+
+    applyConnectionState(status = {}) {
+      const nextStatus = status.status || 'online';
+      const wasReconnecting = this.networkState?.status === 'reconnecting';
+      this.networkState = {
+        ...(this.networkState || {}),
+        status: nextStatus,
+        failureCount: Number(status.failureCount) || 0,
+        lastError: status.error?.message || status.error?.payload?.message || null,
+      };
+      if (this.canvasShell?.setNetworkState) this.canvasShell.setNetworkState(this.networkState);
+      else if (nextStatus === 'reconnecting' || wasReconnecting) this.renderCanvasSurface(this.state?.currentTab);
+      return this.networkState;
     }
 
     getBuildingLevel(buildingId) {
@@ -396,6 +443,7 @@
         naming: this.naming,
         tutorialHighlight: this.tutorialHighlight,
         loading: this.loading,
+        network: this.networkState,
       });
       if (resolvedActiveTab === 'military' && this.territoryUiState?.tileMapWaterAnimated) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
@@ -1218,11 +1266,14 @@
       const api = this.getGameApi();
       api?.setToken?.(this.token);
       try {
-        if (this.syncService?.fetchNow) await this.syncService.fetchNow();
+        if (this.syncService?.stop) this.syncService.stop();
+        await this.syncOnce();
         this.syncService?.start?.();
       } catch (error) {
         if (error.payload && error.payload.error && this.handleAuthError) {
           this.handleAuthError(error.payload);
+        } else {
+          this.applyConnectionState({ status: 'reconnecting', failureCount: 1, error });
         }
       }
     }
@@ -2190,12 +2241,20 @@
       if (!this.gestureDisposer && this.runtime && typeof this.runtime.onGesture === 'function') {
         this.gestureDisposer = this.runtime.onGesture((gesture) => this.handleGesture(gesture));
       }
-      this.timer = this.runtime.setInterval(() => {
-        this.syncOnce().catch(() => {});
-      }, this.syncIntervalMs);
+      if (this.syncService?.start) this.syncService.start();
+      else if (this.api?.heartbeat && this.runtime?.setInterval) {
+        this.timer = this.runtime.setInterval(() => {
+          this.api.heartbeat().then((data) => this.applyHeartbeat(data)).catch((error) => this.applyConnectionState({
+            status: 'reconnecting',
+            failureCount: (this.networkState?.failureCount || 0) + 1,
+            error,
+          }));
+        }, this.config?.HEARTBEAT_INTERVAL_MS || this.syncIntervalMs);
+      }
     }
 
     stop() {
+      this.syncService?.stop?.();
       if (this.timer) {
         this.runtime.clearInterval(this.timer);
         this.timer = null;

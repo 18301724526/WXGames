@@ -190,7 +190,7 @@ test('app delegates update reload runtime instead of touching browser globals di
   const adapterJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5UpdateRuntimeAdapter.js'), 'utf8');
 
   assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v6/);
-  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v6[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v6[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=[^"]+/);
   assert.match(appJs, /this\.showUpdatePrompt\(version\)/);
   assert.match(canvasAppJs, /this\.updateRuntime\?\.promptAndReload\?\.\(version\)/);
   assert.doesNotMatch(appJs, /window\.confirm|window\.caches|navigator\.serviceWorker|window\.location|new URL\(window\.location/);

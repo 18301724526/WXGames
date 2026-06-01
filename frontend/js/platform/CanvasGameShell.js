@@ -80,6 +80,7 @@
       this.deferRenderUntilWorldMapDragEnd = false;
       this.worldMapPinchDragging = false;
       this.tileMapWaterTimer = null;
+      this.networkOverlayTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
       this.naming = {
@@ -104,6 +105,10 @@
         visible: false,
         percentage: 0,
         message: '',
+      };
+      this.networkState = {
+        status: 'online',
+        failureCount: 0,
       };
       this.tutorialHighlight = null;
       this.floatingTexts = [];
@@ -1523,10 +1528,45 @@
         naming: this.naming,
         auth: this.auth,
         loading: this.loading,
+        network: this.networkState,
         floatingTexts: this.getFloatingTextView(),
         tutorialHighlight: this.tutorialHighlight,
         rewardReveal: this.rewardReveal,
       };
+    }
+
+    setNetworkState(state = {}) {
+      const previousStatus = this.networkState?.status || 'online';
+      this.networkState = {
+        ...(this.networkState || {}),
+        ...(state || {}),
+      };
+      const nextStatus = this.networkState.status || 'online';
+      if (previousStatus !== nextStatus || nextStatus === 'reconnecting') {
+        this.renderActive({ invalidateWorldTileView: false });
+      }
+      if (nextStatus === 'reconnecting') this.startNetworkOverlayTimer();
+      else this.stopNetworkOverlayTimer();
+      return this.networkState;
+    }
+
+    startNetworkOverlayTimer() {
+      if (this.networkOverlayTimer || !this.runtime?.setInterval) return false;
+      this.networkOverlayTimer = this.runtime.setInterval(() => {
+        if (this.networkState?.status !== 'reconnecting') {
+          this.stopNetworkOverlayTimer();
+          return;
+        }
+        this.renderActive({ invalidateWorldTileView: false });
+      }, 160);
+      return true;
+    }
+
+    stopNetworkOverlayTimer() {
+      if (!this.networkOverlayTimer) return false;
+      this.runtime?.clearInterval?.(this.networkOverlayTimer);
+      this.networkOverlayTimer = null;
+      return true;
     }
 
     renderActive(options = {}) {
