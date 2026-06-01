@@ -839,6 +839,7 @@
     }
 
     startWorldMapCompositeDrag(point = {}) {
+      this.commitPendingWorldMapCompositeDragBeforeRestart();
       this.clearWorldMapCompositeCommitTimer();
       this.worldMapCompositeCommitPending = false;
       this.worldMapDragWaterTimeMs = this.now();
@@ -908,6 +909,13 @@
         this.worldMapCompositeCommitTimer = global.setTimeout(callback, delayMs);
         return true;
       }
+      return this.commitWorldMapCompositeDrag();
+    }
+
+    commitPendingWorldMapCompositeDragBeforeRestart() {
+      if (this.isWorldMapDragging() || this.worldMapCompositeDrag) return false;
+      const hasOffset = Boolean(this.worldMapCompositeOffsetX || this.worldMapCompositeOffsetY);
+      if (!hasOffset && !this.hasPendingWorldMapCompositeCommit() && !this.deferRenderUntilWorldMapDragEnd) return false;
       return this.commitWorldMapCompositeDrag();
     }
 

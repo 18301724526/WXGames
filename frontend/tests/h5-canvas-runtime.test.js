@@ -2472,7 +2472,7 @@ test('Canvas game shell keeps compositor drag on release and commits after a qui
   assert.equal(worldMapLayer.style.willChange, '');
 });
 
-test('Canvas game shell cancels pending compositor commits across repeated short world drags', () => {
+test('Canvas game shell commits pending compositor offsets before repeated short world drags', () => {
   const { document, runtime, listeners, timeouts } = createCanvasHarness();
   const hudCalls = [];
   const mapLayerCalls = [];
@@ -2534,20 +2534,22 @@ test('Canvas game shell cancels pending compositor commits across repeated short
   listeners.pointerdown({ pointerId: 14, clientX: 138, clientY: 212, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
   assert.equal(timeouts.length, 0);
-  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(hudCalls.length, 1);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(0px, 0px, 0)');
 
   listeners.pointermove({ pointerId: 14, clientX: 150, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 14, clientX: 150, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(mapLayerCalls.length, 0);
-  assert.equal(hudCalls.length, 0);
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(hudCalls.length, 1);
   assert.equal(timeouts.length, 1);
-  assert.equal(worldMapLayer.style.transform, 'translate3d(30px, 20px, 0)');
+  assert.equal(worldMapLayer.style.transform, 'translate3d(12px, 8px, 0)');
 
   timeouts[0].callback();
 
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(hudCalls.length, 1);
+  assert.equal(mapLayerCalls.length, 2);
+  assert.equal(hudCalls.length, 2);
   assert.equal(worldMapLayer.style.transform, '');
 });
 
