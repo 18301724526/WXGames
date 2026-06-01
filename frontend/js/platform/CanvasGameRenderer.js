@@ -61,6 +61,9 @@
       this.worldTileWaterCtx = null;
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
+      this.worldTileStaticCacheLayoutKind = '';
+      this.worldTileStaticChunkCaches = new Map();
+      this.worldTileStaticChunkCacheTick = 0;
       this.worldTileScoutRouteCache = null;
       this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
@@ -547,6 +550,9 @@
     invalidateWorldTileCaches() {
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
+      this.worldTileStaticCacheLayoutKind = '';
+      this.worldTileStaticChunkCaches?.clear?.();
+      this.worldTileStaticChunkCacheTick = 0;
       this.worldTileScoutRouteCache = null;
       this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
@@ -6478,6 +6484,87 @@
       };
     }
 
+    getWorldTileStaticChunkSize() {
+      return 1024;
+    }
+
+    getWorldTileStaticChunkCacheLimit() {
+      return 32;
+    }
+
+    getWorldTileStaticChunkLayouts(tileMapView = {}, viewport = {}, frame = {}, geometry = {}) {
+      const localEntries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
+      if (!localEntries.length) return [];
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const pixelBudget = this.getWorldTileStaticCachePixelBudget();
+      const scale = Number(viewport.scale) || 1;
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const padding = Math.max(tileWidth * 1.2, tileHeight * 2.2, 96);
+      const chunkBleed = Math.max(tileWidth * 1.2, tileHeight * 2.2, 128);
+      const originX = Number(viewport.originX) || 0;
+      const originY = Number(viewport.originY) || 0;
+      const panX = Number(viewport.panX) || 0;
+      const panY = Number(viewport.panY) || 0;
+      const localVisible = {
+        x: (Number(frame.x) || 0) - originX - panX - padding,
+        y: (Number(frame.y) || 0) - originY - panY - padding,
+        width: Math.max(1, Number(frame.width) || 1) + padding * 2,
+        height: Math.max(1, Number(frame.height) || 1) + padding * 2,
+      };
+      const maxBudgetChunkSize = Math.floor(Math.sqrt(Math.max(1, pixelBudget)) / Math.max(1, cacheScale));
+      const chunkSize = Math.max(256, Math.min(
+        Number(this.getWorldTileStaticChunkSize()) || 1024,
+        maxBudgetChunkSize || 1024,
+      ));
+      const minChunkX = Math.floor(localVisible.x / chunkSize);
+      const maxChunkX = Math.floor((localVisible.x + localVisible.width) / chunkSize);
+      const minChunkY = Math.floor(localVisible.y / chunkSize);
+      const maxChunkY = Math.floor((localVisible.y + localVisible.height) / chunkSize);
+      const localViewport = {
+        ...viewport,
+        originX: 0,
+        originY: 0,
+        panX: 0,
+        panY: 0,
+      };
+      const layouts = [];
+      for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
+        for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
+          const chunkFrame = {
+            x: chunkX * chunkSize,
+            y: chunkY * chunkSize,
+            width: chunkSize,
+            height: chunkSize,
+          };
+          const expandedChunkFrame = {
+            x: chunkFrame.x - chunkBleed,
+            y: chunkFrame.y - chunkBleed,
+            width: chunkFrame.width + chunkBleed * 2,
+            height: chunkFrame.height + chunkBleed * 2,
+          };
+          const chunkEntries = localEntries.filter((entry) => (
+            entry.drawRect.x < expandedChunkFrame.x + expandedChunkFrame.width
+            && entry.drawRect.x + entry.drawRect.width > expandedChunkFrame.x
+            && entry.drawRect.y < expandedChunkFrame.y + expandedChunkFrame.height
+            && entry.drawRect.y + entry.drawRect.height > expandedChunkFrame.y
+          ));
+          if (!chunkEntries.length) continue;
+          layouts.push({
+            kind: 'chunk',
+            chunkX,
+            chunkY,
+            frame: chunkFrame,
+            entries: chunkEntries,
+            renderViewport: localViewport,
+            drawX: originX + panX + chunkFrame.x,
+            drawY: originY + panY + chunkFrame.y,
+          });
+        }
+      }
+      return layouts;
+    }
+
     getWorldTileDragCachePanRange() {
       return 180;
     }
@@ -6667,7 +6754,7 @@
       if (!this.worldTileFastDragComposite?.work || !this.worldTileFastDragComposite?.layout) return false;
       if (this.worldTileFastDragComposite.signature !== this.getWorldTileFastDragCompositeSignature()) return false;
       const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
-      if (!layout) return false;
+      if (!layout || layout.kind === 'chunks') return false;
       const cachedLayout = this.worldTileFastDragComposite.layout;
       const drawLayout = {
         ...cachedLayout,
@@ -6727,20 +6814,104 @@
       if (!worldLayout) return null;
       const worldPixels = worldLayout.frame.width * worldLayout.frame.height * cacheScale * cacheScale;
       if (worldPixels <= pixelBudget) return worldLayout;
-      const dragLayout = this.getWorldTileStaticDragCacheLayout(tileMapView, viewport, frame, geometry);
-      if (dragLayout) {
-        const dragPixels = dragLayout.frame.width * dragLayout.frame.height * cacheScale * cacheScale;
-        if (dragPixels <= pixelBudget) return dragLayout;
-      }
+      const chunkLayouts = this.getWorldTileStaticChunkLayouts(tileMapView, viewport, frame, geometry);
+      if (chunkLayouts.length) return { kind: 'chunks', layouts: chunkLayouts };
       const viewportLayout = this.getWorldTileStaticViewportCacheLayout(tileMapView, viewport, frame, entries);
       if (!viewportLayout) return null;
       const viewportPixels = viewportLayout.frame.width * viewportLayout.frame.height * cacheScale * cacheScale;
       return viewportPixels <= pixelBudget ? viewportLayout : null;
     }
 
+    getWorldTileStaticChunkCacheKey(tileMapView = {}, viewport = {}, layout = {}, uiState = {}, options = {}) {
+      return this.getWorldTileStaticCacheKey(tileMapView, viewport, layout.frame, layout.entries, uiState, {
+        ...options,
+        kind: `chunk:${layout.chunkX},${layout.chunkY}`,
+      });
+    }
+
+    pruneWorldTileStaticChunkCaches(activeKeys = new Set()) {
+      const limit = Math.max(1, Number(this.getWorldTileStaticChunkCacheLimit()) || 32);
+      if (!this.worldTileStaticChunkCaches || this.worldTileStaticChunkCaches.size <= limit) return false;
+      const staleEntries = Array.from(this.worldTileStaticChunkCaches.entries())
+        .filter(([key]) => !activeKeys.has(key))
+        .sort((a, b) => (Number(a[1]?.lastUsedAt) || 0) - (Number(b[1]?.lastUsedAt) || 0));
+      let pruned = false;
+      while (this.worldTileStaticChunkCaches.size > limit && staleEntries.length) {
+        const [key] = staleEntries.shift();
+        this.worldTileStaticChunkCaches.delete(key);
+        pruned = true;
+      }
+      return pruned;
+    }
+
+    renderWorldTileStaticChunk(tileMapView = {}, layout = {}, uiState = {}, cacheScale = 1) {
+      if (!layout?.frame || !Array.isArray(layout.entries) || !layout.entries.length) return false;
+      const chunkKey = `${layout.chunkX},${layout.chunkY}`;
+      let work = this.worldTileStaticChunkCaches.get(chunkKey);
+      const width = Math.max(1, Number(layout.frame.width) || 1);
+      const height = Math.max(1, Number(layout.frame.height) || 1);
+      const pixelW = Math.max(1, Math.ceil(width * cacheScale));
+      const pixelH = Math.max(1, Math.ceil(height * cacheScale));
+      if (!work?.canvas || !work?.ctx) {
+        const canvas = this.createTileWorkCanvas(pixelW, pixelH);
+        const ctx = canvas?.getContext?.('2d') || null;
+        if (!canvas || !ctx) return false;
+        work = { canvas, ctx };
+        this.worldTileStaticChunkCaches.set(chunkKey, work);
+      }
+      if (work.canvas.width !== pixelW) work.canvas.width = pixelW;
+      if (work.canvas.height !== pixelH) work.canvas.height = pixelH;
+      work.width = width;
+      work.height = height;
+      work.pixelWidth = pixelW;
+      work.pixelHeight = pixelH;
+      work.scale = cacheScale;
+      const cacheKey = this.getWorldTileStaticChunkCacheKey(tileMapView, layout.renderViewport, layout, uiState, { cacheScale });
+      if (cacheKey !== work.key) {
+        const previousCtx = this.ctx;
+        this.ctx = work.ctx;
+        try {
+          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
+          work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
+          work.ctx.globalAlpha = 1;
+          work.ctx.globalCompositeOperation = 'source-over';
+          work.ctx.save?.();
+          work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
+          this.withSuppressedHitTargets(() => {
+            this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
+              addHitTargets: false,
+            });
+          });
+          work.ctx.restore?.();
+          work.key = cacheKey;
+        } finally {
+          this.ctx = previousCtx;
+        }
+      }
+      work.lastUsedAt = ++this.worldTileStaticChunkCacheTick;
+      return true;
+    }
+
+    renderWorldTileStaticChunks(tileMapView = {}, chunkLayouts = [], frame = {}, uiState = {}) {
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const activeKeys = new Set(chunkLayouts.map((layout) => `${layout.chunkX},${layout.chunkY}`));
+      this.worldTileStaticCacheLayoutKind = 'chunks';
+      let rendered = false;
+      chunkLayouts.forEach((layout) => {
+        if (this.renderWorldTileStaticChunk(tileMapView, layout, uiState, cacheScale)) {
+          this.drawWorldTileLayerCache(this.worldTileStaticChunkCaches.get(`${layout.chunkX},${layout.chunkY}`), layout, frame);
+          rendered = true;
+        }
+      });
+      this.pruneWorldTileStaticChunkCaches(activeKeys);
+      return rendered;
+    }
+
     renderWorldTileStaticLayer(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
       const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
+      if (layout.kind === 'chunks') return this.renderWorldTileStaticChunks(tileMapView, layout.layouts, frame, uiState);
       if (this.worldTileFastDragActive && this.worldTileStaticCacheKey && this.worldTileStaticCache?.canvas) {
         return this.drawWorldTileLayerCache(this.worldTileStaticCache, layout, frame);
       }
@@ -6769,6 +6940,7 @@
           });
           work.ctx.restore?.();
           this.worldTileStaticCacheKey = cacheKey;
+          this.worldTileStaticCacheLayoutKind = layout.kind || '';
         } finally {
           this.ctx = previousCtx;
         }
@@ -6812,6 +6984,7 @@
       if (!Array.isArray(tileMapView.activeScouts) || !tileMapView.activeScouts.length) return true;
       const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
+      if (layout.kind === 'chunks') return false;
       if (this.worldTileFastDragActive && this.worldTileScoutRouteCacheKey && this.worldTileScoutRouteCache?.canvas) {
         return this.drawWorldTileLayerCache(this.worldTileScoutRouteCache, layout, frame);
       }
@@ -6903,6 +7076,7 @@
       if (!visibleWaterEntries.length) return true;
       const layout = this.resolveWorldTileWaterLayerCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
+      if (layout.kind === 'chunks') return false;
       const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
       if (!waterEntries.length) return true;
       if (this.worldTileFastDragActive && this.worldTileWaterLayerCacheKey && this.worldTileWaterLayerCache?.canvas) {
@@ -7088,7 +7262,7 @@
           compositeLayout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, visibleEntries);
         }
         this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-        if (compositeLayout) this.updateWorldTileFastDragComposite(compositeLayout, frame);
+        if (compositeLayout && compositeLayout.kind !== 'chunks') this.updateWorldTileFastDragComposite(compositeLayout, frame);
 
         this.ctx.restore();
       } finally {

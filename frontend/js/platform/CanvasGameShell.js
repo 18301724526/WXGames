@@ -75,13 +75,6 @@
       this.worldMapLayerRenderQueued = false;
       this.worldMapDragFrameActive = false;
       this.worldMapDragWaterTimeMs = null;
-      this.worldMapCompositeDrag = null;
-      this.worldMapCompositeBasePan = null;
-      this.worldMapCompositeOffsetX = 0;
-      this.worldMapCompositeOffsetY = 0;
-      this.worldMapCompositeCommitTimer = null;
-      this.worldMapCompositeCommitPending = false;
-      this.worldMapCompositeCommitDelayMs = Math.max(80, Number(options.worldMapCompositeCommitDelayMs) || 240);
       this.deferRenderUntilWorldMapDragEnd = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
@@ -197,7 +190,7 @@
         host: this,
         worldMapRuntime: this.worldMapRuntime,
         useWorldMapRuntime: this.useWorldMapRuntime,
-        renderOnDrag: false,
+        renderOnDrag: true,
         consumeDragEvent: true,
         getRenderer: () => this.worldMapRenderer,
         getPresenter: () => this.presenter || this.renderer?.presenter,
@@ -216,18 +209,18 @@
         getForceMapHome: () => Boolean(this.lastGame?.mapHomeActive),
         onAction: (action, event) => this.handleAction(action, event),
         onBeforeRender: () => this.syncWorldMapRendererLayerMetrics(),
-        onBeforeDrag: ({ phase, point }) => {
-          if (phase === 'start') this.startWorldMapCompositeDrag(point);
+        onBeforeDrag: ({ phase, runtime }) => {
+          if (phase === 'start') {
+            const waterTimeMs = this.startWorldMapSnapshotDrag();
+            if (runtime) runtime.waterTimeMs = waterTimeMs;
+          }
         },
-        onAfterDrag: ({ phase, point, runtime, handled }) => {
-          if (handled && runtime?.isDragging?.() && this.updateWorldMapCompositeDrag(point)) {
-            runtime.setDragLayerOffset?.(this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
-          } else if (handled && phase === 'move') {
-            this.requestWorldMapRenderAnimationFrame();
+        onAfterDrag: ({ phase, handled }) => {
+          if (handled && phase === 'move') {
+            this.worldMapDragFrameActive = true;
           }
           if (handled && (phase === 'end' || phase === 'cancel')) {
-            runtime?.setDragLayerOffset?.(this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
-            this.finishWorldMapCompositeDrag();
+            this.finishWorldMapSnapshotDrag();
           }
         },
       });
@@ -347,10 +340,10 @@
       const dragType = this.dragAction.type === 'techTreeDrag'
         ? 'techTreeDrag'
         : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
-      if (dragType === 'worldMapDrag' && phase === 'start') this.startWorldMapCompositeDrag(point);
+      if (dragType === 'worldMapDrag' && phase === 'start') this.startWorldMapSnapshotDrag();
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
       if (dragType === 'worldMapDrag' && (phase === 'end' || phase === 'cancel')) {
-        this.finishWorldMapCompositeDrag();
+        this.finishWorldMapSnapshotDrag();
       }
       if (phase === 'end' || phase === 'cancel') {
         this.dragAction = null;
@@ -369,7 +362,6 @@
 
     handleTap(point, event) {
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
-      if (this.hasPendingWorldMapCompositeCommit()) this.commitWorldMapCompositeDrag();
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) {
         const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
@@ -788,33 +780,7 @@
     }
 
     hasPendingWorldMapCompositeCommit() {
-      return Boolean(this.worldMapCompositeCommitPending || this.worldMapCompositeCommitTimer);
-    }
-
-    clearWorldMapCompositeCommitTimer() {
-      if (!this.worldMapCompositeCommitTimer) return false;
-      if (typeof this.runtime?.clearTimeout === 'function') this.runtime.clearTimeout(this.worldMapCompositeCommitTimer);
-      else if (typeof global.clearTimeout === 'function') global.clearTimeout(this.worldMapCompositeCommitTimer);
-      this.worldMapCompositeCommitTimer = null;
-      return true;
-    }
-
-    getWorldMapCompositeBasePan(currentPan = this.getWorldMapPan()) {
-      if (this.worldMapCompositeBasePan) return this.worldMapCompositeBasePan;
-      const offsetX = Number(this.worldMapCompositeOffsetX) || 0;
-      const offsetY = Number(this.worldMapCompositeOffsetY) || 0;
-      this.worldMapCompositeBasePan = {
-        x: (Number(currentPan.x) || 0) - offsetX,
-        y: (Number(currentPan.y) || 0) - offsetY,
-      };
-      return this.worldMapCompositeBasePan;
-    }
-
-    applyWorldMapCompositeOffset(offsetX = this.worldMapCompositeOffsetX, offsetY = this.worldMapCompositeOffsetY) {
-      if (!this.canUseWorldMapCompositeDrag()) return false;
-      this.worldMapCompositeOffsetX = Number.isFinite(Number(offsetX)) ? Number(offsetX) : 0;
-      this.worldMapCompositeOffsetY = Number.isFinite(Number(offsetY)) ? Number(offsetY) : 0;
-      return this.runtime.setLayerTranslate('worldMap', this.worldMapCompositeOffsetX, this.worldMapCompositeOffsetY);
+      return false;
     }
 
     getWorldMapPan() {
@@ -825,119 +791,17 @@
       };
     }
 
-    canUseWorldMapCompositeDrag() {
-      const layer = typeof this.runtime?.getLayerCanvas === 'function'
-        ? this.runtime.getLayerCanvas('worldMap')
-        : null;
-      const ensuredLayer = layer || (typeof this.runtime?.ensureLayerCanvas === 'function'
-        ? this.runtime.ensureLayerCanvas('worldMap', { padding: this.getWorldMapLayerPadding() })
-        : null);
-      return Boolean(ensuredLayer
-        && this.worldMapRenderer
-        && typeof this.runtime?.setLayerTranslate === 'function'
-        && typeof this.runtime?.clearLayerTransform === 'function');
-    }
-
-    startWorldMapCompositeDrag(point = {}) {
-      this.commitPendingWorldMapCompositeDragBeforeRestart();
-      this.clearWorldMapCompositeCommitTimer();
-      this.worldMapCompositeCommitPending = false;
+    startWorldMapSnapshotDrag() {
       this.worldMapDragWaterTimeMs = this.now();
-      if (!this.canUseWorldMapCompositeDrag()) {
-        this.worldMapCompositeDrag = null;
-        return false;
-      }
-      const pan = this.getWorldMapPan();
-      const basePan = this.getWorldMapCompositeBasePan(pan);
-      this.worldMapCompositeDrag = {
-        startX: Number(point.x) || 0,
-        startY: Number(point.y) || 0,
-        startPanX: pan.x,
-        startPanY: pan.y,
-        basePanX: basePan.x,
-        basePanY: basePan.y,
-        offsetX: this.worldMapCompositeOffsetX,
-        offsetY: this.worldMapCompositeOffsetY,
-      };
-      this.applyWorldMapCompositeOffset();
-      return true;
+      return this.worldMapDragWaterTimeMs;
     }
 
-    updateWorldMapCompositeDrag(point = {}) {
-      if (!this.worldMapCompositeDrag || !this.canUseWorldMapCompositeDrag()) return false;
-      const pan = this.getWorldMapPan();
-      let offsetX = pan.x - this.worldMapCompositeDrag.basePanX;
-      let offsetY = pan.y - this.worldMapCompositeDrag.basePanY;
-      if (!Number.isFinite(offsetX) || !Number.isFinite(offsetY)) {
-        offsetX = this.worldMapCompositeDrag.offsetX + (Number(point.x) || 0) - this.worldMapCompositeDrag.startX;
-        offsetY = this.worldMapCompositeDrag.offsetY + (Number(point.y) || 0) - this.worldMapCompositeDrag.startY;
-      }
-      this.worldMapCompositeDrag.offsetX = offsetX;
-      this.worldMapCompositeDrag.offsetY = offsetY;
-      return this.applyWorldMapCompositeOffset(offsetX, offsetY);
-    }
-
-    finishWorldMapCompositeDrag() {
-      const wasDragging = this.isWorldMapDragging() || Boolean(this.worldMapCompositeDrag);
-      const usedCompositeDrag = Boolean(this.worldMapCompositeDrag && this.canUseWorldMapCompositeDrag());
-      if (usedCompositeDrag) {
-        const offsetX = Number(this.worldMapCompositeDrag.offsetX);
-        const offsetY = Number(this.worldMapCompositeDrag.offsetY);
-        this.worldMapCompositeOffsetX = Number.isFinite(offsetX) ? offsetX : 0;
-        this.worldMapCompositeOffsetY = Number.isFinite(offsetY) ? offsetY : 0;
-        this.applyWorldMapCompositeOffset();
-      }
-      this.worldMapCompositeDrag = null;
+    finishWorldMapSnapshotDrag() {
       this.worldMapDragWaterTimeMs = null;
       this.worldMapDragFrameActive = false;
-      if (usedCompositeDrag || (wasDragging && this.deferRenderUntilWorldMapDragEnd)) {
-        return this.scheduleWorldMapCompositeCommit();
-      }
-      return false;
-    }
-
-    scheduleWorldMapCompositeCommit() {
-      this.clearWorldMapCompositeCommitTimer();
-      this.worldMapCompositeCommitPending = true;
-      const delayMs = Math.max(0, Number(this.worldMapCompositeCommitDelayMs) || 0);
-      const callback = () => this.commitWorldMapCompositeDrag();
-      if (typeof this.runtime?.setTimeout === 'function') {
-        this.worldMapCompositeCommitTimer = this.runtime.setTimeout(callback, delayMs);
-        return true;
-      }
-      if (typeof global.setTimeout === 'function') {
-        this.worldMapCompositeCommitTimer = global.setTimeout(callback, delayMs);
-        return true;
-      }
-      return this.commitWorldMapCompositeDrag();
-    }
-
-    commitPendingWorldMapCompositeDragBeforeRestart() {
-      if (this.isWorldMapDragging() || this.worldMapCompositeDrag) return false;
-      const hasOffset = Boolean(this.worldMapCompositeOffsetX || this.worldMapCompositeOffsetY);
-      if (!hasOffset && !this.hasPendingWorldMapCompositeCommit() && !this.deferRenderUntilWorldMapDragEnd) return false;
-      return this.commitWorldMapCompositeDrag();
-    }
-
-    commitWorldMapCompositeDrag() {
-      this.clearWorldMapCompositeCommitTimer();
-      if (this.isWorldMapDragging()) {
-        this.worldMapCompositeCommitPending = true;
-        return true;
-      }
-      const shouldRender = Boolean(
-        this.worldMapCompositeCommitPending
-        || this.deferRenderUntilWorldMapDragEnd
-        || this.worldMapCompositeOffsetX
-        || this.worldMapCompositeOffsetY,
-      );
-      this.worldMapCompositeCommitPending = false;
+      if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
+      const shouldRender = Boolean(this.deferRenderUntilWorldMapDragEnd);
       this.deferRenderUntilWorldMapDragEnd = false;
-      this.worldMapCompositeBasePan = null;
-      this.worldMapCompositeOffsetX = 0;
-      this.worldMapCompositeOffsetY = 0;
-      this.worldMapRuntime?.clearDragLayerOffset?.();
-      if (this.canUseWorldMapCompositeDrag()) this.runtime.clearLayerTransform('worldMap');
       return shouldRender ? this.renderActive({ invalidateWorldTileView: false }) : false;
     }
 
@@ -995,7 +859,6 @@
 
     requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
-        if (this.updateWorldMapCompositeDrag(action.pointer || {})) return true;
         this.getFrozenWorldMapWaterTimeMs();
         this.worldMapDragFrameActive = true;
         return this.requestWorldMapRenderAnimationFrame();

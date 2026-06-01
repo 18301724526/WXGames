@@ -3848,7 +3848,7 @@ test('CanvasGameRenderer prewarms world tile template masks after assets load', 
   assert.equal(imageDataReads, readsAfterPrewarm);
 });
 
-test('CanvasGameRenderer falls back to viewport static cache when the full world cache is too large', () => {
+test('CanvasGameRenderer uses chunked static snapshots when the full world cache is too large', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -3894,7 +3894,7 @@ test('CanvasGameRenderer falls back to viewport static cache when the full world
     }
   }
   const tileMapView = {
-    signature: 'viewport-cache-test',
+    signature: 'chunk-cache-test',
     version: 1,
     seed: 'seed',
     pan: { x: 0, y: 0 },
@@ -3915,11 +3915,24 @@ test('CanvasGameRenderer falls back to viewport static cache when the full world
     && call[1]?.src === assetPath
   )).length;
 
-  assert.ok(renderer.worldTileStaticCacheKey.startsWith('viewport::'));
+  const firstChunkKeys = Array.from(renderer.worldTileStaticChunkCaches.keys());
+  assert.equal(renderer.worldTileStaticCacheLayoutKind, 'chunks');
+  assert.equal(renderer.worldTileStaticCacheKey, '');
+  assert.ok(firstChunkKeys.length > 0);
+  assert.ok(Array.from(renderer.worldTileStaticChunkCaches.values()).every((work) => (
+    work.width <= renderer.getWorldTileStaticChunkSize()
+    && work.height <= renderer.getWorldTileStaticChunkSize()
+    && work.canvas.width === Math.ceil(work.width * work.scale)
+    && work.canvas.height === Math.ceil(work.height * work.scale)
+  )));
   assert.ok(firstFrameStaticTileDraws > 0);
   assert.equal(secondFrameStaticTileDraws, 0);
-  assert.ok(renderer.worldTileStaticCache.width <= 324);
-  assert.ok(renderer.worldTileStaticCache.height <= 244);
+  assert.deepEqual(Array.from(renderer.worldTileStaticChunkCaches.keys()), firstChunkKeys);
+
+  calls.length = 0;
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 900, y: 0 } }, 20, 80, 320, 240, {});
+  assert.ok(renderer.worldTileStaticChunkCaches.size >= firstChunkKeys.length);
+  assert.ok(firstChunkKeys.some((key) => renderer.worldTileStaticChunkCaches.has(key)));
 });
 
 test('CanvasGameRenderer reuses cached world water layer within the same water animation frame', () => {
