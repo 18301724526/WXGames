@@ -3724,6 +3724,53 @@ test('CanvasGameRenderer keeps cached world tile layers sharp on high DPR screen
   assert.ok(transforms.some((args) => args[0] === 3 && args[3] === 3));
 });
 
+test('CanvasGameRenderer prewarms world tile template masks after assets load', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const imageData = {
+    data: new Uint8ClampedArray(4 * 4 * 4).fill(255),
+  };
+  let imageDataReads = 0;
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalCompositeOperation: 'source-over',
+      globalAlpha: 1,
+      drawImage() {},
+      clearRect() {},
+      createImageData(w, h) {
+        return { data: new Uint8ClampedArray(w * h * 4) };
+      },
+      getImageData() {
+        imageDataReads += 1;
+        return imageData;
+      },
+      putImageData() {},
+    }),
+  });
+  const paths = [
+    'assets/art/tile-map/tile-terrain-plains.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png',
+  ];
+  paths.forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 4, height: 4, naturalWidth: 4, naturalHeight: 4 },
+    });
+  });
+
+  const result = renderer.prewarmWorldTileCaches(paths);
+  const readsAfterPrewarm = imageDataReads;
+  renderer.getWorldTileTemplateMask(paths[1]);
+  renderer.getWorldTileDryTemplateCanvas(paths[1]);
+
+  assert.equal(result.metrics, 2);
+  assert.equal(result.masks, 1);
+  assert.equal(result.dryTemplates, 1);
+  assert.equal(imageDataReads, readsAfterPrewarm);
+});
+
 test('CanvasGameRenderer falls back to viewport static cache when the full world cache is too large', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
@@ -3884,6 +3931,82 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
   assert.equal(draggedWaterFrameDraws, 0);
   assert.ok(nextWaterFrameDraws > 0);
   assert.ok(renderer.worldTileWaterLayerCacheKey.includes('water-layer-cache-test'));
+});
+
+test('CanvasGameRenderer freezes world water cache when a water time override is supplied', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.frameNow = 1000;
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  [
+    'assets/art/tile-map/tile-terrain-plains.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png',
+    'assets/art/tile-map/tile-water-ocean-loop.png',
+  ].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+    renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  });
+  const tileMapView = {
+    signature: 'water-freeze-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [{
+      id: 'tile_1_0',
+      q: 1,
+      r: 0,
+      terrain: 'ocean',
+      terrainAsset: 'assets/art/tile-map/ocean-template/tile-ocean-water-full.png',
+      templateAssets: [{ key: 'river-mouth-sw', type: 'ocean', asset: 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png' }],
+      water: { kind: 'ocean', asset: 'assets/art/tile-map/tile-water-ocean-loop.png', uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
+      site: null,
+    }],
+    activeScouts: [],
+  };
+
+  renderer.worldTileWaterTimeOverride = 1000;
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const firstFrameWaterDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
+  calls.length = 0;
+  renderer.frameNow = 1160;
+  renderer.worldTileWaterTimeOverride = 1000;
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 42, y: -20 } }, 20, 80, 320, 240, {});
+  const frozenFrameWaterDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
+
+  assert.ok(firstFrameWaterDraws > 0);
+  assert.equal(frozenFrameWaterDraws, 0);
 });
 
 test('CanvasGameRenderer renders naming prompt modal and actions on canvas', () => {

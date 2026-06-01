@@ -337,14 +337,14 @@
             return;
           }
           this.renderAnimationFrame('military');
-        }, this.getAnimationFrameMs())
+        }, this.getWorldTileWaterAnimationFrameMs())
         : setIntervalFn(() => {
           if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
             this.stopTileMapWaterTimer();
             return;
           }
           this.renderAnimationFrame('military');
-        }, this.getAnimationFrameMs());
+        }, this.getWorldTileWaterAnimationFrameMs());
       return true;
     }
 
@@ -453,6 +453,12 @@
 
     getAnimationFrameMs() {
       return this.canvasShell?.getAnimationFrameMs?.() || 16;
+    }
+
+    getWorldTileWaterAnimationFrameMs() {
+      if (this.canvasShell?.getWorldTileWaterAnimationFrameMs) return this.canvasShell.getWorldTileWaterAnimationFrameMs();
+      const fps = Number(this.renderer?.getWorldTileWaterAnimationFps?.() || 18);
+      return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
     }
 
     getRequestAnimationFrame() {

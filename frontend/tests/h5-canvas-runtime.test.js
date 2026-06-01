@@ -22,6 +22,9 @@ class TestH5CanvasGameRenderer extends CanvasGameRenderer {
       height: options.height,
       assetCache: options.assetCache,
       assetMetricsCache: options.assetMetricsCache,
+      worldTileMaskCache: options.worldTileMaskCache,
+      worldTileMaskMetricsCache: options.worldTileMaskMetricsCache,
+      worldTileDryCompositeCache: options.worldTileDryCompositeCache,
       showFpsOverlay: options.showFpsOverlay,
     });
     TestH5CanvasGameRenderer.instances.push(this);
@@ -310,6 +313,8 @@ test('Canvas game shell creates a separate passive world map renderer on H5', ()
     assert.equal(shell.worldMapRenderer.canvas, appended[1]);
     assert.equal(shell.renderer.assetCache, shell.worldMapRenderer.assetCache);
     assert.equal(shell.renderer.assetMetricsCache, shell.worldMapRenderer.assetMetricsCache);
+    assert.equal(shell.renderer.worldTileMaskCache, shell.worldMapRenderer.worldTileMaskCache);
+    assert.equal(shell.renderer.worldTileDryCompositeCache, shell.worldMapRenderer.worldTileDryCompositeCache);
   } finally {
     global.H5CanvasGameRenderer = previousRenderer;
   }
@@ -2501,7 +2506,7 @@ test('Canvas game shell uses a 60FPS target for shared canvas animations', () =>
   assert.ok(shell.pageTransition);
 });
 
-test('Canvas game shell refreshes animated world water at the shared 60FPS cadence', () => {
+test('Canvas game shell refreshes animated world water at the renderer water cadence', () => {
   const { document, runtime } = createCanvasHarness();
   const timers = [];
   runtime.setInterval = (callback, intervalMs) => {
@@ -2529,7 +2534,7 @@ test('Canvas game shell refreshes animated world water at the shared 60FPS caden
 
   shell.renderReadOnly(shell.lastGame.state, 'military');
 
-  assert.equal(timers.at(-1).intervalMs, 16);
+  assert.equal(timers.at(-1).intervalMs, 56);
   assert.equal(renderCalls.length > 0, true);
 });
 
@@ -2569,11 +2574,72 @@ test('Canvas game shell refreshes animated world water on the map layer when dua
 
   shell.renderReadOnly(shell.lastGame.state, 'military');
   const initialMapLayerCalls = mapLayerCalls.length;
+  assert.equal(timers.at(-1).intervalMs, 56);
   now += 20;
   timers.at(-1).callback();
 
   assert.equal(fullRenderCount, 0);
   assert.equal(mapLayerCalls.length, initialMapLayerCalls + 1);
+});
+
+test('Canvas game shell freezes animated world water during dual-canvas drag frames', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const frames = [];
+  runtime.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 152,
+    render() {},
+    invalidateWorldTileViewCache() {},
+  };
+  const mapLayerCalls = [];
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    renderWorldMapLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      return true;
+    },
+    invalidateWorldTileViewCache() {},
+  };
+  let now = 1000;
+  const shell = CanvasGameShell.mount({
+    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
+    getActiveTab: () => 'military',
+    territoryController: {
+      getUiState: () => ({ worldPanX: 24, worldPanY: -12 }),
+      startWorldDrag() {},
+      moveWorldDrag() {},
+      endWorldDrag() {},
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+  shell.now = () => now;
+
+  listeners.pointerdown({ pointerId: 11, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  now = 1040;
+  mapLayerCalls.length = 0;
+  shell.lastWorldMapLayerRenderAt = 0;
+  listeners.pointermove({ pointerId: 11, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  frames[0]();
+
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
 });
 
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {

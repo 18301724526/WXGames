@@ -48,9 +48,9 @@
       this.bottomSafeArea = options.bottomSafeArea || 12;
       this.assetCache = options.assetCache || new Map();
       this.assetMetricsCache = options.assetMetricsCache || new Map();
-      this.worldTileMaskCache = new Map();
-      this.worldTileMaskMetricsCache = new Map();
-      this.worldTileDryCompositeCache = new Map();
+      this.worldTileMaskCache = options.worldTileMaskCache || new Map();
+      this.worldTileMaskMetricsCache = options.worldTileMaskMetricsCache || new Map();
+      this.worldTileDryCompositeCache = options.worldTileDryCompositeCache || new Map();
       this.worldTileCompositeCanvas = null;
       this.worldTileCompositeCtx = null;
       this.worldTileWaterCanvas = null;
@@ -62,6 +62,7 @@
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
       this.worldTileViewCache = null;
+      this.worldTileWaterTimeOverride = null;
       this.assetsChangedHandler = null;
       this.hitTargets = [];
       this.hoverPoint = null;
@@ -256,7 +257,10 @@
           if (status === 'loaded') loaded += 1;
           else failed += 1;
           notify(assetPath, status);
-          if (completed >= total) resolve({ total, completed, loaded, failed, percentage: 100 });
+          if (completed >= total) {
+            this.prewarmWorldTileCaches(paths);
+            resolve({ total, completed, loaded, failed, percentage: 100 });
+          }
         };
 
         notify('', 'start');
@@ -298,6 +302,41 @@
           else if (!image.src) image.src = requestPath;
         });
       });
+    }
+
+    isWorldTilePrewarmMetricAssetPath(assetPath = '') {
+      const path = String(assetPath || '');
+      return path.startsWith('assets/art/tile-map/')
+        || path.startsWith('assets/art/world-site-');
+    }
+
+    isWorldTileTemplateAssetPath(assetPath = '') {
+      return /^assets\/art\/tile-map\/(?:river-template|ocean-template|transition-template)\//.test(String(assetPath || ''));
+    }
+
+    isWorldTileWaterTemplateAssetPath(assetPath = '') {
+      return /^assets\/art\/tile-map\/(?:river-template|ocean-template)\//.test(String(assetPath || ''));
+    }
+
+    prewarmWorldTileCaches(assetPaths = this.getPreloadAssetPaths()) {
+      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
+      const result = { total: paths.length, metrics: 0, masks: 0, dryTemplates: 0 };
+      paths.forEach((assetPath) => {
+        const cached = this.assetCache.get(assetPath);
+        if (cached?.status !== 'loaded') return;
+        if (this.isWorldTilePrewarmMetricAssetPath(assetPath) && !this.assetMetricsCache.has(assetPath)) {
+          if (this.analyzeAssetAlphaBounds(assetPath)) result.metrics += 1;
+        }
+        if (!this.isWorldTileTemplateAssetPath(assetPath)) return;
+        const hadMask = this.worldTileMaskCache.has(assetPath);
+        const mask = this.getWorldTileTemplateMask(assetPath);
+        if (mask && !hadMask) result.masks += 1;
+        if (!this.isWorldTileWaterTemplateAssetPath(assetPath)) return;
+        const hadDryTemplate = this.worldTileDryCompositeCache.has(assetPath);
+        const dryTemplate = this.getWorldTileDryTemplateCanvas(assetPath);
+        if (dryTemplate && !hadDryTemplate) result.dryTemplates += 1;
+      });
+      return result;
     }
 
     getAsset(assetPath) {
@@ -918,9 +957,11 @@
       };
     }
 
-    fillWorldTileWaterTexture(targetCtx, texture, water = {}, tile = {}, drawRect = {}, viewport = {}, width = 1, height = 1) {
+    fillWorldTileWaterTexture(targetCtx, texture, water = {}, tile = {}, drawRect = {}, viewport = {}, width = 1, height = 1, timeMs = null) {
       if (!targetCtx || !texture || typeof targetCtx.drawImage !== 'function') return false;
-      const seconds = Math.max(0, this.getNow() / 1000);
+      const hasTimeMs = timeMs !== null && timeMs !== undefined && Number.isFinite(Number(timeMs));
+      const resolvedTimeMs = hasTimeMs ? Number(timeMs) : this.getNow();
+      const seconds = Math.max(0, resolvedTimeMs / 1000);
       const geometry = viewport.geometry || {};
       const scale = Number(viewport.scale) || 1;
       const tileW = Math.max(1, Number(texture.naturalWidth || texture.width || 1) * (Number(water.uvScale) || 1) * (Number(viewport.scale) || 1));
@@ -943,7 +984,7 @@
       return true;
     }
 
-    drawWorldTileWaterDiamond(texture, water = {}, center = {}, drawRect = {}, viewport = {}) {
+    drawWorldTileWaterDiamond(texture, water = {}, center = {}, drawRect = {}, viewport = {}, timeMs = null) {
       if (!texture || typeof this.ctx.drawImage !== 'function') return false;
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = Number(water.alpha) || 1;
@@ -956,23 +997,23 @@
       if (typeof this.ctx.closePath === 'function') this.ctx.closePath();
       else this.ctx.lineTo?.(center.x, center.y - drawRect.height * 0.5);
       this.ctx.clip?.();
-      const drawn = this.fillWorldTileWaterTexture(this.ctx, texture, water, viewport.tile || {}, drawRect, viewport, drawRect.width, drawRect.height);
+      const drawn = this.fillWorldTileWaterTexture(this.ctx, texture, water, viewport.tile || {}, drawRect, viewport, drawRect.width, drawRect.height, timeMs);
       this.ctx.restore?.();
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
       return drawn;
     }
 
-    drawWorldTileWaterLayer(template = {}, water = {}, texture, center = {}, drawRect = {}, viewport = {}) {
+    drawWorldTileWaterLayer(template = {}, water = {}, texture, center = {}, drawRect = {}, viewport = {}, timeMs = null) {
       const mask = this.getWorldTileTemplateMask(template.asset);
       const sourceRect = this.getIsoTileSourceRect(template.asset);
       const work = mask && sourceRect ? this.getWorldTileWaterWorkContext(drawRect.width, drawRect.height) : null;
-      if (!work) return this.drawWorldTileWaterDiamond(texture, water, center, drawRect, viewport);
+      if (!work) return this.drawWorldTileWaterDiamond(texture, water, center, drawRect, viewport, timeMs);
       try {
         work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
         work.ctx.globalAlpha = 1;
         work.ctx.globalCompositeOperation = 'source-over';
         work.ctx.clearRect?.(0, 0, work.width, work.height);
-        if (!this.fillWorldTileWaterTexture(work.ctx, texture, water, viewport.tile || {}, drawRect, viewport, work.width, work.height)) return false;
+        if (!this.fillWorldTileWaterTexture(work.ctx, texture, water, viewport.tile || {}, drawRect, viewport, work.width, work.height, timeMs)) return false;
         work.ctx.globalCompositeOperation = 'destination-in';
         work.ctx.drawImage(
           mask,
@@ -992,7 +1033,7 @@
         if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
         return true;
       } catch (_) {
-        return this.drawWorldTileWaterDiamond(texture, water, center, drawRect, viewport);
+        return this.drawWorldTileWaterDiamond(texture, water, center, drawRect, viewport, timeMs);
       }
     }
 
@@ -1002,13 +1043,17 @@
       const manifest = this.constructor.getTileMapAssetManifest();
       let drawn = false;
       const tileViewport = { ...viewport, tile };
+      const hasWaterTimeMs = options.waterTimeMs !== null
+        && options.waterTimeMs !== undefined
+        && Number.isFinite(Number(options.waterTimeMs));
+      const timeMs = hasWaterTimeMs ? Number(options.waterTimeMs) : this.getNow();
       templates.forEach((template) => {
         const waterKind = template.waterKind || tile.water?.kind;
         const water = waterKind ? manifest.getWaterAsset?.(waterKind) : null;
         if (!water?.path) return;
         const texture = this.getAsset(water.path);
         if (!texture || typeof this.ctx.drawImage !== 'function') return;
-        if (this.drawWorldTileWaterLayer(template, water, texture, center, drawRect, tileViewport)) drawn = true;
+        if (this.drawWorldTileWaterLayer(template, water, texture, center, drawRect, tileViewport, timeMs)) drawn = true;
       });
       if (drawn && options.drawDryTemplate !== false) this.drawWorldTileDryTemplate(tile, drawRect);
       return drawn;
@@ -6651,8 +6696,20 @@
       return 18;
     }
 
-    getWorldTileWaterAnimationFrame() {
-      return Math.floor((this.getNow() / 1000) * this.getWorldTileWaterAnimationFps());
+    getWorldTileWaterAnimationFrameMs() {
+      return Math.max(16, Math.round(1000 / Math.max(1, this.getWorldTileWaterAnimationFps())));
+    }
+
+    getWorldTileWaterTimeMs() {
+      return this.worldTileWaterTimeOverride !== null
+        && this.worldTileWaterTimeOverride !== undefined
+        && Number.isFinite(Number(this.worldTileWaterTimeOverride))
+        ? Number(this.worldTileWaterTimeOverride)
+        : this.getNow();
+    }
+
+    getWorldTileWaterAnimationFrame(timeMs = this.getWorldTileWaterTimeMs()) {
+      return Math.floor((Math.max(0, Number(timeMs) || 0) / 1000) * this.getWorldTileWaterAnimationFps());
     }
 
     getWorldTileWaterLayerCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
@@ -6717,7 +6774,7 @@
           work.ctx.globalCompositeOperation = 'source-over';
           work.ctx.save?.();
           work.ctx.translate?.(-(Number(layout.frame.x) || 0), -(Number(layout.frame.y) || 0));
-          this.renderWorldTileWaterEntries(tileMapView, layout.renderViewport, waterEntries);
+          this.renderWorldTileWaterEntries(tileMapView, layout.renderViewport, waterEntries, this.getWorldTileWaterTimeMs());
           work.ctx.restore?.();
           this.worldTileWaterLayerCacheKey = cacheKey;
         } finally {
@@ -6757,10 +6814,10 @@
       });
     }
 
-    renderWorldTileWaterEntries(tileMapView = {}, viewport = {}, entries = []) {
+    renderWorldTileWaterEntries(tileMapView = {}, viewport = {}, entries = [], waterTimeMs = null) {
       entries.forEach(({ tile, center, drawRect }) => {
         if (!tile.water?.kind || !tile.water?.asset) return;
-        this.drawWorldTileWater(tile, center, drawRect, viewport, { drawDryTemplate: false });
+        this.drawWorldTileWater(tile, center, drawRect, viewport, { drawDryTemplate: false, waterTimeMs });
       });
     }
 
@@ -6858,7 +6915,7 @@
         this.renderWorldScoutRoutes(tileMapView, viewport);
       }
       if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
-        this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries);
+        this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries, this.getWorldTileWaterTimeMs());
       }
       if (!this.renderWorldTileStaticLayer(tileMapView, viewport, frame, visibleEntries, uiState)) {
         this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState);
@@ -7319,7 +7376,16 @@
         return false;
       }
       if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
-      this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState);
+      this.worldTileWaterTimeOverride = options.waterTimeMs !== null
+        && options.waterTimeMs !== undefined
+        && Number.isFinite(Number(options.waterTimeMs))
+        ? Number(options.waterTimeMs)
+        : null;
+      try {
+        this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState);
+      } finally {
+        this.worldTileWaterTimeOverride = null;
+      }
       this.endFrame({ ...options, showFpsOverlay: false });
       return true;
     }

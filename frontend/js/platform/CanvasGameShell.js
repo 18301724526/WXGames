@@ -68,6 +68,7 @@
       this.lastWorldMapLayerRenderAt = 0;
       this.worldMapLayerRenderQueued = false;
       this.worldMapDragFrameActive = false;
+      this.worldMapDragWaterTimeMs = null;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -112,6 +113,9 @@
       if (!RendererCtor) return null;
       const sharedAssetCache = new Map();
       const sharedAssetMetricsCache = new Map();
+      const sharedWorldTileMaskCache = new Map();
+      const sharedWorldTileMaskMetricsCache = new Map();
+      const sharedWorldTileDryCompositeCache = new Map();
       const mapCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
         ? this.runtime.ensureLayerCanvas('worldMap')
         : null;
@@ -125,6 +129,9 @@
           h5Runtime: this.runtime,
           assetCache: sharedAssetCache,
           assetMetricsCache: sharedAssetMetricsCache,
+          worldTileMaskCache: sharedWorldTileMaskCache,
+          worldTileMaskMetricsCache: sharedWorldTileMaskMetricsCache,
+          worldTileDryCompositeCache: sharedWorldTileDryCompositeCache,
           showFpsOverlay: false,
         });
         if (typeof this.worldMapRenderer.setAssetsChangedHandler === 'function') {
@@ -144,6 +151,9 @@
         h5Runtime: this.runtime,
         assetCache: sharedAssetCache,
         assetMetricsCache: sharedAssetMetricsCache,
+        worldTileMaskCache: sharedWorldTileMaskCache,
+        worldTileMaskMetricsCache: sharedWorldTileMaskMetricsCache,
+        worldTileDryCompositeCache: sharedWorldTileDryCompositeCache,
       });
       if (typeof this.renderer.setAssetsChangedHandler === 'function') {
         this.renderer.setAssetsChangedHandler(() => {
@@ -234,8 +244,12 @@
       const dragType = this.dragAction.type === 'techTreeDrag'
         ? 'techTreeDrag'
         : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
+      if (dragType === 'worldMapDrag' && phase === 'start') this.worldMapDragWaterTimeMs = this.now();
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
-      if (phase === 'end') this.dragAction = null;
+      if (phase === 'end') {
+        if (dragType === 'worldMapDrag') this.worldMapDragWaterTimeMs = null;
+        this.dragAction = null;
+      }
       return handled;
     }
 
@@ -607,6 +621,24 @@
       return 16;
     }
 
+    getWorldTileWaterAnimationFrameMs() {
+      const fps = Number(this.worldMapRenderer?.getWorldTileWaterAnimationFps?.()
+        || this.renderer?.getWorldTileWaterAnimationFps?.()
+        || 18);
+      return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
+    }
+
+    getFrozenWorldMapWaterTimeMs() {
+      if (
+        this.worldMapDragWaterTimeMs === null
+        || this.worldMapDragWaterTimeMs === undefined
+        || !Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+      ) {
+        this.worldMapDragWaterTimeMs = this.now();
+      }
+      return this.worldMapDragWaterTimeMs;
+    }
+
     getRequestAnimationFrame() {
       const raf = this.runtime?.requestAnimationFrame || global.requestAnimationFrame;
       return typeof raf === 'function' ? raf.bind(this.runtime || global) : null;
@@ -628,7 +660,8 @@
       this.lastWorldMapLayerRenderAt = now;
       const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive);
       this.worldMapDragFrameActive = false;
-      return this.renderWorldMapLayer(this.lastGame.state, { reuseCachedWorldTileView });
+      const waterTimeMs = reuseCachedWorldTileView ? this.getFrozenWorldMapWaterTimeMs() : null;
+      return this.renderWorldMapLayer(this.lastGame.state, { reuseCachedWorldTileView, waterTimeMs });
     }
 
     requestWorldMapRenderAnimationFrame() {
@@ -646,6 +679,7 @@
 
     requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
+        this.getFrozenWorldMapWaterTimeMs();
         this.worldMapDragFrameActive = true;
         return this.requestWorldMapRenderAnimationFrame();
       }
@@ -873,7 +907,10 @@
         onProgress?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
         return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
       }
-      return this.renderer.preloadAssets(assetPaths || undefined, onProgress);
+      return this.renderer.preloadAssets(assetPaths || undefined, onProgress).then((result) => {
+        this.worldMapRenderer?.prewarmWorldTileCaches?.(assetPaths || this.renderer.getPreloadAssetPaths?.());
+        return result;
+      });
     }
 
     toggleRememberPassword() {
@@ -1135,6 +1172,11 @@
         territoryUiState,
         topBarBottom,
         reuseCachedWorldTileView: Boolean(options?.reuseCachedWorldTileView),
+        waterTimeMs: options?.waterTimeMs !== null
+          && options?.waterTimeMs !== undefined
+          && Number.isFinite(Number(options.waterTimeMs))
+          ? Number(options.waterTimeMs)
+          : null,
         showFpsOverlay: false,
       });
       if (rendered) this.lastWorldMapLayerRenderAt = this.now();
@@ -1150,7 +1192,7 @@
         }
         if (this.worldMapRenderer) this.renderWorldMapLayerFrame();
         else this.renderAnimationFrame();
-      }, this.getAnimationFrameMs());
+      }, this.getWorldTileWaterAnimationFrameMs());
       return true;
     }
 
