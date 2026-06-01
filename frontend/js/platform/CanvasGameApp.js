@@ -329,7 +329,10 @@
       }
       this.militaryView = homeView.militaryView;
       if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
-        if (this.canvasShell?.isWorldMapDragging?.()) {
+        if (
+          this.canvasShell?.isWorldMapDragging?.()
+          || this.canvasShell?.hasPendingWorldMapCompositeCommit?.()
+        ) {
           this.canvasShell.deferRenderUntilWorldMapDragEnd = true;
           return true;
         }
@@ -1766,7 +1769,10 @@
       if (this.scoutCountdownTimer) return;
       this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
         if ((this.state?.currentEra || 0) < 5) return;
-        if (this.canvasShell?.isWorldMapDragging?.()) return;
+        if (
+          this.canvasShell?.isWorldMapDragging?.()
+          || this.canvasShell?.hasPendingWorldMapCompositeCommit?.()
+        ) return;
         if (this.state?.currentTab === 'military') this.renderCanvasSurface(this.state.currentTab);
         if (this.state?.currentTab === 'territory') {
           const territories = this.state.territoryState?.territories || [];

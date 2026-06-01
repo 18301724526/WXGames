@@ -114,8 +114,8 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.doesNotMatch(html, /AdvisorPanelAdapter\.js\?v=explicit-doc-v1/);
   assert.doesNotMatch(html, /NamingModalAdapter\.js|id="namingModal"|id="namingInput"/);
   assert.match(html, /GameAPI\.js\?v=famous-attribute-points-v1/);
-  assert.match(html, /CanvasGameRenderer\.js\?v=world-map-composite-drag-v1/);
-  assert.match(html, /CanvasGameApp\.js\?v=world-map-composite-drag-v1/);
+  assert.match(html, /CanvasGameRenderer\.js\?v=world-map-composite-commit-v1/);
+  assert.match(html, /CanvasGameApp\.js\?v=world-map-composite-commit-v1/);
   assert.match(html, /TerritoryController\.js\?v=tile-world-map-v2-lab-parity/);
   assert.doesNotMatch(html, /TerritoryActionAdapter\.js|TerritoryUIRenderer\.js|MilitaryPanelAdapter\.js/);
   assert.match(html, /TutorialCanvasRenderer\.js\?v=tutorial-canvas-v1/);
@@ -133,8 +133,8 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(html, /H5ShellAdapter\.js\?v=h5-shell-registry-v1/);
   assert.doesNotMatch(html, /DOMHelper\.js/);
   assert.match(html, /TutorialController\.js\?v=tutorial-guide-task-v1/);
-  assert.match(html, /H5CanvasRuntime\.js\?v=world-map-composite-drag-v1/);
-  assert.match(html, /CanvasGameShell\.js\?v=world-map-composite-drag-v1/);
+  assert.match(html, /H5CanvasRuntime\.js\?v=world-map-composite-commit-v1/);
+  assert.match(html, /CanvasGameShell\.js\?v=world-map-composite-commit-v1/);
   assert.match(html, /app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /auth\.js\?v=h5-module-deps-v1/);
   assert.match(html, /population\.js\?v=h5-module-deps-v1/);

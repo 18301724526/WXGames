@@ -39,6 +39,7 @@ function createCanvasHarness() {
   const listeners = {};
   const appended = [];
   const timers = [];
+  const timeouts = [];
   const contexts = [];
   const canvases = [];
   const createCanvas = () => {
@@ -92,8 +93,17 @@ function createCanvasHarness() {
       const index = timers.indexOf(timer);
       if (index >= 0) timers.splice(index, 1);
     },
+    setTimeout(callback, delayMs) {
+      const timer = { callback, delayMs };
+      timeouts.push(timer);
+      return timer;
+    },
+    clearTimeout(timer) {
+      const index = timeouts.indexOf(timer);
+      if (index >= 0) timeouts.splice(index, 1);
+    },
   };
-  return { canvas, ctx, canvases, contexts, document, runtime, listeners, appended, timers };
+  return { canvas, ctx, canvases, contexts, document, runtime, listeners, appended, timers, timeouts };
 }
 
 function createDrawingContext() {
@@ -2234,8 +2244,8 @@ test('Canvas game shell moves the passive world map layer during dual-canvas dra
   assert.equal(worldMapLayer.style.willChange, 'transform');
 });
 
-test('Canvas game shell clears compositor drag and renders final map layer on release', () => {
-  const { document, runtime, listeners } = createCanvasHarness();
+test('Canvas game shell keeps compositor drag on release and commits after a quiet window', () => {
+  const { document, runtime, listeners, timeouts } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
     frames.push(callback);
@@ -2298,11 +2308,122 @@ test('Canvas game shell clears compositor drag and renders final map layer on re
   assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
   listeners.pointerup({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 1);
+  assert.equal(timeouts.length, 1);
+  assert.equal(timeouts[0].delayMs, 240);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
+  assert.equal(worldMapLayer.style.willChange, 'transform');
+
+  timeouts[0].callback();
+
   assert.equal(mapLayerCalls.length, 1);
   assert.equal(hudCalls.length, 2);
   assert.equal(hudCalls.at(-1).options.skipWorldMapLayer, true);
   assert.equal(worldMapLayer.style.transform, '');
   assert.equal(worldMapLayer.style.willChange, '');
+});
+
+test('Canvas game shell cancels pending compositor commits across repeated short world drags', () => {
+  const { document, runtime, listeners, timeouts } = createCanvasHarness();
+  const hudCalls = [];
+  const mapLayerCalls = [];
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 152,
+    render(state, options) {
+      hudCalls.push({ state, options });
+    },
+  };
+  const uiState = { worldPanX: 24, worldPanY: -12 };
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    renderWorldMapLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      return true;
+    },
+  };
+  const game = {
+    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
+    getActiveTab: () => 'military',
+    territoryController: {
+      getUiState: () => uiState,
+      startWorldDrag() {},
+      moveWorldDrag(pointer) {
+        uiState.worldPanX = 24 + Number(pointer.x) - 110;
+        uiState.worldPanY = -12 + Number(pointer.y) - 180;
+      },
+      endWorldDrag() {},
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+  const worldMapLayer = shell.runtime.ensureLayerCanvas('worldMap');
+
+  listeners.pointerdown({ pointerId: 13, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  mapLayerCalls.length = 0;
+  hudCalls.length = 0;
+  listeners.pointermove({ pointerId: 13, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 13, clientX: 138, clientY: 212, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(timeouts.length, 1);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 0);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
+
+  listeners.pointerdown({ pointerId: 14, clientX: 138, clientY: 212, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(timeouts.length, 0);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
+
+  listeners.pointermove({ pointerId: 14, clientX: 150, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 14, clientX: 150, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 0);
+  assert.equal(timeouts.length, 1);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(30px, 20px, 0)');
+
+  timeouts[0].callback();
+
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(hudCalls.length, 1);
+  assert.equal(worldMapLayer.style.transform, '');
+});
+
+test('Canvas game app defers shell surface refresh while a compositor commit is pending', () => {
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
+  });
+  let renderCount = 0;
+  app.canvasShell = {
+    previewEnabled: true,
+    isWorldMapDragging: () => false,
+    hasPendingWorldMapCompositeCommit: () => true,
+    deferRenderUntilWorldMapDragEnd: false,
+    renderReadOnly() {
+      renderCount += 1;
+    },
+  };
+
+  assert.equal(app.renderCanvasSurface('military'), true);
+  assert.equal(renderCount, 0);
+  assert.equal(app.canvasShell.deferRenderUntilWorldMapDragEnd, true);
 });
 
 test('Canvas game shell scrolls tech tree through shared drag action', () => {
