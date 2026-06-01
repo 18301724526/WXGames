@@ -540,6 +540,54 @@ test('military navigation view state locks scout and world before classical era'
   assert.equal(unlocked.views.find((view) => view.id === 'scout').disabled, false);
 });
 
+test('map home view state promotes unlocked tile maps without affecting early saves', () => {
+  const unlocked = UIStatePresenter.resolveMapHomeViewState({
+    currentEra: 5,
+    currentTab: 'resources',
+    militaryView: 'army',
+    territoryState: {
+      worldMap: {
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }],
+      },
+    },
+  });
+
+  assert.equal(unlocked.activeTab, 'military');
+  assert.equal(unlocked.militaryView, 'world');
+  assert.equal(unlocked.isMapHome, true);
+  assert.equal(unlocked.canUseMapHome, true);
+
+  const manualTech = UIStatePresenter.resolveMapHomeViewState({
+    currentEra: 5,
+    currentTab: 'tech',
+    militaryView: 'world',
+    territoryState: {
+      worldMap: {
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }],
+      },
+    },
+  });
+
+  assert.equal(manualTech.activeTab, 'tech');
+  assert.equal(manualTech.militaryView, 'world');
+  assert.equal(manualTech.isMapHome, false);
+
+  const locked = UIStatePresenter.resolveMapHomeViewState({
+    currentEra: 4,
+    currentTab: 'resources',
+    militaryView: 'army',
+    territoryState: {
+      worldMap: {
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }],
+      },
+    },
+  });
+
+  assert.equal(locked.activeTab, 'resources');
+  assert.equal(locked.militaryView, 'army');
+  assert.equal(locked.isMapHome, false);
+});
+
 test('advisor, naming, and recent log view states are renderer-neutral', () => {
   const advisor = UIStatePresenter.buildAdvisorViewState({
     message: '派出侦察队探索城市之外的世界。',

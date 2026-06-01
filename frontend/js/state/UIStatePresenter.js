@@ -187,6 +187,38 @@
       };
     }
 
+    static hasWorldTileMap(state = {}) {
+      const tiles = state?.territoryState?.worldMap?.tiles;
+      return Array.isArray(tiles) && tiles.length > 0;
+    }
+
+    static canUseMapHome(state = {}) {
+      return this.toNumber(state.currentEra) >= 5 && this.hasWorldTileMap(state);
+    }
+
+    static resolveMapHomeViewState(state = {}, options = {}) {
+      const requestedTab = options.requestedTab || options.activeTab || state.currentTab || 'resources';
+      const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;
+      const requestedMilitaryView = ['army', 'scout', 'world'].includes(options.militaryView)
+        ? options.militaryView
+        : (['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army');
+      const canUseMapHome = this.canUseMapHome(state);
+      const homeRequested = !requestedTab || requestedTab === 'resources' || requestedTab === 'territory';
+      const forceMapHome = Boolean(options.forceMapHome || options.isMapHome);
+      const shouldUseMapHome = canUseMapHome
+        && options.allowDefaultMapHome !== false
+        && (forceMapHome || homeRequested);
+      const resolvedActiveTab = shouldUseMapHome ? 'military' : activeTab;
+      const resolvedMilitaryView = shouldUseMapHome ? 'world' : requestedMilitaryView;
+      return {
+        activeTab: resolvedActiveTab,
+        requestedTab,
+        militaryView: resolvedMilitaryView,
+        isMapHome: shouldUseMapHome,
+        canUseMapHome,
+      };
+    }
+
     static buildTabLockViewState(tabs = [], canOpenTab = () => true) {
       return tabs.map((tab) => {
         const id = tab.id || tab.tabId || '';

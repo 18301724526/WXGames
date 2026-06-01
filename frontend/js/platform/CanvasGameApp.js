@@ -36,8 +36,23 @@
         currentEra: 0,
         softGuide: null,
       };
-      this.activeTab = options.activeTab || 'resources';
-      this.militaryView = options.militaryView || this.state.militaryView || 'army';
+      this.mapHomeActive = false;
+      const initialHome = this.resolveMapHomeViewState({
+        ...this.state,
+        currentTab: options.activeTab || this.state.currentTab || 'resources',
+        militaryView: options.militaryView || this.state.militaryView || 'army',
+      }, {
+        requestedTab: options.activeTab || this.state.currentTab || 'resources',
+        militaryView: options.militaryView || this.state.militaryView || 'army',
+      });
+      this.activeTab = initialHome.activeTab;
+      this.militaryView = initialHome.militaryView;
+      this.mapHomeActive = initialHome.isMapHome;
+      this.state = {
+        ...this.state,
+        currentTab: initialHome.activeTab,
+        militaryView: initialHome.militaryView,
+      };
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showTaskCenter = false;
@@ -140,18 +155,24 @@
       const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
       const localTab = this.getActiveTab();
       const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'army';
+      const homeView = this.resolveMapHomeViewState(nextState, {
+        requestedTab: localTab,
+        militaryView: localMilitaryView,
+        forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
+      });
       this.state = {
         ...nextState,
-        currentTab: localTab,
-        militaryView: localMilitaryView,
+        currentTab: homeView.activeTab,
+        militaryView: homeView.militaryView,
         softGuide: payload.softGuide ?? nextState.softGuide ?? null,
         guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
         taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
         eraProgress: payload.eraProgress ?? nextState.eraProgress,
       };
       this.tutorial = nextTutorial;
-      this.activeTab = this.state.currentTab || localTab;
-      this.militaryView = this.state.militaryView || localMilitaryView;
+      this.activeTab = this.state.currentTab || homeView.activeTab;
+      this.militaryView = this.state.militaryView || homeView.militaryView;
+      this.mapHomeActive = homeView.isMapHome;
       const api = this.getGameApi();
       if (payload.token && api) {
         api.setToken?.(payload.token);
@@ -177,24 +198,40 @@
     syncFromServer(serverState, tutorial, eraProgress) {
       const localTab = this.getActiveTab();
       const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
+      const homeView = this.resolveMapHomeViewState(serverState, {
+        requestedTab: localTab,
+        militaryView: localMilitaryView,
+        forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
+      });
       if (this.stateManager && typeof this.stateManager === 'object') {
         this.stateManager.state = {
           ...(this.stateManager.state || {}),
           ...(this.state || {}),
-          currentTab: localTab,
-          militaryView: localMilitaryView,
+          currentTab: homeView.activeTab,
+          militaryView: homeView.militaryView,
         };
       }
       this.state = this.stateManager?.sync
         ? this.stateManager.sync(serverState, eraProgress)
         : {
           ...serverState,
-          currentTab: localTab,
-          militaryView: localMilitaryView,
+          currentTab: homeView.activeTab,
+          militaryView: homeView.militaryView,
           eraProgress: eraProgress ?? serverState?.eraProgress,
         };
-      this.activeTab = this.state.currentTab || localTab;
-      this.militaryView = this.state.militaryView || localMilitaryView;
+      const syncedHomeView = this.resolveMapHomeViewState(this.state, {
+        requestedTab: homeView.activeTab,
+        militaryView: homeView.militaryView,
+        forceMapHome: homeView.isMapHome,
+      });
+      this.state = {
+        ...this.state,
+        currentTab: syncedHomeView.activeTab,
+        militaryView: syncedHomeView.militaryView,
+      };
+      this.activeTab = this.state.currentTab || syncedHomeView.activeTab;
+      this.militaryView = this.state.militaryView || syncedHomeView.militaryView;
+      this.mapHomeActive = syncedHomeView.isMapHome;
       const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
       this.tutorial = nextTutorial;
       this.tutorialController?.setState?.(nextTutorial);
@@ -275,7 +312,22 @@
     }
 
     renderCanvasSurface(activeTab = this.getActiveTab()) {
-      const resolvedActiveTab = activeTab || this.getActiveTab();
+      const homeView = this.resolveMapHomeViewState(this.state, {
+        requestedTab: activeTab || this.getActiveTab(),
+        militaryView: this.state?.militaryView || this.militaryView,
+        forceMapHome: this.mapHomeActive && (activeTab === 'resources' || activeTab === 'military'),
+      });
+      const resolvedActiveTab = homeView.activeTab;
+      this.mapHomeActive = homeView.isMapHome;
+      this.activeTab = resolvedActiveTab;
+      if (this.state && typeof this.state === 'object') {
+        this.state = {
+          ...this.state,
+          currentTab: resolvedActiveTab,
+          militaryView: homeView.militaryView,
+        };
+      }
+      this.militaryView = homeView.militaryView;
       if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
         if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
         if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
@@ -290,6 +342,7 @@
       if (!this.renderer?.render) return false;
       this.renderer.render(this.state, {
         activeTab: resolvedActiveTab,
+        isMapHome: homeView.isMapHome,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showTaskCenter: this.showTaskCenter,
@@ -441,6 +494,25 @@
 
     getActiveTab() {
       return this.activeTab || this.state?.currentTab || 'resources';
+    }
+
+    resolveMapHomeViewState(state = this.state, options = {}) {
+      if (this.presenter?.resolveMapHomeViewState) {
+        return this.presenter.resolveMapHomeViewState(state || {}, options);
+      }
+      const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
+      const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
+      const canUseMapHome = (Number(state?.currentEra) || 0) >= 5 && hasTiles;
+      const shouldUseMapHome = canUseMapHome
+        && options.allowDefaultMapHome !== false
+        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
+      return {
+        activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
+        requestedTab,
+        militaryView: shouldUseMapHome ? 'world' : (options.militaryView || state?.militaryView || 'army'),
+        isMapHome: Boolean(shouldUseMapHome),
+        canUseMapHome,
+      };
     }
 
     getTabOrder() {
@@ -843,7 +915,10 @@
     }
 
     resetLocalViewToResources(options = {}) {
-      this.activeTab = 'resources';
+      const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
+      this.activeTab = homeView.activeTab;
+      this.militaryView = homeView.militaryView;
+      this.mapHomeActive = homeView.isMapHome;
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
@@ -872,7 +947,8 @@
       if (this.state && typeof this.state === 'object') {
         this.state = {
           ...this.state,
-          currentTab: 'resources',
+          currentTab: homeView.activeTab,
+          militaryView: homeView.militaryView,
           techUiState: {
             ...(this.state.techUiState || {}),
             selectedTechId: '',
@@ -883,7 +959,7 @@
       if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
         this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });
       }
-      if (!options.skipRender) this.renderCanvasSurface('resources');
+      if (!options.skipRender) this.renderCanvasSurface(homeView.activeTab);
       return true;
     }
 
@@ -1322,15 +1398,24 @@
       const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
       this.activeTab = navigation?.activeTab || tab || 'resources';
       const preferredMilitaryView = this.getPreferredMilitaryView(tab);
+      const homeView = this.resolveMapHomeViewState(this.state, {
+        requestedTab: this.activeTab,
+        militaryView: preferredMilitaryView || this.state?.militaryView || this.militaryView,
+        forceMapHome: tab === 'resources',
+      });
+      this.activeTab = homeView.activeTab;
+      this.mapHomeActive = homeView.isMapHome;
       this.state = {
         ...this.state,
         currentTab: this.activeTab,
+        militaryView: homeView.militaryView,
         techUiState: {
           ...(this.state.techUiState || {}),
           detailOpen: false,
         },
       };
-      if (preferredMilitaryView) this.state.militaryView = preferredMilitaryView;
+      if (preferredMilitaryView && !homeView.isMapHome) this.state.militaryView = preferredMilitaryView;
+      this.militaryView = this.state.militaryView || homeView.militaryView;
       this.buildingOffset = 0;
       this.techTreePanX = 0;
       this.techTreePanY = 0;
@@ -1447,6 +1532,11 @@
     switchMilitaryView(view) {
       const allowed = ['army', 'scout', 'world'];
       this.militaryView = allowed.includes(view) ? view : 'army';
+      this.mapHomeActive = this.militaryView === 'world' && this.resolveMapHomeViewState(this.state, {
+        requestedTab: this.state?.currentTab || this.activeTab,
+        militaryView: this.militaryView,
+        forceMapHome: this.mapHomeActive,
+      }).isMapHome;
       this.state = { ...this.state, militaryView: this.militaryView };
       this.renderMilitaryView();
       this.tutorialController?.render?.();

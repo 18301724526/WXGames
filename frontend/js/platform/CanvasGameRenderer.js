@@ -6885,7 +6885,10 @@
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
       const hitTargetsOnly = Boolean(options.hitTargetsOnly);
 
-      if (!hitTargetsOnly) {
+      if (!hitTargetsOnly && options.frameless && this.ctx?.fillRect) {
+        this.ctx.fillStyle = 'rgba(20, 26, 23, 0.92)';
+        this.ctx.fillRect(x, y, width, height);
+      } else if (!hitTargetsOnly) {
         this.drawPanel(x, y, width, height, {
           fill: this.createGradient(
             x, y, x, y + height,
@@ -7262,6 +7265,10 @@
 
     renderHudTabPage(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
       const tabsTop = this.height - 60 - this.bottomSafeArea;
+      if (options.isMapHome && activeTab === 'military') {
+        this.renderMapHomeWorldView(state, topBarBottom, options);
+        return;
+      }
       if (activeTab === 'resources') {
         const populationBottom = this.renderPopulation(state, topBarBottom);
         this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 });
@@ -7322,12 +7329,37 @@
       });
     }
 
-    getWorldMapLayerLayout(state = {}, topBarBottom = null) {
+    getWorldMapLayerLayout(state = {}, topBarBottom = null, options = {}) {
       if (!this.presenter || typeof this.presenter.buildMilitaryNavigationViewState !== 'function') return null;
       const nav = this.presenter.buildMilitaryNavigationViewState(state);
       if (nav.activeView !== 'world') return null;
       const layout = this.getLayout();
       const tabsTop = this.height - 60 - this.bottomSafeArea;
+      if (options.isMapHome) {
+        const mapY = Math.max(0, topBarBottom ?? 84);
+        const mapH = Math.max(160, tabsTop - mapY);
+        return {
+          nav,
+          panel: {
+            x: 0,
+            y: mapY,
+            width: this.width,
+            height: mapH,
+          },
+          world: {
+            x: 0,
+            y: mapY,
+            width: this.width,
+            height: mapH,
+          },
+          map: {
+            x: 0,
+            y: mapY,
+            width: this.width,
+            height: mapH,
+          },
+        };
+      }
       const panelTop = topBarBottom ?? 84;
       const panelHeight = Math.max(360, tabsTop - panelTop - 12);
       const panelX = layout.contentX;
@@ -7359,12 +7391,33 @@
       };
     }
 
+    renderMapHomeWorldView(state = {}, topBarBottom = 84, options = {}) {
+      const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
+      if (!layout || (state.currentEra || 0) < 5) return false;
+      const territoryState = state.territoryState || {};
+      const uiState = options.territoryUiState || {};
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      if (!tileMapView?.tiles?.length) return false;
+      if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
+      this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
+        hitTargetsOnly: Boolean(options.skipWorldMapLayer),
+        frameless: true,
+      });
+      const resetW = 76;
+      const resetH = 28;
+      const resetX = Math.max(8, layout.map.x + layout.map.width - resetW - 12);
+      const resetY = Math.max(layout.map.y + 10, topBarBottom + 10);
+      this.drawButton(resetX, resetY, resetW, resetH, '回到本城', { size: 11, radius: 8 });
+      this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
+      return true;
+    }
+
     renderWorldMapLayer(state = {}, options = {}) {
       if (!this.presenter || !this.ctx) return false;
       this.beginFrame(options);
       this.setHitTargets([]);
       this.clearAll();
-      const layout = this.getWorldMapLayerLayout(state, options.topBarBottom);
+      const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
       if (!layout || (state.currentEra || 0) < 5) {
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
@@ -7384,7 +7437,9 @@
         : null;
       try {
         this.withSuppressedHitTargets(() => {
-          this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState);
+          this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
+            frameless: Boolean(options.isMapHome),
+          });
         });
       } finally {
         this.worldTileWaterTimeOverride = null;
@@ -7394,6 +7449,7 @@
     }
 
     renderTabs(activeTab = 'resources', state = {}, options = {}) {
+      const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [
         ['resources', '主页', 'assets/art/icon-home-cutout.png'],
         ['buildings', '建造', 'assets/art/building-house-cutout.png'],
@@ -7426,7 +7482,7 @@
       const tabWidth = width / tabs.length;
       tabs.forEach(([id, label, icon], index) => {
         const tabX = x + index * tabWidth;
-        const isActive = id === activeTab;
+        const isActive = id === visualActiveTab;
         const lock = lockById.get(id) || { disabled: false, isLocked: false };
         const isLocked = Boolean(lock.disabled || lock.isLocked);
         if (isActive && this.ctx) {
@@ -8502,6 +8558,25 @@
         return;
       }
       const topBarBottom = this.renderTopBar(state);
+      if (options.isMapHome && activeTab === 'military') {
+        this.renderMapHomeWorldView(state, topBarBottom, options);
+        this.renderAdvisor(state);
+        this.renderTabs(activeTab, state, options);
+        if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
+        if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
+        if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
+        if (options.showGuidebook) this.renderGuidebookPanel(state, options);
+        if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
+        if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
+        if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+        this.renderWorldSiteModal(state, options);
+        if (options.naming) this.renderNamingModal(options.naming);
+        this.renderTutorialHighlight(options.tutorialHighlight || null);
+        this.renderFloatingTexts(options.floatingTexts || []);
+        this.renderRewardReveal(options.rewardReveal || null);
+        this.endFrame(options);
+        return;
+      }
       const tabsTop = this.height - 60 - this.bottomSafeArea;
       const populationBottom = activeTab === 'resources'
         ? this.renderPopulation(state, topBarBottom)

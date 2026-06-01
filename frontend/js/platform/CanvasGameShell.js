@@ -100,6 +100,7 @@
       this.floatDurationMs = options.floatDurationMs || 1200;
       this.rewardReveal = null;
       this.battleScene = null;
+      this.mapHomeActive = false;
       const GuideControllerCtor = global.CanvasGuideController || (typeof require === 'function' ? require('./CanvasGuideController') : null);
       this.guideController = options.guideController || (GuideControllerCtor ? new GuideControllerCtor({
         host: this,
@@ -1053,10 +1054,40 @@
     }
 
     getActiveTab() {
-      return this.lastGame?.getActiveTab?.()
+      const state = this.lastGame?.state || {};
+      const requestedTab = this.lastGame?.getActiveTab?.()
         || this.lastGame?.activeTab
-        || this.lastGame?.state?.currentTab
+        || state.currentTab
         || 'resources';
+      const view = this.resolveMapHomeViewState(state, {
+        requestedTab,
+        militaryView: state.militaryView || this.lastGame?.militaryView,
+        forceMapHome: Boolean(this.lastGame?.mapHomeActive) && (requestedTab === 'resources' || requestedTab === 'military'),
+      });
+      this.mapHomeActive = view.isMapHome;
+      return view.activeTab;
+    }
+
+    resolveMapHomeViewState(state = this.lastGame?.state || {}, options = {}) {
+      if (this.presenter?.resolveMapHomeViewState) {
+        return this.presenter.resolveMapHomeViewState(state || {}, options);
+      }
+      if (this.lastGame?.resolveMapHomeViewState) {
+        return this.lastGame.resolveMapHomeViewState(state || {}, options);
+      }
+      const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
+      const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
+      const canUseMapHome = (Number(state?.currentEra) || 0) >= 5 && hasTiles;
+      const shouldUseMapHome = canUseMapHome
+        && options.allowDefaultMapHome !== false
+        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
+      return {
+        activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
+        requestedTab,
+        militaryView: shouldUseMapHome ? 'world' : (options.militaryView || state?.militaryView || 'army'),
+        isMapHome: Boolean(shouldUseMapHome),
+        canUseMapHome,
+      };
     }
 
     getTechTreePan() {
@@ -1091,10 +1122,17 @@
 
     buildRenderOptions(activeTab = 'resources', territoryUiState = null) {
       const state = this.lastGame?.state || {};
+      const homeView = this.resolveMapHomeViewState(state, {
+        requestedTab: activeTab,
+        militaryView: state.militaryView || this.lastGame?.militaryView,
+        forceMapHome: Boolean(this.lastGame?.mapHomeActive) && (activeTab === 'resources' || activeTab === 'military'),
+      });
+      this.mapHomeActive = homeView.isMapHome;
       const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
       return {
-        activeTab,
+        activeTab: homeView.activeTab,
         mode: 'hud',
+        isMapHome: homeView.isMapHome,
         showSettings: this.showSettings,
         showLogs: this.showLogs,
         showResourceDetails: this.showResourceDetails,
@@ -1142,20 +1180,37 @@
     renderReadOnly(state, activeTab = 'resources') {
       if (!this.previewEnabled || !this.renderer || !state) return false;
       const territoryUiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
-      const renderOptions = this.buildRenderOptions(activeTab, territoryUiState);
+      const homeView = this.resolveMapHomeViewState(state, {
+        requestedTab: activeTab,
+        militaryView: state.militaryView || this.lastGame?.militaryView,
+        forceMapHome: Boolean(this.lastGame?.mapHomeActive) && (activeTab === 'resources' || activeTab === 'military'),
+      });
+      this.mapHomeActive = homeView.isMapHome;
+      if (homeView.militaryView && state.militaryView !== homeView.militaryView) state.militaryView = homeView.militaryView;
+      const renderOptions = {
+        ...this.buildRenderOptions(homeView.activeTab, territoryUiState),
+        activeTab: homeView.activeTab,
+        isMapHome: homeView.isMapHome,
+      };
       this.renderWorldMapLayer(state, renderOptions);
       this.renderer.render(state, this.worldMapRenderer
         ? { ...renderOptions, skipWorldMapLayer: true }
         : renderOptions);
-      if (activeTab === 'military' && territoryUiState.tileMapWaterAnimated) this.startTileMapWaterTimer();
+      if (homeView.activeTab === 'military' && territoryUiState.tileMapWaterAnimated) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
     }
 
     renderWorldMapLayer(state = this.lastGame?.state, options = null) {
       if (!this.previewEnabled || !this.worldMapRenderer || !state) return false;
-      const activeTab = options?.activeTab || this.getActiveTab();
-      if (activeTab !== 'military') {
+      const homeView = this.resolveMapHomeViewState(state, {
+        requestedTab: options?.activeTab || this.getActiveTab(),
+        militaryView: state.militaryView || this.lastGame?.militaryView,
+        forceMapHome: Boolean(this.lastGame?.mapHomeActive || options?.isMapHome),
+      });
+      this.mapHomeActive = homeView.isMapHome;
+      if (homeView.militaryView && state.militaryView !== homeView.militaryView) state.militaryView = homeView.militaryView;
+      if (homeView.activeTab !== 'military') {
         if (typeof this.worldMapRenderer.clearAll === 'function') this.worldMapRenderer.clearAll();
         return false;
       }
@@ -1167,8 +1222,9 @@
         ? this.renderer.getTopBarBottom(state)
         : 84;
       const rendered = this.worldMapRenderer.renderWorldMapLayer(state, {
-        ...(options || this.buildRenderOptions(activeTab, territoryUiState)),
-        activeTab,
+        ...(options || this.buildRenderOptions(homeView.activeTab, territoryUiState)),
+        activeTab: homeView.activeTab,
+        isMapHome: homeView.isMapHome,
         territoryUiState,
         topBarBottom,
         reuseCachedWorldTileView: Boolean(options?.reuseCachedWorldTileView),

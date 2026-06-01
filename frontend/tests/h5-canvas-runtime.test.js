@@ -11,6 +11,7 @@ const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
 const CanvasGameShell = require('../js/platform/CanvasGameShell');
 const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
+const UIStatePresenter = require('../js/state/UIStatePresenter');
 class TestH5CanvasGameRenderer extends CanvasGameRenderer {
   constructor(options = {}) {
     super({
@@ -349,6 +350,7 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
     options: {
       activeTab: 'resources',
       mode: 'hud',
+      isMapHome: false,
       showSettings: false,
       showLogs: false,
       showResourceDetails: false,
@@ -412,6 +414,98 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
   assert.equal(shell.renderReadOnly({ currentTab: 'buildings' }, 'buildings'), true);
   assert.equal(renderCalls.at(-1).options.activeTab, 'buildings');
   assert.equal(renderCalls.at(-1).options.mode, 'hud');
+});
+
+test('Canvas game shell defaults unlocked tile map saves to H5 map home', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const layerCalls = [];
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getTopBarBottom: () => 84,
+    render(state, options) {
+      renderCalls.push({ state, options });
+    },
+  };
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    renderWorldMapLayer(state, options) {
+      layerCalls.push({ state, options });
+      return true;
+    },
+    clearAll() {},
+  };
+  const state = {
+    currentEra: 5,
+    currentTab: 'resources',
+    militaryView: 'army',
+    resources: { food: 10 },
+    territoryState: {
+      worldMap: {
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }],
+      },
+    },
+  };
+  const shell = CanvasGameShell.mount({ state }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: {
+      resolveMapHomeViewState: UIStatePresenter.resolveMapHomeViewState.bind(UIStatePresenter),
+      buildMilitaryNavigationViewState: UIStatePresenter.buildMilitaryNavigationViewState.bind(UIStatePresenter),
+    },
+    previewEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+
+  shell.renderReadOnly(state, 'resources');
+
+  assert.equal(renderCalls.at(-1).options.activeTab, 'military');
+  assert.equal(renderCalls.at(-1).options.isMapHome, true);
+  assert.equal(renderCalls.at(-1).options.skipWorldMapLayer, true);
+  assert.equal(layerCalls.at(-1).options.activeTab, 'military');
+  assert.equal(layerCalls.at(-1).options.isMapHome, true);
+  assert.equal(state.militaryView, 'world');
+});
+
+test('Canvas game shell keeps early saves on the legacy home view', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    render(state, options) {
+      renderCalls.push({ state, options });
+    },
+  };
+  const state = {
+    currentEra: 4,
+    currentTab: 'resources',
+    militaryView: 'army',
+    territoryState: {
+      worldMap: {
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }],
+      },
+    },
+  };
+  CanvasGameShell.mount({ state }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: {
+      resolveMapHomeViewState: UIStatePresenter.resolveMapHomeViewState.bind(UIStatePresenter),
+      buildMilitaryNavigationViewState: UIStatePresenter.buildMilitaryNavigationViewState.bind(UIStatePresenter),
+    },
+    previewEnabled: true,
+  });
+
+  assert.equal(renderCalls.at(-1).options.activeTab, 'resources');
+  assert.equal(renderCalls.at(-1).options.isMapHome, false);
+  assert.equal(state.militaryView, 'army');
 });
 
 test('Canvas game shell keeps preview disabled by default so existing DOM UI remains authoritative', () => {

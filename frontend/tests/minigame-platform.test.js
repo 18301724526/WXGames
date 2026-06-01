@@ -73,6 +73,28 @@ function createManualScheduler() {
   };
 }
 
+function createTileMapHomeState(overrides = {}) {
+  return {
+    currentEra: 5,
+    currentTab: 'resources',
+    militaryView: 'army',
+    resources: { food: 100 },
+    population: { total: 4, max: 6, unassigned: 1, farmers: 2, scholars: 1, craftsmen: 0 },
+    territoryState: {
+      worldMap: {
+        version: 2,
+        seed: 'map-home-test',
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' },
+          { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains' },
+        ],
+      },
+      territories: [],
+    },
+    ...overrides,
+  };
+}
+
 test('PlatformRuntime wraps wx style canvas, storage and request APIs without DOM', async () => {
   const originalFetch = global.fetch;
   const calls = [];
@@ -163,6 +185,91 @@ test('PlatformRuntime emits shared pinch zoom gestures for touch hosts', () => {
   assert.equal(gestures[0].centerX, 150);
   assert.equal(gestures[0].centerY, 200);
   assert.ok(gestures[0].scaleDelta > 1);
+});
+
+test('CanvasGameApp defaults unlocked tile map saves to map home and keeps early saves unchanged', () => {
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() { return createCanvasStub([]); },
+      getSystemInfoSync() { return { windowWidth: 390, windowHeight: 844, pixelRatio: 2 }; },
+      setInterval() { return null; },
+      clearInterval() {},
+    },
+  });
+  const renderer = { render() {} };
+  const unlocked = new CanvasGameApp({
+    runtime,
+    api: {},
+    renderer,
+    presenter: UIStatePresenter,
+    initialState: createTileMapHomeState(),
+  });
+
+  assert.equal(unlocked.activeTab, 'military');
+  assert.equal(unlocked.state.currentTab, 'military');
+  assert.equal(unlocked.militaryView, 'world');
+  assert.equal(unlocked.state.militaryView, 'world');
+  assert.equal(unlocked.mapHomeActive, true);
+
+  unlocked.switchTab('tech');
+  assert.equal(unlocked.state.currentTab, 'tech');
+  assert.equal(unlocked.mapHomeActive, false);
+
+  unlocked.applyState({ gameState: createTileMapHomeState() });
+  assert.equal(unlocked.state.currentTab, 'tech');
+  assert.equal(unlocked.mapHomeActive, false);
+
+  unlocked.switchTab('resources');
+  assert.equal(unlocked.state.currentTab, 'military');
+  assert.equal(unlocked.state.militaryView, 'world');
+  assert.equal(unlocked.mapHomeActive, true);
+
+  const early = new CanvasGameApp({
+    runtime,
+    api: {},
+    renderer,
+    presenter: UIStatePresenter,
+    initialState: createTileMapHomeState({ currentEra: 4 }),
+  });
+
+  assert.equal(early.activeTab, 'resources');
+  assert.equal(early.state.currentTab, 'resources');
+  assert.equal(early.militaryView, 'army');
+  assert.equal(early.mapHomeActive, false);
+});
+
+test('CanvasGameApp syncFromServer preserves map home when unlocked', () => {
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() { return createCanvasStub([]); },
+      getSystemInfoSync() { return { windowWidth: 390, windowHeight: 844, pixelRatio: 2 }; },
+      setInterval() { return null; },
+      clearInterval() {},
+    },
+  });
+  const renderCalls = [];
+  const app = new CanvasGameApp({
+    runtime,
+    api: {},
+    renderer: {
+      render(state, options) {
+        renderCalls.push({ state, options });
+      },
+    },
+    presenter: UIStatePresenter,
+    initialState: createTileMapHomeState({ currentEra: 4 }),
+  });
+
+  app.syncFromServer(createTileMapHomeState(), {}, {});
+
+  assert.equal(app.state.currentTab, 'military');
+  assert.equal(app.state.militaryView, 'world');
+  assert.equal(app.activeTab, 'military');
+  assert.equal(app.mapHomeActive, true);
+  assert.equal(renderCalls.at(-1).options.activeTab, 'military');
+  assert.equal(renderCalls.at(-1).options.isMapHome, true);
 });
 
 test('Canvas game app renders state and syncs through platform transport without document', async () => {
