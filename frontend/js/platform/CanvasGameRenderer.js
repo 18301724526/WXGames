@@ -57,6 +57,8 @@
       this.worldTileWaterCtx = null;
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
+      this.worldTileWaterLayerCache = null;
+      this.worldTileWaterLayerCacheKey = '';
       this.assetsChangedHandler = null;
       this.hitTargets = [];
       this.hoverPoint = null;
@@ -499,6 +501,8 @@
     invalidateWorldTileCaches() {
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
+      this.worldTileWaterLayerCache = null;
+      this.worldTileWaterLayerCacheKey = '';
     }
 
     drawAsset(assetPath, x, y, width, height, alpha = 1) {
@@ -6353,13 +6357,13 @@
       return 16000000;
     }
 
-    getWorldTileStaticCacheContext(width, height, cacheScale = 1) {
+    getWorldTileLayerCacheContext(cacheName, width, height, cacheScale = 1) {
       const localW = Math.max(1, Math.ceil(width));
       const localH = Math.max(1, Math.ceil(height));
       const scale = Math.max(1, Number(cacheScale) || 1);
       const pixelW = Math.max(1, Math.ceil(localW * scale));
       const pixelH = Math.max(1, Math.ceil(localH * scale));
-      const cached = this.worldTileStaticCache;
+      const cached = this[cacheName];
       if (cached?.canvas && cached?.ctx) {
         if (cached.canvas.width !== pixelW) cached.canvas.width = pixelW;
         if (cached.canvas.height !== pixelH) cached.canvas.height = pixelH;
@@ -6373,7 +6377,7 @@
       const canvas = this.createTileWorkCanvas(pixelW, pixelH);
       const ctx = canvas?.getContext?.('2d') || null;
       if (!canvas || !ctx) return null;
-      this.worldTileStaticCache = {
+      this[cacheName] = {
         canvas,
         ctx,
         width: localW,
@@ -6382,7 +6386,15 @@
         pixelHeight: pixelH,
         scale,
       };
-      return this.worldTileStaticCache;
+      return this[cacheName];
+    }
+
+    getWorldTileStaticCacheContext(width, height, cacheScale = 1) {
+      return this.getWorldTileLayerCacheContext('worldTileStaticCache', width, height, cacheScale);
+    }
+
+    getWorldTileWaterLayerCacheContext(width, height, cacheScale = 1) {
+      return this.getWorldTileLayerCacheContext('worldTileWaterLayerCache', width, height, cacheScale);
     }
 
     resolveWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
@@ -6435,6 +6447,83 @@
         layout.drawY,
         layout.frame.width,
         layout.frame.height,
+      );
+      return true;
+    }
+
+    getWorldTileWaterAnimationFps() {
+      return 18;
+    }
+
+    getWorldTileWaterAnimationFrame() {
+      return Math.floor((this.getNow() / 1000) * this.getWorldTileWaterAnimationFps());
+    }
+
+    getWorldTileWaterLayerCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
+      const scale = Number(viewport.scale) || 1;
+      const entrySignature = entries
+        .filter(({ tile }) => tile.water?.kind && tile.water?.asset)
+        .map(({ tile, center, drawRect }) => [
+          tile.id,
+          tile.water?.kind || '',
+          tile.water?.asset || '',
+          (tile.templateAssets || []).map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
+          Math.round(center.x * 10) / 10,
+          Math.round(center.y * 10) / 10,
+          Math.round(drawRect.x * 10) / 10,
+          Math.round(drawRect.y * 10) / 10,
+        ].join('|'))
+        .join(';');
+      return [
+        tileMapView.signature || '',
+        tileMapView.version || '',
+        tileMapView.seed || '',
+        Math.round(frame.x),
+        Math.round(frame.y),
+        Math.round(frame.width),
+        Math.round(frame.height),
+        Math.round(scale * 1000),
+        Math.round((Number(options.cacheScale) || 1) * 1000),
+        this.getWorldTileWaterAnimationFrame(),
+        entrySignature,
+      ].join('::');
+    }
+
+    renderWorldTileWaterLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
+      const waterEntries = entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
+      if (!waterEntries.length) return true;
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const pixelBudget = this.getWorldTileStaticCachePixelBudget();
+      const width = Math.max(1, Number(frame.width) || 1);
+      const height = Math.max(1, Number(frame.height) || 1);
+      if (width * height * cacheScale * cacheScale > pixelBudget) return false;
+      const work = this.getWorldTileWaterLayerCacheContext(width, height, cacheScale);
+      if (!work) return false;
+      const cacheKey = this.getWorldTileWaterLayerCacheKey(tileMapView, viewport, frame, waterEntries, { cacheScale });
+      if (cacheKey !== this.worldTileWaterLayerCacheKey) {
+        const previousCtx = this.ctx;
+        this.ctx = work.ctx;
+        try {
+          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
+          work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
+          work.ctx.globalAlpha = 1;
+          work.ctx.globalCompositeOperation = 'source-over';
+          work.ctx.save?.();
+          work.ctx.translate?.(-(Number(frame.x) || 0), -(Number(frame.y) || 0));
+          this.renderWorldTileWaterEntries(tileMapView, viewport, waterEntries);
+          work.ctx.restore?.();
+          this.worldTileWaterLayerCacheKey = cacheKey;
+        } finally {
+          this.ctx = previousCtx;
+        }
+      }
+      this.ctx.drawImage(
+        work.canvas,
+        Number(frame.x) || 0,
+        Number(frame.y) || 0,
+        width,
+        height,
       );
       return true;
     }
@@ -6560,7 +6649,9 @@
       this.ctx.clip();
 
       this.renderWorldScoutRoutes(tileMapView, viewport);
-      this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries);
+      if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
+        this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries);
+      }
       if (!this.renderWorldTileStaticLayer(tileMapView, viewport, frame, visibleEntries, uiState)) {
         this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState);
       }
