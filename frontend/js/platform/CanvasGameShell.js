@@ -246,9 +246,9 @@
         ? 'techTreeDrag'
         : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
       if (dragType === 'worldMapDrag' && phase === 'start') this.worldMapDragWaterTimeMs = this.now();
+      if (dragType === 'worldMapDrag' && phase === 'end') this.worldMapDragWaterTimeMs = null;
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
       if (phase === 'end') {
-        if (dragType === 'worldMapDrag') this.worldMapDragWaterTimeMs = null;
         this.dragAction = null;
       }
       return handled;
@@ -625,7 +625,7 @@
     getWorldTileWaterAnimationFrameMs() {
       const fps = Number(this.worldMapRenderer?.getWorldTileWaterAnimationFps?.()
         || this.renderer?.getWorldTileWaterAnimationFps?.()
-        || 18);
+        || 8);
       return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
     }
 
@@ -638,6 +638,12 @@
         this.worldMapDragWaterTimeMs = this.now();
       }
       return this.worldMapDragWaterTimeMs;
+    }
+
+    isWorldMapDragging() {
+      return this.worldMapDragWaterTimeMs !== null
+        && this.worldMapDragWaterTimeMs !== undefined
+        && Number.isFinite(Number(this.worldMapDragWaterTimeMs));
     }
 
     getRequestAnimationFrame() {
@@ -659,7 +665,7 @@
       const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
       if (this.lastWorldMapLayerRenderAt && now - this.lastWorldMapLayerRenderAt < frameMs) return false;
       this.lastWorldMapLayerRenderAt = now;
-      const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive);
+      const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive || this.isWorldMapDragging());
       this.worldMapDragFrameActive = false;
       const waterTimeMs = reuseCachedWorldTileView ? this.getFrozenWorldMapWaterTimeMs() : null;
       return this.renderWorldMapLayer(this.lastGame.state, { reuseCachedWorldTileView, waterTimeMs });

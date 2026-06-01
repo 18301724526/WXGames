@@ -3956,7 +3956,7 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
   renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 42, y: -28 } }, 20, 80, 320, 240, {});
   const draggedWaterFrameDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
   calls.length = 0;
-  now += 60;
+  now += 130;
   renderer.frameNow = now;
   renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
   const nextWaterFrameDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
@@ -4042,6 +4042,91 @@ test('CanvasGameRenderer freezes world water cache when a water time override is
 
   assert.ok(firstFrameWaterDraws > 0);
   assert.equal(frozenFrameWaterDraws, 0);
+});
+
+test('CanvasGameRenderer reuses tile layer caches during fast drag frames', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 2 });
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo(...args) { calls.push(['offscreenMoveTo', ...args]); },
+      lineTo(...args) { calls.push(['offscreenLineTo', ...args]); },
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() { calls.push(['offscreenStroke']); },
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  [
+    'assets/art/tile-map/tile-terrain-plains.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png',
+    'assets/art/tile-map/tile-water-ocean-loop.png',
+    'assets/art/world-site-town-cutout.png',
+  ].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+    renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  });
+  const tileMapView = {
+    signature: 'fast-drag-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [{
+      id: 'tile_0_0',
+      q: 0,
+      r: 0,
+      terrain: 'ocean',
+      terrainAsset: 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png',
+      templateAssets: [{ key: 'river-mouth-sw', type: 'ocean', asset: 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png' }],
+      water: { kind: 'ocean', asset: 'assets/art/tile-map/tile-water-ocean-loop.png', uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
+      site: { id: 'site-east', owner: 'neutral', type: 'town', name: 'East', art: 'assets/art/world-site-town-cutout.png', offset: { x: 0, y: 26 } },
+    }],
+    activeScouts: [{
+      id: 'scout-east',
+      status: 'active',
+      route: [
+        { q: 0, r: 0, tileId: 'tile_0_0', step: 0, revealed: true },
+        { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      ],
+    }],
+  };
+
+  renderer.renderWorldTileMap(tileMapView, 0, 80, 390, 560, {});
+  assert.ok(renderer.worldTileStaticCacheKey);
+  assert.ok(renderer.worldTileWaterLayerCacheKey);
+  assert.ok(renderer.worldTileScoutRouteCacheKey);
+  assert.ok(renderer.worldTileFastDragComposite?.work?.canvas);
+  calls.length = 0;
+
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 36, y: -18 } }, 0, 80, 390, 560, {}, { fastDrag: true });
+
+  assert.equal(calls.some((call) => call[0] === 'offscreenDrawImage'), false);
+  assert.equal(calls.some((call) => call[0] === 'offscreenStroke'), false);
+  assert.ok(calls.some((call) => call[0] === 'drawImage' && call[1] === renderer.worldTileFastDragComposite.work.canvas));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
 });
 
 test('CanvasGameRenderer renders naming prompt modal and actions on canvas', () => {

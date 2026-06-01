@@ -2628,7 +2628,7 @@ test('Canvas game shell refreshes animated world water at the renderer water cad
 
   shell.renderReadOnly(shell.lastGame.state, 'military');
 
-  assert.equal(timers.at(-1).intervalMs, 56);
+  assert.equal(timers.at(-1).intervalMs, 125);
   assert.equal(renderCalls.length > 0, true);
 });
 
@@ -2668,7 +2668,7 @@ test('Canvas game shell refreshes animated world water on the map layer when dua
 
   shell.renderReadOnly(shell.lastGame.state, 'military');
   const initialMapLayerCalls = mapLayerCalls.length;
-  assert.equal(timers.at(-1).intervalMs, 56);
+  assert.equal(timers.at(-1).intervalMs, 125);
   now += 20;
   timers.at(-1).callback();
 
@@ -2730,6 +2730,70 @@ test('Canvas game shell freezes animated world water during dual-canvas drag fra
   shell.lastWorldMapLayerRenderAt = 0;
   listeners.pointermove({ pointerId: 11, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   frames[0]();
+
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
+});
+
+test('Canvas game shell keeps water timer frames on the fast drag path while dragging', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const timers = [];
+  runtime.setInterval = (callback, intervalMs) => {
+    const timer = { callback, intervalMs };
+    timers.push(timer);
+    return timer;
+  };
+  runtime.clearInterval = () => {};
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 152,
+    render() {},
+  };
+  const mapLayerCalls = [];
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getWorldTileWaterAnimationFps: () => 8,
+    renderWorldMapLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      return true;
+    },
+    invalidateWorldTileViewCache() {},
+  };
+  let now = 1000;
+  const state = { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} };
+  const shell = CanvasGameShell.mount({
+    state,
+    getActiveTab: () => 'military',
+    territoryController: {
+      getUiState: () => ({ worldPanX: 24, worldPanY: -12, tileMapWaterAnimated: true }),
+      startWorldDrag() {},
+      moveWorldDrag() {},
+      endWorldDrag() {},
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+  shell.now = () => now;
+  shell.renderReadOnly(state, 'military');
+  assert.equal(timers.at(-1).intervalMs, 125);
+
+  listeners.pointerdown({ pointerId: 12, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  now = 1080;
+  mapLayerCalls.length = 0;
+  shell.lastWorldMapLayerRenderAt = 0;
+  timers.at(-1).callback();
 
   assert.equal(mapLayerCalls.length, 1);
   assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);

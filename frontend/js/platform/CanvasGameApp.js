@@ -529,7 +529,7 @@
 
     getWorldTileWaterAnimationFrameMs() {
       if (this.canvasShell?.getWorldTileWaterAnimationFrameMs) return this.canvasShell.getWorldTileWaterAnimationFrameMs();
-      const fps = Number(this.renderer?.getWorldTileWaterAnimationFps?.() || 18);
+      const fps = Number(this.renderer?.getWorldTileWaterAnimationFps?.() || 8);
       return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
     }
 
@@ -1762,6 +1762,7 @@
       if (this.scoutCountdownTimer) return;
       this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
         if ((this.state?.currentEra || 0) < 5) return;
+        if (this.canvasShell?.isWorldMapDragging?.()) return;
         if (this.state?.currentTab === 'military') this.renderCanvasSurface(this.state.currentTab);
         if (this.state?.currentTab === 'territory') {
           const territories = this.state.territoryState?.territories || [];

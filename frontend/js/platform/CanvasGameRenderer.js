@@ -547,11 +547,15 @@
       this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.worldTileFastDragComposite = null;
+      this.worldTileFastDragCompositeCache = null;
       this.invalidateWorldTileViewCache();
     }
 
     invalidateWorldTileViewCache() {
       this.worldTileViewCache = null;
+      this.worldTileVisibleEntriesCache = null;
+      this.worldTileLocalEntriesCache = null;
     }
 
     drawAsset(assetPath, x, y, width, height, alpha = 1) {
@@ -6315,23 +6319,65 @@
     getWorldTileRenderEntries(tileMapView = {}, viewport = {}, frame = {}, geometry = {}) {
       const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
       const scale = Number(viewport.scale) || 1;
+      const cacheKey = [
+        tileMapView.signature || '',
+        tileMapView.version || '',
+        tileMapView.seed || '',
+        tiles.length,
+        Math.round((Number(viewport.originX) || 0) * 10) / 10,
+        Math.round((Number(viewport.originY) || 0) * 10) / 10,
+        Math.round((Number(viewport.panX) || 0) * 10) / 10,
+        Math.round((Number(viewport.panY) || 0) * 10) / 10,
+        Math.round(scale * 1000),
+        Math.round((Number(frame.x) || 0) * 10) / 10,
+        Math.round((Number(frame.y) || 0) * 10) / 10,
+        Math.round((Number(frame.width) || 0) * 10) / 10,
+        Math.round((Number(frame.height) || 0) * 10) / 10,
+      ].join('::');
+      if (this.worldTileVisibleEntriesCache?.key === cacheKey) return this.worldTileVisibleEntriesCache.entries;
       const drawProbe = this.getWorldTileDrawRect({ x: 0, y: 0 }, scale, geometry);
       const tileDrawWidth = drawProbe.width;
       const tileDrawHeight = drawProbe.height;
-      return tiles.map((tile) => {
-        const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
-        const drawRect = this.getWorldTileDrawRect(center, scale, geometry);
+      const offsetX = (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0);
+      const offsetY = (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0);
+      const localEntries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
+      const entries = localEntries.map((entry) => {
+        const center = {
+          x: entry.center.x + offsetX,
+          y: entry.center.y + offsetY,
+        };
+        const drawRect = {
+          x: entry.drawRect.x + offsetX,
+          y: entry.drawRect.y + offsetY,
+          width: entry.drawRect.width,
+          height: entry.drawRect.height,
+        };
         const inView = drawRect.x < frame.x + frame.width + tileDrawWidth
           && drawRect.x + drawRect.width > frame.x - tileDrawWidth
           && drawRect.y < frame.y + frame.height + tileDrawHeight
           && drawRect.y + drawRect.height > frame.y - tileDrawHeight;
-        return { tile, center, drawRect, inView };
+        return { tile: entry.tile, center, drawRect, inView };
       }).filter((entry) => entry.inView);
+      this.worldTileVisibleEntriesCache = { key: cacheKey, entries };
+      return entries;
     }
 
     getWorldTileLocalEntries(tileMapView = {}, viewport = {}, geometry = {}) {
       const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
       const scale = Number(viewport.scale) || 1;
+      const cacheKey = [
+        tileMapView.signature || '',
+        tileMapView.version || '',
+        tileMapView.seed || '',
+        tiles.length,
+        Math.round(scale * 1000),
+        Number(geometry.tileWidth) || 192,
+        Number(geometry.tileHeight) || 96,
+        Number(geometry.stepX) || 96,
+        Number(geometry.stepY) || 48,
+        Number.isFinite(Number(geometry.anchorY)) ? Number(geometry.anchorY) : 0.5,
+      ].join('::');
+      if (this.worldTileLocalEntriesCache?.key === cacheKey) return this.worldTileLocalEntriesCache.entries;
       const localViewport = {
         ...viewport,
         originX: 0,
@@ -6344,6 +6390,8 @@
         const drawRect = this.getWorldTileDrawRect(center, scale, geometry);
         return { tile, center, drawRect, inView: true };
       });
+      this.worldTileLocalEntriesCache = { key: cacheKey, entries };
+      return entries;
     }
 
     getWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, geometry = {}) {
@@ -6576,6 +6624,70 @@
       return true;
     }
 
+    getWorldTileFastDragCompositeSignature() {
+      return [
+        this.worldTileStaticCacheKey || '',
+        this.worldTileScoutRouteCacheKey || '',
+        this.worldTileWaterLayerCacheKey || '',
+      ].join('::');
+    }
+
+    renderWorldTileFastDragComposite(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
+      if (!this.worldTileFastDragComposite?.work || !this.worldTileFastDragComposite?.layout) return false;
+      if (this.worldTileFastDragComposite.signature !== this.getWorldTileFastDragCompositeSignature()) return false;
+      const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
+      if (!layout) return false;
+      const cachedLayout = this.worldTileFastDragComposite.layout;
+      const drawLayout = {
+        ...cachedLayout,
+        drawX: layout.drawX,
+        drawY: layout.drawY,
+      };
+      return this.drawWorldTileLayerCache(this.worldTileFastDragComposite.work, drawLayout, frame);
+    }
+
+    updateWorldTileFastDragComposite(layout = null, frame = null) {
+      if (!layout?.frame || !this.worldTileStaticCache?.canvas) return false;
+      const signature = this.getWorldTileFastDragCompositeSignature();
+      if (!signature.trim()) return false;
+      const width = Math.max(1, Number(layout.frame.width) || 1);
+      const height = Math.max(1, Number(layout.frame.height) || 1);
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const work = this.getWorldTileLayerCacheContext('worldTileFastDragCompositeCache', width, height, cacheScale);
+      if (!work) return false;
+      const previousCtx = this.ctx;
+      this.ctx = work.ctx;
+      try {
+        work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+        work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
+        work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
+        work.ctx.globalAlpha = 1;
+        work.ctx.globalCompositeOperation = 'source-over';
+        const localFrame = {
+          x: 0,
+          y: 0,
+          width,
+          height,
+        };
+        const localLayout = {
+          ...layout,
+          drawX: 0,
+          drawY: 0,
+        };
+        this.drawWorldTileLayerCache(this.worldTileScoutRouteCache, localLayout, localFrame);
+        this.drawWorldTileLayerCache(this.worldTileWaterLayerCache, localLayout, localFrame);
+        this.drawWorldTileLayerCache(this.worldTileStaticCache, localLayout, localFrame);
+        this.worldTileFastDragComposite = {
+          signature,
+          layout: { ...layout },
+          work,
+        };
+        return true;
+      } finally {
+        this.ctx = previousCtx;
+      }
+    }
+
     resolveWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
       const geometry = tileMapView.geometry || {};
       const cacheScale = this.getWorldTileStaticCacheScale();
@@ -6598,6 +6710,9 @@
     renderWorldTileStaticLayer(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
       const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
+      if (this.worldTileFastDragActive && this.worldTileStaticCacheKey && this.worldTileStaticCache?.canvas) {
+        return this.drawWorldTileLayerCache(this.worldTileStaticCache, layout, frame);
+      }
       const cacheScale = this.getWorldTileStaticCacheScale();
       const work = this.getWorldTileStaticCacheContext(layout.frame.width, layout.frame.height, cacheScale);
       if (!work) return false;
@@ -6664,6 +6779,9 @@
       if (!Array.isArray(tileMapView.activeScouts) || !tileMapView.activeScouts.length) return true;
       const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
+      if (this.worldTileFastDragActive && this.worldTileScoutRouteCacheKey && this.worldTileScoutRouteCache?.canvas) {
+        return this.drawWorldTileLayerCache(this.worldTileScoutRouteCache, layout, frame);
+      }
       const cacheScale = this.getWorldTileStaticCacheScale();
       const work = this.getWorldTileScoutRouteCacheContext(layout.frame.width, layout.frame.height, cacheScale);
       if (!work) return false;
@@ -6693,7 +6811,7 @@
     }
 
     getWorldTileWaterAnimationFps() {
-      return 18;
+      return 8;
     }
 
     getWorldTileWaterAnimationFrameMs() {
@@ -6754,6 +6872,9 @@
       if (!layout) return false;
       const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
       if (!waterEntries.length) return true;
+      if (this.worldTileFastDragActive && this.worldTileWaterLayerCacheKey && this.worldTileWaterLayerCache?.canvas) {
+        return this.drawWorldTileLayerCache(this.worldTileWaterLayerCache, layout, frame);
+      }
       const cacheScale = this.getWorldTileStaticCacheScale();
       const width = Math.max(1, Number(layout.frame.width) || 1);
       const height = Math.max(1, Number(layout.frame.height) || 1);
@@ -6884,48 +7005,63 @@
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
       const hitTargetsOnly = Boolean(options.hitTargetsOnly);
+      const previousFastDragActive = this.worldTileFastDragActive;
+      this.worldTileFastDragActive = Boolean(options.fastDrag);
 
-      if (!hitTargetsOnly && options.frameless && this.ctx?.fillRect) {
-        this.ctx.fillStyle = 'rgba(20, 26, 23, 0.92)';
-        this.ctx.fillRect(x, y, width, height);
-      } else if (!hitTargetsOnly) {
-        this.drawPanel(x, y, width, height, {
-          fill: this.createGradient(
-            x, y, x, y + height,
-            [
-              [0, 'rgba(30, 43, 45, 0.88)'],
-              [1, 'rgba(18, 17, 14, 0.94)'],
-            ],
-            'rgba(25, 31, 30, 0.92)',
-          ),
-          stroke: 'rgba(240, 180, 91, 0.18)',
-          radius: 8,
-          inset: 'rgba(255, 231, 184, 0.06)',
-        });
-      }
-      this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true });
-      if (hitTargetsOnly) {
+      try {
+        if (!hitTargetsOnly && options.frameless && this.ctx?.fillRect) {
+          this.ctx.fillStyle = 'rgba(20, 26, 23, 0.92)';
+          this.ctx.fillRect(x, y, width, height);
+        } else if (!hitTargetsOnly) {
+          this.drawPanel(x, y, width, height, {
+            fill: this.createGradient(
+              x, y, x, y + height,
+              [
+                [0, 'rgba(30, 43, 45, 0.88)'],
+                [1, 'rgba(18, 17, 14, 0.94)'],
+              ],
+              'rgba(25, 31, 30, 0.92)',
+            ),
+            stroke: 'rgba(240, 180, 91, 0.18)',
+            radius: 8,
+            inset: 'rgba(255, 231, 184, 0.06)',
+          });
+        }
+        this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true });
+        if (hitTargetsOnly) {
+          this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+          return;
+        }
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
+        this.ctx.clip();
+
+        if (this.worldTileFastDragActive && this.renderWorldTileFastDragComposite(tileMapView, viewport, frame, visibleEntries)) {
+          this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+          this.ctx.restore();
+          return;
+        }
+        let compositeLayout = null;
+        if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
+          this.renderWorldScoutRoutes(tileMapView, viewport);
+        }
+        if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
+          this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries, this.getWorldTileWaterTimeMs());
+        }
+        if (!this.renderWorldTileStaticLayer(tileMapView, viewport, frame, visibleEntries, uiState)) {
+          this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState);
+        } else if (!this.worldTileFastDragActive) {
+          compositeLayout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, visibleEntries);
+        }
         this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-        return;
-      }
+        if (compositeLayout) this.updateWorldTileFastDragComposite(compositeLayout, frame);
 
-      this.ctx.save();
-      this.ctx.beginPath();
-      this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
-      this.ctx.clip();
-
-      if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
-        this.renderWorldScoutRoutes(tileMapView, viewport);
+        this.ctx.restore();
+      } finally {
+        this.worldTileFastDragActive = previousFastDragActive;
       }
-      if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
-        this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries, this.getWorldTileWaterTimeMs());
-      }
-      if (!this.renderWorldTileStaticLayer(tileMapView, viewport, frame, visibleEntries, uiState)) {
-        this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState);
-      }
-      this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-
-      this.ctx.restore();
     }
 
     renderMilitaryWorldView(state = {}, x, y, width, height, options = {}) {
@@ -7402,6 +7538,7 @@
       this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
         hitTargetsOnly: Boolean(options.skipWorldMapLayer),
         frameless: true,
+        fastDrag: Boolean(options.reuseCachedWorldTileView),
       });
       const resetW = 76;
       const resetH = 28;
@@ -7439,6 +7576,7 @@
         this.withSuppressedHitTargets(() => {
           this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
             frameless: Boolean(options.isMapHome),
+            fastDrag: Boolean(options.reuseCachedWorldTileView),
           });
         });
       } finally {
