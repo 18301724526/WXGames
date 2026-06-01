@@ -1,4 +1,9 @@
 (function (global) {
+  var WorldMapRuntimeBase = global.WorldMapRuntime;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeBase) {
+    WorldMapRuntimeBase = require('./WorldMapRuntime');
+  }
+
   class CanvasGameApp {
     constructor(options = {}) {
       this.runtime = options.runtime || null;
@@ -122,6 +127,8 @@
       this.buildingController = options.buildingController || null;
       this.territoryController = options.territoryController || null;
       this.canvasShell = options.canvasShell || null;
+      this.worldMapRuntime = options.worldMapRuntime || null;
+      this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
       this.syncService = options.syncService || null;
       this.updateChecker = options.updateChecker || null;
       this.scheduler = options.scheduler || this.runtime || null;
@@ -148,6 +155,7 @@
       this.tapDisposer = null;
       this.dragDisposer = null;
       this.gestureDisposer = null;
+      this.ensureWorldMapRuntime();
     }
 
     applyState(payload = {}) {
@@ -347,9 +355,15 @@
         return true;
       }
       if (!this.renderer?.render) return false;
+      if (homeView.isMapHome && this.worldMapRuntime?.canRender?.(this.state)) {
+        this.renderRuntimeWorldMap();
+      }
+      const runtimeOwnsWorldMap = Boolean(homeView.isMapHome && this.worldMapRuntime?.canRender?.(this.state));
       this.renderer.render(this.state, {
         activeTab: resolvedActiveTab,
         isMapHome: homeView.isMapHome,
+        skipWorldMapLayer: runtimeOwnsWorldMap,
+        preserveCanvas: runtimeOwnsWorldMap,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showTaskCenter: this.showTaskCenter,
@@ -538,6 +552,51 @@
       if (this.canvasShell?.getWorldTileWaterAnimationFrameMs) return this.canvasShell.getWorldTileWaterAnimationFrameMs();
       const fps = Number(this.renderer?.getWorldTileWaterAnimationFps?.() || 8);
       return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
+    }
+
+    ensureWorldMapRuntime() {
+      if (!this.useWorldMapRuntime || this.worldMapRuntime || !this.renderer) return this.worldMapRuntime;
+      const RuntimeCtor = WorldMapRuntimeBase || global.WorldMapRuntime;
+      if (!RuntimeCtor) return null;
+      this.worldMapRuntime = new RuntimeCtor({
+        runtime: this.runtime,
+        renderer: this.renderer,
+        presenter: this.presenter,
+        getState: () => this.state || {},
+        getBaseUiState: () => this.territoryController?.getUiState?.() || this.territoryUiState || {},
+        getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
+          ? this.renderer.getTopBarBottom(state)
+          : 84),
+        onAction: (action) => this.actionController?.handle?.(action),
+        onCameraChanged: (camera) => {
+          if (this.territoryController?.uiState) {
+            this.territoryController.uiState.worldPanX = camera.x;
+            this.territoryController.uiState.worldPanY = camera.y;
+          }
+          this.territoryUiState.worldPanX = camera.x;
+          this.territoryUiState.worldPanY = camera.y;
+        },
+      });
+      return this.worldMapRuntime;
+    }
+
+    isWorldMapHomeActive() {
+      const homeView = this.resolveMapHomeViewState(this.state, {
+        requestedTab: this.state?.currentTab || this.activeTab || 'resources',
+        militaryView: this.state?.militaryView || this.militaryView,
+        forceMapHome: this.mapHomeActive,
+      });
+      return Boolean(homeView.isMapHome && homeView.activeTab === 'military' && homeView.militaryView === 'world');
+    }
+
+    renderRuntimeWorldMap(options = {}) {
+      const runtime = this.ensureWorldMapRuntime();
+      if (!runtime?.canRender?.(this.state)) return false;
+      return runtime.render({
+        ...options,
+        state: this.state,
+        force: options.force !== false,
+      });
     }
 
     getRequestAnimationFrame() {
@@ -1927,6 +1986,15 @@
         return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
       }
       if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+      if (
+        this.isWorldMapHomeActive()
+        && !this.hasBlockingOverlayOpen()
+        && this.worldMapRuntime?.canRender?.(this.state)
+      ) {
+        const canRouteMapDrag = this.worldMapRuntime.isPointInMap?.(point, this.state)
+          || (this.worldMapRuntime.isDragging?.() && (phase === 'move' || phase === 'end' || phase === 'cancel'));
+        return canRouteMapDrag ? this.worldMapRuntime.handleDrag(phase, point) : false;
+      }
       return this.actionController?.handle?.({ type: 'worldMapDrag', phase, pointer: point }) || false;
     }
 
@@ -1951,7 +2019,17 @@
 
     async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
-      if (!action || action.disabled) return;
+      if (!action || action.disabled) {
+        if (
+          this.isWorldMapHomeActive()
+          && !this.hasBlockingOverlayOpen()
+          && this.worldMapRuntime?.canRender?.(this.state)
+          && this.worldMapRuntime.isPointInMap?.(point, this.state)
+        ) {
+          this.worldMapRuntime.handleTap(point);
+        }
+        return;
+      }
       if (action.type === 'showFamousSkillTooltip') {
         this.renderer.setPinnedFamousSkillTooltip?.(action);
         this.render();

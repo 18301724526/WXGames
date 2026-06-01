@@ -7412,7 +7412,7 @@
       const viewportBottom = this.height - Math.max(0, offsetY);
       const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
       if (options.isMapHome && activeTab === 'military') {
-        this.renderMapHomeWorldView(state, topBarBottom, options);
+        if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
         return;
       }
       if (activeTab === 'resources') {
@@ -7598,13 +7598,15 @@
         && Number.isFinite(Number(options.waterTimeMs))
         ? Number(options.waterTimeMs)
         : null;
-      try {
-        this.withSuppressedHitTargets(() => {
-          this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
-            frameless: Boolean(options.isMapHome),
-            fastDrag: Boolean(options.reuseCachedWorldTileView),
-          });
+      const drawWorldMap = () => {
+        this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
+          frameless: Boolean(options.isMapHome),
+          fastDrag: Boolean(options.reuseCachedWorldTileView),
         });
+      };
+      try {
+        if (options.collectHitTargets) drawWorldMap();
+        else this.withSuppressedHitTargets(drawWorldMap);
       } finally {
         this.worldTileWaterTimeOverride = null;
       }
@@ -8378,18 +8380,21 @@
       const activeTab = options.activeTab || 'resources';
       this.beginFrame(options);
       this.setHitTargets([]);
-      this.clear();
+      if (!options.preserveCanvas) this.clear();
       if (options.auth?.view?.loginPanelVisible) {
+        if (options.preserveCanvas) this.clear();
         this.renderLoginPanel(options.auth);
         this.endFrame(options);
         return;
       }
       if (options.loading?.visible) {
+        if (options.preserveCanvas) this.clear();
         this.renderLoadingScreen(options.loading);
         this.endFrame(options);
         return;
       }
       if (options.battleScene?.visible) {
+        if (options.preserveCanvas) this.clear();
         this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);
         return;
@@ -8723,7 +8728,7 @@
       }
       const topBarBottom = this.renderTopBar(state);
       if (options.isMapHome && activeTab === 'military') {
-        this.renderMapHomeWorldView(state, topBarBottom, options);
+        if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
         this.renderAdvisor(state);
         this.renderTabs(activeTab, state, options);
         if (options.showResourceDetails) this.renderResourceDetailsPanel(state);

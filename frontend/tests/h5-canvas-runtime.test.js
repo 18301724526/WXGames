@@ -10,6 +10,8 @@ global.CanvasGameApp = CanvasGameApp;
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
 const CanvasGameShell = require('../js/platform/CanvasGameShell');
+const WorldMapRuntime = require('../js/platform/WorldMapRuntime');
+global.WorldMapRuntime = WorldMapRuntime;
 const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
 const UIStatePresenter = require('../js/state/UIStatePresenter');
 class TestH5CanvasGameRenderer extends CanvasGameRenderer {
@@ -2242,6 +2244,88 @@ test('Canvas game shell moves the passive world map layer during dual-canvas dra
   assert.equal(mapLayerCalls.length, 0);
   assert.equal(worldMapLayer.style.transform, 'translate3d(30px, 30px, 0)');
   assert.equal(worldMapLayer.style.willChange, 'transform');
+});
+
+test('Canvas game shell routes map-home drags through WorldMapRuntime without global world drag actions', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  runtime.requestAnimationFrame = (callback) => {
+    callback();
+    return 1;
+  };
+  const dispatched = [];
+  const renderCalls = [];
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 84,
+    render(state, options) {
+      renderCalls.push({ state, options });
+    },
+  };
+  const uiState = { worldPanX: 0, worldPanY: 0 };
+  const game = {
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
+      },
+    },
+    getActiveTab: () => 'military',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => uiState,
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: UIStatePresenter,
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction: (action) => {
+      dispatched.push(action);
+      return true;
+    },
+  });
+  const layerCalls = [];
+  const worldMapRenderer = {
+    presenter: UIStatePresenter,
+    renderWorldMapLayer(state, options) {
+      layerCalls.push({ state, options });
+      return true;
+    },
+    clearAll() {},
+  };
+  shell.worldMapRenderer = worldMapRenderer;
+  shell.worldMapRuntime = new WorldMapRuntime({
+    runtime: shell.runtime,
+    renderer: worldMapRenderer,
+    presenter: UIStatePresenter,
+    getState: () => game.state,
+    getBaseUiState: () => uiState,
+    getTopBarBottom: () => 84,
+    onCameraChanged: (camera) => {
+      uiState.worldPanX = camera.x;
+      uiState.worldPanY = camera.y;
+    },
+  });
+
+  listeners.pointerdown({ pointerId: 21, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 21, clientX: 144, clientY: 218, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 21, clientX: 144, clientY: 218, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.deepEqual(dispatched, []);
+  assert.equal(uiState.worldPanX, 24);
+  assert.equal(uiState.worldPanY, 18);
+  assert.equal(layerCalls.length > 0, true);
+  assert.equal(renderCalls.length, 1);
 });
 
 test('Canvas game shell keeps compositor drag on release and commits after a quiet window', () => {

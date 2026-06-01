@@ -8,6 +8,8 @@ const PlatformRuntime = require('../js/platform/PlatformRuntime');
 const MiniGameCanvasRenderer = require('../js/platform/MiniGameCanvasRenderer');
 const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
+const WorldMapRuntime = require('../js/platform/WorldMapRuntime');
+global.WorldMapRuntime = WorldMapRuntime;
 const CanvasGameApp = require('../js/platform/CanvasGameApp');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -408,6 +410,7 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.doesNotMatch(platformFiles, /global\.localStorage|global\.setInterval|global\.clearInterval|global\.innerWidth|global\.innerHeight|global\.devicePixelRatio/);
   assert.match(entry, /PlatformRuntime/);
   assert.match(entry, /FamousPortraitLayout/);
+  assert.match(entry, /WorldMapRuntime/);
   assert.match(entry, /MiniGameCanvasRenderer/);
   assert.match(entry, /CanvasActionController/);
   assert.match(entry, /CanvasGuideController/);
@@ -416,6 +419,59 @@ test('minigame entry does not load H5 DOM adapters', () => {
   assert.match(entry, /config: globalThis\.GameConfig/);
   assert.match(entry, /apiClass: globalThis\.GameAPI/);
   assert.match(entry, /rendererClass: globalThis\.MiniGameCanvasRenderer/);
+});
+
+test('CanvasGameApp routes map-home drags through WorldMapRuntime without global world drag actions', () => {
+  const calls = [];
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() {
+        return createCanvasStub(calls);
+      },
+      getSystemInfoSync() {
+        return { windowWidth: 390, windowHeight: 844, pixelRatio: 2 };
+      },
+    },
+    scheduler: {
+      requestAnimationFrame(callback) {
+        callback();
+        return 1;
+      },
+    },
+  });
+  const renderer = {
+    render() {},
+    renderWorldMapLayer(state, options) {
+      calls.push(['world-layer', options.territoryUiState.worldPanX, options.territoryUiState.worldPanY]);
+      return true;
+    },
+    getTopBarBottom: () => 84,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+  };
+  const app = new CanvasGameApp({
+    runtime,
+    api: {},
+    renderer,
+    presenter: UIStatePresenter,
+    initialState: createTileMapHomeState(),
+  });
+  const actionCalls = [];
+  app.actionController = {
+    handle(action) {
+      actionCalls.push(action);
+      return true;
+    },
+  };
+
+  assert.equal(app.handleDrag('start', { pointerId: 1, x: 120, y: 180 }), true);
+  assert.equal(app.handleDrag('move', { pointerId: 1, x: 142, y: 194 }), true);
+  assert.equal(app.handleDrag('end', { pointerId: 1, x: 142, y: 194 }), true);
+
+  assert.deepEqual(actionCalls, []);
+  assert.equal(app.territoryUiState.worldPanX, 22);
+  assert.equal(app.territoryUiState.worldPanY, 14);
+  assert.ok(calls.some((call) => call[0] === 'world-layer' && call[1] === 22 && call[2] === 14));
 });
 
 test('Canvas game app dispatches canvas taps to server actions without DOM controllers', async () => {
