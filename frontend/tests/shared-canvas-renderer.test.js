@@ -3591,6 +3591,41 @@ test('CanvasGameRenderer caches static world tile layer between water animation 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
 });
 
+test('CanvasGameRenderer does not accumulate hit targets on passive world map layer frames', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildMilitaryNavigationViewState: () => ({ activeView: 'world' }),
+    buildWorldTileMapViewState: () => ({
+      signature: 'passive-map-hit-target-test',
+      version: 1,
+      seed: 'seed',
+      pan: { x: 0, y: 0 },
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: { id: 'site-east', owner: 'neutral', type: 'town', name: 'East', art: 'assets/art/world-site-town-cutout.png', offset: { x: 0, y: 26 } } },
+      ],
+      activeScouts: [],
+    }),
+  });
+
+  for (let index = 0; index < 20; index += 1) {
+    renderer.renderWorldMapLayer({
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {},
+    }, {
+      topBarBottom: 84,
+      territoryUiState: { worldPanX: index, worldPanY: -index },
+      showFpsOverlay: false,
+    });
+    assert.equal(renderer.hitTargets.length, 0);
+  }
+});
+
 test('CanvasGameRenderer caches scout route layer while dragging discovered world sites', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

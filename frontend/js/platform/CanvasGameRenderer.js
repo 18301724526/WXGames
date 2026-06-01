@@ -7362,6 +7362,7 @@
     renderWorldMapLayer(state = {}, options = {}) {
       if (!this.presenter || !this.ctx) return false;
       this.beginFrame(options);
+      this.setHitTargets([]);
       this.clearAll();
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom);
       if (!layout || (state.currentEra || 0) < 5) {
@@ -7382,7 +7383,9 @@
         ? Number(options.waterTimeMs)
         : null;
       try {
-        this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState);
+        this.withSuppressedHitTargets(() => {
+          this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState);
+        });
       } finally {
         this.worldTileWaterTimeOverride = null;
       }
