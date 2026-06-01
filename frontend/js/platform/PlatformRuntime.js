@@ -22,6 +22,7 @@
         clearInterval: typeof scope.clearInterval === 'function' ? scope.clearInterval.bind(scope) : null,
         setTimeout: typeof scope.setTimeout === 'function' ? scope.setTimeout.bind(scope) : null,
         clearTimeout: typeof scope.clearTimeout === 'function' ? scope.clearTimeout.bind(scope) : null,
+        requestAnimationFrame: typeof scope.requestAnimationFrame === 'function' ? scope.requestAnimationFrame.bind(scope) : null,
       };
     }
 
@@ -154,6 +155,11 @@
 
     clearTimeout(timer) {
       if (timer && typeof this.scheduler.clearTimeout === 'function') this.scheduler.clearTimeout(timer);
+    }
+
+    requestAnimationFrame(callback) {
+      if (typeof this.scheduler.requestAnimationFrame === 'function') return this.scheduler.requestAnimationFrame(callback);
+      return this.setTimeout(callback, 16);
     }
 
     now() {

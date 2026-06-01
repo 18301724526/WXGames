@@ -63,6 +63,7 @@
       this.buildingTransition = null;
       this.transitionTimer = null;
       this.lastAnimationRenderAt = 0;
+      this.animationRenderQueued = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -567,12 +568,29 @@
       return 16;
     }
 
+    getRequestAnimationFrame() {
+      const raf = this.runtime?.requestAnimationFrame || global.requestAnimationFrame;
+      return typeof raf === 'function' ? raf.bind(this.runtime || global) : null;
+    }
+
     renderAnimationFrame() {
       const now = this.now();
       const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
       if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
       this.lastAnimationRenderAt = now;
       return this.renderActive();
+    }
+
+    requestRenderAnimationFrame() {
+      if (this.animationRenderQueued) return true;
+      const raf = this.getRequestAnimationFrame();
+      if (!raf) return this.renderAnimationFrame();
+      this.animationRenderQueued = true;
+      raf(() => {
+        this.animationRenderQueued = false;
+        this.renderAnimationFrame();
+      });
+      return true;
     }
 
     startTransitionTimer() {

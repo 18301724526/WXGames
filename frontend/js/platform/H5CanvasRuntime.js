@@ -113,6 +113,13 @@
       if (timer) this.runtime.clearTimeout?.(timer);
     }
 
+    requestAnimationFrame(callback) {
+      if (typeof this.runtime.requestAnimationFrame === 'function') {
+        return this.runtime.requestAnimationFrame(callback);
+      }
+      return this.setTimeout(callback, 16);
+    }
+
     log(message) {
       const logger = this.runtime.console || global.console;
       if (logger && typeof logger.log === 'function') logger.log(message);

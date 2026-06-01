@@ -65,6 +65,17 @@
       return false;
     }
 
+    renderDragFrame(action = {}) {
+      if (action.phase === 'move') {
+        const game = this.getGameHost();
+        if (typeof this.host?.requestRenderAnimationFrame === 'function') return this.host.requestRenderAnimationFrame(action);
+        if (game !== this.host && typeof game?.requestRenderAnimationFrame === 'function') return game.requestRenderAnimationFrame(action);
+        if (typeof this.host?.renderAnimationFrame === 'function') return this.host.renderAnimationFrame();
+        if (game !== this.host && typeof game?.renderAnimationFrame === 'function') return game.renderAnimationFrame();
+      }
+      return this.render(action);
+    }
+
     afterHandled(action = {}) {
       if (action.type !== 'switchTab' && action.type !== 'goToGuideTaskTarget') this.render(action);
       if (action.type === 'openTaskCenter') this.host?.refreshTaskCenterGuideHighlight?.(action);
@@ -950,7 +961,7 @@
         }
         if (action.phase === 'end' || action.phase === 'cancel') this.worldDragStart = null;
       }
-      this.render(action);
+      this.renderDragFrame(action);
       return true;
     }
 

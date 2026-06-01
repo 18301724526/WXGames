@@ -29,6 +29,7 @@ function assertUnifiedRuntimeShape(runtime) {
     'clearInterval',
     'setTimeout',
     'clearTimeout',
+    'requestAnimationFrame',
     'now',
     'log',
   ]) {
@@ -65,6 +66,7 @@ test('H5CanvasRuntime exposes the unified Canvas runtime interface without repla
     clearInterval(timer) { calls.push(['clearInterval', timer]); },
     setTimeout(callback, delayMs) { calls.push(['setTimeout', delayMs]); return 'timeout'; },
     clearTimeout(timer) { calls.push(['clearTimeout', timer]); },
+    requestAnimationFrame(callback) { calls.push(['raf']); return 'raf'; },
     prompt() { return '输入值'; },
     fetch(url, options) {
       calls.push(['fetch', url, options.method]);
@@ -87,6 +89,7 @@ test('H5CanvasRuntime exposes the unified Canvas runtime interface without repla
   assert.equal(response.ok, true);
   assert.ok(Number.isFinite(runtime.now()));
   assert.equal(runtime.setTimeout(() => {}, 3000), 'timeout');
+  assert.equal(runtime.requestAnimationFrame(() => {}), 'raf');
   runtime.clearTimeout('timeout');
   runtime.log('hello');
   assert.ok(calls.some((call) => call[0] === 'fetch'));
@@ -114,6 +117,7 @@ test('PlatformRuntime exposes the same unified Canvas runtime interface for mini
       clearInterval(timer) { calls.push(['clearInterval', timer]); },
       setTimeout(callback, delayMs) { calls.push(['setTimeout', delayMs]); return 'timeout'; },
       clearTimeout(timer) { calls.push(['clearTimeout', timer]); },
+      requestAnimationFrame(callback) { calls.push(['raf']); return 'raf'; },
     },
     logger: { log(message) { calls.push(['log', message]); } },
   });
@@ -123,6 +127,7 @@ test('PlatformRuntime exposes the same unified Canvas runtime interface for mini
   assert.deepEqual(runtime.getSystemInfo(), { windowWidth: 320, windowHeight: 640, pixelRatio: 3 });
   assert.ok(Number.isFinite(runtime.now()));
   assert.equal(runtime.setTimeout(() => {}, 3000), 'timeout');
+  assert.equal(runtime.requestAnimationFrame(() => {}), 'raf');
   runtime.clearTimeout('timeout');
   runtime.log('hello');
   assert.deepEqual(calls.find((call) => call[0] === 'log'), ['log', 'hello']);

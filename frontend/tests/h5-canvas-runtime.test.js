@@ -1908,6 +1908,50 @@ test('Canvas game shell dispatches world radar drag phases from canvas-owned poi
   assert.ok(dispatched.every((action) => action.type === 'worldRadarDrag'));
 });
 
+test('Canvas game shell coalesces repeated world drag moves into one requested frame', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const frames = [];
+  runtime.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  const renderer = {
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    render() {},
+  };
+  const game = {
+    state: { currentTab: 'military' },
+    territoryController: {
+      getUiState: () => ({ worldPanX: 0, worldPanY: 0 }),
+      startWorldDrag() {},
+      moveWorldDrag() {},
+      endWorldDrag() {},
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  let renderCount = 0;
+  shell.renderActive = () => {
+    renderCount += 1;
+    return true;
+  };
+
+  listeners.pointerdown({ pointerId: 6, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 6, clientX: 130, clientY: 205, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 6, clientX: 150, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(frames.length, 1);
+  assert.equal(renderCount, 1);
+  frames[0]();
+  assert.equal(renderCount, 2);
+});
+
 test('Canvas game shell scrolls tech tree through shared drag action', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const hitTargets = [

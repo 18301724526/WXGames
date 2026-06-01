@@ -576,6 +576,34 @@ test('CanvasActionController handles building category filter through shared can
   ]);
 });
 
+test('CanvasActionController coalesces world map drag move rendering through animation frames', () => {
+  const calls = [];
+  const controller = new CanvasActionController({
+    host: {
+      territoryController: {
+        startWorldDrag(pointer) { calls.push(['startDrag', pointer.pointerId]); },
+        moveWorldDrag(pointer) { calls.push(['moveDrag', pointer.x]); },
+        endWorldDrag(pointer) { calls.push(['endDrag', pointer.pointerId]); },
+      },
+      requestRenderAnimationFrame(action) { calls.push(['raf', action.phase]); return true; },
+      renderCanvasAction(action) { calls.push(['render', action.phase]); return true; },
+    },
+  });
+
+  assert.equal(controller.handle({ type: 'worldMapDrag', phase: 'start', pointer: { pointerId: 1, x: 10, y: 10 } }), true);
+  assert.equal(controller.handle({ type: 'worldMapDrag', phase: 'move', pointer: { pointerId: 1, x: 18, y: 12 } }), true);
+  assert.equal(controller.handle({ type: 'worldMapDrag', phase: 'end', pointer: { pointerId: 1, x: 18, y: 12 } }), true);
+
+  assert.deepEqual(calls, [
+    ['startDrag', 1],
+    ['render', 'start'],
+    ['moveDrag', 18],
+    ['raf', 'move'],
+    ['endDrag', 1],
+    ['render', 'end'],
+  ]);
+});
+
 test('CanvasActionController selects tech node before research confirmation', () => {
   const calls = [];
   const host = {

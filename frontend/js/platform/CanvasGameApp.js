@@ -79,6 +79,7 @@
       this.buildingTransition = null;
       this.transitionTimer = null;
       this.lastAnimationRenderAt = 0;
+      this.animationRenderQueued = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.naming = {
@@ -454,6 +455,11 @@
       return this.canvasShell?.getAnimationFrameMs?.() || 16;
     }
 
+    getRequestAnimationFrame() {
+      const raf = this.runtime?.requestAnimationFrame || global.requestAnimationFrame;
+      return typeof raf === 'function' ? raf.bind(this.runtime || global) : null;
+    }
+
     renderAnimationFrame(activeTab = this.state?.currentTab || this.getActiveTab()) {
       if (this.canvasShell && typeof this.canvasShell.renderAnimationFrame === 'function') {
         return this.canvasShell.renderAnimationFrame();
@@ -463,6 +469,24 @@
       if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
       this.lastAnimationRenderAt = now;
       return this.renderCanvasSurface(activeTab);
+    }
+
+    requestRenderAnimationFrame(activeTab = this.state?.currentTab || this.getActiveTab()) {
+      const resolvedActiveTab = typeof activeTab === 'string'
+        ? activeTab
+        : (this.state?.currentTab || this.getActiveTab());
+      if (this.canvasShell && typeof this.canvasShell.requestRenderAnimationFrame === 'function') {
+        return this.canvasShell.requestRenderAnimationFrame();
+      }
+      if (this.animationRenderQueued) return true;
+      const raf = this.getRequestAnimationFrame();
+      if (!raf) return this.renderAnimationFrame(resolvedActiveTab);
+      this.animationRenderQueued = true;
+      raf(() => {
+        this.animationRenderQueued = false;
+        this.renderAnimationFrame(resolvedActiveTab);
+      });
+      return true;
     }
 
     getBattleBaseTurnDurationMs() {

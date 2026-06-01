@@ -3794,6 +3794,9 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
   renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
   const sameWaterFrameDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
   calls.length = 0;
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 42, y: -28 } }, 20, 80, 320, 240, {});
+  const draggedWaterFrameDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
+  calls.length = 0;
   now += 60;
   renderer.frameNow = now;
   renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
@@ -3801,6 +3804,7 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
 
   assert.ok(firstFrameWaterDraws > 0);
   assert.equal(sameWaterFrameDraws, 0);
+  assert.equal(draggedWaterFrameDraws, 0);
   assert.ok(nextWaterFrameDraws > 0);
   assert.ok(renderer.worldTileWaterLayerCacheKey.includes('water-layer-cache-test'));
 });
