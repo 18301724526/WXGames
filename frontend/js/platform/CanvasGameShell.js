@@ -76,6 +76,7 @@
       this.worldMapDragFrameActive = false;
       this.worldMapDragWaterTimeMs = null;
       this.deferRenderUntilWorldMapDragEnd = false;
+      this.worldMapPinchDragging = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -353,11 +354,54 @@
 
     handleGesture(gesture, event) {
       if (!this.inputEnabled || !this.renderer) return false;
+      const worldMapGestureHandled = this.handleWorldMapGesture(gesture, event);
+      if (worldMapGestureHandled) return true;
       if (this.getActiveTab() !== 'tech' || this.hasBlockingOverlayOpen()) return false;
       const handled = this.actionController?.handle?.({ type: 'techTreeZoom', gesture }, { event }) || false;
       if (handled && event?.preventDefault) event.preventDefault();
       if (handled && event?.stopPropagation) event.stopPropagation();
       return handled;
+    }
+
+    handleWorldMapGesture(gesture = {}, event) {
+      if (gesture?.type !== 'pinchZoom') return false;
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      const state = this.lastGame?.state || {};
+      if (!coordinator || !runtime || !this.isWorldMapHomeActive() || this.hasBlockingOverlayOpen()) return false;
+      if (!coordinator.canRender?.(state)) return false;
+      const point = {
+        x: Number(gesture.centerX ?? gesture.x) || 0,
+        y: Number(gesture.centerY ?? gesture.y) || 0,
+      };
+      if (!runtime.isPointInMap?.(point, state) && !this.worldMapPinchDragging) return false;
+      const phase = gesture.phase || 'move';
+      if (phase === 'end' || phase === 'cancel') {
+        this.worldMapPinchDragging = false;
+        this.finishWorldMapSnapshotDrag();
+        if (event?.preventDefault) event.preventDefault();
+        if (event?.stopPropagation) event.stopPropagation();
+        return true;
+      }
+      const dx = Number(gesture.deltaX);
+      const dy = Number(gesture.deltaY);
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false;
+      if (!this.worldMapPinchDragging) {
+        const waterTimeMs = this.startWorldMapSnapshotDrag();
+        runtime.waterTimeMs = waterTimeMs;
+        this.worldMapPinchDragging = true;
+      }
+      const moved = runtime.setCamera?.(
+        (Number(runtime.camera?.x) || 0) + dx,
+        (Number(runtime.camera?.y) || 0) + dy,
+        { source: 'pinchPan', render: false },
+      ) !== false;
+      this.worldMapRuntime = runtime;
+      this.worldMapDragFrameActive = true;
+      this.requestWorldMapRenderAnimationFrame();
+      if (event?.preventDefault) event.preventDefault();
+      if (event?.stopPropagation) event.stopPropagation();
+      return moved || true;
     }
 
     handleTap(point, event) {
@@ -799,6 +843,7 @@
     finishWorldMapSnapshotDrag() {
       this.worldMapDragWaterTimeMs = null;
       this.worldMapDragFrameActive = false;
+      this.worldMapPinchDragging = false;
       if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
       const shouldRender = Boolean(this.deferRenderUntilWorldMapDragEnd);
       this.deferRenderUntilWorldMapDragEnd = false;
@@ -827,7 +872,7 @@
         const waterTimeMs = this.isWorldMapDragging() || runtimeDragging
           ? this.getFrozenWorldMapWaterTimeMs()
           : null;
-        const snapshotOnly = Boolean(options.snapshotOnly || (this.worldMapDragFrameActive && runtimeDragging));
+        const snapshotOnly = Boolean(options.snapshotOnly || this.worldMapDragFrameActive || runtimeDragging);
         return this.renderRuntimeWorldMap(this.lastGame.state, {
           ...options,
           reuseCachedWorldTileView: Boolean(this.worldMapDragFrameActive || runtimeDragging),

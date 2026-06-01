@@ -452,13 +452,17 @@
       const distance = Math.max(1, this.getGestureDistance(points));
       const center = this.getGestureCenter(points);
       const previousDistance = Math.max(1, Number(this.activePinch.distance) || distance);
+      const previousCenter = this.activePinch.center || center;
       this.activePinch = { distance, center };
       const scaleDelta = Math.max(0.82, Math.min(1.22, distance / previousDistance));
       return this.dispatchGesture({
         type: 'pinchZoom',
+        phase: 'move',
         scaleDelta,
         centerX: center.x,
         centerY: center.y,
+        deltaX: center.x - previousCenter.x,
+        deltaY: center.y - previousCenter.y,
         x: center.x,
         y: center.y,
       }, event);
@@ -470,12 +474,24 @@
         if (!global.PointerEvent) return this.handlePointerUp(event);
         return false;
       }
+      const previousCenter = this.activePinch.center || this.getGestureCenter(this.getTouchPoints(event));
+      const handled = this.dispatchGesture({
+        type: 'pinchZoom',
+        phase: 'end',
+        scaleDelta: 1,
+        centerX: previousCenter.x,
+        centerY: previousCenter.y,
+        deltaX: 0,
+        deltaY: 0,
+        x: previousCenter.x,
+        y: previousCenter.y,
+      }, event);
       this.activePinch = null;
       this.dragMoved = true;
       this.suppressTapUntil = this.getEventTime(event) + 260;
       if (event?.cancelable !== false) event.preventDefault?.();
       event.stopPropagation?.();
-      return true;
+      return handled || true;
     }
 
     onTap(handler) {

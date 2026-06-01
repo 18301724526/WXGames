@@ -130,6 +130,8 @@
       this.worldMapRuntime = options.worldMapRuntime || null;
       this.worldMapRuntimeCoordinator = options.worldMapRuntimeCoordinator || null;
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
+      this.worldMapPinchDragging = false;
+      this.worldMapDragWaterTimeMs = null;
       this.syncService = options.syncService || null;
       this.updateChecker = options.updateChecker || null;
       this.scheduler = options.scheduler || this.runtime || null;
@@ -2017,8 +2019,53 @@
     }
 
     handleGesture(gesture) {
+      const worldMapGestureHandled = this.handleWorldMapGesture(gesture);
+      if (worldMapGestureHandled) return true;
       if (this.activeTab !== 'tech' || this.hasBlockingOverlayOpen()) return false;
       return this.actionController?.handle?.({ type: 'techTreeZoom', gesture }) || false;
+    }
+
+    handleWorldMapGesture(gesture = {}) {
+      if (gesture?.type !== 'pinchZoom') return false;
+      if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+      if (!this.isWorldMapHomeActive() || this.hasBlockingOverlayOpen()) return false;
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!coordinator || !runtime || !coordinator.canRender?.(this.state)) return false;
+      const point = {
+        x: Number(gesture.centerX ?? gesture.x) || 0,
+        y: Number(gesture.centerY ?? gesture.y) || 0,
+      };
+      if (!runtime.isPointInMap?.(point, this.state) && !this.worldMapPinchDragging) return false;
+      const phase = gesture.phase || 'move';
+      if (phase === 'end' || phase === 'cancel') {
+        this.worldMapPinchDragging = false;
+        this.worldMapDragWaterTimeMs = null;
+        runtime.waterTimeMs = null;
+        this.renderCanvasSurface(this.state?.currentTab || this.activeTab);
+        return true;
+      }
+      const dx = Number(gesture.deltaX);
+      const dy = Number(gesture.deltaY);
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false;
+      if (!this.worldMapPinchDragging) {
+        this.worldMapPinchDragging = true;
+        this.worldMapDragWaterTimeMs = this.now();
+        runtime.waterTimeMs = this.worldMapDragWaterTimeMs;
+      }
+      runtime.setCamera?.(
+        (Number(runtime.camera?.x) || 0) + dx,
+        (Number(runtime.camera?.y) || 0) + dy,
+        { source: 'pinchPan', render: false },
+      );
+      this.worldMapRuntime = runtime;
+      this.renderRuntimeWorldMap({
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: this.worldMapDragWaterTimeMs,
+        force: true,
+      });
+      return true;
     }
 
     async handleTap(point) {

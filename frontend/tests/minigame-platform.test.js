@@ -488,6 +488,61 @@ test('CanvasGameApp routes map-home drags through WorldMapRuntime without global
   assert.ok(calls.some((call) => call[0] === 'world-layer' && call[1] === 22 && call[2] === 14));
 });
 
+test('CanvasGameApp pans map-home through two-finger gestures with cached snapshots', () => {
+  const calls = [];
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() {
+        return createCanvasStub(calls);
+      },
+      getSystemInfoSync() {
+        return { windowWidth: 390, windowHeight: 844, pixelRatio: 2 };
+      },
+    },
+    scheduler: {
+      requestAnimationFrame(callback) {
+        callback();
+        return 1;
+      },
+    },
+  });
+  const layerCalls = [];
+  const renderer = {
+    render() {},
+    renderWorldMapLayer(state, options) {
+      layerCalls.push(options);
+      calls.push(['world-layer', options.territoryUiState.worldPanX, options.territoryUiState.worldPanY, options.snapshotOnly]);
+      return true;
+    },
+    getTopBarBottom: () => 84,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+  };
+  const app = new CanvasGameApp({
+    runtime,
+    api: {},
+    renderer,
+    presenter: UIStatePresenter,
+    initialState: createTileMapHomeState(),
+  });
+
+  assert.equal(app.handleGesture({
+    type: 'pinchZoom',
+    phase: 'move',
+    scaleDelta: 1,
+    centerX: 150,
+    centerY: 200,
+    deltaX: 16,
+    deltaY: 12,
+  }), true);
+
+  assert.equal(app.territoryUiState.worldPanX, 16);
+  assert.equal(app.territoryUiState.worldPanY, 12);
+  assert.equal(layerCalls.at(-1).snapshotOnly, true);
+  assert.equal(layerCalls.at(-1).reuseCachedWorldTileView, true);
+  assert.ok(Number.isFinite(layerCalls.at(-1).waterTimeMs));
+});
+
 test('Canvas game app dispatches canvas taps to server actions without DOM controllers', async () => {
   const originalDocument = global.document;
   const calls = [];

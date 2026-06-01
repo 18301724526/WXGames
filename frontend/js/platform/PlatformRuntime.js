@@ -240,21 +240,36 @@
         const distance = Math.max(1, PlatformRuntime.getGestureDistance(points));
         const center = PlatformRuntime.getGestureCenter(points);
         const previousDistance = Math.max(1, Number(activePinch.distance) || distance);
+        const previousCenter = activePinch.center || center;
         activePinch = { distance, center };
         const scaleDelta = Math.max(0.82, Math.min(1.22, distance / previousDistance));
         return dispatch({
           type: 'pinchZoom',
+          phase: 'move',
           scaleDelta,
           centerX: center.x,
           centerY: center.y,
+          deltaX: center.x - previousCenter.x,
+          deltaY: center.y - previousCenter.y,
           x: center.x,
           y: center.y,
         }, event);
       };
       const end = (event = {}) => {
         if ((event.touches?.length || 0) >= 2) return move(event);
+        const previousCenter = activePinch?.center || PlatformRuntime.getGestureCenter(PlatformRuntime.getTouchPoints(event));
         activePinch = null;
-        return false;
+        return dispatch({
+          type: 'pinchZoom',
+          phase: 'end',
+          scaleDelta: 1,
+          centerX: previousCenter.x,
+          centerY: previousCenter.y,
+          deltaX: 0,
+          deltaY: 0,
+          x: previousCenter.x,
+          y: previousCenter.y,
+        }, event);
       };
       if (this.host && typeof this.host.onTouchStart === 'function') {
         this.host.onTouchStart(start);

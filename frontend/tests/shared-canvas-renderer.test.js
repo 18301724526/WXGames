@@ -4035,6 +4035,91 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
   assert.ok(renderer.worldTileWaterLayerCacheKey.includes('water-layer-cache-test'));
 });
 
+test('CanvasGameRenderer preserves chunked water during snapshot drag frames', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 2 });
+  renderer.getWorldTileStaticCachePixelBudget = () => 120000;
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  const waterAsset = 'assets/art/tile-map/tile-water-ocean-loop.png';
+  const terrainAsset = 'assets/art/tile-map/ocean-template/tile-ocean-water-full.png';
+  [terrainAsset, waterAsset].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+    renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  });
+  const tiles = [];
+  for (let q = 0; q < 20; q += 1) {
+    for (let r = 0; r < 20; r += 1) {
+      tiles.push({
+        id: `tile_${q}_${r}`,
+        q,
+        r,
+        terrain: 'ocean',
+        terrainAsset,
+        water: { kind: 'ocean', asset: waterAsset, uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
+        site: null,
+      });
+    }
+  }
+  const tileMapView = {
+    signature: 'chunk-water-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles,
+    activeScouts: [],
+  };
+
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const waterChunkKeys = Array.from(renderer.worldTileWaterChunkCaches.keys());
+  assert.equal(renderer.worldTileStaticCacheLayoutKind, 'chunks');
+  assert.ok(waterChunkKeys.length > 0);
+  calls.length = 0;
+
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 120, y: 0 } }, 20, 80, 320, 240, {}, {
+    fastDrag: true,
+    snapshotOnly: true,
+  });
+
+  assert.deepEqual(Array.from(renderer.worldTileWaterChunkCaches.keys()), waterChunkKeys);
+  assert.ok(calls.some((call) => (
+    call[0] === 'drawImage'
+    && Array.from(renderer.worldTileWaterChunkCaches.values()).some((work) => work.canvas === call[1])
+  )));
+  assert.equal(calls.some((call) => call[0] === 'offscreenDrawImage' && call[1]?.src === waterAsset), false);
+});
+
 test('CanvasGameRenderer freezes world water cache when a water time override is supplied', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

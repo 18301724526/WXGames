@@ -2340,6 +2340,96 @@ test('Canvas game shell routes map-home drags through WorldMapRuntime without gl
   assert.equal(renderCalls.length, 1);
 });
 
+test('Canvas game shell pans map-home through two-finger gestures using snapshot frames', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  runtime.requestAnimationFrame = (callback) => {
+    callback();
+    return 1;
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 84,
+    render() {},
+  };
+  const uiState = { worldPanX: 0, worldPanY: 0 };
+  const game = {
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
+      },
+    },
+    getActiveTab: () => 'military',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => uiState,
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: UIStatePresenter,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  const layerCalls = [];
+  shell.worldMapRenderer = {
+    presenter: UIStatePresenter,
+    renderWorldMapLayer(state, options) {
+      layerCalls.push({ state, options });
+      return true;
+    },
+    clearAll() {},
+  };
+  shell.worldMapRuntime = new WorldMapRuntime({
+    runtime: shell.runtime,
+    renderer: shell.worldMapRenderer,
+    presenter: UIStatePresenter,
+    getState: () => game.state,
+    getBaseUiState: () => uiState,
+    getTopBarBottom: () => 84,
+    onCameraChanged: (camera) => {
+      uiState.worldPanX = camera.x;
+      uiState.worldPanY = camera.y;
+    },
+  });
+
+  listeners.touchstart({
+    touches: [
+      { clientX: 110, clientY: 300 },
+      { clientX: 190, clientY: 300 },
+    ],
+    type: 'touchstart',
+    cancelable: true,
+    preventDefault() {},
+  });
+  listeners.touchmove({
+    touches: [
+      { clientX: 124, clientY: 310 },
+      { clientX: 204, clientY: 310 },
+    ],
+    type: 'touchmove',
+    cancelable: true,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+
+  assert.equal(uiState.worldPanX, 14);
+  assert.equal(uiState.worldPanY, 10);
+  assert.equal(layerCalls.length > 0, true);
+  assert.equal(layerCalls.at(-1).options.snapshotOnly, true);
+  assert.equal(layerCalls.at(-1).options.reuseCachedWorldTileView, true);
+  assert.ok(Number.isFinite(layerCalls.at(-1).options.waterTimeMs));
+});
+
 test('WorldMapRuntime invalidates tile caches only when map data changes', () => {
   let invalidateCount = 0;
   const renderCalls = [];

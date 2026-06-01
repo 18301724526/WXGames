@@ -69,6 +69,8 @@
       this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.worldTileWaterChunkCaches = new Map();
+      this.worldTileWaterChunkCacheTick = 0;
       this.worldTileViewCache = null;
       this.worldTileWaterTimeOverride = null;
       this.assetsChangedHandler = null;
@@ -559,6 +561,8 @@
       this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.worldTileWaterChunkCaches?.clear?.();
+      this.worldTileWaterChunkCacheTick = 0;
       this.worldTileFastDragComposite = null;
       this.worldTileFastDragCompositeCache = null;
       this.invalidateWorldTileViewCache();
@@ -6917,27 +6921,100 @@
       return rendered;
     }
 
-    renderWorldTileSnapshotCache(tileMapView = {}, viewport = {}, frame = {}) {
-      if (!this.ctx || typeof this.ctx.drawImage !== 'function') return false;
-      if (this.worldTileFastDragComposite?.work?.canvas && this.worldTileFastDragComposite?.layout?.frame) {
-        const cachedLayout = this.worldTileFastDragComposite.layout;
-        return this.drawWorldTileLayerCache(this.worldTileFastDragComposite.work, {
-          ...cachedLayout,
-          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
-          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
-        }, frame);
+    getWorldTileWaterChunkCacheKey(tileMapView = {}, viewport = {}, layout = {}, waterEntries = [], options = {}) {
+      return this.getWorldTileWaterLayerCacheKey(tileMapView, viewport, layout.frame, waterEntries, {
+        ...options,
+        kind: `water-chunk:${layout.chunkX},${layout.chunkY}`,
+      });
+    }
+
+    pruneWorldTileWaterChunkCaches(activeKeys = new Set()) {
+      const limit = Math.max(1, Number(this.getWorldTileStaticChunkCacheLimit()) || 32);
+      if (!this.worldTileWaterChunkCaches || this.worldTileWaterChunkCaches.size <= limit) return false;
+      const staleEntries = Array.from(this.worldTileWaterChunkCaches.entries())
+        .filter(([key]) => !activeKeys.has(key))
+        .sort((a, b) => (Number(a[1]?.lastUsedAt) || 0) - (Number(b[1]?.lastUsedAt) || 0));
+      let pruned = false;
+      while (this.worldTileWaterChunkCaches.size > limit && staleEntries.length) {
+        const [key] = staleEntries.shift();
+        this.worldTileWaterChunkCaches.delete(key);
+        pruned = true;
       }
-      if (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame) {
-        const cachedLayout = this.worldTileStaticCacheLayout;
-        return this.drawWorldTileLayerCache(this.worldTileStaticCache, {
-          ...cachedLayout,
-          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
-          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
-        }, frame);
+      return pruned;
+    }
+
+    renderWorldTileWaterChunk(tileMapView = {}, layout = {}, cacheScale = 1) {
+      if (!layout?.frame || !Array.isArray(layout.entries) || !layout.entries.length) return false;
+      const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
+      if (!waterEntries.length) return false;
+      const chunkKey = `${layout.chunkX},${layout.chunkY}`;
+      let work = this.worldTileWaterChunkCaches.get(chunkKey);
+      const width = Math.max(1, Number(layout.frame.width) || 1);
+      const height = Math.max(1, Number(layout.frame.height) || 1);
+      const pixelW = Math.max(1, Math.ceil(width * cacheScale));
+      const pixelH = Math.max(1, Math.ceil(height * cacheScale));
+      if (!work?.canvas || !work?.ctx) {
+        const canvas = this.createTileWorkCanvas(pixelW, pixelH);
+        const ctx = canvas?.getContext?.('2d') || null;
+        if (!canvas || !ctx) return false;
+        work = { canvas, ctx };
+        this.worldTileWaterChunkCaches.set(chunkKey, work);
       }
-      if (this.worldTileStaticCacheLayoutKind !== 'chunks' || !this.worldTileStaticChunkCaches?.size) return false;
+      if (work.canvas.width !== pixelW) work.canvas.width = pixelW;
+      if (work.canvas.height !== pixelH) work.canvas.height = pixelH;
+      work.width = width;
+      work.height = height;
+      work.pixelWidth = pixelW;
+      work.pixelHeight = pixelH;
+      work.scale = cacheScale;
+      work.chunkX = layout.chunkX;
+      work.chunkY = layout.chunkY;
+      work.frame = { ...layout.frame };
+      const cacheKey = this.getWorldTileWaterChunkCacheKey(tileMapView, layout.renderViewport, layout, waterEntries, { cacheScale });
+      if (cacheKey !== work.key) {
+        const previousCtx = this.ctx;
+        this.ctx = work.ctx;
+        try {
+          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
+          work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
+          work.ctx.globalAlpha = 1;
+          work.ctx.globalCompositeOperation = 'source-over';
+          work.ctx.save?.();
+          work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
+          this.renderWorldTileWaterEntries(tileMapView, layout.renderViewport, waterEntries, this.getWorldTileWaterTimeMs());
+          work.ctx.restore?.();
+          work.key = cacheKey;
+        } finally {
+          this.ctx = previousCtx;
+        }
+      }
+      work.lastUsedAt = ++this.worldTileWaterChunkCacheTick;
+      return true;
+    }
+
+    renderWorldTileWaterChunks(tileMapView = {}, chunkLayouts = [], frame = {}) {
+      const cacheScale = this.getWorldTileStaticChunkCacheScale();
+      const activeKeys = new Set();
       let rendered = false;
-      this.worldTileStaticChunkCaches.forEach((work) => {
+      chunkLayouts.forEach((layout) => {
+        const chunkKey = `${layout.chunkX},${layout.chunkY}`;
+        const waterEntries = (layout.entries || []).filter(({ tile }) => tile.water?.kind && tile.water?.asset);
+        if (!waterEntries.length) return;
+        activeKeys.add(chunkKey);
+        if (this.renderWorldTileWaterChunk(tileMapView, layout, cacheScale)) {
+          this.drawWorldTileLayerCache(this.worldTileWaterChunkCaches.get(chunkKey), layout, frame);
+          rendered = true;
+        }
+      });
+      this.pruneWorldTileWaterChunkCaches(activeKeys);
+      return rendered;
+    }
+
+    renderWorldTileSnapshotChunkCacheMap(cacheMap = null, viewport = {}, frame = {}) {
+      if (!cacheMap?.size) return false;
+      let rendered = false;
+      cacheMap.forEach((work) => {
         const chunkFrame = work?.frame;
         if (!work?.canvas || !chunkFrame) return;
         const layout = {
@@ -6957,6 +7034,30 @@
         if (this.drawWorldTileLayerCache(work, layout, frame)) rendered = true;
       });
       return rendered;
+    }
+
+    renderWorldTileSnapshotCache(tileMapView = {}, viewport = {}, frame = {}) {
+      if (!this.ctx || typeof this.ctx.drawImage !== 'function') return false;
+      if (this.worldTileFastDragComposite?.work?.canvas && this.worldTileFastDragComposite?.layout?.frame) {
+        const cachedLayout = this.worldTileFastDragComposite.layout;
+        return this.drawWorldTileLayerCache(this.worldTileFastDragComposite.work, {
+          ...cachedLayout,
+          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
+          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
+        }, frame);
+      }
+      if (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame) {
+        const cachedLayout = this.worldTileStaticCacheLayout;
+        return this.drawWorldTileLayerCache(this.worldTileStaticCache, {
+          ...cachedLayout,
+          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
+          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
+        }, frame);
+      }
+      if (this.worldTileStaticCacheLayoutKind !== 'chunks' || !this.worldTileStaticChunkCaches?.size) return false;
+      const renderedWater = this.renderWorldTileSnapshotChunkCacheMap(this.worldTileWaterChunkCaches, viewport, frame);
+      const renderedStatic = this.renderWorldTileSnapshotChunkCacheMap(this.worldTileStaticChunkCaches, viewport, frame);
+      return renderedWater || renderedStatic;
     }
 
     renderWorldTileStaticLayer(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
@@ -7128,7 +7229,7 @@
       if (!visibleWaterEntries.length) return true;
       const layout = this.resolveWorldTileWaterLayerCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
-      if (layout.kind === 'chunks') return false;
+      if (layout.kind === 'chunks') return this.renderWorldTileWaterChunks(tileMapView, layout.layouts, frame);
       const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
       if (!waterEntries.length) return true;
       if (this.worldTileFastDragActive && this.worldTileWaterLayerCacheKey && this.worldTileWaterLayerCache?.canvas) {
