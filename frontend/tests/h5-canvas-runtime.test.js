@@ -2340,6 +2340,89 @@ test('Canvas game shell routes map-home drags through WorldMapRuntime without gl
   assert.equal(renderCalls.length, 1);
 });
 
+test('Canvas game shell keeps queued map-home drag frames snapshot-only after pointerup', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const frames = [];
+  runtime.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 84,
+    render() {},
+  };
+  const uiState = { worldPanX: 0, worldPanY: 0 };
+  const game = {
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
+      },
+    },
+    getActiveTab: () => 'military',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => uiState,
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: UIStatePresenter,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  const layerCalls = [];
+  shell.worldMapRenderer = {
+    presenter: UIStatePresenter,
+    renderWorldMapLayer(state, options) {
+      layerCalls.push({ state, options });
+      return true;
+    },
+    clearAll() {},
+  };
+  shell.worldMapRuntime = new WorldMapRuntime({
+    runtime: shell.runtime,
+    renderer: shell.worldMapRenderer,
+    presenter: UIStatePresenter,
+    getState: () => game.state,
+    getBaseUiState: () => uiState,
+    getTopBarBottom: () => 84,
+    onCameraChanged: (camera) => {
+      uiState.worldPanX = camera.x;
+      uiState.worldPanY = camera.y;
+    },
+  });
+  let now = 1000;
+  shell.now = () => now;
+
+  listeners.pointerdown({ pointerId: 22, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  now = 1010;
+  listeners.pointermove({ pointerId: 22, clientX: 150, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointerup({ pointerId: 22, clientX: 150, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(frames.length, 1);
+  assert.equal(layerCalls.length, 0);
+  assert.equal(shell.isWorldMapDragging(), false);
+  frames[0]();
+  assert.equal(layerCalls.length, 1);
+  assert.equal(layerCalls[0].options.force, true);
+  assert.equal(layerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(layerCalls[0].options.snapshotOnly, true);
+  assert.equal(layerCalls[0].options.waterTimeMs, 1000);
+  assert.equal(uiState.worldPanX, 30);
+  assert.equal(uiState.worldPanY, 20);
+});
+
 test('Canvas game shell pans map-home through two-finger gestures using snapshot frames', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   runtime.requestAnimationFrame = (callback) => {
@@ -2428,6 +2511,113 @@ test('Canvas game shell pans map-home through two-finger gestures using snapshot
   assert.equal(layerCalls.at(-1).options.snapshotOnly, true);
   assert.equal(layerCalls.at(-1).options.reuseCachedWorldTileView, true);
   assert.ok(Number.isFinite(layerCalls.at(-1).options.waterTimeMs));
+});
+
+test('Canvas game shell keeps queued two-finger map-home frames snapshot-only after touchend', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const frames = [];
+  runtime.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 84,
+    render() {},
+  };
+  const uiState = { worldPanX: 0, worldPanY: 0 };
+  const game = {
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
+      },
+    },
+    getActiveTab: () => 'military',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => uiState,
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: UIStatePresenter,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  const layerCalls = [];
+  shell.worldMapRenderer = {
+    presenter: UIStatePresenter,
+    renderWorldMapLayer(state, options) {
+      layerCalls.push({ state, options });
+      return true;
+    },
+    clearAll() {},
+  };
+  shell.worldMapRuntime = new WorldMapRuntime({
+    runtime: shell.runtime,
+    renderer: shell.worldMapRenderer,
+    presenter: UIStatePresenter,
+    getState: () => game.state,
+    getBaseUiState: () => uiState,
+    getTopBarBottom: () => 84,
+    onCameraChanged: (camera) => {
+      uiState.worldPanX = camera.x;
+      uiState.worldPanY = camera.y;
+    },
+  });
+  let now = 1000;
+  shell.now = () => now;
+
+  listeners.touchstart({
+    touches: [
+      { clientX: 110, clientY: 300 },
+      { clientX: 190, clientY: 300 },
+    ],
+    type: 'touchstart',
+    cancelable: true,
+    preventDefault() {},
+  });
+  now = 1010;
+  listeners.touchmove({
+    touches: [
+      { clientX: 124, clientY: 310 },
+      { clientX: 204, clientY: 310 },
+    ],
+    type: 'touchmove',
+    cancelable: true,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  listeners.touchend({
+    touches: [],
+    changedTouches: [
+      { clientX: 124, clientY: 310 },
+      { clientX: 204, clientY: 310 },
+    ],
+    type: 'touchend',
+    cancelable: true,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+
+  assert.equal(frames.length, 1);
+  assert.equal(layerCalls.length, 0);
+  frames[0]();
+  assert.equal(layerCalls.length, 1);
+  assert.equal(layerCalls[0].options.force, true);
+  assert.equal(layerCalls[0].options.snapshotOnly, true);
+  assert.equal(layerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(layerCalls[0].options.waterTimeMs, 1010);
 });
 
 test('WorldMapRuntime invalidates tile caches only when map data changes', () => {
@@ -3169,7 +3359,7 @@ test('Canvas game shell freezes animated world water during snapshot drag redraw
   assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, undefined);
 });
 
-test('Canvas game shell skips water timer frames while snapshot dragging', () => {
+test('Canvas game shell skips water timer frames while snapshot dragging and cooling down', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const timers = [];
   runtime.setInterval = (callback, intervalMs) => {
@@ -3235,6 +3425,21 @@ test('Canvas game shell skips water timer frames while snapshot dragging', () =>
 
   assert.equal(mapLayerCalls.length, 0);
   assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, undefined);
+
+  listeners.pointerup({ pointerId: 12, clientX: 130, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  assert.equal(shell.isWorldMapDragging(), false);
+  assert.equal(shell.isWorldMapDragCoolingDown(), true);
+  const callsAfterDragEnd = mapLayerCalls.length;
+  now = 1100;
+  timers.at(-1).callback();
+
+  assert.equal(mapLayerCalls.length, callsAfterDragEnd);
+
+  now = 1400;
+  timers.at(-1).callback();
+
+  assert.equal(shell.isWorldMapDragCoolingDown(), false);
+  assert.equal(mapLayerCalls.length, callsAfterDragEnd + 1);
 });
 
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {

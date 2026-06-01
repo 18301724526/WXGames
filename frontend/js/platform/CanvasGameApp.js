@@ -132,6 +132,7 @@
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
       this.worldMapPinchDragging = false;
       this.worldMapDragWaterTimeMs = null;
+      this.worldMapDragCooldownUntil = 0;
       this.syncService = options.syncService || null;
       this.updateChecker = options.updateChecker || null;
       this.scheduler = options.scheduler || this.runtime || null;
@@ -414,6 +415,7 @@
             this.stopTileMapWaterTimer();
             return;
           }
+          if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
           this.renderAnimationFrame('military');
         }, this.getWorldTileWaterAnimationFrameMs())
         : setIntervalFn(() => {
@@ -421,6 +423,7 @@
             this.stopTileMapWaterTimer();
             return;
           }
+          if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
           this.renderAnimationFrame('military');
         }, this.getWorldTileWaterAnimationFrameMs());
       return true;
@@ -558,6 +561,58 @@
       return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
     }
 
+    getFrozenWorldMapWaterTimeMs() {
+      if (
+        this.worldMapDragWaterTimeMs === null
+        || this.worldMapDragWaterTimeMs === undefined
+        || !Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+      ) {
+        this.worldMapDragWaterTimeMs = this.now();
+      }
+      return this.worldMapDragWaterTimeMs;
+    }
+
+    isWorldMapDragging() {
+      return this.worldMapDragWaterTimeMs !== null
+        && this.worldMapDragWaterTimeMs !== undefined
+        && Number.isFinite(Number(this.worldMapDragWaterTimeMs));
+    }
+
+    isWorldMapDragCoolingDown() {
+      return Number(this.worldMapDragCooldownUntil) > this.now();
+    }
+
+    getWorldMapDragCooldownMs() {
+      return 220;
+    }
+
+    startWorldMapSnapshotDrag() {
+      this.worldMapDragWaterTimeMs = this.now();
+      return this.worldMapDragWaterTimeMs;
+    }
+
+    finishWorldMapSnapshotDrag() {
+      this.worldMapDragCooldownUntil = this.now() + this.getWorldMapDragCooldownMs();
+      this.worldMapDragWaterTimeMs = null;
+      this.worldMapPinchDragging = false;
+      if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
+    }
+
+    getWorldMapSnapshotRenderOptions(waterTimeMs = this.getFrozenWorldMapWaterTimeMs()) {
+      const hasWaterTimeMs = waterTimeMs !== null
+        && waterTimeMs !== undefined
+        && Number.isFinite(Number(waterTimeMs));
+      const resolvedWaterTimeMs = hasWaterTimeMs
+        ? Number(waterTimeMs)
+        : this.getFrozenWorldMapWaterTimeMs();
+      return {
+        force: true,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: resolvedWaterTimeMs,
+      };
+    }
+
     ensureWorldMapRuntimeCoordinator() {
       if (this.worldMapRuntimeCoordinator) return this.worldMapRuntimeCoordinator;
       const CoordinatorCtor = WorldMapRuntimeCoordinatorBase || global.WorldMapRuntimeCoordinator;
@@ -576,6 +631,15 @@
         getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
         getForceMapHome: () => this.mapHomeActive,
         onAction: (action) => this.actionController?.handle?.(action),
+        onBeforeDrag: ({ phase, runtime }) => {
+          if (phase === 'start') {
+            const waterTimeMs = this.startWorldMapSnapshotDrag();
+            if (runtime) runtime.waterTimeMs = waterTimeMs;
+          }
+        },
+        onAfterDrag: ({ phase, handled }) => {
+          if (handled && (phase === 'end' || phase === 'cancel')) this.finishWorldMapSnapshotDrag();
+        },
       });
       return this.worldMapRuntimeCoordinator;
     }
@@ -2039,9 +2103,7 @@
       if (!runtime.isPointInMap?.(point, this.state) && !this.worldMapPinchDragging) return false;
       const phase = gesture.phase || 'move';
       if (phase === 'end' || phase === 'cancel') {
-        this.worldMapPinchDragging = false;
-        this.worldMapDragWaterTimeMs = null;
-        runtime.waterTimeMs = null;
+        this.finishWorldMapSnapshotDrag();
         this.renderCanvasSurface(this.state?.currentTab || this.activeTab);
         return true;
       }
@@ -2050,8 +2112,7 @@
       if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false;
       if (!this.worldMapPinchDragging) {
         this.worldMapPinchDragging = true;
-        this.worldMapDragWaterTimeMs = this.now();
-        runtime.waterTimeMs = this.worldMapDragWaterTimeMs;
+        runtime.waterTimeMs = this.startWorldMapSnapshotDrag();
       }
       runtime.setCamera?.(
         (Number(runtime.camera?.x) || 0) + dx,
@@ -2059,12 +2120,7 @@
         { source: 'pinchPan', render: false },
       );
       this.worldMapRuntime = runtime;
-      this.renderRuntimeWorldMap({
-        reuseCachedWorldTileView: true,
-        snapshotOnly: true,
-        waterTimeMs: this.worldMapDragWaterTimeMs,
-        force: true,
-      });
+      this.renderRuntimeWorldMap(this.getWorldMapSnapshotRenderOptions(runtime.waterTimeMs));
       return true;
     }
 

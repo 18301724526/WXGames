@@ -543,6 +543,86 @@ test('CanvasGameApp pans map-home through two-finger gestures with cached snapsh
   assert.ok(Number.isFinite(layerCalls.at(-1).waterTimeMs));
 });
 
+test('CanvasGameApp skips world water timer frames while map drags cool down', () => {
+  const calls = [];
+  const scheduler = createManualScheduler();
+  scheduler.requestAnimationFrame = (callback) => {
+    callback();
+    return 1;
+  };
+  let now = 1000;
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() {
+        return createCanvasStub(calls);
+      },
+      getSystemInfoSync() {
+        return { windowWidth: 390, windowHeight: 844, pixelRatio: 2 };
+      },
+    },
+    scheduler,
+  });
+  runtime.now = () => now;
+  let app = null;
+  const renderCalls = [];
+  const layerCalls = [];
+  const renderer = {
+    getWorldTileWaterAnimationFps: () => 8,
+    render(state, options) {
+      renderCalls.push({ state, options });
+      if (app) app.territoryUiState.tileMapWaterAnimated = true;
+    },
+    renderWorldMapLayer(state, options) {
+      layerCalls.push({ state, options });
+      return true;
+    },
+    getTopBarBottom: () => 84,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+  };
+  app = new CanvasGameApp({
+    runtime,
+    scheduler,
+    api: {},
+    renderer,
+    presenter: UIStatePresenter,
+    initialState: createTileMapHomeState(),
+  });
+
+  app.renderCanvasSurface('resources');
+  const timer = scheduler.timers.find((item) => item.type === 'interval');
+  assert.ok(timer);
+  assert.equal(timer.intervalMs, 125);
+
+  assert.equal(app.handleDrag('start', { pointerId: 1, x: 120, y: 180 }), true);
+  assert.equal(app.handleDrag('move', { pointerId: 1, x: 142, y: 194 }), true);
+  now = 1080;
+  const renderCountBeforeDragTimer = renderCalls.length;
+  const layerCountBeforeDragTimer = layerCalls.length;
+  timer.callback();
+
+  assert.equal(renderCalls.length, renderCountBeforeDragTimer);
+  assert.equal(layerCalls.length, layerCountBeforeDragTimer);
+
+  assert.equal(app.handleDrag('end', { pointerId: 1, x: 142, y: 194 }), true);
+  assert.equal(app.isWorldMapDragging(), false);
+  assert.equal(app.isWorldMapDragCoolingDown(), true);
+  const renderCountAfterDragEnd = renderCalls.length;
+  const layerCountAfterDragEnd = layerCalls.length;
+  now = 1100;
+  timer.callback();
+
+  assert.equal(renderCalls.length, renderCountAfterDragEnd);
+  assert.equal(layerCalls.length, layerCountAfterDragEnd);
+
+  now = 1400;
+  timer.callback();
+
+  assert.equal(app.isWorldMapDragCoolingDown(), false);
+  assert.equal(renderCalls.length, renderCountAfterDragEnd + 1);
+  assert.equal(layerCalls.length, layerCountAfterDragEnd + 1);
+});
+
 test('Canvas game app dispatches canvas taps to server actions without DOM controllers', async () => {
   const originalDocument = global.document;
   const calls = [];

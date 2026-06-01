@@ -16,6 +16,7 @@
       };
       this.drag = null;
       this.renderQueued = false;
+      this.queuedRenderOptions = null;
       this.lastRenderAt = 0;
       this.lastLayout = null;
       this.hitTargets = [];
@@ -204,7 +205,15 @@
       this.camera.x = nextX;
       this.camera.y = nextY;
       this.onCameraChanged?.({ ...this.camera }, options);
-      if (options.render !== false) this.requestRender();
+      if (options.render !== false) {
+        const isDragLike = options.source === 'drag' || options.source === 'pinchPan';
+        this.requestRender(isDragLike ? {
+          force: true,
+          reuseCachedWorldTileView: true,
+          snapshotOnly: true,
+          waterTimeMs: options.waterTimeMs ?? this.waterTimeMs,
+        } : {});
+      }
       return true;
     }
 
@@ -279,13 +288,23 @@
     }
 
     requestRender(options = {}) {
+      this.queuedRenderOptions = {
+        ...(this.queuedRenderOptions || {}),
+        ...options,
+      };
       if (this.renderQueued) return true;
       const raf = this.getRequestAnimationFrame();
-      if (!raf) return this.render(options);
+      if (!raf) {
+        const queuedOptions = this.queuedRenderOptions || {};
+        this.queuedRenderOptions = null;
+        return this.render(queuedOptions);
+      }
       this.renderQueued = true;
       raf(() => {
         this.renderQueued = false;
-        this.render(options);
+        const queuedOptions = this.queuedRenderOptions || {};
+        this.queuedRenderOptions = null;
+        this.render(queuedOptions);
       });
       return true;
     }

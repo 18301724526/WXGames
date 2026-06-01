@@ -73,8 +73,10 @@
       this.animationRenderQueued = false;
       this.lastWorldMapLayerRenderAt = 0;
       this.worldMapLayerRenderQueued = false;
+      this.worldMapQueuedRenderOptions = null;
       this.worldMapDragFrameActive = false;
       this.worldMapDragWaterTimeMs = null;
+      this.worldMapDragCooldownUntil = 0;
       this.deferRenderUntilWorldMapDragEnd = false;
       this.worldMapPinchDragging = false;
       this.tileMapWaterTimer = null;
@@ -181,6 +183,21 @@
       if (this.worldMapRenderer) this.worldMapRenderer.presenter = this.renderer.presenter;
       this.ensureWorldMapRuntime();
       return this.renderer;
+    }
+
+    getWorldMapSnapshotRenderOptions(waterTimeMs = this.getFrozenWorldMapWaterTimeMs()) {
+      const hasWaterTimeMs = waterTimeMs !== null
+        && waterTimeMs !== undefined
+        && Number.isFinite(Number(waterTimeMs));
+      const resolvedWaterTimeMs = hasWaterTimeMs
+        ? Number(waterTimeMs)
+        : this.getFrozenWorldMapWaterTimeMs();
+      return {
+        force: true,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: resolvedWaterTimeMs,
+      };
     }
 
     ensureWorldMapRuntimeCoordinator() {
@@ -398,7 +415,7 @@
       ) !== false;
       this.worldMapRuntime = runtime;
       this.worldMapDragFrameActive = true;
-      this.requestWorldMapRenderAnimationFrame();
+      this.requestWorldMapRenderAnimationFrame(this.getWorldMapSnapshotRenderOptions(runtime.waterTimeMs));
       if (event?.preventDefault) event.preventDefault();
       if (event?.stopPropagation) event.stopPropagation();
       return moved || true;
@@ -823,6 +840,14 @@
         && Number.isFinite(Number(this.worldMapDragWaterTimeMs));
     }
 
+    isWorldMapDragCoolingDown() {
+      return Number(this.worldMapDragCooldownUntil) > this.now();
+    }
+
+    getWorldMapDragCooldownMs() {
+      return 220;
+    }
+
     hasPendingWorldMapCompositeCommit() {
       return false;
     }
@@ -841,6 +866,7 @@
     }
 
     finishWorldMapSnapshotDrag() {
+      this.worldMapDragCooldownUntil = this.now() + this.getWorldMapDragCooldownMs();
       this.worldMapDragWaterTimeMs = null;
       this.worldMapDragFrameActive = false;
       this.worldMapPinchDragging = false;
@@ -869,13 +895,19 @@
       const runtime = coordinator?.getMapRuntime?.();
       if (this.isWorldMapHomeActive() && coordinator?.canRender(this.lastGame.state)) {
         const runtimeDragging = Boolean(runtime?.isDragging?.());
-        const waterTimeMs = this.isWorldMapDragging() || runtimeDragging
+        const hasOptionWaterTime = options.waterTimeMs !== null
+          && options.waterTimeMs !== undefined
+          && Number.isFinite(Number(options.waterTimeMs));
+        const reuseCachedWorldTileView = Boolean(options.reuseCachedWorldTileView || this.worldMapDragFrameActive || runtimeDragging);
+        const waterTimeMs = hasOptionWaterTime
+          ? Number(options.waterTimeMs)
+          : (this.isWorldMapDragging() || runtimeDragging || reuseCachedWorldTileView
           ? this.getFrozenWorldMapWaterTimeMs()
-          : null;
+          : null);
         const snapshotOnly = Boolean(options.snapshotOnly || this.worldMapDragFrameActive || runtimeDragging);
         return this.renderRuntimeWorldMap(this.lastGame.state, {
           ...options,
-          reuseCachedWorldTileView: Boolean(this.worldMapDragFrameActive || runtimeDragging),
+          reuseCachedWorldTileView,
           snapshotOnly,
           waterTimeMs,
         });
@@ -885,9 +917,13 @@
       const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
       if (!options.force && this.lastWorldMapLayerRenderAt && now - this.lastWorldMapLayerRenderAt < frameMs) return false;
       this.lastWorldMapLayerRenderAt = now;
-      const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive || this.isWorldMapDragging());
+      const reuseCachedWorldTileView = Boolean(options.reuseCachedWorldTileView || this.worldMapDragFrameActive || this.isWorldMapDragging());
       this.worldMapDragFrameActive = false;
-      const waterTimeMs = reuseCachedWorldTileView ? this.getFrozenWorldMapWaterTimeMs() : null;
+      const waterTimeMs = options.waterTimeMs !== null
+        && options.waterTimeMs !== undefined
+        && Number.isFinite(Number(options.waterTimeMs))
+        ? Number(options.waterTimeMs)
+        : (reuseCachedWorldTileView ? this.getFrozenWorldMapWaterTimeMs() : null);
       return this.renderWorldMapLayer(this.lastGame.state, {
         reuseCachedWorldTileView,
         snapshotOnly: Boolean(options.snapshotOnly || reuseCachedWorldTileView),
@@ -895,24 +931,34 @@
       });
     }
 
-    requestWorldMapRenderAnimationFrame() {
+    requestWorldMapRenderAnimationFrame(options = {}) {
       if (!this.worldMapRenderer) return this.requestRenderAnimationFrame();
+      this.worldMapQueuedRenderOptions = {
+        ...(this.worldMapQueuedRenderOptions || {}),
+        ...options,
+      };
       if (this.worldMapLayerRenderQueued) return true;
       const raf = this.getRequestAnimationFrame();
-      if (!raf) return this.renderWorldMapLayerFrame();
+      if (!raf) {
+        const queuedOptions = this.worldMapQueuedRenderOptions || {};
+        this.worldMapQueuedRenderOptions = null;
+        return this.renderWorldMapLayerFrame(queuedOptions);
+      }
       this.worldMapLayerRenderQueued = true;
       raf(() => {
         this.worldMapLayerRenderQueued = false;
-        this.renderWorldMapLayerFrame();
+        const queuedOptions = this.worldMapQueuedRenderOptions || {};
+        this.worldMapQueuedRenderOptions = null;
+        this.renderWorldMapLayerFrame(queuedOptions);
       });
       return true;
     }
 
     requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
-        this.getFrozenWorldMapWaterTimeMs();
+        const waterTimeMs = this.getFrozenWorldMapWaterTimeMs();
         this.worldMapDragFrameActive = true;
-        return this.requestWorldMapRenderAnimationFrame();
+        return this.requestWorldMapRenderAnimationFrame(this.getWorldMapSnapshotRenderOptions(waterTimeMs));
       }
       if (this.animationRenderQueued) return true;
       const raf = this.getRequestAnimationFrame();
@@ -1494,7 +1540,7 @@
           this.stopTileMapWaterTimer();
           return;
         }
-        if (this.isWorldMapDragging()) return;
+        if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
         if (this.worldMapRenderer) this.renderWorldMapLayerFrame();
         else this.renderAnimationFrame();
       }, this.getWorldTileWaterAnimationFrameMs());
