@@ -7976,6 +7976,99 @@
       return true;
     }
 
+    renderWorldMapSnapshotLayer(state = {}, options = {}) {
+      if (!this.presenter || !this.ctx || typeof this.ctx.drawImage !== 'function') return false;
+      if (options.preserveOnMiss && !options.__snapshotBackbuffer) {
+        const cacheScale = Math.max(1, Number(this.pixelRatio) || 1);
+        const work = this.getWorldTileLayerCacheContext('worldTileSnapshotLayerBackbuffer', this.width, this.height, cacheScale);
+        if (!work?.canvas || !work?.ctx) return false;
+        const previousCtx = this.ctx;
+        this.ctx = work.ctx;
+        try {
+          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.canvas.width, work.pixelHeight || work.canvas.height);
+          work.ctx.setTransform?.(cacheScale, 0, 0, cacheScale, 0, 0);
+          const rendered = this.renderWorldMapSnapshotLayer(state, {
+            ...options,
+            preserveOnMiss: false,
+            __snapshotBackbuffer: true,
+          });
+          if (!rendered) return false;
+        } finally {
+          this.ctx = previousCtx;
+        }
+        this.ctx.drawImage(
+          work.canvas,
+          0,
+          0,
+          work.pixelWidth || work.canvas.width,
+          work.pixelHeight || work.canvas.height,
+          0,
+          0,
+          work.width || this.width,
+          work.height || this.height,
+        );
+        return true;
+      }
+      this.beginFrame(options);
+      this.setHitTargets([]);
+      this.clearAll();
+      const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
+      if (!layout || (state.currentEra || 0) < 5) {
+        this.endFrame({ ...options, showFpsOverlay: false });
+        return false;
+      }
+      const territoryState = state.territoryState || {};
+      const uiState = options.territoryUiState || {};
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      if (!tileMapView?.tiles?.length) {
+        this.endFrame({ ...options, showFpsOverlay: false });
+        return false;
+      }
+      const x = layout.map.x;
+      const y = layout.map.y;
+      const width = layout.map.width;
+      const height = layout.map.height;
+      const geometry = tileMapView.geometry || {};
+      const scaleBasisWidth = Number(options.scaleBasisWidth) || width;
+      const scaleBasisHeight = Number(options.scaleBasisHeight) || height;
+      const originX = options.originX !== undefined ? Number(options.originX) : x + width * 0.5;
+      const originY = options.originY !== undefined ? Number(options.originY) : y + height * 0.42;
+      const scale = Math.max(0.38, Math.min(0.78, Math.min(scaleBasisWidth / 520, scaleBasisHeight / 420)));
+      const viewport = {
+        originX: Number.isFinite(originX) ? originX : x + width * 0.5,
+        originY: Number.isFinite(originY) ? originY : y + height * 0.42,
+        panX: Number(tileMapView.pan?.x) || 0,
+        panY: Number(tileMapView.pan?.y) || 0,
+        scale,
+        seed: tileMapView.seed || 'scout-tile-v1',
+        geometry,
+      };
+      const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
+      this.worldTileWaterTimeOverride = options.waterTimeMs !== null
+        && options.waterTimeMs !== undefined
+        && Number.isFinite(Number(options.waterTimeMs))
+        ? Number(options.waterTimeMs)
+        : null;
+      let renderedSnapshot = false;
+      try {
+        if (options.frameless && this.ctx?.fillRect) {
+          this.ctx.fillStyle = 'rgba(20, 26, 23, 0.92)';
+          this.ctx.fillRect(x, y, width, height);
+        }
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
+        this.ctx.clip();
+        renderedSnapshot = this.renderWorldTileSnapshotCache(tileMapView, viewport, frame);
+        this.ctx.restore();
+      } finally {
+        this.worldTileWaterTimeOverride = null;
+      }
+      this.endFrame({ ...options, showFpsOverlay: false });
+      return renderedSnapshot;
+    }
+
     renderTabs(activeTab = 'resources', state = {}, options = {}) {
       const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [

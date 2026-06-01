@@ -28,7 +28,16 @@
     }
 
     buildMessage(version) {
-      return `游戏有更新，需要重启后继续。${version?.version ? `\n版本：${version.version}` : ''}`;
+      const lines = ['游戏有更新，需要重启后继续。'];
+      const serverVersion = version?.serverVersion || version?.version || '';
+      const localVersion = version?.localVersion || version?.previousVersion || '';
+      const serverDeploymentId = version?.serverDeploymentId || version?.deploymentId || '';
+      const localDeploymentId = version?.localDeploymentId || version?.previousDeploymentId || '';
+      if (serverVersion) lines.push(`服务器版本：${serverVersion}`);
+      if (localVersion) lines.push(`本地版本：${localVersion}`);
+      if (serverDeploymentId) lines.push(`服务器部署：${String(serverDeploymentId).slice(0, 12)}`);
+      if (localDeploymentId) lines.push(`本地部署：${String(localDeploymentId).slice(0, 12)}`);
+      return lines.join('\n');
     }
 
     getViewportSize() {
@@ -263,14 +272,23 @@
 
       const bodyEndY = bodyStartY + bodyLines.length * 24;
       const versionY = bodyEndY + 14;
-      if (version?.version) {
-        this.drawText(`版本 ${version.version}`, contentX, versionY, {
+      const serverVersion = version?.serverVersion || version?.version || '';
+      const localVersion = version?.localVersion || version?.previousVersion || '';
+      const serverDeploymentId = version?.serverDeploymentId || version?.deploymentId || '';
+      const localDeploymentId = version?.localDeploymentId || version?.previousDeploymentId || '';
+      [
+        serverVersion ? `服务器版本 ${serverVersion}` : '',
+        localVersion ? `本地版本 ${localVersion}` : '',
+        serverDeploymentId ? `服务器部署 ${String(serverDeploymentId).slice(0, 12)}` : '',
+        localDeploymentId ? `本地部署 ${String(localDeploymentId).slice(0, 12)}` : '',
+      ].filter(Boolean).slice(0, 4).forEach((line, index) => {
+        this.drawText(line, contentX, versionY + index * 20, {
           size: 14,
           color: '#f0b45b',
           bold: true,
           align: 'center',
         });
-      }
+      });
 
       this.drawText('为保证资源与状态一致，点击按钮后立即重载。', contentX, noteY, {
         size: 13,

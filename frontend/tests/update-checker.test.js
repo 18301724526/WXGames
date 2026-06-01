@@ -35,7 +35,15 @@ test('update checker prompts once when deployment id changes and stops polling',
   await checker.check();
   await checker.check();
 
-  assert.deepEqual(prompts, [{ version: { deploymentId: 'b' }, previousDeploymentId: 'a' }]);
+  assert.deepEqual(prompts, [{
+    version: {
+      deploymentId: 'b',
+      serverVersion: '',
+      serverDeploymentId: 'b',
+      localDeploymentId: 'a',
+    },
+    previousDeploymentId: 'a',
+  }]);
   assert.equal(checker.timer, null);
   assert.equal(cleared.length, 1);
 });
@@ -104,7 +112,17 @@ test('update checker emits initialization and update logs', async () => {
 
   assert.deepEqual(entries, [
     { type: 'initialized', version: { deploymentId: 'a' }, deploymentId: 'a' },
-    { type: 'updated', version: { deploymentId: 'b' }, deploymentId: 'b', previousDeploymentId: 'a' },
+    {
+      type: 'updated',
+      version: {
+        deploymentId: 'b',
+        serverVersion: '',
+        serverDeploymentId: 'b',
+        localDeploymentId: 'a',
+      },
+      deploymentId: 'b',
+      previousDeploymentId: 'a',
+    },
   ]);
 });
 

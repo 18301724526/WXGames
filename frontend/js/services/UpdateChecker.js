@@ -61,14 +61,20 @@
         this.currentDeploymentId = nextDeploymentId;
         this.prompting = true;
         this.stop();
+        const updateVersion = {
+          ...version,
+          serverVersion: version?.version || '',
+          serverDeploymentId: nextDeploymentId,
+          localDeploymentId: previousDeploymentId,
+        };
         this.onLog({
           type: 'updated',
-          version,
+          version: updateVersion,
           deploymentId: nextDeploymentId,
           previousDeploymentId,
         });
-        this.onUpdate(version, previousDeploymentId);
-        return version;
+        this.onUpdate(updateVersion, previousDeploymentId);
+        return updateVersion;
       }
       this.onLog({
         type: 'unchanged',

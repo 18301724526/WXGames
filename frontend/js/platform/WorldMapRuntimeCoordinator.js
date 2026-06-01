@@ -84,6 +84,8 @@
           runtime: this.getPlatformRuntime(),
           renderer,
           presenter: this.getPresenter(),
+          initialPanX: this.getBaseUiState()?.worldPanX,
+          initialPanY: this.getBaseUiState()?.worldPanY,
           getState: () => this.getState() || {},
           getBaseUiState: () => this.getBaseUiState() || {},
           getTopBarBottom: (state) => this.getTopBarBottom(state),
@@ -96,6 +98,9 @@
       if (renderer && typeof runtime.setRenderer === 'function') runtime.setRenderer(renderer);
       const presenter = this.getPresenter();
       if (presenter && typeof runtime.setPresenter === 'function') runtime.setPresenter(presenter);
+      if ('renderOnDrag' in runtime && this.renderOnDrag !== undefined) {
+        runtime.renderOnDrag = this.renderOnDrag !== false;
+      }
       return runtime;
     }
 

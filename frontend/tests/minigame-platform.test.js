@@ -485,10 +485,10 @@ test('CanvasGameApp routes map-home drags through WorldMapRuntime without global
   assert.deepEqual(actionCalls, []);
   assert.equal(app.territoryUiState.worldPanX, 22);
   assert.equal(app.territoryUiState.worldPanY, 14);
-  assert.ok(calls.some((call) => call[0] === 'world-layer' && call[1] === 22 && call[2] === 14));
+  assert.equal(calls.some((call) => call[0] === 'world-layer' && call[1] === 22 && call[2] === 14), false);
 });
 
-test('CanvasGameApp pans map-home through two-finger gestures with cached snapshots', () => {
+test('CanvasGameApp pans map-home through two-finger gestures without map redraws', () => {
   const calls = [];
   const runtime = new PlatformRuntime({
     kind: 'wechat',
@@ -538,9 +538,8 @@ test('CanvasGameApp pans map-home through two-finger gestures with cached snapsh
 
   assert.equal(app.territoryUiState.worldPanX, 16);
   assert.equal(app.territoryUiState.worldPanY, 12);
-  assert.equal(layerCalls.at(-1).snapshotOnly, true);
-  assert.equal(layerCalls.at(-1).reuseCachedWorldTileView, true);
-  assert.ok(Number.isFinite(layerCalls.at(-1).waterTimeMs));
+  assert.equal(layerCalls.length, 0);
+  assert.equal(calls.some((call) => call[0] === 'world-layer'), false);
 });
 
 test('CanvasGameApp skips world water timer frames while map drags cool down', () => {
@@ -619,8 +618,8 @@ test('CanvasGameApp skips world water timer frames while map drags cool down', (
   timer.callback();
 
   assert.equal(app.isWorldMapDragCoolingDown(), false);
-  assert.equal(renderCalls.length, renderCountAfterDragEnd + 1);
-  assert.equal(layerCalls.length, layerCountAfterDragEnd + 1);
+  assert.equal(renderCalls.length, renderCountAfterDragEnd);
+  assert.equal(layerCalls.length, layerCountAfterDragEnd);
 });
 
 test('Canvas game app dispatches canvas taps to server actions without DOM controllers', async () => {

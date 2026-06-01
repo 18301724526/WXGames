@@ -208,7 +208,7 @@
         host: this,
         worldMapRuntime: this.worldMapRuntime,
         useWorldMapRuntime: this.useWorldMapRuntime,
-        renderOnDrag: true,
+        renderOnDrag: false,
         consumeDragEvent: true,
         getRenderer: () => this.worldMapRenderer,
         getPresenter: () => this.presenter || this.renderer?.presenter,
@@ -235,7 +235,7 @@
         },
         onAfterDrag: ({ phase, handled }) => {
           if (handled && phase === 'move') {
-            this.worldMapDragFrameActive = true;
+            this.updateWorldMapDragCompositor();
           }
           if (handled && (phase === 'end' || phase === 'cancel')) {
             this.finishWorldMapSnapshotDrag();
@@ -414,8 +414,7 @@
         { source: 'pinchPan', render: false },
       ) !== false;
       this.worldMapRuntime = runtime;
-      this.worldMapDragFrameActive = true;
-      this.requestWorldMapRenderAnimationFrame(this.getWorldMapSnapshotRenderOptions(runtime.waterTimeMs));
+      this.updateWorldMapDragCompositor();
       if (event?.preventDefault) event.preventDefault();
       if (event?.stopPropagation) event.stopPropagation();
       return moved || true;
@@ -804,6 +803,10 @@
       const width = Number(metrics.width) || this.runtime?.width || this.worldMapRenderer.width;
       const height = Number(metrics.height) || this.runtime?.height || this.worldMapRenderer.height;
       const padding = Number(metrics.padding) || 0;
+      const changed = this.worldMapRenderer.width !== width
+        || this.worldMapRenderer.height !== height
+        || this.worldMapRenderer.viewportOffsetX !== padding
+        || this.worldMapRenderer.viewportOffsetY !== padding;
       this.worldMapRenderer.width = width;
       this.worldMapRenderer.height = height;
       this.worldMapRenderer.pixelRatio = this.runtime?.pixelRatio || this.worldMapRenderer.pixelRatio;
@@ -811,6 +814,7 @@
       this.worldMapRenderer.viewportOffsetY = padding;
       this.worldMapRenderer.viewportWidth = Number(metrics.viewportWidth) || this.runtime?.width || width;
       this.worldMapRenderer.viewportHeight = Number(metrics.viewportHeight) || this.runtime?.height || height;
+      if (changed) this.worldMapRuntime?.invalidateBake?.();
       return true;
     }
 
@@ -818,9 +822,18 @@
       if (!state) return false;
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       if (!coordinator) return false;
+      if (!options.snapshotOnly) this.clearWorldMapLayerTransform();
       const rendered = coordinator.render(state, options);
       this.worldMapRuntime = coordinator.getMapRuntime();
       return rendered;
+    }
+
+    shouldRenderRuntimeWorldMap(state = this.lastGame?.state, options = {}) {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!coordinator?.canRender?.(state)) return false;
+      if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
+      return Boolean(options.force || runtime.isMapBakeDirty(state));
     }
 
     getFrozenWorldMapWaterTimeMs() {
@@ -873,7 +886,78 @@
       if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
       const shouldRender = Boolean(this.deferRenderUntilWorldMapDragEnd);
       this.deferRenderUntilWorldMapDragEnd = false;
-      return shouldRender ? this.renderActive({ invalidateWorldTileView: false }) : false;
+      return shouldRender ? this.renderActive({ invalidateWorldTileView: false }) : true;
+    }
+
+    getWorldMapRuntimeDragOffset() {
+      const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+      if (runtime && typeof runtime.getCameraOffsetFromBaked === 'function') return runtime.getCameraOffsetFromBaked();
+      return {
+        x: Number(runtime?.dragLayerOffset?.x) || 0,
+        y: Number(runtime?.dragLayerOffset?.y) || 0,
+      };
+    }
+
+    getWorldMapDragTransformLimit() {
+      return Math.max(120, this.getWorldMapLayerPadding() * 0.72);
+    }
+
+    isWorldMapDragTransformNearLimit(offset = this.getWorldMapRuntimeDragOffset()) {
+      const limit = this.getWorldMapDragTransformLimit();
+      return Math.abs(Number(offset.x) || 0) >= limit || Math.abs(Number(offset.y) || 0) >= limit;
+    }
+
+    updateWorldMapDragCompositor() {
+      const offset = this.getWorldMapRuntimeDragOffset();
+      if (
+        typeof this.runtime?.ensureLayerCanvas === 'function'
+        && typeof this.runtime?.getLayerCanvas === 'function'
+        && !this.runtime.getLayerCanvas('worldMap')
+      ) {
+        this.runtime.ensureLayerCanvas('worldMap', { padding: this.getWorldMapLayerPadding() });
+      }
+      if (typeof this.runtime?.setLayerTranslate === 'function') {
+        this.runtime.setLayerTranslate('worldMap', offset.x, offset.y);
+      }
+      return offset;
+    }
+
+    clearWorldMapLayerTransform() {
+      return typeof this.runtime?.clearLayerTransform === 'function'
+        ? this.runtime.clearLayerTransform('worldMap')
+        : false;
+    }
+
+    refreshWorldMapLayerFromSnapshot(options = {}) {
+      if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
+      if (typeof this.worldMapRenderer.renderWorldMapSnapshotLayer !== 'function') return false;
+      this.syncWorldMapRendererLayerMetrics();
+      const state = this.lastGame.state;
+      const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+      const territoryUiState = runtime?.getCameraUiState?.()
+        || this.lastGame?.territoryController?.getUiState?.()
+        || this.territoryUiState
+        || {};
+      const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
+        ? this.renderer.getTopBarBottom(state)
+        : 84;
+      const rendered = this.worldMapRenderer.renderWorldMapSnapshotLayer(state, {
+        ...this.buildRenderOptions('military', territoryUiState),
+        activeTab: 'military',
+        isMapHome: true,
+        territoryUiState,
+        topBarBottom,
+        frameless: true,
+        preserveOnMiss: true,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: options.waterTimeMs ?? this.worldMapDragWaterTimeMs,
+        showFpsOverlay: false,
+      });
+      if (!rendered) return false;
+      runtime?.markBakedCamera?.(runtime.camera);
+      this.clearWorldMapLayerTransform();
+      return true;
     }
 
     getRequestAnimationFrame() {
@@ -894,6 +978,7 @@
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (this.isWorldMapHomeActive() && coordinator?.canRender(this.lastGame.state)) {
+        if (!this.shouldRenderRuntimeWorldMap(this.lastGame.state, options)) return false;
         const runtimeDragging = Boolean(runtime?.isDragging?.());
         const hasOptionWaterTime = options.waterTimeMs !== null
           && options.waterTimeMs !== undefined
@@ -956,9 +1041,8 @@
 
     requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
-        const waterTimeMs = this.getFrozenWorldMapWaterTimeMs();
-        this.worldMapDragFrameActive = true;
-        return this.requestWorldMapRenderAnimationFrame(this.getWorldMapSnapshotRenderOptions(waterTimeMs));
+        this.updateWorldMapDragCompositor();
+        return true;
       }
       if (this.animationRenderQueued) return true;
       const raf = this.getRequestAnimationFrame();
@@ -1478,7 +1562,7 @@
         isMapHome: homeView.isMapHome,
       };
       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
-        this.renderRuntimeWorldMap(state, renderOptions);
+        if (this.shouldRenderRuntimeWorldMap(state, renderOptions)) this.renderRuntimeWorldMap(state, renderOptions);
       } else {
         this.renderWorldMapLayer(state, renderOptions);
       }
@@ -1541,6 +1625,7 @@
           return;
         }
         if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+        if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap(this.lastGame?.state, {})) return;
         if (this.worldMapRenderer) this.renderWorldMapLayerFrame();
         else this.renderAnimationFrame();
       }, this.getWorldTileWaterAnimationFrameMs());

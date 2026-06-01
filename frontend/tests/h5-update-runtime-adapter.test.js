@@ -103,7 +103,7 @@ test('H5 update runtime adapter owns confirmation cache clearing and reload', as
 
   const nextUrl = await adapter.promptAndReload({ version: '1.2.3' });
 
-  assert.deepEqual(confirmed, ['游戏有更新，需要重启后继续。\n版本：1.2.3']);
+  assert.deepEqual(confirmed, ['游戏有更新，需要重启后继续。\n服务器版本：1.2.3']);
   assert.deepEqual(deletedCaches, ['frontend-v1', 'runtime-v1']);
   assert.deepEqual(unregistered, ['sw-a', 'sw-b']);
   assert.equal(nextUrl, 'https://kodagame.top/index.html?foo=bar&reload=12345');
@@ -128,7 +128,7 @@ test('H5 update runtime adapter binds runtime confirm to avoid illegal invocatio
 
   await adapter.promptAndReload({ version: '2.0.0' });
 
-  assert.deepEqual(calls, ['runtime-bound:游戏有更新，需要重启后继续。\n版本：2.0.0']);
+  assert.deepEqual(calls, ['runtime-bound:游戏有更新，需要重启后继续。\n服务器版本：2.0.0']);
 });
 
 test('H5 update runtime adapter renders a canvas prompt and waits for canvas click before reload', async () => {
@@ -189,8 +189,8 @@ test('app delegates update reload runtime instead of touching browser globals di
   const canvasAppJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'utf8');
   const adapterJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'ui', 'H5UpdateRuntimeAdapter.js'), 'utf8');
 
-  assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5/);
-  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v5[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/ui\/H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v6/);
+  assert.match(html, /H5UpdateRuntimeAdapter\.js\?v=h5-update-runtime-v6[\s\S]*H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(appJs, /this\.showUpdatePrompt\(version\)/);
   assert.match(canvasAppJs, /this\.updateRuntime\?\.promptAndReload\?\.\(version\)/);
   assert.doesNotMatch(appJs, /window\.confirm|window\.caches|navigator\.serviceWorker|window\.location|new URL\(window\.location/);

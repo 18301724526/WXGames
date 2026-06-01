@@ -131,7 +131,7 @@ test('app receives H5 shell instead of assembling every document adapter itself'
   assert.doesNotMatch(html, /CitySwitcherAdapter|citySwitcher/);
   assert.doesNotMatch(html, /PopulationPanelAdapter/);
   assert.doesNotMatch(html, /AdvisorPanelAdapter|advisorModal|advisorBtn/);
-  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-scheduler-v2[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/services\/GameStateSync\.js\?v=sync-scheduler-v2[\s\S]*js\/services\/UpdateChecker\.js\?v=update-local-server-version-v1[\s\S]*js\/ui\/H5ShellAdapter\.js\?v=h5-shell-registry-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(appJs, /const shell = window\.H5ShellAdapter\?\.fromRuntime\(window/);
   assert.doesNotMatch(appJs, /H5ShellAdapter\?\.fromDocument\(document/);
   assert.match(appJs, /registry: window/);

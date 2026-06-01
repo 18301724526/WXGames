@@ -24,6 +24,10 @@
       this.waterTimeMs = null;
       this.dragLayerOffset = { x: 0, y: 0 };
       this.renderOnDrag = options.renderOnDrag !== false;
+      this.bakedCamera = { x: this.camera.x, y: this.camera.y };
+      this.baseHitTargets = [];
+      this.hasBakedMapLayer = false;
+      this.mapBakeDirty = true;
       this.lastMapDataSignature = '';
     }
 
@@ -181,6 +185,7 @@
       const hadPreviousSignature = Boolean(this.lastMapDataSignature);
       this.lastMapDataSignature = signature;
       if (hadPreviousSignature) {
+        this.mapBakeDirty = true;
         if (typeof this.renderer?.invalidateWorldTileCaches === 'function') {
           this.renderer.invalidateWorldTileCaches();
         } else if (typeof this.renderer?.invalidateWorldTileViewCache === 'function') {
@@ -188,6 +193,20 @@
         }
       }
       return hadPreviousSignature;
+    }
+
+    getCurrentMapDataSignature(state = this.getState()) {
+      return this.getMapDataSignature(state);
+    }
+
+    isMapBakeDirty(state = this.getState()) {
+      if (!this.hasBakedMapLayer || this.mapBakeDirty) return true;
+      return this.getCurrentMapDataSignature(state) !== this.lastMapDataSignature;
+    }
+
+    invalidateBake() {
+      this.mapBakeDirty = true;
+      return true;
     }
 
     resetCamera(options = {}) {
@@ -205,8 +224,12 @@
       this.camera.x = nextX;
       this.camera.y = nextY;
       this.onCameraChanged?.({ ...this.camera }, options);
+      const isDragLike = options.source === 'drag' || options.source === 'pinchPan';
+      if (isDragLike && options.render === false) {
+        const offset = this.getCameraOffsetFromBaked();
+        this.setDragLayerOffset(offset.x, offset.y);
+      }
       if (options.render !== false) {
-        const isDragLike = options.source === 'drag' || options.source === 'pinchPan';
         this.requestRender(isDragLike ? {
           force: true,
           reuseCachedWorldTileView: true,
@@ -314,6 +337,7 @@
       const nextY = Number.isFinite(Number(y)) ? Number(y) : 0;
       this.dragLayerOffset.x = nextX;
       this.dragLayerOffset.y = nextY;
+      this.hitTargets = this.getOffsetHitTargets();
       return this.dragLayerOffset;
     }
 
@@ -321,20 +345,85 @@
       return this.setDragLayerOffset(0, 0);
     }
 
+    getCameraOffsetFromBaked() {
+      return {
+        x: (Number(this.camera.x) || 0) - (Number(this.bakedCamera.x) || 0),
+        y: (Number(this.camera.y) || 0) - (Number(this.bakedCamera.y) || 0),
+      };
+    }
+
+    markBakedCamera(camera = this.camera) {
+      this.bakedCamera = {
+        x: Number(camera?.x) || 0,
+        y: Number(camera?.y) || 0,
+      };
+      this.clearDragLayerOffset();
+      return this.bakedCamera;
+    }
+
+    getOffsetHitTargets() {
+      const offsetX = Number(this.dragLayerOffset.x) || 0;
+      const offsetY = Number(this.dragLayerOffset.y) || 0;
+      return (this.baseHitTargets || []).map((target) => ({
+        ...target,
+        x: (Number(target.x) || 0) + offsetX,
+        y: (Number(target.y) || 0) + offsetY,
+      }));
+    }
+
+    syncHitTargetsFromRenderer() {
+      const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
+      const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
+      this.baseHitTargets = (this.renderer?.hitTargets || [])
+        .filter((target) => target?.action?.type === 'openWorldSite'
+          || target?.action?.type === 'resetWorldPan'
+          || target?.action?.type === 'worldMapDrag')
+        .map((target) => ({
+          ...target,
+          x: (Number(target.x) || 0) - viewportOffsetX,
+          y: (Number(target.y) || 0) - viewportOffsetY,
+        }));
+      this.hitTargets = this.getOffsetHitTargets();
+      return this.hitTargets;
+    }
+
     render(options = {}) {
       const state = options.state || this.getState();
       if (!this.canRender(state)) {
         this.renderer?.clearAll?.();
         this.hitTargets = [];
+        this.baseHitTargets = [];
+        this.hasBakedMapLayer = false;
+        this.mapBakeDirty = true;
         this.lastMapDataSignature = '';
         return false;
       }
-      this.syncMapDataSignature(state);
+      const snapshotOnly = Boolean(options.snapshotOnly || this.isDragging());
+      const canUseSnapshotLayer = Boolean(snapshotOnly
+        && this.hasBakedMapLayer
+        && !this.isMapBakeDirty(state)
+        && typeof this.renderer.renderWorldMapSnapshotLayer === 'function');
       const now = this.now();
       if (!options.force && this.lastRenderAt && now - this.lastRenderAt < Math.max(1, this.frameMs - 1)) return false;
       this.lastRenderAt = now;
       const uiState = this.getCameraUiState();
       const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state);
+      if (canUseSnapshotLayer) {
+        const renderedSnapshot = this.renderer.renderWorldMapSnapshotLayer(state, {
+          ...options,
+          activeTab: 'military',
+          isMapHome: true,
+          territoryUiState: uiState,
+          topBarBottom,
+          reuseCachedWorldTileView: true,
+          snapshotOnly: true,
+          waterTimeMs: options.waterTimeMs ?? this.waterTimeMs,
+          showFpsOverlay: false,
+        });
+        this.lastLayout = this.getLayerLayout(state, { topBarBottom });
+        return renderedSnapshot;
+      }
+      this.syncMapDataSignature(state);
       const rendered = this.renderer.renderWorldMapLayer(state, {
         ...options,
         activeTab: 'military',
@@ -343,24 +432,17 @@
         topBarBottom,
         collectHitTargets: true,
         reuseCachedWorldTileView: Boolean(options.reuseCachedWorldTileView || this.isDragging()),
-        snapshotOnly: Boolean(options.snapshotOnly || this.isDragging()),
+        snapshotOnly,
         waterTimeMs: options.waterTimeMs ?? this.waterTimeMs,
         showFpsOverlay: false,
       });
       this.lastLayout = this.getLayerLayout(state, { topBarBottom });
-      const offsetX = Number(this.dragLayerOffset.x) || 0;
-      const offsetY = Number(this.dragLayerOffset.y) || 0;
-      const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
-      const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
-      this.hitTargets = (this.renderer.hitTargets || [])
-        .filter((target) => target?.action?.type === 'openWorldSite'
-          || target?.action?.type === 'resetWorldPan'
-          || target?.action?.type === 'worldMapDrag')
-        .map((target) => ({
-          ...target,
-          x: (Number(target.x) || 0) - viewportOffsetX + offsetX,
-          y: (Number(target.y) || 0) - viewportOffsetY + offsetY,
-        }));
+      if (rendered) {
+        this.hasBakedMapLayer = true;
+        this.mapBakeDirty = false;
+        this.markBakedCamera(this.camera);
+        this.syncHitTargetsFromRenderer();
+      }
       return rendered;
     }
   }

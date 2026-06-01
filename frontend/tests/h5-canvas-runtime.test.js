@@ -2182,7 +2182,7 @@ test('Canvas game shell coalesces repeated world drag moves into one requested f
   assert.equal(renderCount, 2);
 });
 
-test('Canvas game shell redraws the passive world map layer from snapshots during drag moves', () => {
+test('Canvas game shell does not redraw the passive world map layer during drag moves', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -2241,20 +2241,11 @@ test('Canvas game shell redraws the passive world map layer from snapshots durin
   listeners.pointermove({ pointerId: 9, clientX: 130, clientY: 210, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointermove({ pointerId: 9, clientX: 150, clientY: 230, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(frames.length, 1);
+  assert.equal(frames.length, 0);
   assert.equal(fullRenderCount, 1);
   assert.equal(mapLayerCalls.length, 0);
-  assert.equal(worldMapLayer.style.transform, undefined);
-
-  frames[0]();
-
-  assert.equal(fullRenderCount, 1);
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
-  assert.ok(Number.isFinite(mapLayerCalls[0].options.waterTimeMs));
-  assert.equal(worldMapLayer.style.transform, undefined);
-  assert.equal(worldMapLayer.style.willChange, undefined);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(0px, 0px, 0)');
+  assert.equal(worldMapLayer.style.willChange, 'transform');
 });
 
 test('Canvas game shell routes map-home drags through WorldMapRuntime without global world drag actions', () => {
@@ -2327,6 +2318,8 @@ test('Canvas game shell routes map-home drags through WorldMapRuntime without gl
       uiState.worldPanY = camera.y;
     },
   });
+  layerCalls.length = 0;
+  renderCalls.length = 0;
 
   listeners.pointerdown({ pointerId: 21, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointermove({ pointerId: 21, clientX: 144, clientY: 218, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
@@ -2335,12 +2328,11 @@ test('Canvas game shell routes map-home drags through WorldMapRuntime without gl
   assert.deepEqual(dispatched, []);
   assert.equal(uiState.worldPanX, 24);
   assert.equal(uiState.worldPanY, 18);
-  assert.equal(layerCalls.length > 0, true);
-  assert.equal(layerCalls.some((call) => call.options.snapshotOnly === true), true);
-  assert.equal(renderCalls.length, 1);
+  assert.equal(layerCalls.length, 0);
+  assert.equal(renderCalls.length, 0);
 });
 
-test('Canvas game shell keeps queued map-home drag frames snapshot-only after pointerup', () => {
+test('Canvas game shell keeps queued map-home drag frames out of the map layer after pointerup', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -2402,6 +2394,7 @@ test('Canvas game shell keeps queued map-home drag frames snapshot-only after po
       uiState.worldPanY = camera.y;
     },
   });
+  shell.runtime.ensureLayerCanvas('worldMap');
   let now = 1000;
   shell.now = () => now;
 
@@ -2410,15 +2403,10 @@ test('Canvas game shell keeps queued map-home drag frames snapshot-only after po
   listeners.pointermove({ pointerId: 22, clientX: 150, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 22, clientX: 150, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(frames.length, 1);
   assert.equal(layerCalls.length, 0);
   assert.equal(shell.isWorldMapDragging(), false);
-  frames[0]();
-  assert.equal(layerCalls.length, 1);
-  assert.equal(layerCalls[0].options.force, true);
-  assert.equal(layerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(layerCalls[0].options.snapshotOnly, true);
-  assert.equal(layerCalls[0].options.waterTimeMs, 1000);
+  frames.forEach((frame) => frame());
+  assert.equal(layerCalls.length, 0);
   assert.equal(uiState.worldPanX, 30);
   assert.equal(uiState.worldPanY, 20);
 });
@@ -2484,6 +2472,7 @@ test('Canvas game shell pans map-home through two-finger gestures using snapshot
       uiState.worldPanY = camera.y;
     },
   });
+  shell.runtime.ensureLayerCanvas('worldMap');
 
   listeners.touchstart({
     touches: [
@@ -2507,10 +2496,9 @@ test('Canvas game shell pans map-home through two-finger gestures using snapshot
 
   assert.equal(uiState.worldPanX, 14);
   assert.equal(uiState.worldPanY, 10);
-  assert.equal(layerCalls.length > 0, true);
-  assert.equal(layerCalls.at(-1).options.snapshotOnly, true);
-  assert.equal(layerCalls.at(-1).options.reuseCachedWorldTileView, true);
-  assert.ok(Number.isFinite(layerCalls.at(-1).options.waterTimeMs));
+  const worldMapLayer = shell.runtime.ensureLayerCanvas('worldMap');
+  assert.equal(layerCalls.length, 0);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(14px, 10px, 0)');
 });
 
 test('Canvas game shell keeps queued two-finger map-home frames snapshot-only after touchend', () => {
@@ -2575,6 +2563,7 @@ test('Canvas game shell keeps queued two-finger map-home frames snapshot-only af
       uiState.worldPanY = camera.y;
     },
   });
+  shell.runtime.ensureLayerCanvas('worldMap');
   let now = 1000;
   shell.now = () => now;
 
@@ -2610,14 +2599,10 @@ test('Canvas game shell keeps queued two-finger map-home frames snapshot-only af
     stopPropagation() {},
   });
 
-  assert.equal(frames.length, 1);
+  const worldMapLayer = shell.runtime.ensureLayerCanvas('worldMap');
+  assert.equal(frames.length, 0);
   assert.equal(layerCalls.length, 0);
-  frames[0]();
-  assert.equal(layerCalls.length, 1);
-  assert.equal(layerCalls[0].options.force, true);
-  assert.equal(layerCalls[0].options.snapshotOnly, true);
-  assert.equal(layerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(layerCalls[0].options.waterTimeMs, 1010);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(14px, 10px, 0)');
 });
 
 test('WorldMapRuntime invalidates tile caches only when map data changes', () => {
@@ -2682,7 +2667,7 @@ test('WorldMapRuntime invalidates tile caches only when map data changes', () =>
   assert.equal(renderCalls.at(-1).options.territoryUiState.worldPanX, 32);
 });
 
-test('Canvas game shell redraws snapshot drag frames without delayed compositor commits', () => {
+test('Canvas game shell moves map-home drags with the compositor without map redraws', () => {
   const { document, runtime, listeners, timeouts } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -2714,16 +2699,19 @@ test('Canvas game shell redraws snapshot drag frames without delayed compositor 
     invalidateWorldTileViewCache() {},
   };
   const game = {
-    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
-    getActiveTab: () => 'military',
-    territoryController: {
-      getUiState: () => uiState,
-      startWorldDrag() {},
-      moveWorldDrag(pointer) {
-        uiState.worldPanX = 24 + Number(pointer.x) - 110;
-        uiState.worldPanY = -12 + Number(pointer.y) - 180;
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
       },
-      endWorldDrag() {},
+    },
+    getActiveTab: () => 'military',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => uiState,
     },
   };
   const shell = CanvasGameShell.mount(game, {
@@ -2731,6 +2719,7 @@ test('Canvas game shell redraws snapshot drag frames without delayed compositor 
     document,
     runtime,
     renderer,
+    presenter: UIStatePresenter,
     previewEnabled: true,
     inputEnabled: true,
   });
@@ -2739,31 +2728,23 @@ test('Canvas game shell redraws snapshot drag frames without delayed compositor 
 
   listeners.pointerdown({ pointerId: 10, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
   mapLayerCalls.length = 0;
+  hudCalls.length = 0;
   shell.lastWorldMapLayerRenderAt = 0;
   listeners.pointermove({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
-  assert.equal(frames.length, 1);
+  assert.equal(frames.length, 0);
   assert.equal(mapLayerCalls.length, 0);
-  assert.equal(worldMapLayer.style.transform, undefined);
-  frames[0]();
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
-  assert.ok(Number.isFinite(mapLayerCalls[0].options.waterTimeMs));
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
   listeners.pointerup({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(mapLayerCalls.length, 2);
-  assert.equal(hudCalls.length, 2);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 0);
   assert.equal(timeouts.length, 0);
   assert.equal(shell.hasPendingWorldMapCompositeCommit(), false);
-  assert.equal(mapLayerCalls.at(-1).options.reuseCachedWorldTileView, false);
-  assert.equal(mapLayerCalls.at(-1).options.snapshotOnly, false);
-  assert.equal(mapLayerCalls.at(-1).options.waterTimeMs, null);
-  assert.equal(hudCalls.at(-1).options.skipWorldMapLayer, true);
-  assert.equal(worldMapLayer.style.transform, undefined);
-  assert.equal(worldMapLayer.style.willChange, undefined);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
+  assert.equal(worldMapLayer.style.willChange, 'transform');
 });
 
-test('Canvas game shell redraws repeated short world drags without pending compositor offsets', () => {
+test('Canvas game shell coalesces repeated short world drags without map redraws', () => {
   const { document, runtime, listeners, timeouts } = createCanvasHarness();
   runtime.requestAnimationFrame = (callback) => {
     callback();
@@ -2792,16 +2773,19 @@ test('Canvas game shell redraws repeated short world drags without pending compo
     },
   };
   const game = {
-    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
-    getActiveTab: () => 'military',
-    territoryController: {
-      getUiState: () => uiState,
-      startWorldDrag() {},
-      moveWorldDrag(pointer) {
-        uiState.worldPanX = 24 + Number(pointer.x) - 110;
-        uiState.worldPanY = -12 + Number(pointer.y) - 180;
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
       },
-      endWorldDrag() {},
+    },
+    getActiveTab: () => 'military',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => uiState,
     },
   };
   const shell = CanvasGameShell.mount(game, {
@@ -2809,6 +2793,7 @@ test('Canvas game shell redraws repeated short world drags without pending compo
     document,
     runtime,
     renderer,
+    presenter: UIStatePresenter,
     previewEnabled: true,
     inputEnabled: true,
   });
@@ -2824,33 +2809,27 @@ test('Canvas game shell redraws repeated short world drags without pending compo
   listeners.pointerup({ pointerId: 13, clientX: 138, clientY: 212, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
   assert.equal(timeouts.length, 0);
-  assert.equal(mapLayerCalls.length, 2);
-  assert.equal(hudCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
-  assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
-  assert.equal(worldMapLayer.style.transform, undefined);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 0);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
 
   now += 20;
   listeners.pointerdown({ pointerId: 14, clientX: 138, clientY: 212, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
   assert.equal(timeouts.length, 0);
-  assert.equal(mapLayerCalls.length, 2);
-  assert.equal(hudCalls.length, 1);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 0);
   assert.equal(shell.hasPendingWorldMapCompositeCommit(), false);
-  assert.equal(worldMapLayer.style.transform, undefined);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
 
   now += 20;
   listeners.pointermove({ pointerId: 14, clientX: 150, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointerup({ pointerId: 14, clientX: 150, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(mapLayerCalls.length, 4);
-  assert.equal(hudCalls.length, 2);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(hudCalls.length, 0);
   assert.equal(timeouts.length, 0);
-  assert.equal(mapLayerCalls[2].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[2].options.snapshotOnly, true);
-  assert.equal(mapLayerCalls[2].options.waterTimeMs, 1020);
-  assert.equal(worldMapLayer.style.transform, undefined);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(30px, 20px, 0)');
 });
 
 test('Canvas game app defers shell surface refresh while a compositor commit is pending', () => {
@@ -3291,7 +3270,7 @@ test('Canvas game shell refreshes animated world water on the map layer when dua
   assert.equal(mapLayerCalls.length, initialMapLayerCalls + 1);
 });
 
-test('Canvas game shell freezes animated world water during snapshot drag redraws', () => {
+test('Canvas game shell freezes animated world water without snapshot drag redraws', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -3349,14 +3328,10 @@ test('Canvas game shell freezes animated world water during snapshot drag redraw
   shell.lastWorldMapLayerRenderAt = 0;
   listeners.pointermove({ pointerId: 11, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(frames.length, 1);
+  assert.equal(frames.length, 0);
   assert.equal(mapLayerCalls.length, 0);
-  frames[0]();
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
-  assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
-  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, undefined);
+  assert.equal(shell.worldMapDragWaterTimeMs, 1000);
+  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, 'translate3d(0px, 0px, 0)');
 });
 
 test('Canvas game shell skips water timer frames while snapshot dragging and cooling down', () => {
@@ -3389,25 +3364,29 @@ test('Canvas game shell skips water timer frames while snapshot dragging and coo
     invalidateWorldTileViewCache() {},
   };
   let now = 1000;
-  const state = { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} };
+  const state = {
+    currentTab: 'military',
+    currentEra: 5,
+    militaryView: 'world',
+    territoryState: {
+      worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }] },
+    },
+  };
   const uiState = { worldPanX: 24, worldPanY: -12, tileMapWaterAnimated: true };
   const shell = CanvasGameShell.mount({
     state,
     getActiveTab: () => 'military',
+    mapHomeActive: true,
     territoryController: {
+      uiState,
       getUiState: () => uiState,
-      startWorldDrag() {},
-      moveWorldDrag(pointer) {
-        uiState.worldPanX = 24 + Number(pointer.x) - 110;
-        uiState.worldPanY = -12 + Number(pointer.y) - 180;
-      },
-      endWorldDrag() {},
     },
   }, {
     Runtime: H5CanvasRuntime,
     document,
     runtime,
     renderer,
+    presenter: UIStatePresenter,
     previewEnabled: true,
     inputEnabled: true,
   });
@@ -3424,7 +3403,7 @@ test('Canvas game shell skips water timer frames while snapshot dragging and coo
   timers.at(-1).callback();
 
   assert.equal(mapLayerCalls.length, 0);
-  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, undefined);
+  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, 'translate3d(10px, 20px, 0)');
 
   listeners.pointerup({ pointerId: 12, clientX: 130, clientY: 220, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
   assert.equal(shell.isWorldMapDragging(), false);
@@ -3439,7 +3418,7 @@ test('Canvas game shell skips water timer frames while snapshot dragging and coo
   timers.at(-1).callback();
 
   assert.equal(shell.isWorldMapDragCoolingDown(), false);
-  assert.equal(mapLayerCalls.length, callsAfterDragEnd + 1);
+  assert.equal(mapLayerCalls.length, callsAfterDragEnd);
 });
 
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {

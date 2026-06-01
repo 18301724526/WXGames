@@ -361,7 +361,7 @@
       if (!this.renderer?.render) return false;
       const runtimeOwnsWorldMap = Boolean(homeView.isMapHome
         && this.ensureWorldMapRuntimeCoordinator()?.canRender(this.state));
-      if (runtimeOwnsWorldMap) {
+      if (runtimeOwnsWorldMap && this.shouldRenderRuntimeWorldMap()) {
         this.renderRuntimeWorldMap();
       }
       this.renderer.render(this.state, {
@@ -416,6 +416,7 @@
             return;
           }
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+          if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) return;
           this.renderAnimationFrame('military');
         }, this.getWorldTileWaterAnimationFrameMs())
         : setIntervalFn(() => {
@@ -424,6 +425,7 @@
             return;
           }
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+          if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) return;
           this.renderAnimationFrame('military');
         }, this.getWorldTileWaterAnimationFrameMs());
       return true;
@@ -621,6 +623,7 @@
         host: this,
         worldMapRuntime: this.worldMapRuntime,
         useWorldMapRuntime: this.useWorldMapRuntime,
+        renderOnDrag: false,
         getRenderer: () => this.renderer,
         getPresenter: () => this.presenter,
         getState: () => this.state || {},
@@ -668,6 +671,38 @@
       const rendered = coordinator.render(this.state, options);
       this.worldMapRuntime = coordinator.getMapRuntime();
       return rendered;
+    }
+
+    shouldRenderRuntimeWorldMap(options = {}) {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!coordinator?.canRender?.(this.state)) return false;
+      if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
+      return Boolean(options.force || runtime.isMapBakeDirty(this.state));
+    }
+
+    refreshWorldMapLayerFromSnapshot(options = {}) {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!runtime || !this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
+      const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
+      const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        activeTab: 'military',
+        isMapHome: true,
+        territoryUiState,
+        topBarBottom: typeof this.renderer.getTopBarBottom === 'function'
+          ? this.renderer.getTopBarBottom(this.state)
+          : 84,
+        frameless: true,
+        preserveOnMiss: true,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: options.waterTimeMs ?? this.worldMapDragWaterTimeMs,
+        showFpsOverlay: false,
+      });
+      if (!rendered) return false;
+      runtime.markBakedCamera?.(runtime.camera);
+      return true;
     }
 
     getRequestAnimationFrame() {
@@ -2120,7 +2155,6 @@
         { source: 'pinchPan', render: false },
       );
       this.worldMapRuntime = runtime;
-      this.renderRuntimeWorldMap(this.getWorldMapSnapshotRenderOptions(runtime.waterTimeMs));
       return true;
     }
 
