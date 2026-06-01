@@ -276,6 +276,32 @@ test('famous person view state maps candidates and joined people into panel card
   assert.deepEqual(view.candidates[0].dismissAction, { type: 'dismissFamousPersonCandidate', candidateId: 'fpc_b' });
 });
 
+test('world tile map view state exposes lab template assets and water metadata', () => {
+  const view = UIStatePresenter.buildWorldTileMapViewState({
+    worldMap: {
+      version: 2,
+      seed: 'world-template-test',
+      tiles: [
+        { id: 'tile_4_1', q: 4, r: 1, terrain: 'ocean', oceanTemplates: ['river-mouth-sw'], discovered: true, visible: true },
+        { id: 'tile_4_2', q: 4, r: 2, terrain: 'river', riverPorts: ['ne', 'sw'], discovered: true, visible: true },
+      ],
+    },
+    territories: [],
+  });
+
+  const mouth = view.tiles.find((tile) => tile.id === 'tile_4_1');
+  const river = view.tiles.find((tile) => tile.id === 'tile_4_2');
+
+  assert.equal(mouth.templateAssets[0].key, 'river-mouth-sw');
+  assert.match(mouth.templateAssets[0].asset, /tile-ocean-river-mouth-sw\.png$/);
+  assert.equal(mouth.water.kind, 'ocean');
+  assert.match(mouth.water.asset, /tile-water-ocean-loop\.png$/);
+  assert.equal(river.templateAssets[0].key, 'ne-sw');
+  assert.match(river.templateAssets[0].asset, /tile-river-bank-uv-ne-sw\.png$/);
+  assert.equal(river.water.kind, 'river');
+  assert.match(river.water.asset, /tile-water-river-loop\.png$/);
+});
+
 test('famous person view state sorts joined roster by quality and exposes detail selection hints', () => {
   const makePerson = (id, name, quality, level, freeAttributePoints = 0) => ({
     id,

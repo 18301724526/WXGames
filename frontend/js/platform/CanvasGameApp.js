@@ -79,6 +79,7 @@
       this.buildingTransition = null;
       this.transitionTimer = null;
       this.lastAnimationRenderAt = 0;
+      this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.naming = {
         visible: false,
@@ -316,7 +317,42 @@
         tutorialHighlight: this.tutorialHighlight,
         loading: this.loading,
       });
+      if (resolvedActiveTab === 'military' && this.territoryUiState?.tileMapWaterAnimated) this.startTileMapWaterTimer();
+      else this.stopTileMapWaterTimer();
       return true;
+    }
+
+    startTileMapWaterTimer() {
+      if (this.tileMapWaterTimer) return false;
+      const timerHost = typeof this.scheduler?.setInterval === 'function'
+        ? this.scheduler
+        : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
+      const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
+      if (!setIntervalFn) return false;
+      this.tileMapWaterTimer = timerHost
+        ? setIntervalFn.call(timerHost, () => {
+          if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
+            this.stopTileMapWaterTimer();
+            return;
+          }
+          this.renderAnimationFrame('military');
+        }, 120)
+        : setIntervalFn(() => {
+          if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
+            this.stopTileMapWaterTimer();
+            return;
+          }
+          this.renderAnimationFrame('military');
+        }, 120);
+      return true;
+    }
+
+    stopTileMapWaterTimer() {
+      if (!this.tileMapWaterTimer) return;
+      if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.tileMapWaterTimer);
+      else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.tileMapWaterTimer);
+      else if (typeof clearInterval === 'function') clearInterval(this.tileMapWaterTimer);
+      this.tileMapWaterTimer = null;
     }
 
     showLoading(message = '') {

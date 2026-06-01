@@ -3096,6 +3096,7 @@
           siteId: tile.siteId || null,
           riverPorts: tile.riverPorts || [],
           oceanTemplates: tile.oceanTemplates || [],
+          transitionKey: tile.transitionKey || '',
         })),
         sites: sites.map((site) => ({
           id: site.id,
@@ -3122,7 +3123,9 @@
       const terrain = tile.terrain || 'plains';
       const terrainAsset = manifest.getTerrainAsset?.(terrain) || manifest.terrain?.[terrain] || manifest.terrain?.plains || {};
       const featureAsset = terrainAsset.feature ? manifest.getFeatureAsset?.(terrainAsset.feature) : null;
+      const templateAssets = manifest.getTileTemplateAssets?.(tile) || [];
       const site = tile.siteId ? siteById.get(tile.siteId) : null;
+      const siteAsset = site ? manifest.getSiteAsset?.(site.type || 'town') : null;
       return {
         id: tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`,
         q: this.toInteger(tile.q),
@@ -3131,6 +3134,23 @@
         terrainLabel: terrainAsset.label || terrain,
         terrainAsset: terrainAsset.path || '',
         waterAsset: terrainAsset.water ? manifest.getWaterAsset?.(terrainAsset.water)?.path || '' : '',
+        templateAssets: templateAssets.map((asset) => ({
+          label: asset.label || '',
+          key: asset.key || '',
+          type: asset.templateType || '',
+          asset: asset.path || '',
+        })).filter((asset) => asset.asset),
+        water: terrainAsset.water ? {
+          kind: terrainAsset.water,
+          asset: manifest.getWaterAsset?.(terrainAsset.water)?.path || '',
+          uvScale: manifest.getWaterAsset?.(terrainAsset.water)?.uvScale || 1,
+          speedX: manifest.getWaterAsset?.(terrainAsset.water)?.speedX || 0,
+          speedY: manifest.getWaterAsset?.(terrainAsset.water)?.speedY || 0,
+          alpha: manifest.getWaterAsset?.(terrainAsset.water)?.alpha || 1,
+        } : null,
+        riverPorts: Array.isArray(tile.riverPorts) ? tile.riverPorts.filter(Boolean) : [],
+        oceanTemplates: Array.isArray(tile.oceanTemplates) ? tile.oceanTemplates.filter(Boolean) : [],
+        transitionKey: typeof tile.transitionKey === 'string' ? tile.transitionKey : '',
         feature: featureAsset ? {
           key: terrainAsset.feature,
           asset: featureAsset.path || '',
@@ -3147,8 +3167,9 @@
           owner: site.owner || '',
           name: site.cityName || site.naturalName || '',
           title: site.naturalName || site.cityName || '',
-          art: site.art || '',
-          offset: manifest.getOverlayOffset?.(manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`) || { x: 0, y: 0 },
+          art: site.art || siteAsset?.path || '',
+          offset: manifest.getOverlayOffset?.(siteAsset?.overlayKey || manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`) || { x: 0, y: 0 },
+          scale: siteAsset?.scale || 0.46,
         } : null,
       };
     }
@@ -3163,6 +3184,12 @@
       const sortedTiles = geometry?.sortTilesForIsoDraw
         ? geometry.sortTilesForIsoDraw(normalizedTiles)
         : normalizedTiles;
+      const terrainPriority = { ocean: 0, river: 1 };
+      const drawTiles = [...sortedTiles].sort((a, b) => {
+        const terrainDelta = (terrainPriority[a.terrain] ?? 2) - (terrainPriority[b.terrain] ?? 2);
+        if (terrainDelta) return terrainDelta;
+        return 0;
+      });
       const activeScouts = (Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [])
         .filter((mission) => mission.kind === 'scout' && ['active', 'ready'].includes(mission.status))
         .map((mission) => ({
@@ -3191,8 +3218,8 @@
         },
         geometry: geometry?.DEFAULT_GEOMETRY || { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
         bounds,
-        tiles: sortedTiles,
-        sites: sortedTiles.filter((tile) => tile.site).map((tile) => ({
+        tiles: drawTiles,
+        sites: drawTiles.filter((tile) => tile.site).map((tile) => ({
           ...tile.site,
           tileId: tile.id,
           q: tile.q,

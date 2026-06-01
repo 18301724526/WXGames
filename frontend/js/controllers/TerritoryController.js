@@ -51,7 +51,10 @@
     }
 
     getUiState() {
-      return { ...this.uiState };
+      return {
+        ...this.uiState,
+        tileMapWaterAnimated: Boolean(this.uiState.tileMapWaterAnimated),
+      };
     }
 
     setWorldPan(x, y) {

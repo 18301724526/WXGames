@@ -3264,6 +3264,27 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  [
+    'assets/art/tile-map/tile-terrain-plains.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-shore-edge-sw.png',
+    'assets/art/tile-map/river-template/tile-river-bank-uv-ne-sw.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-water-full.png',
+    'assets/art/tile-map/tile-water-ocean-loop.png',
+    'assets/art/tile-map/tile-water-river-loop.png',
+    'assets/art/world-site-town-cutout.png',
+  ].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: {
+        src: assetPath,
+        width: 512,
+        height: 512,
+        naturalWidth: 512,
+        naturalHeight: 512,
+      },
+    });
+  });
   renderer.setPresenter({
     buildResourceViewState: () => ({
       hasWood: true,
@@ -3310,9 +3331,10 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
           id: 'tile_1_0',
           q: 1,
           r: 0,
-          terrain: 'forest',
-          terrainAsset: 'assets/art/tile-map/tile-terrain-forest.png',
-          feature: { asset: 'assets/art/tile-map/tile-feature-tree-cluster.png', scale: 0.44, offset: { x: 0, y: 4 } },
+          terrain: 'ocean',
+          terrainAsset: 'assets/art/tile-map/ocean-template/tile-ocean-water-full.png',
+          templateAssets: [{ key: 'river-mouth-sw', type: 'ocean', asset: 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png' }],
+          water: { kind: 'ocean', asset: 'assets/art/tile-map/tile-water-ocean-loop.png', uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
           site: { id: 'site-east', status: 'discovered', owner: 'neutral', type: 'town', name: '涓滃哺', title: '涓滃哺', art: 'assets/art/world-site-town-cutout.png', offset: { x: 0, y: 26 } },
         },
       ],
@@ -3387,6 +3409,7 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   });
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '赤火联盟'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
+  assert.ok(calls.some((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '守将 拓锋 · 营帐战首 · 良才'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '敌方战法 裂甲猛冲'));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察报告'), false);

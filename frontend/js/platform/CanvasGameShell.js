@@ -63,6 +63,7 @@
       this.buildingTransition = null;
       this.transitionTimer = null;
       this.lastAnimationRenderAt = 0;
+      this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
       this.naming = {
@@ -967,6 +968,7 @@
 
     renderReadOnly(state, activeTab = 'resources') {
       if (!this.previewEnabled || !this.renderer || !state) return false;
+      const territoryUiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
       this.renderer.render(state, {
         activeTab,
         mode: 'hud',
@@ -996,7 +998,7 @@
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
-        territoryUiState: this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
+        territoryUiState,
         ...((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {}),
         tabLocks: this.getTabLocks(state),
         naming: this.naming,
@@ -1006,7 +1008,27 @@
         tutorialHighlight: this.tutorialHighlight,
         rewardReveal: this.rewardReveal,
       });
+      if (activeTab === 'military' && territoryUiState.tileMapWaterAnimated) this.startTileMapWaterTimer();
+      else this.stopTileMapWaterTimer();
       return true;
+    }
+
+    startTileMapWaterTimer() {
+      if (this.tileMapWaterTimer || !this.runtime?.setInterval) return false;
+      this.tileMapWaterTimer = this.runtime.setInterval(() => {
+        if (this.getActiveTab() !== 'military') {
+          this.stopTileMapWaterTimer();
+          return;
+        }
+        this.renderAnimationFrame();
+      }, 120);
+      return true;
+    }
+
+    stopTileMapWaterTimer() {
+      if (!this.tileMapWaterTimer) return;
+      this.runtime?.clearInterval?.(this.tileMapWaterTimer);
+      this.tileMapWaterTimer = null;
     }
 
     startBattleScene(report = null) {

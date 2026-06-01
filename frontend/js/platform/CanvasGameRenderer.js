@@ -47,6 +47,10 @@
       this.edgePadding = options.edgePadding || 12;
       this.bottomSafeArea = options.bottomSafeArea || 12;
       this.assetCache = new Map();
+      this.worldTileMaskCache = new Map();
+      this.worldTileDryCompositeCache = new Map();
+      this.worldTileWaterCanvas = null;
+      this.worldTileWaterCtx = null;
       this.assetsChangedHandler = null;
       this.hitTargets = [];
       this.hoverPoint = null;
@@ -489,6 +493,304 @@
       this.ctx.drawImage(image, x, y, width, height);
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
       return true;
+    }
+
+    drawAssetClipped(assetPath, sourceRect, x, y, width, height, alpha = 1) {
+      const image = this.getAsset(assetPath);
+      if (!image || typeof this.ctx.drawImage !== 'function') return false;
+      const sourceWidth = Number(image.naturalWidth || image.width || 0);
+      const sourceHeight = Number(image.naturalHeight || image.height || 0);
+      const sx = Math.max(0, Number(sourceRect?.x) || 0);
+      const sy = Math.max(0, Number(sourceRect?.y) || 0);
+      const sw = Math.max(1, Number(sourceRect?.width) || sourceWidth || 1);
+      const sh = Math.max(1, Number(sourceRect?.height) || sourceHeight || 1);
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
+      this.ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return true;
+    }
+
+    getIsoTileSourceRect(assetPath = '') {
+      if (!assetPath || !assetPath.startsWith('assets/art/tile-map/')) return null;
+      return { x: 44, y: 150, width: 424, height: 212 };
+    }
+
+    drawTileAsset(assetPath, x, y, width, height, alpha = 1) {
+      const sourceRect = this.getIsoTileSourceRect(assetPath);
+      if (sourceRect) return this.drawAssetClipped(assetPath, sourceRect, x, y, width, height, alpha);
+      return this.drawAsset(assetPath, x, y, width, height, alpha);
+    }
+
+    getTemplateCanvasFactory() {
+      const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+      if (doc?.createElement) return () => doc.createElement('canvas');
+      if (typeof OffscreenCanvas === 'function') return (width = 1, height = 1) => new OffscreenCanvas(width, height);
+      return null;
+    }
+
+    createTileWorkCanvas(width, height) {
+      const factory = this.getTemplateCanvasFactory();
+      if (!factory) return null;
+      const canvas = factory(width, height);
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    }
+
+    getWorldTileTemplateMask(assetPath = '') {
+      if (!assetPath) return null;
+      const cached = this.worldTileMaskCache.get(assetPath);
+      if (cached !== undefined) return cached;
+      const image = this.getAsset(assetPath);
+      const width = Number(image?.naturalWidth || image?.width || 0);
+      const height = Number(image?.naturalHeight || image?.height || 0);
+      if (!image || !width || !height) {
+        this.worldTileMaskCache.set(assetPath, null);
+        return null;
+      }
+      const canvas = this.createTileWorkCanvas(width, height);
+      const probe = this.createTileWorkCanvas(width, height);
+      const ctx = canvas?.getContext?.('2d', { willReadFrequently: true });
+      const probeCtx = probe?.getContext?.('2d', { willReadFrequently: true });
+      if (!canvas || !probe || !ctx || !probeCtx) {
+        this.worldTileMaskCache.set(assetPath, null);
+        return null;
+      }
+      try {
+        probeCtx.drawImage(image, 0, 0);
+        const source = probeCtx.getImageData(0, 0, width, height);
+        const output = ctx.createImageData(width, height);
+        const terrainBounds = { x: 44, y: 150, width: 424, height: 212 };
+        const centerX = terrainBounds.x + terrainBounds.width * 0.5;
+        const centerY = terrainBounds.y + terrainBounds.height * 0.5;
+        const halfW = terrainBounds.width * 0.5;
+        const halfH = terrainBounds.height * 0.5;
+        for (let py = 0; py < height; py += 1) {
+          for (let px = 0; px < width; px += 1) {
+            const index = (py * width + px) * 4;
+            const insideTile = Math.abs(px - centerX) / Math.max(1, halfW)
+              + Math.abs(py - centerY) / Math.max(1, halfH) <= 1.03;
+            if (source.data[index + 3] > 8 || !insideTile) continue;
+            output.data[index] = 255;
+            output.data[index + 1] = 255;
+            output.data[index + 2] = 255;
+            output.data[index + 3] = 255;
+          }
+        }
+        ctx.putImageData(output, 0, 0);
+        this.worldTileMaskCache.set(assetPath, canvas);
+        return canvas;
+      } catch (_) {
+        this.worldTileMaskCache.set(assetPath, null);
+        return null;
+      }
+    }
+
+    getWorldTileDryTemplateCanvas(assetPath = '') {
+      if (!assetPath) return null;
+      const cached = this.worldTileDryCompositeCache.get(assetPath);
+      if (cached !== undefined) return cached;
+      const image = this.getAsset(assetPath);
+      const mask = this.getWorldTileTemplateMask(assetPath);
+      const width = Number(image?.naturalWidth || image?.width || 0);
+      const height = Number(image?.naturalHeight || image?.height || 0);
+      if (!image || !mask || !width || !height) {
+        this.worldTileDryCompositeCache.set(assetPath, null);
+        return null;
+      }
+      const canvas = this.createTileWorkCanvas(width, height);
+      const ctx = canvas?.getContext?.('2d');
+      if (!canvas || !ctx) {
+        this.worldTileDryCompositeCache.set(assetPath, null);
+        return null;
+      }
+      try {
+        ctx.drawImage(image, 0, 0);
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(mask, 0, 0);
+        ctx.globalCompositeOperation = 'source-over';
+        this.worldTileDryCompositeCache.set(assetPath, canvas);
+        return canvas;
+      } catch (_) {
+        this.worldTileDryCompositeCache.set(assetPath, null);
+        return null;
+      }
+    }
+
+    drawCanvasClipped(sourceCanvas, sourceRect, x, y, width, height, alpha = 1) {
+      if (!sourceCanvas || typeof this.ctx.drawImage !== 'function') return false;
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
+      this.ctx.drawImage(
+        sourceCanvas,
+        Number(sourceRect?.x) || 0,
+        Number(sourceRect?.y) || 0,
+        Number(sourceRect?.width) || Number(sourceCanvas.width) || 1,
+        Number(sourceRect?.height) || Number(sourceCanvas.height) || 1,
+        x,
+        y,
+        width,
+        height,
+      );
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return true;
+    }
+
+    drawWorldTileDryTemplate(tile = {}, drawRect = {}) {
+      const baseTemplate = this.getWorldTileTemplateBaseAsset(tile);
+      const baseAsset = baseTemplate?.asset || tile.terrainAsset || '';
+      if (!baseAsset) return false;
+      const dryCanvas = this.getWorldTileDryTemplateCanvas(baseAsset);
+      const sourceRect = this.getIsoTileSourceRect(baseAsset);
+      if (dryCanvas && sourceRect) {
+        return this.drawCanvasClipped(dryCanvas, sourceRect, drawRect.x, drawRect.y, drawRect.width, drawRect.height, 1);
+      }
+      return this.drawTileAsset(baseAsset, drawRect.x, drawRect.y, drawRect.width, drawRect.height);
+    }
+
+    getWorldTileTemplateBaseAsset(tile = {}) {
+      const templates = Array.isArray(tile.templateAssets) ? tile.templateAssets : [];
+      return templates.find((asset) => asset.asset && /^river-mouth-/.test(asset.key || ''))
+        || templates.find((asset) => asset.asset && !/tile-ocean-water-full\.png$/.test(asset.asset))
+        || templates[0]
+        || null;
+    }
+
+    getWorldTileWaterTemplateAssets(tile = {}) {
+      const templates = Array.isArray(tile.templateAssets) ? tile.templateAssets.filter((asset) => asset?.asset) : [];
+      if (!templates.length) return [];
+      if (tile.water?.kind === 'ocean') {
+        return templates.flatMap((asset) => {
+          if (!/^river-mouth-/.test(asset.key || '')) return [asset];
+          const manifest = this.constructor.getTileMapAssetManifest();
+          const shore = manifest.getRiverMouthShoreEdgeAsset?.(asset.key);
+          const river = manifest.getRiverMouthRiverTemplateAsset?.(asset.key);
+          return [
+            shore ? { key: asset.key, asset: shore.path, waterKind: 'ocean' } : null,
+            river ? { key: asset.key, asset: river.path, waterKind: 'river' } : null,
+          ].filter(Boolean);
+        });
+      }
+      return templates;
+    }
+
+    getWorldTileWaterWorkContext(width, height) {
+      const localW = Math.max(1, Math.ceil(width));
+      const localH = Math.max(1, Math.ceil(height));
+      if (!this.worldTileWaterCanvas) {
+        this.worldTileWaterCanvas = this.createTileWorkCanvas(localW, localH);
+        this.worldTileWaterCtx = this.worldTileWaterCanvas?.getContext?.('2d') || null;
+      }
+      if (!this.worldTileWaterCanvas || !this.worldTileWaterCtx) return null;
+      if (this.worldTileWaterCanvas.width !== localW) this.worldTileWaterCanvas.width = localW;
+      if (this.worldTileWaterCanvas.height !== localH) this.worldTileWaterCanvas.height = localH;
+      return {
+        canvas: this.worldTileWaterCanvas,
+        ctx: this.worldTileWaterCtx,
+        width: localW,
+        height: localH,
+      };
+    }
+
+    fillWorldTileWaterTexture(targetCtx, texture, water = {}, center = {}, drawRect = {}, viewport = {}, width = 1, height = 1) {
+      if (!targetCtx || !texture || typeof targetCtx.drawImage !== 'function') return false;
+      const seconds = Math.max(0, this.getNow() / 1000);
+      const tileW = Math.max(1, Number(texture.naturalWidth || texture.width || 1) * (Number(water.uvScale) || 1) * (Number(viewport.scale) || 1));
+      const tileH = Math.max(1, Number(texture.naturalHeight || texture.height || 1) * (Number(water.uvScale) || 1) * (Number(viewport.scale) || 1));
+      const phaseX = seconds * (Number(water.speedX) || 0) * (Number(viewport.scale) || 1);
+      const phaseY = seconds * (Number(water.speedY) || 0) * (Number(viewport.scale) || 1);
+      const localX = ((Number(center.x || 0) + Number(drawRect.x || 0) + phaseX) % tileW + tileW) % tileW;
+      const localY = ((Number(center.y || 0) + Number(drawRect.y || 0) + phaseY) % tileH + tileH) % tileH;
+      for (let py = -localY - tileH; py < height + tileH; py += tileH) {
+        for (let px = -localX - tileW; px < width + tileW; px += tileW) {
+          targetCtx.drawImage(texture, px, py, tileW + 0.5, tileH + 0.5);
+        }
+      }
+      return true;
+    }
+
+    drawWorldTileWaterDiamond(texture, water = {}, center = {}, drawRect = {}, viewport = {}) {
+      if (!texture || typeof this.ctx.drawImage !== 'function') return false;
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = Number(water.alpha) || 1;
+      this.ctx.save?.();
+      this.ctx.beginPath?.();
+      this.ctx.moveTo?.(center.x, center.y - drawRect.height * 0.5);
+      this.ctx.lineTo?.(center.x + drawRect.width * 0.5, center.y);
+      this.ctx.lineTo?.(center.x, center.y + drawRect.height * 0.5);
+      this.ctx.lineTo?.(center.x - drawRect.width * 0.5, center.y);
+      if (typeof this.ctx.closePath === 'function') this.ctx.closePath();
+      else this.ctx.lineTo?.(center.x, center.y - drawRect.height * 0.5);
+      this.ctx.clip?.();
+      const drawn = this.fillWorldTileWaterTexture(this.ctx, texture, water, center, drawRect, viewport, drawRect.width, drawRect.height);
+      this.ctx.restore?.();
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return drawn;
+    }
+
+    drawWorldTileWaterLayer(template = {}, water = {}, texture, center = {}, drawRect = {}, viewport = {}) {
+      const mask = this.getWorldTileTemplateMask(template.asset);
+      const sourceRect = this.getIsoTileSourceRect(template.asset);
+      const work = mask && sourceRect ? this.getWorldTileWaterWorkContext(drawRect.width, drawRect.height) : null;
+      if (!work) return this.drawWorldTileWaterDiamond(texture, water, center, drawRect, viewport);
+      try {
+        work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+        work.ctx.globalAlpha = 1;
+        work.ctx.globalCompositeOperation = 'source-over';
+        work.ctx.clearRect?.(0, 0, work.width, work.height);
+        if (!this.fillWorldTileWaterTexture(work.ctx, texture, water, center, drawRect, viewport, work.width, work.height)) return false;
+        work.ctx.globalCompositeOperation = 'destination-in';
+        work.ctx.drawImage(
+          mask,
+          sourceRect.x,
+          sourceRect.y,
+          sourceRect.width,
+          sourceRect.height,
+          0,
+          0,
+          work.width,
+          work.height,
+        );
+        work.ctx.globalCompositeOperation = 'source-over';
+        const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+        if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = Number(water.alpha) || 1;
+        this.ctx.drawImage(work.canvas, drawRect.x, drawRect.y, drawRect.width, drawRect.height);
+        if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+        return true;
+      } catch (_) {
+        return this.drawWorldTileWaterDiamond(texture, water, center, drawRect, viewport);
+      }
+    }
+
+    drawWorldTileWater(tile = {}, center = {}, drawRect = {}, viewport = {}) {
+      const templates = this.getWorldTileWaterTemplateAssets(tile);
+      if (!templates.length) return false;
+      const manifest = this.constructor.getTileMapAssetManifest();
+      let drawn = false;
+      templates.forEach((template) => {
+        const waterKind = template.waterKind || tile.water?.kind;
+        const water = waterKind ? manifest.getWaterAsset?.(waterKind) : null;
+        if (!water?.path) return;
+        const texture = this.getAsset(water.path);
+        if (!texture || typeof this.ctx.drawImage !== 'function') return;
+        if (this.drawWorldTileWaterLayer(template, water, texture, center, drawRect, viewport)) drawn = true;
+      });
+      if (drawn) this.drawWorldTileDryTemplate(tile, drawRect);
+      return drawn;
+    }
+
+    isWorldTileMapWaterAnimated(tileMapView = {}) {
+      return (tileMapView.tiles || []).some((tile) => tile.water?.asset && (tile.templateAssets || []).length);
+    }
+
+    drawWorldTileBase(tile = {}, center = {}, drawRect = {}, viewport = {}) {
+      const baseTemplate = this.getWorldTileTemplateBaseAsset(tile);
+      const baseAsset = baseTemplate?.asset || tile.terrainAsset || '';
+      const hasWater = Boolean(tile.water?.kind && tile.water?.asset && baseTemplate?.asset);
+      const drawnWater = hasWater ? this.drawWorldTileWater(tile, center, drawRect, viewport) : false;
+      if (drawnWater) return true;
+      return this.drawTileAsset(baseAsset, drawRect.x, drawRect.y, drawRect.width, drawRect.height);
     }
 
     drawCoverAsset(assetPath, x, y, width, height, alpha = 1) {
@@ -5480,6 +5782,9 @@
       const scale = Math.max(0.38, Math.min(0.72, Math.min(width / 520, height / 420)));
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
       const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const tileDrawWidth = tileWidth + 3 * scale;
+      const tileDrawHeight = tileHeight + 1.5 * scale;
+      const tileAnchorY = Number.isFinite(Number(geometry.anchorY)) ? Number(geometry.anchorY) : 0.5;
       const viewport = {
         originX: x + width * 0.5,
         originY: y + height * 0.42,
@@ -5511,15 +5816,19 @@
       this.renderWorldScoutRoutes(tileMapView, viewport);
       tiles.forEach((tile) => {
         const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
-        const drawX = center.x - tileWidth * 0.5;
-        const drawY = center.y - tileHeight * 0.5;
+        const drawRect = {
+          x: center.x - tileDrawWidth * 0.5,
+          y: center.y - tileDrawHeight * tileAnchorY,
+          width: tileDrawWidth,
+          height: tileDrawHeight,
+        };
         const selected = uiState.selectedSiteId && tile.site?.id === uiState.selectedSiteId;
-        const inView = drawX < x + width + tileWidth
-          && drawX + tileWidth > x - tileWidth
-          && drawY < y + height + tileHeight
-          && drawY + tileHeight > y - tileHeight;
+        const inView = drawRect.x < x + width + tileDrawWidth
+          && drawRect.x + drawRect.width > x - tileDrawWidth
+          && drawRect.y < y + height + tileDrawHeight
+          && drawRect.y + drawRect.height > y - tileDrawHeight;
         if (!inView) return;
-        if (!this.drawAsset(tile.terrainAsset || '', drawX, drawY, tileWidth, tileHeight)) {
+        if (!this.drawWorldTileBase(tile, center, drawRect, viewport)) {
           this.drawIsoDiamond(center.x, center.y, tileWidth, tileHeight, {
             fill: this.getFallbackTerrainFill(tile.terrain),
             stroke: selected ? 'rgba(116, 211, 160, 0.78)' : 'rgba(255, 226, 177, 0.14)',
@@ -5534,10 +5843,12 @@
         }
         if (tile.feature?.asset) {
           const offset = tile.feature.offset || {};
-          const featureW = tileWidth * (Number(tile.feature.scale) || 0.5);
+          const featureScale = tile.feature.key === 'treeCluster' ? 0.5 : (tile.feature.key === 'mountainRidge' ? 0.96 : (Number(tile.feature.scale) || 0.5));
+          const featureW = tileWidth * featureScale;
           const featureH = featureW;
+          const featureBaseY = center.y + (Number(offset.y) || 0) * scale + tileHeight * (tile.feature.key === 'mountainRidge' ? 0.18 : 0.1);
           const featureX = center.x + (Number(offset.x) || 0) * scale - featureW * 0.5;
-          const featureY = center.y + (Number(offset.y) || 0) * scale - featureH * 0.76;
+          const featureY = featureBaseY - featureH * (tile.feature.key === 'mountainRidge' ? 0.82 : 0.9);
           this.drawAsset(tile.feature.asset, featureX, featureY, featureW, featureH, 0.92);
         }
       });
@@ -5546,9 +5857,11 @@
         const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
         const site = tile.site;
         const offset = site.offset || {};
-        const iconSize = Math.max(26, tileWidth * 0.26);
-        const siteX = center.x + (Number(offset.x) || 0) * scale - iconSize * 0.5;
-        const siteY = center.y + (Number(offset.y) || 0) * scale - iconSize * 0.88;
+        const iconSize = Math.max(42, tileWidth * (Number(site.scale) || 0.46));
+        const siteBaseX = center.x + (Number(offset.x) || 0) * scale;
+        const siteBaseY = center.y + (Number(offset.y) || 0) * scale - tileHeight * 0.16;
+        const siteX = siteBaseX - iconSize * 0.5;
+        const siteY = siteBaseY - iconSize * 0.86;
         const selected = uiState.selectedSiteId === site.id;
         this.drawPanel(siteX - 3, siteY - 3, iconSize + 6, iconSize + 6, {
           fill: selected ? 'rgba(116, 211, 160, 0.26)' : 'rgba(16, 18, 15, 0.32)',
@@ -5609,6 +5922,9 @@
         })
         : null;
       if (tileMapView?.tiles?.length) {
+        if (this.isWorldTileMapWaterAnimated(tileMapView)) {
+          uiState.tileMapWaterAnimated = true;
+        }
         const mapX = x + 12;
         const mapY = y + 46;
         const mapW = width - 24;
