@@ -336,14 +336,14 @@
             return;
           }
           this.renderAnimationFrame('military');
-        }, 120)
+        }, this.getAnimationFrameMs())
         : setIntervalFn(() => {
           if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
             this.stopTileMapWaterTimer();
             return;
           }
           this.renderAnimationFrame('military');
-        }, 120);
+        }, this.getAnimationFrameMs());
       return true;
     }
 

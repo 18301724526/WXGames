@@ -55,6 +55,8 @@
       this.worldTileCompositeCtx = null;
       this.worldTileWaterCanvas = null;
       this.worldTileWaterCtx = null;
+      this.worldTileStaticCache = null;
+      this.worldTileStaticCacheKey = '';
       this.assetsChangedHandler = null;
       this.hitTargets = [];
       this.hoverPoint = null;
@@ -280,7 +282,7 @@
             if (settled) return;
             settled = true;
             record.status = status;
-            if (status === 'loaded' && this.assetsChangedHandler) this.assetsChangedHandler();
+            if (status === 'loaded') this.handleAssetsChanged();
             if (typeof handler === 'function') handler.call(image, event);
             settle(assetPath, status);
           };
@@ -308,7 +310,7 @@
       this.assetCache.set(assetPath, record);
       image.onload = () => {
         record.status = 'loaded';
-        if (this.assetsChangedHandler) this.assetsChangedHandler();
+        this.handleAssetsChanged();
       };
       image.onerror = () => {
         record.status = 'error';
@@ -487,6 +489,16 @@
 
     setAssetsChangedHandler(handler) {
       this.assetsChangedHandler = typeof handler === 'function' ? handler : null;
+    }
+
+    handleAssetsChanged() {
+      this.invalidateWorldTileCaches();
+      if (this.assetsChangedHandler) this.assetsChangedHandler();
+    }
+
+    invalidateWorldTileCaches() {
+      this.worldTileStaticCache = null;
+      this.worldTileStaticCacheKey = '';
     }
 
     drawAsset(assetPath, x, y, width, height, alpha = 1) {
@@ -969,7 +981,7 @@
       }
     }
 
-    drawWorldTileWater(tile = {}, center = {}, drawRect = {}, viewport = {}) {
+    drawWorldTileWater(tile = {}, center = {}, drawRect = {}, viewport = {}, options = {}) {
       const templates = this.getWorldTileWaterTemplateAssets(tile);
       if (!templates.length) return false;
       const manifest = this.constructor.getTileMapAssetManifest();
@@ -983,7 +995,7 @@
         if (!texture || typeof this.ctx.drawImage !== 'function') return;
         if (this.drawWorldTileWaterLayer(template, water, texture, center, drawRect, tileViewport)) drawn = true;
       });
-      if (drawn) this.drawWorldTileDryTemplate(tile, drawRect);
+      if (drawn && options.drawDryTemplate !== false) this.drawWorldTileDryTemplate(tile, drawRect);
       return drawn;
     }
 
@@ -6208,6 +6220,288 @@
       return true;
     }
 
+    getWorldTileRenderEntries(tileMapView = {}, viewport = {}, frame = {}, geometry = {}) {
+      const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
+      const scale = Number(viewport.scale) || 1;
+      const drawProbe = this.getWorldTileDrawRect({ x: 0, y: 0 }, scale, geometry);
+      const tileDrawWidth = drawProbe.width;
+      const tileDrawHeight = drawProbe.height;
+      return tiles.map((tile) => {
+        const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
+        const drawRect = this.getWorldTileDrawRect(center, scale, geometry);
+        const inView = drawRect.x < frame.x + frame.width + tileDrawWidth
+          && drawRect.x + drawRect.width > frame.x - tileDrawWidth
+          && drawRect.y < frame.y + frame.height + tileDrawHeight
+          && drawRect.y + drawRect.height > frame.y - tileDrawHeight;
+        return { tile, center, drawRect, inView };
+      }).filter((entry) => entry.inView);
+    }
+
+    getWorldTileLocalEntries(tileMapView = {}, viewport = {}, geometry = {}) {
+      const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
+      const scale = Number(viewport.scale) || 1;
+      const localViewport = {
+        ...viewport,
+        originX: 0,
+        originY: 0,
+        panX: 0,
+        panY: 0,
+      };
+      return tiles.map((tile) => {
+        const center = this.getWorldTileScreenCenter(tile, localViewport, geometry);
+        const drawRect = this.getWorldTileDrawRect(center, scale, geometry);
+        return { tile, center, drawRect, inView: true };
+      });
+    }
+
+    getWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, geometry = {}) {
+      const entries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
+      if (!entries.length) return null;
+      const scale = Number(viewport.scale) || 1;
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const padding = Math.max(tileWidth * 1.2, tileHeight * 2.2, 96);
+      const minX = Math.min(...entries.map((entry) => entry.drawRect.x)) - padding;
+      const minY = Math.min(...entries.map((entry) => entry.drawRect.y)) - padding;
+      const maxX = Math.max(...entries.map((entry) => entry.drawRect.x + entry.drawRect.width)) + padding;
+      const maxY = Math.max(...entries.map((entry) => entry.drawRect.y + entry.drawRect.height)) + padding;
+      const frame = {
+        x: Math.floor(minX),
+        y: Math.floor(minY),
+        width: Math.max(1, Math.ceil(maxX - minX)),
+        height: Math.max(1, Math.ceil(maxY - minY)),
+      };
+      const localViewport = {
+        ...viewport,
+        originX: 0,
+        originY: 0,
+        panX: 0,
+        panY: 0,
+      };
+      return {
+        kind: 'world',
+        frame,
+        entries,
+        renderViewport: localViewport,
+        drawX: viewport.originX + (Number(viewport.panX) || 0) + frame.x,
+        drawY: viewport.originY + (Number(viewport.panY) || 0) + frame.y,
+      };
+    }
+
+    getWorldTileStaticViewportCacheLayout(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
+      if (!entries.length) return null;
+      const padding = 2;
+      const localFrame = {
+        x: Math.floor((Number(frame.x) || 0) - padding),
+        y: Math.floor((Number(frame.y) || 0) - padding),
+        width: Math.max(1, Math.ceil((Number(frame.width) || 1) + padding * 2)),
+        height: Math.max(1, Math.ceil((Number(frame.height) || 1) + padding * 2)),
+      };
+      return {
+        kind: 'viewport',
+        frame: localFrame,
+        entries,
+        renderViewport: viewport,
+        drawX: localFrame.x,
+        drawY: localFrame.y,
+      };
+    }
+
+    getWorldTileStaticCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}, options = {}) {
+      const scale = Number(viewport.scale) || 1;
+      const selectedSiteId = uiState.selectedSiteId || '';
+      const entrySignature = entries.map(({ tile, center, drawRect }) => [
+        tile.id,
+        tile.terrain,
+        tile.terrainAsset,
+        (tile.templateAssets || []).map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
+        tile.feature?.asset || '',
+        tile.feature?.key || '',
+        tile.site?.id || '',
+        tile.site?.art || '',
+        tile.site?.owner || '',
+        tile.site?.name || tile.site?.title || '',
+        tile.site?.scale || '',
+        tile.site?.offset?.x || 0,
+        tile.site?.offset?.y || 0,
+        Math.round(center.x * 10) / 10,
+        Math.round(center.y * 10) / 10,
+        Math.round(drawRect.x * 10) / 10,
+        Math.round(drawRect.y * 10) / 10,
+      ].join('|')).join(';');
+      return [
+        options.kind || 'world',
+        tileMapView.signature || '',
+        tileMapView.version || '',
+        tileMapView.seed || '',
+        selectedSiteId,
+        Math.round(frame.x),
+        Math.round(frame.y),
+        Math.round(frame.width),
+        Math.round(frame.height),
+        Math.round(scale * 1000),
+        Math.round((Number(options.cacheScale) || 1) * 1000),
+        entrySignature,
+      ].join('::');
+    }
+
+    getWorldTileStaticCacheScale() {
+      return Math.max(1, Number(this.pixelRatio) || 1);
+    }
+
+    getWorldTileStaticCachePixelBudget() {
+      return 16000000;
+    }
+
+    getWorldTileStaticCacheContext(width, height, cacheScale = 1) {
+      const localW = Math.max(1, Math.ceil(width));
+      const localH = Math.max(1, Math.ceil(height));
+      const scale = Math.max(1, Number(cacheScale) || 1);
+      const pixelW = Math.max(1, Math.ceil(localW * scale));
+      const pixelH = Math.max(1, Math.ceil(localH * scale));
+      const cached = this.worldTileStaticCache;
+      if (cached?.canvas && cached?.ctx) {
+        if (cached.canvas.width !== pixelW) cached.canvas.width = pixelW;
+        if (cached.canvas.height !== pixelH) cached.canvas.height = pixelH;
+        cached.width = localW;
+        cached.height = localH;
+        cached.pixelWidth = pixelW;
+        cached.pixelHeight = pixelH;
+        cached.scale = scale;
+        return cached;
+      }
+      const canvas = this.createTileWorkCanvas(pixelW, pixelH);
+      const ctx = canvas?.getContext?.('2d') || null;
+      if (!canvas || !ctx) return null;
+      this.worldTileStaticCache = {
+        canvas,
+        ctx,
+        width: localW,
+        height: localH,
+        pixelWidth: pixelW,
+        pixelHeight: pixelH,
+        scale,
+      };
+      return this.worldTileStaticCache;
+    }
+
+    resolveWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
+      const geometry = tileMapView.geometry || {};
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const pixelBudget = this.getWorldTileStaticCachePixelBudget();
+      const worldLayout = this.getWorldTileStaticCacheLayout(tileMapView, viewport, geometry);
+      if (!worldLayout) return null;
+      const worldPixels = worldLayout.frame.width * worldLayout.frame.height * cacheScale * cacheScale;
+      if (worldPixels <= pixelBudget) return worldLayout;
+      const viewportLayout = this.getWorldTileStaticViewportCacheLayout(tileMapView, viewport, frame, entries);
+      if (!viewportLayout) return null;
+      const viewportPixels = viewportLayout.frame.width * viewportLayout.frame.height * cacheScale * cacheScale;
+      return viewportPixels <= pixelBudget ? viewportLayout : null;
+    }
+
+    renderWorldTileStaticLayer(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
+      const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
+      if (!layout) return false;
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const work = this.getWorldTileStaticCacheContext(layout.frame.width, layout.frame.height, cacheScale);
+      if (!work) return false;
+      const cacheKey = this.getWorldTileStaticCacheKey(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
+        kind: layout.kind,
+        cacheScale,
+      });
+      if (cacheKey !== this.worldTileStaticCacheKey) {
+        const previousCtx = this.ctx;
+        this.ctx = work.ctx;
+        try {
+          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
+          work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
+          work.ctx.globalAlpha = 1;
+          work.ctx.globalCompositeOperation = 'source-over';
+          work.ctx.save?.();
+          work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
+          this.withSuppressedHitTargets(() => {
+            this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState);
+          });
+          work.ctx.restore?.();
+          this.worldTileStaticCacheKey = cacheKey;
+        } finally {
+          this.ctx = previousCtx;
+        }
+      }
+      this.ctx.drawImage(
+        work.canvas,
+        layout.drawX,
+        layout.drawY,
+        layout.frame.width,
+        layout.frame.height,
+      );
+      return true;
+    }
+
+    renderWorldTileStaticEntries(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
+      const geometry = tileMapView.geometry || {};
+      const scale = Number(viewport.scale) || 1;
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      entries.forEach(({ tile, center, drawRect }) => {
+        const selected = uiState.selectedSiteId && tile.site?.id === uiState.selectedSiteId;
+        if (tile.water?.kind && tile.water?.asset) {
+          this.drawWorldTileDryTemplate(tile, drawRect);
+        } else if (!this.drawWorldTileBase(tile, center, drawRect, viewport)) {
+          this.drawIsoDiamond(center.x, center.y, tileWidth, tileHeight, {
+            fill: this.getFallbackTerrainFill(tile.terrain),
+            stroke: selected ? 'rgba(116, 211, 160, 0.78)' : 'rgba(255, 226, 177, 0.14)',
+          });
+        }
+        if (selected) {
+          this.drawIsoDiamond(center.x, center.y, tileWidth * 1.04, tileHeight * 1.04, {
+            fill: 'rgba(0, 0, 0, 0)',
+            stroke: 'rgba(116, 211, 160, 0.86)',
+            width: 2,
+          });
+        }
+        this.drawWorldTerrainFeature(tile, viewport, geometry, tileWidth, tileHeight);
+        if (tile.feature?.asset) this.drawWorldTileFeature(tile, viewport, geometry, tileWidth, tileHeight);
+      });
+      entries.filter(({ tile }) => tile.site).forEach(({ tile }) => {
+        this.drawWorldTileSite(tile, viewport, geometry, tileWidth, tileHeight, uiState);
+      });
+    }
+
+    renderWorldTileWaterEntries(tileMapView = {}, viewport = {}, entries = []) {
+      entries.forEach(({ tile, center, drawRect }) => {
+        if (!tile.water?.kind || !tile.water?.asset) return;
+        this.drawWorldTileWater(tile, center, drawRect, viewport, { drawDryTemplate: false });
+      });
+    }
+
+    addWorldTileSiteHitTargets(tileMapView = {}, viewport = {}, entries = [], uiState = {}) {
+      const geometry = tileMapView.geometry || {};
+      const scale = Number(viewport.scale) || 1;
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      entries.filter(({ tile }) => tile.site).forEach(({ tile }) => {
+        const site = tile.site || null;
+        if (!site?.art) return;
+        const metrics = this.analyzeAssetAlphaBounds(site.art);
+        if (!metrics) return;
+        const targetKey = site.overlayKey || this.constructor.getTileMapAssetManifest().getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`;
+        const anchor = this.getWorldOverlayAnchor(tile, viewport, geometry, targetKey, site.offset);
+        const drawW = tileWidth * (Number(site.scale) || 0.46);
+        const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+        const baseX = anchor.x;
+        const baseY = anchor.y - tileHeight * 0.16;
+        const drawX = baseX - drawW * 0.5;
+        const drawY = baseY - drawH * 0.86;
+        this.addHitTarget({ x: drawX - 8, y: drawY - 8, width: drawW + 16, height: drawH + 26 }, {
+          type: 'openWorldSite',
+          siteId: site.id,
+          tileId: tile.id,
+        });
+      });
+    }
+
     renderWorldScoutRoutes(tileMapView = {}, viewport = {}) {
       const geometry = tileMapView.geometry || {};
       (tileMapView.activeScouts || []).forEach((mission) => {
@@ -6231,14 +6525,8 @@
     }
 
     renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}) {
-      const tiles = tileMapView.tiles || [];
       const geometry = tileMapView.geometry || {};
       const scale = Math.max(0.38, Math.min(0.78, Math.min(width / 520, height / 420)));
-      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
-      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      const drawProbe = this.getWorldTileDrawRect({ x: 0, y: 0 }, scale, geometry);
-      const tileDrawWidth = drawProbe.width;
-      const tileDrawHeight = drawProbe.height;
       const viewport = {
         originX: x + width * 0.5,
         originY: y + height * 0.42,
@@ -6248,6 +6536,8 @@
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
       };
+      const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
+      const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
 
       this.drawPanel(x, y, width, height, {
         fill: this.createGradient(
@@ -6270,35 +6560,11 @@
       this.ctx.clip();
 
       this.renderWorldScoutRoutes(tileMapView, viewport);
-      tiles.forEach((tile) => {
-        const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
-        const drawRect = this.getWorldTileDrawRect(center, scale, geometry);
-        const selected = uiState.selectedSiteId && tile.site?.id === uiState.selectedSiteId;
-        const inView = drawRect.x < x + width + tileDrawWidth
-          && drawRect.x + drawRect.width > x - tileDrawWidth
-          && drawRect.y < y + height + tileDrawHeight
-          && drawRect.y + drawRect.height > y - tileDrawHeight;
-        if (!inView) return;
-        if (!this.drawWorldTileBase(tile, center, drawRect, viewport)) {
-          this.drawIsoDiamond(center.x, center.y, tileWidth, tileHeight, {
-            fill: this.getFallbackTerrainFill(tile.terrain),
-            stroke: selected ? 'rgba(116, 211, 160, 0.78)' : 'rgba(255, 226, 177, 0.14)',
-          });
-        }
-        if (selected) {
-          this.drawIsoDiamond(center.x, center.y, tileWidth * 1.04, tileHeight * 1.04, {
-            fill: 'rgba(0, 0, 0, 0)',
-            stroke: 'rgba(116, 211, 160, 0.86)',
-            width: 2,
-          });
-        }
-        this.drawWorldTerrainFeature(tile, viewport, geometry, tileWidth, tileHeight);
-        if (tile.feature?.asset) this.drawWorldTileFeature(tile, viewport, geometry, tileWidth, tileHeight);
-      });
-
-      tiles.filter((tile) => tile.site).forEach((tile) => {
-        this.drawWorldTileSite(tile, viewport, geometry, tileWidth, tileHeight, uiState);
-      });
+      this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries);
+      if (!this.renderWorldTileStaticLayer(tileMapView, viewport, frame, visibleEntries, uiState)) {
+        this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState);
+      }
+      this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
 
       this.ctx.restore();
     }

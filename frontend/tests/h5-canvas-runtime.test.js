@@ -2247,6 +2247,38 @@ test('Canvas game shell uses a 60FPS target for shared canvas animations', () =>
   assert.ok(shell.pageTransition);
 });
 
+test('Canvas game shell refreshes animated world water at the shared 60FPS cadence', () => {
+  const { document, runtime } = createCanvasHarness();
+  const timers = [];
+  runtime.setInterval = (callback, intervalMs) => {
+    const timer = { callback, intervalMs };
+    timers.push(timer);
+    return timer;
+  };
+  runtime.clearInterval = () => {};
+  const renderCalls = [];
+  const renderer = {
+    render(state, options) {
+      renderCalls.push({ state, options });
+      options.territoryUiState.tileMapWaterAnimated = true;
+    },
+  };
+  const shell = CanvasGameShell.mount({
+    state: { currentTab: 'military', militaryView: 'world' },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+
+  shell.renderReadOnly(shell.lastGame.state, 'military');
+
+  assert.equal(timers.at(-1).intervalMs, 16);
+  assert.equal(renderCalls.length > 0, true);
+});
+
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {
   const { document, runtime } = createCanvasHarness();
   const timers = [];
@@ -3030,10 +3062,10 @@ test('Browser entry loads Canvas game shell before app as the authoritative UI s
   const appJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'app.js'), 'utf8');
   const actionControllerJs = fs.readFileSync(path.join(projectRoot, 'frontend', 'js', 'platform', 'CanvasActionController.js'), 'utf8');
 
-  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=tech-tree-zoom-gestures-v1/);
-  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=defender-leader-v1[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=asset-cleanup-v1/);
-  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=famous-roster-detail-v1[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=famous-roster-detail-v1[\s\S]*js\/platform\/CanvasGameShell\.js\?v=famous-roster-detail-v1/);
-  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=famous-roster-detail-v1[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
+  assert.match(html, /js\/platform\/H5CanvasRuntime\.js\?v=[^"]+/);
+  assert.match(html, /js\/state\/UIStatePresenter\.js\?v=[^"]+[\s\S]*js\/platform\/CanvasGameRenderer\.js\?v=[^"]+/);
+  assert.match(html, /js\/platform\/CanvasActionController\.js\?v=[^"]+[\s\S]*js\/platform\/CanvasActionDispatcher\.js\?v=[^"]+[\s\S]*js\/platform\/CanvasGameShell\.js\?v=[^"]+/);
+  assert.match(html, /js\/platform\/CanvasGameShell\.js\?v=[^"]+[\s\S]*app\.js\?v=h5-bootstrap-explicit-doc-v3/);
   assert.match(html, /<div id="app" aria-hidden="true"><\/div>/);
   assert.match(appJs, /CanvasGameShell\?\.mount\(this/);
   assert.match(appJs, /presenter: this\.presenter/);

@@ -1021,7 +1021,7 @@
           return;
         }
         this.renderAnimationFrame();
-      }, 120);
+      }, this.getAnimationFrameMs());
       return true;
     }
 

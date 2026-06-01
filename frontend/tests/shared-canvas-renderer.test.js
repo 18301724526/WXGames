@@ -3493,6 +3493,234 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));
 });
 
+test('CanvasGameRenderer caches static world tile layer between water animation frames', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  let workCanvasId = 0;
+  renderer.createTileWorkCanvas = (width, height) => ({
+    id: `work-${workCanvasId += 1}`,
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  [
+    'assets/art/tile-map/tile-terrain-plains.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-shore-edge-sw.png',
+    'assets/art/tile-map/ocean-template/tile-ocean-water-full.png',
+    'assets/art/tile-map/tile-water-ocean-loop.png',
+    'assets/art/world-site-town-cutout.png',
+  ].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+    renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  });
+  const tileMapView = {
+    signature: 'static-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [
+      { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+      {
+        id: 'tile_1_0',
+        q: 1,
+        r: 0,
+        terrain: 'ocean',
+        terrainAsset: 'assets/art/tile-map/ocean-template/tile-ocean-water-full.png',
+        templateAssets: [{ key: 'river-mouth-sw', type: 'ocean', asset: 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png' }],
+        water: { kind: 'ocean', asset: 'assets/art/tile-map/tile-water-ocean-loop.png', uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
+        site: { id: 'site-east', owner: 'neutral', type: 'town', name: '东岸', art: 'assets/art/world-site-town-cutout.png', offset: { x: 0, y: 26 } },
+      },
+    ],
+    activeScouts: [],
+  };
+
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const firstFrameStaticTileDraws = calls.filter((call) => (
+    call[0] === 'offscreenDrawImage'
+    && call[1]?.src?.includes('tile-map/')
+    && !call[1]?.src?.includes('tile-water-')
+  )).length;
+  calls.length = 0;
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const secondFrameStaticTileDraws = calls.filter((call) => (
+    call[0] === 'offscreenDrawImage'
+    && call[1]?.src?.includes('tile-map/')
+    && !call[1]?.src?.includes('tile-water-')
+  )).length;
+  calls.length = 0;
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 18, y: -10 } }, 20, 80, 320, 240, {});
+  const draggedFrameStaticTileDraws = calls.filter((call) => (
+    call[0] === 'offscreenDrawImage'
+    && call[1]?.src?.includes('tile-map/')
+    && !call[1]?.src?.includes('tile-water-')
+  )).length;
+
+  assert.ok(firstFrameStaticTileDraws > 0);
+  assert.equal(secondFrameStaticTileDraws, 0);
+  assert.equal(draggedFrameStaticTileDraws, 0);
+  assert.ok(renderer.worldTileStaticCacheKey.includes('static-cache-test'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
+});
+
+test('CanvasGameRenderer keeps cached world tile layers sharp on high DPR screens', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 3 });
+  const transforms = [];
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform(...args) { transforms.push(args); },
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage() {},
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  const assetPath = 'assets/art/tile-map/tile-terrain-plains.png';
+  renderer.assetCache.set(assetPath, {
+    status: 'loaded',
+    image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+  });
+  renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+
+  renderer.renderWorldTileMap({
+    signature: 'dpr-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainAsset: assetPath, site: null }],
+    activeScouts: [],
+  }, 20, 80, 320, 240, {});
+
+  assert.equal(renderer.worldTileStaticCache.scale, 3);
+  assert.equal(renderer.worldTileStaticCache.canvas.width, Math.ceil(renderer.worldTileStaticCache.width * 3));
+  assert.equal(renderer.worldTileStaticCache.canvas.height, Math.ceil(renderer.worldTileStaticCache.height * 3));
+  assert.ok(transforms.some((args) => args[0] === 3 && args[3] === 3));
+});
+
+test('CanvasGameRenderer falls back to viewport static cache when the full world cache is too large', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.getWorldTileStaticCachePixelBudget = () => 200000;
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  const assetPath = 'assets/art/tile-map/tile-terrain-plains.png';
+  renderer.assetCache.set(assetPath, {
+    status: 'loaded',
+    image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+  });
+  renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  const tiles = [];
+  for (let q = 0; q < 20; q += 1) {
+    for (let r = 0; r < 20; r += 1) {
+      tiles.push({ id: `tile_${q}_${r}`, q, r, terrain: 'plains', terrainAsset: assetPath, site: null });
+    }
+  }
+  const tileMapView = {
+    signature: 'viewport-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles,
+    activeScouts: [],
+  };
+
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const firstFrameStaticTileDraws = calls.filter((call) => (
+    call[0] === 'offscreenDrawImage'
+    && call[1]?.src === assetPath
+  )).length;
+  calls.length = 0;
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const secondFrameStaticTileDraws = calls.filter((call) => (
+    call[0] === 'offscreenDrawImage'
+    && call[1]?.src === assetPath
+  )).length;
+
+  assert.ok(renderer.worldTileStaticCacheKey.startsWith('viewport::'));
+  assert.ok(firstFrameStaticTileDraws > 0);
+  assert.equal(secondFrameStaticTileDraws, 0);
+  assert.ok(renderer.worldTileStaticCache.width <= 324);
+  assert.ok(renderer.worldTileStaticCache.height <= 244);
+});
+
 test('CanvasGameRenderer renders naming prompt modal and actions on canvas', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
