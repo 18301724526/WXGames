@@ -5,6 +5,7 @@
     stepX: 96,
     stepY: 48,
     anchorY: 0.5,
+    edgeOverdraw: 1.5,
   };
 
   function toNumber(value, fallback = 0) {
@@ -37,8 +38,9 @@
   function getTileDrawRect(center = {}, scale = 1, options = {}) {
     const geometry = normalizeGeometry(options);
     const safeScale = Math.max(0.05, toNumber(scale, 1));
-    const width = geometry.tileWidth * safeScale;
-    const height = geometry.tileHeight * safeScale;
+    const edgeOverdraw = Math.max(0, toNumber(options.edgeOverdraw, DEFAULT_GEOMETRY.edgeOverdraw));
+    const width = (geometry.tileWidth + edgeOverdraw * 2) * safeScale;
+    const height = (geometry.tileHeight + edgeOverdraw) * safeScale;
     return {
       x: toNumber(center.x) - width * 0.5,
       y: toNumber(center.y) - height * geometry.anchorY,

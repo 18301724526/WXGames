@@ -1,14 +1,14 @@
 (function (global) {
-  const TILE_MAP_ASSET_VERSION = 'tile-world-map-v2-lab-runtime';
+  const TILE_MAP_ASSET_VERSION = 'tile-world-map-v2-lab-parity';
   const TILE_ROOT = 'assets/art/tile-map/';
 
   const TERRAIN_ASSETS = {
     capital: { label: 'Capital', path: `${TILE_ROOT}tile-terrain-plains.png` },
     plains: { label: 'Plains', path: `${TILE_ROOT}tile-terrain-plains.png` },
-    forest: { label: 'Forest', path: `${TILE_ROOT}tile-terrain-forest.png`, feature: 'treeCluster' },
-    hills: { label: 'Hills', path: `${TILE_ROOT}tile-terrain-hills.png`, overlayKey: 'terrain:hills' },
-    mountain: { label: 'Mountain', path: `${TILE_ROOT}tile-terrain-mountain.png`, feature: 'mountainRidge' },
-    waste: { label: 'Waste', path: `${TILE_ROOT}tile-terrain-waste.png`, overlayKey: 'terrain:waste' },
+    forest: { label: 'Forest', path: `${TILE_ROOT}tile-terrain-plains.png`, feature: 'treeCluster', sourceTerrainPath: `${TILE_ROOT}tile-terrain-forest.png` },
+    hills: { label: 'Hills', path: `${TILE_ROOT}tile-terrain-plains.png`, overlayKey: 'terrain:hills', sourceTerrainPath: `${TILE_ROOT}tile-terrain-hills.png` },
+    mountain: { label: 'Mountain', path: `${TILE_ROOT}tile-terrain-plains.png`, feature: 'mountainRidge', sourceTerrainPath: `${TILE_ROOT}tile-terrain-mountain.png` },
+    waste: { label: 'Waste', path: `${TILE_ROOT}tile-terrain-plains.png`, overlayKey: 'terrain:waste', sourceTerrainPath: `${TILE_ROOT}tile-terrain-waste.png` },
     desert: { label: 'Desert', path: `${TILE_ROOT}tile-terrain-desert.png` },
     river: { label: 'River', path: `${TILE_ROOT}tile-terrain-river.png`, water: 'river' },
     ocean: { label: 'Ocean', path: `${TILE_ROOT}ocean-template/tile-ocean-water-full.png`, water: 'ocean' },
@@ -192,6 +192,7 @@
   function getPreloadAssetPaths() {
     return Array.from(new Set([
       ...Object.values(TERRAIN_ASSETS).map((asset) => asset.path),
+      ...Object.values(TERRAIN_ASSETS).map((asset) => asset.sourceTerrainPath).filter(Boolean),
       ...Object.values(FEATURE_ASSETS).map((asset) => asset.path),
       ...Object.values(SITE_ASSETS).map((asset) => asset.path),
       ...Object.values(WATER_ASSETS).map((asset) => asset.path),

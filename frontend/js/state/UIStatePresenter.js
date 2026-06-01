@@ -3126,6 +3126,13 @@
       const templateAssets = manifest.getTileTemplateAssets?.(tile) || [];
       const site = tile.siteId ? siteById.get(tile.siteId) : null;
       const siteAsset = site ? manifest.getSiteAsset?.(site.type || 'town') : null;
+      const mountainNeighbors = terrain === 'mountain'
+        ? [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]
+          .filter(([dq, dr]) => {
+            const id = `tile_${this.toInteger(tile.q) + dq}_${this.toInteger(tile.r) + dr}`;
+            return siteById.__tileTerrainById?.get(id) === 'mountain';
+          }).length
+        : 0;
       return {
         id: tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`,
         q: this.toInteger(tile.q),
@@ -3151,9 +3158,11 @@
         riverPorts: Array.isArray(tile.riverPorts) ? tile.riverPorts.filter(Boolean) : [],
         oceanTemplates: Array.isArray(tile.oceanTemplates) ? tile.oceanTemplates.filter(Boolean) : [],
         transitionKey: typeof tile.transitionKey === 'string' ? tile.transitionKey : '',
+        mountainNeighbors,
         feature: featureAsset ? {
           key: terrainAsset.feature,
           asset: featureAsset.path || '',
+          overlayKey: featureAsset.overlayKey || '',
           scale: featureAsset.scale || 0.5,
           offset: manifest.getOverlayOffset?.(featureAsset.overlayKey) || { x: 0, y: 0 },
         } : null,
@@ -3168,6 +3177,7 @@
           name: site.cityName || site.naturalName || '',
           title: site.naturalName || site.cityName || '',
           art: site.art || siteAsset?.path || '',
+          overlayKey: siteAsset?.overlayKey || manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`,
           offset: manifest.getOverlayOffset?.(siteAsset?.overlayKey || manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`) || { x: 0, y: 0 },
           scale: siteAsset?.scale || 0.46,
         } : null,
@@ -3179,6 +3189,7 @@
       const rawTiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
       const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const siteById = new Map(territories.map((site) => [site.id, site]));
+      siteById.__tileTerrainById = new Map(rawTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile.terrain || 'plains']));
       const geometry = this.getTileMapGeometry();
       const normalizedTiles = rawTiles.map((tile) => this.normalizeWorldTile(tile, siteById));
       const sortedTiles = geometry?.sortTilesForIsoDraw

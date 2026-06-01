@@ -40,6 +40,7 @@ function makeCtx() {
       clip() {},
       translate(...a) { calls.push(['translate', ...a]); },
       arc() {},
+      ellipse(...a) { calls.push(['ellipse', ...a]); },
       createLinearGradient() { calls.push(['gradient']); return gradient; },
       fillText(...a) { calls.push(['fillText', ...a]); },
       drawImage(...a) { calls.push(['drawImage', ...a]); },
@@ -474,6 +475,73 @@ test('CanvasGameRenderer world radar applies pan offset to site positions', () =
   assert.ok(withPanTarget);
   assert.ok(Math.abs(withPanTarget.x - noPanTarget.x - 40) < 2, `panX diff should be 40, got ${withPanTarget.x - noPanTarget.x}`);
   assert.ok(Math.abs(withPanTarget.y - noPanTarget.y + 30) < 2, `panY diff should be -30, got ${withPanTarget.y - noPanTarget.y}`);
+});
+
+test('CanvasGameRenderer uses tile lab draw size overdraw for world tile maps', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const rect = renderer.getWorldTileDrawRect({ x: 100, y: 80 }, 0.5, {
+    tileWidth: 192,
+    tileHeight: 96,
+    anchorY: 0.5,
+  });
+
+  assert.equal(rect.width, 97.5);
+  assert.equal(rect.height, 48.75);
+  assert.equal(rect.x, 51.25);
+  assert.equal(rect.y, 55.625);
+});
+
+test('CanvasGameRenderer draws world overlays from lab alpha metrics instead of square icons', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const assetPath = 'assets/art/tile-map/tile-feature-tree-cluster.png';
+  renderer.assetCache.set(assetPath, {
+    status: 'loaded',
+    image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+  });
+  renderer.assetMetricsCache.set(assetPath, {
+    x: 80,
+    y: 60,
+    width: 260,
+    height: 360,
+    sourceWidth: 512,
+    sourceHeight: 512,
+  });
+
+  renderer.drawWorldTileFeature({
+    id: 'tile_0_2',
+    q: 0,
+    r: 2,
+    feature: {
+      key: 'treeCluster',
+      asset: assetPath,
+      overlayKey: 'feature:treeCluster',
+      offset: { x: 0, y: 4 },
+    },
+  }, {
+    originX: 200,
+    originY: 160,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+    seed: 'visible-tree',
+  }, {
+    tileWidth: 192,
+    tileHeight: 96,
+    stepX: 96,
+    stepY: 48,
+    anchorY: 0.5,
+  }, 96, 48);
+
+  const clippedTreeCall = calls.find((call) => call[0] === 'drawImage' && call[1]?.src === assetPath);
+  assert.ok(clippedTreeCall);
+  assert.equal(clippedTreeCall[2], 80);
+  assert.equal(clippedTreeCall[3], 60);
+  assert.equal(clippedTreeCall[4], 260);
+  assert.equal(clippedTreeCall[5], 360);
+  assert.ok(calls.some((call) => call[0] === 'ellipse'));
 });
 
 test('H5CanvasGameRenderer extends CanvasGameRenderer with browser Image constructor', () => {
@@ -3327,6 +3395,7 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
       geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
       tiles: [
         { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+        { id: 'tile_0_1', q: 0, r: 1, terrain: 'forest', terrainAsset: 'assets/art/tile-map/tile-terrain-forest.png', feature: { key: 'treeCluster', asset: 'assets/art/tile-map/tile-feature-tree-cluster.png', overlayKey: 'feature:treeCluster', offset: { x: 0, y: 4 } }, site: null },
         {
           id: 'tile_1_0',
           q: 1,
@@ -3410,13 +3479,15 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '赤火联盟'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
   assert.ok(calls.some((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/tile-map/ocean-template/tile-ocean-river-mouth-sw.png'));
+  assert.ok(calls.some((call) => call[0] === 'drawImage' && call[1]?.src === 'assets/art/world-site-town-cutout.png' && call.length >= 10));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '守将 拓锋 · 营帐战首 · 良才'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '敌方战法 裂甲猛冲'));
   assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '侦察报告'), false);
-  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '2 tiles'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '3 tiles'));
   const worldMapDragTarget = renderer.hitTargets.find((target) => target.action?.type === 'worldMapDrag');
   assert.ok(worldMapDragTarget);
   assert.ok(worldMapDragTarget.width > 286);
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'worldRadarDrag'), false);
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'conquer'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));
