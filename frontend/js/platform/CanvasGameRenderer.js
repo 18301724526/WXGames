@@ -46,8 +46,8 @@
       this.maxContentWidth = options.maxContentWidth || 480;
       this.edgePadding = options.edgePadding || 12;
       this.bottomSafeArea = options.bottomSafeArea || 12;
-      this.assetCache = new Map();
-      this.assetMetricsCache = new Map();
+      this.assetCache = options.assetCache || new Map();
+      this.assetMetricsCache = options.assetMetricsCache || new Map();
       this.worldTileMaskCache = new Map();
       this.worldTileMaskMetricsCache = new Map();
       this.worldTileDryCompositeCache = new Map();
@@ -2249,6 +2249,11 @@
       // Optional: draw a subtle top bar backing if needed, but keep transparent for DOM
     }
 
+    clearAll() {
+      if (!this.ctx || typeof this.ctx.clearRect !== 'function') return;
+      this.ctx.clearRect(0, 0, this.width, this.height);
+    }
+
     drawText(text, x, y, options = {}) {
       if (!this.ctx) return;
       this.ctx.fillStyle = options.color || '#f6e8c8';
@@ -2549,6 +2554,12 @@
 
     renderSectionHeader(title, x, y, icon = '') {
       this.drawText(`${icon ? `${icon} ` : ''}${title}`, x, y, { size: 15, bold: true, color: '#eaeaea' });
+    }
+
+    getTopBarBottom(state = {}) {
+      if (!this.presenter) return 84;
+      const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
+      return 12 + (cityView.hidden ? 128 : 166) + 12;
     }
 
     renderTopBar(state = {}) {
@@ -6702,7 +6713,7 @@
       });
     }
 
-    renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}) {
+    renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}, options = {}) {
       const geometry = tileMapView.geometry || {};
       const scale = Math.max(0.38, Math.min(0.78, Math.min(width / 520, height / 420)));
       const viewport = {
@@ -6716,21 +6727,28 @@
       };
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
+      const hitTargetsOnly = Boolean(options.hitTargetsOnly);
 
-      this.drawPanel(x, y, width, height, {
-        fill: this.createGradient(
-          x, y, x, y + height,
-          [
-            [0, 'rgba(30, 43, 45, 0.88)'],
-            [1, 'rgba(18, 17, 14, 0.94)'],
-          ],
-          'rgba(25, 31, 30, 0.92)',
-        ),
-        stroke: 'rgba(240, 180, 91, 0.18)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.06)',
-      });
+      if (!hitTargetsOnly) {
+        this.drawPanel(x, y, width, height, {
+          fill: this.createGradient(
+            x, y, x, y + height,
+            [
+              [0, 'rgba(30, 43, 45, 0.88)'],
+              [1, 'rgba(18, 17, 14, 0.94)'],
+            ],
+            'rgba(25, 31, 30, 0.92)',
+          ),
+          stroke: 'rgba(240, 180, 91, 0.18)',
+          radius: 8,
+          inset: 'rgba(255, 231, 184, 0.06)',
+        });
+      }
       this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true });
+      if (hitTargetsOnly) {
+        this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+        return;
+      }
 
       this.ctx.save();
       this.ctx.beginPath();
@@ -6752,6 +6770,7 @@
     renderMilitaryWorldView(state = {}, x, y, width, height, options = {}) {
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
+      const skipWorldMapLayer = Boolean(options.skipWorldMapLayer);
       const summary = this.presenter.buildTerritorySummaryViewState(territoryState);
       this.drawPanel(x, y, width, height, {
         fill: 'rgba(28, 22, 17, 0.78)',
@@ -6787,7 +6806,10 @@
         const mapY = y + 46;
         const mapW = width - 24;
         const mapH = Math.max(160, height - 58);
-        this.renderWorldTileMap(tileMapView, mapX, mapY, mapW, mapH, uiState);
+        this.renderWorldTileMap(tileMapView, mapX, mapY, mapW, mapH, uiState, {
+          hitTargetsOnly: skipWorldMapLayer,
+        });
+        if (skipWorldMapLayer && this.ctx?.clearRect) this.ctx.clearRect(mapX, mapY, mapW, mapH);
         const resetW = 76;
         this.drawButton(mapX + mapW - resetW - 8, mapY + 8, resetW, 28, '回到本城', { size: 11, radius: 8 });
         this.addHitTarget({ x: mapX + mapW - resetW - 8, y: mapY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
@@ -7145,6 +7167,70 @@
       this.withSlideClip(0, clipY, this.width, clipHeight, transition.direction * travel * (1 - transition.eased), () => {
         this.renderHudTabPage(state, activeTab, topBarBottom, options);
       });
+    }
+
+    getWorldMapLayerLayout(state = {}, topBarBottom = null) {
+      if (!this.presenter || typeof this.presenter.buildMilitaryNavigationViewState !== 'function') return null;
+      const nav = this.presenter.buildMilitaryNavigationViewState(state);
+      if (nav.activeView !== 'world') return null;
+      const layout = this.getLayout();
+      const tabsTop = this.height - 60 - this.bottomSafeArea;
+      const panelTop = topBarBottom ?? 84;
+      const panelHeight = Math.max(360, tabsTop - panelTop - 12);
+      const panelX = layout.contentX;
+      const panelWidth = layout.contentWidth;
+      const worldX = panelX + 12;
+      const worldY = panelTop + 88;
+      const worldW = panelWidth - 24;
+      const worldH = Math.max(120, panelTop + panelHeight - worldY - 12);
+      return {
+        nav,
+        panel: {
+          x: panelX,
+          y: panelTop,
+          width: panelWidth,
+          height: panelHeight,
+        },
+        world: {
+          x: worldX,
+          y: worldY,
+          width: worldW,
+          height: worldH,
+        },
+        map: {
+          x: worldX + 12,
+          y: worldY + 46,
+          width: worldW - 24,
+          height: Math.max(160, worldH - 58),
+        },
+      };
+    }
+
+    renderWorldMapLayer(state = {}, options = {}) {
+      if (!this.presenter || !this.ctx) return false;
+      this.beginFrame(options);
+      this.clearAll();
+      const layout = this.getWorldMapLayerLayout(state, options.topBarBottom);
+      if (!layout || (state.currentEra || 0) < 5) {
+        this.endFrame({ ...options, showFpsOverlay: false });
+        return false;
+      }
+      const territoryState = state.territoryState || {};
+      const uiState = options.territoryUiState || {};
+      const tileMapView = this.presenter.buildWorldTileMapViewState
+        ? this.presenter.buildWorldTileMapViewState(territoryState, {
+          panX: uiState.worldPanX || 0,
+          panY: uiState.worldPanY || 0,
+        })
+        : null;
+      if (!tileMapView?.tiles?.length) {
+        this.endFrame({ ...options, showFpsOverlay: false });
+        return false;
+      }
+      if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
+      this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState);
+      this.endFrame({ ...options, showFpsOverlay: false });
+      return true;
     }
 
     renderTabs(activeTab = 'resources', state = {}, options = {}) {

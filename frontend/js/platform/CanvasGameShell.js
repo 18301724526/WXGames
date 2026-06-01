@@ -17,6 +17,7 @@
       });
       this.runtime = options.runtime || null;
       this.renderer = options.renderer || null;
+      this.worldMapRenderer = options.worldMapRenderer || null;
       this.presenter = options.presenter || null;
       this.previewEnabled = Boolean(options.previewEnabled);
       this.inputEnabled = Boolean(options.inputEnabled);
@@ -64,6 +65,8 @@
       this.transitionTimer = null;
       this.lastAnimationRenderAt = 0;
       this.animationRenderQueued = false;
+      this.lastWorldMapLayerRenderAt = 0;
+      this.worldMapLayerRenderQueued = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -106,6 +109,30 @@
       if (this.renderer || !canvas) return this.renderer;
       const RendererCtor = global.H5CanvasGameRenderer;
       if (!RendererCtor) return null;
+      const sharedAssetCache = new Map();
+      const sharedAssetMetricsCache = new Map();
+      const mapCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
+        ? this.runtime.ensureLayerCanvas('worldMap')
+        : null;
+      if (mapCanvas && !this.worldMapRenderer) {
+        this.worldMapRenderer = new RendererCtor({
+          canvas: mapCanvas,
+          presenter: this.presenter,
+          pixelRatio: this.runtime?.pixelRatio,
+          width: this.runtime?.width,
+          height: this.runtime?.height,
+          h5Runtime: this.runtime,
+          assetCache: sharedAssetCache,
+          assetMetricsCache: sharedAssetMetricsCache,
+          showFpsOverlay: false,
+        });
+        if (typeof this.worldMapRenderer.setAssetsChangedHandler === 'function') {
+          this.worldMapRenderer.setAssetsChangedHandler(() => {
+            this.renderer?.invalidateWorldTileCaches?.();
+            this.requestWorldMapRenderAnimationFrame();
+          });
+        }
+      }
       this.renderer = new RendererCtor({
         canvas,
         presenter: this.presenter,
@@ -113,7 +140,16 @@
         width: this.runtime?.width,
         height: this.runtime?.height,
         h5Runtime: this.runtime,
+        assetCache: sharedAssetCache,
+        assetMetricsCache: sharedAssetMetricsCache,
       });
+      if (typeof this.renderer.setAssetsChangedHandler === 'function') {
+        this.renderer.setAssetsChangedHandler(() => {
+          this.worldMapRenderer?.invalidateWorldTileCaches?.();
+          this.requestRenderAnimationFrame();
+        });
+      }
+      if (this.worldMapRenderer) this.worldMapRenderer.presenter = this.renderer.presenter;
       return this.renderer;
     }
 
@@ -581,7 +617,32 @@
       return this.renderActive();
     }
 
-    requestRenderAnimationFrame() {
+    renderWorldMapLayerFrame() {
+      if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
+      const now = this.now();
+      const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
+      if (this.lastWorldMapLayerRenderAt && now - this.lastWorldMapLayerRenderAt < frameMs) return false;
+      this.lastWorldMapLayerRenderAt = now;
+      return this.renderWorldMapLayer();
+    }
+
+    requestWorldMapRenderAnimationFrame() {
+      if (!this.worldMapRenderer) return this.requestRenderAnimationFrame();
+      if (this.worldMapLayerRenderQueued) return true;
+      const raf = this.getRequestAnimationFrame();
+      if (!raf) return this.renderWorldMapLayerFrame();
+      this.worldMapLayerRenderQueued = true;
+      raf(() => {
+        this.worldMapLayerRenderQueued = false;
+        this.renderWorldMapLayerFrame();
+      });
+      return true;
+    }
+
+    requestRenderAnimationFrame(action = {}) {
+      if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
+        return this.requestWorldMapRenderAnimationFrame();
+      }
       if (this.animationRenderQueued) return true;
       const raf = this.getRequestAnimationFrame();
       if (!raf) return this.renderAnimationFrame();
@@ -940,6 +1001,11 @@
       this.renderer.width = size.width;
       this.renderer.height = size.height;
       this.renderer.pixelRatio = size.pixelRatio;
+      if (this.worldMapRenderer) {
+        this.worldMapRenderer.width = size.width;
+        this.worldMapRenderer.height = size.height;
+        this.worldMapRenderer.pixelRatio = size.pixelRatio;
+      }
       this.renderActive();
     }
 
@@ -980,14 +1046,10 @@
       return true;
     }
 
-    renderActive() {
-      return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
-    }
-
-    renderReadOnly(state, activeTab = 'resources') {
-      if (!this.previewEnabled || !this.renderer || !state) return false;
-      const territoryUiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
-      this.renderer.render(state, {
+    buildRenderOptions(activeTab = 'resources', territoryUiState = null) {
+      const state = this.lastGame?.state || {};
+      const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
+      return {
         activeTab,
         mode: 'hud',
         showSettings: this.showSettings,
@@ -1016,7 +1078,7 @@
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
-        territoryUiState,
+        territoryUiState: resolvedTerritoryUiState,
         ...((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {}),
         tabLocks: this.getTabLocks(state),
         naming: this.naming,
@@ -1025,10 +1087,49 @@
         floatingTexts: this.getFloatingTextView(),
         tutorialHighlight: this.tutorialHighlight,
         rewardReveal: this.rewardReveal,
-      });
+      };
+    }
+
+    renderActive() {
+      return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
+    }
+
+    renderReadOnly(state, activeTab = 'resources') {
+      if (!this.previewEnabled || !this.renderer || !state) return false;
+      const territoryUiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
+      const renderOptions = this.buildRenderOptions(activeTab, territoryUiState);
+      this.renderWorldMapLayer(state, renderOptions);
+      this.renderer.render(state, this.worldMapRenderer
+        ? { ...renderOptions, skipWorldMapLayer: true }
+        : renderOptions);
       if (activeTab === 'military' && territoryUiState.tileMapWaterAnimated) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
+    }
+
+    renderWorldMapLayer(state = this.lastGame?.state, options = null) {
+      if (!this.previewEnabled || !this.worldMapRenderer || !state) return false;
+      const activeTab = options?.activeTab || this.getActiveTab();
+      if (activeTab !== 'military') {
+        if (typeof this.worldMapRenderer.clearAll === 'function') this.worldMapRenderer.clearAll();
+        return false;
+      }
+      const territoryUiState = options?.territoryUiState
+        || this.lastGame?.territoryController?.getUiState?.()
+        || this.territoryUiState
+        || {};
+      const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
+        ? this.renderer.getTopBarBottom(state)
+        : 84;
+      const rendered = this.worldMapRenderer.renderWorldMapLayer(state, {
+        ...(options || this.buildRenderOptions(activeTab, territoryUiState)),
+        activeTab,
+        territoryUiState,
+        topBarBottom,
+        showFpsOverlay: false,
+      });
+      if (rendered) this.lastWorldMapLayerRenderAt = this.now();
+      return rendered;
     }
 
     startTileMapWaterTimer() {
@@ -1038,7 +1139,8 @@
           this.stopTileMapWaterTimer();
           return;
         }
-        this.renderAnimationFrame();
+        if (this.worldMapRenderer) this.renderWorldMapLayerFrame();
+        else this.renderAnimationFrame();
       }, this.getAnimationFrameMs());
       return true;
     }

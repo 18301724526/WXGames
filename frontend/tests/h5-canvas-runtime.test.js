@@ -11,6 +11,23 @@ const CanvasActionDispatcher = require('../js/platform/CanvasActionDispatcher');
 global.CanvasActionDispatcher = CanvasActionDispatcher;
 const CanvasGameShell = require('../js/platform/CanvasGameShell');
 const CanvasGameRenderer = require('../js/platform/CanvasGameRenderer');
+class TestH5CanvasGameRenderer extends CanvasGameRenderer {
+  constructor(options = {}) {
+    super({
+      ctx: options.canvas?.getContext?.('2d') || options.ctx,
+      canvas: options.canvas,
+      presenter: options.presenter,
+      pixelRatio: options.pixelRatio,
+      width: options.width,
+      height: options.height,
+      assetCache: options.assetCache,
+      assetMetricsCache: options.assetMetricsCache,
+      showFpsOverlay: options.showFpsOverlay,
+    });
+    TestH5CanvasGameRenderer.instances.push(this);
+  }
+}
+TestH5CanvasGameRenderer.instances = [];
 
 const projectRoot = path.join(__dirname, '..', '..');
 
@@ -18,30 +35,42 @@ function createCanvasHarness() {
   const listeners = {};
   const appended = [];
   const timers = [];
-  const ctx = {
-    transforms: [],
-    setTransform(...args) { this.transforms.push(args); },
+  const contexts = [];
+  const canvases = [];
+  const createCanvas = () => {
+    const ctx = {
+      transforms: [],
+      setTransform(...args) { this.transforms.push(args); },
+    };
+    const canvas = {
+      id: '',
+      width: 0,
+      height: 0,
+      style: {},
+      attributes: {},
+      clientWidth: 390,
+      clientHeight: 844,
+      setAttribute(name, value) { this.attributes[name] = value; },
+      getContext(type) {
+        assert.equal(type, '2d');
+        return ctx;
+      },
+      addEventListener(type, handler) { listeners[type] = handler; },
+      getBoundingClientRect() { return { left: 10, top: 20, width: 390, height: 844 }; },
+    };
+    contexts.push(ctx);
+    canvases.push(canvas);
+    return canvas;
   };
-  const canvas = {
-    id: '',
-    width: 0,
-    height: 0,
-    style: {},
-    attributes: {},
-    setAttribute(name, value) { this.attributes[name] = value; },
-    getContext(type) {
-      assert.equal(type, '2d');
-      return ctx;
-    },
-    addEventListener(type, handler) { listeners[type] = handler; },
-    getBoundingClientRect() { return { left: 10, top: 20, width: 390, height: 844 }; },
-  };
+  const canvas = createCanvas();
+  const ctx = contexts[0];
   const document = {
     documentElement: { clientWidth: 390, clientHeight: 844 },
     body: { appendChild(node) { appended.push(node); } },
     createElement(tag) {
       assert.equal(tag, 'canvas');
-      return canvas;
+      if (!canvas.id && canvases.length === 1) return canvas;
+      return createCanvas();
     },
     addEventListener(type, handler) { listeners[`document:${type}`] = handler; },
   };
@@ -60,7 +89,7 @@ function createCanvasHarness() {
       if (index >= 0) timers.splice(index, 1);
     },
   };
-  return { canvas, ctx, document, runtime, listeners, appended, timers };
+  return { canvas, ctx, canvases, contexts, document, runtime, listeners, appended, timers };
 }
 
 function createDrawingContext() {
@@ -118,6 +147,37 @@ test('H5 canvas runtime creates a non-blocking full viewport canvas', () => {
   assert.equal(canvas.width, 780);
   assert.equal(canvas.height, 1688);
   assert.deepEqual(ctx.transforms.at(-1), [2, 0, 0, 2, 0, 0]);
+});
+
+test('H5 canvas runtime creates a passive world map layer below the input canvas', () => {
+  const { canvas, document, runtime, appended, contexts } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+
+  const input = h5Runtime.ensureCanvas();
+  const worldMapLayer = h5Runtime.ensureLayerCanvas('worldMap');
+
+  assert.equal(input, canvas);
+  assert.equal(appended.length, 2);
+  assert.equal(appended[0].id, 'h5CanvasLayer');
+  assert.equal(appended[1].id, 'h5WorldMapLayer');
+  assert.equal(appended[0].style.pointerEvents, 'auto');
+  assert.equal(appended[1].style.pointerEvents, 'none');
+  assert.equal(appended[0].style.zIndex, '999');
+  assert.equal(appended[1].style.zIndex, '998');
+  assert.equal(worldMapLayer.width, 780);
+  assert.equal(worldMapLayer.height, 1688);
+  assert.deepEqual(contexts[1].transforms.at(-1), [2, 0, 0, 2, 0, 0]);
+
+  runtime.innerWidth = 300;
+  runtime.innerHeight = 600;
+  runtime.devicePixelRatio = 3;
+  h5Runtime.resize();
+
+  assert.equal(input.width, 900);
+  assert.equal(input.height, 1800);
+  assert.equal(worldMapLayer.width, 900);
+  assert.equal(worldMapLayer.height, 1800);
+  assert.deepEqual(contexts[1].transforms.at(-1), [3, 0, 0, 3, 0, 0]);
 });
 
 test('H5 canvas runtime resizes and converts pointer coordinates', () => {
@@ -223,6 +283,36 @@ test('Canvas game shell mounts runtime without requiring renderer', () => {
   assert.equal(shell.previewEnabled, false);
   assert.equal(shell.inputEnabled, false);
   assert.equal(appended.length, 1);
+});
+
+test('Canvas game shell creates a separate passive world map renderer on H5', () => {
+  TestH5CanvasGameRenderer.instances = [];
+  const previousRenderer = global.H5CanvasGameRenderer;
+  global.H5CanvasGameRenderer = TestH5CanvasGameRenderer;
+  const { document, runtime, appended } = createCanvasHarness();
+  try {
+    const shell = CanvasGameShell.mount({ state: { currentTab: 'resources', resources: {} } }, {
+      Runtime: H5CanvasRuntime,
+      document,
+      runtime,
+      presenter: {},
+      previewEnabled: false,
+    });
+
+    assert.ok(shell);
+    assert.equal(appended.length, 2);
+    assert.equal(appended[0].id, 'h5CanvasLayer');
+    assert.equal(appended[1].id, 'h5WorldMapLayer');
+    assert.equal(appended[1].style.pointerEvents, 'none');
+    assert.ok(shell.renderer);
+    assert.ok(shell.worldMapRenderer);
+    assert.equal(shell.renderer.canvas, appended[0]);
+    assert.equal(shell.worldMapRenderer.canvas, appended[1]);
+    assert.equal(shell.renderer.assetCache, shell.worldMapRenderer.assetCache);
+    assert.equal(shell.renderer.assetMetricsCache, shell.worldMapRenderer.assetMetricsCache);
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+  }
 });
 
 test('Canvas game shell can render read-only HUD preview when explicitly enabled', () => {
@@ -1952,6 +2042,69 @@ test('Canvas game shell coalesces repeated world drag moves into one requested f
   assert.equal(renderCount, 2);
 });
 
+test('Canvas game shell renders only the world map layer during dual-canvas world drag moves', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const frames = [];
+  runtime.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 152,
+    render() {},
+  };
+  const mapLayerCalls = [];
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    renderWorldMapLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      return true;
+    },
+  };
+  const game = {
+    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
+    getActiveTab: () => 'military',
+    territoryController: {
+      getUiState: () => ({ worldPanX: 0, worldPanY: 0 }),
+      startWorldDrag() {},
+      moveWorldDrag() {},
+      endWorldDrag() {},
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+  let fullRenderCount = 0;
+  shell.renderActive = () => {
+    fullRenderCount += 1;
+    return true;
+  };
+
+  listeners.pointerdown({ pointerId: 9, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 9, clientX: 130, clientY: 210, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 9, clientX: 150, clientY: 230, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+
+  assert.equal(frames.length, 1);
+  assert.equal(fullRenderCount, 1);
+  assert.equal(mapLayerCalls.length, 0);
+  frames[0]();
+  assert.equal(fullRenderCount, 1);
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(mapLayerCalls[0].options.activeTab, 'military');
+});
+
 test('Canvas game shell scrolls tech tree through shared drag action', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const hitTargets = [
@@ -2321,6 +2474,49 @@ test('Canvas game shell refreshes animated world water at the shared 60FPS caden
 
   assert.equal(timers.at(-1).intervalMs, 16);
   assert.equal(renderCalls.length > 0, true);
+});
+
+test('Canvas game shell refreshes animated world water on the map layer when dual canvas is available', () => {
+  const { document, runtime, timers } = createCanvasHarness();
+  runtime.clearInterval = () => {};
+  const renderer = {
+    render(state, options) {
+      options.territoryUiState.tileMapWaterAnimated = true;
+    },
+  };
+  const mapLayerCalls = [];
+  const worldMapRenderer = {
+    renderWorldMapLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      return true;
+    },
+  };
+  const shell = CanvasGameShell.mount({
+    state: { currentTab: 'military', militaryView: 'world' },
+    getActiveTab: () => 'military',
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+  let now = 1000;
+  let fullRenderCount = 0;
+  shell.renderAnimationFrame = () => {
+    fullRenderCount += 1;
+    return true;
+  };
+  shell.now = () => now;
+
+  shell.renderReadOnly(shell.lastGame.state, 'military');
+  const initialMapLayerCalls = mapLayerCalls.length;
+  now += 20;
+  timers.at(-1).callback();
+
+  assert.equal(fullRenderCount, 0);
+  assert.equal(mapLayerCalls.length, initialMapLayerCalls + 1);
 });
 
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {

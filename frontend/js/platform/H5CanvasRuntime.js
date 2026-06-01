@@ -7,8 +7,10 @@
       this.storagePrefix = options.storagePrefix || 'cf_';
       this.storage = options.storage || this.runtime.localStorage || null;
       this.canvas = options.canvas || null;
+      this.layerCanvases = new Map();
       this.container = options.container || null;
       this.id = options.id || 'h5CanvasLayer';
+      this.worldMapLayerId = options.worldMapLayerId || 'h5WorldMapLayer';
       this.pixelRatio = options.pixelRatio || this.runtime.devicePixelRatio || 1;
       this.width = 0;
       this.height = 0;
@@ -45,21 +47,62 @@
       canvas.id = this.id;
       canvas.setAttribute?.('aria-hidden', 'true');
       canvas.setAttribute?.('data-canvas-hud-input', 'document-capture');
-      canvas.style.position = 'fixed';
-      canvas.style.inset = '0';
-      canvas.style.width = '100vw';
-      canvas.style.height = '100dvh';
-      canvas.style.display = 'block';
-      canvas.style.pointerEvents = 'auto';
-      canvas.style.touchAction = 'none';
-      canvas.style.zIndex = '999';
-      canvas.style.background = 'transparent';
+      this.applyCanvasLayerStyle(canvas, {
+        pointerEvents: 'auto',
+        zIndex: 999,
+      });
       const host = this.container || this.document.body;
       host?.appendChild?.(canvas);
       this.canvas = canvas;
       this.resize();
       this.bindEvents();
       return this.canvas;
+    }
+
+    applyCanvasLayerStyle(canvas, options = {}) {
+      if (!canvas?.style) return;
+      canvas.style.position = 'fixed';
+      canvas.style.inset = '0';
+      canvas.style.width = '100vw';
+      canvas.style.height = '100dvh';
+      canvas.style.display = 'block';
+      canvas.style.pointerEvents = options.pointerEvents || 'none';
+      canvas.style.touchAction = 'none';
+      canvas.style.zIndex = String(options.zIndex ?? 998);
+      canvas.style.background = 'transparent';
+    }
+
+    ensureLayerCanvas(name = 'worldMap', options = {}) {
+      const key = String(name || 'worldMap');
+      const existing = this.layerCanvases.get(key);
+      if (existing) {
+        this.resizeCanvas(existing);
+        return existing;
+      }
+      if (!this.document || typeof this.document.createElement !== 'function') return null;
+      const canvas = this.document.createElement('canvas');
+      canvas.id = options.id || (key === 'worldMap' ? this.worldMapLayerId : `${this.id}-${key}`);
+      canvas.setAttribute?.('aria-hidden', 'true');
+      canvas.setAttribute?.('data-canvas-layer', key);
+      this.applyCanvasLayerStyle(canvas, {
+        pointerEvents: 'none',
+        zIndex: options.zIndex ?? 998,
+      });
+      const host = this.container || this.document.body;
+      host?.appendChild?.(canvas);
+      this.layerCanvases.set(key, canvas);
+      if (!this.width || !this.height) {
+        const viewport = this.getViewportSize();
+        this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
+        this.width = viewport.width;
+        this.height = viewport.height;
+      }
+      this.resizeCanvas(canvas);
+      return canvas;
+    }
+
+    getLayerCanvas(name = 'worldMap') {
+      return this.layerCanvases.get(String(name || 'worldMap')) || null;
     }
 
     createCanvas() {
@@ -141,6 +184,14 @@
       this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
       this.width = viewport.width;
       this.height = viewport.height;
+      this.resizeCanvas(canvas);
+      this.layerCanvases.forEach((layerCanvas) => this.resizeCanvas(layerCanvas));
+      this.resizeHandlers.forEach((handler) => handler({ width: this.width, height: this.height, pixelRatio: this.pixelRatio }));
+      return { width: this.width, height: this.height, pixelRatio: this.pixelRatio };
+    }
+
+    resizeCanvas(canvas) {
+      if (!canvas) return null;
       canvas.width = Math.floor(this.width * this.pixelRatio);
       canvas.height = Math.floor(this.height * this.pixelRatio);
       const ctx = canvas.getContext?.('2d');
@@ -148,8 +199,7 @@
         if (typeof ctx.setTransform === 'function') ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
         else if (typeof ctx.scale === 'function') ctx.scale(this.pixelRatio, this.pixelRatio);
       }
-      this.resizeHandlers.forEach((handler) => handler({ width: this.width, height: this.height, pixelRatio: this.pixelRatio }));
-      return { width: this.width, height: this.height, pixelRatio: this.pixelRatio };
+      return canvas;
     }
 
     bindEvents() {
