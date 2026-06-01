@@ -324,6 +324,7 @@
         topBarBottom,
         collectHitTargets: true,
         reuseCachedWorldTileView: Boolean(options.reuseCachedWorldTileView || this.isDragging()),
+        snapshotOnly: Boolean(options.snapshotOnly || this.isDragging()),
         waterTimeMs: options.waterTimeMs ?? this.waterTimeMs,
         showFpsOverlay: false,
       });

@@ -3930,6 +3930,18 @@ test('CanvasGameRenderer uses chunked static snapshots when the full world cache
   assert.deepEqual(Array.from(renderer.worldTileStaticChunkCaches.keys()), firstChunkKeys);
 
   calls.length = 0;
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 120, y: 0 } }, 20, 80, 320, 240, {}, {
+    fastDrag: true,
+    snapshotOnly: true,
+  });
+  const snapshotFrameStaticTileDraws = calls.filter((call) => (
+    call[0] === 'offscreenDrawImage'
+    && call[1]?.src === assetPath
+  )).length;
+  assert.equal(snapshotFrameStaticTileDraws, 0);
+  assert.deepEqual(Array.from(renderer.worldTileStaticChunkCaches.keys()), firstChunkKeys);
+
+  calls.length = 0;
   renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 900, y: 0 } }, 20, 80, 320, 240, {});
   assert.ok(renderer.worldTileStaticChunkCaches.size >= firstChunkKeys.length);
   assert.ok(firstChunkKeys.some((key) => renderer.worldTileStaticChunkCaches.has(key)));

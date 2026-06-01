@@ -62,6 +62,7 @@
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
       this.worldTileStaticCacheLayoutKind = '';
+      this.worldTileStaticCacheLayout = null;
       this.worldTileStaticChunkCaches = new Map();
       this.worldTileStaticChunkCacheTick = 0;
       this.worldTileScoutRouteCache = null;
@@ -551,6 +552,7 @@
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
       this.worldTileStaticCacheLayoutKind = '';
+      this.worldTileStaticCacheLayout = null;
       this.worldTileStaticChunkCaches?.clear?.();
       this.worldTileStaticChunkCacheTick = 0;
       this.worldTileScoutRouteCache = null;
@@ -6492,10 +6494,14 @@
       return 32;
     }
 
+    getWorldTileStaticChunkCacheScale() {
+      return 1;
+    }
+
     getWorldTileStaticChunkLayouts(tileMapView = {}, viewport = {}, frame = {}, geometry = {}) {
       const localEntries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
       if (!localEntries.length) return [];
-      const cacheScale = this.getWorldTileStaticCacheScale();
+      const cacheScale = this.getWorldTileStaticChunkCacheScale();
       const pixelBudget = this.getWorldTileStaticCachePixelBudget();
       const scale = Number(viewport.scale) || 1;
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
@@ -6866,6 +6872,9 @@
       work.pixelWidth = pixelW;
       work.pixelHeight = pixelH;
       work.scale = cacheScale;
+      work.chunkX = layout.chunkX;
+      work.chunkY = layout.chunkY;
+      work.frame = { ...layout.frame };
       const cacheKey = this.getWorldTileStaticChunkCacheKey(tileMapView, layout.renderViewport, layout, uiState, { cacheScale });
       if (cacheKey !== work.key) {
         const previousCtx = this.ctx;
@@ -6894,7 +6903,7 @@
     }
 
     renderWorldTileStaticChunks(tileMapView = {}, chunkLayouts = [], frame = {}, uiState = {}) {
-      const cacheScale = this.getWorldTileStaticCacheScale();
+      const cacheScale = this.getWorldTileStaticChunkCacheScale();
       const activeKeys = new Set(chunkLayouts.map((layout) => `${layout.chunkX},${layout.chunkY}`));
       this.worldTileStaticCacheLayoutKind = 'chunks';
       let rendered = false;
@@ -6905,6 +6914,48 @@
         }
       });
       this.pruneWorldTileStaticChunkCaches(activeKeys);
+      return rendered;
+    }
+
+    renderWorldTileSnapshotCache(tileMapView = {}, viewport = {}, frame = {}) {
+      if (!this.ctx || typeof this.ctx.drawImage !== 'function') return false;
+      if (this.worldTileFastDragComposite?.work?.canvas && this.worldTileFastDragComposite?.layout?.frame) {
+        const cachedLayout = this.worldTileFastDragComposite.layout;
+        return this.drawWorldTileLayerCache(this.worldTileFastDragComposite.work, {
+          ...cachedLayout,
+          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
+          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
+        }, frame);
+      }
+      if (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame) {
+        const cachedLayout = this.worldTileStaticCacheLayout;
+        return this.drawWorldTileLayerCache(this.worldTileStaticCache, {
+          ...cachedLayout,
+          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
+          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
+        }, frame);
+      }
+      if (this.worldTileStaticCacheLayoutKind !== 'chunks' || !this.worldTileStaticChunkCaches?.size) return false;
+      let rendered = false;
+      this.worldTileStaticChunkCaches.forEach((work) => {
+        const chunkFrame = work?.frame;
+        if (!work?.canvas || !chunkFrame) return;
+        const layout = {
+          kind: 'chunk',
+          frame: chunkFrame,
+          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(chunkFrame.x) || 0),
+          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(chunkFrame.y) || 0),
+        };
+        const drawRight = layout.drawX + (Number(chunkFrame.width) || 0);
+        const drawBottom = layout.drawY + (Number(chunkFrame.height) || 0);
+        if (
+          layout.drawX > frame.x + frame.width
+          || drawRight < frame.x
+          || layout.drawY > frame.y + frame.height
+          || drawBottom < frame.y
+        ) return;
+        if (this.drawWorldTileLayerCache(work, layout, frame)) rendered = true;
+      });
       return rendered;
     }
 
@@ -6941,6 +6992,7 @@
           work.ctx.restore?.();
           this.worldTileStaticCacheKey = cacheKey;
           this.worldTileStaticCacheLayoutKind = layout.kind || '';
+          this.worldTileStaticCacheLayout = { ...layout, frame: { ...layout.frame } };
         } finally {
           this.ctx = previousCtx;
         }
@@ -7207,8 +7259,8 @@
         geometry,
       };
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
-      const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
       const hitTargetsOnly = Boolean(options.hitTargetsOnly);
+      const snapshotOnly = Boolean(options.snapshotOnly);
       const previousFastDragActive = this.worldTileFastDragActive;
       this.worldTileFastDragActive = Boolean(options.fastDrag);
 
@@ -7232,6 +7284,16 @@
           });
         }
         this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true });
+        if (!hitTargetsOnly && snapshotOnly) {
+          this.ctx.save();
+          this.ctx.beginPath();
+          this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
+          this.ctx.clip();
+          const renderedSnapshot = this.renderWorldTileSnapshotCache(tileMapView, viewport, frame);
+          this.ctx.restore();
+          if (renderedSnapshot) return;
+        }
+        const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
         if (hitTargetsOnly) {
           this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
           return;
@@ -7800,6 +7862,7 @@
         this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
           frameless: Boolean(options.isMapHome),
           fastDrag: Boolean(options.reuseCachedWorldTileView),
+          snapshotOnly: Boolean(options.snapshotOnly),
         });
       };
       try {

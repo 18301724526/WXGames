@@ -827,9 +827,11 @@
         const waterTimeMs = this.isWorldMapDragging() || runtimeDragging
           ? this.getFrozenWorldMapWaterTimeMs()
           : null;
+        const snapshotOnly = Boolean(options.snapshotOnly || (this.worldMapDragFrameActive && runtimeDragging));
         return this.renderRuntimeWorldMap(this.lastGame.state, {
           ...options,
           reuseCachedWorldTileView: Boolean(this.worldMapDragFrameActive || runtimeDragging),
+          snapshotOnly,
           waterTimeMs,
         });
       }
@@ -841,7 +843,11 @@
       const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive || this.isWorldMapDragging());
       this.worldMapDragFrameActive = false;
       const waterTimeMs = reuseCachedWorldTileView ? this.getFrozenWorldMapWaterTimeMs() : null;
-      return this.renderWorldMapLayer(this.lastGame.state, { reuseCachedWorldTileView, waterTimeMs });
+      return this.renderWorldMapLayer(this.lastGame.state, {
+        reuseCachedWorldTileView,
+        snapshotOnly: Boolean(options.snapshotOnly || reuseCachedWorldTileView),
+        waterTimeMs,
+      });
     }
 
     requestWorldMapRenderAnimationFrame() {
@@ -1424,6 +1430,7 @@
         territoryUiState,
         topBarBottom,
         reuseCachedWorldTileView: Boolean(options?.reuseCachedWorldTileView),
+        snapshotOnly: Boolean(options?.snapshotOnly),
         waterTimeMs: options?.waterTimeMs !== null
           && options?.waterTimeMs !== undefined
           && Number.isFinite(Number(options.waterTimeMs))

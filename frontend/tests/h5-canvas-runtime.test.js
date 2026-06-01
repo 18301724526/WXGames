@@ -2251,6 +2251,7 @@ test('Canvas game shell redraws the passive world map layer from snapshots durin
   assert.equal(fullRenderCount, 1);
   assert.equal(mapLayerCalls.length, 1);
   assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
   assert.ok(Number.isFinite(mapLayerCalls[0].options.waterTimeMs));
   assert.equal(worldMapLayer.style.transform, undefined);
   assert.equal(worldMapLayer.style.willChange, undefined);
@@ -2335,6 +2336,7 @@ test('Canvas game shell routes map-home drags through WorldMapRuntime without gl
   assert.equal(uiState.worldPanX, 24);
   assert.equal(uiState.worldPanY, 18);
   assert.equal(layerCalls.length > 0, true);
+  assert.equal(layerCalls.some((call) => call.options.snapshotOnly === true), true);
   assert.equal(renderCalls.length, 1);
 });
 
@@ -2465,6 +2467,7 @@ test('Canvas game shell redraws snapshot drag frames without delayed compositor 
   frames[0]();
   assert.equal(mapLayerCalls.length, 1);
   assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
   assert.ok(Number.isFinite(mapLayerCalls[0].options.waterTimeMs));
   listeners.pointerup({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
@@ -2473,6 +2476,7 @@ test('Canvas game shell redraws snapshot drag frames without delayed compositor 
   assert.equal(timeouts.length, 0);
   assert.equal(shell.hasPendingWorldMapCompositeCommit(), false);
   assert.equal(mapLayerCalls.at(-1).options.reuseCachedWorldTileView, false);
+  assert.equal(mapLayerCalls.at(-1).options.snapshotOnly, false);
   assert.equal(mapLayerCalls.at(-1).options.waterTimeMs, null);
   assert.equal(hudCalls.at(-1).options.skipWorldMapLayer, true);
   assert.equal(worldMapLayer.style.transform, undefined);
@@ -2543,6 +2547,7 @@ test('Canvas game shell redraws repeated short world drags without pending compo
   assert.equal(mapLayerCalls.length, 2);
   assert.equal(hudCalls.length, 1);
   assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
   assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
   assert.equal(worldMapLayer.style.transform, undefined);
 
@@ -2563,6 +2568,7 @@ test('Canvas game shell redraws repeated short world drags without pending compo
   assert.equal(hudCalls.length, 2);
   assert.equal(timeouts.length, 0);
   assert.equal(mapLayerCalls[2].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[2].options.snapshotOnly, true);
   assert.equal(mapLayerCalls[2].options.waterTimeMs, 1020);
   assert.equal(worldMapLayer.style.transform, undefined);
 });
@@ -3068,6 +3074,7 @@ test('Canvas game shell freezes animated world water during snapshot drag redraw
   frames[0]();
   assert.equal(mapLayerCalls.length, 1);
   assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(mapLayerCalls[0].options.snapshotOnly, true);
   assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
   assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, undefined);
 });
