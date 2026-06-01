@@ -61,21 +61,40 @@
 
     applyCanvasLayerStyle(canvas, options = {}) {
       if (!canvas?.style) return;
+      const padding = Math.max(0, Number(options.padding ?? canvas._viewportPadding) || 0);
+      canvas._viewportPadding = padding;
       canvas.style.position = 'fixed';
-      canvas.style.inset = '0';
-      canvas.style.width = '100vw';
-      canvas.style.height = '100dvh';
+      if (padding > 0) {
+        canvas.style.inset = 'auto';
+        canvas.style.left = `${-padding}px`;
+        canvas.style.top = `${-padding}px`;
+        canvas.style.width = `calc(100vw + ${padding * 2}px)`;
+        canvas.style.height = `calc(100dvh + ${padding * 2}px)`;
+      } else {
+        canvas.style.inset = '0';
+        canvas.style.left = '';
+        canvas.style.top = '';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100dvh';
+      }
       canvas.style.display = 'block';
       canvas.style.pointerEvents = options.pointerEvents || 'none';
       canvas.style.touchAction = 'none';
       canvas.style.zIndex = String(options.zIndex ?? 998);
       canvas.style.background = 'transparent';
+      canvas.style.transformOrigin = '0 0';
+      canvas.style.backfaceVisibility = 'hidden';
     }
 
     ensureLayerCanvas(name = 'worldMap', options = {}) {
       const key = String(name || 'worldMap');
       const existing = this.layerCanvases.get(key);
       if (existing) {
+        this.applyCanvasLayerStyle(existing, {
+          pointerEvents: 'none',
+          zIndex: options.zIndex ?? existing.style?.zIndex ?? 998,
+          padding: options.padding ?? existing._viewportPadding,
+        });
         this.resizeCanvas(existing);
         return existing;
       }
@@ -87,6 +106,7 @@
       this.applyCanvasLayerStyle(canvas, {
         pointerEvents: 'none',
         zIndex: options.zIndex ?? 998,
+        padding: options.padding,
       });
       const host = this.container || this.document.body;
       host?.appendChild?.(canvas);
@@ -103,6 +123,39 @@
 
     getLayerCanvas(name = 'worldMap') {
       return this.layerCanvases.get(String(name || 'worldMap')) || null;
+    }
+
+    getLayerMetrics(name = 'worldMap') {
+      const canvas = this.getLayerCanvas(name);
+      const padding = Math.max(0, Number(canvas?._viewportPadding) || 0);
+      return {
+        width: this.width + padding * 2,
+        height: this.height + padding * 2,
+        viewportWidth: this.width,
+        viewportHeight: this.height,
+        padding,
+      };
+    }
+
+    setLayerTransform(name = 'worldMap', transform = '') {
+      const canvas = this.getLayerCanvas(name);
+      if (!canvas?.style) return false;
+      const value = String(transform || '');
+      canvas.style.transform = value;
+      canvas.style.willChange = value ? 'transform' : '';
+      return true;
+    }
+
+    setLayerTranslate(name = 'worldMap', x = 0, y = 0) {
+      const tx = Number(x);
+      const ty = Number(y);
+      const safeX = Number.isFinite(tx) ? tx : 0;
+      const safeY = Number.isFinite(ty) ? ty : 0;
+      return this.setLayerTransform(name, `translate3d(${safeX}px, ${safeY}px, 0)`);
+    }
+
+    clearLayerTransform(name = 'worldMap') {
+      return this.setLayerTransform(name, '');
     }
 
     createCanvas() {
@@ -192,8 +245,11 @@
 
     resizeCanvas(canvas) {
       if (!canvas) return null;
-      canvas.width = Math.floor(this.width * this.pixelRatio);
-      canvas.height = Math.floor(this.height * this.pixelRatio);
+      const padding = Math.max(0, Number(canvas._viewportPadding) || 0);
+      const logicalWidth = this.width + padding * 2;
+      const logicalHeight = this.height + padding * 2;
+      canvas.width = Math.floor(logicalWidth * this.pixelRatio);
+      canvas.height = Math.floor(logicalHeight * this.pixelRatio);
       const ctx = canvas.getContext?.('2d');
       if (ctx) {
         if (typeof ctx.setTransform === 'function') ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);

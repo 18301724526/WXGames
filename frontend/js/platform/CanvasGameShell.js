@@ -69,6 +69,8 @@
       this.worldMapLayerRenderQueued = false;
       this.worldMapDragFrameActive = false;
       this.worldMapDragWaterTimeMs = null;
+      this.worldMapCompositeDrag = null;
+      this.deferRenderUntilWorldMapDragEnd = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -117,16 +119,22 @@
       const sharedWorldTileMaskCache = new Map();
       const sharedWorldTileMaskMetricsCache = new Map();
       const sharedWorldTileDryCompositeCache = new Map();
+      const worldMapLayerPadding = this.getWorldMapLayerPadding();
       const mapCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
-        ? this.runtime.ensureLayerCanvas('worldMap')
+        ? this.runtime.ensureLayerCanvas('worldMap', { padding: worldMapLayerPadding })
         : null;
       if (mapCanvas && !this.worldMapRenderer) {
+        const layerMetrics = this.runtime?.getLayerMetrics?.('worldMap') || {};
         this.worldMapRenderer = new RendererCtor({
           canvas: mapCanvas,
           presenter: this.presenter,
           pixelRatio: this.runtime?.pixelRatio,
-          width: this.runtime?.width,
-          height: this.runtime?.height,
+          width: layerMetrics.width || this.runtime?.width,
+          height: layerMetrics.height || this.runtime?.height,
+          viewportOffsetX: Number(layerMetrics.padding) || 0,
+          viewportOffsetY: Number(layerMetrics.padding) || 0,
+          viewportWidth: layerMetrics.viewportWidth || this.runtime?.width,
+          viewportHeight: layerMetrics.viewportHeight || this.runtime?.height,
           h5Runtime: this.runtime,
           assetCache: sharedAssetCache,
           assetMetricsCache: sharedAssetMetricsCache,
@@ -245,10 +253,12 @@
       const dragType = this.dragAction.type === 'techTreeDrag'
         ? 'techTreeDrag'
         : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
-      if (dragType === 'worldMapDrag' && phase === 'start') this.worldMapDragWaterTimeMs = this.now();
-      if (dragType === 'worldMapDrag' && phase === 'end') this.worldMapDragWaterTimeMs = null;
+      if (dragType === 'worldMapDrag' && phase === 'start') this.startWorldMapCompositeDrag(point);
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
-      if (phase === 'end') {
+      if (dragType === 'worldMapDrag' && (phase === 'end' || phase === 'cancel')) {
+        this.finishWorldMapCompositeDrag();
+      }
+      if (phase === 'end' || phase === 'cancel') {
         this.dragAction = null;
       }
       return handled;
@@ -629,6 +639,29 @@
       return Math.max(this.getAnimationFrameMs(), Math.round(1000 / Math.max(1, fps)));
     }
 
+    getWorldMapLayerPadding() {
+      return Math.max(200, Number(this.worldMapRenderer?.getWorldTileDragCachePanRange?.()
+        || this.renderer?.getWorldTileDragCachePanRange?.()
+        || 180));
+    }
+
+    syncWorldMapRendererLayerMetrics() {
+      if (!this.worldMapRenderer || typeof this.runtime?.getLayerMetrics !== 'function') return false;
+      const metrics = this.runtime.getLayerMetrics('worldMap');
+      if (!metrics) return false;
+      const width = Number(metrics.width) || this.runtime?.width || this.worldMapRenderer.width;
+      const height = Number(metrics.height) || this.runtime?.height || this.worldMapRenderer.height;
+      const padding = Number(metrics.padding) || 0;
+      this.worldMapRenderer.width = width;
+      this.worldMapRenderer.height = height;
+      this.worldMapRenderer.pixelRatio = this.runtime?.pixelRatio || this.worldMapRenderer.pixelRatio;
+      this.worldMapRenderer.viewportOffsetX = padding;
+      this.worldMapRenderer.viewportOffsetY = padding;
+      this.worldMapRenderer.viewportWidth = Number(metrics.viewportWidth) || this.runtime?.width || width;
+      this.worldMapRenderer.viewportHeight = Number(metrics.viewportHeight) || this.runtime?.height || height;
+      return true;
+    }
+
     getFrozenWorldMapWaterTimeMs() {
       if (
         this.worldMapDragWaterTimeMs === null
@@ -646,6 +679,74 @@
         && Number.isFinite(Number(this.worldMapDragWaterTimeMs));
     }
 
+    getWorldMapPan() {
+      const uiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
+      return {
+        x: Number(uiState.worldPanX) || 0,
+        y: Number(uiState.worldPanY) || 0,
+      };
+    }
+
+    canUseWorldMapCompositeDrag() {
+      const layer = typeof this.runtime?.getLayerCanvas === 'function'
+        ? this.runtime.getLayerCanvas('worldMap')
+        : null;
+      const ensuredLayer = layer || (typeof this.runtime?.ensureLayerCanvas === 'function'
+        ? this.runtime.ensureLayerCanvas('worldMap', { padding: this.getWorldMapLayerPadding() })
+        : null);
+      return Boolean(ensuredLayer
+        && this.worldMapRenderer
+        && typeof this.runtime?.setLayerTranslate === 'function'
+        && typeof this.runtime?.clearLayerTransform === 'function');
+    }
+
+    startWorldMapCompositeDrag(point = {}) {
+      this.worldMapDragWaterTimeMs = this.now();
+      if (!this.canUseWorldMapCompositeDrag()) {
+        this.worldMapCompositeDrag = null;
+        return false;
+      }
+      const pan = this.getWorldMapPan();
+      this.worldMapCompositeDrag = {
+        startX: Number(point.x) || 0,
+        startY: Number(point.y) || 0,
+        startPanX: pan.x,
+        startPanY: pan.y,
+        offsetX: 0,
+        offsetY: 0,
+      };
+      this.runtime.setLayerTranslate('worldMap', 0, 0);
+      return true;
+    }
+
+    updateWorldMapCompositeDrag(point = {}) {
+      if (!this.worldMapCompositeDrag || !this.canUseWorldMapCompositeDrag()) return false;
+      const pan = this.getWorldMapPan();
+      let offsetX = pan.x - this.worldMapCompositeDrag.startPanX;
+      let offsetY = pan.y - this.worldMapCompositeDrag.startPanY;
+      if (!Number.isFinite(offsetX) || !Number.isFinite(offsetY)) {
+        offsetX = (Number(point.x) || 0) - this.worldMapCompositeDrag.startX;
+        offsetY = (Number(point.y) || 0) - this.worldMapCompositeDrag.startY;
+      }
+      this.worldMapCompositeDrag.offsetX = offsetX;
+      this.worldMapCompositeDrag.offsetY = offsetY;
+      return this.runtime.setLayerTranslate('worldMap', offsetX, offsetY);
+    }
+
+    finishWorldMapCompositeDrag() {
+      const wasDragging = this.isWorldMapDragging() || Boolean(this.worldMapCompositeDrag);
+      const usedCompositeDrag = Boolean(this.worldMapCompositeDrag && this.canUseWorldMapCompositeDrag());
+      if (usedCompositeDrag) this.runtime.clearLayerTransform('worldMap');
+      this.worldMapCompositeDrag = null;
+      this.worldMapDragWaterTimeMs = null;
+      this.worldMapDragFrameActive = false;
+      if (usedCompositeDrag || (wasDragging && this.deferRenderUntilWorldMapDragEnd)) {
+        this.deferRenderUntilWorldMapDragEnd = false;
+        return this.renderActive({ invalidateWorldTileView: false });
+      }
+      return false;
+    }
+
     getRequestAnimationFrame() {
       const raf = this.runtime?.requestAnimationFrame || global.requestAnimationFrame;
       return typeof raf === 'function' ? raf.bind(this.runtime || global) : null;
@@ -659,11 +760,12 @@
       return this.renderActive();
     }
 
-    renderWorldMapLayerFrame() {
+    renderWorldMapLayerFrame(options = {}) {
       if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
+      this.syncWorldMapRendererLayerMetrics();
       const now = this.now();
       const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
-      if (this.lastWorldMapLayerRenderAt && now - this.lastWorldMapLayerRenderAt < frameMs) return false;
+      if (!options.force && this.lastWorldMapLayerRenderAt && now - this.lastWorldMapLayerRenderAt < frameMs) return false;
       this.lastWorldMapLayerRenderAt = now;
       const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive || this.isWorldMapDragging());
       this.worldMapDragFrameActive = false;
@@ -686,6 +788,7 @@
 
     requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
+        if (this.updateWorldMapCompositeDrag(action.pointer || {})) return true;
         this.getFrozenWorldMapWaterTimeMs();
         this.worldMapDragFrameActive = true;
         return this.requestWorldMapRenderAnimationFrame();
@@ -1052,9 +1155,7 @@
       this.renderer.height = size.height;
       this.renderer.pixelRatio = size.pixelRatio;
       if (this.worldMapRenderer) {
-        this.worldMapRenderer.width = size.width;
-        this.worldMapRenderer.height = size.height;
-        this.worldMapRenderer.pixelRatio = size.pixelRatio;
+        this.syncWorldMapRendererLayerMetrics();
       }
       this.renderActive();
     }
@@ -1177,14 +1278,21 @@
       };
     }
 
-    renderActive() {
-      this.renderer?.invalidateWorldTileViewCache?.();
-      this.worldMapRenderer?.invalidateWorldTileViewCache?.();
+    renderActive(options = {}) {
+      if (this.isWorldMapDragging()) {
+        this.deferRenderUntilWorldMapDragEnd = true;
+        return true;
+      }
+      if (options.invalidateWorldTileView) {
+        this.renderer?.invalidateWorldTileViewCache?.();
+        this.worldMapRenderer?.invalidateWorldTileViewCache?.();
+      }
       return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
     }
 
     renderReadOnly(state, activeTab = 'resources') {
       if (!this.previewEnabled || !this.renderer || !state) return false;
+      this.syncWorldMapRendererLayerMetrics();
       const territoryUiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: activeTab,
@@ -1209,6 +1317,7 @@
 
     renderWorldMapLayer(state = this.lastGame?.state, options = null) {
       if (!this.previewEnabled || !this.worldMapRenderer || !state) return false;
+      this.syncWorldMapRendererLayerMetrics();
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: options?.activeTab || this.getActiveTab(),
         militaryView: state.militaryView || this.lastGame?.militaryView,
@@ -1252,6 +1361,7 @@
           this.stopTileMapWaterTimer();
           return;
         }
+        if (this.isWorldMapDragging()) return;
         if (this.worldMapRenderer) this.renderWorldMapLayerFrame();
         else this.renderAnimationFrame();
       }, this.getWorldTileWaterAnimationFrameMs());

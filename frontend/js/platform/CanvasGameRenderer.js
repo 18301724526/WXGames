@@ -43,6 +43,10 @@
       this.pixelRatio = options.pixelRatio || 1;
       this.width = options.width || 390;
       this.height = options.height || 844;
+      this.viewportOffsetX = Number(options.viewportOffsetX) || 0;
+      this.viewportOffsetY = Number(options.viewportOffsetY) || 0;
+      this.viewportWidth = Number(options.viewportWidth) || this.width;
+      this.viewportHeight = Number(options.viewportHeight) || this.height;
       this.maxContentWidth = options.maxContentWidth || 480;
       this.edgePadding = options.edgePadding || 12;
       this.bottomSafeArea = options.bottomSafeArea || 12;
@@ -6992,10 +6996,14 @@
 
     renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}, options = {}) {
       const geometry = tileMapView.geometry || {};
-      const scale = Math.max(0.38, Math.min(0.78, Math.min(width / 520, height / 420)));
+      const scaleBasisWidth = Number(options.scaleBasisWidth) || width;
+      const scaleBasisHeight = Number(options.scaleBasisHeight) || height;
+      const originX = options.originX !== undefined ? Number(options.originX) : x + width * 0.5;
+      const originY = options.originY !== undefined ? Number(options.originY) : y + height * 0.42;
+      const scale = Math.max(0.38, Math.min(0.78, Math.min(scaleBasisWidth / 520, scaleBasisHeight / 420)));
       const viewport = {
-        originX: x + width * 0.5,
-        originY: y + height * 0.42,
+        originX: Number.isFinite(originX) ? originX : x + width * 0.5,
+        originY: Number.isFinite(originY) ? originY : y + height * 0.42,
         panX: Number(tileMapView.pan?.x) || 0,
         panY: Number(tileMapView.pan?.y) || 0,
         scale,
@@ -7400,7 +7408,9 @@
     }
 
     renderHudTabPage(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
-      const tabsTop = this.height - 60 - this.bottomSafeArea;
+      const offsetY = Number(this.viewportOffsetY) || 0;
+      const viewportBottom = this.height - Math.max(0, offsetY);
+      const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
       if (options.isMapHome && activeTab === 'military') {
         this.renderMapHomeWorldView(state, topBarBottom, options);
         return;
@@ -7470,28 +7480,34 @@
       const nav = this.presenter.buildMilitaryNavigationViewState(state);
       if (nav.activeView !== 'world') return null;
       const layout = this.getLayout();
-      const tabsTop = this.height - 60 - this.bottomSafeArea;
+      const offsetX = Number(this.viewportOffsetX) || 0;
+      const offsetY = Number(this.viewportOffsetY) || 0;
+      const viewportBottom = this.height - Math.max(0, offsetY);
+      const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
       if (options.isMapHome) {
+        const mapX = 0;
         const mapY = Math.max(0, topBarBottom ?? 84);
-        const mapH = Math.max(160, tabsTop - mapY);
+        const mapW = this.width;
+        const mapBottom = this.height - 60 - this.bottomSafeArea;
+        const mapH = Math.max(160, mapBottom - mapY);
         return {
           nav,
           panel: {
-            x: 0,
+            x: mapX,
             y: mapY,
-            width: this.width,
+            width: mapW,
             height: mapH,
           },
           world: {
-            x: 0,
+            x: mapX,
             y: mapY,
-            width: this.width,
+            width: mapW,
             height: mapH,
           },
           map: {
-            x: 0,
+            x: mapX,
             y: mapY,
-            width: this.width,
+            width: mapW,
             height: mapH,
           },
         };
@@ -7535,10 +7551,20 @@
       const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
       if (!tileMapView?.tiles?.length) return false;
       if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
+      const offsetX = Number(this.viewportOffsetX) || 0;
+      const offsetY = Number(this.viewportOffsetY) || 0;
+      const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
+      const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
+      const visibleMapY = Math.max(0, topBarBottom ?? 84);
+      const visibleMapH = Math.max(160, visibleHeight - 60 - this.bottomSafeArea - visibleMapY);
       this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
         hitTargetsOnly: Boolean(options.skipWorldMapLayer),
         frameless: true,
         fastDrag: Boolean(options.reuseCachedWorldTileView),
+        scaleBasisWidth: visibleWidth,
+        scaleBasisHeight: visibleMapH,
+        originX: offsetX + visibleWidth * 0.5,
+        originY: offsetY + visibleMapY + visibleMapH * 0.42,
       });
       const resetW = 76;
       const resetH = 28;

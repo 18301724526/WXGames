@@ -184,6 +184,33 @@ test('H5 canvas runtime creates a passive world map layer below the input canvas
   assert.deepEqual(contexts[1].transforms.at(-1), [3, 0, 0, 3, 0, 0]);
 });
 
+test('H5 canvas runtime can move and reset passive canvas layers with compositor transforms', () => {
+  const { document, runtime } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+
+  const worldMapLayer = h5Runtime.ensureLayerCanvas('worldMap');
+
+  assert.equal(h5Runtime.setLayerTranslate('worldMap', 18, -7), true);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, -7px, 0)');
+  assert.equal(worldMapLayer.style.willChange, 'transform');
+  assert.equal(h5Runtime.clearLayerTransform('worldMap'), true);
+  assert.equal(worldMapLayer.style.transform, '');
+  assert.equal(worldMapLayer.style.willChange, '');
+});
+
+test('H5 canvas runtime keeps layer transform metadata through passive layer resize', () => {
+  const { document, runtime } = createCanvasHarness();
+  const h5Runtime = new H5CanvasRuntime({ document, runtime });
+  const worldMapLayer = h5Runtime.ensureLayerCanvas('worldMap');
+
+  h5Runtime.setLayerTranslate('worldMap', 12, 6);
+  runtime.innerWidth = 320;
+  runtime.innerHeight = 640;
+  h5Runtime.resize();
+
+  assert.equal(worldMapLayer.style.transform, 'translate3d(12px, 6px, 0)');
+});
+
 test('H5 canvas runtime resizes and converts pointer coordinates', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const h5Runtime = new H5CanvasRuntime({ document, runtime });
@@ -2097,7 +2124,7 @@ test('Canvas game shell dispatches world radar drag phases from canvas-owned poi
   assert.ok(dispatched.every((action) => action.type === 'worldRadarDrag'));
 });
 
-test('Canvas game shell coalesces repeated world drag moves into one requested frame', () => {
+test('Canvas game shell coalesces repeated world drag moves into one requested frame without a map layer', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -2141,7 +2168,7 @@ test('Canvas game shell coalesces repeated world drag moves into one requested f
   assert.equal(renderCount, 2);
 });
 
-test('Canvas game shell renders only the world map layer during dual-canvas world drag moves', () => {
+test('Canvas game shell moves the passive world map layer during dual-canvas drag moves', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -2157,6 +2184,7 @@ test('Canvas game shell renders only the world map layer during dual-canvas worl
     render() {},
   };
   const mapLayerCalls = [];
+  const uiState = { worldPanX: 0, worldPanY: 0 };
   const worldMapRenderer = {
     width: 390,
     height: 844,
@@ -2170,9 +2198,12 @@ test('Canvas game shell renders only the world map layer during dual-canvas worl
     state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
     getActiveTab: () => 'military',
     territoryController: {
-      getUiState: () => ({ worldPanX: 0, worldPanY: 0 }),
+      getUiState: () => uiState,
       startWorldDrag() {},
-      moveWorldDrag() {},
+      moveWorldDrag(pointer) {
+        uiState.worldPanX = Number(pointer.x) - 110;
+        uiState.worldPanY = Number(pointer.y) - 180;
+      },
       endWorldDrag() {},
     },
   };
@@ -2190,37 +2221,40 @@ test('Canvas game shell renders only the world map layer during dual-canvas worl
     fullRenderCount += 1;
     return true;
   };
+  const worldMapLayer = shell.runtime.ensureLayerCanvas('worldMap');
 
   listeners.pointerdown({ pointerId: 9, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointermove({ pointerId: 9, clientX: 130, clientY: 210, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   listeners.pointermove({ pointerId: 9, clientX: 150, clientY: 230, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
-  assert.equal(frames.length, 1);
+  assert.equal(frames.length, 0);
   assert.equal(fullRenderCount, 1);
   assert.equal(mapLayerCalls.length, 0);
-  frames[0]();
-  assert.equal(fullRenderCount, 1);
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.activeTab, 'military');
+  assert.equal(worldMapLayer.style.transform, 'translate3d(30px, 30px, 0)');
+  assert.equal(worldMapLayer.style.willChange, 'transform');
 });
 
-test('Canvas game shell reuses cached world tile view during dual-canvas drag frames', () => {
+test('Canvas game shell clears compositor drag and renders final map layer on release', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
     frames.push(callback);
     return frames.length;
   };
+  const hudCalls = [];
+  const mapLayerCalls = [];
   const renderer = {
     width: 390,
     height: 844,
     pixelRatio: 2,
     getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
     getTopBarBottom: () => 152,
-    render() {},
+    render(state, options) {
+      hudCalls.push({ state, options });
+    },
     invalidateWorldTileViewCache() {},
   };
-  const mapLayerCalls = [];
+  const uiState = { worldPanX: 24, worldPanY: -12 };
   const worldMapRenderer = {
     width: 390,
     height: 844,
@@ -2235,9 +2269,12 @@ test('Canvas game shell reuses cached world tile view during dual-canvas drag fr
     state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
     getActiveTab: () => 'military',
     territoryController: {
-      getUiState: () => ({ worldPanX: 24, worldPanY: -12 }),
+      getUiState: () => uiState,
       startWorldDrag() {},
-      moveWorldDrag() {},
+      moveWorldDrag(pointer) {
+        uiState.worldPanX = 24 + Number(pointer.x) - 110;
+        uiState.worldPanY = -12 + Number(pointer.y) - 180;
+      },
       endWorldDrag() {},
     },
   };
@@ -2250,15 +2287,22 @@ test('Canvas game shell reuses cached world tile view during dual-canvas drag fr
     inputEnabled: true,
   });
   shell.worldMapRenderer = worldMapRenderer;
+  const worldMapLayer = shell.runtime.ensureLayerCanvas('worldMap');
 
   listeners.pointerdown({ pointerId: 10, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
   mapLayerCalls.length = 0;
   shell.lastWorldMapLayerRenderAt = 0;
   listeners.pointermove({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
-  frames[0]();
+  assert.equal(frames.length, 0);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(worldMapLayer.style.transform, 'translate3d(18px, 12px, 0)');
+  listeners.pointerup({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointerup', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
   assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+  assert.equal(hudCalls.length, 2);
+  assert.equal(hudCalls.at(-1).options.skipWorldMapLayer, true);
+  assert.equal(worldMapLayer.style.transform, '');
+  assert.equal(worldMapLayer.style.willChange, '');
 });
 
 test('Canvas game shell scrolls tech tree through shared drag action', () => {
@@ -2676,7 +2720,7 @@ test('Canvas game shell refreshes animated world water on the map layer when dua
   assert.equal(mapLayerCalls.length, initialMapLayerCalls + 1);
 });
 
-test('Canvas game shell freezes animated world water during dual-canvas drag frames', () => {
+test('Canvas game shell skips animated world water redraws during dual-canvas drag moves', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -2704,13 +2748,17 @@ test('Canvas game shell freezes animated world water during dual-canvas drag fra
     invalidateWorldTileViewCache() {},
   };
   let now = 1000;
+  const uiState = { worldPanX: 24, worldPanY: -12 };
   const shell = CanvasGameShell.mount({
     state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
     getActiveTab: () => 'military',
     territoryController: {
-      getUiState: () => ({ worldPanX: 24, worldPanY: -12 }),
+      getUiState: () => uiState,
       startWorldDrag() {},
-      moveWorldDrag() {},
+      moveWorldDrag(pointer) {
+        uiState.worldPanX = 24 + Number(pointer.x) - 110;
+        uiState.worldPanY = -12 + Number(pointer.y) - 180;
+      },
       endWorldDrag() {},
     },
   }, {
@@ -2729,14 +2777,13 @@ test('Canvas game shell freezes animated world water during dual-canvas drag fra
   mapLayerCalls.length = 0;
   shell.lastWorldMapLayerRenderAt = 0;
   listeners.pointermove({ pointerId: 11, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
-  frames[0]();
 
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
+  assert.equal(frames.length, 0);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, 'translate3d(18px, 12px, 0)');
 });
 
-test('Canvas game shell keeps water timer frames on the fast drag path while dragging', () => {
+test('Canvas game shell skips water timer frames while composite dragging', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const timers = [];
   runtime.setInterval = (callback, intervalMs) => {
@@ -2767,13 +2814,17 @@ test('Canvas game shell keeps water timer frames on the fast drag path while dra
   };
   let now = 1000;
   const state = { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} };
+  const uiState = { worldPanX: 24, worldPanY: -12, tileMapWaterAnimated: true };
   const shell = CanvasGameShell.mount({
     state,
     getActiveTab: () => 'military',
     territoryController: {
-      getUiState: () => ({ worldPanX: 24, worldPanY: -12, tileMapWaterAnimated: true }),
+      getUiState: () => uiState,
       startWorldDrag() {},
-      moveWorldDrag() {},
+      moveWorldDrag(pointer) {
+        uiState.worldPanX = 24 + Number(pointer.x) - 110;
+        uiState.worldPanY = -12 + Number(pointer.y) - 180;
+      },
       endWorldDrag() {},
     },
   }, {
@@ -2790,14 +2841,14 @@ test('Canvas game shell keeps water timer frames on the fast drag path while dra
   assert.equal(timers.at(-1).intervalMs, 125);
 
   listeners.pointerdown({ pointerId: 12, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  listeners.pointermove({ pointerId: 12, clientX: 130, clientY: 220, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
   now = 1080;
   mapLayerCalls.length = 0;
   shell.lastWorldMapLayerRenderAt = 0;
   timers.at(-1).callback();
 
-  assert.equal(mapLayerCalls.length, 1);
-  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
-  assert.equal(mapLayerCalls[0].options.waterTimeMs, 1000);
+  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, 'translate3d(10px, 20px, 0)');
 });
 
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {

@@ -329,6 +329,10 @@
       }
       this.militaryView = homeView.militaryView;
       if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
+        if (this.canvasShell?.isWorldMapDragging?.()) {
+          this.canvasShell.deferRenderUntilWorldMapDragEnd = true;
+          return true;
+        }
         if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
         if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
         if (this.canvasShell && typeof this.canvasShell.techTreeZoom !== 'undefined') this.canvasShell.techTreeZoom = this.techTreeZoom;
