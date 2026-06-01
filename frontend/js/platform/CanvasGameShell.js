@@ -67,6 +67,7 @@
       this.animationRenderQueued = false;
       this.lastWorldMapLayerRenderAt = 0;
       this.worldMapLayerRenderQueued = false;
+      this.worldMapDragFrameActive = false;
       this.tileMapWaterTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
@@ -129,6 +130,7 @@
         if (typeof this.worldMapRenderer.setAssetsChangedHandler === 'function') {
           this.worldMapRenderer.setAssetsChangedHandler(() => {
             this.renderer?.invalidateWorldTileCaches?.();
+            this.renderer?.invalidateWorldTileViewCache?.();
             this.requestWorldMapRenderAnimationFrame();
           });
         }
@@ -146,6 +148,7 @@
       if (typeof this.renderer.setAssetsChangedHandler === 'function') {
         this.renderer.setAssetsChangedHandler(() => {
           this.worldMapRenderer?.invalidateWorldTileCaches?.();
+          this.worldMapRenderer?.invalidateWorldTileViewCache?.();
           this.requestRenderAnimationFrame();
         });
       }
@@ -623,7 +626,9 @@
       const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
       if (this.lastWorldMapLayerRenderAt && now - this.lastWorldMapLayerRenderAt < frameMs) return false;
       this.lastWorldMapLayerRenderAt = now;
-      return this.renderWorldMapLayer();
+      const reuseCachedWorldTileView = Boolean(this.worldMapDragFrameActive);
+      this.worldMapDragFrameActive = false;
+      return this.renderWorldMapLayer(this.lastGame.state, { reuseCachedWorldTileView });
     }
 
     requestWorldMapRenderAnimationFrame() {
@@ -641,6 +646,7 @@
 
     requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
+        this.worldMapDragFrameActive = true;
         return this.requestWorldMapRenderAnimationFrame();
       }
       if (this.animationRenderQueued) return true;
@@ -1091,6 +1097,8 @@
     }
 
     renderActive() {
+      this.renderer?.invalidateWorldTileViewCache?.();
+      this.worldMapRenderer?.invalidateWorldTileViewCache?.();
       return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
     }
 
@@ -1126,6 +1134,7 @@
         activeTab,
         territoryUiState,
         topBarBottom,
+        reuseCachedWorldTileView: Boolean(options?.reuseCachedWorldTileView),
         showFpsOverlay: false,
       });
       if (rendered) this.lastWorldMapLayerRenderAt = this.now();

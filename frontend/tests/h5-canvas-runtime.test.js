@@ -2105,6 +2105,63 @@ test('Canvas game shell renders only the world map layer during dual-canvas worl
   assert.equal(mapLayerCalls[0].options.activeTab, 'military');
 });
 
+test('Canvas game shell reuses cached world tile view during dual-canvas drag frames', () => {
+  const { document, runtime, listeners } = createCanvasHarness();
+  const frames = [];
+  runtime.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getHitTarget: () => ({ type: 'worldMapDrag', background: true }),
+    getTopBarBottom: () => 152,
+    render() {},
+    invalidateWorldTileViewCache() {},
+  };
+  const mapLayerCalls = [];
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    renderWorldMapLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      return true;
+    },
+    invalidateWorldTileViewCache() {},
+  };
+  const game = {
+    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
+    getActiveTab: () => 'military',
+    territoryController: {
+      getUiState: () => ({ worldPanX: 24, worldPanY: -12 }),
+      startWorldDrag() {},
+      moveWorldDrag() {},
+      endWorldDrag() {},
+    },
+  };
+  const shell = CanvasGameShell.mount(game, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+    inputEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+
+  listeners.pointerdown({ pointerId: 10, clientX: 120, clientY: 200, type: 'pointerdown', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  mapLayerCalls.length = 0;
+  shell.lastWorldMapLayerRenderAt = 0;
+  listeners.pointermove({ pointerId: 10, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
+  frames[0]();
+
+  assert.equal(mapLayerCalls.length, 1);
+  assert.equal(mapLayerCalls[0].options.reuseCachedWorldTileView, true);
+});
+
 test('Canvas game shell scrolls tech tree through shared drag action', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const hitTargets = [

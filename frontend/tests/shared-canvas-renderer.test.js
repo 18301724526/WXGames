@@ -3591,6 +3591,83 @@ test('CanvasGameRenderer caches static world tile layer between water animation 
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
 });
 
+test('CanvasGameRenderer caches scout route layer while dragging discovered world sites', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() { calls.push(['offscreenBeginPath']); },
+      rect() {},
+      roundRect() {},
+      moveTo(...args) { calls.push(['offscreenMoveTo', ...args]); },
+      lineTo(...args) { calls.push(['offscreenLineTo', ...args]); },
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() { calls.push(['offscreenStroke']); },
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  [
+    'assets/art/tile-map/tile-terrain-plains.png',
+    'assets/art/world-site-town-cutout.png',
+    'assets/art/world-site-outpost-cutout.png',
+  ].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+    renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  });
+  const tileMapView = {
+    signature: 'scout-route-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [
+      { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+      { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: { id: 'site-east', owner: 'neutral', type: 'town', name: '东岸', art: 'assets/art/world-site-town-cutout.png', offset: { x: 0, y: 26 } } },
+      { id: 'tile_2_0', q: 2, r: 0, terrain: 'plains', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: { id: 'site-far', owner: 'neutral', type: 'outpost', name: '远哨', art: 'assets/art/world-site-outpost-cutout.png', offset: { x: 0, y: 24 } } },
+    ],
+    activeScouts: [{
+      id: 'scout-e',
+      status: 'ready',
+      route: [
+        { q: 0, r: 0, tileId: 'tile_0_0', step: 0, revealed: true },
+        { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+        { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+      ],
+    }],
+  };
+
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+  const firstRouteStrokes = calls.filter((call) => call[0] === 'offscreenStroke').length;
+  calls.length = 0;
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 30, y: -16 } }, 20, 80, 320, 240, {});
+  const draggedRouteStrokes = calls.filter((call) => call[0] === 'offscreenStroke').length;
+
+  assert.ok(firstRouteStrokes > 0);
+  assert.equal(draggedRouteStrokes, 0);
+  assert.ok(renderer.worldTileScoutRouteCacheKey.includes('scout-route-cache-test'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-far'));
+});
+
 test('CanvasGameRenderer keeps cached world tile layers sharp on high DPR screens', () => {
   const { ctx } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

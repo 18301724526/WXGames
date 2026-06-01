@@ -57,8 +57,11 @@
       this.worldTileWaterCtx = null;
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
+      this.worldTileScoutRouteCache = null;
+      this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.worldTileViewCache = null;
       this.assetsChangedHandler = null;
       this.hitTargets = [];
       this.hoverPoint = null;
@@ -501,8 +504,15 @@
     invalidateWorldTileCaches() {
       this.worldTileStaticCache = null;
       this.worldTileStaticCacheKey = '';
+      this.worldTileScoutRouteCache = null;
+      this.worldTileScoutRouteCacheKey = '';
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.invalidateWorldTileViewCache();
+    }
+
+    invalidateWorldTileViewCache() {
+      this.worldTileViewCache = null;
     }
 
     drawAsset(assetPath, x, y, width, height, alpha = 1) {
@@ -1006,6 +1016,27 @@
 
     isWorldTileMapWaterAnimated(tileMapView = {}) {
       return (tileMapView.tiles || []).some((tile) => tile.water?.asset && (tile.templateAssets || []).length);
+    }
+
+    resolveWorldTileMapView(territoryState = {}, uiState = {}, options = {}) {
+      if (!this.presenter?.buildWorldTileMapViewState) return null;
+      const panX = Number(uiState.worldPanX) || 0;
+      const panY = Number(uiState.worldPanY) || 0;
+      const cached = this.worldTileViewCache;
+      const canReuse = Boolean(options.reuseCachedWorldTileView
+        && cached
+        && cached.territoryState === territoryState);
+      if (canReuse) {
+        cached.view.pan = { x: panX, y: panY };
+        return cached.view;
+      }
+      const view = this.presenter.buildWorldTileMapViewState(territoryState, { panX, panY });
+      this.worldTileViewCache = {
+        territoryState,
+        signature: view?.signature || '',
+        view,
+      };
+      return view;
     }
 
     drawWorldTileBase(tile = {}, center = {}, drawRect = {}, viewport = {}) {
@@ -6449,6 +6480,10 @@
       return this.getWorldTileLayerCacheContext('worldTileStaticCache', width, height, cacheScale);
     }
 
+    getWorldTileScoutRouteCacheContext(width, height, cacheScale = 1) {
+      return this.getWorldTileLayerCacheContext('worldTileScoutRouteCache', width, height, cacheScale);
+    }
+
     getWorldTileWaterLayerCacheContext(width, height, cacheScale = 1) {
       return this.getWorldTileLayerCacheContext('worldTileWaterLayerCache', width, height, cacheScale);
     }
@@ -6541,6 +6576,70 @@
           });
           work.ctx.restore?.();
           this.worldTileStaticCacheKey = cacheKey;
+        } finally {
+          this.ctx = previousCtx;
+        }
+      }
+      return this.drawWorldTileLayerCache(work, layout, frame);
+    }
+
+    getWorldTileScoutRouteCacheKey(tileMapView = {}, viewport = {}, frame = {}, options = {}) {
+      const scale = Number(viewport.scale) || 1;
+      const scoutSignature = (tileMapView.activeScouts || []).map((mission) => [
+        mission.id || '',
+        mission.status || '',
+        (mission.route || []).map((step) => [
+          step.tileId || '',
+          step.q ?? '',
+          step.r ?? '',
+          step.step ?? '',
+          step.revealed ? 1 : 0,
+        ].join(',')).join('|'),
+      ].join(':')).join(';');
+      return [
+        options.kind || 'world',
+        tileMapView.signature || '',
+        tileMapView.version || '',
+        tileMapView.seed || '',
+        Math.round(frame.x),
+        Math.round(frame.y),
+        Math.round(frame.width),
+        Math.round(frame.height),
+        Math.round(scale * 1000),
+        Math.round((Number(options.cacheScale) || 1) * 1000),
+        Math.round((Number(viewport.originX) || 0) * 10) / 10,
+        Math.round((Number(viewport.originY) || 0) * 10) / 10,
+        Math.round((Number(viewport.panX) || 0) * 10) / 10,
+        Math.round((Number(viewport.panY) || 0) * 10) / 10,
+        scoutSignature,
+      ].join('::');
+    }
+
+    renderWorldScoutRouteLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
+      if (!Array.isArray(tileMapView.activeScouts) || !tileMapView.activeScouts.length) return true;
+      const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
+      if (!layout) return false;
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const work = this.getWorldTileScoutRouteCacheContext(layout.frame.width, layout.frame.height, cacheScale);
+      if (!work) return false;
+      const cacheKey = this.getWorldTileScoutRouteCacheKey(tileMapView, layout.renderViewport, layout.frame, {
+        kind: layout.kind,
+        cacheScale,
+      });
+      if (cacheKey !== this.worldTileScoutRouteCacheKey) {
+        const previousCtx = this.ctx;
+        this.ctx = work.ctx;
+        try {
+          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
+          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
+          work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
+          work.ctx.globalAlpha = 1;
+          work.ctx.globalCompositeOperation = 'source-over';
+          work.ctx.save?.();
+          work.ctx.translate?.(-(Number(layout.frame.x) || 0), -(Number(layout.frame.y) || 0));
+          this.renderWorldScoutRoutes(tileMapView, layout.renderViewport);
+          work.ctx.restore?.();
+          this.worldTileScoutRouteCacheKey = cacheKey;
         } finally {
           this.ctx = previousCtx;
         }
@@ -6755,7 +6854,9 @@
       this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
       this.ctx.clip();
 
-      this.renderWorldScoutRoutes(tileMapView, viewport);
+      if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
+        this.renderWorldScoutRoutes(tileMapView, viewport);
+      }
       if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
         this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries);
       }
@@ -6792,12 +6893,7 @@
         return;
       }
 
-      const tileMapView = this.presenter.buildWorldTileMapViewState
-        ? this.presenter.buildWorldTileMapViewState(territoryState, {
-          panX: uiState.worldPanX || 0,
-          panY: uiState.worldPanY || 0,
-        })
-        : null;
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
       if (tileMapView?.tiles?.length) {
         if (this.isWorldTileMapWaterAnimated(tileMapView)) {
           uiState.tileMapWaterAnimated = true;
@@ -7217,12 +7313,7 @@
       }
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
-      const tileMapView = this.presenter.buildWorldTileMapViewState
-        ? this.presenter.buildWorldTileMapViewState(territoryState, {
-          panX: uiState.worldPanX || 0,
-          panY: uiState.worldPanY || 0,
-        })
-        : null;
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
       if (!tileMapView?.tiles?.length) {
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
