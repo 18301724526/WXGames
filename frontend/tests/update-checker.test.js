@@ -22,7 +22,11 @@ test('update checker stores the initial deployment id without prompting', async 
 
 test('update checker prompts once when deployment id changes and stops polling', async () => {
   const cleared = [];
-  const versions = [{ deploymentId: 'a' }, { deploymentId: 'b' }, { deploymentId: 'c' }];
+  const versions = [
+    { version: '0.1.188', deploymentId: 'a' },
+    { version: '0.1.189', deploymentId: 'b' },
+    { version: '0.1.190', deploymentId: 'c' },
+  ];
   const prompts = [];
   const checker = new UpdateChecker({
     api: { async getVersion() { return versions.shift(); } },
@@ -37,8 +41,11 @@ test('update checker prompts once when deployment id changes and stops polling',
 
   assert.deepEqual(prompts, [{
     version: {
+      version: '0.1.189',
       deploymentId: 'b',
-      serverVersion: '',
+      serverVersion: '0.1.189',
+      localVersion: '0.1.188',
+      previousVersion: '0.1.188',
       serverDeploymentId: 'b',
       localDeploymentId: 'a',
     },
@@ -99,7 +106,10 @@ test('update checker reports errors through onError and keeps polling alive', as
 
 test('update checker emits initialization and update logs', async () => {
   const entries = [];
-  const versions = [{ deploymentId: 'a' }, { deploymentId: 'b' }];
+  const versions = [
+    { version: '0.1.188', deploymentId: 'a' },
+    { version: '0.1.189', deploymentId: 'b' },
+  ];
   const checker = new UpdateChecker({
     api: { async getVersion() { return versions.shift(); } },
     onLog(entry) { entries.push(entry); },
@@ -111,12 +121,15 @@ test('update checker emits initialization and update logs', async () => {
   await checker.check();
 
   assert.deepEqual(entries, [
-    { type: 'initialized', version: { deploymentId: 'a' }, deploymentId: 'a' },
+    { type: 'initialized', version: { version: '0.1.188', deploymentId: 'a' }, deploymentId: 'a' },
     {
       type: 'updated',
       version: {
+        version: '0.1.189',
         deploymentId: 'b',
-        serverVersion: '',
+        serverVersion: '0.1.189',
+        localVersion: '0.1.188',
+        previousVersion: '0.1.188',
         serverDeploymentId: 'b',
         localDeploymentId: 'a',
       },

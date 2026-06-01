@@ -12,6 +12,7 @@
       };
       this.timer = null;
       this.currentDeploymentId = null;
+      this.currentVersion = '';
       this.prompting = false;
     }
 
@@ -49,6 +50,7 @@
       if (!nextDeploymentId) return null;
       if (!this.currentDeploymentId || options.initialize) {
         this.currentDeploymentId = nextDeploymentId;
+        this.currentVersion = version?.version || '';
         this.onLog({
           type: 'initialized',
           version,
@@ -58,12 +60,17 @@
       }
       if (nextDeploymentId !== this.currentDeploymentId && !this.prompting) {
         const previousDeploymentId = this.currentDeploymentId;
+        const previousVersion = this.currentVersion || '';
+        const nextVersion = version?.version || '';
         this.currentDeploymentId = nextDeploymentId;
+        this.currentVersion = nextVersion;
         this.prompting = true;
         this.stop();
         const updateVersion = {
           ...version,
-          serverVersion: version?.version || '',
+          serverVersion: nextVersion,
+          localVersion: previousVersion,
+          previousVersion,
           serverDeploymentId: nextDeploymentId,
           localDeploymentId: previousDeploymentId,
         };
