@@ -67,8 +67,10 @@
       this.worldTileStaticChunkCacheTick = 0;
       this.worldTileScoutRouteCache = null;
       this.worldTileScoutRouteCacheKey = '';
+      this.worldTileScoutRouteCacheLayout = null;
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.worldTileWaterFrameCaches = new Map();
       this.worldTileWaterChunkCaches = new Map();
       this.worldTileWaterChunkCacheTick = 0;
       this.worldTileViewCache = null;
@@ -559,13 +561,22 @@
       this.worldTileStaticChunkCacheTick = 0;
       this.worldTileScoutRouteCache = null;
       this.worldTileScoutRouteCacheKey = '';
+      this.worldTileScoutRouteCacheLayout = null;
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
+      this.worldTileWaterFrameCaches?.clear?.();
       this.worldTileWaterChunkCaches?.clear?.();
       this.worldTileWaterChunkCacheTick = 0;
       this.worldTileFastDragComposite = null;
       this.worldTileFastDragCompositeCache = null;
       this.invalidateWorldTileViewCache();
+    }
+
+    hasPreparedWorldTileSnapshotCache() {
+      return Boolean(
+        (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame)
+        || (this.worldTileStaticCacheLayoutKind === 'chunks' && this.worldTileStaticChunkCaches?.size),
+      );
     }
 
     invalidateWorldTileViewCache() {
@@ -6440,10 +6451,7 @@
     getWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, geometry = {}) {
       const entries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
       if (!entries.length) return null;
-      const scale = Number(viewport.scale) || 1;
-      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
-      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      const padding = Math.max(tileWidth * 1.2, tileHeight * 2.2, 96);
+      const padding = this.getWorldTileAtlasFramePadding(geometry, viewport);
       const minX = Math.min(...entries.map((entry) => entry.drawRect.x)) - padding;
       const minY = Math.min(...entries.map((entry) => entry.drawRect.y)) - padding;
       const maxX = Math.max(...entries.map((entry) => entry.drawRect.x + entry.drawRect.width)) + padding;
@@ -6502,35 +6510,36 @@
       return 1;
     }
 
+    getWorldTileAtlasFramePadding(geometry = {}, viewport = {}) {
+      const scale = Number(viewport.scale) || 1;
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      return Math.max(tileWidth * 1.2, tileHeight * 2.2, 96);
+    }
+
     getWorldTileStaticChunkLayouts(tileMapView = {}, viewport = {}, frame = {}, geometry = {}) {
       const localEntries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
       if (!localEntries.length) return [];
       const cacheScale = this.getWorldTileStaticChunkCacheScale();
       const pixelBudget = this.getWorldTileStaticCachePixelBudget();
-      const scale = Number(viewport.scale) || 1;
-      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
-      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      const padding = Math.max(tileWidth * 1.2, tileHeight * 2.2, 96);
-      const chunkBleed = Math.max(tileWidth * 1.2, tileHeight * 2.2, 128);
+      const atlasLayout = this.getWorldTileStaticCacheLayout(tileMapView, viewport, geometry);
+      if (!atlasLayout?.frame) return [];
+      const padding = this.getWorldTileAtlasFramePadding(geometry, viewport);
+      const chunkBleed = Math.max(padding, 128);
       const originX = Number(viewport.originX) || 0;
       const originY = Number(viewport.originY) || 0;
       const panX = Number(viewport.panX) || 0;
       const panY = Number(viewport.panY) || 0;
-      const localVisible = {
-        x: (Number(frame.x) || 0) - originX - panX - padding,
-        y: (Number(frame.y) || 0) - originY - panY - padding,
-        width: Math.max(1, Number(frame.width) || 1) + padding * 2,
-        height: Math.max(1, Number(frame.height) || 1) + padding * 2,
-      };
       const maxBudgetChunkSize = Math.floor(Math.sqrt(Math.max(1, pixelBudget)) / Math.max(1, cacheScale));
       const chunkSize = Math.max(256, Math.min(
         Number(this.getWorldTileStaticChunkSize()) || 1024,
         maxBudgetChunkSize || 1024,
       ));
-      const minChunkX = Math.floor(localVisible.x / chunkSize);
-      const maxChunkX = Math.floor((localVisible.x + localVisible.width) / chunkSize);
-      const minChunkY = Math.floor(localVisible.y / chunkSize);
-      const maxChunkY = Math.floor((localVisible.y + localVisible.height) / chunkSize);
+      const localFrame = atlasLayout.frame;
+      const minChunkX = Math.floor(localFrame.x / chunkSize);
+      const maxChunkX = Math.floor((localFrame.x + localFrame.width - 1) / chunkSize);
+      const minChunkY = Math.floor(localFrame.y / chunkSize);
+      const maxChunkY = Math.floor((localFrame.y + localFrame.height - 1) / chunkSize);
       const localViewport = {
         ...viewport,
         originX: 0,
@@ -6709,6 +6718,26 @@
       return this.getWorldTileLayerCacheContext('worldTileWaterLayerCache', width, height, cacheScale);
     }
 
+    createWorldTileLayerWork(width, height, cacheScale = 1) {
+      const localW = Math.max(1, Math.ceil(width));
+      const localH = Math.max(1, Math.ceil(height));
+      const scale = Math.max(1, Number(cacheScale) || 1);
+      const pixelW = Math.max(1, Math.ceil(localW * scale));
+      const pixelH = Math.max(1, Math.ceil(localH * scale));
+      const canvas = this.createTileWorkCanvas(pixelW, pixelH);
+      const ctx = canvas?.getContext?.('2d') || null;
+      if (!canvas || !ctx) return null;
+      return {
+        canvas,
+        ctx,
+        width: localW,
+        height: localH,
+        pixelWidth: pixelW,
+        pixelHeight: pixelH,
+        scale,
+      };
+    }
+
     drawWorldTileLayerCache(work, layout = {}, clipFrame = null) {
       if (!work?.canvas || !layout?.frame || typeof this.ctx?.drawImage !== 'function') return false;
       const drawX = Number(layout.drawX) || 0;
@@ -6826,6 +6855,7 @@
       if (worldPixels <= pixelBudget) return worldLayout;
       const chunkLayouts = this.getWorldTileStaticChunkLayouts(tileMapView, viewport, frame, geometry);
       if (chunkLayouts.length) return { kind: 'chunks', layouts: chunkLayouts };
+      if (this.worldTileFastDragActive) return null;
       const viewportLayout = this.getWorldTileStaticViewportCacheLayout(tileMapView, viewport, frame, entries);
       if (!viewportLayout) return null;
       const viewportPixels = viewportLayout.frame.width * viewportLayout.frame.height * cacheScale * cacheScale;
@@ -6929,7 +6959,8 @@
     }
 
     pruneWorldTileWaterChunkCaches(activeKeys = new Set()) {
-      const limit = Math.max(1, Number(this.getWorldTileStaticChunkCacheLimit()) || 32);
+      const frameCount = Math.max(1, Number(this.getWorldTileWaterAnimationFrameCount()) || 1);
+      const limit = Math.max(1, Number(this.getWorldTileStaticChunkCacheLimit()) || 32) * frameCount;
       if (!this.worldTileWaterChunkCaches || this.worldTileWaterChunkCaches.size <= limit) return false;
       const staleEntries = Array.from(this.worldTileWaterChunkCaches.entries())
         .filter(([key]) => !activeKeys.has(key))
@@ -6943,67 +6974,58 @@
       return pruned;
     }
 
-    renderWorldTileWaterChunk(tileMapView = {}, layout = {}, cacheScale = 1) {
+    getWorldTileWaterChunkFrameCacheId(layout = {}, frameIndex = 0) {
+      return `${layout.chunkX},${layout.chunkY}:${frameIndex}`;
+    }
+
+    renderWorldTileWaterChunk(tileMapView = {}, layout = {}, cacheScale = 1, frameIndex = this.getWorldTileWaterAnimationFrameIndex()) {
       if (!layout?.frame || !Array.isArray(layout.entries) || !layout.entries.length) return false;
       const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
       if (!waterEntries.length) return false;
-      const chunkKey = `${layout.chunkX},${layout.chunkY}`;
-      let work = this.worldTileWaterChunkCaches.get(chunkKey);
-      const width = Math.max(1, Number(layout.frame.width) || 1);
-      const height = Math.max(1, Number(layout.frame.height) || 1);
-      const pixelW = Math.max(1, Math.ceil(width * cacheScale));
-      const pixelH = Math.max(1, Math.ceil(height * cacheScale));
-      if (!work?.canvas || !work?.ctx) {
-        const canvas = this.createTileWorkCanvas(pixelW, pixelH);
-        const ctx = canvas?.getContext?.('2d') || null;
-        if (!canvas || !ctx) return false;
-        work = { canvas, ctx };
-        this.worldTileWaterChunkCaches.set(chunkKey, work);
-      }
-      if (work.canvas.width !== pixelW) work.canvas.width = pixelW;
-      if (work.canvas.height !== pixelH) work.canvas.height = pixelH;
-      work.width = width;
-      work.height = height;
-      work.pixelWidth = pixelW;
-      work.pixelHeight = pixelH;
-      work.scale = cacheScale;
+      const cacheId = this.getWorldTileWaterChunkFrameCacheId(layout, frameIndex);
+      const work = this.renderWorldTileWaterFrameCache(
+        tileMapView,
+        layout,
+        waterEntries,
+        cacheScale,
+        frameIndex,
+        this.worldTileWaterChunkCaches,
+        cacheId,
+        `water-chunk:${layout.chunkX},${layout.chunkY}`,
+      );
+      if (!work) return false;
       work.chunkX = layout.chunkX;
       work.chunkY = layout.chunkY;
-      work.frame = { ...layout.frame };
-      const cacheKey = this.getWorldTileWaterChunkCacheKey(tileMapView, layout.renderViewport, layout, waterEntries, { cacheScale });
-      if (cacheKey !== work.key) {
-        const previousCtx = this.ctx;
-        this.ctx = work.ctx;
-        try {
-          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
-          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
-          work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
-          work.ctx.globalAlpha = 1;
-          work.ctx.globalCompositeOperation = 'source-over';
-          work.ctx.save?.();
-          work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
-          this.renderWorldTileWaterEntries(tileMapView, layout.renderViewport, waterEntries, this.getWorldTileWaterTimeMs());
-          work.ctx.restore?.();
-          work.key = cacheKey;
-        } finally {
-          this.ctx = previousCtx;
-        }
-      }
       work.lastUsedAt = ++this.worldTileWaterChunkCacheTick;
       return true;
+    }
+
+    renderWorldTileWaterChunkFrames(tileMapView = {}, layout = {}, cacheScale = 1) {
+      const frameCount = Math.max(1, Number(this.getWorldTileWaterAnimationFrameCount()) || 1);
+      let rendered = false;
+      for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+        if (this.renderWorldTileWaterChunk(tileMapView, layout, cacheScale, frameIndex)) rendered = true;
+      }
+      return rendered;
     }
 
     renderWorldTileWaterChunks(tileMapView = {}, chunkLayouts = [], frame = {}) {
       const cacheScale = this.getWorldTileStaticChunkCacheScale();
       const activeKeys = new Set();
+      const frameIndex = this.getWorldTileWaterAnimationFrameIndex();
+      const frameCount = Math.max(1, Number(this.getWorldTileWaterAnimationFrameCount()) || 1);
       let rendered = false;
       chunkLayouts.forEach((layout) => {
-        const chunkKey = `${layout.chunkX},${layout.chunkY}`;
         const waterEntries = (layout.entries || []).filter(({ tile }) => tile.water?.kind && tile.water?.asset);
         if (!waterEntries.length) return;
-        activeKeys.add(chunkKey);
-        if (this.renderWorldTileWaterChunk(tileMapView, layout, cacheScale)) {
-          this.drawWorldTileLayerCache(this.worldTileWaterChunkCaches.get(chunkKey), layout, frame);
+        for (let index = 0; index < frameCount; index += 1) {
+          activeKeys.add(this.getWorldTileWaterChunkFrameCacheId(layout, index));
+        }
+        if (!this.worldTileFastDragActive) this.renderWorldTileWaterChunkFrames(tileMapView, layout, cacheScale);
+        const cacheId = this.getWorldTileWaterChunkFrameCacheId(layout, frameIndex);
+        const work = this.worldTileWaterChunkCaches.get(cacheId);
+        if (work?.canvas) {
+          this.drawWorldTileLayerCache(work, layout, frame);
           rendered = true;
         }
       });
@@ -7036,26 +7058,58 @@
       return rendered;
     }
 
+    getWorldTileSnapshotDrawLayout(cachedLayout = {}, viewport = {}) {
+      if (!cachedLayout?.frame) return null;
+      return {
+        ...cachedLayout,
+        drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
+        drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
+      };
+    }
+
+    renderWorldTileSnapshotLayerCache(work = null, cachedLayout = null, viewport = {}, frame = {}) {
+      if (!work?.canvas || !cachedLayout?.frame) return false;
+      const drawLayout = this.getWorldTileSnapshotDrawLayout(cachedLayout, viewport);
+      return drawLayout ? this.drawWorldTileLayerCache(work, drawLayout, frame) : false;
+    }
+
     renderWorldTileSnapshotCache(tileMapView = {}, viewport = {}, frame = {}) {
       if (!this.ctx || typeof this.ctx.drawImage !== 'function') return false;
-      if (this.worldTileFastDragComposite?.work?.canvas && this.worldTileFastDragComposite?.layout?.frame) {
-        const cachedLayout = this.worldTileFastDragComposite.layout;
-        return this.drawWorldTileLayerCache(this.worldTileFastDragComposite.work, {
-          ...cachedLayout,
-          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
-          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
-        }, frame);
-      }
+      let rendered = false;
       if (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame) {
-        const cachedLayout = this.worldTileStaticCacheLayout;
-        return this.drawWorldTileLayerCache(this.worldTileStaticCache, {
-          ...cachedLayout,
-          drawX: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (Number(cachedLayout.frame.x) || 0),
-          drawY: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (Number(cachedLayout.frame.y) || 0),
-        }, frame);
+        const waterWork = this.getWorldTileWaterFrameCache();
+        if (waterWork?.canvas) {
+          rendered = this.renderWorldTileSnapshotLayerCache(
+            waterWork,
+            this.worldTileStaticCacheLayout,
+            viewport,
+            frame,
+          ) || rendered;
+        }
+        rendered = this.renderWorldTileSnapshotLayerCache(
+          this.worldTileStaticCache,
+          this.worldTileStaticCacheLayout,
+          viewport,
+          frame,
+        ) || rendered;
+        if (this.worldTileScoutRouteCache?.canvas && this.worldTileScoutRouteCacheLayout?.frame) {
+          rendered = this.renderWorldTileSnapshotLayerCache(
+            this.worldTileScoutRouteCache,
+            this.worldTileScoutRouteCacheLayout,
+            viewport,
+            frame,
+          ) || rendered;
+        }
+        return rendered;
       }
       if (this.worldTileStaticCacheLayoutKind !== 'chunks' || !this.worldTileStaticChunkCaches?.size) return false;
-      const renderedWater = this.renderWorldTileSnapshotChunkCacheMap(this.worldTileWaterChunkCaches, viewport, frame);
+      const frameIndex = this.getWorldTileWaterAnimationFrameIndex();
+      const renderedWater = this.renderWorldTileSnapshotChunkCacheMap(
+        new Map(Array.from(this.worldTileWaterChunkCaches || [])
+          .filter(([key]) => String(key).endsWith(`:${frameIndex}`))),
+        viewport,
+        frame,
+      );
       const renderedStatic = this.renderWorldTileSnapshotChunkCacheMap(this.worldTileStaticChunkCaches, viewport, frame);
       return renderedWater || renderedStatic;
     }
@@ -7162,6 +7216,7 @@
           this.renderWorldScoutRoutes(tileMapView, layout.renderViewport);
           work.ctx.restore?.();
           this.worldTileScoutRouteCacheKey = cacheKey;
+          this.worldTileScoutRouteCacheLayout = { ...layout, frame: { ...layout.frame } };
         } finally {
           this.ctx = previousCtx;
         }
@@ -7170,6 +7225,10 @@
     }
 
     getWorldTileWaterAnimationFps() {
+      return 8;
+    }
+
+    getWorldTileWaterAnimationFrameCount() {
       return 8;
     }
 
@@ -7187,6 +7246,17 @@
 
     getWorldTileWaterAnimationFrame(timeMs = this.getWorldTileWaterTimeMs()) {
       return Math.floor((Math.max(0, Number(timeMs) || 0) / 1000) * this.getWorldTileWaterAnimationFps());
+    }
+
+    getWorldTileWaterAnimationFrameIndex(timeMs = this.getWorldTileWaterTimeMs()) {
+      const frameCount = Math.max(1, Number(this.getWorldTileWaterAnimationFrameCount()) || 1);
+      const frame = this.getWorldTileWaterAnimationFrame(timeMs);
+      return ((frame % frameCount) + frameCount) % frameCount;
+    }
+
+    getWorldTileWaterFrameTimeMs(frameIndex = 0) {
+      const safeFrame = Math.max(0, Number(frameIndex) || 0);
+      return safeFrame * this.getWorldTileWaterAnimationFrameMs();
     }
 
     getWorldTileWaterLayerCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
@@ -7215,7 +7285,7 @@
         Math.round(frame.height),
         Math.round(scale * 1000),
         Math.round((Number(options.cacheScale) || 1) * 1000),
-        this.getWorldTileWaterAnimationFrame(),
+        options.frameIndex ?? this.getWorldTileWaterAnimationFrameIndex(),
         entrySignature,
       ].join('::');
     }
@@ -7224,27 +7294,31 @@
       return this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
     }
 
-    renderWorldTileWaterLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
-      const visibleWaterEntries = entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
-      if (!visibleWaterEntries.length) return true;
-      const layout = this.resolveWorldTileWaterLayerCacheLayout(tileMapView, viewport, frame, entries);
-      if (!layout) return false;
-      if (layout.kind === 'chunks') return this.renderWorldTileWaterChunks(tileMapView, layout.layouts, frame);
-      const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
-      if (!waterEntries.length) return true;
-      if (this.worldTileFastDragActive && this.worldTileWaterLayerCacheKey && this.worldTileWaterLayerCache?.canvas) {
-        return this.drawWorldTileLayerCache(this.worldTileWaterLayerCache, layout, frame);
-      }
-      const cacheScale = this.getWorldTileStaticCacheScale();
+    renderWorldTileWaterFrameCache(tileMapView = {}, layout = {}, waterEntries = [], cacheScale = 1, frameIndex = 0, cacheMap = this.worldTileWaterFrameCaches, cacheId = frameIndex, kind = layout.kind || 'world') {
+      if (!layout?.frame || !Array.isArray(waterEntries) || !waterEntries.length || !cacheMap) return null;
       const width = Math.max(1, Number(layout.frame.width) || 1);
       const height = Math.max(1, Number(layout.frame.height) || 1);
-      const work = this.getWorldTileWaterLayerCacheContext(width, height, cacheScale);
-      if (!work) return false;
+      let work = cacheMap.get(cacheId);
+      const pixelW = Math.max(1, Math.ceil(width * cacheScale));
+      const pixelH = Math.max(1, Math.ceil(height * cacheScale));
+      if (!work?.canvas || !work?.ctx || work.canvas.width !== pixelW || work.canvas.height !== pixelH) {
+        work = this.createWorldTileLayerWork(width, height, cacheScale);
+        if (!work) return null;
+        cacheMap.set(cacheId, work);
+      }
+      work.width = width;
+      work.height = height;
+      work.pixelWidth = pixelW;
+      work.pixelHeight = pixelH;
+      work.scale = cacheScale;
+      work.frame = { ...layout.frame };
+      work.frameIndex = frameIndex;
       const cacheKey = this.getWorldTileWaterLayerCacheKey(tileMapView, layout.renderViewport, layout.frame, waterEntries, {
-        kind: layout.kind,
+        kind,
         cacheScale,
+        frameIndex,
       });
-      if (cacheKey !== this.worldTileWaterLayerCacheKey) {
+      if (cacheKey !== work.key) {
         const previousCtx = this.ctx;
         this.ctx = work.ctx;
         try {
@@ -7255,13 +7329,59 @@
           work.ctx.globalCompositeOperation = 'source-over';
           work.ctx.save?.();
           work.ctx.translate?.(-(Number(layout.frame.x) || 0), -(Number(layout.frame.y) || 0));
-          this.renderWorldTileWaterEntries(tileMapView, layout.renderViewport, waterEntries, this.getWorldTileWaterTimeMs());
+          this.renderWorldTileWaterEntries(
+            tileMapView,
+            layout.renderViewport,
+            waterEntries,
+            this.getWorldTileWaterFrameTimeMs(frameIndex),
+          );
           work.ctx.restore?.();
-          this.worldTileWaterLayerCacheKey = cacheKey;
+          work.key = cacheKey;
         } finally {
           this.ctx = previousCtx;
         }
       }
+      return work;
+    }
+
+    getWorldTileWaterFrameCache(frameIndex = this.getWorldTileWaterAnimationFrameIndex()) {
+      return this.worldTileWaterFrameCaches?.get?.(frameIndex) || null;
+    }
+
+    renderWorldTileWaterFrameCaches(tileMapView = {}, layout = {}, waterEntries = [], cacheScale = 1) {
+      const frameCount = Math.max(1, Number(this.getWorldTileWaterAnimationFrameCount()) || 1);
+      let rendered = false;
+      for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+        const work = this.renderWorldTileWaterFrameCache(
+          tileMapView,
+          layout,
+          waterEntries,
+          cacheScale,
+          frameIndex,
+          this.worldTileWaterFrameCaches,
+          frameIndex,
+          layout.kind || 'world',
+        );
+        if (work) rendered = true;
+      }
+      return rendered;
+    }
+
+    renderWorldTileWaterLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
+      const layout = this.resolveWorldTileWaterLayerCacheLayout(tileMapView, viewport, frame, entries);
+      if (!layout) return false;
+      if (layout.kind === 'chunks') return this.renderWorldTileWaterChunks(tileMapView, layout.layouts, frame);
+      const waterEntries = layout.entries.filter(({ tile }) => tile.water?.kind && tile.water?.asset);
+      if (!waterEntries.length) return true;
+      const cacheScale = this.getWorldTileStaticCacheScale();
+      const frameIndex = this.getWorldTileWaterAnimationFrameIndex();
+      if (!this.worldTileFastDragActive && !this.renderWorldTileWaterFrameCaches(tileMapView, layout, waterEntries, cacheScale)) {
+        return false;
+      }
+      const work = this.getWorldTileWaterFrameCache(frameIndex);
+      if (!work?.canvas) return false;
+      this.worldTileWaterLayerCache = work;
+      this.worldTileWaterLayerCacheKey = work.key || '';
       return this.drawWorldTileLayerCache(work, layout, frame);
     }
 
@@ -7393,6 +7513,7 @@
           const renderedSnapshot = this.renderWorldTileSnapshotCache(tileMapView, viewport, frame);
           this.ctx.restore();
           if (renderedSnapshot) return;
+          return;
         }
         const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
         if (hitTargetsOnly) {
@@ -7405,12 +7526,6 @@
         this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
         this.ctx.clip();
 
-        if (this.worldTileFastDragActive && this.renderWorldTileFastDragComposite(tileMapView, viewport, frame, visibleEntries)) {
-          this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-          this.ctx.restore();
-          return;
-        }
-        let compositeLayout = null;
         if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
           this.renderWorldScoutRoutes(tileMapView, viewport);
         }
@@ -7421,11 +7536,8 @@
           this.renderWorldTileStaticEntries(tileMapView, viewport, frame, visibleEntries, uiState, {
             addHitTargets: false,
           });
-        } else if (!this.worldTileFastDragActive) {
-          compositeLayout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, visibleEntries);
         }
         this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-        if (compositeLayout && compositeLayout.kind !== 'chunks') this.updateWorldTileFastDragComposite(compositeLayout, frame);
 
         this.ctx.restore();
       } finally {

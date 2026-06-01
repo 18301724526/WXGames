@@ -558,7 +558,7 @@ test('CanvasGameApp pans map-home through two-finger gestures without map redraw
   assert.equal(calls.some((call) => call[0] === 'world-layer'), false);
 });
 
-test('CanvasGameApp skips world water timer frames while map drags cool down', () => {
+test('CanvasGameApp skips water frames while dragging and resumes cached snapshot playback after cooldown', () => {
   const calls = [];
   const scheduler = createManualScheduler();
   scheduler.requestAnimationFrame = (callback) => {
@@ -635,7 +635,9 @@ test('CanvasGameApp skips world water timer frames while map drags cool down', (
 
   assert.equal(app.isWorldMapDragCoolingDown(), false);
   assert.equal(renderCalls.length, renderCountAfterDragEnd);
-  assert.equal(layerCalls.length, layerCountAfterDragEnd);
+  assert.equal(layerCalls.length, layerCountAfterDragEnd + 1);
+  assert.equal(layerCalls.at(-1).options.snapshotOnly, true);
+  assert.equal(layerCalls.at(-1).options.reuseCachedWorldTileView, true);
 });
 
 test('Canvas game app dispatches canvas taps to server actions without DOM controllers', async () => {

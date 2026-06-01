@@ -3947,7 +3947,81 @@ test('CanvasGameRenderer uses chunked static snapshots when the full world cache
   assert.ok(firstChunkKeys.some((key) => renderer.worldTileStaticChunkCaches.has(key)));
 });
 
-test('CanvasGameRenderer reuses cached world water layer within the same water animation frame', () => {
+test('CanvasGameRenderer prebuilds chunk snapshots across the full unlocked map', () => {
+  const { ctx } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.getWorldTileStaticCachePixelBudget = () => 200000;
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage() {},
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  const assetPath = 'assets/art/tile-map/tile-terrain-plains.png';
+  renderer.assetCache.set(assetPath, {
+    status: 'loaded',
+    image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+  });
+  renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  const tiles = [];
+  for (let q = 0; q < 30; q += 1) {
+    for (let r = 0; r < 30; r += 1) {
+      tiles.push({ id: `tile_${q}_${r}`, q, r, terrain: 'plains', terrainAsset: assetPath, site: null });
+    }
+  }
+  const tileMapView = {
+    signature: 'full-atlas-chunk-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles,
+    activeScouts: [],
+  };
+  const viewport = { originX: 195, originY: 315.2, panX: 0, panY: 0, scale: 0.75, geometry: tileMapView.geometry };
+  const frame = { x: 1, y: 81, width: 388, height: 558 };
+  const fullLayouts = renderer.getWorldTileStaticChunkLayouts(tileMapView, viewport, frame, tileMapView.geometry);
+  const viewportOnlyKeys = new Set(fullLayouts
+    .filter((layout) => (
+      layout.drawX < frame.x + frame.width
+      && layout.drawX + layout.frame.width > frame.x
+      && layout.drawY < frame.y + frame.height
+      && layout.drawY + layout.frame.height > frame.y
+    ))
+    .map((layout) => `${layout.chunkX},${layout.chunkY}`));
+
+  renderer.renderWorldTileMap(tileMapView, 0, 80, 390, 560, {});
+  const builtKeys = Array.from(renderer.worldTileStaticChunkCaches.keys());
+
+  assert.equal(renderer.worldTileStaticCacheLayoutKind, 'chunks');
+  assert.deepEqual(builtKeys.sort(), fullLayouts.map((layout) => `${layout.chunkX},${layout.chunkY}`).sort());
+  assert.ok(builtKeys.length > viewportOnlyKeys.size);
+});
+
+test('CanvasGameRenderer prebakes reusable world water animation frames', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
@@ -4014,6 +4088,7 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
 
   renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
   const firstFrameWaterDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
+  const waterFrameKeys = Array.from(renderer.worldTileWaterFrameCaches.keys());
   calls.length = 0;
   now += 16;
   renderer.frameNow = now;
@@ -4029,10 +4104,80 @@ test('CanvasGameRenderer reuses cached world water layer within the same water a
   const nextWaterFrameDraws = calls.filter((call) => call[0] === 'offscreenDrawImage' && call[1]?.src?.includes('tile-water-')).length;
 
   assert.ok(firstFrameWaterDraws > 0);
+  assert.equal(waterFrameKeys.length, renderer.getWorldTileWaterAnimationFrameCount());
   assert.equal(sameWaterFrameDraws, 0);
   assert.equal(draggedWaterFrameDraws, 0);
-  assert.ok(nextWaterFrameDraws > 0);
+  assert.equal(nextWaterFrameDraws, 0);
   assert.ok(renderer.worldTileWaterLayerCacheKey.includes('water-layer-cache-test'));
+});
+
+test('CanvasGameRenderer prebakes water frames for offscreen unlocked water tiles', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.createTileWorkCanvas = (width, height) => ({
+    width,
+    height,
+    getContext: () => ({
+      globalAlpha: 1,
+      globalCompositeOperation: 'source-over',
+      setTransform() {},
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      drawImage(...args) { calls.push(['offscreenDrawImage', ...args]); },
+      beginPath() {},
+      rect() {},
+      roundRect() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      clip() {},
+      fill() {},
+      stroke() {},
+      ellipse() {},
+      arc() {},
+      fillText() {},
+      measureText(text) { return { width: String(text).length * 8 }; },
+      createLinearGradient() { return { addColorStop() {} }; },
+    }),
+  });
+  const waterAsset = 'assets/art/tile-map/tile-water-ocean-loop.png';
+  const terrainAsset = 'assets/art/tile-map/ocean-template/tile-ocean-water-full.png';
+  [terrainAsset, waterAsset, 'assets/art/tile-map/tile-terrain-plains.png'].forEach((assetPath) => {
+    renderer.assetCache.set(assetPath, {
+      status: 'loaded',
+      image: { src: assetPath, width: 512, height: 512, naturalWidth: 512, naturalHeight: 512 },
+    });
+    renderer.assetMetricsCache.set(assetPath, { x: 0, y: 0, width: 512, height: 512, sourceWidth: 512, sourceHeight: 512 });
+  });
+  const tileMapView = {
+    signature: 'offscreen-water-cache-test',
+    version: 1,
+    seed: 'seed',
+    pan: { x: 0, y: 0 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [
+      { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+      {
+        id: 'tile_12_12',
+        q: 12,
+        r: 12,
+        terrain: 'ocean',
+        terrainAsset,
+        templateAssets: [{ key: 'water-full', type: 'ocean', asset: terrainAsset }],
+        water: { kind: 'ocean', asset: waterAsset, uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 },
+        site: null,
+      },
+    ],
+    activeScouts: [],
+  };
+
+  renderer.renderWorldTileMap(tileMapView, 20, 80, 320, 240, {});
+
+  assert.equal(renderer.worldTileWaterFrameCaches.size, renderer.getWorldTileWaterAnimationFrameCount());
+  assert.ok(calls.some((call) => call[0] === 'offscreenDrawImage' && call[1]?.src === waterAsset));
 });
 
 test('CanvasGameRenderer preserves chunked water during snapshot drag frames', () => {
@@ -4270,14 +4415,22 @@ test('CanvasGameRenderer reuses tile layer caches during fast drag frames', () =
   assert.ok(renderer.worldTileStaticCacheKey);
   assert.ok(renderer.worldTileWaterLayerCacheKey);
   assert.ok(renderer.worldTileScoutRouteCacheKey);
-  assert.ok(renderer.worldTileFastDragComposite?.work?.canvas);
+  assert.ok(renderer.worldTileStaticCache?.canvas);
+  assert.ok(renderer.worldTileWaterFrameCaches.size > 0);
   calls.length = 0;
 
-  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 36, y: -18 } }, 0, 80, 390, 560, {}, { fastDrag: true });
+  renderer.renderWorldTileMap({ ...tileMapView, pan: { x: 36, y: -18 } }, 0, 80, 390, 560, {}, {
+    fastDrag: true,
+    snapshotOnly: true,
+  });
 
   assert.equal(calls.some((call) => call[0] === 'offscreenDrawImage'), false);
   assert.equal(calls.some((call) => call[0] === 'offscreenStroke'), false);
-  assert.ok(calls.some((call) => call[0] === 'drawImage' && call[1] === renderer.worldTileFastDragComposite.work.canvas));
+  assert.ok(calls.some((call) => call[0] === 'drawImage' && call[1] === renderer.worldTileStaticCache.canvas));
+  assert.ok(calls.some((call) => (
+    call[0] === 'drawImage'
+    && Array.from(renderer.worldTileWaterFrameCaches.values()).some((work) => work.canvas === call[1])
+  )));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openWorldSite' && target.action.siteId === 'site-east'));
 });
 

@@ -3331,7 +3331,7 @@ test('Canvas game shell refreshes animated world water on the map layer when dua
   assert.equal(mapLayerCalls.length, initialMapLayerCalls + 1);
 });
 
-test('Canvas game shell freezes animated world water without snapshot drag redraws', () => {
+test('Canvas game shell plays cached world water frames during snapshot drag without full redraws', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
   runtime.requestAnimationFrame = (callback) => {
@@ -3348,12 +3348,20 @@ test('Canvas game shell freezes animated world water without snapshot drag redra
     invalidateWorldTileViewCache() {},
   };
   const mapLayerCalls = [];
+  const waterTimes = [];
   const worldMapRenderer = {
     width: 390,
     height: 844,
     pixelRatio: 2,
+    presenter: UIStatePresenter,
     renderWorldMapLayer(state, options) {
       mapLayerCalls.push({ state, options });
+      waterTimes.push(options.waterTimeMs);
+      return true;
+    },
+    renderWorldMapSnapshotLayer(state, options) {
+      mapLayerCalls.push({ state, options });
+      waterTimes.push(options.waterTimeMs);
       return true;
     },
     invalidateWorldTileViewCache() {},
@@ -3361,8 +3369,18 @@ test('Canvas game shell freezes animated world water without snapshot drag redra
   let now = 1000;
   const uiState = { worldPanX: 24, worldPanY: -12 };
   const shell = CanvasGameShell.mount({
-    state: { currentTab: 'military', currentEra: 5, militaryView: 'world', territoryState: {} },
+    state: {
+      currentTab: 'military',
+      currentEra: 5,
+      militaryView: 'world',
+      territoryState: {
+        worldMap: {
+          tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', discovered: true, visible: true }],
+        },
+      },
+    },
     getActiveTab: () => 'military',
+    mapHomeActive: true,
     territoryController: {
       getUiState: () => uiState,
       startWorldDrag() {},
@@ -3390,9 +3408,10 @@ test('Canvas game shell freezes animated world water without snapshot drag redra
   listeners.pointermove({ pointerId: 11, clientX: 138, clientY: 212, type: 'pointermove', cancelable: true, preventDefault() {}, stopPropagation() {} });
 
   assert.equal(frames.length, 0);
-  assert.equal(mapLayerCalls.length, 0);
+  assert.equal(mapLayerCalls.length, 1);
   assert.equal(shell.worldMapDragWaterTimeMs, 1000);
-  assert.equal(shell.runtime.ensureLayerCanvas('worldMap').style.transform, 'translate3d(0px, 0px, 0)');
+  assert.equal(waterTimes.at(-1), 1040);
+  assert.notEqual(shell.runtime.ensureLayerCanvas('worldMap').style.transform, 'translate3d(0px, 0px, 0)');
 });
 
 test('Canvas game shell skips water timer frames while snapshot dragging and cooling down', () => {

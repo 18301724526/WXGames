@@ -914,6 +914,15 @@
 
     updateWorldMapDragCompositor() {
       const offset = this.getWorldMapRuntimeDragOffset();
+      if (this.refreshWorldMapLayerFromSnapshot({
+        waterTimeMs: this.now(),
+        commitCamera: false,
+        clearTransform: false,
+        preserveOnMiss: false,
+      })) {
+        this.clearWorldMapLayerTransform();
+        return offset;
+      }
       if (
         typeof this.runtime?.ensureLayerCanvas === 'function'
         && typeof this.runtime?.getLayerCanvas === 'function'
@@ -953,15 +962,15 @@
         territoryUiState,
         topBarBottom,
         frameless: true,
-        preserveOnMiss: true,
+        preserveOnMiss: options.preserveOnMiss ?? true,
         reuseCachedWorldTileView: true,
         snapshotOnly: true,
         waterTimeMs: options.waterTimeMs ?? this.worldMapDragWaterTimeMs,
         showFpsOverlay: false,
       });
       if (!rendered) return false;
-      runtime?.markBakedCamera?.(runtime.camera);
-      this.clearWorldMapLayerTransform();
+      if (options.commitCamera !== false) runtime?.markBakedCamera?.(runtime.camera);
+      if (options.clearTransform !== false) this.clearWorldMapLayerTransform();
       return true;
     }
 
@@ -1665,7 +1674,14 @@
           return;
         }
         if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
-        if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap(this.lastGame?.state, {})) return;
+        if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap(this.lastGame?.state, {})) {
+          this.renderWorldMapLayerFrame({
+            reuseCachedWorldTileView: true,
+            snapshotOnly: true,
+            waterTimeMs: this.now(),
+          });
+          return;
+        }
         if (this.worldMapRenderer) this.renderWorldMapLayerFrame();
         else this.renderAnimationFrame();
       }, this.getWorldTileWaterAnimationFrameMs());
