@@ -539,6 +539,46 @@ test('敌对据点会稳定生成守军名人，归一化后继续保留', () =>
   assert.equal(normalizedLeader.skills[0].id, firstLeader.skills[0].id);
 });
 
+test('客户端地点情报默认不暴露完整守将和战法', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  pushReadyScoutMission(state, { id: 'scout_intel_site', direction: 'n', targetX: 0, targetY: -6, now });
+  const claim = TerritoryService.claimScout(state, 'scout_intel_site', now, createSequenceRandom([0.1, 0.01, 0.01]));
+  const storedSite = state.territories.find((item) => item.id === claim.site.id);
+  const territoryState = TerritoryService.getClientTerritoryState(state, now);
+  const clientSite = territoryState.territories.find((item) => item.id === claim.site.id);
+
+  assert.ok(storedSite.garrison?.leader);
+  assert.equal(storedSite.defenderLeader.id, storedSite.garrison.leader.id);
+  assert.equal(clientSite.intel.level, 1);
+  assert.equal(clientSite.intel.knownGarrison, false);
+  assert.equal(clientSite.intel.knownLeader, false);
+  assert.equal(clientSite.intel.knownSkill, false);
+  assert.equal(clientSite.garrison, null);
+  assert.equal(clientSite.defenderLeader, null);
+});
+
+test('客户端地点情报达到等级后才暴露守军层级信息', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  pushReadyScoutMission(state, { id: 'scout_intel_levels', direction: 'n', targetX: 0, targetY: -6, now });
+  const claim = TerritoryService.claimScout(state, 'scout_intel_levels', now, createSequenceRandom([0.1, 0.01, 0.01]));
+  const site = state.territories.find((item) => item.id === claim.site.id);
+  site.intel = { level: 3 };
+  const level3Site = TerritoryService.getClientTerritoryState(state, now).territories.find((item) => item.id === site.id);
+  site.intel = { level: 4 };
+  const level4Site = TerritoryService.getClientTerritoryState(state, now).territories.find((item) => item.id === site.id);
+
+  assert.equal(level3Site.intel.knownGarrison, true);
+  assert.equal(level3Site.intel.knownLeader, true);
+  assert.equal(level3Site.intel.knownSkill, false);
+  assert.equal(level3Site.garrison.soldiers, site.garrison.soldiers);
+  assert.equal(level3Site.garrison.leader.name, site.garrison.leader.name);
+  assert.equal(level3Site.garrison.leader.abilityKit, null);
+  assert.equal(level4Site.intel.knownSkill, true);
+  assert.deepEqual(level4Site.garrison.leader.abilityKit, site.garrison.leader.abilityKit);
+});
+
 test('中立建立据点目标不会生成守军名人', () => {
   const state = createClassicalState();
   addDiscoveredTribeSite(state, {
@@ -763,6 +803,25 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   assert.ok(claim.casualties > 0);
   assert.ok(claim.casualties < 800);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
+});
+
+test('隐藏客户端守将情报不会影响后端 BattleTarget 结算', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.military.soldiers = 800;
+  if (state.cities?.capital?.military) state.cities.capital.military.soldiers = 800;
+  pushReadyScoutMission(state, { id: 'scout_hidden_defender', direction: 'n', targetX: 0, targetY: -6, now });
+  const claim = TerritoryService.claimScout(state, 'scout_hidden_defender', now, createSequenceRandom([0.1, 0.01, 0.01]));
+  const clientSite = TerritoryService.getClientTerritoryState(state, now).territories.find((item) => item.id === claim.site.id);
+
+  assert.equal(clientSite.garrison, null);
+  assert.equal(clientSite.defenderLeader, null);
+
+  const start = TerritoryService.startConquest(state, claim.site.id, { soldiers: 800, leader: 'unavailable' }, now);
+
+  assert.equal(start.success, true);
+  assert.ok(start.mission.battleTarget.defender.leader.id);
+  assert.equal(start.mission.battleTarget.defender.soldiers, claim.site.garrison.soldiers);
 });
 
 test('名人领队出征会生成自动回合战报并记录到地点', () => {

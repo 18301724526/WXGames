@@ -1325,6 +1325,25 @@ test('world site dialog view state formats details and expedition actions', () =
   assert.equal(detail.action.expeditionConfig.disabled, true);
 });
 
+test('world site dialog hides defender leader lines when intel redacts garrison', () => {
+  const view = UIStatePresenter.buildWorldSiteDialogViewState([{
+    id: 'tribe_site',
+    status: 'discovered',
+    owner: 'tribe',
+    occupationMode: 'conquest',
+    naturalName: '山口部落',
+    defense: 500,
+    recommendedSoldiers: 500,
+    intel: { level: 1, knownGarrison: false, knownLeader: false, knownSkill: false },
+    garrison: null,
+    defenderLeader: null,
+  }], { availableSoldiers: 800 }, { selectedSiteId: 'tribe_site' });
+  const detail = view.details.find((item) => item.id === 'tribe_site');
+
+  assert.equal(detail.text.defenderLeader, '');
+  assert.equal(detail.text.defenderSkill, '');
+});
+
 test('world site dialog view state formats occupied and contested actions', () => {
   const view = UIStatePresenter.buildWorldSiteDialogViewState([
     {
