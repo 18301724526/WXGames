@@ -37,12 +37,20 @@ test('coordinate generation keeps lab-aligned ocean and river templates without 
   const ocean = WorldMapService.createTile('world-test', 1, 0, '2026-06-01T00:00:00.000Z');
   const riverMouth = WorldMapService.createTile('world-test', 4, 1, '2026-06-01T00:00:00.000Z');
   const river = WorldMapService.createTile('world-test', 4, 2, '2026-06-01T00:00:00.000Z');
+  const upstreamRiver = WorldMapService.createTile('world-test', 4, 5, '2026-06-01T00:00:00.000Z');
+  const riverSource = WorldMapService.createTile('world-test', 4, 9, '2026-06-01T00:00:00.000Z');
+  const beyondSource = WorldMapService.createTile('world-test', 4, 10, '2026-06-01T00:00:00.000Z');
   const shoreCorner = WorldMapService.createTile('world-test', -3, 1, '2026-06-01T00:00:00.000Z');
 
   assert.equal(ocean.terrain, 'ocean');
   assert.deepEqual(ocean.oceanTemplates, ['full']);
   assert.equal(river.terrain, 'river');
   assert.deepEqual(river.riverPorts, ['ne', 'sw']);
+  assert.equal(upstreamRiver.terrain, 'river');
+  assert.deepEqual(upstreamRiver.riverPorts, ['ne', 'sw']);
+  assert.equal(riverSource.terrain, 'river');
+  assert.deepEqual(riverSource.riverPorts, ['ne']);
+  assert.notEqual(beyondSource.terrain, 'river');
   assert.equal(riverMouth.terrain, 'ocean');
   assert.deepEqual(riverMouth.oceanTemplates, ['river-mouth-ne']);
   assert.ok(shoreCorner.oceanTemplates?.includes('corner-e'));
@@ -64,7 +72,7 @@ test('incomplete v2 world map heals only the capital tile', () => {
   assert.equal(byId.get('tile_0_0').terrain, 'capital');
 });
 
-test('createTile prioritizes fixed ocean/river semantics over caller terrain hints', () => {
+test('createTile prioritizes generated ocean/river semantics over caller terrain hints', () => {
   const capital = WorldMapService.createTile('world-test', 0, 0, '2026-06-01T00:00:00.000Z', { terrain: 'ocean' });
   const ocean = WorldMapService.createTile('world-test', 1, 0, '2026-06-01T00:00:00.000Z', { terrain: 'forest' });
   const river = WorldMapService.createTile('world-test', 4, 2, '2026-06-01T00:00:00.000Z', { terrain: 'plains' });

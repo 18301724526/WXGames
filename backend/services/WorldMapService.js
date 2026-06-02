@@ -11,27 +11,6 @@ const SIDE_DIRECTIONS = {
   se: { q: 1, r: 0 },
   sw: { q: 0, r: 1 },
 };
-const MICRO_TERRAIN_OVERRIDES = new Map([
-  ['tile_-4_-1', 'desert'],
-  ['tile_-4_0', 'desert'],
-  ['tile_-3_-1', 'desert'],
-  ['tile_-3_0', 'desert'],
-  ['tile_-2_-1', 'desert'],
-  ['tile_-2_0', 'desert'],
-  ['tile_-1_-1', 'desert'],
-]);
-const OCEAN_CORE_TILE_IDS = new Set([
-  'tile_-6_1', 'tile_-6_2', 'tile_-6_3', 'tile_-6_4', 'tile_-6_5',
-  'tile_-5_1', 'tile_-5_2', 'tile_-5_3', 'tile_-5_4',
-  'tile_-4_2', 'tile_-4_3', 'tile_-4_4',
-  'tile_-3_3', 'tile_-3_4',
-  'tile_1_-1', 'tile_2_-1',
-  'tile_1_0', 'tile_2_0',
-  'tile_1_1', 'tile_2_1',
-  'tile_4_-2', 'tile_5_-2',
-  'tile_4_-1', 'tile_5_-1',
-  'tile_4_0',
-]);
 const OCEAN_SHORE_EDGE_BY_CORE_OFFSET = {
   '-1,0': 'nw',
   '0,-1': 'ne',
@@ -44,10 +23,8 @@ const OCEAN_CORNER_BY_CORE_OFFSET = {
   '-1,-1': 'corner-s',
   '1,-1': 'corner-w',
 };
-const RIVER_PORTS_BY_TILE_ID = new Map([
-  ['tile_4_2', ['ne', 'sw']],
-  ['tile_4_1', ['ne', 'sw']],
-]);
+const HOME_RIVER_LENGTH = 7;
+const RIVER_MOUTH_SCAN_RADIUS = 32;
 const DIRECTION_VECTORS = {
   n: { q: 0, r: -1 },
   ne: { q: 1, r: -1 },
@@ -93,30 +70,81 @@ function getSortedSideKey(sides = []) {
     .join('-');
 }
 
-function isOceanCoreCoord(q, r) {
-  return OCEAN_CORE_TILE_IDS.has(getTileId(q, r));
+function normalizeSeedCoordArgs(seedOrQ, qOrR, rValue) {
+  if (rValue === undefined) {
+    return {
+      seed: DEFAULT_WORLD_SEED,
+      q: toInteger(seedOrQ, 0),
+      r: toInteger(qOrR, 0),
+    };
+  }
+  return {
+    seed: typeof seedOrQ === 'string' && seedOrQ ? seedOrQ : DEFAULT_WORLD_SEED,
+    q: toInteger(qOrR, 0),
+    r: toInteger(rValue, 0),
+  };
 }
 
-function getAdjacentOceanSides(q, r) {
+function getBoxBasinScore(q, r, centerQ, centerR, radiusQ, radiusR) {
+  const qRatio = Math.abs(q - centerQ) / radiusQ;
+  const rRatio = Math.abs(r - centerR) / radiusR;
+  return 1 - Math.max(qRatio, rRatio);
+}
+
+function getWesternOceanBasinScore(q, r) {
+  if (q > -3) return -1;
+  const minR = Math.max(1, q + 6);
+  const maxR = Math.max(4, -q - 1);
+  const qFalloff = Math.max(0, (-3 - q) * 0.08);
+  if (r >= minR && r <= maxR) return 0.5 + qFalloff;
+  return -Math.min(Math.abs(r - minR), Math.abs(r - maxR));
+}
+
+function getEasternOceanBasinScore(q, r) {
+  const withinColumn = q >= 4 && q <= 6;
+  if (!withinColumn || r < -4 || r > 0) return -1;
+  const maxR = q === 4 ? 0 : -1;
+  const minR = q >= 6 ? -3 : -4;
+  if (r < minR || r > maxR) return -1;
+  const qScore = 1 - Math.abs(q - 4.5) / 2.5;
+  const rScore = 1 - Math.abs(r + 1.5) / 3.5;
+  return Math.min(qScore, rScore);
+}
+
+function getOceanBasinScore(seed, q, r) {
+  const nearBay = getBoxBasinScore(q, r, 1.5, 0, 0.75, 1.15);
+  const easternBay = getEasternOceanBasinScore(q, r);
+  const westernSea = getWesternOceanBasinScore(q, r);
+  const wildCoastNoise = (random01(seed, q, r, 'ocean-basin') - 0.5) * 0.12;
+  return Math.max(nearBay, easternBay, westernSea + wildCoastNoise);
+}
+
+function isOceanCoreCoord(seedOrQ, qOrR, rValue) {
+  const { seed, q, r } = normalizeSeedCoordArgs(seedOrQ, qOrR, rValue);
+  if (q === 0 && r === 0) return false;
+  return getOceanBasinScore(seed, q, r) >= 0;
+}
+
+function getAdjacentOceanSides(seed, q, r) {
   const sides = new Set();
   for (const [offsetKey, side] of Object.entries(OCEAN_SHORE_EDGE_BY_CORE_OFFSET)) {
     const [dq, dr] = offsetKey.split(',').map(Number);
-    if (isOceanCoreCoord(q + dq, r + dr)) sides.add(side);
+    if (isOceanCoreCoord(seed, q + dq, r + dr)) sides.add(side);
   }
   return SIDE_ORDER.filter((side) => sides.has(side));
 }
 
-function getAdjacentOceanCorners(q, r) {
+function getAdjacentOceanCorners(seed, q, r) {
   const corners = [];
   for (const [offsetKey, corner] of Object.entries(OCEAN_CORNER_BY_CORE_OFFSET)) {
     const [dq, dr] = offsetKey.split(',').map(Number);
-    if (isOceanCoreCoord(q + dq, r + dr)) corners.push(corner);
+    if (isOceanCoreCoord(seed, q + dq, r + dr)) corners.push(corner);
   }
   return corners;
 }
 
-function isOceanShoreCornerCoord(q, r) {
-  return !isOceanCoreCoord(q, r) && getAdjacentOceanCorners(q, r).length > 0;
+function isOceanShoreCornerCoord(seed, q, r) {
+  return !isOceanCoreCoord(seed, q, r) && getAdjacentOceanCorners(seed, q, r).length > 0;
 }
 
 function getOceanShoreEdgeTemplateKeys(sides = []) {
@@ -126,24 +154,63 @@ function getOceanShoreEdgeTemplateKeys(sides = []) {
   return SIDE_ORDER.filter((side) => sides.includes(side));
 }
 
-function chooseOceanTemplates(q, r) {
+function getHomeRiverChannel(seed) {
+  const easternBayCenterQ = 4.5;
+  const riverQ = Math.floor(easternBayCenterQ);
+  const lengthBonus = Math.floor(random01(seed, riverQ, 0, 'home-river-length') * 3);
+  return {
+    q: riverQ,
+    oceanSide: 'ne',
+    inlandSide: 'sw',
+    length: HOME_RIVER_LENGTH + lengthBonus,
+  };
+}
+
+function findRiverMouth(seed, channel) {
+  const oceanDir = SIDE_DIRECTIONS[channel.oceanSide];
+  if (!oceanDir) return null;
+  for (let r = -RIVER_MOUTH_SCAN_RADIUS; r <= RIVER_MOUTH_SCAN_RADIUS; r += 1) {
+    if (isOceanCoreCoord(seed, channel.q, r)) continue;
+    if (isOceanShoreCornerCoord(seed, channel.q, r)) continue;
+    if (isOceanCoreCoord(seed, channel.q + oceanDir.q, r + oceanDir.r)) {
+      return { q: channel.q, r };
+    }
+  }
+  return null;
+}
+
+function getGeneratedRiverPorts(seed, q, r) {
+  const channel = getHomeRiverChannel(seed);
+  if (q !== channel.q) return [];
+  const mouth = findRiverMouth(seed, channel);
+  if (!mouth) return [];
+  if (r < mouth.r || r >= mouth.r + channel.length) return [];
+  const ports = [];
+  if (r > mouth.r || r === mouth.r) ports.push(channel.oceanSide);
+  if (r < mouth.r + channel.length - 1) ports.push(channel.inlandSide);
+  return SIDE_ORDER.filter((side) => ports.includes(side));
+}
+
+function getRiverPorts(seedOrQ, qOrR, rValue) {
+  const { seed, q, r } = normalizeSeedCoordArgs(seedOrQ, qOrR, rValue);
   if (q === 0 && r === 0) return [];
-  if (isOceanCoreCoord(q, r)) return ['full'];
-  const sides = getAdjacentOceanSides(q, r);
-  const blocksRiverMouth = isOceanShoreCornerCoord(q, r);
-  const riverPorts = getRiverPorts(q, r);
+  return getGeneratedRiverPorts(seed, q, r);
+}
+
+function chooseOceanTemplates(seedOrQ, qOrR, rValue) {
+  const { seed, q, r } = normalizeSeedCoordArgs(seedOrQ, qOrR, rValue);
+  if (q === 0 && r === 0) return [];
+  if (isOceanCoreCoord(seed, q, r)) return ['full'];
+  const sides = getAdjacentOceanSides(seed, q, r);
+  const blocksRiverMouth = isOceanShoreCornerCoord(seed, q, r);
+  const riverPorts = getRiverPorts(seed, q, r);
   const edgeKeys = getOceanShoreEdgeTemplateKeys(sides).map((key) => (
     !blocksRiverMouth && sides.length === 1 && riverPorts.includes(key) ? `river-mouth-${key}` : key
   ));
   return [
     ...edgeKeys,
-    ...getAdjacentOceanCorners(q, r),
+    ...getAdjacentOceanCorners(seed, q, r),
   ];
-}
-
-function getRiverPorts(q, r) {
-  if (q === 0 && r === 0) return [];
-  return RIVER_PORTS_BY_TILE_ID.get(getTileId(q, r)) || [];
 }
 
 function getTerrainTransitionKey(seed, q, r, terrain) {
@@ -156,8 +223,6 @@ function getTerrainTransitionKey(seed, q, r, terrain) {
 }
 
 function chooseBaseTerrain(seed, q, r) {
-  const override = MICRO_TERRAIN_OVERRIDES.get(getTileId(q, r));
-  if (override) return override;
   if (q === 0 && r === 0) return 'capital';
   if (q <= -3 && r <= 0) return 'desert';
   if (q <= -1 && r >= -1 && r <= 1) return 'plains';
@@ -179,8 +244,8 @@ function chooseBaseTerrain(seed, q, r) {
 
 function chooseTerrain(seed, q, r) {
   if (q === 0 && r === 0) return 'capital';
-  if (chooseOceanTemplates(q, r).length) return 'ocean';
-  if (getRiverPorts(q, r).length) return 'river';
+  if (chooseOceanTemplates(seed, q, r).length) return 'ocean';
+  if (getRiverPorts(seed, q, r).length) return 'river';
   return chooseBaseTerrain(seed, q, r);
 }
 
@@ -194,8 +259,8 @@ function decorateTile(tile, seed) {
       transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, 0, 0, 'capital'),
     };
   }
-  const naturalOceanTemplates = chooseOceanTemplates(tile.q, tile.r);
-  const naturalRiverPorts = getRiverPorts(tile.q, tile.r);
+  const naturalOceanTemplates = chooseOceanTemplates(seed, tile.q, tile.r);
+  const naturalRiverPorts = getRiverPorts(seed, tile.q, tile.r);
   const terrain = naturalOceanTemplates.length
     ? 'ocean'
     : naturalRiverPorts.length

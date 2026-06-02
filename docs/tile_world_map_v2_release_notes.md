@@ -17,10 +17,10 @@ The military world view now renders the tile map first when `territoryState.worl
 ## Backend Changes
 
 - `WorldMapService` now uses `WORLD_MAP_VERSION = 2`.
-- New and upgraded world maps bootstrap the same micro terrain layout used by the lab.
+- New and upgraded world maps start from the persisted capital tile; newly scouted coordinates derive terrain from deterministic world rules.
 - The capital tile is protected from ocean/river semantic overrides, even when adjacent to the central lake.
 - Ocean semantics include full water, shore edges, shore corners, and river-mouth templates.
-- River semantics include fixed river ports for the current micro terrain river path.
+- River semantics derive a stable river channel and river-mouth template from the ocean basin rules.
 - River mouths attach only to single-side ocean shore edges, and ocean shore corner coordinates block river mouths to avoid tile conflicts.
 
 ## Frontend Changes

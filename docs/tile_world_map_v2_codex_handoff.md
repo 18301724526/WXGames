@@ -30,7 +30,7 @@ The game runtime now uses the tile-map lab semantics and draw rules for the mili
   q: 4,
   r: 1,
   terrain: "ocean",
-  oceanTemplates: ["river-mouth-sw"],
+  oceanTemplates: ["river-mouth-ne"],
   riverPorts: [],
   transitionKey: "",
   siteId: null
@@ -41,7 +41,7 @@ Renderer-ready frontend tiles additionally include:
 
 ```js
 {
-  templateAssets: [{ key: "river-mouth-sw", type: "ocean", asset: "..." }],
+  templateAssets: [{ key: "river-mouth-ne", type: "ocean", asset: "..." }],
   water: { kind: "ocean", asset: "...", uvScale: 0.84, speedX: -8, speedY: 4, alpha: 0.96 }
 }
 ```

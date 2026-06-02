@@ -282,7 +282,7 @@ test('world tile map view state exposes lab template assets and water metadata',
       version: 2,
       seed: 'world-template-test',
       tiles: [
-        { id: 'tile_4_1', q: 4, r: 1, terrain: 'ocean', oceanTemplates: ['river-mouth-sw'], discovered: true, visible: true },
+        { id: 'tile_4_1', q: 4, r: 1, terrain: 'ocean', oceanTemplates: ['river-mouth-ne'], discovered: true, visible: true },
         { id: 'tile_4_2', q: 4, r: 2, terrain: 'river', riverPorts: ['ne', 'sw'], discovered: true, visible: true },
       ],
     },
@@ -292,8 +292,8 @@ test('world tile map view state exposes lab template assets and water metadata',
   const mouth = view.tiles.find((tile) => tile.id === 'tile_4_1');
   const river = view.tiles.find((tile) => tile.id === 'tile_4_2');
 
-  assert.equal(mouth.templateAssets[0].key, 'river-mouth-sw');
-  assert.match(mouth.templateAssets[0].asset, /tile-ocean-river-mouth-sw\.png$/);
+  assert.equal(mouth.templateAssets[0].key, 'river-mouth-ne');
+  assert.match(mouth.templateAssets[0].asset, /tile-ocean-river-mouth-ne\.png$/);
   assert.equal(mouth.water.kind, 'ocean');
   assert.match(mouth.water.asset, /tile-water-ocean-loop\.png$/);
   assert.equal(river.templateAssets[0].key, 'ne-sw');
