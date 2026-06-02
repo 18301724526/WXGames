@@ -771,7 +771,7 @@ test('CanvasGameRenderer map home uses command dock instead of page tabs', () =>
   renderer.setPresenter({
     buildResourceViewState: () => ({
       text: {
-        foodValue: '10',
+        foodValue: '12.3K',
         woodValue: '2',
         stoneValue: '0',
         ironValue: '0',
@@ -805,6 +805,9 @@ test('CanvasGameRenderer map home uses command dock instead of page tabs', () =>
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'switchTab'), false);
   assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === 390 && call[4] === 72));
   assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 780 && call[3] === 390 && call[4] === 64));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '粮食'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人口'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '12.3K'));
 });
 
 test('CanvasGameRenderer map home renders subcity jump list', () => {

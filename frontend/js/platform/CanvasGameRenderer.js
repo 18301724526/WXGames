@@ -2840,32 +2840,34 @@
         this.ctx.fillRect(0, height - 1, width, 1);
       }
       const resources = [
-        { label: '粮', value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
-        { label: '木', value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
-        { label: '石', value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
-        { label: '铁', value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
-        { label: '知', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
-        { label: '民', value: text.populationValue ?? this.presenter.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
+        { label: '粮食', value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
+        { label: '木材', value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
+        { label: '石料', value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
+        { label: '铁矿', value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
+        { label: '知识', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
+        { label: '人口', value: text.populationValue ?? this.presenter.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
       ];
       const contentX = layout.contentX;
       const contentWidth = layout.contentWidth;
       const gap = 3;
       const itemWidth = Math.max(42, Math.floor((contentWidth - 16 - gap * (resources.length - 1)) / resources.length));
-      const itemY = y + 10;
+      const itemY = y + 8;
       resources.forEach((resource, index) => {
         const itemX = contentX + 8 + index * (itemWidth + gap);
-        const iconSize = 18;
-        this.drawAsset(resource.icon, itemX + 2, itemY + 6, iconSize, iconSize);
-        this.drawText(resource.label, itemX + 11, itemY + 36, {
-          size: 9,
+        const iconSize = 14;
+        const centerX = itemX + itemWidth / 2;
+        this.drawAsset(resource.icon, centerX - iconSize / 2, itemY + 5, iconSize, iconSize);
+        this.drawText(resource.label, centerX, itemY + 23, {
+          size: 8,
           bold: true,
           color: '#cbbd96',
           align: 'center',
         });
-        this.drawText(this.truncateText(String(resource.value), itemWidth - 22, { size: 11, bold: true }), itemX + 24, itemY + 12, {
-          size: 11,
+        this.drawText(this.truncateText(String(resource.value), itemWidth - 4, { size: 9, bold: true }), centerX, itemY + 40, {
+          size: 9,
           bold: true,
           color: '#d5ffe8',
+          align: 'center',
         });
         this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 42 }, { type: 'openResourceDetails' });
       });
