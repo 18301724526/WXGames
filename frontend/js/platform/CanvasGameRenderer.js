@@ -2820,23 +2820,25 @@
       const layout = this.getLayout();
       const resourceView = this.presenter.buildResourceViewState(state);
       const text = resourceView.text || {};
-      const x = layout.contentX;
-      const y = 10;
-      const width = layout.contentWidth;
-      const height = 58;
-      this.drawPanel(x, y, width, height, {
-        fill: this.createGradient(
-          x, y, x + width, y + height,
+      const x = 0;
+      const y = 0;
+      const width = this.width;
+      const height = 72;
+      if (this.ctx) {
+        this.ctx.fillStyle = this.createGradient(
+          x, y, x, y + height,
           [
-            [0, 'rgba(46, 37, 25, 0.78)'],
-            [1, 'rgba(19, 18, 14, 0.82)'],
+            [0, 'rgba(46, 37, 25, 0.86)'],
+            [1, 'rgba(19, 18, 14, 0.88)'],
           ],
-          'rgba(32, 26, 19, 0.8)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.16)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+          'rgba(32, 26, 19, 0.86)',
+        );
+        this.ctx.fillRect(x, y, width, height);
+        this.ctx.fillStyle = 'rgba(255, 231, 184, 0.06)';
+        this.ctx.fillRect(0, 0, width, 1);
+        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.16)';
+        this.ctx.fillRect(0, height - 1, width, 1);
+      }
       const resources = [
         { label: '粮', value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
         { label: '木', value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
@@ -2845,11 +2847,13 @@
         { label: '知', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
         { label: '民', value: text.populationValue ?? this.presenter.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
       ];
+      const contentX = layout.contentX;
+      const contentWidth = layout.contentWidth;
       const gap = 3;
-      const itemWidth = Math.max(42, Math.floor((width - 16 - gap * (resources.length - 1)) / resources.length));
-      const itemY = y + 8;
+      const itemWidth = Math.max(42, Math.floor((contentWidth - 16 - gap * (resources.length - 1)) / resources.length));
+      const itemY = y + 10;
       resources.forEach((resource, index) => {
-        const itemX = x + 8 + index * (itemWidth + gap);
+        const itemX = contentX + 8 + index * (itemWidth + gap);
         const iconSize = 18;
         this.drawAsset(resource.icon, itemX + 2, itemY + 6, iconSize, iconSize);
         this.drawText(resource.label, itemX + 11, itemY + 36, {
@@ -2865,7 +2869,7 @@
         });
         this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 42 }, { type: 'openResourceDetails' });
       });
-      return y + height + 4;
+      return 72;
     }
 
     renderGuideTasks(state = {}, startY = 0) {
@@ -8016,7 +8020,7 @@
         const mapX = 0;
         const mapY = Math.max(0, topBarBottom ?? 84);
         const mapW = this.width;
-        const mapBottom = this.height - 60 - this.bottomSafeArea;
+        const mapBottom = this.height - 64;
         const mapH = Math.max(160, mapBottom - mapY);
         return {
           nav,
@@ -8084,7 +8088,7 @@
       const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
       const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
       const visibleMapY = Math.max(0, topBarBottom ?? 84);
-      const visibleMapH = Math.max(160, visibleHeight - 60 - this.bottomSafeArea - visibleMapY);
+      const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
       this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
         hitTargetsOnly: Boolean(options.skipWorldMapLayer),
         frameless: true,
@@ -8320,24 +8324,26 @@
 
     renderMapCommandDock(state = {}, options = {}) {
       const layout = this.getLayout();
-      const x = layout.contentX;
-      const width = layout.contentWidth;
+      const x = 0;
+      const width = this.width;
       const dockHeight = 64;
-      const y = this.height - dockHeight - this.bottomSafeArea;
+      const y = this.height - dockHeight;
       const activePanel = options.activeCommandPanel || '';
-      this.drawPanel(x, y, width, dockHeight, {
-        fill: this.createGradient(
+      if (this.ctx) {
+        this.ctx.fillStyle = this.createGradient(
           x, y, x, y + dockHeight,
           [
-            [0, 'rgba(44, 35, 25, 0.82)'],
-            [1, 'rgba(18, 16, 13, 0.94)'],
+            [0, 'rgba(44, 35, 25, 0.88)'],
+            [1, 'rgba(18, 16, 13, 0.96)'],
           ],
-          'rgba(30, 24, 18, 0.9)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.16)',
-        radius: 0,
-        inset: 'rgba(255, 231, 184, 0.06)',
-      });
+          'rgba(30, 24, 18, 0.94)',
+        );
+        this.ctx.fillRect(x, y, width, dockHeight);
+        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.16)';
+        this.ctx.fillRect(0, y, width, 1);
+        this.ctx.fillStyle = 'rgba(255, 231, 184, 0.04)';
+        this.ctx.fillRect(0, y + 1, width, 1);
+      }
       const items = [
         { id: 'capital', label: '首都', icon: 'assets/art/icon-home-cutout.png', action: { type: 'openCommandPanel', panel: 'capital' } },
         { id: 'buildings', label: '建设', icon: 'assets/art/building-house-cutout.png', action: { type: 'openCommandPanel', panel: 'buildings' } },
@@ -8348,9 +8354,11 @@
         { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'dock' } },
         { id: 'settings', label: '设置', glyph: '⚙', action: { type: 'openSettings' } },
       ];
-      const itemWidth = width / items.length;
+      const contentX = layout.contentX;
+      const contentWidth = layout.contentWidth;
+      const itemWidth = contentWidth / items.length;
       items.forEach((item, index) => {
-        const itemX = x + index * itemWidth;
+        const itemX = contentX + index * itemWidth;
         const active = activePanel === item.id
           || (item.id === 'subcities' && options.showSubcityList)
           || (item.id === 'tasks' && options.showTaskCenter)
@@ -8404,7 +8412,7 @@
     renderFloatingAdvisorButton(state = {}, options = {}) {
       const layout = this.getLayout();
       const size = 48;
-      const dockTop = this.height - 64 - this.bottomSafeArea;
+      const dockTop = this.height - 64;
       const x = layout.contentRight - size - 8;
       const y = Math.max(82, dockTop - size - 14);
       const view = this.presenter?.buildAdvisorViewState?.(state.softGuide) || { hidden: true };
@@ -8442,7 +8450,7 @@
       const panel = options.activeCommandPanel || '';
       if (!panel) return;
       const layout = this.getLayout();
-      const dockTop = this.height - 64 - this.bottomSafeArea;
+      const dockTop = this.height - 64;
       const top = Math.max(82, this.getTopBarBottom(state, { isMapHome: true }) + 8);
       const height = Math.max(220, dockTop - top - 12);
       const panelHeight = Math.min(height, panel === 'capital' ? 392 : 470);
@@ -8508,7 +8516,7 @@
       const visibleCount = Math.min(Math.max(1, cities.length), 6);
       const panelHeight = Math.max(142, 76 + visibleCount * itemHeight);
       const x = (this.width - panelWidth) / 2;
-      const dockTop = this.height - 64 - this.bottomSafeArea;
+      const dockTop = this.height - 64;
       const y = Math.max(82, dockTop - panelHeight - 10);
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSubcityList', background: true });
       this.drawPanel(x, y, panelWidth, panelHeight, {

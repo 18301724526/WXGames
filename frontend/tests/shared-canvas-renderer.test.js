@@ -766,7 +766,7 @@ test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order 
 });
 
 test('CanvasGameRenderer map home uses command dock instead of page tabs', () => {
-  const { ctx } = makeCtx();
+  const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
   renderer.setPresenter({
     buildResourceViewState: () => ({
@@ -803,6 +803,8 @@ test('CanvasGameRenderer map home uses command dock instead of page tabs', () =>
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openSubcityList'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openSettings'));
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'switchTab'), false);
+  assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === 390 && call[4] === 72));
+  assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 780 && call[3] === 390 && call[4] === 64));
 });
 
 test('CanvasGameRenderer map home renders subcity jump list', () => {
