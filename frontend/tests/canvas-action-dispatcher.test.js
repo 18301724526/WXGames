@@ -150,9 +150,13 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'switchTab',
     'openResourceDetails',
     'closeResourceDetails',
+    'openCommandPanel',
+    'closeCommandPanel',
     'closeRewardReveal',
     'openCitySwitcher',
     'closeCitySwitcher',
+    'openSubcityList',
+    'closeSubcityList',
     'openSettings',
     'closeSettings',
     'openLogs',
@@ -164,6 +168,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
     'closeEvent',
     'openWorldSite',
     'closeWorldSite',
+    'jumpToSubcity',
     'resetWorldPan',
     'worldMapDrag',
     'changeExpeditionSoldiers',
@@ -187,9 +192,13 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'switchTab' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openResourceDetails' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeResourceDetails' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openCommandPanel' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeCommandPanel' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeRewardReveal' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openCitySwitcher' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeCitySwitcher' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openSubcityList' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'closeSubcityList' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openSettings' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeSettings' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openLogs' }), true);
@@ -201,6 +210,7 @@ test('CanvasActionDispatcher 阶段 3 第九批接管 changeExpeditionSoldiers �
   assert.equal(dispatcher.canHandle({ type: 'closeEvent' }), true);
   assert.equal(dispatcher.canHandle({ type: 'openWorldSite' }), true);
   assert.equal(dispatcher.canHandle({ type: 'closeWorldSite' }), true);
+  assert.equal(dispatcher.canHandle({ type: 'jumpToSubcity' }), true);
   assert.equal(dispatcher.canHandle({ type: 'resetWorldPan' }), true);
   assert.equal(dispatcher.canHandle({ type: 'worldMapDrag' }), true);
   assert.equal(dispatcher.canHandle({ type: 'changeExpeditionSoldiers' }), true);
@@ -696,6 +706,54 @@ test('CanvasActionController can skip and close battle scene on game host', () =
   assert.equal(controller.handle({ type: 'skipBattleScene' }), true);
   assert.equal(controller.handle({ type: 'closeBattleScene' }), true);
   assert.deepEqual(calls, ['skip', 'close']);
+});
+
+test('CanvasActionController jumps to subcity and opens the world site locally', async () => {
+  const calls = [];
+  const runtime = {
+    setCamera(x, y, options) {
+      calls.push(['camera', Math.round(x), Math.round(y), options.source]);
+      return true;
+    },
+  };
+  const game = {
+    state: {
+      territoryState: {
+        worldMap: {
+          tiles: [{ id: 'tile_2_1', q: 2, r: 1, siteId: 'site_river' }],
+        },
+        territories: [{ id: 'site_river', x: 2, y: 1 }],
+      },
+    },
+    switchCity(cityId) {
+      calls.push(['switchCity', cityId]);
+      return true;
+    },
+  };
+  const host = {
+    showSubcityList: true,
+    activeCommandPanel: 'buildings',
+    territoryUiState: {},
+    getCanvasGameHost: () => game,
+    ensureWorldMapRuntimeCoordinator: () => ({ getMapRuntime: () => runtime }),
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  const handled = await controller.handle({ type: 'jumpToSubcity', cityId: 'site_river' });
+
+  assert.equal(handled, true);
+  assert.equal(host.showSubcityList, false);
+  assert.equal(host.activeCommandPanel, '');
+  assert.equal(host.territoryUiState.selectedSiteId, 'site_river');
+  assert.deepEqual(calls, [
+    ['camera', -60, -89, 'subcityJump'],
+    ['switchCity', 'site_river'],
+    ['render'],
+  ]);
 });
 
 test('CanvasActionDispatcher handles building category filter when used as a compatibility dispatcher', () => {

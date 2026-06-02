@@ -48,6 +48,7 @@
       this.showLogs = false;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showSubcityList = false;
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
@@ -58,6 +59,7 @@
       this.selectedFamousPersonId = '';
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
+      this.activeCommandPanel = '';
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
@@ -225,7 +227,7 @@
         getLocalUiState: () => this.territoryUiState || {},
         getTerritoryController: () => this.lastGame?.territoryController || null,
         getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
-          ? this.renderer.getTopBarBottom(state)
+          ? this.renderer.getTopBarBottom(state, { isMapHome: true })
           : 84),
         getRequestedTab: (state = this.lastGame?.state || {}) => this.lastGame?.getActiveTab?.()
           || this.lastGame?.activeTab
@@ -305,10 +307,12 @@
         || this.showLogs
         || this.showResourceDetails
         || this.showCitySwitcher
+        || this.showSubcityList
         || this.showAdvisor
         || this.showTaskCenter
         || this.showGuidebook
         || this.showTalentPolicy
+        || this.activeCommandPanel
         || this.techDetailOpen
         || this.activeEventId
         || this.naming.visible
@@ -552,6 +556,7 @@
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showTalentPolicy = false;
+      this.activeCommandPanel = '';
       return true;
     }
 
@@ -619,11 +624,13 @@
       this.activeEventId = null;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showSubcityList = false;
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.activeCommandPanel = '';
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
@@ -956,7 +963,7 @@
         || this.territoryUiState
         || {};
       const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
-        ? this.renderer.getTopBarBottom(state)
+        ? this.renderer.getTopBarBottom(state, { isMapHome: true })
         : 84;
       const rendered = this.worldMapRenderer.renderWorldMapSnapshotLayer(state, {
         ...this.buildRenderOptions('military', territoryUiState),
@@ -1345,8 +1352,10 @@
       this.showLogs = false;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showSubcityList = false;
       this.showAdvisor = false;
       this.showFamousPersons = false;
+      this.activeCommandPanel = '';
       this.activeEventId = null;
       this.renderActive();
       return true;
@@ -1517,6 +1526,7 @@
         showLogs: this.showLogs,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
+        showSubcityList: this.showSubcityList,
         showAdvisor: this.showAdvisor,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
@@ -1527,6 +1537,7 @@
         selectedFamousPersonId: this.selectedFamousPersonId,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.lastGame?.talentPolicyUiState || this.talentPolicyUiState || {},
+        activeCommandPanel: this.activeCommandPanel || '',
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
@@ -1656,7 +1667,7 @@
         || this.territoryUiState
         || {};
       const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
-        ? this.renderer.getTopBarBottom(state)
+        ? this.renderer.getTopBarBottom(state, { isMapHome: homeView.isMapHome })
         : 84;
       const rendered = this.worldMapRenderer.renderWorldMapLayer(state, {
         ...(options || this.buildRenderOptions(homeView.activeTab, territoryUiState)),

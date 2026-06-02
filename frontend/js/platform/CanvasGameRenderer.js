@@ -2663,13 +2663,15 @@
       this.drawText(`${icon ? `${icon} ` : ''}${title}`, x, y, { size: 15, bold: true, color: '#eaeaea' });
     }
 
-    getTopBarBottom(state = {}) {
+    getTopBarBottom(state = {}, options = {}) {
+      if (options.isMapHome) return 72;
       if (!this.presenter) return 84;
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       return 12 + (cityView.hidden ? 128 : 166) + 12;
     }
 
-    renderTopBar(state = {}) {
+    renderTopBar(state = {}, options = {}) {
+      if (options.isMapHome) return this.renderMapHomeTopBar(state);
       if (!this.presenter) return 84;
       const layout = this.getLayout();
       const resourceView = this.presenter.buildResourceViewState(state);
@@ -2811,6 +2813,59 @@
       }
 
       return y + barHeight + 12;
+    }
+
+    renderMapHomeTopBar(state = {}) {
+      if (!this.presenter) return 72;
+      const layout = this.getLayout();
+      const resourceView = this.presenter.buildResourceViewState(state);
+      const text = resourceView.text || {};
+      const x = layout.contentX;
+      const y = 10;
+      const width = layout.contentWidth;
+      const height = 58;
+      this.drawPanel(x, y, width, height, {
+        fill: this.createGradient(
+          x, y, x + width, y + height,
+          [
+            [0, 'rgba(46, 37, 25, 0.78)'],
+            [1, 'rgba(19, 18, 14, 0.82)'],
+          ],
+          'rgba(32, 26, 19, 0.8)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.16)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      const resources = [
+        { label: '粮', value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
+        { label: '木', value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
+        { label: '石', value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
+        { label: '铁', value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
+        { label: '知', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
+        { label: '民', value: text.populationValue ?? this.presenter.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
+      ];
+      const gap = 3;
+      const itemWidth = Math.max(42, Math.floor((width - 16 - gap * (resources.length - 1)) / resources.length));
+      const itemY = y + 8;
+      resources.forEach((resource, index) => {
+        const itemX = x + 8 + index * (itemWidth + gap);
+        const iconSize = 18;
+        this.drawAsset(resource.icon, itemX + 2, itemY + 6, iconSize, iconSize);
+        this.drawText(resource.label, itemX + 11, itemY + 36, {
+          size: 9,
+          bold: true,
+          color: '#cbbd96',
+          align: 'center',
+        });
+        this.drawText(this.truncateText(String(resource.value), itemWidth - 22, { size: 11, bold: true }), itemX + 24, itemY + 12, {
+          size: 11,
+          bold: true,
+          color: '#d5ffe8',
+        });
+        this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 42 }, { type: 'openResourceDetails' });
+      });
+      return y + height + 4;
     }
 
     renderGuideTasks(state = {}, startY = 0) {
@@ -8182,6 +8237,10 @@
     }
 
     renderTabs(activeTab = 'resources', state = {}, options = {}) {
+      if (options.isMapHome) {
+        this.renderMapCommandDock(state, options);
+        return;
+      }
       const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [
         ['resources', '主页', 'assets/art/icon-home-cutout.png'],
@@ -8259,6 +8318,72 @@
       });
     }
 
+    renderMapCommandDock(state = {}, options = {}) {
+      const layout = this.getLayout();
+      const x = layout.contentX;
+      const width = layout.contentWidth;
+      const dockHeight = 64;
+      const y = this.height - dockHeight - this.bottomSafeArea;
+      const activePanel = options.activeCommandPanel || '';
+      this.drawPanel(x, y, width, dockHeight, {
+        fill: this.createGradient(
+          x, y, x, y + dockHeight,
+          [
+            [0, 'rgba(44, 35, 25, 0.82)'],
+            [1, 'rgba(18, 16, 13, 0.94)'],
+          ],
+          'rgba(30, 24, 18, 0.9)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.16)',
+        radius: 0,
+        inset: 'rgba(255, 231, 184, 0.06)',
+      });
+      const items = [
+        { id: 'capital', label: '首都', icon: 'assets/art/icon-home-cutout.png', action: { type: 'openCommandPanel', panel: 'capital' } },
+        { id: 'buildings', label: '建设', icon: 'assets/art/building-house-cutout.png', action: { type: 'openCommandPanel', panel: 'buildings' } },
+        { id: 'subcities', label: '分城', icon: 'assets/art/world-site-city-cutout.png', action: { type: 'openSubcityList' } },
+        { id: 'military', label: '军事', icon: 'assets/art/icon-soldier-cutout.webp', action: { type: 'openCommandPanel', panel: 'military' } },
+        { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
+        { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
+        { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'dock' } },
+        { id: 'settings', label: '设置', glyph: '⚙', action: { type: 'openSettings' } },
+      ];
+      const itemWidth = width / items.length;
+      items.forEach((item, index) => {
+        const itemX = x + index * itemWidth;
+        const active = activePanel === item.id
+          || (item.id === 'subcities' && options.showSubcityList)
+          || (item.id === 'tasks' && options.showTaskCenter)
+          || (item.id === 'settings' && options.showSettings);
+        if (active && this.ctx) {
+          this.ctx.fillStyle = '#f0b45b';
+          this.ctx.fillRect(itemX + itemWidth * 0.22, y, itemWidth * 0.56, 3);
+        }
+        const iconSize = active ? 30 : 26;
+        const iconX = itemX + itemWidth / 2 - iconSize / 2;
+        const iconY = y + 8 - (active ? 1 : 0);
+        const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = item.disabled ? 0.38 : previousAlpha;
+        if (!item.icon || !this.drawAsset(item.icon, iconX, iconY, iconSize, iconSize)) {
+          this.drawText(item.glyph || item.label.slice(0, 1), itemX + itemWidth / 2, iconY + iconSize / 2, {
+            size: item.glyph ? 18 : 14,
+            bold: true,
+            color: active ? '#ffe6b5' : '#cbbd96',
+            baseline: 'middle',
+            align: 'center',
+          });
+        }
+        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+        this.drawText(this.truncateText(item.label, itemWidth - 4, { size: 10, bold: active }), itemX + itemWidth / 2, y + 43, {
+          size: 10,
+          bold: active,
+          color: active ? '#f0b45b' : '#cbbd96',
+          align: 'center',
+        });
+        this.addHitTarget({ x: itemX, y, width: itemWidth, height: dockHeight }, item.action);
+      });
+    }
+
     renderAdvisor(state = {}) {
       if (!this.presenter) return;
       const view = this.presenter.buildAdvisorViewState(state.softGuide);
@@ -8276,10 +8401,185 @@
       this.drawText(view.activeAdvisor.message, x + 64, y + 13, { color: '#f6e8c8', size: 12 });
     }
 
+    renderFloatingAdvisorButton(state = {}, options = {}) {
+      const layout = this.getLayout();
+      const size = 48;
+      const dockTop = this.height - 64 - this.bottomSafeArea;
+      const x = layout.contentRight - size - 8;
+      const y = Math.max(82, dockTop - size - 14);
+      const view = this.presenter?.buildAdvisorViewState?.(state.softGuide) || { hidden: true };
+      const hasAdvice = Boolean(!view.hidden && view.activeAdvisor);
+      this.drawPanel(x, y, size, size, {
+        fill: hasAdvice ? 'rgba(82, 58, 34, 0.94)' : 'rgba(34, 31, 25, 0.82)',
+        stroke: hasAdvice ? 'rgba(247, 215, 116, 0.56)' : 'rgba(255, 226, 177, 0.18)',
+        radius: size / 2,
+        inset: hasAdvice ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
+      });
+      this.drawText('谋', x + size / 2, y + 19, {
+        size: 17,
+        bold: true,
+        color: hasAdvice ? '#ffe6b5' : '#cbbd96',
+        baseline: 'middle',
+        align: 'center',
+      });
+      if (hasAdvice) {
+        this.drawPanel(x + size - 15, y + 5, 10, 10, {
+          fill: '#74d3a0',
+          stroke: 'rgba(18, 16, 13, 0.72)',
+          radius: 5,
+        });
+      }
+      this.drawText('顾问', x + size / 2, y + 34, {
+        size: 9,
+        bold: true,
+        color: hasAdvice ? '#f0b45b' : '#aeb0b8',
+        align: 'center',
+      });
+      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openAdvisor' });
+    }
+
+    renderMapCommandPanel(state = {}, options = {}) {
+      const panel = options.activeCommandPanel || '';
+      if (!panel) return;
+      const layout = this.getLayout();
+      const dockTop = this.height - 64 - this.bottomSafeArea;
+      const top = Math.max(82, this.getTopBarBottom(state, { isMapHome: true }) + 8);
+      const height = Math.max(220, dockTop - top - 12);
+      const panelHeight = Math.min(height, panel === 'capital' ? 392 : 470);
+      const y = dockTop - panelHeight - 10;
+      const x = layout.contentX;
+      const width = layout.contentWidth;
+      const titleByPanel = {
+        capital: '首都',
+        buildings: '建设',
+        military: '军事',
+        tech: '科技',
+        civilization: '文明',
+        events: '事件',
+      };
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeCommandPanel', background: true });
+      this.drawPanel(x, y, width, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(50, 39, 27, 0.96)'],
+            [1, 'rgba(19, 17, 13, 0.97)'],
+          ],
+          'rgba(34, 27, 20, 0.96)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.22)',
+        radius: 12,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.addHitTarget({ x, y, width, height: panelHeight }, { type: 'blockCanvasModal' });
+      const closeSize = 28;
+      const closeX = x + width - closeSize - 10;
+      const closeY = y + 10;
+      this.drawText(titleByPanel[panel] || '面板', x + 16, y + 16, { size: 17, bold: true, color: '#ffe6b5' });
+      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeCommandPanel' });
+
+      const contentTop = y + 50;
+      const contentHeight = Math.max(120, panelHeight - 62);
+      if (panel === 'capital') {
+        const populationBottom = this.renderPopulation(state, contentTop);
+        this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: y + panelHeight - 10 });
+      } else {
+        const panelTab = panel === 'military' ? 'military' : panel;
+        const renderState = panelTab === 'military'
+          ? { ...state, militaryView: state.militaryView === 'world' ? 'army' : (state.militaryView || 'army') }
+          : state;
+        this.renderMainPanel(renderState, panelTab, contentTop, contentHeight, {
+          ...options,
+          activeBuildingCategory: options.activeBuildingCategory,
+          buildingOffset: options.buildingOffset,
+          buildingTransition: options.buildingTransition,
+        });
+      }
+    }
+
+    renderSubcityListPanel(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildCitySwitcherViewState !== 'function') return;
+      const view = this.presenter.buildCitySwitcherViewState(state);
+      const cities = (Array.isArray(view.options) ? view.options : []).filter((city) => city.id && city.id !== 'capital' && city.tag !== '主城' && city.tag !== '涓诲煄');
+      const layout = this.getLayout();
+      const panelWidth = Math.min(340, layout.contentWidth - 20);
+      const itemHeight = 58;
+      const visibleCount = Math.min(Math.max(1, cities.length), 6);
+      const panelHeight = Math.max(142, 76 + visibleCount * itemHeight);
+      const x = (this.width - panelWidth) / 2;
+      const dockTop = this.height - 64 - this.bottomSafeArea;
+      const y = Math.max(82, dockTop - panelHeight - 10);
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSubcityList', background: true });
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(46, 37, 26, 0.98)'],
+            [1, 'rgba(20, 17, 13, 0.98)'],
+          ],
+          'rgba(34, 26, 19, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 12,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawText('分城管理', x + 16, y + 17, { size: 17, bold: true, color: '#ffe6b5' });
+      this.drawText(`${cities.length} 座分城`, x + 16, y + 41, { size: 11, color: '#cbbd96' });
+      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeSubcityList' });
+
+      if (!cities.length) {
+        this.drawText('暂无分城', x + panelWidth / 2, y + 96, {
+          size: 14,
+          color: '#cbbd96',
+          align: 'center',
+        });
+        return;
+      }
+      cities.slice(0, visibleCount).forEach((city, index) => {
+        const itemX = x + 12;
+        const itemY = y + 64 + index * itemHeight;
+        const itemWidth = panelWidth - 24;
+        const active = Boolean(city.isActive);
+        this.drawPanel(itemX, itemY, itemWidth, itemHeight - 8, {
+          fill: active ? 'rgba(78, 61, 35, 0.92)' : 'rgba(32, 27, 20, 0.82)',
+          stroke: active ? 'rgba(247, 215, 116, 0.5)' : 'rgba(255, 226, 177, 0.12)',
+          radius: 9,
+          inset: 'rgba(255, 231, 184, 0.05)',
+        });
+        this.drawAsset('assets/art/world-site-city-cutout.png', itemX + 10, itemY + 10, 30, 30);
+        this.drawText(this.truncateText(city.name || '未命名分城', itemWidth - 108, { size: 14, bold: true }), itemX + 50, itemY + 9, {
+          size: 14,
+          bold: true,
+          color: '#fff1cf',
+        });
+        this.drawText(this.truncateText(city.metaText || '', itemWidth - 108, { size: 10 }), itemX + 50, itemY + 30, {
+          size: 10,
+          color: 'rgba(234, 234, 234, 0.62)',
+        });
+        this.drawButton(itemX + itemWidth - 72, itemY + 11, 60, 28, active ? '当前' : '跳转', {
+          size: 12,
+          bold: !active,
+          active: !active,
+          radius: 8,
+          disabled: active,
+        });
+        this.addHitTarget(
+          { x: itemX, y: itemY, width: itemWidth, height: itemHeight - 8 },
+          active ? { type: 'blockCanvasModal' } : { type: 'jumpToSubcity', cityId: city.id },
+        );
+      });
+    }
+
     renderAdvisorPanel(state = {}) {
       if (!this.presenter || typeof this.presenter.buildAdvisorViewState !== 'function') return;
       const view = this.presenter.buildAdvisorViewState(state.softGuide);
-      if (view.hidden || !view.activeAdvisor) return;
+      const hasAdvice = Boolean(!view.hidden && view.activeAdvisor);
 
       const layout = this.getLayout();
       const panelWidth = Math.min(340, layout.contentWidth - 28);
@@ -8342,7 +8642,10 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.04)',
       });
-      const lines = this.wrapText(view.text?.message || view.activeAdvisor.message, messageWidth - 24, { size: 13 })
+      const message = hasAdvice
+        ? (view.text?.message || view.activeAdvisor.message)
+        : '当前暂无特别建议。保持资源增长、城市建设和地图侦察的节奏即可。';
+      const lines = this.wrapText(message, messageWidth - 24, { size: 13 })
         .slice(0, 3);
       this.drawTextLines(lines, messageX + 12, messageY + 13, {
         size: 13,
@@ -8355,17 +8658,17 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const goX = x + 18;
       const dismissX = goX + buttonWidth + buttonGap;
-      this.drawButton(goX, buttonY, buttonWidth, 36, '前往处理', {
+      this.drawButton(goX, buttonY, buttonWidth, 36, hasAdvice ? '前往处理' : '暂无目标', {
         size: 13,
         bold: true,
         radius: 9,
-        disabled: Boolean(view.goButton?.disabled),
-        active: !view.goButton?.disabled,
+        disabled: !hasAdvice || Boolean(view.goButton?.disabled),
+        active: hasAdvice && !view.goButton?.disabled,
       });
       this.drawButton(dismissX, buttonY, buttonWidth, 36, '稍后再说', { size: 13, radius: 9 });
       this.addHitTarget(
         { x: goX, y: buttonY, width: buttonWidth, height: 36 },
-        { type: 'goToAdvisorTarget', disabled: Boolean(view.goButton?.disabled) },
+        { type: 'goToAdvisorTarget', disabled: !hasAdvice || Boolean(view.goButton?.disabled) },
       );
       this.addHitTarget({ x: dismissX, y: buttonY, width: buttonWidth, height: 36 }, { type: 'closeAdvisor' });
     }
@@ -9027,9 +9330,18 @@
         this.endFrame(options);
         return;
       }
-      const topBarBottom = this.renderTopBar(state);
+      const topBarBottom = this.renderTopBar(state, options);
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
+      if (options.isMapHome && activeTab === 'military') {
+        this.renderMapHomeOverlays(state, options);
+        this.renderTutorialHighlight(options.tutorialHighlight || null);
+        this.renderFloatingTexts(options.floatingTexts || []);
+        this.renderRewardReveal(options.rewardReveal || null);
+        this.renderNetworkOverlay(options.network || null);
+        this.endFrame(options);
+        return;
+      }
       if (options.showResourceDetails) {
         this.renderResourceDetailsPanel(state);
       }
@@ -9355,20 +9667,11 @@
         this.endFrame(options);
         return;
       }
-      const topBarBottom = this.renderTopBar(state);
+      const topBarBottom = this.renderTopBar(state, options);
       if (options.isMapHome && activeTab === 'military') {
         if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
-        this.renderAdvisor(state);
         this.renderTabs(activeTab, state, options);
-        if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
-        if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
-        if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
-        if (options.showGuidebook) this.renderGuidebookPanel(state, options);
-        if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
-        if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
-        if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
-        this.renderWorldSiteModal(state, options);
-        if (options.naming) this.renderNamingModal(options.naming);
+        this.renderMapHomeOverlays(state, options);
         this.renderTutorialHighlight(options.tutorialHighlight || null);
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);
@@ -9429,6 +9732,23 @@
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
       this.endFrame(options);
+    }
+
+    renderMapHomeOverlays(state = {}, options = {}) {
+      this.renderFloatingAdvisorButton(state, options);
+      if (options.activeCommandPanel) this.renderMapCommandPanel(state, options);
+      if (options.showSubcityList) this.renderSubcityListPanel(state, options);
+      if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
+      if (options.showSettings) this.renderSettingsPanel();
+      if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
+      if (options.showAdvisor) this.renderAdvisorPanel(state);
+      if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
+      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
+      if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
+      if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
+      if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      this.renderWorldSiteModal(state, options);
+      if (options.naming) this.renderNamingModal(options.naming);
     }
   }
 

@@ -40,6 +40,22 @@
         return closed;
       }
 
+      if (action.type === 'openCommandPanel') {
+        const opened = typeof context.openCommandPanel === 'function'
+          ? context.openCommandPanel(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeCommandPanel') {
+        const closed = typeof context.closeCommandPanel === 'function'
+          ? context.closeCommandPanel(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
       if (action.type === 'closeRewardReveal') {
         const closed = typeof context.closeRewardReveal === 'function'
           ? context.closeRewardReveal(action) !== false
@@ -59,6 +75,22 @@
       if (action.type === 'closeCitySwitcher') {
         const closed = typeof context.closeCitySwitcher === 'function'
           ? context.closeCitySwitcher(action) !== false
+          : false;
+        if (closed && typeof context.render === 'function') context.render(action);
+        return closed;
+      }
+
+      if (action.type === 'openSubcityList') {
+        const opened = typeof context.openSubcityList === 'function'
+          ? context.openSubcityList(action) !== false
+          : false;
+        if (opened && typeof context.render === 'function') context.render(action);
+        return opened;
+      }
+
+      if (action.type === 'closeSubcityList') {
+        const closed = typeof context.closeSubcityList === 'function'
+          ? context.closeSubcityList(action) !== false
           : false;
         if (closed && typeof context.render === 'function') context.render(action);
         return closed;
@@ -150,6 +182,14 @@
           : false;
         if (closed && typeof context.render === 'function') context.render(action);
         return closed;
+      }
+
+      if (action.type === 'jumpToSubcity') {
+        const jumped = typeof context.jumpToSubcity === 'function'
+          ? context.jumpToSubcity(action) !== false
+          : false;
+        if (jumped && typeof context.render === 'function') context.render(action);
+        return jumped;
       }
 
       if (action.type === 'resetWorldPan') {
@@ -312,9 +352,13 @@
         'switchTab',
         'openResourceDetails',
         'closeResourceDetails',
+        'openCommandPanel',
+        'closeCommandPanel',
         'closeRewardReveal',
         'openCitySwitcher',
         'closeCitySwitcher',
+        'openSubcityList',
+        'closeSubcityList',
         'openSettings',
         'closeSettings',
         'openLogs',
@@ -326,6 +370,7 @@
         'closeEvent',
         'openWorldSite',
         'closeWorldSite',
+        'jumpToSubcity',
         'resetWorldPan',
         'worldMapDrag',
         'changeExpeditionSoldiers',

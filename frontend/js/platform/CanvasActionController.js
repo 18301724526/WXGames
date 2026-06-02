@@ -4,12 +4,14 @@
     'showLogs',
     'showResourceDetails',
     'showCitySwitcher',
+    'showSubcityList',
     'showAdvisor',
     'showTaskCenter',
     'showTalentPolicy',
     'showGuidebook',
     'showFamousPersons',
     'techDetailOpen',
+    'activeCommandPanel',
   ];
 
   class CanvasActionController {
@@ -53,7 +55,7 @@
     closePanels(except = []) {
       const keep = new Set(except);
       CLOSEABLE_PANELS.forEach((key) => {
-        if (!keep.has(key) && key in this.host) this.host[key] = false;
+        if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
       });
       if (!keep.has('activeEventId') && 'activeEventId' in this.host) this.host.activeEventId = null;
     }
@@ -201,6 +203,19 @@
       return this.afterHandled(action);
     }
 
+    handle_openCommandPanel(action) {
+      const panel = String(action.panel || '');
+      if (!panel) return false;
+      this.host.activeCommandPanel = this.host.activeCommandPanel === panel ? '' : panel;
+      this.closePanels(this.host.activeCommandPanel ? ['activeCommandPanel'] : []);
+      return this.afterHandled(action);
+    }
+
+    handle_closeCommandPanel(action) {
+      this.host.activeCommandPanel = '';
+      return this.afterHandled(action);
+    }
+
     handle_closeResourceDetails(action) {
       this.host.showResourceDetails = false;
       return this.afterHandled(action);
@@ -222,6 +237,17 @@
 
     handle_closeCitySwitcher(action) {
       this.host.showCitySwitcher = false;
+      return this.afterHandled(action);
+    }
+
+    handle_openSubcityList(action) {
+      this.host.showSubcityList = !this.host.showSubcityList;
+      this.closePanels(this.host.showSubcityList ? ['showSubcityList'] : []);
+      return this.afterHandled(action);
+    }
+
+    handle_closeSubcityList(action) {
+      this.host.showSubcityList = false;
       return this.afterHandled(action);
     }
 
@@ -257,8 +283,6 @@
     }
 
     handle_openAdvisor(action) {
-      const view = this.getPresenter()?.buildAdvisorViewState?.(this.getState()?.softGuide);
-      if (view?.hidden || !view?.activeAdvisor) return false;
       this.host.showAdvisor = true;
       this.closePanels(['showAdvisor']);
       return this.afterHandled(action);
@@ -600,6 +624,7 @@
 
     handle_selectCity(action) {
       this.host.showCitySwitcher = false;
+      this.host.showSubcityList = false;
       this.host.activeEventId = null;
       const forwarded = this.forward(action);
       if (forwarded !== undefined) {
@@ -618,6 +643,87 @@
       this.host.showCitySwitcher = false;
       this.host.activeEventId = null;
       await this.runAction(() => this.host.api.switchCity(action.cityId));
+      return true;
+    }
+
+    handle_jumpToSubcity(action) {
+      const cityId = action.cityId || action.siteId || '';
+      if (!cityId) return false;
+      this.host.showSubcityList = false;
+      this.host.activeCommandPanel = '';
+      this.host.activeEventId = null;
+      this.openWorldSiteLocally(cityId);
+      this.centerWorldMapOnSite(cityId);
+      const selectAction = { ...action, type: 'selectCity', cityId };
+      const forwarded = this.forward(selectAction);
+      if (forwarded !== undefined) {
+        if (forwarded !== false) this.afterHandled(action);
+        return forwarded !== false;
+      }
+      return this.finalize(Promise.resolve(this.selectCity(selectAction)).then((allowed) => {
+        if (allowed !== false) this.afterHandled(action);
+        return allowed !== false;
+      }));
+    }
+
+    openWorldSiteLocally(siteId) {
+      const territory = this.getTerritoryController();
+      if (territory?.openSiteDialog) {
+        territory.openSiteDialog(siteId);
+        return true;
+      }
+      this.host.territoryUiState = this.host.territoryUiState || {};
+      this.host.territoryUiState.selectedSiteId = siteId;
+      const game = this.getGameHost();
+      if (game && game !== this.host) {
+        game.territoryUiState = game.territoryUiState || {};
+        game.territoryUiState.selectedSiteId = siteId;
+      }
+      return true;
+    }
+
+    getWorldTileForSite(siteId) {
+      const worldMap = this.getState()?.territoryState?.worldMap || {};
+      const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+      return tiles.find((tile) => tile?.siteId === siteId) || null;
+    }
+
+    getTerritorySite(siteId) {
+      const territories = this.getState()?.territoryState?.territories || [];
+      return territories.find((site) => site?.id === siteId) || null;
+    }
+
+    centerWorldMapOnSite(siteId) {
+      const tile = this.getWorldTileForSite(siteId);
+      const site = this.getTerritorySite(siteId) || {};
+      const q = Number(tile?.q ?? site.q ?? site.x ?? site.relativeX);
+      const r = Number(tile?.r ?? site.r ?? site.y ?? site.relativeY);
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+      const renderer = this.host?.renderer || this.getGameHost()?.renderer;
+      const geometry = renderer?.constructor?.getTileMapGeometry?.()?.DEFAULT_GEOMETRY
+        || renderer?.presenter?.getTileMapGeometry?.()?.DEFAULT_GEOMETRY
+        || { stepX: 96, stepY: 48 };
+      const stepX = Number(geometry.stepX) || 96;
+      const stepY = Number(geometry.stepY) || 48;
+      const scale = 0.62;
+      const x = -((q - r) * stepX * scale);
+      const y = -((q + r) * stepY * scale);
+      const runtime = this.host?.ensureWorldMapRuntimeCoordinator?.()?.getMapRuntime?.()
+        || this.getGameHost()?.ensureWorldMapRuntimeCoordinator?.()?.getMapRuntime?.()
+        || this.host?.worldMapRuntime
+        || this.getGameHost()?.worldMapRuntime;
+      if (runtime?.setCamera) {
+        runtime.setCamera(x, y, { source: 'subcityJump', render: true });
+        return true;
+      }
+      const territory = this.getTerritoryController();
+      if (territory?.setWorldPan) {
+        territory.setWorldPan(x, y);
+        return true;
+      }
+      this.host.territoryUiState = this.host.territoryUiState || {};
+      this.host.territoryUiState.worldPanX = x;
+      this.host.territoryUiState.worldPanY = y;
       return true;
     }
 

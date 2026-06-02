@@ -60,6 +60,7 @@
       };
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showSubcityList = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
       this.showGuidebook = false;
@@ -69,6 +70,7 @@
       this.selectedFamousPersonId = '';
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
+      this.activeCommandPanel = '';
       this.rewardReveal = null;
       this.battleScene = null;
       this.battleSceneTimer = null;
@@ -418,6 +420,7 @@
         preserveCanvas: runtimeOwnsWorldMap,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
+        showSubcityList: this.showSubcityList,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
         showGuidebook: this.showGuidebook,
@@ -427,6 +430,7 @@
         selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.talentPolicyUiState,
+        activeCommandPanel: this.activeCommandPanel || '',
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
         techTreePanX: this.techTreePanX,
@@ -671,7 +675,7 @@
       if (!runtime || !coordinator?.canRender?.(this.state)) return false;
       const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
       const topBarBottom = typeof this.renderer.getTopBarBottom === 'function'
-        ? this.renderer.getTopBarBottom(this.state)
+        ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
         : 84;
       const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
         activeTab: 'military',
@@ -730,6 +734,9 @@
           || {},
         getLocalUiState: () => this.territoryUiState || {},
         getTerritoryController: () => this.territoryController,
+        getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
+          ? this.renderer.getTopBarBottom(state, { isMapHome: true })
+          : 84),
         getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
         getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
         getForceMapHome: () => this.mapHomeActive,
@@ -792,7 +799,7 @@
         isMapHome: true,
         territoryUiState,
         topBarBottom: typeof this.renderer.getTopBarBottom === 'function'
-          ? this.renderer.getTopBarBottom(this.state)
+          ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
           : 84,
         frameless: true,
         preserveOnMiss: true,
@@ -1158,11 +1165,13 @@
     resetForCanvasTabSwitch() {
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showSubcityList = false;
       this.activeEventId = null;
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.activeCommandPanel = '';
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
@@ -1202,10 +1211,12 @@
       this.activeEventId = null;
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
+      this.showSubcityList = false;
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.activeCommandPanel = '';
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
@@ -1249,8 +1260,10 @@
       };
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
+        this.showSubcityList = false;
         this.activeEventId = null;
         this.showFamousPersons = false;
+        this.activeCommandPanel = '';
         this.render();
     }
 
@@ -2210,10 +2223,12 @@
     hasBlockingOverlayOpen() {
       return Boolean(this.showResourceDetails
         || this.showCitySwitcher
+        || this.showSubcityList
         || this.showTaskCenter
         || this.showGuidebook
         || this.showFamousPersons
         || this.showTalentPolicy
+        || this.activeCommandPanel
         || this.techDetailOpen
         || this.activeEventId
         || this.naming?.visible

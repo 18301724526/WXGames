@@ -765,6 +765,82 @@ test('CanvasGameRenderer HUD overlay registers resource cards and six DOM-order 
   assert.deepEqual(renderer.getHitTarget({ x: 320, y: 804 }), { type: 'switchTab', tab: 'military', disabled: false });
 });
 
+test('CanvasGameRenderer map home uses command dock instead of page tabs', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      text: {
+        foodValue: '10',
+        woodValue: '2',
+        stoneValue: '0',
+        ironValue: '0',
+        knowledgeValue: '1',
+        populationValue: '300',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true, options: [] }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildMilitaryNavigationViewState: () => ({ activeView: 'world', views: [{ id: 'world', isActive: true }] }),
+    buildTerritorySummaryViewState: () => ({ text: { polityName: '测试', territoryCount: '1/1' } }),
+    buildWorldTileMapViewState: () => ({ tiles: [] }),
+    buildWorldRadarViewState: () => ({ pan: { x: 0, y: 0 }, sites: [] }),
+    buildWorldSiteDialogViewState: () => ({ showModal: false, details: [] }),
+  });
+
+  renderer.render({
+    currentEra: 5,
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { territories: [] },
+  }, {
+    activeTab: 'military',
+    mode: 'hud',
+    isMapHome: true,
+  });
+
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openCommandPanel' && target.action.panel === 'capital'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openSubcityList'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openSettings'));
+  assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'switchTab'), false);
+});
+
+test('CanvasGameRenderer map home renders subcity jump list', () => {
+  const { ctx, calls } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({ text: { foodValue: '10', woodValue: '2', stoneValue: '0', ironValue: '0', knowledgeValue: '1', populationValue: '300' } }),
+    buildCitySwitcherViewState: () => ({
+      hidden: false,
+      options: [
+        { id: 'capital', name: '首都', tag: '主城', metaText: '人口 300', isActive: false },
+        { id: 'site_river', name: '河湾城', tag: '分城', metaText: '人口 200 · 平原', isActive: false },
+      ],
+    }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildMilitaryNavigationViewState: () => ({ activeView: 'world', views: [{ id: 'world', isActive: true }] }),
+    buildTerritorySummaryViewState: () => ({ text: { polityName: '测试', territoryCount: '1/1' } }),
+    buildWorldTileMapViewState: () => ({ tiles: [] }),
+    buildWorldRadarViewState: () => ({ pan: { x: 0, y: 0 }, sites: [] }),
+    buildWorldSiteDialogViewState: () => ({ showModal: false, details: [] }),
+  });
+
+  renderer.render({
+    currentEra: 5,
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { territories: [] },
+  }, {
+    activeTab: 'military',
+    mode: 'hud',
+    isMapHome: true,
+    showSubcityList: true,
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '分城管理'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'jumpToSubcity' && target.action.cityId === 'site_river'));
+});
+
 test('CanvasGameRenderer disables tutorial-locked canvas tabs', () => {
   const { ctx, calls } = makeCtx();
   const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
