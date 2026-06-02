@@ -273,7 +273,7 @@ test('侦察前沿会先解锁区域，水面或贴近首都的位置不会生�
   assert.deepEqual(start.mission.revealArea.filter((coord) => coord.kind === 'main').map((coord) => [coord.q, coord.r]), start.mission.route.map((step) => [step.q, step.r]));
   assert.deepEqual(start.mission.route[0], { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false });
 
-  const claim = completeScout(state, start, now, [0.1, 0.9, 0.5]);
+  const claim = completeScout(state, start, now, [0.95]);
 
   assert.equal(claim.success, true);
   assert.equal(claim.site, null);
@@ -289,7 +289,7 @@ test('侦察前沿会先解锁区域，水面或贴近首都的位置不会生�
   assert.ok(state.worldMap.tiles.length > TerritoryService.SCOUT_ACTION_POINTS);
 });
 
-test('scout target outcome is generated during travel before report claim', () => {
+test('scout target outcome is fixed only when the returned report is claimed', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
   state.scoutedCoordinates = Array.from({ length: 6 }, (_, index) => ({
@@ -301,6 +301,7 @@ test('scout target outcome is generated during travel before report claim', () =
   }));
   const scout = TerritoryService.startScout(state, 'n', now);
   const reportCountBeforeClaim = state.scoutReports.length;
+  const territoryCountBeforeClaim = state.territories.length;
   assert.equal(scout.success, true);
   assert.equal(scout.mission.targetX, 0);
   assert.equal(scout.mission.targetY, -7);
@@ -309,18 +310,24 @@ test('scout target outcome is generated during travel before report claim', () =
   TerritoryService.updateMissionReadiness(state, completedAt, createSequenceRandom([0.1, 0.9, 0.5]));
 
   const mission = state.warMissions.find((item) => item.id === scout.mission.id);
-  assert.equal(mission.resolvedTarget, true);
-  assert.equal(mission.result, 'site');
-  assert.ok(mission.siteId);
+  assert.equal(mission.status, 'ready');
+  assert.equal(mission.resolvedTarget, false);
+  assert.equal(mission.result, null);
+  assert.equal(mission.siteId, null);
   assert.equal(state.scoutReports.length, reportCountBeforeClaim);
-  assert.ok(state.territories.some((territory) => territory.id === mission.siteId));
-  assert.equal(state.worldMap.tiles.find((tile) => tile.id === `tile_${mission.targetX}_${mission.targetY}`).siteId, mission.siteId);
+  assert.equal(state.territories.length, territoryCountBeforeClaim);
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === `tile_${mission.targetX}_${mission.targetY}`).siteId, null);
 
-  const claim = TerritoryService.claimScout(state, mission.id, completedAt);
+  const claim = TerritoryService.claimScout(state, mission.id, completedAt, createSequenceRandom([0.1, 0.9, 0.5]));
 
   assert.equal(claim.success, true);
-  assert.equal(claim.site.id, mission.siteId);
-  assert.equal(state.scoutReports.at(-1).siteId, mission.siteId);
+  assert.ok(claim.site);
+  assert.equal(claim.site.mapTerrain, WorldMapService.chooseTerrain(state.worldMap.seed, claim.site.x, claim.site.y));
+  assert.equal(claim.site.terrain, 'plains');
+  assert.equal(state.scoutReports.at(-1).siteId, claim.site.id);
+  assert.ok(state.territories.some((territory) => territory.id === claim.site.id));
+  assert.equal(state.scoutState.areas.at(-1).missionId, mission.id);
+  assert.equal(state.scoutState.areas.at(-1).result, 'site');
 });
 
 test('scout site outcome selects the best valid tile inside the revealed area', () => {
@@ -1033,10 +1040,31 @@ test('地点类型会按侦察区域内选中地块的地形倾向生成', () =>
     const claim = TerritoryService.claimScout(state, `scout_${item.terrain}`, now, createSequenceRandom(item.random));
 
     assert.equal(claim.success, true);
+    assert.equal(claim.site.mapTerrain, item.terrain);
     assert.equal(claim.site.owner, item.expected.owner);
     assert.equal(claim.site.type, item.expected.type);
     assert.equal(state.warMissions.length, 0);
   }
+});
+
+test('侦察生成地点的地图地形会驱动占领后的分城规划', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  pushReadySingleTileScout(state, { id: 'scout_forest_city', q: -16, r: -14, now });
+
+  const discovered = TerritoryService.claimScout(state, 'scout_forest_city', now, createSequenceRandom([0.1, 0.99, 0.01])).site;
+  const start = TerritoryService.startConquest(state, discovered.id, discovered.recommendedSoldiers, now);
+  assert.equal(start.success, true);
+
+  const mission = state.warMissions.find((item) => item.kind === 'conquest');
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, discovered.id, now);
+  assert.equal(claim.success, true);
+
+  const normalized = gameStateService.normalizeState(state);
+  assert.equal(normalized.territories.find((item) => item.id === discovered.id).mapTerrain, 'forest');
+  assert.equal(normalized.cities[discovered.id].planning.terrainLabel, '森林');
 });
 
 test('有主地点会细分为部落、城邦和遗迹守军', () => {

@@ -18,6 +18,18 @@ const MAX_SCOUT_AREA_RECORDS = 120;
 const POST_WAR_FAMOUS_PERSON_ENABLED = false;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
+const MAP_TERRAIN_TYPES = new Set(['capital', 'plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean']);
+const PLANNING_TERRAIN_BY_MAP_TERRAIN = {
+  capital: 'plains',
+  plains: 'plains',
+  forest: 'forest',
+  hills: 'hills',
+  mountain: 'hills',
+  waste: 'hills',
+  desert: 'hills',
+  river: 'river',
+  ocean: 'coast',
+};
 
 const DIRECTIONS = {
   n: { label: '北方', dx: 0, dy: -1 },
@@ -276,6 +288,20 @@ function getCoordinateKey(x, y) {
   return `${x},${y}`;
 }
 
+function normalizeMapTerrainId(value) {
+  const terrain = String(value || '').trim();
+  return MAP_TERRAIN_TYPES.has(terrain) ? terrain : null;
+}
+
+function getPlanningTerrainForMapTerrain(value, fallback = 'plains') {
+  const mapTerrain = normalizeMapTerrainId(value);
+  if (mapTerrain) return PLANNING_TERRAIN_BY_MAP_TERRAIN[mapTerrain] || fallback;
+  const planningTerrain = String(value || '').trim();
+  return ['plains', 'forest', 'hills', 'coast', 'river'].includes(planningTerrain)
+    ? planningTerrain
+    : fallback;
+}
+
 function isLegacyPresetTerritory(rawTerritory) {
   return Boolean(LEGACY_SITE_MIGRATIONS[rawTerritory?.id]);
 }
@@ -329,6 +355,11 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
   const recommendedSoldiers = rawRecommended > 0 && rawRecommended < MIN_EXPEDITION_SOLDIERS
     ? rawRecommended * SOLDIER_SCALE
     : Math.max(MIN_EXPEDITION_SOLDIERS, rawRecommended);
+  const mapTerrain = normalizeMapTerrainId(rawTerritory.mapTerrain || rawTerritory.tileTerrain || rawTerritory.worldTerrain)
+    || normalizeMapTerrainId(rawTerritory.terrain);
+  const planningTerrain = rawTerritory.terrain || mapTerrain
+    ? getPlanningTerrainForMapTerrain(rawTerritory.terrain || mapTerrain)
+    : null;
   const normalized = {
     id: typeof rawTerritory.id === 'string' && rawTerritory.id ? rawTerritory.id : `site_${x}_${y}`,
     x,
@@ -355,6 +386,8 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
     lastBattle: rawTerritory.lastBattle || null,
     defenderLeader: rawTerritory.defenderLeader || null,
   };
+  if (planningTerrain) normalized.terrain = planningTerrain;
+  if (mapTerrain) normalized.mapTerrain = mapTerrain;
   normalized.defenderLeader = DefenderLeaderService.ensureDefenderLeader(normalized, {
     createdAt: normalized.discoveredAt || now,
   });
@@ -433,6 +466,7 @@ function normalizeWarMissions(rawMissions) {
           targetY,
           siteX: Number.isFinite(Number(mission.siteX)) ? toInteger(mission.siteX, targetX) : null,
           siteY: Number.isFinite(Number(mission.siteY)) ? toInteger(mission.siteY, targetY) : null,
+          siteTerrain: normalizeMapTerrainId(mission.siteTerrain),
           scoutDistance: Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, targetX, targetY))),
           actionPoints,
           actionPointsRemaining: Math.max(0, toInteger(mission.actionPointsRemaining, mission.status === 'ready' ? 0 : actionPoints)),
@@ -1056,16 +1090,12 @@ function advanceScoutMission(gameState, mission, now = new Date(), randomSource 
       ...revealedTiles.map((item) => item.id),
     ]));
     mission.actionPointsRemaining = Math.max(0, mission.actionPointsRemaining - 1);
-    if (step.q === toInteger(mission.targetX, 0) && step.r === toInteger(mission.targetY, 0)) {
-      resolveScoutMissionTarget(gameState, mission, now, randomSource);
-    }
     nextStepAt += SCOUT_STEP_DURATION_MS;
   }
 
   mission.nextStepAt = new Date(nextStepAt).toISOString();
   const routeDone = route.every((step) => step.revealed);
   if (mission.actionPointsRemaining <= 0 || routeDone || new Date(mission.completesAt).getTime() <= nowMs) {
-    if (!mission.resolvedTarget) resolveScoutMissionTarget(gameState, mission, now, randomSource);
     mission.status = 'ready';
     mission.actionPointsRemaining = 0;
     mission.returnedAt = mission.returnedAt || now.toISOString();
@@ -1395,6 +1425,8 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
     naturalName,
     cityName: null,
     type: template.type,
+    terrain: getPlanningTerrainForMapTerrain(terrain),
+    mapTerrain: normalizeMapTerrainId(terrain) || terrain,
     owner: template.owner,
     status: 'discovered',
     scale: Math.min(3, template.scale + Math.floor(Math.max(0, distance - 2) / 2)),
@@ -1599,6 +1631,10 @@ function startScout(gameState, direction, now = new Date()) {
     revealArea,
     revealAreaSource: 'directional-route-v1',
     revealedTileIds: [],
+    resolvedTarget: false,
+    result: null,
+    siteId: null,
+    report: null,
     nextStepAt: now.toISOString(),
     returnedAt: null,
     startedAt: now.toISOString(),
