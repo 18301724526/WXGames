@@ -11,6 +11,18 @@ test('initial v2 world map starts with only the already discovered capital tile'
   assert.equal(worldMap.tiles.length, 1);
   assert.equal(byId.get('tile_0_0').terrain, 'capital');
   assert.equal(byId.get('tile_0_0').siteId, 'capital');
+  assert.equal(byId.get('tile_0_0').visibility, 'controlled');
+  assert.equal(byId.get('tile_0_0').discoveredAt, '2026-06-01T00:00:00.000Z');
+  assert.equal(byId.get('tile_0_0').lastScoutedAt, '2026-06-01T00:00:00.000Z');
+  assert.deepEqual(byId.get('tile_0_0').intel, {
+    level: 4,
+    knownTerrain: true,
+    knownSite: true,
+    knownOwner: true,
+    knownGarrison: true,
+    knownLeader: true,
+    knownSkill: true,
+  });
 });
 
 test('normalizing a saved world map keeps only persisted discovered tiles', () => {
@@ -27,6 +39,8 @@ test('normalizing a saved world map keeps only persisted discovered tiles', () =
 
   assert.equal(worldMap.version, WorldMapService.WORLD_MAP_VERSION);
   assert.equal(byId.get('tile_0_0').terrain, 'capital');
+  assert.equal(byId.get('tile_0_0').visibility, 'controlled');
+  assert.equal(byId.get('tile_0_0').intel.level, 4);
   assert.deepEqual(byId.get('tile_0_0').oceanTemplates, []);
   assert.deepEqual(byId.get('tile_0_0').riverPorts, []);
   assert.equal(byId.has('tile_1_0'), false);
@@ -129,6 +143,14 @@ test('normalizing old discovered tiles refreshes terrain semantics for the curre
   assert.equal(tile.terrain, WorldMapService.chooseTerrain('world-test', 4, 1));
   assert.deepEqual(tile.oceanTemplates, WorldMapService.chooseOceanTemplates('world-test', 4, 1));
   assert.deepEqual(tile.riverPorts, WorldMapService.getRiverPorts('world-test', 4, 1));
+  assert.equal(tile.visibility, 'scouted');
+  assert.equal(tile.intel.level, 1);
+  assert.equal(tile.intel.knownTerrain, true);
+  assert.equal(tile.intel.knownSite, true);
+  assert.equal(tile.intel.knownOwner, true);
+  assert.equal(tile.intel.knownGarrison, false);
+  assert.equal(tile.intel.knownLeader, false);
+  assert.equal(tile.intel.knownSkill, false);
 });
 
 test('createTile prioritizes generated ocean/river semantics over caller terrain hints', () => {
@@ -156,6 +178,10 @@ test('scout reveal areas generate a stable chunk around the target coordinate', 
 
   assert.equal(revealed.length, 9);
   assert.ok(ids.includes(WorldMapService.getTileId(features.river.q, features.river.r)));
+  assert.ok(revealed.every((tile) => tile.visibility === 'scouted'));
+  assert.ok(revealed.every((tile) => tile.lastScoutedAt === '2026-06-01T00:00:00.000Z'));
+  assert.ok(revealed.every((tile) => tile.intel.level === 1));
+  assert.ok(revealed.every((tile) => tile.intel.knownGarrison === false));
   assert.deepEqual(
     gameState.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(features.river.q, features.river.r)).oceanTemplates,
     [WorldMapService.getRiverMouthTemplateForNeighborOfOcean(
@@ -163,6 +189,39 @@ test('scout reveal areas generate a stable chunk around the target coordinate', 
       -(WorldMapService.SIDE_DIRECTIONS[features.river.oceanSide].r),
     )],
   );
+});
+
+test('repeat scout reveal updates tile scout timestamp without expanding unrelated map truth', () => {
+  const gameState = { playerId: 'repeat-scout', worldMap: WorldMapService.createInitialWorldMap('world-test', '2026-06-01T00:00:00.000Z') };
+
+  WorldMapService.revealTile(gameState, 3, 0, '2026-06-01T00:01:00.000Z');
+  const first = gameState.worldMap.tiles.find((tile) => tile.id === 'tile_3_0');
+  WorldMapService.revealTile(gameState, 3, 0, '2026-06-01T00:02:00.000Z');
+  const second = gameState.worldMap.tiles.find((tile) => tile.id === 'tile_3_0');
+
+  assert.equal(gameState.worldMap.tiles.length, 2);
+  assert.equal(first.discoveredAt, '2026-06-01T00:01:00.000Z');
+  assert.equal(second.discoveredAt, '2026-06-01T00:01:00.000Z');
+  assert.equal(second.lastScoutedAt, '2026-06-01T00:02:00.000Z');
+  assert.equal(second.visibility, 'scouted');
+  assert.equal(second.siteId, null);
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.id === 'tile_4_0'), false);
+});
+
+test('binding a site controls only explicitly controlled player tiles', () => {
+  const gameState = { playerId: 'site-bind', worldMap: WorldMapService.createInitialWorldMap('world-test', '2026-06-01T00:00:00.000Z') };
+
+  const scouted = WorldMapService.bindSiteToTile(gameState, 3, 0, 'site_enemy', '2026-06-01T00:01:00.000Z');
+  const controlled = WorldMapService.bindSiteToTile(gameState, 6, 0, 'site_player', '2026-06-01T00:02:00.000Z', { visibility: 'controlled' });
+
+  assert.equal(scouted.visibility, 'scouted');
+  assert.equal(scouted.intel.level, 1);
+  assert.equal(scouted.intel.knownGarrison, false);
+  assert.equal(controlled.visibility, 'controlled');
+  assert.equal(controlled.intel.level, 4);
+  assert.equal(controlled.intel.knownGarrison, true);
+  assert.equal(controlled.intel.knownLeader, true);
+  assert.equal(controlled.intel.knownSkill, true);
 });
 
 test('scout reveal area follows the route direction with deterministic branches', () => {

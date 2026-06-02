@@ -558,6 +558,40 @@ test('客户端地点情报默认不暴露完整守将和战法', () => {
   assert.equal(clientSite.defenderLeader, null);
 });
 
+test('侦察地点 tile 保持基础情报，占领后才升级为 controlled', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  pushReadyScoutMission(state, { id: 'scout_tile_intel_site', direction: 'n', targetX: 0, targetY: -6, now });
+  const claim = TerritoryService.claimScout(state, 'scout_tile_intel_site', now, createSequenceRandom([0.1, 0.01, 0.01]));
+  const site = claim.site;
+  const scoutedTile = state.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(site.x, site.y));
+
+  assert.ok(site);
+  assert.equal(scoutedTile.siteId, site.id);
+  assert.equal(scoutedTile.visibility, 'scouted');
+  assert.equal(scoutedTile.intel.level, 1);
+  assert.equal(scoutedTile.intel.knownGarrison, false);
+
+  const overwhelmingSoldiers = site.recommendedSoldiers + 5000;
+  state.military.soldiers = Math.max(state.military.soldiers, overwhelmingSoldiers);
+  if (state.cities?.capital?.military) state.cities.capital.military.soldiers = Math.max(state.cities.capital.military.soldiers || 0, overwhelmingSoldiers);
+  const start = TerritoryService.startConquest(state, site.id, { soldiers: overwhelmingSoldiers }, now);
+  assert.equal(start.success, true);
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const conquered = TerritoryService.claimConquest(state, site.id, now);
+  const controlledTile = state.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(site.x, site.y));
+
+  assert.equal(conquered.success, true);
+  assert.equal(conquered.outcome, 'success');
+  assert.equal(controlledTile.visibility, 'controlled');
+  assert.equal(controlledTile.intel.level, 4);
+  assert.equal(controlledTile.intel.knownGarrison, true);
+  assert.equal(controlledTile.intel.knownLeader, true);
+  assert.equal(controlledTile.intel.knownSkill, true);
+});
+
 test('客户端地点情报达到等级后才暴露守军层级信息', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');

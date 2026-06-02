@@ -6,6 +6,7 @@ const SCOUT_REVEAL_BRANCH_LIMIT = 5;
 const WORLD_WATER_FEATURE_CACHE = new Map();
 
 const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
+const TILE_VISIBILITY_LEVELS = ['unknown', 'hinted', 'scouted', 'controlled'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
 const SIDE_DIRECTIONS = {
   nw: { q: -1, r: 0 },
@@ -80,6 +81,38 @@ function random01(seed, q, r, salt) {
 
 function getTileId(q, r) {
   return `tile_${q}_${r}`;
+}
+
+function clampIntelLevel(value, fallback = 1) {
+  const level = toInteger(value, fallback);
+  return Math.max(0, Math.min(4, level));
+}
+
+function normalizeTileVisibility(value, options = {}) {
+  if (options.controlled) return 'controlled';
+  const visibility = typeof value === 'string' ? value : '';
+  if (TILE_VISIBILITY_LEVELS.includes(visibility)) return visibility;
+  return options.discovered === false ? 'unknown' : 'scouted';
+}
+
+function normalizeTileIntel(rawIntel, options = {}) {
+  const raw = rawIntel && typeof rawIntel === 'object' ? rawIntel : {};
+  const visibility = normalizeTileVisibility(options.visibility, options);
+  const fallbackLevel = visibility === 'controlled'
+    ? 4
+    : visibility === 'unknown'
+      ? 0
+      : 1;
+  const level = visibility === 'controlled' ? 4 : clampIntelLevel(raw.level, fallbackLevel);
+  return {
+    level,
+    knownTerrain: Boolean(raw.knownTerrain ?? level >= 1),
+    knownSite: Boolean(raw.knownSite ?? level >= 1),
+    knownOwner: Boolean(raw.knownOwner ?? level >= 1),
+    knownGarrison: visibility === 'controlled' ? true : Boolean(raw.knownGarrison ?? level >= 2),
+    knownLeader: visibility === 'controlled' ? true : Boolean(raw.knownLeader ?? level >= 3),
+    knownSkill: visibility === 'controlled' ? true : Boolean(raw.knownSkill ?? level >= 4),
+  };
 }
 
 function getSortedSideKey(sides = []) {
@@ -405,13 +438,22 @@ function decorateTile(tile, seed) {
 function createTile(seed, q, r, now = new Date(), overrides = {}) {
   const isoNow = typeof now === 'string' ? now : now.toISOString();
   const terrain = overrides.terrain || chooseTerrain(seed, q, r);
+  const discovered = overrides.discovered !== undefined ? Boolean(overrides.discovered) : true;
+  const controlled = Boolean(overrides.controlled || overrides.visibility === 'controlled' || overrides.siteId === 'capital');
+  const visibility = normalizeTileVisibility(overrides.visibility, { discovered, controlled });
+  const discoveredAt = overrides.discoveredAt || overrides.generatedAt || (discovered ? isoNow : null);
+  const lastScoutedAt = overrides.lastScoutedAt || (visibility !== 'unknown' ? isoNow : null);
   return decorateTile({
     id: getTileId(q, r),
     q,
     r,
     terrain,
-    discovered: overrides.discovered !== undefined ? Boolean(overrides.discovered) : true,
-    visible: overrides.visible !== undefined ? Boolean(overrides.visible) : true,
+    discovered,
+    visible: overrides.visible !== undefined ? Boolean(overrides.visible) : discovered,
+    visibility,
+    discoveredAt,
+    lastScoutedAt,
+    intel: normalizeTileIntel(overrides.intel, { visibility, discovered, controlled }),
     generatedAt: overrides.generatedAt || isoNow,
     riverPorts: Array.isArray(overrides.riverPorts) ? [...overrides.riverPorts] : [],
     oceanTemplates: Array.isArray(overrides.oceanTemplates) ? [...overrides.oceanTemplates] : [],
@@ -431,6 +473,10 @@ function normalizeTile(rawTile, seed, now = new Date()) {
       : chooseTerrain(seed, q, r),
     discovered: rawTile.discovered !== false,
     visible: rawTile.visible !== false,
+    visibility: rawTile.visibility,
+    discoveredAt: rawTile.discoveredAt,
+    lastScoutedAt: rawTile.lastScoutedAt,
+    intel: rawTile.intel,
     generatedAt: rawTile.generatedAt,
     riverPorts: rawTile.riverPorts,
     oceanTemplates: rawTile.oceanTemplates,
@@ -524,8 +570,20 @@ function upsertTile(worldMap, tile) {
 function revealTile(gameState, q, r, now = new Date(), overrides = {}) {
   const worldMap = ensureWorldMap(gameState, now);
   const existing = getTile(worldMap, q, r);
+  const isoNow = typeof now === 'string' ? now : now.toISOString();
+  const hasSiteOverride = Object.prototype.hasOwnProperty.call(overrides, 'siteId');
   const tile = existing
-    ? { ...existing, discovered: true, visible: true, ...overrides }
+    ? normalizeTile({
+      ...existing,
+      ...overrides,
+      siteId: hasSiteOverride ? overrides.siteId : existing.siteId,
+      discovered: true,
+      visible: true,
+      visibility: overrides.visibility || existing.visibility || 'scouted',
+      discoveredAt: existing.discoveredAt || existing.generatedAt || isoNow,
+      lastScoutedAt: overrides.lastScoutedAt || isoNow,
+      intel: overrides.intel || existing.intel,
+    }, worldMap.seed, now)
     : createTile(worldMap.seed, q, r, now, overrides);
   return upsertTile(worldMap, tile);
 }
@@ -605,8 +663,13 @@ function canPlaceSiteOnTerrain(seed, q, r) {
   return !['ocean', 'river'].includes(chooseTerrain(seed, q, r));
 }
 
-function bindSiteToTile(gameState, q, r, siteId, now = new Date()) {
-  return revealTile(gameState, q, r, now, { siteId });
+function bindSiteToTile(gameState, q, r, siteId, now = new Date(), options = {}) {
+  const controlled = Boolean(options.controlled || options.visibility === 'controlled');
+  return revealTile(gameState, q, r, now, {
+    siteId,
+    visibility: controlled ? 'controlled' : (options.visibility || 'scouted'),
+    intel: options.intel,
+  });
 }
 
 function getDirectionVector(direction) {

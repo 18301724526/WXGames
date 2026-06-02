@@ -1180,7 +1180,27 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
       seed: 'world-test',
       tiles: [
         { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', discovered: true, visible: true },
-        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', siteId: 'site-east', discovered: true, visible: true },
+        {
+          id: 'tile_1_0',
+          q: 1,
+          r: 0,
+          terrain: 'forest',
+          siteId: 'site-east',
+          discovered: true,
+          visible: true,
+          visibility: 'scouted',
+          discoveredAt: '2026-05-17T08:00:00.000Z',
+          lastScoutedAt: '2026-05-17T08:01:00.000Z',
+          intel: {
+            level: 1,
+            knownTerrain: true,
+            knownSite: true,
+            knownOwner: true,
+            knownGarrison: false,
+            knownLeader: false,
+            knownSkill: false,
+          },
+        },
       ],
     },
     territories: [
@@ -1228,10 +1248,23 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
   assert.equal(view.tiles.length, 2);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0'), false);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_1'), false);
-  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').terrainAsset, 'assets/art/tile-map/tile-terrain-plains.png');
-  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').feature.asset, 'assets/art/tile-map/tile-feature-tree-cluster.png');
-  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.id, 'site-east');
-  assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.offset.y, 26);
+  const eastTile = view.tiles.find((tile) => tile.id === 'tile_1_0');
+  assert.equal(eastTile.terrainAsset, 'assets/art/tile-map/tile-terrain-plains.png');
+  assert.equal(eastTile.feature.asset, 'assets/art/tile-map/tile-feature-tree-cluster.png');
+  assert.equal(eastTile.visibility, 'scouted');
+  assert.equal(eastTile.discoveredAt, '2026-05-17T08:00:00.000Z');
+  assert.equal(eastTile.lastScoutedAt, '2026-05-17T08:01:00.000Z');
+  assert.deepEqual(eastTile.intel, {
+    level: 1,
+    knownTerrain: true,
+    knownSite: true,
+    knownOwner: true,
+    knownGarrison: false,
+    knownLeader: false,
+    knownSkill: false,
+  });
+  assert.equal(eastTile.site.id, 'site-east');
+  assert.equal(eastTile.site.offset.y, 26);
   assert.equal(view.sites.length, 2);
   assert.equal(view.activeScouts[0].route[1].tileId, 'tile_2_0');
   assert.deepEqual(view.activeScouts[0].revealArea.map((coord) => [coord.q, coord.r, coord.kind, coord.revealed]), [

@@ -793,7 +793,10 @@ function upsertScoutAreaRecord(gameState, mission, result, options = {}) {
 function syncScoutCoordinatesWithTerritories(gameState, now = new Date().toISOString()) {
   WorldMapService.ensureWorldMap(gameState, new Date(now));
   for (const territory of gameState.territories || []) {
-    WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now);
+    const controlled = territory.status === 'occupied' && territory.owner === 'player';
+    WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, {
+      visibility: controlled ? 'controlled' : 'scouted',
+    });
     if (territory.x === 0 && territory.y === 0) continue;
     upsertScoutCoordinateRecord(gameState, {
       x: territory.x,
@@ -2036,6 +2039,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     territory.owner = 'player';
     territory.occupiedAt = now.toISOString();
     territory.cityName = null;
+    WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, { visibility: 'controlled' });
     return { success: true, casualties: 0 };
   }
   const battle = BattleService.simulateConquestBattle(gameState, mission, territory, now);
@@ -2097,6 +2101,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     territory.garrison = null;
     territory.occupiedAt = now.toISOString();
     territory.cityName = null;
+    WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, { visibility: 'controlled' });
   } else {
     territory.status = 'discovered';
   }
