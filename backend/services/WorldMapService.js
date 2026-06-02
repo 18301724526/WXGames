@@ -1,4 +1,4 @@
-const WORLD_MAP_VERSION = 5;
+const WORLD_MAP_VERSION = 6;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
 const SCOUT_REVEAL_RADIUS = 1;
@@ -149,31 +149,29 @@ function pickSide(seed, salt) {
   return SIDE_ORDER[Math.floor(random01(seed, 0, 0, salt) * SIDE_ORDER.length) % SIDE_ORDER.length];
 }
 
-function getBoxBasinScore(q, r, basin) {
-  const qRatio = Math.abs(q - basin.centerQ) / basin.radiusQ;
-  const rRatio = Math.abs(r - basin.centerR) / basin.radiusR;
-  return 1 - Math.max(qRatio, rRatio);
-}
-
 function createOceanBasin(seed, id, side, options = {}) {
   const main = SIDE_DIRECTIONS[side] || SIDE_DIRECTIONS.ne;
   const lateralSide = rotateSide(side, options.lateralTurn || 1);
   const lateral = SIDE_DIRECTIONS[lateralSide] || SIDE_DIRECTIONS.se;
-  const distance = (options.baseDistance || 3)
+  const coastDistance = (options.baseDistance || 4)
     + Math.floor(random01(seed, id, 0, `ocean-${id}-distance`) * (options.distanceSpread || 3));
   const lateralOffset = Math.floor(random01(seed, id, 1, `ocean-${id}-lateral`) * 5) - 2;
+  const lateralRadius = (options.baseRadius || 2)
+    + Math.floor(random01(seed, id, 2, `ocean-${id}-radius`) * (options.radiusSpread || 3));
+  const coastJitter = options.coastJitter || 3;
+  const openCenterDistance = coastDistance + Math.ceil(coastJitter / 2);
   return {
     id,
     side,
-    centerQ: main.q * distance + lateral.q * lateralOffset,
-    centerR: main.r * distance + lateral.r * lateralOffset,
-    radiusQ: main.q === 0
-      ? 0.65 + random01(seed, id, 2, `ocean-${id}-radius-q`) * 0.35
-      : 1.35 + random01(seed, id, 2, `ocean-${id}-radius-q`) * (options.radiusBoost || 1.5),
-    radiusR: main.r === 0
-      ? 0.65 + random01(seed, id, 3, `ocean-${id}-radius-r`) * 0.35
-      : 1.35 + random01(seed, id, 3, `ocean-${id}-radius-r`) * (options.radiusBoost || 1.5),
-    noise: options.noise || 0.16,
+    coastDistance,
+    lateralSide,
+    lateralCenter: lateralOffset,
+    lateralRadius,
+    lateralGrowthEvery: options.lateralGrowthEvery || 7,
+    maxLateralGrowth: options.maxLateralGrowth || 8,
+    coastJitter,
+    centerQ: main.q * openCenterDistance + lateral.q * lateralOffset,
+    centerR: main.r * openCenterDistance + lateral.r * lateralOffset,
   };
 }
 
@@ -182,16 +180,45 @@ function buildOceanBasins(seed) {
   const secondarySide = SIDE_OPPOSITES[primarySide] || rotateSide(primarySide, 2);
   const tertiarySide = rotateSide(primarySide, random01(seed, 0, 0, 'tertiary-ocean-turn') < 0.5 ? 1 : -1);
   return [
-    createOceanBasin(seed, 'primary', primarySide, { baseDistance: 3, distanceSpread: 3, radiusBoost: 1.35, noise: 0.12 }),
-    createOceanBasin(seed, 'secondary', secondarySide, { baseDistance: 8, distanceSpread: 5, radiusBoost: 2.2, lateralTurn: -1, noise: 0.18 }),
-    createOceanBasin(seed, 'tertiary', tertiarySide, { baseDistance: 10, distanceSpread: 6, radiusBoost: 2.6, noise: 0.22 }),
+    createOceanBasin(seed, 'primary', primarySide, { baseDistance: 22, distanceSpread: 4, baseRadius: 2, radiusSpread: 3, coastJitter: 4 }),
+    createOceanBasin(seed, 'secondary', secondarySide, { baseDistance: 27, distanceSpread: 5, baseRadius: 3, radiusSpread: 4, lateralTurn: -1, coastJitter: 5 }),
+    createOceanBasin(seed, 'tertiary', tertiarySide, { baseDistance: 31, distanceSpread: 4, baseRadius: 3, radiusSpread: 5, coastJitter: 5 }),
   ];
+}
+
+function getProjection(q, r, side) {
+  const dir = SIDE_DIRECTIONS[side] || SIDE_DIRECTIONS.ne;
+  return q * dir.q + r * dir.r;
+}
+
+function getOpenOceanCoastDistance(seed, basin, lateralProjection) {
+  const jitter = Math.max(0, toInteger(basin.coastJitter, 0));
+  if (!jitter) return basin.coastDistance;
+  const coastRoll = random01(seed, basin.id, lateralProjection, 'open-ocean-coast');
+  return basin.coastDistance + Math.round((coastRoll - 0.5) * jitter);
+}
+
+function getOpenOceanLateralRadius(basin, depth) {
+  const growthEvery = Math.max(1, toInteger(basin.lateralGrowthEvery, 7));
+  const maxGrowth = Math.max(0, toInteger(basin.maxLateralGrowth, 8));
+  const growth = Math.min(maxGrowth, Math.floor(Math.max(0, depth) / growthEvery));
+  return Math.max(0, toInteger(basin.lateralRadius, 0)) + growth;
+}
+
+function getOpenOceanBasinScore(seed, q, r, basin) {
+  if (!basin || !SIDE_DIRECTIONS[basin.side]) return -1;
+  const mainProjection = getProjection(q, r, basin.side);
+  const lateralProjection = getProjection(q, r, basin.lateralSide);
+  const coastDistance = getOpenOceanCoastDistance(seed, basin, lateralProjection);
+  const depth = mainProjection - coastDistance;
+  const lateralRadius = getOpenOceanLateralRadius(basin, depth);
+  const lateralScore = lateralRadius - Math.abs(lateralProjection - basin.lateralCenter);
+  return Math.min(depth, lateralScore);
 }
 
 function getOceanBasinScoreForBasins(seed, q, r, basins) {
   return (Array.isArray(basins) ? basins : []).reduce((best, basin) => {
-    const ragged = (random01(seed, q, r, `ocean-basin-${basin.id}`) - 0.5) * basin.noise;
-    return Math.max(best, getBoxBasinScore(q, r, basin) + ragged);
+    return Math.max(best, getOpenOceanBasinScore(seed, q, r, basin));
   }, -1);
 }
 

@@ -89,6 +89,60 @@ test('river mouth templates match visual ocean-neighbor directions', () => {
   assert.equal(WorldMapService.getRiverMouthTemplateForNeighborOfOcean(-1, 0), 'river-mouth-se');
 });
 
+test('generated oceans stay open toward the continental edge instead of forming enclosed basins', () => {
+  const seeds = ['world-test', 'world-alt', 'world-seed-v1', 'chunk-player'];
+  for (const seed of seeds) {
+    const features = WorldMapService.getWorldWaterFeatures(seed);
+    for (const basin of features.basins) {
+      const side = WorldMapService.SIDE_DIRECTIONS[basin.side];
+      assert.ok(side, `${seed}:${basin.id} should have a valid ocean side`);
+      let q = basin.centerQ;
+      let r = basin.centerR;
+      assert.deepEqual(WorldMapService.chooseOceanTemplates(seed, q, r), ['full'], `${seed}:${basin.id} should start from ocean core`);
+      for (let step = 0; step < 24; step += 1) {
+        assert.deepEqual(WorldMapService.chooseOceanTemplates(seed, q, r), ['full'], `${seed}:${basin.id} should remain ocean while moving ${basin.side} from ${basin.centerQ},${basin.centerR}`);
+        q += side.q;
+        r += side.r;
+      }
+    }
+  }
+});
+
+test('bounded ocean core components always connect to the scanned world edge', () => {
+  const radius = 36;
+  const offsets = Object.values(WorldMapService.SIDE_DIRECTIONS);
+  for (const seed of ['world-test', 'world-alt', 'world-seed-v1', 'chunk-player']) {
+    const oceanCores = new Set();
+    for (let q = -radius; q <= radius; q += 1) {
+      for (let r = -radius; r <= radius; r += 1) {
+        if (WorldMapService.chooseOceanTemplates(seed, q, r).includes('full')) oceanCores.add(WorldMapService.getTileId(q, r));
+      }
+    }
+    assert.ok(oceanCores.size > 0, `${seed} should generate open ocean cores`);
+    const visited = new Set();
+    for (const start of oceanCores) {
+      if (visited.has(start)) continue;
+      const queue = [start];
+      visited.add(start);
+      let touchesWorldEdge = false;
+      while (queue.length) {
+        const id = queue.shift();
+        const [, qText, rText] = id.split('_');
+        const q = Number(qText);
+        const r = Number(rText);
+        if (Math.abs(q) === radius || Math.abs(r) === radius) touchesWorldEdge = true;
+        for (const offset of offsets) {
+          const neighborId = WorldMapService.getTileId(q + offset.q, r + offset.r);
+          if (!oceanCores.has(neighborId) || visited.has(neighborId)) continue;
+          visited.add(neighborId);
+          queue.push(neighborId);
+        }
+      }
+      assert.ok(touchesWorldEdge, `${seed} ocean component starting at ${start} should not be enclosed inside the scan`);
+    }
+  }
+});
+
 test('base terrain is generated from seed rules instead of fixed coordinate bands', () => {
   assert.equal(WorldMapService.chooseBaseTerrain('world-test', -4, -1), 'forest');
   assert.equal(WorldMapService.chooseBaseTerrain('world-test', -2, 0), 'plains');
