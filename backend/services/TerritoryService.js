@@ -1463,6 +1463,10 @@ function sanitizeName(name) {
 function getControlledScoutOrigins(gameState, fallbackOrigin = getScoutOrigin(gameState)) {
   const origins = [];
   const seen = new Set();
+  const territoryByCoord = new Map((gameState.territories || []).map((territory) => [
+    getCoordinateKey(territory.x, territory.y),
+    territory,
+  ]));
   const addOrigin = (origin) => {
     const x = toInteger(origin?.x, 0);
     const y = toInteger(origin?.y, 0);
@@ -1477,6 +1481,22 @@ function getControlledScoutOrigins(gameState, fallbackOrigin = getScoutOrigin(ga
       y,
     });
   };
+
+  const worldMap = WorldMapService.ensureWorldMap(gameState);
+  for (const tile of worldMap.tiles || []) {
+    if (tile.visibility !== 'controlled') continue;
+    const x = toInteger(tile.q, 0);
+    const y = toInteger(tile.r, 0);
+    const territory = territoryByCoord.get(getCoordinateKey(x, y));
+    const tileId = tile.id || WorldMapService.getTileId(x, y);
+    addOrigin({
+      cityId: territory?.cityId || territory?.id || tile.siteId || tileId,
+      territoryId: territory?.id || tile.siteId || tileId,
+      name: territory?.cityName || territory?.naturalName || `控制区 ${x},${y}`,
+      x,
+      y,
+    });
+  }
 
   for (const territory of gameState.territories || []) {
     if (territory.status !== 'occupied') continue;

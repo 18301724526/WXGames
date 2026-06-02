@@ -1370,3 +1370,25 @@ test('scout starts from the controlled border in the requested direction', () =>
   assert.ok(start.mission.revealArea.every((coord) => coord.q >= 7));
   assert.deepEqual(start.mission.route[0], { q: 7, r: 0, step: 1, tileId: 'tile_7_0', revealed: false });
 });
+
+test('scout frontier can start from controlled world map tiles without a territory object', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.worldMap = WorldMapService.ensureWorldMap(state, now);
+  WorldMapService.revealTile(state, 4, 0, now, {
+    siteId: null,
+    visibility: 'controlled',
+  });
+
+  const start = TerritoryService.startScout(state, 'e', now);
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.sourceCityId, 'tile_4_0');
+  assert.equal(start.mission.originTerritoryId, 'tile_4_0');
+  assert.equal(start.mission.originName, '控制区 4,0');
+  assert.equal(start.mission.originX, 4);
+  assert.equal(start.mission.originY, 0);
+  assert.equal(start.mission.targetX, 5);
+  assert.equal(start.mission.targetY, 0);
+  assert.deepEqual(start.mission.route[0], { q: 5, r: 0, step: 1, tileId: 'tile_5_0', revealed: false });
+});
