@@ -270,6 +270,14 @@
       this.createRenderer(canvas);
       this.mounted = true;
       this.lastGame = game || null;
+      const shouldHoldInitialLoading = Boolean(game?.token && !game?.hasServerState);
+      if (shouldHoldInitialLoading) {
+        this.loading = {
+          visible: true,
+          percentage: 0,
+          message: '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90',
+        };
+      }
       if (game?.authView) this.applyAuthShell(game.authView);
       if (game?.authCredentials) this.applyCredentials(game.authCredentials);
       if (this.runtime?.onResize && !this.resizeDisposer) {

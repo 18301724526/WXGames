@@ -802,12 +802,15 @@ test('CanvasGameRenderer map home uses command dock instead of page tabs', () =>
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openCommandPanel' && target.action.panel === 'capital'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openSubcityList'));
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'openSettings'));
+  assert.deepEqual(renderer.getHitTarget({ x: 350, y: 690 }), { type: 'openSubcityList' });
+  assert.notEqual(renderer.getHitTarget({ x: 195, y: 804 })?.type, 'openSubcityList');
   assert.equal(renderer.hitTargets.some((target) => target.action?.type === 'switchTab'), false);
   assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === 390 && call[4] === 72));
   assert.ok(calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 780 && call[3] === 390 && call[4] === 64));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '粮食'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人口'));
   assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '12.3K'));
+  assert.equal(calls.some((call) => call[0] === 'fillText' && call[1] === '谋'), false);
 });
 
 test('CanvasGameRenderer map home renders subcity jump list', () => {

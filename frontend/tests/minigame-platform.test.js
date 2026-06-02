@@ -393,6 +393,41 @@ test('Canvas game app keeps post-login loading visible for at least three second
   assert.equal(app.loading.visible, false);
 });
 
+test('Canvas game app can keep loading visible until server state arrives', async () => {
+  const calls = [];
+  const runtime = new PlatformRuntime({
+    kind: 'wechat',
+    host: {
+      createCanvas() {
+        return createCanvasStub(calls);
+      },
+      getSystemInfoSync() {
+        return { windowWidth: 360, windowHeight: 720, pixelRatio: 1 };
+      },
+    },
+  });
+  const app = new CanvasGameApp({
+    runtime,
+    api: { setToken() {}, async getState() { return {}; } },
+    rendererClass: MiniGameCanvasRenderer,
+    presenter: UIStatePresenter,
+    config: GameConfig,
+    initialState: { currentEra: 0, currentTab: 'resources', resources: {}, population: {} },
+  });
+  app.preloadAssets = async (onProgress) => {
+    onProgress({ percentage: 100 });
+    return { loaded: 1, failed: 0, total: 1, completed: 1, percentage: 100 };
+  };
+
+  await app.loadGameAssets({ minimumDurationMs: 0, hideWhenDone: false });
+  assert.equal(app.loading.visible, true);
+  assert.equal(app.loading.percentage, 100);
+
+  app.applyState({ gameState: { currentEra: 0, currentTab: 'resources', resources: {}, population: {} } });
+  assert.equal(app.hasServerState, true);
+  assert.equal(app.loading.visible, false);
+});
+
 test('minigame entry does not load H5 DOM adapters', () => {
   const projectRoot = path.join(__dirname, '..', '..');
   const entry = fs.readFileSync(path.join(projectRoot, 'frontend', 'minigame', 'game.js'), 'utf8');

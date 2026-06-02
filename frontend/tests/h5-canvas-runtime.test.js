@@ -463,6 +463,31 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
   assert.equal(renderCalls.at(-1).options.mode, 'hud');
 });
 
+test('Canvas game shell holds loading over token startup until server state arrives', () => {
+  const { document, runtime } = createCanvasHarness();
+  const renderCalls = [];
+  const renderer = {
+    render(state, options) { renderCalls.push({ state, options }); },
+  };
+
+  const shell = CanvasGameShell.mount({
+    token: 'token-1',
+    hasServerState: false,
+    state: { currentEra: 0, currentTab: 'resources' },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    previewEnabled: true,
+  });
+
+  assert.ok(shell);
+  assert.equal(renderCalls.length, 1);
+  assert.equal(renderCalls[0].options.loading.visible, true);
+  assert.equal(renderCalls[0].options.loading.message, '正在整理营地资源');
+});
+
 test('Canvas game shell defaults unlocked tile map saves to H5 map home', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];

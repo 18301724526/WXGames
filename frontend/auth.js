@@ -26,17 +26,14 @@ window.mountAuthMethods = function(game, deps = {}) {
   async function waitForAuthenticatedAssets() {
     const message = '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90';
     if (typeof game.loadGameAssets === 'function') {
-      await game.loadGameAssets({ message });
+      await game.loadGameAssets({ message, hideWhenDone: false });
       return;
     }
     game.canvasShell?.showLoading?.(message);
-    try {
-      await (game.canvasShell?.preloadAssets?.((progress) => {
-        game.canvasShell?.updateLoading?.({ ...progress, message });
-      }) || Promise.resolve());
-    } finally {
-      game.canvasShell?.hideLoading?.();
-    }
+    await (game.canvasShell?.preloadAssets?.((progress) => {
+      game.canvasShell?.updateLoading?.({ ...progress, message });
+    }) || Promise.resolve());
+    game.canvasShell?.updateLoading?.({ percentage: 100, message });
   }
 
   function startAuthenticatedSession() {

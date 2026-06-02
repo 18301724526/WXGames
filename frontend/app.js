@@ -137,7 +137,7 @@ class H5GameHost extends CanvasGameAppBase {
     const onCanvasShellReady = this.onCanvasShellReady;
     this.onCanvasShellReady = null;
     if (typeof onCanvasShellReady === 'function') onCanvasShellReady();
-    this.render();
+    if (!this.token || this.hasServerState) this.render();
   }
 }
 

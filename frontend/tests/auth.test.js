@@ -169,7 +169,7 @@ test('登录会读取 Canvas 凭据并保存记住密码信息', async () => {
     assert.equal(storage.getItem('cf_remember_enabled'), 'true');
     assert.equal(storage.getItem('cf_remember_username'), 'test1');
     assert.equal(storage.getItem('cf_remember_password'), '123456');
-    assert.deepEqual(game.assetLoadOptions, { message: '正在整理营地资源' });
+    assert.deepEqual(game.assetLoadOptions, { message: '正在整理营地资源', hideWhenDone: false });
     assert.equal(game.assetsLoaded, true);
     assert.equal(game.heartbeatStarted, true);
     assert.deepEqual(game.lastAppliedState.gameState, { currentEra: 0 });

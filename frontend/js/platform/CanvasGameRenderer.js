@@ -8349,7 +8349,6 @@
       const items = [
         { id: 'capital', label: '首都', icon: 'assets/art/icon-home-cutout.png', action: { type: 'openCommandPanel', panel: 'capital' } },
         { id: 'buildings', label: '建设', icon: 'assets/art/building-house-cutout.png', action: { type: 'openCommandPanel', panel: 'buildings' } },
-        { id: 'subcities', label: '分城', icon: 'assets/art/world-site-city-cutout.png', action: { type: 'openSubcityList' } },
         { id: 'military', label: '军事', icon: 'assets/art/icon-soldier-cutout.webp', action: { type: 'openCommandPanel', panel: 'military' } },
         { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
         { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
@@ -8362,7 +8361,6 @@
       items.forEach((item, index) => {
         const itemX = contentX + index * itemWidth;
         const active = activePanel === item.id
-          || (item.id === 'subcities' && options.showSubcityList)
           || (item.id === 'tasks' && options.showTaskCenter)
           || (item.id === 'settings' && options.showSettings);
         if (active && this.ctx) {
@@ -8411,12 +8409,45 @@
       this.drawText(view.activeAdvisor.message, x + 64, y + 13, { color: '#f6e8c8', size: 12 });
     }
 
-    renderFloatingAdvisorButton(state = {}, options = {}) {
+    getMapHomeFloatingButtonLayout(slot = 0) {
       const layout = this.getLayout();
       const size = 48;
       const dockTop = this.height - 64;
       const x = layout.contentRight - size - 8;
-      const y = Math.max(82, dockTop - size - 14);
+      const gap = 10;
+      const y = Math.max(82, dockTop - (slot + 1) * size - 14 - slot * gap);
+      return { x, y, size };
+    }
+
+    renderFloatingSubcityButton(state = {}, options = {}) {
+      const { x, y, size } = this.getMapHomeFloatingButtonLayout(1);
+      const active = Boolean(options.showSubcityList);
+      this.drawPanel(x, y, size, size, {
+        fill: active ? 'rgba(82, 58, 34, 0.94)' : 'rgba(34, 31, 25, 0.82)',
+        stroke: active ? 'rgba(247, 215, 116, 0.56)' : 'rgba(255, 226, 177, 0.18)',
+        radius: size / 2,
+        inset: active ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
+      });
+      if (!this.drawAsset('assets/art/world-site-city-cutout.png', x + 13, y + 9, 22, 22)) {
+        this.drawText('城', x + size / 2, y + 20, {
+          size: 16,
+          bold: true,
+          color: active ? '#ffe6b5' : '#cbbd96',
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
+      this.drawText('分城', x + size / 2, y + 34, {
+        size: 9,
+        bold: true,
+        color: active ? '#f0b45b' : '#aeb0b8',
+        align: 'center',
+      });
+      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openSubcityList' });
+    }
+
+    renderFloatingAdvisorButton(state = {}, options = {}) {
+      const { x, y, size } = this.getMapHomeFloatingButtonLayout(0);
       const view = this.presenter?.buildAdvisorViewState?.(state.softGuide) || { hidden: true };
       const hasAdvice = Boolean(!view.hidden && view.activeAdvisor);
       this.drawPanel(x, y, size, size, {
@@ -8425,13 +8456,6 @@
         radius: size / 2,
         inset: hasAdvice ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
       });
-      this.drawText('谋', x + size / 2, y + 19, {
-        size: 17,
-        bold: true,
-        color: hasAdvice ? '#ffe6b5' : '#cbbd96',
-        baseline: 'middle',
-        align: 'center',
-      });
       if (hasAdvice) {
         this.drawPanel(x + size - 15, y + 5, 10, 10, {
           fill: '#74d3a0',
@@ -8439,10 +8463,11 @@
           radius: 5,
         });
       }
-      this.drawText('顾问', x + size / 2, y + 34, {
-        size: 9,
+      this.drawText('顾问', x + size / 2, y + 26, {
+        size: 12,
         bold: true,
         color: hasAdvice ? '#f0b45b' : '#aeb0b8',
+        baseline: 'middle',
         align: 'center',
       });
       this.addHitTarget({ x, y, width: size, height: size }, { type: 'openAdvisor' });
@@ -9745,6 +9770,7 @@
     }
 
     renderMapHomeOverlays(state = {}, options = {}) {
+      this.renderFloatingSubcityButton(state, options);
       this.renderFloatingAdvisorButton(state, options);
       if (options.activeCommandPanel) this.renderMapCommandPanel(state, options);
       if (options.showSubcityList) this.renderSubcityListPanel(state, options);

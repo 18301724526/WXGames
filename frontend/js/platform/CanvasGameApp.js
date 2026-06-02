@@ -34,6 +34,7 @@
         percentage: 0,
         message: '',
       };
+      this.hasServerState = Boolean(options.hasServerState);
       this.syncIntervalMs = options.syncIntervalMs || this.config.SYNC_INTERVAL_MS || 2000;
       this.state = options.initialState || {
         resources: {},
@@ -210,6 +211,11 @@
         api.setToken?.(payload.token);
         this.runtime?.setStorage?.('token', payload.token);
       }
+      this.hasServerState = true;
+      if (this.loading.visible || this.canvasShell?.loading?.visible) {
+        this.loading = { visible: false, percentage: 100, message: '' };
+        if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
+      }
       this.render();
     }
 
@@ -268,6 +274,11 @@
       this.tutorial = nextTutorial;
       this.tutorialController?.setState?.(nextTutorial);
       this.updateSyncInterval();
+      this.hasServerState = true;
+      if (this.loading.visible || this.canvasShell?.loading?.visible) {
+        this.loading = { visible: false, percentage: 100, message: '' };
+        if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
+      }
       this.render();
     }
 
@@ -572,6 +583,7 @@
 
     async loadGameAssets(options = {}) {
       const message = options.message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90';
+      const hideWhenDone = options.hideWhenDone !== false;
       const minimumDurationMs = Number.isFinite(options.minimumDurationMs)
         ? Math.max(0, options.minimumDurationMs)
         : 3000;
@@ -586,7 +598,7 @@
         return result;
       } finally {
         this.updateLoading({ percentage: 100, message });
-        this.hideLoading();
+        if (hideWhenDone) this.hideLoading();
       }
     }
 
