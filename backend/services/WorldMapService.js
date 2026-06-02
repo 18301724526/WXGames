@@ -2,7 +2,9 @@ const WORLD_MAP_VERSION = 3;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
 const SCOUT_REVEAL_RADIUS = 1;
-const SCOUT_REVEAL_BRANCH_LIMIT = 5;
+const SCOUT_REVEAL_MAIN_LIMIT = 3;
+const SCOUT_REVEAL_BRANCH_LIMIT = 3;
+const SCOUT_REVEAL_TILE_LIMIT = 6;
 const WORLD_WATER_FEATURE_CACHE = new Map();
 
 const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
@@ -612,7 +614,10 @@ function revealTileArea(gameState, q, r, now = new Date(), options = {}) {
 }
 
 function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
-  const branchLimit = Math.max(0, toInteger(options.branchLimit, SCOUT_REVEAL_BRANCH_LIMIT));
+  const mainLimit = Math.max(1, toInteger(options.mainLimit, SCOUT_REVEAL_MAIN_LIMIT));
+  const branchLimit = Math.min(mainLimit, Math.max(0, toInteger(options.branchLimit, SCOUT_REVEAL_BRANCH_LIMIT)));
+  const tileLimit = Math.max(mainLimit, toInteger(options.tileLimit, SCOUT_REVEAL_TILE_LIMIT));
+  const minTileLimit = Math.max(mainLimit, Math.min(tileLimit, toInteger(options.minTileLimit, Math.min(4, tileLimit))));
   const branchSides = SCOUT_REVEAL_BRANCH_SIDES[direction] || [];
   const byKey = new Map();
   const addCoord = (q, r, step, kind) => {
@@ -638,13 +643,37 @@ function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
     }))
     .sort((a, b) => a.step - b.step);
 
-  for (const step of normalizedRoute) {
+  const revealRoute = normalizedRoute.slice(0, mainLimit);
+  const branchCandidates = [];
+  for (const step of revealRoute) {
     addCoord(step.q, step.r, step.step, 'main');
     if (step.step > branchLimit || !branchSides.length) continue;
     branchSides.forEach((side, sideIndex) => {
       const roll = random01(seed || DEFAULT_WORLD_SEED, step.q + side.q, step.r + side.r, `scout-branch-${direction}-${step.step}-${sideIndex}`);
-      if (roll < 0.72) addCoord(step.q + side.q, step.r + side.r, step.step, 'branch');
+      branchCandidates.push({
+        q: step.q + side.q,
+        r: step.r + side.r,
+        step: step.step,
+        sideIndex,
+        roll,
+      });
     });
+  }
+
+  const addBranch = (candidate) => {
+    if (byKey.size >= tileLimit) return;
+    addCoord(candidate.q, candidate.r, candidate.step, 'branch');
+  };
+  for (const candidate of branchCandidates) {
+    if (candidate.roll < 0.72) addBranch(candidate);
+  }
+  if (byKey.size < minTileLimit) {
+    branchCandidates
+      .filter((candidate) => !byKey.has(getTileId(candidate.q, candidate.r)))
+      .sort((a, b) => a.roll - b.roll || a.step - b.step || a.sideIndex - b.sideIndex)
+      .forEach((candidate) => {
+        if (byKey.size < minTileLimit) addBranch(candidate);
+      });
   }
   return [...byKey.values()].sort((a, b) => (
     a.step - b.step
@@ -720,7 +749,9 @@ module.exports = {
   DEFAULT_WORLD_SEED,
   CAPITAL_TILE_ID,
   SCOUT_REVEAL_RADIUS,
+  SCOUT_REVEAL_MAIN_LIMIT,
   SCOUT_REVEAL_BRANCH_LIMIT,
+  SCOUT_REVEAL_TILE_LIMIT,
   SIDE_ORDER,
   SIDE_DIRECTIONS,
   DIRECTION_VECTORS,

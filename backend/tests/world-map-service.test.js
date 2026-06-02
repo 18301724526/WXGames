@@ -230,8 +230,11 @@ test('scout reveal area follows the route direction with deterministic branches'
   const main = area.filter((coord) => coord.kind === 'main');
   const branches = area.filter((coord) => coord.kind === 'branch');
 
-  assert.deepEqual(main.map((coord) => [coord.q, coord.r]), [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0]]);
+  assert.deepEqual(main.map((coord) => [coord.q, coord.r]), [[1, 0], [2, 0], [3, 0]]);
+  assert.ok(area.length >= 4);
+  assert.ok(area.length <= WorldMapService.SCOUT_REVEAL_TILE_LIMIT);
   assert.ok(branches.length > 0);
   assert.ok(branches.every((coord) => coord.step <= WorldMapService.SCOUT_REVEAL_BRANCH_LIMIT));
+  assert.ok(branches.every((coord) => coord.step <= WorldMapService.SCOUT_REVEAL_MAIN_LIMIT));
   assert.ok(branches.every((coord) => coord.q === coord.step && Math.abs(coord.r) === 1));
 });

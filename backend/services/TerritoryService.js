@@ -767,8 +767,9 @@ function upsertScoutAreaRecord(gameState, mission, result, options = {}) {
     r: toInteger(coord.r, 0),
     tileId: WorldMapService.getTileId(coord.q, coord.r),
   }));
-  const targetX = toInteger(mission.targetX, 0);
-  const targetY = toInteger(mission.targetY, 0);
+  const resolved = getScoutResolvedCoordinate(mission);
+  const targetX = toInteger(resolved.x, 0);
+  const targetY = toInteger(resolved.y, 0);
   const record = {
     id: mission.id || `scout_area_${targetX}_${targetY}_${scoutedAt}`,
     missionId: mission.id || null,
@@ -851,6 +852,23 @@ function getSiteSpacingProfile(gameState, x, y) {
 function getScoutResolvedCoordinate(mission) {
   const hasSiteX = hasFiniteValue(mission?.siteX);
   const hasSiteY = hasFiniteValue(mission?.siteY);
+  if (!hasSiteX && !hasSiteY && isDirectionalScoutAreaMission(mission) && Array.isArray(mission.revealArea) && mission.revealArea.length) {
+    const mainArea = mission.revealArea
+      .filter((coord) => coord?.kind === 'main')
+      .sort((a, b) => toInteger(a.step, 0) - toInteger(b.step, 0));
+    const revealedMainArea = mainArea.filter((coord) => coord.revealed);
+    const resolved = (revealedMainArea.length ? revealedMainArea : mainArea).at(-1)
+      || mission.revealArea
+        .slice()
+        .sort((a, b) => toInteger(a.step, 0) - toInteger(b.step, 0))
+        .at(-1);
+    if (resolved && hasFiniteValue(resolved.q) && hasFiniteValue(resolved.r)) {
+      return {
+        x: toInteger(resolved.q, 0),
+        y: toInteger(resolved.r, 0),
+      };
+    }
+  }
   return {
     x: hasSiteX ? toInteger(mission.siteX, 0) : toInteger(mission.targetX, 0),
     y: hasSiteY ? toInteger(mission.siteY, 0) : toInteger(mission.targetY, 0),
@@ -1364,6 +1382,7 @@ function advanceScoutMission(gameState, mission, now = new Date(), randomSource 
   const nowMs = now.getTime();
   const route = Array.isArray(mission.route) ? mission.route : [];
   const revealArea = ensureMissionRevealArea(gameState, mission, now);
+  const strictRevealArea = isDirectionalScoutAreaMission(mission);
   let nextStepAt = new Date(mission.nextStepAt || mission.startedAt || now).getTime();
   if (!Number.isFinite(nextStepAt)) nextStepAt = nowMs;
   mission.revealedTileIds = Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [];
@@ -1373,9 +1392,10 @@ function advanceScoutMission(gameState, mission, now = new Date(), randomSource 
     if (step.revealed) continue;
     if (mission.actionPointsRemaining <= 0 || nextStepAt > nowMs) break;
     const stepArea = revealArea.filter((coord) => coord.step === step.step && !coord.revealed);
-    const revealedTiles = WorldMapService.revealScoutArea(gameState, stepArea.length ? stepArea : [step], now);
-    const tile = revealedTiles.find((item) => item.q === step.q && item.r === step.r) || revealedTiles[0];
-    step.tileId = tile.id;
+    const revealTargets = stepArea.length || !strictRevealArea ? (stepArea.length ? stepArea : [step]) : [];
+    const revealedTiles = WorldMapService.revealScoutArea(gameState, revealTargets, now);
+    const tile = revealedTiles.find((item) => item.q === step.q && item.r === step.r) || revealedTiles[0] || null;
+    step.tileId = tile?.id || step.tileId || WorldMapService.getTileId(step.q, step.r);
     step.revealed = true;
     for (const coord of stepArea) {
       coord.revealed = true;
@@ -1538,7 +1558,7 @@ function scoreScoutCandidateArea(gameState, direction, origin, distance, knownTi
     distance,
     newTileCount,
     newMainTileCount,
-    completeMainPath: newMainTileCount >= route.length,
+    completeMainPath: newMainTileCount >= Math.min(route.length, WorldMapService.SCOUT_REVEAL_MAIN_LIMIT),
     routeStartDistance: Math.max(1, distance - SCOUT_ACTION_POINTS + 1),
   };
 }
