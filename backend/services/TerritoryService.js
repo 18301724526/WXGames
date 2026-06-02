@@ -367,6 +367,8 @@ function normalizeWarMissions(rawMissions) {
           originY,
           targetX,
           targetY,
+          siteX: Number.isFinite(Number(mission.siteX)) ? toInteger(mission.siteX, targetX) : null,
+          siteY: Number.isFinite(Number(mission.siteY)) ? toInteger(mission.siteY, targetY) : null,
           scoutDistance: Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, targetX, targetY))),
           actionPoints,
           actionPointsRemaining: Math.max(0, toInteger(mission.actionPointsRemaining, mission.status === 'ready' ? 0 : actionPoints)),
@@ -493,6 +495,98 @@ function hasSiteSpacing(gameState, x, y) {
   return !(gameState.territories || []).some((territory) => (
     getRelativeDistance(territory.x, territory.y, x, y) < SCOUT_SITE_MIN_DISTANCE
   ));
+}
+
+function getScoutResolvedCoordinate(mission) {
+  return {
+    x: toInteger(mission.siteX, toInteger(mission.targetX, 0)),
+    y: toInteger(mission.siteY, toInteger(mission.targetY, 0)),
+  };
+}
+
+function getScoutCandidateCoordinates(gameState, mission, now = new Date()) {
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const targetX = toInteger(mission.targetX, 0);
+  const targetY = toInteger(mission.targetY, 0);
+  const revealedIds = new Set(Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.filter(Boolean) : []);
+  const coords = [];
+  const known = new Set();
+  const addCoord = (q, r) => {
+    const key = getCoordinateKey(q, r);
+    if (known.has(key)) return;
+    known.add(key);
+    coords.push({ q, r });
+  };
+
+  for (const tile of worldMap.tiles || []) {
+    if (!revealedIds.has(tile.id)) continue;
+    addCoord(toInteger(tile.q, 0), toInteger(tile.r, 0));
+  }
+  for (const coord of WorldMapService.getRevealArea(targetX, targetY)) {
+    addCoord(coord.q, coord.r);
+  }
+  return coords;
+}
+
+function getDirectionProgressScore(mission, q, r) {
+  const dir = DIRECTIONS[mission.direction];
+  if (!dir) return 0;
+  const originX = toInteger(mission.originX, 0);
+  const originY = toInteger(mission.originY, 0);
+  const targetX = toInteger(mission.targetX, 0);
+  const targetY = toInteger(mission.targetY, 0);
+  const targetProjection = (targetX - originX) * dir.dx + (targetY - originY) * dir.dy;
+  const projection = (q - originX) * dir.dx + (r - originY) * dir.dy;
+  if (targetProjection <= 0) return 0;
+  return Math.max(0, Math.min(1, projection / targetProjection));
+}
+
+function getTerrainSiteScore(terrain) {
+  if (terrain === 'plains') return 7;
+  if (terrain === 'forest') return 6;
+  if (terrain === 'hills') return 6;
+  if (terrain === 'desert') return 4;
+  if (terrain === 'waste') return 3;
+  if (terrain === 'mountain') return 1;
+  return 0;
+}
+
+function scoreScoutSiteCandidate(gameState, mission, coord, seed) {
+  const q = toInteger(coord.q, 0);
+  const r = toInteger(coord.r, 0);
+  if (!WorldMapService.canPlaceSiteOnTerrain(seed, q, r)) return null;
+  if (!hasSiteSpacing(gameState, q, r)) return null;
+  const terrain = WorldMapService.chooseTerrain(seed, q, r);
+  const originX = toInteger(mission.originX, 0);
+  const originY = toInteger(mission.originY, 0);
+  const targetX = toInteger(mission.targetX, 0);
+  const targetY = toInteger(mission.targetY, 0);
+  const distance = Math.max(1, getRelativeDistance(originX, originY, q, r));
+  const targetDistance = Math.max(1, getRelativeDistance(originX, originY, targetX, targetY));
+  const targetCloseness = Math.max(0, 3 - getRelativeDistance(targetX, targetY, q, r));
+  const directionProgress = getDirectionProgressScore(mission, q, r);
+  const terrainScore = getTerrainSiteScore(terrain);
+  const stableNoise = seededNoise(Math.abs(q * 92821 + r * 68917 + String(seed).length * 131));
+  return {
+    q,
+    r,
+    terrain,
+    distance,
+    score:
+      terrainScore * 10
+      + Math.min(distance, targetDistance + 2) * 2
+      + targetCloseness * 5
+      + directionProgress * 8
+      + stableNoise,
+  };
+}
+
+function pickScoutSiteCoordinate(gameState, mission, now = new Date()) {
+  const seed = WorldMapService.ensureWorldMap(gameState, now).seed;
+  return getScoutCandidateCoordinates(gameState, mission, now)
+    .map((coord) => scoreScoutSiteCandidate(gameState, mission, coord, seed))
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || b.distance - a.distance || a.q - b.q || a.r - b.r)[0] || null;
 }
 
 function normalizeTerritoryState(gameState, now = new Date()) {
@@ -886,8 +980,9 @@ function getSiteEffects(template, distance) {
 
 function createSiteFromScout(gameState, mission, now = new Date(), randomSource = Math.random) {
   const direction = mission.direction;
-  const x = toInteger(mission.targetX, 0);
-  const y = toInteger(mission.targetY, 0);
+  const resolvedCoord = getScoutResolvedCoordinate(mission);
+  const x = resolvedCoord.x;
+  const y = resolvedCoord.y;
   const originX = toInteger(mission.originX, 0);
   const originY = toInteger(mission.originY, 0);
   const distance = Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, x, y)));
@@ -937,8 +1032,9 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
 
 function createEmptyScoutReport(mission, now = new Date(), repeated = false) {
   const direction = mission.direction;
-  const x = toInteger(mission.targetX, 0);
-  const y = toInteger(mission.targetY, 0);
+  const resolvedCoord = getScoutResolvedCoordinate(mission);
+  const x = resolvedCoord.x;
+  const y = resolvedCoord.y;
   const originX = toInteger(mission.originX, 0);
   const originY = toInteger(mission.originY, 0);
   const distance = Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, x, y)));
@@ -1025,8 +1121,8 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     return { site: null, report: mission.report };
   }
 
-  if (!WorldMapService.canPlaceSiteOnTerrain(WorldMapService.ensureWorldMap(gameState, now).seed, targetX, targetY)
-    || !hasSiteSpacing(gameState, targetX, targetY)) {
+  const siteCoord = pickScoutSiteCoordinate(gameState, mission, now);
+  if (!siteCoord) {
     recordScoutOutcome(gameState, 'empty');
     upsertScoutCoordinateRecord(gameState, {
       x: targetX,
@@ -1041,6 +1137,12 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     return { site: null, report: mission.report };
   }
 
+  mission.siteX = siteCoord.q;
+  mission.siteY = siteCoord.r;
+  mission.scoutDistance = Math.max(
+    1,
+    getRelativeDistance(toInteger(mission.originX, 0), toInteger(mission.originY, 0), siteCoord.q, siteCoord.r),
+  );
   recordScoutOutcome(gameState, 'site');
   const created = createSiteFromScout(gameState, mission, now, randomSource);
   const site = created.site;

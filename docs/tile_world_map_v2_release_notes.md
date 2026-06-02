@@ -22,6 +22,7 @@ The military world view now renders the tile map first when `territoryState.worl
 - Ocean semantics include full water, shore edges, shore corners, and river-mouth templates.
 - River semantics derive a stable river channel and river-mouth template from the ocean basin rules.
 - River mouths attach only to single-side ocean shore edges, and ocean shore corner coordinates block river mouths to avoid tile conflicts.
+- Scout site outcomes now evaluate the revealed area and bind the site to the highest-scoring valid land tile, instead of forcing the mission target coordinate to host the site.
 
 ## Frontend Changes
 

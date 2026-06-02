@@ -5,6 +5,7 @@ const gameStateService = require('../services/GameStateService');
 const CityService = require('../services/CityService');
 const TerritoryService = require('../services/TerritoryService');
 const FamousPersonService = require('../services/FamousPersonService');
+const WorldMapService = require('../services/WorldMapService');
 
 function createClassicalState() {
   const state = gameStateService.createInitialGameState('territory-player');
@@ -257,6 +258,22 @@ test('scout target outcome is generated during travel before report claim', () =
   assert.equal(claim.success, true);
   assert.equal(claim.site.id, mission.siteId);
   assert.equal(state.scoutReports.at(-1).siteId, mission.siteId);
+});
+
+test('scout site outcome selects the best valid tile inside the revealed area', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  pushReadyScoutMission(state, { id: 'scout_coast_area', direction: 'e', targetX: 7, targetY: 0, now });
+
+  WorldMapService.revealTileArea(state, 7, 0, now);
+  const claim = TerritoryService.claimScout(state, 'scout_coast_area', now, createSequenceRandom([0.1, 0.9, 0.5]));
+
+  assert.equal(claim.success, true);
+  assert.ok(claim.site);
+  assert.notDeepEqual({ x: claim.site.x, y: claim.site.y }, { x: 7, y: 0 });
+  assert.notEqual(state.worldMap.tiles.find((tile) => tile.id === 'tile_7_0').siteId, claim.site.id);
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === `tile_${claim.site.x}_${claim.site.y}`).siteId, claim.site.id);
+  assert.equal(WorldMapService.canPlaceSiteOnTerrain(state.worldMap.seed, claim.site.x, claim.site.y), true);
 });
 
 test('scout missions reveal world map tiles over time and record a trail', () => {

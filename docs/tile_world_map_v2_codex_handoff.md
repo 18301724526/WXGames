@@ -12,7 +12,8 @@ The game runtime now uses the tile-map lab semantics and draw rules for the mili
 
 ## Key Files
 
-- `backend/services/WorldMapService.js`: v2 micro terrain, ocean template selection, river ports, river-mouth conflict rules, capital protection.
+- `backend/services/WorldMapService.js`: deterministic world terrain rules, ocean template selection, river channel ports, river-mouth conflict rules, capital protection.
+- `backend/services/TerritoryService.js`: scout route progression, revealed-area site candidate scoring, site spacing, and tile binding.
 - `frontend/js/config/TileMapAssetManifest.js`: runtime asset manifest for terrain, sites, water loops, river templates, ocean templates, and transition templates.
 - `frontend/js/state/UIStatePresenter.js`: converts persisted `worldMap.tiles` into renderer-ready `templateAssets`, water metadata, overlay keys, and mountain-neighbor counts.
 - `frontend/js/platform/CanvasGameRenderer.js`: lab-parity draw rects, alpha-bound crops, template-water composition, dry-template fallback, overlay placement, terrain-feature overlays, and tile-map rendering.
@@ -65,6 +66,7 @@ Do not infer template roles from filenames in new code. Use `oceanTemplates`, `r
 - River mouths replace a single-side ocean shore edge only when the tile is not an ocean shore corner.
 - Ocean shore corners and river paths conflict; no river should pass through those corner tiles.
 - The capital tile always remains `terrain: "capital"`.
+- Scout site generation scores the revealed area and binds the site to one valid land tile; ocean, river, and too-close tiles stay ineligible.
 
 ## Verification Commands
 
