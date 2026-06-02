@@ -249,23 +249,23 @@ function getTerrainTransitionKey(seed, q, r, terrain) {
   return getSortedSideKey(desertSides);
 }
 
+function getDistanceFromCapital(q, r) {
+  return Math.max(Math.abs(q), Math.abs(r));
+}
+
 function chooseBaseTerrain(seed, q, r) {
   if (q === 0 && r === 0) return 'capital';
-  if (q <= -3 && r <= 0) return 'desert';
-  if (q <= -1 && r >= -1 && r <= 1) return 'plains';
-  if (q <= 0 && r >= 2) return 'forest';
-  if (q >= 1 && r <= -2) return 'hills';
-  if (q >= 1 && r >= 1 && r <= 2) return 'plains';
-  if (q >= 2 && r <= 0) return 'mountain';
   const forest = random01(seed, q, r, 'forest');
-  const stone = random01(seed, q, r, 'stone');
+  const ridge = random01(seed, q, r, 'ridge');
   const dry = random01(seed, q, r, 'dry');
-  const mountain = random01(seed, q, r, 'mountain');
-  if (mountain > 0.88) return 'mountain';
-  if (stone > 0.82) return 'hills';
-  if (forest > 0.7) return 'forest';
-  if (dry > 0.84) return 'waste';
-  if (dry > 0.78 && forest < 0.36) return 'desert';
+  const rough = random01(seed, q, r, 'rough');
+  const distance = getDistanceFromCapital(q, r);
+  const settlementBias = Math.max(0, 4 - distance) * 0.06;
+  if (rough > 0.9 - settlementBias && ridge > 0.72) return 'mountain';
+  if (ridge > 0.8 - settlementBias || (rough > 0.84 && distance >= 4)) return 'hills';
+  if (dry > 0.84 && forest < 0.42) return distance >= 3 ? 'desert' : 'waste';
+  if (dry > 0.78 && rough > 0.58) return 'waste';
+  if (forest > 0.66 + settlementBias && dry < 0.76) return 'forest';
   return 'plains';
 }
 
@@ -561,7 +561,9 @@ module.exports = {
   SCOUT_REVEAL_RADIUS,
   SCOUT_REVEAL_BRANCH_LIMIT,
   DIRECTION_VECTORS,
+  getDistanceFromCapital,
   getTileId,
+  chooseBaseTerrain,
   chooseTerrain,
   chooseOceanTemplates,
   getRiverPorts,

@@ -63,6 +63,14 @@ test('river mouth templates match visual ocean-neighbor directions', () => {
   assert.equal(WorldMapService.getRiverMouthTemplateForNeighborOfOcean(-1, 0), 'river-mouth-se');
 });
 
+test('base terrain is generated from seed rules instead of fixed coordinate bands', () => {
+  assert.equal(WorldMapService.chooseBaseTerrain('world-test', -4, -1), 'forest');
+  assert.equal(WorldMapService.chooseBaseTerrain('world-test', -2, 0), 'plains');
+  assert.equal(WorldMapService.chooseBaseTerrain('world-test', 8, 0), 'hills');
+  assert.equal(WorldMapService.chooseBaseTerrain('world-alt', -4, 0), 'plains');
+  assert.notEqual(WorldMapService.chooseBaseTerrain('world-test', -4, 0), WorldMapService.chooseBaseTerrain('world-alt', -4, 0));
+});
+
 test('incomplete v2 world map heals only the capital tile', () => {
   const worldMap = WorldMapService.normalizeWorldMap({
     version: 2,

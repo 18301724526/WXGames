@@ -113,7 +113,57 @@ function pushReadyScoutMission(state, overrides = {}) {
     completesAt: now.toISOString(),
     status: 'ready',
   };
+  if (Array.isArray(overrides.revealArea) && overrides.revealArea.length) {
+    mission.revealArea = overrides.revealArea.map((coord, index) => ({
+      q: coord.q,
+      r: coord.r,
+      step: coord.step || index + 1,
+      kind: coord.kind || 'main',
+      tileId: coord.tileId || WorldMapService.getTileId(coord.q, coord.r),
+      revealed: coord.revealed !== false,
+    }));
+    mission.route = mission.revealArea
+      .filter((coord) => coord.kind === 'main')
+      .map((coord) => ({
+        q: coord.q,
+        r: coord.r,
+        step: coord.step,
+        tileId: coord.tileId,
+        revealed: coord.revealed,
+      }));
+    mission.revealAreaSource = 'directional-route-v1';
+    mission.revealedTileIds = mission.revealArea
+      .filter((coord) => coord.revealed)
+      .map((coord) => coord.tileId);
+  }
   state.warMissions.push(mission);
+  return mission;
+}
+
+function pushReadySingleTileScout(state, options = {}) {
+  const q = options.q;
+  const r = options.r;
+  const now = options.now || new Date('2026-05-17T08:00:00.000Z');
+  const coord = {
+    q,
+    r,
+    step: 1,
+    kind: 'main',
+    tileId: WorldMapService.getTileId(q, r),
+    revealed: true,
+  };
+  const mission = pushReadyScoutMission(state, {
+    id: options.id || `scout_${q}_${r}`,
+    direction: options.direction || 'e',
+    targetX: q,
+    targetY: r,
+    scoutDistance: Number.isFinite(options.scoutDistance)
+      ? options.scoutDistance
+      : Math.max(Math.abs(q), Math.abs(r)),
+    now,
+    revealArea: [coord],
+  });
+  WorldMapService.revealScoutArea(state, mission.revealArea, now);
   return mission;
 }
 
@@ -917,11 +967,35 @@ test('距离越远越容易刷出有主地点', () => {
   pushReadyScoutMission(state, { id: 'scout_far_valid', direction: 'e', targetX: 11, targetY: 1, now: farTime });
   const farClaim = TerritoryService.claimScout(state, 'scout_far_valid', farTime, createSequenceRandom([0.1, 0.2, 0.5])).site;
 
-  assert.equal(farClaim.y, 1);
   assert.ok(farClaim.x >= 10);
   assert.ok(['neutral', 'tribe'].includes(nearClaim.owner));
   assert.ok(['city_state', 'tribe', 'ruin_guardians'].includes(farClaim.owner));
   assert.notEqual(farClaim.owner, 'neutral');
+});
+
+test('地点类型会按侦察区域内选中地块的地形倾向生成', () => {
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  const cases = [
+    { terrain: 'forest', q: -16, r: -14, random: [0.1, 0.05, 0.01], expected: { owner: 'tribe', type: 'camp' } },
+    { terrain: 'plains', q: -16, r: -15, random: [0.1, 0.2, 0.6], expected: { owner: 'city_state', type: 'city' } },
+    { terrain: 'hills', q: -16, r: -16, random: [0.1, 0.05, 0.99], expected: { owner: 'ruin_guardians', type: 'ruins' } },
+    { terrain: 'waste', q: -14, r: -7, random: [0.1, 0.05, 0.99], expected: { owner: 'ruin_guardians', type: 'ruins' } },
+    { terrain: 'desert', q: -15, r: -16, random: [0.1, 0.05, 0.99], expected: { owner: 'ruin_guardians', type: 'ruins' } },
+    { terrain: 'mountain', q: -15, r: -11, random: [0.1, 0.05, 0.99], expected: { owner: 'ruin_guardians', type: 'ruins' } },
+  ];
+
+  for (const item of cases) {
+    const state = createClassicalState();
+    assert.equal(WorldMapService.chooseTerrain(state.worldMap.seed, item.q, item.r), item.terrain);
+    pushReadySingleTileScout(state, { id: `scout_${item.terrain}`, q: item.q, r: item.r, now });
+
+    const claim = TerritoryService.claimScout(state, `scout_${item.terrain}`, now, createSequenceRandom(item.random));
+
+    assert.equal(claim.success, true);
+    assert.equal(claim.site.owner, item.expected.owner);
+    assert.equal(claim.site.type, item.expected.type);
+    assert.equal(state.warMissions.length, 0);
+  }
 });
 
 test('有主地点会细分为部落、城邦和遗迹守军', () => {

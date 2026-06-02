@@ -89,6 +89,14 @@ const SITE_TEMPLATES = [
     ],
     reportTitles: ['边界外的第一缕炊烟', '木栅后的陌生脚印'],
     effects: { threatDefense: 1 },
+    terrainWeights: {
+      plains: 4,
+      forest: 3,
+      hills: 2,
+      desert: 1,
+      waste: 1,
+      mountain: 0.5,
+    },
   },
   {
     type: 'town',
@@ -104,6 +112,14 @@ const SITE_TEMPLATES = [
     ],
     reportTitles: ['远处石墙上的旗影', '道路尽头的村镇'],
     effects: { foodOutputMultiplier: 0.05 },
+    terrainWeights: {
+      plains: 5,
+      forest: 2,
+      hills: 1,
+      desert: 1,
+      waste: 0.5,
+      mountain: 0.25,
+    },
   },
   {
     type: 'camp',
@@ -119,6 +135,14 @@ const SITE_TEMPLATES = [
     ],
     reportTitles: ['营帐之间的警戒号角', '林地深处的部族火光'],
     effects: { woodOutputMultiplier: 0.08 },
+    terrainWeights: {
+      forest: 5,
+      plains: 3,
+      hills: 2,
+      waste: 1,
+      desert: 0.5,
+      mountain: 0.5,
+    },
   },
   {
     type: 'city',
@@ -134,6 +158,14 @@ const SITE_TEMPLATES = [
     ],
     reportTitles: ['城墙上的陌生旗帜', '石门后响起的号令'],
     effects: { foodOutputMultiplier: 0.06, knowledgeOutputMultiplier: 0.03 },
+    terrainWeights: {
+      plains: 5,
+      forest: 1,
+      hills: 2,
+      desert: 0.5,
+      waste: 0.5,
+      mountain: 0.25,
+    },
   },
   {
     type: 'ruins',
@@ -149,6 +181,14 @@ const SITE_TEMPLATES = [
     ],
     reportTitles: ['断柱间的守望者', '沉默废墟中的兵影'],
     effects: { knowledgeOutputMultiplier: 0.08 },
+    terrainWeights: {
+      hills: 5,
+      waste: 4,
+      desert: 3,
+      mountain: 3,
+      plains: 1,
+      forest: 1,
+    },
   },
 ];
 
@@ -1116,21 +1156,46 @@ function getOwnedSiteChance(distance, neutralSiteStreak = 0) {
   return Math.min(1, base + streak * 0.12);
 }
 
-function pickTemplateByDistance(distance, neutralSiteStreak = 0, randomSource = Math.random) {
-  const neutralPool = distance <= 1
-    ? [SITE_TEMPLATES[0], SITE_TEMPLATES[1], SITE_TEMPLATES[1]]
-    : distance === 2
-      ? [SITE_TEMPLATES[1], SITE_TEMPLATES[1], SITE_TEMPLATES[0]]
-      : [SITE_TEMPLATES[1], SITE_TEMPLATES[0]];
+function getTemplateDistanceWeight(template, distance) {
+  if (template.type === 'outpost') return distance <= 2 ? 3 : 1.5;
+  if (template.type === 'town') return distance <= 1 ? 1.5 : distance <= 4 ? 3 : 2;
+  if (template.type === 'camp') return distance <= 1 ? 2.5 : distance <= 4 ? 3 : 2;
+  if (template.type === 'city') return distance <= 1 ? 0.5 : distance <= 3 ? 2.5 : 3.5;
+  if (template.type === 'ruins') return distance <= 1 ? 0.25 : distance <= 3 ? 2.5 : 4;
+  return 1;
+}
+
+function getTemplateTerrainWeight(template, terrain) {
+  const weights = template.terrainWeights || {};
+  return Math.max(0.1, Number(weights[terrain]) || 0.1);
+}
+
+function pickWeightedTemplate(pool, terrain, distance, randomSource = Math.random) {
+  const weighted = pool.map((template) => ({
+    template,
+    weight: getTemplateTerrainWeight(template, terrain) * getTemplateDistanceWeight(template, distance),
+  }));
+  const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+  let cursor = rollUnit(randomSource) * totalWeight;
+  for (const item of weighted) {
+    cursor -= item.weight;
+    if (cursor <= 0) return item.template;
+  }
+  return weighted.at(-1)?.template || pool[0];
+}
+
+function pickTemplateForScoutSite(options = {}) {
+  const distance = Math.max(1, toInteger(options.distance, 1));
+  const terrain = typeof options.terrain === 'string' && options.terrain ? options.terrain : 'plains';
+  const neutralSiteStreak = Math.max(0, toInteger(options.neutralSiteStreak, 0));
+  const randomSource = options.randomSource || Math.random;
+  const neutralPool = [SITE_TEMPLATES[0], SITE_TEMPLATES[1]];
   const ownedPool = distance <= 1
     ? [SITE_TEMPLATES[2]]
-    : distance === 2
-      ? [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[4]]
-      : [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[3], SITE_TEMPLATES[4], SITE_TEMPLATES[4]];
+    : [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[4]];
   const isOwned = rollUnit(randomSource) < getOwnedSiteChance(distance, neutralSiteStreak);
   const pool = isOwned ? ownedPool : neutralPool;
-  const index = Math.min(pool.length - 1, Math.floor(rollUnit(randomSource) * pool.length));
-  return pool[index];
+  return pickWeightedTemplate(pool, terrain, distance, randomSource);
 }
 
 function getSiteEffects(template, distance) {
@@ -1152,7 +1217,14 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
   const distance = Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, x, y)));
   const originName = mission.originName || '出发城市';
   const discoveredCount = (gameState.territories || []).length;
-  const template = pickTemplateByDistance(distance, gameState.scoutState?.neutralSiteStreak || 0, randomSource);
+  const terrain = mission.siteTerrain
+    || WorldMapService.chooseTerrain(WorldMapService.ensureWorldMap(gameState, now).seed, x, y);
+  const template = pickTemplateForScoutSite({
+    terrain,
+    distance,
+    neutralSiteStreak: gameState.scoutState?.neutralSiteStreak || 0,
+    randomSource,
+  });
   const seed = Math.abs(x * 31 + y * 17 + discoveredCount * 13 + Object.keys(DIRECTIONS).indexOf(direction));
   const naturalName = pickText(template.naturalNames, seed);
   const title = pickText(template.reportTitles, seed + 1);
@@ -1303,6 +1375,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
 
   mission.siteX = siteCoord.q;
   mission.siteY = siteCoord.r;
+  mission.siteTerrain = siteCoord.terrain;
   mission.scoutDistance = Math.max(
     1,
     getRelativeDistance(toInteger(mission.originX, 0), toInteger(mission.originY, 0), siteCoord.q, siteCoord.r),
