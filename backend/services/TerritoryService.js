@@ -825,9 +825,27 @@ function getScoutedAreaTileIdSet(gameState) {
 }
 
 function hasSiteSpacing(gameState, x, y) {
-  return !(gameState.territories || []).some((territory) => (
-    getRelativeDistance(territory.x, territory.y, x, y) < SCOUT_SITE_MIN_DISTANCE
-  ));
+  return getSiteSpacingProfile(gameState, x, y).valid;
+}
+
+function getNearestSiteDistance(gameState, x, y) {
+  const distances = (gameState.territories || [])
+    .filter((territory) => Number.isFinite(Number(territory?.x)) && Number.isFinite(Number(territory?.y)))
+    .map((territory) => getRelativeDistance(territory.x, territory.y, x, y));
+  if (!distances.length) return MAX_SCOUT_DISTANCE;
+  return Math.min(...distances);
+}
+
+function getSiteSpacingProfile(gameState, x, y) {
+  const nearestDistance = getNearestSiteDistance(gameState, x, y);
+  const valid = nearestDistance >= SCOUT_SITE_MIN_DISTANCE;
+  return {
+    valid,
+    nearestDistance,
+    score: valid
+      ? Math.min(20, Math.max(0, nearestDistance - SCOUT_SITE_MIN_DISTANCE + 1) * 5)
+      : -100,
+  };
 }
 
 function getScoutResolvedCoordinate(mission) {
@@ -1080,7 +1098,8 @@ function scoreScoutSiteCandidate(gameState, mission, coord, seed) {
   const r = toInteger(coord.r, 0);
   if (getScoutCoordinateRecord(gameState, q, r)) return null;
   if (!WorldMapService.canPlaceSiteOnTerrain(seed, q, r)) return null;
-  if (!hasSiteSpacing(gameState, q, r)) return null;
+  const spacing = getSiteSpacingProfile(gameState, q, r);
+  if (!spacing.valid) return null;
   const terrain = WorldMapService.chooseTerrain(seed, q, r);
   const originX = toInteger(mission.originX, 0);
   const originY = toInteger(mission.originY, 0);
@@ -1097,11 +1116,14 @@ function scoreScoutSiteCandidate(gameState, mission, coord, seed) {
     r,
     terrain,
     distance,
+    nearestSiteDistance: spacing.nearestDistance,
+    spacingScore: spacing.score,
     score:
       terrainScore * 10
       + Math.min(distance, targetDistance + 2) * 2
       + targetCloseness * 5
       + directionProgress * 8
+      + spacing.score
       + stableNoise,
   };
 }

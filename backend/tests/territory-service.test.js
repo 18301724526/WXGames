@@ -404,6 +404,36 @@ test('scout site outcome keeps cities separated inside a revealed area', () => {
   assert.deepEqual({ x: claim.site.x, y: claim.site.y }, { x: 9, y: 3 });
 });
 
+test('scout site candidate scoring prefers less crowded legal tiles', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addDiscoveredTribeSite(state, { id: 'existing_spacing_anchor', x: 5, y: 0 });
+  pushReadyScoutMission(state, {
+    id: 'scout_spacing_score',
+    direction: 'e',
+    targetX: 8,
+    targetY: 0,
+    scoutDistance: 8,
+    now,
+    revealArea: [
+      { q: 8, r: 0, step: 1, kind: 'main', tileId: 'tile_8_0', revealed: true },
+      { q: 9, r: 0, step: 1, kind: 'branch', tileId: 'tile_9_0', revealed: true },
+    ],
+  });
+  WorldMapService.revealScoutArea(state, state.warMissions.at(-1).revealArea, now);
+
+  assert.equal(WorldMapService.chooseTerrain(state.worldMap.seed, 8, 0), 'plains');
+  assert.equal(WorldMapService.chooseTerrain(state.worldMap.seed, 9, 0), 'plains');
+
+  const claim = TerritoryService.claimScout(state, 'scout_spacing_score', now, createSequenceRandom([0.1, 0.9, 0.5]));
+
+  assert.equal(claim.success, true);
+  assert.ok(claim.site);
+  assert.deepEqual({ x: claim.site.x, y: claim.site.y }, { x: 9, y: 0 });
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_8_0').siteId, null);
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_9_0').siteId, claim.site.id);
+});
+
 test('directional scout area ignores legacy empty target when another revealed tile can host a site', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
