@@ -38,14 +38,17 @@
         const requestedTab = viewOptions.requestedTab || viewOptions.activeTab || state?.currentTab || 'resources';
         const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles)
           && state.territoryState.worldMap.tiles.length > 0;
-        const canUseMapHome = hasTiles;
+        const canUseMapHome = true;
+        const requestedMilitaryView = viewOptions.militaryView || state?.militaryView || 'army';
+        const militaryMapRequested = requestedTab === 'military'
+          && (viewOptions.forceMapHome || viewOptions.isMapHome || requestedMilitaryView === 'world');
         const shouldUseMapHome = canUseMapHome
           && viewOptions.allowDefaultMapHome !== false
-          && (viewOptions.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
+          && (viewOptions.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory' || militaryMapRequested);
         return {
           activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
           requestedTab,
-          militaryView: shouldUseMapHome ? 'world' : (viewOptions.militaryView || state?.militaryView || 'army'),
+          militaryView: shouldUseMapHome ? 'world' : requestedMilitaryView,
           isMapHome: Boolean(shouldUseMapHome),
           canUseMapHome,
         };

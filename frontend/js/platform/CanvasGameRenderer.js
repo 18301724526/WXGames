@@ -8201,7 +8201,17 @@
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
       const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
-      if (!tileMapView?.tiles?.length) return false;
+      if (!tileMapView?.tiles?.length) {
+        if (Array.isArray(territoryState.territories) && territoryState.territories.length > 0) {
+          this.renderMilitaryWorldView(state, layout.map.x, layout.map.y, layout.map.width, layout.map.height, {
+            ...options,
+            isMapHome: true,
+          });
+          return true;
+        }
+        this.renderMapHomeEmptyWorld(layout, topBarBottom, options);
+        return true;
+      }
       if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
       const offsetX = Number(this.viewportOffsetX) || 0;
       const offsetY = Number(this.viewportOffsetY) || 0;
@@ -8224,6 +8234,64 @@
       const resetY = Math.max(layout.map.y + 10, topBarBottom + 10);
       this.drawButton(resetX, resetY, resetW, resetH, '回到本城', { size: 11, radius: 8 });
       this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
+      return true;
+    }
+
+    renderMapHomeEmptyWorld(layout = {}, topBarBottom = 84, options = {}) {
+      const map = layout.map || { x: 0, y: topBarBottom, width: this.width, height: Math.max(160, this.height - topBarBottom - 64) };
+      if (this.ctx) {
+        this.ctx.fillStyle = this.createGradient(
+          map.x,
+          map.y,
+          map.x,
+          map.y + map.height,
+          [
+            [0, '#202920'],
+            [0.55, '#18251f'],
+            [1, '#111816'],
+          ],
+          '#18251f',
+        );
+        this.ctx.fillRect(map.x, map.y, map.width, map.height);
+        this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.08)';
+        this.ctx.lineWidth = 1;
+        const grid = 34;
+        for (let x = map.x - (map.x % grid); x < map.x + map.width; x += grid) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(x, map.y);
+          this.ctx.lineTo(x, map.y + map.height);
+          this.ctx.stroke();
+        }
+        for (let y = map.y - (map.y % grid); y < map.y + map.height; y += grid) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(map.x, y);
+          this.ctx.lineTo(map.x + map.width, y);
+          this.ctx.stroke();
+        }
+      }
+      const message = options.loading?.message || '\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe';
+      const panelWidth = Math.min(260, map.width - 36);
+      const panelHeight = 86;
+      const x = map.x + (map.width - panelWidth) / 2;
+      const y = map.y + Math.max(76, map.height * 0.36 - panelHeight / 2);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(20, 24, 18, 0.82)',
+        stroke: 'rgba(255, 226, 177, 0.18)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.05)',
+      });
+      this.drawText(message, x + panelWidth / 2, y + 24, {
+        size: 14,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+      this.drawText('\u5730\u56fe\u6570\u636e\u540c\u6b65\u540e\u4f1a\u81ea\u52a8\u663e\u793a', x + panelWidth / 2, y + 52, {
+        size: 11,
+        color: '#cbbd96',
+        align: 'center',
+      });
+      this.addHitTarget({ x: map.x, y: map.y, width: map.width, height: map.height }, { type: 'blockCanvasModal' });
       return true;
     }
 
@@ -8470,7 +8538,7 @@
         { id: 'military', label: '军事', icon: 'assets/art/icon-soldier-cutout.webp', action: { type: 'openCommandPanel', panel: 'military' } },
         { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
         { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
-        { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'dock' } },
+        { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
         { id: 'settings', label: '设置', glyph: '⚙', action: { type: 'openSettings' } },
       ];
       const contentX = layout.contentX;

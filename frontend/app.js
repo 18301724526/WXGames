@@ -16,8 +16,8 @@ const DEFAULT_STATE = {
   gameDay: 1,
   totalBuildings: 0,
   eraProgress: { percentage: 0, canAdvance: false, conditions: [] },
-  currentTab: 'resources',
-  militaryView: 'army',
+  currentTab: 'military',
+  militaryView: 'world',
   techs: {},
   eventQueue: [],
   eventHistory: [],
@@ -79,23 +79,11 @@ class H5GameHost extends CanvasGameAppBase {
       },
     });
     this.stateManager = new constructors.GameStateManager(this.state, { buildingState: this.buildingState });
-    this.tutorialRenderer.onSoftGuide = (message) => this.updateAdvisor({ message });
-    this.tutorialController = new constructors.TutorialController({
-      api: this.gameAPI,
-      renderer: this.tutorialRenderer,
-      getTarget: (key) => this.getTutorialTarget(key),
-      getCurrentTab: () => this.state.currentTab,
-      isEventModalOpen: () => this.eventController?.isOpen?.() || this.canvasShell?.activeEventId || false,
-      getState: () => this.state,
-      storage: this.tutorialStorage,
-      startDelayMs: this.config?.TUTORIAL_START_DELAY_MS,
-      scheduler: this.scheduler,
-    });
     this.eventController = new constructors.EventController({
       api: this.gameAPI,
       getState: () => this.state,
       onStateApplied: (result) => this.applyApiState(result),
-      onTutorialUpdated: (tutorial) => this.tutorialController.notifySpecialEventClaimed(tutorial),
+      onTutorialUpdated: () => {},
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
       formatReward: (reward) => this.presenter.formatEventReward(reward),
@@ -133,7 +121,6 @@ class H5GameHost extends CanvasGameAppBase {
       previewEnabled: true,
       inputEnabled: true,
     });
-    this.tutorialRenderer?.setCanvasShell?.(this.canvasShell);
     const onCanvasShellReady = this.onCanvasShellReady;
     this.onCanvasShellReady = null;
     if (typeof onCanvasShellReady === 'function') onCanvasShellReady();

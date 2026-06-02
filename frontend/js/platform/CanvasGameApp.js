@@ -1,4 +1,4 @@
-(function (global) {
+﻿(function (global) {
   var WorldMapRuntimeCoordinatorBase = global.WorldMapRuntimeCoordinator;
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
     WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
@@ -173,11 +173,7 @@
         awaitAsync: true,
         log: (message) => this.log(message),
       }) : null);
-      const GuideControllerCtor = global.CanvasGuideController || (typeof require === 'function' ? require('./CanvasGuideController') : null);
-      this.guideController = options.guideController || (GuideControllerCtor ? new GuideControllerCtor({
-        host: this,
-        actionDispatcher: this.actionDispatcher,
-      }) : null);
+      this.guideController = options.guideController || null;
       this.timer = null;
       this.tapDisposer = null;
       this.dragDisposer = null;
@@ -274,7 +270,6 @@
       this.mapHomeActive = syncedHomeView.isMapHome;
       const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
       this.tutorial = nextTutorial;
-      this.tutorialController?.setState?.(nextTutorial);
       this.updateSyncInterval();
       this.hasServerState = true;
       if (this.loading.visible || this.canvasShell?.loading?.visible) {
@@ -285,8 +280,6 @@
     }
 
     getSyncInterval() {
-      const step = this.tutorialController?.state?.currentStep ?? this.tutorial?.currentStep;
-      if (step === 8) return this.config?.TUTORIAL_WAIT_SYNC_INTERVAL_MS || 500;
       return this.config?.SYNC_INTERVAL_MS || this.syncIntervalMs;
     }
 
@@ -351,35 +344,24 @@
     }
 
     canAdvanceEraByTutorial() {
-      return this.presenter?.canAdvanceEraByTutorial?.(this.state, this.tutorialController?.state || this.tutorial || {}) !== false;
+      return true;
     }
 
     canAdvanceEraNow(progress = this.state?.eraProgress) {
       const view = this.presenter?.buildCivilizationViewState?.(
         { ...this.state, eraProgress: progress },
-        this.tutorialController?.state || this.tutorial || {},
-        { canOpenCivilizationTab: !this.tutorialController || this.tutorialController.canOpenTab?.('civilization') !== false },
+        this.tutorial || {},
+        { canOpenCivilizationTab: true },
       );
       return Boolean(view?.advanceButton?.canAdvance);
     }
 
     hasActiveTutorialGuideHighlight() {
-      const tutorial = this.tutorialController?.state || this.tutorial || {};
-      const currentStep = Number(tutorial.currentStep) || 0;
-      if (tutorial.completed || currentStep <= 0) return false;
-      const isSoftStep = typeof this.tutorialController?.isSoftGuideStep === 'function'
-        ? this.tutorialController.isSoftGuideStep()
-        : currentStep === 8;
-      if (isSoftStep) return false;
-      const hasVisibleGuideTask = typeof this.tutorialController?.hasVisibleGuideTask === 'function'
-        ? this.tutorialController.hasVisibleGuideTask()
-        : false;
-      return !hasVisibleGuideTask;
+      return false;
     }
 
     render() {
       this.renderMilitaryView();
-      this.tutorialController?.render?.();
       this.renderSoftGuide({ skipSurface: true });
       this.maybeShowNamingPrompt();
       this.renderCanvasSurface();
@@ -460,7 +442,7 @@
         territoryUiState: this.territoryUiState,
         ...(this.battleScene ? { battleScene: this.battleScene } : {}),
         naming: this.naming,
-        tutorialHighlight: this.tutorialHighlight,
+        tutorialHighlight: null,
         loading: this.loading,
         network: this.networkState,
       });
@@ -616,14 +598,17 @@
       }
       const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
       const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
-      const canUseMapHome = hasTiles;
+      const canUseMapHome = true;
+      const requestedMilitaryView = options.militaryView || state?.militaryView || 'army';
+      const militaryMapRequested = requestedTab === 'military'
+        && (options.forceMapHome || options.isMapHome || requestedMilitaryView === 'world');
       const shouldUseMapHome = canUseMapHome
         && options.allowDefaultMapHome !== false
-        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
+        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory' || militaryMapRequested);
       return {
         activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
         requestedTab,
-        militaryView: shouldUseMapHome ? 'world' : (options.militaryView || state?.militaryView || 'army'),
+        militaryView: shouldUseMapHome ? 'world' : requestedMilitaryView,
         isMapHome: Boolean(shouldUseMapHome),
         canUseMapHome,
       };
@@ -1189,6 +1174,7 @@
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.activeCommandPanel = '';
+      this.rewardReveal = null;
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
@@ -1303,7 +1289,7 @@
       if (!this.naming.visible || typeof this.runtime.requestTextInput !== 'function') return;
       const view = this.naming.view || {};
       const value = await this.runtime.requestTextInput({
-        title: view.title || '命名',
+        title: view.title || '鍛藉悕',
         message: view.message || '',
         placeholder: view.placeholder || '',
         value: this.naming.inputValue || '',
@@ -1332,9 +1318,9 @@
         this.closeNaming();
         this.applyApiState(result);
         this.showFloatingText(result.message);
-        this.log(`成功：${result.message || ''}`);
+        this.log(`鎴愬姛锟?{result.message || ''}`);
       } catch (error) {
-        this.log(`失败：${error.payload?.message || error.message}`);
+        this.log(`澶辫触锟?{error.payload?.message || error.message}`);
       } finally {
         this.naming.submitting = false;
         this.renderCanvasSurface(this.state?.currentTab);
@@ -1383,7 +1369,7 @@
         if (data) this.applyState(data);
         return data;
       } catch (error) {
-        this.log(error.payload?.message || error.message || '操作失败');
+        this.log(error.payload?.message || error.message || '鎿嶄綔澶辫触');
         return null;
       }
     }
@@ -1398,11 +1384,11 @@
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
         if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
         if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-        this.showFloatingText(result.message || '寻访完成');
-        this.log(result.message || '寻访完成');
+        this.showFloatingText(result.message || '瀵昏瀹屾垚');
+        this.log(result.message || '瀵昏瀹屾垚');
         return true;
       } catch (error) {
-        this.log(`寻访失败：${error.payload?.message || error.message}`);
+        this.log(`瀵昏澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1418,11 +1404,11 @@
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
         if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
         if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-        this.showFloatingText(result.message || '名人已加入');
-        this.log(result.message || '名人已加入');
+        this.showFloatingText(result.message || 'Famous person accepted');
+        this.log(result.message || 'Famous person accepted');
         return true;
       } catch (error) {
-        this.log(`接纳失败：${error.payload?.message || error.message}`);
+        this.log(`鎺ョ撼澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1436,11 +1422,11 @@
         this.selectedFamousPersonId = '';
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
         if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-        this.showFloatingText(result.message || '已放弃候选');
-        this.log(result.message || '已放弃候选');
+        this.showFloatingText(result.message || 'Candidate dismissed');
+        this.log(result.message || 'Candidate dismissed');
         return true;
       } catch (error) {
-        this.log(`放弃失败：${error.payload?.message || error.message}`);
+        this.log(`鏀惧純澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1454,11 +1440,11 @@
         if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
         if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
         this.selectedFamousPersonId = personId;
-        this.showFloatingText(result.message || '属性已提升');
-        this.log(result.message || '属性已提升');
+        this.showFloatingText(result.message || '灞炴€у凡鎻愬崌');
+        this.log(result.message || '灞炴€у凡鎻愬崌');
         return true;
       } catch (error) {
-        this.log(`加点失败：${error.payload?.message || error.message}`);
+        this.log(`鍔犵偣澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1493,20 +1479,15 @@
     async handleBuildingSuccess(result, action, buildingId) {
       this.applyApiState(result);
       if (buildingId === 'farm' && action === 'build') {
-        this.tutorialController?.notifyFarmBuilt?.(result.tutorial);
-        this.showFloatingText('农田建成！');
+        this.showFloatingText('Farm built');
       } else if (buildingId === 'house' && action === 'build') {
-        this.tutorialController?.notifyHouseBuilt?.(result.tutorial);
-        if (!this.canvasShell?.refreshCurrentGuideHighlight?.()) this.renderSoftGuide();
-        this.showFloatingText('民居建成！');
+        this.showFloatingText('House built');
       } else if (buildingId === 'lumbermill' && action === 'build') {
-        this.tutorialController?.notifyLumbermillBuilt?.(result.tutorial);
-        this.showFloatingText('伐木场建成！');
+        this.showFloatingText('Lumbermill built');
       } else {
-        this.showFloatingText(action === 'upgrade' ? '升级成功！' : '建造成功！');
+        this.showFloatingText(action === 'upgrade' ? 'Upgrade success' : 'Build success');
       }
-      this.continueCurrentMainTaskTarget();
-      this.log(`成功：${result.message || ''}`);
+      this.log(`Success: ${result.message || ''}`);
     }
 
     async buildBuilding(buildingId) {
@@ -1532,31 +1513,29 @@
         await this.handleBuildingSuccess(result, action, buildingId);
         return true;
       } catch (error) {
-        this.log(`澶辫触锛?{error.payload?.message || error.message}`);
+        this.log(`Building action failed: ${error.payload?.message || error.message}`);
         return false;
       }
     }
 
     async assignJob(job, delta) {
       if (!this.token && this.authStorage) {
-        this.log('请先登录');
+        this.log('璇峰厛鐧诲綍');
         return false;
       }
       try {
         const result = await this.getGameApi().assignJob(job, delta);
         if (result?.success === false) {
-          this.log(result.message || '人口分配失败');
+          this.log(result.message || '浜哄彛鍒嗛厤澶辫触');
           const data = await this.getGameApi().getState?.();
           if (data?.gameState) this.applyApiState(data);
           return false;
         }
         this.applyApiState(result);
-        if (job === 'craftsman' && delta > 0) this.tutorialController?.notifyCraftsmanAssigned?.(result.tutorial);
-        this.continueCurrentMainTaskTarget();
-        this.log(`人口分配 ${delta > 0 ? '+' : ''}${delta} ${job}`);
+        this.log(`浜哄彛鍒嗛厤 ${delta > 0 ? '+' : ''}${delta} ${job}`);
         return true;
       } catch (error) {
-        this.log(`人口分配失败：${error.payload?.message || error.message}`);
+        this.log(`浜哄彛鍒嗛厤澶辫触锟?{error.payload?.message || error.message}`);
         try {
           const data = await this.getGameApi().getState?.();
           if (data?.gameState) this.applyApiState(data);
@@ -1594,11 +1573,11 @@
         if (this.canvasShell && 'showTalentPolicy' in this.canvasShell) {
           this.canvasShell.showTalentPolicy = false;
         }
-        this.showFloatingText(result.message || '方针已应用');
-        this.log(result.message || '方针已应用');
+        this.showFloatingText(result.message || 'Policy applied');
+        this.log(result.message || 'Policy applied');
         return true;
       } catch (error) {
-        this.log(`方针失败：${error.payload?.message || error.message}`);
+        this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1612,11 +1591,11 @@
         if (this.canvasShell && 'showTalentPolicy' in this.canvasShell) {
           this.canvasShell.showTalentPolicy = false;
         }
-        this.showFloatingText(result.message || '方针已应用');
-        this.log(result.message || '方针已应用');
+        this.showFloatingText(result.message || 'Policy applied');
+        this.log(result.message || 'Policy applied');
         return true;
       } catch (error) {
-        this.log(`方针失败：${error.payload?.message || error.message}`);
+        this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1626,11 +1605,11 @@
       try {
         const result = await this.getGameApi().saveTalentPolicy(this.getTalentPolicyDraft());
         this.applyApiState(result);
-        this.showFloatingText(result.message || '方针已保存');
-        this.log(result.message || '方针已保存');
+        this.showFloatingText(result.message || 'Policy saved');
+        this.log(result.message || 'Policy saved');
         return true;
       } catch (error) {
-        this.log(`保存失败：${error.payload?.message || error.message}`);
+        this.log(`淇濆瓨澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1641,11 +1620,11 @@
       try {
         const result = await this.getGameApi().deleteTalentPolicy(policyId);
         this.applyApiState(result);
-        this.showFloatingText(result.message || '方针已删除');
-        this.log(result.message || '方针已删除');
+        this.showFloatingText(result.message || 'Policy deleted');
+        this.log(result.message || 'Policy deleted');
         return true;
       } catch (error) {
-        this.log(`删除失败：${error.payload?.message || error.message}`);
+        this.log(`鍒犻櫎澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1653,20 +1632,18 @@
 
     async advanceEra() {
       if (!this.canAdvanceEraNow()) {
-        this.log(this.state?.isCapitalCity === false ? '只有主城可以推动文明进阶' : this.canAdvanceEraByTutorial() ? '条件不足，无法进阶' : '引导未解锁，先完成当前引导');
+        this.log(this.state?.isCapitalCity === false ? 'Capital only' : this.canAdvanceEraByTutorial() ? 'Requirements not met' : 'Action locked');
         this.renderMilitary();
         return false;
       }
       try {
         const result = await this.getGameApi().advanceEra();
         this.applyApiState(result);
-        this.tutorialController?.notifyEraAdvanced?.(result.tutorial);
-        this.continueCurrentMainTaskTarget();
-        this.log(`进入新阶段：${result.message || this.state.currentEraName || ''}`);
-        this.showFloatingText(`进入${this.state.currentEraName || '新阶段'}`);
+        this.log(`杩涘叆鏂伴樁娈碉細${result.message || this.state.currentEraName || ''}`);
+        this.showFloatingText(Entered );
         return true;
       } catch (error) {
-        this.log(`失败：${error.payload?.message || error.message}`);
+        this.log(`澶辫触锟?{error.payload?.message || error.message}`);
         return false;
       } finally {
         this.renderMilitary();
@@ -1690,11 +1667,11 @@
         }
         if (this.canvasShell) this.canvasShell.selectedTechId = techId;
         if (this.canvasShell) this.canvasShell.techDetailOpen = false;
-        this.showFloatingText(result.message || '科技已研究');
-        this.log(result.message || '科技已研究');
+        this.showFloatingText(result.message || 'Research completed');
+        this.log(result.message || 'Research completed');
         return true;
       } catch (error) {
-        this.log(`研究失败：${error.payload?.message || error.message}`);
+        this.log(`鐮旂┒澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1703,6 +1680,7 @@
     switchTab(tab) {
       const previousTab = this.getActiveTab();
       const previousBuildingOffset = this.buildingOffset;
+      this.resetForCanvasTabSwitch();
       const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
       this.activeTab = navigation?.activeTab || tab || 'resources';
       const preferredMilitaryView = this.getPreferredMilitaryView(tab);
@@ -1738,7 +1716,6 @@
       this.showTalentPolicy = false;
       this.renderMilitaryView();
       this.renderCanvasSurface(this.state.currentTab);
-      this.tutorialController?.render?.();
       if (this.skipNextSoftGuideRender) {
         this.skipNextSoftGuideRender = false;
         if (this.activeGuideNavigation?.target === 'scout-action-first') {
@@ -1757,7 +1734,7 @@
         ? await onTabClicked.call(this.tutorialController, tabId).catch(() => false)
         : true;
       if (!allowed) {
-        this.log('请先完成当前引导步骤');
+        this.log('璇峰厛瀹屾垚褰撳墠寮曞姝ラ');
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -1766,20 +1743,15 @@
     }
 
     async claimGuideTaskReward(taskId) {
-      return this.claimTaskReward(taskId, 'main', { legacyGuideTask: true });
+      return false;
     }
 
     async claimTaskReward(taskId, category = 'main', options = {}) {
       if (!taskId) return false;
       try {
         const api = this.getGameApi();
-        const result = options.legacyGuideTask && api.claimGuideTaskReward
-          ? await api.claimGuideTaskReward(taskId)
-          : await api.claimTaskReward(taskId, category || 'main');
+        const result = await api.claimTaskReward(taskId, category || 'main');
         this.applyApiState(result);
-        if (!this.moveToCurrentMainTaskTarget()) {
-          if (!this.canvasShell?.refreshCurrentGuideHighlight?.()) this.renderSoftGuide();
-        }
         if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
           this.rewardReveal = {
             ...result.rewardReveal,
@@ -1787,40 +1759,22 @@
           };
           this.renderCanvasSurface(this.state?.currentTab);
         }
-        this.showFloatingText(result.rewardText || result.message || '奖励已领取');
-        this.log(`奖励：${result.message || ''}`);
+        this.showFloatingText(result.rewardText || result.message || 'Reward claimed');
+        this.log(`濂栧姳锟?{result.message || ''}`);
         return true;
       } catch (error) {
-        this.log(`失败：${error.payload?.message || error.message}`);
+        this.log(`澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
     }
 
     moveToCurrentMainTaskTarget() {
-      const guideTasks = Array.isArray(this.state?.guideTasks?.tasks) ? this.state.guideTasks.tasks : [];
-      const taskCenterTasks = Array.isArray(this.state?.taskCenter?.categories?.main?.tasks)
-        ? this.state.taskCenter.categories.main.tasks
-        : [];
-      const tasks = guideTasks.length ? guideTasks : taskCenterTasks;
-      const task = tasks.find((item) => item && item.status !== 'completed' && (item.target || item.action?.target));
-      const target = task?.target || task?.action?.target;
-      if (!target) return false;
-      return this.goToGuideTaskTarget({
-        ...(task.action || {}),
-        taskId: task.id,
-        target,
-      });
+      return false;
     }
 
     continueCurrentMainTaskTarget() {
-      if (this.moveToCurrentMainTaskTarget()) return true;
-      const guide = this.state?.softGuide || null;
-      if (!guide || guide.mode !== 'strong') return false;
-      if (!['guide-task-claim', 'task-center-main-claim'].includes(guide.target)) return false;
-      if (this.canvasShell?.refreshCurrentGuideHighlight?.()) return true;
-      this.renderSoftGuide();
-      return true;
+      return false;
     }
 
     getPreferredMilitaryView(tabId) {
@@ -1832,8 +1786,8 @@
       if (target === 'scout-action-first') return 'scout';
       if (target === 'tab-territory') return 'world';
       if (target !== 'tab-military') return null;
-      if (/侦察|探索/.test(message)) return 'scout';
-      if (/领土|疆域|世界|占领/.test(message)) return 'world';
+      if (/渚﹀療|鎺㈢储/.test(message)) return 'scout';
+      if (/棰嗗湡|鐤嗗煙|涓栫晫|鍗犻/.test(message)) return 'world';
       return null;
     }
 
@@ -1847,12 +1801,20 @@
       }).isMapHome;
       this.state = { ...this.state, militaryView: this.militaryView };
       this.renderMilitaryView();
-      this.tutorialController?.render?.();
       this.renderCanvasSurface(this.state?.currentTab);
       return true;
     }
 
     renderMilitaryView() {
+      if (this.resolveMapHomeViewState(this.state, {
+        requestedTab: this.state?.currentTab || this.activeTab,
+        militaryView: this.state?.militaryView || this.militaryView,
+        forceMapHome: this.mapHomeActive,
+      }).isMapHome) {
+        this.militaryView = 'world';
+        if (this.state) this.state.militaryView = 'world';
+        return;
+      }
       const view = this.presenter?.buildMilitaryNavigationViewState?.(this.state);
       if (view?.activeView) {
         this.militaryView = view.activeView;
@@ -1934,15 +1896,15 @@
     }
 
     hasClaimableMainTask() {
-      return this.guideController?.hasClaimableMainTask?.() || false;
+      return false;
     }
 
     refreshCurrentGuideHighlight() {
-      return this.guideController?.refreshCurrentGuideHighlight?.() || false;
+      return false;
     }
 
     ensureGuideTargetVisible(key) {
-      return this.guideController?.ensureTargetVisible?.(key) || false;
+      return false;
     }
 
     normalizeGuideHighlightRect(target) {
@@ -1964,40 +1926,8 @@
         bottom: Number(rawRect.bottom) || top + height,
       };
     }
-
     showGuideHighlight(target, message, options = {}) {
-      if (this.canvasShell && typeof this.canvasShell.showTutorialHighlight === 'function') {
-        const shown = this.canvasShell.showTutorialHighlight(target, message, { source: options.source || 'guide' });
-        this.tutorialHighlight = this.canvasShell.tutorialHighlight || null;
-        return shown;
-      }
-      const rect = this.normalizeGuideHighlightRect(target);
-      if (!rect) return false;
-      const now = this.runtime?.now?.() || Date.now();
-      const previousRect = this.tutorialHighlight?.rect || rect;
-      this.tutorialHighlight = {
-        rect,
-        message: String(message || '按这里继续主线任务'),
-        transition: {
-          fromRect: previousRect,
-          toRect: rect,
-          startedAt: now,
-          durationMs: 260,
-        },
-        pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
-        source: options.source || 'guide',
-      };
-      if (this.highlightTimer) this.runtime?.clearInterval?.(this.highlightTimer);
-      if (this.runtime?.setInterval) {
-        this.highlightTimer = this.runtime.setInterval(() => {
-          this.renderAnimationFrame(this.state?.currentTab || this.getActiveTab());
-        }, this.getAnimationFrameMs());
-      }
-      if (!options.skipRender) {
-        this.suppressSoftGuideRenderOnce = true;
-        this.render();
-      }
-      return true;
+      return false;
     }
 
     hideGuideHighlight() {
@@ -2021,16 +1951,10 @@
     }
 
     hasGuideControllerHighlight() {
-      return Boolean(this.canvasShell?.tutorialHighlight || this.tutorialHighlight);
+      return false;
     }
-
     goToGuideTaskTarget(action = {}) {
-      this.skipNextSoftGuideRender = true;
-      const target = action.target || action.nextTarget || '';
-      this.activeGuideNavigation = target
-        ? { target, message: String(action.message || '按这里继续主线任务') }
-        : null;
-      return this.guideController?.goToGuideTaskTarget?.(action) || false;
+      return false;
     }
 
     toggleCitySwitcher() {
@@ -2053,11 +1977,11 @@
         this.closeCitySwitcher({ skipRender: true });
         const result = await this.getGameApi().switchCity(cityId);
         this.applyApiState(result);
-        this.showFloatingText(result.message || '城市已切换');
-        this.log(`城市：${result.message || '城市已切换'}`);
+        this.showFloatingText(result.message || 'City switched');
+        this.log(`City: ${result.message || 'City switched'}`);
         return true;
       } catch (error) {
-        this.log(`失败：${error.payload?.message || error.message}`);
+        this.log(`澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -2111,7 +2035,7 @@
         this.renderCanvasSurface(homeView.activeTab);
         return true;
       } catch (error) {
-        this.log(`失败：${error.payload?.message || error.message}`);
+        this.log(`澶辫触锟?{error.payload?.message || error.message}`);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -2192,8 +2116,8 @@
       this.openNaming({
         type: 'city',
         territoryId: prompt.territoryId,
-        title: '为这座城市命名',
-        message: `当前名称：${prompt.currentName || '未命名城市'}`,
+        title: 'Rename city',
+        message: `Current name: ${prompt.currentName || 'Unnamed city'}`,
       });
       return null;
     }
@@ -2201,47 +2125,18 @@
     closeNamingModal() {
       this.closeNaming();
     }
-
     renderSoftGuide(options = {}) {
-      if (this.suppressSoftGuideRenderOnce) {
-        this.suppressSoftGuideRenderOnce = false;
-        return;
-      }
-      const guide = this.state?.softGuide;
-      this.updateAdvisor(guide, { skipSurface: true });
-      const navigation = this.getActiveGuideNavigation();
-      const targetKey = navigation?.target || guide?.target || '';
-      if ((!guide || guide.mode !== 'strong' || !guide.target) && !navigation) {
-        if (!this.hasActiveTutorialGuideHighlight()) this.tutorialRenderer?.hide?.();
-        if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
-        return;
-      }
-      const target = this.getTutorialTarget(targetKey)
-        || this.getTutorialTarget(this.getFallbackGuideTarget(targetKey));
-      const message = navigation?.message || guide?.message;
-      if (target) {
-        if (this.tutorialRenderer?.show) this.tutorialRenderer.show(target, message);
-        else this.showGuideHighlight(target, message, { skipRender: true });
-      }
-      else if (!this.tutorialHighlight && !this.canvasShell?.tutorialHighlight) this.tutorialRenderer?.hide?.();
+      this.updateAdvisor(this.state?.softGuide || null, { skipSurface: true });
+      this.hideGuideHighlight();
       if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
     }
 
     getActiveGuideNavigation() {
-      const navigation = this.activeGuideNavigation;
-      if (!navigation?.target) return null;
-      if (this.hasActiveGuideTaskTarget(navigation.target)) return navigation;
-      this.activeGuideNavigation = null;
       return null;
     }
 
     hasActiveGuideTaskTarget(target) {
-      const guideTasks = this.state?.guideTasks?.tasks || [];
-      const taskCenterTasks = this.state?.taskCenter?.categories?.main?.tasks || [];
-      return [...guideTasks, ...taskCenterTasks].some((task) => {
-        const taskTarget = task?.target || task?.action?.target || task?.action?.nextTarget;
-        return taskTarget === target && task?.status !== 'completed' && !task?.claimed;
-      });
+      return false;
     }
 
     getFallbackGuideTarget(target) {

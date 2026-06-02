@@ -24,7 +24,7 @@ window.mountAuthMethods = function(game, deps = {}) {
   }
 
   async function waitForAuthenticatedAssets() {
-    const message = '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90';
+    const message = '\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe';
     if (typeof game.loadGameAssets === 'function') {
       await game.loadGameAssets({ message, hideWhenDone: false });
       return;
@@ -37,7 +37,7 @@ window.mountAuthMethods = function(game, deps = {}) {
   }
 
   function startAuthenticatedSession() {
-    game.showLoading?.('\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90');
+    game.showLoading?.('\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe');
     showAuthenticatedShell();
     return waitForAuthenticatedAssets()
       .catch((error) => {
@@ -107,7 +107,7 @@ window.mountAuthMethods = function(game, deps = {}) {
         authStorage?.setUsername?.(username);
         persistRememberedCredentials(username, password, rememberPassword);
         if (this.buildingAPI) this.buildingAPI.setToken(data.token);
-        this.showLoading?.('\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90');
+        this.showLoading?.('\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe');
         showAuthenticatedShell();
         await waitForAuthenticatedAssets();
         if (data.gameState) {

@@ -81,10 +81,6 @@
 
     afterHandled(action = {}) {
       if (action.type !== 'switchTab' && action.type !== 'goToGuideTaskTarget') this.render(action);
-      if (action.type === 'openTaskCenter') this.host?.refreshTaskCenterGuideHighlight?.(action);
-      if (action.type === 'openEvent' || action.type === 'closeEvent') {
-        this.getGameHost()?.tutorialController?.render?.();
-      }
       return true;
     }
 
@@ -188,11 +184,16 @@
       return this.finalize(Promise.resolve(result).then((allowed) => {
         if (allowed !== false) {
           const resolvedTab = this.host?.getActiveTab?.() || game?.getActiveTab?.() || '';
-          const nextTab = resolvedTab && resolvedTab !== previousTab ? resolvedTab : (action.tab || resolvedTab || 'resources');
+          const requestedNextTab = action.tab || resolvedTab || 'resources';
+          const nextView = this.host?.resolveMapHomeViewState?.(this.getState(), {
+            requestedTab: requestedNextTab,
+            forceMapHome: requestedNextTab === 'resources' || requestedNextTab === 'territory',
+          });
+          const nextTab = resolvedTab && resolvedTab !== previousTab
+            ? resolvedTab
+            : (nextView?.activeTab || requestedNextTab);
           if (hostCanAnimate) this.host?.startPageTransition?.(previousTab, nextTab, { fromBuildingOffset: previousBuildingOffset });
           this.afterHandled(action);
-          const guide = (this.host?.getGuideState?.() || this.getState())?.softGuide;
-          if (guide?.mode === 'strong' && guide.target) this.host?.refreshCurrentGuideHighlight?.();
         }
         return allowed !== false;
       }));
@@ -352,27 +353,36 @@
     }
 
     handle_goToGuideTaskTarget(action) {
-      const moved = this.host?.goToGuideTaskTarget?.(action);
-      if (moved !== false) this.afterHandled(action);
-      return moved !== false;
+      return false;
     }
 
     handle_openTaskCenter(action) {
-      this.host.showTaskCenter = true;
-      this.host.activeTaskCenterTab = action.tab
+      const tab = action.tab
         || (this.host?.hasClaimableMainTask?.() ? 'main' : this.host.activeTaskCenterTab)
         || 'main';
+      this.host.showTaskCenter = true;
+      this.host.activeTaskCenterTab = tab;
+      const game = this.getGameHost();
+      if (game && game !== this.host) {
+        game.showTaskCenter = true;
+        game.activeTaskCenterTab = tab;
+      }
       this.closePanels(['showTaskCenter']);
       return this.afterHandled(action);
     }
 
     handle_closeTaskCenter(action) {
       this.host.showTaskCenter = false;
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'showTaskCenter' in game) game.showTaskCenter = false;
       return this.afterHandled(action);
     }
 
     handle_switchTaskCenterTab(action) {
-      this.host.activeTaskCenterTab = action.tab || 'main';
+      const tab = action.tab || 'main';
+      this.host.activeTaskCenterTab = tab;
+      const game = this.getGameHost();
+      if (game && game !== this.host) game.activeTaskCenterTab = tab;
       return this.afterHandled(action);
     }
 
@@ -614,7 +624,7 @@
         this.host?.resetLocalViewToResources?.({ skipRender: true });
         const game = this.getGameHost();
         if (game && game !== this.host) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
-        this.render({ ...action, tab: 'resources' });
+        this.render({ ...action, tab: 'military', militaryView: 'world', isMapHome: true });
         return true;
       };
       if (!result || typeof result.then !== 'function') return applyResetView(result);
@@ -921,29 +931,14 @@
           currentTab: game.state.currentTab || nextState.currentTab,
         };
       }
-      if (result?.tutorial) game?.tutorialController?.notifySpecialEventClaimed?.(result.tutorial);
       if (result?.rewardReveal) this.host.rewardReveal = result.rewardReveal;
-      if (!this.host.refreshCurrentGuideHighlight?.()) {
-        const softGuide = (this.host?.getGuideState?.() || this.getState())?.softGuide || null;
-        if (softGuide?.mode === 'strong' && softGuide.target) this.host.renderSoftGuide?.();
-        else if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
-        else this.host.hideTutorialHighlight?.();
-      }
+      if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
+      else this.host.hideTutorialHighlight?.();
       return true;
     }
 
     handle_claimGuideTaskReward(action) {
-      this.host.showTaskCenter = false;
-      const forwarded = this.forward(action);
-      if (forwarded !== undefined) {
-        if (forwarded !== false) this.afterHandled(action);
-        return forwarded !== false;
-      }
-      const game = this.getGameHost();
-      if (typeof game?.claimGuideTaskReward === 'function') {
-        return this.finalize(game.claimGuideTaskReward(action.taskId));
-      }
-      return this.finalize(this.claimTaskRewardDirect(action, true));
+      return false;
     }
 
     handle_claimTaskReward(action) {
@@ -963,12 +958,11 @@
     async claimTaskRewardDirect(action, legacyGuideTask) {
       this.host.showTaskCenter = false;
       const result = await this.runAction(() => {
-        if (legacyGuideTask && this.host.api.claimGuideTaskReward) return this.host.api.claimGuideTaskReward(action.taskId);
-        const claim = this.host.api.claimTaskReward || ((taskId) => this.host.api.claimGuideTaskReward(taskId));
+        const claim = this.host.api.claimTaskReward;
+        if (typeof claim !== 'function') return { success: false };
         return claim.call(this.host.api, action.taskId, action.category || 'main');
       });
       this.host.rewardReveal = result?.rewardReveal || null;
-      this.host.refreshCurrentGuideHighlight?.();
       return true;
     }
 

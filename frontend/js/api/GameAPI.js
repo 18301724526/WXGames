@@ -58,7 +58,6 @@
     dismissFamousPersonCandidate(candidateId) { return this.request('POST', '/game/action', { action: 'dismissFamousPersonCandidate', candidateId }); }
     assignFamousAttributePoint(personId, attribute) { return this.request('POST', '/game/action', { action: 'assignFamousAttributePoint', personId, attribute }); }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
-    claimGuideTaskReward(taskId) { return this.request('POST', '/game/action', { action: 'claimGuideTaskReward', target: taskId }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }

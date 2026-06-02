@@ -1,6 +1,4 @@
 const TutorialService = require('../services/TutorialService');
-const SoftGuideService = require('../services/SoftGuideService');
-const GuideTaskService = require('../services/GuideTaskService');
 const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const TalentPolicyService = require('../services/TalentPolicyService');
@@ -15,14 +13,12 @@ const TerritoryAction = require('../actions/TerritoryAction');
 function buildGameView(gameState, tutorial, gameStateService) {
   const clientState = gameStateService.getClientGameState(gameState);
   const eraProgress = gameStateService.calculateEraProgress(gameState);
-  const guideTasks = GuideTaskService.getGuideTasks(gameState);
   const taskCenter = TaskCenterService.getTaskCenter(gameState);
-  const softGuide = GuideTaskService.getGuide(gameState) || SoftGuideService.getSoftGuide(gameState, eraProgress);
   return {
     gameState: clientState,
     tutorial,
-    softGuide,
-    guideTasks,
+    softGuide: null,
+    guideTasks: { visible: false, tasks: [] },
     taskCenter,
     eraProgress,
   };
@@ -44,9 +40,7 @@ function registerGameRoutes(app, deps) {
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
-    let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-    let eraProgress = gameStateService.calculateEraProgress(gameState);
-    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
@@ -89,23 +83,13 @@ function registerGameRoutes(app, deps) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
 
-    let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-    let eraProgress = gameStateService.calculateEraProgress(gameState);
-    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
 
     const { taskId, category } = req.body || {};
-    const guideTaskCheck = GuideTaskService.validateAction(gameState, 'claimGuideTaskReward', { target: taskId });
-    if (!guideTaskCheck.allowed) {
-      return res.status(403).json({ success: false, error: guideTaskCheck.code, message: guideTaskCheck.message });
-    }
-
     const result = TaskCenterService.claimTask(gameState, taskId, category);
-    gameState.tutorial = tutorial;
-    eraProgress = gameStateService.calculateEraProgress(gameState);
-    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
@@ -123,7 +107,7 @@ function registerGameRoutes(app, deps) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
 
-    let tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
+    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const {
       action,
       target,
@@ -151,48 +135,24 @@ function registerGameRoutes(app, deps) {
     } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
-    if (action === 'tutorialAdvance') {
-      tutorial = TutorialService.manualAdvance(tutorial, step);
-      gameState.tutorial = tutorial;
-      repository.save(gameState);
-      return res.json({ success: true, tutorialStep: tutorial.currentStep, tutorial });
-    }
-
-    let eraProgress = gameStateService.calculateEraProgress(gameState);
-    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    const actionPayload = { target, count, step, eventId, optionId, direction, missionId, cityId, personId, attribute };
-    const expectedGuideAction = GuideTaskService.getExpectedAction(gameState);
-    const tutorialCheck = GuideTaskService.matchesExpectedAction(expectedGuideAction, action, actionPayload)
-      ? { allowed: true }
-      : TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
+    const tutorialCheck = TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
     if (!tutorialCheck.allowed) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
     }
-    const guideTaskCheck = GuideTaskService.validateAction(gameState, action, actionPayload);
-    if (!guideTaskCheck.allowed) {
-      return res.status(403).json({ success: false, error: guideTaskCheck.code, message: guideTaskCheck.message });
-    }
 
-    if (action === 'claimGuideTaskReward') {
-      result = GuideTaskService.claimReward(gameState, target);
-    } else if (action === 'build' || action === 'upgrade') {
+    if (action === 'build' || action === 'upgrade') {
       result = BuildBuildingAction.execute(action, gameState, tutorial, target);
-      tutorial = result.tutorial || tutorial;
     } else if (action === 'advanceEra') {
       result = AdvanceEraAction.execute(gameState, tutorial);
-      tutorial = result.tutorial || tutorial;
     } else if (action === 'claimEvent') {
       result = ClaimEventAction.execute(gameState, tutorial, { eventId, optionId });
-      tutorial = result.tutorial || tutorial;
     } else if (action === 'assign') {
       result = AssignPopulationAction.execute(gameState, tutorial, { target, count });
-      tutorial = result.tutorial || tutorial;
     } else if (action === 'applyTalentPolicy') {
       result = TalentPolicyService.applyPolicy(gameState, tutorial, { policyId, basePolicyId, tiers, policy });
-      tutorial = result.tutorial || tutorial;
     } else if (action === 'saveTalentPolicy') {
       result = TalentPolicyService.saveCustomPolicy(gameState, { policyId, basePolicyId, tiers, policy });
     } else if (action === 'deleteTalentPolicy') {
@@ -210,9 +170,6 @@ function registerGameRoutes(app, deps) {
     } else if (action === 'assignFamousAttributePoint') {
       result = FamousPersonService.assignAttributePoint(gameState, personId || target, attribute);
     }
-    gameState.tutorial = tutorial;
-    eraProgress = gameStateService.calculateEraProgress(gameState);
-    tutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);

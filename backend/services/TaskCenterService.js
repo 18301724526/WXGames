@@ -1,93 +1,53 @@
-const GuideTaskService = require('./GuideTaskService');
-
 const TAB_DEFINITIONS = Object.freeze([
-  { id: 'daily', label: '每日任务', emptyText: '暂无每日任务' },
-  { id: 'main', label: '主线任务', emptyText: '暂无主线任务' },
-  { id: 'season', label: '赛季任务', emptyText: '暂无赛季任务' },
-  { id: 'challenge', label: '挑战任务', emptyText: '暂无挑战任务' },
+  { id: 'daily', label: '每日任务', emptyText: '0.2 任务系统开发中' },
+  { id: 'main', label: '主线任务', emptyText: '0.2 主线系统开发中' },
+  { id: 'season', label: '赛季任务', emptyText: '0.2 赛季系统开发中' },
+  { id: 'challenge', label: '挑战任务', emptyText: '0.2 挑战系统开发中' },
 ]);
 
 function normalizeCategory(category) {
   return TAB_DEFINITIONS.some((tab) => tab.id === category) ? category : 'main';
 }
 
-function buildMainTask(task) {
-  const canClaim = task?.status === 'claimable' && !task?.claimed;
-  return {
-    ...task,
-    category: 'main',
-    source: 'guide',
-    actionLabel: canClaim ? '领取' : task.actionLabel,
-    action: canClaim
-      ? { type: 'claimTaskReward', taskId: task.id, category: 'main' }
-      : task.action,
-  };
-}
-
-function getTaskSortRank(task) {
-  if (task?.status === 'claimable' && !task?.claimed) return 0;
-  if (task?.status === 'active') return 1;
-  if (task?.status === 'completed') return 2;
-  return 3;
-}
-
-function buildCategories(gameState) {
-  const guideMainTasks = GuideTaskService.getMainTasks(gameState);
-  const mainTasks = Array.isArray(guideMainTasks)
-    ? guideMainTasks.map(buildMainTask).sort((a, b) => getTaskSortRank(a) - getTaskSortRank(b))
-    : [];
+function buildCategories() {
   return TAB_DEFINITIONS.reduce((result, tab) => {
     result[tab.id] = {
       id: tab.id,
       label: tab.label,
       emptyText: tab.emptyText,
-      tasks: tab.id === 'main' ? mainTasks : [],
+      tasks: [],
     };
     return result;
   }, {});
 }
 
-function summarize(categories) {
-  const tasks = Object.values(categories)
-    .flatMap((category) => Array.isArray(category.tasks) ? category.tasks : []);
-  return {
-    claimableCount: tasks.filter((task) => task.status === 'claimable' && !task.claimed).length,
-    activeCount: tasks.filter((task) => ['active', 'claimable'].includes(task.status)).length,
-    totalCount: tasks.length,
-  };
-}
-
 function getTaskCenter(gameState, options = {}) {
   const categories = buildCategories(gameState);
-  const summary = summarize(categories);
-  const tabs = TAB_DEFINITIONS.map((tab) => {
-    const tasks = categories[tab.id]?.tasks || [];
-    return {
-      id: tab.id,
-      label: tab.label,
-      badge: tasks.filter((task) => task.status === 'claimable' && !task.claimed).length,
-      count: tasks.length,
-    };
-  });
+  const tabs = TAB_DEFINITIONS.map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+    badge: 0,
+    count: 0,
+  }));
   return {
     visible: true,
     activeTab: normalizeCategory(options.activeTab),
     tabs,
     categories,
-    summary,
+    summary: {
+      claimableCount: 0,
+      activeCount: 0,
+      totalCount: 0,
+    },
   };
 }
 
-function claimTask(gameState, taskId, category = 'main') {
-  const normalizedCategory = normalizeCategory(category);
-  if (normalizedCategory !== 'main') {
-    return {
-      success: false,
-      error: 'TASK_CATEGORY_EMPTY',
-      message: '该分类暂无可领取任务',
-    };
-  }
-  return GuideTaskService.claimReward(gameState, taskId);
+function claimTask() {
+  return {
+    success: false,
+    error: 'TASK_SYSTEM_DISABLED',
+    message: '0.2 task system is under development.',
+  };
 }
 
 module.exports = {

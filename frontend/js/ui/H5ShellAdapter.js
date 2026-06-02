@@ -8,9 +8,6 @@
       const runtimeHost = runtime || {};
       const registry = options.registry || runtimeHost;
       const presenter = options.presenter || registry.UIStatePresenter || null;
-      const tutorialRenderer = registry.TutorialCanvasRenderer
-        ? new registry.TutorialCanvasRenderer()
-        : null;
       const authRuntime = registry.H5AuthRuntimeAdapter?.fromRuntime(runtimeHost);
       const authStorage = registry.H5AuthStorageAdapter?.fromRuntime(runtimeHost);
       const moduleDeps = {
@@ -42,7 +39,6 @@
           GameStateSync: registry.GameStateSync,
           UpdateChecker: registry.UpdateChecker,
           GameStateManager: registry.GameStateManager,
-          TutorialController: registry.TutorialController,
           EventController: registry.EventController,
           BuildingController: registry.BuildingController,
           TerritoryController: registry.TerritoryController,
@@ -52,8 +48,6 @@
         updateRuntime: registry.H5UpdateRuntimeAdapter?.fromRuntime(runtimeHost),
         authRuntime,
         authStorage,
-        tutorialStorage: registry.H5TutorialStorageAdapter?.fromRuntime(runtimeHost),
-        tutorialRenderer,
       });
     }
   }

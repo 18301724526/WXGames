@@ -121,11 +121,7 @@
       this.battleScene = null;
       this.mapHomeActive = false;
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
-      const GuideControllerCtor = global.CanvasGuideController || (typeof require === 'function' ? require('./CanvasGuideController') : null);
-      this.guideController = options.guideController || (GuideControllerCtor ? new GuideControllerCtor({
-        host: this,
-        actionDispatcher: this.actionDispatcher,
-      }) : this.guideController);
+      this.guideController = options.guideController || null;
     }
 
     createRenderer(canvas) {
@@ -277,7 +273,7 @@
         this.loading = {
           visible: true,
           percentage: 0,
-          message: '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90',
+          message: '\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe',
         };
       }
       if (game?.authView) this.applyAuthShell(game.authView);
@@ -658,12 +654,14 @@
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
       this.showCityManagement = false;
+      this.rewardReveal = null;
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
     }
 
     resetLocalViewToResources(options = {}) {
+      const homeView = this.resolveMapHomeViewState(this.lastGame?.state || {}, { requestedTab: 'resources', forceMapHome: true });
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
@@ -691,12 +689,20 @@
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
       const game = this.lastGame;
-      if (game?.state && typeof game.state === 'object') game.state = { ...game.state, currentTab: 'resources' };
-      if (game && 'activeTab' in game) game.activeTab = 'resources';
+      if (game?.state && typeof game.state === 'object') {
+        game.state = {
+          ...game.state,
+          currentTab: homeView.activeTab,
+          militaryView: homeView.militaryView,
+        };
+      }
+      if (game && 'activeTab' in game) game.activeTab = homeView.activeTab;
+      if (game && 'militaryView' in game) game.militaryView = homeView.militaryView;
+      if (game && 'mapHomeActive' in game) game.mapHomeActive = homeView.isMapHome;
       if (!options.skipGame && game?.resetLocalViewToResources) {
         game.resetLocalViewToResources({ skipShell: true, skipRender: true });
       }
-      if (!options.skipRender) this.renderReadOnly(game?.state, 'resources');
+      if (!options.skipRender) this.renderReadOnly(game?.state, homeView.activeTab);
       return true;
     }
 
@@ -732,7 +738,13 @@
 
     switchGuideTab(tabId) {
       if (!tabId) return false;
-      if (this.lastGame?.handleCanvasTabSelection) return this.lastGame.handleCanvasTabSelection(tabId);
+      if (this.lastGame?.handleCanvasTabSelection) {
+        const result = this.lastGame.handleCanvasTabSelection(tabId);
+        if (result !== false && this.lastGame?.state && typeof this.lastGame.state === 'object') {
+          this.lastGame.state.currentTab = tabId;
+        }
+        return result;
+      }
       if (this.onAction) return this.onAction({ type: 'switchTab', tab: tabId, source: 'guideTask' });
       return this.lastGame?.switchTab?.(tabId);
     }
@@ -753,35 +765,35 @@
     }
 
     getTutorialTarget(key) {
-      return this.guideController?.getTargetRect?.(key) || null;
+      return null;
     }
 
     getTutorialTargetWithoutScroll(key) {
-      return this.guideController?.getTargetRectWithoutScroll?.(key) || null;
+      return null;
     }
 
     refreshTaskCenterGuideHighlight(action = {}) {
-      return this.guideController?.refreshTaskCenterGuideHighlight?.(action) || false;
+      return false;
     }
 
     hasClaimableMainTask() {
-      return this.guideController?.hasClaimableMainTask?.() || false;
+      return false;
     }
 
     refreshCurrentGuideHighlight() {
-      return this.guideController?.refreshCurrentGuideHighlight?.() || false;
+      return false;
     }
 
     getTargetTab(key) {
-      return this.guideController?.getTargetTab?.(key) || null;
+      return null;
     }
 
     ensureTutorialTargetVisible(key) {
-      return this.guideController?.ensureTargetVisible?.(key) || false;
+      return false;
     }
 
     goToGuideTaskTarget(action = {}) {
-      return this.guideController?.goToGuideTaskTarget?.(action) || false;
+      return false;
     }
 
     resolveTutorialRect(target) {
@@ -1506,12 +1518,16 @@
       const view = this.resolveMapHomeViewState(state, {
         requestedTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
-        forceMapHome: (
-          Boolean(this.lastGame?.mapHomeActive)
-          || (Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0)
-        ) && (requestedTab === 'resources' || requestedTab === 'military'),
+        forceMapHome: Boolean(this.lastGame?.mapHomeActive)
+          || requestedTab === 'resources'
+          || requestedTab === 'territory',
       });
       this.mapHomeActive = view.isMapHome;
+      if (this.lastGame && 'mapHomeActive' in this.lastGame) this.lastGame.mapHomeActive = view.isMapHome;
+      if (this.lastGame?.state && view.isMapHome) {
+        this.lastGame.state.currentTab = view.activeTab;
+        this.lastGame.state.militaryView = view.militaryView;
+      }
       return view.activeTab;
     }
 
@@ -1524,14 +1540,17 @@
       }
       const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
       const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
-      const canUseMapHome = hasTiles;
+      const canUseMapHome = true;
+      const requestedMilitaryView = options.militaryView || state?.militaryView || 'army';
+      const militaryMapRequested = requestedTab === 'military'
+        && (options.forceMapHome || options.isMapHome || requestedMilitaryView === 'world');
       const shouldUseMapHome = canUseMapHome
         && options.allowDefaultMapHome !== false
-        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
+        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory' || militaryMapRequested);
       return {
         activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
         requestedTab,
-        militaryView: shouldUseMapHome ? 'world' : (options.militaryView || state?.militaryView || 'army'),
+        militaryView: shouldUseMapHome ? 'world' : requestedMilitaryView,
         isMapHome: Boolean(shouldUseMapHome),
         canUseMapHome,
       };
@@ -1572,10 +1591,9 @@
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: activeTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
-        forceMapHome: (
-          Boolean(this.lastGame?.mapHomeActive)
-          || (Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0)
-        ) && (activeTab === 'resources' || activeTab === 'military'),
+        forceMapHome: (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
+          || activeTab === 'resources'
+          || activeTab === 'territory',
       });
       this.mapHomeActive = homeView.isMapHome;
       const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
@@ -1621,7 +1639,7 @@
         loading: this.loading,
         network: this.networkState,
         floatingTexts: this.getFloatingTextView(),
-        tutorialHighlight: this.tutorialHighlight,
+        tutorialHighlight: null,
         rewardReveal: this.rewardReveal,
       };
     }
@@ -1683,10 +1701,9 @@
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: activeTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
-        forceMapHome: (
-          Boolean(this.lastGame?.mapHomeActive)
-          || (Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0)
-        ) && (activeTab === 'resources' || activeTab === 'military'),
+        forceMapHome: (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
+          || activeTab === 'resources'
+          || activeTab === 'territory',
       });
       this.mapHomeActive = homeView.isMapHome;
       if (homeView.militaryView && state.militaryView !== homeView.militaryView) state.militaryView = homeView.militaryView;
@@ -1695,12 +1712,15 @@
         activeTab: homeView.activeTab,
         isMapHome: homeView.isMapHome,
       };
+      let worldMapLayerRendered = false;
       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
-        if (this.shouldRenderRuntimeWorldMap(state, renderOptions)) this.renderRuntimeWorldMap(state, renderOptions);
+        worldMapLayerRendered = this.shouldRenderRuntimeWorldMap(state, renderOptions)
+          ? this.renderRuntimeWorldMap(state, renderOptions) !== false
+          : Boolean(this.worldMapRenderer);
       } else {
-        this.renderWorldMapLayer(state, renderOptions);
+        worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
-      this.renderer.render(state, this.worldMapRenderer
+      this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
         ? { ...renderOptions, skipWorldMapLayer: true }
         : renderOptions);
       const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated

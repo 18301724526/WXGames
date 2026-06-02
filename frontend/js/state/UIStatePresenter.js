@@ -193,7 +193,7 @@
     }
 
     static canUseMapHome(state = {}) {
-      return this.hasWorldTileMap(state);
+      return true;
     }
 
     static resolveMapHomeViewState(state = {}, options = {}) {
@@ -205,9 +205,11 @@
       const canUseMapHome = this.canUseMapHome(state);
       const homeRequested = !requestedTab || requestedTab === 'resources' || requestedTab === 'territory';
       const forceMapHome = Boolean(options.forceMapHome || options.isMapHome);
+      const militaryMapRequested = requestedTab === 'military'
+        && (forceMapHome || requestedMilitaryView === 'world');
       const shouldUseMapHome = canUseMapHome
         && options.allowDefaultMapHome !== false
-        && (forceMapHome || homeRequested);
+        && (forceMapHome || homeRequested || militaryMapRequested);
       const resolvedActiveTab = shouldUseMapHome ? 'military' : activeTab;
       const resolvedMilitaryView = shouldUseMapHome ? 'world' : requestedMilitaryView;
       return {
