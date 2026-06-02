@@ -275,7 +275,6 @@ test('侦察前沿会先解锁区域，水面或贴近首都的位置不会生�
     scoutedAt: new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString(),
   });
   assert.ok(state.worldMap.tiles.length > TerritoryService.SCOUT_ACTION_POINTS);
-  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_4_1').oceanTemplates[0], 'river-mouth-ne');
 });
 
 test('scout target outcome is generated during travel before report claim', () => {
@@ -315,15 +314,26 @@ test('scout target outcome is generated during travel before report claim', () =
 test('scout site outcome selects the best valid tile inside the revealed area', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
-  pushReadyScoutMission(state, { id: 'scout_coast_area', direction: 'e', targetX: 7, targetY: 0, now });
+  const mouth = WorldMapService.getWorldWaterFeatures(state.worldMap.seed).river;
+  pushReadyScoutMission(state, {
+    id: 'scout_coast_area',
+    direction: 'e',
+    targetX: mouth.q,
+    targetY: mouth.r,
+    now,
+    revealArea: [
+      { q: mouth.q, r: mouth.r, step: 1, kind: 'main', tileId: WorldMapService.getTileId(mouth.q, mouth.r), revealed: true },
+      { q: 8, r: 0, step: 1, kind: 'branch', tileId: 'tile_8_0', revealed: true },
+    ],
+  });
+  WorldMapService.revealScoutArea(state, state.warMissions.at(-1).revealArea, now);
 
-  WorldMapService.revealTileArea(state, 7, 0, now);
   const claim = TerritoryService.claimScout(state, 'scout_coast_area', now, createSequenceRandom([0.1, 0.9, 0.5]));
 
   assert.equal(claim.success, true);
   assert.ok(claim.site);
-  assert.notDeepEqual({ x: claim.site.x, y: claim.site.y }, { x: 7, y: 0 });
-  assert.notEqual(state.worldMap.tiles.find((tile) => tile.id === 'tile_7_0').siteId, claim.site.id);
+  assert.notDeepEqual({ x: claim.site.x, y: claim.site.y }, { x: mouth.q, y: mouth.r });
+  assert.notEqual(state.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(mouth.q, mouth.r)).siteId, claim.site.id);
   assert.equal(state.worldMap.tiles.find((tile) => tile.id === `tile_${claim.site.x}_${claim.site.y}`).siteId, claim.site.id);
   assert.equal(WorldMapService.canPlaceSiteOnTerrain(state.worldMap.seed, claim.site.x, claim.site.y), true);
 });
@@ -346,10 +356,10 @@ test('scout site outcome keeps cities separated inside a revealed area', () => {
     status: 'ready',
     revealArea: [
       { q: 6, r: 0, step: 1, kind: 'main', tileId: 'tile_6_0', revealed: true },
-      { q: 8, r: 2, step: 1, kind: 'branch', tileId: 'tile_8_2', revealed: true },
+      { q: 9, r: 3, step: 1, kind: 'branch', tileId: 'tile_9_3', revealed: true },
     ],
     revealAreaSource: 'directional-route-v1',
-    revealedTileIds: ['tile_6_0', 'tile_8_2'],
+    revealedTileIds: ['tile_6_0', 'tile_9_3'],
   });
   WorldMapService.revealScoutArea(state, state.warMissions.at(-1).revealArea, now);
 
@@ -357,7 +367,7 @@ test('scout site outcome keeps cities separated inside a revealed area', () => {
 
   assert.equal(claim.success, true);
   assert.ok(claim.site);
-  assert.deepEqual({ x: claim.site.x, y: claim.site.y }, { x: 8, y: 2 });
+  assert.deepEqual({ x: claim.site.x, y: claim.site.y }, { x: 9, y: 3 });
 });
 
 test('scout missions reveal world map tiles over time and record a trail', () => {
@@ -382,7 +392,6 @@ test('scout missions reveal world map tiles over time and record a trail', () =>
   assert.equal(mission.actionPointsRemaining, 0);
   assert.equal(mission.revealedTileIds.length, mission.revealArea.length);
   assert.ok(mission.revealArea.every((coord) => coord.revealed));
-  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_4_1').oceanTemplates[0], 'river-mouth-ne');
   assert.equal(state.worldMap.scoutTrails.find((trail) => trail.missionId === mission.id).returned, true);
 });
 

@@ -1,8 +1,9 @@
-const WORLD_MAP_VERSION = 2;
+const WORLD_MAP_VERSION = 3;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
 const SCOUT_REVEAL_RADIUS = 1;
 const SCOUT_REVEAL_BRANCH_LIMIT = 5;
+const WORLD_WATER_FEATURE_CACHE = new Map();
 
 const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
@@ -33,6 +34,13 @@ const OCEAN_CORNER_BY_CORE_OFFSET = {
 };
 const HOME_RIVER_LENGTH = 7;
 const RIVER_MOUTH_SCAN_RADIUS = 32;
+const WATER_FEATURE_CACHE_LIMIT = 64;
+const SIDE_OPPOSITES = {
+  nw: 'se',
+  ne: 'sw',
+  se: 'nw',
+  sw: 'ne',
+};
 const DIRECTION_VECTORS = {
   n: { q: 0, r: -1 },
   ne: { q: 1, r: -1 },
@@ -103,62 +111,173 @@ function normalizeSeedCoordArgs(seedOrQ, qOrR, rValue) {
   };
 }
 
-function getBoxBasinScore(q, r, centerQ, centerR, radiusQ, radiusR) {
-  const qRatio = Math.abs(q - centerQ) / radiusQ;
-  const rRatio = Math.abs(r - centerR) / radiusR;
+function rotateSide(side, steps) {
+  const index = SIDE_ORDER.indexOf(side);
+  if (index < 0) return SIDE_ORDER[0];
+  return SIDE_ORDER[(index + steps + SIDE_ORDER.length * 4) % SIDE_ORDER.length];
+}
+
+function pickSide(seed, salt) {
+  return SIDE_ORDER[Math.floor(random01(seed, 0, 0, salt) * SIDE_ORDER.length) % SIDE_ORDER.length];
+}
+
+function getBoxBasinScore(q, r, basin) {
+  const qRatio = Math.abs(q - basin.centerQ) / basin.radiusQ;
+  const rRatio = Math.abs(r - basin.centerR) / basin.radiusR;
   return 1 - Math.max(qRatio, rRatio);
 }
 
-function getWesternOceanBasinScore(q, r) {
-  if (q > -3) return -1;
-  const minR = Math.max(1, q + 6);
-  const maxR = Math.max(4, -q - 1);
-  const qFalloff = Math.max(0, (-3 - q) * 0.08);
-  if (r >= minR && r <= maxR) return 0.5 + qFalloff;
-  return -Math.min(Math.abs(r - minR), Math.abs(r - maxR));
+function createOceanBasin(seed, id, side, options = {}) {
+  const main = SIDE_DIRECTIONS[side] || SIDE_DIRECTIONS.ne;
+  const lateralSide = rotateSide(side, options.lateralTurn || 1);
+  const lateral = SIDE_DIRECTIONS[lateralSide] || SIDE_DIRECTIONS.se;
+  const distance = (options.baseDistance || 3)
+    + Math.floor(random01(seed, id, 0, `ocean-${id}-distance`) * (options.distanceSpread || 3));
+  const lateralOffset = Math.floor(random01(seed, id, 1, `ocean-${id}-lateral`) * 5) - 2;
+  return {
+    id,
+    side,
+    centerQ: main.q * distance + lateral.q * lateralOffset,
+    centerR: main.r * distance + lateral.r * lateralOffset,
+    radiusQ: main.q === 0
+      ? 0.65 + random01(seed, id, 2, `ocean-${id}-radius-q`) * 0.35
+      : 1.35 + random01(seed, id, 2, `ocean-${id}-radius-q`) * (options.radiusBoost || 1.5),
+    radiusR: main.r === 0
+      ? 0.65 + random01(seed, id, 3, `ocean-${id}-radius-r`) * 0.35
+      : 1.35 + random01(seed, id, 3, `ocean-${id}-radius-r`) * (options.radiusBoost || 1.5),
+    noise: options.noise || 0.16,
+  };
 }
 
-function getEasternOceanBasinScore(q, r) {
-  const withinColumn = q >= 4 && q <= 6;
-  if (!withinColumn || r < -4 || r > 0) return -1;
-  const maxR = q === 4 ? 0 : -1;
-  const minR = q >= 6 ? -3 : -4;
-  if (r < minR || r > maxR) return -1;
-  const qScore = 1 - Math.abs(q - 4.5) / 2.5;
-  const rScore = 1 - Math.abs(r + 1.5) / 3.5;
-  return Math.min(qScore, rScore);
+function buildOceanBasins(seed) {
+  const primarySide = pickSide(seed, 'primary-ocean-side');
+  const secondarySide = SIDE_OPPOSITES[primarySide] || rotateSide(primarySide, 2);
+  const tertiarySide = rotateSide(primarySide, random01(seed, 0, 0, 'tertiary-ocean-turn') < 0.5 ? 1 : -1);
+  return [
+    createOceanBasin(seed, 'primary', primarySide, { baseDistance: 3, distanceSpread: 3, radiusBoost: 1.35, noise: 0.12 }),
+    createOceanBasin(seed, 'secondary', secondarySide, { baseDistance: 8, distanceSpread: 5, radiusBoost: 2.2, lateralTurn: -1, noise: 0.18 }),
+    createOceanBasin(seed, 'tertiary', tertiarySide, { baseDistance: 10, distanceSpread: 6, radiusBoost: 2.6, noise: 0.22 }),
+  ];
 }
 
-function getOceanBasinScore(seed, q, r) {
-  const nearBay = getBoxBasinScore(q, r, 1.5, 0, 0.75, 1.15);
-  const easternBay = getEasternOceanBasinScore(q, r);
-  const westernSea = getWesternOceanBasinScore(q, r);
-  const wildCoastNoise = (random01(seed, q, r, 'ocean-basin') - 0.5) * 0.12;
-  return Math.max(nearBay, easternBay, westernSea + wildCoastNoise);
+function getOceanBasinScoreForBasins(seed, q, r, basins) {
+  return (Array.isArray(basins) ? basins : []).reduce((best, basin) => {
+    const ragged = (random01(seed, q, r, `ocean-basin-${basin.id}`) - 0.5) * basin.noise;
+    return Math.max(best, getBoxBasinScore(q, r, basin) + ragged);
+  }, -1);
 }
 
-function isOceanCoreCoord(seedOrQ, qOrR, rValue) {
-  const { seed, q, r } = normalizeSeedCoordArgs(seedOrQ, qOrR, rValue);
+function isOceanCoreCoordForBasins(seed, q, r, basins) {
   if (q === 0 && r === 0) return false;
-  return getOceanBasinScore(seed, q, r) >= 0;
+  return getOceanBasinScoreForBasins(seed, q, r, basins) >= 0;
 }
 
-function getAdjacentOceanSides(seed, q, r) {
+function getAdjacentOceanSidesForBasins(seed, q, r, basins) {
   const sides = new Set();
   for (const [offsetKey, side] of Object.entries(OCEAN_SHORE_EDGE_BY_CORE_OFFSET)) {
     const [dq, dr] = offsetKey.split(',').map(Number);
-    if (isOceanCoreCoord(seed, q + dq, r + dr)) sides.add(side);
+    if (isOceanCoreCoordForBasins(seed, q + dq, r + dr, basins)) sides.add(side);
   }
   return SIDE_ORDER.filter((side) => sides.has(side));
 }
 
-function getAdjacentOceanCorners(seed, q, r) {
+function getAdjacentOceanCornersForBasins(seed, q, r, basins) {
   const corners = [];
   for (const [offsetKey, corner] of Object.entries(OCEAN_CORNER_BY_CORE_OFFSET)) {
     const [dq, dr] = offsetKey.split(',').map(Number);
-    if (isOceanCoreCoord(seed, q + dq, r + dr)) corners.push(corner);
+    if (isOceanCoreCoordForBasins(seed, q + dq, r + dr, basins)) corners.push(corner);
   }
   return corners;
+}
+
+function hasOceanTemplateForBasins(seed, q, r, basins) {
+  return isOceanCoreCoordForBasins(seed, q, r, basins)
+    || getAdjacentOceanSidesForBasins(seed, q, r, basins).length > 0
+    || getAdjacentOceanCornersForBasins(seed, q, r, basins).length > 0;
+}
+
+function getRiverLength(seed) {
+  return HOME_RIVER_LENGTH + Math.floor(random01(seed, 0, 0, 'home-river-length') * 3);
+}
+
+function canBuildRiverPath(seed, q, r, oceanSide, length, basins) {
+  const inlandSide = SIDE_OPPOSITES[oceanSide];
+  const inlandDir = SIDE_DIRECTIONS[inlandSide];
+  if (!inlandDir) return false;
+  for (let step = 1; step < length; step += 1) {
+    const nextQ = q + inlandDir.q * step;
+    const nextR = r + inlandDir.r * step;
+    if (nextQ === 0 && nextR === 0) return false;
+    if (hasOceanTemplateForBasins(seed, nextQ, nextR, basins)) return false;
+  }
+  return true;
+}
+
+function findRiverChannel(seed, basins) {
+  const length = getRiverLength(seed);
+  const candidates = [];
+  for (let q = -RIVER_MOUTH_SCAN_RADIUS; q <= RIVER_MOUTH_SCAN_RADIUS; q += 1) {
+    for (let r = -RIVER_MOUTH_SCAN_RADIUS; r <= RIVER_MOUTH_SCAN_RADIUS; r += 1) {
+      if (q === 0 && r === 0) continue;
+      if (isOceanCoreCoordForBasins(seed, q, r, basins)) continue;
+      if (getAdjacentOceanCornersForBasins(seed, q, r, basins).length > 0) continue;
+      const sides = getAdjacentOceanSidesForBasins(seed, q, r, basins);
+      if (sides.length !== 1) continue;
+      const oceanSide = sides[0];
+      const oceanDir = SIDE_DIRECTIONS[oceanSide];
+      if (!oceanDir) continue;
+      if (!isOceanCoreCoordForBasins(seed, q + oceanDir.q, r + oceanDir.r, basins)) continue;
+      if (!canBuildRiverPath(seed, q, r, oceanSide, length, basins)) continue;
+      const distance = getDistanceFromCapital(q, r);
+      const shoreScore = getOceanBasinScoreForBasins(seed, q + oceanDir.q, r + oceanDir.r, basins);
+      const stableNoise = random01(seed, q, r, `river-channel-${oceanSide}`);
+      candidates.push({
+        q,
+        r,
+        oceanSide,
+        inlandSide: SIDE_OPPOSITES[oceanSide],
+        length,
+        score: 40 - Math.abs(distance - 4) * 3 + shoreScore * 6 + stableNoise,
+      });
+    }
+  }
+  return candidates.sort((a, b) => b.score - a.score || a.q - b.q || a.r - b.r)[0] || null;
+}
+
+function buildWorldWaterFeatures(seed = DEFAULT_WORLD_SEED) {
+  const normalizedSeed = typeof seed === 'string' && seed ? seed : DEFAULT_WORLD_SEED;
+  const basins = buildOceanBasins(normalizedSeed);
+  return {
+    seed: normalizedSeed,
+    basins,
+    river: findRiverChannel(normalizedSeed, basins),
+  };
+}
+
+function getWorldWaterFeatures(seed = DEFAULT_WORLD_SEED) {
+  const normalizedSeed = typeof seed === 'string' && seed ? seed : DEFAULT_WORLD_SEED;
+  if (WORLD_WATER_FEATURE_CACHE.has(normalizedSeed)) return WORLD_WATER_FEATURE_CACHE.get(normalizedSeed);
+  if (WORLD_WATER_FEATURE_CACHE.size >= WATER_FEATURE_CACHE_LIMIT) WORLD_WATER_FEATURE_CACHE.clear();
+  const features = buildWorldWaterFeatures(normalizedSeed);
+  WORLD_WATER_FEATURE_CACHE.set(normalizedSeed, features);
+  return features;
+}
+
+function getOceanBasinScore(seed, q, r) {
+  return getOceanBasinScoreForBasins(seed, q, r, getWorldWaterFeatures(seed).basins);
+}
+
+function isOceanCoreCoord(seedOrQ, qOrR, rValue) {
+  const { seed, q, r } = normalizeSeedCoordArgs(seedOrQ, qOrR, rValue);
+  return isOceanCoreCoordForBasins(seed, q, r, getWorldWaterFeatures(seed).basins);
+}
+
+function getAdjacentOceanSides(seed, q, r) {
+  return getAdjacentOceanSidesForBasins(seed, q, r, getWorldWaterFeatures(seed).basins);
+}
+
+function getAdjacentOceanCorners(seed, q, r) {
+  return getAdjacentOceanCornersForBasins(seed, q, r, getWorldWaterFeatures(seed).basins);
 }
 
 function isOceanShoreCornerCoord(seed, q, r) {
@@ -176,40 +295,22 @@ function getRiverMouthTemplateForNeighborOfOcean(qOffset, rOffset) {
   return RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET[`${toInteger(qOffset)},${toInteger(rOffset)}`] || '';
 }
 
-function getHomeRiverChannel(seed) {
-  const easternBayCenterQ = 4.5;
-  const riverQ = Math.floor(easternBayCenterQ);
-  const lengthBonus = Math.floor(random01(seed, riverQ, 0, 'home-river-length') * 3);
-  return {
-    q: riverQ,
-    oceanSide: 'ne',
-    inlandSide: 'sw',
-    length: HOME_RIVER_LENGTH + lengthBonus,
-  };
-}
-
-function findRiverMouth(seed, channel) {
-  const oceanDir = SIDE_DIRECTIONS[channel.oceanSide];
-  if (!oceanDir) return null;
-  for (let r = -RIVER_MOUTH_SCAN_RADIUS; r <= RIVER_MOUTH_SCAN_RADIUS; r += 1) {
-    if (isOceanCoreCoord(seed, channel.q, r)) continue;
-    if (isOceanShoreCornerCoord(seed, channel.q, r)) continue;
-    if (isOceanCoreCoord(seed, channel.q + oceanDir.q, r + oceanDir.r)) {
-      return { q: channel.q, r };
+function getGeneratedRiverPorts(seed, q, r) {
+  const channel = getWorldWaterFeatures(seed).river;
+  if (!channel) return [];
+  const inlandDir = SIDE_DIRECTIONS[channel.inlandSide];
+  if (!inlandDir) return [];
+  let riverStep = -1;
+  for (let step = 0; step < channel.length; step += 1) {
+    if (q === channel.q + inlandDir.q * step && r === channel.r + inlandDir.r * step) {
+      riverStep = step;
+      break;
     }
   }
-  return null;
-}
-
-function getGeneratedRiverPorts(seed, q, r) {
-  const channel = getHomeRiverChannel(seed);
-  if (q !== channel.q) return [];
-  const mouth = findRiverMouth(seed, channel);
-  if (!mouth) return [];
-  if (r < mouth.r || r >= mouth.r + channel.length) return [];
+  if (riverStep < 0) return [];
   const ports = [];
-  if (r > mouth.r || r === mouth.r) ports.push(channel.oceanSide);
-  if (r < mouth.r + channel.length - 1) ports.push(channel.inlandSide);
+  ports.push(channel.oceanSide);
+  if (riverStep < channel.length - 1) ports.push(channel.inlandSide);
   return SIDE_ORDER.filter((side) => ports.includes(side));
 }
 
@@ -292,7 +393,7 @@ function decorateTile(tile, seed) {
     ? 'ocean'
     : naturalRiverPorts.length
       ? 'river'
-      : tile.terrain;
+      : chooseBaseTerrain(seed, tile.q, tile.r);
   const oceanTemplates = terrain === 'ocean' ? naturalOceanTemplates : [];
   const riverPorts = terrain === 'river' ? naturalRiverPorts : [];
   return {
@@ -560,8 +661,11 @@ module.exports = {
   CAPITAL_TILE_ID,
   SCOUT_REVEAL_RADIUS,
   SCOUT_REVEAL_BRANCH_LIMIT,
+  SIDE_ORDER,
+  SIDE_DIRECTIONS,
   DIRECTION_VECTORS,
   getDistanceFromCapital,
+  getWorldWaterFeatures,
   getTileId,
   chooseBaseTerrain,
   chooseTerrain,
