@@ -725,6 +725,14 @@ test('旧存档里的多个侦察任务会收敛为两个待处理任务', () =>
 
 test('旧版固定节点只迁移已有进度，不再默认铺满地图', () => {
   const state = createClassicalState();
+  state.worldMap = {
+    ...state.worldMap,
+    version: 3,
+    tiles: [
+      ...state.worldMap.tiles,
+      { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', siteId: 'river_plain', discovered: true, visible: true },
+    ],
+  };
   state.territories = [
     { id: 'capital', cityName: '火种城', status: 'occupied' },
     { id: 'river_plain', naturalName: '河湾平原', status: 'occupied', cityName: '河湾城', effects: { foodOutputMultiplier: 0.05 } },
@@ -736,15 +744,43 @@ test('旧版固定节点只迁移已有进度，不再默认铺满地图', () =>
 
   assert.equal(territoryState.territories.length, 2);
   assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').status, 'occupied');
-  assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').x, 1);
+  assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').x, 3);
+  assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').y, 0);
   assert.equal(territoryState.territories.some((item) => item.id === 'north_forest'), false);
-  assert.deepEqual(normalized.scoutedCoordinates.find((item) => item.x === 1 && item.y === 0), {
-    x: 1,
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_1_0')?.siteId, null);
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_3_0')?.siteId, 'river_plain');
+  assert.equal(normalized.cities.river_plain.territoryId, 'river_plain');
+  assert.deepEqual(normalized.scoutedCoordinates.find((item) => item.x === 3 && item.y === 0), {
+    x: 3,
     y: 0,
     result: 'site',
     siteId: 'river_plain',
     scoutedAt: normalized.territories.find((item) => item.id === 'river_plain').discoveredAt,
   });
+});
+
+test('无版本号旧地图也会把固定节点迁移到当前规则位置', () => {
+  const state = createClassicalState();
+  state.worldMap = {
+    ...state.worldMap,
+    tiles: [
+      ...state.worldMap.tiles,
+      { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', siteId: 'river_plain', discovered: true, visible: true },
+    ],
+  };
+  delete state.worldMap.version;
+  state.territories = [
+    { id: 'capital', cityName: '火种城', status: 'occupied' },
+    { id: 'river_plain', naturalName: '河湾平原', status: 'occupied', cityName: '河湾城', effects: { foodOutputMultiplier: 0.05 } },
+  ];
+
+  const normalized = gameStateService.normalizeState(state);
+  const riverPlain = normalized.territories.find((item) => item.id === 'river_plain');
+
+  assert.equal(riverPlain.x, 3);
+  assert.equal(riverPlain.y, 0);
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_1_0')?.siteId, null);
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_3_0')?.siteId, 'river_plain');
 });
 
 test('侦察、出征、完成占领会产生待命名城市', () => {

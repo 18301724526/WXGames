@@ -102,8 +102,9 @@ function normalizeState(rawState) {
   state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
   state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
   FamousPersonService.ensureFamousPersonState(state);
+  const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
-  TerritoryService.normalizeTerritoryState(state);
+  TerritoryService.normalizeTerritoryState(state, new Date(), { previousWorldMapVersion });
   CityService.normalizeCities(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;

@@ -1,4 +1,4 @@
-const WORLD_MAP_VERSION = 3;
+const WORLD_MAP_VERSION = 4;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
 const SCOUT_REVEAL_RADIUS = 1;
@@ -525,6 +525,10 @@ function getSeed(gameStateOrSeed) {
   return gameStateOrSeed?.playerId ? `world-${gameStateOrSeed.playerId}` : DEFAULT_WORLD_SEED;
 }
 
+function getWorldMapVersion(rawWorldMap) {
+  return Math.max(0, toInteger(rawWorldMap?.version, 0));
+}
+
 function normalizeWorldMap(rawWorldMap, options = {}) {
   const seed = rawWorldMap?.seed || options.seed || DEFAULT_WORLD_SEED;
   const now = options.now || new Date();
@@ -756,6 +760,7 @@ module.exports = {
   SIDE_DIRECTIONS,
   DIRECTION_VECTORS,
   getDistanceFromCapital,
+  getWorldMapVersion,
   getWorldWaterFeatures,
   getTileId,
   chooseBaseTerrain,
