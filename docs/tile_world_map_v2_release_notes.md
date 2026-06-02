@@ -23,6 +23,7 @@ The military world view now renders the tile map first when `territoryState.worl
 - River semantics derive a stable river channel and river-mouth template from the ocean basin rules.
 - River mouths attach only to single-side ocean shore edges, and ocean shore corner coordinates block river mouths to avoid tile conflicts.
 - Scout site outcomes now evaluate the revealed area and bind the site to the highest-scoring valid land tile, instead of forcing the mission target coordinate to host the site.
+- Scout missions now choose the controlled border that is farthest in the requested direction as their route origin, so exploration continues outward from occupied territory instead of always starting at the active city.
 
 ## Frontend Changes
 

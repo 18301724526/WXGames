@@ -888,14 +888,43 @@ function sanitizeName(name) {
   return value.slice(0, MAX_NAME_LENGTH);
 }
 
-function findNextCoordinate(gameState, direction, origin = getScoutOrigin(gameState)) {
+function getControlledScoutOrigins(gameState, fallbackOrigin = getScoutOrigin(gameState)) {
+  const origins = [];
+  const seen = new Set();
+  const addOrigin = (origin) => {
+    const x = toInteger(origin?.x, 0);
+    const y = toInteger(origin?.y, 0);
+    const key = getCoordinateKey(x, y);
+    if (seen.has(key)) return;
+    seen.add(key);
+    origins.push({
+      cityId: origin?.cityId || origin?.id || origin?.territoryId || 'capital',
+      territoryId: origin?.territoryId || origin?.id || origin?.cityId || 'capital',
+      name: origin?.name || origin?.cityName || origin?.naturalName || '出发城市',
+      x,
+      y,
+    });
+  };
+
+  for (const territory of gameState.territories || []) {
+    if (territory.status !== 'occupied') continue;
+    addOrigin({
+      cityId: territory.cityId || territory.id || 'capital',
+      territoryId: territory.id || 'capital',
+      name: territory.cityName || territory.naturalName || '出发城市',
+      x: territory.x,
+      y: territory.y,
+    });
+  }
+  addOrigin(fallbackOrigin);
+  return origins;
+}
+
+function findNextCoordinateFromOrigin(gameState, direction, origin, occupied, scouted, discovered) {
   const dir = DIRECTIONS[direction];
   if (!dir) return null;
   const originX = toInteger(origin?.x, 0);
   const originY = toInteger(origin?.y, 0);
-  const occupied = new Set((gameState.territories || []).map((territory) => getCoordinateKey(territory.x, territory.y)));
-  const scouted = new Set((gameState.scoutedCoordinates || []).map((coordinate) => getCoordinateKey(coordinate.x, coordinate.y)));
-  const discovered = getKnownWorldCoordinateKeys(gameState);
   for (let distance = 1; distance <= MAX_SCOUT_DISTANCE; distance += 1) {
     const x = originX + dir.dx * distance;
     const y = originY + dir.dy * distance;
@@ -904,6 +933,33 @@ function findNextCoordinate(gameState, direction, origin = getScoutOrigin(gameSt
     return { x, y, distance };
   }
   return null;
+}
+
+function getDirectionProjection(origin, dir) {
+  return toInteger(origin?.x, 0) * dir.dx + toInteger(origin?.y, 0) * dir.dy;
+}
+
+function findNextCoordinate(gameState, direction, origin = getScoutOrigin(gameState)) {
+  const dir = DIRECTIONS[direction];
+  if (!dir) return null;
+  const occupied = new Set((gameState.territories || []).map((territory) => getCoordinateKey(territory.x, territory.y)));
+  const scouted = new Set((gameState.scoutedCoordinates || []).map((coordinate) => getCoordinateKey(coordinate.x, coordinate.y)));
+  const discovered = getKnownWorldCoordinateKeys(gameState);
+  const candidates = getControlledScoutOrigins(gameState, origin)
+    .map((candidateOrigin) => ({
+      origin: candidateOrigin,
+      target: findNextCoordinateFromOrigin(gameState, direction, candidateOrigin, occupied, scouted, discovered),
+      projection: getDirectionProjection(candidateOrigin, dir),
+    }))
+    .filter((item) => item.target)
+    .sort((a, b) => (
+      b.projection - a.projection
+      || a.target.distance - b.target.distance
+      || String(a.origin.territoryId).localeCompare(String(b.origin.territoryId))
+    ));
+  if (!candidates.length) return null;
+  const chosen = candidates[0];
+  return { ...chosen.target, origin: chosen.origin };
 }
 
 function rollScoutOutcome(gameState, randomSource = Math.random) {
@@ -1171,9 +1227,10 @@ function startScout(gameState, direction, now = new Date()) {
   }
   const existing = getScoutMissions(gameState).find((mission) => mission.direction === normalizedDirection && ['active', 'ready'].includes(mission.status));
   if (existing) return { success: false, error: 'SCOUT_EXISTS', message: `${DIRECTIONS[normalizedDirection].label}已有侦察任务` };
-  const origin = getScoutOrigin(gameState);
-  const target = findNextCoordinate(gameState, normalizedDirection, origin);
+  const requestedOrigin = getScoutOrigin(gameState);
+  const target = findNextCoordinate(gameState, normalizedDirection, requestedOrigin);
   if (!target) return { success: false, error: 'NO_SCOUT_TARGET', message: '该方向暂时没有可侦察区域' };
+  const origin = target.origin || requestedOrigin;
   const routeStartDistance = Math.max(1, target.distance - SCOUT_ACTION_POINTS + 1);
   const route = WorldMapService.buildScoutRoute(
     { q: origin.x, r: origin.y },

@@ -929,3 +929,22 @@ test('连续多次发现无主地点后，下一个地点会保底转为有主',
   assert.notEqual(fourth.owner, 'neutral');
   assert.equal(state.scoutState.neutralSiteStreak, 0);
 });
+
+test('scout starts from the controlled border in the requested direction', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addOccupiedSubCity(state, { id: 'site_east_far', x: 6, y: 0, cityName: '东境城' });
+  const normalized = gameStateService.normalizeState(state);
+  CityService.setActiveCity(normalized, 'capital');
+
+  const start = TerritoryService.startScout(normalized, 'e', now);
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.sourceCityId, 'site_east_far');
+  assert.equal(start.mission.originTerritoryId, 'site_east_far');
+  assert.equal(start.mission.originX, 6);
+  assert.equal(start.mission.originY, 0);
+  assert.equal(start.mission.targetX, 7);
+  assert.equal(start.mission.targetY, 0);
+  assert.deepEqual(start.mission.route[0], { q: 7, r: 0, step: 1, tileId: 'tile_7_0', revealed: false });
+});
