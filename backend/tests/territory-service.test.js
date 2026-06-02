@@ -743,32 +743,34 @@ test('旧版固定节点只迁移已有进度，不再默认铺满地图', () =>
   const territoryState = TerritoryService.getClientTerritoryState(normalized);
 
   assert.equal(territoryState.territories.length, 2);
-  assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').status, 'occupied');
-  assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').x, 3);
-  assert.equal(territoryState.territories.find((item) => item.id === 'river_plain').y, 0);
+  const riverPlain = territoryState.territories.find((item) => item.id === 'river_plain');
+  assert.equal(riverPlain.status, 'occupied');
+  assert.notDeepEqual({ x: riverPlain.x, y: riverPlain.y }, { x: 1, y: 0 });
+  assert.equal(WorldMapService.canPlaceSiteOnTerrain(normalized.worldMap.seed, riverPlain.x, riverPlain.y), true);
+  assert.ok(Math.max(Math.abs(riverPlain.x), Math.abs(riverPlain.y)) >= 3);
   assert.equal(territoryState.territories.some((item) => item.id === 'north_forest'), false);
   assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_1_0')?.siteId, null);
-  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_3_0')?.siteId, 'river_plain');
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(riverPlain.x, riverPlain.y))?.siteId, 'river_plain');
   assert.equal(normalized.cities.river_plain.territoryId, 'river_plain');
-  assert.deepEqual(normalized.scoutedCoordinates.find((item) => item.x === 3 && item.y === 0), {
-    x: 3,
-    y: 0,
+  assert.deepEqual(normalized.scoutedCoordinates.find((item) => item.x === riverPlain.x && item.y === riverPlain.y), {
+    x: riverPlain.x,
+    y: riverPlain.y,
     result: 'site',
     siteId: 'river_plain',
     scoutedAt: normalized.territories.find((item) => item.id === 'river_plain').discoveredAt,
   });
 });
 
-test('无版本号旧地图也会把固定节点迁移到当前规则位置', () => {
+test('旧迁移写入过的 v4 地图也会再次迁移到当前规则位置', () => {
   const state = createClassicalState();
   state.worldMap = {
     ...state.worldMap,
+    version: 4,
     tiles: [
       ...state.worldMap.tiles,
       { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', siteId: 'river_plain', discovered: true, visible: true },
     ],
   };
-  delete state.worldMap.version;
   state.territories = [
     { id: 'capital', cityName: '火种城', status: 'occupied' },
     { id: 'river_plain', naturalName: '河湾平原', status: 'occupied', cityName: '河湾城', effects: { foodOutputMultiplier: 0.05 } },
@@ -777,10 +779,42 @@ test('无版本号旧地图也会把固定节点迁移到当前规则位置', ()
   const normalized = gameStateService.normalizeState(state);
   const riverPlain = normalized.territories.find((item) => item.id === 'river_plain');
 
-  assert.equal(riverPlain.x, 3);
-  assert.equal(riverPlain.y, 0);
+  assert.notDeepEqual({ x: riverPlain.x, y: riverPlain.y }, { x: 1, y: 0 });
+  assert.equal(WorldMapService.canPlaceSiteOnTerrain(normalized.worldMap.seed, riverPlain.x, riverPlain.y), true);
+  assert.ok(Math.max(Math.abs(riverPlain.x), Math.abs(riverPlain.y)) >= 3);
   assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_1_0')?.siteId, null);
-  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_3_0')?.siteId, 'river_plain');
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(riverPlain.x, riverPlain.y))?.siteId, 'river_plain');
+});
+
+test('旧地图里压在水面或贴近城池的地点必须重新生成合法坐标', () => {
+  const state = createClassicalState();
+  state.worldMap = {
+    ...state.worldMap,
+    version: 4,
+    tiles: [
+      ...state.worldMap.tiles,
+      { id: 'tile_6_2', q: 6, r: 2, terrain: 'river', siteId: 'river_site', discovered: true, visible: true },
+    ],
+  };
+  state.territories = [
+    { id: 'capital', cityName: '火种城', status: 'occupied' },
+    { id: 'near_site', x: 2, y: 0, naturalName: '近郊城', status: 'occupied', cityName: '近郊城', type: 'town', owner: 'player' },
+    { id: 'river_site', x: 6, y: 2, naturalName: '旧河城', status: 'occupied', cityName: '旧河城', type: 'town', owner: 'player' },
+  ];
+
+  const normalized = gameStateService.normalizeState(state);
+  const nearSite = normalized.territories.find((item) => item.id === 'near_site');
+  const riverSite = normalized.territories.find((item) => item.id === 'river_site');
+  const distance = Math.max(Math.abs(riverSite.x - nearSite.x), Math.abs(riverSite.y - nearSite.y));
+
+  for (const territory of normalized.territories.filter((item) => item.id !== 'capital')) {
+    assert.equal(WorldMapService.canPlaceSiteOnTerrain(normalized.worldMap.seed, territory.x, territory.y), true);
+    assert.ok(Math.max(Math.abs(territory.x), Math.abs(territory.y)) >= 3);
+  }
+  assert.notDeepEqual({ x: riverSite.x, y: riverSite.y }, { x: 6, y: 2 });
+  assert.ok(distance >= 3);
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_6_2')?.siteId, null);
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === WorldMapService.getTileId(riverSite.x, riverSite.y))?.siteId, 'river_site');
 });
 
 test('侦察、出征、完成占领会产生待命名城市', () => {

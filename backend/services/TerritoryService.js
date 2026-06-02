@@ -15,6 +15,7 @@ const SCOUT_SITE_BASE_CHANCE = 0.32;
 const SCOUT_SITE_CHANCE_STEP = 0.14;
 const SCOUT_SITE_GUARANTEE_AFTER = 4;
 const MAX_SCOUT_AREA_RECORDS = 120;
+const MAX_MIGRATION_SITE_SEARCH_DISTANCE = 48;
 const POST_WAR_FAMOUS_PERSON_ENABLED = false;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
@@ -390,8 +391,8 @@ function migrateLegacyPresetTerritory(rawTerritory) {
   const migration = LEGACY_SITE_MIGRATIONS[rawTerritory.id];
   return {
     ...rawTerritory,
-    x: migration.x,
-    y: migration.y,
+    x: hasFiniteValue(rawTerritory.x) ? rawTerritory.x : migration.x,
+    y: hasFiniteValue(rawTerritory.y) ? rawTerritory.y : migration.y,
     type: migration.type,
     owner: rawTerritory.status === 'occupied' ? 'player' : migration.owner,
     status: rawTerritory.status === 'scouted' ? 'discovered' : rawTerritory.status,
@@ -882,6 +883,51 @@ function buildMigrationMissionForTerritory(gameState, territory, now = new Date(
   };
 }
 
+function getMigrationSearchCoordinates(mission, maxDistance = MAX_MIGRATION_SITE_SEARCH_DISTANCE) {
+  const direction = DIRECTIONS[mission.direction] || DIRECTIONS.e;
+  const originX = toInteger(mission.originX, 0);
+  const originY = toInteger(mission.originY, 0);
+  const targetX = toInteger(mission.targetX, originX + direction.dx);
+  const targetY = toInteger(mission.targetY, originY + direction.dy);
+  const targetDistance = Math.max(1, getRelativeDistance(originX, originY, targetX, targetY));
+  const seen = new Set();
+  const coords = [];
+  const addCoord = (q, r, priority) => {
+    const key = getCoordinateKey(q, r);
+    if (seen.has(key)) return;
+    seen.add(key);
+    coords.push({ q, r, priority });
+  };
+  for (let distance = 1; distance <= maxDistance; distance += 1) {
+    const centerX = originX + direction.dx * distance;
+    const centerY = originY + direction.dy * distance;
+    const radius = Math.max(1, Math.min(6, Math.abs(distance - targetDistance) + 2));
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > radius) continue;
+        const q = centerX + dx;
+        const r = centerY + dy;
+        if (q === 0 && r === 0) continue;
+        const progress = (q - originX) * direction.dx + (r - originY) * direction.dy;
+        if (progress < Math.max(1, distance - radius)) continue;
+        addCoord(q, r, distance);
+      }
+    }
+  }
+  for (let distance = 1; distance <= maxDistance; distance += 1) {
+    for (let dx = -distance; dx <= distance; dx += 1) {
+      for (let dy = -distance; dy <= distance; dy += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== distance) continue;
+        const q = originX + dx;
+        const r = originY + dy;
+        if (q === 0 && r === 0) continue;
+        addCoord(q, r, maxDistance + distance);
+      }
+    }
+  }
+  return coords;
+}
+
 function getNearestSiteDistanceFromTerritories(territories, x, y, ignoredId = '') {
   const distances = (Array.isArray(territories) ? territories : [])
     .filter((territory) => territory?.id !== ignoredId && Number.isFinite(Number(territory?.x)) && Number.isFinite(Number(territory?.y)))
@@ -908,6 +954,7 @@ function scoreMigratedSiteCandidate(gameState, mission, territory, coord, placed
   const directionProgress = getDirectionProgressScore(mission, q, r);
   const terrainScore = getTerrainSiteScore(terrain);
   const stableNoise = seededNoise(Math.abs(q * 92821 + r * 68917 + String(seed).length * 131));
+  const searchPriority = Math.max(1, toInteger(coord.priority, distance));
   return {
     q,
     r,
@@ -920,16 +967,17 @@ function scoreMigratedSiteCandidate(gameState, mission, territory, coord, placed
       + directionProgress * 8
       + Math.min(20, Math.max(0, nearestDistance - SCOUT_SITE_MIN_DISTANCE + 1) * 5)
       + stableNoise,
+    searchPriority,
   };
 }
 
 function getCurrentRuleSiteCoordinate(gameState, territory, placedTerritories, now = new Date()) {
   const seed = WorldMapService.ensureWorldMap(gameState, now).seed;
   const mission = buildMigrationMissionForTerritory(gameState, territory, now);
-  return (mission.revealArea || [])
+  return getMigrationSearchCoordinates(mission)
     .map((coord) => scoreMigratedSiteCandidate(gameState, mission, territory, coord, placedTerritories, seed))
     .filter(Boolean)
-    .sort((a, b) => b.score - a.score || b.distance - a.distance || a.q - b.q || a.r - b.r)[0] || null;
+    .sort((a, b) => a.searchPriority - b.searchPriority || b.score - a.score || b.distance - a.distance || a.q - b.q || a.r - b.r)[0] || null;
 }
 
 function retargetTerritoryToCurrentRules(gameState, territory, coord, now = new Date()) {
@@ -968,21 +1016,24 @@ function migrateTerritorySitesToCurrentWorldRules(gameState, previousWorldMapVer
   if (previousWorldMapVersion >= WorldMapService.WORLD_MAP_VERSION) return false;
   const placed = [];
   let changed = false;
+  let normalizedAny = false;
   for (const territory of gameState.territories || []) {
     if (territory.id === 'capital' || territory.x === 0 && territory.y === 0) {
       placed.push(territory);
       continue;
     }
     const coord = getCurrentRuleSiteCoordinate(gameState, territory, placed, now);
-    if (coord) {
-      const oldX = territory.x;
-      const oldY = territory.y;
-      retargetTerritoryToCurrentRules(gameState, territory, coord, now);
-      changed = changed || oldX !== territory.x || oldY !== territory.y;
+    if (!coord) {
+      throw new Error(`Unable to generate legal world site coordinate for ${territory.id}`);
     }
+    const oldX = territory.x;
+    const oldY = territory.y;
+    retargetTerritoryToCurrentRules(gameState, territory, coord, now);
+    changed = changed || oldX !== territory.x || oldY !== territory.y;
+    normalizedAny = true;
     placed.push(territory);
   }
-  if (changed) {
+  if (normalizedAny) {
     gameState.scoutedCoordinates = [];
     clearWorldTileSiteBindings(gameState);
   }

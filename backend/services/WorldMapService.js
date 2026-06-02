@@ -1,4 +1,4 @@
-const WORLD_MAP_VERSION = 4;
+const WORLD_MAP_VERSION = 5;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
 const SCOUT_REVEAL_RADIUS = 1;
