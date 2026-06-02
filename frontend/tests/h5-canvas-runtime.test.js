@@ -2720,12 +2720,17 @@ test('WorldMapRuntime invalidates tile caches only when map data changes', () =>
     kind: 'scout',
     status: 'active',
     route: [{ q: 1, r: 0, tileId: 'tile_1_0', revealed: false }],
+    revealArea: [{ q: 1, r: 0, step: 1, kind: 'main', tileId: 'tile_1_0', revealed: false }],
     revealedTileIds: [],
     actionPointsRemaining: 2,
   }];
   assert.equal(runtime.render({ state, force: true }), true);
   assert.equal(invalidateCount, 1);
   assert.equal(renderCalls.at(-1).options.territoryUiState.worldPanX, 32);
+
+  state.territoryState.scoutMissions[0].revealArea.push({ q: 1, r: 1, step: 1, kind: 'branch', tileId: 'tile_1_1', revealed: false });
+  assert.equal(runtime.syncMapDataSignature(), true);
+  assert.equal(invalidateCount, 2);
 });
 
 test('Canvas game shell moves map-home drags with the compositor without map redraws', () => {

@@ -56,6 +56,13 @@ test('coordinate generation keeps lab-aligned ocean and river templates without 
   assert.ok(shoreCorner.oceanTemplates?.includes('corner-e'));
 });
 
+test('river mouth templates match visual ocean-neighbor directions', () => {
+  assert.equal(WorldMapService.getRiverMouthTemplateForNeighborOfOcean(0, 1), 'river-mouth-ne');
+  assert.equal(WorldMapService.getRiverMouthTemplateForNeighborOfOcean(0, -1), 'river-mouth-sw');
+  assert.equal(WorldMapService.getRiverMouthTemplateForNeighborOfOcean(1, 0), 'river-mouth-nw');
+  assert.equal(WorldMapService.getRiverMouthTemplateForNeighborOfOcean(-1, 0), 'river-mouth-se');
+});
+
 test('incomplete v2 world map heals only the capital tile', () => {
   const worldMap = WorldMapService.normalizeWorldMap({
     version: 2,
@@ -95,4 +102,16 @@ test('scout reveal areas generate a stable chunk around the target coordinate', 
   assert.ok(ids.includes('tile_3_0'));
   assert.ok(ids.includes('tile_4_1'));
   assert.deepEqual(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_4_1').oceanTemplates, ['river-mouth-ne']);
+});
+
+test('scout reveal area follows the route direction with deterministic branches', () => {
+  const route = WorldMapService.buildScoutRoute({ q: 0, r: 0 }, 'e', 5);
+  const area = WorldMapService.getScoutRevealArea('world-test', route, 'e');
+  const main = area.filter((coord) => coord.kind === 'main');
+  const branches = area.filter((coord) => coord.kind === 'branch');
+
+  assert.deepEqual(main.map((coord) => [coord.q, coord.r]), [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0]]);
+  assert.ok(branches.length > 0);
+  assert.ok(branches.every((coord) => coord.step <= WorldMapService.SCOUT_REVEAL_BRANCH_LIMIT));
+  assert.ok(branches.every((coord) => coord.q === coord.step && Math.abs(coord.r) === 1));
 });

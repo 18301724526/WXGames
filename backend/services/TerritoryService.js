@@ -334,6 +334,8 @@ function normalizeWarMissions(rawMissions) {
         const originX = toInteger(mission.originX, 0);
         const originY = toInteger(mission.originY, 0);
         const actionPoints = Math.max(1, toInteger(mission.actionPoints, SCOUT_ACTION_POINTS));
+        const hasStoredRoute = Array.isArray(mission.route) && mission.route.length > 0;
+        const hasStoredRevealArea = Array.isArray(mission.revealArea) && mission.revealArea.length > 0;
         const route = Array.isArray(mission.route)
           ? mission.route.map((step, index) => {
             const q = toInteger(step.q, originX);
@@ -356,6 +358,27 @@ function normalizeWarMissions(rawMissions) {
             tileId: WorldMapService.getTileId(step.q, step.r),
             revealed: false,
           }));
+        const revealArea = Array.isArray(mission.revealArea) && mission.revealArea.length
+          ? mission.revealArea.map((coord, index) => {
+            const q = toInteger(coord.q, targetX);
+            const r = toInteger(coord.r, targetY);
+            return {
+              q,
+              r,
+              step: Math.max(1, toInteger(coord.step, index + 1)),
+              kind: coord.kind === 'branch' ? 'branch' : 'main',
+              tileId: coord.tileId || WorldMapService.getTileId(q, r),
+              revealed: Boolean(coord.revealed),
+            };
+          })
+          : [];
+        const revealAreaSource = typeof mission.revealAreaSource === 'string' && mission.revealAreaSource
+          ? mission.revealAreaSource
+          : hasStoredRevealArea
+            ? 'directional-route-v1'
+            : hasStoredRoute
+              ? 'legacy-route'
+              : 'legacy-target';
         return {
           id: mission.id || `scout_${direction}_${Date.now()}`,
           kind: 'scout',
@@ -373,6 +396,8 @@ function normalizeWarMissions(rawMissions) {
           actionPoints,
           actionPointsRemaining: Math.max(0, toInteger(mission.actionPointsRemaining, mission.status === 'ready' ? 0 : actionPoints)),
           route,
+          revealArea,
+          revealAreaSource,
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.filter(Boolean).map(String) : [],
           resolvedTarget: Boolean(mission.resolvedTarget),
           result: mission.result === 'site' ? 'site' : mission.result === 'empty' ? 'empty' : null,
@@ -504,11 +529,55 @@ function getScoutResolvedCoordinate(mission) {
   };
 }
 
+function ensureMissionRevealArea(gameState, mission, now = new Date()) {
+  mission.route = Array.isArray(mission.route) ? mission.route : [];
+  if (!mission.route.length) {
+    const originX = toInteger(mission.originX, 0);
+    const originY = toInteger(mission.originY, 0);
+    const targetX = toInteger(mission.targetX, originX);
+    const targetY = toInteger(mission.targetY, originY);
+    const actionPoints = Math.max(1, toInteger(mission.actionPoints, SCOUT_ACTION_POINTS));
+    const scoutDistance = Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, targetX, targetY)));
+    mission.route = WorldMapService.buildScoutRoute(
+      { q: originX, r: originY },
+      mission.direction,
+      actionPoints,
+      { startDistance: Math.max(1, scoutDistance - actionPoints + 1) },
+    ).map((step) => ({
+      ...step,
+      tileId: WorldMapService.getTileId(step.q, step.r),
+      revealed: false,
+    }));
+    if (!mission.route.some((step) => step.q === targetX && step.r === targetY)) {
+      mission.route.push({
+        q: targetX,
+        r: targetY,
+        step: mission.route.length + 1,
+        tileId: WorldMapService.getTileId(targetX, targetY),
+        revealed: false,
+      });
+    }
+  }
+  if (!Array.isArray(mission.revealArea) || !mission.revealArea.length) {
+    mission.revealAreaSource = mission.revealAreaSource || (mission.route.length > 1 ? 'legacy-route' : 'legacy-target');
+    const seed = WorldMapService.ensureWorldMap(gameState, now).seed;
+    mission.revealArea = WorldMapService.getScoutRevealArea(seed, mission.route, mission.direction)
+      .map((coord) => ({
+        ...coord,
+        tileId: WorldMapService.getTileId(coord.q, coord.r),
+        revealed: mission.route.some((step) => step.q === coord.q && step.r === coord.r && step.revealed),
+      }));
+  }
+  return mission.revealArea;
+}
+
 function getScoutCandidateCoordinates(gameState, mission, now = new Date()) {
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const targetX = toInteger(mission.targetX, 0);
   const targetY = toInteger(mission.targetY, 0);
   const revealedIds = new Set(Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.filter(Boolean) : []);
+  const strictRevealArea = mission.revealAreaSource === 'directional-route-v1';
+  const revealArea = ensureMissionRevealArea(gameState, mission, now);
   const coords = [];
   const known = new Set();
   const addCoord = (q, r) => {
@@ -519,12 +588,22 @@ function getScoutCandidateCoordinates(gameState, mission, now = new Date()) {
   };
 
   for (const tile of worldMap.tiles || []) {
-    if (!revealedIds.has(tile.id)) continue;
+    if (revealedIds.has(tile.id)) {
+      addCoord(toInteger(tile.q, 0), toInteger(tile.r, 0));
+      continue;
+    }
+    if (strictRevealArea) continue;
+    const q = toInteger(tile.q, 0);
+    const r = toInteger(tile.r, 0);
+    if (getRelativeDistance(targetX, targetY, q, r) > 1) continue;
     addCoord(toInteger(tile.q, 0), toInteger(tile.r, 0));
   }
-  for (const coord of WorldMapService.getRevealArea(targetX, targetY)) {
-    addCoord(coord.q, coord.r);
+  for (const coord of revealArea) {
+    if (coord.revealed || revealedIds.has(WorldMapService.getTileId(coord.q, coord.r))) {
+      addCoord(coord.q, coord.r);
+    }
   }
+  if (!coords.length) addCoord(targetX, targetY);
   return coords;
 }
 
@@ -587,6 +666,29 @@ function pickScoutSiteCoordinate(gameState, mission, now = new Date()) {
     .map((coord) => scoreScoutSiteCandidate(gameState, mission, coord, seed))
     .filter(Boolean)
     .sort((a, b) => b.score - a.score || b.distance - a.distance || a.q - b.q || a.r - b.r)[0] || null;
+}
+
+function ensureScoutMissionAreaRevealed(gameState, mission, now = new Date()) {
+  const revealArea = ensureMissionRevealArea(gameState, mission, now);
+  mission.revealedTileIds = Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [];
+  const alreadyRevealedIds = new Set(mission.revealedTileIds.filter(Boolean));
+  const pending = revealArea.filter((coord) => !coord.revealed && !alreadyRevealedIds.has(WorldMapService.getTileId(coord.q, coord.r)));
+  if (!pending.length) return [];
+  const revealedTiles = WorldMapService.revealScoutArea(gameState, pending, now);
+  for (const coord of pending) {
+    coord.revealed = true;
+    coord.tileId = WorldMapService.getTileId(coord.q, coord.r);
+  }
+  mission.route = (Array.isArray(mission.route) ? mission.route : []).map((step) => ({
+    ...step,
+    revealed: revealArea.some((coord) => coord.kind === 'main' && coord.q === step.q && coord.r === step.r && coord.revealed),
+  }));
+  mission.revealedTileIds = Array.from(new Set([
+    ...mission.revealedTileIds,
+    ...revealedTiles.map((tile) => tile.id),
+  ]));
+  WorldMapService.recordScoutTrail(gameState, mission, mission.revealedTileIds, mission.status === 'ready');
+  return revealedTiles;
 }
 
 function normalizeTerritoryState(gameState, now = new Date()) {
@@ -793,6 +895,7 @@ function updateMissionReadiness(gameState, now = new Date(), randomSource = Math
 function advanceScoutMission(gameState, mission, now = new Date(), randomSource = Math.random) {
   const nowMs = now.getTime();
   const route = Array.isArray(mission.route) ? mission.route : [];
+  const revealArea = ensureMissionRevealArea(gameState, mission, now);
   let nextStepAt = new Date(mission.nextStepAt || mission.startedAt || now).getTime();
   if (!Number.isFinite(nextStepAt)) nextStepAt = nowMs;
   mission.revealedTileIds = Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [];
@@ -801,10 +904,15 @@ function advanceScoutMission(gameState, mission, now = new Date(), randomSource 
   for (const step of route) {
     if (step.revealed) continue;
     if (mission.actionPointsRemaining <= 0 || nextStepAt > nowMs) break;
-    const revealedTiles = WorldMapService.revealTileArea(gameState, step.q, step.r, now);
+    const stepArea = revealArea.filter((coord) => coord.step === step.step && !coord.revealed);
+    const revealedTiles = WorldMapService.revealScoutArea(gameState, stepArea.length ? stepArea : [step], now);
     const tile = revealedTiles.find((item) => item.q === step.q && item.r === step.r) || revealedTiles[0];
     step.tileId = tile.id;
     step.revealed = true;
+    for (const coord of stepArea) {
+      coord.revealed = true;
+      coord.tileId = WorldMapService.getTileId(coord.q, coord.r);
+    }
     mission.revealedTileIds = Array.from(new Set([
       ...mission.revealedTileIds,
       ...revealedTiles.map((item) => item.id),
@@ -1243,6 +1351,15 @@ function startScout(gameState, direction, now = new Date()) {
       tileId: WorldMapService.getTileId(step.q, step.r),
       revealed: false,
     }));
+  const revealArea = WorldMapService.getScoutRevealArea(
+    WorldMapService.ensureWorldMap(gameState, now).seed,
+    route,
+    normalizedDirection,
+  ).map((coord) => ({
+    ...coord,
+    tileId: WorldMapService.getTileId(coord.q, coord.r),
+    revealed: false,
+  }));
   const mission = {
     id: `scout_${normalizedDirection}_${now.getTime()}`,
     kind: 'scout',
@@ -1258,6 +1375,8 @@ function startScout(gameState, direction, now = new Date()) {
     actionPoints: SCOUT_ACTION_POINTS,
     actionPointsRemaining: SCOUT_ACTION_POINTS,
     route,
+    revealArea,
+    revealAreaSource: 'directional-route-v1',
     revealedTileIds: [],
     nextStepAt: now.toISOString(),
     returnedAt: null,
@@ -1274,6 +1393,7 @@ function claimScout(gameState, missionId, now = new Date(), randomSource = Math.
   const mission = (gameState.warMissions || []).find((item) => item.id === missionId && getMissionKind(item) === 'scout');
   if (!mission) return { success: false, error: 'MISSION_NOT_FOUND', message: '没有找到侦察任务' };
   if (mission.status !== 'ready') return { success: false, error: 'MISSION_NOT_READY', message: '侦察队尚未返回' };
+  ensureScoutMissionAreaRevealed(gameState, mission, now);
   const resolved = resolveScoutMissionTarget(gameState, mission, now, randomSource);
   const site = mission.siteId ? getTerritory(gameState, mission.siteId) : resolved.site;
   const report = mission.report || resolved.report || createEmptyScoutReport(mission, now, true);

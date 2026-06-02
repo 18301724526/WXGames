@@ -180,6 +180,7 @@
           id: mission.id,
           status: mission.status,
           route: mission.route || [],
+          revealArea: mission.revealArea || [],
           revealedTileIds: mission.revealedTileIds || [],
           actionPointsRemaining: mission.actionPointsRemaining,
         })),

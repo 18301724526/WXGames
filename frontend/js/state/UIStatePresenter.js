@@ -3144,6 +3144,7 @@
           id: mission.id,
           status: mission.status,
           route: mission.route || [],
+          revealArea: mission.revealArea || [],
           revealedTileIds: mission.revealedTileIds || [],
           actionPointsRemaining: mission.actionPointsRemaining,
         })),
@@ -3247,6 +3248,14 @@
             step: this.toInteger(step.step),
             tileId: step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
             revealed: Boolean(step.revealed),
+          })),
+          revealArea: (Array.isArray(mission.revealArea) ? mission.revealArea : []).map((coord) => ({
+            q: this.toInteger(coord.q),
+            r: this.toInteger(coord.r),
+            step: this.toInteger(coord.step),
+            kind: coord.kind === 'branch' ? 'branch' : 'main',
+            tileId: coord.tileId || `tile_${this.toInteger(coord.q)}_${this.toInteger(coord.r)}`,
+            revealed: Boolean(coord.revealed),
           })),
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
         }));

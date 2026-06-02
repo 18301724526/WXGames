@@ -1198,6 +1198,10 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
         { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: true },
         { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
       ],
+      revealArea: [
+        { q: 1, r: 0, step: 1, kind: 'main', tileId: 'tile_1_0', revealed: true },
+        { q: 1, r: 1, step: 1, kind: 'branch', tileId: 'tile_1_1', revealed: false },
+      ],
       revealedTileIds: ['tile_1_0'],
     }],
   }, { panX: 8, panY: -6 });
@@ -1213,6 +1217,10 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.offset.y, 26);
   assert.equal(view.sites.length, 2);
   assert.equal(view.activeScouts[0].route[1].tileId, 'tile_2_0');
+  assert.deepEqual(view.activeScouts[0].revealArea.map((coord) => [coord.q, coord.r, coord.kind, coord.revealed]), [
+    [1, 0, 'main', true],
+    [1, 1, 'branch', false],
+  ]);
   assert.match(view.signature, /world-test/);
 });
 

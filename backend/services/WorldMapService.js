@@ -2,6 +2,7 @@ const WORLD_MAP_VERSION = 2;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
 const SCOUT_REVEAL_RADIUS = 1;
+const SCOUT_REVEAL_BRANCH_LIMIT = 5;
 
 const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
@@ -16,6 +17,13 @@ const OCEAN_SHORE_EDGE_BY_CORE_OFFSET = {
   '0,-1': 'ne',
   '1,0': 'se',
   '0,1': 'sw',
+};
+// Offsets are from the full ocean tile to the neighboring river-mouth tile.
+const RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET = {
+  '0,1': 'river-mouth-ne',
+  '0,-1': 'river-mouth-sw',
+  '1,0': 'river-mouth-nw',
+  '-1,0': 'river-mouth-se',
 };
 const OCEAN_CORNER_BY_CORE_OFFSET = {
   '1,1': 'corner-n',
@@ -34,6 +42,16 @@ const DIRECTION_VECTORS = {
   sw: { q: -1, r: 1 },
   w: { q: -1, r: 0 },
   nw: { q: -1, r: -1 },
+};
+const SCOUT_REVEAL_BRANCH_SIDES = {
+  n: [{ q: -1, r: 0 }, { q: 1, r: 0 }],
+  ne: [{ q: 0, r: -1 }, { q: 1, r: 0 }],
+  e: [{ q: 0, r: -1 }, { q: 0, r: 1 }],
+  se: [{ q: 1, r: 0 }, { q: 0, r: 1 }],
+  s: [{ q: -1, r: 0 }, { q: 1, r: 0 }],
+  sw: [{ q: 0, r: 1 }, { q: -1, r: 0 }],
+  w: [{ q: 0, r: -1 }, { q: 0, r: 1 }],
+  nw: [{ q: -1, r: 0 }, { q: 0, r: -1 }],
 };
 
 function clone(value) {
@@ -154,6 +172,10 @@ function getOceanShoreEdgeTemplateKeys(sides = []) {
   return SIDE_ORDER.filter((side) => sides.includes(side));
 }
 
+function getRiverMouthTemplateForNeighborOfOcean(qOffset, rOffset) {
+  return RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET[`${toInteger(qOffset)},${toInteger(rOffset)}`] || '';
+}
+
 function getHomeRiverChannel(seed) {
   const easternBayCenterQ = 4.5;
   const riverQ = Math.floor(easternBayCenterQ);
@@ -205,7 +227,12 @@ function chooseOceanTemplates(seedOrQ, qOrR, rValue) {
   const blocksRiverMouth = isOceanShoreCornerCoord(seed, q, r);
   const riverPorts = getRiverPorts(seed, q, r);
   const edgeKeys = getOceanShoreEdgeTemplateKeys(sides).map((key) => (
-    !blocksRiverMouth && sides.length === 1 && riverPorts.includes(key) ? `river-mouth-${key}` : key
+    !blocksRiverMouth && sides.length === 1 && riverPorts.includes(key)
+      ? getRiverMouthTemplateForNeighborOfOcean(
+        -(SIDE_DIRECTIONS[key]?.q || 0),
+        -(SIDE_DIRECTIONS[key]?.r || 0),
+      ) || key
+      : key
   ));
   return [
     ...edgeKeys,
@@ -428,6 +455,54 @@ function revealTileArea(gameState, q, r, now = new Date(), options = {}) {
   return getRevealArea(q, r, radius).map((coord) => revealTile(gameState, coord.q, coord.r, now));
 }
 
+function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
+  const branchLimit = Math.max(0, toInteger(options.branchLimit, SCOUT_REVEAL_BRANCH_LIMIT));
+  const branchSides = SCOUT_REVEAL_BRANCH_SIDES[direction] || [];
+  const byKey = new Map();
+  const addCoord = (q, r, step, kind) => {
+    const safeQ = toInteger(q, 0);
+    const safeR = toInteger(r, 0);
+    const key = getTileId(safeQ, safeR);
+    const existing = byKey.get(key);
+    if (existing) {
+      if (kind === 'main' && existing.kind !== 'main') existing.kind = 'main';
+      existing.step = Math.min(existing.step, step);
+      return existing;
+    }
+    const coord = { q: safeQ, r: safeR, step, kind };
+    byKey.set(key, coord);
+    return coord;
+  };
+
+  const normalizedRoute = (Array.isArray(route) ? route : [])
+    .map((step, index) => ({
+      q: toInteger(step?.q, 0),
+      r: toInteger(step?.r, 0),
+      step: Math.max(1, toInteger(step?.step, index + 1)),
+    }))
+    .sort((a, b) => a.step - b.step);
+
+  for (const step of normalizedRoute) {
+    addCoord(step.q, step.r, step.step, 'main');
+    if (step.step > branchLimit || !branchSides.length) continue;
+    branchSides.forEach((side, sideIndex) => {
+      const roll = random01(seed || DEFAULT_WORLD_SEED, step.q + side.q, step.r + side.r, `scout-branch-${direction}-${step.step}-${sideIndex}`);
+      if (roll < 0.72) addCoord(step.q + side.q, step.r + side.r, step.step, 'branch');
+    });
+  }
+  return [...byKey.values()].sort((a, b) => (
+    a.step - b.step
+    || (a.kind === 'main' ? -1 : b.kind === 'main' ? 1 : 0)
+    || a.q - b.q
+    || a.r - b.r
+  ));
+}
+
+function revealScoutArea(gameState, revealArea = [], now = new Date()) {
+  return (Array.isArray(revealArea) ? revealArea : [])
+    .map((coord) => revealTile(gameState, coord.q, coord.r, now));
+}
+
 function canPlaceSiteOnTerrain(seed, q, r) {
   return !['ocean', 'river'].includes(chooseTerrain(seed, q, r));
 }
@@ -484,13 +559,17 @@ module.exports = {
   DEFAULT_WORLD_SEED,
   CAPITAL_TILE_ID,
   SCOUT_REVEAL_RADIUS,
+  SCOUT_REVEAL_BRANCH_LIMIT,
   DIRECTION_VECTORS,
   getTileId,
   chooseTerrain,
   chooseOceanTemplates,
   getRiverPorts,
+  getRiverMouthTemplateForNeighborOfOcean,
   getRevealArea,
   revealTileArea,
+  getScoutRevealArea,
+  revealScoutArea,
   canPlaceSiteOnTerrain,
   createTile,
   createInitialWorldMap,
