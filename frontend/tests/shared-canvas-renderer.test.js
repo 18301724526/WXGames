@@ -3619,6 +3619,146 @@ test('CanvasGameRenderer draws military subviews and world actions without DOM a
   assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));
 });
 
+test('CanvasGameRenderer renders occupied city command overlay on map home', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      text: {
+        foodValue: '120',
+        woodValue: '80',
+        stoneValue: '40',
+        ironValue: '20',
+        knowledgeValue: '12',
+        populationValue: '6',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildWorldTileMapViewState: () => ({
+      signature: 'city-command-overlay-test',
+      version: 1,
+      seed: 'seed',
+      pan: { x: 0, y: 0 },
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null },
+        {
+          id: 'tile_1_0',
+          q: 1,
+          r: 0,
+          terrain: 'plains',
+          terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png',
+          site: { id: 'site-east', status: 'occupied', owner: 'player', type: 'city', name: '东岸', art: 'assets/art/world-site-city-cutout.png', offset: { x: 0, y: 26 } },
+        },
+      ],
+      activeScouts: [],
+    }),
+    buildWorldSiteDialogViewState: () => ({
+      selectedSiteId: 'site-east',
+      showModal: true,
+      details: [{
+        id: 'site-east',
+        text: { name: '东岸', status: '已占领', owner: '我方', summary: '粮仓充足' },
+        action: {
+          kind: 'city-command',
+          buttons: [
+            { label: '入城', action: 'enter-city', territoryId: 'site-east', disabled: false },
+            { label: '行军', action: 'march-city', territoryId: 'site-east', disabled: true, secondary: true },
+            { label: '调动', action: 'transfer-city', territoryId: 'site-east', disabled: true, secondary: true },
+            { label: '驻守', action: 'garrison-city', territoryId: 'site-east', disabled: true, secondary: true },
+            { label: '佣工', action: 'labor-city', territoryId: 'site-east', disabled: false, secondary: true },
+            { label: '改名', action: 'rename-city', territoryId: 'site-east', disabled: false, secondary: true },
+          ],
+          hint: '选择入城进入建设、人口与驻军管理。',
+        },
+      }],
+    }),
+  });
+
+  renderer.render({
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: {
+      territories: [{ id: 'site-east', cityName: '东岸', art: 'assets/art/world-site-city-cutout.png' }],
+      worldMap: { tiles: [{ id: 'tile_0_0' }] },
+    },
+  }, {
+    activeTab: 'military',
+    isMapHome: true,
+    territoryUiState: { selectedSiteId: 'site-east' },
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '入城'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'enterCity' && target.action.cityId === 'site-east' && !target.action.tab));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'enterCity' && target.action.cityId === 'site-east' && target.action.tab === 'people'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'renameCity' && target.action.cityId === 'site-east'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'territoryAction' && target.action.disabled === true));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeWorldSite'));
+});
+
+test('CanvasGameRenderer renders city management panel over map home', () => {
+  const { ctx, calls } = makeCtx();
+  ctx.measureText = (text) => ({ width: String(text).length * 8 });
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+  const UIStatePresenter = require('../js/state/UIStatePresenter');
+  renderer.setPresenter({
+    buildResourceViewState: () => ({
+      text: {
+        foodValue: '120',
+        woodValue: '80',
+        stoneValue: '40',
+        ironValue: '20',
+        knowledgeValue: '12',
+        populationValue: '6',
+      },
+    }),
+    buildCitySwitcherViewState: () => ({ hidden: true }),
+    buildAdvisorViewState: () => ({ hidden: true }),
+    buildEventViewState: () => ({ badge: { hidden: true } }),
+    buildWorldTileMapViewState: () => ({
+      signature: 'city-management-panel-test',
+      version: 1,
+      seed: 'seed',
+      pan: { x: 0, y: 0 },
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', terrainAsset: 'assets/art/tile-map/tile-terrain-plains.png', site: null }],
+      activeScouts: [],
+    }),
+    buildWorldSiteDialogViewState: () => ({ showModal: false, details: [] }),
+    buildPopulationViewState: UIStatePresenter.buildPopulationViewState.bind(UIStatePresenter),
+    buildBuildingViewState: UIStatePresenter.buildBuildingViewState.bind(UIStatePresenter),
+  });
+
+  renderer.render({
+    currentTab: 'military',
+    militaryView: 'world',
+    activeCityId: 'site-east',
+    cityState: { cities: [{ id: 'site-east', name: '东岸', level: 2 }] },
+    population: { total: 6, unassigned: 2, farmers: 2, scholars: 1, craftsmen: 1 },
+    territoryState: {
+      territories: [{ id: 'site-east', cityName: '东岸', terrainLabel: '河畔' }],
+      worldMap: { tiles: [{ id: 'tile_0_0' }] },
+    },
+  }, {
+    activeTab: 'military',
+    isMapHome: true,
+    showCityManagement: true,
+    activeCityManagementTab: 'people',
+    territoryUiState: {},
+  });
+
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '东岸'));
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '人才分配'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'closeCityManagement'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchCityManagementTab' && target.action.tab === 'buildings'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'switchCityManagementTab' && target.action.tab === 'military'));
+  assert.ok(renderer.hitTargets.some((target) => target.action?.type === 'assignJob' && target.action.job === 'farmer'));
+});
+
 test('CanvasGameRenderer caches static world tile layer between water animation frames', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

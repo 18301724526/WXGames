@@ -193,7 +193,7 @@
     }
 
     static canUseMapHome(state = {}) {
-      return this.toNumber(state.currentEra) >= 5 && this.hasWorldTileMap(state);
+      return this.hasWorldTileMap(state);
     }
 
     static resolveMapHomeViewState(state = {}, options = {}) {
@@ -2750,12 +2750,16 @@
       }
       if (site.status === 'occupied') {
         return {
-          kind: 'row',
+          kind: 'city-command',
           buttons: [
-            this.makeWorldSiteActionButton('管理', 'manage-city', site.id),
+            this.makeWorldSiteActionButton('入城', 'enter-city', site.id),
+            this.makeWorldSiteActionButton('行军', 'march-city', site.id, { disabled: true, secondary: true }),
+            this.makeWorldSiteActionButton('调动', 'transfer-city', site.id, { disabled: true, secondary: true }),
+            this.makeWorldSiteActionButton('驻守', 'garrison-city', site.id, { disabled: true, secondary: true }),
+            this.makeWorldSiteActionButton('佣工', 'labor-city', site.id, { secondary: true }),
             this.makeWorldSiteActionButton('改名', 'rename-city', site.id, { secondary: true }),
           ],
-          hint: '',
+          hint: '选择入城进入建设、人口与驻军管理；行军、调动、驻守后续接军团系统。',
           expeditionConfig: null,
         };
       }

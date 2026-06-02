@@ -91,7 +91,7 @@ test('world scouting uses dedicated site icons and canvas military controls', ()
   assert.match(renderer, /type:.*conquer/s);
   assert.match(renderer, /type:.*launchExpedition/s);
   assert.match(renderer, /type:.*claimConquest/s);
-  assert.match(renderer, /type:.*manageCity/s);
+  assert.match(renderer, /type:.*enterCity/s);
   assert.match(renderer, /type:.*renameCity/s);
   assert.match(controller, /this\.uiState\.selectedSiteId/);
   assert.match(controller, /getUiState\(\)/);

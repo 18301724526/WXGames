@@ -7622,15 +7622,6 @@
         color: '#74d3a0',
         align: 'right',
       });
-      if ((state.currentEra || 0) < 5) {
-        this.drawTextLines(this.wrapTextLimit('进入古典时代后，外部世界将在这里逐步显现。', width - 40, 3, { size: 13 }), x + 20, y + 70, {
-          size: 13,
-          color: '#cbbd96',
-          lineHeight: 18,
-        });
-        return;
-      }
-
       const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
       if (tileMapView?.tiles?.length) {
         if (this.isWorldTileMapWaterAnimated(tileMapView)) {
@@ -7655,6 +7646,15 @@
       }
 
       const territories = territoryState.territories || [];
+      if (!territories.length) {
+        this.drawTextLines(this.wrapTextLimit('派出侦察队后，外部世界将在这里逐步显现。', width - 40, 3, { size: 13 }), x + 20, y + 70, {
+          size: 13,
+          color: '#cbbd96',
+          lineHeight: 18,
+        });
+        return;
+      }
+
       const radarView = this.presenter.buildWorldRadarViewState(territories, {
         panX: uiState.worldPanX || 0,
         panY: uiState.worldPanY || 0,
@@ -7733,6 +7733,62 @@
     renderWorldSiteAction(actionView = {}, x, y, width) {
       const buttons = actionView.buttons || [];
       if (!buttons.length) return y;
+      if (actionView.kind === 'city-command') {
+        const primary = buttons.find((button) => button.action === 'enter-city') || buttons[0];
+        const sideButtons = buttons.filter((button) => button !== primary).slice(0, 5);
+        const primarySize = 74;
+        const primaryX = x + Math.max(8, Math.floor(width * 0.26));
+        const primaryY = y + 12;
+        this.drawPanel(primaryX, primaryY, primarySize, primarySize, {
+          fill: this.createGradient(
+            primaryX, primaryY, primaryX, primaryY + primarySize,
+            [
+              [0, 'rgba(191, 90, 55, 0.98)'],
+              [1, 'rgba(99, 35, 24, 0.98)'],
+            ],
+            'rgba(146, 56, 38, 0.98)',
+          ),
+          stroke: 'rgba(255, 218, 142, 0.86)',
+          radius: primarySize / 2,
+          inset: 'rgba(255, 248, 210, 0.22)',
+        });
+        this.drawText(primary.label || '入城', primaryX + primarySize / 2, primaryY + primarySize / 2, {
+          size: 20,
+          bold: true,
+          color: '#ffe6b5',
+          baseline: 'middle',
+          align: 'center',
+        });
+        this.addHitTarget({ x: primaryX, y: primaryY, width: primarySize, height: primarySize }, {
+          type: 'enterCity',
+          territoryId: primary.territoryId,
+          cityId: primary.territoryId,
+          disabled: primary.disabled || !primary.action,
+        });
+
+        const commandX = Math.min(x + width - 116, primaryX + primarySize + 20);
+        const commandY = y;
+        sideButtons.forEach((button, index) => {
+          const buttonY = commandY + index * 38;
+          const type = button.action === 'rename-city'
+            ? 'renameCity'
+            : (button.action === 'labor-city' ? 'enterCity' : 'territoryAction');
+          this.drawButton(commandX, buttonY, 108, 32, button.label, {
+            size: 13,
+            radius: 8,
+            disabled: button.disabled || !button.action,
+            active: !button.secondary && !button.disabled,
+          });
+          this.addHitTarget({ x: commandX, y: buttonY, width: 108, height: 32 }, {
+            type,
+            territoryId: button.territoryId,
+            cityId: button.territoryId,
+            tab: button.action === 'labor-city' ? 'people' : undefined,
+            disabled: button.disabled || !button.action,
+          });
+        });
+        return y + Math.max(primarySize + 18, sideButtons.length * 38 + 4);
+      }
       const gap = 8;
       const buttonWidth = Math.max(72, (width - gap * (buttons.length - 1)) / Math.max(1, buttons.length));
       buttons.forEach((button, index) => {
@@ -7748,11 +7804,15 @@
                button.action === 'launch-expedition' ? 'launchExpedition' :
                button.action === 'claim' ? 'claimConquest' :
                button.action === 'enter-battle' ? 'enterBattleScene' :
+               button.action === 'enter-city' ? 'enterCity' :
+               button.action === 'labor-city' ? 'enterCity' :
                button.action === 'manage-city' ? 'manageCity' :
                button.action === 'rename-city' ? 'renameCity' :
                button.action === 'open-expedition' ? 'openExpedition' :
                button.action === 'close-expedition' ? 'closeExpedition' : 'territoryAction',
           territoryId: button.territoryId,
+          cityId: button.territoryId,
+          tab: button.action === 'labor-city' ? 'people' : undefined,
           disabled: button.disabled || !button.action,
         });
       });
@@ -7829,6 +7889,10 @@
       if (!view.showModal) return;
       const detail = view.details.find((item) => item.id === view.selectedSiteId);
       if (!detail) return;
+      if (detail.action?.kind === 'city-command') {
+        this.renderWorldCityCommandOverlay(detail, territories, state, options);
+        return;
+      }
 
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeWorldSite' });
       const layout = this.getLayout();
@@ -7902,6 +7966,60 @@
       if (detail.action?.expeditionConfig) {
         this.renderWorldExpeditionConfig(detail.action.expeditionConfig, x + 16, cursorY, panelWidth - 32);
       }
+    }
+
+    renderWorldCityCommandOverlay(detail = {}, territories = [], state = {}, options = {}) {
+      const selectedSite = territories.find((site) => site.id === detail.id) || {};
+      const layout = this.getLayout();
+      const panelWidth = Math.min(layout.contentWidth - 18, 372);
+      const panelHeight = 232;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const dockTop = this.height - 64;
+      const y = Math.max(this.getTopBarBottom(state, { isMapHome: true }) + 12, dockTop - panelHeight - 14);
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeWorldSite', background: true });
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(41, 34, 25, 0.72)'],
+            [1, 'rgba(18, 16, 13, 0.9)'],
+          ],
+          'rgba(28, 24, 18, 0.86)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.26)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 26;
+      this.drawButton(x + panelWidth - closeSize - 8, y + 8, closeSize, closeSize, 'x', { size: 13, radius: 7 });
+      this.addHitTarget({ x: x + panelWidth - closeSize - 8, y: y + 8, width: closeSize, height: closeSize }, { type: 'closeWorldSite' });
+
+      const iconSize = 46;
+      this.drawAsset(selectedSite.art || 'assets/art/world-site-city-cutout.png', x + 14, y + 16, iconSize, iconSize);
+      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
+      this.drawText(this.truncateText(title, panelWidth - 118, { size: 17, bold: true }), x + 70, y + 17, {
+        size: 17,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      this.drawText(`${detail.text?.status || '已占领'} · ${detail.text?.owner || '我方'}`, x + 70, y + 42, {
+        size: 11,
+        color: '#74d3a0',
+      });
+      this.drawText(this.truncateText(detail.text?.summary || detail.text?.scale || '城市可进入管理。', panelWidth - 36, { size: 11 }), x + 14, y + 76, {
+        size: 11,
+        color: '#d8c7a2',
+      });
+      if (detail.action?.hint) {
+        this.drawText(this.truncateText(detail.action.hint, panelWidth - 36, { size: 10 }), x + 14, y + 96, {
+          size: 10,
+          color: 'rgba(234, 234, 234, 0.58)',
+        });
+      }
+      this.renderWorldSiteAction(detail.action, x + 12, y + 118, panelWidth - 24);
     }
 
     renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {
@@ -8079,7 +8197,7 @@
 
     renderMapHomeWorldView(state = {}, topBarBottom = 84, options = {}) {
       const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
-      if (!layout || (state.currentEra || 0) < 5) return false;
+      if (!layout) return false;
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
       const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
@@ -8115,7 +8233,7 @@
       this.setHitTargets([]);
       this.clearAll();
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
-      if (!layout || (state.currentEra || 0) < 5) {
+      if (!layout) {
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
       }
@@ -8187,7 +8305,7 @@
       this.setHitTargets([]);
       this.clearAll();
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
-      if (!layout || (state.currentEra || 0) < 5) {
+      if (!layout) {
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
       }
@@ -8531,6 +8649,120 @@
           buildingTransition: options.buildingTransition,
         });
       }
+    }
+
+    getActiveCitySummary(state = {}) {
+      const cityState = state.cityState || {};
+      const cities = Array.isArray(cityState.cities) ? cityState.cities : [];
+      const activeCityId = state.activeCityId || cityState.activeCityId || cityState.capitalCityId || 'capital';
+      const city = cities.find((item) => item.id === activeCityId) || cities[0] || {};
+      const territories = state.territoryState?.territories || [];
+      const site = territories.find((item) => item.id === activeCityId) || {};
+      return {
+        id: activeCityId,
+        name: city.name || site.cityName || site.naturalName || (activeCityId === 'capital' ? '首都' : '城市'),
+        tag: city.isCapital || activeCityId === 'capital' ? '主城' : '分城',
+        level: city.level || site.level || '',
+        population: city.population || state.population || {},
+        military: city.military || state.military || {},
+        terrainLabel: city.planning?.terrainLabel || city.terrainLabel || site.terrainLabel || '平原',
+      };
+    }
+
+    renderCityManagementPanel(state = {}, options = {}) {
+      const layout = this.getLayout();
+      const dockTop = this.height - 64;
+      const top = Math.max(82, this.getTopBarBottom(state, { isMapHome: true }) + 8);
+      const panelHeight = Math.max(360, dockTop - top - 10);
+      const x = layout.contentX;
+      const y = dockTop - panelHeight - 8;
+      const width = layout.contentWidth;
+      const city = this.getActiveCitySummary(state);
+      const activeTab = ['buildings', 'people', 'military'].includes(options.activeCityManagementTab)
+        ? options.activeCityManagementTab
+        : 'buildings';
+
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeCityManagement', background: true });
+      this.drawPanel(x, y, width, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(49, 40, 30, 0.97)'],
+            [1, 'rgba(16, 15, 12, 0.98)'],
+          ],
+          'rgba(31, 26, 20, 0.97)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.24)',
+        radius: 12,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.addHitTarget({ x, y, width, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      this.drawText(this.truncateText(city.name, width - 132, { size: 18, bold: true }), x + 16, y + 14, {
+        size: 18,
+        bold: true,
+        color: '#ffe6b5',
+      });
+      const meta = `${city.tag}${city.level ? ` · ${city.level}级` : ''} · ${city.terrainLabel}`;
+      this.drawText(meta, x + 16, y + 40, { size: 11, color: '#cbbd96' });
+      this.drawButton(x + width - closeSize - 10, y + 10, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: x + width - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeCityManagement' });
+
+      const tabs = [
+        { id: 'buildings', label: '建设' },
+        { id: 'people', label: '人才' },
+        { id: 'military', label: '驻军' },
+      ];
+      const tabY = y + 64;
+      const gap = 6;
+      const tabWidth = Math.floor((width - 32 - gap * (tabs.length - 1)) / tabs.length);
+      tabs.forEach((tab, index) => {
+        const tabX = x + 16 + index * (tabWidth + gap);
+        const active = tab.id === activeTab;
+        this.drawButton(tabX, tabY, tabWidth, 30, tab.label, { size: 12, bold: active, active, radius: 8 });
+        this.addHitTarget({ x: tabX, y: tabY, width: tabWidth, height: 30 }, { type: 'switchCityManagementTab', tab: tab.id });
+      });
+
+      const contentTop = tabY + 40;
+      const contentHeight = Math.max(180, panelHeight - (contentTop - y) - 12);
+      if (activeTab === 'buildings') {
+        this.renderBuildings(state, contentTop, contentHeight, options);
+      } else if (activeTab === 'people') {
+        this.renderPopulation(state, contentTop);
+      } else {
+        this.renderCityMilitaryPanel(state, city, x + 12, contentTop, width - 24, contentHeight);
+      }
+    }
+
+    renderCityMilitaryPanel(state = {}, city = {}, x, y, width, height) {
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(28, 24, 18, 0.76)',
+        stroke: 'rgba(255, 226, 177, 0.14)',
+        radius: 10,
+        inset: 'rgba(255, 231, 184, 0.05)',
+      });
+      const soldiers = Number(city.military?.soldiers ?? state.military?.soldiers ?? 0) || 0;
+      const available = Number(state.territoryState?.availableSoldiers ?? soldiers) || 0;
+      this.drawAsset('assets/art/icon-soldier-cutout.webp', x + 16, y + 18, 38, 38);
+      this.drawText('驻军', x + 66, y + 17, { size: 16, bold: true, color: '#ffe6b5' });
+      this.drawText(`当前兵力 ${soldiers} · 可调兵力 ${available}`, x + 66, y + 42, { size: 12, color: '#cbbd96' });
+      const rows = [
+        { label: '行军', note: '从本城发起部队行动', disabled: true },
+        { label: '调动', note: '城市之间调配驻军', disabled: true },
+        { label: '驻守', note: '设置防守与巡逻队列', disabled: true },
+      ];
+      rows.forEach((row, index) => {
+        const rowY = y + 82 + index * 54;
+        this.drawPanel(x + 12, rowY, width - 24, 44, {
+          fill: 'rgba(43, 35, 26, 0.82)',
+          stroke: 'rgba(255, 226, 177, 0.12)',
+          radius: 8,
+        });
+        this.drawText(row.label, x + 26, rowY + 10, { size: 14, bold: true, color: '#fff1cf' });
+        this.drawText(row.note, x + 26, rowY + 28, { size: 10, color: 'rgba(234, 234, 234, 0.58)' });
+        this.drawButton(x + width - 86, rowY + 8, 62, 28, '待开放', { size: 11, radius: 7, disabled: true });
+      });
     }
 
     renderSubcityListPanel(state = {}, options = {}) {
@@ -9774,6 +10006,7 @@
       this.renderFloatingAdvisorButton(state, options);
       if (options.activeCommandPanel) this.renderMapCommandPanel(state, options);
       if (options.showSubcityList) this.renderSubcityListPanel(state, options);
+      if (options.showCityManagement) this.renderCityManagementPanel(state, options);
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showSettings) this.renderSettingsPanel();
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);

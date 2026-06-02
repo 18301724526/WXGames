@@ -540,7 +540,7 @@ test('military navigation view state locks scout and world before classical era'
   assert.equal(unlocked.views.find((view) => view.id === 'scout').disabled, false);
 });
 
-test('map home view state promotes unlocked tile maps without affecting early saves', () => {
+test('map home view state promotes any save with tile map data to map home', () => {
   const unlocked = UIStatePresenter.resolveMapHomeViewState({
     currentEra: 5,
     currentTab: 'resources',
@@ -572,7 +572,7 @@ test('map home view state promotes unlocked tile maps without affecting early sa
   assert.equal(manualTech.militaryView, 'world');
   assert.equal(manualTech.isMapHome, false);
 
-  const locked = UIStatePresenter.resolveMapHomeViewState({
+  const earlyWithMap = UIStatePresenter.resolveMapHomeViewState({
     currentEra: 4,
     currentTab: 'resources',
     militaryView: 'army',
@@ -583,9 +583,10 @@ test('map home view state promotes unlocked tile maps without affecting early sa
     },
   });
 
-  assert.equal(locked.activeTab, 'resources');
-  assert.equal(locked.militaryView, 'army');
-  assert.equal(locked.isMapHome, false);
+  assert.equal(earlyWithMap.activeTab, 'military');
+  assert.equal(earlyWithMap.militaryView, 'world');
+  assert.equal(earlyWithMap.isMapHome, true);
+  assert.equal(earlyWithMap.canUseMapHome, true);
 });
 
 test('advisor, naming, and recent log view states are renderer-neutral', () => {
@@ -1399,7 +1400,16 @@ test('world site dialog view state formats occupied and contested actions', () =
 
   assert.equal(occupied.text.owner, '我方');
   assert.equal(occupied.text.note, '上次占领失败 · 损失 2 士兵');
-  assert.deepEqual(occupied.action.buttons.map((button) => button.action), ['manage-city', 'rename-city']);
+  assert.equal(occupied.action.kind, 'city-command');
+  assert.deepEqual(occupied.action.buttons.map((button) => button.action), [
+    'enter-city',
+    'march-city',
+    'transfer-city',
+    'garrison-city',
+    'labor-city',
+    'rename-city',
+  ]);
+  assert.equal(occupied.action.buttons.find((button) => button.action === 'march-city').disabled, true);
   assert.equal(ready.text.march, '行军耗时 2:00，已抵达待接管');
   assert.equal(ready.action.buttons[0].action, 'enter-battle');
   assert.equal(ready.action.buttons[0].label, '进入战斗');

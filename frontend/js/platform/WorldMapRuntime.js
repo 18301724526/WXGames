@@ -53,7 +53,6 @@
         && this.renderer
         && typeof this.renderer.renderWorldMapLayer === 'function'
         && this.presenter
-        && (Number(state?.currentEra) || 0) >= 5
         && Array.isArray(state?.territoryState?.worldMap?.tiles)
         && state.territoryState.worldMap.tiles.length > 0);
     }

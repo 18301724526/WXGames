@@ -191,7 +191,7 @@ test('PlatformRuntime emits shared pinch zoom gestures for touch hosts', () => {
   assert.ok(gestures[0].scaleDelta > 1);
 });
 
-test('CanvasGameApp defaults unlocked tile map saves to map home and keeps early saves unchanged', () => {
+test('CanvasGameApp defaults tile map saves to map home regardless of era', () => {
   const runtime = new PlatformRuntime({
     kind: 'wechat',
     host: {
@@ -237,10 +237,11 @@ test('CanvasGameApp defaults unlocked tile map saves to map home and keeps early
     initialState: createTileMapHomeState({ currentEra: 4 }),
   });
 
-  assert.equal(early.activeTab, 'resources');
-  assert.equal(early.state.currentTab, 'resources');
-  assert.equal(early.militaryView, 'army');
-  assert.equal(early.mapHomeActive, false);
+  assert.equal(early.activeTab, 'military');
+  assert.equal(early.state.currentTab, 'military');
+  assert.equal(early.militaryView, 'world');
+  assert.equal(early.state.militaryView, 'world');
+  assert.equal(early.mapHomeActive, true);
 });
 
 test('CanvasGameApp syncFromServer preserves map home when unlocked', () => {

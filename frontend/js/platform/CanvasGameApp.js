@@ -62,6 +62,8 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
+      this.showCityManagement = false;
+      this.activeCityManagementTab = 'buildings';
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
       this.showGuidebook = false;
@@ -432,6 +434,8 @@
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showSubcityList: this.showSubcityList,
+        showCityManagement: this.showCityManagement,
+        activeCityManagementTab: this.activeCityManagementTab,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
         showGuidebook: this.showGuidebook,
@@ -612,7 +616,7 @@
       }
       const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
       const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
-      const canUseMapHome = (Number(state?.currentEra) || 0) >= 5 && hasTiles;
+      const canUseMapHome = hasTiles;
       const shouldUseMapHome = canUseMapHome
         && options.allowDefaultMapHome !== false
         && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
@@ -1178,6 +1182,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
+      this.showCityManagement = false;
       this.activeEventId = null;
       this.showTaskCenter = false;
       this.showGuidebook = false;
@@ -1224,6 +1229,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
+      this.showCityManagement = false;
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showFamousPersons = false;
@@ -1273,6 +1279,7 @@
         this.showResourceDetails = false;
         this.showCitySwitcher = false;
         this.showSubcityList = false;
+        this.showCityManagement = false;
         this.activeEventId = null;
         this.showFamousPersons = false;
         this.activeCommandPanel = '';
@@ -2032,16 +2039,18 @@
       this.renderCanvasSurface(this.state?.currentTab);
     }
 
-    closeCitySwitcher() {
+    closeCitySwitcher(options = {}) {
       const target = this.canvasShell || this;
       target.showCitySwitcher = false;
+      if (options.skipRender) return true;
       this.renderCanvasSurface(this.state?.currentTab);
+      return true;
     }
 
     async switchCity(cityId) {
       if (!cityId || cityId === this.state?.activeCityId) return false;
       try {
-        this.closeCitySwitcher();
+        this.closeCitySwitcher({ skipRender: true });
         const result = await this.getGameApi().switchCity(cityId);
         this.applyApiState(result);
         this.showFloatingText(result.message || '城市已切换');
@@ -2052,6 +2061,89 @@
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
+    }
+
+    async enterCity(cityId, options = {}) {
+      const targetCityId = cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
+      if (!targetCityId) return false;
+      try {
+        const currentCityId = this.state?.activeCityId
+          || this.state?.cityState?.activeCityId
+          || this.state?.cityState?.capitalCityId
+          || 'capital';
+        this.closeCitySwitcher({ skipRender: true });
+        this.showSubcityList = false;
+        this.activeCommandPanel = '';
+        this.activeEventId = null;
+        if (this.canvasShell) {
+          this.canvasShell.showSubcityList = false;
+          this.canvasShell.activeCommandPanel = '';
+          this.canvasShell.activeEventId = null;
+        }
+        if (targetCityId !== currentCityId) {
+          const result = await this.getGameApi().switchCity(targetCityId);
+          this.applyApiState(result);
+        }
+        this.showCityManagement = true;
+        this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
+        this.territoryUiState = {
+          ...(this.territoryUiState || {}),
+          selectedSiteId: '',
+        };
+        this.territoryController?.closeSiteDialog?.();
+        if (this.canvasShell) {
+          this.canvasShell.showCityManagement = true;
+          this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
+          this.canvasShell.territoryUiState = {
+            ...(this.canvasShell.territoryUiState || {}),
+            selectedSiteId: '',
+          };
+        }
+        const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
+        this.activeTab = homeView.activeTab;
+        this.militaryView = homeView.militaryView;
+        this.mapHomeActive = homeView.isMapHome;
+        this.state = {
+          ...this.state,
+          currentTab: homeView.activeTab,
+          militaryView: homeView.militaryView,
+        };
+        this.renderCanvasSurface(homeView.activeTab);
+        return true;
+      } catch (error) {
+        this.log(`失败：${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    openCityManagement(options = {}) {
+      this.showCityManagement = true;
+      this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
+      this.showSubcityList = false;
+      this.activeCommandPanel = '';
+      this.activeEventId = null;
+      if (this.canvasShell) {
+        this.canvasShell.showCityManagement = true;
+        this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
+        this.canvasShell.showSubcityList = false;
+        this.canvasShell.activeCommandPanel = '';
+        this.canvasShell.activeEventId = null;
+      }
+      return this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    closeCityManagement() {
+      this.showCityManagement = false;
+      if (this.canvasShell) this.canvasShell.showCityManagement = false;
+      return this.renderCanvasSurface(this.state?.currentTab);
+    }
+
+    switchCityManagementTab(tab = 'buildings') {
+      const allowed = ['buildings', 'people', 'military'];
+      this.activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
+      if (this.canvasShell) this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
+      return this.renderCanvasSurface(this.state?.currentTab);
     }
 
     renderMilitary() {
@@ -2236,6 +2328,7 @@
       return Boolean(this.showResourceDetails
         || this.showCitySwitcher
         || this.showSubcityList
+        || this.showCityManagement
         || this.showTaskCenter
         || this.showGuidebook
         || this.showFamousPersons

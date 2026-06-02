@@ -4,6 +4,19 @@
       this.log = typeof options.log === 'function' ? options.log : null;
     }
 
+    finishHandled(result, context = {}, action = {}) {
+      const renderAfterSuccess = (value) => {
+        const handled = value !== false;
+        if (handled && typeof context.render === 'function') context.render(action);
+        return handled;
+      };
+      if (result && typeof result.then === 'function') {
+        result.then(renderAfterSuccess).catch((error) => this.log?.(error));
+        return true;
+      }
+      return renderAfterSuccess(result);
+    }
+
     canHandle(action) {
       return Boolean(action && CanvasActionDispatcher.supportedActions().includes(action.type));
     }
@@ -94,6 +107,34 @@
           : false;
         if (closed && typeof context.render === 'function') context.render(action);
         return closed;
+      }
+
+      if (action.type === 'enterCity') {
+        const entered = typeof context.enterCity === 'function'
+          ? context.enterCity(action)
+          : false;
+        return this.finishHandled(entered, context, action);
+      }
+
+      if (action.type === 'openCityManagement') {
+        const opened = typeof context.openCityManagement === 'function'
+          ? context.openCityManagement(action)
+          : false;
+        return this.finishHandled(opened, context, action);
+      }
+
+      if (action.type === 'closeCityManagement') {
+        const closed = typeof context.closeCityManagement === 'function'
+          ? context.closeCityManagement(action)
+          : false;
+        return this.finishHandled(closed, context, action);
+      }
+
+      if (action.type === 'switchCityManagementTab') {
+        const switched = typeof context.switchCityManagementTab === 'function'
+          ? context.switchCityManagementTab(action.tab, action)
+          : false;
+        return this.finishHandled(switched, context, action);
       }
 
       if (action.type === 'openSettings') {
@@ -359,6 +400,10 @@
         'closeCitySwitcher',
         'openSubcityList',
         'closeSubcityList',
+        'enterCity',
+        'openCityManagement',
+        'closeCityManagement',
+        'switchCityManagementTab',
         'openSettings',
         'closeSettings',
         'openLogs',

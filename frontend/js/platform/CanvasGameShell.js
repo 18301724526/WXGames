@@ -49,6 +49,8 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
+      this.showCityManagement = false;
+      this.activeCityManagementTab = 'buildings';
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.activeTaskCenterTab = 'main';
@@ -316,6 +318,7 @@
         || this.showResourceDetails
         || this.showCitySwitcher
         || this.showSubcityList
+        || this.showCityManagement
         || this.showAdvisor
         || this.showTaskCenter
         || this.showGuidebook
@@ -590,6 +593,47 @@
       return true;
     }
 
+    enterCity(action = {}) {
+      const game = this.lastGame;
+      const cityId = action.cityId || action.territoryId || action.siteId || game?.state?.activeCityId || 'capital';
+      const tab = action.tab || 'buildings';
+      if (typeof game?.enterCity === 'function') return game.enterCity(cityId, { tab });
+      this.showCityManagement = true;
+      this.activeCityManagementTab = tab;
+      this.showSubcityList = false;
+      this.activeCommandPanel = '';
+      this.activeEventId = null;
+      this.renderActive();
+      return true;
+    }
+
+    openCityManagement(action = {}) {
+      const tab = action.tab || 'buildings';
+      this.showCityManagement = true;
+      this.activeCityManagementTab = tab;
+      this.showSubcityList = false;
+      this.activeCommandPanel = '';
+      this.activeEventId = null;
+      this.renderActive();
+      return true;
+    }
+
+    closeCityManagement() {
+      this.showCityManagement = false;
+      this.renderActive();
+      return true;
+    }
+
+    switchCityManagementTab(tab = 'buildings') {
+      const allowed = ['buildings', 'people', 'military'];
+      this.activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
+      if (this.lastGame && typeof this.lastGame === 'object') {
+        this.lastGame.activeCityManagementTab = this.activeCityManagementTab;
+      }
+      this.renderActive();
+      return true;
+    }
+
     changeFamousPersonsPage(action = {}) {
       const delta = Number(action.delta) || 0;
       this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
@@ -613,6 +657,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.showCityManagement = false;
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
@@ -633,6 +678,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
+      this.showCityManagement = false;
       this.showAdvisor = false;
       this.showTaskCenter = false;
       this.showGuidebook = false;
@@ -1361,6 +1407,7 @@
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
+      this.showCityManagement = false;
       this.showAdvisor = false;
       this.showFamousPersons = false;
       this.activeCommandPanel = '';
@@ -1459,7 +1506,10 @@
       const view = this.resolveMapHomeViewState(state, {
         requestedTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
-        forceMapHome: Boolean(this.lastGame?.mapHomeActive) && (requestedTab === 'resources' || requestedTab === 'military'),
+        forceMapHome: (
+          Boolean(this.lastGame?.mapHomeActive)
+          || (Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0)
+        ) && (requestedTab === 'resources' || requestedTab === 'military'),
       });
       this.mapHomeActive = view.isMapHome;
       return view.activeTab;
@@ -1474,7 +1524,7 @@
       }
       const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
       const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
-      const canUseMapHome = (Number(state?.currentEra) || 0) >= 5 && hasTiles;
+      const canUseMapHome = hasTiles;
       const shouldUseMapHome = canUseMapHome
         && options.allowDefaultMapHome !== false
         && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
@@ -1522,7 +1572,10 @@
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: activeTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
-        forceMapHome: Boolean(this.lastGame?.mapHomeActive) && (activeTab === 'resources' || activeTab === 'military'),
+        forceMapHome: (
+          Boolean(this.lastGame?.mapHomeActive)
+          || (Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0)
+        ) && (activeTab === 'resources' || activeTab === 'military'),
       });
       this.mapHomeActive = homeView.isMapHome;
       const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
@@ -1535,6 +1588,8 @@
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showSubcityList: this.showSubcityList,
+        showCityManagement: this.showCityManagement,
+        activeCityManagementTab: this.activeCityManagementTab,
         showAdvisor: this.showAdvisor,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
@@ -1628,7 +1683,10 @@
       const homeView = this.resolveMapHomeViewState(state, {
         requestedTab: activeTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
-        forceMapHome: Boolean(this.lastGame?.mapHomeActive) && (activeTab === 'resources' || activeTab === 'military'),
+        forceMapHome: (
+          Boolean(this.lastGame?.mapHomeActive)
+          || (Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0)
+        ) && (activeTab === 'resources' || activeTab === 'military'),
       });
       this.mapHomeActive = homeView.isMapHome;
       if (homeView.militaryView && state.militaryView !== homeView.militaryView) state.militaryView = homeView.militaryView;

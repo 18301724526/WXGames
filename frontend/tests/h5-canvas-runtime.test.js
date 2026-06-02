@@ -397,6 +397,8 @@ test('Canvas game shell can render read-only HUD preview when explicitly enabled
       showResourceDetails: false,
       showCitySwitcher: false,
       showSubcityList: false,
+      showCityManagement: false,
+      activeCityManagementTab: 'buildings',
       showAdvisor: false,
       showTaskCenter: false,
       activeTaskCenterTab: 'main',
@@ -545,7 +547,7 @@ test('Canvas game shell defaults unlocked tile map saves to H5 map home', () => 
   assert.equal(state.militaryView, 'world');
 });
 
-test('Canvas game shell keeps early saves on the legacy home view', () => {
+test('Canvas game shell promotes early saves with tile map data to map home', () => {
   const { document, runtime } = createCanvasHarness();
   const renderCalls = [];
   const renderer = {
@@ -575,9 +577,9 @@ test('Canvas game shell keeps early saves on the legacy home view', () => {
     previewEnabled: true,
   });
 
-  assert.equal(renderCalls.at(-1).options.activeTab, 'resources');
-  assert.equal(renderCalls.at(-1).options.isMapHome, false);
-  assert.equal(state.militaryView, 'army');
+  assert.equal(renderCalls.at(-1).options.activeTab, 'military');
+  assert.equal(renderCalls.at(-1).options.isMapHome, true);
+  assert.equal(state.militaryView, 'world');
 });
 
 test('Canvas game shell keeps preview disabled by default so existing DOM UI remains authoritative', () => {

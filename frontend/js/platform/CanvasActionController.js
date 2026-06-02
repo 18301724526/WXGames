@@ -5,6 +5,7 @@
     'showResourceDetails',
     'showCitySwitcher',
     'showSubcityList',
+    'showCityManagement',
     'showAdvisor',
     'showTaskCenter',
     'showTalentPolicy',
@@ -248,6 +249,35 @@
 
     handle_closeSubcityList(action) {
       this.host.showSubcityList = false;
+      return this.afterHandled(action);
+    }
+
+    handle_openCityManagement(action) {
+      const tab = action.tab || 'buildings';
+      this.host.showCityManagement = true;
+      this.host.activeCityManagementTab = tab;
+      this.closePanels(['showCityManagement']);
+      const game = this.getGameHost();
+      if (game && game !== this.host) {
+        game.showCityManagement = true;
+        game.activeCityManagementTab = tab;
+      }
+      return this.afterHandled(action);
+    }
+
+    handle_closeCityManagement(action) {
+      this.host.showCityManagement = false;
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'showCityManagement' in game) game.showCityManagement = false;
+      return this.afterHandled(action);
+    }
+
+    handle_switchCityManagementTab(action) {
+      const allowed = ['buildings', 'people', 'military'];
+      const tab = allowed.includes(action.tab) ? action.tab : 'buildings';
+      this.host.activeCityManagementTab = tab;
+      const game = this.getGameHost();
+      if (game && game !== this.host) game.activeCityManagementTab = tab;
       return this.afterHandled(action);
     }
 
@@ -637,8 +667,7 @@
     async selectCity(action) {
       const game = this.getGameHost();
       if (typeof game?.switchCity === 'function') {
-        game.switchCity(action.cityId);
-        return true;
+        return await game.switchCity(action.cityId);
       }
       this.host.showCitySwitcher = false;
       this.host.activeEventId = null;
@@ -662,6 +691,31 @@
       }
       return this.finalize(Promise.resolve(this.selectCity(selectAction)).then((allowed) => {
         if (allowed !== false) this.afterHandled(action);
+        return allowed !== false;
+      }));
+    }
+
+    handle_enterCity(action) {
+      const cityId = action.cityId || action.territoryId || action.siteId || '';
+      if (!cityId) return false;
+      this.host.showSubcityList = false;
+      this.host.activeCommandPanel = '';
+      this.host.activeEventId = null;
+      const game = this.getGameHost();
+      const result = typeof game?.enterCity === 'function'
+        ? game.enterCity(cityId, { tab: action.tab || 'buildings' })
+        : Promise.resolve(this.selectCity({ ...action, cityId })).then((allowed) => {
+          if (allowed === false) return false;
+          this.host.showCityManagement = true;
+          this.host.activeCityManagementTab = action.tab || 'buildings';
+          return true;
+        });
+      return this.finalize(Promise.resolve(result).then((allowed) => {
+        if (allowed !== false) {
+          this.host.showCityManagement = true;
+          this.host.activeCityManagementTab = action.tab || 'buildings';
+          this.afterHandled(action);
+        }
         return allowed !== false;
       }));
     }
@@ -1376,14 +1430,12 @@
     }
 
     handle_manageCity(action) {
-      const forwarded = this.forward(action);
-      if (forwarded !== undefined) return forwarded !== false;
-      const territory = this.getTerritoryController();
-      if (territory?.handleAction) {
-        territory.handleAction({ territoryId: action.territoryId, action: 'manage-city' });
-        return true;
-      }
-      return this.handle_selectCity({ ...action, cityId: action.territoryId });
+      return this.handle_enterCity({
+        ...action,
+        type: 'enterCity',
+        cityId: action.cityId || action.territoryId,
+        tab: action.tab || 'buildings',
+      });
     }
 
     handle_renameCity(action) {

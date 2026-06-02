@@ -38,7 +38,7 @@
         const requestedTab = viewOptions.requestedTab || viewOptions.activeTab || state?.currentTab || 'resources';
         const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles)
           && state.territoryState.worldMap.tiles.length > 0;
-        const canUseMapHome = (Number(state?.currentEra) || 0) >= 5 && hasTiles;
+        const canUseMapHome = hasTiles;
         const shouldUseMapHome = canUseMapHome
           && viewOptions.allowDefaultMapHome !== false
           && (viewOptions.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory');
