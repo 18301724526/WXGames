@@ -1,6 +1,7 @@
 const WORLD_MAP_VERSION = 2;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
+const SCOUT_REVEAL_RADIUS = 1;
 
 const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
@@ -9,12 +10,6 @@ const SIDE_DIRECTIONS = {
   ne: { q: 0, r: -1 },
   se: { q: 1, r: 0 },
   sw: { q: 0, r: 1 },
-};
-const MICRO_BOOTSTRAP_BOUNDS = {
-  minQ: -6,
-  maxQ: 5,
-  minR: -2,
-  maxR: 5,
 };
 const MICRO_TERRAIN_OVERRIDES = new Map([
   ['tile_-4_-1', 'desert'],
@@ -52,9 +47,6 @@ const OCEAN_CORNER_BY_CORE_OFFSET = {
 const RIVER_PORTS_BY_TILE_ID = new Map([
   ['tile_4_2', ['ne', 'sw']],
   ['tile_4_1', ['ne', 'sw']],
-]);
-const RIVER_MOUTH_BY_TILE_ID = new Map([
-  ['tile_4_1', 'river-mouth-sw'],
 ]);
 const DIRECTION_VECTORS = {
   n: { q: 0, r: -1 },
@@ -136,12 +128,12 @@ function getOceanShoreEdgeTemplateKeys(sides = []) {
 
 function chooseOceanTemplates(q, r) {
   if (q === 0 && r === 0) return [];
-  const tileId = getTileId(q, r);
   if (isOceanCoreCoord(q, r)) return ['full'];
   const sides = getAdjacentOceanSides(q, r);
   const blocksRiverMouth = isOceanShoreCornerCoord(q, r);
+  const riverPorts = getRiverPorts(q, r);
   const edgeKeys = getOceanShoreEdgeTemplateKeys(sides).map((key) => (
-    !blocksRiverMouth && RIVER_MOUTH_BY_TILE_ID.get(tileId) && sides.length === 1 ? RIVER_MOUTH_BY_TILE_ID.get(tileId) : key
+    !blocksRiverMouth && sides.length === 1 && riverPorts.includes(key) ? `river-mouth-${key}` : key
   ));
   return [
     ...edgeKeys,
@@ -269,45 +261,22 @@ function normalizeScoutTrail(rawTrail) {
   };
 }
 
-function applyMicroTerrainBootstrap(tileMap, seed, now = new Date()) {
-  for (let q = MICRO_BOOTSTRAP_BOUNDS.minQ; q <= MICRO_BOOTSTRAP_BOUNDS.maxQ; q += 1) {
-    for (let r = MICRO_BOOTSTRAP_BOUNDS.minR; r <= MICRO_BOOTSTRAP_BOUNDS.maxR; r += 1) {
-      const terrain = chooseTerrain(seed, q, r);
-      const oceanTemplates = chooseOceanTemplates(q, r);
-      const riverPorts = getRiverPorts(q, r);
-      const id = getTileId(q, r);
-      const existing = tileMap.get(id);
-      tileMap.set(id, {
-        ...(existing || createTile(seed, q, r, now)),
-        terrain,
-        oceanTemplates,
-        riverPorts,
-        transitionKey: getTerrainTransitionKey(seed, q, r, terrain),
-        discovered: existing?.discovered !== false,
-        visible: existing?.visible !== false,
-      });
-    }
-  }
-}
-
 function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
-  const tileMap = new Map();
-  applyMicroTerrainBootstrap(tileMap, seed, now);
-  const capital = tileMap.get(CAPITAL_TILE_ID) || createTile(seed, 0, 0, now, { terrain: 'capital', siteId: 'capital' });
-  tileMap.set(CAPITAL_TILE_ID, {
-    ...capital,
-    terrain: 'capital',
-    siteId: capital.siteId || 'capital',
-    riverPorts: [],
-    oceanTemplates: [],
-    discovered: true,
-    visible: true,
-  });
+  const capital = createTile(seed, 0, 0, now, { terrain: 'capital', siteId: 'capital' });
   return {
     version: WORLD_MAP_VERSION,
     seed,
     origin: { q: 0, r: 0 },
-    tiles: [...tileMap.values()].sort((a, b) => Math.max(Math.abs(a.q), Math.abs(a.r)) - Math.max(Math.abs(b.q), Math.abs(b.r)) || a.q - b.q || a.r - b.r),
+    tiles: [{
+      ...capital,
+      id: CAPITAL_TILE_ID,
+      terrain: 'capital',
+      siteId: capital.siteId || 'capital',
+      riverPorts: [],
+      oceanTemplates: [],
+      discovered: true,
+      visible: true,
+    }],
     scoutTrails: [],
   };
 }
@@ -321,7 +290,6 @@ function getSeed(gameStateOrSeed) {
 function normalizeWorldMap(rawWorldMap, options = {}) {
   const seed = rawWorldMap?.seed || options.seed || DEFAULT_WORLD_SEED;
   const now = options.now || new Date();
-  const incomingVersion = toInteger(rawWorldMap?.version, 0);
   const tileMap = new Map();
   for (const rawTile of Array.isArray(rawWorldMap?.tiles) ? rawWorldMap.tiles : []) {
     const tile = normalizeTile(rawTile, seed, now);
@@ -333,11 +301,6 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
   const scoutTrails = (Array.isArray(rawWorldMap?.scoutTrails) ? rawWorldMap.scoutTrails : [])
     .map(normalizeScoutTrail)
     .filter(Boolean);
-  const shouldBootstrapTerrain = incomingVersion < WORLD_MAP_VERSION
-    || !tileMap.has('tile_1_0')
-    || !tileMap.has('tile_4_1')
-    || !tileMap.has('tile_4_2');
-  if (shouldBootstrapTerrain) applyMicroTerrainBootstrap(tileMap, seed, now);
   return {
     version: WORLD_MAP_VERSION,
     seed,
@@ -377,6 +340,33 @@ function revealTile(gameState, q, r, now = new Date(), overrides = {}) {
   return upsertTile(worldMap, tile);
 }
 
+function getRevealArea(q, r, radius = SCOUT_REVEAL_RADIUS) {
+  const centerQ = toInteger(q, 0);
+  const centerR = toInteger(r, 0);
+  const safeRadius = Math.max(0, toInteger(radius, SCOUT_REVEAL_RADIUS));
+  const coords = [];
+  for (let dq = -safeRadius; dq <= safeRadius; dq += 1) {
+    for (let dr = -safeRadius; dr <= safeRadius; dr += 1) {
+      coords.push({ q: centerQ + dq, r: centerR + dr });
+    }
+  }
+  return coords.sort((a, b) => (
+    Math.max(Math.abs(a.q - centerQ), Math.abs(a.r - centerR))
+    - Math.max(Math.abs(b.q - centerQ), Math.abs(b.r - centerR))
+    || a.q - b.q
+    || a.r - b.r
+  ));
+}
+
+function revealTileArea(gameState, q, r, now = new Date(), options = {}) {
+  const radius = options.radius === undefined ? SCOUT_REVEAL_RADIUS : options.radius;
+  return getRevealArea(q, r, radius).map((coord) => revealTile(gameState, coord.q, coord.r, now));
+}
+
+function canPlaceSiteOnTerrain(seed, q, r) {
+  return !['ocean', 'river'].includes(chooseTerrain(seed, q, r));
+}
+
 function bindSiteToTile(gameState, q, r, siteId, now = new Date()) {
   return revealTile(gameState, q, r, now, { siteId });
 }
@@ -385,18 +375,20 @@ function getDirectionVector(direction) {
   return DIRECTION_VECTORS[direction] || null;
 }
 
-function buildScoutRoute(origin, direction, actionPoints) {
+function buildScoutRoute(origin, direction, actionPoints, options = {}) {
   const vector = getDirectionVector(direction);
   if (!vector) return [];
   const startQ = toInteger(origin?.q ?? origin?.x, 0);
   const startR = toInteger(origin?.r ?? origin?.y, 0);
   const steps = Math.max(0, toInteger(actionPoints, 0));
+  const startDistance = Math.max(1, toInteger(options.startDistance, 1));
   const route = [];
-  for (let step = 1; step <= steps; step += 1) {
+  for (let step = 0; step < steps; step += 1) {
+    const distance = startDistance + step;
     route.push({
-      q: startQ + vector.q * step,
-      r: startR + vector.r * step,
-      step,
+      q: startQ + vector.q * distance,
+      r: startR + vector.r * distance,
+      step: step + 1,
     });
   }
   return route;
@@ -426,11 +418,15 @@ module.exports = {
   WORLD_MAP_VERSION,
   DEFAULT_WORLD_SEED,
   CAPITAL_TILE_ID,
+  SCOUT_REVEAL_RADIUS,
   DIRECTION_VECTORS,
   getTileId,
   chooseTerrain,
   chooseOceanTemplates,
   getRiverPorts,
+  getRevealArea,
+  revealTileArea,
+  canPlaceSiteOnTerrain,
   createTile,
   createInitialWorldMap,
   normalizeWorldMap,

@@ -25,6 +25,27 @@ function createSequenceRandom(values) {
   };
 }
 
+function completeScout(state, scout, now, randomValues = [0.1, 0.9, 0.5]) {
+  const mission = state.warMissions.find((item) => item.id === scout.mission.id);
+  const completedAt = new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS);
+  TerritoryService.updateMissionReadiness(state, completedAt, createSequenceRandom(randomValues));
+  return TerritoryService.claimScout(state, mission.id, completedAt, createSequenceRandom(randomValues));
+}
+
+function discoverFirstSite(state, direction = 'e', now = new Date('2026-05-17T08:00:00.000Z'), randomValues = [0.1, 0.9, 0.5]) {
+  let currentTime = now;
+  let lastClaim = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const scout = TerritoryService.startScout(state, direction, currentTime);
+    assert.equal(scout.success, true);
+    lastClaim = completeScout(state, scout, currentTime, randomValues);
+    if (lastClaim.site) return { scout, claim: lastClaim, at: currentTime };
+    currentTime = new Date(currentTime.getTime() + TerritoryService.SCOUT_DURATION_MS + 1000);
+  }
+  assert.fail(`expected ${direction} scout to discover a site`);
+  return { scout: null, claim: lastClaim, at: currentTime };
+}
+
 function addOccupiedSubCity(state, options = {}) {
   state.territories.push({
     id: options.id || 'site_east',
@@ -148,7 +169,7 @@ test('古典时代只默认显示首都和八方向侦察入口', () => {
   assert.equal(capitalTile.siteId, 'capital');
 });
 
-test('八方向侦察完成后会在有地点的坐标生成世界点和报告', () => {
+test('侦察前沿会先解锁区域，水面或贴近首都的位置不会生成地点', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
@@ -161,51 +182,48 @@ test('八方向侦察完成后会在有地点的坐标生成世界点和报告',
   assert.equal(start.mission.route.length, TerritoryService.SCOUT_ACTION_POINTS);
   assert.deepEqual(start.mission.route[0], { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false });
 
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.9, 0.5]));
-  const claim = TerritoryService.claimScout(state, state.warMissions[0].id, now);
+  const claim = completeScout(state, start, now, [0.1, 0.9, 0.5]);
 
   assert.equal(claim.success, true);
-  assert.equal(claim.site.x, 1);
-  assert.equal(claim.site.y, 0);
-  assert.equal(claim.site.status, 'discovered');
-  assert.ok(Number.isFinite(claim.site.visualOffset.x));
-  assert.ok(Number.isFinite(claim.site.visualOffset.y));
+  assert.equal(claim.site, null);
   assert.equal(state.scoutReports.length, 1);
-  assert.equal(state.scoutReports[0].siteId, claim.site.id);
+  assert.equal(state.scoutReports[0].siteId, null);
   assert.match(state.scoutReports[0].text, /东方/);
   assert.deepEqual(state.scoutedCoordinates.find((item) => item.x === 1 && item.y === 0), {
     x: 1,
     y: 0,
-    result: 'site',
-    siteId: claim.site.id,
-    scoutedAt: now.toISOString(),
+    result: 'empty',
+    siteId: null,
+    scoutedAt: new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString(),
   });
-  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, claim.site.id);
+  assert.ok(state.worldMap.tiles.length > TerritoryService.SCOUT_ACTION_POINTS);
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_4_1').oceanTemplates[0], 'river-mouth-ne');
 });
 
 test('scout target outcome is generated during travel before report claim', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
-  const scout = TerritoryService.startScout(state, 'e', now);
+  completeScout(state, TerritoryService.startScout(state, 'e', now), now, [0.99]);
+  const siteScoutAt = new Date(now.getTime() + 2 * TerritoryService.SCOUT_DURATION_MS);
+  const scout = TerritoryService.startScout(state, 'e', siteScoutAt);
+  const reportCountBeforeClaim = state.scoutReports.length;
 
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.9, 0.5]));
+  const completedAt = new Date(siteScoutAt.getTime() + TerritoryService.SCOUT_DURATION_MS);
+  TerritoryService.updateMissionReadiness(state, completedAt, createSequenceRandom([0.1, 0.9, 0.5]));
 
   const mission = state.warMissions.find((item) => item.id === scout.mission.id);
   assert.equal(mission.resolvedTarget, true);
   assert.equal(mission.result, 'site');
   assert.ok(mission.siteId);
-  assert.equal(state.scoutReports.length, 0);
+  assert.equal(state.scoutReports.length, reportCountBeforeClaim);
   assert.ok(state.territories.some((territory) => territory.id === mission.siteId));
-  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, mission.siteId);
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === `tile_${mission.targetX}_${mission.targetY}`).siteId, mission.siteId);
 
-  mission.completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now);
-  const claim = TerritoryService.claimScout(state, mission.id, now);
+  const claim = TerritoryService.claimScout(state, mission.id, completedAt);
 
   assert.equal(claim.success, true);
   assert.equal(claim.site.id, mission.siteId);
-  assert.equal(state.scoutReports[0].siteId, mission.siteId);
+  assert.equal(state.scoutReports.at(-1).siteId, mission.siteId);
 });
 
 test('scout missions reveal world map tiles over time and record a trail', () => {
@@ -226,7 +244,8 @@ test('scout missions reveal world map tiles over time and record a trail', () =>
 
   assert.equal(mission.status, 'ready');
   assert.equal(mission.actionPointsRemaining, 0);
-  assert.equal(mission.revealedTileIds.length, TerritoryService.SCOUT_ACTION_POINTS);
+  assert.ok(mission.revealedTileIds.length > TerritoryService.SCOUT_ACTION_POINTS);
+  assert.equal(state.worldMap.tiles.find((tile) => tile.id === 'tile_4_1').oceanTemplates[0], 'river-mouth-ne');
   assert.equal(state.worldMap.scoutTrails.find((trail) => trail.missionId === mission.id).returned, true);
 });
 
@@ -235,9 +254,7 @@ test('侦察到空地后会标记坐标并跳过该坐标', () => {
   const now = new Date('2026-05-17T08:00:00.000Z');
 
   let start = TerritoryService.startScout(state, 'w', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, () => 0.95);
-  const firstClaim = TerritoryService.claimScout(state, start.mission.id, now);
+  const firstClaim = completeScout(state, start, now, [0.95]);
 
   assert.equal(firstClaim.success, true);
   assert.equal(firstClaim.site, null);
@@ -247,12 +264,12 @@ test('侦察到空地后会标记坐标并跳过该坐标', () => {
     y: 0,
     result: 'empty',
     siteId: null,
-    scoutedAt: now.toISOString(),
+    scoutedAt: new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString(),
   });
 
   start = TerritoryService.startScout(state, 'w', new Date('2026-05-17T08:02:00.000Z'));
   assert.equal(start.success, true);
-  assert.equal(start.mission.targetX, -2);
+  assert.equal(start.mission.targetX, -7);
   assert.equal(start.mission.targetY, 0);
 });
 
@@ -260,14 +277,7 @@ test('敌对据点会稳定生成守军名人，归一化后继续保留', () =>
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const scout = TerritoryService.startScout(state, 'e', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.1, 0.2]));
-  const claim = TerritoryService.claimScout(
-    state,
-    scout.mission.id,
-    now,
-  );
+  const claim = discoverFirstSite(state, 'e', now, [0.1, 0.1, 0.01]).claim;
   const site = claim.site;
   const firstLeader = site.defenderLeader;
 
@@ -385,10 +395,7 @@ test('侦察、出征、完成占领会产生待命名城市', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const scout = TerritoryService.startScout(state, 'e', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.9, 0.5]));
-  const discovered = TerritoryService.claimScout(state, scout.mission.id, now).site;
+  const discovered = discoverFirstSite(state, 'e', now, [0.1, 0.9, 0.5]).claim.site;
 
   const start = TerritoryService.startConquest(state, discovered.id, discovered.recommendedSoldiers, now);
   assert.equal(start.success, true);
@@ -409,10 +416,7 @@ test('无主地区占领时会自动按 100 士兵建立据点处理', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const scout = TerritoryService.startScout(state, 'e', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.9, 0.5]));
-  const discovered = TerritoryService.claimScout(state, scout.mission.id, now).site;
+  const discovered = discoverFirstSite(state, 'e', now, [0.1, 0.9, 0.5]).claim.site;
 
   assert.equal(discovered.owner, 'neutral');
   assert.equal(discovered.occupationMode, undefined);
@@ -679,10 +683,7 @@ test('占领任务会向前端提供行军总时长和剩余时间', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const scout = TerritoryService.startScout(state, 'e', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.9, 0.5]));
-  const discovered = TerritoryService.claimScout(state, scout.mission.id, now).site;
+  const discovered = discoverFirstSite(state, 'e', now, [0.1, 0.9, 0.5]).claim.site;
 
   const conquest = TerritoryService.startConquest(state, discovered.id, discovered.recommendedSoldiers, now);
   const territoryState = TerritoryService.getClientTerritoryState(state, new Date(now.getTime() + 30 * 1000));
@@ -697,10 +698,7 @@ test('占领任务会向前端提供行军总时长和剩余时间', () => {
 test('城市命名后第二块领土会提示命名势力', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
-  const scout = TerritoryService.startScout(state, 'e', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.9, 0.5]));
-  const site = TerritoryService.claimScout(state, scout.mission.id, now).site;
+  const site = discoverFirstSite(state, 'e', now, [0.1, 0.9, 0.5]).claim.site;
   TerritoryService.startConquest(state, site.id, site.recommendedSoldiers, now);
   state.warMissions[0].completesAt = now.toISOString();
   TerritoryService.updateMissionReadiness(state, now);
@@ -751,26 +749,23 @@ test('侦察结果会在连续落空时逐步提高出地点概率', () => {
   const state = createClassicalState();
   const baseTime = new Date('2026-05-17T08:00:00.000Z');
 
-  const first = TerritoryService.startScout(state, 'n', baseTime);
-  state.warMissions.find((mission) => mission.id === first.mission.id).completesAt = baseTime.toISOString();
-  TerritoryService.updateMissionReadiness(state, baseTime, () => 0.95);
-  const firstClaim = TerritoryService.claimScout(state, first.mission.id, baseTime);
+  state.warMissions.push(
+    { id: 'scout_empty_a', kind: 'scout', direction: 'n', targetX: 0, targetY: -7, scoutDistance: 7, startedAt: baseTime.toISOString(), completesAt: baseTime.toISOString(), status: 'ready' },
+    { id: 'scout_empty_b', kind: 'scout', direction: 'e', targetX: 7, targetY: 0, scoutDistance: 7, startedAt: baseTime.toISOString(), completesAt: baseTime.toISOString(), status: 'ready' },
+    { id: 'scout_site_c', kind: 'scout', direction: 's', targetX: 0, targetY: 7, scoutDistance: 7, startedAt: baseTime.toISOString(), completesAt: baseTime.toISOString(), status: 'ready' },
+  );
+
+  const firstClaim = TerritoryService.claimScout(state, 'scout_empty_a', baseTime, () => 0.95);
   assert.equal(firstClaim.site, null);
   assert.equal(state.scoutState.emptyStreak, 1);
 
   const secondAt = new Date('2026-05-17T08:02:00.000Z');
-  const second = TerritoryService.startScout(state, 'e', secondAt);
-  state.warMissions.find((mission) => mission.id === second.mission.id).completesAt = secondAt.toISOString();
-  TerritoryService.updateMissionReadiness(state, secondAt, () => 0.5);
-  const secondClaim = TerritoryService.claimScout(state, second.mission.id, secondAt);
+  const secondClaim = TerritoryService.claimScout(state, 'scout_empty_b', secondAt, () => 0.5);
   assert.equal(secondClaim.site, null);
   assert.equal(state.scoutState.emptyStreak, 2);
 
   const thirdAt = new Date('2026-05-17T08:04:00.000Z');
-  const third = TerritoryService.startScout(state, 's', thirdAt);
-  state.warMissions.find((mission) => mission.id === third.mission.id).completesAt = thirdAt.toISOString();
-  TerritoryService.updateMissionReadiness(state, thirdAt, () => 0.5);
-  const thirdClaim = TerritoryService.claimScout(state, third.mission.id, thirdAt);
+  const thirdClaim = TerritoryService.claimScout(state, 'scout_site_c', thirdAt, () => 0.5);
   assert.equal(thirdClaim.success, true);
   assert.ok(thirdClaim.site);
   assert.equal(state.scoutState.emptyStreak, 0);
@@ -779,21 +774,28 @@ test('侦察结果会在连续落空时逐步提高出地点概率', () => {
 test('连续多次没有出地点后会触发地点保底', () => {
   const state = createClassicalState();
   const baseTime = new Date('2026-05-17T08:00:00.000Z');
-  const steps = [
-    ['n', new Date(baseTime)],
-    ['e', new Date('2026-05-17T08:02:00.000Z')],
-    ['s', new Date('2026-05-17T08:04:00.000Z')],
-    ['w', new Date('2026-05-17T08:06:00.000Z')],
-    ['ne', new Date('2026-05-17T08:08:00.000Z')],
+  const missions = [
+    ['scout_a', 'n', 0, -7, new Date(baseTime)],
+    ['scout_b', 'e', 7, 0, new Date('2026-05-17T08:02:00.000Z')],
+    ['scout_c', 's', 0, 7, new Date('2026-05-17T08:04:00.000Z')],
+    ['scout_d', 'w', -7, 0, new Date('2026-05-17T08:06:00.000Z')],
+    ['scout_e', 'ne', 7, -7, new Date('2026-05-17T08:08:00.000Z')],
   ];
   const results = [];
+  state.warMissions.push(...missions.map(([id, direction, targetX, targetY, at]) => ({
+    id,
+    kind: 'scout',
+    direction,
+    targetX,
+    targetY,
+    scoutDistance: Math.max(Math.abs(targetX), Math.abs(targetY)),
+    startedAt: at.toISOString(),
+    completesAt: at.toISOString(),
+    status: 'ready',
+  })));
 
-  steps.forEach(([direction, at]) => {
-    const started = TerritoryService.startScout(state, direction, at);
-    const mission = state.warMissions.find((item) => item.id === started.mission.id);
-    mission.completesAt = at.toISOString();
-    TerritoryService.updateMissionReadiness(state, at, () => 0.99);
-    results.push(TerritoryService.claimScout(state, started.mission.id, at));
+  missions.forEach(([id, , , , at]) => {
+    results.push(TerritoryService.claimScout(state, id, at, () => 0.99));
   });
 
   assert.equal(results[0].site, null);
@@ -804,14 +806,12 @@ test('连续多次没有出地点后会触发地点保底', () => {
   assert.equal(state.scoutState.emptyStreak, 0);
 });
 
-test('距离首都 1 格时也有小概率直接发现有主的部落营地', () => {
+test('合法间距外仍有小概率直接发现有主的部落营地', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const scout = TerritoryService.startScout(state, 'n', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.05, 0.1]));
-  const claim = TerritoryService.claimScout(state, scout.mission.id, now);
+  state.warMissions.push({ id: 'scout_tribe_far', kind: 'scout', direction: 'n', targetX: 0, targetY: -7, scoutDistance: 7, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' });
+  const claim = TerritoryService.claimScout(state, 'scout_tribe_far', now, createSequenceRandom([0.1, 0.05, 0.1]));
 
   assert.equal(claim.success, true);
   assert.ok(claim.site);
@@ -823,20 +823,14 @@ test('距离越远越容易刷出有主地点', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const nearScout = TerritoryService.startScout(state, 'e', now);
-  state.warMissions[0].completesAt = now.toISOString();
-  TerritoryService.updateMissionReadiness(state, now, createSequenceRandom([0.1, 0.2, 0.3]));
-  const nearClaim = TerritoryService.claimScout(state, nearScout.mission.id, now).site;
+  state.warMissions.push({ id: 'scout_near_valid', kind: 'scout', direction: 'e', targetX: 7, targetY: 0, scoutDistance: 7, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' });
+  const nearClaim = TerritoryService.claimScout(state, 'scout_near_valid', now, createSequenceRandom([0.1, 0.9, 0.3])).site;
 
-  state.scoutedCoordinates.push({ x: 2, y: 0, result: 'empty', siteId: null, scoutedAt: now.toISOString() });
   const farTime = new Date('2026-05-17T08:03:00.000Z');
-  const farScout = TerritoryService.startScout(state, 'e', farTime);
-  const farMission = state.warMissions.find((mission) => mission.id === farScout.mission.id);
-  farMission.completesAt = farTime.toISOString();
-  TerritoryService.updateMissionReadiness(state, farTime, createSequenceRandom([0.1, 0.2, 0.5]));
-  const farClaim = TerritoryService.claimScout(state, farScout.mission.id, farTime).site;
+  state.warMissions.push({ id: 'scout_far_valid', kind: 'scout', direction: 'e', targetX: 11, targetY: 0, scoutDistance: 11, startedAt: farTime.toISOString(), completesAt: farTime.toISOString(), status: 'ready' });
+  const farClaim = TerritoryService.claimScout(state, 'scout_far_valid', farTime, createSequenceRandom([0.1, 0.2, 0.5])).site;
 
-  assert.equal(farScout.mission.targetX, 3);
+  assert.equal(farClaim.x, 11);
   assert.ok(['neutral', 'tribe'].includes(nearClaim.owner));
   assert.ok(['city_state', 'tribe', 'ruin_guardians'].includes(farClaim.owner));
   assert.notEqual(farClaim.owner, 'neutral');
@@ -846,9 +840,9 @@ test('有主地点会细分为部落、城邦和遗迹守军', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
-  const tribeMission = { id: 'scout_tribe', kind: 'scout', direction: 'n', targetX: 0, targetY: -1, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
-  const cityMission = { id: 'scout_city', kind: 'scout', direction: 'e', targetX: 3, targetY: 0, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
-  const ruinsMission = { id: 'scout_ruins', kind: 'scout', direction: 's', targetX: 0, targetY: 3, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
+  const tribeMission = { id: 'scout_tribe', kind: 'scout', direction: 'n', targetX: 0, targetY: -7, scoutDistance: 7, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
+  const cityMission = { id: 'scout_city', kind: 'scout', direction: 'e', targetX: 7, targetY: 0, scoutDistance: 7, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
+  const ruinsMission = { id: 'scout_ruins', kind: 'scout', direction: 's', targetX: 0, targetY: 7, scoutDistance: 7, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' };
 
   state.warMissions.push(tribeMission, cityMission, ruinsMission);
 
@@ -867,16 +861,16 @@ test('连续多次发现无主地点后，下一个地点会保底转为有主',
   const now = new Date('2026-05-17T08:00:00.000Z');
 
   const missions = [
-    { id: 'scout_a', kind: 'scout', direction: 'n', targetX: 0, targetY: -1, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
-    { id: 'scout_b', kind: 'scout', direction: 'e', targetX: 1, targetY: 0, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
-    { id: 'scout_c', kind: 'scout', direction: 's', targetX: 0, targetY: 1, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
-    { id: 'scout_d', kind: 'scout', direction: 'w', targetX: -1, targetY: 0, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
+    { id: 'scout_a', kind: 'scout', direction: 'n', targetX: 0, targetY: -3, scoutDistance: 3, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
+    { id: 'scout_b', kind: 'scout', direction: 'e', targetX: 3, targetY: 3, scoutDistance: 3, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
+    { id: 'scout_c', kind: 'scout', direction: 's', targetX: -3, targetY: 0, scoutDistance: 3, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
+    { id: 'scout_d', kind: 'scout', direction: 'w', targetX: -1, targetY: 3, scoutDistance: 3, startedAt: now.toISOString(), completesAt: now.toISOString(), status: 'ready' },
   ];
   state.warMissions.push(...missions);
 
-  const first = TerritoryService.claimScout(state, 'scout_a', now, createSequenceRandom([0.1, 0.9, 0.1])).site;
-  const second = TerritoryService.claimScout(state, 'scout_b', now, createSequenceRandom([0.1, 0.9, 0.1])).site;
-  const third = TerritoryService.claimScout(state, 'scout_c', now, createSequenceRandom([0.1, 0.9, 0.1])).site;
+  const first = TerritoryService.claimScout(state, 'scout_a', now, createSequenceRandom([0.1, 0.99, 0.1])).site;
+  const second = TerritoryService.claimScout(state, 'scout_b', now, createSequenceRandom([0.1, 0.99, 0.1])).site;
+  const third = TerritoryService.claimScout(state, 'scout_c', now, createSequenceRandom([0.1, 0.99, 0.1])).site;
   const fourth = TerritoryService.claimScout(state, 'scout_d', now, createSequenceRandom([0.1, 0.95, 0.2])).site;
 
   assert.equal(first.owner, 'neutral');

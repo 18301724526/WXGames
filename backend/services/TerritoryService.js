@@ -10,6 +10,7 @@ const MAX_NAME_LENGTH = 12;
 const MAX_REPORTS = 12;
 const MAX_SCOUT_DISTANCE = 24;
 const MAX_ACTIVE_SCOUTS = 2;
+const SCOUT_SITE_MIN_DISTANCE = 3;
 const SCOUT_SITE_BASE_CHANCE = 0.32;
 const SCOUT_SITE_CHANCE_STEP = 0.14;
 const SCOUT_SITE_GUARANTEE_AFTER = 4;
@@ -345,7 +346,12 @@ function normalizeWarMissions(rawMissions) {
               revealed: Boolean(step.revealed),
             };
           })
-          : WorldMapService.buildScoutRoute({ q: originX, r: originY }, direction, actionPoints).map((step) => ({
+          : WorldMapService.buildScoutRoute(
+            { q: originX, r: originY },
+            direction,
+            actionPoints,
+            { startDistance: Math.max(1, getRelativeDistance(originX, originY, targetX, targetY) - actionPoints + 1) },
+          ).map((step) => ({
             ...step,
             tileId: WorldMapService.getTileId(step.q, step.r),
             revealed: false,
@@ -474,6 +480,19 @@ function syncScoutCoordinatesWithTerritories(gameState, now = new Date().toISOSt
     });
   }
   return gameState.scoutedCoordinates;
+}
+
+function getKnownWorldCoordinateKeys(gameState) {
+  const worldMap = WorldMapService.ensureWorldMap(gameState);
+  return new Set((worldMap.tiles || [])
+    .filter((tile) => tile.discovered !== false)
+    .map((tile) => getCoordinateKey(tile.q, tile.r)));
+}
+
+function hasSiteSpacing(gameState, x, y) {
+  return !(gameState.territories || []).some((territory) => (
+    getRelativeDistance(territory.x, territory.y, x, y) < SCOUT_SITE_MIN_DISTANCE
+  ));
 }
 
 function normalizeTerritoryState(gameState, now = new Date()) {
@@ -688,10 +707,14 @@ function advanceScoutMission(gameState, mission, now = new Date(), randomSource 
   for (const step of route) {
     if (step.revealed) continue;
     if (mission.actionPointsRemaining <= 0 || nextStepAt > nowMs) break;
-    const tile = WorldMapService.revealTile(gameState, step.q, step.r, now);
+    const revealedTiles = WorldMapService.revealTileArea(gameState, step.q, step.r, now);
+    const tile = revealedTiles.find((item) => item.q === step.q && item.r === step.r) || revealedTiles[0];
     step.tileId = tile.id;
     step.revealed = true;
-    mission.revealedTileIds = Array.from(new Set([...mission.revealedTileIds, tile.id]));
+    mission.revealedTileIds = Array.from(new Set([
+      ...mission.revealedTileIds,
+      ...revealedTiles.map((item) => item.id),
+    ]));
     mission.actionPointsRemaining = Math.max(0, mission.actionPointsRemaining - 1);
     if (step.q === toInteger(mission.targetX, 0) && step.r === toInteger(mission.targetY, 0)) {
       resolveScoutMissionTarget(gameState, mission, now, randomSource);
@@ -778,11 +801,13 @@ function findNextCoordinate(gameState, direction, origin = getScoutOrigin(gameSt
   const originY = toInteger(origin?.y, 0);
   const occupied = new Set((gameState.territories || []).map((territory) => getCoordinateKey(territory.x, territory.y)));
   const scouted = new Set((gameState.scoutedCoordinates || []).map((coordinate) => getCoordinateKey(coordinate.x, coordinate.y)));
+  const discovered = getKnownWorldCoordinateKeys(gameState);
   for (let distance = 1; distance <= MAX_SCOUT_DISTANCE; distance += 1) {
     const x = originX + dir.dx * distance;
     const y = originY + dir.dy * distance;
     const key = getCoordinateKey(x, y);
-    if (!occupied.has(key) && !scouted.has(key)) return { x, y, distance };
+    if (occupied.has(key) || scouted.has(key) || discovered.has(key)) continue;
+    return { x, y, distance };
   }
   return null;
 }
@@ -1000,6 +1025,22 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     return { site: null, report: mission.report };
   }
 
+  if (!WorldMapService.canPlaceSiteOnTerrain(WorldMapService.ensureWorldMap(gameState, now).seed, targetX, targetY)
+    || !hasSiteSpacing(gameState, targetX, targetY)) {
+    recordScoutOutcome(gameState, 'empty');
+    upsertScoutCoordinateRecord(gameState, {
+      x: targetX,
+      y: targetY,
+      result: 'empty',
+      siteId: null,
+      scoutedAt: now.toISOString(),
+    });
+    mission.result = 'empty';
+    mission.siteId = null;
+    mission.report = createEmptyScoutReport(mission, now);
+    return { site: null, report: mission.report };
+  }
+
   recordScoutOutcome(gameState, 'site');
   const created = createSiteFromScout(gameState, mission, now, randomSource);
   const site = created.site;
@@ -1031,7 +1072,13 @@ function startScout(gameState, direction, now = new Date()) {
   const origin = getScoutOrigin(gameState);
   const target = findNextCoordinate(gameState, normalizedDirection, origin);
   if (!target) return { success: false, error: 'NO_SCOUT_TARGET', message: '该方向暂时没有可侦察区域' };
-  const route = WorldMapService.buildScoutRoute({ q: origin.x, r: origin.y }, normalizedDirection, SCOUT_ACTION_POINTS)
+  const routeStartDistance = Math.max(1, target.distance - SCOUT_ACTION_POINTS + 1);
+  const route = WorldMapService.buildScoutRoute(
+    { q: origin.x, r: origin.y },
+    normalizedDirection,
+    SCOUT_ACTION_POINTS,
+    { startDistance: routeStartDistance },
+  )
     .map((step) => ({
       ...step,
       tileId: WorldMapService.getTileId(step.q, step.r),
@@ -1333,6 +1380,7 @@ module.exports = {
   SCOUT_DURATION_MS,
   SCOUT_STEP_DURATION_MS,
   SCOUT_ACTION_POINTS,
+  SCOUT_SITE_MIN_DISTANCE,
   CONQUEST_DURATION_MS,
   MISSION_DURATION_MS: CONQUEST_DURATION_MS,
   createInitialPolity,
