@@ -270,6 +270,10 @@ function toInteger(value, fallback = 0) {
   return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
+function hasFiniteValue(value) {
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+}
+
 function normalizeSoldierScale(value, fallback = MIN_EXPEDITION_SOLDIERS) {
   const soldiers = toInteger(value, fallback);
   if (soldiers <= 0) return 0;
@@ -464,8 +468,8 @@ function normalizeWarMissions(rawMissions) {
           originY,
           targetX,
           targetY,
-          siteX: Number.isFinite(Number(mission.siteX)) ? toInteger(mission.siteX, targetX) : null,
-          siteY: Number.isFinite(Number(mission.siteY)) ? toInteger(mission.siteY, targetY) : null,
+          siteX: hasFiniteValue(mission.siteX) ? toInteger(mission.siteX, targetX) : null,
+          siteY: hasFiniteValue(mission.siteY) ? toInteger(mission.siteY, targetY) : null,
           siteTerrain: normalizeMapTerrainId(mission.siteTerrain),
           scoutDistance: Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, targetX, targetY))),
           actionPoints,
@@ -511,6 +515,54 @@ function normalizeWarMissions(rawMissions) {
     .filter(Boolean);
 }
 
+function normalizeScoutReportTileSnapshot(report) {
+  const q = hasFiniteValue(report?.q) ? toInteger(report.q, 0) : null;
+  const r = hasFiniteValue(report?.r) ? toInteger(report.r, 0) : null;
+  const tileId = typeof report?.tileId === 'string' && report.tileId
+    ? report.tileId
+    : q !== null && r !== null
+      ? WorldMapService.getTileId(q, r)
+      : null;
+  if (!tileId) return {};
+  const mapTerrain = normalizeMapTerrainId(report.mapTerrain || report.tile?.terrain) || null;
+  const terrain = report.terrain
+    ? getPlanningTerrainForMapTerrain(report.terrain)
+    : mapTerrain
+      ? getPlanningTerrainForMapTerrain(mapTerrain)
+      : null;
+  return {
+    tileId,
+    q,
+    r,
+    mapTerrain,
+    terrain,
+    tile: {
+      id: tileId,
+      q,
+      r,
+      terrain: mapTerrain,
+    },
+  };
+}
+
+function normalizeScoutReportRevealArea(report) {
+  const revealArea = (Array.isArray(report?.revealArea) ? report.revealArea : [])
+    .filter((coord) => coord && typeof coord === 'object')
+    .map((coord) => {
+      const q = toInteger(coord.q, 0);
+      const r = toInteger(coord.r, 0);
+      return {
+        q,
+        r,
+        step: Math.max(0, toInteger(coord.step, 0)),
+        kind: coord.kind === 'branch' ? 'branch' : 'main',
+        tileId: coord.tileId || WorldMapService.getTileId(q, r),
+        revealed: coord.revealed !== false,
+      };
+    });
+  return revealArea.length ? { revealArea } : {};
+}
+
 function normalizeScoutReports(rawReports) {
   return (Array.isArray(rawReports) ? rawReports : [])
     .filter((report) => report && typeof report === 'object')
@@ -522,6 +574,8 @@ function normalizeScoutReports(rawReports) {
       text: report.text || '',
       direction: normalizeDirection(report.direction) || null,
       createdAt: report.createdAt || new Date().toISOString(),
+      ...normalizeScoutReportTileSnapshot(report),
+      ...normalizeScoutReportRevealArea(report),
     }));
 }
 
@@ -695,10 +749,33 @@ function hasSiteSpacing(gameState, x, y) {
 }
 
 function getScoutResolvedCoordinate(mission) {
+  const hasSiteX = hasFiniteValue(mission?.siteX);
+  const hasSiteY = hasFiniteValue(mission?.siteY);
   return {
-    x: toInteger(mission.siteX, toInteger(mission.targetX, 0)),
-    y: toInteger(mission.siteY, toInteger(mission.targetY, 0)),
+    x: hasSiteX ? toInteger(mission.siteX, 0) : toInteger(mission.targetX, 0),
+    y: hasSiteY ? toInteger(mission.siteY, 0) : toInteger(mission.targetY, 0),
   };
+}
+
+function isDirectionalScoutAreaMission(mission) {
+  return mission?.revealAreaSource === 'directional-route-v1';
+}
+
+function getExistingScoutAreaSite(gameState, mission, now = new Date()) {
+  const areaKeys = new Set(ensureMissionRevealArea(gameState, mission, now)
+    .map((coord) => getCoordinateKey(coord.q, coord.r)));
+  if (!areaKeys.size) return null;
+  const originX = toInteger(mission.originX, 0);
+  const originY = toInteger(mission.originY, 0);
+  const targetX = toInteger(mission.targetX, 0);
+  const targetY = toInteger(mission.targetY, 0);
+  return (gameState.territories || [])
+    .filter((territory) => territory.id !== 'capital' && areaKeys.has(getCoordinateKey(territory.x, territory.y)))
+    .sort((a, b) => (
+      getRelativeDistance(targetX, targetY, a.x, a.y) - getRelativeDistance(targetX, targetY, b.x, b.y)
+      || getRelativeDistance(originX, originY, a.x, a.y) - getRelativeDistance(originX, originY, b.x, b.y)
+      || String(a.id).localeCompare(String(b.id))
+    ))[0] || null;
 }
 
 function getTerritoryBattleTileSnapshot(gameState, territory, now = new Date()) {
@@ -738,6 +815,58 @@ function attachBattleTileSnapshot(report, snapshot) {
     terrain: snapshot.terrain,
     tile: { ...snapshot.tile },
   };
+}
+
+function getScoutReportRevealAreaSnapshot(gameState, mission, now = new Date()) {
+  return ensureMissionRevealArea(gameState, mission, now)
+    .map((coord) => {
+      const q = toInteger(coord.q, 0);
+      const r = toInteger(coord.r, 0);
+      return {
+        q,
+        r,
+        step: Math.max(0, toInteger(coord.step, 0)),
+        kind: coord.kind === 'branch' ? 'branch' : 'main',
+        tileId: coord.tileId || WorldMapService.getTileId(q, r),
+        revealed: coord.revealed !== false,
+      };
+    });
+}
+
+function getScoutReportTileSnapshot(gameState, mission, now = new Date(), options = {}) {
+  const resolved = getScoutResolvedCoordinate(mission);
+  const x = toInteger(options.x, resolved.x);
+  const y = toInteger(options.y, resolved.y);
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const tileId = WorldMapService.getTileId(x, y);
+  const tile = (worldMap.tiles || []).find((item) => item.id === tileId || (item.q === x && item.r === y)) || null;
+  const mapTerrain = normalizeMapTerrainId(options.mapTerrain)
+    || normalizeMapTerrainId(tile?.terrain)
+    || WorldMapService.chooseTerrain(worldMap.seed, x, y);
+  const terrain = getPlanningTerrainForMapTerrain(options.terrain || mapTerrain);
+  return {
+    tileId,
+    q: x,
+    r: y,
+    mapTerrain,
+    terrain,
+    tile: {
+      id: tileId,
+      q: x,
+      r: y,
+      terrain: mapTerrain,
+    },
+  };
+}
+
+function attachScoutReportMapSnapshot(gameState, mission, report, now = new Date(), options = {}) {
+  if (!report || typeof report !== 'object') return report;
+  const tileSnapshot = getScoutReportTileSnapshot(gameState, mission, now, options);
+  return normalizeScoutReport({
+    ...report,
+    ...tileSnapshot,
+    revealArea: getScoutReportRevealAreaSnapshot(gameState, mission, now),
+  });
 }
 
 function ensureMissionRevealArea(gameState, mission, now = new Date()) {
@@ -844,6 +973,7 @@ function getTerrainSiteScore(terrain) {
 function scoreScoutSiteCandidate(gameState, mission, coord, seed) {
   const q = toInteger(coord.q, 0);
   const r = toInteger(coord.r, 0);
+  if (getScoutCoordinateRecord(gameState, q, r)) return null;
   if (!WorldMapService.canPlaceSiteOnTerrain(seed, q, r)) return null;
   if (!hasSiteSpacing(gameState, q, r)) return null;
   const terrain = WorldMapService.chooseTerrain(seed, q, r);
@@ -1492,10 +1622,18 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
     createdAt: now.toISOString(),
   };
   report.text = `侦察队从${originName}向${DIRECTIONS[direction].label}推进，在距离出发城市 ${distance} 格的位置发现了${naturalName}。${summary}`;
-  return { site, report };
+  return {
+    site,
+    report: attachScoutReportMapSnapshot(gameState, mission, report, now, {
+      x,
+      y,
+      mapTerrain: site.mapTerrain,
+      terrain: site.terrain,
+    }),
+  };
 }
 
-function createEmptyScoutReport(mission, now = new Date(), repeated = false) {
+function createEmptyScoutReport(gameState, mission, now = new Date(), repeated = false) {
   const direction = mission.direction;
   const resolvedCoord = getScoutResolvedCoordinate(mission);
   const x = resolvedCoord.x;
@@ -1518,7 +1656,7 @@ function createEmptyScoutReport(mission, now = new Date(), repeated = false) {
   report.text = repeated
     ? `侦察队再次确认${originName}${label}方向、距离出发城市 ${distance} 格的位置暂无可占领地点。`
     : `侦察队从${originName}向${label}推进，在距离出发城市 ${distance} 格的位置未发现可建立据点或占领的目标。`;
-  return report;
+  return attachScoutReportMapSnapshot(gameState, mission, report, now, { x, y });
 }
 
 function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomSource = Math.random) {
@@ -1527,30 +1665,41 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
   const targetY = toInteger(mission.targetY, 0);
   const scoutedAt = now.toISOString();
   const existing = (gameState.territories || []).find((territory) => territory.x === targetX && territory.y === targetY) || null;
-  const coordinateRecord = getScoutCoordinateRecord(gameState, targetX, targetY);
+  const shouldUseLegacyCoordinateRecord = !isDirectionalScoutAreaMission(mission);
+  const existingSite = shouldUseLegacyCoordinateRecord
+    ? existing
+    : getExistingScoutAreaSite(gameState, mission, now);
+  const coordinateRecord = shouldUseLegacyCoordinateRecord
+    ? getScoutCoordinateRecord(gameState, targetX, targetY)
+    : null;
 
-  if (existing) {
+  if (existingSite) {
     mission.resolvedTarget = true;
     mission.result = 'site';
-    mission.siteId = existing.id;
-    mission.report = {
-      id: `report_${existing.id}_${now.getTime()}`,
-      siteId: existing.id,
+    mission.siteId = existingSite.id;
+    mission.report = attachScoutReportMapSnapshot(gameState, mission, {
+      id: `report_${existingSite.id}_${now.getTime()}`,
+      siteId: existingSite.id,
       title: 'Scout confirmed site',
-      text: `Scout confirmed ${existing.naturalName || existing.id}.`,
+      text: `Scout confirmed ${existingSite.naturalName || existingSite.id}.`,
       direction: mission.direction,
       createdAt: now.toISOString(),
-    };
-    WorldMapService.bindSiteToTile(gameState, existing.x, existing.y, existing.id, now);
-    upsertScoutAreaRecord(gameState, mission, 'site', { siteId: existing.id, scoutedAt, now });
-    return { site: existing, report: mission.report };
+    }, now, {
+      x: existingSite.x,
+      y: existingSite.y,
+      mapTerrain: existingSite.mapTerrain,
+      terrain: existingSite.terrain,
+    });
+    WorldMapService.bindSiteToTile(gameState, existingSite.x, existingSite.y, existingSite.id, now);
+    upsertScoutAreaRecord(gameState, mission, 'site', { siteId: existingSite.id, scoutedAt, now });
+    return { site: existingSite, report: mission.report };
   }
 
   if (coordinateRecord?.result === 'empty') {
     mission.resolvedTarget = true;
     mission.result = 'empty';
     mission.siteId = null;
-    mission.report = createEmptyScoutReport(mission, now, true);
+    mission.report = createEmptyScoutReport(gameState, mission, now, true);
     upsertScoutAreaRecord(gameState, mission, 'empty', { scoutedAt, now });
     return { site: null, report: mission.report };
   }
@@ -1560,14 +1709,21 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     mission.resolvedTarget = true;
     mission.result = 'site';
     mission.siteId = coordinateRecord.siteId;
-    mission.report = recordedSite ? {
-      id: `report_${recordedSite.id}_${now.getTime()}`,
-      siteId: recordedSite.id,
-      title: 'Scout confirmed site',
-      text: `Scout confirmed ${recordedSite.naturalName || recordedSite.id}.`,
-      direction: mission.direction,
-      createdAt: now.toISOString(),
-    } : createEmptyScoutReport(mission, now, true);
+    mission.report = recordedSite
+      ? attachScoutReportMapSnapshot(gameState, mission, {
+        id: `report_${recordedSite.id}_${now.getTime()}`,
+        siteId: recordedSite.id,
+        title: 'Scout confirmed site',
+        text: `Scout confirmed ${recordedSite.naturalName || recordedSite.id}.`,
+        direction: mission.direction,
+        createdAt: now.toISOString(),
+      }, now, {
+        x: recordedSite.x,
+        y: recordedSite.y,
+        mapTerrain: recordedSite.mapTerrain,
+        terrain: recordedSite.terrain,
+      })
+      : createEmptyScoutReport(gameState, mission, now, true);
     if (recordedSite) WorldMapService.bindSiteToTile(gameState, recordedSite.x, recordedSite.y, recordedSite.id, now);
     upsertScoutAreaRecord(gameState, mission, recordedSite ? 'site' : 'empty', {
       siteId: recordedSite?.id || null,
@@ -1583,7 +1739,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
   if (outcome === 'empty') {
     recordScoutOutcome(gameState, 'empty');
     mission.siteId = null;
-    mission.report = createEmptyScoutReport(mission, now);
+    mission.report = createEmptyScoutReport(gameState, mission, now);
     upsertScoutAreaRecord(gameState, mission, 'empty', { scoutedAt, now });
     return { site: null, report: mission.report };
   }
@@ -1593,7 +1749,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     recordScoutOutcome(gameState, 'empty');
     mission.result = 'empty';
     mission.siteId = null;
-    mission.report = createEmptyScoutReport(mission, now);
+    mission.report = createEmptyScoutReport(gameState, mission, now);
     upsertScoutAreaRecord(gameState, mission, 'empty', { scoutedAt, now });
     return { site: null, report: mission.report };
   }
@@ -1692,7 +1848,7 @@ function claimScout(gameState, missionId, now = new Date(), randomSource = Math.
   ensureScoutMissionAreaRevealed(gameState, mission, now);
   const resolved = resolveScoutMissionTarget(gameState, mission, now, randomSource);
   const site = mission.siteId ? getTerritory(gameState, mission.siteId) : resolved.site;
-  const report = mission.report || resolved.report || createEmptyScoutReport(mission, now, true);
+  const report = mission.report || resolved.report || createEmptyScoutReport(gameState, mission, now, true);
   gameState.scoutReports = [...(gameState.scoutReports || []), report].slice(-MAX_REPORTS);
   gameState.warMissions = (gameState.warMissions || []).filter((item) => item.id !== mission.id);
   return {

@@ -282,6 +282,9 @@ test('侦察前沿会先解锁区域，水面或贴近首都的位置不会生�
   assert.equal(state.scoutReports.length, 1);
   assert.equal(state.scoutReports[0].siteId, null);
   assert.match(state.scoutReports[0].text, /东方/);
+  assert.equal(state.scoutReports[0].tileId, 'tile_1_0');
+  assert.equal(state.scoutReports[0].mapTerrain, WorldMapService.chooseTerrain(state.worldMap.seed, 1, 0));
+  assert.deepEqual(state.scoutReports[0].revealArea.map((coord) => coord.tileId).toSorted(), start.mission.revealArea.map((coord) => coord.tileId).toSorted());
   assert.equal(state.scoutedCoordinates.some((item) => item.x === 1 && item.y === 0), false);
   assert.equal(state.scoutState.areas.find((area) => area.missionId === start.mission.id)?.result, 'empty');
   const territoryState = TerritoryService.getClientTerritoryState(state, new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS));
@@ -327,6 +330,16 @@ test('scout target outcome is fixed only when the returned report is claimed', (
   assert.equal(claim.site.mapTerrain, WorldMapService.chooseTerrain(state.worldMap.seed, claim.site.x, claim.site.y));
   assert.equal(claim.site.terrain, 'plains');
   assert.equal(state.scoutReports.at(-1).siteId, claim.site.id);
+  assert.equal(state.scoutReports.at(-1).tileId, WorldMapService.getTileId(claim.site.x, claim.site.y));
+  assert.equal(state.scoutReports.at(-1).mapTerrain, claim.site.mapTerrain);
+  assert.equal(state.scoutReports.at(-1).terrain, claim.site.terrain);
+  assert.deepEqual(state.scoutReports.at(-1).tile, {
+    id: WorldMapService.getTileId(claim.site.x, claim.site.y),
+    q: claim.site.x,
+    r: claim.site.y,
+    terrain: claim.site.mapTerrain,
+  });
+  assert.deepEqual(state.scoutReports.at(-1).revealArea.map((coord) => coord.tileId).toSorted(), mission.revealArea.map((coord) => coord.tileId).toSorted());
   assert.ok(state.territories.some((territory) => territory.id === claim.site.id));
   assert.equal(state.scoutState.areas.at(-1).missionId, mission.id);
   assert.equal(state.scoutState.areas.at(-1).result, 'site');
@@ -389,6 +402,40 @@ test('scout site outcome keeps cities separated inside a revealed area', () => {
   assert.equal(claim.success, true);
   assert.ok(claim.site);
   assert.deepEqual({ x: claim.site.x, y: claim.site.y }, { x: 9, y: 3 });
+});
+
+test('directional scout area ignores legacy empty target when another revealed tile can host a site', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.scoutedCoordinates = [{
+    x: 6,
+    y: 0,
+    result: 'empty',
+    siteId: null,
+    scoutedAt: now.toISOString(),
+  }];
+  pushReadyScoutMission(state, {
+    id: 'scout_area_legacy_empty',
+    direction: 'e',
+    targetX: 6,
+    targetY: 0,
+    scoutDistance: 6,
+    now,
+    revealArea: [
+      { q: 6, r: 0, step: 1, kind: 'main', tileId: 'tile_6_0', revealed: true },
+      { q: 9, r: 0, step: 1, kind: 'branch', tileId: 'tile_9_0', revealed: true },
+    ],
+  });
+  WorldMapService.revealScoutArea(state, state.warMissions.at(-1).revealArea, now);
+
+  const claim = TerritoryService.claimScout(state, 'scout_area_legacy_empty', now, createSequenceRandom([0.1, 0.9, 0.5]));
+
+  assert.equal(claim.success, true);
+  assert.ok(claim.site);
+  assert.notDeepEqual({ x: claim.site.x, y: claim.site.y }, { x: 6, y: 0 });
+  assert.equal(state.scoutReports.at(-1).tileId, WorldMapService.getTileId(claim.site.x, claim.site.y));
+  assert.deepEqual(state.scoutReports.at(-1).revealArea.map((coord) => coord.tileId).toSorted(), ['tile_6_0', 'tile_9_0']);
+  assert.equal(state.scoutedCoordinates.find((item) => item.x === 6 && item.y === 0)?.result, 'empty');
 });
 
 test('scout missions reveal world map tiles over time and record a trail', () => {

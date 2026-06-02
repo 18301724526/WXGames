@@ -1227,6 +1227,7 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
   assert.equal(view.geometry.tileWidth, 192);
   assert.equal(view.tiles.length, 2);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0'), false);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_1'), false);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').terrainAsset, 'assets/art/tile-map/tile-terrain-plains.png');
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').feature.asset, 'assets/art/tile-map/tile-feature-tree-cluster.png');
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.id, 'site-east');
