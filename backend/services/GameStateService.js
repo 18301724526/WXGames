@@ -58,7 +58,7 @@ function createInitialGameState(playerId) {
     famousPeople: [],
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
     scoutedCoordinates: [],
-    scoutState: { emptyStreak: 0 },
+    scoutState: { emptyStreak: 0, areas: [] },
     warMissions: [],
     scoutReports: [],
     updatedAt: new Date().toISOString(),

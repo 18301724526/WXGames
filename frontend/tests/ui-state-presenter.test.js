@@ -1204,6 +1204,21 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
       ],
       revealedTileIds: ['tile_1_0'],
     }],
+    scoutAreas: [{
+      id: 'scout_area_e_1',
+      missionId: 'scout_e_1',
+      direction: 'e',
+      result: 'empty',
+      siteId: null,
+      targetX: 1,
+      targetY: 0,
+      tileIds: ['tile_1_0', 'tile_2_0'],
+      coords: [
+        { q: 1, r: 0, tileId: 'tile_1_0' },
+        { q: 2, r: 0, tileId: 'tile_2_0' },
+      ],
+      scoutedAt: '2026-05-17T08:01:00.000Z',
+    }],
   }, { panX: 8, panY: -6 });
 
   assert.equal(view.version, 1);
@@ -1211,6 +1226,7 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
   assert.equal(view.pan.x, 8);
   assert.equal(view.geometry.tileWidth, 192);
   assert.equal(view.tiles.length, 2);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0'), false);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').terrainAsset, 'assets/art/tile-map/tile-terrain-plains.png');
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').feature.asset, 'assets/art/tile-map/tile-feature-tree-cluster.png');
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_1_0').site.id, 'site-east');
@@ -1220,6 +1236,11 @@ test('world tile map view state is built from persisted worldMap tiles', () => {
   assert.deepEqual(view.activeScouts[0].revealArea.map((coord) => [coord.q, coord.r, coord.kind, coord.revealed]), [
     [1, 0, 'main', true],
     [1, 1, 'branch', false],
+  ]);
+  assert.equal(view.scoutAreas[0].missionId, 'scout_e_1');
+  assert.deepEqual(view.scoutAreas[0].coords.map((coord) => [coord.q, coord.r, coord.tileId]), [
+    [1, 0, 'tile_1_0'],
+    [2, 0, 'tile_2_0'],
   ]);
   assert.match(view.signature, /world-test/);
 });

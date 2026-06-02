@@ -228,6 +228,19 @@ function addFamousLeader(state, options = {}) {
   }];
 }
 
+test('legacy scouted coordinates remain a target compatibility source', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  state.scoutedCoordinates = [{ x: 1, y: 0, result: 'empty', siteId: null, scoutedAt: now.toISOString() }];
+
+  const start = TerritoryService.startScout(state, 'e', now);
+
+  assert.equal(start.success, true);
+  assert.equal(start.mission.targetX, 2);
+  assert.equal(start.mission.targetY, 0);
+  assert.equal(state.scoutedCoordinates.length, 1);
+});
+
 test('古典时代只默认显示首都和八方向侦察入口', () => {
   const state = createClassicalState();
   const territoryState = TerritoryService.getClientTerritoryState(state);
@@ -267,13 +280,12 @@ test('侦察前沿会先解锁区域，水面或贴近首都的位置不会生�
   assert.equal(state.scoutReports.length, 1);
   assert.equal(state.scoutReports[0].siteId, null);
   assert.match(state.scoutReports[0].text, /东方/);
-  assert.deepEqual(state.scoutedCoordinates.find((item) => item.x === 1 && item.y === 0), {
-    x: 1,
-    y: 0,
-    result: 'empty',
-    siteId: null,
-    scoutedAt: new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString(),
-  });
+  assert.equal(state.scoutedCoordinates.some((item) => item.x === 1 && item.y === 0), false);
+  assert.equal(state.scoutState.areas.find((area) => area.missionId === start.mission.id)?.result, 'empty');
+  const territoryState = TerritoryService.getClientTerritoryState(state, new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS));
+  assert.equal(territoryState.scoutAreas.length, 1);
+  assert.equal(territoryState.scoutAreas[0].missionId, start.mission.id);
+  assert.deepEqual(territoryState.scoutAreas[0].tileIds, start.mission.revealArea.map((coord) => coord.tileId).toSorted());
   assert.ok(state.worldMap.tiles.length > TerritoryService.SCOUT_ACTION_POINTS);
 });
 
@@ -395,28 +407,48 @@ test('scout missions reveal world map tiles over time and record a trail', () =>
   assert.equal(state.worldMap.scoutTrails.find((trail) => trail.missionId === mission.id).returned, true);
 });
 
-test('侦察到空地后会标记坐标并跳过该坐标', () => {
+test('侦察到空地后会记录区域并跳过整片已解决区域', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
 
   let start = TerritoryService.startScout(state, 'w', now);
+  const firstAreaIds = start.mission.revealArea.map((coord) => coord.tileId);
   const firstClaim = completeScout(state, start, now, [0.95]);
 
   assert.equal(firstClaim.success, true);
   assert.equal(firstClaim.site, null);
   assert.match(firstClaim.report.text, /未发现可建立据点或占领的目标/);
-  assert.deepEqual(state.scoutedCoordinates.find((item) => item.x === -1 && item.y === 0), {
-    x: -1,
-    y: 0,
-    result: 'empty',
-    siteId: null,
-    scoutedAt: new Date(now.getTime() + TerritoryService.SCOUT_DURATION_MS).toISOString(),
-  });
+  assert.equal(state.scoutedCoordinates.some((item) => item.x === -1 && item.y === 0), false);
+  const areaRecord = state.scoutState.areas.find((area) => area.missionId === start.mission.id);
+  assert.equal(areaRecord.result, 'empty');
+  assert.deepEqual(areaRecord.tileIds, firstAreaIds.toSorted());
 
   start = TerritoryService.startScout(state, 'w', new Date('2026-05-17T08:02:00.000Z'));
   assert.equal(start.success, true);
-  assert.equal(start.mission.targetX, -6);
+  assert.equal(start.mission.targetX, -10);
   assert.equal(start.mission.targetY, 0);
+  assert.ok(start.mission.revealArea.some((coord) => !areaRecord.tileIds.includes(coord.tileId)));
+  assert.deepEqual(start.mission.route.map((step) => [step.q, step.r]), [[-6, 0], [-7, 0], [-8, 0], [-9, 0], [-10, 0]]);
+});
+
+test('scout target selection skips an already resolved reveal area', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+
+  const first = TerritoryService.startScout(state, 'e', now);
+  const firstAreaIds = new Set(first.mission.revealArea.map((coord) => coord.tileId));
+  const firstClaim = completeScout(state, first, now, [0.95]);
+
+  assert.equal(firstClaim.success, true);
+  assert.equal(firstClaim.site, null);
+
+  const second = TerritoryService.startScout(state, 'e', new Date('2026-05-17T08:02:00.000Z'));
+
+  assert.equal(second.success, true);
+  assert.equal(second.mission.targetX, 10);
+  assert.equal(second.mission.targetY, 0);
+  assert.ok(second.mission.revealArea.some((coord) => !firstAreaIds.has(coord.tileId)));
+  assert.deepEqual(second.mission.route.map((step) => [step.q, step.r]), [[6, 0], [7, 0], [8, 0], [9, 0], [10, 0]]);
 });
 
 test('敌对据点会稳定生成守军名人，归一化后继续保留', () => {

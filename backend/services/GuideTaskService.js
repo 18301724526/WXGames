@@ -88,6 +88,8 @@ function hasAnyScoutProgress(gameState) {
   return (gameState.currentEra || 0) >= 5 && (
     (gameState.scoutReports || []).length > 0
     || (gameState.scoutedCoordinates || []).length > 0
+    || (gameState.scoutState?.areas || []).length > 0
+    || (gameState.worldMap?.scoutTrails || []).length > 0
     || (gameState.warMissions || []).some((mission) => mission.kind === 'scout')
   );
 }

@@ -3259,6 +3259,23 @@
           })),
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
         }));
+      const scoutAreas = (Array.isArray(territoryState.scoutAreas) ? territoryState.scoutAreas : [])
+        .map((area) => ({
+          id: area.id || '',
+          missionId: area.missionId || null,
+          direction: area.direction || null,
+          result: area.result === 'site' ? 'site' : 'empty',
+          siteId: area.siteId || null,
+          targetX: this.toInteger(area.targetX),
+          targetY: this.toInteger(area.targetY),
+          tileIds: Array.isArray(area.tileIds) ? area.tileIds.map(String) : [],
+          coords: (Array.isArray(area.coords) ? area.coords : []).map((coord) => ({
+            q: this.toInteger(coord.q),
+            r: this.toInteger(coord.r),
+            tileId: coord.tileId || `tile_${this.toInteger(coord.q)}_${this.toInteger(coord.r)}`,
+          })),
+          scoutedAt: area.scoutedAt || '',
+        }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
       return {
         signature: this.getWorldTileMapSignature(territoryState),
@@ -3278,6 +3295,7 @@
           r: tile.r,
         })),
         activeScouts,
+        scoutAreas,
       };
     }
   }

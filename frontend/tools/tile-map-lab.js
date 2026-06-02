@@ -179,6 +179,13 @@
     se: { dq: 1, dr: 0 },
     sw: { dq: 0, dr: 1 },
   };
+  // Offsets are from the full ocean tile to the neighboring river-mouth tile.
+  const RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET = {
+    '0,1': 'river-mouth-ne',
+    '0,-1': 'river-mouth-sw',
+    '1,0': 'river-mouth-nw',
+    '-1,0': 'river-mouth-se',
+  };
   const TILE_SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
   const RIVER_DIRECTION_BY_SIDE = {
     se: 0,
@@ -418,11 +425,20 @@
     return RIVER_TEMPLATE_ASSETS[key] || null;
   }
 
+  function getRiverMouthTemplateForNeighborOfOcean(qOffset, rOffset) {
+    return RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET[`${Number(qOffset) || 0},${Number(rOffset) || 0}`] || '';
+  }
+
   function getRiverMouthTemplateKey(q, r, shoreSide) {
     const riverSides = getRiverPortsByCoord(q, r);
     const inlandSide = RIVER_MOUTH_INLAND_SIDE_BY_SHORE_SIDE[shoreSide];
+    const oceanDir = TILE_SIDE_DIRECTIONS[shoreSide];
+    const templateKey = getRiverMouthTemplateForNeighborOfOcean(
+      -(oceanDir?.dq || 0),
+      -(oceanDir?.dr || 0),
+    );
     return riverSides.length === 2 && riverSides.includes(shoreSide) && riverSides.includes(inlandSide)
-      ? `river-mouth-${shoreSide}`
+      ? templateKey
       : '';
   }
 

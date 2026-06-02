@@ -219,7 +219,26 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
       site_1_0: { id: 'site_1_0', name: '河湾城' },
     },
     scoutedCoordinates: [{ x: 1, y: 0, result: 'empty', siteId: null, scoutedAt: '2026-05-17T08:01:00.000Z' }],
-    scoutState: { emptyStreak: 1 },
+    scoutState: {
+      emptyStreak: 1,
+      areas: [{
+        id: 'scout_area_e_1',
+        missionId: 'scout_e_1',
+        direction: 'e',
+        originX: 0,
+        originY: 0,
+        targetX: 1,
+        targetY: 0,
+        result: 'empty',
+        siteId: null,
+        tileIds: ['tile_1_0', 'tile_2_0'],
+        coords: [
+          { q: 1, r: 0, tileId: 'tile_1_0' },
+          { q: 2, r: 0, tileId: 'tile_2_0' },
+        ],
+        scoutedAt: '2026-05-17T08:01:00.000Z',
+      }],
+    },
     warMissions: [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }],
     scoutReports: [{ id: 'report-x', siteId: 'site_1_0', title: '东方报告', text: '发现村镇', direction: 'e' }],
   });
@@ -262,7 +281,26 @@ test('save and findByPlayerId round-trip regular event state and active buffs', 
     site_1_0: { id: 'site_1_0', name: '河湾城' },
   });
   assert.deepEqual(result.scoutedCoordinates, [{ x: 1, y: 0, result: 'empty', siteId: null, scoutedAt: '2026-05-17T08:01:00.000Z' }]);
-  assert.deepEqual(result.scoutState, { emptyStreak: 1 });
+  assert.deepEqual(result.scoutState, {
+    emptyStreak: 1,
+    areas: [{
+      id: 'scout_area_e_1',
+      missionId: 'scout_e_1',
+      direction: 'e',
+      originX: 0,
+      originY: 0,
+      targetX: 1,
+      targetY: 0,
+      result: 'empty',
+      siteId: null,
+      tileIds: ['tile_1_0', 'tile_2_0'],
+      coords: [
+        { q: 1, r: 0, tileId: 'tile_1_0' },
+        { q: 2, r: 0, tileId: 'tile_2_0' },
+      ],
+      scoutedAt: '2026-05-17T08:01:00.000Z',
+    }],
+  });
   assert.deepEqual(result.warMissions, [{ id: 'mission-x', kind: 'conquest', territoryId: 'site_1_0', soldiersCommitted: 4, status: 'active' }]);
   assert.deepEqual(result.scoutReports, [{ id: 'report-x', siteId: 'site_1_0', title: '东方报告', text: '发现村镇', direction: 'e' }]);
 

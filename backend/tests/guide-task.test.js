@@ -193,3 +193,41 @@ test('first scout main task go action targets the scout button', () => {
   assert.equal(guide.mode, 'strong');
   assert.equal(guide.target, 'scout-action-first');
 });
+
+test('first scout reward recognizes persisted scout area progress', () => {
+  const state = gameStateService.createInitialGameState('guide-task-first-scout-area');
+  completeTutorial(state);
+  state.currentEra = 5;
+  state.buildings.barracks = { level: 2 };
+  state.buildings.watchtower = { level: 1 };
+  state.warMissions = [];
+  state.scoutReports = [];
+  state.scoutedCoordinates = [];
+  state.scoutState = {
+    emptyStreak: 1,
+    areas: [{
+      id: 'scout_area_e_1',
+      missionId: 'scout_e_1',
+      direction: 'e',
+      originX: 0,
+      originY: 0,
+      targetX: 1,
+      targetY: 0,
+      result: 'empty',
+      siteId: null,
+      tileIds: ['tile_1_0', 'tile_2_0'],
+      coords: [
+        { q: 1, r: 0, tileId: 'tile_1_0' },
+        { q: 2, r: 0, tileId: 'tile_2_0' },
+      ],
+      scoutedAt: '2026-05-17T08:01:00.000Z',
+    }],
+  };
+  gameStateService.normalizeState(state);
+
+  const tasks = GuideTaskService.getGuideTasks(state);
+
+  assert.equal(tasks.visible, true);
+  assert.equal(tasks.tasks[0].id, 'first_scout_reward');
+  assert.equal(tasks.tasks[0].status, 'claimable');
+});

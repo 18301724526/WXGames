@@ -14,6 +14,7 @@ const SCOUT_SITE_MIN_DISTANCE = 3;
 const SCOUT_SITE_BASE_CHANCE = 0.32;
 const SCOUT_SITE_CHANCE_STEP = 0.14;
 const SCOUT_SITE_GUARANTEE_AFTER = 4;
+const MAX_SCOUT_AREA_RECORDS = 120;
 const POST_WAR_FAMOUS_PERSON_ENABLED = false;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
@@ -515,11 +516,59 @@ function normalizeScoutCoordinates(rawCoordinates) {
   return [...known.values()].sort((a, b) => getDistance(a.x, a.y) - getDistance(b.x, b.y));
 }
 
+function normalizeScoutAreaRecords(rawAreas) {
+  const known = new Map();
+  for (const area of Array.isArray(rawAreas) ? rawAreas : []) {
+    if (!area || typeof area !== 'object') continue;
+    const targetX = toInteger(area.targetX, 0);
+    const targetY = toInteger(area.targetY, 0);
+    if (targetX === 0 && targetY === 0) continue;
+    const result = area.result === 'site' ? 'site' : area.result === 'empty' ? 'empty' : null;
+    if (!result) continue;
+    const coords = Array.from(new Map((Array.isArray(area.coords) ? area.coords : [])
+      .filter((coord) => coord && typeof coord === 'object')
+      .map((coord) => {
+        const q = toInteger(coord.q, 0);
+        const r = toInteger(coord.r, 0);
+        return [getCoordinateKey(q, r), { q, r, tileId: WorldMapService.getTileId(q, r) }];
+      })).values())
+      .sort((a, b) => (
+        getRelativeDistance(targetX, targetY, a.q, a.r) - getRelativeDistance(targetX, targetY, b.q, b.r)
+        || a.q - b.q
+        || a.r - b.r
+      ));
+    const tileIds = Array.from(new Set([
+      ...(Array.isArray(area.tileIds) ? area.tileIds : []).filter(Boolean).map(String),
+      ...coords.map((coord) => coord.tileId),
+    ])).sort();
+    if (!tileIds.length) continue;
+    const key = area.id || `${getCoordinateKey(targetX, targetY)}:${tileIds.join('|')}`;
+    known.set(String(key), {
+      id: String(key),
+      missionId: typeof area.missionId === 'string' && area.missionId ? area.missionId : null,
+      direction: normalizeDirection(area.direction) || null,
+      originX: toInteger(area.originX, 0),
+      originY: toInteger(area.originY, 0),
+      targetX,
+      targetY,
+      result,
+      siteId: typeof area.siteId === 'string' && area.siteId ? area.siteId : null,
+      tileIds,
+      coords,
+      scoutedAt: area.scoutedAt || new Date().toISOString(),
+    });
+  }
+  return [...known.values()]
+    .sort((a, b) => String(a.scoutedAt).localeCompare(String(b.scoutedAt)) || getDistance(a.targetX, a.targetY) - getDistance(b.targetX, b.targetY))
+    .slice(-MAX_SCOUT_AREA_RECORDS);
+}
+
 function normalizeScoutState(rawState) {
   const raw = rawState && typeof rawState === 'object' ? rawState : {};
   return {
     emptyStreak: Math.max(0, toInteger(raw.emptyStreak, 0)),
     neutralSiteStreak: Math.max(0, toInteger(raw.neutralSiteStreak, 0)),
+    areas: normalizeScoutAreaRecords(raw.areas),
   };
 }
 
@@ -531,6 +580,47 @@ function upsertScoutCoordinateRecord(gameState, record) {
   const next = normalizeScoutCoordinates([...(gameState.scoutedCoordinates || []), record]);
   gameState.scoutedCoordinates = next;
   return getScoutCoordinateRecord(gameState, record.x, record.y);
+}
+
+function getScoutAreaTileIds(mission) {
+  const revealArea = Array.isArray(mission?.revealArea) ? mission.revealArea : [];
+  const revealedTileIds = Array.isArray(mission?.revealedTileIds) ? mission.revealedTileIds : [];
+  return Array.from(new Set([
+    ...revealArea.map((coord) => WorldMapService.getTileId(coord.q, coord.r)),
+    ...revealedTileIds.filter(Boolean).map(String),
+  ])).sort();
+}
+
+function upsertScoutAreaRecord(gameState, mission, result, options = {}) {
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
+  const scoutedAt = options.scoutedAt || new Date().toISOString();
+  const revealArea = ensureMissionRevealArea(gameState, mission, options.now || new Date());
+  const coords = revealArea.map((coord) => ({
+    q: toInteger(coord.q, 0),
+    r: toInteger(coord.r, 0),
+    tileId: WorldMapService.getTileId(coord.q, coord.r),
+  }));
+  const targetX = toInteger(mission.targetX, 0);
+  const targetY = toInteger(mission.targetY, 0);
+  const record = {
+    id: mission.id || `scout_area_${targetX}_${targetY}_${scoutedAt}`,
+    missionId: mission.id || null,
+    direction: mission.direction || null,
+    originX: toInteger(mission.originX, 0),
+    originY: toInteger(mission.originY, 0),
+    targetX,
+    targetY,
+    result,
+    siteId: options.siteId || null,
+    tileIds: getScoutAreaTileIds(mission),
+    coords,
+    scoutedAt,
+  };
+  gameState.scoutState.areas = normalizeScoutAreaRecords([
+    ...(gameState.scoutState.areas || []),
+    record,
+  ]);
+  return gameState.scoutState.areas.find((area) => area.id === record.id) || record;
 }
 
 function syncScoutCoordinatesWithTerritories(gameState, now = new Date().toISOString()) {
@@ -554,6 +644,14 @@ function getKnownWorldCoordinateKeys(gameState) {
   return new Set((worldMap.tiles || [])
     .filter((tile) => tile.discovered !== false)
     .map((tile) => getCoordinateKey(tile.q, tile.r)));
+}
+
+function getScoutedAreaTileIdSet(gameState) {
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
+  return new Set((gameState.scoutState.areas || [])
+    .flatMap((area) => Array.isArray(area.tileIds) ? area.tileIds : [])
+    .filter(Boolean)
+    .map(String));
 }
 
 function hasSiteSpacing(gameState, x, y) {
@@ -1068,17 +1166,76 @@ function getControlledScoutOrigins(gameState, fallbackOrigin = getScoutOrigin(ga
   return origins;
 }
 
-function findNextCoordinateFromOrigin(gameState, direction, origin, occupied, scouted, discovered) {
+function getScoutRouteForCandidate(origin, direction, distance) {
+  return WorldMapService.buildScoutRoute(
+    { q: toInteger(origin?.x, 0), r: toInteger(origin?.y, 0) },
+    direction,
+    SCOUT_ACTION_POINTS,
+    { startDistance: Math.max(1, distance - SCOUT_ACTION_POINTS + 1) },
+  );
+}
+
+function scoreScoutCandidateArea(gameState, direction, origin, distance, knownTileIds) {
+  const route = getScoutRouteForCandidate(origin, direction, distance);
+  const seed = WorldMapService.ensureWorldMap(gameState).seed;
+  const revealArea = WorldMapService.getScoutRevealArea(seed, route, direction);
+  let newTileCount = 0;
+  let newMainTileCount = 0;
+  for (const coord of revealArea) {
+    const tileId = WorldMapService.getTileId(coord.q, coord.r);
+    if (knownTileIds.has(tileId)) continue;
+    newTileCount += 1;
+    if (coord.kind === 'main') newMainTileCount += 1;
+  }
+  if (newTileCount <= 0) return null;
+  return {
+    distance,
+    newTileCount,
+    newMainTileCount,
+    completeMainPath: newMainTileCount >= route.length,
+    routeStartDistance: Math.max(1, distance - SCOUT_ACTION_POINTS + 1),
+  };
+}
+
+function coordinateKeyToTileId(key) {
+  const [x, y] = String(key).split(',').map((value) => toInteger(value, 0));
+  return WorldMapService.getTileId(x, y);
+}
+
+function findNextCoordinateFromOrigin(gameState, direction, origin, occupied, scouted, discovered, scoutedAreaTileIds) {
   const dir = DIRECTIONS[direction];
   if (!dir) return null;
   const originX = toInteger(origin?.x, 0);
   const originY = toInteger(origin?.y, 0);
+  const useAreaFrontier = scoutedAreaTileIds.size > 0;
+  const knownTileIds = new Set([
+    ...Array.from(discovered).map(coordinateKeyToTileId),
+    ...Array.from(scouted).map(coordinateKeyToTileId),
+    ...scoutedAreaTileIds,
+  ]);
+  const areaCandidates = [];
   for (let distance = 1; distance <= MAX_SCOUT_DISTANCE; distance += 1) {
     const x = originX + dir.dx * distance;
     const y = originY + dir.dy * distance;
     const key = getCoordinateKey(x, y);
-    if (occupied.has(key) || scouted.has(key) || discovered.has(key)) continue;
+    if (occupied.has(key)) continue;
+    if (useAreaFrontier) {
+      const score = scoreScoutCandidateArea(gameState, direction, origin, distance, knownTileIds);
+      if (!score) continue;
+      areaCandidates.push({ x, y, ...score });
+      continue;
+    }
+    if (scouted.has(key) || discovered.has(key)) continue;
     return { x, y, distance };
+  }
+  if (areaCandidates.length) {
+    return areaCandidates.sort((a, b) => (
+      Number(b.completeMainPath) - Number(a.completeMainPath)
+      || (a.completeMainPath && b.completeMainPath ? a.distance - b.distance : 0)
+      || b.newMainTileCount - a.newMainTileCount
+      || b.newTileCount - a.newTileCount
+      || a.distance - b.distance
+    ))[0];
   }
   return null;
 }
@@ -1093,10 +1250,11 @@ function findNextCoordinate(gameState, direction, origin = getScoutOrigin(gameSt
   const occupied = new Set((gameState.territories || []).map((territory) => getCoordinateKey(territory.x, territory.y)));
   const scouted = new Set((gameState.scoutedCoordinates || []).map((coordinate) => getCoordinateKey(coordinate.x, coordinate.y)));
   const discovered = getKnownWorldCoordinateKeys(gameState);
+  const scoutedAreaTileIds = getScoutedAreaTileIdSet(gameState);
   const candidates = getControlledScoutOrigins(gameState, origin)
     .map((candidateOrigin) => ({
       origin: candidateOrigin,
-      target: findNextCoordinateFromOrigin(gameState, direction, candidateOrigin, occupied, scouted, discovered),
+      target: findNextCoordinateFromOrigin(gameState, direction, candidateOrigin, occupied, scouted, discovered, scoutedAreaTileIds),
       projection: getDirectionProjection(candidateOrigin, dir),
     }))
     .filter((item) => item.target)
@@ -1296,6 +1454,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
   if (mission.resolvedTarget) return { site: mission.siteId ? getTerritory(gameState, mission.siteId) : null, report: mission.report || null };
   const targetX = toInteger(mission.targetX, 0);
   const targetY = toInteger(mission.targetY, 0);
+  const scoutedAt = now.toISOString();
   const existing = (gameState.territories || []).find((territory) => territory.x === targetX && territory.y === targetY) || null;
   const coordinateRecord = getScoutCoordinateRecord(gameState, targetX, targetY);
 
@@ -1312,6 +1471,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
       createdAt: now.toISOString(),
     };
     WorldMapService.bindSiteToTile(gameState, existing.x, existing.y, existing.id, now);
+    upsertScoutAreaRecord(gameState, mission, 'site', { siteId: existing.id, scoutedAt, now });
     return { site: existing, report: mission.report };
   }
 
@@ -1320,6 +1480,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     mission.result = 'empty';
     mission.siteId = null;
     mission.report = createEmptyScoutReport(mission, now, true);
+    upsertScoutAreaRecord(gameState, mission, 'empty', { scoutedAt, now });
     return { site: null, report: mission.report };
   }
 
@@ -1337,6 +1498,11 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
       createdAt: now.toISOString(),
     } : createEmptyScoutReport(mission, now, true);
     if (recordedSite) WorldMapService.bindSiteToTile(gameState, recordedSite.x, recordedSite.y, recordedSite.id, now);
+    upsertScoutAreaRecord(gameState, mission, recordedSite ? 'site' : 'empty', {
+      siteId: recordedSite?.id || null,
+      scoutedAt,
+      now,
+    });
     return { site: recordedSite || null, report: mission.report };
   }
 
@@ -1345,31 +1511,19 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
   mission.result = outcome;
   if (outcome === 'empty') {
     recordScoutOutcome(gameState, 'empty');
-    upsertScoutCoordinateRecord(gameState, {
-      x: targetX,
-      y: targetY,
-      result: 'empty',
-      siteId: null,
-      scoutedAt: now.toISOString(),
-    });
     mission.siteId = null;
     mission.report = createEmptyScoutReport(mission, now);
+    upsertScoutAreaRecord(gameState, mission, 'empty', { scoutedAt, now });
     return { site: null, report: mission.report };
   }
 
   const siteCoord = pickScoutSiteCoordinate(gameState, mission, now);
   if (!siteCoord) {
     recordScoutOutcome(gameState, 'empty');
-    upsertScoutCoordinateRecord(gameState, {
-      x: targetX,
-      y: targetY,
-      result: 'empty',
-      siteId: null,
-      scoutedAt: now.toISOString(),
-    });
     mission.result = 'empty';
     mission.siteId = null;
     mission.report = createEmptyScoutReport(mission, now);
+    upsertScoutAreaRecord(gameState, mission, 'empty', { scoutedAt, now });
     return { site: null, report: mission.report };
   }
 
@@ -1386,13 +1540,7 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
   gameState.territories.push(site);
   WorldMapService.bindSiteToTile(gameState, site.x, site.y, site.id, now);
   recordDiscoveredSiteOwnership(gameState, site.owner);
-  upsertScoutCoordinateRecord(gameState, {
-    x: site.x,
-    y: site.y,
-    result: 'site',
-    siteId: site.id,
-    scoutedAt: site.discoveredAt || now.toISOString(),
-  });
+  upsertScoutAreaRecord(gameState, mission, 'site', { siteId: site.id, scoutedAt: site.discoveredAt || scoutedAt, now });
   mission.siteId = site.id;
   mission.report = created.report;
   return { site, report: mission.report };
@@ -1674,6 +1822,24 @@ function getMapBounds(territories) {
   };
 }
 
+function getClientScoutAreas(gameState) {
+  gameState.scoutState = normalizeScoutState(gameState.scoutState);
+  return (gameState.scoutState.areas || []).map((area) => ({
+    id: area.id,
+    missionId: area.missionId,
+    direction: area.direction,
+    originX: area.originX,
+    originY: area.originY,
+    targetX: area.targetX,
+    targetY: area.targetY,
+    result: area.result,
+    siteId: area.siteId,
+    tileIds: [...area.tileIds],
+    coords: area.coords.map((coord) => ({ ...coord })),
+    scoutedAt: area.scoutedAt,
+  }));
+}
+
 function getClientTerritoryState(gameState, now = new Date()) {
   updateMissionReadiness(gameState, now);
   const nowMs = now.getTime();
@@ -1706,6 +1872,7 @@ function getClientTerritoryState(gameState, now = new Date()) {
     })),
     activeScoutMission: getActiveScoutMission(gameState),
     scoutReports: gameState.scoutReports || [],
+    scoutAreas: getClientScoutAreas(gameState),
     scoutOrigin,
     directions: Object.entries(DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
     maxActiveScouts: MAX_ACTIVE_SCOUTS,

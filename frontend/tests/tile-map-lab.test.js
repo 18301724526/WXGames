@@ -580,7 +580,12 @@ test('river mouths only attach to single-side ocean shore edges', () => {
   assert.match(js, /ne: 'ne-sw'/);
   assert.match(js, /se: 'nw-se'/);
   assert.match(js, /sw: 'ne-sw'/);
+  assert.match(js, /'0,1': 'river-mouth-ne'/);
+  assert.match(js, /'0,-1': 'river-mouth-sw'/);
+  assert.match(js, /'1,0': 'river-mouth-nw'/);
+  assert.match(js, /'-1,0': 'river-mouth-se'/);
   assert.match(js, /function getRiverMouthTemplateKey\(q, r, shoreSide\)/);
+  assert.match(js, /function getRiverMouthTemplateForNeighborOfOcean\(qOffset, rOffset\)/);
   assert.match(js, /riverSides\.length === 2 && riverSides\.includes\(shoreSide\) && riverSides\.includes\(inlandSide\)/);
   assert.match(js, /const blocksRiverMouth = isOceanShoreCornerCoord\(q, r\);/);
   assert.match(js, /const mouthKey = !blocksRiverMouth && sides\.length === 1 \? getRiverMouthTemplateKey\(q, r, key\) : '';/);
