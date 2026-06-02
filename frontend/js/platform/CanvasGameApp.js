@@ -445,7 +445,9 @@
         loading: this.loading,
         network: this.networkState,
       });
-      if (resolvedActiveTab === 'military' && this.territoryUiState?.tileMapWaterAnimated) this.startTileMapWaterTimer();
+      const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
+        || this.territoryController?.uiState?.tileMapWaterAnimated);
+      if (resolvedActiveTab === 'military' && waterAnimated) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
     }
@@ -722,7 +724,10 @@
         getRenderer: () => this.renderer,
         getPresenter: () => this.presenter,
         getState: () => this.state || {},
-        getBaseUiState: () => this.territoryController?.getUiState?.() || this.territoryUiState || {},
+        getBaseUiState: () => this.territoryController?.uiState
+          || this.territoryController?.getUiState?.()
+          || this.territoryUiState
+          || {},
         getLocalUiState: () => this.territoryUiState || {},
         getTerritoryController: () => this.territoryController,
         getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',

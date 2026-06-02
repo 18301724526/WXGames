@@ -1091,7 +1091,7 @@
     }
 
     isWorldTileMapWaterAnimated(tileMapView = {}) {
-      return (tileMapView.tiles || []).some((tile) => tile.water?.asset && (tile.templateAssets || []).length);
+      return (tileMapView.tiles || []).some((tile) => tile.water?.asset);
     }
 
     resolveWorldTileMapView(territoryState = {}, uiState = {}, options = {}) {

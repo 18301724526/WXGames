@@ -4180,6 +4180,28 @@ test('CanvasGameRenderer prebakes water frames for offscreen unlocked water tile
   assert.ok(calls.some((call) => call[0] === 'offscreenDrawImage' && call[1]?.src === waterAsset));
 });
 
+test('CanvasGameRenderer treats water tiles as animated even before template masks are available', () => {
+  const { ctx } = makeCtx();
+  const renderer = new CanvasGameRenderer({ ctx, width: 390, height: 844, pixelRatio: 1 });
+
+  assert.equal(renderer.isWorldTileMapWaterAnimated({
+    tiles: [{
+      id: 'tile_river_legacy',
+      terrain: 'river',
+      water: { kind: 'river', asset: 'assets/art/tile-map/tile-water-river-loop.png' },
+      templateAssets: [],
+    }],
+  }), true);
+  assert.equal(renderer.isWorldTileMapWaterAnimated({
+    tiles: [{
+      id: 'tile_plain',
+      terrain: 'plains',
+      water: null,
+      templateAssets: [],
+    }],
+  }), false);
+});
+
 test('CanvasGameRenderer preserves chunked water during snapshot drag frames', () => {
   const { ctx, calls } = makeCtx();
   ctx.measureText = (text) => ({ width: String(text).length * 8 });

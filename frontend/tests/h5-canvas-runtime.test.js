@@ -3331,6 +3331,85 @@ test('Canvas game shell refreshes animated world water on the map layer when dua
   assert.equal(mapLayerCalls.length, initialMapLayerCalls + 1);
 });
 
+test('Canvas game shell starts runtime water playback from the baked world layer flag', () => {
+  const { document, runtime, timers } = createCanvasHarness();
+  runtime.clearInterval = () => {};
+  const uiState = { worldPanX: 0, worldPanY: 0 };
+  const state = {
+    currentTab: 'resources',
+    currentEra: 5,
+    militaryView: 'world',
+    territoryState: {
+      worldMap: {
+        version: 2,
+        seed: 'runtime-water-flag',
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'ocean', oceanTemplates: ['full'] }],
+      },
+      territories: [],
+    },
+  };
+  const renderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    getTopBarBottom: () => 84,
+    render() {},
+  };
+  const layerCalls = [];
+  const snapshotCalls = [];
+  const worldMapRenderer = {
+    width: 390,
+    height: 844,
+    pixelRatio: 2,
+    presenter: UIStatePresenter,
+    getWorldTileWaterAnimationFps: () => 8,
+    renderWorldMapLayer(layerState, options) {
+      layerCalls.push({ state: layerState, options });
+      options.territoryUiState.tileMapWaterAnimated = true;
+      return true;
+    },
+    renderWorldMapSnapshotLayer(layerState, options) {
+      snapshotCalls.push({ state: layerState, options });
+      return true;
+    },
+    invalidateWorldTileCaches() {},
+    invalidateWorldTileViewCache() {},
+  };
+  const shell = CanvasGameShell.mount({
+    state,
+    getActiveTab: () => 'resources',
+    mapHomeActive: true,
+    territoryController: {
+      uiState,
+      getUiState: () => ({ ...uiState }),
+    },
+  }, {
+    Runtime: H5CanvasRuntime,
+    document,
+    runtime,
+    renderer,
+    presenter: UIStatePresenter,
+    previewEnabled: true,
+  });
+  shell.worldMapRenderer = worldMapRenderer;
+  let now = 1000;
+  shell.now = () => now;
+
+  shell.renderReadOnly(state, 'resources');
+
+  assert.equal(layerCalls.length, 1);
+  assert.equal(uiState.tileMapWaterAnimated, true);
+  assert.equal(timers.at(-1).intervalMs, 125);
+
+  now = 1125;
+  timers.at(-1).callback();
+
+  assert.equal(snapshotCalls.length, 1);
+  assert.equal(snapshotCalls.at(-1).options.snapshotOnly, true);
+  assert.equal(snapshotCalls.at(-1).options.reuseCachedWorldTileView, true);
+  assert.equal(snapshotCalls.at(-1).options.waterTimeMs, 1125);
+});
+
 test('Canvas game shell plays cached world water frames during snapshot drag without full redraws', () => {
   const { document, runtime, listeners } = createCanvasHarness();
   const frames = [];
@@ -3498,7 +3577,9 @@ test('Canvas game shell skips water timer frames while snapshot dragging and coo
   timers.at(-1).callback();
 
   assert.equal(shell.isWorldMapDragCoolingDown(), false);
-  assert.equal(mapLayerCalls.length, callsAfterDragEnd);
+  assert.equal(mapLayerCalls.length, callsAfterDragEnd + 1);
+  assert.equal(mapLayerCalls.at(-1).options.snapshotOnly, true);
+  assert.equal(mapLayerCalls.at(-1).options.reuseCachedWorldTileView, true);
 });
 
 test('Canvas game app delegates H5 tab transition animation to the mounted canvas shell', () => {

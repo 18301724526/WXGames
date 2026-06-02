@@ -218,7 +218,10 @@
         getRenderer: () => this.worldMapRenderer,
         getPresenter: () => this.presenter || this.renderer?.presenter,
         getState: () => this.lastGame?.state || {},
-        getBaseUiState: () => this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {},
+        getBaseUiState: () => this.lastGame?.territoryController?.uiState
+          || this.lastGame?.territoryController?.getUiState?.()
+          || this.territoryUiState
+          || {},
         getLocalUiState: () => this.territoryUiState || {},
         getTerritoryController: () => this.lastGame?.territoryController || null,
         getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
@@ -992,7 +995,12 @@
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (this.isWorldMapHomeActive() && coordinator?.canRender(this.lastGame.state)) {
-        if (!this.shouldRenderRuntimeWorldMap(this.lastGame.state, options)) return false;
+        const snapshotWaterRefresh = Boolean(options.snapshotOnly
+          && options.reuseCachedWorldTileView
+          && options.waterTimeMs !== null
+          && options.waterTimeMs !== undefined
+          && Number.isFinite(Number(options.waterTimeMs)));
+        if (!snapshotWaterRefresh && !this.shouldRenderRuntimeWorldMap(this.lastGame.state, options)) return false;
         const runtimeDragging = Boolean(runtime?.isDragging?.());
         const hasOptionWaterTime = options.waterTimeMs !== null
           && options.waterTimeMs !== undefined
@@ -1618,7 +1626,10 @@
       this.renderer.render(state, this.worldMapRenderer
         ? { ...renderOptions, skipWorldMapLayer: true }
         : renderOptions);
-      if (homeView.activeTab === 'military' && territoryUiState.tileMapWaterAnimated) this.startTileMapWaterTimer();
+      const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
+        || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
+        || this.territoryUiState?.tileMapWaterAnimated);
+      if (homeView.activeTab === 'military' && waterAnimated) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
     }

@@ -76,6 +76,13 @@
       };
     }
 
+    syncWaterAnimationFlag(uiState = {}) {
+      if (!uiState?.tileMapWaterAnimated) return false;
+      const base = this.getBaseUiState?.();
+      if (base && typeof base === 'object') base.tileMapWaterAnimated = true;
+      return true;
+    }
+
     getLayerLayout(state = this.getState(), options = {}) {
       if (!this.renderer || typeof this.renderer.getWorldMapLayerLayout !== 'function') return null;
       const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state);
@@ -420,6 +427,7 @@
           waterTimeMs: options.waterTimeMs ?? this.waterTimeMs,
           showFpsOverlay: false,
         });
+        this.syncWaterAnimationFlag(uiState);
         this.lastLayout = this.getLayerLayout(state, { topBarBottom });
         return renderedSnapshot;
       }
@@ -438,6 +446,7 @@
       });
       this.lastLayout = this.getLayerLayout(state, { topBarBottom });
       if (rendered) {
+        this.syncWaterAnimationFlag(uiState);
         this.hasBakedMapLayer = true;
         this.mapBakeDirty = false;
         this.markBakedCamera(this.camera);
