@@ -172,6 +172,103 @@ test('getLeaderSnapshot supports live famous people and maps strategy to intelli
   assert.equal(BattleService.getLeaderSnapshot(gameState, 'unavailable'), null);
 });
 
+test('defender battle snapshot prefers garrison leader and soldiers', () => {
+  const territory = createTerritoryWithDefenderLeader({
+    defense: 300,
+    garrison: {
+      id: 'garrison_tribe_site',
+      siteId: 'tribe_site',
+      owner: 'tribe',
+      soldiers: 700,
+      leader: {
+        id: 'df_garrison',
+        name: '驻军首领',
+        title: '边地守将',
+        archetype: 'guardian',
+        abilityArchetype: 'commander',
+        quality: 'great',
+        qualityLabel: '名将',
+        level: 18,
+        attributes: { command: 88, force: 66, intelligence: 62, politics: 40, charisma: 50, speed: 42 },
+        appearance: { version: 'famous-portrait-v3.0', layers: {} },
+        abilityKit: {
+          archetype: 'guardian',
+          domain: 'battle',
+          battlePolicy: 'basicAttackOnly',
+          abilities: [],
+        },
+        skills: [],
+      },
+    },
+  });
+  const snapshot = BattleService.getDefenderLeaderSnapshot(territory);
+  const result = BattleService.simulateConquestBattle(
+    createLeaderState(),
+    createMission({ soldiersCommitted: 900, expedition: { leader: 'unavailable', soldiers: 900 } }),
+    territory,
+    new Date('2026-05-29T12:00:00.000Z'),
+  );
+
+  assert.equal(snapshot.id, 'df_garrison');
+  assert.equal(snapshot.name, '驻军首领');
+  assert.equal(result.report.defender.leaderId, 'df_garrison');
+  assert.equal(result.report.defender.soldiersStart, 700);
+});
+
+test('conquest battle prefers mission battle target defender snapshot', () => {
+  const territory = createTerritoryWithDefenderLeader({
+    defense: 300,
+    garrison: {
+      id: 'garrison_old',
+      siteId: 'tribe_site',
+      owner: 'tribe',
+      soldiers: 300,
+      leader: {
+        id: 'df_old',
+        name: 'Old Defender',
+        title: 'Old Guard',
+        attributes: { command: 40, force: 40, intelligence: 40, speed: 40 },
+        abilityKit: { battlePolicy: 'basicAttackOnly', abilities: [] },
+      },
+    },
+  });
+  const mission = createMission({
+    soldiersCommitted: 900,
+    expedition: { leader: 'unavailable', soldiers: 900 },
+    battleTarget: {
+      source: 'tile-map',
+      tile: { id: 'tile_3_0', q: 3, r: 0, terrain: 'forest' },
+      site: { id: 'tribe_site', owner: 'tribe', type: 'camp', status: 'discovered' },
+      defender: {
+        id: 'garrison_target',
+        siteId: 'tribe_site',
+        owner: 'tribe',
+        soldiers: 650,
+        leader: {
+          id: 'df_target',
+          name: 'Target Defender',
+          title: 'Snapshot Guard',
+          attributes: { command: 80, force: 70, intelligence: 60, speed: 45 },
+          abilityKit: { battlePolicy: 'basicAttackOnly', abilities: [] },
+        },
+      },
+      intelSnapshot: { knownGarrison: true, knownLeader: true },
+    },
+  });
+
+  const result = BattleService.simulateConquestBattle(
+    createLeaderState(),
+    mission,
+    territory,
+    new Date('2026-05-29T12:00:00.000Z'),
+  );
+
+  assert.equal(result.report.defender.leaderId, 'df_target');
+  assert.equal(result.report.defender.leaderName, 'Target Defender');
+  assert.equal(result.report.defender.soldiersStart, 650);
+  assert.equal(result.report.battleTarget.defender.id, 'garrison_target');
+});
+
 test('conditional skill falls back to basic attack when conditions fail', () => {
   const gameState = createLeaderState();
   const active = gameState.famousPeople[0].abilityKit.abilities[0];

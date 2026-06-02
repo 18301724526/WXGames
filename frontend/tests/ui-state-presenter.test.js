@@ -1260,18 +1260,22 @@ test('world site dialog view state formats details and expedition actions', () =
       defense: 500,
       recommendedSoldiers: 500,
       effects: { foodOutputMultiplier: 0.1 },
-      defenderLeader: {
-        name: '拓锋',
-        title: '营帐战首',
-        qualityLabel: '良才',
-        abilityKit: {
-          abilities: [{
-            id: 'skill_enemy_rending_charge',
-            name: '裂甲猛冲',
-            slot: 'activeSkill',
-            kind: 'active',
-            effects: [{ key: 'directDamage', value: 1.32 }, { key: 'armorBreak', value: 0.12 }],
-          }],
+      garrison: {
+        id: 'garrison_tribe_site',
+        soldiers: 500,
+        leader: {
+          name: '拓锋',
+          title: '营帐战首',
+          qualityLabel: '良才',
+          abilityKit: {
+            abilities: [{
+              id: 'skill_enemy_rending_charge',
+              name: '裂甲猛冲',
+              slot: 'activeSkill',
+              kind: 'active',
+              effects: [{ key: 'directDamage', value: 1.32 }, { key: 'armorBreak', value: 0.12 }],
+            }],
+          },
         },
       },
     },

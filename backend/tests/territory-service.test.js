@@ -522,9 +522,18 @@ test('敌对据点会稳定生成守军名人，归一化后继续保留', () =>
   assert.equal(firstLeader.source.territoryId, site.id);
   assert.equal(firstLeader.abilityKit.battlePolicy, 'useBattleSkill');
   assert.equal(firstLeader.skills.length, 1);
+  assert.ok(site.garrison);
+  assert.equal(site.garrison.id, `garrison_${site.id}`);
+  assert.equal(site.garrison.siteId, site.id);
+  assert.equal(site.garrison.owner, site.owner);
+  assert.equal(site.garrison.soldiers, site.defense);
+  assert.equal(site.garrison.leader.id, firstLeader.id);
 
   const normalized = gameStateService.normalizeState(state);
-  const normalizedLeader = normalized.territories.find((item) => item.id === site.id).defenderLeader;
+  const normalizedSite = normalized.territories.find((item) => item.id === site.id);
+  const normalizedLeader = normalizedSite.defenderLeader;
+  assert.equal(normalizedSite.garrison.leader.id, firstLeader.id);
+  assert.equal(normalizedSite.garrison.soldiers, site.defense);
   assert.equal(normalizedLeader.id, firstLeader.id);
   assert.equal(normalizedLeader.name, firstLeader.name);
   assert.equal(normalizedLeader.skills[0].id, firstLeader.skills[0].id);
@@ -546,6 +555,7 @@ test('中立建立据点目标不会生成守军名人', () => {
 
   assert.equal(site.owner, 'neutral');
   assert.equal(site.defenderLeader, null);
+  assert.equal(site.garrison, null);
 });
 
 test('分城侦察会以当前分城坐标作为出发原点', () => {
@@ -717,6 +727,13 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
 
   assert.equal(start.success, true);
   assert.equal(start.mission.mode, 'conquest');
+  assert.equal(start.mission.battleTarget.source, 'tile-map');
+  assert.equal(start.mission.battleTarget.tile.id, 'tile_0_-2');
+  assert.equal(start.mission.battleTarget.site.id, 'tribe_site');
+  assert.equal(start.mission.battleTarget.site.owner, 'tribe');
+  assert.equal(start.mission.battleTarget.defender.siteId, 'tribe_site');
+  assert.equal(start.mission.battleTarget.defender.soldiers, 500);
+  assert.equal(start.mission.battleTarget.intelSnapshot.knownGarrison, true);
   assert.deepEqual(start.mission.expedition, {
     troopType: 'unavailable',
     leader: 'unavailable',
@@ -741,6 +758,8 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
     r: -2,
     terrain: claim.battleReport.mapTerrain,
   });
+  assert.deepEqual(claim.battleReport.battleTarget, start.mission.battleTarget);
+  assert.deepEqual(state.territories.find((item) => item.id === 'tribe_site').lastBattle.battleTarget, start.mission.battleTarget);
   assert.ok(claim.casualties > 0);
   assert.ok(claim.casualties < 800);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
@@ -790,6 +809,7 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.ok(site.lastBattle.report.defender.leaderName);
   assert.ok(site.lastBattle.report.defender.skill.name);
   assert.equal(site.defenderLeader, null);
+  assert.equal(site.garrison, null);
   assert.equal(site.lastBattle.report.system, 'attribute-auto-battle-v2');
   assert.equal(site.lastBattle.report.ruleVersion, 'battle-rules-v3');
   assert.equal(site.lastBattle.report.turns[0].actor, 'attacker');

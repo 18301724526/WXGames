@@ -2793,7 +2793,7 @@
     }
 
     static getWorldSiteDefenderLeaderLine(site = {}) {
-      const leader = site.defenderLeader;
+      const leader = site.garrison?.leader || site.defenderLeader;
       if (!leader || typeof leader !== 'object') return '';
       const title = leader.title ? ` · ${leader.title}` : '';
       const quality = leader.qualityLabel ? ` · ${leader.qualityLabel}` : '';
@@ -2801,7 +2801,7 @@
     }
 
     static getWorldSiteDefenderSkillLine(site = {}) {
-      const leader = site.defenderLeader;
+      const leader = site.garrison?.leader || site.defenderLeader;
       if (!leader || typeof leader !== 'object') return '';
       const active = Array.isArray(leader.abilityKit?.abilities)
         ? leader.abilityKit.abilities.find((ability) => ability?.slot === 'activeSkill' || ability?.kind === 'active')

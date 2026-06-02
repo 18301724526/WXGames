@@ -306,6 +306,80 @@ function getPlanningTerrainForMapTerrain(value, fallback = 'plains') {
     : fallback;
 }
 
+function normalizeGarrison(rawGarrison, territory = {}, now = new Date().toISOString()) {
+  const raw = rawGarrison && typeof rawGarrison === 'object' ? rawGarrison : {};
+  const owner = territory.owner || raw.owner || 'neutral';
+  if (owner === 'player' || owner === 'neutral' || territory.id === 'capital') return null;
+  const leaderSource = raw.leader && typeof raw.leader === 'object'
+    ? raw.leader
+    : territory.defenderLeader;
+  const leader = DefenderLeaderService.ensureDefenderLeader({
+    ...territory,
+    defenderLeader: leaderSource || territory.defenderLeader,
+  }, { createdAt: raw.generatedAt || territory.discoveredAt || now });
+  const soldiers = Math.max(
+    MIN_EXPEDITION_SOLDIERS,
+    normalizeSoldierScale(raw.soldiers ?? territory.defense ?? territory.recommendedSoldiers, MIN_EXPEDITION_SOLDIERS),
+  );
+  return {
+    id: typeof raw.id === 'string' && raw.id ? raw.id : `garrison_${territory.id || 'site'}`,
+    siteId: territory.id || raw.siteId || '',
+    owner,
+    soldiers,
+    quality: raw.quality || leader?.quality || 'common',
+    threat: Math.max(0, toInteger(raw.threat, territory.threat || 0)),
+    scale: Math.max(1, toInteger(raw.scale, territory.scale || 1)),
+    leader,
+    generatedAt: raw.generatedAt || territory.discoveredAt || now,
+  };
+}
+
+function normalizeBattleTarget(rawTarget, territory = {}, now = new Date().toISOString()) {
+  const raw = rawTarget && typeof rawTarget === 'object' ? rawTarget : {};
+  const x = toInteger(raw.tile?.q ?? raw.q ?? territory.x, 0);
+  const y = toInteger(raw.tile?.r ?? raw.r ?? territory.y, 0);
+  const tileId = raw.tile?.id || raw.tileId || WorldMapService.getTileId(x, y);
+  const mapTerrain = normalizeMapTerrainId(raw.tile?.terrain || raw.mapTerrain || territory.mapTerrain || territory.tileTerrain || territory.worldTerrain)
+    || normalizeMapTerrainId(territory.terrain);
+  const terrain = getPlanningTerrainForMapTerrain(raw.terrain || territory.terrain || mapTerrain);
+  const garrison = normalizeGarrison(raw.defender || raw.garrison || territory.garrison, {
+    ...territory,
+    x,
+    y,
+    mapTerrain: mapTerrain || territory.mapTerrain,
+  }, now);
+  return {
+    source: raw.source || 'tile-map',
+    tile: {
+      id: tileId,
+      q: x,
+      r: y,
+      terrain: mapTerrain || raw.tile?.terrain || territory.mapTerrain || 'plains',
+    },
+    site: {
+      id: raw.site?.id || territory.id || raw.siteId || '',
+      type: raw.site?.type || territory.type || '',
+      owner: raw.site?.owner || territory.owner || 'neutral',
+      status: raw.site?.status || territory.status || 'discovered',
+      name: raw.site?.name || territory.naturalName || territory.cityName || '',
+      scale: Math.max(1, toInteger(raw.site?.scale ?? territory.scale, 1)),
+      threat: Math.max(0, toInteger(raw.site?.threat ?? territory.threat, 0)),
+      mapTerrain: raw.site?.mapTerrain || mapTerrain || null,
+      terrain: raw.site?.terrain || terrain,
+    },
+    defender: garrison,
+    intelSnapshot: {
+      knownTerrain: true,
+      knownSite: true,
+      knownOwner: true,
+      knownGarrison: Boolean(garrison),
+      knownLeader: Boolean(garrison?.leader),
+      knownSkill: Boolean(garrison?.leader?.abilityKit),
+      ...(raw.intelSnapshot && typeof raw.intelSnapshot === 'object' ? raw.intelSnapshot : {}),
+    },
+  };
+}
+
 function isLegacyPresetTerritory(rawTerritory) {
   return Boolean(LEGACY_SITE_MIGRATIONS[rawTerritory?.id]);
 }
@@ -388,13 +462,17 @@ function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
     effects: clone(rawTerritory.effects || {}),
     summary: rawTerritory.summary || '',
     lastBattle: rawTerritory.lastBattle || null,
-    defenderLeader: rawTerritory.defenderLeader || null,
+    defenderLeader: rawTerritory.defenderLeader || rawTerritory.garrison?.leader || null,
+    garrison: rawTerritory.garrison || null,
+    battleTarget: rawTerritory.battleTarget || null,
   };
   if (planningTerrain) normalized.terrain = planningTerrain;
   if (mapTerrain) normalized.mapTerrain = mapTerrain;
-  normalized.defenderLeader = DefenderLeaderService.ensureDefenderLeader(normalized, {
-    createdAt: normalized.discoveredAt || now,
-  });
+  normalized.garrison = normalizeGarrison(normalized.garrison, normalized, normalized.discoveredAt || now);
+  normalized.defenderLeader = normalized.garrison?.leader || null;
+  normalized.battleTarget = normalized.battleTarget
+    ? normalizeBattleTarget(normalized.battleTarget, normalized, normalized.discoveredAt || now)
+    : null;
   return normalized;
 }
 
@@ -498,6 +576,7 @@ function normalizeWarMissions(rawMissions) {
         sourceCityId: mission.sourceCityId || 'capital',
         soldierAllocations: getMissionSoldierAllocations(mission),
         soldiersCommitted: normalizeSoldierScale(mission.soldiersCommitted, 0),
+        battleTarget: mission.battleTarget ? normalizeBattleTarget(mission.battleTarget, { id: mission.territoryId }, mission.startedAt || new Date().toISOString()) : null,
         expedition: {
           troopType: typeof mission.expedition?.troopType === 'string' && mission.expedition.troopType.trim()
             ? mission.expedition.troopType.trim()
@@ -804,7 +883,7 @@ function getTerritoryBattleTileSnapshot(gameState, territory, now = new Date()) 
   };
 }
 
-function attachBattleTileSnapshot(report, snapshot) {
+function attachBattleTileSnapshot(report, snapshot, battleTarget = null) {
   if (!report || typeof report !== 'object') return report;
   return {
     ...report,
@@ -814,7 +893,30 @@ function attachBattleTileSnapshot(report, snapshot) {
     mapTerrain: snapshot.mapTerrain,
     terrain: snapshot.terrain,
     tile: { ...snapshot.tile },
+    ...(battleTarget ? { battleTarget } : {}),
   };
+}
+
+function getTerritoryBattleTargetSnapshot(gameState, territory, now = new Date()) {
+  const tileSnapshot = getTerritoryBattleTileSnapshot(gameState, territory, now);
+  return normalizeBattleTarget({
+    source: 'tile-map',
+    tileId: tileSnapshot.tileId,
+    q: tileSnapshot.q,
+    r: tileSnapshot.r,
+    mapTerrain: tileSnapshot.mapTerrain,
+    terrain: tileSnapshot.terrain,
+    tile: tileSnapshot.tile,
+    defender: territory?.garrison || null,
+    intelSnapshot: {
+      knownTerrain: true,
+      knownSite: true,
+      knownOwner: true,
+      knownGarrison: Boolean(territory?.garrison),
+      knownLeader: Boolean(territory?.garrison?.leader || territory?.defenderLeader),
+      knownSkill: Boolean((territory?.garrison?.leader || territory?.defenderLeader)?.abilityKit),
+    },
+  }, territory, now.toISOString());
 }
 
 function getScoutReportRevealAreaSnapshot(gameState, mission, now = new Date()) {
@@ -1609,10 +1711,10 @@ function createSiteFromScout(gameState, mission, now = new Date(), randomSource 
     effects: getSiteEffects(template, distance),
     summary,
     lastBattle: null,
+    garrison: null,
   };
-  site.defenderLeader = DefenderLeaderService.ensureDefenderLeader(site, {
-    createdAt: now.toISOString(),
-  });
+  site.garrison = normalizeGarrison(null, site, now.toISOString());
+  site.defenderLeader = site.garrison?.leader || null;
   const report = {
     id: `report_${site.id}_${now.getTime()}`,
     siteId: site.id,
@@ -1882,6 +1984,7 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
   const soldierAllocations = allocateSoldiersForMission(gameState, committed);
   if (!soldierAllocations) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
   const leaderSnapshot = BattleService.getLeaderSnapshot(gameState, expedition.leader);
+  const battleTarget = getTerritoryBattleTargetSnapshot(gameState, territory, now);
   const mission = {
     id: `conquest_${territoryId}_${now.getTime()}`,
     kind: 'conquest',
@@ -1890,6 +1993,7 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
     sourceCityId: soldierAllocations[0]?.cityId || gameState.activeCityId || 'capital',
     soldierAllocations,
     soldiersCommitted: committed,
+    battleTarget,
     expedition: {
       ...expedition,
       soldiers: committed,
@@ -1912,6 +2016,7 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
 
 function resolveMission(gameState, mission, territory, now = new Date()) {
   const tileSnapshot = getTerritoryBattleTileSnapshot(gameState, territory, now);
+  const battleTarget = normalizeBattleTarget(mission.battleTarget || territory.battleTarget || getTerritoryBattleTargetSnapshot(gameState, territory, now), territory, now.toISOString());
   if (mission.mode === 'settlement') {
     territory.lastBattle = {
       resolvedAt: now.toISOString(),
@@ -1925,6 +2030,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
       mapTerrain: tileSnapshot.mapTerrain,
       terrain: tileSnapshot.terrain,
       tile: { ...tileSnapshot.tile },
+      battleTarget,
     };
     territory.status = 'occupied';
     territory.owner = 'player';
@@ -1966,11 +2072,13 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     mapTerrain: tileSnapshot.mapTerrain,
     terrain: tileSnapshot.terrain,
     tile: { ...tileSnapshot.tile },
+    battleTarget,
     leaderId: mission.expedition?.leader || 'unavailable',
     leaderName: battle?.report?.attacker?.leaderName || mission.expedition?.leaderSnapshot?.name || '',
     report: attachBattleTileSnapshot(
       battle?.report || BattleService.createLegacyBattleReport(mission, territory, { success, casualties }, now),
       tileSnapshot,
+      battleTarget,
     ),
   };
   const FamousPersonService = require('./FamousPersonService');
@@ -1986,6 +2094,7 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     territory.status = 'occupied';
     territory.owner = 'player';
     territory.defenderLeader = null;
+    territory.garrison = null;
     territory.occupiedAt = now.toISOString();
     territory.cityName = null;
   } else {

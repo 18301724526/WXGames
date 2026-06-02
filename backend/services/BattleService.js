@@ -123,7 +123,7 @@ function getLeaderSnapshotFromMission(mission) {
 }
 
 function getDefenderLeaderSnapshot(territory = {}) {
-  const raw = territory.defenderLeader;
+  const raw = territory.battleTarget?.defender?.leader || territory.garrison?.leader || territory.defenderLeader;
   if (!raw || typeof raw !== 'object') return null;
   return {
     id: raw.id || `df_${territory.id || 'site'}`,
@@ -743,7 +743,10 @@ function getBattleVisualGroups(soldiers, groupSize = DEFAULT_SOLDIER_SCALE) {
 
 function getDefenderProfile(territory) {
   const profile = BattleConfig.getDefenderProfileForOwner(territory.owner, territory.naturalName);
-  const soldiers = Math.max(MIN_BATTLE_SOLDIERS, toInteger(territory.defense, MIN_BATTLE_SOLDIERS));
+  const soldiers = Math.max(
+    MIN_BATTLE_SOLDIERS,
+    toInteger(territory.battleTarget?.defender?.soldiers, toInteger(territory.garrison?.soldiers, toInteger(territory.defense, MIN_BATTLE_SOLDIERS))),
+  );
   return {
     id: territory.id,
     name: profile.name,
@@ -844,6 +847,9 @@ function createExperienceSummary(attacker, defender, success) {
 }
 
 function simulateConquestBattle(gameState, mission, territory, now = new Date()) {
+  const targetTerritory = mission?.battleTarget
+    ? { ...territory, battleTarget: mission.battleTarget }
+    : territory;
   const leader = getLeaderSnapshot(gameState, mission.expedition?.leader)
     || getLeaderSnapshotFromMission(mission);
   const fallbackLeader = leader || BattleConfig.getFallbackLeader();
@@ -858,7 +864,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     skill: getBattleSkill({ leader: fallbackLeader }, 'attacker'),
   });
   const defender = makeUnit('defender', {
-    ...getDefenderBattleProfile(territory),
+    ...getDefenderBattleProfile(targetTerritory),
   });
 
   const turns = [];
@@ -1141,6 +1147,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       : `${fallbackLeader.name}队未能突破${defender.name}的防线。`,
     system: BATTLE_SYSTEM,
     ruleVersion: BATTLE_RULE_VERSION,
+    battleTarget: mission.battleTarget ? clone(mission.battleTarget) : null,
     groupSize: DEFAULT_SOLDIER_SCALE,
     firstActor: attackerFirst ? 'attacker' : 'defender',
     actionOrder: order.map((actor) => actor.key),
