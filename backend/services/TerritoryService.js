@@ -817,48 +817,60 @@ function syncScoutCoordinatesWithTerritories(gameState, now = new Date().toISOSt
   return gameState.scoutedCoordinates;
 }
 
-function revealAxisBridgeTilesBetweenTerritories(gameState, now = new Date().toISOString()) {
+function revealSolidKnownWorldTiles(gameState, now = new Date().toISOString()) {
   WorldMapService.ensureWorldMap(gameState, new Date(now));
-  const territories = (gameState.territories || [])
-    .filter((territory) => (
-      territory
-      && Number.isFinite(Number(territory.x))
-      && Number.isFinite(Number(territory.y))
-    ))
-    .map((territory) => ({
-      x: toInteger(territory.x, 0),
-      y: toInteger(territory.y, 0),
-    }));
-  const byX = new Map();
-  const byY = new Map();
-  for (const territory of territories) {
-    if (!byX.has(territory.x)) byX.set(territory.x, []);
-    if (!byY.has(territory.y)) byY.set(territory.y, []);
-    byX.get(territory.x).push(territory.y);
-    byY.get(territory.y).push(territory.x);
+  const known = new Map();
+  for (const tile of gameState.worldMap.tiles || []) {
+    if (!tile || tile.discovered === false) continue;
+    const x = toInteger(tile.q, 0);
+    const y = toInteger(tile.r, 0);
+    known.set(getCoordinateKey(x, y), { x, y });
   }
-  const bridgeKeys = new Set();
-  for (const [x, ys] of byX.entries()) {
-    const sorted = Array.from(new Set(ys)).sort((a, b) => a - b);
-    for (let index = 1; index < sorted.length; index += 1) {
-      for (let y = sorted[index - 1] + 1; y < sorted[index]; y += 1) {
-        bridgeKeys.add(getCoordinateKey(x, y));
+  for (const territory of gameState.territories || []) {
+    if (!territory || !Number.isFinite(Number(territory.x)) || !Number.isFinite(Number(territory.y))) continue;
+    const x = toInteger(territory.x, 0);
+    const y = toInteger(territory.y, 0);
+    known.set(getCoordinateKey(x, y), { x, y });
+  }
+  let added = 0;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const byX = new Map();
+    const byY = new Map();
+    for (const coord of known.values()) {
+      if (!byX.has(coord.x)) byX.set(coord.x, []);
+      if (!byY.has(coord.y)) byY.set(coord.y, []);
+      byX.get(coord.x).push(coord.y);
+      byY.get(coord.y).push(coord.x);
+    }
+    const bridgeKeys = new Set();
+    for (const [x, ys] of byX.entries()) {
+      const sorted = Array.from(new Set(ys)).sort((a, b) => a - b);
+      for (let index = 1; index < sorted.length; index += 1) {
+        for (let y = sorted[index - 1] + 1; y < sorted[index]; y += 1) {
+          bridgeKeys.add(getCoordinateKey(x, y));
+        }
       }
     }
-  }
-  for (const [y, xs] of byY.entries()) {
-    const sorted = Array.from(new Set(xs)).sort((a, b) => a - b);
-    for (let index = 1; index < sorted.length; index += 1) {
-      for (let x = sorted[index - 1] + 1; x < sorted[index]; x += 1) {
-        bridgeKeys.add(getCoordinateKey(x, y));
+    for (const [y, xs] of byY.entries()) {
+      const sorted = Array.from(new Set(xs)).sort((a, b) => a - b);
+      for (let index = 1; index < sorted.length; index += 1) {
+        for (let x = sorted[index - 1] + 1; x < sorted[index]; x += 1) {
+          bridgeKeys.add(getCoordinateKey(x, y));
+        }
       }
     }
+    for (const key of bridgeKeys) {
+      if (known.has(key)) continue;
+      const [x, y] = key.split(',').map((value) => toInteger(value, 0));
+      WorldMapService.revealTile(gameState, x, y, now);
+      known.set(key, { x, y });
+      added += 1;
+      changed = true;
+    }
   }
-  for (const key of bridgeKeys) {
-    const [x, y] = key.split(',').map((value) => toInteger(value, 0));
-    WorldMapService.revealTile(gameState, x, y, now);
-  }
-  return bridgeKeys.size;
+  return added;
 }
 
 function clearWorldTileSiteBindings(gameState, preserveCapital = true) {
@@ -1469,7 +1481,7 @@ function normalizeTerritoryState(gameState, now = new Date(), options = {}) {
   gameState.scoutState = normalizeScoutState(gameState.scoutState);
   WorldMapService.ensureWorldMap(gameState, now);
   migrateTerritorySitesToCurrentWorldRules(gameState, previousWorldMapVersion, now);
-  revealAxisBridgeTilesBetweenTerritories(gameState, isoNow);
+  revealSolidKnownWorldTiles(gameState, isoNow);
   syncScoutCoordinatesWithTerritories(gameState, isoNow);
   enforceScoutMissionLimit(gameState);
   updateMissionReadiness(gameState, now);

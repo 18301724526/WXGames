@@ -848,6 +848,40 @@ test('同轴两座城之间会补齐已经生成的基础地块', () => {
   assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_2_3')?.siteId, 'south_town');
 });
 
+test('已生成地图轮廓内部不会留下镂空地块', () => {
+  const state = createClassicalState();
+  const frameTiles = [];
+  for (let x = -2; x <= 2; x += 1) {
+    frameTiles.push({ id: WorldMapService.getTileId(x, -2), q: x, r: -2, terrain: 'plains', discovered: true, visible: true });
+    frameTiles.push({ id: WorldMapService.getTileId(x, 2), q: x, r: 2, terrain: 'plains', discovered: true, visible: true });
+  }
+  for (let y = -1; y <= 1; y += 1) {
+    frameTiles.push({ id: WorldMapService.getTileId(-2, y), q: -2, r: y, terrain: 'plains', discovered: true, visible: true });
+    frameTiles.push({ id: WorldMapService.getTileId(2, y), q: 2, r: y, terrain: 'plains', discovered: true, visible: true });
+  }
+  state.worldMap = {
+    ...state.worldMap,
+    version: WorldMapService.WORLD_MAP_VERSION,
+    tiles: [
+      ...state.worldMap.tiles.filter((tile) => tile.id === 'tile_0_0'),
+      ...frameTiles,
+    ],
+  };
+  state.territories = [
+    { id: 'capital', cityName: '火种城', status: 'occupied' },
+  ];
+
+  const normalized = gameStateService.normalizeState(state);
+  const tileIds = new Set(normalized.worldMap.tiles.map((tile) => tile.id));
+
+  for (let x = -2; x <= 2; x += 1) {
+    for (let y = -2; y <= 2; y += 1) {
+      assert.equal(tileIds.has(WorldMapService.getTileId(x, y)), true);
+    }
+  }
+  assert.equal(normalized.worldMap.tiles.find((tile) => tile.id === 'tile_0_0')?.siteId, 'capital');
+});
+
 test('侦察、出征、完成占领会产生待命名城市', () => {
   const state = createClassicalState();
   const now = new Date('2026-05-17T08:00:00.000Z');
