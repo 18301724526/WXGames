@@ -19,13 +19,6 @@ const OCEAN_SHORE_EDGE_BY_CORE_OFFSET = {
   '1,0': 'se',
   '0,1': 'sw',
 };
-// Offsets are from the full ocean tile to the neighboring river-mouth tile.
-const RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET = {
-  '0,1': 'river-mouth-ne',
-  '0,-1': 'river-mouth-sw',
-  '1,0': 'river-mouth-nw',
-  '-1,0': 'river-mouth-se',
-};
 const OCEAN_CORNER_BY_CORE_OFFSET = {
   '1,1': 'corner-n',
   '-1,1': 'corner-e',
@@ -292,7 +285,11 @@ function getOceanShoreEdgeTemplateKeys(sides = []) {
 }
 
 function getRiverMouthTemplateForNeighborOfOcean(qOffset, rOffset) {
-  return RIVER_MOUTH_TEMPLATE_BY_OCEAN_NEIGHBOR_OFFSET[`${toInteger(qOffset)},${toInteger(rOffset)}`] || '';
+  const q = toInteger(qOffset);
+  const r = toInteger(rOffset);
+  const side = Object.entries(SIDE_DIRECTIONS)
+    .find(([_side, dir]) => dir.q === -q && dir.r === -r)?.[0] || '';
+  return side ? `river-mouth-${side}` : '';
 }
 
 function getGeneratedRiverPorts(seed, q, r) {

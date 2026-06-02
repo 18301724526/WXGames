@@ -701,6 +701,45 @@ function getScoutResolvedCoordinate(mission) {
   };
 }
 
+function getTerritoryBattleTileSnapshot(gameState, territory, now = new Date()) {
+  const x = toInteger(territory?.x, 0);
+  const y = toInteger(territory?.y, 0);
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const tileId = WorldMapService.getTileId(x, y);
+  const tile = (worldMap.tiles || []).find((item) => item.id === tileId || (item.q === x && item.r === y)) || null;
+  const mapTerrain = normalizeMapTerrainId(territory?.mapTerrain || territory?.tileTerrain || territory?.worldTerrain)
+    || normalizeMapTerrainId(tile?.terrain)
+    || normalizeMapTerrainId(territory?.terrain)
+    || WorldMapService.chooseTerrain(worldMap.seed, x, y);
+  const planningTerrain = getPlanningTerrainForMapTerrain(territory?.terrain || mapTerrain);
+  return {
+    tileId,
+    q: x,
+    r: y,
+    mapTerrain,
+    terrain: planningTerrain,
+    tile: {
+      id: tileId,
+      q: x,
+      r: y,
+      terrain: mapTerrain,
+    },
+  };
+}
+
+function attachBattleTileSnapshot(report, snapshot) {
+  if (!report || typeof report !== 'object') return report;
+  return {
+    ...report,
+    tileId: snapshot.tileId,
+    q: snapshot.q,
+    r: snapshot.r,
+    mapTerrain: snapshot.mapTerrain,
+    terrain: snapshot.terrain,
+    tile: { ...snapshot.tile },
+  };
+}
+
 function ensureMissionRevealArea(gameState, mission, now = new Date()) {
   mission.route = Array.isArray(mission.route) ? mission.route : [];
   if (!mission.route.length) {
@@ -1716,6 +1755,7 @@ function startConquest(gameState, territoryId, expeditionInput, now = new Date()
 }
 
 function resolveMission(gameState, mission, territory, now = new Date()) {
+  const tileSnapshot = getTerritoryBattleTileSnapshot(gameState, territory, now);
   if (mission.mode === 'settlement') {
     territory.lastBattle = {
       resolvedAt: now.toISOString(),
@@ -1723,6 +1763,12 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
       casualties: 0,
       success: true,
       mode: 'settlement',
+      tileId: tileSnapshot.tileId,
+      q: tileSnapshot.q,
+      r: tileSnapshot.r,
+      mapTerrain: tileSnapshot.mapTerrain,
+      terrain: tileSnapshot.terrain,
+      tile: { ...tileSnapshot.tile },
     };
     territory.status = 'occupied';
     territory.owner = 'player';
@@ -1758,9 +1804,18 @@ function resolveMission(gameState, mission, territory, now = new Date()) {
     casualties,
     success,
     mode: 'conquest',
+    tileId: tileSnapshot.tileId,
+    q: tileSnapshot.q,
+    r: tileSnapshot.r,
+    mapTerrain: tileSnapshot.mapTerrain,
+    terrain: tileSnapshot.terrain,
+    tile: { ...tileSnapshot.tile },
     leaderId: mission.expedition?.leader || 'unavailable',
     leaderName: battle?.report?.attacker?.leaderName || mission.expedition?.leaderSnapshot?.name || '',
-    report: battle?.report || BattleService.createLegacyBattleReport(mission, territory, { success, casualties }, now),
+    report: attachBattleTileSnapshot(
+      battle?.report || BattleService.createLegacyBattleReport(mission, territory, { success, casualties }, now),
+      tileSnapshot,
+    ),
   };
   const FamousPersonService = require('./FamousPersonService');
   const leaderGrowth = FamousPersonService.grantBattleExperience(

@@ -84,6 +84,8 @@ function addDiscoveredTribeSite(state, options = {}) {
     recommendedSoldiers: options.recommendedSoldiers || 500,
     art: options.art || 'assets/art/world-site-camp-cutout.png',
     visualOffset: { x: 0, y: 0 },
+    terrain: options.terrain,
+    mapTerrain: options.mapTerrain,
     discoveredAt: '2026-05-17T08:04:00.000Z',
     occupiedAt: null,
     effects: options.effects || { woodOutputMultiplier: 0.08 },
@@ -620,7 +622,17 @@ test('无主地区占领时会自动按 100 士兵建立据点处理', () => {
   assert.equal(claim.success, true);
   assert.equal(claim.casualties, 0);
   assert.equal(state.territories.find((item) => item.id === discovered.id).owner, 'player');
-  assert.equal(state.territories.find((item) => item.id === discovered.id).lastBattle.mode, 'settlement');
+  const site = state.territories.find((item) => item.id === discovered.id);
+  assert.equal(site.lastBattle.mode, 'settlement');
+  assert.equal(site.lastBattle.tileId, WorldMapService.getTileId(discovered.x, discovered.y));
+  assert.equal(site.lastBattle.mapTerrain, discovered.mapTerrain);
+  assert.equal(site.lastBattle.terrain, discovered.terrain);
+  assert.deepEqual(site.lastBattle.tile, {
+    id: WorldMapService.getTileId(discovered.x, discovered.y),
+    q: discovered.x,
+    r: discovered.y,
+    terrain: discovered.mapTerrain,
+  });
 });
 
 test('有主地区占领时会保留出征配置并按人数进行战斗结算', () => {
@@ -674,6 +686,14 @@ test('有主地区占领时会保留出征配置并按人数进行战斗结算',
   assert.equal(claim.battleReport.system, 'attribute-auto-battle-v2');
   assert.equal(claim.battleReport.moraleEffectEnabled, false);
   assert.ok(claim.battleReport.experience.total > 0);
+  assert.equal(claim.battleReport.tileId, 'tile_0_-2');
+  assert.equal(claim.battleReport.mapTerrain, WorldMapService.chooseTerrain(state.worldMap.seed, 0, -2));
+  assert.deepEqual(claim.battleReport.tile, {
+    id: 'tile_0_-2',
+    q: 0,
+    r: -2,
+    terrain: claim.battleReport.mapTerrain,
+  });
   assert.ok(claim.casualties > 0);
   assert.ok(claim.casualties < 800);
   assert.equal(state.territories.find((item) => item.id === 'tribe_site').owner, 'player');
@@ -710,6 +730,11 @@ test('名人领队出征会生成自动回合战报并记录到地点', () => {
   assert.equal(claim.success, true);
   assert.equal(claim.outcome, 'success');
   assert.equal(site.lastBattle.mode, 'conquest');
+  assert.equal(site.lastBattle.tileId, WorldMapService.getTileId(site.x, site.y));
+  assert.equal(site.lastBattle.mapTerrain, WorldMapService.chooseTerrain(state.worldMap.seed, site.x, site.y));
+  assert.equal(site.lastBattle.report.tileId, site.lastBattle.tileId);
+  assert.equal(site.lastBattle.report.mapTerrain, site.lastBattle.mapTerrain);
+  assert.deepEqual(site.lastBattle.report.tile, site.lastBattle.tile);
   assert.equal(site.lastBattle.leaderId, 'fp_luxiao');
   assert.equal(site.lastBattle.leaderName, '陆骁');
   assert.equal(site.lastBattle.report.mode, 'auto-round');
@@ -774,6 +799,44 @@ test('战斗报告按精确兵力结算但按 100 兵向上取整显示小人组
   assert.equal(claim.battleReport.attacker.groupsStart.length, 6);
   assert.equal(claim.battleReport.attacker.groupsStart[5].soldiers, 1);
   assert.ok(claim.battleReport.turns.length >= 1);
+});
+
+test('battle report terrain snapshot prefers the scouted fixed map terrain', () => {
+  const state = createClassicalState();
+  const now = new Date('2026-05-17T08:00:00.000Z');
+  addFamousLeader(state);
+  addDiscoveredTribeSite(state, {
+    id: 'fixed_terrain_battle_site',
+    x: 3,
+    y: 0,
+    mapTerrain: 'forest',
+    terrain: 'forest',
+    defense: 500,
+    recommendedSoldiers: 500,
+  });
+  assert.notEqual(WorldMapService.chooseTerrain(state.worldMap.seed, 3, 0), 'forest');
+  gameStateService.normalizeState(state);
+
+  const start = TerritoryService.startConquest(state, 'fixed_terrain_battle_site', {
+    troopType: 'unavailable',
+    leader: 'fp_luxiao',
+    soldiers: 500,
+  }, now);
+  const mission = state.warMissions.find((item) => item.id === start.mission.id);
+  mission.completesAt = now.toISOString();
+  TerritoryService.updateMissionReadiness(state, now);
+  const claim = TerritoryService.claimConquest(state, 'fixed_terrain_battle_site', now);
+
+  assert.equal(claim.success, true);
+  assert.equal(claim.battleReport.tileId, 'tile_3_0');
+  assert.equal(claim.battleReport.mapTerrain, 'forest');
+  assert.equal(claim.battleReport.terrain, 'forest');
+  assert.deepEqual(claim.battleReport.tile, {
+    id: 'tile_3_0',
+    q: 3,
+    r: 0,
+    terrain: 'forest',
+  });
 });
 
 test('有主地点征服胜利后暂不生成战后归附候选名人', () => {
