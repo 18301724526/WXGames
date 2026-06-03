@@ -78,6 +78,8 @@
 
 2026-06-03: Added a Famous Persons entry to both the regular bottom tab bar and the map-home bottom dock. The entry uses `icon-scholar-cutout.webp` and opens the existing famous-person panel through `openFamousPersons`. H5 cache key updated to `world-map-reset-v18`.
 
+2026-06-03: Removed the Famous Persons card from the home/capital feature grid so the bottom Famous Persons tab is the only visible entry point. H5 cache key updated to `world-map-reset-v19`.
+
 2026-06-03：修复重置后新账号首屏仍显示旧首都背景、看不到首都地块的问题。服务端 reset 初始状态已经包含 25 个 `worldMap.tiles`，实际问题在前端地图 runtime 首帧未确认绘制成功时就让主画布跳过地图层；现在 H5 和小游戏路径都只在地图层实际渲染成功或已有 baked map 后才跳过主画布 tile 绘制。小游戏入口显式加载 `TileMapGeometry` 和 `TileMapAssetManifest`，H5 入口缓存串更新到 `world-map-reset-v1`。
 
 2026-06-03：继续修复 H5 双 canvas 路径。线上 API 已确认 `test1` 返回 `worldMap.tiles=25`，但 H5 foreground canvas 在 `mode: 'hud'` 下不会绘制地图；当独立 `worldMap` layer 首帧未绘制成功时，v1 fallback 仍只画 HUD，导致旧背景露出。现在独立地图层失败时会隐藏 `worldMap` layer，并让 foreground canvas 退出 HUD-only 模式，直接绘制地图和 HUD；缓存串更新到 `world-map-reset-v2`。

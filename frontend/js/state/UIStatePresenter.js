@@ -520,9 +520,6 @@
 
     static buildHomeFeatureViewState(state = {}) {
       const tasks = this.buildTaskCenterViewState(state);
-      const famous = state.famousPersons || {};
-      const peopleCount = this.toInteger(famous.count ?? (Array.isArray(famous.people) ? famous.people.length : 0));
-      const candidateCount = this.toInteger(famous.candidateCount ?? (Array.isArray(famous.candidates) ? famous.candidates.length : 0));
       const entries = [
         {
           id: 'tasks',
@@ -531,14 +528,6 @@
           statusText: tasks.summary?.claimableCount > 0 ? '可领取' : '进行中',
           badge: this.toInteger(tasks.summary?.claimableCount),
           action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' },
-        },
-        {
-          id: 'famousPersons',
-          label: '名人',
-          icon: 'assets/art/icon-population-cutout.webp',
-          statusText: candidateCount > 0 ? `${candidateCount} 候选` : `${peopleCount} 位`,
-          badge: candidateCount,
-          action: { type: 'openFamousPersons' },
         },
         {
           id: 'guidebook',
