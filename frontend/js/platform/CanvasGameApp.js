@@ -1485,13 +1485,13 @@
     async handleBuildingSuccess(result, action, buildingId) {
       this.applyApiState(result);
       if (buildingId === 'farm' && action === 'build') {
-        this.showFloatingText('Farm built');
+        this.showFloatingText('农田建造成功');
       } else if (buildingId === 'house' && action === 'build') {
-        this.showFloatingText('House built');
+        this.showFloatingText('民居建造成功');
       } else if (buildingId === 'lumbermill' && action === 'build') {
-        this.showFloatingText('Lumbermill built');
+        this.showFloatingText('伐木场建造成功');
       } else {
-        this.showFloatingText(action === 'upgrade' ? 'Upgrade success' : 'Build success');
+        this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
       }
       this.log(`Success: ${result.message || ''}`);
     }
