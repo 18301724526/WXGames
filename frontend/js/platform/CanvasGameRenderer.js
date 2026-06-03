@@ -8175,9 +8175,10 @@
         map: layout.map,
         site: siteLayout.site || selectedSite,
         siteLayout,
-        anchorX: siteLayout.baseX,
-        anchorY: siteLayout.baseY,
-        titleY: siteLayout.drawY + Math.max(4, siteLayout.drawH * 0.08),
+        tileCenter: center,
+        anchorX: center.x,
+        anchorY: center.y,
+        titleY: center.y - Math.max(28, tileHeight * 0.34),
       };
     }
 
