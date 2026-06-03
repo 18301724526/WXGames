@@ -6520,6 +6520,27 @@
       return `${Number(tile.q) || 0},${Number(tile.r) || 0}`;
     }
 
+    getWorldTileRenderedDiamondCenter(tile = {}, drawRect = {}) {
+      const baseTemplate = this.getWorldTileTemplateBaseAsset(tile);
+      const assetPath = baseTemplate?.asset || tile.terrainAsset || '';
+      const metrics = this.getWorldTileTemplateMetrics(baseTemplate || { asset: assetPath });
+      const rectX = Number(drawRect.x) || 0;
+      const rectY = Number(drawRect.y) || 0;
+      const rectW = Number(drawRect.width) || 0;
+      const rectH = Number(drawRect.height) || 0;
+      if (metrics && rectW > 0 && rectH > 0) {
+        // Tile-map assets are alpha-clipped before being stretched into drawRect.
+        return {
+          x: rectX + rectW * 0.5,
+          y: rectY + rectH * 0.5,
+        };
+      }
+      return {
+        x: rectX + rectW * 0.5,
+        y: rectY + rectH * 0.5,
+      };
+    }
+
     getWorldTileFogRevealEntries(entries = []) {
       if (!Array.isArray(entries) || entries.length <= 1) return entries || [];
       const keySet = new Set(entries.map(({ tile }) => this.getWorldTileKey(tile)));
@@ -8166,19 +8187,36 @@
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
       };
-      const center = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
+      const projectedCenter = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
       const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      const siteLayout = this.getWorldTileSiteLayout(selectedTile, viewport, geometry, tileWidth, tileHeight, center);
+      const frame = {
+        x: Number(layout.map.x) || 0,
+        y: Number(layout.map.y) || 0,
+        width: Number(layout.map.width) || this.width,
+        height: Number(layout.map.height) || this.height,
+      };
+      const entries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
+      const selectedEntry = entries.find(({ tile }) => (
+        tile?.id === selectedTile.id
+        || tile?.site?.id === detail.id
+        || tile?.siteId === detail.id
+      ));
+      const center = selectedEntry
+        ? this.getWorldTileRenderedDiamondCenter(selectedEntry.tile, selectedEntry.drawRect)
+        : projectedCenter;
+      const siteLayout = this.getWorldTileSiteLayout(selectedTile, viewport, geometry, tileWidth, tileHeight, projectedCenter);
       if (!siteLayout) return null;
       return {
         map: layout.map,
         site: siteLayout.site || selectedSite,
         siteLayout,
         tileCenter: center,
+        tileWidth,
+        tileHeight,
         anchorX: center.x,
         anchorY: center.y,
-        titleY: center.y - Math.max(28, tileHeight * 0.34),
+        titleY: center.y - Math.max(34, tileHeight * 0.48),
       };
     }
 
@@ -8274,12 +8312,14 @@
       const sideHeight = 27;
       const sideGap = 5;
       const sideTotalHeight = sideButtons.length * sideHeight + Math.max(0, sideButtons.length - 1) * sideGap;
+      const clusterHeight = Math.max(primarySize, sideTotalHeight || primarySize);
+      const hudLift = clusterHeight / 3;
       const gap = 8;
       const clusterWidth = primarySize + gap + (sideButtons.length ? sideWidth : 0);
       const preferRight = anchor.anchorX + clusterWidth * 0.5 + 8 <= this.width;
       const sideOnRight = preferRight || anchor.anchorX - clusterWidth * 0.5 - 8 < 0;
       const primaryXRaw = anchor.anchorX - primarySize * 0.5;
-      const primaryYRaw = anchor.anchorY - primarySize * 0.5;
+      const primaryYRaw = anchor.anchorY - hudLift - primarySize * 0.5;
       const minPrimaryX = sideOnRight ? 8 : sideWidth + gap + 8;
       const maxPrimaryX = sideOnRight ? this.width - clusterWidth - 8 : this.width - primarySize - 8;
       const primaryX = Math.max(minPrimaryX, Math.min(primaryXRaw, Math.max(minPrimaryX, maxPrimaryX)));
@@ -8292,7 +8332,9 @@
       const titleWidth = this.measureTextWidth(title, { size: 12, bold: true });
       const badgeWidth = Math.min(190, Math.max(98, titleWidth + renameWidth + 30));
       const badgeX = Math.max(8, Math.min(anchor.anchorX - badgeWidth / 2, this.width - badgeWidth - 8));
-      const badgeY = Math.max(topLimit + 6, Math.min(anchor.titleY - 25, bottomLimit - 30));
+      const titleGap = Math.max(9, primarySize * 0.22);
+      const badgeYRaw = Math.min(anchor.titleY - 25 - hudLift, Math.min(primaryY, sideY) - 24 - titleGap);
+      const badgeY = Math.max(topLimit + 6, Math.min(badgeYRaw, bottomLimit - 30));
 
       this.drawPanel(badgeX, badgeY, badgeWidth, 24, {
         fill: 'rgba(18, 16, 13, 0.78)',
@@ -8320,7 +8362,7 @@
         this.addHitTarget({ x: renameX - 4, y: renameY - 4, width: renameWidth + 8, height: 24 }, this.getWorldCityCommandButtonAction(renameButton));
       }
 
-      this.drawCircle(anchor.anchorX, anchor.anchorY, Math.max(12, primarySize * 0.32), {
+      this.drawCircle(anchor.anchorX, anchor.anchorY - hudLift, Math.max(12, primarySize * 0.32), {
         fill: 'rgba(116, 211, 160, 0.08)',
         stroke: 'rgba(116, 211, 160, 0.42)',
         width: 2,
