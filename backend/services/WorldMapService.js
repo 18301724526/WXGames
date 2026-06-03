@@ -1,6 +1,8 @@
-const WORLD_MAP_VERSION = 6;
+const WORLD_MAP_VERSION = 7;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
 const CAPITAL_TILE_ID = 'tile_0_0';
+const START_REVEAL_RADIUS = 2;
+const START_SAFE_LAND_RADIUS = 1;
 const SCOUT_REVEAL_RADIUS = 1;
 const SCOUT_REVEAL_MAIN_LIMIT = 3;
 const SCOUT_REVEAL_BRANCH_LIMIT = 3;
@@ -413,6 +415,12 @@ function getDistanceFromCapital(q, r) {
   return Math.max(Math.abs(q), Math.abs(r));
 }
 
+function isStartSafeLandCoord(q, r) {
+  return q !== 0 || r !== 0
+    ? getDistanceFromCapital(q, r) <= START_SAFE_LAND_RADIUS
+    : false;
+}
+
 function chooseBaseTerrain(seed, q, r) {
   if (q === 0 && r === 0) return 'capital';
   const forest = random01(seed, q, r, 'forest');
@@ -431,6 +439,7 @@ function chooseBaseTerrain(seed, q, r) {
 
 function chooseTerrain(seed, q, r) {
   if (q === 0 && r === 0) return 'capital';
+  if (isStartSafeLandCoord(q, r)) return chooseBaseTerrain(seed, q, r);
   if (chooseOceanTemplates(seed, q, r).length) return 'ocean';
   if (getRiverPorts(seed, q, r).length) return 'river';
   return chooseBaseTerrain(seed, q, r);
@@ -444,6 +453,16 @@ function decorateTile(tile, seed) {
       riverPorts: [],
       oceanTemplates: [],
       transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, 0, 0, 'capital'),
+    };
+  }
+  if (isStartSafeLandCoord(tile.q, tile.r)) {
+    const terrain = chooseBaseTerrain(seed, tile.q, tile.r);
+    return {
+      ...tile,
+      terrain,
+      riverPorts: [],
+      oceanTemplates: [],
+      transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, tile.q, tile.r, terrain),
     };
   }
   const naturalOceanTemplates = chooseOceanTemplates(seed, tile.q, tile.r);
@@ -527,23 +546,50 @@ function normalizeScoutTrail(rawTrail) {
 }
 
 function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
-  const capital = createTile(seed, 0, 0, now, { terrain: 'capital', siteId: 'capital' });
+  const tiles = getRevealArea(0, 0, START_REVEAL_RADIUS).map((coord) => {
+    const isCapital = coord.q === 0 && coord.r === 0;
+    return createTile(seed, coord.q, coord.r, now, {
+      terrain: isCapital ? 'capital' : undefined,
+      siteId: isCapital ? 'capital' : null,
+      visibility: isCapital ? 'controlled' : 'scouted',
+      controlled: isCapital,
+    });
+  });
   return {
     version: WORLD_MAP_VERSION,
     seed,
     origin: { q: 0, r: 0 },
-    tiles: [{
-      ...capital,
-      id: CAPITAL_TILE_ID,
-      terrain: 'capital',
-      siteId: capital.siteId || 'capital',
-      riverPorts: [],
-      oceanTemplates: [],
-      discovered: true,
-      visible: true,
-    }],
+    tiles,
     scoutTrails: [],
   };
+}
+
+function ensureStartingArea(tileMap, seed, now = new Date()) {
+  for (const coord of getRevealArea(0, 0, START_REVEAL_RADIUS)) {
+    const id = getTileId(coord.q, coord.r);
+    const existing = tileMap.get(id);
+    const isCapital = coord.q === 0 && coord.r === 0;
+    if (existing) {
+      if (isCapital) {
+        tileMap.set(id, normalizeTile({
+          ...existing,
+          terrain: 'capital',
+          siteId: 'capital',
+          visibility: 'controlled',
+          discovered: true,
+          visible: true,
+        }, seed, now));
+      }
+      continue;
+    }
+    tileMap.set(id, createTile(seed, coord.q, coord.r, now, {
+      terrain: isCapital ? 'capital' : undefined,
+      siteId: isCapital ? 'capital' : null,
+      visibility: isCapital ? 'controlled' : 'scouted',
+      controlled: isCapital,
+    }));
+  }
+  return tileMap;
 }
 
 function getSeed(gameStateOrSeed) {
@@ -564,9 +610,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
     const tile = normalizeTile(rawTile, seed, now);
     if (tile) tileMap.set(tile.id, tile);
   }
-  if (!tileMap.has(CAPITAL_TILE_ID)) {
-    tileMap.set(CAPITAL_TILE_ID, createTile(seed, 0, 0, now, { terrain: 'capital', siteId: 'capital' }));
-  }
+  ensureStartingArea(tileMap, seed, now);
   const scoutTrails = (Array.isArray(rawWorldMap?.scoutTrails) ? rawWorldMap.scoutTrails : [])
     .map(normalizeScoutTrail)
     .filter(Boolean);
@@ -779,6 +823,8 @@ module.exports = {
   WORLD_MAP_VERSION,
   DEFAULT_WORLD_SEED,
   CAPITAL_TILE_ID,
+  START_REVEAL_RADIUS,
+  START_SAFE_LAND_RADIUS,
   SCOUT_REVEAL_RADIUS,
   SCOUT_REVEAL_MAIN_LIMIT,
   SCOUT_REVEAL_BRANCH_LIMIT,
