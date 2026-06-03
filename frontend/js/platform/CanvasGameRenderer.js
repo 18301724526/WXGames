@@ -8212,7 +8212,7 @@
         inset: button.disabled || !button.action ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 248, 210, 0.24)',
       });
       this.drawText(button.label || '入城', x + size / 2, y + size / 2, {
-        size: Math.max(17, Math.floor(size * 0.27)),
+        size: Math.max(13, Math.floor(size * 0.27)),
         bold: true,
         color: button.disabled || !button.action ? '#8d8f99' : '#ffe6b5',
         baseline: 'middle',
@@ -8237,8 +8237,8 @@
         radius: 5,
         inset: active ? 'rgba(255, 231, 184, 0.12)' : 'rgba(255, 231, 184, 0.06)',
       });
-      this.drawText(this.truncateText(button.label || '', width - 16, { size: 15, bold: active }), x + width / 2, y + height / 2, {
-        size: 15,
+      this.drawText(this.truncateText(button.label || '', width - 12, { size: 12, bold: active }), x + width / 2, y + height / 2, {
+        size: 12,
         bold: active,
         color: button.disabled || !button.action ? '#8d8f99' : '#f6e8c8',
         baseline: 'middle',
@@ -8251,24 +8251,29 @@
       const buttons = detail.action?.buttons || [];
       if (!buttons.length) return;
       const primary = buttons.find((button) => button.action === 'enter-city') || buttons[0];
-      const sideButtons = buttons.filter((button) => button !== primary).slice(0, 5);
+      const renameButton = buttons.find((button) => button.action === 'rename-city') || null;
+      const sideButtons = buttons.filter((button) => (
+        button !== primary
+        && button.action !== 'labor-city'
+        && button.action !== 'rename-city'
+      )).slice(0, 5);
       const anchor = this.getWorldCityCommandAnchor(detail, territories, state, options);
       if (!anchor) {
         const width = Math.min(this.getLayout().contentWidth - 24, 320);
         const x = Math.max(12, (this.width - width) / 2);
         const y = Math.max(this.getTopBarBottom(state, { isMapHome: true }) + 16, this.height - 260);
-        this.renderWorldSiteAction(detail.action, x, y, width);
+        this.renderWorldSiteAction({ ...detail.action, buttons: [primary, ...sideButtons] }, x, y, width);
         return;
       }
 
       const topLimit = Math.max(4, Number(anchor.map?.y) || this.getTopBarBottom(state, { isMapHome: true }) || 84);
       const bottomLimit = Math.max(topLimit + 120, Math.min(this.height - 66 - this.bottomSafeArea, (Number(anchor.map?.y) || 0) + (Number(anchor.map?.height) || this.height)));
-      const primarySize = Math.max(58, Math.min(74, (Number(anchor.siteLayout?.drawW) || 110) * 0.72));
-      const sideWidth = Math.min(126, Math.max(104, this.width * 0.28));
-      const sideHeight = 38;
-      const sideGap = 6;
+      const primarySize = Math.max(41, Math.min(52, (Number(anchor.siteLayout?.drawW) || 110) * 0.5));
+      const sideWidth = Math.min(88, Math.max(73, this.width * 0.2));
+      const sideHeight = 27;
+      const sideGap = 5;
       const sideTotalHeight = sideButtons.length * sideHeight + Math.max(0, sideButtons.length - 1) * sideGap;
-      const gap = 12;
+      const gap = 8;
       const clusterWidth = primarySize + gap + (sideButtons.length ? sideWidth : 0);
       const preferRight = anchor.anchorX + clusterWidth * 0.5 + 8 <= this.width;
       const sideOnRight = preferRight || anchor.anchorX - clusterWidth * 0.5 - 8 < 0;
@@ -8283,25 +8288,39 @@
       const sideX = sideOnRight ? primaryX + primarySize + gap : primaryX - sideWidth - gap;
       const sideY = Math.max(topLimit + 8, Math.min(primaryY - Math.max(0, (sideTotalHeight - primarySize) / 2), bottomLimit - sideTotalHeight - 8));
       const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
-      const badgeWidth = Math.min(190, Math.max(116, this.measureTextWidth(title, { size: 13, bold: true }) + 36));
+      const renameWidth = renameButton ? 38 : 0;
+      const titleWidth = this.measureTextWidth(title, { size: 12, bold: true });
+      const badgeWidth = Math.min(190, Math.max(98, titleWidth + renameWidth + 30));
       const badgeX = Math.max(8, Math.min(anchor.anchorX - badgeWidth / 2, this.width - badgeWidth - 8));
-      const badgeY = Math.max(topLimit + 6, Math.min(anchor.titleY - 30, bottomLimit - 34));
+      const badgeY = Math.max(topLimit + 6, Math.min(anchor.titleY - 25, bottomLimit - 30));
 
-      this.drawPanel(badgeX, badgeY, badgeWidth, 28, {
+      this.drawPanel(badgeX, badgeY, badgeWidth, 24, {
         fill: 'rgba(18, 16, 13, 0.78)',
         stroke: 'rgba(116, 211, 160, 0.42)',
         radius: 6,
         inset: 'rgba(255, 231, 184, 0.06)',
       });
-      this.drawText(this.truncateText(title, badgeWidth - 26, { size: 13, bold: true }), badgeX + badgeWidth / 2, badgeY + 14, {
-        size: 13,
+      const titleMaxWidth = badgeWidth - renameWidth - 22;
+      this.drawText(this.truncateText(title, titleMaxWidth, { size: 12, bold: true }), badgeX + 12 + titleMaxWidth / 2, badgeY + 12, {
+        size: 12,
         bold: true,
         color: '#ffe6b5',
         baseline: 'middle',
         align: 'center',
       });
+      if (renameButton) {
+        const renameX = badgeX + badgeWidth - renameWidth - 7;
+        const renameY = badgeY + 4;
+        this.drawText('改名', renameX + renameWidth / 2, badgeY + 12, {
+          size: 10,
+          color: renameButton.disabled || !renameButton.action ? '#8d8f99' : '#74d3a0',
+          baseline: 'middle',
+          align: 'center',
+        });
+        this.addHitTarget({ x: renameX - 4, y: renameY - 4, width: renameWidth + 8, height: 24 }, this.getWorldCityCommandButtonAction(renameButton));
+      }
 
-      this.drawCircle(anchor.anchorX, anchor.anchorY, Math.max(17, primarySize * 0.32), {
+      this.drawCircle(anchor.anchorX, anchor.anchorY, Math.max(12, primarySize * 0.32), {
         fill: 'rgba(116, 211, 160, 0.08)',
         stroke: 'rgba(116, 211, 160, 0.42)',
         width: 2,
