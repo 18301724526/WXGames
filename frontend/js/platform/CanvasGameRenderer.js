@@ -8851,11 +8851,9 @@
       const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [
         ['resources', '主页', 'assets/art/icon-home-cutout.png'],
-        ['buildings', '建造', 'assets/art/building-house-cutout.png'],
         ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
         ['events', '事件', 'assets/art/icon-event-cutout.webp'],
         ['civilization', '文明', 'assets/art/icon-fire-cutout.webp'],
-        ['military', '军事', 'assets/art/icon-soldier-cutout.webp'],
       ];
       const layout = this.getLayout();
       const x = layout.contentX;
@@ -8949,8 +8947,6 @@
       }
       const items = [
         { id: 'capital', label: '首都', icon: 'assets/art/icon-home-cutout.png', action: { type: 'openCommandPanel', panel: 'capital' } },
-        { id: 'buildings', label: '建设', icon: 'assets/art/building-house-cutout.png', action: { type: 'openCommandPanel', panel: 'buildings' } },
-        { id: 'military', label: '军事', icon: 'assets/art/icon-soldier-cutout.webp', action: { type: 'openCommandPanel', panel: 'military' } },
         { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
         { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
         { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
