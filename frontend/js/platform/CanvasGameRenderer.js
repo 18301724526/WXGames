@@ -8134,6 +8134,188 @@
       this.renderWorldSiteAction(detail.action, x + 12, y + 118, panelWidth - 24);
     }
 
+    getWorldCityCommandAnchor(detail = {}, territories = [], state = {}, options = {}) {
+      const territoryState = state.territoryState || {};
+      const uiState = options.territoryUiState || {};
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      if (!tileMapView?.tiles?.length) return null;
+      const selectedSite = territories.find((site) => site.id === detail.id) || {};
+      const selectedTile = tileMapView.tiles.find((tile) => (
+        tile?.site?.id === detail.id
+        || tile?.siteId === detail.id
+        || selectedSite.id && (tile?.siteId === selectedSite.id || tile?.site?.id === selectedSite.id)
+      ));
+      if (!selectedTile) return null;
+      const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state, { isMapHome: true });
+      const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
+      if (!layout?.map) return null;
+      const geometry = tileMapView.geometry || {};
+      const offsetX = Number(this.viewportOffsetX) || 0;
+      const offsetY = Number(this.viewportOffsetY) || 0;
+      const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
+      const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
+      const visibleMapY = Math.max(0, topBarBottom ?? 84);
+      const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
+      const scale = Math.max(0.38, Math.min(0.78, Math.min(visibleWidth / 520, visibleMapH / 420)));
+      const viewport = {
+        originX: offsetX + visibleWidth * 0.5,
+        originY: offsetY + visibleMapY + visibleMapH * 0.42,
+        panX: Number(tileMapView.pan?.x) || 0,
+        panY: Number(tileMapView.pan?.y) || 0,
+        scale,
+        seed: tileMapView.seed || 'scout-tile-v1',
+        geometry,
+      };
+      const center = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const siteLayout = this.getWorldTileSiteLayout(selectedTile, viewport, geometry, tileWidth, tileHeight, center);
+      if (!siteLayout) return null;
+      return {
+        map: layout.map,
+        site: siteLayout.site || selectedSite,
+        siteLayout,
+        anchorX: siteLayout.baseX,
+        anchorY: siteLayout.baseY,
+        titleY: siteLayout.drawY + Math.max(4, siteLayout.drawH * 0.08),
+      };
+    }
+
+    getWorldCityCommandButtonAction(button = {}) {
+      return {
+        type: button.action === 'rename-city'
+          ? 'renameCity'
+          : (button.action === 'labor-city' ? 'enterCity' :
+            button.action === 'enter-city' ? 'enterCity' : 'territoryAction'),
+        territoryId: button.territoryId,
+        cityId: button.territoryId,
+        tab: button.action === 'labor-city' ? 'people' : undefined,
+        disabled: button.disabled || !button.action,
+      };
+    }
+
+    drawWorldCityCommandPrimaryButton(button = {}, x, y, size) {
+      this.drawPanel(x, y, size, size, {
+        fill: button.disabled || !button.action
+          ? 'rgba(60, 52, 46, 0.78)'
+          : this.createGradient(
+            x, y, x, y + size,
+            [
+              [0, 'rgba(214, 113, 66, 0.98)'],
+              [0.58, 'rgba(163, 58, 39, 0.98)'],
+              [1, 'rgba(92, 30, 23, 0.98)'],
+            ],
+            'rgba(155, 54, 38, 0.98)',
+          ),
+        stroke: button.disabled || !button.action ? 'rgba(240, 180, 91, 0.28)' : 'rgba(255, 225, 150, 0.9)',
+        radius: size / 2,
+        inset: button.disabled || !button.action ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 248, 210, 0.24)',
+      });
+      this.drawText(button.label || '入城', x + size / 2, y + size / 2, {
+        size: Math.max(17, Math.floor(size * 0.27)),
+        bold: true,
+        color: button.disabled || !button.action ? '#8d8f99' : '#ffe6b5',
+        baseline: 'middle',
+        align: 'center',
+      });
+    }
+
+    drawWorldCityCommandSideButton(button = {}, x, y, width, height) {
+      const active = !button.secondary && !button.disabled && Boolean(button.action);
+      this.drawPanel(x, y, width, height, {
+        fill: button.disabled || !button.action
+          ? 'rgba(44, 39, 34, 0.72)'
+          : this.createGradient(
+            x, y, x, y + height,
+            [
+              [0, active ? 'rgba(79, 55, 35, 0.96)' : 'rgba(49, 39, 28, 0.94)'],
+              [1, active ? 'rgba(37, 25, 18, 0.98)' : 'rgba(29, 24, 20, 0.96)'],
+            ],
+            'rgba(42, 31, 23, 0.96)',
+          ),
+        stroke: active ? 'rgba(255, 214, 138, 0.62)' : 'rgba(240, 180, 91, 0.26)',
+        radius: 5,
+        inset: active ? 'rgba(255, 231, 184, 0.12)' : 'rgba(255, 231, 184, 0.06)',
+      });
+      this.drawText(this.truncateText(button.label || '', width - 16, { size: 15, bold: active }), x + width / 2, y + height / 2, {
+        size: 15,
+        bold: active,
+        color: button.disabled || !button.action ? '#8d8f99' : '#f6e8c8',
+        baseline: 'middle',
+        align: 'center',
+      });
+    }
+
+    renderWorldCityCommandOverlay(detail = {}, territories = [], state = {}, options = {}) {
+      const selectedSite = territories.find((site) => site.id === detail.id) || {};
+      const buttons = detail.action?.buttons || [];
+      if (!buttons.length) return;
+      const primary = buttons.find((button) => button.action === 'enter-city') || buttons[0];
+      const sideButtons = buttons.filter((button) => button !== primary).slice(0, 5);
+      const anchor = this.getWorldCityCommandAnchor(detail, territories, state, options);
+      if (!anchor) {
+        const width = Math.min(this.getLayout().contentWidth - 24, 320);
+        const x = Math.max(12, (this.width - width) / 2);
+        const y = Math.max(this.getTopBarBottom(state, { isMapHome: true }) + 16, this.height - 260);
+        this.renderWorldSiteAction(detail.action, x, y, width);
+        return;
+      }
+
+      const topLimit = Math.max(4, Number(anchor.map?.y) || this.getTopBarBottom(state, { isMapHome: true }) || 84);
+      const bottomLimit = Math.max(topLimit + 120, Math.min(this.height - 66 - this.bottomSafeArea, (Number(anchor.map?.y) || 0) + (Number(anchor.map?.height) || this.height)));
+      const primarySize = Math.max(58, Math.min(74, (Number(anchor.siteLayout?.drawW) || 110) * 0.72));
+      const sideWidth = Math.min(126, Math.max(104, this.width * 0.28));
+      const sideHeight = 38;
+      const sideGap = 6;
+      const sideTotalHeight = sideButtons.length * sideHeight + Math.max(0, sideButtons.length - 1) * sideGap;
+      const gap = 12;
+      const clusterWidth = primarySize + gap + (sideButtons.length ? sideWidth : 0);
+      const preferRight = anchor.anchorX + clusterWidth * 0.5 + 8 <= this.width;
+      const sideOnRight = preferRight || anchor.anchorX - clusterWidth * 0.5 - 8 < 0;
+      const primaryXRaw = sideOnRight
+        ? anchor.anchorX - primarySize * 0.48
+        : anchor.anchorX + sideWidth + gap - primarySize * 0.52;
+      const primaryYRaw = anchor.anchorY - primarySize * 0.36;
+      const minPrimaryX = sideOnRight ? 8 : sideWidth + gap + 8;
+      const maxPrimaryX = sideOnRight ? this.width - clusterWidth - 8 : this.width - primarySize - 8;
+      const primaryX = Math.max(minPrimaryX, Math.min(primaryXRaw, Math.max(minPrimaryX, maxPrimaryX)));
+      const primaryY = Math.max(topLimit + 38, Math.min(primaryYRaw, bottomLimit - primarySize - 8));
+      const sideX = sideOnRight ? primaryX + primarySize + gap : primaryX - sideWidth - gap;
+      const sideY = Math.max(topLimit + 8, Math.min(primaryY - Math.max(0, (sideTotalHeight - primarySize) / 2), bottomLimit - sideTotalHeight - 8));
+      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
+      const badgeWidth = Math.min(190, Math.max(116, this.measureTextWidth(title, { size: 13, bold: true }) + 36));
+      const badgeX = Math.max(8, Math.min(anchor.anchorX - badgeWidth / 2, this.width - badgeWidth - 8));
+      const badgeY = Math.max(topLimit + 6, Math.min(anchor.titleY - 30, bottomLimit - 34));
+
+      this.drawPanel(badgeX, badgeY, badgeWidth, 28, {
+        fill: 'rgba(18, 16, 13, 0.78)',
+        stroke: 'rgba(116, 211, 160, 0.42)',
+        radius: 6,
+        inset: 'rgba(255, 231, 184, 0.06)',
+      });
+      this.drawText(this.truncateText(title, badgeWidth - 26, { size: 13, bold: true }), badgeX + badgeWidth / 2, badgeY + 14, {
+        size: 13,
+        bold: true,
+        color: '#ffe6b5',
+        baseline: 'middle',
+        align: 'center',
+      });
+
+      this.drawCircle(anchor.anchorX, anchor.anchorY, Math.max(17, primarySize * 0.32), {
+        fill: 'rgba(116, 211, 160, 0.08)',
+        stroke: 'rgba(116, 211, 160, 0.42)',
+        width: 2,
+      });
+      this.drawWorldCityCommandPrimaryButton(primary, primaryX, primaryY, primarySize);
+      this.addHitTarget({ x: primaryX, y: primaryY, width: primarySize, height: primarySize }, this.getWorldCityCommandButtonAction(primary));
+
+      sideButtons.forEach((button, index) => {
+        const buttonY = sideY + index * (sideHeight + sideGap);
+        this.drawWorldCityCommandSideButton(button, sideX, buttonY, sideWidth, sideHeight);
+        this.addHitTarget({ x: sideX, y: buttonY, width: sideWidth, height: sideHeight }, this.getWorldCityCommandButtonAction(button));
+      });
+    }
+
     renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {
       if (!this.presenter) return;
       const nav = this.presenter.buildMilitaryNavigationViewState(state);

@@ -1115,7 +1115,10 @@
       const territory = this.getTerritoryController();
       const pointer = action.pointer || {};
       if (territory) {
-        if (action.phase === 'start') territory.startWorldDrag?.(pointer);
+        if (action.phase === 'start') {
+          territory.closeSiteDialog?.({ render: false });
+          territory.startWorldDrag?.(pointer);
+        }
         if (action.phase === 'move') territory.moveWorldDrag?.(pointer);
         if (action.phase === 'end') territory.endWorldDrag?.(pointer);
       } else {
@@ -1123,6 +1126,11 @@
         const x = Number(pointer.x) || 0;
         const y = Number(pointer.y) || 0;
         if (action.phase === 'start') {
+          this.host.territoryUiState.selectedSiteId = '';
+          this.host.territoryUiState.expeditionConfigSiteId = '';
+          this.host.territoryUiState.expeditionSoldiers = '';
+          this.host.territoryUiState.expeditionTroopType = '';
+          this.host.territoryUiState.expeditionLeader = '';
           this.worldDragStart = {
             x,
             y,

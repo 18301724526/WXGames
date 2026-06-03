@@ -78,6 +78,7 @@
     }
 
     startWorldDrag(pointer = {}) {
+      this.closeSiteDialog({ render: false });
       const current = this.getWorldPan();
       const position = this.getPointerPosition(pointer);
       this.dragState = {
@@ -109,10 +110,10 @@
       this.onRenderRequested();
     }
 
-    closeSiteDialog() {
+    closeSiteDialog(options = {}) {
       this.uiState.selectedSiteId = '';
       this.clearExpeditionDraft({ render: false });
-      this.onRenderRequested();
+      if (options.render !== false) this.onRenderRequested();
     }
 
     getSelectedSite() {

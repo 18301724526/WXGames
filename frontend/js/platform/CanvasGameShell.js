@@ -237,6 +237,14 @@
         onBeforeRender: () => this.syncWorldMapRendererLayerMetrics(),
         onBeforeDrag: ({ phase, runtime }) => {
           if (phase === 'start') {
+            this.lastGame?.territoryController?.closeSiteDialog?.({ render: false });
+            if (this.territoryUiState) {
+              this.territoryUiState.selectedSiteId = '';
+              this.territoryUiState.expeditionConfigSiteId = '';
+              this.territoryUiState.expeditionSoldiers = '';
+              this.territoryUiState.expeditionTroopType = '';
+              this.territoryUiState.expeditionLeader = '';
+            }
             const waterTimeMs = this.startWorldMapSnapshotDrag();
             if (runtime) runtime.waterTimeMs = waterTimeMs;
           }
