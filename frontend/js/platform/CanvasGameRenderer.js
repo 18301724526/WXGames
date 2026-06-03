@@ -9033,7 +9033,7 @@
     }
 
     renderFloatingSubcityButton(state = {}, options = {}) {
-      const { x, y, size } = this.getMapHomeFloatingButtonLayout(1);
+      const { x, y, size } = this.getMapHomeFloatingButtonLayout(2);
       const active = Boolean(options.showSubcityList);
       this.drawPanel(x, y, size, size, {
         fill: active ? 'rgba(82, 58, 34, 0.94)' : 'rgba(34, 31, 25, 0.82)',
@@ -9041,22 +9041,33 @@
         radius: size / 2,
         inset: active ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
       });
-      if (!this.drawAsset('assets/art/world-site-city-cutout.png', x + 13, y + 9, 22, 22)) {
-        this.drawText('城', x + size / 2, y + 20, {
-          size: 16,
-          bold: true,
-          color: active ? '#ffe6b5' : '#cbbd96',
-          baseline: 'middle',
-          align: 'center',
-        });
-      }
-      this.drawText('分城', x + size / 2, y + 34, {
-        size: 9,
+      this.drawText('分城', x + size / 2, y + 26, {
+        size: 12,
         bold: true,
         color: active ? '#f0b45b' : '#aeb0b8',
+        baseline: 'middle',
         align: 'center',
       });
       this.addHitTarget({ x, y, width: size, height: size }, { type: 'openSubcityList' });
+    }
+
+    renderFloatingEventButton(state = {}, options = {}) {
+      const { x, y, size } = this.getMapHomeFloatingButtonLayout(1);
+      const active = options.activeCommandPanel === 'events';
+      this.drawPanel(x, y, size, size, {
+        fill: active ? 'rgba(82, 58, 34, 0.94)' : 'rgba(34, 31, 25, 0.82)',
+        stroke: active ? 'rgba(247, 215, 116, 0.56)' : 'rgba(255, 226, 177, 0.18)',
+        radius: size / 2,
+        inset: active ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
+      });
+      this.drawText('事件', x + size / 2, y + 26, {
+        size: 12,
+        bold: true,
+        color: active ? '#f0b45b' : '#aeb0b8',
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openCommandPanel', panel: 'events' });
     }
 
     renderFloatingAdvisorButton(state = {}, options = {}) {
@@ -10534,6 +10545,7 @@
 
     renderMapHomeOverlays(state = {}, options = {}) {
       this.renderFloatingSubcityButton(state, options);
+      this.renderFloatingEventButton(state, options);
       this.renderFloatingAdvisorButton(state, options);
       if (options.activeCommandPanel) this.renderMapCommandPanel(state, options);
       if (options.showSubcityList) this.renderSubcityListPanel(state, options);
