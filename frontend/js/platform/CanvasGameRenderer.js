@@ -9190,7 +9190,7 @@
       const tabs = [
         { id: 'buildings', label: '建设' },
         { id: 'people', label: '人才' },
-        { id: 'military', label: '驻军' },
+        { id: 'military', label: '军事' },
       ];
       const tabY = y + 64;
       const gap = 6;
@@ -9230,16 +9230,47 @@
         { label: '调动', note: '城市之间调配驻军', disabled: true },
         { label: '驻守', note: '设置防守与巡逻队列', disabled: true },
       ];
+      const formationSectionHeight = Math.min(76, Math.max(62, Math.floor(height * 0.28)));
+      const formationX = x + 12;
+      const formationWidth = width - 24;
+      const formationY = Math.max(y + 150, y + height - formationSectionHeight - 10);
+      const rowTop = y + 72;
+      const rowGap = 6;
+      const rowAreaHeight = Math.max(84, formationY - rowTop - 8);
+      const rowHeight = Math.max(26, Math.min(38, Math.floor((rowAreaHeight - rowGap * (rows.length - 1)) / rows.length)));
       rows.forEach((row, index) => {
-        const rowY = y + 82 + index * 54;
-        this.drawPanel(x + 12, rowY, width - 24, 44, {
+        const rowY = rowTop + index * (rowHeight + rowGap);
+        this.drawPanel(x + 12, rowY, width - 24, rowHeight, {
           fill: 'rgba(43, 35, 26, 0.82)',
           stroke: 'rgba(255, 226, 177, 0.12)',
           radius: 8,
         });
-        this.drawText(row.label, x + 26, rowY + 10, { size: 14, bold: true, color: '#fff1cf' });
-        this.drawText(row.note, x + 26, rowY + 28, { size: 10, color: 'rgba(234, 234, 234, 0.58)' });
-        this.drawButton(x + width - 86, rowY + 8, 62, 28, '待开放', { size: 11, radius: 7, disabled: true });
+        this.drawText(row.label, x + 26, rowY + 7, { size: 13, bold: true, color: '#fff1cf' });
+        this.drawText(row.note, x + 26, rowY + rowHeight - 13, { size: 9, color: 'rgba(234, 234, 234, 0.58)' });
+        this.drawButton(x + width - 82, rowY + Math.max(4, (rowHeight - 24) / 2), 58, 24, '待开放', { size: 10, radius: 7, disabled: true });
+      });
+
+      const cardGap = 8;
+      const cardY = formationY + 24;
+      const cardHeight = Math.max(36, Math.min(44, y + height - cardY - 10));
+      const cardWidth = Math.floor((formationWidth - cardGap * 2) / 3);
+      this.drawText('编队', formationX, formationY + 5, { size: 14, bold: true, color: '#ffe6b5' });
+      this.drawText('每城最多 3 支军队', formationX + 44, formationY + 7, { size: 10, color: '#cbbd96' });
+      [1, 2, 3].forEach((slot, index) => {
+        const cardX = formationX + index * (cardWidth + cardGap);
+        const finalCardWidth = index === 2 ? formationX + formationWidth - cardX : cardWidth;
+        this.drawPanel(cardX, cardY, finalCardWidth, cardHeight, {
+          fill: 'rgba(50, 42, 31, 0.88)',
+          stroke: 'rgba(240, 180, 91, 0.24)',
+          radius: 8,
+          inset: 'rgba(255, 231, 184, 0.05)',
+        });
+        this.drawText(`编队 ${slot}`, cardX + 10, cardY + 9, { size: 12, bold: true, color: '#fff1cf' });
+        this.drawText('点击编队', cardX + 10, cardY + 26, { size: 9, color: 'rgba(234, 234, 234, 0.64)' });
+        this.addHitTarget(
+          { x: cardX, y: cardY, width: finalCardWidth, height: cardHeight },
+          { type: 'openArmyFormation', cityId: city.id, slot },
+        );
       });
     }
 

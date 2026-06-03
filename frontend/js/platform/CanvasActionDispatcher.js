@@ -137,6 +137,13 @@
         return this.finishHandled(switched, context, action);
       }
 
+      if (action.type === 'openArmyFormation') {
+        const opened = typeof context.openArmyFormation === 'function'
+          ? context.openArmyFormation(action)
+          : false;
+        return this.finishHandled(opened, context, action);
+      }
+
       if (action.type === 'openSettings') {
         const opened = typeof context.openSettings === 'function'
           ? context.openSettings(action) !== false
@@ -418,6 +425,7 @@
         'openCityManagement',
         'closeCityManagement',
         'switchCityManagementTab',
+        'openArmyFormation',
         'openSettings',
         'closeSettings',
         'openLogs',

@@ -1314,6 +1314,11 @@
       return true;
     }
 
+    openArmyFormation(action = {}) {
+      const slot = Math.max(1, Math.min(3, Number(action.slot) || 1));
+      return this.showFloatingText(`编队 ${slot} 功能待开放`);
+    }
+
     showRewardReveal(reveal) {
       if (!reveal) return false;
       this.rewardReveal = {

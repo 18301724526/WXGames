@@ -282,6 +282,20 @@
       return this.afterHandled(action);
     }
 
+    handle_openArmyFormation(action) {
+      const slot = Math.max(1, Math.min(3, Number(action.slot) || 1));
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (typeof target?.openArmyFormation === 'function') {
+        return target.openArmyFormation({ ...action, slot }) !== false;
+      }
+      const message = `编队 ${slot} 功能待开放`;
+      if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
+      else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
+      else this.log?.(message);
+      return this.afterHandled(action);
+    }
+
     handle_openSettings(action) {
       this.host.showSettings = true;
       this.closePanels(['showSettings']);
