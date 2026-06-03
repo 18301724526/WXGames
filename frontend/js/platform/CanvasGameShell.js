@@ -117,6 +117,7 @@
         failureCount: 0,
       };
       this.tutorialHighlight = null;
+      this.tutorialIntro = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
       this.rewardReveal = null;
@@ -235,7 +236,12 @@
           || 'resources',
         getMilitaryView: (state = this.lastGame?.state || {}) => state.militaryView || this.lastGame?.militaryView,
         getForceMapHome: () => Boolean(this.lastGame?.mapHomeActive),
-        onAction: (action, event) => this.handleAction(action, event),
+        canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
+        onAction: (action, event) => {
+          const handled = this.handleAction(action, event);
+          this.advanceTutorialIntroAfterHandled(handled, action);
+          return handled;
+        },
         onBeforeRender: () => this.syncWorldMapRendererLayerMetrics(),
         onBeforeDrag: ({ phase, runtime }) => {
           if (phase === 'start') {
@@ -465,6 +471,12 @@
     handleTap(point, event) {
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       const action = this.renderer.getHitTarget(point);
+      if (action?.type === 'blockCanvasModal') {
+        const handled = this.handleAction(action, event);
+        if (handled && event?.preventDefault) event.preventDefault();
+        if (handled && event?.stopPropagation) event.stopPropagation();
+        return handled;
+      }
       if (!action || action.disabled) {
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
@@ -507,6 +519,7 @@
         return handled;
       }
       const handled = this.handleAction(action, event);
+      this.advanceTutorialIntroAfterHandled(handled, action);
       if (handled && event?.preventDefault) event.preventDefault();
       if (handled && event?.stopPropagation) event.stopPropagation();
       return handled;
@@ -1702,6 +1715,28 @@
     handleAction(action, event) {
       return this.actionController?.handle?.(action, { event }) || false;
     }
+
+    advanceTutorialIntro(action = {}) {
+      const controller = this.lastGame?.tutorialIntroOverlay || this.tutorialIntroOverlay || null;
+      if (!controller || typeof controller.advanceFromAction !== 'function') return false;
+      return controller.advanceFromAction(action);
+    }
+
+    advanceTutorialIntroAfterHandled(handled, action = {}) {
+      if (handled && typeof handled.then === 'function') {
+        handled.then((value) => {
+          if (value !== false) this.advanceTutorialIntro(action);
+        });
+        return true;
+      }
+      return handled ? this.advanceTutorialIntro(action) : false;
+    }
+
+    isPointBlockedByTutorialShield(point = {}) {
+      if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+      return this.renderer.getHitTarget(point)?.type === 'blockCanvasModal';
+    }
+
     setInputEnabled(enabled) {
       this.inputEnabled = Boolean(enabled);
       if (!this.inputEnabled && this.tapDisposer) {
@@ -1866,6 +1901,7 @@
         loading: this.loading,
         network: this.networkState,
         floatingTexts: this.getFloatingTextView(),
+        tutorialIntro: this.lastGame?.tutorialIntro || this.tutorialIntro || null,
         tutorialHighlight: null,
         rewardReveal: this.rewardReveal,
       };

@@ -1,33 +1,44 @@
 (function (global) {
-  const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
-  const STEPS = [
-    {
-      message: '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。',
-      actionLabel: '继续',
-    },
-    {
-      message: '让队伍入城整备。只要根基扎稳，这座首都会慢慢长成我们的核心。',
-      actionLabel: '入城',
-      guide: true,
-    },
-  ];
+  const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
+  const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
+  const MARCH_DURATION_MS = 2400;
+  const STEPS = {
+    march: 'march',
+    city: 'city',
+    enter: 'enter',
+    done: 'done',
+  };
 
   class TutorialIntroOverlay {
     constructor(options = {}) {
-      this.document = options.document || global.document || null;
       this.runtime = options.runtime || global;
       this.storage = options.storage || this.runtime?.localStorage || null;
       this.game = options.game || null;
-      this.player = null;
-      this.root = null;
-      this.canvas = null;
-      this.stepIndex = 0;
       this.running = false;
-      this.boundHandleClick = (event) => this.handleClick(event);
+      this.step = STEPS.done;
+      this.startedAt = 0;
+      this.marchEndedAt = 0;
+      this.timer = null;
+      this.frameTimer = null;
     }
 
     static get storageKey() {
       return STORAGE_KEY;
+    }
+
+    static get legacyStorageKey() {
+      return LEGACY_STORAGE_KEY;
+    }
+
+    getQueryMode() {
+      const search = String(this.runtime?.location?.search || '');
+      if (/[?&]tutorialIntro=reset(?:&|$)/.test(search)) {
+        this.storage?.removeItem?.(STORAGE_KEY);
+        this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
+        return 'reset';
+      }
+      if (/[?&]tutorialIntro=1(?:&|$)/.test(search)) return 'force';
+      return '';
     }
 
     hasSeen() {
@@ -38,23 +49,15 @@
     markSeen() {
       if (this.getQueryMode() === 'force') return;
       this.storage?.setItem?.(STORAGE_KEY, 'true');
-    }
-
-    getQueryMode() {
-      const search = String(this.runtime?.location?.search || '');
-      if (/[?&]tutorialIntro=reset(?:&|$)/.test(search)) {
-        this.storage?.removeItem?.(STORAGE_KEY);
-        return 'reset';
-      }
-      if (/[?&]tutorialIntro=1(?:&|$)/.test(search)) return 'force';
-      return '';
+      this.storage?.setItem?.(LEGACY_STORAGE_KEY, 'true');
     }
 
     shouldStart(state = this.game?.state) {
-      if (!this.document || this.running || this.hasSeen()) return false;
+      if (this.running || this.hasSeen()) return false;
       if (!state || typeof state !== 'object') return false;
       if (this.game?.authView?.loginPanelVisible || this.game?.canvasShell?.auth?.view?.loginPanelVisible) return false;
       if (!this.game?.hasServerState) return false;
+      if (!this.hasCapitalSite(state)) return false;
       if (this.getQueryMode() === 'force') return true;
       const gameDay = Number(state.gameDay);
       const totalBuildings = Number(state.totalBuildings);
@@ -62,140 +65,144 @@
         && (!Number.isFinite(totalBuildings) || totalBuildings <= 0);
     }
 
+    now() {
+      return this.runtime?.performance?.now?.() || this.runtime?.now?.() || Date.now();
+    }
+
     start(state = this.game?.state) {
       if (!this.shouldStart(state)) return false;
+      this.clearTimer();
       this.running = true;
-      this.stepIndex = 0;
-      this.createDom();
-      this.updateStep();
-      this.loadSpine();
+      this.step = STEPS.march;
+      this.startedAt = this.now();
+      this.marchEndedAt = this.startedAt + MARCH_DURATION_MS;
+      this.syncGame();
+      this.requestRender();
+      this.startFrameTimer();
+      const setDelay = this.runtime?.setTimeout || global.setTimeout;
+      if (typeof setDelay === 'function') {
+        this.timer = setDelay.call(this.runtime, () => this.finishMarch(), MARCH_DURATION_MS);
+      }
       return true;
     }
 
-    createDom() {
-      if (this.root) return this.root;
-      const root = this.document.createElement('div');
-      root.className = 'tutorial-intro';
-      root.innerHTML = `
-        <div class="tutorial-intro__scrim"></div>
-        <div class="tutorial-intro__scene" aria-hidden="true">
-          <div class="tutorial-intro__mist tutorial-intro__mist--a"></div>
-          <div class="tutorial-intro__mist tutorial-intro__mist--b"></div>
-          <div class="tutorial-intro__trail">
-            <span></span><span></span><span></span><span></span>
-          </div>
-          <div class="tutorial-intro__capital">首都</div>
-        </div>
-        <section class="tutorial-intro__dialog" aria-live="polite">
-          <div class="tutorial-intro__portrait">
-            <canvas class="tutorial-intro__spine" aria-hidden="true"></canvas>
-          </div>
-          <div class="tutorial-intro__text">
-            <div class="tutorial-intro__name">谋士</div>
-            <p></p>
-            <div class="tutorial-intro__actions">
-              <button type="button" data-action="skip">跳过</button>
-              <button type="button" data-action="next"></button>
-            </div>
-          </div>
-        </section>
-        <div class="tutorial-intro__finger" aria-hidden="true"></div>
-      `;
-      root.addEventListener('click', this.boundHandleClick);
-      this.document.body.appendChild(root);
-      this.root = root;
-      this.canvas = root.querySelector('.tutorial-intro__spine');
-      return root;
+    hasCapitalSite(state = this.game?.state) {
+      const cityId = this.getCapitalCityId(state);
+      const territories = Array.isArray(state?.territoryState?.territories) ? state.territoryState.territories : [];
+      const tiles = Array.isArray(state?.territoryState?.worldMap?.tiles) ? state.territoryState.worldMap.tiles : [];
+      return territories.some((site) => site?.id === cityId)
+        || tiles.some((tile) => tile?.siteId === cityId || tile?.site?.id === cityId);
     }
 
-    loadSpine() {
-      if (!this.canvas || !global.SpineWebglPlayer?.isAvailable?.()) {
-        this.root?.classList.add('tutorial-intro--fallback');
-        return false;
-      }
-      this.player = new global.SpineWebglPlayer({
-        canvas: this.canvas,
-        runtime: this.runtime,
-        fitPadding: 1.01,
-        premultipliedAlpha: false,
-      });
-      return this.player.load({
-        assetBase: 'assets/art/spine/tutorial/advisor/',
-        jsonFile: 'tutorial_advisor.json',
-        atlasFile: 'tutorial_advisor.atlas',
-        animationName: 'animation',
-        loop: true,
-        alpha: true,
-      });
+    startFrameTimer() {
+      this.clearFrameTimer();
+      const setEvery = this.runtime?.setInterval || global.setInterval;
+      if (typeof setEvery !== 'function') return false;
+      this.frameTimer = setEvery.call(this.runtime, () => {
+        if (!this.running) {
+          this.clearFrameTimer();
+          return;
+        }
+        this.requestRender();
+      }, 16);
+      return true;
     }
 
-    updateStep() {
-      if (!this.root) return;
-      const step = STEPS[Math.max(0, Math.min(STEPS.length - 1, this.stepIndex))];
-      const text = this.root.querySelector('.tutorial-intro__text p');
-      const next = this.root.querySelector('[data-action="next"]');
-      if (text) text.textContent = step.message;
-      if (next) next.textContent = step.actionLabel || '继续';
-      this.root.classList.toggle('tutorial-intro--guide', Boolean(step.guide));
+    clearFrameTimer() {
+      if (this.frameTimer === null || this.frameTimer === undefined) return;
+      const clearEvery = this.runtime?.clearInterval || global.clearInterval;
+      if (typeof clearEvery === 'function') clearEvery.call(this.runtime, this.frameTimer);
+      this.frameTimer = null;
     }
 
-    next() {
-      if (this.stepIndex < STEPS.length - 1) {
-        this.stepIndex += 1;
-        this.updateStep();
+    clearTimer() {
+      if (this.timer === null || this.timer === undefined) return;
+      const clearDelay = this.runtime?.clearTimeout || global.clearTimeout;
+      if (typeof clearDelay === 'function') clearDelay.call(this.runtime, this.timer);
+      this.timer = null;
+    }
+
+    finishMarch() {
+      if (!this.running || this.step !== STEPS.march) return false;
+      this.step = STEPS.city;
+      this.marchEndedAt = this.now();
+      this.syncGame();
+      this.requestRender();
+      return true;
+    }
+
+    advanceFromAction(action = {}) {
+      if (!this.running || !action?.type) return false;
+      const cityId = this.getCapitalCityId();
+      const actionCityId = action.cityId || action.territoryId || action.siteId || action.siteId;
+      if (this.step === STEPS.city && action.type === 'openWorldSite' && (!actionCityId || actionCityId === cityId)) {
+        this.step = STEPS.enter;
+        this.syncGame();
+        this.requestRender();
         return true;
       }
-      this.finish({ enterCity: true });
-      return true;
-    }
-
-    handleClick(event) {
-      const action = event.target?.dataset?.action;
-      if (!action) return;
-      event.preventDefault?.();
-      event.stopPropagation?.();
-      if (action === 'skip') this.finish({ enterCity: false });
-      if (action === 'next') this.next();
-    }
-
-    finish(options = {}) {
-      this.markSeen();
-      this.running = false;
-      const root = this.root;
-      if (root) {
-        root.classList.add('tutorial-intro--closing');
-        this.runtime.setTimeout?.(() => this.destroy(), 220);
-      } else {
-        this.destroy();
-      }
-      if (options.enterCity) this.openCityHud();
-      return true;
-    }
-
-    openCityHud() {
-      const game = this.game;
-      const shell = game?.canvasShell;
-      const cityId = game?.state?.cityState?.capitalCityId
-        || game?.state?.activeCityId
-        || game?.state?.cityState?.activeCityId
-        || 'capital';
-      if (game?.enterCity) {
-        game.enterCity(cityId, { tab: 'buildings' });
+      if (this.step === STEPS.enter && action.type === 'enterCity' && (!actionCityId || actionCityId === cityId)) {
+        this.finish({ markSeen: true });
         return true;
       }
-      if (shell?.enterCity) return shell.enterCity({ cityId, tab: 'buildings' });
       return false;
     }
 
-    destroy() {
-      this.player?.dispose?.();
-      this.player = null;
-      if (this.root) {
-        this.root.removeEventListener('click', this.boundHandleClick);
-        this.root.remove();
+    skip() {
+      return this.finish({ markSeen: true });
+    }
+
+    finish(options = {}) {
+      this.clearTimer();
+      this.clearFrameTimer();
+      if (options.markSeen !== false) this.markSeen();
+      this.running = false;
+      this.step = STEPS.done;
+      this.syncGame();
+      this.requestRender();
+      return true;
+    }
+
+    getCapitalCityId(state = this.game?.state || {}) {
+      return state.cityState?.capitalCityId
+        || state.activeCityId
+        || state.cityState?.activeCityId
+        || 'capital';
+    }
+
+    getViewState() {
+      if (!this.running) return null;
+      return {
+        active: true,
+        step: this.step,
+        capitalCityId: this.getCapitalCityId(),
+        startedAt: this.startedAt,
+        marchDurationMs: MARCH_DURATION_MS,
+        marchEndedAt: this.marchEndedAt,
+        advisorName: '谋士',
+        messages: {
+          city: '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。',
+          enter: '让队伍入城整备。只要根基扎稳，这座首都会慢慢长成我们的核心。',
+        },
+      };
+    }
+
+    syncGame() {
+      if (this.game && typeof this.game === 'object') {
+        this.game.tutorialIntro = this.getViewState();
       }
-      this.root = null;
-      this.canvas = null;
+      if (this.game?.canvasShell && typeof this.game.canvasShell === 'object') {
+        this.game.canvasShell.tutorialIntro = this.getViewState();
+      }
+      return true;
+    }
+
+    requestRender() {
+      const shell = this.game?.canvasShell;
+      if (shell?.renderActive) return shell.renderActive({ invalidateWorldTileView: false });
+      if (this.game?.renderCanvasSurface) return this.game.renderCanvasSurface();
+      if (this.game?.render) return this.game.render();
+      return false;
     }
   }
 

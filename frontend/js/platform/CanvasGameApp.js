@@ -81,6 +81,8 @@
       this.battleSceneTimer = null;
       this.battleAnimationTimer = null;
       this.tutorialHighlight = null;
+      this.tutorialIntro = options.tutorialIntro || null;
+      this.tutorialIntroOverlay = options.tutorialIntroOverlay || null;
       this.highlightTimer = null;
       this.skipNextSoftGuideRender = false;
       this.suppressSoftGuideRenderOnce = false;
@@ -452,6 +454,7 @@
         territoryUiState: this.territoryUiState,
         ...(this.battleScene ? { battleScene: this.battleScene } : {}),
         naming: this.naming,
+        tutorialIntro: this.tutorialIntro || null,
         tutorialHighlight: null,
         loading: this.loading,
         network: this.networkState,
@@ -751,7 +754,12 @@
         getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
         getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
         getForceMapHome: () => this.mapHomeActive,
-        onAction: (action) => this.actionController?.handle?.(action),
+        canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
+        onAction: (action) => {
+          const handled = this.actionController?.handle?.(action);
+          this.advanceTutorialIntroAfterHandled(handled, action);
+          return handled;
+        },
         onBeforeDrag: ({ phase, runtime }) => {
           if (phase === 'start') {
             const waterTimeMs = this.startWorldMapSnapshotDrag();
@@ -2441,10 +2449,13 @@
 
     async handleTap(point) {
       const action = this.renderer.getHitTarget(point);
+      if (action?.type === 'blockCanvasModal') {
+        return this.actionController?.handle?.(action);
+      }
       if (!action || action.disabled) {
-        this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
+        const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-        return;
+        return handled;
       }
       if (action.type === 'showFamousSkillTooltip') {
         this.renderer.setPinnedFamousSkillTooltip?.(action);
@@ -2456,8 +2467,32 @@
         this.render();
         return;
       }
-      await this.actionController?.handle?.(action);
+      const handled = await this.actionController?.handle?.(action);
+      this.advanceTutorialIntroAfterHandled(handled, action);
+      return handled;
     }
+
+    advanceTutorialIntro(action = {}) {
+      const controller = this.tutorialIntroOverlay || null;
+      if (!controller || typeof controller.advanceFromAction !== 'function') return false;
+      return controller.advanceFromAction(action);
+    }
+
+    advanceTutorialIntroAfterHandled(handled, action = {}) {
+      if (handled && typeof handled.then === 'function') {
+        handled.then((value) => {
+          if (value !== false) this.advanceTutorialIntro(action);
+        });
+        return true;
+      }
+      return handled ? this.advanceTutorialIntro(action) : false;
+    }
+
+    isPointBlockedByTutorialShield(point = {}) {
+      if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+      return this.renderer.getHitTarget(point)?.type === 'blockCanvasModal';
+    }
+
     start() {
       this.render();
       this.syncOnce().catch(() => {});

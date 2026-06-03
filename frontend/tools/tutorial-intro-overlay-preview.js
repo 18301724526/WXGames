@@ -1,5 +1,6 @@
 (function () {
-  localStorage.removeItem(window.TutorialIntroOverlay?.storageKey || 'tutorialIntroAdvisorSeen.v1');
+  localStorage.removeItem(window.TutorialIntroOverlay?.storageKey || 'tutorialIntroAdvisorSeen.v2');
+  localStorage.removeItem(window.TutorialIntroOverlay?.legacyStorageKey || 'tutorialIntroAdvisorSeen.v1');
 
   window.Game = {
     hasServerState: true,
@@ -15,22 +16,27 @@
         activeCityId: 'capital',
         cities: [{ id: 'capital', name: '首都', isCapital: true, totalBuildings: 0 }],
       },
-      territoryState: { worldMap: { tiles: [] } },
+      territoryState: {
+        territories: [{ id: 'capital', name: '首都', owner: 'player' }],
+        worldMap: {
+          tiles: [{ id: 'capital-tile', q: 0, r: 0, siteId: 'capital', site: { id: 'capital', name: '首都' } }],
+        },
+      },
     },
     enterCity(cityId, options = {}) {
-      document.body.dataset.enterCity = `${cityId}:${options.tab || ''}`;
+      window.Game.lastEnteredCity = { cityId, tab: options.tab || '' };
       return true;
     },
   };
 
   const overlay = new window.TutorialIntroOverlay({
-    document,
     runtime: window,
     game: window.Game,
   });
   window.Game.tutorialIntroOverlay = overlay;
   overlay.start(window.Game.state);
-  if (new URLSearchParams(window.location.search).get('step') === 'guide') {
-    overlay.next();
-  }
+  const params = new URLSearchParams(window.location.search);
+  const step = params.get('step');
+  if (step === 'city' || step === 'enter') overlay.finishMarch();
+  if (step === 'enter') overlay.advanceFromAction({ type: 'openWorldSite', siteId: 'capital' });
 })();

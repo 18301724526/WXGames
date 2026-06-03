@@ -197,6 +197,7 @@
         'assets/art/world-site-outpost-cutout.png',
         'assets/art/world-site-ruins-cutout.png',
         'assets/art/world-site-town-cutout.png',
+        'assets/art/spine/tutorial/advisor/tutorial_advisor.png',
         'assets/art/battle/battlefield-forest-camp.png',
         ...(this.getTileMapAssetManifest().getPreloadAssetPaths?.() || []),
         ...this.getBattleUnitFramePaths(),
@@ -403,6 +404,7 @@
       const y = Number(point.y);
       let backgroundAction = null;
       let tutorialShieldAction = null;
+      const tutorialAllowedActions = [];
       for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
         const target = this.hitTargets[index];
         if (
@@ -413,8 +415,14 @@
         ) {
           if (target.action?.type === 'blockCanvasModal') {
             tutorialShieldAction = target.action;
+            if (target.action.allowedAction) tutorialAllowedActions.push(target.action.allowedAction);
           } else if (tutorialShieldAction && !this.isAllowedUnderTutorialShield(target.action)) {
-            return tutorialShieldAction;
+            return (
+              tutorialAllowedActions.some((allowed) => this.matchesTutorialShieldAllowedAction(target.action, allowed))
+              || this.matchesCurrentTutorialIntroAction(target.action)
+            )
+              ? target.action
+              : tutorialShieldAction;
           } else if (target.action?.background) {
             backgroundAction = target.action;
           } else {
@@ -489,6 +497,28 @@
       }
       if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
         return (action.category || 'main') === 'main';
+      }
+      return false;
+    }
+
+    matchesTutorialShieldAllowedAction(action = {}, allowed = null) {
+      if (!action?.type || !allowed?.type || action.type !== allowed.type) return false;
+      const getId = (item = {}) => item.cityId || item.territoryId || item.siteId || item.targetId || '';
+      const allowedId = getId(allowed);
+      const actionId = getId(action);
+      return !allowedId || !actionId || allowedId === actionId;
+    }
+
+    matchesCurrentTutorialIntroAction(action = {}) {
+      const intro = this.lastRenderOptions?.tutorialIntro || null;
+      if (!intro?.active || !action?.type) return false;
+      const capitalCityId = intro.capitalCityId || 'capital';
+      const actionId = action.cityId || action.territoryId || action.siteId || '';
+      if (intro.step === 'city') {
+        return action.type === 'openWorldSite' && (!actionId || actionId === capitalCityId);
+      }
+      if (intro.step === 'enter') {
+        return action.type === 'enterCity' && (!actionId || actionId === capitalCityId);
       }
       return false;
     }
@@ -2501,6 +2531,7 @@
       const optionNow = Number(options.now);
       const now = Number.isFinite(optionNow) ? optionNow : Date.now();
       this.frameNow = now;
+      this.lastRenderOptions = options || {};
       this.famousSkillHitTargets = [];
       this.activeFamousSkillTooltip = null;
       this.updateFps(now);
@@ -8518,6 +8549,50 @@
       };
     }
 
+    getWorldSiteCanvasAnchor(siteId = '', state = {}, options = {}) {
+      if (!siteId) return null;
+      const territoryState = state.territoryState || {};
+      const territories = territoryState.territories || [];
+      const tileMapView = this.resolveWorldTileMapView(territoryState, options.territoryUiState || {}, options);
+      if (!tileMapView?.tiles?.length) return null;
+      const selectedSite = territories.find((site) => site.id === siteId) || {};
+      const selectedTile = tileMapView.tiles.find((tile) => (
+        tile?.site?.id === siteId
+        || tile?.siteId === siteId
+        || selectedSite.id && (tile?.siteId === selectedSite.id || tile?.site?.id === selectedSite.id)
+      ));
+      if (!selectedTile) return null;
+      const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state, { isMapHome: true });
+      const geometry = tileMapView.geometry || {};
+      const offsetX = Number(this.viewportOffsetX) || 0;
+      const offsetY = Number(this.viewportOffsetY) || 0;
+      const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
+      const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
+      const visibleMapY = Math.max(0, topBarBottom ?? 84);
+      const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
+      const scale = Math.max(0.38, Math.min(0.78, Math.min(visibleWidth / 520, visibleMapH / 420)));
+      const viewport = {
+        originX: offsetX + visibleWidth * 0.5,
+        originY: offsetY + visibleMapY + visibleMapH * 0.42,
+        panX: Number(tileMapView.pan?.x) || 0,
+        panY: Number(tileMapView.pan?.y) || 0,
+        scale,
+        seed: tileMapView.seed || 'scout-tile-v1',
+        geometry,
+      };
+      const projectedCenter = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const siteLayout = this.getWorldTileSiteLayout(selectedTile, viewport, geometry, tileWidth, tileHeight, projectedCenter);
+      if (!siteLayout) return null;
+      return {
+        ...siteLayout,
+        site: siteLayout.site || selectedSite,
+        tile: selectedTile,
+        center: projectedCenter,
+      };
+    }
+
     getWorldCityCommandButtonAction(button = {}) {
       return {
         type: button.action === 'rename-city'
@@ -8673,6 +8748,244 @@
         this.drawWorldCityCommandSideButton(button, sideX, buttonY, sideWidth, sideHeight);
         this.addHitTarget({ x: sideX, y: buttonY, width: sideWidth, height: sideHeight }, this.getWorldCityCommandButtonAction(button));
       });
+    }
+
+    renderTutorialIntro(state = {}, options = {}) {
+      const intro = options.tutorialIntro || null;
+      if (!intro?.active || !this.ctx) return false;
+      const target = this.resolveTutorialIntroTarget(intro, state, options);
+      if (!target) return false;
+      if (intro.step === 'march') {
+        this.renderTutorialIntroMarch(intro, target);
+        return true;
+      }
+      const message = intro.messages?.[intro.step] || '';
+      this.renderTutorialIntroSpotlight(target, message, {
+        showAdvisor: true,
+        advisorName: intro.advisorName || '谋士',
+      });
+      return true;
+    }
+
+    resolveTutorialIntroTarget(intro = {}, state = {}, options = {}) {
+      const capitalCityId = intro.capitalCityId || state.cityState?.capitalCityId || 'capital';
+      if (intro.step === 'enter') {
+        const target = this.findHitTarget('enterCity', (action) => {
+          const cityId = action.cityId || action.territoryId || action.siteId || '';
+          return !cityId || cityId === capitalCityId;
+        });
+        if (target) return this.inflateRect(target, 10);
+        return null;
+      }
+      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
+      if (hitTarget) return this.inflateRect(hitTarget, intro.step === 'march' ? 0 : 12);
+      const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
+      if (!anchor) return null;
+      return this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
+    }
+
+    findHitTarget(type = '', predicate = null) {
+      if (!Array.isArray(this.hitTargets)) return null;
+      for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
+        const target = this.hitTargets[index];
+        const action = target?.action || {};
+        if (action.type !== type) continue;
+        if (typeof predicate === 'function' && !predicate(action)) continue;
+        return target;
+      }
+      return null;
+    }
+
+    inflateRect(rect = {}, padding = 0) {
+      const pad = Number(padding) || 0;
+      const x = Number(rect.x ?? rect.left) || 0;
+      const y = Number(rect.y ?? rect.top) || 0;
+      const width = Number(rect.width) || 0;
+      const height = Number(rect.height) || 0;
+      return {
+        x: x - pad,
+        y: y - pad,
+        width: width + pad * 2,
+        height: height + pad * 2,
+        action: rect.action || null,
+      };
+    }
+
+    renderTutorialIntroMarch(intro = {}, target = {}) {
+      this.addHitTarget(
+        { x: 0, y: 0, width: this.width, height: this.height },
+        { type: 'blockCanvasModal' },
+      );
+      const now = this.getNow();
+      const startedAt = Number(intro.startedAt) || now;
+      const duration = Math.max(1, Number(intro.marchDurationMs) || 2400);
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const eased = this.easeOutCubic(progress);
+      const targetX = target.x + target.width / 2;
+      const targetY = target.y + target.height * 0.72;
+      const startX = Math.max(18, targetX - Math.min(this.width * 0.46, 210));
+      const startY = Math.min(this.height - 86, targetY + Math.min(this.height * 0.24, 128));
+      const x = startX + (targetX - startX) * eased;
+      const y = startY + (targetY - startY) * eased;
+
+      this.ctx.save?.();
+      this.ctx.strokeStyle = 'rgba(240, 180, 91, 0.44)';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath?.();
+      this.ctx.moveTo?.(startX, startY);
+      this.ctx.quadraticCurveTo?.((startX + targetX) / 2, startY - 30, targetX, targetY);
+      this.ctx.stroke?.();
+      this.renderTutorialIntroUnit(x, y, 1 + eased * 0.16);
+      this.ctx.restore?.();
+    }
+
+    renderTutorialIntroUnit(x, y, scale = 1) {
+      const ctx = this.ctx;
+      if (!ctx) return;
+      const now = this.getNow();
+      const leg = Math.sin(now / 90) * 4 * scale;
+      ctx.save?.();
+      ctx.translate?.(x, y);
+      ctx.scale?.(scale, scale);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
+      ctx.beginPath?.();
+      ctx.ellipse?.(0, 10, 15, 6, -0.18, 0, Math.PI * 2);
+      ctx.fill?.();
+      ctx.fillStyle = '#f0cf8a';
+      ctx.strokeStyle = 'rgba(45, 31, 22, 0.92)';
+      ctx.lineWidth = 2;
+      ctx.beginPath?.();
+      ctx.arc?.(0, -20, 7, 0, Math.PI * 2);
+      ctx.fill?.();
+      ctx.stroke?.();
+      ctx.fillStyle = '#8c3d31';
+      ctx.strokeStyle = 'rgba(48, 34, 22, 0.92)';
+      ctx.lineWidth = 2;
+      this.roundRectPath(-9, -12, 18, 23, 6);
+      ctx.fill?.();
+      ctx.stroke?.();
+      ctx.strokeStyle = '#2c2318';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath?.();
+      ctx.moveTo?.(-5, 10);
+      ctx.lineTo?.(-7 + leg, 22);
+      ctx.moveTo?.(5, 10);
+      ctx.lineTo?.(7 - leg, 22);
+      ctx.stroke?.();
+      ctx.strokeStyle = '#d9bd73';
+      ctx.lineWidth = 3;
+      ctx.beginPath?.();
+      ctx.moveTo?.(7, -7);
+      ctx.lineTo?.(19, -14);
+      ctx.stroke?.();
+      ctx.restore?.();
+    }
+
+    renderTutorialIntroSpotlight(target = {}, message = '', options = {}) {
+      const rect = this.normalizeRect(target);
+      if (!rect) return false;
+      const pulse = 0.5 + Math.sin(this.getNow() / 180) * 0.5;
+      this.addTutorialShield(
+        { left: rect.x, top: rect.y, width: rect.width, height: rect.height },
+        { allowedAction: target.action || null },
+      );
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
+      this.ctx.fillRect(0, 0, this.width, rect.y);
+      this.ctx.fillRect(0, rect.y + rect.height, this.width, Math.max(0, this.height - rect.y - rect.height));
+      this.ctx.fillRect(0, rect.y, rect.x, rect.height);
+      this.ctx.fillRect(rect.x + rect.width, rect.y, Math.max(0, this.width - rect.x - rect.width), rect.height);
+      this.drawPanel(rect.x, rect.y, rect.width, rect.height, {
+        fill: `rgba(255, 247, 214, ${0.06 + pulse * 0.04})`,
+        stroke: `rgba(255, 215, 0, ${0.72 + pulse * 0.22})`,
+        radius: 14,
+        inset: 'rgba(255, 247, 214, 0.14)',
+      });
+      this.renderTutorialIntroFinger(rect.x + rect.width * 0.78, rect.y + rect.height * 0.88);
+      if (options.showAdvisor) this.renderTutorialIntroDialogue(message, options.advisorName || '谋士');
+      return true;
+    }
+
+    normalizeRect(rect = {}) {
+      const x = Math.max(0, Math.min(this.width, Number(rect.x ?? rect.left) || 0));
+      const y = Math.max(0, Math.min(this.height, Number(rect.y ?? rect.top) || 0));
+      const width = Math.max(1, Math.min(this.width - x, Number(rect.width) || 0));
+      const height = Math.max(1, Math.min(this.height - y, Number(rect.height) || 0));
+      return { x, y, width, height };
+    }
+
+    renderTutorialIntroFinger(x, y) {
+      const pulse = 0.5 + Math.sin(this.getNow() / 180) * 0.5;
+      this.ctx.save?.();
+      this.ctx.strokeStyle = `rgba(255, 226, 168, ${0.52 + pulse * 0.32})`;
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath?.();
+      this.ctx.arc?.(x, y, 15 + pulse * 8, 0, Math.PI * 2);
+      this.ctx.stroke?.();
+      this.drawText('点', x, y - 3, {
+        size: 18,
+        bold: true,
+        color: '#ffe2a8',
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.ctx.restore?.();
+    }
+
+    renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
+      const layout = this.getLayout();
+      const panelW = Math.min(layout.contentWidth - 16, 360);
+      const panelH = 136;
+      const panelX = layout.contentX + Math.max(0, (layout.contentWidth - panelW) / 2);
+      const panelY = Math.max(84, this.height - panelH - 76 - this.bottomSafeArea);
+      const portraitW = 92;
+      const portraitH = 124;
+      const portraitX = panelX - 2;
+      const portraitY = panelY - 30;
+
+      this.drawPanel(panelX + 54, panelY, panelW - 54, panelH, {
+        fill: 'rgba(23, 17, 12, 0.94)',
+        stroke: 'rgba(246, 214, 147, 0.3)',
+        radius: 8,
+        inset: 'rgba(255, 231, 184, 0.08)',
+      });
+      this.renderTutorialIntroAdvisorPortrait(portraitX, portraitY, portraitW, portraitH);
+      this.drawText(advisorName, panelX + 76, panelY + 24, {
+        size: 14,
+        bold: true,
+        color: '#ffd98a',
+      });
+      const lines = this.wrapTextLimit(message, panelW - 96, 3, { size: 13 });
+      this.drawTextLines(lines, panelX + 76, panelY + 46, {
+        size: 13,
+        color: '#f7ecd0',
+        lineHeight: 18,
+      });
+    }
+
+    renderTutorialIntroAdvisorPortrait(x, y, width, height) {
+      const image = this.getAsset('assets/art/spine/tutorial/advisor/tutorial_advisor.png');
+      this.ctx.save?.();
+      this.ctx.beginPath?.();
+      this.ctx.rect?.(x, y, width, height);
+      this.ctx.clip?.();
+      if (image && typeof this.ctx.drawImage === 'function') {
+        this.ctx.drawImage(image, 120, 40, 420, 780, x - 26, y - 8, width + 68, height + 96);
+      } else {
+        this.drawPanel(x + 8, y + 20, width - 16, height - 22, {
+          fill: 'rgba(48, 37, 28, 0.92)',
+          stroke: 'rgba(255, 218, 142, 0.28)',
+          radius: 10,
+        });
+        this.drawText('谋士', x + width / 2, y + height / 2, {
+          size: 15,
+          bold: true,
+          color: '#ffd98a',
+          align: 'center',
+          baseline: 'middle',
+        });
+      }
+      this.ctx.restore?.();
     }
 
     renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {
@@ -8888,6 +9201,41 @@
       this.drawButton(resetX, resetY, resetW, resetH, '回到本城', { size: 11, radius: 8 });
       this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
       this.renderMapHomeExplorerHud(state, layout, topBarBottom);
+      return true;
+    }
+
+    collectMapHomeWorldSiteHitTargets(state = {}, topBarBottom = 84, options = {}) {
+      const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
+      if (!layout) return false;
+      const territoryState = state.territoryState || {};
+      const uiState = options.territoryUiState || {};
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      if (!tileMapView?.tiles?.length) return false;
+      const offsetX = Number(this.viewportOffsetX) || 0;
+      const offsetY = Number(this.viewportOffsetY) || 0;
+      const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
+      const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
+      const visibleMapY = Math.max(0, topBarBottom ?? 84);
+      const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
+      const geometry = tileMapView.geometry || {};
+      const scale = Math.max(0.38, Math.min(0.78, Math.min(visibleWidth / 520, visibleMapH / 420)));
+      const viewport = {
+        originX: offsetX + visibleWidth * 0.5,
+        originY: offsetY + visibleMapY + visibleMapH * 0.42,
+        panX: Number(tileMapView.pan?.x) || 0,
+        panY: Number(tileMapView.pan?.y) || 0,
+        scale,
+        seed: tileMapView.seed || 'scout-tile-v1',
+        geometry,
+      };
+      const frame = {
+        x: layout.map.x + 1,
+        y: layout.map.y + 1,
+        width: layout.map.width - 2,
+        height: layout.map.height - 2,
+      };
+      const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
+      this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
       return true;
     }
 
@@ -10051,14 +10399,14 @@
       });
     }
 
-    addTutorialShield(rect = {}) {
+    addTutorialShield(rect = {}, options = {}) {
       const x = Math.max(0, Math.min(this.width, Number(rect.left ?? rect.x) || 0));
       const y = Math.max(0, Math.min(this.height, Number(rect.top ?? rect.y) || 0));
       const width = Math.max(0, Math.min(this.width - x, Number(rect.width) || 0));
       const height = Math.max(0, Math.min(this.height - y, Number(rect.height) || 0));
       const right = Math.max(x, Math.min(this.width, x + width));
       const bottom = Math.max(y, Math.min(this.height, y + height));
-      const block = { type: 'blockCanvasModal' };
+      const block = { type: 'blockCanvasModal', allowedAction: options.allowedAction || null };
       [
         { x: 0, y: 0, width: this.width, height: y },
         { x: 0, y: bottom, width: this.width, height: Math.max(0, this.height - bottom) },
@@ -10460,9 +10808,13 @@
       }
       const topBarBottom = this.renderTopBar(state, options);
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
+      if (options.isMapHome && activeTab === 'military' && options.skipWorldMapLayer) {
+        this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
+      }
       this.renderTabs(activeTab, state, options);
       if (options.isMapHome && activeTab === 'military') {
         this.renderMapHomeOverlays(state, options);
+        this.renderTutorialIntro(state, options);
         this.renderTutorialHighlight(options.tutorialHighlight || null);
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);
@@ -10800,9 +11152,11 @@
       }
       const topBarBottom = this.renderTopBar(state, options);
       if (options.isMapHome && activeTab === 'military') {
-        if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
+        if (options.skipWorldMapLayer) this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
+        else this.renderMapHomeWorldView(state, topBarBottom, options);
         this.renderTabs(activeTab, state, options);
         this.renderMapHomeOverlays(state, options);
+        this.renderTutorialIntro(state, options);
         this.renderTutorialHighlight(options.tutorialHighlight || null);
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);

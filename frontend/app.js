@@ -132,7 +132,6 @@ class H5GameHost extends CanvasGameAppBase {
     if (this.tutorialIntroOverlay) return this.tutorialIntroOverlay;
     if (!window.TutorialIntroOverlay) return null;
     this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
-      document,
       runtime: window,
       game: this,
     });

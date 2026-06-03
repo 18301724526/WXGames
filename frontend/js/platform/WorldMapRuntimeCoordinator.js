@@ -31,6 +31,7 @@
         state?.militaryView || this.host?.militaryView
       ));
       this.getForceMapHome = options.getForceMapHome || (() => Boolean(this.host?.mapHomeActive));
+      this.canRouteTap = options.canRouteTap || (() => true);
       this.resolveMapHomeViewState = options.resolveMapHomeViewState || ((state, viewOptions) => {
         if (this.host?.resolveMapHomeViewState) return this.host.resolveMapHomeViewState(state || {}, viewOptions);
         const presenter = this.getPresenter();
@@ -177,6 +178,7 @@
       if (!runtime
         || !this.isMapHomeActive(state)
         || this.isBlocked()
+        || this.canRouteTap?.(point, state, event) === false
         || !runtime.canRender?.(state)
         || !runtime.isPointInMap?.(point, state)) {
         return false;
