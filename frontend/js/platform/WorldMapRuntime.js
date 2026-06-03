@@ -381,10 +381,16 @@
     syncHitTargetsFromRenderer() {
       const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
       const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
+      const allowedTypes = new Set([
+        'openWorldSite',
+        'resetWorldPan',
+        'worldMapDrag',
+        'enterCity',
+        'renameCity',
+        'territoryAction',
+      ]);
       this.baseHitTargets = (this.renderer?.hitTargets || [])
-        .filter((target) => target?.action?.type === 'openWorldSite'
-          || target?.action?.type === 'resetWorldPan'
-          || target?.action?.type === 'worldMapDrag')
+        .filter((target) => allowedTypes.has(target?.action?.type))
         .map((target) => ({
           ...target,
           x: (Number(target.x) || 0) - viewportOffsetX,

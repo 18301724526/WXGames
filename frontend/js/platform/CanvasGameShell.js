@@ -353,8 +353,23 @@
       return handled;
     }
 
+    isWorldMapHudAction(action = {}) {
+      const type = action?.type || '';
+      return Boolean(type
+        && type !== 'worldMapDrag'
+        && type !== 'worldRadarDrag'
+        && type !== 'openWorldSite'
+        && type !== 'resetWorldPan'
+        && type !== 'closeWorldSite'
+        && type !== 'blockCanvasModal');
+    }
+
     handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
+      if (phase === 'start' && typeof this.renderer.getHitTarget === 'function') {
+        const action = this.renderer.getHitTarget(point);
+        if (this.isWorldMapHudAction(action)) return false;
+      }
       if (this.ensureWorldMapRuntimeCoordinator()?.canRouteDrag(phase, point, this.lastGame?.state)) {
         return this.handleWorldMapRuntimeDrag(phase, point, event);
       }
