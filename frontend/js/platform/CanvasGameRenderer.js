@@ -233,6 +233,13 @@
       return gradient;
     }
 
+    createRadialGradient(x0, y0, r0, x1, y1, r1, stops = [], fallback = '#000') {
+      if (!this.ctx || typeof this.ctx.createRadialGradient !== 'function') return fallback;
+      const gradient = this.ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
+      stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
+      return gradient;
+    }
+
     roundRectPath(x, y, width, height, radius = 8) {
       if (!this.ctx) return;
       this.ctx.beginPath();
@@ -6850,14 +6857,33 @@
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
       const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
       entries.forEach(({ center }) => {
-        this.drawIsoDiamond(center.x, center.y, tileWidth * 1.06, tileHeight * 1.06, {
-          fill: 'rgba(5, 8, 8, 0.88)',
-          stroke: 'rgba(255, 255, 255, 0.04)',
-        });
-        this.drawIsoDiamond(center.x, center.y - tileHeight * 0.02, tileWidth * 0.78, tileHeight * 0.78, {
-          fill: 'rgba(18, 24, 25, 0.42)',
-          stroke: 'rgba(0, 0, 0, 0)',
-        });
+        const radiusX = Math.max(42, tileWidth * 0.68);
+        const radiusY = Math.max(22, tileHeight * 0.82);
+        const gradient = this.createRadialGradient(
+          center.x,
+          center.y - radiusY * 0.1,
+          Math.max(4, radiusY * 0.08),
+          center.x,
+          center.y,
+          Math.max(radiusX, radiusY),
+          [
+            [0, 'rgba(24, 31, 31, 0.2)'],
+            [0.36, 'rgba(12, 17, 17, 0.58)'],
+            [0.72, 'rgba(4, 7, 8, 0.84)'],
+            [1, 'rgba(0, 0, 0, 0)'],
+          ],
+          'rgba(4, 7, 8, 0.78)',
+        );
+        this.ctx.save?.();
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        if (typeof this.ctx.ellipse === 'function') {
+          this.ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+        } else {
+          this.ctx.arc(center.x, center.y, Math.max(radiusX, radiusY), 0, Math.PI * 2);
+        }
+        this.ctx.fill();
+        this.ctx.restore?.();
       });
     }
 
