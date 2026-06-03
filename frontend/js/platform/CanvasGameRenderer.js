@@ -6520,6 +6520,22 @@
       return `${Number(tile.q) || 0},${Number(tile.r) || 0}`;
     }
 
+    getWorldTileFogRevealEntries(entries = []) {
+      if (!Array.isArray(entries) || entries.length <= 1) return entries || [];
+      const keySet = new Set(entries.map(({ tile }) => this.getWorldTileKey(tile)));
+      const offsets = [
+        { q: -1, r: -1 }, { q: 0, r: -1 }, { q: 1, r: -1 },
+        { q: -1, r: 0 }, { q: 1, r: 0 },
+        { q: -1, r: 1 }, { q: 0, r: 1 }, { q: 1, r: 1 },
+      ];
+      const innerEntries = entries.filter(({ tile }) => {
+        const q = Number(tile?.q) || 0;
+        const r = Number(tile?.r) || 0;
+        return offsets.every((offset) => keySet.has(`${q + offset.q},${r + offset.r}`));
+      });
+      return innerEntries.length ? innerEntries : entries;
+    }
+
     getWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, geometry = {}) {
       const entries = this.getWorldTileLocalEntries(tileMapView, viewport, geometry);
       if (!entries.length) return null;
@@ -6741,7 +6757,7 @@
 
     renderWorldTileFogMask(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
       if (!this.ctx || typeof this.ctx.drawImage !== 'function') return;
-      const knownEntries = Array.isArray(entries) ? entries : [];
+      const knownEntries = this.getWorldTileFogRevealEntries(Array.isArray(entries) ? entries : []);
       const geometry = tileMapView.geometry || viewport.geometry || {};
       const scale = Number(viewport.scale) || 1;
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
@@ -6776,8 +6792,8 @@
         )));
         const centerX = (minX + maxX) * 0.5;
         const centerY = (minY + maxY) * 0.5;
-        const radiusX = Math.max(tileWidth * 1.25, (maxX - minX) * 0.5 + tileWidth * 0.72);
-        const radiusY = Math.max(tileHeight * 1.7, (maxY - minY) * 0.5 + tileHeight * 1.05);
+        const radiusX = Math.max(tileWidth * 1.05, (maxX - minX) * 0.5 + tileWidth * 0.28);
+        const radiusY = Math.max(tileHeight * 1.35, (maxY - minY) * 0.5 + tileHeight * 0.42);
         const radius = Math.max(radiusX, radiusY, 1);
         ctx.globalCompositeOperation = 'destination-out';
         ctx.save?.();
@@ -6789,8 +6805,8 @@
         if (gradient?.addColorStop) {
           [
             [0, 'rgba(0, 0, 0, 1)'],
-            [0.62, 'rgba(0, 0, 0, 1)'],
-            [0.82, 'rgba(0, 0, 0, 0.46)'],
+            [0.54, 'rgba(0, 0, 0, 1)'],
+            [0.86, 'rgba(0, 0, 0, 0.5)'],
             [1, 'rgba(0, 0, 0, 0)'],
           ].forEach(([offset, color]) => gradient.addColorStop(offset, color));
         }
