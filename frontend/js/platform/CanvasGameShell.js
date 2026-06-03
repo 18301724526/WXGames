@@ -1261,7 +1261,10 @@
         const pageDone = !this.pageTransition || now - this.pageTransition.startedAt >= (this.pageTransition.durationMs || duration);
         const buildingDone = !this.buildingTransition || now - this.buildingTransition.startedAt >= (this.buildingTransition.durationMs || duration);
         if (pageDone) this.pageTransition = null;
-        if (buildingDone) this.buildingTransition = null;
+        if (buildingDone) {
+          this.buildingTransition = null;
+          if (this.lastGame && typeof this.lastGame === 'object') this.lastGame.buildingTransition = null;
+        }
         if (!this.pageTransition && !this.buildingTransition) this.stopTransitionTimer();
         this.renderAnimationFrame();
       }, this.getAnimationFrameMs());
@@ -1309,6 +1312,10 @@
           durationMs: this.getTransitionDurationMs(),
         };
         this.startTransitionTimer();
+      }
+      if (this.lastGame && typeof this.lastGame === 'object') {
+        this.lastGame.buildingOffset = this.buildingOffset;
+        this.lastGame.buildingTransition = this.buildingTransition;
       }
       return true;
     }
