@@ -139,7 +139,7 @@ window.mountAuthMethods = function(game, deps = {}) {
       }
       clearTutorialStorage();
       this.tutorialIntroOverlay?.resetSeen?.();
-      this.tutorialIntroOverlay?.finish?.({ markSeen: false });
+      this.tutorialIntroOverlay?.finish?.({ markSeen: false, completed: false });
       this.tutorialIntro = null;
       if (this.canvasShell) this.canvasShell.tutorialIntro = null;
       this.resetLocalViewToResources?.({ skipRender: true });

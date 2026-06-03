@@ -2,6 +2,8 @@
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
   const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
   const MARCH_DURATION_MS = 2400;
+  const MARCH_FRAME_INTERVAL_MS = 50;
+  const IDLE_FRAME_INTERVAL_MS = 250;
   const STEPS = {
     march: 'march',
     city: 'city',
@@ -20,6 +22,7 @@
       this.marchEndedAt = 0;
       this.timer = null;
       this.frameTimer = null;
+      this.completedThisSession = false;
     }
 
     static get storageKey() {
@@ -55,11 +58,13 @@
     resetSeen() {
       this.storage?.removeItem?.(STORAGE_KEY);
       this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
+      this.completedThisSession = false;
       return true;
     }
 
     shouldStart(state = this.game?.state) {
       if (this.running || this.hasSeen()) return false;
+      if (this.completedThisSession) return false;
       if (!state || typeof state !== 'object') return false;
       if (this.game?.authView?.loginPanelVisible || this.game?.canvasShell?.auth?.view?.loginPanelVisible) return false;
       if (!this.game?.hasServerState) return false;
@@ -100,23 +105,31 @@
         || tiles.some((tile) => tile?.siteId === cityId || tile?.site?.id === cityId);
     }
 
+    getFrameIntervalMs() {
+      return this.step === STEPS.march ? MARCH_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
+    }
+
     startFrameTimer() {
       this.clearFrameTimer();
-      const setEvery = this.runtime?.setInterval || global.setInterval;
-      if (typeof setEvery !== 'function') return false;
-      this.frameTimer = setEvery.call(this.runtime, () => {
+      const setDelay = this.runtime?.setTimeout || global.setTimeout;
+      if (typeof setDelay !== 'function') return false;
+      const tick = () => {
         if (!this.running) {
           this.clearFrameTimer();
           return;
         }
         this.requestRender();
-      }, 16);
+        this.frameTimer = setDelay.call(this.runtime, tick, this.getFrameIntervalMs());
+      };
+      this.frameTimer = setDelay.call(this.runtime, tick, this.getFrameIntervalMs());
       return true;
     }
 
     clearFrameTimer() {
       if (this.frameTimer === null || this.frameTimer === undefined) return;
+      const clearDelay = this.runtime?.clearTimeout || global.clearTimeout;
       const clearEvery = this.runtime?.clearInterval || global.clearInterval;
+      if (typeof clearDelay === 'function') clearDelay.call(this.runtime, this.frameTimer);
       if (typeof clearEvery === 'function') clearEvery.call(this.runtime, this.frameTimer);
       this.frameTimer = null;
     }
@@ -162,6 +175,7 @@
       this.clearTimer();
       this.clearFrameTimer();
       if (options.markSeen !== false) this.markSeen();
+      if (options.completed !== false) this.completedThisSession = true;
       this.running = false;
       this.step = STEPS.done;
       this.syncGame();

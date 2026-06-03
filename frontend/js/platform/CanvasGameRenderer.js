@@ -8784,7 +8784,10 @@
 
     renderTutorialIntro(state = {}, options = {}) {
       const intro = options.tutorialIntro || null;
-      if (!intro?.active || !this.ctx) return false;
+      if (!intro?.active || !this.ctx) {
+        this.disposeTutorialAdvisorSpine();
+        return false;
+      }
       const target = this.resolveTutorialIntroTarget(intro, state, options);
       if (!target) return false;
       if (intro.step === 'march') {
@@ -8796,6 +8799,15 @@
         showAdvisor: true,
         advisorName: intro.advisorName || '谋士',
       });
+      return true;
+    }
+
+    disposeTutorialAdvisorSpine() {
+      const existing = this.tutorialAdvisorSpine;
+      if (!existing) return false;
+      existing.player?.dispose?.();
+      existing.player?.stop?.();
+      this.tutorialAdvisorSpine = null;
       return true;
     }
 
@@ -9100,7 +9112,7 @@
         this.tutorialAdvisorSpineFailed = true;
         return null;
       }
-      const canvas = this.createTutorialSpineCanvas(360, 520);
+      const canvas = this.createTutorialSpineCanvas(288, 420);
       if (!canvas) {
         this.tutorialAdvisorSpineFailed = true;
         return null;
@@ -9110,6 +9122,10 @@
         runtime: global,
         background: null,
         fitPadding: 1,
+        targetFps: 8,
+        logicalWidth: 288,
+        logicalHeight: 420,
+        maxDevicePixelRatio: 1,
         premultipliedAlpha: false,
         preserveDrawingBuffer: true,
         viewFocus: {
@@ -9132,6 +9148,11 @@
         animationName: 'animation',
         loop: true,
         alpha: true,
+        antialias: false,
+        targetFps: 8,
+        logicalWidth: 288,
+        logicalHeight: 420,
+        maxDevicePixelRatio: 1,
         preserveDrawingBuffer: true,
         viewFocus: {
           centerX: 0,

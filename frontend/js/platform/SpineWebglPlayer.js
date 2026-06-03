@@ -17,7 +17,14 @@
       this.status = 'idle';
       this.error = null;
       this.animationFrame = null;
+      this.animationFrameType = '';
       this.lastFrameTime = 0;
+      this.targetFps = Number(options.targetFps) || 0;
+      this.frameIntervalMs = Number(options.frameIntervalMs)
+        || (this.targetFps > 0 ? 1000 / this.targetFps : 16);
+      this.logicalWidth = Number(options.logicalWidth) || 0;
+      this.logicalHeight = Number(options.logicalHeight) || 0;
+      this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || Infinity;
       this.assetBase = '';
       this.jsonFile = '';
       this.atlasFile = '';
@@ -48,6 +55,18 @@
       if (typeof this.canvas.removeEventListener !== 'function') this.canvas.removeEventListener = () => {};
       if (!SpineWebglPlayer.isAvailable(this.spine)) {
         throw new Error('Spine 3.8 WebGL runtime is unavailable');
+      }
+      if (!this.logicalWidth) {
+        this.logicalWidth = Math.max(1, Number(options.logicalWidth)
+          || Number(this.canvas.clientWidth)
+          || Number(this.canvas.width)
+          || 1);
+      }
+      if (!this.logicalHeight) {
+        this.logicalHeight = Math.max(1, Number(options.logicalHeight)
+          || Number(this.canvas.clientHeight)
+          || Number(this.canvas.height)
+          || 1);
       }
       if (this.context && this.gl) return this.gl;
       const contextConfig = {
@@ -81,6 +100,13 @@
         this.fitPadding = Number(options.fitPadding ?? this.fitPadding) || 1.08;
         this.viewFocus = options.viewFocus || this.viewFocus;
         this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer ?? this.preserveDrawingBuffer);
+        this.targetFps = Number(options.targetFps ?? this.targetFps) || 0;
+        this.frameIntervalMs = Number(options.frameIntervalMs)
+          || (this.targetFps > 0 ? 1000 / this.targetFps : this.frameIntervalMs)
+          || 16;
+        this.logicalWidth = Number(options.logicalWidth) || this.logicalWidth;
+        this.logicalHeight = Number(options.logicalHeight) || this.logicalHeight;
+        this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || this.maxDevicePixelRatio || Infinity;
         this.background = options.background ?? this.background;
         this.assetManager = new this.spine.webgl.AssetManager(this.context, this.assetBase);
         this.assetManager.loadText(this.jsonFile);
@@ -114,7 +140,7 @@
         if (this.animationName) this.animationState.setAnimation(0, this.animationName, this.loop);
         this.lastFrameTime = this.nowSeconds();
         this.emitStatus('ready', this.animationName);
-        this.animationFrame = this.requestAnimationFrame(() => this.renderFrame());
+        this.animationFrame = this.scheduleRenderFrame();
       } catch (error) {
         this.handleError(error);
       }
@@ -132,9 +158,12 @@
     resize() {
       if (!this.canvas || !this.gl || !this.mvp || !this.bounds) return false;
       const rect = this.canvas.getBoundingClientRect?.() || {};
-      const cssWidth = Math.max(1, Math.floor(rect.width || this.canvas.clientWidth || this.canvas.width || 1));
-      const cssHeight = Math.max(1, Math.floor(rect.height || this.canvas.clientHeight || this.canvas.height || 1));
-      const ratio = Math.max(1, Number(this.runtime.devicePixelRatio) || 1);
+      const baseWidth = this.logicalWidth || this.canvas.clientWidth || this.canvas.width || 1;
+      const baseHeight = this.logicalHeight || this.canvas.clientHeight || this.canvas.height || 1;
+      const cssWidth = Math.max(1, Math.floor(rect.width || baseWidth));
+      const cssHeight = Math.max(1, Math.floor(rect.height || baseHeight));
+      const maxRatio = Math.max(1, Number(this.maxDevicePixelRatio) || 1);
+      const ratio = Math.max(1, Math.min(maxRatio, Number(this.runtime.devicePixelRatio) || 1));
       const width = Math.floor(cssWidth * ratio);
       const height = Math.floor(cssHeight * ratio);
       if (this.canvas.width !== width) this.canvas.width = width;
@@ -188,7 +217,7 @@
         this.skeletonRenderer.draw(this.batcher, this.skeleton);
         this.batcher.end();
         this.shader.unbind();
-        this.animationFrame = this.requestAnimationFrame(() => this.renderFrame());
+        this.animationFrame = this.scheduleRenderFrame();
       } catch (error) {
         this.handleError(error);
       }
@@ -217,12 +246,31 @@
 
     requestAnimationFrame(callback) {
       const raf = this.runtime.requestAnimationFrame || global.requestAnimationFrame;
-      if (typeof raf === 'function') return raf.call(this.runtime, callback);
+      if (typeof raf === 'function') {
+        this.animationFrameType = 'raf';
+        return raf.call(this.runtime, callback);
+      }
+      this.animationFrameType = 'timeout';
       return this.runtime.setTimeout?.(callback, 16);
+    }
+
+    scheduleRenderFrame() {
+      const interval = Math.max(16, Number(this.frameIntervalMs) || 16);
+      const setDelay = this.runtime.setTimeout || global.setTimeout;
+      if (interval > 20 && typeof setDelay === 'function') {
+        this.animationFrameType = 'timeout';
+        return setDelay.call(this.runtime, () => this.renderFrame(), interval);
+      }
+      return this.requestAnimationFrame(() => this.renderFrame());
     }
 
     cancelAnimationFrame(id) {
       if (!id) return;
+      if (this.animationFrameType === 'timeout') {
+        const clearDelay = this.runtime.clearTimeout || global.clearTimeout;
+        if (typeof clearDelay === 'function') clearDelay.call(this.runtime, id);
+        return;
+      }
       const cancel = this.runtime.cancelAnimationFrame || global.cancelAnimationFrame;
       if (typeof cancel === 'function') cancel.call(this.runtime, id);
       else this.runtime.clearTimeout?.(id);
@@ -237,6 +285,7 @@
     stop() {
       if (this.animationFrame) this.cancelAnimationFrame(this.animationFrame);
       this.animationFrame = null;
+      this.animationFrameType = '';
     }
 
     dispose() {
