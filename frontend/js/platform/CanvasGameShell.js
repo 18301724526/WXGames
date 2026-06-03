@@ -237,14 +237,7 @@
         onBeforeRender: () => this.syncWorldMapRendererLayerMetrics(),
         onBeforeDrag: ({ phase, runtime }) => {
           if (phase === 'start') {
-            this.lastGame?.territoryController?.closeSiteDialog?.({ render: false });
-            if (this.territoryUiState) {
-              this.territoryUiState.selectedSiteId = '';
-              this.territoryUiState.expeditionConfigSiteId = '';
-              this.territoryUiState.expeditionSoldiers = '';
-              this.territoryUiState.expeditionTroopType = '';
-              this.territoryUiState.expeditionLeader = '';
-            }
+            this.closeWorldSiteHud({ direct: true });
             const waterTimeMs = this.startWorldMapSnapshotDrag();
             if (runtime) runtime.waterTimeMs = waterTimeMs;
           }
@@ -385,7 +378,10 @@
       const dragType = this.dragAction.type === 'techTreeDrag'
         ? 'techTreeDrag'
         : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
-      if (dragType === 'worldMapDrag' && phase === 'start') this.startWorldMapSnapshotDrag();
+      if (dragType === 'worldMapDrag' && phase === 'start') {
+        this.closeWorldSiteHud({ direct: true });
+        this.startWorldMapSnapshotDrag();
+      }
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
       if (dragType === 'worldMapDrag' && (phase === 'end' || phase === 'cancel')) {
         this.finishWorldMapSnapshotDrag();
@@ -431,6 +427,7 @@
       const dy = Number(gesture.deltaY);
       if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false;
       if (!this.worldMapPinchDragging) {
+        this.closeWorldSiteHud({ direct: true });
         const waterTimeMs = this.startWorldMapSnapshotDrag();
         runtime.waterTimeMs = waterTimeMs;
         this.worldMapPinchDragging = true;
@@ -451,9 +448,31 @@
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       const action = this.renderer.getHitTarget(point);
       if (!action || action.disabled) {
+        const closed = this.closeWorldSiteHud({ direct: true });
+        if (closed) {
+          if (event?.preventDefault) event.preventDefault();
+          if (event?.stopPropagation) event.stopPropagation();
+          return true;
+        }
         const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         return handled;
+      }
+      if (action.background && action.type !== 'closeWorldSite') {
+        const closed = this.closeWorldSiteHud({ direct: true });
+        if (closed) {
+          if (event?.preventDefault) event.preventDefault();
+          if (event?.stopPropagation) event.stopPropagation();
+          return true;
+        }
+      }
+      if (action.type === 'worldMapDrag' || action.type === 'worldRadarDrag') {
+        const closed = this.closeWorldSiteHud({ direct: true });
+        if (closed) {
+          if (event?.preventDefault) event.preventDefault();
+          if (event?.stopPropagation) event.stopPropagation();
+          return true;
+        }
       }
       if (action.type === 'showFamousSkillTooltip') {
         const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
@@ -722,6 +741,45 @@
     renderCanvasAction(action = {}) {
       this.renderActive();
       return true;
+    }
+
+    clearWorldSiteHudSelection() {
+      const clearUiState = (uiState) => {
+        if (!uiState || typeof uiState !== 'object') return false;
+        const hadValue = Boolean(
+          uiState.selectedSiteId
+          || uiState.expeditionConfigSiteId
+          || uiState.expeditionSoldiers
+          || uiState.expeditionTroopType
+          || uiState.expeditionLeader
+        );
+        uiState.selectedSiteId = '';
+        uiState.expeditionConfigSiteId = '';
+        uiState.expeditionSoldiers = '';
+        uiState.expeditionTroopType = '';
+        uiState.expeditionLeader = '';
+        return hadValue;
+      };
+      let changed = false;
+      const territoryController = this.lastGame?.territoryController || null;
+      const controllerUiState = territoryController?.uiState || null;
+      changed = clearUiState(controllerUiState) || changed;
+      if (territoryController?.closeSiteDialog) {
+        territoryController.closeSiteDialog({ render: false });
+      }
+      changed = clearUiState(this.territoryUiState) || changed;
+      changed = clearUiState(this.lastGame?.territoryUiState) || changed;
+      return changed;
+    }
+
+    closeWorldSiteHud(options = {}) {
+      const changed = this.clearWorldSiteHudSelection();
+      if (!changed) return false;
+      if (options.render === false) return true;
+      if (options.direct || this.isWorldMapDragging()) {
+        return this.renderReadOnly(this.lastGame?.state, this.getActiveTab()) !== false;
+      }
+      return this.renderActive({ invalidateWorldTileView: false }) !== false;
     }
 
     getGuideState() {
