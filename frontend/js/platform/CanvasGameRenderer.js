@@ -4214,9 +4214,19 @@
       const pageIndex = Math.min(Math.max(0, offset), pageCount - 1);
       offset = pageIndex * visibleCount;
       const visibleCards = view.cards.slice(offset, offset + visibleCount);
+      const pendingAction = options.pendingBuildingAction || null;
       const drawCards = (cards, cardOffset = offset) => {
         cards.forEach((card, index) => {
           const y = firstRowY + index * (rowHeight + rowGap);
+          const actionType = card.button.action === 'upgrade' ? 'upgrade' : 'build';
+          const pendingMatches = Boolean(pendingAction
+            && pendingAction.buildingId === card.id
+            && pendingAction.action === actionType);
+          const pendingActive = Boolean(pendingAction && pendingAction.buildingId);
+          const isActionDisabled = Boolean(card.button.disabled || pendingActive);
+          const buttonLabel = pendingMatches
+            ? (actionType === 'upgrade' ? '升级中' : '建造中')
+            : card.button.label;
           const isMuted = Boolean(card.isMuted || card.button.disabled);
           this.drawPanel(x + 10, y, width - 20, rowHeight, {
             fill: isMuted
@@ -4257,10 +4267,10 @@
             bold: true,
             color: 'rgba(255, 226, 177, 0.68)',
           });
-          this.drawBuildingActionButton(buttonX, y + rowHeight - 36, actionWidth, 26, card.button.label, card.cost, { disabled: card.button.disabled });
+          this.drawBuildingActionButton(buttonX, y + rowHeight - 36, actionWidth, 26, buttonLabel, card.cost, { disabled: isActionDisabled });
           this.addHitTarget(
             { x: buttonX, y: y + rowHeight - 36, width: actionWidth, height: 26 },
-            { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: card.button.disabled },
+            { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: isActionDisabled },
           );
         });
       };
@@ -9212,7 +9222,12 @@
       const contentTop = tabY + 40;
       const contentHeight = Math.max(180, panelHeight - (contentTop - y) - 12);
       if (activeTab === 'buildings') {
-        this.renderBuildings(state, contentTop, contentHeight, options);
+        this.renderBuildings(state, contentTop, contentHeight, {
+          ...options,
+          offset: options.buildingOffset,
+          buildingTransition: options.buildingTransition,
+          activeBuildingCategory: options.activeBuildingCategory,
+        });
       } else if (activeTab === 'people') {
         this.renderPopulation(state, contentTop);
       } else {

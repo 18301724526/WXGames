@@ -835,17 +835,35 @@
       if (typeof game?.[method] === 'function') {
         return game[method](action.buildingId);
       }
+      const setPending = (pending, options = {}) => {
+        if (typeof this.host?.setPendingBuildingAction === 'function') {
+          this.host.setPendingBuildingAction(pending, options);
+        }
+        if (game && game !== this.host && typeof game?.setPendingBuildingAction === 'function') {
+          game.setPendingBuildingAction(pending, { ...options, render: false });
+        }
+      };
+      if (this.host?.pendingBuildingAction?.buildingId || game?.pendingBuildingAction?.buildingId) return false;
       const controller = this.getBuildingController();
+      setPending({ buildingId: action.buildingId, action: buildingAction });
       if (controller?.handleAction) {
-        await controller.handleAction({ buildingId: action.buildingId, action: buildingAction });
-        return true;
+        try {
+          await controller.handleAction({ buildingId: action.buildingId, action: buildingAction });
+          return true;
+        } finally {
+          setPending(null);
+        }
       }
-      await this.runAction(() => (
-        buildingAction === 'upgrade'
-          ? this.host.api.upgrade(action.buildingId)
-          : this.host.api.build(action.buildingId)
-      ));
-      return true;
+      try {
+        await this.runAction(() => (
+          buildingAction === 'upgrade'
+            ? this.host.api.upgrade(action.buildingId)
+            : this.host.api.build(action.buildingId)
+        ));
+        return true;
+      } finally {
+        setPending(null);
+      }
     }
 
     handle_advanceEra(action) {

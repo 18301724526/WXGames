@@ -34,6 +34,7 @@
         percentage: 0,
         message: '',
       };
+      this.pendingBuildingAction = null;
       this.hasServerState = Boolean(options.hasServerState);
       this.syncIntervalMs = options.syncIntervalMs || this.config.SYNC_INTERVAL_MS || 2000;
       this.state = options.initialState || {
@@ -214,6 +215,7 @@
         this.loading = { visible: false, percentage: 100, message: '' };
         if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
       }
+      this.setPendingBuildingAction(null, { render: false });
       this.render();
     }
 
@@ -276,6 +278,7 @@
         this.loading = { visible: false, percentage: 100, message: '' };
         if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
       }
+      this.setPendingBuildingAction(null, { render: false });
       this.render();
     }
 
@@ -438,6 +441,7 @@
         selectedTechId: this.state?.techUiState?.selectedTechId || this.canvasShell?.selectedTechId || '',
         techDetailOpen: this.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen || this.canvasShell?.techDetailOpen),
         activeBuildingCategory: this.activeBuildingCategory,
+        pendingBuildingAction: this.pendingBuildingAction || this.canvasShell?.pendingBuildingAction || null,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
@@ -1492,6 +1496,21 @@
       this.log(`Success: ${result.message || ''}`);
     }
 
+    setPendingBuildingAction(pending = null, options = {}) {
+      const nextPending = pending && pending.buildingId
+        ? {
+          buildingId: pending.buildingId,
+          action: pending.action === 'upgrade' ? 'upgrade' : 'build',
+        }
+        : null;
+      this.pendingBuildingAction = nextPending;
+      if (this.canvasShell && typeof this.canvasShell === 'object') {
+        this.canvasShell.pendingBuildingAction = nextPending;
+      }
+      if (options.render !== false) this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
+      return true;
+    }
+
     async buildBuilding(buildingId) {
       return this.handleBuildingAction(buildingId, 'build');
     }
@@ -1502,10 +1521,16 @@
 
     async handleBuildingAction(buildingId, action) {
       if (!buildingId) return false;
+      if (this.pendingBuildingAction?.buildingId) return false;
       const controller = this.buildingController;
+      this.setPendingBuildingAction({ buildingId, action });
       if (controller?.handleAction) {
-        await controller.handleAction({ buildingId, action });
-        return true;
+        try {
+          await controller.handleAction({ buildingId, action });
+          return true;
+        } finally {
+          this.setPendingBuildingAction(null);
+        }
       }
       try {
         const api = this.getGameApi();
@@ -1517,6 +1542,8 @@
       } catch (error) {
         this.log(`Building action failed: ${error.payload?.message || error.message}`);
         return false;
+      } finally {
+        this.setPendingBuildingAction(null);
       }
     }
 

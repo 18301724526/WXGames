@@ -110,6 +110,7 @@
         percentage: 0,
         message: '',
       };
+      this.pendingBuildingAction = null;
       this.networkState = {
         status: 'online',
         failureCount: 0,
@@ -552,6 +553,21 @@
     runAction(callback) {
       if (typeof this.lastGame?.runAction === 'function') return this.lastGame.runAction(callback);
       return typeof callback === 'function' ? callback() : null;
+    }
+
+    setPendingBuildingAction(pending = null, options = {}) {
+      const nextPending = pending && pending.buildingId
+        ? {
+          buildingId: pending.buildingId,
+          action: pending.action === 'upgrade' ? 'upgrade' : 'build',
+        }
+        : null;
+      this.pendingBuildingAction = nextPending;
+      if (this.lastGame && typeof this.lastGame === 'object') {
+        this.lastGame.pendingBuildingAction = nextPending;
+      }
+      if (options.render !== false) this.renderActive();
+      return true;
     }
 
     selectBuildingCategory(action = {}) {
@@ -1720,6 +1736,7 @@
         ...(this.selectedTechId ? { selectedTechId: this.selectedTechId } : {}),
         techDetailOpen: this.techDetailOpen || Boolean(state.techUiState?.detailOpen),
         activeBuildingCategory: this.activeBuildingCategory,
+        pendingBuildingAction: this.pendingBuildingAction || this.lastGame?.pendingBuildingAction || null,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
