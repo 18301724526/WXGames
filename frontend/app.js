@@ -46,6 +46,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.token = null;
     this.playerId = null;
     this.tutorial = { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
+    this.tutorialIntroOverlay = null;
   }
 
   init() {
@@ -125,6 +126,31 @@ class H5GameHost extends CanvasGameAppBase {
     this.onCanvasShellReady = null;
     if (typeof onCanvasShellReady === 'function') onCanvasShellReady();
     if (!this.token || this.hasServerState) this.render();
+  }
+
+  ensureTutorialIntroOverlay() {
+    if (this.tutorialIntroOverlay) return this.tutorialIntroOverlay;
+    if (!window.TutorialIntroOverlay) return null;
+    this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
+      document,
+      runtime: window,
+      game: this,
+    });
+    return this.tutorialIntroOverlay;
+  }
+
+  maybeStartTutorialIntro() {
+    return this.ensureTutorialIntroOverlay()?.start(this.state) || false;
+  }
+
+  applyApiState(data = {}) {
+    super.applyApiState(data);
+    this.maybeStartTutorialIntro();
+  }
+
+  applyState(payload = {}) {
+    super.applyState(payload);
+    this.maybeStartTutorialIntro();
   }
 }
 

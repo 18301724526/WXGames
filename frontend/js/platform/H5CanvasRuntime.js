@@ -103,6 +103,7 @@
       canvas.id = options.id || (key === 'worldMap' ? this.worldMapLayerId : `${this.id}-${key}`);
       canvas.setAttribute?.('aria-hidden', 'true');
       canvas.setAttribute?.('data-canvas-layer', key);
+      canvas._contextType = options.contextType || '2d';
       this.applyCanvasLayerStyle(canvas, {
         pointerEvents: 'none',
         zIndex: options.zIndex ?? 998,
@@ -257,6 +258,7 @@
       const logicalHeight = this.height + padding * 2;
       canvas.width = Math.floor(logicalWidth * this.pixelRatio);
       canvas.height = Math.floor(logicalHeight * this.pixelRatio);
+      if (canvas._contextType && canvas._contextType !== '2d') return canvas;
       const ctx = canvas.getContext?.('2d');
       if (ctx) {
         if (typeof ctx.setTransform === 'function') ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);

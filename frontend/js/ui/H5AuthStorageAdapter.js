@@ -8,7 +8,7 @@
     phase2: 'civilizationFirePhase2',
   };
 
-  const TUTORIAL_KEYS = ['tutorialAutoStarted', 'tutorialStep', 'tutorialCompleted'];
+  const TUTORIAL_KEYS = ['tutorialAutoStarted', 'tutorialStep', 'tutorialCompleted', 'tutorialIntroAdvisorSeen.v1'];
 
   class H5AuthStorageAdapter {
     constructor(storage = null) {

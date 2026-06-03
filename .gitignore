@@ -2,6 +2,9 @@ backend/node_modules/
 backend/logs/
 .local-logs/
 tmp/
+spine源文件/
+frontend/assets/art/tutorial/
+frontend/js/vendor/spine-3.8/spine-ts/
 
 backend/*.db
 backend/*.db-journal

@@ -42,3 +42,265 @@ body {
     background: linear-gradient(180deg, rgba(18, 14, 10, 0.56), rgba(18, 14, 10, 0.86));
     pointer-events: none;
 }
+
+.tutorial-intro {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    color: #fff0d4;
+    font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+}
+
+.tutorial-intro__scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 9, 10, 0.72);
+}
+
+.tutorial-intro__scene {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(18, 28, 31, 0.56), rgba(14, 11, 8, 0.9)),
+        radial-gradient(circle at 58% 45%, rgba(214, 183, 104, 0.18), rgba(214, 183, 104, 0) 26%);
+}
+
+.tutorial-intro__mist {
+    position: absolute;
+    width: 72vw;
+    height: 38vh;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(230, 234, 218, 0.2), rgba(230, 234, 218, 0));
+    filter: blur(10px);
+    opacity: 0.8;
+    animation: tutorialMistDrift 4.8s ease-in-out infinite alternate;
+}
+
+.tutorial-intro__mist--a {
+    left: -18vw;
+    top: 16vh;
+}
+
+.tutorial-intro__mist--b {
+    right: -22vw;
+    top: 30vh;
+    animation-delay: -1.2s;
+}
+
+.tutorial-intro__trail {
+    position: absolute;
+    left: 24%;
+    top: 42%;
+    width: 44%;
+    height: 14%;
+    border-bottom: 2px solid rgba(244, 205, 126, 0.28);
+    transform: rotate(-8deg);
+}
+
+.tutorial-intro__trail span {
+    position: absolute;
+    bottom: -8px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #f0cf8a;
+    box-shadow: 0 0 16px rgba(240, 207, 138, 0.45);
+    animation: tutorialMarch 2.6s ease-in-out infinite;
+}
+
+.tutorial-intro__trail span:nth-child(1) { left: 8%; animation-delay: 0s; }
+.tutorial-intro__trail span:nth-child(2) { left: 21%; animation-delay: 0.16s; }
+.tutorial-intro__trail span:nth-child(3) { left: 34%; animation-delay: 0.32s; }
+.tutorial-intro__trail span:nth-child(4) { left: 47%; animation-delay: 0.48s; }
+
+.tutorial-intro__capital {
+    position: absolute;
+    left: 64%;
+    top: 38%;
+    min-width: 76px;
+    padding: 10px 16px;
+    border: 1px solid rgba(246, 214, 147, 0.34);
+    border-radius: 8px;
+    background: rgba(30, 20, 13, 0.82);
+    color: #ffe2a8;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
+}
+
+.tutorial-intro__dialog {
+    position: absolute;
+    left: max(16px, calc((100vw - 480px) / 2 + 14px));
+    right: max(16px, calc((100vw - 480px) / 2 + 14px));
+    bottom: 20px;
+    min-height: 176px;
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 12px;
+    align-items: end;
+}
+
+.tutorial-intro__portrait {
+    position: relative;
+    height: 330px;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.tutorial-intro__portrait::after {
+    content: '';
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 2px;
+    height: 42px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0));
+}
+
+.tutorial-intro__spine {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 260px;
+    height: 330px;
+    display: block;
+}
+
+.tutorial-intro__text {
+    min-height: 148px;
+    padding: 16px;
+    border: 1px solid rgba(246, 214, 147, 0.28);
+    border-radius: 8px;
+    background: rgba(23, 17, 12, 0.92);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
+}
+
+.tutorial-intro__name {
+    margin-bottom: 8px;
+    color: #ffd98a;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.tutorial-intro__text p {
+    min-height: 48px;
+    margin: 0;
+    color: #f7ecd0;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.tutorial-intro__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.tutorial-intro__actions button {
+    min-width: 72px;
+    height: 34px;
+    border: 1px solid rgba(255, 218, 138, 0.28);
+    border-radius: 6px;
+    background: rgba(63, 49, 32, 0.9);
+    color: #ffe6b5;
+    font: inherit;
+    font-size: 13px;
+}
+
+.tutorial-intro__actions button[data-action="next"] {
+    background: #d8a64b;
+    color: #25190a;
+    font-weight: 700;
+}
+
+.tutorial-intro__finger {
+    position: absolute;
+    right: max(28px, calc((100vw - 480px) / 2 + 26px));
+    bottom: 52px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #ffe2a8;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: 0 0 0 0 rgba(255, 226, 168, 0.35);
+}
+
+.tutorial-intro--guide .tutorial-intro__finger {
+    opacity: 1;
+    animation: tutorialFinger 1.1s ease-in-out infinite;
+}
+
+.tutorial-intro--closing {
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+@keyframes tutorialMistDrift {
+    from { transform: translateX(-18px); }
+    to { transform: translateX(24px); }
+}
+
+@keyframes tutorialMarch {
+    0% { transform: translateX(0) translateY(0); opacity: 0.35; }
+    45% { opacity: 1; }
+    100% { transform: translateX(24vw) translateY(-2vh); opacity: 0.25; }
+}
+
+@keyframes tutorialFinger {
+    0% { transform: translate(0, 0) scale(1); box-shadow: 0 0 0 0 rgba(255, 226, 168, 0.34); }
+    70% { transform: translate(4px, -6px) scale(0.92); box-shadow: 0 0 0 18px rgba(255, 226, 168, 0); }
+    100% { transform: translate(0, 0) scale(1); box-shadow: 0 0 0 0 rgba(255, 226, 168, 0); }
+}
+
+@media (max-width: 560px) {
+    .tutorial-intro__dialog {
+        left: 12px;
+        right: 12px;
+        bottom: 14px;
+        grid-template-columns: 122px minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .tutorial-intro__portrait {
+        height: 304px;
+    }
+
+    .tutorial-intro__spine {
+        left: -36px;
+        top: 0;
+        width: 216px;
+        height: 304px;
+    }
+
+    .tutorial-intro__text {
+        min-width: 0;
+        min-height: 156px;
+        padding: 14px 12px;
+    }
+
+    .tutorial-intro__text p {
+        font-size: 13px;
+        line-height: 1.58;
+        overflow-wrap: anywhere;
+    }
+
+    .tutorial-intro__actions {
+        gap: 6px;
+        margin-top: 12px;
+    }
+
+    .tutorial-intro__actions button {
+        min-width: 64px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .tutorial-intro__finger {
+        right: 22px;
+        bottom: 44px;
+    }
+}
