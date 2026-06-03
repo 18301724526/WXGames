@@ -8278,16 +8278,15 @@
       const clusterWidth = primarySize + gap + (sideButtons.length ? sideWidth : 0);
       const preferRight = anchor.anchorX + clusterWidth * 0.5 + 8 <= this.width;
       const sideOnRight = preferRight || anchor.anchorX - clusterWidth * 0.5 - 8 < 0;
-      const primaryXRaw = sideOnRight
-        ? anchor.anchorX - primarySize * 0.48
-        : anchor.anchorX + sideWidth + gap - primarySize * 0.52;
-      const primaryYRaw = anchor.anchorY - primarySize * 0.36;
+      const primaryXRaw = anchor.anchorX - primarySize * 0.5;
+      const primaryYRaw = anchor.anchorY - primarySize * 0.5;
       const minPrimaryX = sideOnRight ? 8 : sideWidth + gap + 8;
       const maxPrimaryX = sideOnRight ? this.width - clusterWidth - 8 : this.width - primarySize - 8;
       const primaryX = Math.max(minPrimaryX, Math.min(primaryXRaw, Math.max(minPrimaryX, maxPrimaryX)));
       const primaryY = Math.max(topLimit + 38, Math.min(primaryYRaw, bottomLimit - primarySize - 8));
       const sideX = sideOnRight ? primaryX + primarySize + gap : primaryX - sideWidth - gap;
-      const sideY = Math.max(topLimit + 8, Math.min(primaryY - Math.max(0, (sideTotalHeight - primarySize) / 2), bottomLimit - sideTotalHeight - 8));
+      const sideYRaw = primaryY + (primarySize - sideTotalHeight) / 2;
+      const sideY = Math.max(topLimit + 8, Math.min(sideYRaw, bottomLimit - sideTotalHeight - 8));
       const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
       const renameWidth = renameButton ? 38 : 0;
       const titleWidth = this.measureTextWidth(title, { size: 12, bold: true });
