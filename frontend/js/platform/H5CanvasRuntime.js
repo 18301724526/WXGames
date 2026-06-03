@@ -90,6 +90,9 @@
       const key = String(name || 'worldMap');
       const existing = this.layerCanvases.get(key);
       if (existing) {
+        if (options.contextType) existing._contextType = options.contextType;
+        if (options.pixelRatio) existing._pixelRatioOverride = Number(options.pixelRatio) || 0;
+        existing._fixedRect = options.rect || null;
         this.applyCanvasLayerStyle(existing, {
           pointerEvents: 'none',
           zIndex: options.zIndex ?? existing.style?.zIndex ?? 998,
@@ -104,6 +107,8 @@
       canvas.setAttribute?.('aria-hidden', 'true');
       canvas.setAttribute?.('data-canvas-layer', key);
       canvas._contextType = options.contextType || '2d';
+      canvas._pixelRatioOverride = Number(options.pixelRatio) || 0;
+      canvas._fixedRect = options.rect || null;
       this.applyCanvasLayerStyle(canvas, {
         pointerEvents: 'none',
         zIndex: options.zIndex ?? 998,
@@ -129,12 +134,14 @@
     getLayerMetrics(name = 'worldMap') {
       const canvas = this.getLayerCanvas(name);
       const padding = Math.max(0, Number(canvas?._viewportPadding) || 0);
+      const fixedRect = canvas?._fixedRect || null;
       return {
-        width: this.width + padding * 2,
-        height: this.height + padding * 2,
+        width: fixedRect ? Math.max(1, Number(fixedRect.width) || 1) : this.width + padding * 2,
+        height: fixedRect ? Math.max(1, Number(fixedRect.height) || 1) : this.height + padding * 2,
         viewportWidth: this.width,
         viewportHeight: this.height,
         padding,
+        rect: fixedRect,
       };
     }
 
@@ -254,15 +261,26 @@
     resizeCanvas(canvas) {
       if (!canvas) return null;
       const padding = Math.max(0, Number(canvas._viewportPadding) || 0);
-      const logicalWidth = this.width + padding * 2;
-      const logicalHeight = this.height + padding * 2;
-      canvas.width = Math.floor(logicalWidth * this.pixelRatio);
-      canvas.height = Math.floor(logicalHeight * this.pixelRatio);
+      const fixedRect = canvas._fixedRect || null;
+      const logicalWidth = fixedRect ? Math.max(1, Number(fixedRect.width) || 1) : this.width + padding * 2;
+      const logicalHeight = fixedRect ? Math.max(1, Number(fixedRect.height) || 1) : this.height + padding * 2;
+      const pixelRatio = Math.max(1, Number(canvas._pixelRatioOverride) || this.pixelRatio || 1);
+      const nextWidth = Math.floor(logicalWidth * pixelRatio);
+      const nextHeight = Math.floor(logicalHeight * pixelRatio);
+      if (canvas.width !== nextWidth) canvas.width = nextWidth;
+      if (canvas.height !== nextHeight) canvas.height = nextHeight;
+      if (fixedRect && canvas.style) {
+        canvas.style.inset = 'auto';
+        canvas.style.left = `${Number(fixedRect.x) || 0}px`;
+        canvas.style.top = `${Number(fixedRect.y) || 0}px`;
+        canvas.style.width = `${logicalWidth}px`;
+        canvas.style.height = `${logicalHeight}px`;
+      }
       if (canvas._contextType && canvas._contextType !== '2d') return canvas;
       const ctx = canvas.getContext?.('2d');
       if (ctx) {
-        if (typeof ctx.setTransform === 'function') ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-        else if (typeof ctx.scale === 'function') ctx.scale(this.pixelRatio, this.pixelRatio);
+        if (typeof ctx.setTransform === 'function') ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        else if (typeof ctx.scale === 'function') ctx.scale(pixelRatio, pixelRatio);
       }
       return canvas;
     }

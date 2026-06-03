@@ -2,8 +2,8 @@
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
   const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
   const MARCH_DURATION_MS = 2400;
-  const MARCH_FRAME_INTERVAL_MS = 50;
-  const IDLE_FRAME_INTERVAL_MS = 250;
+  const MARCH_FRAME_INTERVAL_MS = 33;
+  const IDLE_FRAME_INTERVAL_MS = 33;
   const STEPS = {
     march: 'march',
     city: 'city',

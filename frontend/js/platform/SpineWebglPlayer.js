@@ -25,6 +25,7 @@
       this.logicalWidth = Number(options.logicalWidth) || 0;
       this.logicalHeight = Number(options.logicalHeight) || 0;
       this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || Infinity;
+      this.viewportRect = options.viewportRect || null;
       this.assetBase = '';
       this.jsonFile = '';
       this.atlasFile = '';
@@ -107,6 +108,7 @@
         this.logicalWidth = Number(options.logicalWidth) || this.logicalWidth;
         this.logicalHeight = Number(options.logicalHeight) || this.logicalHeight;
         this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || this.maxDevicePixelRatio || Infinity;
+        this.viewportRect = options.viewportRect || this.viewportRect || null;
         this.background = options.background ?? this.background;
         this.assetManager = new this.spine.webgl.AssetManager(this.context, this.assetBase);
         this.assetManager.loadText(this.jsonFile);
@@ -168,6 +170,7 @@
       const height = Math.floor(cssHeight * ratio);
       if (this.canvas.width !== width) this.canvas.width = width;
       if (this.canvas.height !== height) this.canvas.height = height;
+      const viewport = this.getViewport(cssWidth, cssHeight, ratio, width, height);
 
       const bounds = this.bounds;
       const centerX = bounds.offset.x + bounds.size.x / 2;
@@ -177,18 +180,39 @@
         const focusCenterY = Number(this.viewFocus.centerY ?? centerY);
         const requestedHeight = Number(this.viewFocus.height ?? this.viewFocus.worldHeight);
         const viewHeight = Math.max(1, Number.isFinite(requestedHeight) ? requestedHeight : bounds.size.y * this.fitPadding);
-        const viewWidth = viewHeight * (width / Math.max(1, height));
+        const viewWidth = viewHeight * (viewport.width / Math.max(1, viewport.height));
         this.mvp.ortho2d(focusCenterX - viewWidth / 2, focusCenterY - viewHeight / 2, viewWidth, viewHeight);
-        this.gl.viewport(0, 0, width, height);
+        this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
         return true;
       }
       const safeBoundsWidth = Math.max(1, bounds.size.x);
       const safeBoundsHeight = Math.max(1, bounds.size.y);
-      const scale = Math.max(safeBoundsWidth / width, safeBoundsHeight / height) * this.fitPadding;
-      const viewWidth = width * Math.max(scale, 0.0001);
-      const viewHeight = height * Math.max(scale, 0.0001);
+      const scale = Math.max(safeBoundsWidth / viewport.width, safeBoundsHeight / viewport.height) * this.fitPadding;
+      const viewWidth = viewport.width * Math.max(scale, 0.0001);
+      const viewHeight = viewport.height * Math.max(scale, 0.0001);
       this.mvp.ortho2d(centerX - viewWidth / 2, centerY - viewHeight / 2, viewWidth, viewHeight);
-      this.gl.viewport(0, 0, width, height);
+      this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+      return true;
+    }
+
+    getViewport(cssWidth, cssHeight, ratio, bufferWidth, bufferHeight) {
+      const rect = this.viewportRect || null;
+      if (!rect) return { x: 0, y: 0, width: bufferWidth, height: bufferHeight };
+      const rectWidth = Math.max(1, Number(rect.width) || 1);
+      const rectHeight = Math.max(1, Number(rect.height) || 1);
+      const x = Math.floor((Number(rect.x) || 0) * ratio);
+      const yTop = Number(rect.y) || 0;
+      const y = Math.floor((cssHeight - yTop - rectHeight) * ratio);
+      return {
+        x,
+        y,
+        width: Math.max(1, Math.floor(rectWidth * ratio)),
+        height: Math.max(1, Math.floor(rectHeight * ratio)),
+      };
+    }
+
+    setViewportRect(rect = null) {
+      this.viewportRect = rect || null;
       return true;
     }
 

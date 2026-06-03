@@ -8789,8 +8789,12 @@
         return false;
       }
       const target = this.resolveTutorialIntroTarget(intro, state, options);
-      if (!target) return false;
+      if (!target) {
+        this.disposeTutorialAdvisorSpine();
+        return false;
+      }
       if (intro.step === 'march') {
+        this.disposeTutorialAdvisorSpine();
         this.renderTutorialIntroMarch(intro, target);
         return true;
       }
@@ -8808,6 +8812,7 @@
       existing.player?.dispose?.();
       existing.player?.stop?.();
       this.tutorialAdvisorSpine = null;
+      this.h5Runtime?.setLayerVisible?.('tutorialSpine', false);
       return true;
     }
 
@@ -9011,7 +9016,7 @@
       const panelY = Math.max(84, this.height - panelH - 76 - this.bottomSafeArea);
       const portraitW = Math.min(188, Math.max(134, layout.contentWidth * 0.42));
       const portraitH = Math.min(330, Math.max(248, this.height * 0.38));
-      const portraitX = Math.max(layout.contentX - 6, panelX - 12);
+      const portraitX = Math.max(layout.contentX - 72, panelX + 104 - portraitW);
       const portraitY = Math.max(48, panelY - portraitH + 44);
 
       this.drawPanel(panelX + 92, panelY, panelW - 92, panelH, {
@@ -9035,6 +9040,7 @@
     }
 
     renderTutorialIntroAdvisorPortrait(x, y, width, height) {
+      if (this.renderTutorialAdvisorSpineLayer(x, y, width, height)) return true;
       const spineFrame = this.getTutorialAdvisorSpineFrame();
       if (spineFrame && typeof this.ctx.drawImage === 'function') {
         this.ctx.save?.();
@@ -9080,6 +9086,85 @@
       return false;
     }
 
+    renderTutorialAdvisorSpineLayer(x, y, width, height) {
+      const runtime = this.h5Runtime || null;
+      if (!runtime?.ensureLayerCanvas || !global.SpineWebglPlayer?.isAvailable?.()) return false;
+      const pixelRatio = Math.min(2, Math.max(1, Number(global.devicePixelRatio) || 1));
+      const layerRect = {
+        x: Math.max(-24, Math.floor(Number(x) || 0)),
+        y: Math.max(0, Math.floor(Number(y) || 0)),
+        width: Math.max(1, Math.ceil(Number(width) || 1)),
+        height: Math.max(1, Math.ceil(Number(height) || 1)),
+      };
+      const canvas = runtime.ensureLayerCanvas('tutorialSpine', {
+        contextType: 'webgl',
+        zIndex: 1000,
+        pixelRatio,
+        rect: layerRect,
+      });
+      if (!canvas) return false;
+      runtime.setLayerVisible?.('tutorialSpine', true);
+      const metrics = runtime.getLayerMetrics?.('tutorialSpine') || {};
+      const logicalWidth = metrics.width || layerRect.width;
+      const logicalHeight = metrics.height || layerRect.height;
+      const existing = this.tutorialAdvisorSpine;
+      if (existing?.mode === 'layer' && existing?.player && existing.canvas === canvas) {
+        return existing.player.status === 'ready' || existing.player.status === 'loading';
+      }
+      existing?.player?.dispose?.();
+      const player = new global.SpineWebglPlayer({
+        canvas,
+        runtime: global,
+        background: null,
+        fitPadding: 1,
+        targetFps: 60,
+        logicalWidth,
+        logicalHeight,
+        maxDevicePixelRatio: pixelRatio,
+        premultipliedAlpha: false,
+        preserveDrawingBuffer: false,
+        viewFocus: {
+          centerX: 0,
+          centerY: 1080,
+          height: 900,
+        },
+        onError: () => {
+          this.tutorialAdvisorSpineFailed = true;
+          runtime.setLayerVisible?.('tutorialSpine', false);
+        },
+        onStatus: (event = {}) => {
+          if (event.status === 'ready') this.handleAssetsChanged();
+        },
+      });
+      this.tutorialAdvisorSpine = { canvas, player, mode: 'layer' };
+      const loaded = player.load({
+        assetBase: 'assets/art/spine/tutorial/advisor/',
+        jsonFile: 'tutorial_advisor.json',
+        atlasFile: 'tutorial_advisor.atlas',
+        animationName: 'animation',
+        loop: true,
+        alpha: true,
+        antialias: true,
+        targetFps: 60,
+        logicalWidth,
+        logicalHeight,
+        maxDevicePixelRatio: pixelRatio,
+        preserveDrawingBuffer: false,
+        viewFocus: {
+          centerX: 0,
+          centerY: 1080,
+          height: 900,
+        },
+      });
+      if (!loaded) {
+        this.tutorialAdvisorSpineFailed = true;
+        this.tutorialAdvisorSpine = null;
+        runtime.setLayerVisible?.('tutorialSpine', false);
+        return false;
+      }
+      return true;
+    }
+
     drawTutorialAdvisorImageCover(image, sx, sy, sw, sh, dx, dy, dw, dh) {
       if (!image || typeof this.ctx?.drawImage !== 'function') return false;
       let sourceX = Number(sx) || 0;
@@ -9122,7 +9207,7 @@
         runtime: global,
         background: null,
         fitPadding: 1,
-        targetFps: 8,
+        targetFps: 30,
         logicalWidth: 288,
         logicalHeight: 420,
         maxDevicePixelRatio: 1,
@@ -9149,7 +9234,7 @@
         loop: true,
         alpha: true,
         antialias: false,
-        targetFps: 8,
+        targetFps: 30,
         logicalWidth: 288,
         logicalHeight: 420,
         maxDevicePixelRatio: 1,
