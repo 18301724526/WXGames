@@ -8946,7 +8946,6 @@
         this.ctx.fillRect(0, y + 1, width, 1);
       }
       const items = [
-        { id: 'capital', label: '首都', icon: 'assets/art/icon-home-cutout.png', action: { type: 'openCommandPanel', panel: 'capital' } },
         { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
         { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
         { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
