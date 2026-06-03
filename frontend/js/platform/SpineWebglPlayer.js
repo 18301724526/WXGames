@@ -26,6 +26,8 @@
       this.premultipliedAlpha = Boolean(options.premultipliedAlpha);
       this.background = options.background || null;
       this.fitPadding = Number(options.fitPadding ?? 1.08);
+      this.viewFocus = options.viewFocus || null;
+      this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer);
       this.onStatus = typeof options.onStatus === 'function' ? options.onStatus : null;
       this.onError = typeof options.onError === 'function' ? options.onError : null;
     }
@@ -42,6 +44,8 @@
     initCanvas(canvas = this.canvas, options = {}) {
       this.canvas = canvas;
       if (!this.canvas) throw new Error('Spine canvas is required');
+      if (typeof this.canvas.addEventListener !== 'function') this.canvas.addEventListener = () => {};
+      if (typeof this.canvas.removeEventListener !== 'function') this.canvas.removeEventListener = () => {};
       if (!SpineWebglPlayer.isAvailable(this.spine)) {
         throw new Error('Spine 3.8 WebGL runtime is unavailable');
       }
@@ -50,6 +54,7 @@
         alpha: options.alpha !== false,
         premultipliedAlpha: Boolean(options.premultipliedAlpha),
         antialias: options.antialias !== false,
+        preserveDrawingBuffer: Boolean(options.preserveDrawingBuffer ?? this.preserveDrawingBuffer),
       };
       this.context = new this.spine.webgl.ManagedWebGLRenderingContext(this.canvas, contextConfig);
       this.gl = this.context.gl;
@@ -74,6 +79,8 @@
         this.loop = options.loop !== false;
         this.premultipliedAlpha = Boolean(options.premultipliedAlpha ?? this.premultipliedAlpha);
         this.fitPadding = Number(options.fitPadding ?? this.fitPadding) || 1.08;
+        this.viewFocus = options.viewFocus || this.viewFocus;
+        this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer ?? this.preserveDrawingBuffer);
         this.background = options.background ?? this.background;
         this.assetManager = new this.spine.webgl.AssetManager(this.context, this.assetBase);
         this.assetManager.loadText(this.jsonFile);
@@ -136,6 +143,16 @@
       const bounds = this.bounds;
       const centerX = bounds.offset.x + bounds.size.x / 2;
       const centerY = bounds.offset.y + bounds.size.y / 2;
+      if (this.viewFocus) {
+        const focusCenterX = Number(this.viewFocus.centerX ?? centerX);
+        const focusCenterY = Number(this.viewFocus.centerY ?? centerY);
+        const requestedHeight = Number(this.viewFocus.height ?? this.viewFocus.worldHeight);
+        const viewHeight = Math.max(1, Number.isFinite(requestedHeight) ? requestedHeight : bounds.size.y * this.fitPadding);
+        const viewWidth = viewHeight * (width / Math.max(1, height));
+        this.mvp.ortho2d(focusCenterX - viewWidth / 2, focusCenterY - viewHeight / 2, viewWidth, viewHeight);
+        this.gl.viewport(0, 0, width, height);
+        return true;
+      }
       const safeBoundsWidth = Math.max(1, bounds.size.x);
       const safeBoundsHeight = Math.max(1, bounds.size.y);
       const scale = Math.max(safeBoundsWidth / width, safeBoundsHeight / height) * this.fitPadding;

@@ -73,6 +73,8 @@
       this.worldTileWaterFrameCaches = new Map();
       this.worldTileWaterChunkCaches = new Map();
       this.worldTileWaterChunkCacheTick = 0;
+      this.tutorialAdvisorSpine = null;
+      this.tutorialAdvisorSpineFailed = false;
       this.worldTileViewCache = null;
       this.worldTileWaterTimeOverride = null;
       this.assetsChangedHandler = null;
@@ -757,6 +759,36 @@
       const canvas = factory(width, height);
       canvas.width = width;
       canvas.height = height;
+      return canvas;
+    }
+
+    createTutorialSpineCanvas(width, height) {
+      const safeWidth = Math.max(1, Math.floor(Number(width) || 1));
+      const safeHeight = Math.max(1, Math.floor(Number(height) || 1));
+      let canvas = null;
+      if (typeof global.OffscreenCanvas === 'function') {
+        try {
+          canvas = new global.OffscreenCanvas(safeWidth, safeHeight);
+        } catch (_) {
+          canvas = null;
+        }
+      }
+      if (!canvas && typeof OffscreenCanvas === 'function') {
+        try {
+          canvas = new OffscreenCanvas(safeWidth, safeHeight);
+        } catch (_) {
+          canvas = null;
+        }
+      }
+      if (!canvas) {
+        const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+        if (doc?.createElement) canvas = doc.createElement('canvas');
+      }
+      if (!canvas) return null;
+      canvas.width = safeWidth;
+      canvas.height = safeHeight;
+      if (typeof canvas.addEventListener !== 'function') canvas.addEventListener = () => {};
+      if (typeof canvas.removeEventListener !== 'function') canvas.removeEventListener = () => {};
       return canvas;
     }
 
@@ -8917,17 +8949,44 @@
     renderTutorialIntroFinger(x, y) {
       const pulse = 0.5 + Math.sin(this.getNow() / 180) * 0.5;
       this.ctx.save?.();
-      this.ctx.strokeStyle = `rgba(255, 226, 168, ${0.52 + pulse * 0.32})`;
+      this.ctx.translate?.(x + pulse * 5, y - pulse * 7);
+      this.ctx.rotate?.(-0.55);
+      this.ctx.strokeStyle = `rgba(255, 226, 168, ${0.56 + pulse * 0.28})`;
       this.ctx.lineWidth = 2;
       this.ctx.beginPath?.();
-      this.ctx.arc?.(x, y, 15 + pulse * 8, 0, Math.PI * 2);
+      this.ctx.arc?.(0, 0, 18 + pulse * 8, 0, Math.PI * 2);
       this.ctx.stroke?.();
-      this.drawText('点', x, y - 3, {
-        size: 18,
-        bold: true,
-        color: '#ffe2a8',
-        baseline: 'middle',
-        align: 'center',
+      this.ctx.fillStyle = 'rgba(255, 235, 183, 0.96)';
+      this.ctx.strokeStyle = 'rgba(80, 52, 22, 0.72)';
+      this.ctx.lineWidth = 2.2;
+      this.ctx.lineJoin = 'round';
+      this.ctx.lineCap = 'round';
+      this.ctx.beginPath?.();
+      this.ctx.moveTo?.(-5, -24);
+      this.ctx.quadraticCurveTo?.(-1, -31, 6, -26);
+      this.ctx.lineTo?.(12, -4);
+      this.ctx.quadraticCurveTo?.(17, -9, 22, -5);
+      this.ctx.quadraticCurveTo?.(26, -1, 22, 6);
+      this.ctx.lineTo?.(16, 22);
+      this.ctx.quadraticCurveTo?.(10, 31, -2, 29);
+      this.ctx.lineTo?.(-15, 25);
+      this.ctx.quadraticCurveTo?.(-22, 23, -19, 17);
+      this.ctx.quadraticCurveTo?.(-15, 13, -8, 14);
+      this.ctx.lineTo?.(-5, -24);
+      this.ctx.closePath?.();
+      this.ctx.fill?.();
+      this.ctx.stroke?.();
+      this.ctx.strokeStyle = 'rgba(128, 83, 34, 0.38)';
+      this.ctx.lineWidth = 1.5;
+      [
+        [-1, -5, 3, 14],
+        [6, -4, 9, 15],
+        [13, 2, 12, 17],
+      ].forEach((line) => {
+        this.ctx.beginPath?.();
+        this.ctx.moveTo?.(line[0], line[1]);
+        this.ctx.lineTo?.(line[2], line[3]);
+        this.ctx.stroke?.();
       });
       this.ctx.restore?.();
     }
@@ -8938,25 +8997,25 @@
       const panelH = 136;
       const panelX = layout.contentX + Math.max(0, (layout.contentWidth - panelW) / 2);
       const panelY = Math.max(84, this.height - panelH - 76 - this.bottomSafeArea);
-      const portraitW = 92;
-      const portraitH = 124;
-      const portraitX = panelX - 2;
-      const portraitY = panelY - 30;
+      const portraitW = Math.min(188, Math.max(134, layout.contentWidth * 0.42));
+      const portraitH = Math.min(330, Math.max(248, this.height * 0.38));
+      const portraitX = Math.max(layout.contentX - 6, panelX - 12);
+      const portraitY = Math.max(48, panelY - portraitH + 44);
 
-      this.drawPanel(panelX + 54, panelY, panelW - 54, panelH, {
+      this.drawPanel(panelX + 92, panelY, panelW - 92, panelH, {
         fill: 'rgba(23, 17, 12, 0.94)',
         stroke: 'rgba(246, 214, 147, 0.3)',
         radius: 8,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
       this.renderTutorialIntroAdvisorPortrait(portraitX, portraitY, portraitW, portraitH);
-      this.drawText(advisorName, panelX + 76, panelY + 24, {
+      this.drawText(advisorName, panelX + 116, panelY + 24, {
         size: 14,
         bold: true,
         color: '#ffd98a',
       });
-      const lines = this.wrapTextLimit(message, panelW - 96, 3, { size: 13 });
-      this.drawTextLines(lines, panelX + 76, panelY + 46, {
+      const lines = this.wrapTextLimit(message, panelW - 138, 3, { size: 13 });
+      this.drawTextLines(lines, panelX + 116, panelY + 46, {
         size: 13,
         color: '#f7ecd0',
         lineHeight: 18,
@@ -8964,13 +9023,33 @@
     }
 
     renderTutorialIntroAdvisorPortrait(x, y, width, height) {
+      const spineFrame = this.getTutorialAdvisorSpineFrame();
+      if (spineFrame && typeof this.ctx.drawImage === 'function') {
+        this.ctx.save?.();
+        this.ctx.beginPath?.();
+        this.ctx.rect?.(x, y, width, height);
+        this.ctx.clip?.();
+        this.drawTutorialAdvisorImageCover(spineFrame, 0, 0, spineFrame.width, spineFrame.height, x, y, width, height);
+        this.ctx.restore?.();
+        return true;
+      }
       const image = this.getAsset('assets/art/spine/tutorial/advisor/tutorial_advisor.png');
       this.ctx.save?.();
       this.ctx.beginPath?.();
       this.ctx.rect?.(x, y, width, height);
       this.ctx.clip?.();
       if (image && typeof this.ctx.drawImage === 'function') {
-        this.ctx.drawImage(image, 120, 40, 420, 780, x - 26, y - 8, width + 68, height + 96);
+        this.drawTutorialAdvisorImageCover(
+          image,
+          0,
+          0,
+          image.naturalWidth || image.width,
+          Math.min(1120, image.naturalHeight || image.height),
+          x,
+          y,
+          width,
+          height,
+        );
       } else {
         this.drawPanel(x + 8, y + 20, width - 16, height - 22, {
           fill: 'rgba(48, 37, 28, 0.92)',
@@ -8986,6 +9065,85 @@
         });
       }
       this.ctx.restore?.();
+      return false;
+    }
+
+    drawTutorialAdvisorImageCover(image, sx, sy, sw, sh, dx, dy, dw, dh) {
+      if (!image || typeof this.ctx?.drawImage !== 'function') return false;
+      let sourceX = Number(sx) || 0;
+      let sourceY = Number(sy) || 0;
+      let sourceW = Math.max(1, Number(sw) || image.width || image.naturalWidth || 1);
+      let sourceH = Math.max(1, Number(sh) || image.height || image.naturalHeight || 1);
+      const targetW = Math.max(1, Number(dw) || 1);
+      const targetH = Math.max(1, Number(dh) || 1);
+      const sourceAspect = sourceW / sourceH;
+      const targetAspect = targetW / targetH;
+      if (sourceAspect > targetAspect) {
+        const nextW = sourceH * targetAspect;
+        sourceX += (sourceW - nextW) * 0.5;
+        sourceW = nextW;
+      } else if (sourceAspect < targetAspect) {
+        const nextH = sourceW / targetAspect;
+        sourceY += Math.max(0, (sourceH - nextH) * 0.08);
+        sourceH = nextH;
+      }
+      this.ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, dx, dy, targetW, targetH);
+      return true;
+    }
+
+    getTutorialAdvisorSpineFrame() {
+      if (this.tutorialAdvisorSpineFailed) return null;
+      const existing = this.tutorialAdvisorSpine;
+      if (existing?.player?.status === 'ready' && existing.canvas) return existing.canvas;
+      if (existing) return null;
+      if (!global.SpineWebglPlayer?.isAvailable?.()) {
+        this.tutorialAdvisorSpineFailed = true;
+        return null;
+      }
+      const canvas = this.createTutorialSpineCanvas(360, 520);
+      if (!canvas) {
+        this.tutorialAdvisorSpineFailed = true;
+        return null;
+      }
+      const player = new global.SpineWebglPlayer({
+        canvas,
+        runtime: global,
+        background: null,
+        fitPadding: 1,
+        premultipliedAlpha: false,
+        preserveDrawingBuffer: true,
+        viewFocus: {
+          centerX: 0,
+          centerY: 420,
+          height: 980,
+        },
+        onError: () => {
+          this.tutorialAdvisorSpineFailed = true;
+        },
+        onStatus: (event = {}) => {
+          if (event.status === 'ready') this.handleAssetsChanged();
+        },
+      });
+      this.tutorialAdvisorSpine = { canvas, player };
+      const loaded = player.load({
+        assetBase: 'assets/art/spine/tutorial/advisor/',
+        jsonFile: 'tutorial_advisor.json',
+        atlasFile: 'tutorial_advisor.atlas',
+        animationName: 'animation',
+        loop: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+        viewFocus: {
+          centerX: 0,
+          centerY: 420,
+          height: 980,
+        },
+      });
+      if (!loaded) {
+        this.tutorialAdvisorSpineFailed = true;
+        this.tutorialAdvisorSpine = null;
+      }
+      return null;
     }
 
     renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {

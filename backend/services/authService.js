@@ -4,6 +4,7 @@ const ACCOUNT_WHITELIST = Object.freeze({
   test1: '123456',
   test2: '123456',
   test3: '123456',
+  codexqa: '123456',
 });
 
 class AuthService {
