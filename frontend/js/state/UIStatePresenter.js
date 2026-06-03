@@ -1243,23 +1243,21 @@
     }
 
     static buildMilitaryNavigationViewState(state = {}) {
-      const locked = this.toNumber(state.currentEra) < 5;
       const requestedView = ['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army';
-      const activeView = locked && requestedView !== 'army' ? 'army' : requestedView;
+      const activeView = requestedView;
       const views = ['army', 'scout', 'world'].map((id) => {
-        const disabled = locked && id !== 'army';
         return {
           id,
           isActive: id === activeView,
-          disabled,
-          isLocked: disabled,
-          title: disabled ? '进入古典时代后解锁' : '',
+          disabled: false,
+          isLocked: false,
+          title: '',
           ariaSelected: String(id === activeView),
         };
       });
       return {
         activeView,
-        locked,
+        locked: false,
         views,
       };
     }
@@ -2350,13 +2348,6 @@
     static buildScoutControlViewState(state = {}, options = {}) {
       const nowMs = options.nowMs ?? Date.now();
       const territoryState = state.territoryState || {};
-      const currentEra = this.toNumber(state.currentEra);
-      if (currentEra < 5) {
-        return {
-          statusText: '进入古典时代后可派出侦察队。',
-          cells: [],
-        };
-      }
 
       const directions = Array.isArray(territoryState.directions) ? territoryState.directions : [];
       const scoutMissions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];

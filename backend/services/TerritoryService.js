@@ -2231,7 +2231,6 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
 
 function startScout(gameState, direction, now = new Date()) {
   normalizeTerritoryState(gameState, now);
-  if ((gameState.currentEra || 0) < 5) return { success: false, error: 'ERA_NOT_UNLOCKED', message: '古典时代后才能侦察外部世界' };
   const normalizedDirection = normalizeDirection(direction);
   if (!normalizedDirection) return { success: false, error: 'INVALID_DIRECTION', message: '请选择有效侦察方向' };
   if (countActiveScoutMissions(gameState) >= MAX_ACTIVE_SCOUTS) {
@@ -2321,7 +2320,6 @@ function scoutTerritory(gameState, direction, now = new Date()) {
 
 function startConquest(gameState, territoryId, expeditionInput, now = new Date()) {
   normalizeTerritoryState(gameState, now);
-  if ((gameState.currentEra || 0) < 5) return { success: false, error: 'ERA_NOT_UNLOCKED', message: '古典时代后才能发起占领' };
   const territory = getTerritory(gameState, territoryId);
   if (!territory) return { success: false, error: 'TERRITORY_NOT_FOUND', message: '地点不存在' };
   if (territory.status !== 'discovered') return { success: false, error: 'TERRITORY_NOT_DISCOVERED', message: '只能占领已发现且未控制的地点' };
