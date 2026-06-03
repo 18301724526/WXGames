@@ -52,6 +52,12 @@
       this.storage?.setItem?.(LEGACY_STORAGE_KEY, 'true');
     }
 
+    resetSeen() {
+      this.storage?.removeItem?.(STORAGE_KEY);
+      this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
+      return true;
+    }
+
     shouldStart(state = this.game?.state) {
       if (this.running || this.hasSeen()) return false;
       if (!state || typeof state !== 'object') return false;

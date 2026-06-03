@@ -137,9 +137,15 @@ window.mountAuthMethods = function(game, deps = {}) {
         authRuntime?.alertMessage?.(result.message || '重置失败');
         return false;
       }
+      clearTutorialStorage();
+      this.tutorialIntroOverlay?.resetSeen?.();
+      this.tutorialIntroOverlay?.finish?.({ markSeen: false });
+      this.tutorialIntro = null;
+      if (this.canvasShell) this.canvasShell.tutorialIntro = null;
       this.resetLocalViewToResources?.({ skipRender: true });
       this.canvasShell?.resetLocalViewToResources?.({ skipGame: true, skipRender: true });
       this.applyApiState(result);
+      this.maybeStartTutorialIntro?.();
       this.showFloatingText && this.showFloatingText(result.message || '进度已重置');
       this.log && this.log(`✅ ${result.message || '进度已重置'}`);
       authRuntime?.alertMessage?.(result.message || '进度已重置');
