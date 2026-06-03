@@ -8080,7 +8080,7 @@
       }
     }
 
-    renderWorldCityCommandOverlay(detail = {}, territories = [], state = {}, options = {}) {
+    renderWorldCityCommandLegacyOverlay(detail = {}, territories = [], state = {}, options = {}) {
       const selectedSite = territories.find((site) => site.id === detail.id) || {};
       const layout = this.getLayout();
       const panelWidth = Math.min(layout.contentWidth - 18, 372);
