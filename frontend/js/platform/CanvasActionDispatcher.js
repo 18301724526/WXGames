@@ -144,6 +144,34 @@
         return this.finishHandled(opened, context, action);
       }
 
+      if (action.type === 'closeArmyFormationEditor') {
+        const closed = typeof context.closeArmyFormationEditor === 'function'
+          ? context.closeArmyFormationEditor(action)
+          : false;
+        return this.finishHandled(closed, context, action);
+      }
+
+      if (action.type === 'toggleArmyFormationMember') {
+        const toggled = typeof context.toggleArmyFormationMember === 'function'
+          ? context.toggleArmyFormationMember(action)
+          : false;
+        return this.finishHandled(toggled, context, action);
+      }
+
+      if (action.type === 'changeArmyFormationPage') {
+        const changed = typeof context.changeArmyFormationPage === 'function'
+          ? context.changeArmyFormationPage(action)
+          : false;
+        return this.finishHandled(changed, context, action);
+      }
+
+      if (action.type === 'saveArmyFormation') {
+        const saved = typeof context.saveArmyFormation === 'function'
+          ? context.saveArmyFormation(action)
+          : false;
+        return this.finishHandled(saved, context, action);
+      }
+
       if (action.type === 'openSettings') {
         const opened = typeof context.openSettings === 'function'
           ? context.openSettings(action) !== false
@@ -426,6 +454,10 @@
         'closeCityManagement',
         'switchCityManagementTab',
         'openArmyFormation',
+        'closeArmyFormationEditor',
+        'toggleArmyFormationMember',
+        'changeArmyFormationPage',
+        'saveArmyFormation',
         'openSettings',
         'closeSettings',
         'openLogs',

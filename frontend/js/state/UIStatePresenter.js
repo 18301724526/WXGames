@@ -2289,6 +2289,33 @@
       const batchSize = this.toInteger(military.trainingBatchSize, 1);
       const availableSoldiers = this.toInteger(state.territoryState?.availableSoldiers ?? military.availableSoldiers ?? soldiers);
       const soldiersOnMission = this.toInteger(state.territoryState?.soldiersOnMission ?? military.soldiersOnMission ?? 0);
+      const cityId = state.activeCityId || state.cityState?.activeCityId || 'capital';
+      const people = Array.isArray(state.famousPersons?.people) ? state.famousPersons.people : [];
+      const peopleById = new Map(people.map((person) => [person.id, person]));
+      const rawFormations = military.formations && typeof military.formations === 'object' ? military.formations : {};
+      const cityFormations = Array.isArray(rawFormations[cityId]) ? rawFormations[cityId] : [];
+      const maxFormationMembers = 5;
+      const formationNames = ['部队一', '部队二', '部队三'];
+      const formations = [1, 2, 3].map((slot) => {
+        const rawFormation = cityFormations.find((item) => Number(item?.slot) === slot) || cityFormations[slot - 1] || {};
+        const memberIds = Array.isArray(rawFormation.memberIds) ? rawFormation.memberIds : [];
+        const members = memberIds
+          .map((personId) => peopleById.get(personId))
+          .filter(Boolean)
+          .map((person) => this.buildFamousPersonCard(person));
+        return {
+          slot,
+          cityId,
+          name: rawFormation.name || formationNames[slot - 1] || `部队${slot}`,
+          memberIds: members.map((member) => member.id),
+          members,
+          leader: members[0] || null,
+          memberCount: members.length,
+          maxMembers: maxFormationMembers,
+          isEmpty: members.length === 0,
+        };
+      });
+      const formationPeople = this.sortFamousPeopleForRoster(people).map((person) => this.buildFamousPersonCard(person));
 
       let trainingText = `下一批 ${batchSize} 兵 · ${progress}/${interval} 秒`;
       let trainingProgressWidth = interval > 0
@@ -2313,6 +2340,14 @@
         },
         training: {
           progressWidth: trainingProgressWidth,
+        },
+        formations,
+        formationPeople,
+        formationMeta: {
+          cityId,
+          maxSlots: 3,
+          maxMembers: maxFormationMembers,
+          summary: `3 支部队 · 每队最多 ${maxFormationMembers} 名名人`,
         },
       };
     }

@@ -4165,6 +4165,149 @@
       this.addHitTarget({ x: innerX + applyWidth + 8, y: actionY, width: innerWidth - applyWidth - 8, height: actionHeight }, { type: 'saveTalentPolicyDraft' });
     }
 
+    renderArmyFormationEditor(state = {}, options = {}) {
+      if (!this.presenter || typeof this.presenter.buildMilitaryViewState !== 'function') return;
+      const editor = options.armyFormationEditor || {};
+      if (!editor.open) return;
+      const view = this.presenter.buildMilitaryViewState(state);
+      const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
+      const formation = (view.formations || []).find((item) => Number(item.slot) === slot)
+        || { slot, cityId: view.formationMeta?.cityId || state.activeCityId || 'capital', name: `部队${slot}`, members: [], memberIds: [], maxMembers: 5 };
+      const allPeople = Array.isArray(view.formationPeople) ? view.formationPeople : [];
+      const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds : formation.memberIds || [];
+      const selectedIds = new Set(memberIds);
+      const peopleById = new Map(allPeople.map((person) => [person.id, person]));
+      const selectedMembers = memberIds.map((personId) => peopleById.get(personId)).filter(Boolean);
+      const maxMembers = formation.maxMembers || view.formationMeta?.maxMembers || 5;
+      const layout = this.getLayout();
+      const panelWidth = Math.min(390, layout.contentWidth - 10);
+      const panelHeight = Math.min(570, Math.max(470, this.height - 132));
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.max(54, Math.floor((this.height - panelHeight) / 2));
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeArmyFormationEditor', background: true });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(50, 38, 26, 0.99)'],
+            [1, 'rgba(20, 18, 14, 0.99)'],
+          ],
+          'rgba(34, 27, 20, 0.99)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.26)',
+        radius: 12,
+        inset: 'rgba(255, 231, 184, 0.09)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const closeSize = 28;
+      this.drawText(`${formation.name || `部队${slot}`}编队`, x + 18, y + 16, { size: 18, bold: true, color: '#ffe6b5' });
+      this.drawText(`已选 ${selectedIds.size}/${maxMembers} · 第一位为主将`, x + 18, y + 43, { size: 12, color: '#cbbd96' });
+      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeArmyFormationEditor' });
+
+      const innerX = x + 14;
+      const innerWidth = panelWidth - 28;
+      const summaryY = y + 72;
+      this.drawPanel(innerX, summaryY, innerWidth, 78, {
+        fill: 'rgba(24, 21, 17, 0.64)',
+        stroke: 'rgba(240, 180, 91, 0.18)',
+        radius: 8,
+      });
+      const slotSize = 48;
+      const slotGap = Math.max(5, Math.min(10, (innerWidth - slotSize * maxMembers - 18) / Math.max(1, maxMembers - 1)));
+      const selectedStartX = innerX + 10;
+      for (let index = 0; index < maxMembers; index += 1) {
+        const member = selectedMembers[index] || null;
+        const slotX = selectedStartX + index * (slotSize + slotGap);
+        this.renderArmyFormationPortrait(member, slotX, summaryY + 12, slotSize, slotSize, { radius: 5, scale: 1.34 });
+        this.drawText(index === 0 ? '主' : '副', slotX + slotSize / 2, summaryY + 67, {
+          size: 9,
+          color: member ? '#ffe6b5' : 'rgba(255, 230, 181, 0.46)',
+          align: 'center',
+        });
+      }
+
+      const listTop = summaryY + 94;
+      this.drawText('名人列表', innerX, listTop, { size: 13, bold: true, color: '#ffe6b5' });
+      const pageSize = Math.max(3, Math.min(5, Math.floor((panelHeight - 244) / 58)));
+      const pages = Math.max(1, Math.ceil(allPeople.length / pageSize));
+      const page = Math.max(0, Math.min(pages - 1, Number(editor.page) || 0));
+      const listY = listTop + 22;
+      const rowHeight = 54;
+      if (!allPeople.length) {
+        this.drawPanel(innerX, listY, innerWidth, 88, {
+          fill: 'rgba(27, 23, 18, 0.62)',
+          stroke: 'rgba(255, 226, 177, 0.1)',
+          radius: 8,
+        });
+        this.drawTextLines(this.wrapTextLimit('暂无可编入的名人。先在名人入口接纳名人后，再回来编队。', innerWidth - 28, 3, { size: 12 }), innerX + 14, listY + 18, {
+          size: 12,
+          color: '#aeb0b8',
+          lineHeight: 18,
+        });
+      } else {
+        allPeople.slice(page * pageSize, page * pageSize + pageSize).forEach((person, index) => {
+          const rowY = listY + index * (rowHeight + 6);
+          const selected = selectedIds.has(person.id);
+          const disabled = !selected && selectedIds.size >= maxMembers;
+          this.drawPanel(innerX, rowY, innerWidth, rowHeight, {
+            fill: selected ? 'rgba(61, 49, 31, 0.92)' : 'rgba(31, 27, 22, 0.78)',
+            stroke: selected ? 'rgba(116, 211, 160, 0.38)' : 'rgba(255, 226, 177, 0.12)',
+            radius: 8,
+            inset: selected ? 'rgba(116, 211, 160, 0.06)' : 'rgba(255, 231, 184, 0.04)',
+          });
+          this.renderArmyFormationPortrait(person, innerX + 9, rowY + 7, 40, 40, { radius: 5, scale: 1.34 });
+          const nameWidth = innerWidth - 132;
+          this.drawText(this.truncateText(person.name || '无名', nameWidth, { size: 13, bold: true }), innerX + 58, rowY + 9, {
+            size: 13,
+            bold: true,
+            color: disabled ? '#8d8f99' : '#fff1cf',
+          });
+          this.drawText(this.truncateText(`${person.qualityLabel || ''} · ${person.roleText || person.title || ''}`, nameWidth, { size: 10 }), innerX + 58, rowY + 30, {
+            size: 10,
+            color: disabled ? 'rgba(174, 176, 184, 0.48)' : '#cbbd96',
+          });
+          this.drawButton(innerX + innerWidth - 64, rowY + 12, 50, 30, selected ? '移除' : '加入', {
+            size: 11,
+            radius: 7,
+            active: selected,
+            disabled,
+          });
+          this.addHitTarget(
+            { x: innerX, y: rowY, width: innerWidth, height: rowHeight },
+            disabled ? { type: 'blockCanvasModal' } : { type: 'toggleArmyFormationMember', personId: person.id },
+          );
+        });
+      }
+
+      const bottomY = y + panelHeight - 50;
+      const pageButtonWidth = 72;
+      this.drawButton(innerX, bottomY, pageButtonWidth, 34, '上一页', { size: 11, radius: 8, disabled: page <= 0 });
+      this.addHitTarget({ x: innerX, y: bottomY, width: pageButtonWidth, height: 34 }, page <= 0 ? { type: 'blockCanvasModal' } : { type: 'changeArmyFormationPage', delta: -1 });
+      this.drawText(`${page + 1}/${pages}`, innerX + pageButtonWidth + 34, bottomY + 17, {
+        size: 11,
+        color: '#cbbd96',
+        align: 'center',
+        baseline: 'middle',
+      });
+      this.drawButton(innerX + pageButtonWidth + 58, bottomY, pageButtonWidth, 34, '下一页', { size: 11, radius: 8, disabled: page >= pages - 1 });
+      this.addHitTarget({ x: innerX + pageButtonWidth + 58, y: bottomY, width: pageButtonWidth, height: 34 }, page >= pages - 1 ? { type: 'blockCanvasModal' } : { type: 'changeArmyFormationPage', delta: 1 });
+      const saveX = x + panelWidth - 104;
+      this.drawButton(saveX, bottomY, 88, 34, '保存', {
+        size: 12,
+        bold: true,
+        radius: 8,
+        active: true,
+        disabled: Boolean(editor.saving),
+      });
+      this.addHitTarget({ x: saveX, y: bottomY, width: 88, height: 34 }, editor.saving ? { type: 'blockCanvasModal' } : { type: 'saveArmyFormation' });
+    }
+
     renderBuildings(state = {}, startY = 210, panelHeight = 310, options = {}) {
       if (!this.presenter) return;
       const view = this.presenter.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {}, {
@@ -5986,7 +6129,10 @@
     }
 
     renderMilitaryArmyView(view = {}, x, y, width, height) {
-      const cardHeight = Math.min(150, Math.max(126, height - 18));
+      const formations = Array.isArray(view.formations) ? view.formations : [];
+      const hasFormationSpace = height >= 250;
+      const formationHeight = hasFormationSpace ? Math.min(158, Math.max(132, Math.floor(height * 0.43))) : 0;
+      const cardHeight = Math.min(150, Math.max(104, height - formationHeight - (hasFormationSpace ? 30 : 18)));
       this.drawPanel(x, y, width, cardHeight, {
         fill: 'rgba(28, 22, 17, 0.78)',
         stroke: 'rgba(255, 226, 177, 0.12)',
@@ -6004,6 +6150,148 @@
       const progressY = y + cardHeight - 38;
       this.drawText(view.text?.soldierTrainingText || '等待兵营', x + 16, progressY - 18, { size: 12, color: '#cbbd96' });
       this.drawProgressBar(x + 16, progressY, width - 32, 12, parseFloat(view.training?.progressWidth || '0'));
+      if (!hasFormationSpace) return;
+      this.renderArmyFormationStrip(
+        formations,
+        x,
+        y + cardHeight + 12,
+        width,
+        formationHeight,
+        view.formationMeta || {},
+      );
+    }
+
+    renderArmyFormationPortrait(person = null, x, y, width, height, options = {}) {
+      const radius = options.radius ?? 6;
+      if (person) {
+        const drawn = this.drawFamousPortrait(person, x, y, Math.min(width, height), {
+          frameWidth: width,
+          frameHeight: height,
+          radius,
+          scale: options.scale || 1.35,
+          offsetY: options.offsetY ?? 0.16,
+          fill: options.fill || 'rgba(70, 49, 33, 0.92)',
+          stroke: options.stroke || 'rgba(240, 180, 91, 0.34)',
+        });
+        if (!drawn) {
+          this.drawPanel(x, y, width, height, {
+            fill: 'rgba(70, 49, 33, 0.92)',
+            stroke: 'rgba(240, 180, 91, 0.34)',
+            radius,
+          });
+          this.drawText(String(person.name || '将').slice(0, 1), x + width / 2, y + height / 2, {
+            size: Math.max(13, Math.min(20, width * 0.44)),
+            bold: true,
+            color: '#ffe6b5',
+            align: 'center',
+            baseline: 'middle',
+          });
+        }
+        return;
+      }
+      this.drawPanel(x, y, width, height, {
+        fill: options.fill || 'rgba(22, 20, 17, 0.58)',
+        stroke: options.stroke || 'rgba(255, 226, 177, 0.13)',
+        radius,
+      });
+      this.drawText('+', x + width / 2, y + height / 2 - 1, {
+        size: Math.max(12, Math.min(18, width * 0.45)),
+        color: 'rgba(255, 230, 181, 0.58)',
+        align: 'center',
+        baseline: 'middle',
+      });
+    }
+
+    renderArmyFormationCard(formation = {}, x, y, width, height, index = 0) {
+      const members = Array.isArray(formation.members) ? formation.members : [];
+      const leader = members[0] || null;
+      const active = members.length > 0;
+      this.drawPanel(x, y, width, height, {
+        fill: active ? 'rgba(55, 40, 29, 0.92)' : 'rgba(38, 33, 28, 0.86)',
+        stroke: active ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.14)',
+        radius: 7,
+        inset: active ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
+      });
+      const title = formation.name || `部队${index + 1}`;
+      this.drawText(this.truncateText(title, width - 16, { size: 12, bold: true }), x + width / 2, y + 9, {
+        size: 12,
+        bold: true,
+        color: '#fff1cf',
+        align: 'center',
+      });
+      const innerPad = 8;
+      const leaderSize = Math.min(58, Math.max(34, Math.min(height - 66, width * 0.4)));
+      const leaderX = x + innerPad;
+      const leaderY = y + 28;
+      this.renderArmyFormationPortrait(leader, leaderX, leaderY, leaderSize, leaderSize, { radius: 5, scale: 1.42 });
+      if (leader) {
+        this.drawText(this.truncateText(leader.name || '主将', leaderSize + 10, { size: 9, bold: true }), leaderX + leaderSize / 2, leaderY + leaderSize + 10, {
+          size: 9,
+          bold: true,
+          color: '#ffe6b5',
+          align: 'center',
+        });
+      } else {
+        this.drawText('主将', leaderX + leaderSize / 2, leaderY + leaderSize + 10, {
+          size: 9,
+          color: 'rgba(255, 230, 181, 0.58)',
+          align: 'center',
+        });
+      }
+      const smallGap = 3;
+      const smallAreaWidth = Math.max(24, width - leaderSize - innerPad * 3);
+      const smallSize = Math.max(18, Math.min(32, Math.floor((smallAreaWidth - smallGap) / 2)));
+      const smallStartX = x + width - innerPad - smallSize * 2 - smallGap;
+      const smallStartY = leaderY + 2;
+      [0, 1, 2, 3].forEach((smallIndex) => {
+        const col = smallIndex % 2;
+        const row = Math.floor(smallIndex / 2);
+        this.renderArmyFormationPortrait(
+          members[smallIndex + 1] || null,
+          smallStartX + col * (smallSize + smallGap),
+          smallStartY + row * (smallSize + smallGap),
+          smallSize,
+          smallSize,
+          { radius: 4, scale: 1.32 },
+        );
+      });
+      const countText = `${members.length}/${formation.maxMembers || 5}`;
+      this.drawText(countText, x + width - 10, y + height - 24, {
+        size: 10,
+        bold: true,
+        color: active ? '#74d3a0' : '#cbbd96',
+        align: 'right',
+      });
+      this.drawText(active ? '点击调整' : '点击编制', x + width / 2, y + height - 24, {
+        size: 10,
+        color: active ? '#f0b45b' : 'rgba(234, 234, 234, 0.64)',
+        align: 'center',
+      });
+      this.addHitTarget(
+        { x, y, width, height },
+        { type: 'openArmyFormation', cityId: formation.cityId, slot: formation.slot || index + 1 },
+      );
+    }
+
+    renderArmyFormationStrip(formations = [], x, y, width, height, meta = {}) {
+      this.drawText('编队', x + 2, y + 2, { size: 14, bold: true, color: '#ffe6b5' });
+      this.drawText(meta.summary || '3 支部队 · 每队最多 5 名名人', x + 48, y + 4, { size: 10, color: '#cbbd96' });
+      const cardGap = 8;
+      const cardY = y + 24;
+      const cardHeight = Math.max(108, height - 26);
+      const cardWidth = Math.floor((width - cardGap * 2) / 3);
+      [0, 1, 2].forEach((index) => {
+        const cardX = x + index * (cardWidth + cardGap);
+        const finalCardWidth = index === 2 ? x + width - cardX : cardWidth;
+        this.renderArmyFormationCard(
+          formations[index] || { slot: index + 1, cityId: meta.cityId, name: `部队${index + 1}`, members: [], maxMembers: meta.maxMembers || 5 },
+          cardX,
+          cardY,
+          finalCardWidth,
+          cardHeight,
+          index,
+        );
+      });
     }
 
     getScoutButtonTone(cell = {}) {
@@ -9255,6 +9543,7 @@
       });
       const soldiers = Number(city.military?.soldiers ?? state.military?.soldiers ?? 0) || 0;
       const available = Number(state.territoryState?.availableSoldiers ?? soldiers) || 0;
+      const compactFormation = height < 232;
       this.drawAsset('assets/art/icon-soldier-cutout.webp', x + 16, y + 18, 38, 38);
       this.drawText('驻军', x + 66, y + 17, { size: 16, bold: true, color: '#ffe6b5' });
       this.drawText(`当前兵力 ${soldiers} · 可调兵力 ${available}`, x + 66, y + 42, { size: 12, color: '#cbbd96' });
@@ -9263,13 +9552,15 @@
         { label: '调动', note: '城市之间调配驻军', disabled: true },
         { label: '驻守', note: '设置防守与巡逻队列', disabled: true },
       ];
-      const formationSectionHeight = Math.min(76, Math.max(62, Math.floor(height * 0.28)));
+      const formationSectionHeight = compactFormation
+        ? Math.min(80, Math.max(64, Math.floor(height * 0.34)))
+        : Math.min(166, Math.max(132, Math.floor(height * 0.48)));
       const formationX = x + 12;
       const formationWidth = width - 24;
-      const formationY = Math.max(y + 150, y + height - formationSectionHeight - 10);
+      const formationY = Math.max(y + 138, y + height - formationSectionHeight - 10);
       const rowTop = y + 72;
       const rowGap = 6;
-      const rowAreaHeight = Math.max(84, formationY - rowTop - 8);
+      const rowAreaHeight = Math.max(72, formationY - rowTop - 8);
       const rowHeight = Math.max(26, Math.min(38, Math.floor((rowAreaHeight - rowGap * (rows.length - 1)) / rows.length)));
       rows.forEach((row, index) => {
         const rowY = rowTop + index * (rowHeight + rowGap);
@@ -9283,28 +9574,56 @@
         this.drawButton(x + width - 82, rowY + Math.max(4, (rowHeight - 24) / 2), 58, 24, '待开放', { size: 10, radius: 7, disabled: true });
       });
 
-      const cardGap = 8;
-      const cardY = formationY + 24;
-      const cardHeight = Math.max(36, Math.min(44, y + height - cardY - 10));
-      const cardWidth = Math.floor((formationWidth - cardGap * 2) / 3);
-      this.drawText('编队', formationX, formationY + 5, { size: 14, bold: true, color: '#ffe6b5' });
-      this.drawText('每城最多 3 支军队', formationX + 44, formationY + 7, { size: 10, color: '#cbbd96' });
-      [1, 2, 3].forEach((slot, index) => {
-        const cardX = formationX + index * (cardWidth + cardGap);
-        const finalCardWidth = index === 2 ? formationX + formationWidth - cardX : cardWidth;
-        this.drawPanel(cardX, cardY, finalCardWidth, cardHeight, {
-          fill: 'rgba(50, 42, 31, 0.88)',
-          stroke: 'rgba(240, 180, 91, 0.24)',
-          radius: 8,
-          inset: 'rgba(255, 231, 184, 0.05)',
+      const formationView = this.presenter?.buildMilitaryViewState?.({
+        ...state,
+        activeCityId: city.id || state.activeCityId,
+        cityState: {
+          ...(state.cityState || {}),
+          activeCityId: city.id || state.cityState?.activeCityId,
+        },
+      }) || {};
+      if (compactFormation) {
+        const compactGap = 8;
+        const compactCardY = formationY + 24;
+        const compactCardHeight = Math.max(38, y + height - compactCardY - 8);
+        const compactCardWidth = Math.floor((formationWidth - compactGap * 2) / 3);
+        this.drawText('编队', formationX, formationY + 5, { size: 14, bold: true, color: '#ffe6b5' });
+        this.drawText('每队最多 5 名名人', formationX + 44, formationY + 7, { size: 10, color: '#cbbd96' });
+        (formationView.formations || [{}, {}, {}]).slice(0, 3).forEach((formation, index) => {
+          const cardX = formationX + index * (compactCardWidth + compactGap);
+          const cardWidth = index === 2 ? formationX + formationWidth - cardX : compactCardWidth;
+          const count = Array.isArray(formation.members) ? formation.members.length : 0;
+          this.drawPanel(cardX, compactCardY, cardWidth, compactCardHeight, {
+            fill: count ? 'rgba(55, 40, 29, 0.92)' : 'rgba(38, 33, 28, 0.86)',
+            stroke: count ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.14)',
+            radius: 7,
+          });
+          this.drawText(this.truncateText(formation.name || `部队${index + 1}`, cardWidth - 12, { size: 11, bold: true }), cardX + cardWidth / 2, compactCardY + 9, {
+            size: 11,
+            bold: true,
+            color: '#fff1cf',
+            align: 'center',
+          });
+          this.drawText(`${count}/${formation.maxMembers || 5}`, cardX + cardWidth / 2, compactCardY + compactCardHeight - 17, {
+            size: 10,
+            color: count ? '#74d3a0' : '#cbbd96',
+            align: 'center',
+          });
+          this.addHitTarget(
+            { x: cardX, y: compactCardY, width: cardWidth, height: compactCardHeight },
+            { type: 'openArmyFormation', cityId: formation.cityId || city.id, slot: formation.slot || index + 1 },
+          );
         });
-        this.drawText(`编队 ${slot}`, cardX + 10, cardY + 9, { size: 12, bold: true, color: '#fff1cf' });
-        this.drawText('点击编队', cardX + 10, cardY + 26, { size: 9, color: 'rgba(234, 234, 234, 0.64)' });
-        this.addHitTarget(
-          { x: cardX, y: cardY, width: finalCardWidth, height: cardHeight },
-          { type: 'openArmyFormation', cityId: city.id, slot },
-        );
-      });
+        return;
+      }
+      this.renderArmyFormationStrip(
+        formationView.formations || [],
+        formationX,
+        formationY,
+        formationWidth,
+        Math.max(132, y + height - formationY - 8),
+        formationView.formationMeta || { cityId: city.id, maxMembers: 5 },
+      );
     }
 
     renderSubcityListPanel(state = {}, options = {}) {
@@ -10178,6 +10497,9 @@
       if (options.showTalentPolicy) {
         this.renderTalentPolicyPanel(state, options);
       }
+      if (options.armyFormationEditor?.open) {
+        this.renderArmyFormationEditor(state, options);
+      }
       if (options.activeEventId) {
         this.renderEventModal(state, options.activeEventId);
       }
@@ -10522,6 +10844,7 @@
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
+      if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       if (activeTab === 'tech' && (options.techDetailOpen || state.techUiState?.detailOpen)) {
         const view = this.presenter?.buildTechViewState?.({
@@ -10558,6 +10881,7 @@
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
+      if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);

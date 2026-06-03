@@ -2,6 +2,10 @@ const BuildingConfig = require('../config/BuildingConfig');
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
 
+const MAX_FORMATION_SLOTS = 3;
+const MAX_FORMATION_MEMBERS = 5;
+const FORMATION_NAMES = ['部队一', '部队二', '部队三'];
+
 function getBarracksLevel(buildings) {
   return BuildingState.getLevel(buildings, 'barracks');
 }
@@ -47,6 +51,75 @@ function migrateLegacySoldiers(rawMilitary, stats) {
   return soldiers;
 }
 
+function normalizeFormationSlot(slot) {
+  const value = Math.floor(Number(slot) || 0);
+  if (value < 1 || value > MAX_FORMATION_SLOTS) return 0;
+  return value;
+}
+
+function normalizeFormationMemberIds(memberIds, validPersonIds = null) {
+  const rawIds = Array.isArray(memberIds) ? memberIds : [];
+  const seen = new Set();
+  const validSet = validPersonIds instanceof Set ? validPersonIds : null;
+  const result = [];
+  rawIds.forEach((rawId) => {
+    const id = String(rawId || '').trim();
+    if (!id || seen.has(id)) return;
+    if (validSet && !validSet.has(id)) return;
+    seen.add(id);
+    result.push(id);
+  });
+  return result.slice(0, MAX_FORMATION_MEMBERS);
+}
+
+function createEmptyFormations() {
+  return Array.from({ length: MAX_FORMATION_SLOTS }, (_, index) => ({
+    slot: index + 1,
+    name: FORMATION_NAMES[index] || `部队${index + 1}`,
+    memberIds: [],
+    maxMembers: MAX_FORMATION_MEMBERS,
+  }));
+}
+
+function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
+  const source = Array.isArray(rawCityFormations)
+    ? rawCityFormations
+    : Object.values(rawCityFormations && typeof rawCityFormations === 'object' ? rawCityFormations : {});
+  const bySlot = new Map();
+  source.forEach((rawFormation, index) => {
+    const raw = rawFormation && typeof rawFormation === 'object' ? rawFormation : {};
+    const slot = normalizeFormationSlot(raw.slot || index + 1);
+    if (!slot) return;
+    bySlot.set(slot, {
+      slot,
+      name: String(raw.name || FORMATION_NAMES[slot - 1] || `部队${slot}`).trim(),
+      memberIds: normalizeFormationMemberIds(raw.memberIds || raw.members, validPersonIds),
+      maxMembers: MAX_FORMATION_MEMBERS,
+    });
+  });
+  return createEmptyFormations().map((fallback) => ({
+    ...fallback,
+    ...(bySlot.get(fallback.slot) || {}),
+  }));
+}
+
+function normalizeArmyFormations(rawFormations, gameState = {}) {
+  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
+    .map((person) => String(person?.id || '').trim())
+    .filter(Boolean));
+  const source = rawFormations && typeof rawFormations === 'object' ? rawFormations : {};
+  const cityIds = new Set(Object.keys(source).filter(Boolean));
+  cityIds.add(gameState.activeCityId || 'capital');
+  cityIds.add('capital');
+  const formations = {};
+  cityIds.forEach((cityId) => {
+    const key = String(cityId || '').trim();
+    if (!key) return;
+    formations[key] = normalizeCityFormations(source[key], validPersonIds);
+  });
+  return formations;
+}
+
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
   const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
@@ -67,6 +140,43 @@ function normalizeMilitaryState(rawMilitary, gameState) {
     trainingBatchSize: batchSize,
     defensePerSoldier,
     defense: soldiers * defensePerSoldier,
+    formations: normalizeArmyFormations(rawMilitary?.formations, gameState || {}),
+  };
+}
+
+function setArmyFormation(gameState, payload = {}) {
+  const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
+  const slot = normalizeFormationSlot(payload.slot);
+  if (!slot) {
+    return { success: false, error: 'FORMATION_SLOT_INVALID', message: '编队位置不存在' };
+  }
+  if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
+  }
+  gameState.military = normalizeMilitaryState(gameState.military, gameState);
+  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
+    .map((person) => String(person?.id || '').trim())
+    .filter(Boolean));
+  const memberIds = normalizeFormationMemberIds(payload.memberIds || payload.members, validPersonIds);
+  const formations = {
+    ...(gameState.military.formations || {}),
+    [cityId]: normalizeCityFormations(gameState.military.formations?.[cityId], validPersonIds),
+  };
+  formations[cityId][slot - 1] = {
+    ...formations[cityId][slot - 1],
+    slot,
+    name: FORMATION_NAMES[slot - 1] || `部队${slot}`,
+    memberIds,
+    maxMembers: MAX_FORMATION_MEMBERS,
+  };
+  gameState.military = normalizeMilitaryState({
+    ...gameState.military,
+    formations,
+  }, gameState);
+  return {
+    success: true,
+    message: `${FORMATION_NAMES[slot - 1] || `部队${slot}`}编队已保存`,
+    formation: gameState.military.formations?.[cityId]?.[slot - 1] || null,
   };
 }
 
@@ -98,7 +208,11 @@ function advanceTraining(gameState, deltaSeconds = 0) {
 }
 
 module.exports = {
+  MAX_FORMATION_SLOTS,
+  MAX_FORMATION_MEMBERS,
   getTrainingStats,
   normalizeMilitaryState,
+  normalizeArmyFormations,
+  setArmyFormation,
   advanceTraining,
 };

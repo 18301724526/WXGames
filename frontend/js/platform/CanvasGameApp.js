@@ -74,6 +74,7 @@
       this.selectedFamousPersonId = '';
       this.showTalentPolicy = false;
       this.talentPolicyUiState = {};
+      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.activeCommandPanel = '';
       this.rewardReveal = null;
       this.battleScene = null;
@@ -432,6 +433,9 @@
         selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
         showTalentPolicy: this.showTalentPolicy,
         talentPolicyUiState: this.talentPolicyUiState,
+        armyFormationEditor: this.canvasShell && 'armyFormationEditor' in this.canvasShell
+          ? this.canvasShell.armyFormationEditor
+          : this.armyFormationEditor,
         activeCommandPanel: this.activeCommandPanel || '',
         rewardReveal: this.rewardReveal,
         buildingOffset: this.buildingOffset,
@@ -1179,11 +1183,13 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.activeCommandPanel = '';
       this.rewardReveal = null;
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+      if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeBuildingCategory = 'all';
       this.buildingOffset = 0;
@@ -1226,6 +1232,7 @@
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showTalentPolicy = false;
+      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.activeCommandPanel = '';
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
@@ -1238,6 +1245,7 @@
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
       if (this.canvasShell) this.canvasShell.techDetailOpen = false;
       if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+      if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       if (this.state && typeof this.state === 'object') {
         this.state = {
           ...this.state,
@@ -1451,6 +1459,100 @@
         return true;
       } catch (error) {
         this.log(`鍔犵偣澶辫触锟?{error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    getArmyFormation(cityId, slot) {
+      const targetCityId = cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
+      const targetSlot = Math.max(1, Math.min(3, Number(slot) || 1));
+      const formations = this.state?.military?.formations || {};
+      const cityFormations = Array.isArray(formations[targetCityId]) ? formations[targetCityId] : [];
+      return cityFormations.find((item) => Number(item?.slot) === targetSlot) || cityFormations[targetSlot - 1] || null;
+    }
+
+    setArmyFormationEditor(editor = {}, options = {}) {
+      this.armyFormationEditor = {
+        open: false,
+        cityId: '',
+        slot: 1,
+        memberIds: [],
+        page: 0,
+        saving: false,
+        ...(editor || {}),
+      };
+      if (this.canvasShell && typeof this.canvasShell === 'object') {
+        this.canvasShell.armyFormationEditor = { ...this.armyFormationEditor };
+      }
+      if (options.render !== false) this.renderCanvasSurface(this.state?.currentTab);
+      return true;
+    }
+
+    openArmyFormation(action = {}) {
+      const slot = Math.max(1, Math.min(3, Number(action.slot) || 1));
+      const cityId = action.cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
+      const formation = this.getArmyFormation(cityId, slot);
+      const memberIds = Array.isArray(formation?.memberIds) ? formation.memberIds : [];
+      return this.setArmyFormationEditor({
+        open: true,
+        cityId,
+        slot,
+        memberIds: [...memberIds].slice(0, 5),
+        page: 0,
+        saving: false,
+      });
+    }
+
+    closeArmyFormationEditor(options = {}) {
+      return this.setArmyFormationEditor({ open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false }, options);
+    }
+
+    toggleArmyFormationMember(action = {}) {
+      const editor = this.armyFormationEditor || {};
+      if (!editor.open) return false;
+      const personId = String(action.personId || '').trim();
+      if (!personId) return false;
+      const memberIds = Array.isArray(editor.memberIds) ? [...editor.memberIds] : [];
+      const index = memberIds.indexOf(personId);
+      if (index >= 0) memberIds.splice(index, 1);
+      else {
+        if (memberIds.length >= 5) {
+          this.showFloatingText('每个编队最多 5 名名人');
+          return false;
+        }
+        memberIds.push(personId);
+      }
+      return this.setArmyFormationEditor({ ...editor, memberIds }, { render: true });
+    }
+
+    changeArmyFormationPage(action = {}) {
+      const editor = this.armyFormationEditor || {};
+      if (!editor.open) return false;
+      const page = Math.max(0, (Number(editor.page) || 0) + (Number(action.delta) || 0));
+      return this.setArmyFormationEditor({ ...editor, page }, { render: true });
+    }
+
+    async saveArmyFormation() {
+      const editor = this.armyFormationEditor || {};
+      if (!editor.open || editor.saving) return false;
+      const cityId = editor.cityId || this.state?.activeCityId || 'capital';
+      const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
+      const memberIds = (Array.isArray(editor.memberIds) ? editor.memberIds : []).slice(0, 5);
+      this.setArmyFormationEditor({ ...editor, saving: true }, { render: true });
+      try {
+        const result = await this.getGameApi().setArmyFormation(cityId, slot, memberIds);
+        this.applyApiState(result);
+        this.closeArmyFormationEditor({ render: false });
+        this.showFloatingText(result.message || '编队已保存');
+        this.log(result.message || '编队已保存');
+        this.renderCanvasSurface(this.state?.currentTab);
+        return true;
+      } catch (error) {
+        const message = error.payload?.message || error.message || '编队保存失败';
+        this.setArmyFormationEditor({ ...editor, saving: false }, { render: false });
+        this.showFloatingText(message);
+        this.log(message);
         this.renderCanvasSurface(this.state?.currentTab);
         return false;
       }
@@ -2232,11 +2334,6 @@
       return shown;
     }
 
-    openArmyFormation(action = {}) {
-      const slot = Math.max(1, Math.min(3, Number(action.slot) || 1));
-      return this.showFloatingText(`编队 ${slot} 功能待开放`);
-    }
-
     cacheRequestLog(path, method, body, statusCode, response, duration) {
       this.requestLogs.unshift({
         path,
@@ -2291,6 +2388,7 @@
         || this.showGuidebook
         || this.showFamousPersons
         || this.showTalentPolicy
+        || this.armyFormationEditor?.open
         || this.activeCommandPanel
         || this.techDetailOpen
         || this.activeEventId

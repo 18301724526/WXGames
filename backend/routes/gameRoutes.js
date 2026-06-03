@@ -4,6 +4,7 @@ const EventService = require('../services/EventService');
 const TalentPolicyService = require('../services/TalentPolicyService');
 const TechTreeService = require('../services/TechTreeService');
 const FamousPersonService = require('../services/FamousPersonService');
+const MilitaryService = require('../services/MilitaryService');
 const AdvanceEraAction = require('../actions/AdvanceEraAction');
 const AssignPopulationAction = require('../actions/AssignPopulationAction');
 const BuildBuildingAction = require('../actions/BuildBuildingAction');
@@ -136,6 +137,7 @@ function registerGameRoutes(app, deps) {
       basePolicyId,
       tiers,
       policy,
+      memberIds,
     } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
@@ -161,6 +163,8 @@ function registerGameRoutes(app, deps) {
       result = TalentPolicyService.saveCustomPolicy(gameState, { policyId, basePolicyId, tiers, policy });
     } else if (action === 'deleteTalentPolicy') {
       result = TalentPolicyService.deleteCustomPolicy(gameState, { policyId });
+    } else if (action === 'setArmyFormation') {
+      result = MilitaryService.setArmyFormation(gameState, { cityId, slot: req.body?.slot, memberIds });
     } else if (['scoutTerritory', 'claimScout', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity', 'switchCity', 'startExplore', 'claimExplore'].includes(action)) {
       result = TerritoryAction.execute(action, gameState, {
         territoryId,

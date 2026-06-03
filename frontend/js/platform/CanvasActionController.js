@@ -11,6 +11,7 @@
     'showTalentPolicy',
     'showGuidebook',
     'showFamousPersons',
+    'armyFormationEditor',
     'techDetailOpen',
     'activeCommandPanel',
   ];
@@ -294,6 +295,43 @@
       else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
       else this.log?.(message);
       return this.afterHandled(action);
+    }
+
+    handle_closeArmyFormationEditor(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (typeof target?.closeArmyFormationEditor === 'function') {
+        return target.closeArmyFormationEditor(action) !== false;
+      }
+      if (this.host && typeof this.host === 'object') this.host.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+      return this.afterHandled(action);
+    }
+
+    handle_toggleArmyFormationMember(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (typeof target?.toggleArmyFormationMember === 'function') {
+        return target.toggleArmyFormationMember(action) !== false;
+      }
+      return false;
+    }
+
+    handle_changeArmyFormationPage(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (typeof target?.changeArmyFormationPage === 'function') {
+        return target.changeArmyFormationPage(action) !== false;
+      }
+      return false;
+    }
+
+    handle_saveArmyFormation(action) {
+      const game = this.getGameHost();
+      const target = game && game !== this.host ? game : this.host;
+      if (typeof target?.saveArmyFormation === 'function') {
+        return this.finalize(target.saveArmyFormation(action));
+      }
+      return false;
     }
 
     handle_openSettings(action) {
