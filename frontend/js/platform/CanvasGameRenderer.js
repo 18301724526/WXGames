@@ -8853,6 +8853,7 @@
         ['resources', '主页', 'assets/art/icon-home-cutout.png'],
         ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
         ['events', '事件', 'assets/art/icon-event-cutout.webp'],
+        ['famousPersons', '名人', 'assets/art/icon-scholar-cutout.webp'],
         ['civilization', '文明', 'assets/art/icon-fire-cutout.webp'],
       ];
       const layout = this.getLayout();
@@ -8879,7 +8880,8 @@
       const tabWidth = width / tabs.length;
       tabs.forEach(([id, label, icon], index) => {
         const tabX = x + index * tabWidth;
-        const isActive = id === visualActiveTab;
+        const isActionTab = id === 'famousPersons';
+        const isActive = isActionTab ? Boolean(options.showFamousPersons) : id === visualActiveTab;
         const lock = lockById.get(id) || { disabled: false, isLocked: false };
         const isLocked = Boolean(lock.disabled || lock.isLocked);
         if (isActive && this.ctx) {
@@ -8919,7 +8921,10 @@
             align: 'center',
           });
         }
-        this.addHitTarget({ x: tabX, y, width: tabWidth, height: tabBarHeight }, { type: 'switchTab', tab: id, disabled: isLocked });
+        this.addHitTarget(
+          { x: tabX, y, width: tabWidth, height: tabBarHeight },
+          isActionTab ? { type: 'openFamousPersons', disabled: isLocked } : { type: 'switchTab', tab: id, disabled: isLocked },
+        );
       });
     }
 
@@ -8948,6 +8953,7 @@
       const items = [
         { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
         { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
+        { id: 'famousPersons', label: '名人', icon: 'assets/art/icon-scholar-cutout.webp', action: { type: 'openFamousPersons' } },
         { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
         { id: 'settings', label: '设置', glyph: '⚙', action: { type: 'openSettings' } },
       ];
@@ -8958,6 +8964,7 @@
         const itemX = contentX + index * itemWidth;
         const active = activePanel === item.id
           || (item.id === 'tasks' && options.showTaskCenter)
+          || (item.id === 'famousPersons' && options.showFamousPersons)
           || (item.id === 'settings' && options.showSettings);
         if (active && this.ctx) {
           this.ctx.fillStyle = '#f0b45b';
