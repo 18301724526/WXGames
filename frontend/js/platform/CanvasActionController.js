@@ -988,6 +988,34 @@
       return this.finalize(this.runAction(() => this.host.api.claimScout(action.value || action.missionId)));
     }
 
+    handle_startExplore(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.startExplore === 'function') {
+        return this.finalize(game.startExplore({
+          mode: action.mode || 'random',
+          routeLength: action.routeLength,
+          targetQ: action.targetQ,
+          targetR: action.targetR,
+        }));
+      }
+      return this.finalize(this.runAction(() => this.host.api.startExplore({
+        mode: action.mode || 'random',
+        routeLength: action.routeLength,
+        targetQ: action.targetQ,
+        targetR: action.targetR,
+      })));
+    }
+
+    handle_claimExplore(action) {
+      const forwarded = this.forward(action);
+      if (forwarded !== undefined) return forwarded !== false;
+      const game = this.getGameHost();
+      if (typeof game?.claimExplore === 'function') return this.finalize(game.claimExplore(action.missionId || action.value));
+      return this.finalize(this.runAction(() => this.host.api.claimExplore(action.missionId || action.value)));
+    }
+
     handle_switchMilitaryView(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;

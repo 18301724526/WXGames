@@ -52,6 +52,13 @@
         namingPrompt: null,
         ...(this.state.territoryState || {}),
       };
+      this.state.worldExplorerState = {
+        missions: [],
+        activeMission: null,
+        readyMissions: [],
+        maxActiveMissions: 1,
+        ...(this.state.worldExplorerState || {}),
+      };
       this.state.cityState = {
         activeCityId: this.state.activeCityId || 'capital',
         capitalCityId: 'capital',

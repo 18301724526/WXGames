@@ -25,6 +25,7 @@
       buildingEffects: gameState.buildingEffects || {},
       military: gameState.military || {},
       territoryState: gameState.territoryState || {},
+      worldExplorerState: gameState.worldExplorerState || {},
       cityState: gameState.cityState || {},
       activeCityId: gameState.activeCityId || 'capital',
       isCapitalCity: gameState.isCapitalCity !== false,

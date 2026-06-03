@@ -16,7 +16,7 @@
 | 2 | 新账号出生地图半径 2 初始化 | 已完成 | 2026-06-03：`WorldMapService` 初始化半径 2 地块，半径 1 安全陆地。 |
 | 3 | 服务端探索任务模型、路线生成、进度推进 | 已完成 | 2026-06-03：新增 `WorldExplorerService`，支持随机/手动路线和时间推进揭示。 |
 | 4 | 服务端 action 接口和客户端状态输出 | 已完成 | 2026-06-03：接入 `startExplore` / `claimExplore` action 和 `worldExplorerState`。 |
-| 5 | 前端 API 和基础探索入口 | 未开始 | - |
+| 5 | 前端 API 和基础探索入口 | 已完成 | 2026-06-03：前端 API、action handler、地图 HUD 探索按钮和状态条已接入。 |
 | 6 | 前端小人移动表现和增量渲染优化 | 未开始 | 后续 |
 | 7 | 旧方向侦察迁移和完整玩法打磨 | 未开始 | 后续 |
 
@@ -45,3 +45,7 @@
 ### 阶段 4
 
 2026-06-03：`GameStateService` 初始化并归一化 `exploreMissions`，客户端状态新增 `worldExplorerState`。`TerritoryAction` 和 `/api/game/action` 接入 `startExplore`、`claimExplore`，支持随机探索和手动目标参数。
+
+### 阶段 5
+
+2026-06-03：前端 `GameAPI` 新增 `startExplore`、`claimExplore`；状态归一化保留 `worldExplorerState`；canvas action controller/dispatcher 支持探索 action；地图主视图左上角新增探索队 HUD，可以启动随机探索、查看进度、领取已返回探索队。

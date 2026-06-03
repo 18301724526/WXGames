@@ -1677,6 +1677,35 @@
       }
     }
 
+    async startExplore(options = {}) {
+      try {
+        const result = await this.getGameApi().startExplore(options);
+        this.applyApiState(result);
+        this.showFloatingText(result.message || 'Explorer started');
+        this.log(result.message || 'Explorer started');
+        return true;
+      } catch (error) {
+        this.log(`Explore failed: ${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
+    async claimExplore(missionId) {
+      if (!missionId) return false;
+      try {
+        const result = await this.getGameApi().claimExplore(missionId);
+        this.applyApiState(result);
+        this.showFloatingText(result.message || 'Explorer returned');
+        this.log(result.message || 'Explorer returned');
+        return true;
+      } catch (error) {
+        this.log(`Explore claim failed: ${error.payload?.message || error.message}`);
+        this.renderCanvasSurface(this.state?.currentTab);
+        return false;
+      }
+    }
+
     switchTab(tab) {
       const previousTab = this.getActiveTab();
       const previousBuildingOffset = this.buildingOffset;

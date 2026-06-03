@@ -249,6 +249,20 @@
         return dragged;
       }
 
+      if (action.type === 'startExplore') {
+        const started = typeof context.startExplore === 'function'
+          ? context.startExplore(action) !== false
+          : false;
+        return this.finishHandled(started, context, action);
+      }
+
+      if (action.type === 'claimExplore') {
+        const claimed = typeof context.claimExplore === 'function'
+          ? context.claimExplore(action) !== false
+          : false;
+        return this.finishHandled(claimed, context, action);
+      }
+
       if (action.type === 'changeExpeditionSoldiers') {
         const changed = typeof context.changeExpeditionSoldiers === 'function'
           ? context.changeExpeditionSoldiers(action) !== false
@@ -418,6 +432,8 @@
         'jumpToSubcity',
         'resetWorldPan',
         'worldMapDrag',
+        'startExplore',
+        'claimExplore',
         'changeExpeditionSoldiers',
         'changeExpeditionLeader',
         'enterBattleScene',
