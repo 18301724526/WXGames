@@ -9114,8 +9114,8 @@
         preserveDrawingBuffer: true,
         viewFocus: {
           centerX: 0,
-          centerY: 420,
-          height: 980,
+          centerY: 1080,
+          height: 900,
         },
         onError: () => {
           this.tutorialAdvisorSpineFailed = true;
@@ -9135,8 +9135,8 @@
         preserveDrawingBuffer: true,
         viewFocus: {
           centerX: 0,
-          centerY: 420,
-          height: 980,
+          centerY: 1080,
+          height: 900,
         },
       });
       if (!loaded) {
