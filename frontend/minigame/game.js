@@ -1,5 +1,7 @@
 require('../js/config/GameConfig');
 require('../js/config/FamousPortraitLayout');
+require('../js/domain/TileMapGeometry');
+require('../js/config/TileMapAssetManifest');
 require('../js/state/UIStatePresenter');
 require('../js/api/GameAPI');
 require('../js/services/GameStateSync');

@@ -1716,7 +1716,7 @@
       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
         worldMapLayerRendered = this.shouldRenderRuntimeWorldMap(state, renderOptions)
           ? this.renderRuntimeWorldMap(state, renderOptions) !== false
-          : Boolean(this.worldMapRenderer);
+          : Boolean(this.worldMapRuntime?.hasBakedMapLayer);
       } else {
         worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }

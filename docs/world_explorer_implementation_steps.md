@@ -49,3 +49,7 @@
 ### 阶段 5
 
 2026-06-03：前端 `GameAPI` 新增 `startExplore`、`claimExplore`；状态归一化保留 `worldExplorerState`；canvas action controller/dispatcher 支持探索 action；地图主视图左上角新增探索队 HUD，可以启动随机探索、查看进度、领取已返回探索队。
+
+### 修复记录
+
+2026-06-03：修复重置后新账号首屏仍显示旧首都背景、看不到首都地块的问题。服务端 reset 初始状态已经包含 25 个 `worldMap.tiles`，实际问题在前端地图 runtime 首帧未确认绘制成功时就让主画布跳过地图层；现在 H5 和小游戏路径都只在地图层实际渲染成功或已有 baked map 后才跳过主画布 tile 绘制。小游戏入口显式加载 `TileMapGeometry` 和 `TileMapAssetManifest`，H5 入口缓存串更新到 `world-map-reset-v1`。

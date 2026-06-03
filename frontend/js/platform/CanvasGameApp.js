@@ -403,16 +403,18 @@
         return true;
       }
       if (!this.renderer?.render) return false;
-      const runtimeOwnsWorldMap = Boolean(homeView.isMapHome
+      const runtimeCanRenderWorldMap = Boolean(homeView.isMapHome
         && this.ensureWorldMapRuntimeCoordinator()?.canRender(this.state));
-      if (runtimeOwnsWorldMap && this.shouldRenderRuntimeWorldMap()) {
-        this.renderRuntimeWorldMap();
-      }
+      const worldMapLayerRendered = runtimeCanRenderWorldMap
+        ? (this.shouldRenderRuntimeWorldMap()
+          ? this.renderRuntimeWorldMap() !== false
+          : Boolean(this.worldMapRuntime?.hasBakedMapLayer))
+        : false;
       this.renderer.render(this.state, {
         activeTab: resolvedActiveTab,
         isMapHome: homeView.isMapHome,
-        skipWorldMapLayer: runtimeOwnsWorldMap,
-        preserveCanvas: runtimeOwnsWorldMap,
+        skipWorldMapLayer: worldMapLayerRendered,
+        preserveCanvas: worldMapLayerRendered,
         showResourceDetails: this.showResourceDetails,
         showCitySwitcher: this.showCitySwitcher,
         showSubcityList: this.showSubcityList,
