@@ -57,3 +57,5 @@
 2026-06-03：继续修复 H5 双 canvas 路径。线上 API 已确认 `test1` 返回 `worldMap.tiles=25`，但 H5 foreground canvas 在 `mode: 'hud'` 下不会绘制地图；当独立 `worldMap` layer 首帧未绘制成功时，v1 fallback 仍只画 HUD，导致旧背景露出。现在独立地图层失败时会隐藏 `worldMap` layer，并让 foreground canvas 退出 HUD-only 模式，直接绘制地图和 HUD；缓存串更新到 `world-map-reset-v2`。
 
 2026-06-03：修复新账号 `currentEra=0` 时大地图仍不显示的问题。根因是旧验证玩法遗留的时代锁：前端 `buildMilitaryNavigationViewState` 会把 `world`/`scout` 在时代 5 前强制锁回 `army`，导致 `getWorldMapLayerLayout()` 返回 `null`，地图绘制分支根本没有执行。现在取消军事导航和侦察控制的时代锁，并移除服务端侦察/占领 action 的时代 5 拦截；新号 25 个起始地块可直接进入大地图渲染。H5 缓存串更新到 `world-map-reset-v3`。
+
+2026-06-03：补上大地图战争迷雾显示。服务端仍只保存和返回已生成地块；前端根据已知 `worldMap.tiles` 的相邻未知坐标临时计算 fog entries，并画入静态地形缓存。迷雾不会写入 `worldMap.tiles`，探索生成真实地块后会自然替换对应雾块。H5 缓存串更新到 `world-map-reset-v4`。
