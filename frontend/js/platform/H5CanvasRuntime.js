@@ -158,6 +158,13 @@
       return this.setLayerTransform(name, '');
     }
 
+    setLayerVisible(name = 'worldMap', visible = true) {
+      const canvas = this.getLayerCanvas(name);
+      if (!canvas?.style) return false;
+      canvas.style.display = visible === false ? 'none' : 'block';
+      return true;
+    }
+
     createCanvas() {
       return this.ensureCanvas();
     }

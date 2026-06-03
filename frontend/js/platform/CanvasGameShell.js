@@ -1018,6 +1018,12 @@
         : false;
     }
 
+    setWorldMapLayerVisible(visible = true) {
+      return typeof this.runtime?.setLayerVisible === 'function'
+        ? this.runtime.setLayerVisible('worldMap', visible !== false)
+        : false;
+    }
+
     refreshWorldMapLayerFromSnapshot(options = {}) {
       if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
       if (typeof this.worldMapRenderer.renderWorldMapSnapshotLayer !== 'function') return false;
@@ -1720,9 +1726,15 @@
       } else {
         worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
+      this.setWorldMapLayerVisible(worldMapLayerRendered);
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
         ? { ...renderOptions, skipWorldMapLayer: true }
-        : renderOptions);
+        : {
+          ...renderOptions,
+          mode: undefined,
+          skipWorldMapLayer: false,
+          preserveCanvas: false,
+        });
       const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
         || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
         || this.territoryUiState?.tileMapWaterAnimated);
