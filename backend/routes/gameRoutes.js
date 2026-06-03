@@ -121,6 +121,10 @@ function registerGameRoutes(app, deps) {
       name,
       direction,
       missionId,
+      mode,
+      targetQ,
+      targetR,
+      routeLength,
       expedition,
       policyId,
       techId,
@@ -157,8 +161,24 @@ function registerGameRoutes(app, deps) {
       result = TalentPolicyService.saveCustomPolicy(gameState, { policyId, basePolicyId, tiers, policy });
     } else if (action === 'deleteTalentPolicy') {
       result = TalentPolicyService.deleteCustomPolicy(gameState, { policyId });
-    } else if (['scoutTerritory', 'claimScout', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity', 'switchCity'].includes(action)) {
-      result = TerritoryAction.execute(action, gameState, { territoryId, cityId, soldiers, name, direction, missionId, expedition });
+    } else if (['scoutTerritory', 'claimScout', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity', 'switchCity', 'startExplore', 'claimExplore'].includes(action)) {
+      result = TerritoryAction.execute(action, gameState, {
+        territoryId,
+        cityId,
+        soldiers,
+        name,
+        direction,
+        missionId,
+        mode,
+        targetQ,
+        targetR,
+        routeLength,
+        q: req.body?.q,
+        r: req.body?.r,
+        x: req.body?.x,
+        y: req.body?.y,
+        expedition,
+      });
     } else if (action === 'research') {
       result = TechTreeService.research(gameState, techId || target || tech);
     } else if (action === 'seekFamousPerson') {

@@ -12,6 +12,7 @@ const MilitaryService = require('./MilitaryService');
 const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
 const WorldMapService = require('./WorldMapService');
+const WorldExplorerService = require('./WorldExplorerService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const CityPlanningService = require('./CityPlanningService');
@@ -59,6 +60,7 @@ function createInitialGameState(playerId) {
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0, areas: [] },
+    exploreMissions: [],
     warMissions: [],
     scoutReports: [],
     updatedAt: new Date().toISOString(),
@@ -104,6 +106,7 @@ function normalizeState(rawState) {
   FamousPersonService.ensureFamousPersonState(state);
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
+  WorldExplorerService.normalizeExploreState(state);
   TerritoryService.normalizeTerritoryState(state, new Date(), { previousWorldMapVersion });
   CityService.normalizeCities(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
@@ -235,6 +238,7 @@ function getClientGameState(gameState) {
     threatEventState: normalized.threatEventState,
     activeBuffs: normalized.activeBuffs,
     territoryState: TerritoryService.getClientTerritoryState(normalized),
+    worldExplorerState: WorldExplorerService.getClientState(normalized),
     totalBuildings,
   };
 }

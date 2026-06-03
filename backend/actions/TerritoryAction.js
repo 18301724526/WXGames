@@ -1,9 +1,16 @@
 const TerritoryService = require('../services/TerritoryService');
+const WorldExplorerService = require('../services/WorldExplorerService');
 const CityService = require('../services/CityService');
 
 function execute(action, gameState, payload = {}) {
   if (action === 'scoutTerritory') {
     return TerritoryService.scoutTerritory(gameState, payload.direction || payload.territoryId);
+  }
+  if (action === 'startExplore') {
+    return WorldExplorerService.startExplore(gameState, payload);
+  }
+  if (action === 'claimExplore') {
+    return WorldExplorerService.claimExplore(gameState, payload.missionId);
   }
   if (action === 'claimScout') {
     return TerritoryService.claimScout(gameState, payload.missionId);
