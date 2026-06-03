@@ -49,6 +49,7 @@ class GameStateRepository {
         scoutReports TEXT,
         updatedAt TEXT
       );
+      CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
     `);
 
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
@@ -156,6 +157,18 @@ class GameStateRepository {
       FROM game_states
       INNER JOIN players ON players.playerId = game_states.playerId
     `).all();
+    return rows.map((row) => this.findByPlayerId(row.playerId)).filter(Boolean);
+  }
+
+  findRecentlyActive(activeSinceIso, limit = 50) {
+    const rows = this.db.prepare(`
+      SELECT game_states.playerId
+      FROM game_states
+      INNER JOIN players ON players.playerId = game_states.playerId
+      WHERE players.lastActiveAt >= ?
+      ORDER BY players.lastActiveAt DESC
+      LIMIT ?
+    `).all(activeSinceIso, limit);
     return rows.map((row) => this.findByPlayerId(row.playerId)).filter(Boolean);
   }
 

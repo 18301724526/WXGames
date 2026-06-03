@@ -6,7 +6,9 @@ class LogService {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       playerId TEXT, deviceId TEXT, method TEXT, path TEXT,
       body TEXT, statusCode INTEGER, response TEXT,
-      duration INTEGER, timestamp TEXT)`);
+      duration INTEGER, timestamp TEXT);
+      CREATE INDEX IF NOT EXISTS idx_api_logs_player_timestamp ON api_logs(playerId, timestamp DESC);
+      CREATE INDEX IF NOT EXISTS idx_api_logs_timestamp ON api_logs(timestamp)`);
   }
 
   logApiRequest(req, res, startTime) {
@@ -28,8 +30,8 @@ class LogService {
   }
 
   logApi(playerId, deviceId, method, path, body, statusCode, response, duration) {
-    const bodyStr = body ? JSON.stringify(body).slice(0, 2000) : '';
-    const responseStr = response ? JSON.stringify(response).slice(0, 1000) : '';
+    const bodyStr = this.stringifyForLog(body, 1200);
+    const responseStr = this.stringifyForLog(this.summarizeResponse(response), 600);
     this.db.prepare(
       `INSERT INTO api_logs (
         playerId,
@@ -53,6 +55,41 @@ class LogService {
       duration,
       new Date().toISOString(),
     );
+  }
+
+  summarizeResponse(response) {
+    if (!response || typeof response !== 'object') return response || {};
+    if (Array.isArray(response.logs)) {
+      return {
+        success: response.success !== false,
+        logCount: response.logs.length,
+      };
+    }
+    if (response.gameState && typeof response.gameState === 'object') {
+      return {
+        success: response.success !== false,
+        message: response.message || '',
+        error: response.error || '',
+        action: response.action || '',
+        buildingId: response.buildingId || '',
+        gameState: {
+          playerId: response.gameState.playerId,
+          currentEra: response.gameState.currentEra,
+          activeCityId: response.gameState.activeCityId,
+          totalBuildings: response.gameState.totalBuildings,
+        },
+      };
+    }
+    return response;
+  }
+
+  stringifyForLog(value, maxLength = 1000) {
+    if (!value) return '';
+    try {
+      return JSON.stringify(value).slice(0, maxLength);
+    } catch (error) {
+      return JSON.stringify({ error: 'LOG_STRINGIFY_FAILED', message: error.message }).slice(0, maxLength);
+    }
   }
 
   getPlayerLogs(playerId, limit=20) {

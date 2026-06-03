@@ -31,11 +31,23 @@ const logService = new LogService(db);
 logService.initLogTable();
 const authMiddleware = createAuthMiddleware(authService);
 const versionService = new VersionService();
+const SKIP_API_LOG_PATHS = new Set([
+  '/api/health',
+  '/api/version',
+  '/api/game/heartbeat',
+  '/api/game/state',
+  '/api/player/logs',
+]);
+const BACKGROUND_TICK_INTERVAL_MS = 5000;
+const BACKGROUND_ACTIVE_WINDOW_MS = 2 * 60 * 1000;
+const BACKGROUND_ACTIVE_LIMIT = 25;
+let backgroundTickRunning = false;
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json());
 
 app.use((req, res, next) => {
+  if (SKIP_API_LOG_PATHS.has(req.path)) return next();
   const startedAt = Date.now();
   let responsePayload = null;
   const originalJson = res.json.bind(res);
@@ -82,18 +94,28 @@ app.get('/api/version', (req, res) => {
 });
 
 setInterval(() => {
-  const gameStates = repository.findAll();
-  for (const rawState of gameStates) {
-    const gameState = gameStateService.normalizeState(rawState);
-    CityService.advanceAllCities(gameState, 1);
-    TerritoryService.updateMissionReadiness(gameState);
-    EventService.cleanupRuntimeState(gameState);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    gameState.updatedAt = new Date().toISOString();
-    repository.save(gameState);
+  if (backgroundTickRunning) return;
+  backgroundTickRunning = true;
+  try {
+    const now = new Date();
+    const activeSince = new Date(now.getTime() - BACKGROUND_ACTIVE_WINDOW_MS).toISOString();
+    const gameStates = repository.findRecentlyActive(activeSince, BACKGROUND_ACTIVE_LIMIT);
+    for (const rawState of gameStates) {
+      const gameState = gameStateService.normalizeState(rawState);
+      CityService.advanceAllCities(gameState, Math.floor(BACKGROUND_TICK_INTERVAL_MS / 1000));
+      TerritoryService.updateMissionReadiness(gameState);
+      EventService.cleanupRuntimeState(gameState);
+      EventService.maybeGenerateRegularEvent(gameState);
+      EventService.maybeGenerateThreatEvent(gameState);
+      gameState.updatedAt = now.toISOString();
+      repository.save(gameState);
+    }
+  } catch (error) {
+    console.error('[backgroundTick] failed:', error.message);
+  } finally {
+    backgroundTickRunning = false;
   }
-}, 1000);
+}, BACKGROUND_TICK_INTERVAL_MS);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
