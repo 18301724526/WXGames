@@ -71,6 +71,18 @@
     return null;
   })();
 
+  const SharedCanvasPreloadAssetManifest = (() => {
+    if (global.CanvasPreloadAssetManifest) return global.CanvasPreloadAssetManifest;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/CanvasPreloadAssetManifest');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedWorldTileWaterCanvasRenderer = (() => {
     if (global.WorldTileWaterCanvasRenderer) return global.WorldTileWaterCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -509,54 +521,18 @@
     }
 
     static getPreloadAssetPaths() {
+      if (SharedCanvasPreloadAssetManifest?.getPreloadAssetPaths) {
+        return SharedCanvasPreloadAssetManifest.getPreloadAssetPaths({
+          rendererClass: this,
+          tileMapManifest: this.getTileMapAssetManifest(),
+          famousPortraitLayout: this.getFamousPortraitLayerLayout(),
+        });
+      }
       return [
         'assets/art/civilization-bg.webp',
         'assets/art/icon-home-cutout.png',
-        'assets/art/icon-fire-cutout.webp',
-        'assets/art/icon-wood-cutout.webp',
-        'assets/art/icon-iron-cutout.webp',
-        'assets/art/icon-stone-cutout.webp',
-        'assets/art/icon-food-cutout.webp',
-        'assets/art/icon-knowledge-cutout.webp',
-        'assets/art/icon-population-cutout.webp',
-        'assets/art/icon-happiness-cutout.webp',
-        'assets/art/icon-farmer-cutout.webp',
-        'assets/art/icon-scholar-cutout.webp',
-        'assets/art/icon-craftsman-cutout.webp',
-        'assets/art/icon-science-cutout.webp',
-        'assets/art/icon-soldier-cutout.webp',
-        'assets/art/icon-event-cutout.webp',
-        'assets/art/tech-agriculture-cutout.png',
-        'assets/art/tech-livelihood-cutout.png',
-        'assets/art/tech-administration-cutout.png',
-        'assets/art/tech-knowledge-cutout.png',
-        'assets/art/tech-culture-cutout.png',
-        'assets/art/tech-engineering-cutout.png',
-        'assets/art/tech-industry-cutout.png',
-        'assets/art/tech-exploration-cutout.png',
-        'assets/art/tech-trade-cutout.png',
-        'assets/art/tech-military-cutout.png',
-        'assets/art/building-house-cutout.png',
-        'assets/art/building-farm-cutout.png',
-        'assets/art/building-lumbermill-cutout.png',
-        'assets/art/building-barracks-cutout.png',
-        'assets/art/building-academy-cutout.png',
-        'assets/art/building-workshop-cutout.png',
-        'assets/art/building-temple-cutout.png',
-        'assets/art/building-watchtower-cutout.png',
-        'assets/art/world-site-camp-cutout.png',
-        'assets/art/world-site-city-cutout.png',
-        'assets/art/world-site-outpost-cutout.png',
-        'assets/art/world-site-ruins-cutout.png',
-        'assets/art/world-site-town-cutout.png',
-        'assets/art/spine/tutorial/advisor/tutorial_advisor.png',
         'assets/art/battle/battlefield-forest-camp.png',
-        ...(this.getTileMapAssetManifest().getPreloadAssetPaths?.() || []),
         ...this.getBattleUnitFramePaths(),
-        ...Object.values(this.getFamousPortraitLayerLayout().layers || {})
-          .map((layer) => layer?.file)
-          .filter(Boolean)
-          .map((file) => `assets/art/famous-person/layers/${file}`),
       ];
     }
 
