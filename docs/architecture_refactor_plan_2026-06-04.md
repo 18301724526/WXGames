@@ -324,7 +324,7 @@
 
 - 代码提交哈希：`88ccb84 refactor: extract tech canvas renderer`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ### Step 6：收窄 CanvasGameApp 的应用编排职责
 
