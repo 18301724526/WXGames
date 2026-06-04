@@ -1936,6 +1936,7 @@
       this.mapHomeActive = homeView.isMapHome;
       const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
       return {
+        now: this.now(),
         activeTab: homeView.activeTab,
         mode: 'hud',
         isMapHome: homeView.isMapHome,

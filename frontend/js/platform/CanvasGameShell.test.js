@@ -36,6 +36,25 @@ test('CanvasGameShell preserves world map layer when drag snapshot refresh misse
   assert.deepEqual(calls.at(-1), ['setLayerTranslate', 'worldMap', 32, -18]);
 });
 
+test('CanvasGameShell passes runtime frame time into render options', () => {
+  const shell = new CanvasGameShell({
+    runtime: {
+      now() {
+        return 4321.25;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: { currentTab: 'military', militaryView: 'world' },
+    mapHomeActive: true,
+    tutorial: {},
+  };
+
+  const options = shell.buildRenderOptions('military', {});
+
+  assert.equal(options.now, 4321.25);
+});
+
 test('CanvasGameShell routes map command tech tree drag through command panel hit target', () => {
   const calls = [];
   const shell = new CanvasGameShell({

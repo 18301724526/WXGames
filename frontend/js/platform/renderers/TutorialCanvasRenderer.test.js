@@ -121,6 +121,23 @@ test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer 
   assert.deepEqual(renderer.normalizeRect({ x: -10, y: 4, width: 50, height: 20 }), { x: 0, y: 4, width: 50, height: 20 });
 });
 
+test('TutorialCanvasRenderer moves intro march unit from fog edge to city tile edge', () => {
+  const host = createHost({ width: 390, height: 693 });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+  const target = { x: 170, y: 300, width: 72, height: 56 };
+  const start = renderer.getTutorialIntroMarchRoute(target, 0);
+  const middle = renderer.getTutorialIntroMarchRoute(target, 0.5);
+  const end = renderer.getTutorialIntroMarchRoute(target, 1);
+  const targetCenter = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+
+  assert.ok(start.x < 0);
+  assert.ok(start.y > targetCenter.y);
+  assert.ok(middle.x > start.x + 80);
+  assert.ok(middle.x < end.x - 28);
+  assert.ok(Math.hypot(end.x - targetCenter.x, end.y - targetCenter.y) > 32);
+  assert.ok(Math.hypot(end.x - targetCenter.x, end.y - targetCenter.y) < 56);
+});
+
 test('TutorialCanvasRenderer draws intro march unit from sprite frames when loaded', () => {
   const host = createHost({
     getAsset(assetPath) {

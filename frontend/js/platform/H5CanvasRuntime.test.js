@@ -85,6 +85,20 @@ test('H5CanvasRuntime fits a centered 9:16 game frame inside wide browser viewpo
   assert.deepEqual(runtime.toCanvasPoint({ clientX: 647, clientY: 250 }), { x: 100, y: 250 });
 });
 
+test('H5CanvasRuntime uses browser performance time for animation clocks', () => {
+  const runtime = new H5CanvasRuntime({
+    runtime: {
+      performance: {
+        now: () => 1234.5,
+      },
+    },
+  });
+
+  assert.equal(runtime.now(), 1234.5);
+  assert.equal(runtime.getEventTime({ timeStamp: 876.25 }), 876.25);
+  assert.equal(runtime.getEventTime({}), 1234.5);
+});
+
 test('H5CanvasRuntime centers the 9:16 game frame inside tall browser viewports', () => {
   const canvas = createCanvas();
   const runtime = new H5CanvasRuntime({

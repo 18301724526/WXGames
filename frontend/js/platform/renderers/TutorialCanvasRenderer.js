@@ -156,23 +156,78 @@
       const startedAt = Number(intro.startedAt) || now;
       const duration = Math.max(1, Number(intro.marchDurationMs) || 2400);
       const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
-      const eased = this.easeOutCubic(progress);
-      const targetX = target.x + target.width / 2;
-      const targetY = target.y + target.height * 0.72;
-      const startX = Math.max(18, targetX - Math.min(this.width * 0.46, 210));
-      const startY = Math.min(this.height - 86, targetY + Math.min(this.height * 0.24, 128));
-      const x = startX + (targetX - startX) * eased;
-      const y = startY + (targetY - startY) * eased;
+      const route = this.getTutorialIntroMarchRoute(target, progress);
 
       this.ctx.save?.();
       this.ctx.strokeStyle = 'rgba(240, 180, 91, 0.44)';
       this.ctx.lineWidth = 2;
       this.ctx.beginPath?.();
-      this.ctx.moveTo?.(startX, startY);
-      this.ctx.quadraticCurveTo?.((startX + targetX) / 2, startY - 30, targetX, targetY);
+      this.ctx.moveTo?.(route.start.x, route.start.y);
+      this.ctx.quadraticCurveTo?.(route.control.x, route.control.y, route.end.x, route.end.y);
       this.ctx.stroke?.();
-      this.renderTutorialIntroUnit(x, y, 1 + eased * 0.16, intro);
+      this.renderTutorialIntroUnit(route.x, route.y, 1 + progress * 0.12, intro);
       this.ctx.restore?.();
+    }
+
+    getTutorialIntroMarchRoute(target = {}, progress = 0) {
+      const rect = this.normalizeMarchTargetRect(target);
+      const start = this.getTutorialIntroMarchStart(rect);
+      const end = this.getTutorialIntroMarchEnd(rect, start);
+      const arcLift = Math.min(84, Math.max(40, this.height * 0.08));
+      const control = {
+        x: (start.x + end.x) / 2,
+        y: Math.min(start.y, end.y) - arcLift,
+      };
+      const t = Math.max(0, Math.min(1, Number(progress) || 0));
+      const oneMinusT = 1 - t;
+      return {
+        start,
+        end,
+        control,
+        progress: t,
+        x: oneMinusT * oneMinusT * start.x + 2 * oneMinusT * t * control.x + t * t * end.x,
+        y: oneMinusT * oneMinusT * start.y + 2 * oneMinusT * t * control.y + t * t * end.y,
+      };
+    }
+
+    normalizeMarchTargetRect(target = {}) {
+      const x = Number(target.x ?? target.left) || 0;
+      const y = Number(target.y ?? target.top) || 0;
+      const width = Math.max(24, Number(target.width) || 0);
+      const height = Math.max(24, Number(target.height) || 0);
+      return {
+        x,
+        y,
+        width,
+        height,
+        centerX: x + width / 2,
+        centerY: y + height / 2,
+      };
+    }
+
+    getTutorialIntroMarchStart(target = {}) {
+      const horizontalDistance = Math.max(180, this.width * 0.55);
+      const x = Math.min(-42, (Number(target.centerX) || 0) - horizontalDistance);
+      const lowerLaneY = (Number(target.centerY) || 0) + Math.max(150, this.height * 0.28);
+      const maxY = Math.max(96, this.height - this.bottomSafeArea - 102);
+      const y = Math.max(72, Math.min(maxY, lowerLaneY));
+      return { x, y };
+    }
+
+    getTutorialIntroMarchEnd(target = {}, start = {}) {
+      const centerX = Number(target.centerX) || 0;
+      const centerY = Number(target.centerY) || 0;
+      const halfWidth = Math.max(16, Number(target.width) / 2 || 0);
+      const halfHeight = Math.max(16, Number(target.height) / 2 || 0);
+      const dx = (Number(start.x) || 0) - centerX || -1;
+      const dy = (Number(start.y) || 0) - centerY || 1;
+      const edgeScale = 1 / Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight, 0.001);
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const standOff = Math.max(4, Math.min(8, Math.min(Number(target.width) || 0, Number(target.height) || 0) * 0.12));
+      return {
+        x: centerX + dx * edgeScale + (dx / length) * standOff,
+        y: centerY + dy * edgeScale + (dy / length) * standOff,
+      };
     }
 
     renderTutorialIntroUnit(x, y, scale = 1, intro = {}) {

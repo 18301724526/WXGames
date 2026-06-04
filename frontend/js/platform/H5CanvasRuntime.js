@@ -270,7 +270,8 @@
     }
 
     now() {
-      return Date.now();
+      const performanceNow = this.runtime?.performance?.now?.();
+      return Number.isFinite(performanceNow) ? performanceNow : Date.now();
     }
 
     setTimeout(callback, delayMs) {
@@ -437,7 +438,8 @@
     }
 
     getEventTime(event = {}) {
-      return Number(event.timeStamp) || Date.now();
+      const eventTime = Number(event.timeStamp);
+      return Number.isFinite(eventTime) && eventTime > 0 ? eventTime : this.now();
     }
 
     getTouchPoints(event = {}) {
