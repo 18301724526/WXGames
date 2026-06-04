@@ -1423,6 +1423,65 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 24：继续压缩 CanvasGameRenderer 的攻略与任务快捷入口渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内攻略/任务快捷入口相关入口下放到既有 `GuideTaskCanvasRenderer`，主 renderer 继续保留页面编排 facade。保持当前快捷入口关闭/no-op 行为不变，避免重构时意外恢复不可达的旧绘制逻辑。
+
+回归测试：
+
+- 覆盖 `GuideTaskCanvasRenderer.renderGuideTasks` 仍按当前合同直接返回传入的 `startY`，不绘制、不添加 hit target。
+- 覆盖 `renderTaskCenterButton` 和 `renderGuidebookButton` 仍保持 no-op，不产生按钮或 hit target。
+- 覆盖 `CanvasGameRenderer` 的 `renderGuideTasks`、`renderTaskCenterButton`、`renderGuidebookButton` 和 `renderTaskCenterPanel` facade 仍能委托到 `GuideTaskCanvasRenderer`。
+- 保留任务中心 modal 的 `claimTaskReward` 与 `goToGuideTaskTarget` hit target 防回归覆盖。
+- 保留攻略 modal 的关闭、阻断和 tab 切换 hit target 防回归覆盖。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 24 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 24 留档
+
+状态：已完成
+
+本次改动：
+
+- `frontend/js/platform/CanvasGameRenderer.js` 移除攻略/任务快捷入口不可达绘制代码，保留 `renderGuideTasks`、`renderTaskCenterButton` 和 `renderGuidebookButton` facade。
+- `frontend/js/platform/renderers/GuideTaskCanvasRenderer.js` 新增三个快捷入口方法，承接当前 no-op 行为。
+- 更新 `frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js`，覆盖快捷入口 no-op 合同和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 4126 行降至 3964 行。
+- `frontend/js/platform/renderers/GuideTaskCanvasRenderer.js`：由 282 行增至 294 行，承接攻略/任务快捷入口 facade 目标。
+- `frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js`：由 145 行增至 182 行，补充快捷入口 no-op 和 facade 防回归覆盖。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/GuideTaskCanvasRenderer.js`
+- `node --test frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`1b88075 refactor: move guide task entry rendering into guide task renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
