@@ -1,121 +1,24 @@
 const BuildingState = require('../domain/BuildingState');
-const TutorialService = require('./TutorialService');
-const BuildingActionService = require('./BuildingActionService');
-const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
-const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
-const BuildingUnlockService = require('./BuildingUnlockService');
-const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
-const { getAdvanceConfig, getEraName, getEraDescription } = require('../config/EraConfig');
-const BuildingConfig = require('../config/BuildingConfig');
+const { getAdvanceConfig } = require('../config/EraConfig');
 const GameConfig = require('../config/GameConfig');
-const MilitaryService = require('./MilitaryService');
-const EventService = require('./EventService');
-const TerritoryService = require('./TerritoryService');
-const WorldMapService = require('./WorldMapService');
-const WorldExplorerService = require('./WorldExplorerService');
 const CityService = require('./CityService');
-const TalentPolicyService = require('./TalentPolicyService');
-const CityPlanningService = require('./CityPlanningService');
-const TechTreeService = require('./TechTreeService');
-const FamousPersonService = require('./FamousPersonService');
+const GameStateNormalizer = require('./GameStateNormalizer');
+const ClientGameStateAssembler = require('./ClientGameStateAssembler');
 
 function getBuildingLevel(buildings, buildingId) {
   return BuildingState.getLevel(buildings, buildingId);
 }
 
 function createInitialGameState(playerId) {
-  const buildings = BuildingState.createInitialBuildingState();
-  const buildingEffects = BuildingEffectCalculator.calculate(buildings);
-  return {
-    playerId,
-    resources: { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
-    buildings,
-    buildingEffects,
-    population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0, growthProgress: 0 },
-    techs: TechTreeService.normalizeTechState({}),
-    techEffects: {},
-    currentEra: 0,
-    eraHistory: [{ era: 0, advancedAt: new Date().toISOString() }],
-    happiness: 100,
-    gameDay: 1,
-    eventQueue: [],
-    eventHistory: [],
-    regularEventState: EventService.normalizeRegularEventState(null),
-    threatEventState: EventService.normalizeThreatEventState(null),
-    activeBuffs: [],
-    offlineSnapshot: {},
-    offlineEventLog: [],
-    negativeStreak: 0,
-    lastEventAt: 0,
-    tutorial: TutorialService.createInitialTutorialState(),
-    softGuideState: {},
-    military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
-    polity: TerritoryService.createInitialPolity(),
-    territories: TerritoryService.createInitialTerritories(),
-    worldMap: WorldMapService.createInitialWorldMap(`world-${playerId}`),
-    activeCityId: CityService.CAPITAL_CITY_ID,
-    cities: {},
-    talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
-    famousPeople: [],
-    famousPersonState: FamousPersonService.createInitialFamousPersonState(),
-    scoutedCoordinates: [],
-    scoutState: { emptyStreak: 0, areas: [] },
-    exploreMissions: [],
-    warMissions: [],
-    scoutReports: [],
-    updatedAt: new Date().toISOString(),
-  };
+  return GameStateNormalizer.createInitialGameState(playerId);
 }
 
 function normalizeState(rawState) {
-  const state = rawState ? { ...rawState } : createInitialGameState('unknown');
-  state.resources = {
-    food: state.resources?.food || 0,
-    knowledge: state.resources?.knowledge || 0,
-    wood: state.resources?.wood || 0,
-    iron: state.resources?.iron ?? state.resources?.metal ?? 0,
-    stone: state.resources?.stone || 0,
-    metal: state.resources?.metal ?? state.resources?.iron ?? 0,
-  };
-  state.buildings = BuildingState.normalizeLegacyBuildingState(state.buildings);
-  state.population = {
-    total: state.population?.total || 3,
-    max: state.population?.max || state.population?.maxPop || 3,
-    maxPop: state.population?.maxPop || state.population?.max || 3,
-    farmers: state.population?.farmers || 0,
-    scholars: state.population?.scholars || 0,
-    craftsmen: state.population?.craftsmen || 0,
-    unassigned: state.population?.unassigned || 0,
-    growthProgress: state.population?.growthProgress || 0,
-  };
-  state.techs = TechTreeService.normalizeGameStateTechs(state);
-  TechTreeService.grantEarnedEraPoints(state);
-  state.techEffects = state.techEffects || {};
-  state.eventQueue = state.eventQueue || [];
-  state.eventHistory = state.eventHistory || [];
-  EventService.cleanupRuntimeState(state);
-  state.offlineSnapshot = state.offlineSnapshot || {};
-  state.offlineEventLog = state.offlineEventLog || [];
-  state.tutorial = TutorialService.normalizeTutorialState(state.tutorial);
-  state.softGuideState = state.softGuideState && typeof state.softGuideState === 'object' ? state.softGuideState : {};
-  state.military = MilitaryService.normalizeMilitaryState(state.military, state);
-  state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
-  state.talentPolicies = TalentPolicyService.normalizeTalentPolicyState(state.talentPolicies);
-  state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
-  state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
-  FamousPersonService.ensureFamousPersonState(state);
-  const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
-  WorldMapService.ensureWorldMap(state);
-  WorldExplorerService.normalizeExploreState(state);
-  TerritoryService.normalizeTerritoryState(state, new Date(), { previousWorldMapVersion });
-  CityService.normalizeCities(state);
-  state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
-  state.gameDay = state.gameDay || 1;
-  state.happiness = state.happiness || 100;
-  state.updatedAt = state.updatedAt || new Date().toISOString();
-  BuildingActionService.applyDerivedStats(state);
-  CityService.persistLegacyFieldsToActiveCity(state);
-  return state;
+  return GameStateNormalizer.normalizeState(rawState);
+}
+
+function getClientGameState(gameState) {
+  return ClientGameStateAssembler.getClientGameState(gameState);
 }
 
 function applyOnlineProgress(gameState, now = new Date()) {
@@ -159,87 +62,6 @@ function calculateEraProgress(gameState) {
     targetEra: advanceConfig.nextEra,
     targetEraName: advanceConfig.name,
     cost: advanceConfig.cost,
-  };
-}
-
-function getBuildingCosts(buildings) {
-  const costs = {};
-  for (const id of Object.keys(BuildingConfig.getAllBuildings())) {
-    costs[id] = BuildingCostCalculator.getNextActionCost(id, buildings);
-  }
-  return costs;
-}
-
-function getBuildingDefinitions() {
-  return BuildingConfig.raw().buildings || {};
-}
-
-function getBuildingCategories() {
-  return BuildingConfig.raw().categories || {};
-}
-
-function getClientGameState(gameState) {
-  const normalized = normalizeState(gameState);
-  const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
-  const totalBuildings = Object.values(normalized.buildings).reduce((sum, item) => sum + (item?.level || 0), 0);
-  const activeCity = CityService.getActiveCity(normalized);
-  const growthMultiplier = ResourceTickCalculator.calculatePopulationGrowthMultiplier(activeCity || normalized);
-  const populationCapacity = ResourceTickCalculator.calculatePopulationCapacity(normalized, normalized.buildingEffects);
-  return {
-    playerId: normalized.playerId,
-    resources: {
-      ...normalized.resources,
-      foodOutputPerSecond: Math.round(outputs.foodOutputPerSecond * 10) / 10,
-      foodConsumptionPerSecond: Math.round(outputs.foodConsumptionPerSecond * 10) / 10,
-      foodNetPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
-      foodPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
-      knowledgePerSecond: Math.round(outputs.knowledgePerSecond * 10) / 10,
-      woodPerSecond: Math.round(outputs.woodPerSecond * 10) / 10,
-      ironPerSecond: Math.round(outputs.ironPerSecond * 10) / 10,
-      stonePerSecond: Math.round(outputs.stonePerSecond * 10) / 10,
-      metalPerSecond: Math.round(outputs.ironPerSecond * 10) / 10,
-    },
-    buildings: normalized.buildings,
-    buildingCosts: getBuildingCosts(normalized.buildings),
-    buildingDefinitions: getBuildingDefinitions(),
-    buildingCategories: getBuildingCategories(),
-    buildingEffects: normalized.buildingEffects,
-    military: normalized.military,
-    cityState: CityService.getClientCityState(normalized),
-    activeCityId: normalized.activeCityId,
-    isCapitalCity: normalized.activeCityId === CityService.CAPITAL_CITY_ID,
-    guidebook: {
-      categories: CityPlanningService.getGuidebookCategories(),
-    },
-    unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra, normalized),
-    currentEra: normalized.currentEra,
-    currentEraName: getEraName(normalized.currentEra),
-    currentEraDescription: getEraDescription(normalized.currentEra),
-    population: {
-      ...normalized.population,
-      max: normalized.population.max,
-      maxPop: normalized.population.max,
-      capacity: populationCapacity,
-      eraCap: populationCapacity.eraCap,
-      housingCap: populationCapacity.housingCap,
-      growthIntervalSeconds: GameConfig.population.growthIntervalSeconds,
-      growthMultiplier,
-    },
-    talentPolicies: TalentPolicyService.getClientState(normalized),
-    famousPersons: FamousPersonService.getClientState(normalized),
-    techs: TechTreeService.getClientState(normalized),
-    techEffects: normalized.techEffects,
-    happiness: normalized.happiness,
-    gameDay: normalized.gameDay,
-    eraHistory: normalized.eraHistory,
-    eventQueue: normalized.eventQueue,
-    eventHistory: normalized.eventHistory,
-    regularEventState: normalized.regularEventState,
-    threatEventState: normalized.threatEventState,
-    activeBuffs: normalized.activeBuffs,
-    territoryState: TerritoryService.getClientTerritoryState(normalized),
-    worldExplorerState: WorldExplorerService.getClientState(normalized),
-    totalBuildings,
   };
 }
 
