@@ -467,16 +467,33 @@
       return false;
     }
 
-    isTutorialActionAllowed(action = {}) {
-      if (!action?.type || action.type === 'blockCanvasModal') return false;
+    matchesTutorialAllowedAction(action = {}, allowedAction = null) {
+      if (!action?.type || !allowedAction?.type) return false;
+      if (action.type !== allowedAction.type) return false;
+      return Object.entries(allowedAction).every(([key, value]) => (
+        key === 'type' || value === undefined || action[key] === value
+      ));
+    }
+
+    isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight) {
+      if (!highlight || !action?.type) return false;
       const targetAction = action.allowedAction || action;
+      if (highlight.allowedAction) {
+        return this.matchesTutorialAllowedAction(targetAction, highlight.allowedAction);
+      }
       const type = targetAction?.type || '';
-      const intro = this.getActiveTutorialIntro();
-      if (intro) return this.isTutorialIntroActionAllowed(targetAction, intro);
       return Boolean(type
         && type !== 'worldMapDrag'
         && type !== 'worldRadarDrag'
         && type !== 'techTreeDrag');
+    }
+
+    isTutorialActionAllowed(action = {}) {
+      if (!action?.type || action.type === 'blockCanvasModal') return false;
+      const targetAction = action.allowedAction || action;
+      const intro = this.getActiveTutorialIntro();
+      if (intro) return this.isTutorialIntroActionAllowed(targetAction, intro);
+      return this.isTutorialHighlightActionAllowed(targetAction);
     }
 
     shouldBlockTutorialInput(point = {}) {
@@ -1196,6 +1213,7 @@
       this.tutorialHighlight = {
         rect,
         message: String(message ?? ''),
+        allowedAction: options.allowedAction || null,
         transition: {
           fromRect: previousRect,
           toRect: rect,

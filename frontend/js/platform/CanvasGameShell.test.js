@@ -235,3 +235,75 @@ test('CanvasGameShell still allows tutorial target taps to advance', () => {
     ['advance', 'openWorldSite'],
   ]);
 });
+
+test('CanvasGameShell blocks non-matching actions during guided highlights', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        if (point.x < 100) return { type: 'openSettings' };
+        return { type: 'switchTab', tab: 'civilization' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.tab || '']);
+        return true;
+      },
+    },
+  });
+  shell.showTutorialHighlight(
+    { x: 100, y: 100, width: 100, height: 80 },
+    'open civilization',
+    { allowedAction: { type: 'switchTab', tab: 'civilization' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 20, y: 20 }, event), true);
+  assert.equal(shell.handleTap({ x: 120, y: 120 }, event), true);
+
+  assert.deepEqual(calls, [
+    ['preventDefault'],
+    ['stopPropagation'],
+    ['handle', 'switchTab', 'civilization'],
+    ['preventDefault'],
+    ['stopPropagation'],
+  ]);
+});
+
+test('CanvasGameShell blocks all drags while a guided highlight is active', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'worldMapDrag' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type]);
+        return true;
+      },
+    },
+  });
+  shell.showTutorialHighlight(
+    { x: 20, y: 20, width: 100, height: 100 },
+    'tap only',
+    { allowedAction: { type: 'switchTab', tab: 'civilization' } },
+  );
+
+  assert.equal(shell.handleDrag('start', { x: 30, y: 30 }, {}), true);
+
+  assert.deepEqual(calls, []);
+});
