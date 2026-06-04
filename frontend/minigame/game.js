@@ -23,6 +23,7 @@ require('../js/platform/renderers/GuideTaskCanvasRenderer');
 require('../js/platform/renderers/HomeCanvasRenderer');
 require('../js/platform/renderers/SystemCanvasRenderer');
 require('../js/platform/renderers/CityCanvasRenderer');
+require('../js/platform/renderers/OverlayCanvasRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
