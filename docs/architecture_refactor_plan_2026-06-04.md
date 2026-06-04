@@ -1361,6 +1361,68 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 23：继续压缩 CanvasGameRenderer 的军团编队编辑器渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内军团编队编辑 modal 的布局、绘制和 hit target 协议下放到独立 `ArmyFormationEditorCanvasRenderer`，主 renderer 继续保留全局页面编排与 `renderArmyFormationEditor` facade。
+
+回归测试：
+
+- 覆盖 `ArmyFormationEditorCanvasRenderer` 打开时仍保留背景 `closeArmyFormationEditor`、关闭按钮和 `blockCanvasModal` hit target 协议。
+- 覆盖已选/未选成员仍产生 `toggleArmyFormationMember`，满员时未选成员被 `blockCanvasModal` 阻断。
+- 覆盖分页按钮仍产生 `changeArmyFormationPage`，边界分页保留阻断行为。
+- 覆盖保存按钮仍产生 `saveArmyFormation`，保存中状态改为 `blockCanvasModal`。
+- 覆盖关闭状态不绘制、不添加 hit target。
+- 覆盖 `CanvasGameRenderer` 的 army formation editor facade 仍能委托到独立 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 23 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 23 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js`，承接军团编队编辑 modal 的布局、绘制和 hit target 协议。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 `renderArmyFormationEditor` 外部入口与 facade，内部通过 `armyFormationEditorRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `ArmyFormationEditorCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js`，覆盖弹窗关闭、阻断、成员切换、满员禁用、分页、保存和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 4245 行降至 4126 行。
+- `frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js`：新增为 177 行，承接军团编队编辑弹窗渲染实现。
+- `frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js`：新增为 134 行，覆盖军团编队编辑弹窗防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`77b2d84 refactor: move army formation editor into canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
