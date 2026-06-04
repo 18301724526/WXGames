@@ -69,3 +69,30 @@ test('CanvasGameRenderer exposes tech tree layout through the tech renderer faca
   assert.equal(layout.nodes.length, 1);
   assert.ok(layout.nodeRects.fire);
 });
+
+test('CanvasGameRenderer gives split renderers the unbound presenter object', () => {
+  class StaticPresenter {
+    static buildTechViewState() {
+      return { tree: { nodes: [] } };
+    }
+  }
+
+  const renderer = new CanvasGameRenderer({
+    ctx: {},
+    presenter: StaticPresenter,
+    techRendererClass: TechCanvasRenderer,
+  });
+
+  assert.equal(renderer.techRenderer.presenter, StaticPresenter);
+  assert.equal(typeof renderer.techRenderer.presenter.buildTechViewState, 'function');
+
+  const replacementPresenter = {
+    buildTechViewState() {
+      return { tree: { nodes: [] } };
+    },
+  };
+  renderer.setPresenter(replacementPresenter);
+
+  assert.equal(renderer.techRenderer.presenter, replacementPresenter);
+  assert.equal(typeof renderer.techRenderer.presenter.buildTechViewState, 'function');
+});

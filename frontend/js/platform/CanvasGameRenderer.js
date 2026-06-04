@@ -474,6 +474,7 @@
       this.hudOverlayRenderer = options.hudOverlayRenderer || (HudOverlayRendererClass ? new HudOverlayRendererClass({ host: this }) : null);
       const FrameRendererClass = options.frameRendererClass || SharedCanvasFrameRenderer;
       this.frameRenderer = options.frameRenderer || (FrameRendererClass ? new FrameRendererClass({ host: this }) : null);
+      this.syncChildRendererPresenters();
       this.fpsLastPaintAt = 0;
       this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
@@ -566,6 +567,61 @@
 
     setPresenter(presenter) {
       this.presenter = presenter;
+      this.syncChildRendererPresenters();
+    }
+
+    getChildRenderers() {
+      return [
+        this.surfaceRenderer,
+        this.assetRenderer,
+        this.worldTileWaterRenderer,
+        this.worldMapRenderer,
+        this.worldMapLayerRenderer,
+        this.famousRenderer,
+        this.techRenderer,
+        this.battleRenderer,
+        this.tutorialRenderer,
+        this.buildingRenderer,
+        this.eventRenderer,
+        this.civilizationRenderer,
+        this.militaryRenderer,
+        this.armyFormationEditorRenderer,
+        this.guideTaskRenderer,
+        this.homeRenderer,
+        this.systemRenderer,
+        this.cityRenderer,
+        this.overlayRenderer,
+        this.advisorRenderer,
+        this.mapCommandRenderer,
+        this.tabBarRenderer,
+        this.hudTabPageRenderer,
+        this.hudOverlayRenderer,
+        this.frameRenderer,
+      ].filter(Boolean);
+    }
+
+    syncChildRendererPresenter(renderer) {
+      if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return false;
+      try {
+        Object.defineProperty(renderer, 'presenter', {
+          configurable: true,
+          enumerable: false,
+          writable: true,
+          value: this.presenter || null,
+        });
+        return true;
+      } catch (error) {
+        try {
+          renderer.presenter = this.presenter || null;
+          return true;
+        } catch (assignError) {
+          return false;
+        }
+      }
+    }
+
+    syncChildRendererPresenters() {
+      this.getChildRenderers().forEach((renderer) => this.syncChildRendererPresenter(renderer));
     }
 
     delegateSurfaceRenderer(method, args = []) {
