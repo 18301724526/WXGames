@@ -2166,9 +2166,10 @@
 提交结果：
 
 - 代码提交哈希：`b53ba19 refactor: move world map facade methods out of canvas renderer`。
-- 文档记录：本节由 `docs: record refactor plan step 35` 保存。
+- 文档提交哈希：`e839376 docs: record refactor plan step 35`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
