@@ -1227,7 +1227,7 @@
         waterTimeMs: this.now(),
         commitCamera: false,
         clearTransform: false,
-        preserveOnMiss: false,
+        preserveOnMiss: true,
       })) {
         this.clearWorldMapLayerTransform();
         return offset;

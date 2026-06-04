@@ -237,6 +237,27 @@ test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawImage'), true);
 });
 
+test('WorldMapLayerCanvasRenderer keeps current layer untouched when preserved snapshot misses', () => {
+  const host = createHost({
+    renderWorldTileSnapshotCache(...args) {
+      host.calls.push(['renderWorldTileSnapshotCache', args]);
+      return false;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapSnapshotLayer({ territoryState: { worldMap: createTileMapView() } }, {
+    preserveOnMiss: true,
+    topBarBottom: 96,
+    frameless: true,
+    waterTimeMs: 123,
+  });
+
+  assert.equal(rendered, false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawImage'), false);
+  assert.equal(host.calls.filter((call) => call[0] === 'renderWorldTileSnapshotCache').length, 1);
+});
+
 test('CanvasGameRenderer exposes world map layer rendering through facade', () => {
   class StubWorldMapLayerRenderer {
     constructor(options) {
