@@ -103,7 +103,7 @@
 
 - 代码提交哈希：`1813ced refactor: add game action registry`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ### Step 2：拆分 GameStateService 的规范化和客户端 DTO
 
