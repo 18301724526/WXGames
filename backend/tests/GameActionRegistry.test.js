@@ -1,0 +1,141 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const { createGameActionRegistry } = require('../actions/GameActionRegistry');
+
+function createRegistryWithCalls() {
+  const calls = [];
+  const registry = createGameActionRegistry({
+    BuildBuildingAction: {
+      execute(action, gameState, tutorial, target) {
+        calls.push({ type: 'building', action, gameState, tutorial, target });
+        return { success: true, action, target };
+      },
+    },
+    TechTreeService: {
+      research(gameState, techId) {
+        calls.push({ type: 'research', gameState, techId });
+        return { success: true, techId };
+      },
+    },
+    MilitaryService: {
+      setArmyFormation(gameState, payload) {
+        calls.push({ type: 'formation', gameState, payload });
+        return { success: true, payload };
+      },
+    },
+    TerritoryAction: {
+      execute(action, gameState, payload) {
+        calls.push({ type: 'territory', action, gameState, payload });
+        return { success: true, action, payload };
+      },
+    },
+  });
+  return { calls, registry };
+}
+
+test('dispatches build actions through the building action handler', () => {
+  const { calls, registry } = createRegistryWithCalls();
+  const gameState = { id: 'state' };
+  const tutorial = { step: 'build' };
+
+  const result = registry.execute({
+    action: 'build',
+    body: { action: 'build', target: 'farm' },
+    gameState,
+    tutorial,
+  });
+
+  assert.deepEqual(result, { success: true, action: 'build', target: 'farm' });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], {
+    type: 'building',
+    action: 'build',
+    gameState,
+    tutorial,
+    target: 'farm',
+  });
+});
+
+test('dispatches research actions with techId fallback order', () => {
+  const { calls, registry } = createRegistryWithCalls();
+  const gameState = { id: 'state' };
+
+  const result = registry.execute({
+    body: { action: 'research', target: 'fire-making' },
+    gameState,
+    tutorial: {},
+  });
+
+  assert.deepEqual(result, { success: true, techId: 'fire-making' });
+  assert.deepEqual(calls[0], { type: 'research', gameState, techId: 'fire-making' });
+});
+
+test('dispatches setArmyFormation actions without losing slot and member ids', () => {
+  const { calls, registry } = createRegistryWithCalls();
+  const gameState = { id: 'state' };
+
+  const result = registry.execute({
+    action: 'setArmyFormation',
+    body: {
+      cityId: 'capital',
+      slot: 2,
+      memberIds: ['person-a', 'person-b'],
+    },
+    gameState,
+    tutorial: {},
+  });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(calls[0], {
+    type: 'formation',
+    gameState,
+    payload: {
+      cityId: 'capital',
+      slot: 2,
+      memberIds: ['person-a', 'person-b'],
+    },
+  });
+});
+
+test('dispatches territory actions through the territory action handler', () => {
+  const { calls, registry } = createRegistryWithCalls();
+
+  const result = registry.execute({
+    action: 'startExplore',
+    body: { mode: 'manual', targetQ: 2, targetR: -1, routeLength: 4 },
+    gameState: {},
+    tutorial: {},
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(calls[0].type, 'territory');
+  assert.equal(calls[0].action, 'startExplore');
+  assert.deepEqual(calls[0].payload, {
+    territoryId: undefined,
+    cityId: undefined,
+    soldiers: undefined,
+    name: undefined,
+    direction: undefined,
+    missionId: undefined,
+    mode: 'manual',
+    targetQ: 2,
+    targetR: -1,
+    routeLength: 4,
+    q: undefined,
+    r: undefined,
+    x: undefined,
+    y: undefined,
+    expedition: undefined,
+  });
+});
+
+test('returns a stable result for unknown actions', () => {
+  const { registry } = createRegistryWithCalls();
+
+  assert.deepEqual(registry.execute({ action: 'missingAction', body: {} }), {
+    success: false,
+    message: '鏈煡鎿嶄綔',
+    error: 'UNKNOWN_ACTION',
+  });
+});

@@ -1,15 +1,7 @@
 const TutorialService = require('../services/TutorialService');
 const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
-const TalentPolicyService = require('../services/TalentPolicyService');
-const TechTreeService = require('../services/TechTreeService');
-const FamousPersonService = require('../services/FamousPersonService');
-const MilitaryService = require('../services/MilitaryService');
-const AdvanceEraAction = require('../actions/AdvanceEraAction');
-const AssignPopulationAction = require('../actions/AssignPopulationAction');
-const BuildBuildingAction = require('../actions/BuildBuildingAction');
-const ClaimEventAction = require('../actions/ClaimEventAction');
-const TerritoryAction = require('../actions/TerritoryAction');
+const GameActionRegistry = require('../actions/GameActionRegistry');
 
 function buildGameView(gameState, tutorial, gameStateService) {
   const clientState = gameStateService.getClientGameState(gameState);
@@ -116,28 +108,6 @@ function registerGameRoutes(app, deps) {
       step,
       eventId,
       optionId,
-      territoryId,
-      cityId,
-      soldiers,
-      name,
-      direction,
-      missionId,
-      mode,
-      targetQ,
-      targetR,
-      routeLength,
-      expedition,
-      policyId,
-      techId,
-      tech,
-      candidateId,
-      personId,
-      attribute,
-      source,
-      basePolicyId,
-      tiers,
-      policy,
-      memberIds,
     } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
@@ -149,51 +119,7 @@ function registerGameRoutes(app, deps) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
     }
 
-    if (action === 'build' || action === 'upgrade') {
-      result = BuildBuildingAction.execute(action, gameState, tutorial, target);
-    } else if (action === 'advanceEra') {
-      result = AdvanceEraAction.execute(gameState, tutorial);
-    } else if (action === 'claimEvent') {
-      result = ClaimEventAction.execute(gameState, tutorial, { eventId, optionId });
-    } else if (action === 'assign') {
-      result = AssignPopulationAction.execute(gameState, tutorial, { target, count });
-    } else if (action === 'applyTalentPolicy') {
-      result = TalentPolicyService.applyPolicy(gameState, tutorial, { policyId, basePolicyId, tiers, policy });
-    } else if (action === 'saveTalentPolicy') {
-      result = TalentPolicyService.saveCustomPolicy(gameState, { policyId, basePolicyId, tiers, policy });
-    } else if (action === 'deleteTalentPolicy') {
-      result = TalentPolicyService.deleteCustomPolicy(gameState, { policyId });
-    } else if (action === 'setArmyFormation') {
-      result = MilitaryService.setArmyFormation(gameState, { cityId, slot: req.body?.slot, memberIds });
-    } else if (['scoutTerritory', 'claimScout', 'startConquest', 'claimConquest', 'renameCity', 'renamePolity', 'switchCity', 'startExplore', 'claimExplore'].includes(action)) {
-      result = TerritoryAction.execute(action, gameState, {
-        territoryId,
-        cityId,
-        soldiers,
-        name,
-        direction,
-        missionId,
-        mode,
-        targetQ,
-        targetR,
-        routeLength,
-        q: req.body?.q,
-        r: req.body?.r,
-        x: req.body?.x,
-        y: req.body?.y,
-        expedition,
-      });
-    } else if (action === 'research') {
-      result = TechTreeService.research(gameState, techId || target || tech);
-    } else if (action === 'seekFamousPerson') {
-      result = FamousPersonService.seekFamousPerson(gameState, { source: source || target });
-    } else if (action === 'acceptFamousPerson') {
-      result = FamousPersonService.acceptFamousPerson(gameState, candidateId || target);
-    } else if (action === 'dismissFamousPersonCandidate') {
-      result = FamousPersonService.dismissFamousPersonCandidate(gameState, candidateId || target);
-    } else if (action === 'assignFamousAttributePoint') {
-      result = FamousPersonService.assignAttributePoint(gameState, personId || target, attribute);
-    }
+    result = GameActionRegistry.execute({ action, body: req.body || {}, gameState, tutorial });
     gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
