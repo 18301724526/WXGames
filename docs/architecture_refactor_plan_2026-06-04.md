@@ -448,6 +448,63 @@
 - 推送目标：`origin main`。
 - 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 8：继续压缩 CanvasGameRenderer 的科技树渲染职责
+
+目标：把 Step 5 中已经建立边界的科技树渲染实现真正下放到 `TechCanvasRenderer`，继续减少 `CanvasGameRenderer.js` 的巨型文件体量。
+
+回归测试：
+
+- 覆盖 `TechCanvasRenderer` 自身科技树布局计算。
+- 覆盖 `CanvasGameRenderer.getTechTreeLayout` facade 仍能委托到科技 renderer。
+- 覆盖科技树拖拽/缩放交互模型仍依赖相同布局协议。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 8 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 8 留档
+
+状态：已完成
+
+本次改动：
+
+- 将 `CanvasGameRenderer.js` 内科技树 route、node、detail modal、tree layout、tech panel 渲染实现搬入 `frontend/js/platform/renderers/TechCanvasRenderer.js`。
+- `CanvasGameRenderer.js` 保留 `renderTech`、`renderTechInternal`、`getTechTreeLayout` 等兼容 facade，内部委托 `TechCanvasRenderer`。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `TechCanvasRenderer`。
+- 更新 `frontend/js/platform/renderers/TechCanvasRenderer.test.js`，覆盖独立 renderer 布局计算与主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮检查时的 10986 行降至 10781 行。
+- `frontend/js/platform/renderers/TechCanvasRenderer.js`：扩展为 882 行，承接科技树领域渲染实现。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/TechCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `node --test frontend/js/platform/GameCommandService.test.js`
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`4f786b1 refactor: move tech rendering into tech canvas renderer`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
