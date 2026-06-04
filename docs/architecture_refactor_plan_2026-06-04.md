@@ -184,6 +184,39 @@
 
 - 在本文档追加 Step 3 的提交记录，包括测试命令和结果。
 
+### Step 3 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `backend/services/TerritoryClientAssembler.js`，承接领土客户端 DTO 组装、地图边界、侦察区域视图和情报遮罩。
+- 更新 `backend/services/TerritoryService.js`，保留 `getClientTerritoryState` facade，内部委托 client assembler。
+- 新增 `backend/tests/TerritoryClientAssembler.test.js`，覆盖领土客户端返回契约和守军技能情报遮罩。
+
+说明：
+
+- 本步先拆出客户端视图边界，保持侦察和征服流程逻辑不变，避免一次性移动过多核心战斗/地图规则。
+
+测试命令：
+
+- `node --test backend/tests/TerritoryClientAssembler.test.js`
+- `node --test backend/tests/GameStateServiceSplit.test.js`
+- `node --test backend/tests/GameActionRegistry.test.js`
+- `node --check backend/services/TerritoryService.js`
+- `node --check backend/services/TerritoryClientAssembler.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`b78baa3 refactor: extract territory client assembler`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ### Step 4：拆分前端 UIStatePresenter
 
 目标：让 view model 按业务域拆分，减少 renderer 对业务规则的直接理解。
