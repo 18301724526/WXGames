@@ -411,6 +411,43 @@
 
 - 在本文档追加 Step 7 的提交记录，包括测试命令和结果。
 
+### Step 7 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/interactions/TechTreeInteractionModel.js`，承接科技树拖拽、缩放、panel/view 获取和 pan clamp 计算。
+- 更新 `frontend/js/platform/CanvasActionController.js`，保留 `techTreeDrag` / `techTreeZoom` action 入口，内部委托 `TechTreeInteractionModel`。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境都能加载交互模型。
+- 新增 `frontend/js/platform/interactions/TechTreeInteractionModel.test.js`，覆盖拖拽边界、缩放中心保持和 controller 委托关系。
+
+说明：
+
+- 本步先解除科技树交互对 renderer 布局细节的直接依赖；世界地图交互已有 `TerritoryController` / runtime coordinator 分支，下一轮可继续以同样模型收敛。
+
+测试命令：
+
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `node --check frontend/js/platform/interactions/TechTreeInteractionModel.js`
+- `node --check frontend/js/platform/CanvasActionController.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/GameCommandService.test.js`
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`bdbde7c refactor: extract tech tree interaction model`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
