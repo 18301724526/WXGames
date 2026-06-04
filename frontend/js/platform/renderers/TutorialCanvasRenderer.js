@@ -3,6 +3,7 @@
     `assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/${String(index + 1).padStart(3, '0')}.png`
   ));
   const TUTORIAL_MARCH_UNIT_FRAME_MS = 80;
+  const TUTORIAL_INTRO_DIALOGUE_LEFT = 96;
 
   const SharedTutorialAdvisorCanvasRenderer = (() => {
     if (global.TutorialAdvisorCanvasRenderer) return global.TutorialAdvisorCanvasRenderer;
@@ -436,29 +437,31 @@
 
     renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
       const layout = this.getLayout();
-      const panelW = Math.min(layout.contentWidth - 16, 360);
       const panelH = 136;
-      const panelX = layout.contentX + Math.max(0, (layout.contentWidth - panelW) / 2);
+      const contentRight = Number(layout.contentRight) || ((Number(layout.contentX) || 0) + (Number(layout.contentWidth) || 0));
+      const panelRight = Math.min(contentRight, this.width - 18);
+      const panelX = Math.max(layout.contentX, Math.min(TUTORIAL_INTRO_DIALOGUE_LEFT, panelRight - 192));
+      const panelW = Math.max(192, panelRight - panelX);
       const panelY = Math.max(84, this.height - panelH - 76 - this.bottomSafeArea);
       const portraitW = Math.min(188, Math.max(134, layout.contentWidth * 0.42));
       const portraitH = Math.min(330, Math.max(248, this.height * 0.38));
-      const portraitX = Math.max(layout.contentX - 72, panelX + 104 - portraitW);
+      const portraitX = Math.max(layout.contentX - 72, panelX + 12 - portraitW);
       const portraitY = Math.max(48, panelY - portraitH + 44);
 
-      this.drawPanel(panelX + 92, panelY, panelW - 92, panelH, {
+      this.drawPanel(panelX, panelY, panelW, panelH, {
         fill: 'rgba(23, 17, 12, 0.94)',
         stroke: 'rgba(246, 214, 147, 0.3)',
         radius: 8,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
       this.renderTutorialIntroAdvisorPortrait(portraitX, portraitY, portraitW, portraitH);
-      this.drawText(advisorName, panelX + 116, panelY + 24, {
+      this.drawText(advisorName, panelX + 24, panelY + 24, {
         size: 14,
         bold: true,
         color: '#ffd98a',
       });
-      const lines = this.wrapTextLimit(message, panelW - 138, 3, { size: 13 });
-      this.drawTextLines(lines, panelX + 116, panelY + 46, {
+      const lines = this.wrapTextLimit(message, panelW - 48, 3, { size: 13 });
+      this.drawTextLines(lines, panelX + 24, panelY + 46, {
         size: 13,
         color: '#f7ecd0',
         lineHeight: 18,

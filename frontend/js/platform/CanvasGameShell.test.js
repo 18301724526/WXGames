@@ -146,3 +146,92 @@ test('CanvasGameShell routes map command tech tree wheel zoom at tree hit target
     ['stopPropagation'],
   ]);
 });
+
+test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        if (point.x >= 100 && point.x <= 160 && point.y >= 200 && point.y <= 260) {
+          return { type: 'openWorldSite', siteId: 'capital' };
+        }
+        return { type: 'blockCanvasModal', allowedAction: { type: 'openWorldSite', siteId: 'capital' } };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.phase || '']);
+        return true;
+      },
+    },
+  });
+  shell.tutorialIntro = { active: true, step: 'city', capitalCityId: 'capital' };
+  shell.worldMapRuntimeCoordinator = {
+    canRouteDrag() {
+      calls.push(['canRouteDrag']);
+      return true;
+    },
+    handleDrag() {
+      calls.push(['worldDrag']);
+      return true;
+    },
+    getMapRuntime() {
+      return null;
+    },
+  };
+
+  assert.equal(shell.handleDrag('start', { x: 20, y: 40 }, event), true);
+  assert.equal(shell.handleDrag('move', { x: 40, y: 80 }, event), true);
+
+  assert.equal(calls.some((call) => call[0] === 'canRouteDrag'), false);
+  assert.equal(calls.some((call) => call[0] === 'worldDrag'), false);
+  assert.equal(calls.some((call) => call[0] === 'handle'), false);
+  assert.equal(calls.filter((call) => call[0] === 'preventDefault').length >= 2, true);
+  assert.equal(calls.filter((call) => call[0] === 'stopPropagation').length >= 2, true);
+});
+
+test('CanvasGameShell still allows tutorial target taps to advance', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        if (point.x >= 100 && point.x <= 160 && point.y >= 200 && point.y <= 260) {
+          return { type: 'openWorldSite', siteId: 'capital' };
+        }
+        return { type: 'blockCanvasModal', allowedAction: { type: 'openWorldSite', siteId: 'capital' } };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type]);
+        return true;
+      },
+    },
+  });
+  shell.tutorialIntro = { active: true, step: 'city', capitalCityId: 'capital' };
+  shell.tutorialIntroOverlay = {
+    advanceFromAction(action) {
+      calls.push(['advance', action.type]);
+      return true;
+    },
+  };
+
+  assert.equal(shell.handleTap({ x: 120, y: 220 }, {}), true);
+
+  assert.deepEqual(calls, [
+    ['handle', 'openWorldSite'],
+    ['advance', 'openWorldSite'],
+  ]);
+});

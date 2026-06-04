@@ -1,4 +1,11 @@
 (function (global) {
+  const TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS = {
+    centerX: 420,
+    centerY: 1800,
+    height: 2000,
+  };
+  const TUTORIAL_ADVISOR_SPINE_ALPHA = 1;
+
   class TutorialAdvisorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -87,10 +94,10 @@
       if (!runtime?.ensureLayerCanvas || !global.SpineWebglPlayer?.isAvailable?.()) return false;
       const pixelRatio = Math.min(2, Math.max(1, Number(global.devicePixelRatio) || 1));
       const layerRect = {
-        x: Math.max(-24, Math.floor(Number(x) || 0)),
-        y: Math.max(0, Math.floor(Number(y) || 0)),
-        width: Math.max(1, Math.ceil(Number(width) || 1)),
-        height: Math.max(1, Math.ceil(Number(height) || 1)),
+        x: 0,
+        y: 0,
+        width: Math.max(1, Math.ceil(Number(runtime.width || this.width) || Number(width) || 1)),
+        height: Math.max(1, Math.ceil(Number(runtime.height || this.height) || Number(height) || 1)),
       };
       const canvas = runtime.ensureLayerCanvas('tutorialSpine', {
         contextType: 'webgl',
@@ -99,12 +106,18 @@
         rect: layerRect,
       });
       if (!canvas) return false;
+      if (canvas.style) canvas.style.opacity = String(TUTORIAL_ADVISOR_SPINE_ALPHA);
       runtime.setLayerVisible?.('tutorialSpine', true);
       const metrics = runtime.getLayerMetrics?.('tutorialSpine') || {};
       const logicalWidth = metrics.width || layerRect.width;
       const logicalHeight = metrics.height || layerRect.height;
       const existing = this.tutorialAdvisorSpine;
       if (existing?.mode === 'layer' && existing?.player && existing.canvas === canvas) {
+        existing.player.logicalWidth = logicalWidth;
+        existing.player.logicalHeight = logicalHeight;
+        existing.player.maxDevicePixelRatio = pixelRatio;
+        existing.player.viewFocus = TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS;
+        existing.player.resize?.();
         return existing.player.status === 'ready' || existing.player.status === 'loading';
       }
       existing?.player?.dispose?.();
@@ -119,11 +132,7 @@
         maxDevicePixelRatio: pixelRatio,
         premultipliedAlpha: false,
         preserveDrawingBuffer: false,
-        viewFocus: {
-          centerX: 0,
-          centerY: 1080,
-          height: 900,
-        },
+        viewFocus: TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS,
         onError: () => {
           this.tutorialAdvisorSpineFailed = true;
           runtime.setLayerVisible?.('tutorialSpine', false);
@@ -146,11 +155,7 @@
         logicalHeight,
         maxDevicePixelRatio: pixelRatio,
         preserveDrawingBuffer: false,
-        viewFocus: {
-          centerX: 0,
-          centerY: 1080,
-          height: 900,
-        },
+        viewFocus: TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS,
       });
       if (!loaded) {
         this.tutorialAdvisorSpineFailed = true;

@@ -429,8 +429,78 @@
       return true;
     }
 
+    stopCanvasEvent(event) {
+      if (event?.preventDefault) event.preventDefault();
+      if (event?.stopPropagation) event.stopPropagation();
+      return true;
+    }
+
+    getTutorialControlAction(point = {}) {
+      if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return null;
+      const action = this.renderer.getHitTarget(point);
+      if (!action) return null;
+      return action.type === 'blockCanvasModal' ? { ...action, tutorialBlocked: true } : action;
+    }
+
+    isTutorialInputActive() {
+      const intro = this.lastGame?.tutorialIntro || this.tutorialIntro || null;
+      const highlight = this.tutorialHighlight || null;
+      return Boolean(intro?.active || highlight);
+    }
+
+    getActiveTutorialIntro() {
+      const intro = this.lastGame?.tutorialIntro || this.tutorialIntro || null;
+      return intro?.active ? intro : null;
+    }
+
+    isTutorialIntroActionAllowed(action = {}, intro = this.getActiveTutorialIntro()) {
+      if (!intro?.active || !action?.type) return false;
+      const targetAction = action.allowedAction || action;
+      const capitalCityId = intro.capitalCityId || this.lastGame?.state?.cityState?.capitalCityId || 'capital';
+      const actionId = targetAction.cityId || targetAction.territoryId || targetAction.siteId || '';
+      if (intro.step === 'city') {
+        return targetAction.type === 'openWorldSite' && (!actionId || actionId === capitalCityId);
+      }
+      if (intro.step === 'enter') {
+        return targetAction.type === 'enterCity' && (!actionId || actionId === capitalCityId);
+      }
+      return false;
+    }
+
+    isTutorialActionAllowed(action = {}) {
+      if (!action?.type || action.type === 'blockCanvasModal') return false;
+      const targetAction = action.allowedAction || action;
+      const type = targetAction?.type || '';
+      const intro = this.getActiveTutorialIntro();
+      if (intro) return this.isTutorialIntroActionAllowed(targetAction, intro);
+      return Boolean(type
+        && type !== 'worldMapDrag'
+        && type !== 'worldRadarDrag'
+        && type !== 'techTreeDrag');
+    }
+
+    shouldBlockTutorialInput(point = {}) {
+      if (!this.isTutorialInputActive()) return false;
+      return !this.isTutorialActionAllowed(this.getTutorialControlAction(point));
+    }
+
+    blockTutorialCanvasInput(event) {
+      this.dragAction = null;
+      this.worldMapPinchDragging = false;
+      if (this.isWorldMapDragging()) this.finishWorldMapSnapshotDrag();
+      this.stopCanvasEvent(event);
+      return true;
+    }
+
     handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
+      if (this.isTutorialInputActive()) {
+        if (phase === 'start') {
+          if (this.shouldBlockTutorialInput(point)) return this.blockTutorialCanvasInput(event);
+          return this.blockTutorialCanvasInput(event);
+        }
+        if (!this.dragAction) return this.blockTutorialCanvasInput(event);
+      }
       if (phase === 'start' && typeof this.renderer.getHitTarget === 'function') {
         const action = this.getTechTreeHitAction(point) || this.renderer.getHitTarget(point);
         if (this.canRouteTechTreeInteraction(action)) {
@@ -480,6 +550,7 @@
 
     handleGesture(gesture, event) {
       if (!this.inputEnabled || !this.renderer) return false;
+      if (this.isTutorialInputActive()) return this.blockTutorialCanvasInput(event);
       const worldMapGestureHandled = this.handleWorldMapGesture(gesture, event);
       if (worldMapGestureHandled) return true;
       if (!this.canRouteTechTreeInteraction()) return false;
@@ -499,6 +570,7 @@
 
     handleWorldMapGesture(gesture = {}, event) {
       if (gesture?.type !== 'pinchZoom') return false;
+      if (this.isTutorialInputActive()) return false;
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       const state = this.lastGame?.state || {};
@@ -541,10 +613,12 @@
     handleTap(point, event) {
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       const action = this.renderer.getHitTarget(point);
+      if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(action)) {
+        return this.blockTutorialCanvasInput(event);
+      }
       if (action?.type === 'blockCanvasModal') {
         const handled = this.handleAction(action, event);
-        if (handled && event?.preventDefault) event.preventDefault();
-        if (handled && event?.stopPropagation) event.stopPropagation();
+        if (handled) this.stopCanvasEvent(event);
         return handled;
       }
       if (!action || action.disabled) {
@@ -1981,7 +2055,7 @@
         network: this.networkState,
         floatingTexts: this.getFloatingTextView(),
         tutorialIntro: this.lastGame?.tutorialIntro || this.tutorialIntro || null,
-        tutorialHighlight: null,
+        tutorialHighlight: this.tutorialHighlight,
         rewardReveal: this.rewardReveal,
       };
     }
