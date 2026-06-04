@@ -77,6 +77,34 @@
 
 - 在本文档追加 Step 1 的提交记录，包括测试命令和结果。
 
+### Step 1 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `backend/actions/GameActionRegistry.js`，集中维护 `/api/game/action` 的 action handler registry。
+- 更新 `backend/routes/gameRoutes.js`，路由保留 HTTP 适配、教程校验、状态保存和返回组装，业务动作改由 registry 分发。
+- 新增 `backend/tests/GameActionRegistry.test.js`，覆盖 build、research、setArmyFormation、territory action 和未知 action。
+- 更新 `scripts/verify-refactor-plan-doc.js`，让文档守卫只校验路线步骤，不把留档段误判为新步骤。
+
+测试命令：
+
+- `node --test backend/tests/GameActionRegistry.test.js`
+- `node --check backend/routes/gameRoutes.js`
+- `node --check backend/actions/GameActionRegistry.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`1813ced refactor: add game action registry`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ### Step 2：拆分 GameStateService 的规范化和客户端 DTO
 
 目标：把状态规范化和前端返回视图组装分离，降低领域服务之间的隐式耦合。

@@ -30,7 +30,7 @@ for (let step = 0; step <= 7; step += 1) {
 }
 
 const routeSection = doc.split('\n## 测试策略')[0].split('\n## 重构路线')[1] || '';
-const stepSections = routeSection.split(/\n### Step \d+/).slice(1);
+const stepSections = routeSection.split(/\n### Step \d+：/).slice(1);
 if (stepSections.length < 8) {
   throw new Error(`Expected at least 8 step sections, found ${stepSections.length}`);
 }
