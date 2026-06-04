@@ -1667,6 +1667,69 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 28：继续压缩 CanvasGameRenderer 的世界地图层编排职责
+
+目标：把 `CanvasGameRenderer.js` 内世界地图层布局、地图首页世界视图、空地图提示、探索 HUD、地图首页站点 hit target 收集、普通世界地图层渲染和快照层 backbuffer 流程下放到独立 `WorldMapLayerCanvasRenderer`。主 renderer 继续保留同名 facade；瓦片投影、瓦片缓存、站点绘制和世界地图操作仍由既有 `WorldMapCanvasRenderer` 承接，避免复制地图算法。
+
+回归测试：
+
+- 覆盖 `WorldMapLayerCanvasRenderer.getWorldMapLayerLayout` 在地图首页和普通军事世界视图下仍返回旧布局公式。
+- 覆盖地图首页有瓦片时仍调用 `renderWorldTileMap`，保留 `resetWorldPan` 与 `startExplore` hit target。
+- 覆盖地图首页无瓦片时仍绘制空地图提示并添加 `blockCanvasModal`，旧 `territories` 数据仍回退到 `renderMilitaryWorldView`。
+- 覆盖探索队 ready/active 状态仍生成 `claimExplore` 或进度 HUD。
+- 覆盖 `collectMapHomeWorldSiteHitTargets` 仍通过 `getWorldTileRenderEntries` 与 `addWorldTileSiteHitTargets` 收集站点 hit target。
+- 覆盖 `renderWorldMapSnapshotLayer` 的 preserve-on-miss backbuffer、裁剪、`renderWorldTileSnapshotCache` 和 `worldTileWaterTimeOverride` 清理流程。
+- 覆盖 `CanvasGameRenderer` 的世界地图层 facade 仍能委托到独立 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 28 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 28 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js`，承接世界地图层布局、地图首页世界视图、空地图提示、探索 HUD、站点 hit target 收集、普通世界地图层和快照层流程。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 `getWorldMapLayerLayout`、`renderMapHomeWorldView`、`collectMapHomeWorldSiteHitTargets`、`renderMapHomeExplorerHud`、`renderMapHomeEmptyWorld`、`renderWorldMapLayer` 和 `renderWorldMapSnapshotLayer` 外部入口为 facade，内部通过 `worldMapLayerRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `WorldMapLayerCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js`，覆盖世界地图层布局、地图首页有/无瓦片分支、探索 HUD、站点 hit target 收集、快照 backbuffer 和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 3702 行降至 3360 行。
+- `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js`：新增为 430 行，承接世界地图层编排实现。
+- `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js`：新增为 249 行，覆盖世界地图层防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/TabBarCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`3658be8 refactor: move world map layer flow into canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
