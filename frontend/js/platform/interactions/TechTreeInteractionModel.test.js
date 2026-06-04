@@ -114,3 +114,44 @@ test('CanvasActionController delegates tech tree drag and zoom to interaction mo
     ['render'],
   ]);
 });
+
+test('CanvasActionController defers tutorial enter-city action until the intro transition completes', () => {
+  const calls = [];
+  const game = {
+    state: {},
+    enterCity(cityId, options) {
+      calls.push(['enterCity', cityId, options.tab]);
+      return true;
+    },
+  };
+  const host = {
+    tutorialIntro: { active: true, step: 'enter', capitalCityId: 'capital' },
+    tutorialIntroOverlay: {
+      beginEnterCityTransition(action, onComplete) {
+        calls.push(['beginEnterCityTransition', action.type, action.cityId]);
+        this.onComplete = onComplete;
+        return true;
+      },
+      getViewState() {
+        return host.tutorialIntro;
+      },
+    },
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host });
+
+  assert.equal(controller.handle({ type: 'enterCity', cityId: 'capital', tab: 'buildings' }), true);
+  assert.deepEqual(calls, [['beginEnterCityTransition', 'enterCity', 'capital']]);
+
+  host.tutorialIntroOverlay.onComplete();
+  assert.deepEqual(calls, [
+    ['beginEnterCityTransition', 'enterCity', 'capital'],
+    ['enterCity', 'capital', 'buildings'],
+  ]);
+});

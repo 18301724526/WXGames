@@ -769,6 +769,39 @@
     }
 
     handle_enterCity(action) {
+      if (this.beginTutorialEnterCityTransition(action)) return true;
+      return this.performEnterCity(action);
+    }
+
+    beginTutorialEnterCityTransition(action = {}) {
+      const controller = this.getTutorialIntroController();
+      if (!controller || typeof controller.beginEnterCityTransition !== 'function') return false;
+      const intro = this.getTutorialIntroView(controller);
+      if (intro?.step !== 'enter') return false;
+      const capitalCityId = intro.capitalCityId || controller.getCapitalCityId?.() || 'capital';
+      const actionCityId = action.cityId || action.territoryId || action.siteId || '';
+      if (action?.type !== 'enterCity' || (actionCityId && actionCityId !== capitalCityId)) return false;
+      return controller.beginEnterCityTransition(action, () => this.performEnterCity(action)) === true;
+    }
+
+    getTutorialIntroController() {
+      const game = this.getGameHost();
+      return this.host?.tutorialIntroOverlay
+        || this.host?.lastGame?.tutorialIntroOverlay
+        || game?.tutorialIntroOverlay
+        || null;
+    }
+
+    getTutorialIntroView(controller = this.getTutorialIntroController()) {
+      const game = this.getGameHost();
+      return controller?.getViewState?.()
+        || this.host?.tutorialIntro
+        || this.host?.lastGame?.tutorialIntro
+        || game?.tutorialIntro
+        || null;
+    }
+
+    performEnterCity(action) {
       const cityId = action.cityId || action.territoryId || action.siteId || '';
       if (!cityId) return false;
       this.host.showSubcityList = false;

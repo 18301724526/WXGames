@@ -155,6 +155,50 @@ test('TutorialCanvasRenderer draws intro march unit from sprite frames when load
   assert.equal(host.drawCalls.some((call) => call[0] === 'drawPanel'), false);
 });
 
+test('TutorialCanvasRenderer keeps the march unit parked on the first frame during click guidance', () => {
+  const loaded = [];
+  const host = createHost({
+    getNow() { return 2400; },
+    getAsset(assetPath) {
+      loaded.push(assetPath);
+      return { naturalWidth: 215, naturalHeight: 510, width: 215, height: 510 };
+    },
+  });
+  host.hitTargets.push(
+    { x: 170, y: 300, width: 72, height: 56, action: { type: 'openWorldSite', siteId: 'capital' } },
+    { x: 270, y: 560, width: 72, height: 44, action: { type: 'enterCity', cityId: 'capital' } },
+  );
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  renderer.renderTutorialIntro({}, {
+    tutorialIntro: {
+      active: true,
+      step: 'enter',
+      capitalCityId: 'capital',
+      startedAt: 0,
+      marchDurationMs: 2400,
+      messages: { enter: 'Enter.' },
+    },
+  });
+
+  assert.equal(loaded.at(-1).endsWith('/001.png'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.allowedAction?.type === 'enterCity'), true);
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'blockCanvasModal').length, 4);
+});
+
+test('TutorialCanvasRenderer moves the march unit into the city and fades it out', () => {
+  const host = createHost({ width: 390, height: 693 });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+  const target = { x: 170, y: 300, width: 72, height: 56 };
+  const parked = renderer.getTutorialIntroMarchRoute(target, 1);
+  const entering = renderer.getTutorialIntroEnterRoute(target, { enterStartedAt: 1000, enterDurationMs: 800 }, 1700);
+  const targetCenter = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+
+  assert.ok(entering.x > parked.x);
+  assert.ok(Math.hypot(entering.x - targetCenter.x, entering.y - targetCenter.y) < Math.hypot(parked.x - targetCenter.x, parked.y - targetCenter.y));
+  assert.ok(entering.alpha < 0.4);
+});
+
 test('TutorialCanvasRenderer draws tutorial highlight and blocks outside the focus rect', () => {
   const host = createHost();
   const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });

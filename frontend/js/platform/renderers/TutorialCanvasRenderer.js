@@ -86,20 +86,24 @@
         return false;
       }
       const target = this.resolveTutorialIntroTarget(intro, state, options);
-      if (!target) {
+      const unitTarget = this.resolveTutorialIntroUnitTarget(intro, state, options) || target;
+      if (!target || !unitTarget) {
         this.disposeTutorialAdvisorSpine();
         return false;
       }
-      if (intro.step === 'march') {
+      if (intro.step === 'march' || intro.step === 'city' || intro.step === 'enter' || intro.step === 'entering') {
         this.disposeTutorialAdvisorSpine();
-        this.renderTutorialIntroMarch(intro, target);
-        return true;
+        if (intro.step === 'march' || intro.step === 'entering') {
+          this.renderTutorialIntroMarch(intro, unitTarget);
+          return true;
+        }
       }
       const message = intro.messages?.[intro.step] || '';
       this.renderTutorialIntroSpotlight(target, message, {
         showAdvisor: true,
         advisorName: intro.advisorName || '谋士',
       });
+      if (intro.step === 'city' || intro.step === 'enter') this.renderTutorialIntroMarch(intro, unitTarget);
       return true;
     }
 
@@ -118,6 +122,14 @@
       const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
       if (!anchor) return null;
       return this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
+    }
+
+    resolveTutorialIntroUnitTarget(intro = {}, state = {}, options = {}) {
+      const capitalCityId = intro.capitalCityId || state.cityState?.capitalCityId || 'capital';
+      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
+      if (hitTarget) return this.inflateRect(hitTarget, 0);
+      const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
+      return anchor?.hitRect ? this.inflateRect(anchor.hitRect, 0) : null;
     }
 
     findHitTarget(type = '', predicate = null) {
@@ -148,25 +160,60 @@
     }
 
     renderTutorialIntroMarch(intro = {}, target = {}) {
-      this.addHitTarget(
-        { x: 0, y: 0, width: this.width, height: this.height },
-        { type: 'blockCanvasModal' },
-      );
+      if (intro.step === 'march' || intro.step === 'entering') {
+        this.addHitTarget(
+          { x: 0, y: 0, width: this.width, height: this.height },
+          { type: 'blockCanvasModal' },
+        );
+      }
       const now = this.getNow();
       const startedAt = Number(intro.startedAt) || now;
       const duration = Math.max(1, Number(intro.marchDurationMs) || 2400);
-      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
-      const route = this.getTutorialIntroMarchRoute(target, progress);
+      const marchProgress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const route = intro.step === 'entering'
+        ? this.getTutorialIntroEnterRoute(target, intro, now)
+        : this.getTutorialIntroMarchRoute(target, intro.step === 'march' ? marchProgress : 1);
+      const scaleProgress = intro.step === 'march' ? marchProgress : 1;
 
       this.ctx.save?.();
       this.ctx.strokeStyle = 'rgba(240, 180, 91, 0.44)';
       this.ctx.lineWidth = 2;
-      this.ctx.beginPath?.();
-      this.ctx.moveTo?.(route.start.x, route.start.y);
-      this.ctx.quadraticCurveTo?.(route.control.x, route.control.y, route.end.x, route.end.y);
-      this.ctx.stroke?.();
-      this.renderTutorialIntroUnit(route.x, route.y, 1 + progress * 0.12, intro);
+      if (intro.step === 'march') {
+        this.ctx.beginPath?.();
+        this.ctx.moveTo?.(route.start.x, route.start.y);
+        this.ctx.quadraticCurveTo?.(route.control.x, route.control.y, route.end.x, route.end.y);
+        this.ctx.stroke?.();
+      }
+      const alpha = Number.isFinite(Number(route.alpha)) ? Number(route.alpha) : 1;
+      const previousAlpha = this.ctx.globalAlpha;
+      if (alpha < 1 && Number.isFinite(Number(previousAlpha))) this.ctx.globalAlpha = previousAlpha * alpha;
+      this.renderTutorialIntroUnit(route.x, route.y, 1 + scaleProgress * 0.12, {
+        ...intro,
+        freezeFrame: intro.step === 'city' || intro.step === 'enter',
+      });
+      if (alpha < 1 && Number.isFinite(Number(previousAlpha))) this.ctx.globalAlpha = previousAlpha;
       this.ctx.restore?.();
+    }
+
+    getTutorialIntroEnterRoute(target = {}, intro = {}, now = this.getNow()) {
+      const base = this.getTutorialIntroMarchRoute(target, 1);
+      const rect = this.normalizeMarchTargetRect(target);
+      const startedAt = Number(intro.enterStartedAt) || now;
+      const duration = Math.max(1, Number(intro.enterDurationMs) || 780);
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const eased = this.easeInOutCubic(progress);
+      return {
+        ...base,
+        progress,
+        x: base.end.x + (rect.centerX - base.end.x) * eased,
+        y: base.end.y + (rect.centerY + rect.height * 0.05 - base.end.y) * eased,
+        alpha: Math.max(0, 1 - Math.max(0, progress - 0.28) / 0.72),
+      };
+    }
+
+    easeInOutCubic(value = 0) {
+      const t = Math.max(0, Math.min(1, Number(value) || 0));
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     getTutorialIntroMarchRoute(target = {}, progress = 0) {
@@ -242,6 +289,7 @@
     getTutorialIntroUnitFramePath(now = this.getNow(), intro = {}) {
       const frames = this.getTutorialIntroUnitFramePaths();
       if (!frames.length) return '';
+      if (intro.freezeFrame) return frames[0];
       const startedAt = Number(intro.startedAt) || now;
       const frameIndex = Math.floor(Math.max(0, now - startedAt) / TUTORIAL_MARCH_UNIT_FRAME_MS) % frames.length;
       return frames[frameIndex];

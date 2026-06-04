@@ -2,12 +2,14 @@
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
   const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
   const MARCH_DURATION_MS = 2400;
+  const ENTER_DURATION_MS = 780;
   const MARCH_FRAME_INTERVAL_MS = 33;
   const IDLE_FRAME_INTERVAL_MS = 33;
   const STEPS = {
     march: 'march',
     city: 'city',
     enter: 'enter',
+    entering: 'entering',
     done: 'done',
   };
 
@@ -20,6 +22,9 @@
       this.step = STEPS.done;
       this.startedAt = 0;
       this.marchEndedAt = 0;
+      this.enterStartedAt = 0;
+      this.enterEndedAt = 0;
+      this.pendingEnterCityAction = null;
       this.timer = null;
       this.frameTimer = null;
       this.completedThisSession = false;
@@ -106,7 +111,7 @@
     }
 
     getFrameIntervalMs() {
-      return this.step === STEPS.march ? MARCH_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
+      return this.step === STEPS.march || this.step === STEPS.entering ? MARCH_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
     }
 
     startFrameTimer() {
@@ -161,10 +166,43 @@
         return true;
       }
       if (this.step === STEPS.enter && action.type === 'enterCity' && (!actionCityId || actionCityId === cityId)) {
-        this.finish({ markSeen: true });
+        this.beginEnterCityTransition(action);
         return true;
       }
       return false;
+    }
+
+    beginEnterCityTransition(action = {}, onComplete = null) {
+      if (!this.running || this.step !== STEPS.enter) return false;
+      const cityId = this.getCapitalCityId();
+      const actionCityId = action.cityId || action.territoryId || action.siteId || '';
+      if (action?.type !== 'enterCity' || (actionCityId && actionCityId !== cityId)) return false;
+      this.clearTimer();
+      this.step = STEPS.entering;
+      this.enterStartedAt = this.now();
+      this.enterEndedAt = this.enterStartedAt + ENTER_DURATION_MS;
+      this.pendingEnterCityAction = typeof onComplete === 'function' ? onComplete : null;
+      this.syncGame();
+      this.requestRender();
+      this.startFrameTimer();
+      const setDelay = this.runtime?.setTimeout || global.setTimeout;
+      if (typeof setDelay === 'function') {
+        this.timer = setDelay.call(this.runtime, () => this.completeEnterCityTransition(), ENTER_DURATION_MS);
+      }
+      return true;
+    }
+
+    completeEnterCityTransition() {
+      if (!this.running || this.step !== STEPS.entering) return false;
+      const action = this.pendingEnterCityAction;
+      this.pendingEnterCityAction = null;
+      this.finish({ markSeen: true });
+      if (typeof action === 'function') {
+        Promise.resolve()
+          .then(() => action())
+          .catch((error) => this.game?.log?.(error?.message || String(error)));
+      }
+      return true;
     }
 
     skip() {
@@ -174,6 +212,7 @@
     finish(options = {}) {
       this.clearTimer();
       this.clearFrameTimer();
+      this.pendingEnterCityAction = null;
       if (options.markSeen !== false) this.markSeen();
       if (options.completed !== false) this.completedThisSession = true;
       this.running = false;
@@ -199,6 +238,9 @@
         startedAt: this.startedAt,
         marchDurationMs: MARCH_DURATION_MS,
         marchEndedAt: this.marchEndedAt,
+        enterStartedAt: this.enterStartedAt,
+        enterDurationMs: ENTER_DURATION_MS,
+        enterEndedAt: this.enterEndedAt,
         advisorName: '谋士',
         messages: {
           city: '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。',
