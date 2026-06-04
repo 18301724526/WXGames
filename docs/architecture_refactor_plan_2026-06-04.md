@@ -351,6 +351,42 @@
 
 - 在本文档追加 Step 6 的提交记录，包括测试命令和结果。
 
+### Step 6 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/GameCommandService.js`，承接 build、upgrade、research、switchCity 等 API 命令编排。
+- 更新 `frontend/js/platform/CanvasGameApp.js`，保留原命令方法作为 facade，内部委托 `GameCommandService`。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境都能加载命令服务。
+- 新增 `frontend/js/platform/GameCommandService.test.js`，覆盖命令服务 API 调用、状态应用和 `CanvasGameApp` facade 委托。
+
+说明：
+
+- 本步优先拆出 API 命令边界，保持动画计时和 shell 同步逻辑不变，避免一次性改变多个运行时职责。
+
+测试命令：
+
+- `node --test frontend/js/platform/GameCommandService.test.js`
+- `node --check frontend/js/platform/GameCommandService.js`
+- `node --check frontend/js/platform/CanvasGameApp.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`5998caf refactor: extract game command service`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ### Step 7：解除 CanvasActionController 对 renderer 的布局依赖
 
 目标：让交互控制器只处理 action，不直接依赖 renderer 内部布局状态。
