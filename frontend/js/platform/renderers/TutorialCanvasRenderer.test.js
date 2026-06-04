@@ -121,6 +121,23 @@ test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer 
   assert.deepEqual(renderer.normalizeRect({ x: -10, y: 4, width: 50, height: 20 }), { x: 0, y: 4, width: 50, height: 20 });
 });
 
+test('TutorialCanvasRenderer draws intro march unit from sprite frames when loaded', () => {
+  const host = createHost({
+    getAsset(assetPath) {
+      if (!assetPath.includes('%E5%A3%AB%E5%85%B5')) return null;
+      return { naturalWidth: 215, naturalHeight: 510, width: 215, height: 510 };
+    },
+  });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  renderer.renderTutorialIntroUnit(120, 240, 1, { startedAt: 1000 });
+
+  const drawImage = host.drawCalls.find((call) => call[0] === 'drawImage');
+  assert.ok(drawImage);
+  assert.equal(drawImage[1].naturalWidth, 215);
+  assert.equal(host.drawCalls.some((call) => call[0] === 'drawPanel'), false);
+});
+
 test('TutorialCanvasRenderer draws tutorial highlight and blocks outside the focus rect', () => {
   const host = createHost();
   const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });

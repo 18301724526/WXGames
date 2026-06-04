@@ -1,4 +1,9 @@
 (function (global) {
+  const TUTORIAL_MARCH_UNIT_FRAMES = Array.from({ length: 11 }, (_, index) => (
+    `assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/${String(index + 1).padStart(3, '0')}.png`
+  ));
+  const TUTORIAL_MARCH_UNIT_FRAME_MS = 80;
+
   const SharedTutorialAdvisorCanvasRenderer = (() => {
     if (global.TutorialAdvisorCanvasRenderer) return global.TutorialAdvisorCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -166,11 +171,49 @@
       this.ctx.moveTo?.(startX, startY);
       this.ctx.quadraticCurveTo?.((startX + targetX) / 2, startY - 30, targetX, targetY);
       this.ctx.stroke?.();
-      this.renderTutorialIntroUnit(x, y, 1 + eased * 0.16);
+      this.renderTutorialIntroUnit(x, y, 1 + eased * 0.16, intro);
       this.ctx.restore?.();
     }
 
-    renderTutorialIntroUnit(x, y, scale = 1) {
+    renderTutorialIntroUnit(x, y, scale = 1, intro = {}) {
+      if (this.renderTutorialIntroUnitSprite(x, y, scale, intro)) return;
+      this.renderTutorialIntroUnitFallback(x, y, scale);
+    }
+
+    getTutorialIntroUnitFramePaths() {
+      return TUTORIAL_MARCH_UNIT_FRAMES;
+    }
+
+    getTutorialIntroUnitFramePath(now = this.getNow(), intro = {}) {
+      const frames = this.getTutorialIntroUnitFramePaths();
+      if (!frames.length) return '';
+      const startedAt = Number(intro.startedAt) || now;
+      const frameIndex = Math.floor(Math.max(0, now - startedAt) / TUTORIAL_MARCH_UNIT_FRAME_MS) % frames.length;
+      return frames[frameIndex];
+    }
+
+    renderTutorialIntroUnitSprite(x, y, scale = 1, intro = {}) {
+      const framePath = this.getTutorialIntroUnitFramePath(this.getNow(), intro);
+      if (!framePath) return false;
+      const image = this.getAsset?.(framePath);
+      const sourceWidth = Number(image?.naturalWidth || image?.width || 0);
+      const sourceHeight = Number(image?.naturalHeight || image?.height || 0);
+      if (!image || sourceWidth <= 0 || sourceHeight <= 0 || typeof this.ctx?.drawImage !== 'function') return false;
+      const targetHeight = 68 * scale;
+      const targetWidth = targetHeight * (sourceWidth / sourceHeight);
+      const drawX = x - targetWidth * 0.5;
+      const drawY = y - targetHeight + 11 * scale;
+      this.ctx.save?.();
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+      this.ctx.beginPath?.();
+      this.ctx.ellipse?.(x, y + 10 * scale, Math.max(13, targetWidth * 0.32), 5.5 * scale, -0.18, 0, Math.PI * 2);
+      this.ctx.fill?.();
+      this.ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      this.ctx.restore?.();
+      return true;
+    }
+
+    renderTutorialIntroUnitFallback(x, y, scale = 1) {
       const ctx = this.ctx;
       if (!ctx) return;
       const now = this.getNow();

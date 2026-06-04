@@ -12,9 +12,22 @@ test('CanvasPreloadAssetManifest preserves base preload assets', () => {
   assert.equal(base.includes('assets/art/world-site-city-cutout.png'), true);
   assert.equal(base.includes('assets/art/spine/tutorial/advisor/tutorial_advisor.png'), true);
   assert.equal(base.includes('assets/art/battle/battlefield-forest-camp.png'), true);
+  assert.equal(base.includes('assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/001.png'), true);
+  assert.equal(base.includes('assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/011.png'), true);
 
   base.push('mutated.png');
   assert.equal(CanvasPreloadAssetManifest.getBasePreloadAssetPaths().includes('mutated.png'), false);
+});
+
+test('CanvasPreloadAssetManifest exposes immutable tutorial march frame paths', () => {
+  const frames = CanvasPreloadAssetManifest.getTutorialMarchUnitFramePaths();
+
+  assert.equal(frames.length, 11);
+  assert.equal(frames[0], 'assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/001.png');
+  assert.equal(frames[10], 'assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/011.png');
+
+  frames.length = 0;
+  assert.equal(CanvasPreloadAssetManifest.getTutorialMarchUnitFramePaths().length, 11);
 });
 
 test('CanvasPreloadAssetManifest composes tile map, battle frame, and famous portrait paths', () => {

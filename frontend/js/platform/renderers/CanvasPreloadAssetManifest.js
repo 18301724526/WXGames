@@ -1,4 +1,8 @@
 (function (global) {
+  const TUTORIAL_MARCH_UNIT_FRAME_PATHS = Array.from({ length: 11 }, (_, index) => (
+    `assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/${String(index + 1).padStart(3, '0')}.png`
+  ));
+
   const BASE_PRELOAD_ASSET_PATHS = [
     'assets/art/civilization-bg.webp',
     'assets/art/icon-home-cutout.png',
@@ -39,11 +43,16 @@
     'assets/art/world-site-outpost-cutout.png',
     'assets/art/world-site-ruins-cutout.png',
     'assets/art/world-site-town-cutout.png',
+    ...TUTORIAL_MARCH_UNIT_FRAME_PATHS,
     'assets/art/spine/tutorial/advisor/tutorial_advisor.png',
     'assets/art/battle/battlefield-forest-camp.png',
   ];
 
   class CanvasPreloadAssetManifest {
+    static getTutorialMarchUnitFramePaths() {
+      return [...TUTORIAL_MARCH_UNIT_FRAME_PATHS];
+    }
+
     static getBasePreloadAssetPaths() {
       return [...BASE_PRELOAD_ASSET_PATHS];
     }
