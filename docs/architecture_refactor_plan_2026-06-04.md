@@ -157,7 +157,7 @@
 
 - 代码提交哈希：`87fbd67 refactor: split game state assembly`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ### Step 3：拆出 TerritoryService 的侦察和征服流程
 
