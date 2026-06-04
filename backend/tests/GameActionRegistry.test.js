@@ -98,6 +98,32 @@ test('dispatches setArmyFormation actions without losing slot and member ids', (
   });
 });
 
+test('dispatches tutorialAdvance through the tutorial client-step gate', () => {
+  const { registry } = createRegistryWithCalls();
+  const result = registry.execute({
+    action: 'tutorialAdvance',
+    body: { step: 5 },
+    gameState: {},
+    tutorial: { completed: false, currentStep: 4, phaseCompleted: { newbie: false, era2: false } },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.tutorial.currentStep, 5);
+});
+
+test('blocks tutorialAdvance for business-only tutorial steps', () => {
+  const { registry } = createRegistryWithCalls();
+  const result = registry.execute({
+    action: 'tutorialAdvance',
+    body: { step: 7 },
+    gameState: {},
+    tutorial: { completed: false, currentStep: 5, phaseCompleted: { newbie: false, era2: false } },
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, 'TUTORIAL_STEP_LOCKED');
+});
+
 test('dispatches territory actions through the territory action handler', () => {
   const { calls, registry } = createRegistryWithCalls();
 

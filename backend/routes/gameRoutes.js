@@ -120,13 +120,16 @@ function registerGameRoutes(app, deps) {
     }
 
     result = GameActionRegistry.execute({ action, body: req.body || {}, gameState, tutorial });
-    gameState.tutorial = tutorial;
+    const nextTutorial = result.tutorial
+      ? TutorialService.normalizeTutorialState(result.tutorial)
+      : tutorial;
+    gameState.tutorial = nextTutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      ...buildGameView(gameState, tutorial, gameStateService),
+      ...buildGameView(gameState, nextTutorial, gameStateService),
     });
   });
 }

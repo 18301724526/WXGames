@@ -7,6 +7,7 @@ const TalentPolicyService = require('../services/TalentPolicyService');
 const TechTreeService = require('../services/TechTreeService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
+const TutorialService = require('../services/TutorialService');
 
 const TERRITORY_ACTIONS = new Set([
   'scoutTerritory',
@@ -30,6 +31,7 @@ const defaultDeps = {
   TechTreeService,
   FamousPersonService,
   MilitaryService,
+  TutorialService,
 };
 
 function buildTerritoryPayload(body = {}) {
@@ -75,6 +77,9 @@ function createGameActionRegistry(overrides = {}) {
   register('assign', ({ gameState, tutorial, body }) => (
     deps.AssignPopulationAction.execute(gameState, tutorial, { target: body.target, count: body.count })
   ));
+  register('tutorialAdvance', ({ tutorial, body }) => ({
+    ...deps.TutorialService.advanceClientStep(tutorial, body.step),
+  }));
   register('applyTalentPolicy', ({ gameState, tutorial, body }) => (
     deps.TalentPolicyService.applyPolicy(gameState, tutorial, {
       policyId: body.policyId,
