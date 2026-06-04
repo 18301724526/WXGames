@@ -268,7 +268,7 @@
 
 - 代码提交哈希：`34a5472 refactor: extract tech presenter`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ### Step 5：拆分 CanvasGameRenderer 的领域 renderer
 
