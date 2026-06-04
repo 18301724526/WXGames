@@ -186,6 +186,51 @@ test('TutorialCanvasRenderer keeps the march unit parked on the first frame duri
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'blockCanvasModal').length, 4);
 });
 
+test('TutorialCanvasRenderer keeps advisor spine alive while rendering intro dialogue', () => {
+  const calls = [];
+  const host = createHost({
+    getAsset(assetPath) {
+      if (!assetPath.includes('%E5%A3%AB%E5%85%B5')) return null;
+      return { naturalWidth: 215, naturalHeight: 510, width: 215, height: 510 };
+    },
+  });
+  host.hitTargets.push({
+    x: 170,
+    y: 300,
+    width: 72,
+    height: 56,
+    action: { type: 'openWorldSite', siteId: 'capital' },
+  });
+  const renderer = new TutorialCanvasRenderer({
+    host,
+    advisorRenderer: {
+      disposeTutorialAdvisorSpine() {
+        calls.push(['dispose']);
+        return true;
+      },
+      renderTutorialIntroAdvisorPortrait(x, y, width, height) {
+        calls.push(['portrait', x, y, width, height]);
+        return true;
+      },
+    },
+  });
+
+  renderer.renderTutorialIntro({}, {
+    tutorialIntro: {
+      active: true,
+      step: 'city',
+      capitalCityId: 'capital',
+      startedAt: 0,
+      marchDurationMs: 4800,
+      advisorName: 'Advisor',
+      messages: { city: 'Tap the city.' },
+    },
+  });
+
+  assert.equal(calls.some((call) => call[0] === 'dispose'), false);
+  assert.equal(calls.some((call) => call[0] === 'portrait'), true);
+});
+
 test('TutorialCanvasRenderer moves the march unit into the city and fades it out', () => {
   const host = createHost({ width: 390, height: 693 });
   const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });

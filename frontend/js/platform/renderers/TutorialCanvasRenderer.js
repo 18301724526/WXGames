@@ -91,12 +91,10 @@
         this.disposeTutorialAdvisorSpine();
         return false;
       }
-      if (intro.step === 'march' || intro.step === 'city' || intro.step === 'enter' || intro.step === 'entering') {
+      if (intro.step === 'march' || intro.step === 'entering') {
         this.disposeTutorialAdvisorSpine();
-        if (intro.step === 'march' || intro.step === 'entering') {
-          this.renderTutorialIntroMarch(intro, unitTarget);
-          return true;
-        }
+        this.renderTutorialIntroMarch(intro, unitTarget);
+        return true;
       }
       const message = intro.messages?.[intro.step] || '';
       this.renderTutorialIntroSpotlight(target, message, {
