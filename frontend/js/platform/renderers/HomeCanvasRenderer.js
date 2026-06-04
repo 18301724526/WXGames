@@ -25,15 +25,55 @@
       });
     }
 
+    buildResourceViewState(state = {}) {
+      if (typeof this.presenter?.buildResourceViewState === 'function') {
+        return this.presenter.buildResourceViewState(state);
+      }
+      const resources = state.resources || {};
+      const population = state.population || {};
+      const formatAmount = (value) => {
+        if (typeof this.presenter?.formatResourceAmount === 'function') return this.presenter.formatResourceAmount(value);
+        const number = Number(value);
+        return Number.isFinite(number) ? String(Math.floor(number)) : '0';
+      };
+      const formatRate = (value) => {
+        if (typeof this.presenter?.formatRate === 'function') return this.presenter.formatRate(value);
+        const number = Number(value) || 0;
+        return `${number >= 0 ? '+' : ''}${number}/s`;
+      };
+      const populationTotal = Number(population.total ?? state.totalPop) || 0;
+      const displayPopulation = typeof this.presenter?.toDisplayPopulation === 'function'
+        ? this.presenter.toDisplayPopulation(populationTotal)
+        : Math.floor(populationTotal) * 100;
+      const foodNet = Object.prototype.hasOwnProperty.call(resources, 'foodNetPerSecond')
+        ? Number(resources.foodNetPerSecond) || 0
+        : Number(resources.foodPerSecond) || 0;
+      return {
+        text: {
+          foodValue: formatAmount(resources.food),
+          woodValue: formatAmount(resources.wood),
+          ironValue: formatAmount(resources.iron ?? resources.metal),
+          stoneValue: formatAmount(resources.stone),
+          knowledgeValue: formatAmount(resources.knowledge),
+          foodRate: formatRate(foodNet),
+          woodRate: formatRate(resources.woodPerSecond),
+          ironRate: formatRate(resources.ironPerSecond ?? resources.metalPerSecond),
+          stoneRate: formatRate(resources.stonePerSecond),
+          knowledgeRate: formatRate(resources.knowledgePerSecond),
+          populationValue: displayPopulation,
+          populationStatus: '',
+        },
+      };
+    }
+
     renderTopBar(state = {}, options = {}) {
       if (options.isMapHome) return this.renderMapHomeTopBar(state);
-      if (!this.presenter) return 84;
       const layout = this.getLayout();
-      const resourceView = this.presenter.buildResourceViewState(state);
-      const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
-      const advisorView = this.presenter.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
+      const resourceView = this.buildResourceViewState(state);
+      const cityView = this.presenter?.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
+      const advisorView = this.presenter?.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
       const populationScale = resourceView.text?.populationValue
-        ?? (typeof this.presenter.toDisplayPopulation === 'function'
+        ?? (typeof this.presenter?.toDisplayPopulation === 'function'
           ? this.presenter.toDisplayPopulation(state.population?.total ?? state.totalPop)
           : (Number(state.population?.total ?? state.totalPop) || 0) * 100);
       const populationStatus = resourceView.text?.populationStatus || '';
@@ -171,9 +211,8 @@
     }
 
     renderMapHomeTopBar(state = {}) {
-      if (!this.presenter) return 72;
       const layout = this.getLayout();
-      const resourceView = this.presenter.buildResourceViewState(state);
+      const resourceView = this.buildResourceViewState(state);
       const text = resourceView.text || {};
       const x = 0;
       const y = 0;
@@ -200,7 +239,7 @@
         { label: '石料', value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
         { label: '铁矿', value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
         { label: '知识', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
-        { label: '人口', value: text.populationValue ?? this.presenter.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
+        { label: '人口', value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
       ];
       const contentX = layout.contentX;
       const contentWidth = layout.contentWidth;

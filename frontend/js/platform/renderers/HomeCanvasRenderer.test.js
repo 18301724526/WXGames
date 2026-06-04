@@ -127,6 +127,20 @@ test('HomeCanvasRenderer preserves top bar resource and utility hit targets', ()
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCitySwitcher'), true);
 });
 
+test('HomeCanvasRenderer falls back when presenter resource view is unavailable', () => {
+  const host = createHost({ presenter: null });
+  const renderer = new HomeCanvasRenderer({ host });
+
+  const bottom = renderer.renderMapHomeTopBar({
+    resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
+    population: { total: 12 },
+  });
+
+  assert.equal(bottom, 72);
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'openResourceDetails').length, 6);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '1200'), true);
+});
+
 test('HomeCanvasRenderer preserves population assignment hit targets', () => {
   const host = createHost();
   const renderer = new HomeCanvasRenderer({ host });
