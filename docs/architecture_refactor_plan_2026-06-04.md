@@ -620,7 +620,7 @@
 
 - 代码提交哈希：`29cebb4 refactor: move famous rendering into famous canvas renderer`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
