@@ -21,6 +21,7 @@ require('../js/platform/renderers/CivilizationCanvasRenderer');
 require('../js/platform/renderers/MilitaryCanvasRenderer');
 require('../js/platform/renderers/GuideTaskCanvasRenderer');
 require('../js/platform/renderers/HomeCanvasRenderer');
+require('../js/platform/renderers/SystemCanvasRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
