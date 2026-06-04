@@ -15,6 +15,7 @@ require('../js/platform/renderers/TechCanvasRenderer');
 require('../js/platform/renderers/BattleCanvasRenderer');
 require('../js/platform/renderers/TutorialAdvisorCanvasRenderer');
 require('../js/platform/renderers/TutorialCanvasRenderer');
+require('../js/platform/renderers/BuildingCanvasRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
