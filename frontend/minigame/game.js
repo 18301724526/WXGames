@@ -10,6 +10,7 @@ require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/WorldMapRuntime');
 require('../js/platform/WorldMapRuntimeCoordinator');
 require('../js/platform/renderers/TechCanvasRenderer');
+require('../js/platform/renderers/BattleCanvasRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
