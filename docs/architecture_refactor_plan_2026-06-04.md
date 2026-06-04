@@ -2171,6 +2171,67 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 36：继续压缩 CanvasGameRenderer 的战斗 facade 职责
+
+目标：把 `CanvasGameRenderer.js` 内战斗公开兼容 API 方法表下放到独立 `CanvasBattleFacade`。主 renderer 继续保留 `getBattleUnitPose`、`getBattleFrameSpritePath`、`drawBattleSoldierFrame`、`renderBattleSceneOverlay` 等旧入口，但入口安装、默认值兜底和委托协议由 facade 模块承接；真实战斗渲染、播放阶段、士兵帧计算和 hit target 仍由 `BattleCanvasRenderer` 承接，避免主类继续累积战斗渲染逻辑外壳。
+
+回归测试：
+
+- 覆盖 `CanvasBattleFacade.installBattleFacade` 会安装全部战斗兼容方法和 `delegateBattleRenderer`。
+- 覆盖 facade 仍以原始参数委托到 `battleRenderer`，并返回真实 renderer 结果。
+- 覆盖对象默认值每次调用都会返回独立副本，避免调用方修改默认返回值污染后续渲染。
+- 覆盖 `getBattleUnitSpec` 与 `getBattleFrameSpritePath` 的默认值仍能读取 host 静态战斗帧 helper。
+- 覆盖 `CanvasGameRenderer` 仍通过抽离后的 installer 暴露 `getBattleTurnDamage` 与 `getBattleFrameSpritePath` 等旧入口。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 36 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 36 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/CanvasBattleFacade.js`，承接战斗公开 facade 方法表、host-aware 默认值和委托安装逻辑。
+- `frontend/js/platform/CanvasGameRenderer.js` 增加 `SharedCanvasBattleFacade` 引用，并在类定义后安装战斗 facade，删除主类内战斗转发方法表。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `CanvasBattleFacade`。
+- 新增 `frontend/js/platform/renderers/CanvasBattleFacade.test.js`，覆盖 facade 方法安装、参数委托、默认值隔离、静态 helper fallback 和主 renderer 兼容入口。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由 Step 36 开始时的 2057 行降至 1906 行。
+- `frontend/js/platform/renderers/CanvasBattleFacade.js`：新增为 99 行，承接战斗 facade 安装协议，未超过 500 行。
+- `frontend/js/platform/renderers/CanvasBattleFacade.test.js`：新增为 106 行，覆盖战斗 facade 防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/CanvasBattleFacade.js`
+- `node --check frontend/js/platform/renderers/CanvasBattleFacade.test.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/CanvasBattleFacade.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/CanvasBattleFacade.test.js frontend/js/platform/renderers/CanvasWorldMapFacade.test.js frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.test.js frontend/js/platform/renderers/CanvasAssetRenderer.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/TabBarCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`6d4c700 refactor: move battle facade methods out of canvas renderer`。
+- 文档记录：本节由 `docs: record refactor plan step 36` 保存。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
