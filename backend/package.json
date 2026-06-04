@@ -10,7 +10,7 @@
     "pm2:stop": "pm2 stop civilization-fire",
     "pm2:restart": "pm2 restart civilization-fire",
     "pm2:logs": "pm2 logs civilization-fire",
-    "test": "node -e \"console.log('0.2 test suite pending')\"",
+    "test": "node ../scripts/run-node-tests.js backend",
     "check": "node --check server.js"
   },
   "dependencies": {
