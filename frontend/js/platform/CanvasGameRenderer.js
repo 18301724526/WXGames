@@ -791,23 +791,31 @@
     }
 
     withSuppressedHitTargets(...args) {
-      const result = this.delegateSurfaceRenderer('withSuppressedHitTargets', args);
-      return result === undefined ? args[0]?.() : result;
+      if (this.hasSurfaceRendererMethod('withSuppressedHitTargets')) {
+        return this.delegateSurfaceRenderer('withSuppressedHitTargets', args);
+      }
+      return args[0]?.();
     }
 
     withSlideClip(...args) {
-      const result = this.delegateSurfaceRenderer('withSlideClip', args);
-      return result === undefined ? args[5]?.() : result;
+      if (this.hasSurfaceRendererMethod('withSlideClip')) {
+        return this.delegateSurfaceRenderer('withSlideClip', args);
+      }
+      return args[5]?.();
     }
 
     withTranslatedClip(...args) {
-      const result = this.delegateSurfaceRenderer('withTranslatedClip', args);
-      return result === undefined ? args[6]?.() : result;
+      if (this.hasSurfaceRendererMethod('withTranslatedClip')) {
+        return this.delegateSurfaceRenderer('withTranslatedClip', args);
+      }
+      return args[6]?.();
     }
 
     withTransformedClip(...args) {
-      const result = this.delegateSurfaceRenderer('withTransformedClip', args);
-      return result === undefined ? args[7]?.() : result;
+      if (this.hasSurfaceRendererMethod('withTransformedClip')) {
+        return this.delegateSurfaceRenderer('withTransformedClip', args);
+      }
+      return args[7]?.();
     }
 
     setAssetsChangedHandler(...args) {

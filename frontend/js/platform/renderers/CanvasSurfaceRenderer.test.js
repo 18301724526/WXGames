@@ -148,6 +148,30 @@ test('CanvasSurfaceRenderer preserves clip callback flow', () => {
   ]);
 });
 
+test('CanvasGameRenderer clip facades do not replay undefined callbacks', () => {
+  const renderer = new CanvasGameRenderer({ ctx: createCtx(), presenter: {} });
+  let transformedCalls = 0;
+  let translatedCalls = 0;
+  let suppressedCalls = 0;
+
+  const transformed = renderer.withTransformedClip(1, 2, 3, 4, 5, 6, 1.2, () => {
+    transformedCalls += 1;
+  });
+  const translated = renderer.withTranslatedClip(1, 2, 3, 4, 5, 6, () => {
+    translatedCalls += 1;
+  });
+  const suppressed = renderer.withSuppressedHitTargets(() => {
+    suppressedCalls += 1;
+  });
+
+  assert.equal(transformed, undefined);
+  assert.equal(translated, undefined);
+  assert.equal(suppressed, undefined);
+  assert.equal(transformedCalls, 1);
+  assert.equal(translatedCalls, 1);
+  assert.equal(suppressedCalls, 1);
+});
+
 test('CanvasSurfaceRenderer preserves text measuring and truncation font restore', () => {
   const host = createHost();
   const renderer = new CanvasSurfaceRenderer({ host });
