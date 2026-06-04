@@ -47,6 +47,18 @@
     return null;
   })();
 
+  const SharedWorldMapLayerCanvasRenderer = (() => {
+    if (global.WorldMapLayerCanvasRenderer) return global.WorldMapLayerCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/WorldMapLayerCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedFamousCanvasRenderer = (() => {
     if (global.FamousCanvasRenderer) return global.FamousCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -318,6 +330,8 @@
       this.currentFps = 0;
       const WorldMapRendererClass = options.worldMapRendererClass || SharedWorldMapCanvasRenderer;
       this.worldMapRenderer = options.worldMapRenderer || (WorldMapRendererClass ? new WorldMapRendererClass({ host: this }) : null);
+      const WorldMapLayerRendererClass = options.worldMapLayerRendererClass || SharedWorldMapLayerCanvasRenderer;
+      this.worldMapLayerRenderer = options.worldMapLayerRenderer || (WorldMapLayerRendererClass ? new WorldMapLayerRendererClass({ host: this }) : null);
       const FamousRendererClass = options.famousRendererClass || SharedFamousCanvasRenderer;
       this.famousRenderer = options.famousRenderer || (FamousRendererClass ? new FamousRendererClass({ host: this }) : null);
       const TechRendererClass = options.techRendererClass || SharedTechCanvasRenderer;
@@ -3090,402 +3104,46 @@
       });
     }
 
-    getWorldMapLayerLayout(state = {}, topBarBottom = null, options = {}) {
-      if (!this.presenter || typeof this.presenter.buildMilitaryNavigationViewState !== 'function') return null;
-      const nav = this.presenter.buildMilitaryNavigationViewState(state);
-      if (nav.activeView !== 'world') return null;
-      const layout = this.getLayout();
-      const offsetX = Number(this.viewportOffsetX) || 0;
-      const offsetY = Number(this.viewportOffsetY) || 0;
-      const viewportBottom = this.height - Math.max(0, offsetY);
-      const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
-      if (options.isMapHome) {
-        const mapX = 0;
-        const mapY = Math.max(0, topBarBottom ?? 84);
-        const mapW = this.width;
-        const mapBottom = this.height - 64;
-        const mapH = Math.max(160, mapBottom - mapY);
-        return {
-          nav,
-          panel: {
-            x: mapX,
-            y: mapY,
-            width: mapW,
-            height: mapH,
-          },
-          world: {
-            x: mapX,
-            y: mapY,
-            width: mapW,
-            height: mapH,
-          },
-          map: {
-            x: mapX,
-            y: mapY,
-            width: mapW,
-            height: mapH,
-          },
-        };
-      }
-      const panelTop = topBarBottom ?? 84;
-      const panelHeight = Math.max(360, tabsTop - panelTop - 12);
-      const panelX = layout.contentX;
-      const panelWidth = layout.contentWidth;
-      const worldX = panelX + 12;
-      const worldY = panelTop + 88;
-      const worldW = panelWidth - 24;
-      const worldH = Math.max(120, panelTop + panelHeight - worldY - 12);
-      return {
-        nav,
-        panel: {
-          x: panelX,
-          y: panelTop,
-          width: panelWidth,
-          height: panelHeight,
-        },
-        world: {
-          x: worldX,
-          y: worldY,
-          width: worldW,
-          height: worldH,
-        },
-        map: {
-          x: worldX + 12,
-          y: worldY + 46,
-          width: worldW - 24,
-          height: Math.max(160, worldH - 58),
-        },
-      };
+    delegateWorldMapLayerRenderer(method, args = []) {
+      const renderer = this.worldMapLayerRenderer;
+      if (!renderer || typeof renderer[method] !== 'function') return undefined;
+      return renderer[method](...args);
     }
 
-    renderMapHomeWorldView(state = {}, topBarBottom = 84, options = {}) {
-      const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
-      if (!layout) return false;
-      const territoryState = state.territoryState || {};
-      const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
-      if (!tileMapView?.tiles?.length) {
-        if (Array.isArray(territoryState.territories) && territoryState.territories.length > 0) {
-          this.renderMilitaryWorldView(state, layout.map.x, layout.map.y, layout.map.width, layout.map.height, {
-            ...options,
-            isMapHome: true,
-          });
-          return true;
-        }
-        this.renderMapHomeEmptyWorld(layout, topBarBottom, options);
-        return true;
-      }
-      if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
-      const offsetX = Number(this.viewportOffsetX) || 0;
-      const offsetY = Number(this.viewportOffsetY) || 0;
-      const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
-      const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
-      const visibleMapY = Math.max(0, topBarBottom ?? 84);
-      const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
-      this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
-        hitTargetsOnly: Boolean(options.skipWorldMapLayer),
-        frameless: true,
-        fastDrag: Boolean(options.reuseCachedWorldTileView),
-        scaleBasisWidth: visibleWidth,
-        scaleBasisHeight: visibleMapH,
-        originX: offsetX + visibleWidth * 0.5,
-        originY: offsetY + visibleMapY + visibleMapH * 0.42,
-      });
-      const resetW = 76;
-      const resetH = 28;
-      const resetX = Math.max(8, layout.map.x + layout.map.width - resetW - 12);
-      const resetY = Math.max(layout.map.y + 10, topBarBottom + 10);
-      this.drawButton(resetX, resetY, resetW, resetH, '回到本城', { size: 11, radius: 8 });
-      this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
-      this.renderMapHomeExplorerHud(state, layout, topBarBottom);
-      return true;
+    getWorldMapLayerLayout(...args) {
+      const result = this.delegateWorldMapLayerRenderer('getWorldMapLayerLayout', args);
+      return result === undefined ? null : result;
     }
 
-    collectMapHomeWorldSiteHitTargets(state = {}, topBarBottom = 84, options = {}) {
-      const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
-      if (!layout) return false;
-      const territoryState = state.territoryState || {};
-      const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
-      if (!tileMapView?.tiles?.length) return false;
-      const offsetX = Number(this.viewportOffsetX) || 0;
-      const offsetY = Number(this.viewportOffsetY) || 0;
-      const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
-      const visibleHeight = Number(this.viewportHeight) || Math.max(1, this.height - offsetY * 2);
-      const visibleMapY = Math.max(0, topBarBottom ?? 84);
-      const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
-      const geometry = tileMapView.geometry || {};
-      const scale = Math.max(0.38, Math.min(0.78, Math.min(visibleWidth / 520, visibleMapH / 420)));
-      const viewport = {
-        originX: offsetX + visibleWidth * 0.5,
-        originY: offsetY + visibleMapY + visibleMapH * 0.42,
-        panX: Number(tileMapView.pan?.x) || 0,
-        panY: Number(tileMapView.pan?.y) || 0,
-        scale,
-        seed: tileMapView.seed || 'scout-tile-v1',
-        geometry,
-      };
-      const frame = {
-        x: layout.map.x + 1,
-        y: layout.map.y + 1,
-        width: layout.map.width - 2,
-        height: layout.map.height - 2,
-      };
-      const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
-      this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      return true;
+    renderMapHomeWorldView(...args) {
+      const result = this.delegateWorldMapLayerRenderer('renderMapHomeWorldView', args);
+      return result === undefined ? false : result;
     }
 
-    renderMapHomeExplorerHud(state = {}, layout = {}, topBarBottom = 84) {
-      const explorer = state.worldExplorerState || {};
-      const active = explorer.activeMission || null;
-      const ready = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
-      const map = layout.map || { x: 0, y: topBarBottom, width: this.width };
-      const width = Math.min(184, Math.max(132, map.width - 24));
-      const height = active || ready ? 48 : 34;
-      const x = Math.max(8, map.x + 12);
-      const y = Math.max(map.y + 10, topBarBottom + 10);
-      this.drawPanel(x, y, width, height, {
-        fill: 'rgba(19, 18, 14, 0.78)',
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.06)',
-      });
-      if (ready) {
-        this.drawText('探索队已返回', x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
-        const buttonW = 58;
-        const buttonH = 24;
-        const buttonX = x + width - buttonW - 8;
-        const buttonY = y + 12;
-        this.drawButton(buttonX, buttonY, buttonW, buttonH, '归队', { size: 11, radius: 7 });
-        this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, { type: 'claimExplore', missionId: ready.id });
-        return true;
-      }
-      if (active) {
-        const route = Array.isArray(active.route) ? active.route : [];
-        const done = route.filter((step) => step.revealed).length;
-        const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
-        this.drawText(`探索中 ${done}/${total}`, x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
-        this.drawText(`${Math.max(0, Number(active.remainingSeconds) || 0)}s`, x + width - 12, y + 14, {
-          size: 11,
-          color: '#f0b45b',
-          align: 'right',
-        });
-        const barX = x + 12;
-        const barY = y + 32;
-        const barW = width - 24;
-        const progress = Math.max(0, Math.min(1, done / total));
-        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.14)';
-        this.ctx.fillRect(barX, barY, barW, 4);
-        this.ctx.fillStyle = '#74d3a0';
-        this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
-        return true;
-      }
-      this.drawText('探索队', x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
-      const buttonW = 64;
-      const buttonH = 24;
-      const buttonX = x + width - buttonW - 8;
-      const buttonY = y + 5;
-      this.drawButton(buttonX, buttonY, buttonW, buttonH, '探索', { size: 11, radius: 7 });
-      this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
-        type: 'startExplore',
-        mode: 'random',
-        routeLength: explorer.randomRouteLength || 8,
-      });
-      return true;
+    collectMapHomeWorldSiteHitTargets(...args) {
+      const result = this.delegateWorldMapLayerRenderer('collectMapHomeWorldSiteHitTargets', args);
+      return result === undefined ? false : result;
     }
 
-    renderMapHomeEmptyWorld(layout = {}, topBarBottom = 84, options = {}) {
-      const map = layout.map || { x: 0, y: topBarBottom, width: this.width, height: Math.max(160, this.height - topBarBottom - 64) };
-      if (this.ctx) {
-        this.ctx.fillStyle = this.createGradient(
-          map.x,
-          map.y,
-          map.x,
-          map.y + map.height,
-          [
-            [0, '#202920'],
-            [0.55, '#18251f'],
-            [1, '#111816'],
-          ],
-          '#18251f',
-        );
-        this.ctx.fillRect(map.x, map.y, map.width, map.height);
-        this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.08)';
-        this.ctx.lineWidth = 1;
-        const grid = 34;
-        for (let x = map.x - (map.x % grid); x < map.x + map.width; x += grid) {
-          this.ctx.beginPath();
-          this.ctx.moveTo(x, map.y);
-          this.ctx.lineTo(x, map.y + map.height);
-          this.ctx.stroke();
-        }
-        for (let y = map.y - (map.y % grid); y < map.y + map.height; y += grid) {
-          this.ctx.beginPath();
-          this.ctx.moveTo(map.x, y);
-          this.ctx.lineTo(map.x + map.width, y);
-          this.ctx.stroke();
-        }
-      }
-      const message = options.loading?.message || '\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe';
-      const panelWidth = Math.min(260, map.width - 36);
-      const panelHeight = 86;
-      const x = map.x + (map.width - panelWidth) / 2;
-      const y = map.y + Math.max(76, map.height * 0.36 - panelHeight / 2);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: 'rgba(20, 24, 18, 0.82)',
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.05)',
-      });
-      this.drawText(message, x + panelWidth / 2, y + 24, {
-        size: 14,
-        bold: true,
-        color: '#ffe6b5',
-        align: 'center',
-      });
-      this.drawText('\u5730\u56fe\u6570\u636e\u540c\u6b65\u540e\u4f1a\u81ea\u52a8\u663e\u793a', x + panelWidth / 2, y + 52, {
-        size: 11,
-        color: '#cbbd96',
-        align: 'center',
-      });
-      this.addHitTarget({ x: map.x, y: map.y, width: map.width, height: map.height }, { type: 'blockCanvasModal' });
-      return true;
+    renderMapHomeExplorerHud(...args) {
+      const result = this.delegateWorldMapLayerRenderer('renderMapHomeExplorerHud', args);
+      return result === undefined ? false : result;
     }
 
-    renderWorldMapLayer(state = {}, options = {}) {
-      if (!this.presenter || !this.ctx) return false;
-      this.beginFrame(options);
-      this.setHitTargets([]);
-      this.clearAll();
-      const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
-      if (!layout) {
-        this.endFrame({ ...options, showFpsOverlay: false });
-        return false;
-      }
-      const territoryState = state.territoryState || {};
-      const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
-      if (!tileMapView?.tiles?.length) {
-        this.endFrame({ ...options, showFpsOverlay: false });
-        return false;
-      }
-      if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
-      this.worldTileWaterTimeOverride = options.waterTimeMs !== null
-        && options.waterTimeMs !== undefined
-        && Number.isFinite(Number(options.waterTimeMs))
-        ? Number(options.waterTimeMs)
-        : null;
-      const drawWorldMap = () => {
-        this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
-          frameless: Boolean(options.isMapHome),
-          fastDrag: Boolean(options.reuseCachedWorldTileView),
-          snapshotOnly: Boolean(options.snapshotOnly),
-        });
-      };
-      try {
-        if (options.collectHitTargets) drawWorldMap();
-        else this.withSuppressedHitTargets(drawWorldMap);
-      } finally {
-        this.worldTileWaterTimeOverride = null;
-      }
-      this.endFrame({ ...options, showFpsOverlay: false });
-      return true;
+    renderMapHomeEmptyWorld(...args) {
+      const result = this.delegateWorldMapLayerRenderer('renderMapHomeEmptyWorld', args);
+      return result === undefined ? false : result;
     }
 
-    renderWorldMapSnapshotLayer(state = {}, options = {}) {
-      if (!this.presenter || !this.ctx || typeof this.ctx.drawImage !== 'function') return false;
-      if (options.preserveOnMiss && !options.__snapshotBackbuffer) {
-        const cacheScale = Math.max(1, Number(this.pixelRatio) || 1);
-        const work = this.getWorldTileLayerCacheContext('worldTileSnapshotLayerBackbuffer', this.width, this.height, cacheScale);
-        if (!work?.canvas || !work?.ctx) return false;
-        const previousCtx = this.ctx;
-        this.ctx = work.ctx;
-        try {
-          work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
-          work.ctx.clearRect?.(0, 0, work.pixelWidth || work.canvas.width, work.pixelHeight || work.canvas.height);
-          work.ctx.setTransform?.(cacheScale, 0, 0, cacheScale, 0, 0);
-          const rendered = this.renderWorldMapSnapshotLayer(state, {
-            ...options,
-            preserveOnMiss: false,
-            __snapshotBackbuffer: true,
-          });
-          if (!rendered) return false;
-        } finally {
-          this.ctx = previousCtx;
-        }
-        this.ctx.drawImage(
-          work.canvas,
-          0,
-          0,
-          work.pixelWidth || work.canvas.width,
-          work.pixelHeight || work.canvas.height,
-          0,
-          0,
-          work.width || this.width,
-          work.height || this.height,
-        );
-        return true;
-      }
-      this.beginFrame(options);
-      this.setHitTargets([]);
-      this.clearAll();
-      const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
-      if (!layout) {
-        this.endFrame({ ...options, showFpsOverlay: false });
-        return false;
-      }
-      const territoryState = state.territoryState || {};
-      const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
-      if (!tileMapView?.tiles?.length) {
-        this.endFrame({ ...options, showFpsOverlay: false });
-        return false;
-      }
-      const x = layout.map.x;
-      const y = layout.map.y;
-      const width = layout.map.width;
-      const height = layout.map.height;
-      const geometry = tileMapView.geometry || {};
-      const scaleBasisWidth = Number(options.scaleBasisWidth) || width;
-      const scaleBasisHeight = Number(options.scaleBasisHeight) || height;
-      const originX = options.originX !== undefined ? Number(options.originX) : x + width * 0.5;
-      const originY = options.originY !== undefined ? Number(options.originY) : y + height * 0.42;
-      const scale = Math.max(0.38, Math.min(0.78, Math.min(scaleBasisWidth / 520, scaleBasisHeight / 420)));
-      const viewport = {
-        originX: Number.isFinite(originX) ? originX : x + width * 0.5,
-        originY: Number.isFinite(originY) ? originY : y + height * 0.42,
-        panX: Number(tileMapView.pan?.x) || 0,
-        panY: Number(tileMapView.pan?.y) || 0,
-        scale,
-        seed: tileMapView.seed || 'scout-tile-v1',
-        geometry,
-      };
-      const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
-      this.worldTileWaterTimeOverride = options.waterTimeMs !== null
-        && options.waterTimeMs !== undefined
-        && Number.isFinite(Number(options.waterTimeMs))
-        ? Number(options.waterTimeMs)
-        : null;
-      let renderedSnapshot = false;
-      try {
-        if (options.frameless && this.ctx?.fillRect) {
-          this.ctx.fillStyle = 'rgba(20, 26, 23, 0.92)';
-          this.ctx.fillRect(x, y, width, height);
-        }
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(x + 1, y + 1, width - 2, height - 2);
-        this.ctx.clip();
-        renderedSnapshot = this.renderWorldTileSnapshotCache(tileMapView, viewport, frame);
-        this.ctx.restore();
-      } finally {
-        this.worldTileWaterTimeOverride = null;
-      }
-      this.endFrame({ ...options, showFpsOverlay: false });
-      return renderedSnapshot;
+    renderWorldMapLayer(...args) {
+      const result = this.delegateWorldMapLayerRenderer('renderWorldMapLayer', args);
+      return result === undefined ? false : result;
     }
 
+    renderWorldMapSnapshotLayer(...args) {
+      const result = this.delegateWorldMapLayerRenderer('renderWorldMapSnapshotLayer', args);
+      return result === undefined ? false : result;
+    }
     delegateMapCommandRenderer(method, args = []) {
       const renderer = this.mapCommandRenderer;
       if (!renderer || typeof renderer[method] !== 'function') return undefined;
