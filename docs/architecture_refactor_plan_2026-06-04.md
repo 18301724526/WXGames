@@ -561,7 +561,7 @@
 
 - 代码提交哈希：`24d7fbf refactor: move battle rendering into battle canvas renderer`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
