@@ -83,6 +83,18 @@
     return null;
   })();
 
+  const SharedTutorialCanvasRenderer = (() => {
+    if (global.TutorialCanvasRenderer) return global.TutorialCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/TutorialCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasGameRenderer {
     constructor(options = {}) {
       this.presenter = options.presenter || null;
@@ -144,6 +156,8 @@
       this.techRenderer = options.techRenderer || (TechRendererClass ? new TechRendererClass({ host: this }) : null);
       const BattleRendererClass = options.battleRendererClass || SharedBattleCanvasRenderer;
       this.battleRenderer = options.battleRenderer || (BattleRendererClass ? new BattleRendererClass({ host: this }) : null);
+      const TutorialRendererClass = options.tutorialRendererClass || SharedTutorialCanvasRenderer;
+      this.tutorialRenderer = options.tutorialRenderer || (TutorialRendererClass ? new TutorialRendererClass({ host: this }) : null);
       this.fpsLastPaintAt = 0;
       this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
@@ -4726,474 +4740,85 @@
       return result === undefined ? false : result;
     }
 
-    renderTutorialIntro(state = {}, options = {}) {
-      const intro = options.tutorialIntro || null;
-      if (!intro?.active || !this.ctx) {
-        this.disposeTutorialAdvisorSpine();
-        return false;
-      }
-      const target = this.resolveTutorialIntroTarget(intro, state, options);
-      if (!target) {
-        this.disposeTutorialAdvisorSpine();
-        return false;
-      }
-      if (intro.step === 'march') {
-        this.disposeTutorialAdvisorSpine();
-        this.renderTutorialIntroMarch(intro, target);
-        return true;
-      }
-      const message = intro.messages?.[intro.step] || '';
-      this.renderTutorialIntroSpotlight(target, message, {
-        showAdvisor: true,
-        advisorName: intro.advisorName || '谋士',
-      });
-      return true;
+    delegateTutorialRenderer(method, args = []) {
+      const renderer = this.tutorialRenderer;
+      if (!renderer || typeof renderer[method] !== 'function') return undefined;
+      return renderer[method](...args);
     }
 
-    disposeTutorialAdvisorSpine() {
-      const existing = this.tutorialAdvisorSpine;
-      if (!existing) return false;
-      existing.player?.dispose?.();
-      existing.player?.stop?.();
-      this.tutorialAdvisorSpine = null;
-      this.h5Runtime?.setLayerVisible?.('tutorialSpine', false);
-      return true;
+    renderTutorialIntro(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntro', args);
+      return result === undefined ? false : result;
     }
 
-    resolveTutorialIntroTarget(intro = {}, state = {}, options = {}) {
-      const capitalCityId = intro.capitalCityId || state.cityState?.capitalCityId || 'capital';
-      if (intro.step === 'enter') {
-        const target = this.findHitTarget('enterCity', (action) => {
-          const cityId = action.cityId || action.territoryId || action.siteId || '';
-          return !cityId || cityId === capitalCityId;
-        });
-        if (target) return this.inflateRect(target, 10);
-        return null;
-      }
-      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
-      if (hitTarget) return this.inflateRect(hitTarget, intro.step === 'march' ? 0 : 12);
-      const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
-      if (!anchor) return null;
-      return this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
+    disposeTutorialAdvisorSpine(...args) {
+      const result = this.delegateTutorialRenderer('disposeTutorialAdvisorSpine', args);
+      return result === undefined ? false : result;
     }
 
-    findHitTarget(type = '', predicate = null) {
-      if (!Array.isArray(this.hitTargets)) return null;
-      for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
-        const target = this.hitTargets[index];
-        const action = target?.action || {};
-        if (action.type !== type) continue;
-        if (typeof predicate === 'function' && !predicate(action)) continue;
-        return target;
-      }
-      return null;
+    resolveTutorialIntroTarget(...args) {
+      const result = this.delegateTutorialRenderer('resolveTutorialIntroTarget', args);
+      return result === undefined ? null : result;
     }
 
-    inflateRect(rect = {}, padding = 0) {
-      const pad = Number(padding) || 0;
-      const x = Number(rect.x ?? rect.left) || 0;
-      const y = Number(rect.y ?? rect.top) || 0;
-      const width = Number(rect.width) || 0;
-      const height = Number(rect.height) || 0;
-      return {
-        x: x - pad,
-        y: y - pad,
-        width: width + pad * 2,
-        height: height + pad * 2,
-        action: rect.action || null,
-      };
+    findHitTarget(...args) {
+      const result = this.delegateTutorialRenderer('findHitTarget', args);
+      return result === undefined ? null : result;
     }
 
-    renderTutorialIntroMarch(intro = {}, target = {}) {
-      this.addHitTarget(
-        { x: 0, y: 0, width: this.width, height: this.height },
-        { type: 'blockCanvasModal' },
-      );
-      const now = this.getNow();
-      const startedAt = Number(intro.startedAt) || now;
-      const duration = Math.max(1, Number(intro.marchDurationMs) || 2400);
-      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
-      const eased = this.easeOutCubic(progress);
-      const targetX = target.x + target.width / 2;
-      const targetY = target.y + target.height * 0.72;
-      const startX = Math.max(18, targetX - Math.min(this.width * 0.46, 210));
-      const startY = Math.min(this.height - 86, targetY + Math.min(this.height * 0.24, 128));
-      const x = startX + (targetX - startX) * eased;
-      const y = startY + (targetY - startY) * eased;
-
-      this.ctx.save?.();
-      this.ctx.strokeStyle = 'rgba(240, 180, 91, 0.44)';
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath?.();
-      this.ctx.moveTo?.(startX, startY);
-      this.ctx.quadraticCurveTo?.((startX + targetX) / 2, startY - 30, targetX, targetY);
-      this.ctx.stroke?.();
-      this.renderTutorialIntroUnit(x, y, 1 + eased * 0.16);
-      this.ctx.restore?.();
+    inflateRect(...args) {
+      const result = this.delegateTutorialRenderer('inflateRect', args);
+      return result === undefined ? { x: 0, y: 0, width: 0, height: 0, action: null } : result;
     }
 
-    renderTutorialIntroUnit(x, y, scale = 1) {
-      const ctx = this.ctx;
-      if (!ctx) return;
-      const now = this.getNow();
-      const leg = Math.sin(now / 90) * 4 * scale;
-      ctx.save?.();
-      ctx.translate?.(x, y);
-      ctx.scale?.(scale, scale);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
-      ctx.beginPath?.();
-      ctx.ellipse?.(0, 10, 15, 6, -0.18, 0, Math.PI * 2);
-      ctx.fill?.();
-      ctx.fillStyle = '#f0cf8a';
-      ctx.strokeStyle = 'rgba(45, 31, 22, 0.92)';
-      ctx.lineWidth = 2;
-      ctx.beginPath?.();
-      ctx.arc?.(0, -20, 7, 0, Math.PI * 2);
-      ctx.fill?.();
-      ctx.stroke?.();
-      ctx.fillStyle = '#8c3d31';
-      ctx.strokeStyle = 'rgba(48, 34, 22, 0.92)';
-      ctx.lineWidth = 2;
-      this.roundRectPath(-9, -12, 18, 23, 6);
-      ctx.fill?.();
-      ctx.stroke?.();
-      ctx.strokeStyle = '#2c2318';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath?.();
-      ctx.moveTo?.(-5, 10);
-      ctx.lineTo?.(-7 + leg, 22);
-      ctx.moveTo?.(5, 10);
-      ctx.lineTo?.(7 - leg, 22);
-      ctx.stroke?.();
-      ctx.strokeStyle = '#d9bd73';
-      ctx.lineWidth = 3;
-      ctx.beginPath?.();
-      ctx.moveTo?.(7, -7);
-      ctx.lineTo?.(19, -14);
-      ctx.stroke?.();
-      ctx.restore?.();
+    renderTutorialIntroMarch(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntroMarch', args);
+      return result === undefined ? false : result;
     }
 
-    renderTutorialIntroSpotlight(target = {}, message = '', options = {}) {
-      const rect = this.normalizeRect(target);
-      if (!rect) return false;
-      const pulse = 0.5 + Math.sin(this.getNow() / 180) * 0.5;
-      this.addTutorialShield(
-        { left: rect.x, top: rect.y, width: rect.width, height: rect.height },
-        { allowedAction: target.action || null },
-      );
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
-      this.ctx.fillRect(0, 0, this.width, rect.y);
-      this.ctx.fillRect(0, rect.y + rect.height, this.width, Math.max(0, this.height - rect.y - rect.height));
-      this.ctx.fillRect(0, rect.y, rect.x, rect.height);
-      this.ctx.fillRect(rect.x + rect.width, rect.y, Math.max(0, this.width - rect.x - rect.width), rect.height);
-      this.drawPanel(rect.x, rect.y, rect.width, rect.height, {
-        fill: `rgba(255, 247, 214, ${0.06 + pulse * 0.04})`,
-        stroke: `rgba(255, 215, 0, ${0.72 + pulse * 0.22})`,
-        radius: 14,
-        inset: 'rgba(255, 247, 214, 0.14)',
-      });
-      this.renderTutorialIntroFinger(rect.x + rect.width * 0.78, rect.y + rect.height * 0.88);
-      if (options.showAdvisor) this.renderTutorialIntroDialogue(message, options.advisorName || '谋士');
-      return true;
+    renderTutorialIntroUnit(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntroUnit', args);
+      return result === undefined ? false : result;
     }
 
-    normalizeRect(rect = {}) {
-      const x = Math.max(0, Math.min(this.width, Number(rect.x ?? rect.left) || 0));
-      const y = Math.max(0, Math.min(this.height, Number(rect.y ?? rect.top) || 0));
-      const width = Math.max(1, Math.min(this.width - x, Number(rect.width) || 0));
-      const height = Math.max(1, Math.min(this.height - y, Number(rect.height) || 0));
-      return { x, y, width, height };
+    renderTutorialIntroSpotlight(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntroSpotlight', args);
+      return result === undefined ? false : result;
     }
 
-    renderTutorialIntroFinger(x, y) {
-      const pulse = 0.5 + Math.sin(this.getNow() / 180) * 0.5;
-      this.ctx.save?.();
-      this.ctx.translate?.(x + pulse * 5, y - pulse * 7);
-      this.ctx.rotate?.(-0.55);
-      this.ctx.strokeStyle = `rgba(255, 226, 168, ${0.56 + pulse * 0.28})`;
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath?.();
-      this.ctx.arc?.(0, 0, 18 + pulse * 8, 0, Math.PI * 2);
-      this.ctx.stroke?.();
-      this.ctx.fillStyle = 'rgba(255, 235, 183, 0.96)';
-      this.ctx.strokeStyle = 'rgba(80, 52, 22, 0.72)';
-      this.ctx.lineWidth = 2.2;
-      this.ctx.lineJoin = 'round';
-      this.ctx.lineCap = 'round';
-      this.ctx.beginPath?.();
-      this.ctx.moveTo?.(-5, -24);
-      this.ctx.quadraticCurveTo?.(-1, -31, 6, -26);
-      this.ctx.lineTo?.(12, -4);
-      this.ctx.quadraticCurveTo?.(17, -9, 22, -5);
-      this.ctx.quadraticCurveTo?.(26, -1, 22, 6);
-      this.ctx.lineTo?.(16, 22);
-      this.ctx.quadraticCurveTo?.(10, 31, -2, 29);
-      this.ctx.lineTo?.(-15, 25);
-      this.ctx.quadraticCurveTo?.(-22, 23, -19, 17);
-      this.ctx.quadraticCurveTo?.(-15, 13, -8, 14);
-      this.ctx.lineTo?.(-5, -24);
-      this.ctx.closePath?.();
-      this.ctx.fill?.();
-      this.ctx.stroke?.();
-      this.ctx.strokeStyle = 'rgba(128, 83, 34, 0.38)';
-      this.ctx.lineWidth = 1.5;
-      [
-        [-1, -5, 3, 14],
-        [6, -4, 9, 15],
-        [13, 2, 12, 17],
-      ].forEach((line) => {
-        this.ctx.beginPath?.();
-        this.ctx.moveTo?.(line[0], line[1]);
-        this.ctx.lineTo?.(line[2], line[3]);
-        this.ctx.stroke?.();
-      });
-      this.ctx.restore?.();
+    normalizeRect(...args) {
+      const result = this.delegateTutorialRenderer('normalizeRect', args);
+      return result === undefined ? null : result;
     }
 
-    renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
-      const layout = this.getLayout();
-      const panelW = Math.min(layout.contentWidth - 16, 360);
-      const panelH = 136;
-      const panelX = layout.contentX + Math.max(0, (layout.contentWidth - panelW) / 2);
-      const panelY = Math.max(84, this.height - panelH - 76 - this.bottomSafeArea);
-      const portraitW = Math.min(188, Math.max(134, layout.contentWidth * 0.42));
-      const portraitH = Math.min(330, Math.max(248, this.height * 0.38));
-      const portraitX = Math.max(layout.contentX - 72, panelX + 104 - portraitW);
-      const portraitY = Math.max(48, panelY - portraitH + 44);
-
-      this.drawPanel(panelX + 92, panelY, panelW - 92, panelH, {
-        fill: 'rgba(23, 17, 12, 0.94)',
-        stroke: 'rgba(246, 214, 147, 0.3)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
-      this.renderTutorialIntroAdvisorPortrait(portraitX, portraitY, portraitW, portraitH);
-      this.drawText(advisorName, panelX + 116, panelY + 24, {
-        size: 14,
-        bold: true,
-        color: '#ffd98a',
-      });
-      const lines = this.wrapTextLimit(message, panelW - 138, 3, { size: 13 });
-      this.drawTextLines(lines, panelX + 116, panelY + 46, {
-        size: 13,
-        color: '#f7ecd0',
-        lineHeight: 18,
-      });
+    renderTutorialIntroFinger(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntroFinger', args);
+      return result === undefined ? false : result;
     }
 
-    renderTutorialIntroAdvisorPortrait(x, y, width, height) {
-      if (this.renderTutorialAdvisorSpineLayer(x, y, width, height)) return true;
-      const spineFrame = this.getTutorialAdvisorSpineFrame();
-      if (spineFrame && typeof this.ctx.drawImage === 'function') {
-        this.ctx.save?.();
-        this.ctx.beginPath?.();
-        this.ctx.rect?.(x, y, width, height);
-        this.ctx.clip?.();
-        this.drawTutorialAdvisorImageCover(spineFrame, 0, 0, spineFrame.width, spineFrame.height, x, y, width, height);
-        this.ctx.restore?.();
-        return true;
-      }
-      const image = this.getAsset('assets/art/spine/tutorial/advisor/tutorial_advisor.png');
-      this.ctx.save?.();
-      this.ctx.beginPath?.();
-      this.ctx.rect?.(x, y, width, height);
-      this.ctx.clip?.();
-      if (image && typeof this.ctx.drawImage === 'function') {
-        this.drawTutorialAdvisorImageCover(
-          image,
-          0,
-          0,
-          image.naturalWidth || image.width,
-          Math.min(1120, image.naturalHeight || image.height),
-          x,
-          y,
-          width,
-          height,
-        );
-      } else {
-        this.drawPanel(x + 8, y + 20, width - 16, height - 22, {
-          fill: 'rgba(48, 37, 28, 0.92)',
-          stroke: 'rgba(255, 218, 142, 0.28)',
-          radius: 10,
-        });
-        this.drawText('谋士', x + width / 2, y + height / 2, {
-          size: 15,
-          bold: true,
-          color: '#ffd98a',
-          align: 'center',
-          baseline: 'middle',
-        });
-      }
-      this.ctx.restore?.();
-      return false;
+    renderTutorialIntroDialogue(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntroDialogue', args);
+      return result === undefined ? false : result;
     }
 
-    renderTutorialAdvisorSpineLayer(x, y, width, height) {
-      const runtime = this.h5Runtime || null;
-      if (!runtime?.ensureLayerCanvas || !global.SpineWebglPlayer?.isAvailable?.()) return false;
-      const pixelRatio = Math.min(2, Math.max(1, Number(global.devicePixelRatio) || 1));
-      const layerRect = {
-        x: Math.max(-24, Math.floor(Number(x) || 0)),
-        y: Math.max(0, Math.floor(Number(y) || 0)),
-        width: Math.max(1, Math.ceil(Number(width) || 1)),
-        height: Math.max(1, Math.ceil(Number(height) || 1)),
-      };
-      const canvas = runtime.ensureLayerCanvas('tutorialSpine', {
-        contextType: 'webgl',
-        zIndex: 1000,
-        pixelRatio,
-        rect: layerRect,
-      });
-      if (!canvas) return false;
-      runtime.setLayerVisible?.('tutorialSpine', true);
-      const metrics = runtime.getLayerMetrics?.('tutorialSpine') || {};
-      const logicalWidth = metrics.width || layerRect.width;
-      const logicalHeight = metrics.height || layerRect.height;
-      const existing = this.tutorialAdvisorSpine;
-      if (existing?.mode === 'layer' && existing?.player && existing.canvas === canvas) {
-        return existing.player.status === 'ready' || existing.player.status === 'loading';
-      }
-      existing?.player?.dispose?.();
-      const player = new global.SpineWebglPlayer({
-        canvas,
-        runtime: global,
-        background: null,
-        fitPadding: 1,
-        targetFps: 60,
-        logicalWidth,
-        logicalHeight,
-        maxDevicePixelRatio: pixelRatio,
-        premultipliedAlpha: false,
-        preserveDrawingBuffer: false,
-        viewFocus: {
-          centerX: 0,
-          centerY: 1080,
-          height: 900,
-        },
-        onError: () => {
-          this.tutorialAdvisorSpineFailed = true;
-          runtime.setLayerVisible?.('tutorialSpine', false);
-        },
-        onStatus: (event = {}) => {
-          if (event.status === 'ready') this.handleAssetsChanged();
-        },
-      });
-      this.tutorialAdvisorSpine = { canvas, player, mode: 'layer' };
-      const loaded = player.load({
-        assetBase: 'assets/art/spine/tutorial/advisor/',
-        jsonFile: 'tutorial_advisor.json',
-        atlasFile: 'tutorial_advisor.atlas',
-        animationName: 'animation',
-        loop: true,
-        alpha: true,
-        antialias: true,
-        targetFps: 60,
-        logicalWidth,
-        logicalHeight,
-        maxDevicePixelRatio: pixelRatio,
-        preserveDrawingBuffer: false,
-        viewFocus: {
-          centerX: 0,
-          centerY: 1080,
-          height: 900,
-        },
-      });
-      if (!loaded) {
-        this.tutorialAdvisorSpineFailed = true;
-        this.tutorialAdvisorSpine = null;
-        runtime.setLayerVisible?.('tutorialSpine', false);
-        return false;
-      }
-      return true;
+    renderTutorialIntroAdvisorPortrait(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialIntroAdvisorPortrait', args);
+      return result === undefined ? false : result;
     }
 
-    drawTutorialAdvisorImageCover(image, sx, sy, sw, sh, dx, dy, dw, dh) {
-      if (!image || typeof this.ctx?.drawImage !== 'function') return false;
-      let sourceX = Number(sx) || 0;
-      let sourceY = Number(sy) || 0;
-      let sourceW = Math.max(1, Number(sw) || image.width || image.naturalWidth || 1);
-      let sourceH = Math.max(1, Number(sh) || image.height || image.naturalHeight || 1);
-      const targetW = Math.max(1, Number(dw) || 1);
-      const targetH = Math.max(1, Number(dh) || 1);
-      const sourceAspect = sourceW / sourceH;
-      const targetAspect = targetW / targetH;
-      if (sourceAspect > targetAspect) {
-        const nextW = sourceH * targetAspect;
-        sourceX += (sourceW - nextW) * 0.5;
-        sourceW = nextW;
-      } else if (sourceAspect < targetAspect) {
-        const nextH = sourceW / targetAspect;
-        sourceY += Math.max(0, (sourceH - nextH) * 0.08);
-        sourceH = nextH;
-      }
-      this.ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, dx, dy, targetW, targetH);
-      return true;
+    renderTutorialAdvisorSpineLayer(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialAdvisorSpineLayer', args);
+      return result === undefined ? false : result;
     }
 
-    getTutorialAdvisorSpineFrame() {
-      if (this.tutorialAdvisorSpineFailed) return null;
-      const existing = this.tutorialAdvisorSpine;
-      if (existing?.player?.status === 'ready' && existing.canvas) return existing.canvas;
-      if (existing) return null;
-      if (!global.SpineWebglPlayer?.isAvailable?.()) {
-        this.tutorialAdvisorSpineFailed = true;
-        return null;
-      }
-      const canvas = this.createTutorialSpineCanvas(288, 420);
-      if (!canvas) {
-        this.tutorialAdvisorSpineFailed = true;
-        return null;
-      }
-      const player = new global.SpineWebglPlayer({
-        canvas,
-        runtime: global,
-        background: null,
-        fitPadding: 1,
-        targetFps: 30,
-        logicalWidth: 288,
-        logicalHeight: 420,
-        maxDevicePixelRatio: 1,
-        premultipliedAlpha: false,
-        preserveDrawingBuffer: true,
-        viewFocus: {
-          centerX: 0,
-          centerY: 1080,
-          height: 900,
-        },
-        onError: () => {
-          this.tutorialAdvisorSpineFailed = true;
-        },
-        onStatus: (event = {}) => {
-          if (event.status === 'ready') this.handleAssetsChanged();
-        },
-      });
-      this.tutorialAdvisorSpine = { canvas, player };
-      const loaded = player.load({
-        assetBase: 'assets/art/spine/tutorial/advisor/',
-        jsonFile: 'tutorial_advisor.json',
-        atlasFile: 'tutorial_advisor.atlas',
-        animationName: 'animation',
-        loop: true,
-        alpha: true,
-        antialias: false,
-        targetFps: 30,
-        logicalWidth: 288,
-        logicalHeight: 420,
-        maxDevicePixelRatio: 1,
-        preserveDrawingBuffer: true,
-        viewFocus: {
-          centerX: 0,
-          centerY: 1080,
-          height: 900,
-        },
-      });
-      if (!loaded) {
-        this.tutorialAdvisorSpineFailed = true;
-        this.tutorialAdvisorSpine = null;
-      }
-      return null;
+    drawTutorialAdvisorImageCover(...args) {
+      const result = this.delegateTutorialRenderer('drawTutorialAdvisorImageCover', args);
+      return result === undefined ? false : result;
+    }
+
+    getTutorialAdvisorSpineFrame(...args) {
+      const result = this.delegateTutorialRenderer('getTutorialAdvisorSpineFrame', args);
+      return result === undefined ? null : result;
     }
 
     renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {
@@ -6535,94 +6160,14 @@
       };
     }
 
-    renderTutorialHighlight(highlight = null) {
-      if (!highlight || !highlight.rect || !this.presenter || !this.ctx) return;
-      const now = this.getNow();
-      const transition = highlight.transition || null;
-      const rect = transition
-        ? this.interpolateRect(
-          transition.fromRect,
-          transition.toRect || highlight.rect,
-          (now - (Number(transition.startedAt) || now)) / Math.max(1, Number(transition.durationMs) || 260),
-        )
-        : highlight.rect;
-      const pulse = 0.5 + Math.sin((now - (Number(highlight.pulseStartedAt) || now)) / 180) * 0.5;
-      const view = this.presenter.buildTutorialHighlightViewState(rect, {
-        innerWidth: this.width,
-        innerHeight: this.height,
-      });
-      const overlay = {
-        x: this.parsePixelValue(view.overlay.left),
-        y: this.parsePixelValue(view.overlay.top),
-        width: this.parsePixelValue(view.overlay.width),
-        height: this.parsePixelValue(view.overlay.height),
-      };
-      const bubble = {
-        x: this.parsePixelValue(view.bubble.left),
-        y: this.parsePixelValue(view.bubble.top),
-        width: 220,
-        height: 72,
-      };
-      const pointer = {
-        x: this.parsePixelValue(view.pointer.left),
-        y: this.parsePixelValue(view.pointer.top),
-      };
-      this.addTutorialShield(transition?.toRect || highlight.rect || rect);
-
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
-      this.ctx.fillRect(0, 0, this.width, overlay.y);
-      this.ctx.fillRect(0, overlay.y + overlay.height, this.width, Math.max(0, this.height - overlay.y - overlay.height));
-      this.ctx.fillRect(0, overlay.y, overlay.x, overlay.height);
-      this.ctx.fillRect(overlay.x + overlay.width, overlay.y, Math.max(0, this.width - overlay.x - overlay.width), overlay.height);
-
-      this.drawPanel(overlay.x, overlay.y, overlay.width, overlay.height, {
-        fill: `rgba(255, 247, 214, ${0.07 + pulse * 0.04})`,
-        stroke: `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`,
-        radius: 16,
-        inset: 'rgba(255, 247, 214, 0.18)',
-      });
-      this.ctx.lineWidth = 3;
-      this.roundRectPath(overlay.x, overlay.y, overlay.width, overlay.height, 16);
-      this.ctx.strokeStyle = `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`;
-      this.ctx.stroke();
-      this.ctx.lineWidth = 1;
-
-      this.drawPanel(bubble.x, bubble.y, bubble.width, bubble.height, {
-        fill: '#fff7d6',
-        stroke: 'rgba(255, 215, 0, 0.38)',
-        radius: 12,
-        inset: 'rgba(255, 255, 255, 0.26)',
-      });
-      const messageLines = this.wrapTextLimit(highlight.message || '', bubble.width - 28, 3, { size: 13 });
-      this.drawTextLines(messageLines, bubble.x + 14, bubble.y + 12, {
-        size: 13,
-        color: '#3b2f00',
-        lineHeight: 19,
-      });
-
-      this.drawText('👇', pointer.x + 12, pointer.y + 13, {
-        size: 24,
-        baseline: 'middle',
-        align: 'center',
-      });
+    renderTutorialHighlight(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialHighlight', args);
+      return result === undefined ? false : result;
     }
 
-    addTutorialShield(rect = {}, options = {}) {
-      const x = Math.max(0, Math.min(this.width, Number(rect.left ?? rect.x) || 0));
-      const y = Math.max(0, Math.min(this.height, Number(rect.top ?? rect.y) || 0));
-      const width = Math.max(0, Math.min(this.width - x, Number(rect.width) || 0));
-      const height = Math.max(0, Math.min(this.height - y, Number(rect.height) || 0));
-      const right = Math.max(x, Math.min(this.width, x + width));
-      const bottom = Math.max(y, Math.min(this.height, y + height));
-      const block = { type: 'blockCanvasModal', allowedAction: options.allowedAction || null };
-      [
-        { x: 0, y: 0, width: this.width, height: y },
-        { x: 0, y: bottom, width: this.width, height: Math.max(0, this.height - bottom) },
-        { x: 0, y, width: x, height },
-        { x: right, y, width: Math.max(0, this.width - right), height },
-      ]
-        .filter((item) => item.width > 0 && item.height > 0)
-        .forEach((item) => this.addHitTarget(item, block));
+    addTutorialShield(...args) {
+      const result = this.delegateTutorialRenderer('addTutorialShield', args);
+      return result === undefined ? false : result;
     }
 
     drawRewardParticle(cx, cy, radius, angle, progress, index) {

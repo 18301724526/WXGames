@@ -1,0 +1,152 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const TutorialAdvisorCanvasRenderer = require('./TutorialAdvisorCanvasRenderer');
+const TutorialCanvasRenderer = require('./TutorialCanvasRenderer');
+const CanvasGameRenderer = require('../CanvasGameRenderer');
+
+function createCtx(calls = []) {
+  return {
+    fillRect(...args) { calls.push(['fillRect', ...args]); },
+    drawImage(...args) { calls.push(['drawImage', ...args]); },
+    beginPath() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    quadraticCurveTo() {},
+    rect() {},
+    arc() {},
+    ellipse() {},
+    fill() {},
+    stroke() {},
+    save() {},
+    restore() {},
+    clip() {},
+    translate() {},
+    rotate() {},
+    scale() {},
+    lineWidth: 1,
+    globalAlpha: 1,
+  };
+}
+
+function createHost(overrides = {}) {
+  const hitTargets = [];
+  const drawCalls = [];
+  const host = {
+    width: 390,
+    height: 844,
+    bottomSafeArea: 12,
+    ctx: createCtx(drawCalls),
+    presenter: {
+      buildTutorialHighlightViewState() {
+        return {
+          overlay: { left: '40px', top: '50px', width: '90px', height: '70px' },
+          bubble: { left: '56px', top: '132px' },
+          pointer: { left: '72px', top: '118px' },
+        };
+      },
+    },
+    hitTargets,
+    drawCalls,
+    addHitTarget(rect, action) { hitTargets.push({ rect, action }); },
+    drawPanel() { drawCalls.push(['drawPanel']); },
+    drawText() { drawCalls.push(['drawText']); },
+    drawTextLines() { drawCalls.push(['drawTextLines']); },
+    getAsset() { return null; },
+    getLayout() { return { contentX: 10, contentWidth: 370 }; },
+    getNow() { return 1000; },
+    getWorldSiteCanvasAnchor(siteId) {
+      return {
+        siteId,
+        hitRect: { x: 80, y: 120, width: 64, height: 48, action: { type: 'openWorldSite', siteId } },
+      };
+    },
+    handleAssetsChanged() {},
+    measureTextWidth(text) { return String(text || '').length * 8; },
+    parsePixelValue(value) {
+      if (typeof value === 'number') return value;
+      const parsed = Number(String(value ?? '').replace('px', ''));
+      return Number.isFinite(parsed) ? parsed : 0;
+    },
+    roundRectPath() {},
+    truncateText(text) { return String(text || ''); },
+    wrapTextLimit(text) { return [String(text || '')]; },
+    ...overrides,
+  };
+  return host;
+}
+
+test('TutorialCanvasRenderer resolves intro targets and keeps tutorial shield hit targets', () => {
+  const host = createHost();
+  host.hitTargets.push({
+    x: 100,
+    y: 160,
+    width: 80,
+    height: 60,
+    action: { type: 'openWorldSite', siteId: 'capital' },
+  });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  const rendered = renderer.renderTutorialIntro({}, {
+    tutorialIntro: {
+      active: true,
+      step: 'focus',
+      capitalCityId: 'capital',
+      advisorName: 'Advisor',
+      messages: { focus: 'Tap the city.' },
+    },
+  });
+
+  assert.equal(rendered, true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.allowedAction?.type === 'openWorldSite'), true);
+});
+
+test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer facade', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: {},
+    presenter: {},
+    tutorialRendererClass: TutorialCanvasRenderer,
+  });
+
+  renderer.hitTargets = [
+    { x: 20, y: 30, width: 50, height: 40, action: { type: 'enterCity', cityId: 'capital' } },
+  ];
+
+  assert.deepEqual(
+    renderer.resolveTutorialIntroTarget({ step: 'enter', capitalCityId: 'capital' }, {}, {}),
+    { x: 10, y: 20, width: 70, height: 60, action: { type: 'enterCity', cityId: 'capital' } },
+  );
+  assert.deepEqual(renderer.normalizeRect({ x: -10, y: 4, width: 50, height: 20 }), { x: 0, y: 4, width: 50, height: 20 });
+});
+
+test('TutorialCanvasRenderer draws tutorial highlight and blocks outside the focus rect', () => {
+  const host = createHost();
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  renderer.renderTutorialHighlight({
+    rect: { left: 40, top: 50, width: 90, height: 70 },
+    message: 'Focus here.',
+    pulseStartedAt: 900,
+  });
+
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'blockCanvasModal').length, 4);
+  assert.equal(host.drawCalls.some((call) => call[0] === 'fillRect'), true);
+  assert.equal(host.drawCalls.some((call) => call[0] === 'drawTextLines'), true);
+});
+
+test('TutorialAdvisorCanvasRenderer crops advisor images to cover target bounds', () => {
+  const drawCalls = [];
+  const renderer = new TutorialAdvisorCanvasRenderer({
+    host: {
+      ctx: createCtx(drawCalls),
+    },
+  });
+
+  assert.equal(renderer.drawTutorialAdvisorImageCover({ width: 400, height: 200 }, 0, 0, 400, 200, 10, 20, 100, 100), true);
+
+  const drawImage = drawCalls.find((call) => call[0] === 'drawImage');
+  assert.ok(drawImage);
+  assert.deepEqual(drawImage.slice(2), [100, 0, 200, 200, 10, 20, 100, 100]);
+});
