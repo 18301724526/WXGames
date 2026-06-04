@@ -1300,6 +1300,67 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 22：继续压缩 CanvasGameRenderer 的顾问渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内底部顾问提示、地图首页悬浮顾问按钮、顾问浮动按钮布局和顾问建议 modal 渲染下放到独立 `AdvisorCanvasRenderer`，主 renderer 继续保留页面编排与 advisor facade。
+
+回归测试：
+
+- 覆盖底部顾问提示仍在有建议时绘制顾问标题和建议内容。
+- 覆盖地图首页悬浮顾问按钮仍保留 `openAdvisor` hit target 协议。
+- 覆盖顾问建议 modal 仍保留 `closeAdvisor`、`blockCanvasModal` 和 `goToAdvisorTarget` hit target 协议。
+- 覆盖顾问目标禁用状态仍传递到 `goToAdvisorTarget`。
+- 覆盖 `CanvasGameRenderer` 的 advisor facade 仍能委托到顾问 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 22 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 22 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/AdvisorCanvasRenderer.js`，承接底部顾问提示、悬浮顾问按钮、悬浮按钮布局和顾问建议 modal。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 advisor 相关外部入口与 facade，内部通过 `advisorRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `AdvisorCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js`，覆盖顾问提示、悬浮按钮、顾问 modal 和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 4359 行降至 4245 行。
+- `frontend/js/platform/renderers/AdvisorCanvasRenderer.js`：新增为 185 行，承接顾问渲染实现。
+- `frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js`：新增为 104 行，覆盖顾问渲染防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/AdvisorCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`60afc72 refactor: move advisor rendering into advisor canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
