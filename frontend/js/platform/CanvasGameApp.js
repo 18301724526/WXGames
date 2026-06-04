@@ -3,6 +3,10 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
     WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
+  var GameCommandServiceBase = global.GameCommandService;
+  if (typeof module !== 'undefined' && module.exports && !GameCommandServiceBase) {
+    GameCommandServiceBase = require('./GameCommandService');
+  }
 
   class CanvasGameApp {
     constructor(options = {}) {
@@ -169,6 +173,9 @@
       this.activeNamingPrompt = null;
       this.activeNamingPromptKey = null;
       this.scoutCountdownTimer = null;
+      const CommandServiceCtor = options.commandServiceClass || GameCommandServiceBase || null;
+      this.commandService = options.commandService || (CommandServiceCtor ? new CommandServiceCtor({ host: this }) : null);
+      if (this.commandService && !this.commandService.host) this.commandService.host = this;
       const DispatcherCtor = global.CanvasActionDispatcher;
       this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
       const ActionControllerCtor = global.CanvasActionController || (typeof require === 'function' ? require('./CanvasActionController') : null);
@@ -1593,17 +1600,13 @@
     }
 
     async handleBuildingSuccess(result, action, buildingId) {
-      this.applyApiState(result);
-      if (buildingId === 'farm' && action === 'build') {
-        this.showFloatingText('农田建造成功');
-      } else if (buildingId === 'house' && action === 'build') {
-        this.showFloatingText('民居建造成功');
-      } else if (buildingId === 'lumbermill' && action === 'build') {
-        this.showFloatingText('伐木场建造成功');
-      } else {
-        this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
+      if (this.commandService?.handleBuildingSuccess) {
+        return this.commandService.handleBuildingSuccess(result, action, buildingId);
       }
-      this.log(`Success: ${result.message || ''}`);
+      this.applyApiState(result);
+      this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
+      this.log(`Success: ${result?.message || ''}`);
+      return true;
     }
 
     setPendingBuildingAction(pending = null, options = {}) {
@@ -1622,39 +1625,22 @@
     }
 
     async buildBuilding(buildingId) {
-      return this.handleBuildingAction(buildingId, 'build');
+      return this.commandService?.buildBuilding
+        ? this.commandService.buildBuilding(buildingId)
+        : this.handleBuildingAction(buildingId, 'build');
     }
 
     async upgradeBuilding(buildingId) {
-      return this.handleBuildingAction(buildingId, 'upgrade');
+      return this.commandService?.upgradeBuilding
+        ? this.commandService.upgradeBuilding(buildingId)
+        : this.handleBuildingAction(buildingId, 'upgrade');
     }
 
     async handleBuildingAction(buildingId, action) {
-      if (!buildingId) return false;
-      if (this.pendingBuildingAction?.buildingId) return false;
-      const controller = this.buildingController;
-      this.setPendingBuildingAction({ buildingId, action });
-      if (controller?.handleAction) {
-        try {
-          await controller.handleAction({ buildingId, action });
-          return true;
-        } finally {
-          this.setPendingBuildingAction(null);
-        }
+      if (this.commandService?.handleBuildingAction) {
+        return this.commandService.handleBuildingAction(buildingId, action);
       }
-      try {
-        const api = this.getGameApi();
-        const result = action === 'upgrade'
-          ? await api.upgrade(buildingId)
-          : await api.build(buildingId);
-        await this.handleBuildingSuccess(result, action, buildingId);
-        return true;
-      } catch (error) {
-        this.log(`Building action failed: ${error.payload?.message || error.message}`);
-        return false;
-      } finally {
-        this.setPendingBuildingAction(null);
-      }
+      return false;
     }
 
     async assignJob(job, delta) {
@@ -1790,30 +1776,9 @@
     }
 
     async research(techId) {
-      if (!techId) return false;
-      try {
-        const result = await this.getGameApi().research(techId);
-        this.applyApiState(result);
-        if (this.state && typeof this.state === 'object') {
-          this.state = {
-            ...this.state,
-            techUiState: {
-              ...(this.state.techUiState || {}),
-              selectedTechId: techId,
-              detailOpen: false,
-            },
-          };
-        }
-        if (this.canvasShell) this.canvasShell.selectedTechId = techId;
-        if (this.canvasShell) this.canvasShell.techDetailOpen = false;
-        this.showFloatingText(result.message || 'Research completed');
-        this.log(result.message || 'Research completed');
-        return true;
-      } catch (error) {
-        this.log(`鐮旂┒澶辫触锟?{error.payload?.message || error.message}`);
-        this.renderCanvasSurface(this.state?.currentTab);
-        return false;
-      }
+      return this.commandService?.research
+        ? this.commandService.research(techId)
+        : false;
     }
 
     async startExplore(options = {}) {
@@ -2140,19 +2105,9 @@
     }
 
     async switchCity(cityId) {
-      if (!cityId || cityId === this.state?.activeCityId) return false;
-      try {
-        this.closeCitySwitcher({ skipRender: true });
-        const result = await this.getGameApi().switchCity(cityId);
-        this.applyApiState(result);
-        this.showFloatingText(result.message || 'City switched');
-        this.log(`City: ${result.message || 'City switched'}`);
-        return true;
-      } catch (error) {
-        this.log(`澶辫触锟?{error.payload?.message || error.message}`);
-        this.renderCanvasSurface(this.state?.currentTab);
-        return false;
-      }
+      return this.commandService?.switchCity
+        ? this.commandService.switchCity(cityId)
+        : false;
     }
 
     async enterCity(cityId, options = {}) {
