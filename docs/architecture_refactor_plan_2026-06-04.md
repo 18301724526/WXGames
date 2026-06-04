@@ -2228,9 +2228,10 @@
 提交结果：
 
 - 代码提交哈希：`6d4c700 refactor: move battle facade methods out of canvas renderer`。
-- 文档记录：本节由 `docs: record refactor plan step 36` 保存。
+- 文档提交哈希：`330b97d docs: record refactor plan step 36`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
