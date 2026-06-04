@@ -295,6 +295,37 @@
 
 - 在本文档追加 Step 5 的提交记录，包括测试命令和结果。
 
+### Step 5 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/TechCanvasRenderer.js`，承接科技树 canvas 渲染入口。
+- 更新 `frontend/js/platform/CanvasGameRenderer.js`，保留 `renderTech` 外部入口，并委托 `TechCanvasRenderer` 调用 `renderTechInternal`。
+- 新增 `frontend/js/platform/renderers/TechCanvasRenderer.test.js`，覆盖独立 renderer 委托协议和主 renderer 的组合关系。
+
+说明：
+
+- 本步先建立领域 renderer 边界，保持原科技树绘制细节与 hit target 协议不变，降低一次性搬迁大量 canvas 绘制逻辑的风险。
+
+测试命令：
+
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/TechCanvasRenderer.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`88ccb84 refactor: extract tech canvas renderer`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ### Step 6：收窄 CanvasGameApp 的应用编排职责
 
 目标：把 API 命令、动画计时、shell 同步从 app 主类拆出去。
