@@ -242,6 +242,34 @@
 
 - 在本文档追加 Step 4 的提交记录，包括测试命令和结果。
 
+### Step 4 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/state/presenters/TechPresenter.js`，承接科技树 view model 组装。
+- 更新 `frontend/js/state/UIStatePresenter.js`，保留 `buildTechViewState` facade，内部委托 `TechPresenter`。
+- 新增 `frontend/js/state/presenters/TechPresenter.test.js`，覆盖科技节点、链接、详情和 UIStatePresenter 委托一致性。
+
+测试命令：
+
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --check frontend/js/state/presenters/TechPresenter.js`
+- `node --check frontend/js/state/UIStatePresenter.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`34a5472 refactor: extract tech presenter`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ### Step 5：拆分 CanvasGameRenderer 的领域 renderer
 
 目标：让主 renderer 成为组合器，把具体领域渲染下放到独立 renderer。
