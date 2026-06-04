@@ -1482,6 +1482,68 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 25：继续压缩 CanvasGameRenderer 的地图命令 HUD 渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内地图首页底部命令 dock、地图悬浮分城/事件按钮和命令面板壳下放到独立 `MapCommandCanvasRenderer`。命令面板内部内容继续通过既有 `renderPopulation`、`renderHomeFeatureGrid` 和 `renderMainPanel` facade 委托给对应业务 renderer，避免扩大职责边界。
+
+回归测试：
+
+- 覆盖 `MapCommandCanvasRenderer` 底部命令 dock 仍保留科技、文明、名人、任务和设置入口 hit target。
+- 覆盖地图悬浮分城按钮仍产生 `openSubcityList`，事件按钮仍产生 `openCommandPanel/events`。
+- 覆盖命令面板壳仍保留背景关闭、面板阻断和关闭按钮 hit target。
+- 覆盖首都命令面板仍委托 `renderPopulation` 与 `renderHomeFeatureGrid`。
+- 覆盖军事命令面板仍委托 `renderMainPanel`，并把世界军务视图归一为军队视图。
+- 覆盖 `CanvasGameRenderer` 的 map command facade 仍能委托到独立 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 25 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 25 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/MapCommandCanvasRenderer.js`，承接地图首页底部命令 dock、分城/事件悬浮按钮和命令面板壳。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 map command 相关外部入口与 facade，内部通过 `mapCommandRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `MapCommandCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js`，覆盖 dock、悬浮按钮、命令面板壳、内容委托和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 3964 行降至 3835 行。
+- `frontend/js/platform/renderers/MapCommandCanvasRenderer.js`：新增为 199 行，承接地图命令 HUD 渲染实现。
+- `frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js`：新增为 122 行，覆盖地图命令 HUD 防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/MapCommandCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`9f2eeba refactor: move map command hud into canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
