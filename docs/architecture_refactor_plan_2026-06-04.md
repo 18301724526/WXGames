@@ -1730,6 +1730,69 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 29：继续压缩 CanvasGameRenderer 的 HUD Tab 页面编排职责
+
+目标：把 `CanvasGameRenderer.js` 内普通 HUD 内容页分派、`renderMainPanel` 领域 tab 分派和页面滑动过渡流程下放到独立 `HudTabPageCanvasRenderer`。主 renderer 继续保留 `renderMainPanel`、`renderHudTabPage` 和 `renderHudTabPageWithTransition` facade；具体建筑、事件、科技、文明、军事和首页资源渲染仍由既有领域 renderer 承接。
+
+回归测试：
+
+- 覆盖 `renderMainPanel` 仍按 `buildings`、`events`、`tech`、`civilization`、`military` 分派到对应 facade。
+- 覆盖资源页仍按 `renderPopulation` 与 `renderHomeFeatureGrid` 编排，并保留 `maxBottom` 计算。
+- 覆盖建筑、文明和军事 HUD 内容页仍保留可用高度计算与 tutorial/options 传递。
+- 覆盖地图首页军事页仍由 `renderMapHomeWorldView` 承接，`skipWorldMapLayer` 时不重复绘制地图层。
+- 覆盖 `renderHudTabPageWithTransition` 仍执行双 `withSlideClip`、旧页 suppressed hit target 和 `fromBuildingOffset` 回放。
+- 覆盖无有效 transition 时仍直接渲染当前页。
+- 覆盖 `CanvasGameRenderer` 的 HUD tab page facade 仍能委托到独立 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 29 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 29 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/HudTabPageCanvasRenderer.js`，承接 HUD 内容页分派、主面板 tab 分派和页面滑动过渡流程。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 `renderMainPanel`、`renderHudTabPage` 和 `renderHudTabPageWithTransition` 外部入口为 facade，内部通过 `hudTabPageRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在 HUD overlay 前加载 `HudTabPageCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js`，覆盖主面板分派、HUD 内容页布局、地图首页军事页、滑动过渡和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 3360 行降至 3311 行。
+- `frontend/js/platform/renderers/HudTabPageCanvasRenderer.js`：新增为 114 行，承接 HUD tab 页面编排实现。
+- `frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js`：新增为 160 行，覆盖 HUD tab 页面防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/HudTabPageCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/TabBarCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`b587f5c refactor: move hud tab page flow into canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
