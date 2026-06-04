@@ -47,6 +47,8 @@ function createHost(overrides = {}) {
     getAsset() { return null; },
     getLayout() { return { contentWidth: 380, contentX: 10, contentRight: 390 }; },
     getTopBarBottom() { return 84; },
+    getWorldTileTemplateBaseAsset() { return null; },
+    getWorldTileTemplateMetrics() { return null; },
     isWorldTileMapWaterAnimated() { return false; },
     measureTextWidth(text) { return String(text || '').length * 8; },
     resolveWorldTileMapView(territoryState = {}, uiState = {}) {
@@ -135,4 +137,92 @@ test('WorldMapCanvasRenderer keeps world map hit target contract in hit-target-o
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital'), true);
+});
+
+test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is split out', () => {
+  const host = createHost({
+    presenter: {},
+  });
+  const renderer = new WorldMapCanvasRenderer({ host });
+  const state = {
+    territoryState: {
+      territories: [
+        {
+          id: 'capital',
+          status: 'occupied',
+          owner: 'player',
+          cityName: 'Capital',
+          summary: 'Home city.',
+        },
+      ],
+      worldMap: createTileMapView(),
+    },
+  };
+
+  renderer.renderWorldSiteModal(state, { territoryUiState: { selectedSiteId: 'capital' }, isMapHome: true });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'enterCity' && target.action.cityId === 'capital'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'renameCity' && target.action.cityId === 'capital'), true);
+});
+
+test('CanvasGameRenderer renders occupied city HUD through split renderer facade', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: createHost().ctx,
+    presenter: {},
+    width: 390,
+    height: 844,
+    worldMapRendererClass: WorldMapCanvasRenderer,
+  });
+  renderer.renderTopBar = () => 84;
+  renderer.renderHudTabPageWithTransition = () => {};
+  renderer.renderTabs = () => {};
+  renderer.renderFloatingSubcityButton = () => {};
+  renderer.renderFloatingEventButton = () => {};
+  renderer.renderFloatingAdvisorButton = () => {};
+  renderer.collectMapHomeWorldSiteHitTargets = () => {};
+  renderer.renderTutorialIntro = () => {};
+  renderer.renderTutorialHighlight = () => {};
+  renderer.renderFloatingTexts = () => {};
+  renderer.renderRewardReveal = () => {};
+  renderer.renderNetworkOverlay = () => {};
+  renderer.drawPanel = () => {};
+  renderer.drawText = () => {};
+  renderer.drawCircle = () => {};
+  renderer.drawButton = () => {};
+  renderer.clear = () => {};
+  renderer.createGradient = () => '#123';
+  renderer.getLayout = () => ({ contentWidth: 380, contentX: 10, contentRight: 390 });
+  renderer.getTopBarBottom = () => 84;
+  renderer.measureTextWidth = (text) => String(text || '').length * 8;
+  renderer.resolveWorldTileMapView = (territoryState = {}, uiState = {}) => ({
+    ...(territoryState.worldMap || {}),
+    pan: { x: Number(uiState.worldPanX) || 0, y: Number(uiState.worldPanY) || 0 },
+  });
+  renderer.truncateText = (text) => String(text || '');
+
+  renderer.render({
+    militaryView: 'world',
+    territoryState: {
+      territories: [
+        {
+          id: 'capital',
+          status: 'occupied',
+          owner: 'player',
+          cityName: 'Capital',
+          summary: 'Home city.',
+        },
+      ],
+      worldMap: createTileMapView(),
+    },
+  }, {
+    mode: 'hud',
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    preserveCanvas: true,
+    territoryUiState: { selectedSiteId: 'capital' },
+    showFpsOverlay: false,
+  });
+
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'enterCity' && target.action.cityId === 'capital'), true);
 });

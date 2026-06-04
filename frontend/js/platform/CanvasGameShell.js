@@ -1215,6 +1215,14 @@
 
     updateWorldMapDragCompositor() {
       const offset = this.getWorldMapRuntimeDragOffset();
+      if (this.isWorldMapDragTransformNearLimit(offset)) {
+        if (this.refreshWorldMapLayerFromSnapshot({
+          waterTimeMs: this.now(),
+          commitCamera: true,
+          clearTransform: true,
+          preserveOnMiss: true,
+        })) return this.getWorldMapRuntimeDragOffset();
+      }
       if (this.refreshWorldMapLayerFromSnapshot({
         waterTimeMs: this.now(),
         commitCamera: false,

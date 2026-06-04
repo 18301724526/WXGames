@@ -70,6 +70,77 @@
       return this.renderWorldTileMap(tileMapView, x, y, width, height, uiState, options);
     }
 
+    getWorldSiteDialogPresenter() {
+      return this.presenter || this.host?.presenter || null;
+    }
+
+    buildWorldSiteDialogViewState(territories = [], territoryState = {}, uiState = {}) {
+      const presenter = this.getWorldSiteDialogPresenter();
+      if (presenter && typeof presenter.buildWorldSiteDialogViewState === 'function') {
+        return presenter.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+      }
+      return this.buildFallbackWorldSiteDialogViewState(territories, territoryState, uiState);
+    }
+
+    buildFallbackWorldSiteDialogViewState(territories = [], territoryState = {}, uiState = {}) {
+      const selectedSiteId = uiState.selectedSiteId || '';
+      const makeButton = (label, action, territoryId, options = {}) => ({
+        label,
+        action: action || '',
+        territoryId: territoryId || '',
+        disabled: Boolean(options.disabled),
+        secondary: Boolean(options.secondary),
+      });
+      const makeAction = (site = {}) => {
+        if (site.status === 'occupied') {
+          return {
+            kind: 'city-command',
+            buttons: [
+              makeButton('\u5165\u57ce', 'enter-city', site.id),
+              makeButton('\u884c\u519b', 'march-city', site.id, { disabled: true, secondary: true }),
+              makeButton('\u8c03\u52a8', 'transfer-city', site.id, { disabled: true, secondary: true }),
+              makeButton('\u9a7b\u5b88', 'garrison-city', site.id, { disabled: true, secondary: true }),
+              makeButton('\u4f63\u5de5', 'labor-city', site.id, { secondary: true }),
+              makeButton('\u6539\u540d', 'rename-city', site.id, { secondary: true }),
+            ],
+            hint: '',
+            expeditionConfig: null,
+          };
+        }
+        return {
+          kind: 'single',
+          buttons: [makeButton('\u7b49\u5f85\u4fa6\u5bdf', '', site.id, { disabled: true })],
+          hint: '',
+          expeditionConfig: null,
+        };
+      };
+      const details = (territories || []).map((site) => ({
+        id: site.id || '',
+        visible: site.id === selectedSiteId,
+        text: {
+          name: site.cityName || site.naturalName || site.name || '',
+          status: site.status === 'occupied' ? '\u5df2\u63a7\u5236' : (site.status || ''),
+          owner: site.owner === 'player' ? '\u6211\u65b9' : (site.owner || ''),
+          distance: `\u8ddd ${site.originDistance ?? site.distance ?? 0}`,
+          scale: `\u89c4\u6a21 ${site.scale || 1}`,
+          threat: `\u5a01\u80c1 ${site.threat || 0}`,
+          summary: site.summary || '',
+          defense: `\u9632\u5fa1 ${site.defense || 0}`,
+          soldiers: `\u5efa\u8bae ${site.recommendedSoldiers || 0} \u58eb\u5175`,
+        },
+        action: makeAction(site),
+      }));
+      const view = {
+        selectedSiteId,
+        showModal: details.some((detail) => detail.id === selectedSiteId),
+        details,
+      };
+      return {
+        ...view,
+        signature: JSON.stringify(view),
+      };
+    }
+
     getWorldTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
       const helper = this.constructor.getTileMapGeometry();
       if (helper?.getTileScreenCenter) return helper.getTileScreenCenter(tile, viewport, geometry);
@@ -1963,11 +2034,10 @@
     }
 
     renderWorldSiteModal(state = {}, options = {}) {
-      if (!this.presenter || typeof this.presenter.buildWorldSiteDialogViewState !== 'function') return;
       const territoryState = state.territoryState || {};
       const territories = territoryState.territories || [];
       const uiState = options.territoryUiState || {};
-      const view = this.presenter.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+      const view = this.buildWorldSiteDialogViewState(territories, territoryState, uiState);
       if (!view.showModal) return;
       const detail = view.details.find((item) => item.id === view.selectedSiteId);
       if (!detail) return;
@@ -2117,7 +2187,16 @@
       ));
       if (!selectedTile) return null;
       const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state, { isMapHome: true });
-      const layout = this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true });
+      const layout = typeof this.getWorldMapLayerLayout === 'function'
+        ? this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true })
+        : {
+          map: {
+            x: 0,
+            y: topBarBottom,
+            width: this.width,
+            height: Math.max(160, this.height - topBarBottom - 64),
+          },
+        };
       if (!layout?.map) return null;
       const geometry = tileMapView.geometry || {};
       const offsetX = Number(this.viewportOffsetX) || 0;
