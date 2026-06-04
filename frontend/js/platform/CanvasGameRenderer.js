@@ -59,6 +59,18 @@
     return null;
   })();
 
+  const SharedCanvasAssetRenderer = (() => {
+    if (global.CanvasAssetRenderer) return global.CanvasAssetRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/CanvasAssetRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedWorldMapLayerCanvasRenderer = (() => {
     if (global.WorldMapLayerCanvasRenderer) return global.WorldMapLayerCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -354,6 +366,8 @@
       this.currentFps = 0;
       const SurfaceRendererClass = options.surfaceRendererClass || SharedCanvasSurfaceRenderer;
       this.surfaceRenderer = options.surfaceRenderer || (SurfaceRendererClass ? new SurfaceRendererClass({ host: this }) : null);
+      const AssetRendererClass = options.assetRendererClass || SharedCanvasAssetRenderer;
+      this.assetRenderer = options.assetRenderer || (AssetRendererClass ? new AssetRendererClass({ host: this }) : null);
       const WorldMapRendererClass = options.worldMapRendererClass || SharedWorldMapCanvasRenderer;
       this.worldMapRenderer = options.worldMapRenderer || (WorldMapRendererClass ? new WorldMapRendererClass({ host: this }) : null);
       const WorldMapLayerRendererClass = options.worldMapLayerRendererClass || SharedWorldMapLayerCanvasRenderer;
@@ -563,133 +577,48 @@
       return null;
     }
 
-    preloadAssets(assetPaths = this.getPreloadAssetPaths(), onProgress = null) {
-      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
-      const total = paths.length;
-      const report = typeof onProgress === 'function' ? onProgress : null;
-      if (!total) {
-        report?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
-        return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
-      }
-
-      let completed = 0;
-      let loaded = 0;
-      let failed = 0;
-      const notify = (assetPath, status) => {
-        const percentage = Math.round((completed / total) * 100);
-        report?.({ total, completed, loaded, failed, percentage, assetPath, status });
-      };
-
-      return new Promise((resolve) => {
-        const settle = (assetPath, status) => {
-          completed += 1;
-          if (status === 'loaded') loaded += 1;
-          else failed += 1;
-          notify(assetPath, status);
-          if (completed >= total) {
-            this.prewarmWorldTileCaches(paths);
-            resolve({ total, completed, loaded, failed, percentage: 100 });
-          }
-        };
-
-        notify('', 'start');
-        paths.forEach((assetPath) => {
-          const cached = this.assetCache.get(assetPath);
-          if (cached?.status === 'loaded') {
-            settle(assetPath, 'loaded');
-            return;
-          }
-          if (cached?.status === 'error') {
-            settle(assetPath, 'error');
-            return;
-          }
-
-          const image = cached?.image || this.createImage(assetPath);
-          if (!image) {
-            this.assetCache.set(assetPath, { status: 'error', image: null });
-            settle(assetPath, 'error');
-            return;
-          }
-
-          const record = cached || { status: 'loading', image };
-          if (!cached) this.assetCache.set(assetPath, record);
-          const previousOnload = image.onload;
-          const previousOnerror = image.onerror;
-          let settled = false;
-          const complete = (status, handler, event) => {
-            if (settled) return;
-            settled = true;
-            record.status = status;
-            if (status === 'loaded') this.handleAssetsChanged();
-            if (typeof handler === 'function') handler.call(image, event);
-            settle(assetPath, status);
-          };
-          image.onload = (event) => complete('loaded', previousOnload, event);
-          image.onerror = (event) => complete('error', previousOnerror, event);
-          const requestPath = this.constructor.getAssetRequestPath(assetPath);
-          if (!cached) image.src = requestPath;
-          else if (!image.src) image.src = requestPath;
-        });
-      });
+    delegateAssetRenderer(method, args = []) {
+      const renderer = this.assetRenderer;
+      if (!renderer || typeof renderer[method] !== 'function') return undefined;
+      return renderer[method](...Array.from(args));
     }
 
-    isWorldTilePrewarmMetricAssetPath(assetPath = '') {
-      const path = String(assetPath || '');
-      return path.startsWith('assets/art/tile-map/')
-        || path.startsWith('assets/art/world-site-');
+    hasAssetRendererMethod(method) {
+      const renderer = this.assetRenderer;
+      return Boolean(renderer && typeof renderer[method] === 'function');
     }
 
-    isWorldTileTemplateAssetPath(assetPath = '') {
-      return /^assets\/art\/tile-map\/(?:river-template|ocean-template|transition-template)\//.test(String(assetPath || ''));
+    preloadAssets(...args) {
+      const result = this.delegateAssetRenderer('preloadAssets', args);
+      if (result !== undefined) return result;
+      const paths = Array.from(new Set((args[0] || this.getPreloadAssetPaths() || []).filter(Boolean)));
+      args[1]?.({ total: paths.length, completed: paths.length, loaded: 0, failed: paths.length, percentage: 100 });
+      return Promise.resolve({ total: paths.length, completed: paths.length, loaded: 0, failed: paths.length, percentage: 100 });
     }
 
-    isWorldTileWaterTemplateAssetPath(assetPath = '') {
-      return /^assets\/art\/tile-map\/(?:river-template|ocean-template)\//.test(String(assetPath || ''));
+    isWorldTilePrewarmMetricAssetPath(...args) {
+      const result = this.delegateAssetRenderer('isWorldTilePrewarmMetricAssetPath', args);
+      return result === undefined ? false : result;
     }
 
-    prewarmWorldTileCaches(assetPaths = this.getPreloadAssetPaths()) {
-      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
-      const result = { total: paths.length, metrics: 0, masks: 0, dryTemplates: 0 };
-      paths.forEach((assetPath) => {
-        const cached = this.assetCache.get(assetPath);
-        if (cached?.status !== 'loaded') return;
-        if (this.isWorldTilePrewarmMetricAssetPath(assetPath) && !this.assetMetricsCache.has(assetPath)) {
-          if (this.analyzeAssetAlphaBounds(assetPath)) result.metrics += 1;
-        }
-        if (!this.isWorldTileTemplateAssetPath(assetPath)) return;
-        const hadMask = this.worldTileMaskCache.has(assetPath);
-        const mask = this.getWorldTileTemplateMask(assetPath);
-        if (mask && !hadMask) result.masks += 1;
-        if (!this.isWorldTileWaterTemplateAssetPath(assetPath)) return;
-        const hadDryTemplate = this.worldTileDryCompositeCache.has(assetPath);
-        const dryTemplate = this.getWorldTileDryTemplateCanvas(assetPath);
-        if (dryTemplate && !hadDryTemplate) result.dryTemplates += 1;
-      });
-      return result;
+    isWorldTileTemplateAssetPath(...args) {
+      const result = this.delegateAssetRenderer('isWorldTileTemplateAssetPath', args);
+      return result === undefined ? false : result;
     }
 
-    getAsset(assetPath) {
-      if (!assetPath) return null;
-      const cached = this.assetCache.get(assetPath);
-      if (cached) return cached.status === 'loaded' ? cached.image : null;
+    isWorldTileWaterTemplateAssetPath(...args) {
+      const result = this.delegateAssetRenderer('isWorldTileWaterTemplateAssetPath', args);
+      return result === undefined ? false : result;
+    }
 
-      const image = this.createImage(assetPath);
-      if (!image) {
-        this.assetCache.set(assetPath, { status: 'error', image: null });
-        return null;
-      }
+    prewarmWorldTileCaches(...args) {
+      const result = this.delegateAssetRenderer('prewarmWorldTileCaches', args);
+      return result === undefined ? { total: 0, metrics: 0, masks: 0, dryTemplates: 0 } : result;
+    }
 
-      const record = { status: 'loading', image };
-      this.assetCache.set(assetPath, record);
-      image.onload = () => {
-        record.status = 'loaded';
-        this.handleAssetsChanged();
-      };
-      image.onerror = () => {
-        record.status = 'error';
-      };
-      image.src = this.constructor.getAssetRequestPath(assetPath);
-      return null;
+    getAsset(...args) {
+      const result = this.delegateAssetRenderer('getAsset', args);
+      return result === undefined ? null : result;
     }
 
     setHitTargets(...args) {
@@ -797,214 +726,109 @@
       return result === undefined ? args[7]?.() : result;
     }
 
-    setAssetsChangedHandler(handler) {
-      this.assetsChangedHandler = typeof handler === 'function' ? handler : null;
+    setAssetsChangedHandler(...args) {
+      const result = this.delegateAssetRenderer('setAssetsChangedHandler', args);
+      if (result !== undefined || this.hasAssetRendererMethod('setAssetsChangedHandler')) return result;
+      this.assetsChangedHandler = typeof args[0] === 'function' ? args[0] : null;
+      return undefined;
     }
 
-    handleAssetsChanged() {
+    handleAssetsChanged(...args) {
+      const result = this.delegateAssetRenderer('handleAssetsChanged', args);
+      if (result !== undefined || this.hasAssetRendererMethod('handleAssetsChanged')) return result;
       this.invalidateWorldTileCaches();
       if (this.assetsChangedHandler) this.assetsChangedHandler();
+      return undefined;
     }
 
-    invalidateWorldTileCaches() {
-      this.worldTileStaticCache = null;
-      this.worldTileStaticCacheKey = '';
-      this.worldTileStaticCacheLayoutKind = '';
-      this.worldTileStaticCacheLayout = null;
-      this.worldTileStaticChunkCaches?.clear?.();
-      this.worldTileStaticChunkCacheTick = 0;
-      this.worldTileScoutRouteCache = null;
-      this.worldTileScoutRouteCacheKey = '';
-      this.worldTileScoutRouteCacheLayout = null;
-      this.worldTileWaterLayerCache = null;
-      this.worldTileWaterLayerCacheKey = '';
-      this.worldTileWaterFrameCaches?.clear?.();
-      this.worldTileWaterChunkCaches?.clear?.();
-      this.worldTileWaterChunkCacheTick = 0;
-      this.worldTileFastDragComposite = null;
-      this.worldTileFastDragCompositeCache = null;
+    invalidateWorldTileCaches(...args) {
+      const result = this.delegateAssetRenderer('invalidateWorldTileCaches', args);
+      if (result !== undefined || this.hasAssetRendererMethod('invalidateWorldTileCaches')) return result;
       this.invalidateWorldTileViewCache();
+      return undefined;
     }
 
-    hasPreparedWorldTileSnapshotCache() {
-      return Boolean(
-        (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame)
-        || (this.worldTileStaticCacheLayoutKind === 'chunks' && this.worldTileStaticChunkCaches?.size),
-      );
+    hasPreparedWorldTileSnapshotCache(...args) {
+      const result = this.delegateAssetRenderer('hasPreparedWorldTileSnapshotCache', args);
+      return result === undefined ? false : result;
     }
 
-    invalidateWorldTileViewCache() {
+    invalidateWorldTileViewCache(...args) {
+      const result = this.delegateAssetRenderer('invalidateWorldTileViewCache', args);
+      if (result !== undefined || this.hasAssetRendererMethod('invalidateWorldTileViewCache')) return result;
       this.worldTileViewCache = null;
       this.worldTileVisibleEntriesCache = null;
       this.worldTileLocalEntriesCache = null;
+      return undefined;
     }
 
-    drawAsset(assetPath, x, y, width, height, alpha = 1) {
-      const image = this.getAsset(assetPath);
-      if (!image || typeof this.ctx.drawImage !== 'function') return false;
-      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
-      this.ctx.drawImage(image, x, y, width, height);
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      return true;
+    drawAsset(...args) {
+      const result = this.delegateAssetRenderer('drawAsset', args);
+      return result === undefined ? false : result;
     }
 
-    drawAssetClipped(assetPath, sourceRect, x, y, width, height, alpha = 1) {
-      const image = this.getAsset(assetPath);
-      if (!image || typeof this.ctx.drawImage !== 'function') return false;
-      const sourceWidth = Number(image.naturalWidth || image.width || 0);
-      const sourceHeight = Number(image.naturalHeight || image.height || 0);
-      const sx = Math.max(0, Number(sourceRect?.x) || 0);
-      const sy = Math.max(0, Number(sourceRect?.y) || 0);
-      const sw = Math.max(1, Number(sourceRect?.width) || sourceWidth || 1);
-      const sh = Math.max(1, Number(sourceRect?.height) || sourceHeight || 1);
-      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
-      this.ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      return true;
+    drawAssetClipped(...args) {
+      const result = this.delegateAssetRenderer('drawAssetClipped', args);
+      return result === undefined ? false : result;
     }
 
-    getFallbackAssetMetrics(image) {
+    getFallbackAssetMetrics(...args) {
+      const result = this.delegateAssetRenderer('getFallbackAssetMetrics', args);
+      if (result !== undefined) return result;
+      const [image] = args;
       const width = Number(image?.naturalWidth || image?.width || 1) || 1;
       const height = Number(image?.naturalHeight || image?.height || 1) || 1;
       return { x: 0, y: 0, width, height, sourceWidth: width, sourceHeight: height };
     }
 
-    isOpaquePixel(data, index) {
-      return data[index + 3] > 8;
+    isOpaquePixel(...args) {
+      const result = this.delegateAssetRenderer('isOpaquePixel', args);
+      return result === undefined ? false : result;
     }
 
-    isWorldTileTemplateWaterPixel(data, index) {
-      const red = data[index];
-      const green = data[index + 1];
-      const blue = data[index + 2];
-      const alpha = data[index + 3];
-      if (alpha <= 56 || blue <= 70) return false;
-      return blue > red + 12 && blue > green - 3 && (green > red + 18 || blue > 112);
+    isWorldTileTemplateWaterPixel(...args) {
+      const result = this.delegateAssetRenderer('isWorldTileTemplateWaterPixel', args);
+      return result === undefined ? false : result;
     }
 
-    measurePixelBounds(data, width, height, predicate) {
-      let minX = width;
-      let minY = height;
-      let maxX = -1;
-      let maxY = -1;
-      let count = 0;
-      for (let py = 0; py < height; py += 1) {
-        for (let px = 0; px < width; px += 1) {
-          const index = (py * width + px) * 4;
-          if (!predicate(data, index)) continue;
-          count += 1;
-          if (px < minX) minX = px;
-          if (px > maxX) maxX = px;
-          if (py < minY) minY = py;
-          if (py > maxY) maxY = py;
-        }
-      }
-      if (maxX < minX || maxY < minY) return null;
-      return {
-        x: minX,
-        y: minY,
-        width: maxX - minX + 1,
-        height: maxY - minY + 1,
-        count,
-        sourceWidth: width,
-        sourceHeight: height,
-      };
+    measurePixelBounds(...args) {
+      const result = this.delegateAssetRenderer('measurePixelBounds', args);
+      return result === undefined ? null : result;
     }
 
-    analyzeAssetAlphaBounds(assetPath = '') {
-      if (!assetPath) return null;
-      const cached = this.assetMetricsCache.get(assetPath);
-      if (cached) return cached;
-      const image = this.getAsset(assetPath);
-      const fallback = this.getFallbackAssetMetrics(image);
-      if (!image) return fallback;
-      const canvas = this.createTileWorkCanvas(fallback.sourceWidth, fallback.sourceHeight);
-      const ctx = canvas?.getContext?.('2d', { willReadFrequently: true });
-      if (!canvas || !ctx) {
-        this.assetMetricsCache.set(assetPath, fallback);
-        return fallback;
-      }
-      try {
-        ctx.clearRect?.(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0);
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        const metrics = this.measurePixelBounds(data, canvas.width, canvas.height, this.isOpaquePixel) || fallback;
-        this.assetMetricsCache.set(assetPath, metrics);
-        return metrics;
-      } catch (_) {
-        this.assetMetricsCache.set(assetPath, fallback);
-        return fallback;
-      }
+    analyzeAssetAlphaBounds(...args) {
+      const result = this.delegateAssetRenderer('analyzeAssetAlphaBounds', args);
+      return result === undefined ? this.getFallbackAssetMetrics(null) : result;
     }
 
-    getIsoTileSourceRect(assetPath = '') {
-      return this.getWorldTileTemplateMetrics({ asset: assetPath });
+    getIsoTileSourceRect(...args) {
+      const result = this.delegateAssetRenderer('getIsoTileSourceRect', args);
+      return result === undefined ? null : result;
     }
 
-    getWorldTileTemplateMetrics(template = {}) {
-      const assetPath = typeof template === 'string' ? template : template.asset;
-      if (!assetPath || !String(assetPath).startsWith('assets/art/tile-map/')) return null;
-      if (String(assetPath).includes('/ocean-template/') || String(assetPath).includes('/transition-template/')) {
-        const manifest = this.constructor.getTileMapAssetManifest();
-        const plains = manifest.getTerrainAsset?.('plains') || manifest.terrain?.plains;
-        if (plains?.path) return this.analyzeAssetAlphaBounds(plains.path);
-      }
-      return this.analyzeAssetAlphaBounds(assetPath);
+    getWorldTileTemplateMetrics(...args) {
+      const result = this.delegateAssetRenderer('getWorldTileTemplateMetrics', args);
+      return result === undefined ? null : result;
     }
 
-    drawTileAsset(assetPath, x, y, width, height, alpha = 1) {
-      const sourceRect = this.getIsoTileSourceRect(assetPath);
-      if (sourceRect) return this.drawAssetClipped(assetPath, sourceRect, x, y, width, height, alpha);
-      return this.drawAsset(assetPath, x, y, width, height, alpha);
+    drawTileAsset(...args) {
+      const result = this.delegateAssetRenderer('drawTileAsset', args);
+      return result === undefined ? false : result;
     }
 
-    getTemplateCanvasFactory() {
-      const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
-      if (doc?.createElement) return () => doc.createElement('canvas');
-      if (typeof global.OffscreenCanvas === 'function') return (width = 1, height = 1) => new global.OffscreenCanvas(width, height);
-      if (typeof OffscreenCanvas === 'function') return (width = 1, height = 1) => new OffscreenCanvas(width, height);
-      return null;
+    getTemplateCanvasFactory(...args) {
+      const result = this.delegateAssetRenderer('getTemplateCanvasFactory', args);
+      return result === undefined ? null : result;
     }
 
-    createTileWorkCanvas(width, height) {
-      const factory = this.getTemplateCanvasFactory();
-      if (!factory) return null;
-      const canvas = factory(width, height);
-      canvas.width = width;
-      canvas.height = height;
-      return canvas;
+    createTileWorkCanvas(...args) {
+      const result = this.delegateAssetRenderer('createTileWorkCanvas', args);
+      return result === undefined ? null : result;
     }
 
-    createTutorialSpineCanvas(width, height) {
-      const safeWidth = Math.max(1, Math.floor(Number(width) || 1));
-      const safeHeight = Math.max(1, Math.floor(Number(height) || 1));
-      let canvas = null;
-      if (typeof global.OffscreenCanvas === 'function') {
-        try {
-          canvas = new global.OffscreenCanvas(safeWidth, safeHeight);
-        } catch (_) {
-          canvas = null;
-        }
-      }
-      if (!canvas && typeof OffscreenCanvas === 'function') {
-        try {
-          canvas = new OffscreenCanvas(safeWidth, safeHeight);
-        } catch (_) {
-          canvas = null;
-        }
-      }
-      if (!canvas) {
-        const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
-        if (doc?.createElement) canvas = doc.createElement('canvas');
-      }
-      if (!canvas) return null;
-      canvas.width = safeWidth;
-      canvas.height = safeHeight;
-      if (typeof canvas.addEventListener !== 'function') canvas.addEventListener = () => {};
-      if (typeof canvas.removeEventListener !== 'function') canvas.removeEventListener = () => {};
-      return canvas;
+    createTutorialSpineCanvas(...args) {
+      const result = this.delegateAssetRenderer('createTutorialSpineCanvas', args);
+      return result === undefined ? null : result;
     }
 
     isInsideTemplateDiamond(x, y, metrics) {
@@ -1121,23 +945,9 @@
       }
     }
 
-    drawCanvasClipped(sourceCanvas, sourceRect, x, y, width, height, alpha = 1) {
-      if (!sourceCanvas || typeof this.ctx.drawImage !== 'function') return false;
-      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
-      this.ctx.drawImage(
-        sourceCanvas,
-        Number(sourceRect?.x) || 0,
-        Number(sourceRect?.y) || 0,
-        Number(sourceRect?.width) || Number(sourceCanvas.width) || 1,
-        Number(sourceRect?.height) || Number(sourceCanvas.height) || 1,
-        x,
-        y,
-        width,
-        height,
-      );
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      return true;
+    drawCanvasClipped(...args) {
+      const result = this.delegateAssetRenderer('drawCanvasClipped', args);
+      return result === undefined ? false : result;
     }
 
     getWorldTileCompositeContext(width, height) {
@@ -1408,33 +1218,9 @@
       return this.drawTileAsset(baseAsset, drawRect.x, drawRect.y, drawRect.width, drawRect.height);
     }
 
-    drawCoverAsset(assetPath, x, y, width, height, alpha = 1) {
-      const image = this.getAsset(assetPath);
-      if (!image || typeof this.ctx.drawImage !== 'function') return false;
-      const sourceWidth = Number(image.naturalWidth || image.width);
-      const sourceHeight = Number(image.naturalHeight || image.height);
-      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
-      if (sourceWidth > 0 && sourceHeight > 0) {
-        const sourceRatio = sourceWidth / sourceHeight;
-        const targetRatio = width / height;
-        let sx = 0;
-        let sy = 0;
-        let sw = sourceWidth;
-        let sh = sourceHeight;
-        if (sourceRatio > targetRatio) {
-          sw = sourceHeight * targetRatio;
-          sx = (sourceWidth - sw) / 2;
-        } else {
-          sh = sourceWidth / targetRatio;
-          sy = (sourceHeight - sh) / 2;
-        }
-        this.ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
-      } else {
-        this.ctx.drawImage(image, x, y, width, height);
-      }
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      return true;
+    drawCoverAsset(...args) {
+      const result = this.delegateAssetRenderer('drawCoverAsset', args);
+      return result === undefined ? false : result;
     }
 
     drawFamousPortraitLayer(...args) {
