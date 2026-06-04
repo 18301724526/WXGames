@@ -1981,10 +1981,10 @@
 提交结果：
 
 - 代码提交哈希：`c51c294 refactor: move world tile water rendering into renderer`。
-- 文档提交说明：Step 32 文档记录由 `docs: record refactor plan step 32` 保存。
+- 文档提交哈希：`4453a3b docs: record refactor plan step 32`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档推送状态：Step 32 文档记录随 `docs: record refactor plan step 32` 推送后校验服务器健康。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
