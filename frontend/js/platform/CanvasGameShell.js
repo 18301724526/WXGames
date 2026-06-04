@@ -373,17 +373,79 @@
         && type !== 'blockCanvasModal');
     }
 
+    isTechTreeDragAction(action = {}) {
+      return Boolean(action?.type === 'techTreeDrag' || action?.dragType === 'techTreeDrag');
+    }
+
+    containsCanvasPoint(rect = {}, point = {}) {
+      const x = Number(point?.x);
+      const y = Number(point?.y);
+      return Number.isFinite(x)
+        && Number.isFinite(y)
+        && x >= Number(rect.x)
+        && x <= Number(rect.x) + Number(rect.width)
+        && y >= Number(rect.y)
+        && y <= Number(rect.y) + Number(rect.height);
+    }
+
+    getTechTreeHitAction(point = {}) {
+      const targets = Array.isArray(this.renderer?.hitTargets) ? this.renderer.hitTargets : [];
+      for (let index = targets.length - 1; index >= 0; index -= 1) {
+        const target = targets[index];
+        if (!this.isTechTreeDragAction(target?.action)) continue;
+        if (this.containsCanvasPoint(target, point)) return target.action;
+      }
+      return null;
+    }
+
+    isTechTreeInteractionOpen() {
+      return Boolean(this.getActiveTab() === 'tech' || this.activeCommandPanel === 'tech');
+    }
+
+    hasBlockingOverlayExceptTechTree() {
+      return Boolean(this.showSettings
+        || this.showLogs
+        || this.showResourceDetails
+        || this.showCitySwitcher
+        || this.showSubcityList
+        || this.showCityManagement
+        || this.showAdvisor
+        || this.showTaskCenter
+        || this.showGuidebook
+        || this.showTalentPolicy
+        || this.armyFormationEditor?.open
+        || (this.activeCommandPanel && this.activeCommandPanel !== 'tech')
+        || this.techDetailOpen
+        || this.activeEventId
+        || this.naming.visible
+        || this.battleScene?.visible
+        || this.rewardReveal);
+    }
+
+    canRouteTechTreeInteraction(action = null) {
+      if (!this.isTechTreeInteractionOpen()) return false;
+      if (this.hasBlockingOverlayExceptTechTree()) return false;
+      if (action && !this.isTechTreeDragAction(action)) return false;
+      return true;
+    }
+
     handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
       if (phase === 'start' && typeof this.renderer.getHitTarget === 'function') {
-        const action = this.renderer.getHitTarget(point);
-        if (this.isWorldMapHudAction(action)) return false;
+        const action = this.getTechTreeHitAction(point) || this.renderer.getHitTarget(point);
+        if (this.canRouteTechTreeInteraction(action)) {
+          this.dragAction = { type: 'techTreeDrag' };
+        } else if (this.isWorldMapHudAction(action)) {
+          return false;
+        }
       }
       if (this.ensureWorldMapRuntimeCoordinator()?.canRouteDrag(phase, point, this.lastGame?.state)) {
         return this.handleWorldMapRuntimeDrag(phase, point, event);
       }
       if (phase === 'start') {
-        if (this.getActiveTab() === 'tech' && !this.hasBlockingOverlayOpen()) {
+        if (this.dragAction) {
+          // Reuse the hit-tested tech tree action from the HUD gate above.
+        } else if (this.getActiveTab() === 'tech' && !this.hasBlockingOverlayOpen()) {
           this.dragAction = { type: 'techTreeDrag' };
         } else {
           if (typeof this.renderer.getHitTarget !== 'function') return false;
@@ -420,7 +482,15 @@
       if (!this.inputEnabled || !this.renderer) return false;
       const worldMapGestureHandled = this.handleWorldMapGesture(gesture, event);
       if (worldMapGestureHandled) return true;
-      if (this.getActiveTab() !== 'tech' || this.hasBlockingOverlayOpen()) return false;
+      if (!this.canRouteTechTreeInteraction()) return false;
+      const point = {
+        x: Number(gesture?.centerX ?? gesture?.x) || 0,
+        y: Number(gesture?.centerY ?? gesture?.y) || 0,
+      };
+      if (!this.getTechTreeHitAction(point)) {
+        if (typeof this.renderer.getHitTarget !== 'function') return false;
+        if (!this.isTechTreeDragAction(this.renderer.getHitTarget(point))) return false;
+      }
       const handled = this.actionController?.handle?.({ type: 'techTreeZoom', gesture }, { event }) || false;
       if (handled && event?.preventDefault) event.preventDefault();
       if (handled && event?.stopPropagation) event.stopPropagation();

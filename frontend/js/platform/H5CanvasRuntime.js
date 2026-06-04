@@ -14,6 +14,11 @@
       this.pixelRatio = options.pixelRatio || this.runtime.devicePixelRatio || 1;
       this.width = 0;
       this.height = 0;
+      this.viewportWidth = 0;
+      this.viewportHeight = 0;
+      this.lockAspectRatio = options.lockAspectRatio !== false;
+      this.frameAspectRatio = Math.max(0.1, Number(options.frameAspectRatio) || (9 / 16));
+      this.frameRect = { x: 0, y: 0, width: 0, height: 0, viewportWidth: 0, viewportHeight: 0 };
       this.tapHandlers = [];
       this.dragHandlers = [];
       this.gestureHandlers = [];
@@ -64,19 +69,7 @@
       const padding = Math.max(0, Number(options.padding ?? canvas._viewportPadding) || 0);
       canvas._viewportPadding = padding;
       canvas.style.position = 'fixed';
-      if (padding > 0) {
-        canvas.style.inset = 'auto';
-        canvas.style.left = `${-padding}px`;
-        canvas.style.top = `${-padding}px`;
-        canvas.style.width = `calc(100vw + ${padding * 2}px)`;
-        canvas.style.height = `calc(100dvh + ${padding * 2}px)`;
-      } else {
-        canvas.style.inset = '0';
-        canvas.style.left = '';
-        canvas.style.top = '';
-        canvas.style.width = '100vw';
-        canvas.style.height = '100dvh';
-      }
+      canvas.style.inset = 'auto';
       canvas.style.display = 'block';
       canvas.style.pointerEvents = options.pointerEvents || 'none';
       canvas.style.touchAction = 'none';
@@ -119,9 +112,8 @@
       this.layerCanvases.set(key, canvas);
       if (!this.width || !this.height) {
         const viewport = this.getViewportSize();
+        this.applyViewportFrame(viewport);
         this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
-        this.width = viewport.width;
-        this.height = viewport.height;
       }
       this.resizeCanvas(canvas);
       return canvas;
@@ -140,6 +132,10 @@
         height: fixedRect ? Math.max(1, Number(fixedRect.height) || 1) : this.height + padding * 2,
         viewportWidth: this.width,
         viewportHeight: this.height,
+        browserWidth: this.viewportWidth || this.width,
+        browserHeight: this.viewportHeight || this.height,
+        frameX: Number(this.frameRect?.x) || 0,
+        frameY: Number(this.frameRect?.y) || 0,
         padding,
         rect: fixedRect,
       };
@@ -236,7 +232,7 @@
       if (logger && typeof logger.log === 'function') logger.log(message);
     }
 
-    getViewportSize() {
+    getBrowserViewportSize() {
       const vv = this.runtime.visualViewport;
       const docElement = this.document?.documentElement || {};
       return {
@@ -245,13 +241,64 @@
       };
     }
 
+    getViewportFrame(viewport = this.getBrowserViewportSize()) {
+      const browserWidth = Math.max(1, Number(viewport.width) || 390);
+      const browserHeight = Math.max(1, Number(viewport.height) || 844);
+      if (!this.lockAspectRatio) {
+        return {
+          x: 0,
+          y: 0,
+          width: Math.floor(browserWidth),
+          height: Math.floor(browserHeight),
+          viewportWidth: Math.floor(browserWidth),
+          viewportHeight: Math.floor(browserHeight),
+        };
+      }
+      const targetRatio = Math.max(0.1, Number(this.frameAspectRatio) || (9 / 16));
+      let width = browserWidth;
+      let height = width / targetRatio;
+      if (height > browserHeight) {
+        height = browserHeight;
+        width = height * targetRatio;
+      }
+      const gameWidth = Math.max(1, Math.round(width));
+      const gameHeight = Math.max(1, Math.round(height));
+      return {
+        x: Math.max(0, Math.floor((browserWidth - gameWidth) / 2)),
+        y: Math.max(0, Math.floor((browserHeight - gameHeight) / 2)),
+        width: gameWidth,
+        height: gameHeight,
+        viewportWidth: Math.floor(browserWidth),
+        viewportHeight: Math.floor(browserHeight),
+      };
+    }
+
+    getViewportSize() {
+      return this.getViewportFrame();
+    }
+
+    applyViewportFrame(frame = {}) {
+      this.frameRect = {
+        x: Number(frame.x) || 0,
+        y: Number(frame.y) || 0,
+        width: Math.max(1, Number(frame.width) || 1),
+        height: Math.max(1, Number(frame.height) || 1),
+        viewportWidth: Math.max(1, Number(frame.viewportWidth) || Number(frame.width) || 1),
+        viewportHeight: Math.max(1, Number(frame.viewportHeight) || Number(frame.height) || 1),
+      };
+      this.viewportWidth = this.frameRect.viewportWidth;
+      this.viewportHeight = this.frameRect.viewportHeight;
+      this.width = this.frameRect.width;
+      this.height = this.frameRect.height;
+      return this.frameRect;
+    }
+
     resize() {
       const canvas = this.canvas || this.ensureCanvas();
       if (!canvas) return null;
       const viewport = this.getViewportSize();
       this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
-      this.width = viewport.width;
-      this.height = viewport.height;
+      this.applyViewportFrame(viewport);
       this.resizeCanvas(canvas);
       this.layerCanvases.forEach((layerCanvas) => this.resizeCanvas(layerCanvas));
       this.resizeHandlers.forEach((handler) => handler({ width: this.width, height: this.height, pixelRatio: this.pixelRatio }));
@@ -269,10 +316,13 @@
       const nextHeight = Math.floor(logicalHeight * pixelRatio);
       if (canvas.width !== nextWidth) canvas.width = nextWidth;
       if (canvas.height !== nextHeight) canvas.height = nextHeight;
-      if (fixedRect && canvas.style) {
+      if (canvas.style) {
+        const frame = this.frameRect || { x: 0, y: 0 };
+        const left = fixedRect ? Number(fixedRect.x) || 0 : -padding;
+        const top = fixedRect ? Number(fixedRect.y) || 0 : -padding;
         canvas.style.inset = 'auto';
-        canvas.style.left = `${Number(fixedRect.x) || 0}px`;
-        canvas.style.top = `${Number(fixedRect.y) || 0}px`;
+        canvas.style.left = `${(Number(frame.x) || 0) + left}px`;
+        canvas.style.top = `${(Number(frame.y) || 0) + top}px`;
         canvas.style.width = `${logicalWidth}px`;
         canvas.style.height = `${logicalHeight}px`;
       }
@@ -373,6 +423,9 @@
       if (event?.pointerType === 'touch' && this.pointerDown) return false;
       const point = this.toCanvasPoint(event);
       const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? 1;
+      try {
+        event.currentTarget?.setPointerCapture?.(pointerId);
+      } catch (error) {}
       this.pointerDown = { ...point, pointerId };
       this.dragActive = false;
       this.dragMoved = false;
@@ -410,6 +463,9 @@
     handlePointerUp(event) {
       const point = this.toCanvasPoint(event);
       const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown?.pointerId ?? 1;
+      try {
+        event.currentTarget?.releasePointerCapture?.(pointerId);
+      } catch (error) {}
       if (this.dragActive) {
         this.dragHandlers.forEach((handler) => handler('end', { ...point, pointerId }, event));
       }
