@@ -1605,6 +1605,68 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 27：继续压缩 CanvasGameRenderer 的底部 Tab 渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内普通底部 Tab 的布局、绘制、锁定态、事件徽标和 hit target 协议下放到独立 `TabBarCanvasRenderer`。主 renderer 继续保留 `renderTabs` facade；地图首页分支只转发到既有 `renderMapCommandDock`，避免复制地图命令 dock 的实现。
+
+回归测试：
+
+- 覆盖 `TabBarCanvasRenderer` 普通 Tab 仍生成 `resources`、`tech`、`events`、`civilization` 的 `switchTab` hit target。
+- 覆盖名人入口仍生成 `openFamousPersons` action tab。
+- 覆盖 `tabLocks` 的 `disabled` 与 `isLocked` 仍会传入 hit target，并且锁定绘制后恢复 `ctx.globalAlpha`。
+- 覆盖事件徽标仍通过 presenter 的 `buildEventViewState` 绘制徽标面板和文本。
+- 覆盖地图首页 `renderTabs` 仍只委托 `renderMapCommandDock`，不新增传统 Tab hit target。
+- 覆盖 `CanvasGameRenderer` 的 `renderTabs` facade 仍能委托到独立 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 27 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 27 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/TabBarCanvasRenderer.js`，承接普通底部 Tab 的布局、绘制、锁定态、事件徽标和 hit target 协议。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 `renderTabs` 外部入口为 facade，内部通过 `tabBarRenderer` 委托；地图首页分支继续由 `renderMapCommandDock` 承接。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `TabBarCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/TabBarCanvasRenderer.test.js`，覆盖普通 Tab、名人 action tab、锁定态、事件徽标、地图首页委托和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 3763 行降至 3702 行。
+- `frontend/js/platform/renderers/TabBarCanvasRenderer.js`：新增为 119 行，承接底部 Tab 渲染实现。
+- `frontend/js/platform/renderers/TabBarCanvasRenderer.test.js`：新增为 121 行，覆盖底部 Tab 渲染防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/TabBarCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/TabBarCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/TabBarCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`9e2deb6 refactor: move tab bar rendering into canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
