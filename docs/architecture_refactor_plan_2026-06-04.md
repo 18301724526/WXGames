@@ -215,7 +215,7 @@
 
 - 代码提交哈希：`b78baa3 refactor: extract territory client assembler`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ### Step 4：拆分前端 UIStatePresenter
 
