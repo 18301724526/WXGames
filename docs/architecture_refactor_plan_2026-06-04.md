@@ -235,7 +235,7 @@
 
 ### Step 0 留档
 
-状态：进行中
+状态：已完成
 
 本次改动：
 
@@ -246,7 +246,12 @@
 
 - `node scripts/verify-refactor-plan-doc.js`
 
+测试结果：
+
+- `node scripts/verify-refactor-plan-doc.js` 通过。
+
 提交结果：
 
-- 提交哈希：待提交后记录在最终回复和 git 日志中。
+- 提交哈希：`6eec99d docs: add architecture refactor plan`。
 - 推送目标：`origin main`。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
