@@ -155,6 +155,18 @@
     return null;
   })();
 
+  const SharedCanvasBattleFacade = (() => {
+    if (global.CanvasBattleFacade) return global.CanvasBattleFacade;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/CanvasBattleFacade');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedTutorialCanvasRenderer = (() => {
     if (global.TutorialCanvasRenderer) return global.TutorialCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -1046,172 +1058,6 @@
       return result === undefined ? undefined : result;
     }
 
-    delegateBattleRenderer(method, args = []) {
-      const renderer = this.battleRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
-    }
-
-    getBattleUnitPose(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitPose', args);
-      return result === undefined ? 'idle' : result;
-    }
-
-    getBattleTurnSoldierCount(...args) {
-      const result = this.delegateBattleRenderer('getBattleTurnSoldierCount', args);
-      return result === undefined ? Number(args[3]) || 0 : result;
-    }
-
-    isBattleSideDefeatedByTurn(...args) {
-      const result = this.delegateBattleRenderer('isBattleSideDefeatedByTurn', args);
-      return result === undefined ? false : result;
-    }
-
-    getBattlePlaybackPhase(...args) {
-      const result = this.delegateBattleRenderer('getBattlePlaybackPhase', args);
-      return result === undefined ? { phase: 'ended', phaseProgress: 1 } : result;
-    }
-
-    getBattleEngagementProgress(...args) {
-      const result = this.delegateBattleRenderer('getBattleEngagementProgress', args);
-      return result === undefined ? 1 : result;
-    }
-
-    getBattleUnitFormationPosition(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitFormationPosition', args);
-      return result === undefined ? { x: 0, y: 0, col: 0, row: 0 } : result;
-    }
-
-    getBattleUnitEngagementPosition(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitEngagementPosition', args);
-      return result === undefined ? { x: 0, y: 0, scale: 0.21 } : result;
-    }
-
-    easeBattleUnitProgress(...args) {
-      const result = this.delegateBattleRenderer('easeBattleUnitProgress', args);
-      return result === undefined ? 0 : result;
-    }
-
-    getBattleUnitEngagementDelay(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitEngagementDelay', args);
-      return result === undefined ? 0 : result;
-    }
-
-    getBattleUnitEngagementRatio(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitEngagementRatio', args);
-      return result === undefined ? 1 : result;
-    }
-
-    getBattleUnitBattlefieldPosition(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitBattlefieldPosition', args);
-      return result === undefined ? { x: 0, y: 0, formation: {}, engaged: {}, ratio: 1 } : result;
-    }
-
-    getBattleUnitSpec(...args) {
-      const result = this.delegateBattleRenderer('getBattleUnitSpec', args);
-      return result === undefined ? { unit: 'player', root: 'assets/art/battle/units/player', frameCount: this.constructor.getBattleUnitFrameCount(), width: 500, height: 400 } : result;
-    }
-
-    getBattleFramePose(...args) {
-      const result = this.delegateBattleRenderer('getBattleFramePose', args);
-      return result === undefined ? 'idle' : result;
-    }
-
-    getBattleFrameIndex(...args) {
-      const result = this.delegateBattleRenderer('getBattleFrameIndex', args);
-      return result === undefined ? 0 : result;
-    }
-
-    getBattleFrameSpritePath(...args) {
-      const result = this.delegateBattleRenderer('getBattleFrameSpritePath', args);
-      return result === undefined ? this.constructor.getBattleUnitFramePath('player', 'idle', 0) : result;
-    }
-
-    getBattleSideSpritePath(...args) {
-      const result = this.delegateBattleRenderer('getBattleSideSpritePath', args);
-      return result === undefined ? 'assets/art/battle/units/player' : result;
-    }
-
-    drawBattleMapBackground(...args) {
-      const result = this.delegateBattleRenderer('drawBattleMapBackground', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleSoldierFrame(...args) {
-      const result = this.delegateBattleRenderer('drawBattleSoldierFrame', args);
-      return result === undefined ? false : result;
-    }
-
-    drawBattleSoldierFallback(...args) {
-      const result = this.delegateBattleRenderer('drawBattleSoldierFallback', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleSoldierSprite(...args) {
-      const result = this.delegateBattleRenderer('drawBattleSoldierSprite', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleSoldier(...args) {
-      const result = this.delegateBattleRenderer('drawBattleSoldier', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleArmy(...args) {
-      const result = this.delegateBattleRenderer('drawBattleArmy', args);
-      return result === undefined ? undefined : result;
-    }
-
-    getBattleStatusBadgeColors(...args) {
-      const result = this.delegateBattleRenderer('getBattleStatusBadgeColors', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleSideState(...args) {
-      const result = this.delegateBattleRenderer('drawBattleSideState', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleActionEffect(...args) {
-      const result = this.delegateBattleRenderer('drawBattleActionEffect', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleSkillCutIn(...args) {
-      const result = this.delegateBattleRenderer('drawBattleSkillCutIn', args);
-      return result === undefined ? undefined : result;
-    }
-
-    getBattleTurnDamage(...args) {
-      const result = this.delegateBattleRenderer('getBattleTurnDamage', args);
-      return result === undefined ? undefined : result;
-    }
-
-    getBattleDamageFloatText(...args) {
-      const result = this.delegateBattleRenderer('getBattleDamageFloatText', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleDamageFloat(...args) {
-      const result = this.delegateBattleRenderer('drawBattleDamageFloat', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleStatusFloatingTexts(...args) {
-      const result = this.delegateBattleRenderer('drawBattleStatusFloatingTexts', args);
-      return result === undefined ? undefined : result;
-    }
-
-    drawBattleLeader(...args) {
-      const result = this.delegateBattleRenderer('drawBattleLeader', args);
-      return result === undefined ? undefined : result;
-    }
-
-    renderBattleSceneOverlay(...args) {
-      const result = this.delegateBattleRenderer('renderBattleSceneOverlay', args);
-      return result === undefined ? false : result;
-    }
-
     clear(...args) {
       return this.delegateSurfaceRenderer('clear', args);
     }
@@ -2049,6 +1895,9 @@
 
   if (SharedCanvasWorldMapFacade?.installWorldMapFacade) {
     SharedCanvasWorldMapFacade.installWorldMapFacade(CanvasGameRenderer);
+  }
+  if (SharedCanvasBattleFacade?.installBattleFacade) {
+    SharedCanvasBattleFacade.installBattleFacade(CanvasGameRenderer);
   }
 
   global.CanvasGameRenderer = CanvasGameRenderer;
