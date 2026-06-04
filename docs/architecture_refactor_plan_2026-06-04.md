@@ -743,9 +743,10 @@
 提交结果：
 
 - 代码提交哈希：`10a241d refactor: move tutorial rendering into tutorial canvas renderer`。
+- 文档提交哈希：`71e1918 docs: record refactor plan step 12`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档留档状态：本段记录将在文档提交推送后回填提交哈希。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
