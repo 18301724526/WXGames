@@ -129,6 +129,36 @@
 
 - 在本文档追加 Step 2 的提交记录，包括测试命令和结果。
 
+### Step 2 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `backend/services/GameStateNormalizer.js`，承接初始状态创建和 `normalizeState`。
+- 新增 `backend/services/ClientGameStateAssembler.js`，承接 `getClientGameState` 和客户端 DTO 组装。
+- 更新 `backend/services/GameStateService.js` 为兼容门面，保留原有导出接口。
+- 新增 `backend/tests/GameStateServiceSplit.test.js`，校验 facade 与新模块输出一致，并覆盖 legacy `metal`/`iron` 兼容。
+
+测试命令：
+
+- `node --test backend/tests/GameStateServiceSplit.test.js`
+- `node --test backend/tests/GameActionRegistry.test.js`
+- `node --check backend/services/GameStateService.js`
+- `node --check backend/services/GameStateNormalizer.js`
+- `node --check backend/services/ClientGameStateAssembler.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`87fbd67 refactor: split game state assembly`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ### Step 3：拆出 TerritoryService 的侦察和征服流程
 
 目标：把领土规范化、侦察流程、征服流程、客户端视图分开。
