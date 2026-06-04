@@ -8,6 +8,7 @@
       this.storage = options.storage || this.runtime.localStorage || null;
       this.canvas = options.canvas || null;
       this.layerCanvases = new Map();
+      this.layerHosts = new Map();
       this.container = options.container || null;
       this.id = options.id || 'h5CanvasLayer';
       this.worldMapLayerId = options.worldMapLayerId || 'h5WorldMapLayer';
@@ -86,11 +87,13 @@
         if (options.contextType) existing._contextType = options.contextType;
         if (options.pixelRatio) existing._pixelRatioOverride = Number(options.pixelRatio) || 0;
         existing._fixedRect = options.rect || null;
+        existing._clipToFrame = this.shouldClipLayerToFrame(options, existing);
         this.applyCanvasLayerStyle(existing, {
           pointerEvents: 'none',
           zIndex: options.zIndex ?? existing.style?.zIndex ?? 998,
           padding: options.padding ?? existing._viewportPadding,
         });
+        this.ensureLayerHost(key, existing, options);
         this.resizeCanvas(existing);
         return existing;
       }
@@ -102,13 +105,20 @@
       canvas._contextType = options.contextType || '2d';
       canvas._pixelRatioOverride = Number(options.pixelRatio) || 0;
       canvas._fixedRect = options.rect || null;
+      canvas._clipToFrame = this.shouldClipLayerToFrame(options, canvas);
       this.applyCanvasLayerStyle(canvas, {
         pointerEvents: 'none',
         zIndex: options.zIndex ?? 998,
         padding: options.padding,
       });
       const host = this.container || this.document.body;
-      host?.appendChild?.(canvas);
+      const layerHost = this.ensureLayerHost(key, canvas, options);
+      if (layerHost) {
+        host?.appendChild?.(layerHost);
+        layerHost.appendChild?.(canvas);
+      } else {
+        host?.appendChild?.(canvas);
+      }
       this.layerCanvases.set(key, canvas);
       if (!this.width || !this.height) {
         const viewport = this.getViewportSize();
@@ -117,6 +127,55 @@
       }
       this.resizeCanvas(canvas);
       return canvas;
+    }
+
+    shouldClipLayerToFrame(options = {}, canvas = null) {
+      if (options.clipToFrame !== undefined) return Boolean(options.clipToFrame);
+      const padding = Math.max(0, Number(options.padding ?? canvas?._viewportPadding) || 0);
+      return !options.rect && padding > 0;
+    }
+
+    ensureLayerHost(key = 'worldMap', canvas = null, options = {}) {
+      if (!canvas?._clipToFrame) {
+        const existingHost = this.layerHosts.get(key) || canvas?._layerHost || null;
+        if (existingHost?.parentNode && existingHost.removeChild && canvas) {
+          existingHost.removeChild(canvas);
+          (this.container || this.document?.body)?.appendChild?.(canvas);
+        }
+        if (existingHost) this.layerHosts.delete(key);
+        if (canvas) canvas._layerHost = null;
+        return null;
+      }
+      let host = this.layerHosts.get(key) || canvas._layerHost || null;
+      if (!host) {
+        if (!this.document || typeof this.document.createElement !== 'function') return null;
+        host = this.document.createElement('div');
+        host.id = `${canvas.id || key}Clip`;
+        host.setAttribute?.('aria-hidden', 'true');
+        host.setAttribute?.('data-canvas-layer-clip', key);
+        this.layerHosts.set(key, host);
+        canvas._layerHost = host;
+      }
+      this.applyLayerHostStyle(host, {
+        zIndex: options.zIndex ?? canvas.style?.zIndex ?? 998,
+      });
+      return host;
+    }
+
+    applyLayerHostStyle(host, options = {}) {
+      if (!host?.style) return;
+      const frame = this.frameRect || { x: 0, y: 0, width: this.width, height: this.height };
+      host.style.position = 'fixed';
+      host.style.inset = 'auto';
+      host.style.left = `${Number(frame.x) || 0}px`;
+      host.style.top = `${Number(frame.y) || 0}px`;
+      host.style.width = `${Math.max(1, Number(frame.width) || this.width || 1)}px`;
+      host.style.height = `${Math.max(1, Number(frame.height) || this.height || 1)}px`;
+      host.style.overflow = 'hidden';
+      host.style.pointerEvents = 'none';
+      host.style.zIndex = String(options.zIndex ?? 998);
+      host.style.background = 'transparent';
+      host.style.transformOrigin = '0 0';
     }
 
     getLayerCanvas(name = 'worldMap') {
@@ -165,6 +224,8 @@
     setLayerVisible(name = 'worldMap', visible = true) {
       const canvas = this.getLayerCanvas(name);
       if (!canvas?.style) return false;
+      const host = canvas._layerHost || this.layerHosts.get(String(name || 'worldMap')) || null;
+      if (host?.style) host.style.display = visible === false ? 'none' : 'block';
       canvas.style.display = visible === false ? 'none' : 'block';
       return true;
     }
@@ -320,9 +381,14 @@
         const frame = this.frameRect || { x: 0, y: 0 };
         const left = fixedRect ? Number(fixedRect.x) || 0 : -padding;
         const top = fixedRect ? Number(fixedRect.y) || 0 : -padding;
+        const layerHost = canvas._layerHost || null;
+        if (layerHost) {
+          this.applyLayerHostStyle(layerHost, { zIndex: canvas.style.zIndex });
+        }
+        canvas.style.position = layerHost ? 'absolute' : 'fixed';
         canvas.style.inset = 'auto';
-        canvas.style.left = `${(Number(frame.x) || 0) + left}px`;
-        canvas.style.top = `${(Number(frame.y) || 0) + top}px`;
+        canvas.style.left = `${layerHost ? left : (Number(frame.x) || 0) + left}px`;
+        canvas.style.top = `${layerHost ? top : (Number(frame.y) || 0) + top}px`;
         canvas.style.width = `${logicalWidth}px`;
         canvas.style.height = `${logicalHeight}px`;
       }

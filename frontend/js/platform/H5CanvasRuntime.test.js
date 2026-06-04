@@ -9,9 +9,19 @@ function createCanvas() {
     height: 0,
     style: {},
     listeners: [],
+    children: [],
+    parentNode: null,
     setAttribute() {},
     addEventListener(type, handler) {
       this.listeners.push([type, handler]);
+    },
+    appendChild(child) {
+      this.children.push(child);
+      child.parentNode = this;
+    },
+    removeChild(child) {
+      this.children = this.children.filter((item) => item !== child);
+      child.parentNode = null;
     },
     getContext() {
       return {
@@ -35,6 +45,7 @@ function createDocument() {
     children: [],
     appendChild(child) {
       this.children.push(child);
+      child.parentNode = this;
     },
   };
   return {
@@ -110,10 +121,18 @@ test('H5CanvasRuntime aligns padded layer canvases to the same 9:16 frame', () =
 
   const mainCanvas = runtime.ensureCanvas();
   const layerCanvas = runtime.ensureLayerCanvas('worldMap', { padding: 120 });
+  const layerHost = runtime.layerHosts.get('worldMap');
 
   assert.equal(mainCanvas.style.left, '547px');
   assert.equal(mainCanvas.style.width, '506px');
-  assert.equal(layerCanvas.style.left, '427px');
+  assert.equal(layerHost.style.left, '547px');
+  assert.equal(layerHost.style.top, '0px');
+  assert.equal(layerHost.style.width, '506px');
+  assert.equal(layerHost.style.height, '900px');
+  assert.equal(layerHost.style.overflow, 'hidden');
+  assert.equal(layerCanvas.parentNode, layerHost);
+  assert.equal(layerCanvas.style.position, 'absolute');
+  assert.equal(layerCanvas.style.left, '-120px');
   assert.equal(layerCanvas.style.top, '-120px');
   assert.equal(layerCanvas.style.width, '746px');
   assert.equal(layerCanvas.style.height, '1140px');
