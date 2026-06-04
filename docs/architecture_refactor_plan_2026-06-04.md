@@ -748,6 +748,69 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 13：继续压缩 CanvasGameRenderer 的建筑渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内建筑面板、建筑分类、建筑成本芯片、资源短名/图标和建筑按钮渲染下放到独立 `BuildingCanvasRenderer`，继续降低主 renderer 的业务面板职责。
+
+回归测试：
+
+- 覆盖 `BuildingCanvasRenderer` 自身建筑成本 helper、资源别名合并和数值格式化。
+- 覆盖 `CanvasGameRenderer` 的 building facade 仍能委托到建筑 renderer。
+- 覆盖建筑面板仍保留 `selectBuildingCategory`、`buildBuilding`、`upgradeBuilding` 和 `scrollBuildings` hit target 协议。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 13 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 13 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/BuildingCanvasRenderer.js`，承接建筑面板、分类标签、建筑信息行、成本芯片、资源短名/图标和建筑操作按钮渲染。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 building 相关外部入口与 facade，内部通过 `buildingRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `BuildingCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/BuildingCanvasRenderer.test.js`，覆盖独立 renderer helper、主 renderer facade 和建筑面板 hit target 协议。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 6997 行降至 6638 行。
+- `frontend/js/platform/renderers/BuildingCanvasRenderer.js`：新增为 471 行，承接建筑领域渲染实现。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/BuildingCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/BuildingCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/TutorialCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/FamousCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/BattleCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `node --test frontend/js/platform/GameCommandService.test.js`
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`69bd974 refactor: move building rendering into building canvas renderer`。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档留档状态：本段记录将在文档提交推送后回填提交哈希。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
