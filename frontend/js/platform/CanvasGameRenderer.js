@@ -239,6 +239,18 @@
     return null;
   })();
 
+  const SharedHudOverlayCanvasRenderer = (() => {
+    if (global.HudOverlayCanvasRenderer) return global.HudOverlayCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/HudOverlayCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasGameRenderer {
     constructor(options = {}) {
       this.presenter = options.presenter || null;
@@ -326,6 +338,8 @@
       this.advisorRenderer = options.advisorRenderer || (AdvisorRendererClass ? new AdvisorRendererClass({ host: this }) : null);
       const MapCommandRendererClass = options.mapCommandRendererClass || SharedMapCommandCanvasRenderer;
       this.mapCommandRenderer = options.mapCommandRenderer || (MapCommandRendererClass ? new MapCommandRendererClass({ host: this }) : null);
+      const HudOverlayRendererClass = options.hudOverlayRendererClass || SharedHudOverlayCanvasRenderer;
+      this.hudOverlayRenderer = options.hudOverlayRenderer || (HudOverlayRendererClass ? new HudOverlayRendererClass({ host: this }) : null);
       this.fpsLastPaintAt = 0;
       this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
@@ -3618,100 +3632,14 @@
       return result === undefined ? false : result;
     }
 
-    renderHudOverlay(state = {}, options = {}) {
-      const activeTab = options.activeTab || 'resources';
-      this.beginFrame(options);
-      this.setHitTargets([]);
-      if (!options.preserveCanvas) this.clear();
-      if (options.auth?.view?.loginPanelVisible) {
-        if (options.preserveCanvas) this.clear();
-        this.renderLoginPanel(options.auth);
-        this.endFrame(options);
-        return;
-      }
-      if (options.loading?.visible) {
-        if (options.preserveCanvas) this.clear();
-        this.renderLoadingScreen(options.loading);
-        this.endFrame(options);
-        return;
-      }
-      if (options.battleScene?.visible) {
-        if (options.preserveCanvas) this.clear();
-        this.renderBattleSceneOverlay(state, options);
-        this.endFrame(options);
-        return;
-      }
-      const topBarBottom = this.renderTopBar(state, options);
-      this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
-      if (options.isMapHome && activeTab === 'military' && options.skipWorldMapLayer) {
-        this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
-      }
-      this.renderTabs(activeTab, state, options);
-      if (options.isMapHome && activeTab === 'military') {
-        this.renderMapHomeOverlays(state, options);
-        this.renderTutorialIntro(state, options);
-        this.renderTutorialHighlight(options.tutorialHighlight || null);
-        this.renderFloatingTexts(options.floatingTexts || []);
-        this.renderRewardReveal(options.rewardReveal || null);
-        this.renderNetworkOverlay(options.network || null);
-        this.endFrame(options);
-        return;
-      }
-      if (options.showResourceDetails) {
-        this.renderResourceDetailsPanel(state);
-      }
-      if (options.showSettings) {
-        this.renderSettingsPanel();
-      }
-      if (options.showLogs) {
-        this.renderLogsPanel(options.logs || []);
-      }
-      if (options.showCitySwitcher) {
-        this.renderCitySwitcherMenu(state);
-      }
-      if (options.showAdvisor) {
-        this.renderAdvisorPanel(state);
-      }
-      if (options.showTaskCenter) {
-        this.renderTaskCenterPanel(state, options);
-      }
-      if (options.showGuidebook) {
-        this.renderGuidebookPanel(state, options);
-      }
-      if (options.showFamousPersons) {
-        this.renderFamousPersonsPanel(state, options);
-      }
-      if (options.showTalentPolicy) {
-        this.renderTalentPolicyPanel(state, options);
-      }
-      if (options.armyFormationEditor?.open) {
-        this.renderArmyFormationEditor(state, options);
-      }
-      if (options.activeEventId) {
-        this.renderEventModal(state, options.activeEventId);
-      }
-      if (activeTab === 'tech' && (options.techDetailOpen || state.techUiState?.detailOpen)) {
-        const view = this.presenter?.buildTechViewState?.({
-          ...state,
-          techUiState: {
-            ...(state.techUiState || {}),
-            ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
-          },
-          ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
-        });
-        this.renderTechDetailModal(view?.detail);
-      }
-      if (activeTab === 'military') {
-        this.renderWorldSiteModal(state, options);
-      }
-      if (options.naming) {
-        this.renderNamingModal(options.naming);
-      }
-      this.renderTutorialHighlight(options.tutorialHighlight || null);
-      this.renderFloatingTexts(options.floatingTexts || []);
-      this.renderRewardReveal(options.rewardReveal || null);
-      this.renderNetworkOverlay(options.network || null);
-      this.endFrame(options);
+    delegateHudOverlayRenderer(method, args = []) {
+      const renderer = this.hudOverlayRenderer;
+      if (!renderer || typeof renderer[method] !== 'function') return undefined;
+      return renderer[method](...args);
+    }
+
+    renderHudOverlay(...args) {
+      return this.delegateHudOverlayRenderer('renderHudOverlay', args);
     }
 
     render(state = {}, options = {}) {
