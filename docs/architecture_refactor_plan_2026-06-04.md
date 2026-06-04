@@ -2044,10 +2044,10 @@
 提交结果：
 
 - 代码提交哈希：`34f0e35 refactor: move canvas frame orchestration into renderer`。
-- 文档提交说明：Step 33 文档记录由 `docs: record refactor plan step 33` 保存。
+- 文档提交哈希：`272339b docs: record refactor plan step 33`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档推送状态：Step 33 文档记录随 `docs: record refactor plan step 33` 推送后校验服务器健康。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
