@@ -931,10 +931,10 @@
 提交结果：
 
 - 代码提交哈希：`69d72ab refactor: move civilization rendering into civilization canvas renderer`。
-- 文档提交哈希：将在下一次文档状态提交中记录。
+- 文档提交哈希：`e6c5398 docs: record refactor plan step 15`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档推送状态：将在下一次文档状态提交中记录。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
