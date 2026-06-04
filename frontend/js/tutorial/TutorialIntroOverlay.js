@@ -1,8 +1,8 @@
 (function (global) {
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
   const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
-  const MARCH_DURATION_MS = 2400;
-  const ENTER_DURATION_MS = 780;
+  const MARCH_DURATION_MS = 4800;
+  const ENTER_DURATION_MS = 1560;
   const MARCH_FRAME_INTERVAL_MS = 33;
   const IDLE_FRAME_INTERVAL_MS = 33;
   const STEPS = {

@@ -39,6 +39,7 @@ test('TutorialIntroOverlay delays enter-city completion until the fade transitio
   });
 
   assert.equal(overlay.start(), true);
+  assert.equal(overlay.getViewState().marchDurationMs, 4800);
   currentTime = 3400;
   assert.equal(overlay.finishMarch(), true);
   assert.equal(overlay.advanceFromAction({ type: 'openWorldSite', siteId: 'capital' }), true);
@@ -46,8 +47,9 @@ test('TutorialIntroOverlay delays enter-city completion until the fade transitio
 
   const entering = overlay.getViewState();
   assert.equal(entering.step, 'entering');
+  assert.equal(entering.enterDurationMs, 1560);
   assert.equal(completed, 0);
-  assert.ok(timers.at(-1).delayMs >= 700);
+  assert.equal(timers.at(-1).delayMs, 1560);
 
   currentTime = entering.enterEndedAt;
   assert.equal(overlay.completeEnterCityTransition(), true);
