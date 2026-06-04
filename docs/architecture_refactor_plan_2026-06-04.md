@@ -1859,6 +1859,71 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 31：继续压缩 CanvasGameRenderer 的通用资产管线职责
+
+目标：把 `CanvasGameRenderer.js` 内通用资产加载、asset cache、预热、缓存失效、alpha 边界测量、tile/source rect、canvas 工厂、普通图片绘制、裁剪绘制和 cover 裁切职责下放到独立 `CanvasAssetRenderer`。主 renderer 继续保留外部同名 API 作为 facade；世界瓦片水面模板与静态 chunk 编排仍暂由后续步骤继续拆分，避免一次搬出形成新的 500 行以上巨型文件。
+
+回归测试：
+
+- 覆盖 `preloadAssets` 对空列表、缓存 loaded/error、动态图片加载、进度回调、请求路径版本化和加载完成统计的旧协议。
+- 覆盖 `getAsset` 仍按 lazy loading 写入 `assetCache`，图片加载完成后返回缓存图片，创建失败时记录 error。
+- 覆盖 `invalidateWorldTileCaches` 仍清理静态层、侦察路线、水层、chunk/frame cache 和 view cache。
+- 覆盖 `hasPreparedWorldTileSnapshotCache` 仍识别已准备好的静态快照缓存。
+- 覆盖 `drawAsset`、`drawAssetClipped`、`drawCoverAsset` 和 `drawCanvasClipped` 仍恢复 `globalAlpha` 并保持 drawImage 参数协议。
+- 覆盖 `analyzeAssetAlphaBounds`、`measurePixelBounds`、`getWorldTileTemplateMetrics` 和 `drawTileAsset` 仍保留 alpha 边界与 tile source rect 逻辑。
+- 覆盖 `createTileWorkCanvas` 与 `createTutorialSpineCanvas` 仍可在 DOM/OffscreenCanvas 场景创建可用 canvas。
+- 覆盖 `CanvasGameRenderer` 的 asset facade 仍能委托到独立 renderer，不重复承载资产算法。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 31 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 31 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/CanvasAssetRenderer.js`，承接通用资产加载、缓存、预热、缓存失效、alpha bounds、canvas 工厂和图片绘制。
+- `frontend/js/platform/CanvasGameRenderer.js` 增加 `assetRenderer` 注入与 `delegateAssetRenderer`，将通用资产 API 压缩为同名 facade。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `CanvasAssetRenderer`。
+- 新增 `frontend/js/platform/renderers/CanvasAssetRenderer.test.js`，覆盖资产加载进度、缓存失效、图片绘制、alpha bounds、canvas 工厂和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 2619 行降至 2409 行。
+- `frontend/js/platform/renderers/CanvasAssetRenderer.js`：新增为 415 行，承接通用资产管线实现，未超过 500 行。
+- `frontend/js/platform/renderers/CanvasAssetRenderer.test.js`：新增为 224 行，覆盖资产管线防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/CanvasAssetRenderer.js`
+- `node --check frontend/js/platform/renderers/CanvasAssetRenderer.test.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/CanvasAssetRenderer.test.js`
+- `node --test frontend/js/platform/renderers/CanvasAssetRenderer.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/TabBarCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`1f7e237 refactor: move canvas asset pipeline into renderer`。
+- 文档提交哈希：本轮文档提交后补记。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：本轮文档提交后确认服务器健康接口。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
