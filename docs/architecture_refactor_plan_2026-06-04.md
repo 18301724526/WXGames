@@ -682,6 +682,71 @@
 - 推送目标：`origin main`。
 - 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 12：继续压缩 CanvasGameRenderer 的教程渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内教程 intro、教程高亮、tutorial shield、advisor portrait 与 Spine 图层渲染下放到独立 tutorial renderer，继续降低主 renderer 的叠层渲染职责。
+
+回归测试：
+
+- 覆盖 `TutorialCanvasRenderer` 自身教程目标解析与 tutorial shield hit target 协议。
+- 覆盖 `CanvasGameRenderer` 的 tutorial facade 仍能委托到教程 renderer。
+- 覆盖 `TutorialAdvisorCanvasRenderer` 的 advisor 图片 cover 裁剪协议。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 12 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 12 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/TutorialCanvasRenderer.js`，承接教程 intro、教程高亮、目标解析、教学遮罩和 hit target 屏蔽协议。
+- 新增 `frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js`，承接 advisor 画像、Spine 图层和图片 cover 裁剪。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 tutorial 相关外部入口与 facade，内部通过 `tutorialRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 tutorial/advisor renderer。
+- 新增 `frontend/js/platform/renderers/TutorialCanvasRenderer.test.js`，覆盖独立 renderer、主 renderer facade、教学遮罩和 advisor 图片裁剪协议。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 7456 行降至 6997 行。
+- `frontend/js/platform/renderers/TutorialCanvasRenderer.js`：新增为 417 行，承接教程叠层渲染实现。
+- `frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js`：新增为 254 行，承接教程 advisor 渲染实现。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/TutorialCanvasRenderer.js`
+- `node --check frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/TutorialCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/FamousCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/BattleCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `node --test frontend/js/platform/GameCommandService.test.js`
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`10a241d refactor: move tutorial rendering into tutorial canvas renderer`。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档留档状态：本段记录将在文档提交推送后回填提交哈希。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
