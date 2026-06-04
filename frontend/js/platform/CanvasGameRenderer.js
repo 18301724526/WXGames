@@ -263,6 +263,18 @@
     return null;
   })();
 
+  const SharedHudTabPageCanvasRenderer = (() => {
+    if (global.HudTabPageCanvasRenderer) return global.HudTabPageCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/HudTabPageCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedHudOverlayCanvasRenderer = (() => {
     if (global.HudOverlayCanvasRenderer) return global.HudOverlayCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -366,6 +378,8 @@
       this.mapCommandRenderer = options.mapCommandRenderer || (MapCommandRendererClass ? new MapCommandRendererClass({ host: this }) : null);
       const TabBarRendererClass = options.tabBarRendererClass || SharedTabBarCanvasRenderer;
       this.tabBarRenderer = options.tabBarRenderer || (TabBarRendererClass ? new TabBarRendererClass({ host: this }) : null);
+      const HudTabPageRendererClass = options.hudTabPageRendererClass || SharedHudTabPageCanvasRenderer;
+      this.hudTabPageRenderer = options.hudTabPageRenderer || (HudTabPageRendererClass ? new HudTabPageRendererClass({ host: this }) : null);
       const HudOverlayRendererClass = options.hudOverlayRendererClass || SharedHudOverlayCanvasRenderer;
       this.hudOverlayRenderer = options.hudOverlayRenderer || (HudOverlayRendererClass ? new HudOverlayRendererClass({ host: this }) : null);
       this.fpsLastPaintAt = 0;
@@ -3024,86 +3038,23 @@
       return result === undefined ? false : result;
     }
 
-    renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
-      if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, {
-        offset: options.buildingOffset,
-        buildingTransition: options.buildingTransition,
-        activeBuildingCategory: options.activeBuildingCategory,
-      });
-      else if (activeTab === 'events') this.renderEvents(state, startY, availableHeight);
-      else if (activeTab === 'tech') this.renderTech(state, startY, availableHeight, options);
-      else if (activeTab === 'civilization') this.renderCivilization(state, startY, availableHeight, options);
-      else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight, options);
+    delegateHudTabPageRenderer(method, args = []) {
+      const renderer = this.hudTabPageRenderer;
+      if (!renderer || typeof renderer[method] !== 'function') return undefined;
+      return renderer[method](...args);
     }
 
-    renderHudTabPage(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
-      const offsetY = Number(this.viewportOffsetY) || 0;
-      const viewportBottom = this.height - Math.max(0, offsetY);
-      const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
-      if (options.isMapHome && activeTab === 'military') {
-        if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
-        return;
-      }
-      if (activeTab === 'resources') {
-        const populationBottom = this.renderPopulation(state, topBarBottom);
-        this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 });
-      } else if (activeTab === 'buildings') {
-        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderBuildings(
-          { ...state, tutorial: options.tutorial || state.tutorial || {} },
-          topBarBottom,
-          availableHeight,
-          {
-            offset: options.buildingOffset,
-            buildingTransition: options.buildingTransition,
-            activeBuildingCategory: options.activeBuildingCategory,
-          },
-        );
-      } else if (activeTab === 'events') {
-        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderEvents(state, topBarBottom, availableHeight);
-      } else if (activeTab === 'tech') {
-        const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
-        this.renderTech(state, topBarBottom, availableHeight, options);
-      } else if (activeTab === 'civilization') {
-        const availableHeight = Math.max(260, tabsTop - topBarBottom - 12);
-        this.renderCivilization(
-          state,
-          topBarBottom,
-          availableHeight,
-          { tutorial: options.tutorial || state.tutorial || {} },
-        );
-      } else if (activeTab === 'military') {
-        const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);
-        this.renderMilitary(state, topBarBottom, availableHeight, options);
-      }
+    renderMainPanel(...args) {
+      return this.delegateHudTabPageRenderer('renderMainPanel', args);
     }
 
-    renderHudTabPageWithTransition(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
-      const pageTransition = options.pageTransition || null;
-      const transition = this.getTransitionFrame(pageTransition);
-      const fromTab = pageTransition?.fromTab;
-      const toTab = pageTransition?.toTab || activeTab;
-      if (!transition || !fromTab || fromTab === activeTab || toTab !== activeTab) {
-        this.renderHudTabPage(state, activeTab, topBarBottom, options);
-        return;
-      }
-      const tabsTop = this.height - 60 - this.bottomSafeArea;
-      const clipY = topBarBottom;
-      const clipHeight = Math.max(120, tabsTop - clipY);
-      const travel = this.width + 24;
-      this.withSlideClip(0, clipY, this.width, clipHeight, -transition.direction * travel * transition.eased, () => {
-        this.withSuppressedHitTargets(() => this.renderHudTabPage(state, fromTab, topBarBottom, {
-          ...options,
-          buildingOffset: pageTransition.fromBuildingOffset ?? options.buildingOffset,
-          buildingTransition: null,
-        }));
-      });
-      this.withSlideClip(0, clipY, this.width, clipHeight, transition.direction * travel * (1 - transition.eased), () => {
-        this.renderHudTabPage(state, activeTab, topBarBottom, options);
-      });
+    renderHudTabPage(...args) {
+      return this.delegateHudTabPageRenderer('renderHudTabPage', args);
     }
 
+    renderHudTabPageWithTransition(...args) {
+      return this.delegateHudTabPageRenderer('renderHudTabPageWithTransition', args);
+    }
     delegateWorldMapLayerRenderer(method, args = []) {
       const renderer = this.worldMapLayerRenderer;
       if (!renderer || typeof renderer[method] !== 'function') return undefined;

@@ -29,6 +29,7 @@ require('../js/platform/renderers/OverlayCanvasRenderer');
 require('../js/platform/renderers/AdvisorCanvasRenderer');
 require('../js/platform/renderers/MapCommandCanvasRenderer');
 require('../js/platform/renderers/TabBarCanvasRenderer');
+require('../js/platform/renderers/HudTabPageCanvasRenderer');
 require('../js/platform/renderers/HudOverlayCanvasRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/interactions/TechTreeInteractionModel');
