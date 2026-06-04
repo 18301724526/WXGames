@@ -1854,10 +1854,10 @@
 提交结果：
 
 - 代码提交哈希：`12439dc refactor: move canvas surface helpers into renderer`。
-- 文档提交哈希：本条记录提交后由最终状态提交补记。
+- 文档提交哈希：`70f10ed docs: record refactor plan step 30`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档推送状态：本条记录提交后确认服务器健康接口。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
