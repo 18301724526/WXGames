@@ -152,6 +152,25 @@ test('WorldMapLayerCanvasRenderer preserves map-home tile rendering and explorer
   assert.equal(host.hitTargets.some((target) => target.action.type === 'startExplore' && target.action.routeLength === 6), true);
 });
 
+test('WorldMapLayerCanvasRenderer falls back when military navigation presenter is split out', () => {
+  const host = createHost({
+    presenter: {},
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+  const state = {
+    militaryView: 'world',
+    territoryState: { worldMap: createTileMapView() },
+  };
+
+  const layout = renderer.getWorldMapLayerLayout(state, 96, { isMapHome: true });
+  const rendered = renderer.renderMapHomeWorldView(state, 96, { territoryUiState: {} });
+
+  assert.ok(layout);
+  assert.equal(layout.nav.activeView, 'world');
+  assert.equal(rendered, true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileMap'), true);
+});
+
 test('WorldMapLayerCanvasRenderer preserves empty and legacy world fallbacks', () => {
   const emptyHost = createHost();
   const emptyRenderer = new WorldMapLayerCanvasRenderer({ host: emptyHost });

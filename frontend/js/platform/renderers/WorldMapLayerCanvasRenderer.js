@@ -25,9 +25,27 @@
       });
     }
 
+    buildMilitaryNavigationViewState(state = {}) {
+      if (this.presenter && typeof this.presenter.buildMilitaryNavigationViewState === 'function') {
+        return this.presenter.buildMilitaryNavigationViewState(state);
+      }
+      const activeView = ['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army';
+      return {
+        activeView,
+        locked: false,
+        views: ['army', 'scout', 'world'].map((id) => ({
+          id,
+          isActive: id === activeView,
+          disabled: false,
+          isLocked: false,
+          title: '',
+          ariaSelected: String(id === activeView),
+        })),
+      };
+    }
+
     getWorldMapLayerLayout(state = {}, topBarBottom = null, options = {}) {
-      if (!this.presenter || typeof this.presenter.buildMilitaryNavigationViewState !== 'function') return null;
-      const nav = this.presenter.buildMilitaryNavigationViewState(state);
+      const nav = this.buildMilitaryNavigationViewState(state);
       if (nav.activeView !== 'world') return null;
       const layout = this.getLayout();
       const offsetX = Number(this.viewportOffsetX) || 0;
