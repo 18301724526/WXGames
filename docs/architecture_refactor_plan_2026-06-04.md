@@ -505,6 +505,64 @@
 - 推送目标：`origin main`。
 - 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 9：继续压缩 CanvasGameRenderer 的战斗渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内战斗播放、兵种帧、战斗场景 overlay、战斗 hit target 等渲染实现下放到独立 `BattleCanvasRenderer`，继续按领域 renderer 拆分巨型文件。
+
+回归测试：
+
+- 覆盖 `BattleCanvasRenderer` 自身战斗播放阶段、单位姿态和兵种帧路径计算。
+- 覆盖 `CanvasGameRenderer` 的 battle facade 仍能委托到战斗 renderer。
+- 覆盖战斗场景 overlay 仍保留 `closeBattleScene` 与 `skipBattleScene` hit target 协议。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 9 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 9 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/BattleCanvasRenderer.js`，承接战斗播放阶段、阵型位置、兵种帧、伤害飘字、状态飘字、战斗 leader 和战斗场景 overlay 渲染。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 `renderBattleSceneOverlay`、战斗 helper 与 hit target 外部协议，内部通过 `battleRenderer` facade 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `BattleCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/BattleCanvasRenderer.test.js`，覆盖独立 renderer helper、主 renderer facade 和 overlay hit target 协议。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 10781 行降至 10256 行。
+- `frontend/js/platform/renderers/BattleCanvasRenderer.js`：新增为 779 行，承接战斗领域渲染实现。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/BattleCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/BattleCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `node --test frontend/js/platform/GameCommandService.test.js`
+- `node --test frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`24d7fbf refactor: move battle rendering into battle canvas renderer`。
+- 推送目标：`origin main`。
+- 推送状态：待推送。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
