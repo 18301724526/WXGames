@@ -385,7 +385,7 @@
 
 - 代码提交哈希：`5998caf refactor: extract game command service`。
 - 推送目标：`origin main`。
-- 推送状态：待推送。
+- 推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ### Step 7：解除 CanvasActionController 对 renderer 的布局依赖
 
