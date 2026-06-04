@@ -35,6 +35,18 @@
     return null;
   })();
 
+  const SharedTechCanvasRenderer = (() => {
+    if (global.TechCanvasRenderer) return global.TechCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/TechCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasGameRenderer {
     constructor(options = {}) {
       this.presenter = options.presenter || null;
@@ -88,6 +100,8 @@
       this.fpsLastFrameAt = 0;
       this.fpsSamples = [];
       this.currentFps = 0;
+      const TechRendererClass = options.techRendererClass || SharedTechCanvasRenderer;
+      this.techRenderer = options.techRenderer || (TechRendererClass ? new TechRendererClass({ host: this }) : null);
       this.fpsLastPaintAt = 0;
       this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
@@ -5939,6 +5953,13 @@
     }
 
     renderTech(state = {}, startY = 210, panelHeight = 250, options = {}) {
+      if (this.techRenderer && typeof this.techRenderer.render === 'function') {
+        return this.techRenderer.render(state, startY, panelHeight, options);
+      }
+      return this.renderTechInternal(state, startY, panelHeight, options);
+    }
+
+    renderTechInternal(state = {}, startY = 210, panelHeight = 250, options = {}) {
       if (!this.presenter || typeof this.presenter.buildTechViewState !== 'function') return;
       const view = this.presenter.buildTechViewState({
         ...state,
