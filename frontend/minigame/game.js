@@ -11,6 +11,7 @@ require('../js/platform/WorldMapRuntime');
 require('../js/platform/WorldMapRuntimeCoordinator');
 require('../js/platform/renderers/CanvasSurfaceRenderer');
 require('../js/platform/renderers/CanvasAssetRenderer');
+require('../js/platform/renderers/WorldTileWaterCanvasRenderer');
 require('../js/platform/renderers/WorldMapCanvasRenderer');
 require('../js/platform/renderers/WorldMapLayerCanvasRenderer');
 require('../js/platform/renderers/FamousCanvasRenderer');
