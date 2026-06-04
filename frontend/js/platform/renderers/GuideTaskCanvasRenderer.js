@@ -25,6 +25,18 @@
       });
     }
 
+    renderGuideTasks(state = {}, startY = 0) {
+      return startY;
+    }
+
+    renderTaskCenterButton(state = {}) {
+      return undefined;
+    }
+
+    renderGuidebookButton(state = {}) {
+      return undefined;
+    }
+
     renderGuidebookPanel(state = {}, options = {}) {
       if (!this.presenter || typeof this.presenter.buildGuidebookViewState !== 'function') return;
       const view = this.presenter.buildGuidebookViewState(state, { activeTab: options.activeGuidebookTab });

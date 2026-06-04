@@ -119,14 +119,43 @@ test('GuideTaskCanvasRenderer preserves task center claim and navigation targets
   assert.equal(host.hitTargets.some((target) => target.action.type === 'goToGuideTaskTarget' && target.action.target === 'scout-north'), true);
 });
 
-test('CanvasGameRenderer exposes guide task panels through facade', () => {
+test('GuideTaskCanvasRenderer preserves disabled quick entry contracts', () => {
+  const host = createHost();
+  const renderer = new GuideTaskCanvasRenderer({ host });
+  const state = {
+    guideTasks: {
+      visible: true,
+      tasks: [{ id: 'task-1', title: 'Build House', status: 'claimable', target: 'buildings' }],
+    },
+  };
+
+  assert.equal(renderer.renderGuideTasks(state, 188), 188);
+  assert.equal(renderer.renderTaskCenterButton(state), undefined);
+  assert.equal(renderer.renderGuidebookButton(state), undefined);
+  assert.equal(host.hitTargets.length, 0);
+  assert.equal(host.calls.length, 0);
+});
+
+test('CanvasGameRenderer exposes guide task rendering through facade', () => {
   class StubGuideTaskRenderer {
     constructor(options) {
       this.host = options.host;
     }
 
+    renderGuideTasks(...args) {
+      return { method: 'renderGuideTasks', host: this.host, args };
+    }
+
+    renderTaskCenterButton(...args) {
+      return { method: 'renderTaskCenterButton', host: this.host, args };
+    }
+
+    renderGuidebookButton(...args) {
+      return { method: 'renderGuidebookButton', host: this.host, args };
+    }
+
     renderTaskCenterPanel(...args) {
-      return { host: this.host, args };
+      return { method: 'renderTaskCenterPanel', host: this.host, args };
     }
   }
 
@@ -138,8 +167,16 @@ test('CanvasGameRenderer exposes guide task panels through facade', () => {
   const state = { taskCenter: {} };
   const options = { activeTaskCenterTab: 'main' };
 
-  const result = renderer.renderTaskCenterPanel(state, options);
+  const guideTasksResult = renderer.renderGuideTasks(state, 222);
+  const taskButtonResult = renderer.renderTaskCenterButton(state);
+  const guideButtonResult = renderer.renderGuidebookButton(state);
+  const panelResult = renderer.renderTaskCenterPanel(state, options);
 
-  assert.equal(result.host, renderer);
-  assert.deepEqual(result.args, [state, options]);
+  assert.equal(guideTasksResult.host, renderer);
+  assert.equal(guideTasksResult.method, 'renderGuideTasks');
+  assert.deepEqual(guideTasksResult.args, [state, 222]);
+  assert.equal(taskButtonResult.method, 'renderTaskCenterButton');
+  assert.equal(guideButtonResult.method, 'renderGuidebookButton');
+  assert.equal(panelResult.host, renderer);
+  assert.deepEqual(panelResult.args, [state, options]);
 });

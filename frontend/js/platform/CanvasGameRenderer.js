@@ -1991,185 +1991,23 @@
       return result === undefined ? 72 : result;
     }
 
-    renderGuideTasks(state = {}, startY = 0) {
-      return startY;
-      const guideTasks = state.guideTasks || {};
-      const tasks = Array.isArray(guideTasks.tasks) ? guideTasks.tasks : [];
-      if (!guideTasks.visible || !tasks.length) return startY;
-
-      const task = tasks[0];
-      const layout = this.getLayout();
-      const x = layout.contentX;
-      const y = startY;
-      const width = layout.contentWidth;
-      const height = 72;
-      const buttonWidth = 82;
-      const buttonHeight = 34;
-      const buttonX = x + width - buttonWidth - 14;
-      const buttonY = y + 19;
-      const canClaim = task.status === 'claimable' && !task.claimed;
-      const canGo = !canClaim && Boolean(task.target);
-      const buttonDisabled = !canClaim && !canGo;
-
-      this.drawPanel(x, y, width, height, {
-        fill: this.createGradient(
-          x, y, x + width, y + height,
-          [
-            [0, 'rgba(57, 44, 28, 0.96)'],
-            [1, 'rgba(23, 20, 15, 0.96)'],
-          ],
-          'rgba(38, 30, 22, 0.96)',
-        ),
-        stroke: canClaim ? 'rgba(247, 215, 116, 0.56)' : 'rgba(240, 180, 91, 0.22)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
-
-      this.drawPanel(x + 12, y + 12, 42, 20, {
-        fill: canClaim ? 'rgba(247, 215, 116, 0.22)' : 'rgba(116, 211, 160, 0.16)',
-        stroke: canClaim ? 'rgba(247, 215, 116, 0.42)' : 'rgba(116, 211, 160, 0.28)',
-        radius: 6,
-      });
-      this.drawText('主线', x + 33, y + 22, {
-        size: 11,
-        bold: true,
-        color: canClaim ? '#ffd98a' : '#74d3a0',
-        baseline: 'middle',
-        align: 'center',
-      });
-
-      const textX = x + 64;
-      const textWidth = Math.max(96, buttonX - textX - 12);
-      this.drawText(this.truncateText(task.title || '主线任务', textWidth, { size: 14, bold: true }), textX, y + 10, {
-        size: 14,
-        bold: true,
-        color: '#fff1cf',
-      });
-      const desc = canClaim
-        ? '任务已完成，前往任务列表领取奖励'
-        : (task.description || task.rewardText || '');
-      const lines = this.wrapTextLimit(desc, textWidth, 2, { size: 11 });
-      this.drawTextLines(lines, textX, y + 31, {
-        size: 11,
-        color: canClaim ? '#ffd98a' : '#cbbd96',
-        lineHeight: 15,
-      });
-
-      const buttonLabel = canClaim ? (task.actionLabel || '任务') : (task.actionLabel || '前往');
-      const buttonAction = task.action || (
-        canClaim
-          ? { type: 'openTaskCenter', tab: 'main', taskId: task.id, target: 'task-center-main-claim', source: 'taskIcon' }
-          : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
-      );
-      const hitAction = buttonAction.type === 'openTaskCenter'
-        ? { ...buttonAction, source: buttonAction.source || 'taskIcon' }
-        : buttonAction;
-      this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, buttonLabel, {
-        disabled: buttonDisabled,
-        active: canClaim || canGo,
-        size: 12,
-        bold: canClaim || canGo,
-        radius: 9,
-      });
-      this.addHitTarget(
-        { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight },
-        { ...hitAction, disabled: buttonDisabled },
-      );
-
-      return y + height + 10;
-    }
-
-    renderTaskCenterButton(state = {}) {
-      return;
-      if (!this.presenter || typeof this.presenter.buildTaskCenterViewState !== 'function') return;
-      const view = this.presenter.buildTaskCenterViewState(state);
-      const layout = this.getLayout();
-      const size = 48;
-      const x = layout.contentRight - size - 10;
-      const y = this.height - 58 - this.bottomSafeArea - size - 10;
-      const badge = Number(view.summary?.claimableCount) || 0;
-
-      this.drawPanel(x, y, size, size, {
-        fill: this.createGradient(
-          x, y, x, y + size,
-          [
-            [0, 'rgba(96, 67, 39, 0.96)'],
-            [1, 'rgba(35, 25, 17, 0.96)'],
-          ],
-          'rgba(60, 42, 26, 0.96)',
-        ),
-        stroke: badge > 0 ? 'rgba(247, 215, 116, 0.72)' : 'rgba(255, 226, 177, 0.2)',
-        radius: 12,
-        inset: 'rgba(255, 231, 184, 0.12)',
-      });
-      this.drawText('\u4efb\u52a1', x + size / 2, y + size / 2 + 1, {
-        size: 14,
-        bold: true,
-        color: '#ffe6b5',
-        baseline: 'middle',
-        align: 'center',
-      });
-      if (badge > 0) {
-        const badgeText = badge > 9 ? '9+' : String(badge);
-        this.drawPanel(x + size - 18, y - 5, 22, 20, {
-          fill: '#e94560',
-          stroke: 'rgba(255, 255, 255, 0.18)',
-          radius: 10,
-        });
-        this.drawText(badgeText, x + size - 7, y + 5, {
-          size: 10,
-          bold: true,
-          color: '#fff',
-          baseline: 'middle',
-          align: 'center',
-        });
-      }
-      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openTaskCenter', source: 'taskIcon' });
-    }
-
-    renderGuidebookButton(state = {}) {
-      return;
-      if (!this.presenter || typeof this.presenter.buildGuidebookViewState !== 'function') return;
-      const layout = this.getLayout();
-      const size = 44;
-      const x = layout.contentRight - size - 12;
-      const taskY = this.height - 58 - this.bottomSafeArea - 48 - 10;
-      const y = taskY - size - 8;
-      if (y < 178) return;
-      this.drawPanel(x, y, size, size, {
-        fill: this.createGradient(
-          x, y, x, y + size,
-          [
-            [0, 'rgba(50, 76, 66, 0.96)'],
-            [1, 'rgba(25, 33, 29, 0.96)'],
-          ],
-          'rgba(37, 54, 47, 0.96)',
-        ),
-        stroke: 'rgba(116, 211, 160, 0.32)',
-        radius: 11,
-        inset: 'rgba(116, 211, 160, 0.1)',
-      });
-      this.drawText('略', x + size / 2, y + 17, {
-        size: 15,
-        bold: true,
-        color: '#d5ffe8',
-        baseline: 'middle',
-        align: 'center',
-      });
-      this.drawText('攻略', x + size / 2, y + 31, {
-        size: 10,
-        bold: true,
-        color: '#8fd8af',
-        baseline: 'middle',
-        align: 'center',
-      });
-      this.addHitTarget({ x, y, width: size, height: size }, { type: 'openGuidebook', source: 'homeFeature' });
-    }
-
     delegateGuideTaskRenderer(method, args = []) {
       const renderer = this.guideTaskRenderer;
       if (!renderer || typeof renderer[method] !== 'function') return undefined;
       return renderer[method](...args);
+    }
+
+    renderGuideTasks(...args) {
+      const result = this.delegateGuideTaskRenderer('renderGuideTasks', args);
+      return result === undefined ? (args.length > 1 ? args[1] : 0) : result;
+    }
+
+    renderTaskCenterButton(...args) {
+      return this.delegateGuideTaskRenderer('renderTaskCenterButton', args);
+    }
+
+    renderGuidebookButton(...args) {
+      return this.delegateGuideTaskRenderer('renderGuidebookButton', args);
     }
 
     renderGuidebookPanel(...args) {
