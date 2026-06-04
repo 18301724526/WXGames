@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新手顾问 Spine 调参</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      background: #12100d;
+      color: #f4ead2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 360px;
+      gap: 18px;
+      padding: 18px;
+      background:
+        radial-gradient(circle at 28% 20%, rgba(125, 92, 43, 0.22), transparent 38%),
+        #12100d;
+    }
+
+    .stageWrap {
+      display: grid;
+      place-items: center;
+      min-height: calc(100vh - 36px);
+    }
+
+    .gameFrame {
+      position: relative;
+      width: min(calc((100vh - 36px) * 9 / 16), calc(100vw - 430px));
+      max-width: 430px;
+      aspect-ratio: 9 / 16;
+      overflow: hidden;
+      border: 1px solid rgba(255, 220, 151, 0.22);
+      background: #080807;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.58);
+    }
+
+    .map {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0.72)),
+        radial-gradient(ellipse at 53% 46%, rgba(233, 212, 107, 0.64), rgba(131, 141, 47, 0.38) 26%, rgba(0, 0, 0, 0) 42%),
+        linear-gradient(135deg, #7b8831 0 20%, #9c8c3f 20% 21%, #6f7930 21% 41%, #a5a152 41% 42%, #6d782f 42% 62%, #92a34a 62% 63%, #576529 63%);
+      opacity: 0.94;
+    }
+
+    .topBar,
+    .bottomBar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: rgba(15, 11, 8, 0.78);
+      border-color: rgba(158, 118, 61, 0.24);
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      align-items: center;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(235, 220, 184, 0.72);
+      z-index: 5;
+    }
+
+    .topBar {
+      top: 0;
+      border-bottom: 1px solid rgba(158, 118, 61, 0.24);
+    }
+
+    .bottomBar {
+      bottom: 0;
+      height: 63px;
+      border-top: 1px solid rgba(158, 118, 61, 0.24);
+    }
+
+    .spotlight {
+      position: absolute;
+      left: 48%;
+      top: 40%;
+      width: 72px;
+      height: 72px;
+      transform: translate(-50%, -50%);
+      border: 2px solid rgba(255, 220, 80, 0.78);
+      background: rgba(255, 236, 129, 0.22);
+      z-index: 3;
+    }
+
+    .finger {
+      position: absolute;
+      left: 56%;
+      top: 45%;
+      font-size: 54px;
+      transform: rotate(-24deg);
+      filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.58));
+      z-index: 8;
+    }
+
+    #spineCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .dialogue {
+      position: absolute;
+      left: 126px;
+      right: 18px;
+      bottom: 78px;
+      min-height: 132px;
+      padding: 18px 18px 16px 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(232, 185, 103, 0.38);
+      background: rgba(23, 17, 12, 0.94);
+      box-shadow: inset 0 0 0 1px rgba(255, 230, 181, 0.06);
+      z-index: 7;
+    }
+
+    .name {
+      margin-bottom: 8px;
+      color: #ffd98a;
+      font-weight: 700;
+    }
+
+    .text {
+      color: #f4e7c7;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .panel {
+      min-height: calc(100vh - 36px);
+      padding: 16px;
+      border: 1px solid rgba(232, 185, 103, 0.24);
+      background: rgba(25, 20, 15, 0.92);
+      overflow: auto;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .hint {
+      color: rgba(244, 234, 210, 0.68);
+      font-size: 13px;
+      line-height: 1.55;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      margin: 13px 0;
+      font-size: 13px;
+      color: rgba(244, 234, 210, 0.82);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    input[type="number"] {
+      width: 72px;
+      padding: 7px 8px;
+      border: 1px solid rgba(232, 185, 103, 0.26);
+      background: rgba(0, 0, 0, 0.22);
+      color: #f4ead2;
+      border-radius: 4px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 154px;
+      margin-top: 14px;
+      padding: 10px;
+      border: 1px solid rgba(232, 185, 103, 0.26);
+      background: rgba(0, 0, 0, 0.28);
+      color: #f4ead2;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(232, 185, 103, 0.34);
+      background: rgba(133, 88, 36, 0.76);
+      color: #fff1c4;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: rgba(244, 234, 210, 0.64);
+      font-size: 12px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <main class="stageWrap">
+    <section class="gameFrame" id="gameFrame">
+      <div class="map"></div>
+      <div class="topBar">
+        <span>粮食<br>100</span><span>木材<br>0</span><span>石料<br>0</span>
+        <span>铁矿<br>0</span><span>知识<br>7</span><span>人口<br>300</span>
+      </div>
+      <div class="spotlight"></div>
+      <div class="finger">☝</div>
+      <canvas id="spineCanvas"></canvas>
+      <div class="dialogue">
+        <div class="name">谋士</div>
+        <div class="text">前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。</div>
+      </div>
+      <div class="bottomBar">
+        <span>科技</span><span>文明</span><span>名人</span><span>任务</span><span>设置</span><span></span>
+      </div>
+    </section>
+  </main>
+
+  <aside class="panel">
+    <h1>新手顾问 Spine 调参</h1>
+    <div class="hint">这里使用完整 9:16 画布渲染 Spine，不做局部头像裁切。调到满意后，把右下方参数发给我，我会接回正式引导。</div>
+
+    <label>
+      水平位置 centerX
+      <div class="row"><input id="centerX" type="range" min="-420" max="420" step="1"><input id="centerXNumber" type="number"></div>
+    </label>
+    <label>
+      垂直位置 centerY
+      <div class="row"><input id="centerY" type="range" min="500" max="1600" step="1"><input id="centerYNumber" type="number"></div>
+    </label>
+    <label>
+      缩放 height
+      <div class="row"><input id="height" type="range" min="360" max="1400" step="1"><input id="heightNumber" type="number"></div>
+    </label>
+    <label>
+      透明度 alpha
+      <div class="row"><input id="alpha" type="range" min="0" max="1" step="0.01"><input id="alphaNumber" type="number" step="0.01"></div>
+    </label>
+    <label>
+      对话框左侧
+      <div class="row"><input id="dialogueLeft" type="range" min="96" max="190" step="1"><input id="dialogueLeftNumber" type="number"></div>
+    </label>
+
+    <textarea id="output" readonly></textarea>
+    <button id="copy">复制参数</button>
+    <div class="status" id="status"></div>
+  </aside>
+
+  <script src="../js/vendor/spine-3.8/spine-webgl.js"></script>
+  <script src="../js/platform/SpineWebglPlayer.js"></script>
+  <script>
+    const defaults = {
+      centerX: 0,
+      centerY: 1080,
+      height: 900,
+      alpha: 1,
+      dialogueLeft: 126,
+    };
+    const state = { ...defaults };
+    const controls = ['centerX', 'centerY', 'height', 'alpha', 'dialogueLeft'];
+    const canvas = document.getElementById('spineCanvas');
+    const frame = document.getElementById('gameFrame');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    const dialogue = document.querySelector('.dialogue');
+    let player = null;
+
+    function syncControlsFromState() {
+      controls.forEach((key) => {
+        document.getElementById(key).value = state[key];
+        document.getElementById(`${key}Number`).value = state[key];
+      });
+    }
+
+    function resizeCanvas() {
+      const rect = frame.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+      canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      if (player) {
+        player.logicalWidth = rect.width;
+        player.logicalHeight = rect.height;
+        player.maxDevicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
+        player.resize();
+      }
+    }
+
+    function apply() {
+      canvas.style.opacity = String(state.alpha);
+      dialogue.style.left = `${state.dialogueLeft}px`;
+      if (player) {
+        player.viewFocus = {
+          centerX: Number(state.centerX),
+          centerY: Number(state.centerY),
+          height: Number(state.height),
+        };
+        player.resize();
+      }
+      output.value = JSON.stringify({
+        viewFocus: {
+          centerX: Number(state.centerX),
+          centerY: Number(state.centerY),
+          height: Number(state.height),
+        },
+        alpha: Number(state.alpha),
+        dialogueLeft: Number(state.dialogueLeft),
+      }, null, 2);
+    }
+
+    function bindControls() {
+      controls.forEach((key) => {
+        const range = document.getElementById(key);
+        const number = document.getElementById(`${key}Number`);
+        const update = (value) => {
+          state[key] = key === 'alpha' ? Number(value) : Math.round(Number(value));
+          range.value = state[key];
+          number.value = state[key];
+          apply();
+        };
+        range.addEventListener('input', () => update(range.value));
+        number.addEventListener('input', () => update(number.value));
+      });
+      document.getElementById('copy').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(output.value);
+        status.textContent = '已复制';
+      });
+    }
+
+    async function boot() {
+      syncControlsFromState();
+      bindControls();
+      resizeCanvas();
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        apply();
+      });
+      if (!window.SpineWebglPlayer?.isAvailable?.()) {
+        status.textContent = 'Spine runtime 没加载成功';
+        return;
+      }
+      const rect = frame.getBoundingClientRect();
+      player = new window.SpineWebglPlayer({
+        canvas,
+        runtime: window,
+        background: null,
+        fitPadding: 1,
+        targetFps: 60,
+        logicalWidth: rect.width,
+        logicalHeight: rect.height,
+        maxDevicePixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        premultipliedAlpha: false,
+        preserveDrawingBuffer: false,
+        viewFocus: {
+          centerX: state.centerX,
+          centerY: state.centerY,
+          height: state.height,
+        },
+        onStatus: (event) => {
+          status.textContent = `Spine: ${event.status}`;
+        },
+        onError: (error) => {
+          status.textContent = error?.message || String(error);
+        },
+      });
+      const loaded = player.load({
+        assetBase: '../assets/art/spine/tutorial/advisor/',
+        jsonFile: 'tutorial_advisor.json',
+        atlasFile: 'tutorial_advisor.atlas',
+        animationName: 'animation',
+        loop: true,
+        alpha: true,
+        antialias: true,
+        targetFps: 60,
+        logicalWidth: rect.width,
+        logicalHeight: rect.height,
+        maxDevicePixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        preserveDrawingBuffer: false,
+        viewFocus: {
+          centerX: state.centerX,
+          centerY: state.centerY,
+          height: state.height,
+        },
+      });
+      if (!loaded) status.textContent = 'Spine 加载失败';
+      apply();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
