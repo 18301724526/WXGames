@@ -1,4 +1,9 @@
 (function (global) {
+  var TechTreeInteractionModelBase = global.TechTreeInteractionModel;
+  if (typeof module !== 'undefined' && module.exports && !TechTreeInteractionModelBase) {
+    TechTreeInteractionModelBase = require('./interactions/TechTreeInteractionModel');
+  }
+
   const CLOSEABLE_PANELS = [
     'showSettings',
     'showLogs',
@@ -21,6 +26,12 @@
       this.host = options.host || null;
       this.awaitAsync = Boolean(options.awaitAsync);
       this.log = typeof options.log === 'function' ? options.log : null;
+      const TechTreeInteractionModelCtor = options.techTreeInteractionModelClass || TechTreeInteractionModelBase || null;
+      this.techTreeInteraction = options.techTreeInteraction || (TechTreeInteractionModelCtor ? new TechTreeInteractionModelCtor({
+        host: this.host,
+        getState: () => this.getState(),
+      }) : null);
+      if (this.techTreeInteraction && !this.techTreeInteraction.host) this.techTreeInteraction.host = this.host;
     }
 
     getGameHost() {
@@ -1228,163 +1239,15 @@
     handle_techTreeDrag(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;
-      const pointer = action.pointer || {};
-      const x = Number(pointer.x) || 0;
-      const y = Number(pointer.y) || 0;
-      const clampPan = (xValue, yValue) => {
-        const requestedX = Number(xValue) || 0;
-        const requestedY = Number(yValue) || 0;
-        const renderer = this.host?.renderer;
-        const presenter = renderer?.presenter || this.host?.presenter;
-        if (
-          !renderer
-          || !presenter
-          || typeof renderer.getTechTreeLayout !== 'function'
-          || typeof presenter.buildTechViewState !== 'function'
-        ) return { x: requestedX, y: requestedY };
-        const state = this.getState();
-        const view = presenter.buildTechViewState(state);
-        const renderLayout = typeof renderer.getLayout === 'function'
-          ? renderer.getLayout()
-          : { contentX: 12, contentWidth: Math.max(300, Number(renderer.width) || 390) - 24 };
-        const cachedPanel = renderer.lastTechTreeScroll?.panel;
-        const treePanel = cachedPanel || {
-          x: renderLayout.contentX + 24,
-          y: 352,
-          width: renderLayout.contentWidth - 48,
-          height: Math.max(128, (Number(renderer.height) || 844) - 438),
-        };
-        const layoutInfo = renderer.getTechTreeLayout(view, treePanel, {
-          techTreePanX: requestedX,
-          techTreePanY: requestedY,
-          techTreeZoom: this.host?.getTechTreeZoom?.() || Number(this.host?.techTreeZoom) || 1,
-        });
-        return {
-          x: Math.max(
-            Number(layoutInfo.minPanX) || 0,
-            Math.min(requestedX, Number(layoutInfo.maxPanX) || 0),
-          ),
-          y: Math.max(
-            Number(layoutInfo.minPanY) || 0,
-            Math.min(requestedY, Number(layoutInfo.maxPanY) || 0),
-          ),
-        };
-      };
-      if (action.phase === 'start') {
-        const currentPan = this.host?.getTechTreePan?.() || {
-          x: Number(this.host?.techTreePanX) || 0,
-          y: Number(this.host?.techTreePanY) || 0,
-        };
-        const pan = clampPan(currentPan.x, currentPan.y);
-        this.techTreeDragStart = {
-          x,
-          y,
-          panX: pan.x,
-          panY: pan.y,
-        };
-        if (this.host?.setTechTreePan) this.host.setTechTreePan(pan);
-        else if (this.host) {
-          this.host.techTreePanX = pan.x;
-          this.host.techTreePanY = pan.y;
-        }
-      } else if (action.phase === 'move') {
-        if (!this.host) return false;
-        const currentPan = this.host.getTechTreePan?.() || {
-          x: Number(this.host.techTreePanX) || 0,
-          y: Number(this.host.techTreePanY) || 0,
-        };
-        const nextPanX = this.techTreeDragStart
-          ? this.techTreeDragStart.panX + x - this.techTreeDragStart.x
-          : currentPan.x;
-        const nextPanY = this.techTreeDragStart
-          ? this.techTreeDragStart.panY + y - this.techTreeDragStart.y
-          : currentPan.y;
-        const pan = clampPan(nextPanX, nextPanY);
-        if (this.host.setTechTreePan) this.host.setTechTreePan(pan);
-        else {
-          this.host.techTreePanX = pan.x;
-          this.host.techTreePanY = pan.y;
-        }
-      } else if (action.phase === 'end' || action.phase === 'cancel') {
-        this.techTreeDragStart = null;
-        if (this.host) this.host.techTreeDragStart = null;
-      }
+      if (!this.techTreeInteraction?.handleDrag?.(action)) return false;
       this.render(action);
       return true;
-    }
-
-    getTechTreePanel(renderer) {
-      const renderLayout = typeof renderer?.getLayout === 'function'
-        ? renderer.getLayout()
-        : { contentX: 12, contentWidth: Math.max(300, Number(renderer?.width) || 390) - 24 };
-      return renderer?.lastTechTreeScroll?.panel || {
-        x: renderLayout.contentX + 24,
-        y: 352,
-        width: renderLayout.contentWidth - 48,
-        height: Math.max(128, (Number(renderer?.height) || 844) - 438),
-      };
-    }
-
-    getTechTreeView(renderer) {
-      const presenter = renderer?.presenter || this.host?.presenter;
-      if (!presenter || typeof presenter.buildTechViewState !== 'function') return null;
-      return presenter.buildTechViewState(this.getState());
     }
 
     handle_techTreeZoom(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;
-      const renderer = this.host?.renderer;
-      if (!renderer || typeof renderer.getTechTreeLayout !== 'function') return false;
-      const view = this.getTechTreeView(renderer);
-      if (!view) return false;
-      const gesture = action.gesture || {};
-      const rawDelta = Number(gesture.scaleDelta);
-      if (!Number.isFinite(rawDelta) || rawDelta <= 0) return false;
-      const panel = this.getTechTreePanel(renderer);
-      const centerX = Number.isFinite(Number(gesture.centerX ?? gesture.x))
-        ? Number(gesture.centerX ?? gesture.x)
-        : panel.x + panel.width / 2;
-      const centerY = Number.isFinite(Number(gesture.centerY ?? gesture.y))
-        ? Number(gesture.centerY ?? gesture.y)
-        : panel.y + panel.height / 2;
-      const currentPan = this.host?.getTechTreePan?.() || {
-        x: Number(this.host?.techTreePanX) || 0,
-        y: Number(this.host?.techTreePanY) || 0,
-      };
-      const currentZoom = this.host?.getTechTreeZoom?.() || Number(this.host?.techTreeZoom) || 1;
-      const oldZoom = Math.max(0.65, Math.min(1.6, currentZoom));
-      const scaleDelta = Math.max(0.82, Math.min(1.22, rawDelta));
-      const nextZoom = Math.max(0.65, Math.min(1.6, oldZoom * scaleDelta));
-      if (Math.abs(nextZoom - oldZoom) < 0.001) return false;
-      const contentX = (centerX - panel.x - currentPan.x) / oldZoom;
-      const contentY = (centerY - panel.y - currentPan.y) / oldZoom;
-      const requestedPan = {
-        x: centerX - panel.x - contentX * nextZoom,
-        y: centerY - panel.y - contentY * nextZoom,
-      };
-      const layoutInfo = renderer.getTechTreeLayout(view, panel, {
-        techTreePanX: requestedPan.x,
-        techTreePanY: requestedPan.y,
-        techTreeZoom: nextZoom,
-      });
-      const pan = {
-        x: Math.max(
-          Number(layoutInfo.minPanX) || 0,
-          Math.min(requestedPan.x, Number(layoutInfo.maxPanX) || 0),
-        ),
-        y: Math.max(
-          Number(layoutInfo.minPanY) || 0,
-          Math.min(requestedPan.y, Number(layoutInfo.maxPanY) || 0),
-        ),
-      };
-      if (this.host?.setTechTreeZoom) this.host.setTechTreeZoom(nextZoom);
-      else if (this.host) this.host.techTreeZoom = nextZoom;
-      if (this.host?.setTechTreePan) this.host.setTechTreePan(pan);
-      else if (this.host) {
-        this.host.techTreePanX = pan.x;
-        this.host.techTreePanY = pan.y;
-      }
+      if (!this.techTreeInteraction?.handleZoom?.(action)) return false;
       this.render(action);
       return true;
     }
