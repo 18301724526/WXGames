@@ -1793,6 +1793,72 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 30：继续压缩 CanvasGameRenderer 的基础 Canvas Surface 职责
+
+目标：把 `CanvasGameRenderer.js` 内通用画布 surface 能力下放到独立 `CanvasSurfaceRenderer`，包括布局、渐变、圆角路径、hit target、hover 点、教程遮罩允许动作、裁剪、清屏、文字测量/换行/截断、基础线条/形状、按钮、进度条、图标卡片、区块标题、帧时间和 FPS overlay。主 renderer 继续保留外部同名 API 作为 facade，实际渲染层工具由 `surfaceRenderer` 承接，后续领域 renderer 仍通过 host 协议调用这些基础能力。
+
+回归测试：
+
+- 覆盖 `CanvasSurfaceRenderer.getLayout` 仍按 `width`、`maxContentWidth` 和 `edgePadding` 返回旧布局公式。
+- 覆盖线性/径向渐变和圆角路径仍使用 canvas 上下文能力，缺失能力时仍保留 fallback。
+- 覆盖 hit target 的背景 action、教程遮罩 `blockCanvasModal`、`allowedAction`、教程 intro 当前步骤允许动作和 suppressed hit target 协议。
+- 覆盖 `containsPoint` 与 `setHoverPoint` 的数值归一和无效点清理。
+- 覆盖 `withTranslatedClip`、`withSlideClip` 和 `withTransformedClip` 的 save、rect、clip、translate/scale、restore 调用顺序和 callback 返回。
+- 覆盖 `wrapText`、`measureTextWidth`、`truncateText` 和 `wrapTextLimit` 的字体切换与恢复。
+- 覆盖 `beginFrame`、`updateFps`、`renderFpsOverlay` 和 `endFrame` 仍写回 host 帧状态并绘制 FPS。
+- 覆盖 `drawPanel`、`drawButton`、`drawPrimaryActionButton`、`drawProgressBar`、`drawIconCard`、`drawPolyline`、`drawCurvePath` 和 `drawCircle` 的基础绘制协议。
+- 覆盖 `CanvasGameRenderer` 的 surface facade 仍能委托到独立 renderer，不重复写入 hit target。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 30 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 30 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/CanvasSurfaceRenderer.js`，承接基础画布 surface、命中区、裁剪、通用绘制和 FPS overlay。
+- `frontend/js/platform/CanvasGameRenderer.js` 增加 `surfaceRenderer` 注入与 `delegateSurfaceRenderer`，将基础 surface API 压缩为同名 facade。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `CanvasSurfaceRenderer`。
+- 新增 `frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`，覆盖布局、渐变、hit target、教程遮罩、裁剪、文字、FPS、基础绘制和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 3311 行降至 2619 行。
+- `frontend/js/platform/renderers/CanvasSurfaceRenderer.js`：新增为 510 行，承接基础 surface 实现。
+- `frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`：新增为 208 行，覆盖基础 surface 防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/CanvasSurfaceRenderer.js`
+- `node --check frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`
+- `node --test frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/TabBarCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/renderers/MapCommandCanvasRenderer.test.js frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js frontend/js/platform/renderers/OverlayCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/SystemCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`12439dc refactor: move canvas surface helpers into renderer`。
+- 文档提交哈希：本条记录提交后由最终状态提交补记。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：本条记录提交后确认服务器健康接口。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
