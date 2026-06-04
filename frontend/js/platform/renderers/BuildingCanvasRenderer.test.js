@@ -136,3 +136,79 @@ test('BuildingCanvasRenderer preserves building panel hit target contract', () =
   });
   assert.equal(host.hitTargets.some((target) => target.action.type === 'scrollBuildings'), true);
 });
+
+test('BuildingCanvasRenderer falls back to shared presenter when injected presenter is split out', () => {
+  const host = createHost({ presenter: {} });
+  const renderer = new BuildingCanvasRenderer({ host });
+  const state = {
+    resources: { wood: 30, iron: 8, metal: 8, stone: 20, food: 20, knowledge: 10 },
+    unlockedBuildings: ['house'],
+    buildings: {},
+    buildingDefinitions: {
+      house: {
+        id: 'house',
+        name: 'House',
+        category: 'livelihood',
+        ui: {
+          effectText: [{ field: 'populationCapBonus', label: 'Pop' }],
+        },
+        effects: {
+          perLevel: { populationCapBonus: 1 },
+        },
+      },
+    },
+    buildingCosts: {
+      house: { wood: 20, knowledge: 3 },
+    },
+  };
+
+  renderer.renderBuildings(state, 100, 610, { activeBuildingCategory: 'all' });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'house'), true);
+});
+
+test('CanvasGameRenderer renders building panel through split renderer facade without presenter method', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: createHost().ctx,
+    presenter: {},
+    width: 390,
+    height: 844,
+    buildingRendererClass: BuildingCanvasRenderer,
+  });
+  Object.assign(renderer, {
+    createGradient() { return '#123'; },
+    drawAsset() { return false; },
+    drawButton() {},
+    drawIconCard() {},
+    drawLine() {},
+    drawPanel() {},
+    drawText() {},
+    getTransitionFrame() { return null; },
+    measureTextWidth(text) { return String(text || '').length * 8; },
+    truncateText(text) { return String(text || ''); },
+  });
+
+  renderer.renderBuildings({
+    resources: { wood: 30, iron: 8, metal: 8, stone: 20, food: 20, knowledge: 10 },
+    unlockedBuildings: ['house'],
+    buildings: {},
+    buildingDefinitions: {
+      house: {
+        id: 'house',
+        name: 'House',
+        category: 'livelihood',
+        ui: {
+          effectText: [{ field: 'populationCapBonus', label: 'Pop' }],
+        },
+        effects: {
+          perLevel: { populationCapBonus: 1 },
+        },
+      },
+    },
+    buildingCosts: {
+      house: { wood: 20, knowledge: 3 },
+    },
+  }, 100, 610, { activeBuildingCategory: 'all' });
+
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'house'), true);
+});

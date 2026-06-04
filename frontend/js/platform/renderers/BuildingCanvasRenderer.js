@@ -1,4 +1,16 @@
 (function (global) {
+  const sharedUIStatePresenter = (() => {
+    if (global.UIStatePresenter) return global.UIStatePresenter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../state/UIStatePresenter');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class BuildingCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -25,9 +37,31 @@
       });
     }
 
+    getBuildingPresenter() {
+      return [this.presenter, this.host?.presenter, sharedUIStatePresenter]
+        .find((presenter) => presenter && typeof presenter.buildBuildingViewState === 'function')
+        || null;
+    }
+
+    buildBuildingViewState(state = {}, tutorial = {}, buildingConfig = {}, options = {}) {
+      const presenter = this.getBuildingPresenter();
+      if (presenter) {
+        return presenter.buildBuildingViewState(state, tutorial, buildingConfig, options);
+      }
+      return {
+        ids: [],
+        filteredIds: [],
+        isEmpty: true,
+        emptyText: '\u5f53\u524d\u65f6\u4ee3\u6682\u65e0\u53ef\u5efa\u9020\u5efa\u7b51',
+        activeCategory: options.activeCategory || 'all',
+        categoryTabs: [{ id: 'all', label: '\u5168\u90e8', count: 0, active: true }],
+        cards: [],
+        structureSignature: '[]',
+      };
+    }
+
     renderBuildings(state = {}, startY = 210, panelHeight = 310, options = {}) {
-      if (!this.presenter) return;
-      const view = this.presenter.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {}, {
+      const view = this.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {}, {
         activeCategory: options.activeBuildingCategory || 'all',
       });
       const layout = this.getLayout();
