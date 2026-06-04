@@ -1,0 +1,220 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const CanvasFrameRenderer = require('./CanvasFrameRenderer');
+const CanvasGameRenderer = require('../CanvasGameRenderer');
+
+function createHost(overrides = {}) {
+  const calls = [];
+  const host = {
+    calls,
+    width: 390,
+    height: 844,
+    bottomSafeArea: 12,
+    presenter: {
+      buildAdvisorViewState(softGuide) {
+        calls.push(['buildAdvisorViewState', softGuide]);
+        return { hidden: false };
+      },
+      buildTechViewState(input) {
+        calls.push(['buildTechViewState', input]);
+        return { detail: { id: input.selectedTechId || input.techUiState?.selectedTechId || 'tech-1' } };
+      },
+    },
+    beginFrame(options) { calls.push(['beginFrame', options]); },
+    clear() { calls.push(['clear']); },
+    collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
+    endFrame(options) { calls.push(['endFrame', options]); },
+    getTransitionFrame(transition) {
+      calls.push(['getTransitionFrame', transition]);
+      return transition?.frame || null;
+    },
+    renderAdvisor(...args) { calls.push(['renderAdvisor', args]); },
+    renderAdvisorPanel(...args) { calls.push(['renderAdvisorPanel', args]); },
+    renderArmyFormationEditor(...args) { calls.push(['renderArmyFormationEditor', args]); },
+    renderBattleSceneOverlay(...args) { calls.push(['renderBattleSceneOverlay', args]); },
+    renderCityManagementPanel(...args) { calls.push(['renderCityManagementPanel', args]); },
+    renderCitySwitcherMenu(...args) { calls.push(['renderCitySwitcherMenu', args]); },
+    renderEventModal(...args) { calls.push(['renderEventModal', args]); },
+    renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
+    renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
+    renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
+    renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
+    renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
+    renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
+    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return 260; },
+    renderHudOverlay(...args) { calls.push(['renderHudOverlay', args]); },
+    renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
+    renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
+    renderMainPanel(...args) { calls.push(['renderMainPanel', args]); },
+    renderMapCommandPanel(...args) { calls.push(['renderMapCommandPanel', args]); },
+    renderMapHomeWorldView(...args) { calls.push(['renderMapHomeWorldView', args]); },
+    renderNamingModal(...args) { calls.push(['renderNamingModal', args]); },
+    renderNetworkOverlay(...args) { calls.push(['renderNetworkOverlay', args]); },
+    renderPopulation(...args) { calls.push(['renderPopulation', args]); return 180; },
+    renderResourceDetailsPanel(...args) { calls.push(['renderResourceDetailsPanel', args]); },
+    renderRewardReveal(...args) { calls.push(['renderRewardReveal', args]); },
+    renderSettingsPanel(...args) { calls.push(['renderSettingsPanel', args]); },
+    renderSubcityListPanel(...args) { calls.push(['renderSubcityListPanel', args]); },
+    renderTabs(...args) { calls.push(['renderTabs', args]); },
+    renderTalentPolicyPanel(...args) { calls.push(['renderTalentPolicyPanel', args]); },
+    renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
+    renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
+    renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
+    renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
+    renderTutorialIntro(...args) { calls.push(['renderTutorialIntro', args]); },
+    renderWorldSiteModal(...args) { calls.push(['renderWorldSiteModal', args]); },
+    setHitTargets(targets) { calls.push(['setHitTargets', targets]); },
+    withSlideClip(...args) {
+      calls.push(['withSlideClip', args.slice(0, 5)]);
+      args[5]?.();
+    },
+    withSuppressedHitTargets(callback) {
+      calls.push(['withSuppressedHitTargets']);
+      callback?.();
+    },
+    ...overrides,
+  };
+  return host;
+}
+
+function callNames(host) {
+  return host.calls.map((call) => call[0]);
+}
+
+test('CanvasFrameRenderer delegates hud mode to hud overlay without clearing normal frame', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+  const options = { mode: 'hud', activeTab: 'tech' };
+
+  renderer.render({ resources: {} }, options);
+
+  assert.deepEqual(callNames(host), ['renderHudOverlay']);
+  assert.deepEqual(host.calls[0][1], [{ resources: {} }, options]);
+});
+
+test('CanvasFrameRenderer preserves login and loading early return frame flow', () => {
+  const loginHost = createHost();
+  new CanvasFrameRenderer({ host: loginHost }).render({}, { auth: { view: { loginPanelVisible: true } } });
+  assert.deepEqual(callNames(loginHost), ['beginFrame', 'setHitTargets', 'clear', 'renderLoginPanel', 'endFrame']);
+
+  const loadingHost = createHost();
+  new CanvasFrameRenderer({ host: loadingHost }).render({}, { loading: { visible: true } });
+  assert.deepEqual(callNames(loadingHost), ['beginFrame', 'setHitTargets', 'clear', 'renderLoadingScreen', 'endFrame']);
+});
+
+test('CanvasFrameRenderer preserves map-home military frame overlay sequence', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+  const options = {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    activeCommandPanel: 'capital',
+    showSubcityList: true,
+    showSettings: true,
+    floatingTexts: [{ text: '+1' }],
+    rewardReveal: { rewardText: '+1' },
+    network: { status: 'ok' },
+  };
+
+  renderer.render({ territoryState: {} }, options);
+
+  const names = callNames(host);
+  assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
+  assert.equal(names.includes('renderMapCommandPanel'), true);
+  assert.equal(names.includes('renderSubcityListPanel'), true);
+  assert.equal(names.includes('renderSettingsPanel'), true);
+  assert.equal(names.includes('renderTutorialIntro'), true);
+  assert.equal(names.at(-1), 'endFrame');
+});
+
+test('CanvasFrameRenderer preserves standard tab transition and modal overlays', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+  const options = {
+    activeTab: 'tech',
+    pageTransition: {
+      fromTab: 'buildings',
+      toTab: 'tech',
+      fromBuildingOffset: 24,
+      frame: { direction: 1, eased: 0.4 },
+    },
+    showResourceDetails: true,
+    showCitySwitcher: true,
+    showTaskCenter: true,
+    showGuidebook: true,
+    showFamousPersons: true,
+    showTalentPolicy: true,
+    armyFormationEditor: { open: true },
+    activeEventId: 'event-1',
+    techDetailOpen: true,
+    selectedTechId: 'fire',
+    naming: { visible: true },
+  };
+
+  renderer.render({ techUiState: { detailOpen: true } }, options);
+
+  const names = callNames(host);
+  assert.equal(names.filter((name) => name === 'withSlideClip').length, 2);
+  assert.equal(names.includes('withSuppressedHitTargets'), true);
+  assert.equal(names.includes('renderResourceDetailsPanel'), true);
+  assert.equal(names.includes('renderTechDetailModal'), true);
+  assert.equal(names.includes('renderNamingModal'), true);
+  assert.equal(names.at(-1), 'endFrame');
+});
+
+test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facade target', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+
+  renderer.renderMapHomeOverlays({}, {
+    activeCommandPanel: 'capital',
+    showCityManagement: true,
+    showAdvisor: true,
+    activeEventId: 'event-1',
+    naming: { visible: true },
+  });
+
+  const names = callNames(host);
+  assert.equal(names.includes('renderFloatingSubcityButton'), true);
+  assert.equal(names.includes('renderFloatingEventButton'), true);
+  assert.equal(names.includes('renderFloatingAdvisorButton'), true);
+  assert.equal(names.includes('renderCityManagementPanel'), true);
+  assert.equal(names.includes('renderAdvisorPanel'), true);
+  assert.equal(names.includes('renderWorldSiteModal'), true);
+  assert.equal(names.includes('renderNamingModal'), true);
+});
+
+test('CanvasGameRenderer exposes root frame rendering through facade', () => {
+  class StubFrameRenderer {
+    constructor(options) {
+      this.host = options.host;
+    }
+
+    render(...args) {
+      return { method: 'render', host: this.host, args };
+    }
+
+    renderMapHomeOverlays(...args) {
+      return { method: 'renderMapHomeOverlays', host: this.host, args };
+    }
+  }
+
+  const renderer = new CanvasGameRenderer({
+    ctx: {},
+    presenter: {},
+    frameRendererClass: StubFrameRenderer,
+  });
+  const state = { resources: {} };
+  const options = { activeTab: 'resources' };
+
+  const frame = renderer.render(state, options);
+  const overlays = renderer.renderMapHomeOverlays(state, options);
+
+  assert.equal(frame.method, 'render');
+  assert.equal(frame.host, renderer);
+  assert.deepEqual(frame.args, [state, options]);
+  assert.equal(overlays.method, 'renderMapHomeOverlays');
+  assert.equal(overlays.host, renderer);
+});

@@ -323,6 +323,18 @@
     return null;
   })();
 
+  const SharedCanvasFrameRenderer = (() => {
+    if (global.CanvasFrameRenderer) return global.CanvasFrameRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./renderers/CanvasFrameRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasGameRenderer {
     constructor(options = {}) {
       this.presenter = options.presenter || null;
@@ -424,6 +436,8 @@
       this.hudTabPageRenderer = options.hudTabPageRenderer || (HudTabPageRendererClass ? new HudTabPageRendererClass({ host: this }) : null);
       const HudOverlayRendererClass = options.hudOverlayRendererClass || SharedHudOverlayCanvasRenderer;
       this.hudOverlayRenderer = options.hudOverlayRenderer || (HudOverlayRendererClass ? new HudOverlayRendererClass({ host: this }) : null);
+      const FrameRendererClass = options.frameRendererClass || SharedCanvasFrameRenderer;
+      this.frameRenderer = options.frameRenderer || (FrameRendererClass ? new FrameRendererClass({ host: this }) : null);
       this.fpsLastPaintAt = 0;
       this.fpsLastPaintedValue = 0;
       this.showFpsOverlay = options.showFpsOverlay !== false;
@@ -2466,119 +2480,28 @@
       return this.delegateHudOverlayRenderer('renderHudOverlay', args);
     }
 
+    delegateFrameRenderer(method, args = []) {
+      const renderer = this.frameRenderer;
+      if (!renderer || typeof renderer[method] !== 'function') return undefined;
+      return renderer[method](...Array.from(args));
+    }
+
     render(state = {}, options = {}) {
-      if (options.mode === 'hud') {
-        this.renderHudOverlay(state, options);
-        return;
-      }
-      const activeTab = options.activeTab || 'resources';
+      const result = this.delegateFrameRenderer('render', arguments);
+      if (result !== undefined || this.frameRenderer) return result;
+      if (options.mode === 'hud') return this.renderHudOverlay(state, options);
       this.beginFrame(options);
       this.setHitTargets([]);
       this.clear();
-      if (options.auth?.view?.loginPanelVisible) {
-        this.renderLoginPanel(options.auth);
-        this.endFrame(options);
-        return;
-      }
-      if (options.loading?.visible) {
-        this.renderLoadingScreen(options.loading);
-        this.endFrame(options);
-        return;
-      }
-      if (options.battleScene?.visible) {
-        this.renderBattleSceneOverlay(state, options);
-        this.endFrame(options);
-        return;
-      }
-      const topBarBottom = this.renderTopBar(state, options);
-      if (options.isMapHome && activeTab === 'military') {
-        if (options.skipWorldMapLayer) this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
-        else this.renderMapHomeWorldView(state, topBarBottom, options);
-        this.renderTabs(activeTab, state, options);
-        this.renderMapHomeOverlays(state, options);
-        this.renderTutorialIntro(state, options);
-        this.renderTutorialHighlight(options.tutorialHighlight || null);
-        this.renderFloatingTexts(options.floatingTexts || []);
-        this.renderRewardReveal(options.rewardReveal || null);
-        this.renderNetworkOverlay(options.network || null);
-        this.endFrame(options);
-        return;
-      }
-      const tabsTop = this.height - 60 - this.bottomSafeArea;
-      const populationBottom = activeTab === 'resources'
-        ? this.renderPopulation(state, topBarBottom)
-        : topBarBottom;
-      const homeFeatureBottom = activeTab === 'resources'
-        ? this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 })
-        : populationBottom;
-      const panelTop = activeTab === 'resources' ? homeFeatureBottom : topBarBottom;
-      const advisorOffset = this.presenter && typeof this.presenter.buildAdvisorViewState === 'function' && this.presenter.buildAdvisorViewState(state.softGuide).hidden ? 0 : 52;
-      const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
-      const transition = this.getTransitionFrame(options.pageTransition);
-      const fromTab = options.pageTransition?.fromTab;
-      const toTab = options.pageTransition?.toTab || activeTab;
-      if (transition && fromTab && fromTab !== activeTab && toTab === activeTab && activeTab !== 'resources') {
-        const travel = this.width + 24;
-        this.withSlideClip(0, panelTop, this.width, Math.max(120, tabsTop - panelTop), -transition.direction * travel * transition.eased, () => {
-          this.withSuppressedHitTargets(() => this.renderMainPanel(state, fromTab, panelTop, availableHeight, {
-            ...options,
-            buildingOffset: options.pageTransition.fromBuildingOffset ?? options.buildingOffset,
-            buildingTransition: null,
-          }));
-        });
-        this.withSlideClip(0, panelTop, this.width, Math.max(120, tabsTop - panelTop), transition.direction * travel * (1 - transition.eased), () => {
-          this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
-        });
-      } else if (activeTab !== 'resources') this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
-      this.renderAdvisor(state);
-      this.renderTabs(activeTab, state, options);
-      if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
-      if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
-      if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
-      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
-      if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
-      if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
-      if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
-      if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
-      if (activeTab === 'tech' && (options.techDetailOpen || state.techUiState?.detailOpen)) {
-        const view = this.presenter?.buildTechViewState?.({
-          ...state,
-          techUiState: {
-            ...(state.techUiState || {}),
-            ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
-          },
-          ...(options.selectedTechId ? { selectedTechId: options.selectedTechId } : {}),
-        });
-        this.renderTechDetailModal(view?.detail);
-      }
-      if (activeTab === 'military') this.renderWorldSiteModal(state, options);
-      if (options.naming) this.renderNamingModal(options.naming);
-      this.renderTutorialHighlight(options.tutorialHighlight || null);
-      this.renderFloatingTexts(options.floatingTexts || []);
-      this.renderRewardReveal(options.rewardReveal || null);
-      this.renderNetworkOverlay(options.network || null);
+      this.renderTopBar(state, options);
+      this.renderTabs(options.activeTab || 'resources', state, options);
       this.endFrame(options);
+      return undefined;
     }
 
     renderMapHomeOverlays(state = {}, options = {}) {
-      this.renderFloatingSubcityButton(state, options);
-      this.renderFloatingEventButton(state, options);
-      this.renderFloatingAdvisorButton(state, options);
-      if (options.activeCommandPanel) this.renderMapCommandPanel(state, options);
-      if (options.showSubcityList) this.renderSubcityListPanel(state, options);
-      if (options.showCityManagement) this.renderCityManagementPanel(state, options);
-      if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
-      if (options.showSettings) this.renderSettingsPanel();
-      if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
-      if (options.showAdvisor) this.renderAdvisorPanel(state);
-      if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
-      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
-      if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
-      if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
-      if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
-      if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
-      this.renderWorldSiteModal(state, options);
-      if (options.naming) this.renderNamingModal(options.naming);
+      const result = this.delegateFrameRenderer('renderMapHomeOverlays', arguments);
+      return result === undefined ? undefined : result;
     }
   }
 

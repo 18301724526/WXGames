@@ -34,6 +34,7 @@ require('../js/platform/renderers/MapCommandCanvasRenderer');
 require('../js/platform/renderers/TabBarCanvasRenderer');
 require('../js/platform/renderers/HudTabPageCanvasRenderer');
 require('../js/platform/renderers/HudOverlayCanvasRenderer');
+require('../js/platform/renderers/CanvasFrameRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
