@@ -1919,10 +1919,10 @@
 提交结果：
 
 - 代码提交哈希：`1f7e237 refactor: move canvas asset pipeline into renderer`。
-- 文档提交哈希：本轮文档提交后补记。
+- 文档提交哈希：`ebb5acb docs: record refactor plan step 31`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档推送状态：本轮文档提交后确认服务器健康接口。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
