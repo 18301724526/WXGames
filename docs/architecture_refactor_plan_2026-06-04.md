@@ -936,6 +936,65 @@
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 - 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
+### Step 16：继续压缩 CanvasGameRenderer 的军事面板渲染职责
+
+目标：把 `CanvasGameRenderer.js` 内军事主面板、军队状态、编队卡片、侦察九宫格和侦察报告渲染下放到独立 `MilitaryCanvasRenderer`，同时保留世界地图绘制继续由 `WorldMapCanvasRenderer` 承接。
+
+回归测试：
+
+- 覆盖 `MilitaryCanvasRenderer` 自身军事 tab、军队状态和编队 hit target 协议。
+- 覆盖侦察九宫格仍保留 `scoutTerritory`、`claimScout` 和 disabled hit target 协议。
+- 覆盖 `CanvasGameRenderer` 的 military facade 仍能委托到军事 renderer。
+
+提交要求：
+
+- 单独提交。
+- 推送到服务器远端 `origin/main`。
+
+留档要求：
+
+- 在本文档追加 Step 16 的提交记录，包括测试命令、行数变化和结果。
+
+### Step 16 留档
+
+状态：已完成
+
+本次改动：
+
+- 新增 `frontend/js/platform/renderers/MilitaryCanvasRenderer.js`，承接军事主面板、军队状态、编队卡片、侦察九宫格和侦察报告渲染。
+- `frontend/js/platform/CanvasGameRenderer.js` 保留 military 相关外部入口与 facade，内部通过 `militaryRenderer` 委托。
+- 更新 `frontend/index.html` 和 `frontend/minigame/game.js`，保证 H5 与小游戏环境在主 renderer 前加载 `MilitaryCanvasRenderer`。
+- 新增 `frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js`，覆盖军事 tab、编队 hit target、侦察 hit target 和主 renderer facade。
+
+行数变化：
+
+- `frontend/js/platform/CanvasGameRenderer.js`：由本轮开始时的 6190 行降至 5916 行。
+- `frontend/js/platform/renderers/MilitaryCanvasRenderer.js`：新增为 371 行，承接军事领域渲染实现。
+- `frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js`：新增为 137 行，覆盖军事渲染防回归协议。
+
+测试命令：
+
+- `node --check frontend/js/platform/CanvasGameRenderer.js`
+- `node --check frontend/js/platform/renderers/MilitaryCanvasRenderer.js`
+- `node --check frontend/minigame/game.js`
+- `node --test frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/MilitaryCanvasRenderer.test.js frontend/js/platform/renderers/CivilizationCanvasRenderer.test.js frontend/js/platform/renderers/EventCanvasRenderer.test.js frontend/js/platform/renderers/BuildingCanvasRenderer.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js frontend/js/platform/renderers/BattleCanvasRenderer.test.js frontend/js/platform/renderers/TechCanvasRenderer.test.js`
+- `node --test frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/GameCommandService.test.js frontend/js/state/presenters/TechPresenter.test.js`
+- `node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameActionRegistry.test.js`
+- `node scripts/verify-refactor-plan-doc.js`
+
+测试结果：
+
+- 全部通过。
+
+提交结果：
+
+- 代码提交哈希：`82f0670 refactor: move military rendering into military canvas renderer`。
+- 文档提交哈希：将在下一次文档状态提交中记录。
+- 推送目标：`origin main`。
+- 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
+- 文档推送状态：将在下一次文档状态提交中记录。
+
 ## 测试策略
 
 后端优先使用 Node 内置 `node:test`，避免引入额外测试框架。前端纯逻辑模块也优先用 Node 测试；涉及 canvas 的地方先测试调用协议、view model、hit target，不在第一轮追求像素级测试。
