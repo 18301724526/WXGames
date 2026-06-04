@@ -1418,10 +1418,10 @@
 提交结果：
 
 - 代码提交哈希：`77b2d84 refactor: move army formation editor into canvas renderer`。
-- 文档提交哈希：将在下一次文档状态提交中记录。
+- 文档提交哈希：`d10de17 docs: record refactor plan step 23`。
 - 推送目标：`origin main`。
 - 代码推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
-- 文档推送状态：将在下一次文档状态提交中记录。
+- 文档推送状态：已推送，服务器部署完成，健康接口最终返回 `status: ok`。
 
 ## 测试策略
 
