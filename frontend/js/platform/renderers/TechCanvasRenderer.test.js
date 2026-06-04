@@ -4,21 +4,26 @@ const assert = require('node:assert/strict');
 const TechCanvasRenderer = require('./TechCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
-test('TechCanvasRenderer delegates rendering to the host tech implementation', () => {
-  const calls = [];
-  const host = {
-    renderTechInternal(state, startY, panelHeight, options) {
-      calls.push({ state, startY, panelHeight, options });
-      return 'rendered';
+test('TechCanvasRenderer owns tech tree layout calculations', () => {
+  const renderer = new TechCanvasRenderer({ host: {} });
+  const layout = renderer.getTechTreeLayout({
+    tree: {
+      eras: [{ era: 1, column: 1, name: 'Era 1' }],
+      nodes: [
+        { id: 'fire', era: 1, route: 'knowledge', tree: { column: 1, row: 1, parents: [] } },
+        { id: 'writing', era: 1, route: 'culture', tree: { column: 1, row: 2, parents: ['fire'] } },
+      ],
     },
-  };
+  }, { x: 20, y: 80, width: 320, height: 260 }, { techTreeZoom: 1.1, techTreePanX: 999, techTreePanY: 999 });
 
-  const renderer = new TechCanvasRenderer({ host });
-  const state = { techs: {} };
-  const options = { techTreeZoom: 1.2 };
-
-  assert.equal(renderer.render(state, 100, 300, options), 'rendered');
-  assert.deepEqual(calls, [{ state, startY: 100, panelHeight: 300, options }]);
+  assert.equal(layout.nodes.length, 2);
+  assert.equal(layout.eraPositions.length, 1);
+  assert.ok(layout.nodeRects.fire);
+  assert.ok(layout.nodeRects.writing);
+  assert.equal(layout.linkPaths.length, 1);
+  assert.equal(layout.zoom, 1.1);
+  assert.ok(layout.panX <= layout.maxPanX);
+  assert.ok(layout.panY <= layout.maxPanY);
 });
 
 test('CanvasGameRenderer owns a tech renderer and routes renderTech through it', () => {
@@ -45,4 +50,22 @@ test('CanvasGameRenderer owns a tech renderer and routes renderTech through it',
   assert.equal(result.panelHeight, 240);
   assert.equal(result.options, options);
   assert.equal(typeof renderer.renderTechInternal, 'function');
+});
+
+test('CanvasGameRenderer exposes tech tree layout through the tech renderer facade', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: {},
+    presenter: {},
+    techRendererClass: TechCanvasRenderer,
+  });
+
+  const layout = renderer.getTechTreeLayout({
+    tree: {
+      eras: [{ era: 1, column: 1, name: 'Era 1' }],
+      nodes: [{ id: 'fire', era: 1, route: 'knowledge', tree: { column: 1, row: 1, parents: [] } }],
+    },
+  }, { x: 20, y: 80, width: 320, height: 260 }, {});
+
+  assert.equal(layout.nodes.length, 1);
+  assert.ok(layout.nodeRects.fire);
 });
