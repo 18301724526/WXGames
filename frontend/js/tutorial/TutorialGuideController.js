@@ -514,10 +514,16 @@
         changed = actionController.centerWorldMapOnSite(siteId) !== false;
       }
       if (!changed) return false;
-      this.focusedFirstCitySiteId = siteId;
       this.game?.renderCanvasSurface?.(this.game?.state?.currentTab || this.game?.activeTab);
       shell?.renderActive?.();
-      setTimeout(() => this.refreshCurrentHighlight(), 80);
+      if (this.showFirstCitySiteOpenHighlight(siteId)) {
+        this.focusedFirstCitySiteId = siteId;
+      }
+      setTimeout(() => {
+        if (this.showFirstCitySiteOpenHighlight(siteId)) {
+          this.focusedFirstCitySiteId = siteId;
+        }
+      }, 80);
       return true;
     }
 

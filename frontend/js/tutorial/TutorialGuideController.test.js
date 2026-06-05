@@ -621,6 +621,60 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
     ['shellRender'],
   ]);
   assert.equal(calls.some((call) => call[0] === 'highlight'), false);
+  assert.equal(controller.focusedFirstCitySiteId, '');
+});
+
+test('TutorialGuideController highlights guided first city immediately after focus when visible', () => {
+  const calls = [];
+  const siteId = 'site_visible_after_focus';
+  let centered = false;
+  const shell = {
+    runtime: { width: 420, height: 747 },
+    actionController: {
+      centerWorldMapOnSite(id) {
+        calls.push(['center', id]);
+        centered = true;
+        return true;
+      },
+    },
+    renderActive() {
+      calls.push(['shellRender']);
+    },
+    getCanvasTarget() {
+      return centered
+        ? { x: 180, y: 320, width: 80, height: 80 }
+        : { x: -220, y: 680, width: 80, height: 80 };
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push(['highlight', options.allowedAction]);
+      return true;
+    },
+  };
+  const game = {
+    tutorial: {
+      completed: false,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed,
+      grants: { firstExploreEmptyCity: { siteId } },
+    },
+    state: {
+      currentTab: 'military',
+      territoryState: {
+        territories: [
+          { id: siteId, status: 'discovered', owner: 'neutral', naturalName: 'Visible Site' },
+        ],
+      },
+    },
+    canvasShell: shell,
+    renderCanvasSurface(tab) {
+      calls.push(['gameRender', tab]);
+    },
+  };
+  const controller = new TutorialGuideController({ game });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1), ['highlight', { type: 'openWorldSite', siteId }]);
+  assert.equal(controller.focusedFirstCitySiteId, siteId);
 });
 
 test('TutorialGuideController guides post-naming policy, manual talent, and famous seek systems', async () => {

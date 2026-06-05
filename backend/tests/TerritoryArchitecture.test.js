@@ -8,6 +8,7 @@ const TerritoryConstants = require('../services/territory/TerritoryConstants');
 const TerritoryVisuals = require('../services/territory/TerritoryVisuals');
 const TerritoryInitialState = require('../services/territory/TerritoryInitialState');
 const TerritoryShared = require('../services/territory/TerritoryShared');
+const createTerritoryCombatTargets = require('../services/territory/TerritoryCombatTargets');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
@@ -23,6 +24,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     .sort();
 
   assert.deepEqual(moduleFiles, [
+    'TerritoryCombatTargets.js',
     'TerritoryConstants.js',
     'TerritoryInitialState.js',
     'TerritoryScoutRecords.js',
@@ -64,6 +66,76 @@ test('territory shared helpers preserve terrain and soldier normalization contra
   assert.equal(TerritoryShared.normalizeMapTerrainId('unknown'), null);
   assert.equal(TerritoryShared.getPlanningTerrainForMapTerrain('mountain'), 'hills');
   assert.equal(TerritoryShared.getPlanningTerrainForMapTerrain('coast'), 'coast');
+});
+
+test('territory combat targets module owns garrison and battle target contracts', () => {
+  const leaderCalls = [];
+  const CombatTargets = createTerritoryCombatTargets({
+    DefenderLeaderService: {
+      ensureDefenderLeader: (territory, options) => {
+        leaderCalls.push({ territory, options });
+        return {
+          id: 'leader-1',
+          name: '守备长',
+          quality: 'rare',
+          abilityKit: { id: 'shield-wall' },
+        };
+      },
+    },
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+    },
+  });
+
+  assert.equal(CombatTargets.normalizeGarrison(null, { id: 'capital', owner: 'player' }), null);
+  assert.equal(CombatTargets.normalizeGarrison(null, { id: 'empty', owner: 'neutral' }), null);
+
+  const territory = {
+    id: 'camp-1',
+    x: 3,
+    y: -1,
+    type: 'camp',
+    owner: 'tribe',
+    status: 'discovered',
+    naturalName: '林地部落',
+    defense: 80,
+    recommendedSoldiers: 80,
+    threat: 4,
+    scale: 2,
+    mapTerrain: 'forest',
+    discoveredAt: '2026-06-06T00:00:00.000Z',
+  };
+
+  const garrison = CombatTargets.normalizeGarrison(null, territory, '2026-06-06T00:00:00.000Z');
+  assert.equal(garrison.id, 'garrison_camp-1');
+  assert.equal(garrison.siteId, 'camp-1');
+  assert.equal(garrison.owner, 'tribe');
+  assert.equal(garrison.soldiers, 8000);
+  assert.equal(garrison.quality, 'rare');
+  assert.equal(garrison.threat, 4);
+  assert.equal(garrison.scale, 2);
+  assert.equal(garrison.leader.id, 'leader-1');
+  assert.equal(leaderCalls.length, 1);
+
+  const battleTarget = CombatTargets.normalizeBattleTarget({
+    q: 3,
+    r: -1,
+    mapTerrain: 'mountain',
+    defender: garrison,
+  }, territory, '2026-06-06T00:01:00.000Z');
+
+  assert.deepEqual(battleTarget.tile, { id: 'tile_3_-1', q: 3, r: -1, terrain: 'mountain' });
+  assert.equal(battleTarget.site.id, 'camp-1');
+  assert.equal(battleTarget.site.terrain, 'hills');
+  assert.equal(battleTarget.defender.soldiers, 8000);
+  assert.deepEqual(battleTarget.intelSnapshot, {
+    knownTerrain: true,
+    knownSite: true,
+    knownOwner: true,
+    knownGarrison: true,
+    knownLeader: true,
+    knownSkill: true,
+  });
 });
 
 test('territory scout records module owns report and area normalization contracts', () => {
