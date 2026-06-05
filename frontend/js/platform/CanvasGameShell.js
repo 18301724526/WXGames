@@ -1068,7 +1068,26 @@
 
     forwardCanvasAction(action, meta = {}) {
       if (!this.onAction) return undefined;
-      return this.onAction(action, meta.event) !== false;
+      const forwarded = this.onAction(action, meta.event) !== false;
+      if (forwarded) this.syncForwardedLocalAction(action);
+      return forwarded;
+    }
+
+    syncForwardedLocalAction(action = {}) {
+      if (action.type === 'openWorldSite') {
+        const siteId = action.siteId || action.territoryId || action.cityId || '';
+        if (!siteId) return false;
+        const territory = this.lastGame?.territoryController || null;
+        if (territory?.openSiteDialog) territory.openSiteDialog(siteId);
+        this.territoryUiState = this.territoryUiState || {};
+        this.territoryUiState.selectedSiteId = siteId;
+        if (this.lastGame && typeof this.lastGame === 'object') {
+          this.lastGame.territoryUiState = this.lastGame.territoryUiState || {};
+          this.lastGame.territoryUiState.selectedSiteId = siteId;
+        }
+        return true;
+      }
+      return false;
     }
 
     renderCanvasAction(action = {}) {

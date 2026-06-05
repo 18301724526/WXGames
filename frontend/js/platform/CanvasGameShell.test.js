@@ -338,6 +338,23 @@ test('CanvasGameShell treats world site id fields as equivalent during guided hi
   ]);
 });
 
+test('CanvasGameShell keeps local world site selection after forwarded open action', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction(action) {
+      calls.push(['forward', action.type, action.siteId]);
+      return true;
+    },
+  });
+
+  assert.equal(shell.forwardCanvasAction({ type: 'openWorldSite', siteId: 'site_2_-8' }), true);
+
+  assert.equal(shell.territoryUiState.selectedSiteId, 'site_2_-8');
+  assert.deepEqual(calls, [['forward', 'openWorldSite', 'site_2_-8']]);
+});
+
 test('CanvasGameShell blocks all drags while a guided highlight is active', () => {
   const calls = [];
   const shell = new CanvasGameShell({
