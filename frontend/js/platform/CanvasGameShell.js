@@ -497,6 +497,10 @@
     isTutorialActionAllowed(action = {}) {
       if (!action?.type || action.type === 'blockCanvasModal') return false;
       const targetAction = action.allowedAction || action;
+      if (this.tutorialHighlight?.allowedAction
+        && this.isTutorialHighlightActionAllowed(targetAction, this.tutorialHighlight)) {
+        return true;
+      }
       const intro = this.getActiveTutorialIntro();
       if (intro) return this.isTutorialIntroActionAllowed(targetAction, intro);
       return this.isTutorialHighlightActionAllowed(targetAction);

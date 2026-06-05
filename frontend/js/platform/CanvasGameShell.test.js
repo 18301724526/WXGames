@@ -338,6 +338,47 @@ test('CanvasGameShell treats world site id fields as equivalent during guided hi
   ]);
 });
 
+test('CanvasGameShell lets explicit guide highlight override stale intro action rules', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'openWorldSite', siteId: 'site_2_-8' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.siteId || '']);
+        return true;
+      },
+    },
+  });
+  shell.tutorialIntro = { active: true, step: 'city', capitalCityId: 'capital' };
+  shell.showTutorialHighlight(
+    { x: 300, y: 200, width: 80, height: 80 },
+    'open first empty city',
+    { allowedAction: { type: 'openWorldSite', siteId: 'site_2_-8' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 340, y: 240 }, event), true);
+
+  assert.deepEqual(calls, [
+    ['handle', 'openWorldSite', 'site_2_-8'],
+    ['preventDefault'],
+    ['stopPropagation'],
+  ]);
+});
+
 test('CanvasGameShell keeps local world site selection after forwarded open action', () => {
   const calls = [];
   const shell = new CanvasGameShell({
