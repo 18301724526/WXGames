@@ -389,11 +389,21 @@ test('CanvasGameShell keeps local world site selection after forwarded open acti
       return true;
     },
   });
+  shell.lastGame = {
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refresh']);
+      },
+    },
+  };
 
   assert.equal(shell.forwardCanvasAction({ type: 'openWorldSite', siteId: 'site_2_-8' }), true);
 
   assert.equal(shell.territoryUiState.selectedSiteId, 'site_2_-8');
-  assert.deepEqual(calls, [['forward', 'openWorldSite', 'site_2_-8']]);
+  assert.deepEqual(calls, [
+    ['forward', 'openWorldSite', 'site_2_-8'],
+    ['refresh'],
+  ]);
 });
 
 test('CanvasGameShell syncs local world site selection after handled open action', () => {

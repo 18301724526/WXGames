@@ -1089,6 +1089,7 @@
           this.lastGame.territoryUiState = this.lastGame.territoryUiState || {};
           this.lastGame.territoryUiState.selectedSiteId = siteId;
         }
+        this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
         return true;
       }
       return false;
