@@ -574,6 +574,7 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
   const calls = [];
   const siteId = 'site_far';
   const shell = {
+    runtime: { width: 420, height: 747 },
     actionController: {
       centerWorldMapOnSite(id) {
         calls.push(['center', id]);
@@ -584,7 +585,7 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
       calls.push(['shellRender']);
     },
     getCanvasTarget() {
-      return null;
+      return { x: -220, y: 680, width: 80, height: 80 };
     },
     showTutorialHighlight() {
       calls.push(['highlight']);
@@ -619,4 +620,5 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
     ['gameRender', 'military'],
     ['shellRender'],
   ]);
+  assert.equal(calls.some((call) => call[0] === 'highlight'), false);
 });

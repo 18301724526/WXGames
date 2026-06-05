@@ -377,6 +377,54 @@
       ) || false;
     }
 
+    getCanvasTargetRect(target = {}) {
+      const rect = typeof target.getRect === 'function'
+        ? target.getRect()
+        : (typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : target);
+      const left = Number(rect?.left ?? rect?.x);
+      const top = Number(rect?.top ?? rect?.y);
+      const width = Number(rect?.width);
+      const height = Number(rect?.height);
+      if (![left, top, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+      return {
+        left,
+        top,
+        width,
+        height,
+        right: Number(rect?.right) || left + width,
+        bottom: Number(rect?.bottom) || top + height,
+      };
+    }
+
+    isCanvasTargetVisible(target = {}, padding = 8) {
+      const rect = this.getCanvasTargetRect(target);
+      if (!rect) return false;
+      const shell = this.game?.canvasShell || {};
+      const width = Number(shell.runtime?.width || shell.renderer?.width || shell.width || 0);
+      const height = Number(shell.runtime?.height || shell.renderer?.height || shell.height || 0);
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return true;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      return centerX >= padding
+        && centerX <= width - padding
+        && centerY >= padding
+        && centerY <= height - padding;
+    }
+
+    showFirstCitySiteOpenHighlight(siteId = '') {
+      const target = this.getCanvasTarget(
+        'openWorldSite',
+        (action) => !action.disabled && (!siteId || action.siteId === siteId || action.territoryId === siteId),
+      );
+      if (!target) return false;
+      if (!this.isCanvasTargetVisible(target)) return false;
+      return this.game?.canvasShell?.showTutorialHighlight?.(
+        target,
+        '\u70b9\u5f00\u4fa6\u5bdf\u961f\u53d1\u73b0\u7684\u7a7a\u57ce\uff0c\u51c6\u5907\u5efa\u7acb\u7b2c\u4e8c\u5904\u636e\u70b9\u3002',
+        { allowedAction: { type: 'openWorldSite', siteId }, source: 'strongTutorial' },
+      ) || false;
+    }
+
     focusFirstCitySite(siteId = '') {
       if (!siteId || this.focusedFirstCitySiteId === siteId) return false;
       const shell = this.game?.canvasShell || null;
@@ -755,12 +803,7 @@
         const site = this.getFirstExploreCity() || {};
         if (step === TUTORIAL_STEPS.scoutExploreClaimed) {
           if (!this.isWorldSiteSelected(siteId)) {
-            const highlighted = this.showHighlight(
-              'openWorldSite',
-              (action) => !action.disabled && (!siteId || action.siteId === siteId || action.territoryId === siteId),
-              '\u70b9\u5f00\u4fa6\u5bdf\u961f\u53d1\u73b0\u7684\u7a7a\u57ce\uff0c\u51c6\u5907\u5efa\u7acb\u7b2c\u4e8c\u5904\u636e\u70b9\u3002',
-              { type: 'openWorldSite', siteId },
-            );
+            const highlighted = this.showFirstCitySiteOpenHighlight(siteId);
             if (highlighted) return true;
             return this.focusFirstCitySite(siteId);
           }

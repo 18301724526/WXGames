@@ -307,3 +307,41 @@ test('CanvasActionController keeps local world site HUD open after forwarded act
   assert.equal(host.territoryUiState.selectedSiteId, 'site_0_-8');
   assert.deepEqual(calls, [['forward', 'openWorldSite', 'site_0_-8']]);
 });
+
+test('CanvasActionController centers far guided world sites inside the map viewport', () => {
+  const calls = [];
+  const host = {
+    runtime: { width: 420, height: 747 },
+    renderer: {
+      getTopBarBottom() {
+        return 84;
+      },
+    },
+    worldMapRuntime: {
+      setCamera(x, y, options) {
+        calls.push(['setCamera', x, y, options.source]);
+        return true;
+      },
+    },
+    state: {
+      territoryState: {
+        worldMap: {
+          tiles: [{ id: 'tile_3_8', q: 3, r: 8, siteId: 'site_3_8' }],
+        },
+        territories: [{ id: 'site_3_8', x: 3, y: 8 }],
+      },
+    },
+  };
+  const controller = new CanvasActionController({ host });
+
+  assert.equal(controller.centerWorldMapOnSite('site_3_8'), true);
+
+  const [, panX, panY] = calls[0];
+  const scale = 0.62;
+  const projectedX = 210 + panX + (3 - 8) * 96 * scale;
+  const visibleMapY = 84;
+  const visibleMapH = 747 - 64 - visibleMapY;
+  const projectedY = visibleMapY + visibleMapH * 0.42 + panY + (3 + 8) * 48 * scale;
+  assert.equal(Math.round(projectedX), 210);
+  assert.equal(Math.round(projectedY), Math.round(visibleMapY + visibleMapH * 0.46));
+});

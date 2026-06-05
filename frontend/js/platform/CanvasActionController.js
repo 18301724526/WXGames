@@ -934,8 +934,19 @@
       const stepX = Number(geometry.stepX) || 96;
       const stepY = Number(geometry.stepY) || 48;
       const scale = 0.62;
-      const x = -((q - r) * stepX * scale);
-      const y = -((q + r) * stepY * scale);
+      const frameWidth = Number(this.host?.runtime?.width || this.host?.renderer?.viewportWidth || this.host?.renderer?.width || 420);
+      const frameHeight = Number(this.host?.runtime?.height || this.host?.renderer?.viewportHeight || this.host?.renderer?.height || 747);
+      const topBarBottom = typeof this.host?.renderer?.getTopBarBottom === 'function'
+        ? this.host.renderer.getTopBarBottom(this.getState(), { isMapHome: true })
+        : 84;
+      const visibleMapY = Math.max(0, Number(topBarBottom) || 84);
+      const visibleMapH = Math.max(160, frameHeight - 64 - visibleMapY);
+      const originX = frameWidth * 0.5;
+      const originY = visibleMapY + visibleMapH * 0.42;
+      const targetX = frameWidth * 0.5;
+      const targetY = visibleMapY + visibleMapH * 0.46;
+      const x = targetX - originX - ((q - r) * stepX * scale);
+      const y = targetY - originY - ((q + r) * stepY * scale);
       const runtime = this.host?.ensureWorldMapRuntimeCoordinator?.()?.getMapRuntime?.()
         || this.getGameHost()?.ensureWorldMapRuntimeCoordinator?.()?.getMapRuntime?.()
         || this.host?.worldMapRuntime
