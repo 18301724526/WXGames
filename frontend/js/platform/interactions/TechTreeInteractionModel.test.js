@@ -187,6 +187,46 @@ test('CanvasActionController notifies tutorial when opening civilization command
   ]);
 });
 
+test('CanvasActionController lets tutorial finish asynchronously when closing advisor', async () => {
+  const calls = [];
+  const game = {
+    showAdvisor: true,
+    tutorialController: {
+      async onAdvisorClosed() {
+        calls.push(['onAdvisorClosed']);
+        await Promise.resolve();
+        calls.push(['advisorClosedDone']);
+        return true;
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+  };
+  const host = {
+    showAdvisor: true,
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
+
+  assert.equal(host.showAdvisor, false);
+  assert.equal(game.showAdvisor, false);
+  assert.deepEqual(calls, [
+    ['onAdvisorClosed'],
+    ['advisorClosedDone'],
+    ['render'],
+    ['refreshCurrentHighlight'],
+  ]);
+});
+
 test('CanvasActionController syncs opened event id across shell and game hosts', () => {
   const calls = [];
   const shell = {

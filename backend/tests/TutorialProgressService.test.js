@@ -78,6 +78,39 @@ test('completed tutorial states continue to allow every action', () => {
   assert.equal(TutorialService.validateAction(tutorial, 'upgrade', {}, {}).allowed, true);
 });
 
+test('client can complete tutorial only after polity naming', () => {
+  const cityNamed = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.firstCityNamed,
+  );
+  const early = TutorialService.advanceClientStep(cityNamed, TutorialService.TUTORIAL_STEPS.completed);
+
+  assert.equal(early.success, false);
+  assert.equal(early.error, 'TUTORIAL_STEP_LOCKED');
+  assert.equal(early.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityNamed);
+
+  const polityNamed = TutorialService.manualAdvance(cityNamed, TutorialService.TUTORIAL_STEPS.polityNamed);
+  const completed = TutorialService.advanceClientStep(polityNamed, TutorialService.TUTORIAL_STEPS.completed);
+
+  assert.equal(TutorialService.canAccessTab(polityNamed, 'tech'), true);
+  assert.equal(TutorialService.canAccessTab(polityNamed, 'military'), false);
+  assert.equal(TutorialService.validateAction(polityNamed, 'research', { techId: 'writing' }, {}).allowed, false);
+  assert.equal(
+    TutorialService.validateAction(
+      polityNamed,
+      'tutorialAdvance',
+      { step: TutorialService.TUTORIAL_STEPS.completed },
+      {},
+    ).allowed,
+    true,
+  );
+  assert.equal(completed.success, true);
+  assert.equal(completed.tutorial.completed, true);
+  assert.equal(completed.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.completed);
+  assert.equal(TutorialService.validateAction(completed.tutorial, 'research', { techId: 'writing' }, {}).allowed, true);
+  assert.equal(TutorialService.validateAction(completed.tutorial, 'build', { target: 'farm' }, {}).allowed, true);
+});
+
 test('tutorial guides farm, second era event, and lumbermill actions in order', () => {
   const farmPrep = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),

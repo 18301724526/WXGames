@@ -407,9 +407,16 @@
       this.host.showAdvisor = false;
       const game = this.getGameHost();
       if (game && game !== this.host) game.showAdvisor = false;
-      const handled = this.afterHandled(action);
-      game?.tutorialController?.refreshCurrentHighlight?.();
-      return handled;
+      const closeResult = typeof game?.tutorialController?.onAdvisorClosed === 'function'
+        ? game.tutorialController.onAdvisorClosed(action)
+        : true;
+      return this.finalize(Promise.resolve(closeResult).then((result) => {
+        if (result !== false) {
+          this.afterHandled(action);
+          game?.tutorialController?.refreshCurrentHighlight?.();
+        }
+        return result !== false;
+      }));
     }
 
     handle_goToAdvisorTarget(action, meta = {}) {

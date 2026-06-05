@@ -622,3 +622,77 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
   ]);
   assert.equal(calls.some((call) => call[0] === 'highlight'), false);
 });
+
+test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {
+  const calls = [];
+  const shell = {
+    activeCommandPanel: '',
+    getCanvasTarget(type, predicate) {
+      const action = { type: 'openCommandPanel', panel: 'tech' };
+      if (type === 'openCommandPanel' && (!predicate || predicate(action))) {
+        return { x: 10, y: 20, width: 100, height: 30 };
+      }
+      return null;
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+    hideTutorialHighlight() {
+      calls.push({ hideHighlight: true });
+      return true;
+    },
+  };
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
+    state: { currentTab: 'military' },
+    activeCommandPanel: '',
+    canvasShell: shell,
+    renderCanvasSurface(tab) {
+      calls.push({ render: tab });
+    },
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+      this.state.tutorial = result.tutorial;
+    },
+  };
+  const api = {
+    async advanceTutorial(step) {
+      calls.push({ advanceTutorial: step });
+      return {
+        tutorial: {
+          completed: step === TutorialGuideController.TUTORIAL_STEPS.completed,
+          currentStep: step,
+          phaseCompleted: { newbie: true, era2: true, scoutFormation: true },
+        },
+      };
+    },
+  };
+  const controller = new TutorialGuideController({ game, api });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.canOpenTab('tech'), true);
+  assert.equal(controller.canOpenTab('military'), false);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'tech' });
+
+  shell.activeCommandPanel = 'tech';
+  game.activeCommandPanel = 'tech';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.equal(game.showAdvisor, true);
+  assert.equal(shell.showAdvisor, true);
+  assert.equal(game.state.softGuide.target, 'tech-tree');
+  assert.match(game.state.softGuide.message, /科技点/);
+
+  await controller.onAdvisorClosed();
+
+  assert.equal(controller.isCompleted(), true);
+  assert.equal(game.tutorial.currentStep, TutorialGuideController.TUTORIAL_STEPS.completed);
+  assert.equal(game.tutorial.completed, true);
+  assert.equal(game.state.softGuide, null);
+  assert.equal(controller.canOpenTab('military'), true);
+  assert.deepEqual(
+    calls.filter((call) => call.advanceTutorial).map((call) => call.advanceTutorial),
+    [TutorialGuideController.TUTORIAL_STEPS.completed],
+  );
+});

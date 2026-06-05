@@ -89,6 +89,7 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.famousCardViewed]: TUTORIAL_STEPS.famousPanelOpened,
   [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
   [TUTORIAL_STEPS.scoutWorldPanelOpened]: TUTORIAL_STEPS.scoutFormationSaved,
+  [TUTORIAL_STEPS.completed]: TUTORIAL_STEPS.polityNamed,
 });
 
 function createPhaseCompleted(currentStep) {

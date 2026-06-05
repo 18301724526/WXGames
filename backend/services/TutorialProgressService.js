@@ -110,6 +110,7 @@ function canAccessTab(tutorialState, tabKey) {
   if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutFormationSaved) {
     return ['resources', 'military', 'civilization'].includes(tabKey);
   }
+  if (step === TUTORIAL_STEPS.polityNamed) return tabKey === 'tech';
   return true;
 }
 
@@ -338,6 +339,13 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
   return { allowed: true };
 }
 
+function validateFinalTechGuideAction(action, payload = {}) {
+  if (action === 'tutorialAdvance' && Number(payload?.step) === TUTORIAL_STEPS.completed) {
+    return { allowed: true };
+  }
+  return blocked('请先打开科技并关闭顾问讲解，完成最后的新手引导。');
+}
+
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
@@ -348,6 +356,10 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
     && step < TUTORIAL_STEPS.polityNamed
   ) {
     return validateFirstCityGuideAction(step, action, payload, gameState);
+  }
+
+  if (step === TUTORIAL_STEPS.polityNamed) {
+    return validateFinalTechGuideAction(action, payload);
   }
 
   if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };

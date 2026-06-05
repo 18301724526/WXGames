@@ -76,6 +76,7 @@
       if (step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed) {
         return ['military'].includes(tabId);
       }
+      if (step === TUTORIAL_STEPS.polityNamed) return tabId === 'tech';
       return true;
     }
 
@@ -165,6 +166,10 @@
     isFirstCityGuideActive() {
       const step = this.getCurrentStep();
       return !this.isCompleted() && step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed;
+    }
+
+    isFinalTechGuideActive() {
+      return !this.isCompleted() && this.getCurrentStep() === TUTORIAL_STEPS.polityNamed;
     }
 
     isLumbermillGuideActive() {
@@ -361,6 +366,24 @@
       this.sync(result.tutorial || this.game?.tutorial || this.state);
       this.refreshCurrentHighlight();
       return this.state;
+    }
+
+    async onAdvisorClosed() {
+      const game = this.game || {};
+      game.showAdvisor = false;
+      if (game.canvasShell) game.canvasShell.showAdvisor = false;
+      if (!this.isFinalTechGuideActive()) {
+        this.refreshCurrentHighlight();
+        return this.state;
+      }
+      game.canvasShell?.hideTutorialHighlight?.();
+      game.state = {
+        ...(game.state || {}),
+        softGuide: null,
+      };
+      const result = await this.advanceTo(TUTORIAL_STEPS.completed);
+      this.refreshCurrentHighlight();
+      return result;
     }
 
     getCanvasTarget(type, predicate = null) {
@@ -869,6 +892,21 @@
             { type: 'submitNaming' },
           );
         }
+      }
+      if (this.isFinalTechGuideActive()) {
+        if (!this.isCommandPanelOpen('tech')) {
+          this.prepareCommandPanelGuide('tech');
+          return this.showHighlight(
+            'openCommandPanel',
+            (action) => !action.disabled && action.panel === 'tech',
+            '\u6253\u5f00\u79d1\u6280\uff0c\u770b\u770b\u6587\u660e\u672a\u6765\u7684\u53d1\u5c55\u8def\u7ebf\u3002',
+            { type: 'openCommandPanel', panel: 'tech' },
+          );
+        }
+        return this.showSoftGuide(
+          'tech-tree',
+          '\u79d1\u6280\u70b9\u4f1a\u5f71\u54cd\u6587\u660e\u7684\u53d1\u5c55\u8fdb\u7a0b\uff0c\u4e0d\u540c\u8def\u7ebf\u4f1a\u628a\u805a\u843d\u5e26\u5411\u519c\u4e1a\u3001\u519b\u4e8b\u6216\u5de5\u4e1a\u7b49\u4e0d\u540c\u4fa7\u91cd\u3002\u63a5\u4e0b\u6765\u7531\u4f60\u6765\u51b3\u5b9a\u7b2c\u4e00\u9879\u7814\u7a76\u3002',
+        );
       }
       if (!this.isHouseGuideActive()) return false;
       this.ensureHouseGuideVisible();
