@@ -8,6 +8,7 @@ const TerritoryConstants = require('../services/territory/TerritoryConstants');
 const TerritoryVisuals = require('../services/territory/TerritoryVisuals');
 const TerritoryInitialState = require('../services/territory/TerritoryInitialState');
 const TerritoryShared = require('../services/territory/TerritoryShared');
+const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const territoryRoot = path.join(serviceRoot, 'territory');
@@ -24,6 +25,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
   assert.deepEqual(moduleFiles, [
     'TerritoryConstants.js',
     'TerritoryInitialState.js',
+    'TerritoryScoutRecords.js',
     'TerritoryShared.js',
     'TerritoryVisuals.js',
   ]);
@@ -62,6 +64,77 @@ test('territory shared helpers preserve terrain and soldier normalization contra
   assert.equal(TerritoryShared.normalizeMapTerrainId('unknown'), null);
   assert.equal(TerritoryShared.getPlanningTerrainForMapTerrain('mountain'), 'hills');
   assert.equal(TerritoryShared.getPlanningTerrainForMapTerrain('coast'), 'coast');
+});
+
+test('territory scout records module owns report and area normalization contracts', () => {
+  const calls = [];
+  const ScoutRecords = createTerritoryScoutRecords({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+    },
+    ensureMissionRevealArea: (gameState, mission) => {
+      calls.push({ gameState, mission });
+      return [
+        { q: 2, r: 1, kind: 'main', step: 1 },
+        { q: 2, r: 2, kind: 'branch', step: 2 },
+      ];
+    },
+    getScoutResolvedCoordinate: () => ({ x: 2, y: 1 }),
+    normalizeDirection: (direction) => (direction === 'bad' ? null : direction),
+  });
+
+  const report = ScoutRecords.normalizeScoutReport({
+    id: 'report-1',
+    q: '2',
+    r: '1',
+    mapTerrain: 'mountain',
+    direction: 'e',
+    revealArea: [{ q: 2, r: 1, revealed: false }],
+  });
+  assert.match(report.createdAt, /^\d{4}-\d{2}-\d{2}T/);
+  delete report.createdAt;
+  assert.deepEqual(report, {
+    id: 'report-1',
+    siteId: null,
+    title: '侦察报告',
+    text: '',
+    direction: 'e',
+    tileId: 'tile_2_1',
+    q: 2,
+    r: 1,
+    mapTerrain: 'mountain',
+    terrain: 'hills',
+    tile: { id: 'tile_2_1', q: 2, r: 1, terrain: 'mountain' },
+    revealArea: [{ q: 2, r: 1, step: 0, kind: 'main', tileId: 'tile_2_1', revealed: false }],
+  });
+
+  const coordinates = ScoutRecords.normalizeScoutCoordinates([
+    { x: 4, y: 1, result: 'empty', scoutedAt: '2026-06-06T00:00:00.000Z' },
+    { x: 4, y: 1, result: 'site', siteId: 'site-1', scoutedAt: '2026-06-06T00:01:00.000Z' },
+    { x: 0, y: 0, result: 'site' },
+  ]);
+  assert.deepEqual(coordinates, [
+    { x: 4, y: 1, result: 'site', siteId: 'site-1', scoutedAt: '2026-06-06T00:01:00.000Z' },
+  ]);
+
+  const gameState = {};
+  const area = ScoutRecords.upsertScoutAreaRecord(gameState, {
+    id: 'mission-1',
+    direction: 'e',
+    originX: 0,
+    originY: 0,
+    targetX: 2,
+    targetY: 1,
+    revealArea: [{ q: 2, r: 1 }],
+  }, 'empty', { scoutedAt: '2026-06-06T00:02:00.000Z' });
+
+  assert.equal(calls.length, 1);
+  assert.equal(area.id, 'mission-1');
+  assert.deepEqual(gameState.scoutState.areas[0].tileIds, ['tile_2_1', 'tile_2_2']);
+  assert.deepEqual(gameState.scoutState.areas[0].coords, [
+    { q: 2, r: 1, tileId: 'tile_2_1' },
+    { q: 2, r: 2, tileId: 'tile_2_2' },
+  ]);
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {
