@@ -167,7 +167,18 @@ function normalizeReward(rawTask, row) {
     ...parseFormulaList(reward.formulas || reward.formula),
     ...parseFormulaList(getHeaderValue(row, 'rewardFormula')),
   ];
-  return { resources, formulas };
+  const formulaResourcesResolved = Boolean(
+    formulas.length > 0
+      && Object.keys(resources).length > 0
+      && (
+        reward.formulaResourcesResolved
+        || reward.formulasResolved
+        || reward.resolved === true
+        || toBoolean(row['reward.formulaResourcesResolved'] ?? row.formulaResourcesResolved, false)
+        || sanitizeText(row.rewardText)
+      ),
+  );
+  return { resources, formulas, formulaResourcesResolved };
 }
 
 function normalizeAction(rawTask, row, taskId, target) {
@@ -229,11 +240,15 @@ function resolveRewardResources(reward = {}) {
   const resources = {};
   const errors = [];
   addResources(resources, reward.resources || {});
+  const formulaResourcesResolved = Boolean(
+    reward.formulaResourcesResolved
+      && Object.keys(resources).length > 0,
+  );
   for (const formula of reward.formulas || []) {
     const resolved = resolveRewardFormula(formula);
     if (resolved.error) {
       errors.push(resolved.error);
-    } else {
+    } else if (!formulaResourcesResolved) {
       addResources(resources, resolved.resources);
     }
   }
@@ -276,12 +291,16 @@ function normalizeDefinitions(raw = {}, options = {}) {
   const errors = validateTasks(tasks);
   const normalizedTasks = tasks.map((task) => {
     const resolvedReward = resolveRewardResources(task.reward);
+    const reward = {
+      ...task.reward,
+      resources: resolvedReward.resources,
+    };
+    if ((task.reward.formulas || []).length > 0) {
+      reward.formulaResourcesResolved = true;
+    }
     return {
       ...task,
-      reward: {
-        ...task.reward,
-        resources: resolvedReward.resources,
-      },
+      reward,
       rewardText: formatRewardText(resolvedReward.resources),
     };
   });
@@ -382,6 +401,7 @@ function buildTemplateWorkbookBuffer() {
     'condition.target': task.condition?.buildingId || task.condition?.eventId || task.condition?.era || task.condition?.step || '',
     'condition.count': task.condition?.count || '',
     'reward.formulas': (task.reward?.formulas || []).join(';'),
+    'reward.formulaResourcesResolved': task.reward?.formulaResourcesResolved ? 1 : '',
     'reward.food': task.reward?.resources?.food || '',
     'reward.wood': task.reward?.resources?.wood || '',
     'reward.knowledge': task.reward?.resources?.knowledge || '',
