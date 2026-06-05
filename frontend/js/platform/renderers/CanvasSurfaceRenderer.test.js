@@ -114,6 +114,25 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
   renderer.addHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'openWorldSite', cityId: 'capital' });
   assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'openWorldSite', cityId: 'capital' });
 
+  renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'openTaskCenter', tab: 'main' });
+  renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
+    type: 'blockCanvasModal',
+    allowedAction: { type: 'openTaskCenter' },
+  });
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'openTaskCenter', tab: 'main' });
+
+  renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'openTaskCenter', disabled: true });
+  renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
+    type: 'blockCanvasModal',
+    allowedAction: { type: 'openTaskCenter' },
+  });
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), {
+    type: 'blockCanvasModal',
+    allowedAction: { type: 'openTaskCenter' },
+  });
+
   renderer.withSuppressedHitTargets(() => {
     renderer.addHitTarget({ x: 0, y: 0, width: 10, height: 10 }, { type: 'suppressed' });
   });
@@ -258,6 +277,7 @@ test('CanvasGameRenderer exposes surface rendering through facade', () => {
   assert.equal(renderer.getLayout('x').host, renderer);
   renderer.setHitTargets([{ id: 'target' }]);
   renderer.addHitTarget({ x: 1, y: 2, width: 3, height: 4 }, { type: 'click' });
+  assert.deepEqual(renderer.hitTargets, [{ id: 'target' }]);
   assert.deepEqual(renderer.stubTargets, [{ id: 'target' }]);
   assert.deepEqual(renderer.stubTarget.action, { type: 'click' });
   assert.equal(renderer.beginFrame({ now: 123 }).method, 'beginFrame');

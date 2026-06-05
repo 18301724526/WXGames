@@ -234,6 +234,7 @@
         this.loading = { visible: false, percentage: 100, message: '' };
         if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
       }
+      this.tutorialController?.sync?.(nextTutorial);
       this.setPendingBuildingAction(null, { render: false });
       this.render();
     }
@@ -1799,6 +1800,8 @@
       try {
         const result = await this.getGameApi().advanceEra();
         this.applyApiState(result);
+        this.tutorialController?.sync?.(this.tutorial);
+        this.tutorialController?.onEraAdvanced?.(result);
         this.log(`杩涘叆鏂伴樁娈碉細${result.message || this.state.currentEraName || ''}`);
         this.showFloatingText(Entered );
         return true;
@@ -1920,6 +1923,8 @@
         const api = this.getGameApi();
         const result = await api.claimTaskReward(taskId, category || 'main');
         this.applyApiState(result);
+        this.tutorialController?.sync?.(this.tutorial);
+        this.tutorialController?.onTaskRewardClaimed?.(result);
         if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
           this.rewardReveal = {
             ...result.rewardReveal,
@@ -2317,7 +2322,28 @@
     }
 
     goToAdvisorTarget() {
-      const target = this.activeAdvisor?.target;
+      const target = this.activeAdvisor?.target || this.state?.softGuide?.target || null;
+      if (target === 'task-center-button') {
+        const action = { type: 'openTaskCenter', tab: 'main', source: 'advisor' };
+        this.showAdvisor = false;
+        if (this.canvasShell) this.canvasShell.showAdvisor = false;
+        this.canvasShell?.hideTutorialHighlight?.();
+        if (this.canvasShell?.actionController?.handle_openTaskCenter) {
+          this.canvasShell.actionController.handle_openTaskCenter(action);
+        } else if (this.actionController?.handle_openTaskCenter) {
+          this.actionController.handle_openTaskCenter(action);
+        } else {
+          this.showTaskCenter = true;
+          this.activeTaskCenterTab = 'main';
+          if (this.canvasShell) {
+            this.canvasShell.showTaskCenter = true;
+            this.canvasShell.activeTaskCenterTab = 'main';
+          }
+          this.renderCanvasSurface(this.state?.currentTab);
+        }
+        this.tutorialController?.refreshCurrentHighlight?.();
+        return true;
+      }
       if (target === 'scout-action-first') {
         return this.canvasShell?.goToGuideTaskTarget?.({
           target,

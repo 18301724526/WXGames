@@ -168,3 +168,54 @@ test('CanvasGameApp keeps command facades and delegates to command service', asy
   ]);
   assert.equal(calls.every(([, , host]) => host === app), true);
 });
+
+test('CanvasGameApp advisor task target opens task center and refreshes tutorial highlight', () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'resources', softGuide: null },
+    actionController: {
+      handle_openTaskCenter(action) {
+        calls.push(['handle_openTaskCenter', action]);
+        app.showTaskCenter = true;
+        app.activeTaskCenterTab = action.tab;
+        return true;
+      },
+    },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+        return true;
+      },
+    },
+  });
+  app.showAdvisor = true;
+  app.canvasShell = {
+    showAdvisor: true,
+    hideTutorialHighlight() {
+      calls.push(['hideTutorialHighlight']);
+      return true;
+    },
+    actionController: {
+      handle_openTaskCenter(action) {
+        calls.push(['shell_handle_openTaskCenter', action]);
+        app.showTaskCenter = true;
+        app.activeTaskCenterTab = action.tab;
+        app.canvasShell.showTaskCenter = true;
+        app.canvasShell.activeTaskCenterTab = action.tab;
+        return true;
+      },
+    },
+  };
+  app.activeAdvisor = { target: 'task-center-button' };
+
+  assert.equal(app.goToAdvisorTarget(), true);
+  assert.equal(app.showAdvisor, false);
+  assert.equal(app.canvasShell.showAdvisor, false);
+  assert.equal(app.showTaskCenter, true);
+  assert.equal(app.canvasShell.showTaskCenter, true);
+  assert.equal(app.activeTaskCenterTab, 'main');
+  assert.deepEqual(calls.map(([name]) => name), ['hideTutorialHighlight', 'shell_handle_openTaskCenter', 'refreshCurrentHighlight']);
+});

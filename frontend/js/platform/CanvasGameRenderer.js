@@ -707,6 +707,7 @@
 
     setHitTargets(...args) {
       if (this.hasSurfaceRendererMethod('setHitTargets')) {
+        this.hitTargets = args[0] || [];
         return this.delegateSurfaceRenderer('setHitTargets', args);
       }
       this.hitTargets = args[0] || [];
@@ -715,7 +716,11 @@
 
     addHitTarget(...args) {
       if (this.hasSurfaceRendererMethod('addHitTarget')) {
-        return this.delegateSurfaceRenderer('addHitTarget', args);
+        const result = this.delegateSurfaceRenderer('addHitTarget', args);
+        if (this.surfaceRenderer?.hitTargets && this.hitTargets !== this.surfaceRenderer.hitTargets) {
+          this.hitTargets = this.surfaceRenderer.hitTargets;
+        }
+        return result;
       }
       const [rect, action] = args;
       if (this.suppressHitTargets) return undefined;

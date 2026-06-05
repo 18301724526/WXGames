@@ -155,3 +155,34 @@ test('CanvasActionController defers tutorial enter-city action until the intro t
     ['enterCity', 'capital', 'buildings'],
   ]);
 });
+
+test('CanvasActionController notifies tutorial when opening civilization command panel', async () => {
+  const calls = [];
+  const game = {
+    tutorialController: {
+      async onCommandPanelOpened(panelId) {
+        calls.push(['onCommandPanelOpened', panelId]);
+        return true;
+      },
+    },
+  };
+  const host = {
+    activeCommandPanel: '',
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'civilization' }), true);
+
+  assert.equal(host.activeCommandPanel, 'civilization');
+  assert.deepEqual(calls, [
+    ['onCommandPanelOpened', 'civilization'],
+    ['render'],
+  ]);
+});

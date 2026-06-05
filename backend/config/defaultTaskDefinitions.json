@@ -16,10 +16,16 @@
     {
       "id": "main_first_supplies",
       "category": "main",
-      "title": "聚落的第一份清单",
-      "description": "领取建设农田与下一次文明进阶所需的基础物资。",
+      "title": "安居的火种",
+      "description": "完成第一处民居并迈入农耕时代后，领取建设农田与下一次文明进阶所需的基础物资。",
       "target": "tasks",
-      "condition": { "type": "buildingLevel", "buildingId": "house", "count": 1 },
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "buildingLevel", "buildingId": "house", "count": 1 },
+          { "type": "eraAtLeast", "era": 1 }
+        ]
+      },
       "reward": { "formulas": ["buildCost:farm", "advanceCost:1"] },
       "action": { "type": "claimTaskReward", "taskId": "main_first_supplies", "category": "main" },
       "sortOrder": 20,

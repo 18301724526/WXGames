@@ -1,5 +1,6 @@
-const TaskDefinitionService = require('./TaskDefinitionService');
+const { TUTORIAL_STEPS } = require('../config/TutorialFlowConfig');
 const CityService = require('./CityService');
+const TaskDefinitionService = require('./TaskDefinitionService');
 
 const TAB_DEFINITIONS = Object.freeze([
   { id: 'daily', label: '每日任务', emptyText: '暂无每日任务' },
@@ -30,6 +31,12 @@ function getBuildingLevel(gameState, buildingId) {
 
 function isTaskConditionMet(gameState, condition = {}) {
   if (!condition || condition.type === 'always') return true;
+  if (condition.type === 'all' || condition.type === 'and') {
+    return (condition.conditions || []).every((item) => isTaskConditionMet(gameState, item));
+  }
+  if (condition.type === 'any' || condition.type === 'or') {
+    return (condition.conditions || []).some((item) => isTaskConditionMet(gameState, item));
+  }
   if (condition.type === 'buildingLevel') {
     return getBuildingLevel(gameState, condition.buildingId) >= Math.max(1, Number(condition.count) || 1);
   }
@@ -113,12 +120,67 @@ function getTaskCenter(gameState, options = {}) {
   };
 }
 
-function claimTask(gameState, taskId, category = 'main') {
-  const taskCenter = getTaskCenter(gameState, { activeTab: category });
+function addResources(target, source = {}) {
+  Object.entries(source || {}).forEach(([key, value]) => {
+    const amount = Number(value) || 0;
+    if (amount > 0) {
+      target[key] = Math.round(((Number(target[key]) || 0) + amount) * 1000) / 1000;
+    }
+  });
+  return target;
+}
+
+function applyTaskReward(gameState, reward = {}) {
+  CityService.normalizeCities(gameState);
+  const city = CityService.getActiveCity(gameState);
+  const hasResolvedResources = reward.resources && Object.keys(reward.resources).length > 0;
+  const resolved = hasResolvedResources
+    ? { resources: reward.resources, errors: [] }
+    : TaskDefinitionService.resolveRewardResources(reward);
+  if (resolved.errors?.length) return { success: false, errors: resolved.errors, resources: {} };
+  city.resources = addResources(city.resources || {}, resolved.resources);
+  CityService.syncActiveCityToLegacyFields(gameState);
+  return { success: true, errors: [], resources: resolved.resources };
+}
+
+function maybeAdvanceTutorialAfterClaim(gameState, taskId) {
+  const tutorial = gameState.tutorial || {};
+  if (taskId !== 'main_first_supplies' || tutorial.completed || tutorial.disabled) return tutorial;
+  if ((Number(tutorial.currentStep) || 0) >= TUTORIAL_STEPS.farmPrepReserved) return tutorial;
+  gameState.tutorial = {
+    ...tutorial,
+    currentStep: TUTORIAL_STEPS.farmPrepReserved,
+    phaseCompleted: {
+      ...(tutorial.phaseCompleted || {}),
+      newbie: true,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  return gameState.tutorial;
+}
+
+function buildRewardReveal(task, resources) {
+  return {
+    title: '任务奖励',
+    subtitle: task.title,
+    rewardText: task.rewardText,
+    resources,
+    createdAt: Date.now(),
+  };
+}
+
+function findTaskView(taskCenter, taskId, category) {
   const normalizedCategory = normalizeCategory(category);
-  const task = taskCenter.categories[normalizedCategory]?.tasks?.find((item) => item.id === taskId)
+  return taskCenter.categories[normalizedCategory]?.tasks?.find((item) => item.id === taskId)
     || Object.values(taskCenter.categories).flatMap((item) => item.tasks).find((item) => item.id === taskId);
-  if (!task) {
+}
+
+function claimTask(gameState, taskId, category = 'main') {
+  const definitions = TaskDefinitionService.loadDefinitions();
+  const definitionTask = definitions.tasks.find((item) => item.id === taskId);
+  const taskCenter = getTaskCenter(gameState, { activeTab: category });
+  const task = findTaskView(taskCenter, taskId, category);
+  if (!task || !definitionTask) {
     return { success: false, error: 'TASK_NOT_FOUND', message: '任务不存在' };
   }
   if (task.claimed) {
@@ -127,10 +189,36 @@ function claimTask(gameState, taskId, category = 'main') {
   if (task.status !== 'claimable') {
     return { success: false, error: 'TASK_NOT_COMPLETED', message: '任务尚未完成' };
   }
+
+  const reward = applyTaskReward(gameState, definitionTask.reward || task.reward);
+  if (!reward.success) {
+    return {
+      success: false,
+      error: 'TASK_REWARD_INVALID',
+      message: '任务奖励配置异常',
+      rewardErrors: reward.errors,
+    };
+  }
+
+  const progress = getTaskProgress(gameState);
+  const claimedAt = new Date().toISOString();
+  progress.claimed[task.id] = {
+    claimedAt,
+    category: task.category,
+    reward: { resources: reward.resources },
+  };
+  const nextTutorial = maybeAdvanceTutorialAfterClaim(gameState, task.id);
+
   return {
-    success: false,
-    error: 'TASK_REWARD_PIPELINE_PENDING',
-    message: '任务定义已启用，奖励发放链路将在后续强引导步骤接入。',
+    success: true,
+    message: '任务奖励已领取',
+    taskId: task.id,
+    category: task.category,
+    reward: { resources: reward.resources },
+    rewardText: task.rewardText,
+    rewardReveal: buildRewardReveal(task, reward.resources),
+    claimedAt,
+    tutorial: nextTutorial,
   };
 }
 

@@ -83,14 +83,17 @@ function registerGameRoutes(app, deps) {
 
     const { taskId, category } = req.body || {};
     const result = TaskCenterService.claimTask(gameState, taskId, category);
-    gameState.tutorial = tutorial;
+    const nextTutorial = result.tutorial
+      ? TutorialService.normalizeTutorialState(result.tutorial)
+      : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
+    gameState.tutorial = nextTutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
 
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      ...buildGameView(gameState, tutorial, gameStateService),
+      ...buildGameView(gameState, nextTutorial, gameStateService),
     });
   });
 

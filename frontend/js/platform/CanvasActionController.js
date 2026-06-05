@@ -222,7 +222,20 @@
       if (!panel) return false;
       this.host.activeCommandPanel = this.host.activeCommandPanel === panel ? '' : panel;
       this.closePanels(this.host.activeCommandPanel ? ['activeCommandPanel'] : []);
-      return this.afterHandled(action);
+      const game = this.getGameHost();
+      const openedPanel = this.host.activeCommandPanel;
+      const tutorialResult = openedPanel && typeof game?.tutorialController?.onCommandPanelOpened === 'function'
+        ? game.tutorialController.onCommandPanelOpened(openedPanel)
+        : true;
+      return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
+        if (allowed !== false) {
+          this.afterHandled(action);
+          game?.tutorialController?.refreshCurrentHighlight?.();
+          const scheduler = this.host?.runtime || game?.runtime || global;
+          scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+        }
+        return allowed !== false;
+      }));
     }
 
     handle_closeCommandPanel(action) {
@@ -384,13 +397,18 @@
 
     handle_closeAdvisor(action) {
       this.host.showAdvisor = false;
-      return this.afterHandled(action);
+      const game = this.getGameHost();
+      if (game && game !== this.host) game.showAdvisor = false;
+      const handled = this.afterHandled(action);
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      return handled;
     }
 
     handle_goToAdvisorTarget(action, meta = {}) {
       this.host.showAdvisor = false;
       this.host.activeEventId = null;
       const game = this.getGameHost();
+      if (game && game !== this.host) game.showAdvisor = false;
       const result = typeof game?.goToAdvisorTarget === 'function'
         ? game.goToAdvisorTarget()
         : this.forward(action, meta);
@@ -431,7 +449,15 @@
         game.activeTaskCenterTab = tab;
       }
       this.closePanels(['showTaskCenter']);
-      return this.afterHandled(action);
+      this.host.showTaskCenter = true;
+      this.host.activeTaskCenterTab = tab;
+      if (game && game !== this.host) {
+        game.showTaskCenter = true;
+        game.activeTaskCenterTab = tab;
+      }
+      const handled = this.afterHandled(action);
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      return handled;
     }
 
     handle_closeTaskCenter(action) {

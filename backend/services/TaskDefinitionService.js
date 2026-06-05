@@ -134,6 +134,13 @@ function normalizeCondition(rawTask, row) {
   if (parsed?.__parseError) return parsed;
   const condition = parsed || {};
   const type = sanitizeText(condition.type || getHeaderValue(row, 'conditionType'), 'always');
+  if (['all', 'and', 'any', 'or'].includes(type)) {
+    const conditions = Array.isArray(condition.conditions) ? condition.conditions : [];
+    return {
+      type,
+      conditions: conditions.map((item) => normalizeCondition({ condition: item }, {})),
+    };
+  }
   const target = sanitizeText(
     condition.buildingId || condition.target || getHeaderValue(row, 'conditionTarget'),
     '',

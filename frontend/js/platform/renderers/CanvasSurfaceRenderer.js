@@ -133,7 +133,7 @@
     isAllowedUnderTutorialShield(action = {}) {
       if (action.type === 'goToGuideTaskTarget') return true;
       if (action.type === 'openTaskCenter') {
-        return action.source === 'taskIcon';
+        return !action.disabled;
       }
       if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
         return (action.category || 'main') === 'main';
@@ -142,6 +142,7 @@
     }
 
     matchesTutorialShieldAllowedAction(action = {}, allowed = null) {
+      if (action.disabled) return false;
       if (!action?.type || !allowed?.type || action.type !== allowed.type) return false;
       const getId = (item = {}) => item.cityId || item.territoryId || item.siteId || item.targetId || '';
       const allowedId = getId(allowed);
