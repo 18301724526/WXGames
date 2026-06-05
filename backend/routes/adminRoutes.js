@@ -8,6 +8,11 @@ function registerAdminRoutes(app, deps) {
     return res.json({ success: true, definitions });
   });
 
+  app.get('/api/admin/task-definitions/history', authMiddleware, (req, res) => {
+    const history = TaskDefinitionService.getImportHistory({ limit: req.query?.limit });
+    return res.json({ success: true, history });
+  });
+
   app.post('/api/admin/task-definitions/preview', authMiddleware, (req, res) => {
     const result = TaskDefinitionService.previewImport(req.body || {}, { importedBy: req.username || req.playerId });
     return res.status(result.success ? 200 : 400).json(result);
@@ -16,6 +21,11 @@ function registerAdminRoutes(app, deps) {
   app.post('/api/admin/task-definitions/import', authMiddleware, (req, res) => {
     const result = TaskDefinitionService.importDefinitions(req.body || {}, { importedBy: req.username || req.playerId });
     return res.status(result.success ? 200 : 400).json(result);
+  });
+
+  app.post('/api/admin/task-definitions/rollback', authMiddleware, (req, res) => {
+    const result = TaskDefinitionService.rollbackImport(req.body?.importId, { importedBy: req.username || req.playerId });
+    return res.status(result.success ? 200 : 404).json(result);
   });
 
   app.get('/api/admin/task-definitions/template.xlsx', authMiddleware, (req, res) => {

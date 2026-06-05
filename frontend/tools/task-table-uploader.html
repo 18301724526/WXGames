@@ -7,213 +7,63 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f4f1ea;
+      --bg: #f5f2eb;
+      --panel: #ffffff;
       --ink: #20242a;
       --muted: #67727e;
-      --line: #d6d1c6;
-      --panel: #ffffff;
-      --accent: #2f7d6b;
-      --accent-dark: #215f52;
-      --danger: #b33a3a;
-      --soft: #e8f2ee;
+      --line: #d7d0c3;
+      --soft: #edf6f1;
+      --accent: #287764;
+      --accent-dark: #1f5c4e;
+      --danger: #af3434;
+      --warn: #8a5a16;
       font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); }
+    main { width: min(1180px, calc(100vw - 32px)); margin: 0 auto; padding: 28px 0 42px; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0 0 8px; font-size: 26px; line-height: 1.2; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 17px; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .toolbar, .panel, .status { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+    .toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) auto auto auto; gap: 12px; align-items: center; margin: 20px 0; padding: 14px; }
+    input[type="file"] { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfaf7; }
+    button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: 6px; background: var(--accent); color: #fff; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    button.secondary { background: #fff; color: var(--accent-dark); border-color: var(--accent); }
+    button.warning { background: #fff; color: var(--warn); border-color: #c39143; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .layout { display: grid; grid-template-columns: 330px 1fr; gap: 16px; }
+    .stack { display: grid; gap: 16px; }
+    .panel { padding: 16px; min-height: 180px; overflow: hidden; }
+    .status { margin: 16px 0; padding: 12px 14px; color: var(--muted); background: #fbfaf7; }
+    .status.ok { color: var(--accent-dark); background: var(--soft); border-color: #b9d7ce; }
+    .status.error { color: var(--danger); background: #fff1ef; border-color: #e4b9b4; }
+    .meta { display: grid; gap: 10px; }
+    .meta div, .history-item { display: grid; grid-template-columns: minmax(86px, auto) 1fr; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #eee9de; color: var(--muted); font-size: 13px; }
+    .meta strong, .history-item strong { color: var(--ink); word-break: break-word; }
+    .history { display: grid; gap: 12px; max-height: 360px; overflow: auto; padding-right: 4px; }
+    .history-item { grid-template-columns: 1fr auto; align-items: center; padding: 10px; border: 1px solid #eee9de; border-radius: 6px; }
+    .history-item small { display: block; color: var(--muted); line-height: 1.5; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .pill { padding: 5px 9px; border-radius: 999px; border: 1px solid #d7e8df; color: var(--accent-dark); background: var(--soft); font-size: 12px; }
+    .pill.danger { color: var(--danger); background: #fff1ef; border-color: #e4b9b4; }
+    .errors { margin: 0; padding-left: 18px; color: var(--danger); line-height: 1.65; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid #ece8df; text-align: left; vertical-align: top; }
+    th { color: #48525e; background: #f8f6f0; font-weight: 700; }
+    td { color: #2f3842; }
+    .diff-block { margin: 12px 0 0; }
+    .diff-list { display: grid; gap: 8px; margin-top: 8px; }
+    .diff-item { border: 1px solid #ece8df; border-radius: 6px; padding: 10px; background: #fffdf9; font-size: 13px; line-height: 1.55; }
+    .empty { color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .nowrap { white-space: nowrap; }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--ink);
-    }
-
-    main {
-      width: min(1120px, calc(100vw - 32px));
-      margin: 0 auto;
-      padding: 28px 0 40px;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 20px;
-      padding-bottom: 18px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 26px;
-      line-height: 1.2;
-      letter-spacing: 0;
-    }
-
-    p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .toolbar,
-    .panel,
-    .status {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-    }
-
-    .toolbar {
-      display: grid;
-      grid-template-columns: minmax(240px, 1fr) auto auto auto;
-      gap: 12px;
-      align-items: center;
-      margin: 20px 0;
-      padding: 14px;
-    }
-
-    input[type="file"] {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: #fbfaf7;
-    }
-
-    button,
-    a.button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 40px;
-      padding: 0 16px;
-      border: 1px solid transparent;
-      border-radius: 6px;
-      background: var(--accent);
-      color: #fff;
-      font-size: 14px;
-      text-decoration: none;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    button.secondary,
-    a.secondary {
-      background: #fff;
-      color: var(--accent-dark);
-      border-color: var(--accent);
-    }
-
-    button:disabled {
-      opacity: 0.52;
-      cursor: not-allowed;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 16px;
-    }
-
-    .panel {
-      padding: 16px;
-      min-height: 220px;
-    }
-
-    .panel h2 {
-      margin: 0 0 12px;
-      font-size: 17px;
-      letter-spacing: 0;
-    }
-
-    .meta {
-      display: grid;
-      gap: 10px;
-    }
-
-    .meta div {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #eee9de;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .meta strong {
-      color: var(--ink);
-      text-align: right;
-      word-break: break-all;
-    }
-
-    .status {
-      margin: 16px 0;
-      padding: 12px 14px;
-      color: var(--muted);
-      background: #fbfaf7;
-    }
-
-    .status.ok {
-      color: var(--accent-dark);
-      background: var(--soft);
-      border-color: #b9d7ce;
-    }
-
-    .status.error {
-      color: var(--danger);
-      background: #fff1ef;
-      border-color: #e4b9b4;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    th,
-    td {
-      padding: 9px 10px;
-      border-bottom: 1px solid #ece8df;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      color: #48525e;
-      background: #f8f6f0;
-      font-weight: 700;
-    }
-
-    td {
-      color: #2f3842;
-    }
-
-    .errors {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--danger);
-      line-height: 1.6;
-    }
-
-    @media (max-width: 820px) {
-      header,
-      .toolbar,
-      .grid {
-        display: block;
-      }
-
-      .toolbar > * {
-        margin-top: 10px;
-      }
-
-      .panel {
-        margin-top: 16px;
-      }
+    @media (max-width: 880px) {
+      header, .toolbar, .layout { display: block; }
+      .toolbar > *, .layout > * { margin-top: 12px; }
+      button { width: 100%; }
     }
   </style>
 </head>
@@ -222,46 +72,61 @@
     <header>
       <div>
         <h1>任务表导入工具</h1>
-        <p>选择任务 Excel 或 JSON，先预览校验，确认无误后提交到服务器。</p>
+        <p>选择任务 Excel 或 JSON，先预览差异和校验错误，确认无误后提交到服务器。</p>
       </div>
       <button class="secondary" id="downloadTemplate" type="button">下载模板</button>
     </header>
 
     <section class="toolbar">
       <input id="fileInput" type="file" accept=".xlsx,.xls,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-      <button id="previewButton">预览校验</button>
-      <button id="importButton" disabled>提交服务器</button>
-      <button id="refreshButton" class="secondary">刷新当前表</button>
+      <button id="previewButton" type="button">预览校验</button>
+      <button id="importButton" type="button" disabled>确认提交</button>
+      <button id="refreshButton" class="secondary" type="button">刷新当前表</button>
     </section>
 
     <div id="status" class="status">等待选择文件。</div>
 
-    <section class="grid">
-      <aside class="panel">
-        <h2>当前服务器任务表</h2>
-        <div class="meta" id="currentMeta"></div>
+    <section class="layout">
+      <aside class="stack">
+        <section class="panel">
+          <h2>当前服务器任务表</h2>
+          <div class="meta" id="currentMeta"></div>
+        </section>
+        <section class="panel">
+          <h2>导入历史</h2>
+          <div class="history" id="historyList"></div>
+        </section>
       </aside>
 
       <section class="panel">
         <h2>预览结果</h2>
-        <div id="preview"></div>
+        <div id="preview" class="empty">选择文件后点击预览校验。</div>
       </section>
     </section>
   </main>
 
   <script>
-    const API_BASE = `${location.protocol}//${location.hostname}:3000/api`;
+    const apiBaseParam = new URLSearchParams(location.search).get('apiBase');
+    const API_BASE = (apiBaseParam || '/api').replace(/\/$/, '');
     const token = localStorage.getItem('cf_token') || localStorage.getItem('token') || '';
-    const state = { file: null, contentBase64: '', preview: null };
+    const state = { file: null, contentBase64: '', preview: null, report: null };
 
-    const fileInput = document.getElementById('fileInput');
-    const previewButton = document.getElementById('previewButton');
-    const importButton = document.getElementById('importButton');
-    const refreshButton = document.getElementById('refreshButton');
-    const statusEl = document.getElementById('status');
-    const previewEl = document.getElementById('preview');
-    const currentMetaEl = document.getElementById('currentMeta');
-    const templateButton = document.getElementById('downloadTemplate');
+    const el = (id) => document.getElementById(id);
+    const fileInput = el('fileInput');
+    const previewButton = el('previewButton');
+    const importButton = el('importButton');
+    const refreshButton = el('refreshButton');
+    const templateButton = el('downloadTemplate');
+    const statusEl = el('status');
+    const previewEl = el('preview');
+    const currentMetaEl = el('currentMeta');
+    const historyListEl = el('historyList');
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[char]));
+    }
 
     function setStatus(message, type = '') {
       statusEl.textContent = message;
@@ -278,13 +143,11 @@
         },
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.message || data.error || `HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
       return data;
     }
 
-    function formatMeta(definitions = {}) {
+    function renderMeta(definitions = {}) {
       const summary = definitions.summary || {};
       const byCategory = summary.byCategory || {};
       currentMetaEl.innerHTML = [
@@ -295,28 +158,76 @@
         ['来源', definitions.source || '-'],
         ['任务数', summary.totalCount ?? '-'],
         ['主线', byCategory.main ?? 0],
-      ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('');
+      ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
     }
 
-    function renderPreview(definitions, errors = []) {
-      if (errors.length) {
-        previewEl.innerHTML = `<ul class="errors">${errors.map((error) => `<li>${error}</li>`).join('')}</ul>`;
+    function renderHistory(history = {}) {
+      const imports = history.imports || [];
+      if (!imports.length) {
+        historyListEl.innerHTML = '<div class="empty">暂无导入历史。</div>';
         return;
       }
-      const rows = (definitions.tasks || []).slice(0, 20).map((task) => `
+      historyListEl.innerHTML = imports.map((item) => `
+        <div class="history-item">
+          <div>
+            <strong>${escapeHtml(item.version || '-')} / ${escapeHtml(item.hash || '-')}</strong>
+            <small>${escapeHtml(item.action || 'import')} · ${escapeHtml(item.importedBy || '-')} · ${escapeHtml(item.importedAt || '-')}</small>
+            <small>${escapeHtml(item.source || '-')}</small>
+          </div>
+          <button class="warning rollbackButton" type="button" data-id="${escapeHtml(item.id)}">回滚</button>
+        </div>
+      `).join('');
+    }
+
+    function renderDiff(report = {}) {
+      const diff = report.diff || {};
+      const updated = diff.updated || [];
+      const added = diff.added || [];
+      const removed = diff.removed || [];
+      const pills = [
+        ['新增', diff.addedCount || 0],
+        ['修改', diff.updatedCount || 0],
+        ['删除', diff.removedCount || 0],
+        ['不变', diff.unchangedCount || 0],
+      ].map(([label, value]) => `<span class="pill${label === '删除' && value ? ' danger' : ''}">${label} ${value}</span>`).join('');
+      const updatedRows = updated.slice(0, 8).map((item) => `
+        <div class="diff-item">
+          <strong>${escapeHtml(item.id)}</strong>
+          <div>${escapeHtml(item.beforeTitle || '')} → ${escapeHtml(item.title || '')}</div>
+          <div>字段：${escapeHtml((item.changes || []).map((change) => change.field).join('、'))}</div>
+        </div>
+      `).join('');
+      const addedRows = added.slice(0, 6).map((item) => `<div class="diff-item"><strong>新增 ${escapeHtml(item.id)}</strong><div>${escapeHtml(item.title || '')}</div></div>`).join('');
+      const removedRows = removed.slice(0, 6).map((item) => `<div class="diff-item"><strong>删除 ${escapeHtml(item.id)}</strong><div>${escapeHtml(item.title || '')}</div></div>`).join('');
+      return `
+        <div class="pill-row">${pills}</div>
+        <div class="diff-block">
+          ${updatedRows || addedRows || removedRows ? '<div class="diff-list">' : ''}
+          ${updatedRows}${addedRows}${removedRows}
+          ${updatedRows || addedRows || removedRows ? '</div>' : '<div class="empty">和当前服务器任务表没有差异。</div>'}
+        </div>
+      `;
+    }
+
+    function renderPreview(definitions, errors = [], report = {}) {
+      if (errors.length) {
+        previewEl.innerHTML = `<ul class="errors">${errors.map((error) => `<li>${escapeHtml(error)}</li>`).join('')}</ul>`;
+        return;
+      }
+      const rows = (definitions.tasks || []).slice(0, 30).map((task) => `
         <tr>
-          <td>${task.id}</td>
-          <td>${task.category}</td>
-          <td>${task.title}</td>
-          <td>${task.rewardText || 'none'}</td>
-          <td>${task.condition?.type || 'always'}</td>
+          <td class="nowrap">${escapeHtml(task.id)}</td>
+          <td>${escapeHtml(task.category)}</td>
+          <td>${escapeHtml(task.title)}</td>
+          <td>${escapeHtml(task.description)}</td>
+          <td>${escapeHtml(task.rewardText || 'none')}</td>
+          <td>${escapeHtml(task.condition?.type || 'always')}</td>
         </tr>
       `).join('');
       previewEl.innerHTML = `
+        ${renderDiff(report)}
         <table>
-          <thead>
-            <tr><th>ID</th><th>分类</th><th>名称</th><th>奖励</th><th>条件</th></tr>
-          </thead>
+          <thead><tr><th>ID</th><th>分类</th><th>名称</th><th>描述</th><th>奖励</th><th>条件</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       `;
@@ -331,30 +242,27 @@
       });
     }
 
-    async function refreshCurrent() {
+    async function refreshAll(message = '当前服务器任务表已刷新。') {
       if (!token) {
         setStatus('未检测到登录 token，请先在游戏页面登录，再打开本工具。', 'error');
         return;
       }
-      const data = await request('/admin/task-definitions');
-      formatMeta(data.definitions);
-      setStatus('当前服务器任务表已刷新。', 'ok');
+      const [current, history] = await Promise.all([
+        request('/admin/task-definitions'),
+        request('/admin/task-definitions/history'),
+      ]);
+      renderMeta(current.definitions);
+      renderHistory(history.history);
+      setStatus(message, 'ok');
     }
 
     async function downloadTemplate() {
-      if (!token) {
-        setStatus('未检测到登录 token，请先在游戏页面登录，再打开本工具。', 'error');
-        return;
-      }
+      if (!token) return setStatus('未检测到登录 token，请先登录。', 'error');
       const response = await fetch(`${API_BASE}/admin/task-definitions/template.xlsx`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(text || `HTTP ${response.status}`);
-      }
-      const blob = await response.blob();
-      const href = URL.createObjectURL(blob);
+      if (!response.ok) throw new Error(await response.text() || `HTTP ${response.status}`);
+      const href = URL.createObjectURL(await response.blob());
       const anchor = document.createElement('a');
       anchor.href = href;
       anchor.download = 'task-definitions-template.xlsx';
@@ -367,10 +275,7 @@
 
     async function previewImport() {
       const file = fileInput.files && fileInput.files[0];
-      if (!file) {
-        setStatus('请选择 .xlsx、.xls 或 .json 文件。', 'error');
-        return;
-      }
+      if (!file) return setStatus('请选择 .xlsx、.xls 或 .json 文件。', 'error');
       state.file = file;
       state.contentBase64 = await readFileAsBase64(file);
       const data = await request('/admin/task-definitions/preview', {
@@ -378,36 +283,51 @@
         body: JSON.stringify({ fileName: file.name, contentBase64: state.contentBase64 }),
       });
       state.preview = data.definitions;
-      renderPreview(data.definitions, data.errors || []);
+      state.report = data.report;
+      renderPreview(data.definitions, data.errors || [], data.report || {});
       importButton.disabled = !data.success;
-      setStatus(data.success ? '预览校验通过，可以提交服务器。' : '预览校验未通过。', data.success ? 'ok' : 'error');
+      setStatus(data.success ? '预览校验通过，可以确认提交。' : '预览校验未通过。', data.success ? 'ok' : 'error');
     }
 
     async function importDefinitions() {
-      if (!state.file || !state.contentBase64) {
-        setStatus('请先预览校验文件。', 'error');
-        return;
-      }
+      if (!state.file || !state.contentBase64) return setStatus('请先预览校验文件。', 'error');
       const data = await request('/admin/task-definitions/import', {
         method: 'POST',
         body: JSON.stringify({ fileName: state.file.name, contentBase64: state.contentBase64 }),
       });
-      formatMeta(data.definitions);
-      renderPreview(data.definitions, data.errors || []);
-      setStatus('任务表已提交到服务器。', 'ok');
+      state.preview = data.definitions;
+      state.report = data.report;
+      renderPreview(data.definitions, data.errors || [], data.report || {});
+      importButton.disabled = true;
+      await refreshAll('任务表已提交到服务器，并保存了导入报告。');
+    }
+
+    async function rollbackImport(importId) {
+      if (!confirm('确认回滚到这条任务表版本？')) return;
+      const data = await request('/admin/task-definitions/rollback', {
+        method: 'POST',
+        body: JSON.stringify({ importId }),
+      });
+      renderPreview(data.definitions, data.errors || [], data.report || {});
+      await refreshAll('任务表已回滚，并保存了回滚报告。');
     }
 
     previewButton.addEventListener('click', () => previewImport().catch((error) => setStatus(error.message, 'error')));
     importButton.addEventListener('click', () => importDefinitions().catch((error) => setStatus(error.message, 'error')));
-    refreshButton.addEventListener('click', () => refreshCurrent().catch((error) => setStatus(error.message, 'error')));
+    refreshButton.addEventListener('click', () => refreshAll().catch((error) => setStatus(error.message, 'error')));
     templateButton.addEventListener('click', () => downloadTemplate().catch((error) => setStatus(error.message, 'error')));
+    historyListEl.addEventListener('click', (event) => {
+      const button = event.target.closest('.rollbackButton');
+      if (button?.dataset.id) rollbackImport(button.dataset.id).catch((error) => setStatus(error.message, 'error'));
+    });
     fileInput.addEventListener('change', () => {
       state.preview = null;
+      state.report = null;
       importButton.disabled = true;
       setStatus(fileInput.files?.[0] ? `已选择：${fileInput.files[0].name}` : '等待选择文件。');
     });
 
-    refreshCurrent().catch((error) => setStatus(error.message, 'error'));
+    refreshAll().catch((error) => setStatus(error.message, 'error'));
   </script>
 </body>
 </html>

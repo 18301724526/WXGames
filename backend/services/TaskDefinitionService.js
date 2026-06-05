@@ -5,7 +5,8 @@ const XLSX = require('xlsx');
 
 const BuildingConfig = require('../config/BuildingConfig');
 const EraConfig = require('../config/EraConfig');
-
+const TaskDefinitionImportReporter = require('./TaskDefinitionImportReporter');
+const TaskDefinitionImportHistory = require('./TaskDefinitionImportHistory');
 const DEFAULT_DEFINITIONS_PATH = path.join(__dirname, '..', 'config', 'defaultTaskDefinitions.json');
 const RUNTIME_DEFINITIONS_PATH = process.env.TASK_DEFINITIONS_PATH
   || path.join(__dirname, '..', '..', 'data', 'taskDefinitions.json');
@@ -76,6 +77,14 @@ function addResources(target, source = {}) {
 
 function readJsonFile(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function safeLoadDefinitions(options = {}) {
+  try {
+    return loadDefinitions(options);
+  } catch (error) {
+    return normalizeDefinitions({ version: 'empty', tasks: [] }, { ...options, source: 'empty' });
+  }
 }
 
 function getHeaderValue(row, key) {
@@ -363,18 +372,29 @@ function loadDefinitions(options = {}) {
 
 function previewImport(payload = {}, options = {}) {
   try {
+    const beforeDefinitions = safeLoadDefinitions(options);
     const raw = parseImportPayload(payload);
     const definitions = normalizeDefinitions(raw, {
       ...options,
       source: sanitizeText(payload.fileName || options.source, 'upload'),
     });
-    return { success: definitions.errors.length === 0, definitions, errors: definitions.errors };
+    const report = TaskDefinitionImportReporter.buildImportReport({
+      beforeDefinitions,
+      afterDefinitions: definitions,
+      errors: definitions.errors,
+      importedAt: definitions.importedAt,
+      importedBy: definitions.importedBy,
+      source: definitions.source,
+      action: 'preview',
+    });
+    return { success: definitions.errors.length === 0, definitions, errors: definitions.errors, report };
   } catch (error) {
-    return { success: false, errors: [error.message], definitions: null };
+    return { success: false, errors: [error.message], definitions: null, report: null };
   }
 }
 
 function importDefinitions(payload = {}, options = {}) {
+  const beforeDefinitions = safeLoadDefinitions(options);
   const preview = previewImport(payload, options);
   if (!preview.success) return preview;
   const runtimePath = options.runtimePath || RUNTIME_DEFINITIONS_PATH;
@@ -386,7 +406,55 @@ function importDefinitions(payload = {}, options = {}) {
   };
   fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
   fs.writeFileSync(runtimePath, `${JSON.stringify(definitions, null, 2)}\n`, 'utf8');
-  return { success: true, definitions, errors: [] };
+  const report = TaskDefinitionImportReporter.buildImportReport({
+    beforeDefinitions,
+    afterDefinitions: definitions,
+    errors: [],
+    importedAt: definitions.importedAt,
+    importedBy: definitions.importedBy,
+    source: definitions.source,
+    action: 'import',
+  });
+  const importRecord = TaskDefinitionImportHistory.appendImportRecord(report, definitions, {
+    ...options,
+    runtimePath,
+  });
+  return { success: true, definitions, errors: [], report, importRecord };
+}
+
+function getImportHistory(options = {}) {
+  return TaskDefinitionImportHistory.loadImportHistory(options);
+}
+
+function rollbackImport(importId, options = {}) {
+  const runtimePath = options.runtimePath || RUNTIME_DEFINITIONS_PATH;
+  const record = TaskDefinitionImportHistory.findImportRecord(importId, { ...options, runtimePath });
+  if (!record?.definitions) {
+    return { success: false, error: 'IMPORT_RECORD_NOT_FOUND', message: '导入记录不存在' };
+  }
+  const beforeDefinitions = safeLoadDefinitions({ ...options, runtimePath });
+  const definitions = {
+    ...record.definitions,
+    importedAt: nowIso(options.now),
+    importedBy: sanitizeText(options.importedBy, 'system'),
+    source: `rollback:${record.id}`,
+  };
+  fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
+  fs.writeFileSync(runtimePath, `${JSON.stringify(definitions, null, 2)}\n`, 'utf8');
+  const report = TaskDefinitionImportReporter.buildImportReport({
+    beforeDefinitions,
+    afterDefinitions: definitions,
+    errors: [],
+    importedAt: definitions.importedAt,
+    importedBy: definitions.importedBy,
+    source: definitions.source,
+    action: 'rollback',
+  });
+  const importRecord = TaskDefinitionImportHistory.appendImportRecord(report, definitions, {
+    ...options,
+    runtimePath,
+  });
+  return { success: true, definitions, errors: [], report, importRecord };
 }
 
 function buildTemplateWorkbookBuffer() {
@@ -424,6 +492,8 @@ module.exports = {
   parseImportPayload,
   previewImport,
   importDefinitions,
+  getImportHistory,
+  rollbackImport,
   loadDefinitions,
   resolveRewardResources,
   buildTemplateWorkbookBuffer,
