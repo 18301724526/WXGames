@@ -7,6 +7,14 @@
   if (typeof module !== 'undefined' && module.exports && !GameCommandServiceBase) {
     GameCommandServiceBase = require('./GameCommandService');
   }
+  var TutorialGuideControllerBase = global.TutorialGuideController;
+  if (typeof module !== 'undefined' && module.exports && !TutorialGuideControllerBase) {
+    try {
+      TutorialGuideControllerBase = require('../tutorial/TutorialGuideController');
+    } catch (error) {
+      TutorialGuideControllerBase = null;
+    }
+  }
 
   class CanvasGameApp {
     constructor(options = {}) {
@@ -134,7 +142,8 @@
       this.externalLog = typeof options.log === 'function' ? options.log : null;
       this.stateNormalizer = options.stateNormalizer || null;
       this.stateManager = options.stateManager || null;
-      this.tutorialController = options.tutorialController || null;
+      const TutorialGuideControllerCtor = options.tutorialControllerClass || TutorialGuideControllerBase || null;
+      this.tutorialController = options.tutorialController || (TutorialGuideControllerCtor ? new TutorialGuideControllerCtor({ game: this }) : null);
       this.tutorialRenderer = options.tutorialRenderer || null;
       this.eventController = options.eventController || null;
       this.buildingController = options.buildingController || null;
@@ -282,6 +291,7 @@
       this.mapHomeActive = syncedHomeView.isMapHome;
       const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
       this.tutorial = nextTutorial;
+      this.tutorialController?.sync?.(nextTutorial);
       this.updateSyncInterval();
       this.hasServerState = true;
       if (this.loading.visible || this.canvasShell?.loading?.visible) {
@@ -343,10 +353,11 @@
 
     getEffectiveTutorialState(tutorial) {
       const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
-      if (!nextTutorial.completed && nextTutorial.currentStep === 8 && this.isEra2AdvanceReady()) {
+      const tutorialSteps = this.tutorialController?.constructor?.TUTORIAL_STEPS || TutorialGuideControllerBase?.TUTORIAL_STEPS || {};
+      if (!nextTutorial.completed && nextTutorial.currentStep === tutorialSteps.farmBuilt && this.isEra2AdvanceReady()) {
         return {
           ...nextTutorial,
-          currentStep: 9,
+          currentStep: tutorialSteps.era2AdvanceReady,
           phaseCompleted: {
             ...nextTutorial.phaseCompleted,
             newbie: true,
@@ -413,6 +424,7 @@
         if (this.canvasShell && typeof this.canvasShell.famousPersonsPage !== 'undefined') this.famousPersonsPage = this.canvasShell.famousPersonsPage;
         if (this.canvasShell && typeof this.canvasShell.selectedFamousPersonId !== 'undefined') this.selectedFamousPersonId = this.canvasShell.selectedFamousPersonId;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
+        this.tutorialController?.refreshCurrentHighlight?.();
         return true;
       }
       if (!this.renderer?.render) return false;
@@ -1601,11 +1613,34 @@
 
     async handleBuildingSuccess(result, action, buildingId) {
       if (this.commandService?.handleBuildingSuccess) {
-        return this.commandService.handleBuildingSuccess(result, action, buildingId);
+        const handled = await this.commandService.handleBuildingSuccess(result, action, buildingId);
+        this.tutorialController?.sync?.(this.tutorial);
+        this.maybeShowHouseBuiltAdvisor(action, buildingId);
+        return handled;
       }
       this.applyApiState(result);
       this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
       this.log(`Success: ${result?.message || ''}`);
+      this.tutorialController?.sync?.(this.tutorial);
+      this.maybeShowHouseBuiltAdvisor(action, buildingId);
+      return true;
+    }
+
+    maybeShowHouseBuiltAdvisor(action, buildingId) {
+      const steps = this.tutorialController?.constructor?.TUTORIAL_STEPS || {};
+      if (action !== 'build' || buildingId !== 'house') return false;
+      if (Number(this.tutorial?.currentStep) !== Number(steps.houseBuilt)) return false;
+      this.state = {
+        ...(this.state || {}),
+        softGuide: {
+          mode: 'strong',
+          target: 'tab-civilization',
+          message: '民居已经立起来了，族人终于有了稳定的居所。文明也向前迈出了一步。',
+        },
+      };
+      this.showAdvisor = true;
+      if (this.canvasShell) this.canvasShell.showAdvisor = true;
+      this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
       return true;
     }
 
@@ -2156,6 +2191,9 @@
           militaryView: homeView.militaryView,
         };
         this.renderCanvasSurface(homeView.activeTab);
+        this.tutorialController?.markCityEntered?.().then(() => {
+          this.tutorialController?.refreshCurrentHighlight?.();
+        }).catch((error) => this.log(error?.message || String(error)));
         return true;
       } catch (error) {
         this.log(`澶辫触锟?{error.payload?.message || error.message}`);

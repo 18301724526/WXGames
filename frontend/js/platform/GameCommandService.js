@@ -47,6 +47,11 @@
     async handleBuildingAction(buildingId, action) {
       const host = this.host || {};
       if (!buildingId) return false;
+      if (host.tutorialController?.onBuildingAction?.(buildingId, action) === false) {
+        host.showFloatingText?.('请先按照引导建造第一处民居');
+        host.tutorialController?.refreshCurrentHighlight?.();
+        return false;
+      }
       if (host.pendingBuildingAction?.buildingId) return false;
       const normalizedAction = action === 'upgrade' ? 'upgrade' : 'build';
       host.setPendingBuildingAction?.({ buildingId, action: normalizedAction });

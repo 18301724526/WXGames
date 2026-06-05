@@ -98,6 +98,7 @@ function normalizeState(rawState) {
   state.taskProgress.claimed = state.taskProgress.claimed && typeof state.taskProgress.claimed === 'object'
     ? state.taskProgress.claimed
     : {};
+  TutorialService.ensureHouseGuideResources(state);
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
   WorldExplorerService.normalizeExploreState(state);

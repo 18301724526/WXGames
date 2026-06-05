@@ -64,3 +64,12 @@ test('normalized client state keeps legacy iron and metal resources aligned', ()
   assert.ok(clientState.cityState);
   assert.ok(clientState.territoryState);
 });
+
+test('new tutorial client state exposes the first house before era one unlocks buildings', () => {
+  const initial = GameStateNormalizer.createInitialGameState('tutorial-house-client-test');
+  const clientState = GameStateService.getClientGameState(initial);
+
+  assert.equal(clientState.currentEra, 0);
+  assert.equal(clientState.unlockedBuildings.includes('house'), true);
+  assert.equal(clientState.resources.food >= 110, true);
+});

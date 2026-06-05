@@ -914,6 +914,11 @@
       if (forwarded !== undefined) return forwarded !== false;
       const game = this.getGameHost();
       const method = buildingAction === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding';
+      if (game?.tutorialController?.onBuildingAction?.(action.buildingId, buildingAction) === false) {
+        game.showFloatingText?.('请先按照引导建造第一处民居');
+        game.tutorialController?.refreshCurrentHighlight?.();
+        return false;
+      }
       if (typeof game?.[method] === 'function') {
         return game[method](action.buildingId);
       }

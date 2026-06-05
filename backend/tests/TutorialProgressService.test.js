@@ -28,6 +28,34 @@ test('tutorial validation blocks early era advancement until civilization is ope
   assert.equal(validation.code, 'TUTORIAL_BLOCKED');
 });
 
+test('tutorial house guide only allows the first house build before era advancement', () => {
+  const tutorial = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.houseGuideReady,
+  );
+  const gameState = { currentEra: 0, buildings: {}, resources: { food: 130 } };
+
+  assert.equal(TutorialService.validateAction(tutorial, 'build', { target: 'house' }, gameState).allowed, true);
+  assert.equal(TutorialService.validateAction(tutorial, 'build', { target: 'farm' }, gameState).allowed, false);
+  assert.equal(TutorialService.validateAction(tutorial, 'advanceEra', {}, gameState).allowed, false);
+});
+
+test('tutorial grants first house supplies once without overwriting richer players', () => {
+  const gameState = {
+    currentEra: 0,
+    resources: { food: 1, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    tutorial: TutorialService.createInitialTutorialState(),
+  };
+
+  assert.equal(TutorialService.ensureHouseGuideResources(gameState), true);
+  assert.equal(gameState.resources.food, TutorialService.getHouseGuideMinimumResources().food);
+  assert.equal(gameState.tutorial.grants.houseGuideSupplies, true);
+  gameState.resources.food = 999;
+  assert.equal(TutorialService.ensureHouseGuideResources(gameState), false);
+  assert.equal(gameState.resources.food, 999);
+});
+
 test('tutorial advances monotonically by named events', () => {
   const initial = TutorialService.createInitialTutorialState();
   const opened = TutorialService.advanceTutorial(initial, 'civilizationTabOpened');

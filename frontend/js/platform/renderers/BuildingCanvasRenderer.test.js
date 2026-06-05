@@ -167,6 +167,32 @@ test('BuildingCanvasRenderer falls back to shared presenter when injected presen
   assert.equal(host.hitTargets.some((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'house'), true);
 });
 
+test('BuildingCanvasRenderer locks non-house cards during tutorial house guide', () => {
+  const host = createHost({ presenter: {} });
+  const renderer = new BuildingCanvasRenderer({ host });
+  const state = {
+    resources: { food: 130, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    unlockedBuildings: ['house', 'farm'],
+    buildings: {},
+    tutorial: { completed: false, currentStep: 3 },
+    buildingDefinitions: {
+      house: { id: 'house', name: 'House', category: 'livelihood', effects: { perLevel: { populationCap: 3 } } },
+      farm: { id: 'farm', name: 'Farm', category: 'agriculture', effects: { perLevel: { foodOutputMultiplier: 0.5 } } },
+    },
+    buildingCosts: {
+      house: { food: 30 },
+      farm: { food: 0 },
+    },
+  };
+
+  renderer.renderBuildings(state, 100, 610, { activeBuildingCategory: 'all' });
+
+  const houseTarget = host.hitTargets.find((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'house');
+  const farmTarget = host.hitTargets.find((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'farm');
+  assert.equal(houseTarget.action.disabled, false);
+  assert.equal(farmTarget.action.disabled, true);
+});
+
 test('CanvasGameRenderer renders building panel through split renderer facade without presenter method', () => {
   const renderer = new CanvasGameRenderer({
     ctx: createHost().ctx,

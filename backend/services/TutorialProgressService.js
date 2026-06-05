@@ -1,3 +1,5 @@
+const BuildingConfig = require('../config/BuildingConfig');
+const { getAdvanceConfig } = require('../config/EraConfig');
 const {
   TUTORIAL_STEPS,
   TUTORIAL_EVENT_STEPS,
@@ -5,6 +7,8 @@ const {
   CLIENT_TUTORIAL_STEP_GATES,
   createPhaseCompleted,
 } = require('../config/TutorialFlowConfig');
+
+const HOUSE_GUIDE_GRANT_KEY = 'houseGuideSupplies';
 
 function nowIso() {
   return new Date().toISOString();
@@ -15,8 +19,13 @@ function createInitialTutorialState() {
     completed: false,
     currentStep: TUTORIAL_STEPS.initial,
     phaseCompleted: createPhaseCompleted(TUTORIAL_STEPS.initial),
+    grants: {},
     updatedAt: nowIso(),
   };
+}
+
+function normalizeGrants(raw = {}) {
+  return raw && typeof raw === 'object' ? { ...raw } : {};
 }
 
 function createCompletedTutorialState(raw = {}) {
@@ -27,6 +36,7 @@ function createCompletedTutorialState(raw = {}) {
       newbie: true,
       era2: true,
     },
+    grants: normalizeGrants(raw.grants),
     disabled: Boolean(raw.disabled),
     updatedAt: raw.updatedAt || nowIso(),
   };
@@ -45,9 +55,10 @@ function normalizeTutorialState(raw) {
     completed: false,
     currentStep,
     phaseCompleted: {
-      newbie: Boolean(raw.phaseCompleted?.newbie || currentStep >= TUTORIAL_STEPS.houseBuilt),
+      newbie: Boolean(raw.phaseCompleted?.newbie || currentStep >= TUTORIAL_STEPS.eraAdvancedTo1),
       era2: Boolean(raw.phaseCompleted?.era2 || currentStep >= TUTORIAL_STEPS.completed),
     },
+    grants: normalizeGrants(raw.grants),
     updatedAt: raw.updatedAt || nowIso(),
   };
 }
@@ -76,11 +87,9 @@ function canAccessTab(tutorialState, tabKey) {
   if (tutorial.completed || tutorial.disabled) return true;
   const step = tutorial.currentStep;
 
-  if (step === TUTORIAL_STEPS.houseBuilt) return true;
-  if (step <= TUTORIAL_STEPS.tutorialStarted) return ['resources', 'civilization'].includes(tabKey);
-  if (step <= TUTORIAL_STEPS.civilizationPrepReserved) return tabKey === 'civilization';
-  if (step === TUTORIAL_STEPS.eraAdvancedTo1) return ['civilization', 'buildings'].includes(tabKey);
-  if (step <= TUTORIAL_STEPS.farmBuilt) return tabKey === 'buildings';
+  if (step < TUTORIAL_STEPS.houseBuilt) return ['resources', 'buildings', 'military'].includes(tabKey);
+  if (step < TUTORIAL_STEPS.eraAdvancedTo1) return ['resources', 'civilization', 'buildings', 'military'].includes(tabKey);
+  if (step <= TUTORIAL_STEPS.farmBuilt) return ['civilization', 'buildings'].includes(tabKey);
   if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabKey === 'civilization';
   if (step === TUTORIAL_STEPS.eraAdvancedTo2) return ['civilization', 'events'].includes(tabKey);
   if (step === TUTORIAL_STEPS.specialEventTabOpened) return tabKey === 'events';
@@ -90,83 +99,102 @@ function canAccessTab(tutorialState, tabKey) {
   return true;
 }
 
+function validateHouseGuideAction(step, action, payload, gameState) {
+  if (action === 'advanceEra') {
+    return blocked('请先建造第一处民居，再按照引导查看文明进阶。');
+  }
+  if (action === 'build') {
+    if (step < TUTORIAL_STEPS.cityEntered && !hasBuiltHouse(gameState)) {
+      return blocked('请先按照引导进入主城，准备第一处民居。');
+    }
+    if (payload?.target !== 'house') return blocked('当前只能按照引导建造第一处民居。');
+    return { allowed: true };
+  }
+  if (['upgrade', 'claimEvent', 'assign'].includes(action)) {
+    return blocked('请先建造第一处民居。');
+  }
+  return { allowed: true };
+}
+
+function validateFirstEraAction(step, action, payload, gameState) {
+  if (action === 'advanceEra') {
+    if (step < TUTORIAL_STEPS.civilizationTabOpened || gameState.currentEra !== 0) {
+      return blocked('请先按照引导进入文明并执行时代进阶。');
+    }
+    return { allowed: true };
+  }
+  if (action === 'build') {
+    if (step < TUTORIAL_STEPS.buildingsTabOpened || gameState.currentEra < 1) {
+      return blocked('当前只能按照引导建造第一座农田。');
+    }
+    if (step < TUTORIAL_STEPS.farmBuilt && payload?.target !== 'farm') {
+      return blocked('当前只能按照引导建造第一座农田。');
+    }
+    return { allowed: true };
+  }
+  if (['upgrade', 'claimEvent'].includes(action) && step < TUTORIAL_STEPS.farmBuilt) {
+    return blocked('请先完成当前新手引导。');
+  }
+  return { allowed: true };
+}
+
+function validateEra2Action(step, action, payload, gameState) {
+  if (step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill && !canAffordLumbermill(gameState)) {
+    if (action === 'advanceEra') return blocked('请先完成聚落时代引导。');
+    return { allowed: true };
+  }
+
+  if (action === 'advanceEra') {
+    if (step !== TUTORIAL_STEPS.era2AdvanceReady || gameState.currentEra !== 1) {
+      return blocked('请先按照引导迈入聚落时代。');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'claimEvent') {
+    if (step < TUTORIAL_STEPS.eraAdvancedTo2 || payload?.eventId !== 'evt_settlement_forest_001') {
+      return blocked('请先查看森林事件并领取木材。');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'build') {
+    if (payload?.target !== 'lumbermill' || step < TUTORIAL_STEPS.specialEventClaimed) {
+      return blocked('当前只能按照引导建造伐木场。');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'assign') {
+    const amount = Number(payload?.count) || 0;
+    if (payload?.target !== 'craftsman' || amount <= 0 || step < TUTORIAL_STEPS.lumbermillBuilt) {
+      return blocked('请先按照引导分配工匠。');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'upgrade') return blocked('请先完成聚落时代引导。');
+  return { allowed: true };
+}
+
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
   if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };
   const step = tutorial.currentStep;
 
-  if (!tutorial.phaseCompleted.newbie) {
-    if (action === 'advanceEra') {
-      if (gameState.currentEra === 1 && step >= TUTORIAL_STEPS.farmBuilt) {
-        return blocked('人口在增长，先建造民居为新居民腾出空间');
-      }
-      if (step < TUTORIAL_STEPS.civilizationTabOpened || gameState.currentEra !== 0) {
-        return blocked('请先按照引导进入文明并执行时代进阶');
-      }
-    }
-
-    if (action === 'build') {
-      if (step < TUTORIAL_STEPS.buildingsTabOpened || gameState.currentEra < 1) {
-        return blocked('当前只能按照引导建造第一座农田');
-      }
-      if (step < TUTORIAL_STEPS.farmBuilt && payload?.target !== 'farm') {
-        return blocked('当前只能按照引导建造第一座农田');
-      }
-      if (step === TUTORIAL_STEPS.farmBuilt && !['farm', 'house'].includes(payload?.target)) {
-        return blocked('人口在增长，先建造民居为新居民腾出空间');
-      }
-    }
-
-    if (['upgrade', 'claimEvent'].includes(action) && step < TUTORIAL_STEPS.houseBuilt) {
-      return blocked('请先完成新手引导');
-    }
-    return { allowed: true };
+  if (step < TUTORIAL_STEPS.houseBuilt) {
+    return validateHouseGuideAction(step, action, payload, gameState);
   }
-
-  if (!tutorial.phaseCompleted.era2 && step === TUTORIAL_STEPS.houseBuilt) {
-    if (action === 'advanceEra') return blocked('请先等待人口增长并完成民居引导');
-    return { allowed: true };
+  if (step < TUTORIAL_STEPS.eraAdvancedTo1) {
+    return validateFirstEraAction(step, action, payload, gameState);
   }
-
+  if (step < TUTORIAL_STEPS.era2AdvanceReady) {
+    return validateFirstEraAction(step, action, payload, gameState);
+  }
   if (!tutorial.phaseCompleted.era2 && step >= TUTORIAL_STEPS.era2AdvanceReady) {
-    if (step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill && !canAffordLumbermill(gameState)) {
-      if (action === 'advanceEra') return blocked('请先完成聚落时代引导');
-      return { allowed: true };
-    }
-
-    if (action === 'advanceEra') {
-      if (step !== TUTORIAL_STEPS.era2AdvanceReady || gameState.currentEra !== 1) {
-        return blocked('请先按照引导迈入聚落时代');
-      }
-      return { allowed: true };
-    }
-
-    if (action === 'claimEvent') {
-      if (step < TUTORIAL_STEPS.eraAdvancedTo2 || payload?.eventId !== 'evt_settlement_forest_001') {
-        return blocked('请先查看森林事件并领取木材');
-      }
-      return { allowed: true };
-    }
-
-    if (action === 'build') {
-      if (payload?.target !== 'lumbermill' || step < TUTORIAL_STEPS.specialEventClaimed) {
-        return blocked('当前只能按照引导建造伐木场');
-      }
-      return { allowed: true };
-    }
-
-    if (action === 'assign') {
-      const amount = Number(payload?.count) || 0;
-      if (payload?.target !== 'craftsman' || amount <= 0 || step < TUTORIAL_STEPS.lumbermillBuilt) {
-        return blocked('请先按照引导分配工匠');
-      }
-      return { allowed: true };
-    }
-
-    if (action === 'upgrade') return blocked('请先完成聚落时代引导');
+    return validateEra2Action(step, action, payload, gameState);
   }
-
   return { allowed: true };
 }
 
@@ -230,7 +258,6 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
   if (hasBuiltHouse(gameState) && tutorial.currentStep < TUTORIAL_STEPS.houseBuilt) {
     tutorial = manualAdvance(tutorial, TUTORIAL_STEPS.houseBuilt);
   }
-  if (!tutorial.phaseCompleted.newbie) return tutorial;
   const readyForEra2 = gameState.currentEra === 1
     && eraProgress?.canAdvance
     && hasBuiltHouse(gameState);
@@ -238,6 +265,49 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
     return manualAdvance(tutorial, TUTORIAL_STEPS.era2AdvanceReady);
   }
   return tutorial;
+}
+
+function getHouseGuideMinimumResources() {
+  const resources = {};
+  const houseCost = BuildingConfig.getBuildCost('house');
+  const firstAdvanceCost = getAdvanceConfig(0)?.cost || {};
+  for (const cost of [houseCost, firstAdvanceCost]) {
+    Object.entries(cost || {}).forEach(([key, value]) => {
+      resources[key] = (resources[key] || 0) + (Number(value) || 0);
+    });
+  }
+  return resources;
+}
+
+function ensureHouseGuideResources(gameState) {
+  if (!gameState || typeof gameState !== 'object') return false;
+  const tutorial = normalizeTutorialState(gameState.tutorial);
+  if (tutorial.completed || tutorial.disabled || tutorial.grants?.[HOUSE_GUIDE_GRANT_KEY]) return false;
+  if (hasBuiltHouse(gameState)) return false;
+
+  const minimum = getHouseGuideMinimumResources();
+  const cityId = gameState.activeCityId || 'capital';
+  const city = gameState.cities?.[cityId] || gameState.cities?.capital || null;
+  const resources = city?.resources || gameState.resources || {};
+  let changed = false;
+  Object.entries(minimum).forEach(([key, value]) => {
+    const required = Number(value) || 0;
+    if ((Number(resources[key]) || 0) < required) {
+      resources[key] = required;
+      changed = true;
+    }
+  });
+  if (city) city.resources = resources;
+  gameState.resources = resources;
+  gameState.tutorial = {
+    ...tutorial,
+    grants: {
+      ...(tutorial.grants || {}),
+      [HOUSE_GUIDE_GRANT_KEY]: true,
+    },
+    updatedAt: changed ? nowIso() : tutorial.updatedAt,
+  };
+  return changed;
 }
 
 function ensureLumbermillGuideResources() {
@@ -257,7 +327,9 @@ module.exports = {
   validateAction,
   manualAdvance,
   maybeActivateEra2Tutorial,
+  ensureHouseGuideResources,
   ensureLumbermillGuideResources,
   advanceTutorial,
   advanceClientStep,
+  getHouseGuideMinimumResources,
 };

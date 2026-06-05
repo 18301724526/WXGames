@@ -104,6 +104,17 @@ class H5GameHost extends CanvasGameAppBase {
       onCityRenameRequested: (prompt) => this.requestCityRename(prompt),
       onBattleSceneRequested: (report) => this.startBattleScene(report),
     });
+    if (!this.tutorialController && window.TutorialGuideController) {
+      this.tutorialController = new window.TutorialGuideController({
+        game: this,
+        api: this.gameAPI,
+      });
+    }
+    if (this.tutorialController) {
+      this.tutorialController.game = this;
+      this.tutorialController.api = this.gameAPI;
+      this.tutorialController.sync(this.tutorial);
+    }
 
     this.gameModules?.mount?.(this);
     this.syncService.onHeartbeat = (data) => this.applyHeartbeat(data);
@@ -144,11 +155,13 @@ class H5GameHost extends CanvasGameAppBase {
 
   applyApiState(data = {}) {
     super.applyApiState(data);
+    this.tutorialController?.sync?.(this.tutorial);
     this.maybeStartTutorialIntro();
   }
 
   applyState(payload = {}) {
     super.applyState(payload);
+    this.tutorialController?.sync?.(this.tutorial);
     this.maybeStartTutorialIntro();
   }
 }

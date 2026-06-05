@@ -82,6 +82,62 @@ test('game action route persists tutorial returned by action handlers', () => {
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.buildingsTabOpened);
 });
 
+test('game action route builds the tutorial house before era one', () => {
+  const { app, routes } = createAppHarness();
+  const initialTutorial = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.houseGuideReady,
+  );
+  const gameState = {
+    playerId: 'route-tutorial-house-test',
+    tutorial: initialTutorial,
+    resources: { food: 130, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    population: { total: 3, max: 3, farmers: 3 },
+    techs: {},
+    currentEra: 0,
+    updatedAt: '2026-06-04T00:00:00.000Z',
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      assert.equal(playerId, 'route-tutorial-house-test');
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState(state) {
+      return { playerId: state.playerId, buildings: state.buildings, resources: state.resources };
+    },
+    calculateEraProgress() {
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId: 'route-tutorial-house-test',
+    body: { action: 'build', target: 'house' },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].buildings.house.level, 1);
+  assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
+  assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
+});
+
 test('game tasks route returns task definitions from task center service', () => {
   const { app, routes } = createAppHarness();
   const gameState = {

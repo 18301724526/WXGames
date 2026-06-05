@@ -40,6 +40,7 @@ require('../js/platform/renderers/HudTabPageCanvasRenderer');
 require('../js/platform/renderers/HudOverlayCanvasRenderer');
 require('../js/platform/renderers/CanvasFrameRenderer');
 require('../js/platform/MiniGameCanvasRenderer');
+require('../js/tutorial/TutorialGuideController');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
 require('../js/platform/GameCommandService');

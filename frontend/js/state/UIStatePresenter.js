@@ -1637,10 +1637,19 @@
         'card-watchtower': 'watchtower',
         'card-barracks-upgrade': 'barracks',
       }[guideTarget] || null;
+      const tutorialSteps = global.TutorialGuideController?.TUTORIAL_STEPS || {
+        houseGuideReady: 3,
+        houseBuilt: 4,
+        buildingsTabOpened: 7,
+        farmBuilt: 9,
+        buildingsTabOpenedForLumbermill: 14,
+        lumbermillBuilt: 15,
+      };
+      const step = Number(tutorial?.currentStep) || 0;
       const disabledByTutorial = Boolean(tutorial && !tutorial.completed && guidedBuildingId !== id && (
-        (tutorial.currentStep === 5 && id !== 'farm')
-        || (tutorial.currentStep === 7 && id !== 'house')
-        || (tutorial.currentStep >= 13 && tutorial.currentStep <= 14 && id !== 'lumbermill')
+        (step >= tutorialSteps.houseGuideReady && step < tutorialSteps.houseBuilt && id !== 'house')
+        || (step >= tutorialSteps.buildingsTabOpened && step < tutorialSteps.farmBuilt && id !== 'farm')
+        || (step >= tutorialSteps.buildingsTabOpenedForLumbermill && step <= tutorialSteps.lumbermillBuilt && id !== 'lumbermill')
       ));
       const isMax = cost === null || actionLabel === '已满级' || actionLabel === '宸叉弧绾?' || actionLabel === 'max';
       const canAfford = this.canAffordCost(state.resources, cost);
