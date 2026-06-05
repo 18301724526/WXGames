@@ -141,7 +141,7 @@ test('TutorialCanvasRenderer moves intro march unit from fog edge to city tile e
 test('TutorialCanvasRenderer draws intro march unit from sprite frames when loaded', () => {
   const host = createHost({
     getAsset(assetPath) {
-      if (!assetPath.includes('%E5%A3%AB%E5%85%B5')) return null;
+      if (!assetPath.includes('assets/art/units/spearman/move')) return null;
       return { naturalWidth: 215, naturalHeight: 510, width: 215, height: 510 };
     },
   });
@@ -190,7 +190,7 @@ test('TutorialCanvasRenderer keeps advisor spine alive while rendering intro dia
   const calls = [];
   const host = createHost({
     getAsset(assetPath) {
-      if (!assetPath.includes('%E5%A3%AB%E5%85%B5')) return null;
+      if (!assetPath.includes('assets/art/units/spearman/move')) return null;
       return { naturalWidth: 215, naturalHeight: 510, width: 215, height: 510 };
     },
   });

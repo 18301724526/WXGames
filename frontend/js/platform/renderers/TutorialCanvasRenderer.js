@@ -1,8 +1,17 @@
 (function (global) {
-  const TUTORIAL_MARCH_UNIT_FRAMES = Array.from({ length: 11 }, (_, index) => (
-    `assets/art/%E5%A3%AB%E5%85%B5/%E7%A7%BB%E5%8A%A8/${String(index + 1).padStart(3, '0')}.png`
-  ));
-  const TUTORIAL_MARCH_UNIT_FRAME_MS = 80;
+  const SharedUnitSpriteManifest = (() => {
+    if (global.UnitSpriteManifest) return global.UnitSpriteManifest;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UnitSpriteManifest');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const TUTORIAL_MARCH_UNIT_ID = 'spearman';
+  const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
   const TUTORIAL_INTRO_DIALOGUE_LEFT = 96;
 
   const SharedTutorialAdvisorCanvasRenderer = (() => {
@@ -282,7 +291,7 @@
     }
 
     getTutorialIntroUnitFramePaths() {
-      return TUTORIAL_MARCH_UNIT_FRAMES;
+      return SharedUnitSpriteManifest?.getFramePaths?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || [];
     }
 
     getTutorialIntroUnitFramePath(now = this.getNow(), intro = {}) {
@@ -290,7 +299,8 @@
       if (!frames.length) return '';
       if (intro.freezeFrame) return frames[0];
       const startedAt = Number(intro.startedAt) || now;
-      const frameIndex = Math.floor(Math.max(0, now - startedAt) / TUTORIAL_MARCH_UNIT_FRAME_MS) % frames.length;
+      const frameMs = SharedUnitSpriteManifest?.getFrameDurationMs?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || 80;
+      const frameIndex = Math.floor(Math.max(0, now - startedAt) / frameMs) % frames.length;
       return frames[frameIndex];
     }
 
