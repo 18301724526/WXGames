@@ -9,6 +9,7 @@ const TerritoryVisuals = require('../services/territory/TerritoryVisuals');
 const TerritoryInitialState = require('../services/territory/TerritoryInitialState');
 const TerritoryShared = require('../services/territory/TerritoryShared');
 const createTerritoryCombatTargets = require('../services/territory/TerritoryCombatTargets');
+const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
@@ -27,6 +28,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryCombatTargets.js',
     'TerritoryConstants.js',
     'TerritoryInitialState.js',
+    'TerritoryMilitaryMissions.js',
     'TerritoryScoutRecords.js',
     'TerritoryShared.js',
     'TerritoryVisuals.js',
@@ -207,6 +209,134 @@ test('territory scout records module owns report and area normalization contract
     { q: 2, r: 1, tileId: 'tile_2_1' },
     { q: 2, r: 2, tileId: 'tile_2_2' },
   ]);
+});
+
+test('territory military missions module owns selectors and soldier allocation contracts', () => {
+  const MilitaryMissions = createTerritoryMilitaryMissions({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      revealScoutArea: () => [],
+      recordScoutTrail: () => {},
+    },
+    ensureMissionRevealArea: (_gameState, mission) => mission.revealArea || [],
+    isDirectionalScoutAreaMission: (mission) => mission.revealAreaSource === 'directional-route-v1',
+  });
+
+  const gameState = {
+    activeCityId: 'frontier',
+    military: { soldiers: 180 },
+    cities: {
+      capital: { id: 'capital', military: { soldiers: 140 } },
+      frontier: { id: 'frontier', military: { soldiers: 120 } },
+      outpost: { id: 'outpost', military: { soldiers: 90 } },
+    },
+    warMissions: [
+      { id: 'scout-active', kind: 'scout', status: 'active', startedAt: '2026-06-06T00:00:00.000Z' },
+      { id: 'scout-ready', kind: 'scout', status: 'ready', startedAt: '2026-06-06T00:01:00.000Z' },
+      {
+        id: 'conquest-ready',
+        kind: 'conquest',
+        territoryId: 'site-1',
+        status: 'ready',
+        sourceCityId: 'capital',
+        soldiersCommitted: 100,
+        soldierAllocations: [{ cityId: 'capital', soldiers: 100 }],
+      },
+      { id: 'conquest-done', kind: 'conquest', territoryId: 'site-2', status: 'done', soldiersCommitted: 400 },
+    ],
+  };
+
+  assert.equal(MilitaryMissions.getMissionKind({ kind: 'scout' }), 'scout');
+  assert.equal(MilitaryMissions.getMissionKind({ kind: 'other' }), 'conquest');
+  assert.deepEqual(MilitaryMissions.getScoutMissions(gameState).map((mission) => mission.id), ['scout-active', 'scout-ready']);
+  assert.equal(MilitaryMissions.getActiveScoutMission(gameState).id, 'scout-active');
+  assert.equal(MilitaryMissions.countActiveScoutMissions(gameState), 1);
+  assert.equal(MilitaryMissions.getActiveMissionForTerritory(gameState, 'site-1').id, 'conquest-ready');
+  assert.equal(MilitaryMissions.getActiveMissionForTerritory(gameState, 'site-2'), null);
+  assert.deepEqual(MilitaryMissions.getMissionSoldierAllocations({ sourceCityId: 'frontier', soldiersCommitted: 2 }), [
+    { cityId: 'frontier', soldiers: 200 },
+  ]);
+  assert.deepEqual(MilitaryMissions.getCitySoldierEntries(gameState), [
+    { id: 'capital', soldiers: 140 },
+    { id: 'frontier', soldiers: 180 },
+    { id: 'outpost', soldiers: 90 },
+  ]);
+  assert.equal(MilitaryMissions.countSoldiersOnMission(gameState, 'capital'), 100);
+  assert.equal(MilitaryMissions.countTotalSoldiersOnMission(gameState), 100);
+  assert.equal(MilitaryMissions.getAvailableSoldiers(gameState), 310);
+  assert.equal(MilitaryMissions.getAvailableSoldiersForCity(gameState, 'capital'), 40);
+  assert.deepEqual(MilitaryMissions.allocateSoldiersForMission(gameState, 260), [
+    { cityId: 'frontier', soldiers: 180 },
+    { cityId: 'capital', soldiers: 40 },
+    { cityId: 'outpost', soldiers: 40 },
+  ]);
+  assert.equal(MilitaryMissions.allocateSoldiersForMission(gameState, 999), null);
+});
+
+test('territory military missions module advances scout reveal steps and enforces scout limit', () => {
+  const trails = [];
+  const MilitaryMissions = createTerritoryMilitaryMissions({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      revealScoutArea: (_gameState, targets) => targets.map((coord) => ({
+        id: `tile_${coord.q}_${coord.r}`,
+        q: coord.q,
+        r: coord.r,
+        terrain: 'plains',
+      })),
+      recordScoutTrail: (_gameState, mission, tileIds, completed) => {
+        trails.push({ missionId: mission.id, tileIds: [...tileIds], completed });
+      },
+    },
+    ensureMissionRevealArea: (_gameState, mission) => mission.revealArea || [],
+    isDirectionalScoutAreaMission: (mission) => mission.revealAreaSource === 'directional-route-v1',
+  });
+
+  const mission = {
+    id: 'scout-1',
+    kind: 'scout',
+    status: 'active',
+    startedAt: '2026-06-06T00:00:00.000Z',
+    nextStepAt: '2026-06-06T00:00:00.000Z',
+    completesAt: '2026-06-06T00:02:00.000Z',
+    actionPoints: 2,
+    actionPointsRemaining: 2,
+    route: [
+      { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+      { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+    ],
+    revealAreaSource: 'directional-route-v1',
+    revealArea: [
+      { q: 1, r: 0, step: 1, kind: 'main', tileId: 'tile_1_0', revealed: false },
+      { q: 1, r: 1, step: 1, kind: 'branch', tileId: 'tile_1_1', revealed: false },
+      { q: 2, r: 0, step: 2, kind: 'main', tileId: 'tile_2_0', revealed: false },
+    ],
+    revealedTileIds: [],
+  };
+  const gameState = { warMissions: [mission] };
+
+  MilitaryMissions.updateMissionReadiness(gameState, new Date('2026-06-06T00:00:01.000Z'));
+  assert.equal(mission.status, 'active');
+  assert.equal(mission.actionPointsRemaining, 1);
+  assert.deepEqual(mission.revealedTileIds, ['tile_1_0', 'tile_1_1']);
+  assert.equal(trails.at(-1).completed, false);
+
+  MilitaryMissions.updateMissionReadiness(gameState, new Date('2026-06-06T00:00:12.000Z'));
+  assert.equal(mission.status, 'ready');
+  assert.equal(mission.actionPointsRemaining, 0);
+  assert.deepEqual(mission.revealedTileIds, ['tile_1_0', 'tile_1_1', 'tile_2_0']);
+  assert.equal(trails.at(-1).completed, true);
+
+  const limitState = {
+    warMissions: [
+      { id: 'old', kind: 'scout', status: 'active', startedAt: '2026-06-06T00:00:00.000Z' },
+      { id: 'middle', kind: 'scout', status: 'active', startedAt: '2026-06-06T00:01:00.000Z' },
+      { id: 'new', kind: 'scout', status: 'active', startedAt: '2026-06-06T00:02:00.000Z' },
+      { id: 'ready', kind: 'scout', status: 'ready', startedAt: '2026-06-06T00:03:00.000Z' },
+    ],
+  };
+  MilitaryMissions.enforceScoutMissionLimit(limitState);
+  assert.deepEqual(limitState.warMissions.map((item) => item.id), ['old', 'middle', 'ready']);
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {
