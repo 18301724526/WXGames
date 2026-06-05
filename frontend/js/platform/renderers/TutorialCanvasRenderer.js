@@ -511,6 +511,17 @@
         y: this.parsePixelValue(view.pointer.top),
       };
       this.addTutorialShield(transition?.toRect || highlight.rect || rect);
+      if (highlight.allowedAction) {
+        this.addHitTarget(
+          {
+            x: overlay.x,
+            y: overlay.y,
+            width: overlay.width,
+            height: overlay.height,
+          },
+          highlight.allowedAction,
+        );
+      }
 
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
       this.ctx.fillRect(0, 0, this.width, overlay.y);

@@ -251,10 +251,12 @@ test('TutorialCanvasRenderer draws tutorial highlight and blocks outside the foc
   renderer.renderTutorialHighlight({
     rect: { left: 40, top: 50, width: 90, height: 70 },
     message: 'Focus here.',
+    allowedAction: { type: 'openWorldSite', siteId: 'site_1_2' },
     pulseStartedAt: 900,
   });
 
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'blockCanvasModal').length, 4);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'site_1_2'), true);
   assert.equal(host.drawCalls.some((call) => call[0] === 'fillRect'), true);
   assert.equal(host.drawCalls.some((call) => call[0] === 'drawTextLines'), true);
 });
