@@ -274,3 +274,19 @@ test('CanvasActionController closes command panel after switching military view'
     ['refreshCurrentHighlight'],
   ]);
 });
+
+test('CanvasActionController opens world site from territory id aliases', () => {
+  const calls = [];
+  const host = {
+    territoryUiState: {},
+    render() {
+      calls.push(['render']);
+    },
+  };
+  const controller = new CanvasActionController({ host });
+
+  assert.equal(controller.handle_openWorldSite({ type: 'openWorldSite', territoryId: 'site_1_2' }), true);
+
+  assert.equal(host.territoryUiState.selectedSiteId, 'site_1_2');
+  assert.deepEqual(calls, [['render']]);
+});

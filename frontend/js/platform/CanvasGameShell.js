@@ -470,8 +470,14 @@
     matchesTutorialAllowedAction(action = {}, allowedAction = null) {
       if (!action?.type || !allowedAction?.type) return false;
       if (action.type !== allowedAction.type) return false;
+      const getTargetId = (item = {}) => item.siteId || item.territoryId || item.cityId || item.targetId || '';
+      const allowedTargetId = getTargetId(allowedAction);
+      const actionTargetId = getTargetId(action);
       return Object.entries(allowedAction).every(([key, value]) => (
-        key === 'type' || value === undefined || action[key] === value
+        key === 'type'
+        || value === undefined
+        || action[key] === value
+        || (['siteId', 'territoryId', 'cityId', 'targetId'].includes(key) && (!actionTargetId || !allowedTargetId || actionTargetId === allowedTargetId))
       ));
     }
 

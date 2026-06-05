@@ -298,6 +298,46 @@ test('CanvasGameShell blocks non-matching actions during guided highlights', () 
   ]);
 });
 
+test('CanvasGameShell treats world site id fields as equivalent during guided highlights', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'openWorldSite', territoryId: 'site_1_2' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.territoryId || '']);
+        return true;
+      },
+    },
+  });
+  shell.showTutorialHighlight(
+    { x: 100, y: 100, width: 100, height: 80 },
+    'open first city',
+    { allowedAction: { type: 'openWorldSite', siteId: 'site_1_2' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 120, y: 120 }, event), true);
+
+  assert.deepEqual(calls, [
+    ['handle', 'openWorldSite', 'site_1_2'],
+    ['preventDefault'],
+    ['stopPropagation'],
+  ]);
+});
+
 test('CanvasGameShell blocks all drags while a guided highlight is active', () => {
   const calls = [];
   const shell = new CanvasGameShell({

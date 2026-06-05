@@ -1269,13 +1269,14 @@
     handle_openWorldSite(action) {
       const forwarded = this.forward(action);
       if (forwarded !== undefined) return forwarded !== false;
+      const siteId = action.siteId || action.territoryId || action.cityId || '';
       const territory = this.getTerritoryController();
       if (territory?.openSiteDialog) {
-        territory.openSiteDialog(action.siteId);
+        territory.openSiteDialog(siteId);
         return true;
       }
       this.host.territoryUiState = this.host.territoryUiState || {};
-      this.host.territoryUiState.selectedSiteId = action.siteId || '';
+      this.host.territoryUiState.selectedSiteId = siteId;
       return this.afterHandled(action);
     }
 
