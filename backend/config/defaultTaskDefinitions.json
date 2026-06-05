@@ -1,0 +1,41 @@
+{
+  "version": "0.1.0",
+  "tasks": [
+    {
+      "id": "main_build_house",
+      "category": "main",
+      "title": "安下第一处民居",
+      "description": "建造一座民居，让族人拥有稳定的居所。",
+      "target": "buildings",
+      "condition": { "type": "buildingLevel", "buildingId": "house", "count": 1 },
+      "reward": { "resources": {} },
+      "action": { "type": "goToGuideTaskTarget", "target": "buildings" },
+      "sortOrder": 10,
+      "enabled": true
+    },
+    {
+      "id": "main_first_supplies",
+      "category": "main",
+      "title": "聚落的第一份清单",
+      "description": "领取建设农田与下一次文明进阶所需的基础物资。",
+      "target": "tasks",
+      "condition": { "type": "buildingLevel", "buildingId": "house", "count": 1 },
+      "reward": { "formulas": ["buildCost:farm", "advanceCost:1"] },
+      "action": { "type": "claimTaskReward", "taskId": "main_first_supplies", "category": "main" },
+      "sortOrder": 20,
+      "enabled": true
+    },
+    {
+      "id": "main_lumbermill_supplies",
+      "category": "main",
+      "title": "让木材流入仓房",
+      "description": "建成伐木场后领取下一阶段文明进阶物资。",
+      "target": "tasks",
+      "condition": { "type": "buildingLevel", "buildingId": "lumbermill", "count": 1 },
+      "reward": { "formulas": ["advanceCost:2"] },
+      "action": { "type": "claimTaskReward", "taskId": "main_lumbermill_supplies", "category": "main" },
+      "sortOrder": 30,
+      "enabled": true
+    }
+  ]
+}

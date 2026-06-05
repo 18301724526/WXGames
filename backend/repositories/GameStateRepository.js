@@ -37,6 +37,7 @@ class GameStateRepository {
         talentPolicies TEXT,
         famousPeople TEXT,
         famousPersonState TEXT,
+        taskProgress TEXT,
         military TEXT,
         polity TEXT,
         territories TEXT,
@@ -67,6 +68,9 @@ class GameStateRepository {
     }
     if (!columns.some((column) => column.name === 'famousPersonState')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN famousPersonState TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'taskProgress')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN taskProgress TEXT').run();
     }
     if (!columns.some((column) => column.name === 'military')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN military TEXT').run();
@@ -137,6 +141,7 @@ class GameStateRepository {
       talentPolicies: row.talentPolicies ? JSON.parse(row.talentPolicies) : null,
       famousPeople: row.famousPeople ? JSON.parse(row.famousPeople) : null,
       famousPersonState: row.famousPersonState ? JSON.parse(row.famousPersonState) : null,
+      taskProgress: row.taskProgress ? JSON.parse(row.taskProgress) : null,
       military: row.military ? JSON.parse(row.military) : null,
       polity: row.polity ? JSON.parse(row.polity) : null,
       territories: row.territories ? JSON.parse(row.territories) : null,
@@ -178,10 +183,10 @@ class GameStateRepository {
         playerId, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
-        famousPeople, famousPersonState, military,
+        famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.resources || {}),
@@ -204,6 +209,7 @@ class GameStateRepository {
       JSON.stringify(gameState.talentPolicies || {}),
       JSON.stringify(gameState.famousPeople || []),
       JSON.stringify(gameState.famousPersonState || {}),
+      JSON.stringify(gameState.taskProgress || {}),
       JSON.stringify(gameState.military || {}),
       JSON.stringify(gameState.regularEventState || {}),
       JSON.stringify(gameState.threatEventState || {}),

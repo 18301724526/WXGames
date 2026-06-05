@@ -47,6 +47,7 @@ function createInitialGameState(playerId) {
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
     famousPeople: [],
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
+    taskProgress: { claimed: {} },
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0, areas: [] },
     exploreMissions: [],
@@ -93,6 +94,10 @@ function normalizeState(rawState) {
   state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
   state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
   FamousPersonService.ensureFamousPersonState(state);
+  state.taskProgress = state.taskProgress && typeof state.taskProgress === 'object' ? state.taskProgress : { claimed: {} };
+  state.taskProgress.claimed = state.taskProgress.claimed && typeof state.taskProgress.claimed === 'object'
+    ? state.taskProgress.claimed
+    : {};
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
   WorldExplorerService.normalizeExploreState(state);

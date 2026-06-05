@@ -11,6 +11,7 @@ const createAuthMiddleware = require('./middleware/authMiddleware');
 const registerPlayerRoutes = require('./routes/playerRoutes');
 const registerGameRoutes = require('./routes/gameRoutes');
 const registerBuildingRoutes = require('./routes/buildingRoutes');
+const registerAdminRoutes = require('./routes/adminRoutes');
 const gameStateService = require('./services/GameStateService');
 const BuildingConfig = require('./config/BuildingConfig');
 const VersionService = require('./services/VersionService');
@@ -44,7 +45,7 @@ const BACKGROUND_ACTIVE_LIMIT = 25;
 let backgroundTickRunning = false;
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization'] }));
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));
 
 app.use((req, res, next) => {
   if (SKIP_API_LOG_PATHS.has(req.path)) return next();
@@ -77,6 +78,7 @@ app.use((req, res, next) => {
 registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService });
 registerGameRoutes(app, { authMiddleware, repository, gameStateService });
 registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
+registerAdminRoutes(app, { authMiddleware });
 
 app.get('/api/health', (req, res) => {
   res.json({
