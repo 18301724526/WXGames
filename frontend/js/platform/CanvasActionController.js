@@ -1268,8 +1268,11 @@
 
     handle_openWorldSite(action) {
       const forwarded = this.forward(action);
-      if (forwarded !== undefined) return forwarded !== false;
       const siteId = action.siteId || action.territoryId || action.cityId || '';
+      if (forwarded !== undefined) {
+        if (forwarded !== false) this.openWorldSiteLocally(siteId);
+        return forwarded !== false;
+      }
       const territory = this.getTerritoryController();
       if (territory?.openSiteDialog) {
         territory.openSiteDialog(siteId);
