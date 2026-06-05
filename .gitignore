@@ -21,6 +21,10 @@ backend/.env.*
 frontend/.env
 frontend/.env.*
 
+# Local server credentials
+服务器连接密码.txt
+*连接密码*.txt
+
 backend/*.bak
 backend/*.bak*
 backend/*.bak.*
