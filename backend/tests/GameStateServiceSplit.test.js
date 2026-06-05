@@ -4,6 +4,9 @@ const assert = require('node:assert/strict');
 const GameStateService = require('../services/GameStateService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
+const TutorialService = require('../services/TutorialService');
+const TerritoryService = require('../services/TerritoryService');
+const WorldExplorerService = require('../services/WorldExplorerService');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -72,4 +75,48 @@ test('new tutorial client state exposes the first house before era one unlocks b
   assert.equal(clientState.currentEra, 0);
   assert.equal(clientState.unlockedBuildings.includes('house'), true);
   assert.equal(clientState.resources.food >= 110, true);
+});
+
+test('guided first city settlement soldiers survive state normalization', () => {
+  const siteId = 'site_3_1';
+  const rawState = {
+    playerId: 'tutorial-settlement-soldier-normalize-test',
+    activeCityId: 'capital',
+    resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    population: { total: 3, max: 3, maxPop: 3, farmers: 3 },
+    military: { soldiers: 0, soldierCap: 0 },
+    tutorial: {
+      ...TutorialService.manualAdvance(
+        TutorialService.createInitialTutorialState(),
+        TutorialService.TUTORIAL_STEPS.scoutExploreClaimed,
+      ),
+      grants: {
+        [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: { siteId },
+      },
+    },
+    territories: [
+      { id: 'capital', x: 0, y: 0, naturalName: 'Origin', cityName: 'Capital', type: 'capital', owner: 'player', status: 'occupied' },
+      { id: siteId, x: 3, y: 1, naturalName: 'River Bend', type: 'town', owner: 'neutral', status: 'discovered', scale: 2 },
+    ],
+    cities: {
+      capital: {
+        id: 'capital',
+        territoryId: 'capital',
+        isCapital: true,
+        name: 'Capital',
+        resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+        buildings: {},
+        population: { total: 3, max: 3, maxPop: 3, farmers: 3 },
+        military: { soldiers: 0, soldierCap: 0 },
+      },
+    },
+  };
+
+  const normalized = GameStateService.normalizeState(rawState);
+
+  assert.equal(normalized.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  assert.equal(normalized.military.soldierCap, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  assert.equal(normalized.military.availableSoldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  assert.equal(normalized.cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
 });

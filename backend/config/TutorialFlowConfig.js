@@ -25,7 +25,10 @@ const TUTORIAL_STEPS = Object.freeze({
   scoutWorldPanelOpened: 23,
   scoutExploreStarted: 24,
   scoutExploreClaimed: 25,
-  craftsmanAssigned: 26,
+  firstCityConquestStarted: 26,
+  firstCityOccupied: 27,
+  firstCityNamed: 28,
+  polityNamed: 29,
   completed: 30,
 });
 
@@ -54,7 +57,10 @@ const TUTORIAL_EVENT_STEPS = Object.freeze({
   scoutWorldPanelOpened: TUTORIAL_STEPS.scoutWorldPanelOpened,
   scoutExploreStarted: TUTORIAL_STEPS.scoutExploreStarted,
   scoutExploreClaimed: TUTORIAL_STEPS.scoutExploreClaimed,
-  craftsmanAssigned: TUTORIAL_STEPS.craftsmanAssigned,
+  firstCityConquestStarted: TUTORIAL_STEPS.firstCityConquestStarted,
+  firstCityOccupied: TUTORIAL_STEPS.firstCityOccupied,
+  firstCityNamed: TUTORIAL_STEPS.firstCityNamed,
+  polityNamed: TUTORIAL_STEPS.polityNamed,
 });
 
 const PASS_THROUGH_ACTIONS = Object.freeze([
@@ -68,10 +74,6 @@ const PASS_THROUGH_ACTIONS = Object.freeze([
   'assignFamousAttributePoint',
   'scoutTerritory',
   'claimScout',
-  'startConquest',
-  'claimConquest',
-  'renameCity',
-  'renamePolity',
   'switchCity',
 ]);
 

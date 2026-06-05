@@ -484,3 +484,139 @@ test('TutorialGuideController guides scout formation into world exploration and 
   });
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed);
 });
+
+test('TutorialGuideController guides first empty city occupation and naming', () => {
+  const calls = [];
+  const siteId = 'site_3_1';
+  const shell = {
+    activeCommandPanel: 'military',
+    getCanvasTarget(type, predicate) {
+      const targets = {
+        openWorldSite: { type: 'openWorldSite', siteId },
+        conquer: { type: 'conquer', territoryId: siteId },
+        claimConquest: { type: 'claimConquest', territoryId: siteId },
+        renameCity: { type: 'renameCity', territoryId: siteId },
+        requestNamingInput: { type: 'requestNamingInput' },
+        submitNaming: { type: 'submitNaming', name: '河湾城' },
+      };
+      const action = targets[type];
+      if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
+      return null;
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+    hideTutorialHighlight() {
+      calls.push({ hideHighlight: true });
+      return true;
+    },
+  };
+  const game = {
+    tutorial: {
+      completed: false,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed,
+      grants: { firstExploreEmptyCity: { siteId } },
+    },
+    state: {
+      currentTab: 'military',
+      territoryState: {
+        territories: [
+          { id: 'capital', status: 'occupied', owner: 'player', cityName: '首都' },
+          { id: siteId, status: 'discovered', owner: 'neutral', naturalName: 'River Bend' },
+        ],
+      },
+    },
+    canvasShell: shell,
+    renderCanvasSurface() {
+      calls.push({ render: true });
+    },
+  };
+  const controller = new TutorialGuideController({ game });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldSite', siteId });
+
+  game.territoryController = { uiState: { selectedSiteId: siteId } };
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'conquer', territoryId: siteId });
+
+  controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityConquestStarted });
+  game.state.territoryState.territories[1].status = 'contested';
+  game.state.territoryState.territories[1].mission = { status: 'ready', mode: 'settlement' };
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'claimConquest', territoryId: siteId });
+
+  controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityOccupied });
+  game.state.territoryState.territories[1].status = 'occupied';
+  game.state.territoryState.namingPrompt = { type: 'city', territoryId: siteId };
+  game.naming = { prompt: { type: 'city', territoryId: siteId }, inputValue: '' };
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'requestNamingInput' });
+
+  game.naming.inputValue = 'River City';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'submitNaming' });
+
+  controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityNamed });
+  game.state.territoryState.namingPrompt = { type: 'polity' };
+  game.naming = { prompt: { type: 'polity' }, inputValue: '' };
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'requestNamingInput' });
+
+  game.naming.inputValue = 'River League';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'submitNaming' });
+});
+
+test('TutorialGuideController focuses guided first city when it is offscreen', () => {
+  const calls = [];
+  const siteId = 'site_far';
+  const shell = {
+    actionController: {
+      centerWorldMapOnSite(id) {
+        calls.push(['center', id]);
+        return true;
+      },
+    },
+    renderActive() {
+      calls.push(['shellRender']);
+    },
+    getCanvasTarget() {
+      return null;
+    },
+    showTutorialHighlight() {
+      calls.push(['highlight']);
+      return true;
+    },
+  };
+  const game = {
+    tutorial: {
+      completed: false,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed,
+      grants: { firstExploreEmptyCity: { siteId } },
+    },
+    state: {
+      currentTab: 'military',
+      territoryState: {
+        territories: [
+          { id: siteId, status: 'discovered', owner: 'neutral', naturalName: 'Far Site' },
+        ],
+      },
+    },
+    canvasShell: shell,
+    renderCanvasSurface(tab) {
+      calls.push(['gameRender', tab]);
+    },
+  };
+  const controller = new TutorialGuideController({ game });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.slice(0, 3), [
+    ['center', siteId],
+    ['gameRender', 'military'],
+    ['shellRender'],
+  ]);
+});

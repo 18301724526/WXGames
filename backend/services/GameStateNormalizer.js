@@ -105,6 +105,7 @@ function normalizeState(rawState) {
   WorldExplorerService.normalizeExploreState(state);
   TerritoryService.normalizeTerritoryState(state, new Date(), { previousWorldMapVersion });
   CityService.normalizeCities(state);
+  WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
   state.happiness = state.happiness || 100;

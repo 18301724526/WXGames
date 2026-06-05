@@ -429,6 +429,7 @@
         if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') this.canvasShell.activeBuildingCategory = this.activeBuildingCategory;
         if (this.canvasShell && typeof this.canvasShell.famousPersonsPage !== 'undefined') this.famousPersonsPage = this.canvasShell.famousPersonsPage;
         if (this.canvasShell && typeof this.canvasShell.selectedFamousPersonId !== 'undefined') this.selectedFamousPersonId = this.canvasShell.selectedFamousPersonId;
+        if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
         this.tutorialController?.refreshCurrentHighlight?.();
         return true;
@@ -1316,7 +1317,9 @@
         this.activeEventId = null;
         this.showFamousPersons = false;
         this.activeCommandPanel = '';
+        if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
         this.render();
+        this.scheduleTutorialHighlightRefresh(80);
     }
 
     closeNaming() {
@@ -1329,7 +1332,25 @@
         inputValue: '',
         submitting: false,
       };
+      if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
       this.render();
+    }
+
+    scheduleTutorialHighlightRefresh(delayMs = 0) {
+      const callback = () => this.tutorialController?.refreshCurrentHighlight?.();
+      const scheduler = typeof this.scheduler?.setTimeout === 'function'
+        ? this.scheduler
+        : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
+      if (scheduler) {
+        scheduler.setTimeout(callback, delayMs);
+        return true;
+      }
+      if (typeof setTimeout === 'function') {
+        setTimeout(callback, delayMs);
+        return true;
+      }
+      callback();
+      return false;
     }
 
     async requestNamingInput() {
@@ -1344,6 +1365,7 @@
       });
       if (value === null || value === undefined || !this.naming.visible) return;
       this.naming.inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
+      if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
       this.render();
     }
 
@@ -1356,6 +1378,7 @@
       const name = String(inputName ?? this.naming.inputValue ?? '').trim();
       if (!prompt.type || !name) return;
       this.naming.submitting = true;
+      if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
       this.render();
       try {
         const api = this.getGameApi();

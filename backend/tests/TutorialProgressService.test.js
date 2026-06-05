@@ -310,3 +310,40 @@ test('tutorial blocks guided exploration until the granted scout formation is sa
   const started = TutorialService.manualAdvance(tutorial, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
   assert.equal(TutorialService.validateAction(started, 'claimExplore', { missionId: 'explore-1' }, gameState).allowed, true);
 });
+
+test('tutorial guides first discovered empty city claim and naming in order', () => {
+  const siteId = 'site_first_empty';
+  const tutorial = {
+    ...TutorialService.manualAdvance(
+      TutorialService.createInitialTutorialState(),
+      TutorialService.TUTORIAL_STEPS.scoutExploreClaimed,
+    ),
+    grants: {
+      firstExploreEmptyCity: { siteId },
+    },
+  };
+  const gameState = {
+    tutorial,
+    territories: [
+      { id: 'capital', status: 'occupied', owner: 'player', cityName: '首都' },
+      { id: siteId, status: 'discovered', owner: 'neutral', cityName: null },
+    ],
+    polity: { name: null },
+  };
+
+  assert.equal(TutorialService.validateAction(tutorial, 'startConquest', { territoryId: 'other' }, gameState).allowed, false);
+  assert.equal(TutorialService.validateAction(tutorial, 'startConquest', { territoryId: siteId }, gameState).allowed, true);
+  assert.equal(TutorialService.validateAction(tutorial, 'renameCity', { territoryId: siteId, name: '河湾城' }, gameState).allowed, false);
+
+  const claimed = TutorialService.manualAdvance(tutorial, TutorialService.TUTORIAL_STEPS.firstCityOccupied);
+  gameState.tutorial = claimed;
+  gameState.territories[1].status = 'occupied';
+  assert.equal(TutorialService.validateAction(claimed, 'renameCity', { territoryId: 'capital', name: '旧都' }, gameState).allowed, false);
+  assert.equal(TutorialService.validateAction(claimed, 'renameCity', { territoryId: siteId, name: '河湾城' }, gameState).allowed, true);
+  assert.equal(TutorialService.validateAction(claimed, 'renamePolity', { name: '赤火联盟' }, gameState).allowed, false);
+
+  const cityNamed = TutorialService.manualAdvance(claimed, TutorialService.TUTORIAL_STEPS.firstCityNamed);
+  gameState.tutorial = cityNamed;
+  gameState.territories[1].cityName = '河湾城';
+  assert.equal(TutorialService.validateAction(cityNamed, 'renamePolity', { name: '赤火联盟' }, gameState).allowed, true);
+});

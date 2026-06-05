@@ -26,6 +26,10 @@
     scoutWorldPanelOpened: 23,
     scoutExploreStarted: 24,
     scoutExploreClaimed: 25,
+    firstCityConquestStarted: 26,
+    firstCityOccupied: 27,
+    firstCityNamed: 28,
+    polityNamed: 29,
     completed: 30,
   });
 
@@ -34,6 +38,7 @@
       this.game = options.game || null;
       this.api = options.api || null;
       this.state = options.state || null;
+      this.focusedFirstCitySiteId = '';
     }
 
     getApi() {
@@ -67,6 +72,9 @@
       if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
       if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutExploreClaimed) {
         return ['civilization', 'military'].includes(tabId);
+      }
+      if (step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed) {
+        return ['military'].includes(tabId);
       }
       return true;
     }
@@ -152,6 +160,11 @@
     isScoutExploreGuideActive() {
       const step = this.getCurrentStep();
       return !this.isCompleted() && step >= TUTORIAL_STEPS.scoutFormationSaved && step < TUTORIAL_STEPS.scoutExploreClaimed;
+    }
+
+    isFirstCityGuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed;
     }
 
     isLumbermillGuideActive() {
@@ -262,6 +275,50 @@
         || '';
     }
 
+    getFirstExploreCityId() {
+      return this.state?.grants?.firstExploreEmptyCity?.siteId
+        || this.game?.tutorial?.grants?.firstExploreEmptyCity?.siteId
+        || this.game?.state?.tutorial?.grants?.firstExploreEmptyCity?.siteId
+        || '';
+    }
+
+    getTerritories() {
+      return this.game?.state?.territoryState?.territories || [];
+    }
+
+    getFirstExploreCity() {
+      const siteId = this.getFirstExploreCityId();
+      return this.getTerritories().find((site) => site?.id === siteId) || null;
+    }
+
+    isWorldSiteSelected(siteId = '') {
+      const selected = this.game?.territoryController?.uiState?.selectedSiteId
+        || this.game?.canvasShell?.territoryUiState?.selectedSiteId
+        || this.game?.territoryUiState?.selectedSiteId
+        || '';
+      return Boolean(siteId && selected === siteId);
+    }
+
+    isNamingOpen(type = '', territoryId = '') {
+      const prompt = this.game?.activeNamingPrompt
+        || this.game?.naming?.prompt
+        || this.game?.canvasShell?.naming?.prompt
+        || this.game?.state?.territoryState?.namingPrompt
+        || null;
+      if (!prompt) return false;
+      if (type && prompt.type !== type) return false;
+      if (territoryId && prompt.territoryId !== territoryId) return false;
+      return true;
+    }
+
+    getNamingInputValue() {
+      return String(
+        this.game?.naming?.inputValue
+          || this.game?.canvasShell?.naming?.inputValue
+          || '',
+      ).trim();
+    }
+
     async onFamousPersonsOpened() {
       if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFamousGranted) {
         return this.advanceTo(TUTORIAL_STEPS.famousPanelOpened);
@@ -318,6 +375,22 @@
         message,
         { allowedAction, source: 'strongTutorial' },
       ) || false;
+    }
+
+    focusFirstCitySite(siteId = '') {
+      if (!siteId || this.focusedFirstCitySiteId === siteId) return false;
+      const shell = this.game?.canvasShell || null;
+      const actionController = shell?.actionController || this.game?.actionController || null;
+      let changed = false;
+      if (typeof actionController?.centerWorldMapOnSite === 'function') {
+        changed = actionController.centerWorldMapOnSite(siteId) !== false;
+      }
+      if (!changed) return false;
+      this.focusedFirstCitySiteId = siteId;
+      this.game?.renderCanvasSurface?.(this.game?.state?.currentTab || this.game?.activeTab);
+      shell?.renderActive?.();
+      setTimeout(() => this.refreshCurrentHighlight(), 80);
+      return true;
     }
 
     prepareCommandPanelGuide(panelId) {
@@ -674,6 +747,84 @@
         if (step === TUTORIAL_STEPS.scoutExploreStarted && activeMission) {
           this.game?.canvasShell?.hideTutorialHighlight?.();
           return false;
+        }
+      }
+      if (this.isFirstCityGuideActive()) {
+        const step = this.getCurrentStep();
+        const siteId = this.getFirstExploreCityId();
+        const site = this.getFirstExploreCity() || {};
+        if (step === TUTORIAL_STEPS.scoutExploreClaimed) {
+          if (!this.isWorldSiteSelected(siteId)) {
+            const highlighted = this.showHighlight(
+              'openWorldSite',
+              (action) => !action.disabled && (!siteId || action.siteId === siteId || action.territoryId === siteId),
+              '\u70b9\u5f00\u4fa6\u5bdf\u961f\u53d1\u73b0\u7684\u7a7a\u57ce\uff0c\u51c6\u5907\u5efa\u7acb\u7b2c\u4e8c\u5904\u636e\u70b9\u3002',
+              { type: 'openWorldSite', siteId },
+            );
+            if (highlighted) return true;
+            return this.focusFirstCitySite(siteId);
+          }
+          return this.showHighlight(
+            'conquer',
+            (action) => !action.disabled && (!siteId || action.territoryId === siteId || action.cityId === siteId),
+            '\u8fd9\u662f\u4e00\u5ea7\u65e0\u4e3b\u7a7a\u57ce\uff0c\u70b9\u51fb\u5360\u9886\uff0c\u6d3e\u4eba\u5efa\u7acb\u65b0\u636e\u70b9\u3002',
+            { type: 'conquer', territoryId: siteId },
+          );
+        }
+        if (step === TUTORIAL_STEPS.firstCityConquestStarted) {
+          return this.showHighlight(
+            'claimConquest',
+            (action) => !action.disabled && (!siteId || action.territoryId === siteId || action.cityId === siteId),
+            '\u961f\u4f0d\u5df2\u7ecf\u5230\u8fbe\uff0c\u70b9\u51fb\u5b8c\u6210\u5360\u9886\uff0c\u628a\u8fd9\u91cc\u7eb3\u5165\u6211\u4eec\u7684\u7248\u56fe\u3002',
+            { type: 'claimConquest', territoryId: siteId },
+          );
+        }
+        if (step === TUTORIAL_STEPS.firstCityOccupied) {
+          if (!this.isNamingOpen('city', siteId)) {
+            return this.showHighlight(
+              'renameCity',
+              (action) => !action.disabled && (!siteId || action.territoryId === siteId || action.cityId === siteId),
+              `\u7ed9${site.naturalName || '\u8fd9\u5ea7\u65b0\u57ce'}\u53d6\u4e00\u4e2a\u540d\u5b57\uff0c\u8ba9\u5b83\u6210\u4e3a\u771f\u6b63\u7684\u57ce\u5e02\u3002`,
+              { type: 'renameCity', territoryId: siteId },
+            );
+          }
+          if (!this.getNamingInputValue()) {
+            return this.showHighlight(
+              'requestNamingInput',
+              (action) => !action.disabled,
+              '\u5148\u70b9\u51fb\u8f93\u5165\u6846\uff0c\u4e3a\u65b0\u57ce\u586b\u5165\u4e00\u4e2a\u540d\u5b57\u3002',
+              { type: 'requestNamingInput' },
+            );
+          }
+          return this.showHighlight(
+            'submitNaming',
+            (action) => !action.disabled,
+            '\u786e\u8ba4\u57ce\u5e02\u540d\u79f0\uff0c\u63a5\u4e0b\u6765\u4e3a\u6211\u4eec\u7684\u6587\u660e\u547d\u540d\u3002',
+            { type: 'submitNaming' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.firstCityNamed) {
+          if (!this.isNamingOpen('polity')) {
+            this.game?.openNaming?.({
+              type: 'polity',
+              title: '\u4e3a\u6587\u660e\u547d\u540d',
+              message: '\u65b0\u57ce\u5df2\u7ecf\u5e76\u5165\u6211\u4eec\u7684\u7248\u56fe\uff0c\u73b0\u5728\u7ed9\u8fd9\u4e2a\u65b0\u751f\u6587\u660e\u4e00\u4e2a\u540d\u5b57\u3002',
+            });
+          }
+          if (!this.getNamingInputValue()) {
+            return this.showHighlight(
+              'requestNamingInput',
+              (action) => !action.disabled,
+              '\u8f93\u5165\u6587\u660e\u540d\u79f0\uff0c\u8fd9\u4e2a\u540d\u5b57\u4f1a\u8bb0\u5f55\u5728\u52bf\u529b\u6863\u6848\u91cc\u3002',
+              { type: 'requestNamingInput' },
+            );
+          }
+          return this.showHighlight(
+            'submitNaming',
+            (action) => !action.disabled,
+            '\u786e\u8ba4\u6587\u660e\u540d\u79f0\uff0c\u8fd9\u6761\u5f3a\u5f15\u5bfc\u5c31\u53ea\u5269\u6700\u540e\u7684\u79d1\u6280\u8bf4\u660e\u4e86\u3002',
+            { type: 'submitNaming' },
+          );
         }
       }
       if (!this.isHouseGuideActive()) return false;

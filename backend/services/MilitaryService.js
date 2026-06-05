@@ -5,6 +5,7 @@ const { TUTORIAL_STEPS, createPhaseCompleted } = require('../config/TutorialFlow
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
+const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
 const FORMATION_NAMES = ['部队一', '部队二', '部队三'];
 
 function advanceTutorialStep(tutorial = {}, nextStep = 0) {
@@ -66,6 +67,47 @@ function migrateLegacySoldiers(rawMilitary, stats) {
     || Number(rawMilitary?.defensePerSoldier) === Number(stats.defensePerSoldier);
   if (!hasHundredScaleFields && soldiers < 100) return Math.min(cap, soldiers * 100);
   return soldiers;
+}
+
+function getTutorialSettlementSoldierFloor(gameState = {}) {
+  const tutorial = gameState?.tutorial || {};
+  if (tutorial.completed || tutorial.disabled) return 0;
+  const step = Math.floor(Number(tutorial.currentStep) || 0);
+  if (step < TUTORIAL_STEPS.scoutExploreClaimed || step > TUTORIAL_STEPS.firstCityConquestStarted) return 0;
+  const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
+  if (!siteId) return 0;
+  const target = (Array.isArray(gameState.territories) ? gameState.territories : [])
+    .find((territory) => String(territory?.id || '') === String(siteId));
+  if (!target || target.owner === 'player' || target.status === 'occupied') return 0;
+  return TerritoryService.MIN_EXPEDITION_SOLDIERS;
+}
+
+function buildSoldierAvailabilityState(gameState = {}, soldiers = 0) {
+  const military = {
+    ...(gameState?.military || {}),
+    soldiers,
+  };
+  const availabilityState = {
+    ...(gameState || {}),
+    military,
+  };
+  const activeCityId = availabilityState.activeCityId || 'capital';
+  if (availabilityState.cities && typeof availabilityState.cities === 'object') {
+    const city = availabilityState.cities[activeCityId];
+    if (city) {
+      availabilityState.cities = {
+        ...availabilityState.cities,
+        [activeCityId]: {
+          ...city,
+          military: {
+            ...(city.military || {}),
+            soldiers,
+          },
+        },
+      };
+    }
+  }
+  return availabilityState;
 }
 
 function normalizeFormationSlot(slot) {
@@ -139,19 +181,21 @@ function normalizeArmyFormations(rawFormations, gameState = {}) {
 
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
-  const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
+  const tutorialSoldierFloor = getTutorialSettlementSoldierFloor(gameState);
+  const cap = Math.max(0, Math.floor(stats.soldierCap || 0), tutorialSoldierFloor);
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
   const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
-  const soldiers = Math.min(cap, migrateLegacySoldiers(rawMilitary, stats));
+  const soldiers = Math.min(cap, Math.max(migrateLegacySoldiers(rawMilitary, stats), tutorialSoldierFloor));
   const trainingProgress = cap > 0 && soldiers < cap && interval > 0
     ? Math.min(interval, toNonNegativeNumber(rawMilitary?.trainingProgress))
     : 0;
   const defensePerSoldier = Math.max(0, toNonNegativeNumber(stats.defensePerSoldier));
+  const availabilityState = buildSoldierAvailabilityState(gameState || {}, soldiers);
   return {
     soldiers,
     soldierCap: cap,
-    soldiersOnMission: TerritoryService.countSoldiersOnMission(gameState || {}),
-    availableSoldiers: TerritoryService.getAvailableSoldiers(gameState || {}),
+    soldiersOnMission: TerritoryService.countSoldiersOnMission(availabilityState),
+    availableSoldiers: TerritoryService.getAvailableSoldiers(availabilityState),
     trainingProgress,
     trainingIntervalSeconds: interval,
     trainingBatchSize: batchSize,

@@ -341,3 +341,49 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
   assert.equal(app.activeTaskCenterTab, 'main');
   assert.deepEqual(calls.map(([name]) => name), ['hideTutorialHighlight', 'shell_handle_openTaskCenter', 'refreshCurrentHighlight']);
 });
+
+test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highlight refresh', () => {
+  const calls = [];
+  const timers = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: {
+      buildNamingPromptViewState(prompt) {
+        return {
+          key: `${prompt.type}:${prompt.territoryId || 'polity'}`,
+          title: prompt.title || 'Name',
+          message: prompt.message || '',
+          placeholder: 'Name',
+          maxLength: 12,
+        };
+      },
+    },
+    scheduler: {
+      setTimeout(callback, delayMs) {
+        calls.push(['setTimeout', delayMs]);
+        timers.push(callback);
+        return 1;
+      },
+    },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+        return true;
+      },
+    },
+  });
+  app.canvasShell = { naming: { visible: false } };
+  app.render = () => calls.push(['render']);
+
+  app.openNaming({ type: 'city', territoryId: 'site_1' });
+
+  assert.equal(app.naming.visible, true);
+  assert.equal(app.naming.prompt.territoryId, 'site_1');
+  assert.equal(app.canvasShell.naming, app.naming);
+  assert.deepEqual(calls, [['render'], ['setTimeout', 80]]);
+
+  timers[0]();
+  assert.deepEqual(calls.at(-1), ['refreshCurrentHighlight']);
+});

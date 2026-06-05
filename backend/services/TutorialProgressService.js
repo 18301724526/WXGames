@@ -140,6 +140,19 @@ function hasTutorialScoutFormation(gameState = {}, payload = {}) {
   return getFormationMembers(gameState, payload).includes(scoutPersonId);
 }
 
+function getTutorialFirstEmptyCityId(tutorialState = {}) {
+  const tutorial = normalizeTutorialState(tutorialState);
+  const siteId = tutorial.grants?.firstExploreEmptyCity?.siteId;
+  return siteId ? String(siteId) : '';
+}
+
+function getTerritoryById(gameState = {}, territoryId = '') {
+  const normalizedId = String(territoryId || '').trim();
+  if (!normalizedId) return null;
+  return (Array.isArray(gameState.territories) ? gameState.territories : [])
+    .find((territory) => String(territory?.id || '') === normalizedId) || null;
+}
+
 function validateHouseGuideAction(step, action, payload, gameState) {
   if (action === 'advanceEra') {
     return blocked('请先建造第一处民居，再按照引导查看文明进阶。');
@@ -264,11 +277,80 @@ function validateScoutExploreAction(step, action, payload, gameState) {
   return { allowed: true };
 }
 
+function validateFirstCityGuideAction(step, action, payload, gameState) {
+  const firstCityId = getTutorialFirstEmptyCityId(gameState.tutorial);
+  const targetId = String(payload?.territoryId || payload?.cityId || '').trim();
+  const target = getTerritoryById(gameState, targetId);
+  const isFirstCity = firstCityId && targetId === firstCityId;
+
+  if (action === 'startConquest') {
+    if (step !== TUTORIAL_STEPS.scoutExploreClaimed) {
+      return blocked('Please finish the current guided city step first.');
+    }
+    if (!isFirstCity || !target || target.status !== 'discovered' || target.owner !== 'neutral') {
+      return blocked('Please claim the empty city discovered by the guided exploration first.');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'claimConquest') {
+    if (step !== TUTORIAL_STEPS.firstCityConquestStarted) {
+      return blocked('Please start the guided city claim first.');
+    }
+    if (!isFirstCity) return blocked('Please finish claiming the guided empty city.');
+    return { allowed: true };
+  }
+
+  if (action === 'renameCity') {
+    if (step !== TUTORIAL_STEPS.firstCityOccupied) {
+      return blocked('Please finish claiming the guided empty city before naming it.');
+    }
+    if (!isFirstCity || !target || target.status !== 'occupied') {
+      return blocked('Please name the newly claimed guided city.');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'renamePolity') {
+    if (step !== TUTORIAL_STEPS.firstCityNamed) {
+      return blocked('Please name the new city before naming the civilization.');
+    }
+    return { allowed: true };
+  }
+
+  if ([
+    'advanceEra',
+    'build',
+    'claimEvent',
+    'assign',
+    'research',
+    'seekFamousPerson',
+    'acceptFamousPerson',
+    'dismissFamousPersonCandidate',
+    'assignFamousAttributePoint',
+    'setArmyFormation',
+    'startExplore',
+    'claimExplore',
+  ].includes(action)) {
+    return blocked('Please finish claiming and naming the new city first.');
+  }
+
+  return { allowed: true };
+}
+
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
-  if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };
   const step = tutorial.currentStep;
+
+  if (
+    step >= TUTORIAL_STEPS.scoutExploreClaimed
+    && step < TUTORIAL_STEPS.polityNamed
+  ) {
+    return validateFirstCityGuideAction(step, action, payload, gameState);
+  }
+
+  if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };
 
   if (action === 'startExplore' || action === 'claimExplore') {
     return validateScoutExploreAction(step, action, payload, gameState);

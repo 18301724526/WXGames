@@ -110,6 +110,47 @@ function validateTutorialFormation(gameState = {}, options = {}) {
   return { success: true, formation };
 }
 
+function ensureTutorialFirstCityClaimSoldiers(gameState = {}) {
+  const tutorial = gameState.tutorial || {};
+  if (tutorial.completed || tutorial.disabled) return false;
+  const step = Math.floor(Number(tutorial.currentStep) || 0);
+  if (step < TUTORIAL_STEPS.scoutExploreClaimed || step >= TUTORIAL_STEPS.firstCityConquestStarted) return false;
+  const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
+  if (!siteId) return false;
+  const target = (gameState.territories || []).find((territory) => territory?.id === siteId);
+  if (!target || target.status !== 'discovered' || target.owner !== 'neutral') return false;
+
+  const required = TerritoryService.MIN_EXPEDITION_SOLDIERS;
+  const activeCityId = gameState.activeCityId || 'capital';
+  const city = gameState.cities?.[activeCityId] || gameState.cities?.capital || null;
+  const military = city?.military || gameState.military || {};
+  let changed = false;
+  if ((Number(military.soldiers) || 0) < required) {
+    military.soldiers = required;
+    changed = true;
+  }
+  if ((Number(military.soldierCap) || 0) < required) {
+    military.soldierCap = required;
+    changed = true;
+  }
+  if (!changed) return false;
+  if (city) city.military = military;
+  gameState.military = military;
+  gameState.tutorial = {
+    ...tutorial,
+    grants: {
+      ...(tutorial.grants || {}),
+      [TUTORIAL_FIRST_SITE_GRANT_KEY]: {
+        ...(tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY] || {}),
+        settlementSoldiersGranted: required,
+        settlementSoldiersGrantedAt: new Date().toISOString(),
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  return true;
+}
+
 function normalizeRouteStep(rawStep, index = 0) {
   if (!rawStep || typeof rawStep !== 'object') return null;
   const q = toInteger(rawStep.q ?? rawStep.x, 0);
@@ -686,6 +727,7 @@ function claimExplore(gameState, missionId, now = new Date()) {
   if (mission.status !== 'ready') return { success: false, error: 'EXPLORE_MISSION_NOT_READY', message: 'Explorer mission is not ready.' };
   gameState.exploreMissions = (gameState.exploreMissions || []).filter((item) => item.id !== mission.id);
   gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreClaimed);
+  ensureTutorialFirstCityClaimSoldiers(gameState);
   return {
     success: true,
     message: 'Explorer mission complete.',
@@ -710,4 +752,5 @@ module.exports = {
   buildRandomRoute,
   buildManualRoute,
   normalizeMission,
+  ensureTutorialFirstCityClaimSoldiers,
 };

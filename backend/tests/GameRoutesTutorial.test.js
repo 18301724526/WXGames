@@ -4,6 +4,9 @@ const assert = require('node:assert/strict');
 const registerGameRoutes = require('../routes/gameRoutes');
 const TutorialService = require('../services/TutorialService');
 const GameStateService = require('../services/GameStateService');
+const TerritoryService = require('../services/TerritoryService');
+const WorldMapService = require('../services/WorldMapService');
+const WorldExplorerService = require('../services/WorldExplorerService');
 
 function createAppHarness() {
   const routes = [];
@@ -538,4 +541,88 @@ test('game action route starts guided exploration with planned tiles in client s
   assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedSites.length, 1);
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 4);
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
+});
+
+test('game action route enforces guided first empty city occupation target', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-tutorial-first-city-test';
+  const siteId = 'site_3_1';
+  const otherSiteId = 'site_9_9';
+  const gameState = {
+    playerId,
+    activeCityId: 'capital',
+    currentEra: 3,
+    tutorial: {
+      ...TutorialService.manualAdvance(
+        TutorialService.createInitialTutorialState(),
+        TutorialService.TUTORIAL_STEPS.scoutExploreClaimed,
+      ),
+      grants: {
+        [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: { siteId },
+      },
+    },
+    resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+    military: { soldiers: 0, soldierCap: 0 },
+    polity: TerritoryService.createInitialPolity(),
+    territories: [
+      { id: 'capital', x: 0, y: 0, naturalName: 'Origin', cityName: 'Capital', type: 'capital', owner: 'player', status: 'occupied' },
+      { id: siteId, x: 3, y: 1, naturalName: 'River Bend', type: 'town', owner: 'neutral', status: 'discovered', scale: 2, defense: 100, recommendedSoldiers: 100 },
+      { id: otherSiteId, x: 9, y: 9, naturalName: 'Wrong Site', type: 'town', owner: 'neutral', status: 'discovered', scale: 2, defense: 100, recommendedSoldiers: 100 },
+    ],
+    cities: {
+      capital: {
+        id: 'capital',
+        territoryId: 'capital',
+        isCapital: true,
+        name: 'Capital',
+        resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+        buildings: {},
+        population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+        military: { soldiers: 0, soldierCap: 0 },
+      },
+    },
+    worldMap: WorldMapService.createInitialWorldMap('route-tutorial-first-city-test'),
+    warMissions: [],
+    exploreMissions: [],
+  };
+  WorldMapService.bindSiteToTile(gameState, 3, 1, siteId, new Date('2026-06-06T00:00:00.000Z'), { visibility: 'scouted' });
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return GameStateService.normalizeState(state);
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+
+  const blockedReq = { playerId, body: { action: 'startConquest', territoryId: otherSiteId } };
+  const blockedRes = createResponse();
+  route.handlers[0](blockedReq, blockedRes, () => route.handlers[1](blockedReq, blockedRes));
+  assert.equal(blockedRes.statusCode, 403);
+  assert.equal(savedStates.length, 0);
+
+  const allowedReq = { playerId, body: { action: 'startConquest', territoryId: siteId } };
+  const allowedRes = createResponse();
+  route.handlers[0](allowedReq, allowedRes, () => route.handlers[1](allowedReq, allowedRes));
+
+  assert.equal(allowedRes.statusCode, 200);
+  assert.equal(allowedRes.payload.success, true);
+  assert.equal(allowedRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted);
+  assert.equal(savedStates.at(-1).warMissions[0].status, 'ready');
+  assert.equal(savedStates.at(-1).cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
 });
