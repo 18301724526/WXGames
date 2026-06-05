@@ -1281,17 +1281,23 @@
       const forwarded = this.forward(action);
       const siteId = action.siteId || action.territoryId || action.cityId || '';
       if (forwarded !== undefined) {
-        if (forwarded !== false) this.openWorldSiteLocally(siteId);
+        if (forwarded !== false) {
+          this.openWorldSiteLocally(siteId);
+          this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
+        }
         return forwarded !== false;
       }
       const territory = this.getTerritoryController();
       if (territory?.openSiteDialog) {
         territory.openSiteDialog(siteId);
+        this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
         return true;
       }
       this.host.territoryUiState = this.host.territoryUiState || {};
       this.host.territoryUiState.selectedSiteId = siteId;
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
+      return handled;
     }
 
     handle_closeWorldSite(action) {

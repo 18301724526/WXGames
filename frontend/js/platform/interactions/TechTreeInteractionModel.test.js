@@ -279,6 +279,13 @@ test('CanvasActionController opens world site from territory id aliases', () => 
   const calls = [];
   const host = {
     territoryUiState: {},
+    lastGame: {
+      tutorialController: {
+        refreshCurrentHighlight() {
+          calls.push(['refresh']);
+        },
+      },
+    },
     render() {
       calls.push(['render']);
     },
@@ -288,7 +295,7 @@ test('CanvasActionController opens world site from territory id aliases', () => 
   assert.equal(controller.handle_openWorldSite({ type: 'openWorldSite', territoryId: 'site_1_2' }), true);
 
   assert.equal(host.territoryUiState.selectedSiteId, 'site_1_2');
-  assert.deepEqual(calls, [['render']]);
+  assert.deepEqual(calls, [['render'], ['refresh']]);
 });
 
 test('CanvasActionController keeps local world site HUD open after forwarded action', () => {
