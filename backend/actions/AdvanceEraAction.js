@@ -81,6 +81,11 @@ function execute(gameState, tutorial) {
   if (config.nextEra === 2) {
     EventService.generateSpecialEvent(gameState, config.nextEra);
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvancedTo2');
+  } else if (config.nextEra === 3) {
+    nextTutorial = TutorialService.advanceTutorial(tutorial, 'era3Advanced');
+    gameState.tutorial = nextTutorial;
+    TutorialService.ensureScoutFamousPersonGrant(gameState);
+    nextTutorial = gameState.tutorial;
   } else {
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvanced');
   }

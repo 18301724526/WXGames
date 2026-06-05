@@ -147,6 +147,24 @@ test('CanvasGameShell routes map command tech tree wheel zoom at tree hit target
   ]);
 });
 
+test('CanvasGameShell resolves guide targets in rendered hit order', () => {
+  const shell = new CanvasGameShell({
+    renderer: {
+      hitTargets: [
+        { x: 0, y: 0, width: 420, height: 747, action: { type: 'closeFamousPersons', background: true } },
+        { x: 24, y: 64, width: 58, height: 30, action: { type: 'closeFamousPersons' } },
+      ],
+    },
+  });
+
+  const target = shell.getCanvasTarget('closeFamousPersons');
+
+  assert.equal(target.x, 24);
+  assert.equal(target.y, 64);
+  assert.equal(target.width, 58);
+  assert.equal(target.height, 30);
+});
+
 test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {
   const calls = [];
   const event = {

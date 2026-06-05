@@ -186,3 +186,40 @@ test('CanvasActionController notifies tutorial when opening civilization command
     ['render'],
   ]);
 });
+
+test('CanvasActionController syncs opened event id across shell and game hosts', () => {
+  const calls = [];
+  const shell = {
+    activeEventId: null,
+    activeCommandPanel: 'events',
+    showTaskCenter: true,
+    state: { eventQueue: [{ id: 'event-1' }] },
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const game = {
+    activeEventId: null,
+    canvasShell: shell,
+    state: { eventQueue: [{ id: 'event-1' }] },
+  };
+  const controller = new CanvasActionController({ host: shell });
+
+  assert.equal(controller.handle_openEvent({ type: 'openEvent', eventId: 'event-1' }), true);
+
+  assert.equal(shell.activeEventId, 'event-1');
+  assert.equal(game.activeEventId, 'event-1');
+  assert.equal(game.canvasShell.activeEventId, 'event-1');
+  assert.equal(shell.activeCommandPanel, '');
+  assert.equal(shell.showTaskCenter, false);
+  assert.deepEqual(calls, [['render']]);
+
+  assert.equal(controller.handle_closeEvent({ type: 'closeEvent' }), true);
+  assert.equal(shell.activeEventId, null);
+  assert.equal(game.activeEventId, null);
+  assert.equal(game.canvasShell.activeEventId, null);
+});

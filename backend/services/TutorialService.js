@@ -11,6 +11,7 @@ module.exports = {
   maybeActivateEra2Tutorial: TutorialProgressService.maybeActivateEra2Tutorial,
   ensureHouseGuideResources: TutorialProgressService.ensureHouseGuideResources,
   ensureLumbermillGuideResources: TutorialProgressService.ensureLumbermillGuideResources,
+  ensureScoutFamousPersonGrant: TutorialProgressService.ensureScoutFamousPersonGrant,
   advanceTutorial: TutorialProgressService.advanceTutorial,
   advanceClientStep: TutorialProgressService.advanceClientStep,
   getHouseGuideMinimumResources: TutorialProgressService.getHouseGuideMinimumResources,

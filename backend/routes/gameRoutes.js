@@ -119,12 +119,24 @@ function registerGameRoutes(app, deps) {
       step,
       eventId,
       optionId,
+      cityId,
+      slot,
+      memberIds,
     } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
-    const tutorialCheck = TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
+    const tutorialCheck = TutorialService.validateAction(tutorial, action, {
+      target,
+      count,
+      step,
+      eventId,
+      optionId,
+      cityId,
+      slot,
+      memberIds,
+    }, gameState);
     if (!tutorialCheck.allowed) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
     }

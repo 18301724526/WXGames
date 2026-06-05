@@ -312,7 +312,15 @@
       const game = this.getGameHost();
       const target = game && game !== this.host ? game : this.host;
       if (typeof target?.openArmyFormation === 'function') {
-        return target.openArmyFormation({ ...action, slot }) !== false;
+        const opened = target.openArmyFormation({ ...action, slot }) !== false;
+        if (opened) {
+          const result = game?.tutorialController?.onArmyFormationOpened?.();
+          game?.tutorialController?.refreshCurrentHighlight?.();
+          const scheduler = this.host?.runtime || game?.runtime || global;
+          scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+          if (result?.catch) result.catch((error) => this.log?.(error));
+        }
+        return opened;
       }
       const message = `编队 ${slot} 功能待开放`;
       if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
@@ -422,14 +430,28 @@
         .find((item) => item.id === action.eventId);
       if (!eventData) return false;
       this.host.activeEventId = action.eventId;
+      if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = action.eventId;
+      if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = action.eventId;
       this.closePanels(['activeEventId']);
-      this.getEventController()?.open?.(action.eventId);
-      return this.afterHandled(action);
+      const controller = this.getEventController();
+      controller?.open?.(action.eventId);
+      this.host.activeEventId = action.eventId;
+      if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = action.eventId;
+      if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = action.eventId;
+      if (controller && 'activeEventId' in controller) controller.activeEventId = action.eventId;
+      const handled = this.afterHandled(action);
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      return handled;
     }
 
     handle_closeEvent(action) {
       this.host.activeEventId = null;
-      this.getEventController()?.close?.();
+      const game = this.getGameHost();
+      if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = null;
+      if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = null;
+      const controller = this.getEventController();
+      controller?.close?.();
+      if (controller && 'activeEventId' in controller) controller.activeEventId = null;
       return this.afterHandled(action);
     }
 
@@ -502,7 +524,13 @@
       if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       this.host.renderer?.clearFamousSkillTooltip?.();
       this.closePanels(['showFamousPersons']);
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      const result = game?.tutorialController?.onFamousPersonsOpened?.();
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      const scheduler = this.host?.runtime || game?.runtime || global;
+      scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+      if (result?.catch) result.catch((error) => this.log?.(error));
+      return handled;
     }
 
     handle_closeFamousPersons(action) {
@@ -514,7 +542,11 @@
       if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
       if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       this.host.renderer?.clearFamousSkillTooltip?.();
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      const scheduler = this.host?.runtime || game?.runtime || global;
+      scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+      return handled;
     }
 
     handle_openFamousPersonDetail(action) {
@@ -522,7 +554,13 @@
       const game = this.getGameHost();
       if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = action.personId || '';
       this.host.renderer?.clearFamousSkillTooltip?.();
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      const result = game?.tutorialController?.onFamousPersonDetailOpened?.(action.personId || '');
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      const scheduler = this.host?.runtime || game?.runtime || global;
+      scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+      if (result?.catch) result.catch((error) => this.log?.(error));
+      return handled;
     }
 
     handle_closeFamousPersonDetail(action) {
@@ -530,7 +568,11 @@
       const game = this.getGameHost();
       if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       this.host.renderer?.clearFamousSkillTooltip?.();
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      game?.tutorialController?.refreshCurrentHighlight?.();
+      const scheduler = this.host?.runtime || game?.runtime || global;
+      scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+      return handled;
     }
 
     handle_seekFamousPerson(action) {

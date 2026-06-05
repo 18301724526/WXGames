@@ -1,10 +1,27 @@
 const BuildingConfig = require('../config/BuildingConfig');
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
+const { TUTORIAL_STEPS, createPhaseCompleted } = require('../config/TutorialFlowConfig');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
 const FORMATION_NAMES = ['部队一', '部队二', '部队三'];
+
+function advanceTutorialStep(tutorial = {}, nextStep = 0) {
+  const step = Math.floor(Number(nextStep) || 0);
+  const currentStep = Math.floor(Number(tutorial.currentStep) || 0);
+  if (tutorial.completed || tutorial.disabled || step <= currentStep) return tutorial;
+  return {
+    ...tutorial,
+    currentStep: step,
+    phaseCompleted: {
+      ...(tutorial.phaseCompleted || {}),
+      ...createPhaseCompleted(step),
+    },
+    completed: step >= TUTORIAL_STEPS.completed,
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 function getBarracksLevel(buildings) {
   return BuildingState.getLevel(buildings, 'barracks');
@@ -173,10 +190,19 @@ function setArmyFormation(gameState, payload = {}) {
     ...gameState.military,
     formations,
   }, gameState);
+  if (gameState.cities?.[cityId]) {
+    gameState.cities[cityId].military = gameState.military;
+  }
+  const scoutPersonId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
+  const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
+    ? advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutFormationSaved)
+    : gameState.tutorial;
+  gameState.tutorial = tutorial;
   return {
     success: true,
     message: `${FORMATION_NAMES[slot - 1] || `部队${slot}`}编队已保存`,
     formation: gameState.military.formations?.[cityId]?.[slot - 1] || null,
+    tutorial,
   };
 }
 

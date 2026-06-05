@@ -15,8 +15,15 @@ const TUTORIAL_STEPS = Object.freeze({
   specialEventClaimed: 13,
   buildingsTabOpenedForLumbermill: 14,
   lumbermillBuilt: 15,
-  craftsmanAssigned: 16,
-  completed: 16,
+  era3AdvanceReady: 16,
+  era3Advanced: 17,
+  scoutFamousGranted: 18,
+  famousPanelOpened: 19,
+  famousCardViewed: 20,
+  formationPanelOpened: 21,
+  scoutFormationSaved: 22,
+  craftsmanAssigned: 23,
+  completed: 30,
 });
 
 const TUTORIAL_EVENT_STEPS = Object.freeze({
@@ -34,6 +41,13 @@ const TUTORIAL_EVENT_STEPS = Object.freeze({
   specialEventClaimed: TUTORIAL_STEPS.specialEventClaimed,
   buildingsTabOpenedForLumbermill: TUTORIAL_STEPS.buildingsTabOpenedForLumbermill,
   lumbermillBuilt: TUTORIAL_STEPS.lumbermillBuilt,
+  era3AdvanceReady: TUTORIAL_STEPS.era3AdvanceReady,
+  era3Advanced: TUTORIAL_STEPS.era3Advanced,
+  scoutFamousGranted: TUTORIAL_STEPS.scoutFamousGranted,
+  famousPanelOpened: TUTORIAL_STEPS.famousPanelOpened,
+  famousCardViewed: TUTORIAL_STEPS.famousCardViewed,
+  formationPanelOpened: TUTORIAL_STEPS.formationPanelOpened,
+  scoutFormationSaved: TUTORIAL_STEPS.scoutFormationSaved,
   craftsmanAssigned: TUTORIAL_STEPS.craftsmanAssigned,
 });
 
@@ -46,7 +60,6 @@ const PASS_THROUGH_ACTIONS = Object.freeze([
   'acceptFamousPerson',
   'dismissFamousPersonCandidate',
   'assignFamousAttributePoint',
-  'setArmyFormation',
   'startExplore',
   'claimExplore',
   'scoutTerritory',
@@ -66,13 +79,17 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.buildingsTabOpened]: TUTORIAL_STEPS.eraAdvancedTo1,
   [TUTORIAL_STEPS.specialEventTabOpened]: TUTORIAL_STEPS.eraAdvancedTo2,
   [TUTORIAL_STEPS.buildingsTabOpenedForLumbermill]: TUTORIAL_STEPS.specialEventClaimed,
+  [TUTORIAL_STEPS.famousPanelOpened]: TUTORIAL_STEPS.scoutFamousGranted,
+  [TUTORIAL_STEPS.famousCardViewed]: TUTORIAL_STEPS.famousPanelOpened,
+  [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
 });
 
 function createPhaseCompleted(currentStep) {
   const step = Number.isFinite(currentStep) ? currentStep : TUTORIAL_STEPS.initial;
   return {
     newbie: step >= TUTORIAL_STEPS.eraAdvancedTo1,
-    era2: step >= TUTORIAL_STEPS.completed,
+    era2: step >= TUTORIAL_STEPS.lumbermillBuilt,
+    scoutFormation: step >= TUTORIAL_STEPS.scoutFormationSaved,
   };
 }
 

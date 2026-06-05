@@ -1,5 +1,6 @@
 const BuildingConfig = require('../config/BuildingConfig');
 const { getAdvanceConfig } = require('../config/EraConfig');
+const FamousPersonService = require('./FamousPersonService');
 const {
   TUTORIAL_STEPS,
   TUTORIAL_EVENT_STEPS,
@@ -9,6 +10,7 @@ const {
 } = require('../config/TutorialFlowConfig');
 
 const HOUSE_GUIDE_GRANT_KEY = 'houseGuideSupplies';
+const SCOUT_FAMOUS_GRANT_KEY = 'scoutFamousPerson';
 
 function nowIso() {
   return new Date().toISOString();
@@ -35,6 +37,7 @@ function createCompletedTutorialState(raw = {}) {
     phaseCompleted: {
       newbie: true,
       era2: true,
+      scoutFormation: true,
     },
     grants: normalizeGrants(raw.grants),
     disabled: Boolean(raw.disabled),
@@ -56,7 +59,8 @@ function normalizeTutorialState(raw) {
     currentStep,
     phaseCompleted: {
       newbie: Boolean(raw.phaseCompleted?.newbie || currentStep >= TUTORIAL_STEPS.eraAdvancedTo1),
-      era2: Boolean(raw.phaseCompleted?.era2 || currentStep >= TUTORIAL_STEPS.completed),
+      era2: Boolean(raw.phaseCompleted?.era2 || currentStep >= TUTORIAL_STEPS.lumbermillBuilt),
+      scoutFormation: Boolean(raw.phaseCompleted?.scoutFormation || currentStep >= TUTORIAL_STEPS.scoutFormationSaved),
     },
     grants: normalizeGrants(raw.grants),
     updatedAt: raw.updatedAt || nowIso(),
@@ -102,6 +106,10 @@ function canAccessTab(tutorialState, tabKey) {
   if (step === TUTORIAL_STEPS.specialEventClaimed) return ['events', 'buildings'].includes(tabKey);
   if (step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill) return ['buildings', 'resources'].includes(tabKey);
   if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'resources'].includes(tabKey);
+  if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabKey);
+  if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutFormationSaved) {
+    return ['resources', 'military', 'civilization'].includes(tabKey);
+  }
   return true;
 }
 
@@ -183,6 +191,30 @@ function validateEra2Action(step, action, payload, gameState) {
   return { allowed: true };
 }
 
+function validateScoutFormationAction(step, action, payload, gameState) {
+  if (action === 'advanceEra') {
+    if (step !== TUTORIAL_STEPS.era3AdvanceReady || gameState.currentEra !== 2) {
+      return blocked('请先按照引导完成名人编队准备。');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'setArmyFormation') {
+    if (step < TUTORIAL_STEPS.formationPanelOpened) {
+      return blocked('请先按照引导打开编队并配置侦察名人。');
+    }
+    const tutorial = normalizeTutorialState(gameState.tutorial);
+    const scoutPersonId = tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]?.personId;
+    const memberIds = Array.isArray(payload?.memberIds) ? payload.memberIds.map(String) : [];
+    if (!scoutPersonId || !memberIds.includes(String(scoutPersonId))) {
+      return blocked('请把教程赠送的侦察名人加入编队。');
+    }
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
@@ -200,6 +232,9 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   }
   if (!tutorial.phaseCompleted.era2 && step >= TUTORIAL_STEPS.era2AdvanceReady) {
     return validateEra2Action(step, action, payload, gameState);
+  }
+  if (step >= TUTORIAL_STEPS.era3AdvanceReady && step < TUTORIAL_STEPS.scoutFormationSaved) {
+    return validateScoutFormationAction(step, action, payload, gameState);
   }
   return { allowed: true };
 }
@@ -275,6 +310,28 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
   return tutorial;
 }
 
+function ensureScoutFamousPersonGrant(gameState) {
+  if (!gameState || typeof gameState !== 'object') return false;
+  let tutorial = normalizeTutorialState(gameState.tutorial);
+  if (tutorial.completed || tutorial.disabled || tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]) return false;
+  if ((Number(gameState.currentEra) || 0) < 3 || tutorial.currentStep < TUTORIAL_STEPS.era3Advanced) return false;
+
+  const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState);
+  if (!grant?.person) return false;
+  tutorial = manualAdvance({
+    ...tutorial,
+    grants: {
+      ...(tutorial.grants || {}),
+      [SCOUT_FAMOUS_GRANT_KEY]: {
+        personId: grant.person.id,
+        grantedAt: grant.grantedAt,
+      },
+    },
+  }, TUTORIAL_STEPS.scoutFamousGranted);
+  gameState.tutorial = tutorial;
+  return true;
+}
+
 function getHouseGuideMinimumResources() {
   const resources = {};
   const houseCost = BuildingConfig.getBuildCost('house');
@@ -337,6 +394,7 @@ module.exports = {
   maybeActivateEra2Tutorial,
   ensureHouseGuideResources,
   ensureLumbermillGuideResources,
+  ensureScoutFamousPersonGrant,
   advanceTutorial,
   advanceClientStep,
   getHouseGuideMinimumResources,

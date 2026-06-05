@@ -105,4 +105,6 @@ test('main lumbermill supplies wait for lumbermill and pay next era cost', () =>
   assert.equal(gameState.resources.knowledge, 103);
   assert.equal(gameState.resources.wood, 207);
   assert.equal(getMainLumbermillTask(gameState).status, 'completed');
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.era3AdvanceReady);
+  assert.equal(gameState.tutorial.completed, false);
 });

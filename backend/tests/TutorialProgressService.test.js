@@ -3,13 +3,15 @@ const assert = require('node:assert/strict');
 
 const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
+const FamousPersonService = require('../services/FamousPersonService');
+const MilitaryService = require('../services/MilitaryService');
 
 test('initial tutorial state starts active instead of completed', () => {
   const tutorial = TutorialService.createInitialTutorialState();
 
   assert.equal(tutorial.completed, false);
   assert.equal(tutorial.currentStep, TutorialService.TUTORIAL_STEPS.initial);
-  assert.deepEqual(tutorial.phaseCompleted, { newbie: false, era2: false });
+  assert.deepEqual(tutorial.phaseCompleted, { newbie: false, era2: false, scoutFormation: false });
 });
 
 test('disabled legacy tutorial states stay completed and pass validation', () => {
@@ -193,4 +195,85 @@ test('settlement forest event grants enough starter resources for lumbermill gui
   assert.equal(gameState.resources.food, 50);
   assert.equal(gameState.resources.wood, 20);
   assert.equal(TutorialService.validateAction(eventClaimed, 'build', { target: 'lumbermill' }, gameState).allowed, true);
+});
+
+test('tutorial grants one purple scout famous person after entering city-state era', () => {
+  const tutorial = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.era3Advanced,
+  );
+  const gameState = {
+    playerId: 'tutorial-scout-famous-test',
+    currentEra: 3,
+    famousPeople: [],
+    famousPersonState: FamousPersonService.createInitialFamousPersonState(),
+    tutorial,
+  };
+
+  assert.equal(TutorialService.ensureScoutFamousPersonGrant(gameState), true);
+  assert.equal(gameState.famousPeople.length, 1);
+  assert.equal(gameState.famousPeople[0].quality, 'great');
+  assert.equal(gameState.famousPeople[0].archetype, 'scout');
+  assert.equal(gameState.famousPeople[0].abilityArchetype, 'scout');
+  assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
+
+  assert.equal(TutorialService.ensureScoutFamousPersonGrant(gameState), false);
+  assert.equal(gameState.famousPeople.length, 1);
+});
+
+test('tutorial advances after saving a formation with the granted scout', () => {
+  const gameState = {
+    playerId: 'tutorial-formation-test',
+    currentEra: 3,
+    activeCityId: 'capital',
+    cities: {
+      capital: { id: 'capital', buildings: {}, military: { soldiers: 0 } },
+    },
+    buildings: {},
+    military: {},
+    famousPeople: [],
+    famousPersonState: FamousPersonService.createInitialFamousPersonState(),
+    tutorial: TutorialService.manualAdvance(
+      TutorialService.createInitialTutorialState(),
+      TutorialService.TUTORIAL_STEPS.era3Advanced,
+    ),
+  };
+  TutorialService.ensureScoutFamousPersonGrant(gameState);
+  const personId = gameState.tutorial.grants.scoutFamousPerson.personId;
+
+  const saved = MilitaryService.setArmyFormation(gameState, {
+    cityId: 'capital',
+    slot: 1,
+    memberIds: [personId],
+  });
+
+  assert.equal(saved.success, true);
+  assert.equal(saved.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFormationSaved);
+  assert.deepEqual(saved.formation.memberIds, [personId]);
+});
+
+test('tutorial blocks scout formation save without the granted scout', () => {
+  const tutorial = {
+    ...TutorialService.manualAdvance(
+      TutorialService.createInitialTutorialState(),
+      TutorialService.TUTORIAL_STEPS.formationPanelOpened,
+    ),
+    grants: {
+      scoutFamousPerson: { personId: 'fp-required-scout' },
+    },
+  };
+  const gameState = {
+    currentEra: 3,
+    tutorial,
+  };
+
+  assert.equal(
+    TutorialService.validateAction(tutorial, 'setArmyFormation', { memberIds: ['fp-other'] }, gameState).allowed,
+    false,
+  );
+  assert.equal(
+    TutorialService.validateAction(tutorial, 'setArmyFormation', { memberIds: ['fp-required-scout'] }, gameState).allowed,
+    true,
+  );
 });

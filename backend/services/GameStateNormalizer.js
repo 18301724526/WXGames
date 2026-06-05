@@ -99,6 +99,7 @@ function normalizeState(rawState) {
     ? state.taskProgress.claimed
     : {};
   TutorialService.ensureHouseGuideResources(state);
+  TutorialService.ensureScoutFamousPersonGrant(state);
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
   WorldExplorerService.normalizeExploreState(state);

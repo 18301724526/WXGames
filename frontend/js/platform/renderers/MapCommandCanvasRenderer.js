@@ -53,6 +53,7 @@
         { id: 'famousPersons', label: '名人', icon: 'assets/art/icon-scholar-cutout.webp', action: { type: 'openFamousPersons' } },
         { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
         { id: 'settings', label: '设置', glyph: '⚙', action: { type: 'openSettings' } },
+        { id: 'military', label: '军事', icon: 'assets/art/tech-military-cutout.png', action: { type: 'openCommandPanel', panel: 'military' } },
       ];
       const contentX = layout.contentX;
       const contentWidth = layout.contentWidth;

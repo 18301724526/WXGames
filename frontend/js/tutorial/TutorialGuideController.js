@@ -16,7 +16,14 @@
     specialEventClaimed: 13,
     buildingsTabOpenedForLumbermill: 14,
     lumbermillBuilt: 15,
-    completed: 16,
+    era3AdvanceReady: 16,
+    era3Advanced: 17,
+    scoutFamousGranted: 18,
+    famousPanelOpened: 19,
+    famousCardViewed: 20,
+    formationPanelOpened: 21,
+    scoutFormationSaved: 22,
+    completed: 30,
   });
 
   class TutorialGuideController {
@@ -54,6 +61,10 @@
       if (step < TUTORIAL_STEPS.specialEventClaimed) return ['civilization', 'events'].includes(tabId);
       if (step < TUTORIAL_STEPS.lumbermillBuilt) return ['events', 'buildings'].includes(tabId);
       if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
+      if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
+      if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutFormationSaved) {
+        return ['civilization', 'military'].includes(tabId);
+      }
       return true;
     }
 
@@ -130,6 +141,11 @@
       return !this.isCompleted() && step >= TUTORIAL_STEPS.era2AdvanceReady && step <= TUTORIAL_STEPS.lumbermillBuilt;
     }
 
+    isScoutFormationGuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.era3AdvanceReady && step < TUTORIAL_STEPS.scoutFormationSaved;
+    }
+
     isLumbermillGuideActive() {
       const step = this.getCurrentStep();
       return !this.isCompleted() && step >= TUTORIAL_STEPS.specialEventClaimed && step < TUTORIAL_STEPS.lumbermillBuilt;
@@ -182,6 +198,12 @@
     onEraAdvanced(result = {}) {
       this.sync(result.tutorial || this.game?.tutorial || this.state);
       const step = this.getCurrentStep();
+      if (step >= TUTORIAL_STEPS.scoutFamousGranted && step < TUTORIAL_STEPS.scoutFormationSaved) {
+        return this.showSoftGuide(
+          'famous-persons-button',
+          '\u57ce\u90a6\u7684\u9053\u8def\u5df2\u7ecf\u6253\u5f00\uff0c\u4e00\u4f4d\u5584\u4e8e\u4fa6\u5bdf\u7684\u540d\u4eba\u52a0\u5165\u4e86\u6211\u4eec\u3002\u5148\u53bb\u540d\u4eba\u91cc\u770b\u770b\u4ed6\u7684\u5361\u7247\u3002',
+        );
+      }
       if (step === TUTORIAL_STEPS.eraAdvancedTo2) {
         return this.showSoftGuide(
           'events-button',
@@ -200,6 +222,63 @@
       return this.getCurrentStep() >= TUTORIAL_STEPS.farmPrepReserved;
     }
 
+    getScoutFamousPersonId() {
+      const grantId = this.state?.grants?.scoutFamousPerson?.personId
+        || this.game?.tutorial?.grants?.scoutFamousPerson?.personId
+        || this.game?.state?.tutorial?.grants?.scoutFamousPerson?.personId
+        || '';
+      if (grantId) return String(grantId);
+      const people = this.game?.state?.famousPersons?.people || [];
+      const scout = Array.isArray(people)
+        ? people.find((person) => person?.source?.type === 'tutorial' || person?.archetype === 'scout' || person?.abilityArchetype === 'scout')
+        : null;
+      return scout?.id ? String(scout.id) : '';
+    }
+
+    getArmyFormationEditor() {
+      return this.game?.canvasShell?.armyFormationEditor || this.game?.armyFormationEditor || {};
+    }
+
+    isFamousPersonsOpen() {
+      return Boolean(this.game?.showFamousPersons || this.game?.canvasShell?.showFamousPersons);
+    }
+
+    isFamousPersonDetailOpen() {
+      return Boolean(this.game?.selectedFamousPersonId || this.game?.canvasShell?.selectedFamousPersonId);
+    }
+
+    getActiveEventId() {
+      return this.game?.canvasShell?.activeEventId
+        || this.game?.activeEventId
+        || this.game?.eventController?.activeEventId
+        || '';
+    }
+
+    async onFamousPersonsOpened() {
+      if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFamousGranted) {
+        return this.advanceTo(TUTORIAL_STEPS.famousPanelOpened);
+      }
+      return this.state;
+    }
+
+    async onFamousPersonDetailOpened(personId = '') {
+      const scoutPersonId = this.getScoutFamousPersonId();
+      if (
+        this.getCurrentStep() === TUTORIAL_STEPS.famousPanelOpened
+        && (!scoutPersonId || String(personId || '') === scoutPersonId)
+      ) {
+        return this.advanceTo(TUTORIAL_STEPS.famousCardViewed);
+      }
+      return this.state;
+    }
+
+    async onArmyFormationOpened() {
+      if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed) {
+        return this.advanceTo(TUTORIAL_STEPS.formationPanelOpened);
+      }
+      return this.state;
+    }
+
     getCanvasTarget(type, predicate = null) {
       return this.game?.canvasShell?.getCanvasTarget?.(type, predicate) || null;
     }
@@ -212,6 +291,45 @@
         message,
         { allowedAction, source: 'strongTutorial' },
       ) || false;
+    }
+
+    prepareCommandPanelGuide(panelId) {
+      const game = this.game || {};
+      const shell = game.canvasShell || null;
+      let changed = false;
+      const closeIfOpen = (host, key, value = false) => {
+        if (host && host[key]) {
+          host[key] = value;
+          changed = true;
+        }
+      };
+      if (game.activeCommandPanel && game.activeCommandPanel !== panelId) {
+        game.activeCommandPanel = '';
+        changed = true;
+      }
+      if (shell?.activeCommandPanel && shell.activeCommandPanel !== panelId) {
+        shell.activeCommandPanel = '';
+        changed = true;
+      }
+      closeIfOpen(game, 'showCityManagement');
+      closeIfOpen(shell, 'showCityManagement');
+      closeIfOpen(game, 'showSubcityList');
+      closeIfOpen(shell, 'showSubcityList');
+      closeIfOpen(game, 'showTaskCenter');
+      closeIfOpen(shell, 'showTaskCenter');
+      if (game.activeEventId) {
+        game.activeEventId = null;
+        changed = true;
+      }
+      if (shell?.activeEventId) {
+        shell.activeEventId = null;
+        changed = true;
+      }
+      if (changed) {
+        shell?.hideTutorialHighlight?.();
+        game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
+      }
+      return changed;
     }
 
     ensureHouseGuideVisible() {
@@ -288,6 +406,7 @@
       if (this.isFirstEraGuideActive()) {
         const step = this.getCurrentStep();
         if (step === TUTORIAL_STEPS.houseBuilt && !this.isOnTab('civilization')) {
+          this.prepareCommandPanelGuide('civilization');
           return this.showHighlight(
             'openCommandPanel',
             (action) => !action.disabled && action.panel === 'civilization',
@@ -329,6 +448,7 @@
       if (this.isEra2GuideActive()) {
         const step = this.getCurrentStep();
         if (step === TUTORIAL_STEPS.era2AdvanceReady && !this.isCommandPanelOpen('civilization')) {
+          this.prepareCommandPanelGuide('civilization');
           return this.showHighlight(
             'openCommandPanel',
             (action) => !action.disabled && action.panel === 'civilization',
@@ -345,6 +465,7 @@
           );
         }
         if (step === TUTORIAL_STEPS.eraAdvancedTo2 && !this.isCommandPanelOpen('events')) {
+          this.prepareCommandPanelGuide('events');
           return this.showHighlight(
             'openCommandPanel',
             (action) => !action.disabled && action.panel === 'events',
@@ -354,7 +475,7 @@
         }
         if (
           (step === TUTORIAL_STEPS.specialEventTabOpened || (step === TUTORIAL_STEPS.eraAdvancedTo2 && this.isCommandPanelOpen('events')))
-          && !this.game?.canvasShell?.activeEventId
+          && !this.getActiveEventId()
         ) {
           return this.showHighlight(
             'openEvent',
@@ -365,7 +486,7 @@
         }
         if (
           (step === TUTORIAL_STEPS.specialEventTabOpened || (step === TUTORIAL_STEPS.eraAdvancedTo2 && this.isCommandPanelOpen('events')))
-          && this.game?.canvasShell?.activeEventId === 'evt_settlement_forest_001'
+          && this.getActiveEventId() === 'evt_settlement_forest_001'
         ) {
           return this.showHighlight(
             'claimEvent',
@@ -394,6 +515,94 @@
             (action) => !action.disabled && action.taskId === 'main_lumbermill_supplies',
             '\u9886\u53d6\u201c\u8ba9\u6728\u6750\u6d41\u5165\u4ed3\u623f\u201d\uff0c\u4e0b\u4e00\u6b21\u8fdb\u9636\u7684\u7269\u8d44\u5c31\u5230\u4f4d\u4e86\u3002',
             { type: 'claimTaskReward', taskId: 'main_lumbermill_supplies', category: 'main' },
+          );
+        }
+      }
+      if (this.isScoutFormationGuideActive()) {
+        const step = this.getCurrentStep();
+        const scoutPersonId = this.getScoutFamousPersonId();
+        if (step === TUTORIAL_STEPS.era3AdvanceReady && !this.isCommandPanelOpen('civilization')) {
+          this.prepareCommandPanelGuide('civilization');
+          return this.showHighlight(
+            'openCommandPanel',
+            (action) => !action.disabled && action.panel === 'civilization',
+            '\u6253\u5f00\u6587\u660e\uff0c\u7528\u4f10\u6728\u573a\u7684\u7269\u8d44\u63a8\u8fdb\u5230\u57ce\u90a6\u65f6\u4ee3\u3002',
+            { type: 'openCommandPanel', panel: 'civilization' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.era3AdvanceReady && this.isCommandPanelOpen('civilization')) {
+          return this.showHighlight(
+            'advanceEra',
+            (action) => !action.disabled,
+            '\u8fdb\u9636\u5230\u57ce\u90a6\u65f6\u4ee3\uff0c\u4fa6\u5bdf\u4e0e\u540d\u4eba\u7f16\u961f\u5c31\u4f1a\u6b63\u5f0f\u5f00\u653e\u3002',
+            { type: 'advanceEra' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutFamousGranted && !this.isFamousPersonsOpen()) {
+          return this.showHighlight(
+            'openFamousPersons',
+            (action) => !action.disabled,
+            '\u6253\u5f00\u540d\u4eba\uff0c\u67e5\u770b\u521a\u52a0\u5165\u7684\u4fa6\u5bdf\u578b\u82f1\u6770\u3002',
+            { type: 'openFamousPersons' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.famousPanelOpened && this.isFamousPersonsOpen()) {
+          return this.showHighlight(
+            'openFamousPersonDetail',
+            (action) => !action.disabled && (!scoutPersonId || action.personId === scoutPersonId),
+            '\u70b9\u5f00\u8fd9\u5f20\u4fa6\u5bdf\u578b\u540d\u4eba\u5361\uff0c\u8bb0\u4f4f\u4ed6\u4f1a\u5e26\u961f\u51fa\u57ce\u63a2\u8def\u3002',
+            { type: 'openFamousPersonDetail', personId: scoutPersonId },
+          );
+        }
+        if (step === TUTORIAL_STEPS.famousCardViewed && this.isFamousPersonsOpen() && this.isFamousPersonDetailOpen()) {
+          return this.showHighlight(
+            'closeFamousPersonDetail',
+            (action) => !action.disabled,
+            '\u5361\u7247\u5df2\u7ecf\u770b\u8fc7\uff0c\u5148\u8fd4\u56de\u540d\u4eba\u5217\u8868\u3002',
+            { type: 'closeFamousPersonDetail' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.famousCardViewed && this.isFamousPersonsOpen()) {
+          return this.showHighlight(
+            'closeFamousPersons',
+            (action) => !action.disabled,
+            '\u5173\u95ed\u540d\u4eba\u9762\u677f\uff0c\u63a5\u4e0b\u6765\u53bb\u519b\u4e8b\u91cc\u914d\u7f6e\u7f16\u961f\u3002',
+            { type: 'closeFamousPersons' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.famousCardViewed && !this.isCommandPanelOpen('military')) {
+          this.prepareCommandPanelGuide('military');
+          return this.showHighlight(
+            'openCommandPanel',
+            (action) => !action.disabled && action.panel === 'military',
+            '\u6253\u5f00\u519b\u4e8b\uff0c\u6211\u4eec\u8981\u628a\u8fd9\u4f4d\u540d\u4eba\u653e\u8fdb\u4fa6\u5bdf\u7f16\u961f\u3002',
+            { type: 'openCommandPanel', panel: 'military' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.famousCardViewed && this.isCommandPanelOpen('military') && !this.getArmyFormationEditor().open) {
+          return this.showHighlight(
+            'openArmyFormation',
+            (action) => !action.disabled && Number(action.slot || 1) === 1,
+            '\u70b9\u51fb\u7b2c\u4e00\u5f20\u7f16\u961f\u5361\u7247\uff0c\u628a\u4fa6\u5bdf\u540d\u4eba\u653e\u8fdb\u961f\u4f0d\u3002',
+            { type: 'openArmyFormation', cityId: this.game?.state?.activeCityId || 'capital', slot: 1 },
+          );
+        }
+        const editor = this.getArmyFormationEditor();
+        if (step === TUTORIAL_STEPS.formationPanelOpened && editor.open) {
+          const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds.map(String) : [];
+          if (scoutPersonId && !memberIds.includes(scoutPersonId)) {
+            return this.showHighlight(
+              'toggleArmyFormationMember',
+              (action) => !action.disabled && action.personId === scoutPersonId,
+              '\u9009\u4e2d\u8fd9\u4f4d\u4fa6\u5bdf\u540d\u4eba\uff0c\u4ed6\u5c06\u6210\u4e3a\u9996\u652f\u4fa6\u5bdf\u961f\u7684\u4e3b\u5c06\u3002',
+              { type: 'toggleArmyFormationMember', personId: scoutPersonId },
+            );
+          }
+          return this.showHighlight(
+            'saveArmyFormation',
+            (action) => !action.disabled,
+            '\u4fdd\u5b58\u7f16\u961f\uff0c\u63a5\u4e0b\u6765\u5c31\u53ef\u4ee5\u51fa\u57ce\u4fa6\u5bdf\u571f\u5730\u4e86\u3002',
+            { type: 'saveArmyFormation' },
           );
         }
       }

@@ -1576,9 +1576,11 @@
       try {
         const result = await this.getGameApi().setArmyFormation(cityId, slot, memberIds);
         this.applyApiState(result);
+        this.tutorialController?.sync?.(this.tutorial);
         this.closeArmyFormationEditor({ render: false });
         this.showFloatingText(result.message || '编队已保存');
         this.log(result.message || '编队已保存');
+        this.tutorialController?.refreshCurrentHighlight?.();
         this.renderCanvasSurface(this.state?.currentTab);
         return true;
       } catch (error) {

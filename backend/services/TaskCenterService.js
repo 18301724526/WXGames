@@ -145,14 +145,18 @@ function applyTaskReward(gameState, reward = {}) {
 
 function maybeAdvanceTutorialAfterClaim(gameState, taskId) {
   const tutorial = gameState.tutorial || {};
-  if (taskId !== 'main_first_supplies' || tutorial.completed || tutorial.disabled) return tutorial;
-  if ((Number(tutorial.currentStep) || 0) >= TUTORIAL_STEPS.farmPrepReserved) return tutorial;
+  if (tutorial.completed || tutorial.disabled) return tutorial;
+  let nextStep = null;
+  if (taskId === 'main_first_supplies') nextStep = TUTORIAL_STEPS.farmPrepReserved;
+  if (taskId === 'main_lumbermill_supplies') nextStep = TUTORIAL_STEPS.era3AdvanceReady;
+  if (!Number.isFinite(nextStep) || (Number(tutorial.currentStep) || 0) >= nextStep) return tutorial;
   gameState.tutorial = {
     ...tutorial,
-    currentStep: TUTORIAL_STEPS.farmPrepReserved,
+    currentStep: nextStep,
     phaseCompleted: {
       ...(tutorial.phaseCompleted || {}),
       newbie: true,
+      era2: nextStep >= TUTORIAL_STEPS.era3AdvanceReady || Boolean(tutorial.phaseCompleted?.era2),
     },
     updatedAt: new Date().toISOString(),
   };

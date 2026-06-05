@@ -688,10 +688,17 @@
 
     getCanvasTarget(type, predicate = null) {
       if (!this.renderer || !Array.isArray(this.renderer.hitTargets)) return null;
-      const target = this.renderer.hitTargets.find((item) => (
-        item.action?.type === type
-        && (typeof predicate !== 'function' || predicate(item.action))
-      ));
+      let target = null;
+      for (let index = this.renderer.hitTargets.length - 1; index >= 0; index -= 1) {
+        const item = this.renderer.hitTargets[index];
+        if (
+          item.action?.type === type
+          && (typeof predicate !== 'function' || predicate(item.action))
+        ) {
+          target = item;
+          break;
+        }
+      }
       if (!target) return null;
       return {
         x: target.x,

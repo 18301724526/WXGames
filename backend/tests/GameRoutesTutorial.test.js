@@ -359,3 +359,101 @@ test('game action route syncs farm-built tutorial before second era advancement'
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.eraAdvancedTo2);
   assert.equal(savedStates[0].eventQueue.some((event) => event.id === 'evt_settlement_forest_001'), true);
 });
+
+test('game action route grants scout famous person and persists tutorial formation save', () => {
+  const { app, routes } = createAppHarness();
+  const builtAt = '2026-06-04T00:00:00.000Z';
+  const tutorial = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.era3AdvanceReady,
+  );
+  const resources = { food: 500, knowledge: 100, wood: 200, iron: 0, stone: 0, metal: 0 };
+  const buildings = {
+    house: { level: 1, builtAt, upgradedAt: builtAt },
+    farm: { level: 1, builtAt, upgradedAt: builtAt },
+    lumbermill: { level: 1, builtAt, upgradedAt: builtAt },
+  };
+  const gameState = {
+    playerId: 'route-scout-famous-formation-test',
+    tutorial,
+    currentEra: 2,
+    resources,
+    buildings,
+    population: { total: 4, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 1, unassigned: 0 },
+    techs: {},
+    techEffects: {},
+    eraHistory: [{ era: 0, advancedAt: builtAt }, { era: 1, advancedAt: builtAt }, { era: 2, advancedAt: builtAt }],
+    eventQueue: [],
+    eventHistory: [],
+    activeBuffs: [],
+    activeCityId: 'capital',
+    cities: {
+      capital: {
+        id: 'capital',
+        territoryId: 'capital',
+        isCapital: true,
+        resources: { ...resources },
+        buildings: { ...buildings },
+        population: { total: 4, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 1, unassigned: 0 },
+        military: { soldiers: 0 },
+      },
+    },
+    famousPeople: [],
+    famousPersonState: { candidates: [], seek: { count: 0, lastAt: null } },
+    military: { formations: { capital: [{ slot: 1, memberIds: [] }] } },
+    taskProgress: { claimed: {} },
+    updatedAt: builtAt,
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      assert.equal(playerId, 'route-scout-famous-formation-test');
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const advanceReq = {
+    playerId: 'route-scout-famous-formation-test',
+    body: { action: 'advanceEra' },
+  };
+  const advanceRes = createResponse();
+
+  route.handlers[0](advanceReq, advanceRes, () => route.handlers[1](advanceReq, advanceRes));
+
+  assert.equal(advanceRes.statusCode, 200);
+  assert.equal(advanceRes.payload.gameState.currentEra, 3);
+  assert.equal(advanceRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
+  assert.equal(savedStates[0].famousPeople.length, 1);
+  assert.equal(savedStates[0].famousPeople[0].quality, 'great');
+  assert.equal(savedStates[0].famousPeople[0].archetype, 'scout');
+  const personId = savedStates[0].tutorial.grants.scoutFamousPerson.personId;
+
+  gameState.tutorial = TutorialService.manualAdvance(savedStates[0].tutorial, TutorialService.TUTORIAL_STEPS.formationPanelOpened);
+  const formationReq = {
+    playerId: 'route-scout-famous-formation-test',
+    body: { action: 'setArmyFormation', cityId: 'capital', slot: 1, memberIds: [personId] },
+  };
+  const formationRes = createResponse();
+
+  route.handlers[0](formationReq, formationRes, () => route.handlers[1](formationReq, formationRes));
+
+  assert.equal(formationRes.statusCode, 200);
+  assert.equal(formationRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFormationSaved);
+  assert.deepEqual(formationRes.payload.formation.memberIds, [personId]);
+  assert.deepEqual(formationRes.payload.gameState.military.formations.capital[0].memberIds, [personId]);
+  assert.equal(savedStates.at(-1).tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFormationSaved);
+  assert.deepEqual(savedStates.at(-1).cities.capital.military.formations.capital[0].memberIds, [personId]);
+});

@@ -838,6 +838,63 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
   };
 }
 
+function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
+  const archetype = ARCHETYPES.find((item) => item.id === 'scout') || ARCHETYPES[0];
+  const quality = 'great';
+  const activeCityId = gameState.activeCityId || CityService.CAPITAL_CITY_ID;
+  const seed = `${gameState.playerId || 'player'}:tutorial-scout:${activeCityId}`;
+  const randomSource = createSeedRandom(seed);
+  const abilityArchetype = 'scout';
+  const abilityKit = SkillGeneratorService.createAbilityKit({
+    archetype: archetype.id,
+    abilityArchetype,
+    quality,
+    source: 'tutorial',
+    seed,
+  }, randomSource);
+  const activeSkill = SkillGeneratorService.getActiveBattleSkill(abilityKit);
+  return normalizePerson({
+    id: `fp_tutorial_scout_${hashText(seed).toString(36)}`,
+    name: `${pick(SURNAMES, randomSource) || SURNAMES[0]}${pick(archetype.namePool, randomSource) || archetype.namePool[0]}`,
+    title: pick(archetype.titlePool, randomSource) || archetype.titlePool[0],
+    eraBorn: Math.max(0, toInteger(gameState.currentEra, 0)),
+    source: {
+      type: 'tutorial',
+      label: '新手引导',
+      cityId: activeCityId,
+      seed,
+    },
+    archetype: archetype.id,
+    archetypeLabel: archetype.label,
+    abilityArchetype,
+    quality,
+    qualityLabel: SkillGeneratorService.getQualityLabel(quality),
+    roles: [...archetype.roles],
+    attributes: createAttributes(archetype, randomSource),
+    traits: [archetype.label, '侦察引导'],
+    abilityKit,
+    skills: activeSkill ? [activeSkill] : [],
+    appearance: createAppearance(archetype, seed, randomSource),
+    status: normalizeStatus({ assigned: 'idle', loyalty: 88 }),
+    createdAt: now.toISOString(),
+    joinedAt: now.toISOString(),
+    generatorVersion: GENERATOR_VERSION,
+  });
+}
+
+function grantTutorialScoutFamousPerson(gameState, now = new Date()) {
+  if (!gameState || typeof gameState !== 'object') return null;
+  gameState.famousPeople = normalizeFamousPeople(gameState.famousPeople);
+  const existing = gameState.famousPeople.find((person) => person.source?.type === 'tutorial' && person.archetype === 'scout');
+  if (existing) {
+    return { person: clone(existing), grantedAt: existing.joinedAt || existing.createdAt || now.toISOString(), created: false };
+  }
+  const person = createTutorialScoutFamousPerson(gameState, now);
+  gameState.famousPeople = [person, ...gameState.famousPeople];
+  ensureFamousPersonState(gameState);
+  return { person: clone(person), grantedAt: person.joinedAt || now.toISOString(), created: true };
+}
+
 function getSeekAvailability(gameState) {
   const state = ensureFamousPersonState(gameState);
   const currentEra = Math.max(0, toInteger(gameState.currentEra, 0));
@@ -970,6 +1027,8 @@ module.exports = {
   normalizeFamousPersonState,
   ensureFamousPersonState,
   createFamousPersonCandidate,
+  createTutorialScoutFamousPerson,
+  grantTutorialScoutFamousPerson,
   makeSkillName,
   getClientState,
   seekFamousPerson,
