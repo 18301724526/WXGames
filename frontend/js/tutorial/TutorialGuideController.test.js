@@ -623,6 +623,110 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
   assert.equal(calls.some((call) => call[0] === 'highlight'), false);
 });
 
+test('TutorialGuideController guides post-naming policy, manual talent, and famous seek systems', async () => {
+  const calls = [];
+  const shell = {
+    activeCommandPanel: 'military',
+    showTalentPolicy: false,
+    showFamousPersons: false,
+    resetLocalViewToResources() {
+      calls.push({ resetResources: true });
+      this.activeCommandPanel = '';
+    },
+    getCanvasTarget(type, predicate) {
+      const targets = {
+        openTalentPolicy: { type: 'openTalentPolicy' },
+        confirmTalentPolicy: { type: 'confirmTalentPolicy' },
+        assignJob: [
+          { type: 'assignJob', job: 'farmer', delta: 1, disabled: true },
+          { type: 'assignJob', job: 'scholar', delta: 1 },
+        ],
+        openFamousPersons: { type: 'openFamousPersons' },
+        seekFamousPerson: { type: 'seekFamousPerson' },
+      };
+      const candidates = Array.isArray(targets[type]) ? targets[type] : [targets[type]];
+      const action = candidates.find((item) => item && (!predicate || predicate(item)));
+      if (!action) return null;
+      return { x: 10, y: 20, width: 100, height: 30, action };
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+    hideTutorialHighlight() {
+      calls.push({ hideHighlight: true });
+      return true;
+    },
+  };
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
+    state: { currentTab: 'military' },
+    activeCommandPanel: 'military',
+    canvasShell: shell,
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+      this.state.tutorial = result.tutorial;
+    },
+    renderCanvasSurface(tab) {
+      calls.push({ render: tab });
+    },
+  };
+  const api = {
+    async advanceTutorial(step) {
+      calls.push({ advanceTutorial: step });
+      return {
+        tutorial: {
+          completed: false,
+          currentStep: step,
+          phaseCompleted: { newbie: true, era2: true, scoutFormation: true },
+        },
+      };
+    },
+  };
+  const controller = new TutorialGuideController({ game, api });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.canOpenTab('resources'), true);
+  assert.equal(controller.canOpenTab('tech'), false);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTalentPolicy' });
+
+  game.showTalentPolicy = true;
+  shell.showTalentPolicy = true;
+  await controller.onTalentPolicyOpened();
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyOpened);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'confirmTalentPolicy' });
+
+  game.showTalentPolicy = false;
+  shell.showTalentPolicy = false;
+  controller.onTalentPolicyApplied({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied },
+  });
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
+
+  controller.onManualTalentAssigned({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.manualTalentAssigned },
+  });
+  assert.equal(controller.canOpenTab('famousPersons'), true);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openFamousPersons' });
+
+  game.showFamousPersons = true;
+  shell.showFamousPersons = true;
+  await controller.onFamousPersonsOpened();
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.famousSeekOpened);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'seekFamousPerson' });
+
+  controller.onFamousPersonSought({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted },
+  });
+  assert.equal(controller.canOpenTab('tech'), true);
+  assert.equal(controller.canOpenTab('resources'), false);
+});
+
 test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {
   const calls = [];
   const shell = {
@@ -644,9 +748,10 @@ test('TutorialGuideController guides final tech explanation and completes tutori
     },
   };
   const game = {
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted },
     state: { currentTab: 'military' },
     activeCommandPanel: '',
+    showFamousPersons: true,
     canvasShell: shell,
     renderCanvasSurface(tab) {
       calls.push({ render: tab });
@@ -675,10 +780,12 @@ test('TutorialGuideController guides final tech explanation and completes tutori
   assert.equal(controller.canOpenTab('military'), false);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'tech' });
+  assert.equal(game.showFamousPersons, false);
 
   shell.activeCommandPanel = 'tech';
   game.activeCommandPanel = 'tech';
-  assert.equal(controller.refreshCurrentHighlight(), true);
+  await controller.onCommandPanelOpened('tech');
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.finalTechOpened);
   assert.equal(game.showAdvisor, true);
   assert.equal(shell.showAdvisor, true);
   assert.equal(game.state.softGuide.target, 'tech-tree');
@@ -693,6 +800,9 @@ test('TutorialGuideController guides final tech explanation and completes tutori
   assert.equal(controller.canOpenTab('military'), true);
   assert.deepEqual(
     calls.filter((call) => call.advanceTutorial).map((call) => call.advanceTutorial),
-    [TutorialGuideController.TUTORIAL_STEPS.completed],
+    [
+      TutorialGuideController.TUTORIAL_STEPS.finalTechOpened,
+      TutorialGuideController.TUTORIAL_STEPS.completed,
+    ],
   );
 });

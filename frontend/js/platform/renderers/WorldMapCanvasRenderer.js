@@ -41,7 +41,7 @@
           return undefined;
         },
         set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
+          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
           if (target.host) {
             if (typeof prop === 'string' && prop.startsWith('worldTile')) {
               target.host[prop] = value;

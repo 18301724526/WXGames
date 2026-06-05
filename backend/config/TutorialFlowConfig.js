@@ -29,7 +29,13 @@ const TUTORIAL_STEPS = Object.freeze({
   firstCityOccupied: 27,
   firstCityNamed: 28,
   polityNamed: 29,
-  completed: 30,
+  talentPolicyOpened: 30,
+  talentPolicyApplied: 31,
+  manualTalentAssigned: 32,
+  famousSeekOpened: 33,
+  famousSeekCompleted: 34,
+  finalTechOpened: 35,
+  completed: 36,
 });
 
 const TUTORIAL_EVENT_STEPS = Object.freeze({
@@ -61,6 +67,9 @@ const TUTORIAL_EVENT_STEPS = Object.freeze({
   firstCityOccupied: TUTORIAL_STEPS.firstCityOccupied,
   firstCityNamed: TUTORIAL_STEPS.firstCityNamed,
   polityNamed: TUTORIAL_STEPS.polityNamed,
+  talentPolicyApplied: TUTORIAL_STEPS.talentPolicyApplied,
+  manualTalentAssigned: TUTORIAL_STEPS.manualTalentAssigned,
+  famousSeekCompleted: TUTORIAL_STEPS.famousSeekCompleted,
 });
 
 const PASS_THROUGH_ACTIONS = Object.freeze([
@@ -89,7 +98,10 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.famousCardViewed]: TUTORIAL_STEPS.famousPanelOpened,
   [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
   [TUTORIAL_STEPS.scoutWorldPanelOpened]: TUTORIAL_STEPS.scoutFormationSaved,
-  [TUTORIAL_STEPS.completed]: TUTORIAL_STEPS.polityNamed,
+  [TUTORIAL_STEPS.talentPolicyOpened]: TUTORIAL_STEPS.polityNamed,
+  [TUTORIAL_STEPS.famousSeekOpened]: TUTORIAL_STEPS.manualTalentAssigned,
+  [TUTORIAL_STEPS.finalTechOpened]: TUTORIAL_STEPS.famousSeekCompleted,
+  [TUTORIAL_STEPS.completed]: TUTORIAL_STEPS.finalTechOpened,
 });
 
 function createPhaseCompleted(currentStep) {

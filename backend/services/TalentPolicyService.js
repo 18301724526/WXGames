@@ -357,9 +357,12 @@ function applyPolicy(gameState, tutorial, payload = {}) {
     state.activeDraft = null;
   }
   state.lastAppliedAt = new Date().toISOString();
-  const nextTutorial = (preview.allocation.craftsman || 0) > beforeCraftsmen
-    ? TutorialService.advanceTutorial(tutorial, 'craftsmanAssigned')
-    : tutorial;
+  const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
+  const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.talentPolicyOpened
+    ? TutorialService.advanceTutorial(normalizedTutorial, 'talentPolicyApplied')
+    : (preview.allocation.craftsman || 0) > beforeCraftsmen
+      ? TutorialService.advanceTutorial(normalizedTutorial, 'craftsmanAssigned')
+      : normalizedTutorial;
 
   return {
     success: true,

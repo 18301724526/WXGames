@@ -55,6 +55,37 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   assert.equal(options.now, 4321.25);
 });
 
+test('CanvasGameShell can render resources without default map-home coercion', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', renderState.currentTab, options.activeTab, options.isMapHome]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = () => false;
+
+  assert.equal(shell.renderReadOnly(state, 'resources', { forceMapHome: false, allowDefaultMapHome: false }), true);
+
+  assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
+  assert.equal(state.currentTab, 'resources');
+  assert.equal(state.militaryView, 'army');
+  assert.equal(shell.mapHomeActive, false);
+});
+
 test('CanvasGameShell routes map command tech tree drag through command panel hit target', () => {
   const calls = [];
   const shell = new CanvasGameShell({
@@ -163,6 +194,7 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
   assert.equal(target.y, 64);
   assert.equal(target.width, 58);
   assert.equal(target.height, 30);
+  assert.deepEqual(target.action, { type: 'closeFamousPersons' });
 });
 
 test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {

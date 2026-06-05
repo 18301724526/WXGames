@@ -109,7 +109,9 @@
           this.host.showTalentPolicy = false;
           const game = this.getGameHost();
           if (game && game !== this.host && 'showTalentPolicy' in game) game.showTalentPolicy = false;
+          game?.tutorialController?.onTalentPolicyApplied?.(value || {});
           this.afterHandled(action);
+          game?.tutorialController?.refreshCurrentHighlight?.();
         }
         return value !== false;
       };
@@ -117,6 +119,34 @@
       if (this.awaitAsync) return result.then(closeAfterSuccess);
       result.then(closeAfterSuccess).catch((error) => this.log?.(error));
       return true;
+    }
+
+    finalizeNamingSubmit(result, action = {}) {
+      const closeAfterSuccess = (value) => {
+        if (value !== false) {
+          this.host?.closeNaming?.();
+          const game = this.getGameHost();
+          if (game && game !== this.host && typeof game.closeNamingModal === 'function') game.closeNamingModal();
+          game?.tutorialController?.refreshCurrentHighlight?.();
+        }
+        return value !== false;
+      };
+      if (!result || typeof result.then !== 'function') return closeAfterSuccess(result);
+      if (this.awaitAsync) return result.then(closeAfterSuccess);
+      result.then(closeAfterSuccess).catch((error) => this.log?.(error));
+      return true;
+    }
+
+    syncTalentPolicyPanelOpen(open = true) {
+      const game = this.getGameHost();
+      this.host.showTalentPolicy = Boolean(open);
+      if (game && game !== this.host && 'showTalentPolicy' in game) {
+        game.showTalentPolicy = Boolean(open);
+      }
+      if (game?.canvasShell && game.canvasShell !== this.host && 'showTalentPolicy' in game.canvasShell) {
+        game.canvasShell.showTalentPolicy = Boolean(open);
+      }
+      return game;
     }
 
     getTalentPolicyDraft() {
@@ -587,9 +617,15 @@
       if (forwarded !== undefined) return forwarded !== false;
       const game = this.getGameHost();
       if (typeof game?.seekFamousPerson === 'function') {
-        return this.finalize(game.seekFamousPerson(action.source || 'seek'));
+        return this.finalize(Promise.resolve(game.seekFamousPerson(action.source || 'seek')).then((result) => {
+          game?.tutorialController?.onFamousPersonSought?.(result || {});
+          return result;
+        }));
       }
-      return this.finalize(this.runAction(() => this.host.api.seekFamousPerson(action.source || 'seek')));
+      return this.finalize(this.runAction(() => this.host.api.seekFamousPerson(action.source || 'seek')).then((result) => {
+        game?.tutorialController?.onFamousPersonSought?.(result || {});
+        return result;
+      }));
     }
 
     handle_acceptFamousPerson(action) {
@@ -623,9 +659,21 @@
     }
 
     handle_openTalentPolicy(action) {
-      this.host.showTalentPolicy = true;
+      const game = this.syncTalentPolicyPanelOpen(true);
       this.closePanels(['showTalentPolicy']);
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      const result = game?.tutorialController?.onTalentPolicyOpened?.();
+      const refreshAfterTutorialAdvance = () => {
+        this.syncTalentPolicyPanelOpen(true);
+        this.render(action);
+        game?.tutorialController?.refreshCurrentHighlight?.();
+      };
+      if (result && typeof result.then === 'function') {
+        result.then(refreshAfterTutorialAdvance).catch((error) => this.log?.(error));
+      } else {
+        refreshAfterTutorialAdvance();
+      }
+      return handled;
     }
 
     handle_closeTalentPolicy(action) {
@@ -788,12 +836,12 @@
     handle_submitNaming(action) {
       const name = action.name || this.host?.getNamingName?.();
       const forwarded = this.forward({ ...action, name });
-      if (forwarded !== undefined) return forwarded !== false;
+      if (forwarded !== undefined) return this.finalizeNamingSubmit(forwarded, action);
       const game = this.getGameHost();
       const result = typeof game?.submitNaming === 'function'
         ? game.submitNaming(name)
         : this.host?.submitNaming?.();
-      return this.finalize(result);
+      return this.finalizeNamingSubmit(result, action);
     }
 
     handle_blockCanvasModal() {
@@ -978,9 +1026,15 @@
       if (forwarded !== undefined) return forwarded !== false;
       const game = this.getGameHost();
       if (typeof game?.assignJob === 'function') {
-        return this.finalize(game.assignJob(action.job, action.delta));
+        return this.finalize(Promise.resolve(game.assignJob(action.job, action.delta)).then((result) => {
+          game?.tutorialController?.onManualTalentAssigned?.(result || {});
+          return result;
+        }));
       }
-      return this.finalize(this.runAction(() => this.host.api.assignJob(action.job, action.delta)));
+      return this.finalize(this.runAction(() => this.host.api.assignJob(action.job, action.delta)).then((result) => {
+        game?.tutorialController?.onManualTalentAssigned?.(result || {});
+        return result;
+      }));
     }
 
     handleCanvasShellAction(action, meta = {}) {

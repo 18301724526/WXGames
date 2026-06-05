@@ -78,7 +78,7 @@ test('completed tutorial states continue to allow every action', () => {
   assert.equal(TutorialService.validateAction(tutorial, 'upgrade', {}, {}).allowed, true);
 });
 
-test('client can complete tutorial only after polity naming', () => {
+test('post-naming tutorial guides policy, manual talent, famous seek, and final tech before completion', () => {
   const cityNamed = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
     TutorialService.TUTORIAL_STEPS.firstCityNamed,
@@ -90,20 +90,49 @@ test('client can complete tutorial only after polity naming', () => {
   assert.equal(early.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityNamed);
 
   const polityNamed = TutorialService.manualAdvance(cityNamed, TutorialService.TUTORIAL_STEPS.polityNamed);
-  const completed = TutorialService.advanceClientStep(polityNamed, TutorialService.TUTORIAL_STEPS.completed);
-
-  assert.equal(TutorialService.canAccessTab(polityNamed, 'tech'), true);
-  assert.equal(TutorialService.canAccessTab(polityNamed, 'military'), false);
+  assert.equal(TutorialService.canAccessTab(polityNamed, 'resources'), true);
+  assert.equal(TutorialService.canAccessTab(polityNamed, 'tech'), false);
   assert.equal(TutorialService.validateAction(polityNamed, 'research', { techId: 'writing' }, {}).allowed, false);
   assert.equal(
+    TutorialService.advanceClientStep(polityNamed, TutorialService.TUTORIAL_STEPS.completed).success,
+    false,
+  );
+
+  const policyOpened = TutorialService.advanceClientStep(polityNamed, TutorialService.TUTORIAL_STEPS.talentPolicyOpened);
+  assert.equal(policyOpened.success, true);
+  assert.equal(TutorialService.validateAction(policyOpened.tutorial, 'applyTalentPolicy', { policyId: 'balanced' }, {}).allowed, true);
+  assert.equal(TutorialService.validateAction(policyOpened.tutorial, 'assign', { target: 'farmer', count: 1 }, {}).allowed, false);
+
+  const policyApplied = TutorialService.advanceTutorial(policyOpened.tutorial, 'talentPolicyApplied');
+  assert.equal(policyApplied.currentStep, TutorialService.TUTORIAL_STEPS.talentPolicyApplied);
+  assert.equal(TutorialService.validateAction(policyApplied, 'assign', { target: 'farmer', count: 1 }, {}).allowed, true);
+  assert.equal(TutorialService.validateAction(policyApplied, 'seekFamousPerson', { source: 'seek' }, {}).allowed, false);
+
+  const manualAssigned = TutorialService.advanceTutorial(policyApplied, 'manualTalentAssigned');
+  assert.equal(TutorialService.canAccessTab(manualAssigned, 'famousPersons'), true);
+  assert.equal(TutorialService.advanceClientStep(manualAssigned, TutorialService.TUTORIAL_STEPS.famousSeekOpened).success, true);
+
+  const famousOpened = TutorialService.advanceClientStep(manualAssigned, TutorialService.TUTORIAL_STEPS.famousSeekOpened).tutorial;
+  assert.equal(TutorialService.validateAction(famousOpened, 'seekFamousPerson', { source: 'seek' }, {}).allowed, true);
+  assert.equal(TutorialService.validateAction(famousOpened, 'research', { techId: 'writing' }, {}).allowed, false);
+
+  const famousSought = TutorialService.advanceTutorial(famousOpened, 'famousSeekCompleted');
+  assert.equal(TutorialService.canAccessTab(famousSought, 'tech'), true);
+  assert.equal(TutorialService.canAccessTab(famousSought, 'resources'), false);
+  assert.equal(TutorialService.advanceClientStep(famousSought, TutorialService.TUTORIAL_STEPS.completed).success, false);
+
+  const finalTechOpened = TutorialService.advanceClientStep(famousSought, TutorialService.TUTORIAL_STEPS.finalTechOpened);
+  assert.equal(finalTechOpened.success, true);
+  assert.equal(
     TutorialService.validateAction(
-      polityNamed,
+      finalTechOpened.tutorial,
       'tutorialAdvance',
       { step: TutorialService.TUTORIAL_STEPS.completed },
       {},
     ).allowed,
     true,
   );
+  const completed = TutorialService.advanceClientStep(finalTechOpened.tutorial, TutorialService.TUTORIAL_STEPS.completed);
   assert.equal(completed.success, true);
   assert.equal(completed.tutorial.completed, true);
   assert.equal(completed.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.completed);

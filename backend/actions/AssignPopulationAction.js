@@ -12,9 +12,13 @@ function execute(gameState, tutorial, payload) {
   city.population = result.population;
   CityService.applyDerivedStatsToCity(city, gameState);
   CityService.syncActiveCityToLegacyFields(gameState);
-  const nextTutorial = payload.target === 'craftsman' && (Number.parseInt(payload.count, 10) || 0) > 0
-    ? TutorialService.advanceTutorial(tutorial, 'craftsmanAssigned')
-    : tutorial;
+  const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
+  const amount = Number.parseInt(payload.count, 10) || 0;
+  const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.talentPolicyApplied && amount !== 0
+    ? TutorialService.advanceTutorial(normalizedTutorial, 'manualTalentAssigned')
+    : payload.target === 'craftsman' && amount > 0
+      ? TutorialService.advanceTutorial(normalizedTutorial, 'craftsmanAssigned')
+      : normalizedTutorial;
 
   return {
     success: true,

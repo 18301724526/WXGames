@@ -111,9 +111,19 @@ function createGameActionRegistry(overrides = {}) {
   register('research', ({ gameState, body }) => (
     deps.TechTreeService.research(gameState, body.techId || body.target || body.tech)
   ));
-  register('seekFamousPerson', ({ gameState, body }) => (
-    deps.FamousPersonService.seekFamousPerson(gameState, { source: body.source || body.target })
-  ));
+  register('seekFamousPerson', ({ gameState, tutorial, body }) => {
+    const result = deps.FamousPersonService.seekFamousPerson(gameState, { source: body.source || body.target });
+    if (result?.success) {
+      const normalizedTutorial = deps.TutorialService.normalizeTutorialState(tutorial || gameState.tutorial);
+      if (normalizedTutorial.currentStep === deps.TutorialService.TUTORIAL_STEPS.famousSeekOpened) {
+        return {
+          ...result,
+          tutorial: deps.TutorialService.advanceTutorial(normalizedTutorial, 'famousSeekCompleted'),
+        };
+      }
+    }
+    return result;
+  });
   register('acceptFamousPerson', ({ gameState, body }) => (
     deps.FamousPersonService.acceptFamousPerson(gameState, body.candidateId || body.target)
   ));

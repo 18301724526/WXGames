@@ -21,7 +21,7 @@
           return undefined;
         },
         set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
+          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
           if (target.host && prop in target.host) {
             target.host[prop] = value;
             return true;

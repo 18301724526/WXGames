@@ -264,6 +264,62 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
   assert.equal(game.canvasShell.activeEventId, null);
 });
 
+test('CanvasActionController syncs talent policy panel across shell and game hosts after tutorial advance', async () => {
+  const calls = [];
+  let resolveAdvance = null;
+  const shell = {
+    showTalentPolicy: false,
+    showTaskCenter: true,
+    getCanvasGameHost() {
+      return game;
+    },
+    runtime: {
+      setTimeout(callback) {
+        calls.push(['timeout']);
+        callback();
+      },
+    },
+    render() {
+      calls.push(['render', this.showTalentPolicy]);
+      return true;
+    },
+  };
+  const game = {
+    showTalentPolicy: false,
+    canvasShell: shell,
+    tutorialController: {
+      onTalentPolicyOpened() {
+        calls.push(['onTalentPolicyOpened']);
+        return new Promise((resolve) => {
+          resolveAdvance = resolve;
+        });
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+  };
+  const controller = new CanvasActionController({ host: shell });
+
+  assert.equal(controller.handle_openTalentPolicy({ type: 'openTalentPolicy' }), true);
+
+  assert.equal(shell.showTalentPolicy, true);
+  assert.equal(game.showTalentPolicy, true);
+  assert.equal(game.canvasShell.showTalentPolicy, true);
+  assert.equal(shell.showTaskCenter, false);
+  assert.equal(calls.some((call) => call[0] === 'onTalentPolicyOpened'), true);
+  assert.equal(calls.some((call) => call[0] === 'refreshCurrentHighlight'), false);
+
+  resolveAdvance({ currentStep: 30 });
+  await Promise.resolve();
+
+  assert.equal(shell.showTalentPolicy, true);
+  assert.equal(game.showTalentPolicy, true);
+  assert.equal(game.canvasShell.showTalentPolicy, true);
+  assert.deepEqual(calls.filter((call) => call[0] === 'render'), [['render', true], ['render', true]]);
+  assert.equal(calls.filter((call) => call[0] === 'refreshCurrentHighlight').length, 1);
+});
+
 test('CanvasActionController closes command panel after switching military view', () => {
   const calls = [];
   const shell = {

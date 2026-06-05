@@ -1258,6 +1258,15 @@
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.activeEventId = null;
+      this.territoryUiState = {
+        ...(this.territoryUiState || {}),
+        selectedSiteId: '',
+        expeditionConfigSiteId: '',
+        expeditionSoldiers: '',
+        expeditionTroopType: '',
+        expeditionLeader: '',
+      };
+      this.territoryController?.closeSiteDialog?.({ render: false });
       this.showResourceDetails = false;
       this.showCitySwitcher = false;
       this.showSubcityList = false;
@@ -1279,6 +1288,17 @@
       if (this.canvasShell) this.canvasShell.selectedTechId = '';
       if (this.canvasShell) this.canvasShell.techDetailOpen = false;
       if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+      if (this.canvasShell) {
+        this.canvasShell.territoryUiState = {
+          ...(this.canvasShell.territoryUiState || {}),
+          selectedSiteId: '',
+          expeditionConfigSiteId: '',
+          expeditionSoldiers: '',
+          expeditionTroopType: '',
+          expeditionLeader: '',
+        };
+        this.canvasShell.closeWorldSiteHud?.({ render: false });
+      }
       if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       if (this.state && typeof this.state === 'object') {
         this.state = {
@@ -1377,6 +1397,7 @@
       const prompt = this.activeNamingPrompt || this.naming.prompt || {};
       const name = String(inputName ?? this.naming.inputValue ?? '').trim();
       if (!prompt.type || !name) return;
+      let tutorialHandledView = false;
       this.naming.submitting = true;
       if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
       this.render();
@@ -1387,13 +1408,15 @@
           : await api.renameCity(prompt.territoryId, name);
         this.closeNaming();
         this.applyApiState(result);
+        this.tutorialController?.sync?.(this.tutorial || this.state?.tutorial || {});
+        tutorialHandledView = this.tutorialController?.refreshCurrentHighlight?.() === true;
         this.showFloatingText(result.message);
         this.log(`鎴愬姛锟?{result.message || ''}`);
       } catch (error) {
         this.log(`澶辫触锟?{error.payload?.message || error.message}`);
       } finally {
         this.naming.submitting = false;
-        this.renderCanvasSurface(this.state?.currentTab);
+        if (!tutorialHandledView) this.renderCanvasSurface(this.state?.currentTab);
       }
     }
 

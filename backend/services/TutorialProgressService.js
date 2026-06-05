@@ -110,7 +110,15 @@ function canAccessTab(tutorialState, tabKey) {
   if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutFormationSaved) {
     return ['resources', 'military', 'civilization'].includes(tabKey);
   }
-  if (step === TUTORIAL_STEPS.polityNamed) return tabKey === 'tech';
+  if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
+    return tabKey === 'resources';
+  }
+  if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
+    return ['resources', 'famousPersons'].includes(tabKey);
+  }
+  if (step >= TUTORIAL_STEPS.famousSeekCompleted && step < TUTORIAL_STEPS.completed) {
+    return tabKey === 'tech';
+  }
   return true;
 }
 
@@ -346,6 +354,35 @@ function validateFinalTechGuideAction(action, payload = {}) {
   return blocked('请先打开科技并关闭顾问讲解，完成最后的新手引导。');
 }
 
+function validatePostNamingSystemGuideAction(step, action, payload = {}) {
+  if (action === 'tutorialAdvance') {
+    const requestedStep = Number(payload?.step);
+    if (
+      (step === TUTORIAL_STEPS.polityNamed && requestedStep === TUTORIAL_STEPS.talentPolicyOpened)
+      || (step === TUTORIAL_STEPS.manualTalentAssigned && requestedStep === TUTORIAL_STEPS.famousSeekOpened)
+      || (step === TUTORIAL_STEPS.famousSeekCompleted && requestedStep === TUTORIAL_STEPS.finalTechOpened)
+      || (step === TUTORIAL_STEPS.finalTechOpened && requestedStep === TUTORIAL_STEPS.completed)
+    ) {
+      return { allowed: true };
+    }
+    return blocked('Please follow the current guided system step.');
+  }
+
+  if (step === TUTORIAL_STEPS.talentPolicyOpened && action === 'applyTalentPolicy') {
+    return { allowed: true };
+  }
+  if (step === TUTORIAL_STEPS.talentPolicyApplied && action === 'assign') {
+    const amount = Number(payload?.count) || 0;
+    if (!payload?.target || amount === 0) return blocked('Please manually adjust one talent assignment.');
+    return { allowed: true };
+  }
+  if (step === TUTORIAL_STEPS.famousSeekOpened && action === 'seekFamousPerson') {
+    return { allowed: true };
+  }
+
+  return blocked('Please finish the current post-naming guide before using other systems.');
+}
+
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
@@ -358,8 +395,8 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
     return validateFirstCityGuideAction(step, action, payload, gameState);
   }
 
-  if (step === TUTORIAL_STEPS.polityNamed) {
-    return validateFinalTechGuideAction(action, payload);
+  if (step >= TUTORIAL_STEPS.polityNamed && step < TUTORIAL_STEPS.completed) {
+    return validatePostNamingSystemGuideAction(step, action, payload);
   }
 
   if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };

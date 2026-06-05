@@ -30,7 +30,13 @@
     firstCityOccupied: 27,
     firstCityNamed: 28,
     polityNamed: 29,
-    completed: 30,
+    talentPolicyOpened: 30,
+    talentPolicyApplied: 31,
+    manualTalentAssigned: 32,
+    famousSeekOpened: 33,
+    famousSeekCompleted: 34,
+    finalTechOpened: 35,
+    completed: 36,
   });
 
   class TutorialGuideController {
@@ -76,7 +82,15 @@
       if (step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed) {
         return ['military'].includes(tabId);
       }
-      if (step === TUTORIAL_STEPS.polityNamed) return tabId === 'tech';
+      if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
+        return tabId === 'resources';
+      }
+      if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
+        return ['resources', 'famousPersons'].includes(tabId);
+      }
+      if (step >= TUTORIAL_STEPS.famousSeekCompleted && step < TUTORIAL_STEPS.completed) {
+        return tabId === 'tech';
+      }
       return true;
     }
 
@@ -100,6 +114,9 @@
       }
       if (tabId === 'buildings' && this.getCurrentStep() === TUTORIAL_STEPS.specialEventClaimed) {
         await this.advanceTo(TUTORIAL_STEPS.buildingsTabOpenedForLumbermill);
+      }
+      if (tabId === 'tech' && this.getCurrentStep() === TUTORIAL_STEPS.famousSeekCompleted) {
+        await this.advanceTo(TUTORIAL_STEPS.finalTechOpened);
       }
       if (allowed !== false) this.refreshCurrentHighlight();
       return allowed;
@@ -169,7 +186,13 @@
     }
 
     isFinalTechGuideActive() {
-      return !this.isCompleted() && this.getCurrentStep() === TUTORIAL_STEPS.polityNamed;
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.famousSeekCompleted && step < TUTORIAL_STEPS.completed;
+    }
+
+    isPostNamingSystemGuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.polityNamed && step < TUTORIAL_STEPS.famousSeekCompleted;
     }
 
     isLumbermillGuideActive() {
@@ -328,6 +351,34 @@
       if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFamousGranted) {
         return this.advanceTo(TUTORIAL_STEPS.famousPanelOpened);
       }
+      if (this.getCurrentStep() === TUTORIAL_STEPS.manualTalentAssigned) {
+        return this.advanceTo(TUTORIAL_STEPS.famousSeekOpened);
+      }
+      return this.state;
+    }
+
+    async onTalentPolicyOpened() {
+      if (this.getCurrentStep() === TUTORIAL_STEPS.polityNamed) {
+        return this.advanceTo(TUTORIAL_STEPS.talentPolicyOpened);
+      }
+      return this.state;
+    }
+
+    onTalentPolicyApplied(result = {}) {
+      this.sync(result.tutorial || this.game?.tutorial || this.state);
+      this.refreshCurrentHighlight();
+      return this.state;
+    }
+
+    onManualTalentAssigned(result = {}) {
+      this.sync(result.tutorial || this.game?.tutorial || this.state);
+      this.refreshCurrentHighlight();
+      return this.state;
+    }
+
+    onFamousPersonSought(result = {}) {
+      this.sync(result.tutorial || this.game?.tutorial || this.state);
+      this.refreshCurrentHighlight();
       return this.state;
     }
 
@@ -372,7 +423,7 @@
       const game = this.game || {};
       game.showAdvisor = false;
       if (game.canvasShell) game.canvasShell.showAdvisor = false;
-      if (!this.isFinalTechGuideActive()) {
+      if (this.getCurrentStep() !== TUTORIAL_STEPS.finalTechOpened) {
         this.refreshCurrentHighlight();
         return this.state;
       }
@@ -391,7 +442,13 @@
     }
 
     showHighlight(type, predicate, message, allowedAction) {
-      const target = this.getCanvasTarget(type, predicate);
+      let target = this.getCanvasTarget(type, predicate);
+      if (!target && !this.retryingHighlightAfterRender) {
+        this.retryingHighlightAfterRender = true;
+        this.game?.renderCanvasSurface?.(this.game?.state?.currentTab || this.game?.activeTab || 'resources');
+        target = this.getCanvasTarget(type, predicate);
+        this.retryingHighlightAfterRender = false;
+      }
       if (!target) return false;
       return this.game?.canvasShell?.showTutorialHighlight?.(
         target,
@@ -488,6 +545,18 @@
       closeIfOpen(shell, 'showSubcityList');
       closeIfOpen(game, 'showTaskCenter');
       closeIfOpen(shell, 'showTaskCenter');
+      closeIfOpen(game, 'showFamousPersons');
+      closeIfOpen(shell, 'showFamousPersons');
+      closeIfOpen(game, 'showTalentPolicy');
+      closeIfOpen(shell, 'showTalentPolicy');
+      if (game.selectedFamousPersonId) {
+        game.selectedFamousPersonId = '';
+        changed = true;
+      }
+      if (shell?.selectedFamousPersonId) {
+        shell.selectedFamousPersonId = '';
+        changed = true;
+      }
       if (game.activeEventId) {
         game.activeEventId = null;
         changed = true;
@@ -556,6 +625,116 @@
         game.canvasShell.buildingTransition = null;
       }
       return true;
+    }
+
+    ensureResourcesGuideVisible() {
+      const game = this.game || {};
+      const shell = game.canvasShell || null;
+      let changed = false;
+      const setIfChanged = (host, key, value) => {
+        if (!host || host[key] === value) return;
+        host[key] = value;
+        changed = true;
+      };
+      const updateState = (host, patch = {}) => {
+        if (!host || typeof host !== 'object') return;
+        Object.entries(patch).forEach(([key, value]) => setIfChanged(host, key, value));
+      };
+      const mergeUiState = (host, key, patch = {}) => {
+        if (!host || typeof host !== 'object') return;
+        const current = host[key] || {};
+        const next = { ...current, ...patch };
+        const changedEntry = Object.entries(patch).some(([field, value]) => current[field] !== value);
+        if (!changedEntry) return;
+        host[key] = next;
+        changed = true;
+      };
+      game.activeTab = 'resources';
+      game.militaryView = 'army';
+      game.mapHomeActive = true;
+      if (game.state) {
+        setIfChanged(game.state, 'currentTab', 'resources');
+        setIfChanged(game.state, 'militaryView', 'army');
+      }
+      updateState(game, {
+        activeTab: 'resources',
+        militaryView: 'army',
+        mapHomeActive: true,
+        showCityManagement: false,
+        showTaskCenter: false,
+        showFamousPersons: false,
+        activeCommandPanel: '',
+        activeEventId: null,
+        showTalentPolicy: false,
+      });
+      mergeUiState(game, 'territoryUiState', {
+        selectedSiteId: '',
+        expeditionConfigSiteId: '',
+        expeditionSoldiers: '',
+        expeditionTroopType: '',
+        expeditionLeader: '',
+      });
+      game.territoryController?.closeSiteDialog?.({ render: false });
+      if (shell) {
+        updateState(shell, {
+          mapHomeActive: true,
+          showCityManagement: false,
+          showTaskCenter: false,
+          showFamousPersons: false,
+          showTalentPolicy: false,
+          activeCommandPanel: '',
+          activeEventId: null,
+        });
+        mergeUiState(shell, 'territoryUiState', {
+          selectedSiteId: '',
+          expeditionConfigSiteId: '',
+          expeditionSoldiers: '',
+          expeditionTroopType: '',
+          expeditionLeader: '',
+        });
+        shell.closeWorldSiteHud?.({ render: false });
+      }
+      if (changed && !this.renderingResourcesGuide) {
+        this.renderingResourcesGuide = true;
+        if (typeof game.resolveMapHomeViewState === 'function' && game.state) {
+          const homeView = game.resolveMapHomeViewState(game.state, {
+            requestedTab: 'resources',
+            militaryView: 'army',
+            allowDefaultMapHome: false,
+            forceMapHome: false,
+          });
+          setIfChanged(game, 'mapHomeActive', homeView.isMapHome);
+          setIfChanged(game, 'activeTab', homeView.activeTab);
+          setIfChanged(game, 'militaryView', homeView.militaryView);
+          setIfChanged(game.state, 'currentTab', homeView.activeTab);
+          setIfChanged(game.state, 'militaryView', homeView.militaryView);
+        }
+        if (shell && typeof shell.renderReadOnly === 'function') {
+          shell.mapHomeActive = false;
+          shell.renderReadOnly(game.state, 'resources', {
+            forceMapHome: false,
+            allowDefaultMapHome: false,
+          });
+        } else {
+          game.renderCanvasSurface?.('resources');
+        }
+        if (!game.renderCanvasSurface && shell?.renderReadOnly) {
+          shell.renderReadOnly(game.state, 'resources');
+        }
+        this.renderingResourcesGuide = false;
+      }
+      return true;
+    }
+
+    isTalentPolicyOpen() {
+      return Boolean(this.game?.showTalentPolicy || this.game?.canvasShell?.showTalentPolicy);
+    }
+
+    pickManualAssignAction() {
+      const target = this.getCanvasTarget('assignJob', (action) => !action.disabled && Number(action.delta) > 0);
+      if (target) return { target, action: target.action || { type: 'assignJob' } };
+      const fallback = this.getCanvasTarget('assignJob', (action) => !action.disabled && Number(action.delta) !== 0);
+      return fallback ? { target: fallback, action: fallback.action || { type: 'assignJob' } } : null;
     }
 
     showBuildingGuide(buildingId, message) {
@@ -890,6 +1069,71 @@
             (action) => !action.disabled,
             '\u786e\u8ba4\u6587\u660e\u540d\u79f0\uff0c\u8fd9\u6761\u5f3a\u5f15\u5bfc\u5c31\u53ea\u5269\u6700\u540e\u7684\u79d1\u6280\u8bf4\u660e\u4e86\u3002',
             { type: 'submitNaming' },
+          );
+        }
+      }
+      if (this.isPostNamingSystemGuideActive()) {
+        const step = this.getCurrentStep();
+        if (step === TUTORIAL_STEPS.polityNamed) {
+          this.ensureResourcesGuideVisible();
+          return this.showHighlight(
+            'openTalentPolicy',
+            (action) => !action.disabled,
+            '先打开方针，看看文明会怎样自动安排人才。',
+            { type: 'openTalentPolicy' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.talentPolicyOpened) {
+          if (!this.isTalentPolicyOpen()) {
+            this.ensureResourcesGuideVisible();
+            return this.showHighlight(
+              'openTalentPolicy',
+              (action) => !action.disabled,
+              '打开方针面板，确认一套适合当前阶段的人才安排。',
+              { type: 'openTalentPolicy' },
+            );
+          }
+          return this.showHighlight(
+            'confirmTalentPolicy',
+            (action) => !action.disabled,
+            '确认这套方针，系统会先帮我们把人才分配到更合适的位置。',
+            { type: 'confirmTalentPolicy' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.talentPolicyApplied) {
+          this.ensureResourcesGuideVisible();
+          const picked = this.pickManualAssignAction();
+          if (picked?.target) {
+            return this.game?.canvasShell?.showTutorialHighlight?.(
+              picked.target,
+              '现在手动调整一次人才分配，之后你就能按城市需要微调岗位。',
+              { allowedAction: picked.action, source: 'strongTutorial' },
+            ) || false;
+          }
+          return false;
+        }
+        if (step === TUTORIAL_STEPS.manualTalentAssigned) {
+          return this.showHighlight(
+            'openFamousPersons',
+            (action) => !action.disabled,
+            '打开名人，试一次寻访，看看新的候选人如何出现。',
+            { type: 'openFamousPersons' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.famousSeekOpened) {
+          if (!this.isFamousPersonsOpen()) {
+            return this.showHighlight(
+              'openFamousPersons',
+              (action) => !action.disabled,
+              '打开名人面板，进行一次寻访。',
+              { type: 'openFamousPersons' },
+            );
+          }
+          return this.showHighlight(
+            'seekFamousPerson',
+            (action) => !action.disabled,
+            '点击寻访名人，新的候选人会进入名人馆等待你后续处理。',
+            { type: 'seekFamousPerson' },
           );
         }
       }
