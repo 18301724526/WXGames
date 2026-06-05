@@ -44,6 +44,11 @@ function getMainFirstTask(gameState) {
     .categories.main.tasks.find((task) => task.id === 'main_first_supplies');
 }
 
+function getMainLumbermillTask(gameState) {
+  return TaskCenterService.getTaskCenter(gameState, { activeTab: 'main' })
+    .categories.main.tasks.find((task) => task.id === 'main_lumbermill_supplies');
+}
+
 test('main first supplies waits for house and first era advancement', () => {
   const beforeEraAdvance = createMainTaskState({ currentEra: 0 });
   const afterEraAdvance = createMainTaskState({ currentEra: 1 });
@@ -76,4 +81,28 @@ test('claiming a task reward is idempotent and rejects duplicates', () => {
   assert.equal(duplicate.error, 'TASK_ALREADY_CLAIMED');
   assert.equal(gameState.resources.food, 120);
   assert.equal(gameState.resources.knowledge, 5);
+});
+
+test('main lumbermill supplies wait for lumbermill and pay next era cost', () => {
+  const gameState = createMainTaskState({
+    food: 11,
+    knowledge: 3,
+    wood: 7,
+    currentEra: 2,
+    tutorialStep: TutorialService.TUTORIAL_STEPS.lumbermillBuilt,
+  });
+  gameState.buildings.farm = { level: 1 };
+
+  assert.equal(getMainLumbermillTask(gameState).status, 'active');
+  gameState.buildings.lumbermill = { level: 1 };
+  assert.equal(getMainLumbermillTask(gameState).status, 'claimable');
+
+  const result = TaskCenterService.claimTask(gameState, 'main_lumbermill_supplies', 'main');
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.reward.resources, { food: 500, knowledge: 100, wood: 200 });
+  assert.equal(gameState.resources.food, 511);
+  assert.equal(gameState.resources.knowledge, 103);
+  assert.equal(gameState.resources.wood, 207);
+  assert.equal(getMainLumbermillTask(gameState).status, 'completed');
 });

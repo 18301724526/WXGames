@@ -148,3 +148,116 @@ test('TutorialGuideController guides first era advancement and task reward claim
     category: 'main',
   });
 });
+
+test('TutorialGuideController guides farm, forest event, lumbermill, and second main task', () => {
+  const calls = [];
+  const shell = {
+    activeCommandPanel: '',
+    getCanvasTarget(type, predicate) {
+      const targets = {
+        buildBuilding: [
+          { type: 'buildBuilding', buildingId: 'farm' },
+          { type: 'buildBuilding', buildingId: 'lumbermill' },
+        ],
+        openCommandPanel: [
+          { type: 'openCommandPanel', panel: 'civilization' },
+          { type: 'openCommandPanel', panel: 'events' },
+        ],
+        advanceEra: { type: 'advanceEra' },
+        openEvent: { type: 'openEvent', eventId: 'evt_settlement_forest_001' },
+        claimEvent: { type: 'claimEvent', eventId: 'evt_settlement_forest_001', optionId: 'opt_collect_wood' },
+        openTaskCenter: { type: 'openTaskCenter', source: 'taskIcon' },
+        claimTaskReward: { type: 'claimTaskReward', taskId: 'main_lumbermill_supplies', category: 'main' },
+      };
+      const candidates = Array.isArray(targets[type]) ? targets[type] : [targets[type]];
+      const action = candidates.find((item) => item && (!predicate || predicate(item)));
+      if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
+      return null;
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+    hideTutorialHighlight() {
+      calls.push({ hideHighlight: true });
+      return true;
+    },
+  };
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.farmPrepReserved },
+    state: {
+      currentTab: 'buildings',
+      eventQueue: [{ id: 'evt_settlement_forest_001' }],
+      buildingDefinitions: {
+        farm: { category: 'agriculture' },
+        lumbermill: { category: 'production' },
+      },
+    },
+    activeTab: 'buildings',
+    canvasShell: shell,
+    renderCanvasSurface() {
+      calls.push({ render: true });
+    },
+  };
+  const controller = new TutorialGuideController({ game });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'farm' });
+  assert.equal(game.activeBuildingCategory, 'agriculture');
+  assert.equal(game.canvasShell.activeBuildingCategory, 'agriculture');
+
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.era2AdvanceReady });
+  game.state.currentTab = 'buildings';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'civilization' });
+
+  game.state.currentTab = 'civilization';
+  shell.activeCommandPanel = 'civilization';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
+
+  controller.onEraAdvanced({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo2 },
+  });
+  assert.equal(game.showAdvisor, true);
+  assert.equal(game.state.softGuide.target, 'events-button');
+
+  game.showAdvisor = false;
+  game.canvasShell.showAdvisor = false;
+  controller.sync(game.tutorial);
+  shell.activeCommandPanel = '';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'events' });
+
+  shell.activeCommandPanel = 'events';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openEvent', eventId: 'evt_settlement_forest_001' });
+
+  game.canvasShell.activeEventId = 'evt_settlement_forest_001';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, {
+    type: 'claimEvent',
+    eventId: 'evt_settlement_forest_001',
+    optionId: 'opt_collect_wood',
+  });
+
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.specialEventClaimed });
+  game.canvasShell.activeEventId = null;
+  game.state.currentTab = 'events';
+  shell.activeCommandPanel = 'events';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'lumbermill' });
+  assert.equal(game.canvasShell.activeCommandPanel, 'buildings');
+  assert.equal(game.activeBuildingCategory, 'production');
+  assert.equal(game.canvasShell.activeBuildingCategory, 'production');
+
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.lumbermillBuilt });
+  game.showTaskCenter = true;
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, {
+    type: 'claimTaskReward',
+    taskId: 'main_lumbermill_supplies',
+    category: 'main',
+  });
+});

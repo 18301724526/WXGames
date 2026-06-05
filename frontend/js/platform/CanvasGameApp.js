@@ -292,6 +292,10 @@
       this.mapHomeActive = syncedHomeView.isMapHome;
       const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
       this.tutorial = nextTutorial;
+      this.state = {
+        ...this.state,
+        tutorial: nextTutorial,
+      };
       this.tutorialController?.sync?.(nextTutorial);
       this.updateSyncInterval();
       this.hasServerState = true;
@@ -373,9 +377,10 @@
     }
 
     canAdvanceEraNow(progress = this.state?.eraProgress) {
+      const tutorial = this.getEffectiveTutorialState(this.tutorial || this.state?.tutorial || {});
       const view = this.presenter?.buildCivilizationViewState?.(
         { ...this.state, eraProgress: progress },
-        this.tutorial || {},
+        tutorial,
         { canOpenCivilizationTab: true },
       );
       return Boolean(view?.advanceButton?.canAdvance);
@@ -1803,7 +1808,7 @@
         this.tutorialController?.sync?.(this.tutorial);
         this.tutorialController?.onEraAdvanced?.(result);
         this.log(`杩涘叆鏂伴樁娈碉細${result.message || this.state.currentEraName || ''}`);
-        this.showFloatingText(Entered );
+        this.showFloatingText(result.message || this.state.currentEraName || 'Entered next era');
         return true;
       } catch (error) {
         this.log(`澶辫触锟?{error.payload?.message || error.message}`);

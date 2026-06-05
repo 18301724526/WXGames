@@ -17,6 +17,14 @@ function buildGameView(gameState, tutorial, gameStateService) {
   };
 }
 
+function syncEra2Tutorial(gameState, gameStateService) {
+  const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
+  const eraProgress = gameStateService.calculateEraProgress(gameState);
+  const nextTutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
+  gameState.tutorial = nextTutorial;
+  return nextTutorial;
+}
+
 function loadProgressedGameState(repository, gameStateService, playerId) {
   const rawState = repository.findByPlayerId(playerId);
   if (!rawState) return null;
@@ -33,8 +41,7 @@ function registerGameRoutes(app, deps) {
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
-    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-    gameState.tutorial = tutorial;
+    const tutorial = syncEra2Tutorial(gameState, gameStateService);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.touchPlayerActiveAt(req.playerId);
@@ -62,6 +69,7 @@ function registerGameRoutes(app, deps) {
     }
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
+    syncEra2Tutorial(gameState, gameStateService);
     repository.touchPlayerActiveAt(req.playerId);
     repository.save(gameState);
     return res.json({
@@ -76,8 +84,7 @@ function registerGameRoutes(app, deps) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
 
-    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-    gameState.tutorial = tutorial;
+    const tutorial = syncEra2Tutorial(gameState, gameStateService);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
 
@@ -87,13 +94,14 @@ function registerGameRoutes(app, deps) {
       ? TutorialService.normalizeTutorialState(result.tutorial)
       : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
     gameState.tutorial = nextTutorial;
+    const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
 
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      ...buildGameView(gameState, nextTutorial, gameStateService),
+      ...buildGameView(gameState, syncedTutorial, gameStateService),
     });
   });
 
@@ -103,7 +111,7 @@ function registerGameRoutes(app, deps) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
 
-    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
+    const tutorial = syncEra2Tutorial(gameState, gameStateService);
     const {
       action,
       target,
@@ -114,7 +122,6 @@ function registerGameRoutes(app, deps) {
     } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
-    gameState.tutorial = tutorial;
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     const tutorialCheck = TutorialService.validateAction(tutorial, action, { target, count, step, eventId, optionId }, gameState);
@@ -127,12 +134,13 @@ function registerGameRoutes(app, deps) {
       ? TutorialService.normalizeTutorialState(result.tutorial)
       : tutorial;
     gameState.tutorial = nextTutorial;
+    const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      ...buildGameView(gameState, nextTutorial, gameStateService),
+      ...buildGameView(gameState, syncedTutorial, gameStateService),
     });
   });
 }

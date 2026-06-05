@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const registerGameRoutes = require('../routes/gameRoutes');
 const TutorialService = require('../services/TutorialService');
+const GameStateService = require('../services/GameStateService');
 
 function createAppHarness() {
   const routes = [];
@@ -271,4 +272,90 @@ test('game task claim route pays main task reward and persists progress', () => 
   assert.equal(savedStates[0].taskProgress.claimed.main_first_supplies.reward.resources.knowledge, 5);
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.farmPrepReserved);
   assert.equal(res.payload.taskCenter.categories.main.tasks.find((task) => task.id === 'main_first_supplies').status, 'completed');
+});
+
+test('game action route syncs farm-built tutorial before second era advancement', () => {
+  const { app, routes } = createAppHarness();
+  const builtAt = '2026-06-04T00:00:00.000Z';
+  const tutorial = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.farmBuilt,
+  );
+  const resources = { food: 120, knowledge: 5, wood: 0, iron: 0, stone: 0, metal: 0 };
+  const buildings = {
+    house: { level: 1, builtAt, upgradedAt: builtAt },
+    farm: { level: 1, builtAt, upgradedAt: builtAt },
+  };
+  const gameState = {
+    playerId: 'route-era-two-sync-test',
+    tutorial,
+    currentEra: 1,
+    resources,
+    buildings,
+    population: { total: 3, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+    techs: {},
+    techEffects: {},
+    eraHistory: [{ era: 0, advancedAt: builtAt }, { era: 1, advancedAt: builtAt }],
+    eventQueue: [],
+    eventHistory: [],
+    activeBuffs: [],
+    activeCityId: 'capital',
+    cities: {
+      capital: {
+        id: 'capital',
+        territoryId: 'capital',
+        isCapital: true,
+        resources: { ...resources },
+        buildings: { ...buildings },
+        population: { total: 3, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+        military: { soldiers: 0 },
+      },
+    },
+    taskProgress: { claimed: {} },
+    updatedAt: builtAt,
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      assert.equal(playerId, 'route-era-two-sync-test');
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState(state) {
+      return {
+        playerId: state.playerId,
+        currentEra: state.currentEra,
+        resources: state.resources,
+        eventQueue: state.eventQueue,
+      };
+    },
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId: 'route-era-two-sync-test',
+    body: { action: 'advanceEra' },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.success, true);
+  assert.equal(res.payload.gameState.currentEra, 2);
+  assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.eraAdvancedTo2);
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].currentEra, 2);
+  assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.eraAdvancedTo2);
+  assert.equal(savedStates[0].eventQueue.some((event) => event.id === 'evt_settlement_forest_001'), true);
 });

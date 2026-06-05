@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const GameCommandService = require('./GameCommandService');
 const CanvasGameApp = require('./CanvasGameApp');
+const UIStatePresenter = require('../state/UIStatePresenter');
 
 function createCommandHost(api) {
   const calls = [];
@@ -167,6 +168,127 @@ test('CanvasGameApp keeps command facades and delegates to command service', asy
     ['switchCity', 'harbor'],
   ]);
   assert.equal(calls.every(([, , host]) => host === app), true);
+});
+
+test('CanvasGameApp advanceEra returns true after applying successful API state', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      currentEra: 0,
+      isCapitalCity: true,
+      eraProgress: { canAdvance: true },
+    },
+    presenter: {
+      buildCivilizationViewState() {
+        return { advanceButton: { canAdvance: true } };
+      },
+    },
+    api: {
+      async advanceEra() {
+        calls.push(['advanceEra']);
+        return {
+          success: true,
+          message: '进入农耕时代',
+          gameState: {
+            currentTab: 'military',
+            currentEra: 1,
+            isCapitalCity: true,
+            eraProgress: { canAdvance: false },
+          },
+          tutorial: { completed: false, currentStep: 6 },
+        };
+      },
+    },
+    tutorialController: {
+      sync(tutorial) {
+        calls.push(['sync', tutorial.currentStep]);
+      },
+      onEraAdvanced(result) {
+        calls.push(['onEraAdvanced', result.tutorial.currentStep]);
+      },
+    },
+  });
+  app.showFloatingText = (message) => calls.push(['showFloatingText', message]);
+  app.log = (message) => calls.push(['log', message]);
+  app.renderMilitary = () => calls.push(['renderMilitary']);
+  app.render = () => calls.push(['render']);
+
+  assert.equal(await app.advanceEra(), true);
+  assert.equal(app.state.currentEra, 1);
+  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'onEraAdvanced', 'showFloatingText'].includes(name)), [
+    ['advanceEra'],
+    ['onEraAdvanced', 6],
+    ['showFloatingText', '进入农耕时代'],
+  ]);
+});
+
+test('CanvasGameApp can advance era two when farm completion is promoted to era guide step', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    presenter: UIStatePresenter,
+    initialState: {
+      currentTab: 'military',
+      currentEra: 1,
+      isCapitalCity: true,
+      resources: { food: 132, knowledge: 10, wood: 0 },
+      buildings: { house: { level: 1 }, farm: { level: 1 } },
+      population: { total: 3 },
+      eraProgress: {
+        canAdvance: true,
+        percentage: 100,
+        conditions: [],
+      },
+      tutorial: { completed: false, currentStep: 9, phaseCompleted: { newbie: true, era2: false } },
+    },
+    api: {
+      async advanceEra() {
+        calls.push(['advanceEra']);
+        return {
+          success: true,
+          message: '进入聚落时代',
+          gameState: {
+            currentTab: 'military',
+            currentEra: 2,
+            isCapitalCity: true,
+            resources: { food: 12, knowledge: 5, wood: 0 },
+            buildings: { house: { level: 1 }, farm: { level: 1 } },
+            eraProgress: { canAdvance: false, percentage: 0, conditions: [] },
+          },
+          tutorial: { completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } },
+        };
+      },
+    },
+    tutorialController: {
+      sync(tutorial) {
+        calls.push(['sync', tutorial.currentStep]);
+      },
+      onEraAdvanced(result) {
+        calls.push(['onEraAdvanced', result.tutorial.currentStep]);
+      },
+    },
+  });
+  app.tutorial = { completed: false, currentStep: 9, phaseCompleted: { newbie: true, era2: false } };
+  app.showFloatingText = (message) => calls.push(['showFloatingText', message]);
+  app.log = (message) => calls.push(['log', message]);
+  app.renderMilitary = () => calls.push(['renderMilitary']);
+  app.render = () => calls.push(['render']);
+
+  assert.equal(app.canAdvanceEraNow(), true);
+  assert.equal(await app.advanceEra(), true);
+  assert.equal(app.state.currentEra, 2);
+  assert.equal(app.tutorial.currentStep, 11);
+  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'onEraAdvanced', 'showFloatingText'].includes(name)), [
+    ['advanceEra'],
+    ['onEraAdvanced', 11],
+    ['showFloatingText', '进入聚落时代'],
+  ]);
 });
 
 test('CanvasGameApp advisor task target opens task center and refreshes tutorial highlight', () => {

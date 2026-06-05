@@ -68,13 +68,19 @@ function blocked(message, code = 'TUTORIAL_BLOCKED') {
 }
 
 function getBuildingLevel(gameState, buildingId) {
-  const entry = gameState?.buildings?.[buildingId];
+  const cityId = gameState?.activeCityId || 'capital';
+  const city = gameState?.cities?.[cityId] || gameState?.cities?.capital || null;
+  const entry = city?.buildings?.[buildingId] || gameState?.buildings?.[buildingId];
   if (!entry) return 0;
   return typeof entry === 'object' ? entry.level || 0 : Number(entry) || 0;
 }
 
 function hasBuiltHouse(gameState) {
   return getBuildingLevel(gameState, 'house') > 0;
+}
+
+function hasBuiltFarm(gameState) {
+  return getBuildingLevel(gameState, 'farm') > 0;
 }
 
 function canAffordLumbermill(gameState) {
@@ -260,7 +266,9 @@ function maybeActivateEra2Tutorial(tutorialState, gameState, eraProgress) {
   }
   const readyForEra2 = gameState.currentEra === 1
     && eraProgress?.canAdvance
-    && hasBuiltHouse(gameState);
+    && hasBuiltHouse(gameState)
+    && hasBuiltFarm(gameState)
+    && tutorial.currentStep >= TUTORIAL_STEPS.farmBuilt;
   if (readyForEra2 && tutorial.currentStep < TUTORIAL_STEPS.era2AdvanceReady) {
     return manualAdvance(tutorial, TUTORIAL_STEPS.era2AdvanceReady);
   }

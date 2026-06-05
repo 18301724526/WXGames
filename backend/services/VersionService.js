@@ -4,7 +4,7 @@ const path = require('path');
 
 const DEFAULT_CACHE_MS = 5000;
 const IGNORED_DIRS = new Set(['.git', '.local-logs', '.trae', 'node_modules', 'logs', 'data']);
-const IGNORED_EXTENSIONS = new Set(['.db', '.db-shm', '.db-wal', '.bak', '.backup', '.log']);
+const IGNORED_EXTENSIONS = new Set(['.db', '.db-shm', '.db-wal', '.db-journal', '.bak', '.backup', '.log']);
 
 function readJson(filePath) {
   try {
@@ -55,7 +55,13 @@ function collectFileFingerprints(root, baseRoot, entries) {
   if (!fs.existsSync(root)) return;
   for (const name of fs.readdirSync(root)) {
     const filePath = path.join(root, name);
-    const stats = fs.statSync(filePath);
+    let stats;
+    try {
+      stats = fs.statSync(filePath);
+    } catch (error) {
+      if (error?.code === 'ENOENT') continue;
+      throw error;
+    }
     if (shouldIgnore(filePath, stats)) continue;
     if (stats.isDirectory()) {
       collectFileFingerprints(filePath, baseRoot, entries);

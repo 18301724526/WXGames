@@ -50,6 +50,10 @@
       if (step < TUTORIAL_STEPS.houseBuilt) return ['resources', 'military', 'buildings'].includes(tabId);
       if (step < TUTORIAL_STEPS.eraAdvancedTo1) return ['resources', 'military', 'buildings', 'civilization'].includes(tabId);
       if (step <= TUTORIAL_STEPS.farmBuilt) return ['buildings', 'civilization', 'tasks'].includes(tabId);
+      if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabId === 'civilization';
+      if (step < TUTORIAL_STEPS.specialEventClaimed) return ['civilization', 'events'].includes(tabId);
+      if (step < TUTORIAL_STEPS.lumbermillBuilt) return ['events', 'buildings'].includes(tabId);
+      if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
       return true;
     }
 
@@ -65,8 +69,15 @@
     }
 
     async onCommandPanelOpened(panelId) {
-      if (panelId !== 'civilization') return true;
-      const allowed = await this.onTabClicked('civilization');
+      const tabId = this.normalizePanelTab(panelId);
+      const allowed = await this.onTabClicked(tabId);
+      if (allowed === false) return false;
+      if (tabId === 'events' && this.getCurrentStep() === TUTORIAL_STEPS.eraAdvancedTo2) {
+        await this.advanceTo(TUTORIAL_STEPS.specialEventTabOpened);
+      }
+      if (tabId === 'buildings' && this.getCurrentStep() === TUTORIAL_STEPS.specialEventClaimed) {
+        await this.advanceTo(TUTORIAL_STEPS.buildingsTabOpenedForLumbermill);
+      }
       if (allowed !== false) this.refreshCurrentHighlight();
       return allowed;
     }
@@ -98,6 +109,8 @@
     }
 
     onBuildingAction(buildingId, action = 'build') {
+      if (this.isFarmGuideActive()) return action === 'build' && buildingId === 'farm';
+      if (this.isLumbermillGuideActive()) return action === 'build' && buildingId === 'lumbermill';
       if (!this.isHouseGuideActive()) return true;
       return action === 'build' && buildingId === 'house';
     }
@@ -105,6 +118,36 @@
     isFirstEraGuideActive() {
       const step = this.getCurrentStep();
       return !this.isCompleted() && step >= TUTORIAL_STEPS.houseBuilt && step < TUTORIAL_STEPS.farmPrepReserved;
+    }
+
+    isFarmGuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.farmPrepReserved && step < TUTORIAL_STEPS.farmBuilt;
+    }
+
+    isEra2GuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.era2AdvanceReady && step <= TUTORIAL_STEPS.lumbermillBuilt;
+    }
+
+    isLumbermillGuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.specialEventClaimed && step < TUTORIAL_STEPS.lumbermillBuilt;
+    }
+
+    normalizePanelTab(panelId) {
+      if (panelId === 'capital') return 'buildings';
+      return panelId || '';
+    }
+
+    getActiveCommandPanel() {
+      return this.game?.canvasShell?.activeCommandPanel || this.game?.activeCommandPanel || '';
+    }
+
+    isCommandPanelOpen(panelId) {
+      const active = this.getActiveCommandPanel();
+      if (panelId === 'buildings') return active === 'buildings' || active === 'capital';
+      return active === panelId;
     }
 
     isOnTab(tabId) {
@@ -138,6 +181,13 @@
 
     onEraAdvanced(result = {}) {
       this.sync(result.tutorial || this.game?.tutorial || this.state);
+      const step = this.getCurrentStep();
+      if (step === TUTORIAL_STEPS.eraAdvancedTo2) {
+        return this.showSoftGuide(
+          'events-button',
+          '\u68ee\u6797\u8fb9\u7f18\u4f20\u6765\u4e86\u52a8\u9759\u3002\u5148\u53bb\u4e8b\u4ef6\u91cc\u770b\u4e00\u770b\uff0c\u628a\u6728\u6750\u5e26\u56de\u6765\u3002',
+        );
+      }
       if (this.getCurrentStep() !== TUTORIAL_STEPS.eraAdvancedTo1) return false;
       return this.showSoftGuide(
         'task-center-button',
@@ -182,6 +232,54 @@
       return true;
     }
 
+    ensureBuildingGuideVisible() {
+      const game = this.game || {};
+      game.showCityManagement = false;
+      game.activeCommandPanel = 'buildings';
+      game.activeEventId = null;
+      game.showTaskCenter = false;
+      if (game.canvasShell) {
+        game.canvasShell.showCityManagement = false;
+        game.canvasShell.activeCommandPanel = 'buildings';
+        game.canvasShell.activeEventId = null;
+        game.canvasShell.showTaskCenter = false;
+      }
+      return true;
+    }
+
+    getBuildingCategory(buildingId) {
+      const config = this.game?.state?.buildingDefinitions?.[buildingId]
+        || this.game?.state?.buildingConfig?.buildings?.[buildingId]
+        || this.game?.buildingConfig?.buildings?.[buildingId]
+        || null;
+      return config?.category || 'all';
+    }
+
+    focusBuildingCard(buildingId) {
+      const category = this.getBuildingCategory(buildingId);
+      const game = this.game || {};
+      game.activeBuildingCategory = category;
+      game.buildingOffset = 0;
+      game.buildingTransition = null;
+      if (game.canvasShell) {
+        game.canvasShell.activeBuildingCategory = category;
+        game.canvasShell.buildingOffset = 0;
+        game.canvasShell.buildingTransition = null;
+      }
+      return true;
+    }
+
+    showBuildingGuide(buildingId, message) {
+      this.ensureBuildingGuideVisible();
+      this.focusBuildingCard(buildingId);
+      return this.showHighlight(
+        'buildBuilding',
+        (action) => !action.disabled && action.buildingId === buildingId,
+        message,
+        { type: 'buildBuilding', buildingId },
+      );
+    }
+
     refreshCurrentHighlight() {
       if (this.isAdvisorOpen()) {
         this.game?.canvasShell?.hideTutorialHighlight?.();
@@ -219,6 +317,83 @@
             (action) => !action.disabled && action.taskId === 'main_first_supplies',
             '领取“安居的火种”，准备建造第一块农田。',
             { type: 'claimTaskReward', taskId: 'main_first_supplies', category: 'main' },
+          );
+        }
+      }
+      if (this.isFarmGuideActive()) {
+        return this.showBuildingGuide(
+          'farm',
+          '\u5efa\u9020\u7b2c\u4e00\u5757\u519c\u7530\uff0c\u8ba9\u98df\u7269\u4f9b\u5e94\u5148\u7a33\u5b9a\u4e0b\u6765\u3002',
+        );
+      }
+      if (this.isEra2GuideActive()) {
+        const step = this.getCurrentStep();
+        if (step === TUTORIAL_STEPS.era2AdvanceReady && !this.isCommandPanelOpen('civilization')) {
+          return this.showHighlight(
+            'openCommandPanel',
+            (action) => !action.disabled && action.panel === 'civilization',
+            '\u56de\u5230\u6587\u660e\uff0c\u628a\u805a\u843d\u63a8\u5411\u4e0b\u4e00\u4e2a\u65f6\u4ee3\u3002',
+            { type: 'openCommandPanel', panel: 'civilization' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.era2AdvanceReady && this.isCommandPanelOpen('civilization')) {
+          return this.showHighlight(
+            'advanceEra',
+            (action) => !action.disabled,
+            '\u6761\u4ef6\u5df2\u7ecf\u51c6\u5907\u597d\uff0c\u70b9\u51fb\u8fdb\u9636\u8fdb\u5165\u805a\u843d\u65f6\u4ee3\u3002',
+            { type: 'advanceEra' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.eraAdvancedTo2 && !this.isCommandPanelOpen('events')) {
+          return this.showHighlight(
+            'openCommandPanel',
+            (action) => !action.disabled && action.panel === 'events',
+            '\u6253\u5f00\u4e8b\u4ef6\uff0c\u5904\u7406\u68ee\u6797\u91cc\u7684\u6728\u6750\u7ebf\u7d22\u3002',
+            { type: 'openCommandPanel', panel: 'events' },
+          );
+        }
+        if (
+          (step === TUTORIAL_STEPS.specialEventTabOpened || (step === TUTORIAL_STEPS.eraAdvancedTo2 && this.isCommandPanelOpen('events')))
+          && !this.game?.canvasShell?.activeEventId
+        ) {
+          return this.showHighlight(
+            'openEvent',
+            (action) => !action.disabled && action.eventId === 'evt_settlement_forest_001',
+            '\u70b9\u5f00\u68ee\u6797\u4f4e\u8bed\u4e8b\u4ef6\uff0c\u5148\u628a\u53ef\u7528\u7684\u6728\u6750\u6536\u4e0b\u3002',
+            { type: 'openEvent', eventId: 'evt_settlement_forest_001' },
+          );
+        }
+        if (
+          (step === TUTORIAL_STEPS.specialEventTabOpened || (step === TUTORIAL_STEPS.eraAdvancedTo2 && this.isCommandPanelOpen('events')))
+          && this.game?.canvasShell?.activeEventId === 'evt_settlement_forest_001'
+        ) {
+          return this.showHighlight(
+            'claimEvent',
+            (action) => !action.disabled && action.eventId === 'evt_settlement_forest_001' && action.optionId === 'opt_collect_wood',
+            '\u9886\u53d6\u8fd9\u6279\u6728\u6750\uff0c\u6211\u4eec\u9a6c\u4e0a\u5efa\u8d77\u4f10\u6728\u573a\u3002',
+            { type: 'claimEvent', eventId: 'evt_settlement_forest_001', optionId: 'opt_collect_wood' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.specialEventClaimed || step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill) {
+          return this.showBuildingGuide(
+            'lumbermill',
+            '\u5efa\u9020\u4f10\u6728\u573a\uff0c\u8ba9\u6728\u6750\u5f00\u59cb\u6301\u7eed\u6d41\u5165\u4ed3\u5e93\u3002',
+          );
+        }
+        if (step === TUTORIAL_STEPS.lumbermillBuilt && !this.isTaskCenterOpen()) {
+          return this.showHighlight(
+            'openTaskCenter',
+            (action) => !action.disabled && (action.tab || 'main') === 'main',
+            '\u6253\u5f00\u4efb\u52a1\uff0c\u9886\u53d6\u4f10\u6728\u573a\u5b8c\u6210\u540e\u7684\u4e3b\u7ebf\u5956\u52b1\u3002',
+            { type: 'openTaskCenter' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.lumbermillBuilt && this.isTaskCenterOpen()) {
+          return this.showHighlight(
+            'claimTaskReward',
+            (action) => !action.disabled && action.taskId === 'main_lumbermill_supplies',
+            '\u9886\u53d6\u201c\u8ba9\u6728\u6750\u6d41\u5165\u4ed3\u623f\u201d\uff0c\u4e0b\u4e00\u6b21\u8fdb\u9636\u7684\u7269\u8d44\u5c31\u5230\u4f4d\u4e86\u3002',
+            { type: 'claimTaskReward', taskId: 'main_lumbermill_supplies', category: 'main' },
           );
         }
       }

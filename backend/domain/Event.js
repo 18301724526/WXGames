@@ -228,7 +228,7 @@ function createSettlementEvent() {
       {
         id: SETTLEMENT_OPTION_ID,
         label: '收集木材',
-        reward: { wood: 20 },
+        reward: { food: 50, wood: 20 },
         action: 'claim',
       },
     ],

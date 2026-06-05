@@ -30,7 +30,13 @@ function build(gameState, tutorialState, buildingId) {
   CityService.applyDerivedStatsToCity(city, gameState);
   CityService.syncActiveCityToLegacyFields(gameState);
   const effects = applyDerivedStats(gameState);
-  const tutorialEvent = buildingId === 'farm' ? 'farmBuilt' : buildingId === 'house' ? 'houseBuilt' : null;
+  const tutorialEvent = buildingId === 'farm'
+    ? 'farmBuilt'
+    : buildingId === 'lumbermill'
+      ? 'lumbermillBuilt'
+      : buildingId === 'house'
+        ? 'houseBuilt'
+        : null;
   const nextTutorial = TutorialService.advanceTutorial(tutorialState, tutorialEvent);
   return {
     success: true,
