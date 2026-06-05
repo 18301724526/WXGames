@@ -277,3 +277,36 @@ test('tutorial blocks scout formation save without the granted scout', () => {
     true,
   );
 });
+
+test('tutorial blocks guided exploration until the granted scout formation is saved', () => {
+  const scoutPersonId = 'fp-required-scout';
+  const tutorial = {
+    ...TutorialService.manualAdvance(
+      TutorialService.createInitialTutorialState(),
+      TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
+    ),
+    grants: {
+      scoutFamousPerson: { personId: scoutPersonId },
+    },
+  };
+  const gameState = {
+    activeCityId: 'capital',
+    tutorial,
+    military: {
+      formations: {
+        capital: [{ slot: 1, memberIds: [] }],
+      },
+    },
+  };
+
+  assert.equal(TutorialService.validateAction(tutorial, 'startExplore', { formationSlot: 1 }, gameState).allowed, false);
+
+  gameState.military.formations.capital[0].memberIds = [scoutPersonId];
+  assert.equal(TutorialService.validateAction(tutorial, 'startExplore', { formationSlot: 1 }, gameState).allowed, true);
+
+  const beforeStarted = TutorialService.validateAction(tutorial, 'claimExplore', { missionId: 'explore-1' }, gameState);
+  assert.equal(beforeStarted.allowed, false);
+
+  const started = TutorialService.manualAdvance(tutorial, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
+  assert.equal(TutorialService.validateAction(started, 'claimExplore', { missionId: 'explore-1' }, gameState).allowed, true);
+});

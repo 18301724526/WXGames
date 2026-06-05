@@ -113,6 +113,33 @@ function canAccessTab(tutorialState, tabKey) {
   return true;
 }
 
+function getTutorialScoutPersonId(gameState = {}) {
+  const tutorial = normalizeTutorialState(gameState.tutorial);
+  return tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]?.personId
+    ? String(tutorial.grants[SCOUT_FAMOUS_GRANT_KEY].personId)
+    : '';
+}
+
+function getFormationMembers(gameState = {}, payload = {}) {
+  const cityId = String(payload.cityId || gameState.activeCityId || 'capital').trim() || 'capital';
+  const slot = Math.max(1, Math.min(3, Math.floor(Number(payload.formationSlot ?? payload.slot ?? 1) || 1)));
+  const directFormations = gameState.military?.formations?.[cityId];
+  const cityFormations = gameState.cities?.[cityId]?.military?.formations?.[cityId];
+  const formations = Array.isArray(directFormations)
+    ? directFormations
+    : Array.isArray(cityFormations)
+      ? cityFormations
+      : [];
+  const formation = formations.find((item) => Number(item?.slot) === slot) || formations[slot - 1] || null;
+  return Array.isArray(formation?.memberIds) ? formation.memberIds.map(String) : [];
+}
+
+function hasTutorialScoutFormation(gameState = {}, payload = {}) {
+  const scoutPersonId = getTutorialScoutPersonId(gameState);
+  if (!scoutPersonId) return false;
+  return getFormationMembers(gameState, payload).includes(scoutPersonId);
+}
+
 function validateHouseGuideAction(step, action, payload, gameState) {
   if (action === 'advanceEra') {
     return blocked('请先建造第一处民居，再按照引导查看文明进阶。');
@@ -215,11 +242,37 @@ function validateScoutFormationAction(step, action, payload, gameState) {
   return { allowed: true };
 }
 
+function validateScoutExploreAction(step, action, payload, gameState) {
+  if (action === 'startExplore') {
+    if (step >= TUTORIAL_STEPS.scoutExploreClaimed) return { allowed: true };
+    if (step < TUTORIAL_STEPS.scoutFormationSaved) {
+      return blocked('Please finish the scout formation guide before exploring.');
+    }
+    if (!hasTutorialScoutFormation(gameState, payload)) {
+      return blocked('Please keep the tutorial scout famous person in formation 1 before exploring.');
+    }
+    return { allowed: true };
+  }
+
+  if (action === 'claimExplore') {
+    if (step < TUTORIAL_STEPS.scoutExploreStarted) {
+      return blocked('Please start the guided exploration first.');
+    }
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
   if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };
   const step = tutorial.currentStep;
+
+  if (action === 'startExplore' || action === 'claimExplore') {
+    return validateScoutExploreAction(step, action, payload, gameState);
+  }
 
   if (step < TUTORIAL_STEPS.houseBuilt) {
     return validateHouseGuideAction(step, action, payload, gameState);

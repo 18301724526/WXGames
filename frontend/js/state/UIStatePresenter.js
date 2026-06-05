@@ -2926,11 +2926,17 @@
       return sharedTileMapGeometry || null;
     }
 
-    static getWorldTileMapSignature(territoryState = {}) {
+    static getWorldTileMapSignature(territoryState = {}, worldExplorerState = {}) {
       const worldMap = territoryState.worldMap || {};
       const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
       const sites = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const missions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
+      const explorerMissions = Array.isArray(worldExplorerState.missions)
+        ? worldExplorerState.missions
+        : [
+          worldExplorerState.activeMission,
+          ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+        ].filter(Boolean);
       return JSON.stringify({
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
@@ -2975,6 +2981,24 @@
           revealArea: mission.revealArea || [],
           revealedTileIds: mission.revealedTileIds || [],
           actionPointsRemaining: mission.actionPointsRemaining,
+        })),
+        explorerMissions: explorerMissions.map((mission) => ({
+          id: mission.id,
+          status: mission.status,
+          route: mission.route || [],
+          plannedTiles: (mission.plannedTiles || []).map((tile) => ({
+            id: tile.id,
+            q: tile.q,
+            r: tile.r,
+            terrain: tile.terrain,
+            siteId: tile.siteId || null,
+            visibility: tile.visibility || '',
+            riverPorts: tile.riverPorts || [],
+            oceanTemplates: tile.oceanTemplates || [],
+            transitionKey: tile.transitionKey || '',
+          })),
+          plannedSites: mission.plannedSites || [],
+          revealedTileIds: mission.revealedTileIds || [],
         })),
       });
     }
@@ -3057,14 +3081,82 @@
       };
     }
 
+    static normalizeWorldExplorerMission(mission = {}) {
+      if (!mission || typeof mission !== 'object') return null;
+      const route = (Array.isArray(mission.route) ? mission.route : []).map((step, index) => ({
+        q: this.toInteger(step.q),
+        r: this.toInteger(step.r),
+        step: this.toInteger(step.step, index + 1),
+        tileId: step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
+        revealed: Boolean(step.revealed),
+      }));
+      if (!route.length) return null;
+      return {
+        id: mission.id || '',
+        kind: 'worldExplore',
+        direction: mission.mode || 'random',
+        status: mission.status || '',
+        actionPoints: route.length,
+        actionPointsRemaining: route.filter((step) => !step.revealed).length,
+        route,
+        revealArea: route,
+        revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
+      };
+    }
+
+    static getWorldExplorerMissions(worldExplorerState = {}) {
+      const fromList = Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : [];
+      const fromSlots = [
+        worldExplorerState.activeMission,
+        ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+      ].filter(Boolean);
+      const byId = new Map();
+      [...fromList, ...fromSlots].forEach((mission) => {
+        if (!mission || typeof mission !== 'object') return;
+        const id = mission.id || `explore-${byId.size}`;
+        byId.set(id, mission);
+      });
+      return [...byId.values()];
+    }
+
+    static getWorldExplorerPlannedTiles(worldExplorerState = {}) {
+      const byId = new Map();
+      this.getWorldExplorerMissions(worldExplorerState).forEach((mission) => {
+        (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => {
+          if (!tile || typeof tile !== 'object') return;
+          const q = this.toInteger(tile.q);
+          const r = this.toInteger(tile.r);
+          const id = tile.id || `tile_${q}_${r}`;
+          byId.set(id, {
+            ...tile,
+            id,
+            q,
+            r,
+            visibility: tile.visibility || 'scouted',
+            discovered: tile.discovered !== false,
+            visible: tile.visible !== false,
+          });
+        });
+      });
+      return [...byId.values()];
+    }
+
     static buildWorldTileMapViewState(territoryState = {}, options = {}) {
       const worldMap = territoryState.worldMap || {};
       const rawTiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+      const worldExplorerState = options.worldExplorerState || {};
+      const plannedTiles = this.getWorldExplorerPlannedTiles(worldExplorerState);
+      const rawTileById = new Map(rawTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile]));
+      plannedTiles.forEach((tile) => {
+        const existing = rawTileById.get(tile.id);
+        rawTileById.set(tile.id, existing ? { ...tile, ...existing } : tile);
+      });
+      const mergedTiles = [...rawTileById.values()];
       const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const siteById = new Map(territories.map((site) => [site.id, site]));
-      siteById.__tileTerrainById = new Map(rawTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile.terrain || 'plains']));
+      siteById.__tileTerrainById = new Map(mergedTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile.terrain || 'plains']));
       const geometry = this.getTileMapGeometry();
-      const normalizedTiles = rawTiles.map((tile) => this.normalizeWorldTile(tile, siteById));
+      const normalizedTiles = mergedTiles.map((tile) => this.normalizeWorldTile(tile, siteById));
       const sortedTiles = geometry?.sortTilesForIsoDraw
         ? geometry.sortTilesForIsoDraw(normalizedTiles)
         : normalizedTiles;
@@ -3099,6 +3191,10 @@
           })),
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
         }));
+      const explorerScouts = this.getWorldExplorerMissions(worldExplorerState)
+        .filter((mission) => ['active', 'ready'].includes(mission.status))
+        .map((mission) => this.normalizeWorldExplorerMission(mission))
+        .filter(Boolean);
       const scoutAreas = (Array.isArray(territoryState.scoutAreas) ? territoryState.scoutAreas : [])
         .map((area) => ({
           id: area.id || '',
@@ -3118,7 +3214,7 @@
         }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
       return {
-        signature: this.getWorldTileMapSignature(territoryState),
+        signature: this.getWorldTileMapSignature(territoryState, worldExplorerState),
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
         pan: {
@@ -3134,7 +3230,7 @@
           q: tile.q,
           r: tile.r,
         })),
-        activeScouts,
+        activeScouts: [...activeScouts, ...explorerScouts],
         scoutAreas,
       };
     }

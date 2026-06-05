@@ -1185,6 +1185,8 @@
           routeLength: action.routeLength,
           targetQ: action.targetQ,
           targetR: action.targetR,
+          formationSlot: action.formationSlot || action.slot || 1,
+          cityId: action.cityId || game?.state?.activeCityId || 'capital',
         }));
       }
       return this.finalize(this.runAction(() => this.host.api.startExplore({
@@ -1192,6 +1194,8 @@
         routeLength: action.routeLength,
         targetQ: action.targetQ,
         targetR: action.targetR,
+        formationSlot: action.formationSlot || action.slot || 1,
+        cityId: action.cityId || game?.state?.activeCityId || 'capital',
       })));
     }
 
@@ -1208,11 +1212,25 @@
       if (forwarded !== undefined) return forwarded !== false;
       const game = this.getGameHost();
       if (typeof game?.switchMilitaryView === 'function') {
-        return game.switchMilitaryView(action.view) !== false;
+        const switched = game.switchMilitaryView(action.view) !== false;
+        if (switched) {
+          this.host.activeCommandPanel = '';
+          if (game && game !== this.host && 'activeCommandPanel' in game) game.activeCommandPanel = '';
+          if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeCommandPanel = '';
+          const result = game?.tutorialController?.onMilitaryViewSwitched?.(action.view || 'army');
+          this.afterHandled(action);
+          game?.tutorialController?.refreshCurrentHighlight?.();
+          const scheduler = this.host?.runtime || game?.runtime || global;
+          scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+          if (result?.catch) result.catch((error) => this.log?.(error));
+        }
+        return switched;
       }
       const view = action.view || 'army';
+      this.host.activeCommandPanel = '';
       this.host.militaryView = view;
       if (this.host.state) this.host.state = { ...this.host.state, militaryView: view };
+      game?.tutorialController?.onMilitaryViewSwitched?.(view);
       return this.afterHandled(action);
     }
 

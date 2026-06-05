@@ -1,4 +1,6 @@
 const WorldMapService = require('./WorldMapService');
+const TerritoryService = require('./TerritoryService');
+const { TUTORIAL_STEPS, createPhaseCompleted } = require('../config/TutorialFlowConfig');
 
 const EXPLORE_STEP_DURATION_MS = 10 * 1000;
 const DEFAULT_RANDOM_ROUTE_LENGTH = 8;
@@ -7,8 +9,15 @@ const MAX_MANUAL_ROUTE_LENGTH = 16;
 const MAX_ACTIVE_EXPLORE_MISSIONS = 1;
 const EXPLORE_REVEAL_RADIUS = 0;
 const MAX_ROUTE_DISTANCE_FROM_ORIGIN = 32;
+const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
 
 const NEIGHBOR_OFFSETS = Object.values(WorldMapService.DIRECTION_VECTORS);
+const TUTORIAL_EMPTY_CITY_NAMES = [
+  '\u6e05\u6cc9\u57ce',
+  '\u77f3\u6e21\u9547',
+  '\u9752\u6797\u57ce',
+  '\u6cb3\u6e7e\u57ce',
+];
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -46,6 +55,61 @@ function getDistance(fromQ, fromR, toQ, toR) {
   return Math.max(Math.abs(toInteger(toQ, 0) - toInteger(fromQ, 0)), Math.abs(toInteger(toR, 0) - toInteger(fromR, 0)));
 }
 
+function advanceTutorialStep(tutorial = {}, nextStep = 0) {
+  const step = Math.floor(Number(nextStep) || 0);
+  const currentStep = Math.floor(Number(tutorial.currentStep) || 0);
+  if (tutorial.completed || tutorial.disabled || step <= currentStep) return tutorial;
+  return {
+    ...tutorial,
+    currentStep: step,
+    phaseCompleted: {
+      ...(tutorial.phaseCompleted || {}),
+      ...createPhaseCompleted(step),
+    },
+    completed: step >= TUTORIAL_STEPS.completed,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function getTutorialScoutPersonId(gameState = {}) {
+  const personId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
+  return personId ? String(personId) : '';
+}
+
+function getFormationSnapshot(gameState = {}, options = {}) {
+  const cityId = String(options.cityId || gameState.activeCityId || 'capital').trim() || 'capital';
+  const slot = Math.max(1, Math.min(3, toInteger(options.formationSlot ?? options.slot, 1)));
+  const directFormations = gameState.military?.formations?.[cityId];
+  const cityFormations = gameState.cities?.[cityId]?.military?.formations?.[cityId];
+  const formations = Array.isArray(directFormations)
+    ? directFormations
+    : Array.isArray(cityFormations)
+      ? cityFormations
+      : [];
+  const formation = formations.find((item) => Number(item?.slot) === slot) || formations[slot - 1] || null;
+  return {
+    cityId,
+    slot,
+    memberIds: Array.isArray(formation?.memberIds) ? formation.memberIds.map(String) : [],
+  };
+}
+
+function validateTutorialFormation(gameState = {}, options = {}) {
+  const tutorial = gameState.tutorial || {};
+  if (tutorial.completed || tutorial.disabled) return { success: true, formation: getFormationSnapshot(gameState, options) };
+  const step = Math.floor(Number(tutorial.currentStep) || 0);
+  if (step < TUTORIAL_STEPS.scoutFormationSaved) {
+    return { success: false, error: 'EXPLORE_TUTORIAL_LOCKED', message: 'Please finish the scout formation guide before exploring.' };
+  }
+  if (step >= TUTORIAL_STEPS.scoutExploreClaimed) return { success: true, formation: getFormationSnapshot(gameState, options) };
+  const scoutPersonId = getTutorialScoutPersonId(gameState);
+  const formation = getFormationSnapshot(gameState, options);
+  if (!scoutPersonId || !formation.memberIds.includes(scoutPersonId)) {
+    return { success: false, error: 'EXPLORE_TUTORIAL_FORMATION_REQUIRED', message: 'Please keep the tutorial scout famous person in formation 1 before exploring.' };
+  }
+  return { success: true, formation };
+}
+
 function normalizeRouteStep(rawStep, index = 0) {
   if (!rawStep || typeof rawStep !== 'object') return null;
   const q = toInteger(rawStep.q ?? rawStep.x, 0);
@@ -70,6 +134,30 @@ function normalizePlannedTile(rawTile) {
     id: rawTile.id || WorldMapService.getTileId(q, r),
     q,
     r,
+  };
+}
+
+function normalizePlannedSite(rawSite) {
+  if (!rawSite || typeof rawSite !== 'object') return null;
+  const q = toInteger(rawSite.q ?? rawSite.x, 0);
+  const r = toInteger(rawSite.r ?? rawSite.y, 0);
+  const site = rawSite.site && typeof rawSite.site === 'object' ? rawSite.site : {};
+  const siteId = String(rawSite.siteId || site.id || `site_${q}_${r}`).trim();
+  if (!siteId) return null;
+  const tileId = rawSite.tileId || WorldMapService.getTileId(q, r);
+  return {
+    tileId,
+    q,
+    r,
+    siteId,
+    materialized: Boolean(rawSite.materialized),
+    revealedAt: rawSite.revealedAt || null,
+    site: {
+      ...site,
+      id: siteId,
+      x: toInteger(site.x ?? q, q),
+      y: toInteger(site.y ?? r, r),
+    },
   };
 }
 
@@ -116,8 +204,24 @@ function normalizeMission(rawMission) {
     plannedTiles: (Array.isArray(rawMission.plannedTiles) ? rawMission.plannedTiles : [])
       .map(normalizePlannedTile)
       .filter(Boolean),
+    plannedSites: (Array.isArray(rawMission.plannedSites) ? rawMission.plannedSites : [])
+      .map(normalizePlannedSite)
+      .filter(Boolean),
     revealedTileIds,
     stepDurationMs,
+    formation: rawMission.formation && typeof rawMission.formation === 'object'
+      ? {
+        cityId: rawMission.formation.cityId || rawMission.sourceCityId || origin.cityId || 'capital',
+        slot: Math.max(1, toInteger(rawMission.formation.slot ?? rawMission.formationSlot, 1)),
+        memberIds: Array.isArray(rawMission.formation.memberIds)
+          ? rawMission.formation.memberIds.map(String)
+          : [],
+      }
+      : {
+        cityId: rawMission.sourceCityId || origin.cityId || 'capital',
+        slot: Math.max(1, toInteger(rawMission.formationSlot, 1)),
+        memberIds: [],
+      },
     startedAt: rawMission.startedAt || new Date().toISOString(),
     nextStepAt: rawMission.nextStepAt || rawMission.startedAt || new Date().toISOString(),
     completesAt: rawMission.completesAt || rawMission.startedAt || new Date().toISOString(),
@@ -262,8 +366,136 @@ function createPlannedTiles(gameState, route, now = new Date()) {
   }));
 }
 
+function shouldGuaranteeTutorialEmptyCity(gameState = {}) {
+  const tutorial = gameState.tutorial || {};
+  if (tutorial.completed || tutorial.disabled) return false;
+  const step = Math.floor(Number(tutorial.currentStep) || 0);
+  if (step < TUTORIAL_STEPS.scoutFormationSaved || step >= TUTORIAL_STEPS.scoutExploreClaimed) return false;
+  return !tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY];
+}
+
+function pickTutorialCityName(gameState = {}, q = 0, r = 0) {
+  const seed = hashString(`${gameState.playerId || 'tutorial'}|${q}|${r}|first-empty-city`);
+  return TUTORIAL_EMPTY_CITY_NAMES[seed % TUTORIAL_EMPTY_CITY_NAMES.length];
+}
+
+function getPlanningTerrainForMapTerrain(mapTerrain = 'plains') {
+  if (mapTerrain === 'forest') return 'forest';
+  if (['hills', 'mountain', 'waste', 'desert'].includes(mapTerrain)) return 'hills';
+  if (mapTerrain === 'river') return 'river';
+  if (mapTerrain === 'ocean') return 'coast';
+  return 'plains';
+}
+
+function createTutorialEmptyCitySite(gameState = {}, step = {}, plannedTile = {}, now = new Date()) {
+  const q = toInteger(step.q, 0);
+  const r = toInteger(step.r, 0);
+  const siteId = `site_${q}_${r}`;
+  const mapTerrain = plannedTile.terrain && !['ocean', 'river'].includes(plannedTile.terrain)
+    ? plannedTile.terrain
+    : 'plains';
+  return {
+    id: siteId,
+    x: q,
+    y: r,
+    naturalName: pickTutorialCityName(gameState, q, r),
+    cityName: null,
+    type: 'town',
+    terrain: getPlanningTerrainForMapTerrain(mapTerrain),
+    mapTerrain,
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+    threat: 0,
+    defense: TerritoryService.MIN_EXPEDITION_SOLDIERS,
+    recommendedSoldiers: TerritoryService.MIN_EXPEDITION_SOLDIERS,
+    art: TerritoryService.SITE_ART.town,
+    visualOffset: { x: 0, y: 0 },
+    discoveredAt: now.toISOString(),
+    occupiedAt: null,
+    effects: { foodOutputMultiplier: 0.05 },
+    summary: '\u4e00\u5ea7\u672a\u8bbe\u9632\u7684\u7a7a\u57ce\uff0c\u9002\u5408\u4f5c\u4e3a\u7b2c\u4e00\u5904\u5916\u90e8\u636e\u70b9\u3002',
+    lastBattle: null,
+    garrison: null,
+    defenderLeader: null,
+    battleTarget: null,
+  };
+}
+
+function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], now = new Date()) {
+  if (!shouldGuaranteeTutorialEmptyCity(gameState)) return [];
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const plannedById = new Map(plannedTiles.map((tile) => [tile.id || WorldMapService.getTileId(tile.q, tile.r), tile]));
+  const existingCoords = new Set((gameState.territories || []).map((site) => getCoordinateKey(site.x, site.y)));
+  const chosen = [...route].reverse().find((step) => {
+    if (existingCoords.has(getCoordinateKey(step.q, step.r))) return false;
+    const planned = plannedById.get(step.tileId) || {};
+    const terrain = planned.terrain || WorldMapService.chooseTerrain(worldMap.seed, step.q, step.r);
+    return !['ocean', 'river'].includes(terrain);
+  }) || route.at(-1);
+  if (!chosen) return [];
+  const tileId = chosen.tileId || WorldMapService.getTileId(chosen.q, chosen.r);
+  let plannedTile = plannedById.get(tileId);
+  if (!plannedTile) {
+    plannedTile = WorldMapService.createTile(worldMap.seed, chosen.q, chosen.r, now, {
+      terrain: 'plains',
+      visibility: 'scouted',
+    });
+  }
+  if (['ocean', 'river'].includes(plannedTile.terrain)) {
+    plannedTile.terrain = 'plains';
+    plannedTile.riverPorts = [];
+    plannedTile.oceanTemplates = [];
+    plannedTile.transitionKey = '';
+  }
+  const site = createTutorialEmptyCitySite(gameState, chosen, plannedTile, now);
+  return [{
+    tileId,
+    q: chosen.q,
+    r: chosen.r,
+    siteId: site.id,
+    materialized: false,
+    revealedAt: null,
+    site,
+  }];
+}
+
 function getPlannedTileById(mission) {
   return new Map((mission.plannedTiles || []).map((tile) => [tile.id || WorldMapService.getTileId(tile.q, tile.r), tile]));
+}
+
+function materializePlannedSitesForStep(gameState, mission, step, now = new Date()) {
+  const tileId = step.tileId || WorldMapService.getTileId(step.q, step.r);
+  const materialized = [];
+  mission.plannedSites = (mission.plannedSites || []).map((plannedSite) => {
+    if (!plannedSite || plannedSite.materialized || plannedSite.tileId !== tileId) return plannedSite;
+    const normalized = normalizePlannedSite(plannedSite);
+    const site = normalized?.site || null;
+    if (!site) return plannedSite;
+    const existing = (gameState.territories || []).find((territory) => territory.id === site.id) || null;
+    if (!existing) gameState.territories = [...(gameState.territories || []), site];
+    const tile = WorldMapService.bindSiteToTile(gameState, site.x, site.y, site.id, now, { visibility: 'scouted' });
+    materialized.push({ site, tile });
+    return {
+      ...plannedSite,
+      materialized: true,
+      revealedAt: now.toISOString(),
+    };
+  });
+  if (materialized.length && gameState.tutorial && !gameState.tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]) {
+    gameState.tutorial = {
+      ...gameState.tutorial,
+      grants: {
+        ...(gameState.tutorial.grants || {}),
+        [TUTORIAL_FIRST_SITE_GRANT_KEY]: {
+          siteId: materialized[0].site.id,
+          discoveredAt: now.toISOString(),
+        },
+      },
+      updatedAt: now.toISOString(),
+    };
+  }
+  return materialized;
 }
 
 function revealCoordinate(gameState, mission, coord, now = new Date()) {
@@ -285,7 +517,14 @@ function revealStep(gameState, mission, step, now = new Date()) {
   const coords = EXPLORE_REVEAL_RADIUS > 0
     ? WorldMapService.getRevealArea(step.q, step.r, EXPLORE_REVEAL_RADIUS)
     : [{ q: step.q, r: step.r }];
-  return coords.map((coord) => revealCoordinate(gameState, mission, coord, now));
+  const revealedTiles = coords.map((coord) => revealCoordinate(gameState, mission, coord, now));
+  const materialized = materializePlannedSitesForStep(gameState, mission, step, now);
+  if (!materialized.length) return revealedTiles;
+  const byId = new Map(revealedTiles.map((tile) => [tile.id, tile]));
+  materialized.forEach(({ tile }) => {
+    if (tile?.id) byId.set(tile.id, tile);
+  });
+  return [...byId.values()];
 }
 
 function advanceExploreMissions(gameState, now = new Date()) {
@@ -348,6 +587,16 @@ function getClientMission(mission, now = new Date()) {
     origin: clone(mission.origin || {}),
     target: clone(mission.target || {}),
     route,
+    plannedTiles: (mission.plannedTiles || []).map((tile) => clone(tile)),
+    plannedSites: (mission.plannedSites || []).map((site) => ({
+      tileId: site.tileId,
+      q: site.q,
+      r: site.r,
+      siteId: site.siteId,
+      materialized: Boolean(site.materialized),
+      revealedAt: site.revealedAt || null,
+    })),
+    formation: clone(mission.formation || {}),
     position: lastRevealed
       ? { q: lastRevealed.q, r: lastRevealed.r, tileId: lastRevealed.tileId }
       : { q: mission.origin?.q || 0, r: mission.origin?.r || 0, tileId: WorldMapService.getTileId(mission.origin?.q || 0, mission.origin?.r || 0) },
@@ -377,6 +626,8 @@ function getClientState(gameState, now = new Date()) {
 
 function startExplore(gameState, options = {}, now = new Date()) {
   normalizeExploreState(gameState, now);
+  const formationValidation = validateTutorialFormation(gameState, options);
+  if (!formationValidation.success) return formationValidation;
   if (countActiveMissions(gameState) >= MAX_ACTIVE_EXPLORE_MISSIONS) {
     return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: 'An explorer mission is already active.' };
   }
@@ -400,6 +651,8 @@ function startExplore(gameState, options = {}, now = new Date()) {
   if (!route.length) {
     return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: 'No explorer route could be generated.' };
   }
+  const plannedTiles = createPlannedTiles(gameState, route, now);
+  const plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now);
   const mission = normalizeMission({
     id: `explore_${mode}_${now.getTime()}`,
     mode,
@@ -407,18 +660,22 @@ function startExplore(gameState, options = {}, now = new Date()) {
     origin,
     target: routeResult.target || { q: route.at(-1).q, r: route.at(-1).r },
     route,
-    plannedTiles: createPlannedTiles(gameState, route, now),
+    plannedTiles,
+    plannedSites,
     revealedTileIds: [],
+    formation: formationValidation.formation,
     stepDurationMs: EXPLORE_STEP_DURATION_MS,
     startedAt: now.toISOString(),
     nextStepAt: new Date(now.getTime() + EXPLORE_STEP_DURATION_MS).toISOString(),
     completesAt: new Date(now.getTime() + EXPLORE_STEP_DURATION_MS * route.length).toISOString(),
   });
   gameState.exploreMissions = [...(gameState.exploreMissions || []), mission];
+  gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   return {
     success: true,
     message: 'Explorer mission started.',
     mission: getClientMission(mission, now),
+    tutorial: gameState.tutorial,
   };
 }
 
@@ -428,10 +685,12 @@ function claimExplore(gameState, missionId, now = new Date()) {
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
   if (mission.status !== 'ready') return { success: false, error: 'EXPLORE_MISSION_NOT_READY', message: 'Explorer mission is not ready.' };
   gameState.exploreMissions = (gameState.exploreMissions || []).filter((item) => item.id !== mission.id);
+  gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreClaimed);
   return {
     success: true,
     message: 'Explorer mission complete.',
     mission: getClientMission({ ...mission, claimedAt: now.toISOString() }, now),
+    tutorial: gameState.tutorial,
   };
 }
 
@@ -442,6 +701,7 @@ module.exports = {
   MAX_MANUAL_ROUTE_LENGTH,
   MAX_ACTIVE_EXPLORE_MISSIONS,
   EXPLORE_REVEAL_RADIUS,
+  TUTORIAL_FIRST_SITE_GRANT_KEY,
   normalizeExploreState,
   advanceExploreMissions,
   startExplore,
@@ -449,4 +709,5 @@ module.exports = {
   getClientState,
   buildRandomRoute,
   buildManualRoute,
+  normalizeMission,
 };

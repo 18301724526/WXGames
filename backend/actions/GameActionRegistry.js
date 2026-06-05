@@ -46,6 +46,8 @@ function buildTerritoryPayload(body = {}) {
     targetQ: body.targetQ,
     targetR: body.targetR,
     routeLength: body.routeLength,
+    formationSlot: body.formationSlot,
+    slot: body.slot,
     q: body.q,
     r: body.r,
     x: body.x,

@@ -149,7 +149,11 @@ test('WorldMapLayerCanvasRenderer preserves map-home tile rendering and explorer
   assert.equal(worldTileCall[1][6].frameless, true);
   assert.equal(worldTileCall[1][6].fastDrag, true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'resetWorldPan'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'startExplore' && target.action.routeLength === 6), true);
+  assert.equal(host.hitTargets.some((target) => (
+    target.action.type === 'startExplore'
+    && target.action.routeLength === 6
+    && target.action.formationSlot === 1
+  )), true);
 });
 
 test('WorldMapLayerCanvasRenderer falls back when military navigation presenter is split out', () => {
@@ -181,8 +185,16 @@ test('WorldMapLayerCanvasRenderer preserves empty and legacy world fallbacks', (
 
   const legacyHost = createHost();
   const legacyRenderer = new WorldMapLayerCanvasRenderer({ host: legacyHost });
-  assert.equal(legacyRenderer.renderMapHomeWorldView({ territoryState: { territories: [{ id: 'old' }] } }, 96, {}), true);
+  assert.equal(legacyRenderer.renderMapHomeWorldView({
+    territoryState: { territories: [{ id: 'old' }] },
+    worldExplorerState: { randomRouteLength: 7 },
+  }, 96, {}), true);
   assert.equal(legacyHost.calls.some((call) => call[0] === 'renderMilitaryWorldView'), true);
+  assert.equal(legacyHost.hitTargets.some((target) => (
+    target.action.type === 'startExplore'
+    && target.action.routeLength === 7
+    && target.action.formationSlot === 1
+  )), true);
 });
 
 test('WorldMapLayerCanvasRenderer preserves explorer ready and active HUD contracts', () => {
@@ -207,16 +219,28 @@ test('WorldMapLayerCanvasRenderer preserves explorer ready and active HUD contra
   assert.equal(activeHost.calls.some((call) => call[0] === 'fillRect'), true);
 });
 
-test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collection', () => {
+test('WorldMapLayerCanvasRenderer preserves hit-target-only world site and explorer collection', () => {
   const host = createHost();
   const renderer = new WorldMapLayerCanvasRenderer({ host });
   const uiState = {};
 
-  const collected = renderer.collectMapHomeWorldSiteHitTargets({ territoryState: { worldMap: createTileMapView() } }, 96, { territoryUiState: uiState });
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    territoryState: { worldMap: createTileMapView() },
+    worldExplorerState: { randomRouteLength: 6 },
+  }, 96, { territoryUiState: uiState });
 
   assert.equal(collected, true);
   assert.equal(host.calls.some((call) => call[0] === 'getWorldTileRenderEntries'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldTileSiteHitTargets'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'startExplore' && target.action.routeLength === 6), true);
+
+  const emptyHost = createHost();
+  const emptyRenderer = new WorldMapLayerCanvasRenderer({ host: emptyHost });
+  assert.equal(emptyRenderer.collectMapHomeWorldSiteHitTargets({
+    territoryState: {},
+    worldExplorerState: { randomRouteLength: 5 },
+  }, 96, { territoryUiState: {} }), true);
+  assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'startExplore' && target.action.routeLength === 5), true);
 });
 
 test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {

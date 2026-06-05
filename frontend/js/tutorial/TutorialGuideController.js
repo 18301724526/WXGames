@@ -23,6 +23,9 @@
     famousCardViewed: 20,
     formationPanelOpened: 21,
     scoutFormationSaved: 22,
+    scoutWorldPanelOpened: 23,
+    scoutExploreStarted: 24,
+    scoutExploreClaimed: 25,
     completed: 30,
   });
 
@@ -62,7 +65,7 @@
       if (step < TUTORIAL_STEPS.lumbermillBuilt) return ['events', 'buildings'].includes(tabId);
       if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
       if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
-      if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutFormationSaved) {
+      if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutExploreClaimed) {
         return ['civilization', 'military'].includes(tabId);
       }
       return true;
@@ -144,6 +147,11 @@
     isScoutFormationGuideActive() {
       const step = this.getCurrentStep();
       return !this.isCompleted() && step >= TUTORIAL_STEPS.era3AdvanceReady && step < TUTORIAL_STEPS.scoutFormationSaved;
+    }
+
+    isScoutExploreGuideActive() {
+      const step = this.getCurrentStep();
+      return !this.isCompleted() && step >= TUTORIAL_STEPS.scoutFormationSaved && step < TUTORIAL_STEPS.scoutExploreClaimed;
     }
 
     isLumbermillGuideActive() {
@@ -276,6 +284,25 @@
       if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed) {
         return this.advanceTo(TUTORIAL_STEPS.formationPanelOpened);
       }
+      return this.state;
+    }
+
+    async onMilitaryViewSwitched(view = '') {
+      if (view === 'world' && this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
+        return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
+      }
+      return this.state;
+    }
+
+    onExploreStarted(result = {}) {
+      this.sync(result.tutorial || this.game?.tutorial || this.state);
+      this.refreshCurrentHighlight();
+      return this.state;
+    }
+
+    onExploreClaimed(result = {}) {
+      this.sync(result.tutorial || this.game?.tutorial || this.state);
+      this.refreshCurrentHighlight();
       return this.state;
     }
 
@@ -604,6 +631,49 @@
             '\u4fdd\u5b58\u7f16\u961f\uff0c\u63a5\u4e0b\u6765\u5c31\u53ef\u4ee5\u51fa\u57ce\u4fa6\u5bdf\u571f\u5730\u4e86\u3002',
             { type: 'saveArmyFormation' },
           );
+        }
+      }
+      if (this.isScoutExploreGuideActive()) {
+        const step = this.getCurrentStep();
+        const explorer = this.game?.state?.worldExplorerState || {};
+        const activeMission = explorer.activeMission || null;
+        const readyMission = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
+        if (step === TUTORIAL_STEPS.scoutFormationSaved && !this.isCommandPanelOpen('military')) {
+          this.prepareCommandPanelGuide('military');
+          return this.showHighlight(
+            'openCommandPanel',
+            (action) => !action.disabled && action.panel === 'military',
+            '\u7f16\u961f\u5df2\u7ecf\u5c31\u7eea\uff0c\u6253\u5f00\u519b\u4e8b\uff0c\u51c6\u5907\u8ba9\u4fa6\u5bdf\u961f\u51fa\u57ce\u3002',
+            { type: 'openCommandPanel', panel: 'military' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutFormationSaved && this.isCommandPanelOpen('military')) {
+          return this.showHighlight(
+            'switchMilitaryView',
+            (action) => !action.disabled && action.view === 'world',
+            '\u5207\u5230\u4e16\u754c\u5730\u56fe\uff0c\u770b\u770b\u4fa6\u5bdf\u961f\u8981\u63a2\u7684\u8def\u3002',
+            { type: 'switchMilitaryView', view: 'world' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutWorldPanelOpened) {
+          return this.showHighlight(
+            'startExplore',
+            (action) => !action.disabled,
+            '\u70b9\u51fb\u63a2\u7d22\uff0c\u540e\u7aef\u4f1a\u5148\u786e\u5b9a\u8def\u7ebf\u548c\u5c06\u8981\u63ed\u5f00\u7684\u5730\u5757\u3002',
+            { type: 'startExplore' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutExploreStarted && readyMission) {
+          return this.showHighlight(
+            'claimExplore',
+            (action) => !action.disabled && (!readyMission.id || action.missionId === readyMission.id),
+            '\u4fa6\u5bdf\u961f\u5df2\u8fd4\u56de\uff0c\u70b9\u51fb\u5f52\u961f\uff0c\u67e5\u770b\u65b0\u53d1\u73b0\u7684\u7a7a\u57ce\u3002',
+            { type: 'claimExplore', missionId: readyMission.id },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutExploreStarted && activeMission) {
+          this.game?.canvasShell?.hideTutorialHighlight?.();
+          return false;
         }
       }
       if (!this.isHouseGuideActive()) return false;

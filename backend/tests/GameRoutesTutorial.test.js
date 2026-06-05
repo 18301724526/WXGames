@@ -457,3 +457,85 @@ test('game action route grants scout famous person and persists tutorial formati
   assert.equal(savedStates.at(-1).tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFormationSaved);
   assert.deepEqual(savedStates.at(-1).cities.capital.military.formations.capital[0].memberIds, [personId]);
 });
+
+test('game action route starts guided exploration with planned tiles in client state', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-guided-world-explorer-test';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  const scoutPersonId = 'fp-route-scout';
+  gameState.currentEra = 3;
+  gameState.tutorial = {
+    ...TutorialService.manualAdvance(
+      gameState.tutorial,
+      TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
+    ),
+    grants: {
+      scoutFamousPerson: { personId: scoutPersonId },
+    },
+  };
+  gameState.famousPeople = [{
+    id: scoutPersonId,
+    name: 'Scout',
+    archetype: 'scout',
+    abilityArchetype: 'scout',
+    quality: 'great',
+  }];
+  gameState.military = {
+    ...gameState.military,
+    formations: {
+      capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+    },
+  };
+  gameState.cities = {
+    capital: {
+      id: 'capital',
+      territoryId: 'capital',
+      isCapital: true,
+      resources: { ...gameState.resources },
+      buildings: { ...gameState.buildings },
+      population: { ...gameState.population },
+      military: {
+        ...gameState.military,
+        formations: {
+          capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+        },
+      },
+    },
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return GameStateService.normalizeState(state);
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId,
+    body: { action: 'startExplore', mode: 'random', routeLength: 4, cityId: 'capital', formationSlot: 1 },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.success, true);
+  assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
+  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedTiles.length, 4);
+  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedSites.length, 1);
+  assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 4);
+  assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
+});

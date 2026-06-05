@@ -1062,7 +1062,11 @@
         cached.view.pan = { x: panX, y: panY };
         return cached.view;
       }
-      const view = this.presenter.buildWorldTileMapViewState(territoryState, { panX, panY });
+      const view = this.presenter.buildWorldTileMapViewState(territoryState, {
+        panX,
+        panY,
+        worldExplorerState: options.worldExplorerState || {},
+      });
       this.worldTileViewCache = {
         territoryState,
         signature: view?.signature || '',

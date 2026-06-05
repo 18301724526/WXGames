@@ -122,6 +122,16 @@ function registerGameRoutes(app, deps) {
       cityId,
       slot,
       memberIds,
+      formationSlot,
+      mode,
+      targetQ,
+      targetR,
+      routeLength,
+      q,
+      r,
+      x,
+      y,
+      missionId,
     } = req.body || {};
     let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 
@@ -136,6 +146,16 @@ function registerGameRoutes(app, deps) {
       cityId,
       slot,
       memberIds,
+      formationSlot,
+      mode,
+      targetQ,
+      targetR,
+      routeLength,
+      q,
+      r,
+      x,
+      y,
+      missionId,
     }, gameState);
     if (!tutorialCheck.allowed) {
       return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });

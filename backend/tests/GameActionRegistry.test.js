@@ -148,6 +148,8 @@ test('dispatches territory actions through the territory action handler', () => 
     targetQ: 2,
     targetR: -1,
     routeLength: 4,
+    formationSlot: undefined,
+    slot: undefined,
     q: undefined,
     r: undefined,
     x: undefined,

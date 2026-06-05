@@ -400,3 +400,87 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'saveArmyFormation' });
 });
+
+test('TutorialGuideController guides scout formation into world exploration and claim', async () => {
+  const calls = [];
+  const shell = {
+    activeCommandPanel: '',
+    getCanvasTarget(type, predicate) {
+      const targets = {
+        openCommandPanel: { type: 'openCommandPanel', panel: 'military' },
+        switchMilitaryView: { type: 'switchMilitaryView', view: 'world' },
+        startExplore: { type: 'startExplore', formationSlot: 1 },
+        claimExplore: { type: 'claimExplore', missionId: 'explore-1' },
+      };
+      const action = targets[type];
+      if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
+      return null;
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+    hideTutorialHighlight() {
+      calls.push({ hideHighlight: true });
+      return true;
+    },
+  };
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFormationSaved },
+    state: {
+      currentTab: 'military',
+      militaryView: 'army',
+      worldExplorerState: {},
+    },
+    activeCommandPanel: '',
+    canvasShell: shell,
+    renderCanvasSurface() {
+      calls.push({ render: true });
+    },
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+    },
+  };
+  const api = {
+    async advanceTutorial(step) {
+      return { tutorial: { completed: false, currentStep: step } };
+    },
+  };
+  const controller = new TutorialGuideController({ game, api });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'military' });
+
+  shell.activeCommandPanel = 'military';
+  game.activeCommandPanel = 'military';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'switchMilitaryView', view: 'world' });
+
+  await controller.onMilitaryViewSwitched('world');
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutWorldPanelOpened);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'startExplore' });
+
+  controller.onExploreStarted({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreStarted },
+  });
+  game.state.worldExplorerState = {
+    activeMission: { id: 'explore-1', status: 'active', route: [{ revealed: false }] },
+    readyMissions: [],
+  };
+  assert.equal(controller.refreshCurrentHighlight(), false);
+  assert.equal(calls.some((call) => call.hideHighlight), true);
+
+  game.state.worldExplorerState = {
+    activeMission: null,
+    readyMissions: [{ id: 'explore-1', status: 'ready', route: [{ revealed: true }] }],
+  };
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'claimExplore', missionId: 'explore-1' });
+
+  controller.onExploreClaimed({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed },
+  });
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed);
+});

@@ -1830,6 +1830,8 @@
       try {
         const result = await this.getGameApi().startExplore(options);
         this.applyApiState(result);
+        this.tutorialController?.sync?.(this.tutorial);
+        this.tutorialController?.onExploreStarted?.(result);
         this.showFloatingText(result.message || 'Explorer started');
         this.log(result.message || 'Explorer started');
         return true;
@@ -1845,6 +1847,8 @@
       try {
         const result = await this.getGameApi().claimExplore(missionId);
         this.applyApiState(result);
+        this.tutorialController?.sync?.(this.tutorial);
+        this.tutorialController?.onExploreClaimed?.(result);
         this.showFloatingText(result.message || 'Explorer returned');
         this.log(result.message || 'Explorer returned');
         return true;

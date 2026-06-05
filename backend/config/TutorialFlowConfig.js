@@ -22,7 +22,10 @@ const TUTORIAL_STEPS = Object.freeze({
   famousCardViewed: 20,
   formationPanelOpened: 21,
   scoutFormationSaved: 22,
-  craftsmanAssigned: 23,
+  scoutWorldPanelOpened: 23,
+  scoutExploreStarted: 24,
+  scoutExploreClaimed: 25,
+  craftsmanAssigned: 26,
   completed: 30,
 });
 
@@ -48,6 +51,9 @@ const TUTORIAL_EVENT_STEPS = Object.freeze({
   famousCardViewed: TUTORIAL_STEPS.famousCardViewed,
   formationPanelOpened: TUTORIAL_STEPS.formationPanelOpened,
   scoutFormationSaved: TUTORIAL_STEPS.scoutFormationSaved,
+  scoutWorldPanelOpened: TUTORIAL_STEPS.scoutWorldPanelOpened,
+  scoutExploreStarted: TUTORIAL_STEPS.scoutExploreStarted,
+  scoutExploreClaimed: TUTORIAL_STEPS.scoutExploreClaimed,
   craftsmanAssigned: TUTORIAL_STEPS.craftsmanAssigned,
 });
 
@@ -60,8 +66,6 @@ const PASS_THROUGH_ACTIONS = Object.freeze([
   'acceptFamousPerson',
   'dismissFamousPersonCandidate',
   'assignFamousAttributePoint',
-  'startExplore',
-  'claimExplore',
   'scoutTerritory',
   'claimScout',
   'startConquest',
@@ -82,6 +86,7 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.famousPanelOpened]: TUTORIAL_STEPS.scoutFamousGranted,
   [TUTORIAL_STEPS.famousCardViewed]: TUTORIAL_STEPS.famousPanelOpened,
   [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
+  [TUTORIAL_STEPS.scoutWorldPanelOpened]: TUTORIAL_STEPS.scoutFormationSaved,
 });
 
 function createPhaseCompleted(currentStep) {

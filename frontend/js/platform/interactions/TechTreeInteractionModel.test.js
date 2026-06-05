@@ -223,3 +223,54 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
   assert.equal(game.activeEventId, null);
   assert.equal(game.canvasShell.activeEventId, null);
 });
+
+test('CanvasActionController closes command panel after switching military view', () => {
+  const calls = [];
+  const shell = {
+    activeCommandPanel: 'military',
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const game = {
+    activeCommandPanel: 'military',
+    canvasShell: shell,
+    switchMilitaryView(view) {
+      calls.push(['switchMilitaryView', view]);
+      return true;
+    },
+    tutorialController: {
+      onMilitaryViewSwitched(view) {
+        calls.push(['onMilitaryViewSwitched', view]);
+        return true;
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    runtime: {
+      setTimeout(callback) {
+        calls.push(['setTimeout']);
+        callback();
+      },
+    },
+  };
+  const controller = new CanvasActionController({ host: shell });
+
+  assert.equal(controller.handle_switchMilitaryView({ type: 'switchMilitaryView', view: 'world' }), true);
+
+  assert.equal(shell.activeCommandPanel, '');
+  assert.equal(game.activeCommandPanel, '');
+  assert.deepEqual(calls, [
+    ['switchMilitaryView', 'world'],
+    ['onMilitaryViewSwitched', 'world'],
+    ['render'],
+    ['refreshCurrentHighlight'],
+    ['setTimeout'],
+    ['refreshCurrentHighlight'],
+  ]);
+});

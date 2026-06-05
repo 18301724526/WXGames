@@ -1775,7 +1775,10 @@
         color: '#74d3a0',
         align: 'right',
       });
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
       if (tileMapView?.tiles?.length) {
         if (this.isWorldTileMapWaterAnimated(tileMapView)) {
           uiState.tileMapWaterAnimated = true;
@@ -2177,7 +2180,10 @@
     getWorldCityCommandAnchor(detail = {}, territories = [], state = {}, options = {}) {
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
       if (!tileMapView?.tiles?.length) return null;
       const selectedSite = territories.find((site) => site.id === detail.id) || {};
       const selectedTile = tileMapView.tiles.find((tile) => (
@@ -2252,7 +2258,10 @@
       if (!siteId) return null;
       const territoryState = state.territoryState || {};
       const territories = territoryState.territories || [];
-      const tileMapView = this.resolveWorldTileMapView(territoryState, options.territoryUiState || {}, options);
+      const tileMapView = this.resolveWorldTileMapView(territoryState, options.territoryUiState || {}, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
       if (!tileMapView?.tiles?.length) return null;
       const selectedSite = territories.find((site) => site.id === siteId) || {};
       const selectedTile = tileMapView.tiles.find((tile) => (

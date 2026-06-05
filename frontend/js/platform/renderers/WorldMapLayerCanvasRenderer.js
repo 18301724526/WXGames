@@ -116,16 +116,21 @@
       if (!layout) return false;
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
       if (!tileMapView?.tiles?.length) {
         if (Array.isArray(territoryState.territories) && territoryState.territories.length > 0) {
           this.renderMilitaryWorldView(state, layout.map.x, layout.map.y, layout.map.width, layout.map.height, {
             ...options,
             isMapHome: true,
           });
+          this.renderMapHomeExplorerHud(state, layout, topBarBottom);
           return true;
         }
         this.renderMapHomeEmptyWorld(layout, topBarBottom, options);
+        this.renderMapHomeExplorerHud(state, layout, topBarBottom);
         return true;
       }
       if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
@@ -159,8 +164,14 @@
       if (!layout) return false;
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
-      if (!tileMapView?.tiles?.length) return false;
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
+      if (!tileMapView?.tiles?.length) {
+        this.renderMapHomeExplorerHud(state, layout, topBarBottom);
+        return true;
+      }
       const offsetX = Number(this.viewportOffsetX) || 0;
       const offsetY = Number(this.viewportOffsetY) || 0;
       const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
@@ -186,6 +197,7 @@
       };
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+      this.renderMapHomeExplorerHud(state, layout, topBarBottom);
       return true;
     }
 
@@ -244,6 +256,8 @@
         type: 'startExplore',
         mode: 'random',
         routeLength: explorer.randomRouteLength || 8,
+        formationSlot: 1,
+        cityId: state.activeCityId || 'capital',
       });
       return true;
     }
@@ -318,7 +332,10 @@
       }
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
       if (!tileMapView?.tiles?.length) {
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
@@ -390,7 +407,10 @@
       }
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, options);
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
       if (!tileMapView?.tiles?.length) {
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
