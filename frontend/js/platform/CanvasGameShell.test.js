@@ -355,6 +355,25 @@ test('CanvasGameShell keeps local world site selection after forwarded open acti
   assert.deepEqual(calls, [['forward', 'openWorldSite', 'site_2_-8']]);
 });
 
+test('CanvasGameShell syncs local world site selection after handled open action', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.siteId]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.handleAction({ type: 'openWorldSite', siteId: 'site_3_-9' }), true);
+
+  assert.equal(shell.territoryUiState.selectedSiteId, 'site_3_-9');
+  assert.deepEqual(calls, [['handle', 'openWorldSite', 'site_3_-9']]);
+});
+
 test('CanvasGameShell blocks all drags while a guided highlight is active', () => {
   const calls = [];
   const shell = new CanvasGameShell({

@@ -1915,7 +1915,17 @@
     }
 
     handleAction(action, event) {
-      return this.actionController?.handle?.(action, { event }) || false;
+      const handled = this.actionController?.handle?.(action, { event }) || false;
+      if (action?.type === 'openWorldSite') {
+        if (handled && typeof handled.then === 'function') {
+          handled.then((value) => {
+            if (value !== false) this.syncForwardedLocalAction(action);
+          }).catch(() => {});
+        } else if (handled) {
+          this.syncForwardedLocalAction(action);
+        }
+      }
+      return handled;
     }
 
     advanceTutorialIntro(action = {}) {
