@@ -56,6 +56,7 @@ function createHost(overrides = {}) {
     getAsset() { return null; },
     getLayout() { return { contentX: 10, contentWidth: 370 }; },
     getNow() { return 1000; },
+    interpolateRect(fromRect = {}, toRect = {}) { return toRect || fromRect; },
     getWorldSiteCanvasAnchor(siteId) {
       return {
         siteId,
@@ -259,6 +260,33 @@ test('TutorialCanvasRenderer draws tutorial highlight and blocks outside the foc
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'site_1_2'), true);
   assert.equal(host.drawCalls.some((call) => call[0] === 'fillRect'), true);
   assert.equal(host.drawCalls.some((call) => call[0] === 'drawTextLines'), true);
+});
+
+test('TutorialCanvasRenderer keeps transitioned highlight focus rect clickable', () => {
+  const host = createHost();
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  renderer.renderTutorialHighlight({
+    rect: { left: 320, top: 260, width: 80, height: 90 },
+    message: 'Focus here.',
+    allowedAction: { type: 'openWorldSite', siteId: 'site_5_-6' },
+    transition: {
+      fromRect: { left: 40, top: 50, width: 90, height: 70 },
+      toRect: { left: 320, top: 260, width: 80, height: 90 },
+      startedAt: 900,
+      durationMs: 260,
+    },
+    pulseStartedAt: 900,
+  });
+
+  const target = host.hitTargets.find((item) => (
+    item.action.type === 'openWorldSite'
+    && item.action.siteId === 'site_5_-6'
+  ));
+  assert.deepEqual(
+    target.rect,
+    { x: 320, y: 260, width: 80, height: 90 },
+  );
 });
 
 test('TutorialAdvisorCanvasRenderer crops advisor images to cover target bounds', () => {

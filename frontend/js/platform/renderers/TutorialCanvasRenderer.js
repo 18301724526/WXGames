@@ -510,14 +510,15 @@
         x: this.parsePixelValue(view.pointer.left),
         y: this.parsePixelValue(view.pointer.top),
       };
-      this.addTutorialShield(transition?.toRect || highlight.rect || rect);
+      const focusRect = transition?.toRect || highlight.rect || rect;
+      this.addTutorialShield(focusRect);
       if (highlight.allowedAction) {
         this.addHitTarget(
           {
-            x: overlay.x,
-            y: overlay.y,
-            width: overlay.width,
-            height: overlay.height,
+            x: Number(focusRect.left ?? focusRect.x) || overlay.x,
+            y: Number(focusRect.top ?? focusRect.y) || overlay.y,
+            width: Number(focusRect.width) || overlay.width,
+            height: Number(focusRect.height) || overlay.height,
           },
           highlight.allowedAction,
         );
