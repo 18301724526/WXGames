@@ -1172,7 +1172,12 @@
       controller?.close?.();
       const forwarded = this.forward(action);
       if (forwarded !== undefined) {
-        if (forwarded !== false) this.afterHandled(action);
+        if (forwarded !== false) {
+          const game = this.getGameHost();
+          game?.tutorialController?.sync?.(game?.tutorial || game?.state?.tutorial || {});
+          game?.tutorialController?.refreshCurrentHighlight?.();
+          this.afterHandled(action);
+        }
         return forwarded !== false;
       }
       if (controller?.claim || controller?.claimActive) {
@@ -1199,9 +1204,18 @@
           currentTab: game.state.currentTab || nextState.currentTab,
         };
       }
-      if (result?.rewardReveal) this.host.rewardReveal = result.rewardReveal;
+      const nextTutorial = result?.tutorial || game?.tutorial || game?.state?.tutorial || null;
+      if (nextTutorial) game?.tutorialController?.sync?.(nextTutorial);
+      this.host.activeEventId = null;
+      if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = null;
+      if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = null;
+      this.getEventController()?.close?.();
+      if (result?.rewardReveal) {
+        if (!this.host.showRewardReveal?.(result.rewardReveal)) this.host.rewardReveal = result.rewardReveal;
+      }
       if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
       else this.host.hideTutorialHighlight?.();
+      game?.tutorialController?.refreshCurrentHighlight?.();
       return true;
     }
 

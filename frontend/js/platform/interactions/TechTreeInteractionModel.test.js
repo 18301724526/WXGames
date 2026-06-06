@@ -274,6 +274,80 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
   assert.equal(game.canvasShell.activeEventId, null);
 });
 
+test('CanvasActionController refreshes lumbermill guide after event reward claim', async () => {
+  const calls = [];
+  const tutorial = { completed: false, currentStep: 13 };
+  const shell = {
+    activeEventId: 'evt_settlement_forest_001',
+    activeCommandPanel: 'events',
+    state: { eventQueue: [{ id: 'evt_settlement_forest_001' }] },
+    eventController: {
+      open(eventId) {
+        calls.push(['openEvent', eventId]);
+      },
+      close() {
+        calls.push(['closeEvent']);
+      },
+      async claimActive(optionId) {
+        calls.push(['claimActive', optionId]);
+        return {
+          tutorial,
+          gameState: {
+            currentTab: 'events',
+            eventQueue: [],
+          },
+        };
+      },
+    },
+    hideTutorialHighlight() {
+      calls.push(['hideTutorialHighlight']);
+    },
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const game = {
+    activeEventId: 'evt_settlement_forest_001',
+    canvasShell: shell,
+    tutorialController: {
+      sync(nextTutorial) {
+        calls.push(['syncTutorial', nextTutorial.currentStep]);
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    applyApiState(result) {
+      calls.push(['applyApiState', result.tutorial.currentStep]);
+      this.tutorial = result.tutorial;
+      this.state = result.gameState;
+    },
+  };
+  const controller = new CanvasActionController({ host: shell, awaitAsync: true });
+
+  assert.equal(await controller.handle_claimEvent({
+    type: 'claimEvent',
+    eventId: 'evt_settlement_forest_001',
+    optionId: 'opt_collect_wood',
+  }), true);
+
+  assert.equal(shell.activeEventId, null);
+  assert.equal(game.activeEventId, null);
+  assert.deepEqual(calls, [
+    ['closeEvent'],
+    ['openEvent', 'evt_settlement_forest_001'],
+    ['claimActive', 'opt_collect_wood'],
+    ['syncTutorial', 13],
+    ['closeEvent'],
+    ['hideTutorialHighlight'],
+    ['refreshCurrentHighlight'],
+  ]);
+});
+
 test('CanvasActionController syncs talent policy panel across shell and game hosts after tutorial advance', async () => {
   const calls = [];
   let resolveAdvance = null;
