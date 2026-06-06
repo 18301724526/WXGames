@@ -12,6 +12,7 @@ const createTerritoryCombatTargets = require('../services/territory/TerritoryCom
 const createTerritoryConquestMissions = require('../services/territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
 const createTerritoryNaming = require('../services/territory/TerritoryNaming');
+const createTerritoryQueries = require('../services/territory/TerritoryQueries');
 const createTerritoryScoutAreas = require('../services/territory/TerritoryScoutAreas');
 const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
@@ -38,6 +39,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryInitialState.js',
     'TerritoryMilitaryMissions.js',
     'TerritoryNaming.js',
+    'TerritoryQueries.js',
     'TerritoryScoutAreas.js',
     'TerritoryScoutPlanner.js',
     'TerritoryScoutRecords.js',
@@ -152,6 +154,71 @@ test('territory combat targets module owns garrison and battle target contracts'
     knownLeader: true,
     knownSkill: true,
   });
+});
+
+test('territory query module owns territory lookup, origin, effects, and spacing contracts', () => {
+  const Queries = createTerritoryQueries();
+  const gameState = {
+    activeCityId: 'frontier',
+    cities: {
+      capital: { id: 'capital', name: '首都城', territoryId: 'capital' },
+      frontier: { id: 'frontier', name: '边城', territoryId: 'frontier-site' },
+      lost: { id: 'lost', name: '失地', territoryId: 'lost-site' },
+    },
+    territories: [
+      {
+        id: 'capital',
+        x: 0,
+        y: 0,
+        status: 'occupied',
+        cityName: '首都',
+        naturalName: '首都',
+        effects: { foodOutputMultiplier: 0.1, threatDefense: 1 },
+      },
+      {
+        id: 'frontier-site',
+        x: 5,
+        y: -2,
+        status: 'occupied',
+        cityName: '边境城',
+        naturalName: '边境城',
+        effects: { woodOutputMultiplier: 0.2, knowledgeOutputMultiplier: 0.3, threatDefense: 2 },
+      },
+      {
+        id: 'lost-site',
+        x: 9,
+        y: 9,
+        status: 'discovered',
+        effects: { foodOutputMultiplier: 99, threatDefense: 99 },
+      },
+    ],
+  };
+
+  assert.equal(Queries.getTerritory(gameState, 'frontier-site').cityName, '边境城');
+  assert.equal(Queries.getTerritory(gameState, 'missing'), null);
+  assert.equal(Queries.getCapitalTerritory({ territories: [] }).naturalName, '首都');
+  assert.equal(Queries.getTerritoryForCity(gameState, 'frontier').id, 'frontier-site');
+  assert.equal(Queries.getTerritoryForCity(gameState, 'lost').id, 'capital');
+  assert.deepEqual(Queries.getScoutOrigin(gameState), {
+    cityId: 'frontier',
+    territoryId: 'frontier-site',
+    name: '边城',
+    x: 5,
+    y: -2,
+  });
+  assert.deepEqual(Queries.getTerritoryEffects(gameState), {
+    foodOutputMultiplier: 0.1,
+    woodOutputMultiplier: 0.2,
+    knowledgeOutputMultiplier: 0.3,
+    threatDefense: 3,
+  });
+  assert.equal(Queries.getNearestSiteDistance(gameState, 8, 1), 3);
+  assert.deepEqual(Queries.getSiteSpacingProfile(gameState, 8, 1), {
+    valid: true,
+    nearestDistance: 3,
+    score: 5,
+  });
+  assert.equal(Queries.hasSiteSpacing(gameState, 1, 1), false);
 });
 
 test('territory scout records module owns report and area normalization contracts', () => {

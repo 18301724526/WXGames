@@ -6,7 +6,6 @@ const {
   DIRECTIONS,
   MAX_ACTIVE_SCOUTS,
   MAX_REPORTS,
-  MAX_SCOUT_DISTANCE,
   MIN_EXPEDITION_SOLDIERS,
   SCOUT_ACTION_POINTS,
   SCOUT_DURATION_MS,
@@ -19,6 +18,7 @@ const createTerritoryCombatTargets = require('./territory/TerritoryCombatTargets
 const createTerritoryConquestMissions = require('./territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('./territory/TerritoryMilitaryMissions');
 const createTerritoryNaming = require('./territory/TerritoryNaming');
+const createTerritoryQueries = require('./territory/TerritoryQueries');
 const createTerritoryScoutAreas = require('./territory/TerritoryScoutAreas');
 const createTerritoryScoutPlanner = require('./territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('./territory/TerritoryScoutRecords');
@@ -36,6 +36,12 @@ const {
   normalizeMapTerrainId,
   toInteger,
 } = require('./territory/TerritoryShared');
+const {
+  getScoutOrigin,
+  getSiteSpacingProfile,
+  getTerritory,
+  getTerritoryEffects,
+} = createTerritoryQueries();
 const {
   ensureMissionRevealArea,
   ensureScoutMissionAreaRevealed,
@@ -168,30 +174,6 @@ const ScoutPlanner = createTerritoryScoutPlanner({
   normalizeScoutState,
 });
 
-function hasSiteSpacing(gameState, x, y) {
-  return getSiteSpacingProfile(gameState, x, y).valid;
-}
-
-function getNearestSiteDistance(gameState, x, y) {
-  const distances = (gameState.territories || [])
-    .filter((territory) => Number.isFinite(Number(territory?.x)) && Number.isFinite(Number(territory?.y)))
-    .map((territory) => getRelativeDistance(territory.x, territory.y, x, y));
-  if (!distances.length) return MAX_SCOUT_DISTANCE;
-  return Math.min(...distances);
-}
-
-function getSiteSpacingProfile(gameState, x, y) {
-  const nearestDistance = getNearestSiteDistance(gameState, x, y);
-  const valid = nearestDistance >= SCOUT_SITE_MIN_DISTANCE;
-  return {
-    valid,
-    nearestDistance,
-    score: valid
-      ? Math.min(20, Math.max(0, nearestDistance - SCOUT_SITE_MIN_DISTANCE + 1) * 5)
-      : -100,
-  };
-}
-
 function getTerritoryBattleTileSnapshot(gameState, territory, now = new Date()) {
   const x = toInteger(territory?.x, 0);
   const y = toInteger(territory?.y, 0);
@@ -257,56 +239,6 @@ function getTerritoryBattleTargetSnapshot(gameState, territory, now = new Date()
 function normalizeDirection(direction) {
   const key = String(direction || '').toLowerCase();
   return DIRECTIONS[key] ? key : null;
-}
-
-function getTerritory(gameState, territoryId) {
-  return (gameState.territories || []).find((territory) => territory.id === territoryId) || null;
-}
-
-function getCapitalTerritory(gameState) {
-  return getTerritory(gameState, 'capital') || { id: 'capital', x: 0, y: 0, cityName: '棣栭兘', naturalName: '棣栭兘', status: 'occupied' };
-}
-
-function getTerritoryForCity(gameState, cityId = gameState?.activeCityId || 'capital') {
-  const normalizedCityId = cityId || 'capital';
-  const city = gameState?.cities?.[normalizedCityId] || null;
-  const territoryId = city?.territoryId || normalizedCityId;
-  const territory = (gameState?.territories || []).find((item) => (
-    item.id === territoryId || item.id === normalizedCityId
-  ));
-  if (territory && territory.status === 'occupied') return territory;
-  return getCapitalTerritory(gameState);
-}
-
-function getScoutOrigin(gameState) {
-  const activeCityId = gameState?.activeCityId || 'capital';
-  const city = gameState?.cities?.[activeCityId] || null;
-  const territory = getTerritoryForCity(gameState, activeCityId);
-  return {
-    cityId: city?.id || activeCityId,
-    territoryId: territory.id || 'capital',
-    name: city?.name || territory.cityName || territory.naturalName || '棣栭兘',
-    x: toInteger(territory.x, 0),
-    y: toInteger(territory.y, 0),
-  };
-}
-
-function getTerritoryEffects(gameState) {
-  const effects = {
-    foodOutputMultiplier: 0,
-    woodOutputMultiplier: 0,
-    knowledgeOutputMultiplier: 0,
-    threatDefense: 0,
-  };
-  for (const territory of gameState.territories || []) {
-    if (territory.status !== 'occupied') continue;
-    const territoryEffects = territory.effects || {};
-    effects.foodOutputMultiplier += territoryEffects.foodOutputMultiplier || 0;
-    effects.woodOutputMultiplier += territoryEffects.woodOutputMultiplier || 0;
-    effects.knowledgeOutputMultiplier += territoryEffects.knowledgeOutputMultiplier || 0;
-    effects.threatDefense += territoryEffects.threatDefense || 0;
-  }
-  return effects;
 }
 
 function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomSource = Math.random) {
