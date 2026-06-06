@@ -1,8 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
+const CanvasSurfaceHitTargets = require('./CanvasSurfaceHitTargets');
+const CanvasSurfaceTextLayout = require('./CanvasSurfaceTextLayout');
 const CanvasSurfaceRenderer = require('./CanvasSurfaceRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
+
+function lineCount(filePath) {
+  return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).length;
+}
 
 function createCtx(calls = []) {
   return {
@@ -201,6 +209,50 @@ test('CanvasSurfaceRenderer preserves text measuring and truncation font restore
   assert.equal(renderer.truncateText('abcdef', 32, { size: 14 }), 'a...');
   assert.deepEqual(renderer.wrapTextLimit('abcdefghi', 24, 2, { size: 14 }), ['abc', '...']);
   assert.equal(host.ctx.font, '12px serif');
+});
+
+test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', () => {
+  const hitTargets = [
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'background', background: true }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'blockedAction' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
+      type: 'blockCanvasModal',
+      allowedAction: { type: 'openWorldSite', cityId: 'capital' },
+    }),
+  ];
+
+  assert.equal(CanvasSurfaceHitTargets.containsPoint(hitTargets[0], { x: 20, y: 20 }), true);
+  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter' }), true);
+  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter', disabled: true }), false);
+  assert.equal(CanvasSurfaceHitTargets.matchesTutorialShieldAllowedAction(
+    { type: 'openWorldSite', cityId: 'capital' },
+    { type: 'openWorldSite', cityId: 'capital' },
+  ), true);
+  assert.equal(CanvasSurfaceHitTargets.matchesCurrentTutorialIntroAction(
+    { type: 'enterCity', cityId: 'capital' },
+    { active: true, step: 'enter', capitalCityId: 'capital' },
+  ), true);
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget(hitTargets, { x: 20, y: 20 }), {
+    type: 'blockCanvasModal',
+    allowedAction: { type: 'openWorldSite', cityId: 'capital' },
+  });
+});
+
+test('CanvasSurfaceTextLayout owns text layout helpers and line-count boundary', () => {
+  const calls = [];
+  const ctx = createCtx(calls);
+  ctx.font = '11px serif';
+
+  assert.equal(CanvasSurfaceTextLayout.buildFont({ bold: true, size: 16 }), '700 16px sans-serif');
+  assert.deepEqual(CanvasSurfaceTextLayout.wrapText(ctx, 'abcd', 16, { size: 12 }), ['ab', 'cd']);
+  assert.equal(CanvasSurfaceTextLayout.measureTextWidth(ctx, 'abc', { size: 12 }), 24);
+  assert.equal(CanvasSurfaceTextLayout.truncateText(ctx, 'abcdef', 32, { size: 12 }), 'a...');
+  assert.deepEqual(CanvasSurfaceTextLayout.wrapTextLimit(ctx, 'abcdef', 16, 2, { size: 12 }), ['ab', '...']);
+  assert.equal(ctx.font, '11px serif');
+
+  assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceRenderer.js')) < 500);
+  assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceHitTargets.js')) < 500);
+  assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceTextLayout.js')) < 500);
 });
 
 test('CanvasSurfaceRenderer preserves frame timing and FPS overlay contract', () => {

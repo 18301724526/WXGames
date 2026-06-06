@@ -1,4 +1,25 @@
 (function (global) {
+  const TextLayout = global.CanvasSurfaceTextLayout || (() => {
+    if (typeof require === 'function') {
+      try {
+        return require('./CanvasSurfaceTextLayout');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const HitTargets = global.CanvasSurfaceHitTargets || (() => {
+    if (typeof require === 'function') {
+      try {
+        return require('./CanvasSurfaceHitTargets');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasSurfaceRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -65,60 +86,16 @@
 
     addHitTarget(rect, action) {
       if (this.suppressHitTargets) return;
-      if (!action || !rect) return;
-      this.hitTargets.push({
-        x: Number(rect.x) || 0,
-        y: Number(rect.y) || 0,
-        width: Number(rect.width) || 0,
-        height: Number(rect.height) || 0,
-        action,
-      });
+      const target = HitTargets.normalizeHitTarget(rect, action);
+      if (target) this.hitTargets.push(target);
     }
 
     getHitTarget(point = {}) {
-      const x = Number(point.x);
-      const y = Number(point.y);
-      let backgroundAction = null;
-      let tutorialShieldAction = null;
-      const tutorialAllowedActions = [];
-      for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
-        const target = this.hitTargets[index];
-        if (
-          x >= target.x
-          && x <= target.x + target.width
-          && y >= target.y
-          && y <= target.y + target.height
-        ) {
-          if (target.action?.type === 'blockCanvasModal') {
-            tutorialShieldAction = target.action;
-            if (target.action.allowedAction) tutorialAllowedActions.push(target.action.allowedAction);
-          } else if (tutorialShieldAction && !this.isAllowedUnderTutorialShield(target.action)) {
-            return (
-              tutorialAllowedActions.some((allowed) => this.matchesTutorialShieldAllowedAction(target.action, allowed))
-              || this.matchesCurrentTutorialIntroAction(target.action)
-            )
-              ? target.action
-              : tutorialShieldAction;
-          } else if (target.action?.background) {
-            backgroundAction = target.action;
-          } else {
-            return target.action;
-          }
-        }
-      }
-      if (tutorialShieldAction) return tutorialShieldAction;
-      return backgroundAction;
+      return HitTargets.resolveHitTarget(this.hitTargets, point, this.lastRenderOptions?.tutorialIntro || null);
     }
 
     containsPoint(rect = {}, point = {}) {
-      const x = Number(point.x);
-      const y = Number(point.y);
-      return Number.isFinite(x)
-        && Number.isFinite(y)
-        && x >= Number(rect.x)
-        && x <= Number(rect.x) + Number(rect.width)
-        && y >= Number(rect.y)
-        && y <= Number(rect.y) + Number(rect.height);
+      return HitTargets.containsPoint(rect, point);
     }
 
     setHoverPoint(point = null) {
@@ -131,37 +108,15 @@
     }
 
     isAllowedUnderTutorialShield(action = {}) {
-      if (action.type === 'goToGuideTaskTarget') return true;
-      if (action.type === 'openTaskCenter') {
-        return !action.disabled;
-      }
-      if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
-        return (action.category || 'main') === 'main';
-      }
-      return false;
+      return HitTargets.isAllowedUnderTutorialShield(action);
     }
 
     matchesTutorialShieldAllowedAction(action = {}, allowed = null) {
-      if (action.disabled) return false;
-      if (!action?.type || !allowed?.type || action.type !== allowed.type) return false;
-      const getId = (item = {}) => item.cityId || item.territoryId || item.siteId || item.targetId || '';
-      const allowedId = getId(allowed);
-      const actionId = getId(action);
-      return !allowedId || !actionId || allowedId === actionId;
+      return HitTargets.matchesTutorialShieldAllowedAction(action, allowed);
     }
 
     matchesCurrentTutorialIntroAction(action = {}) {
-      const intro = this.lastRenderOptions?.tutorialIntro || null;
-      if (!intro?.active || !action?.type) return false;
-      const capitalCityId = intro.capitalCityId || 'capital';
-      const actionId = action.cityId || action.territoryId || action.siteId || '';
-      if (intro.step === 'city') {
-        return action.type === 'openWorldSite' && (!actionId || actionId === capitalCityId);
-      }
-      if (intro.step === 'enter') {
-        return action.type === 'enterCity' && (!actionId || actionId === capitalCityId);
-      }
-      return false;
+      return HitTargets.matchesCurrentTutorialIntroAction(action, this.lastRenderOptions?.tutorialIntro || null);
     }
 
     withSuppressedHitTargets(callback) {
@@ -237,7 +192,9 @@
     drawText(text, x, y, options = {}) {
       if (!this.ctx) return;
       this.ctx.fillStyle = options.color || '#f6e8c8';
-      this.ctx.font = `${options.bold ? '700 ' : ''}${options.size || 14}px ${options.fontFamily || 'sans-serif'}`;
+      this.ctx.font = TextLayout?.buildFont
+        ? TextLayout.buildFont(options)
+        : `${options.bold ? '700 ' : ''}${options.size || 14}px ${options.fontFamily || 'sans-serif'}`;
       this.ctx.textBaseline = options.baseline || 'top';
       this.ctx.textAlign = options.align || 'left';
       this.ctx.fillText(String(text ?? ''), x, y);
@@ -252,60 +209,19 @@
     }
 
     wrapText(text, maxWidth, options = {}) {
-      const content = String(text ?? '');
-      if (!content) return [];
-      if (!this.ctx || typeof this.ctx.measureText !== 'function') return [content];
-      const previousFont = this.ctx.font;
-      this.ctx.font = `${options.bold ? '700 ' : ''}${options.size || 14}px ${options.fontFamily || 'sans-serif'}`;
-      const lines = [];
-      content.split('\n').forEach((rawLine) => {
-        let buffer = '';
-        Array.from(rawLine).forEach((char) => {
-          const next = `${buffer}${char}`;
-          if (buffer && this.ctx.measureText(next).width > maxWidth) {
-            lines.push(buffer);
-            buffer = char;
-          } else {
-            buffer = next;
-          }
-        });
-        if (buffer || rawLine === '') lines.push(buffer);
-      });
-      this.ctx.font = previousFont;
-      return lines;
+      return TextLayout.wrapText(this.ctx, text, maxWidth, options);
     }
 
     measureTextWidth(text, options = {}) {
-      const content = String(text ?? '');
-      if (!this.ctx || typeof this.ctx.measureText !== 'function') return content.length * (options.size || 14) * 0.55;
-      const previousFont = this.ctx.font;
-      this.ctx.font = `${options.bold ? '700 ' : ''}${options.size || 14}px ${options.fontFamily || 'sans-serif'}`;
-      const width = this.ctx.measureText(content).width;
-      this.ctx.font = previousFont;
-      return width;
+      return TextLayout.measureTextWidth(this.ctx, text, options);
     }
 
     truncateText(text, maxWidth, options = {}) {
-      const content = String(text ?? '');
-      if (!content || this.measureTextWidth(content, options) <= maxWidth) return content;
-      const ellipsis = '...';
-      let buffer = '';
-      Array.from(content).some((char) => {
-        const next = `${buffer}${char}`;
-        if (this.measureTextWidth(`${next}${ellipsis}`, options) > maxWidth) return true;
-        buffer = next;
-        return false;
-      });
-      return buffer ? `${buffer}${ellipsis}` : ellipsis;
+      return TextLayout.truncateText(this.ctx, text, maxWidth, options);
     }
 
     wrapTextLimit(text, maxWidth, maxLines, options = {}) {
-      const limit = Math.max(1, Number(maxLines) || 1);
-      const lines = this.wrapText(text, maxWidth, options);
-      if (lines.length <= limit) return lines;
-      const visible = lines.slice(0, limit);
-      visible[visible.length - 1] = this.truncateText(`${visible[visible.length - 1]}...`, maxWidth, options);
-      return visible;
+      return TextLayout.wrapTextLimit(this.ctx, text, maxWidth, maxLines, options);
     }
 
     drawLine(x1, y1, x2, y2, options = {}) {
