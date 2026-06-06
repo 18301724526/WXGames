@@ -1715,10 +1715,18 @@
         },
       };
       this.showAdvisor = false;
+      this.showCityManagement = false;
+      this.showSubcityList = false;
+      this.activeCommandPanel = '';
+      this.activeEventId = null;
       this.tutorialHighlight = null;
       this.tutorialAdvisorDialogue = { message, advisorName: '谋士', source: 'houseBuilt' };
       if (this.canvasShell) {
         this.canvasShell.showAdvisor = false;
+        this.canvasShell.showCityManagement = false;
+        this.canvasShell.showSubcityList = false;
+        this.canvasShell.activeCommandPanel = '';
+        this.canvasShell.activeEventId = null;
         this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
         this.canvasShell.tutorialHighlight = null;
       }
