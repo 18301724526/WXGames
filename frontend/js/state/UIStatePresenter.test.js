@@ -9,6 +9,7 @@ const CivilizationPresenter = require('./presenters/CivilizationPresenter');
 const EventPresenter = require('./presenters/EventPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
 const HomePresenter = require('./presenters/HomePresenter');
+const MilitaryPresenter = require('./presenters/MilitaryPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 
@@ -458,6 +459,82 @@ test('UIStatePresenter delegates talent policy view state while preserving facad
   assert.deepEqual(UIStatePresenter.getTalentPolicyAvailableRoles(state), ['farmer', 'scholar', 'craftsman']);
 });
 
+test('UIStatePresenter delegates military and scout view state while preserving facade contracts', () => {
+  const nowMs = Date.UTC(2026, 5, 6, 10, 0, 0);
+  const state = {
+    activeCityId: 'capital',
+    militaryView: 'scout',
+    buildingEffects: { threatDefense: 2 },
+    military: {
+      soldiers: 12,
+      soldierCap: 20,
+      defense: 3,
+      trainingIntervalSeconds: 40,
+      trainingProgress: 10,
+      trainingBatchSize: 2,
+      formations: {
+        capital: [
+          { slot: 1, name: '先锋队', memberIds: ['hero-scout'] },
+          { slot: 2, memberIds: [] },
+        ],
+      },
+    },
+    famousPersons: {
+      people: [
+        {
+          id: 'hero-scout',
+          name: 'Scout Hero',
+          quality: 'epic',
+          level: 8,
+          attributes: { command: 28, force: 18, intelligence: 44, politics: 20, charisma: 30, speed: 45 },
+        },
+        {
+          id: 'hero-builder',
+          name: 'Builder Hero',
+          quality: 'good',
+          level: 3,
+          attributes: { command: 12, force: 8, intelligence: 18, politics: 25, charisma: 16, speed: 10 },
+        },
+      ],
+    },
+    territoryState: {
+      availableSoldiers: 9,
+      soldiersOnMission: 3,
+      maxActiveScouts: 1,
+      directions: [
+        { id: 'n', label: '北' },
+        { id: 'e', label: '东' },
+        { id: 's', label: '南' },
+      ],
+      scoutMissions: [
+        { id: 'mission-ready', direction: 'n', status: 'ready' },
+        { id: 'mission-active', direction: 'e', status: 'active', completesAt: new Date(nowMs + 65_000).toISOString() },
+      ],
+      scoutReports: [{ id: 'report-1', direction: 'n' }],
+    },
+  };
+
+  const militaryView = UIStatePresenter.buildMilitaryViewState(state);
+  const directMilitaryView = MilitaryPresenter.buildMilitaryViewState(state);
+  const scoutView = UIStatePresenter.buildScoutControlViewState(state, { nowMs });
+  const directScoutView = MilitaryPresenter.buildScoutControlViewState(state, { nowMs });
+
+  assert.deepEqual(UIStatePresenter.buildMilitaryNavigationViewState(state), MilitaryPresenter.buildMilitaryNavigationViewState(state));
+  assert.deepEqual(militaryView, directMilitaryView);
+  assert.deepEqual(scoutView, directScoutView);
+  assert.equal(militaryView.text.soldierCount, '12/20');
+  assert.equal(militaryView.text.militaryDefense, 5);
+  assert.equal(militaryView.formations[0].name, '先锋队');
+  assert.equal(militaryView.formations[0].leader.id, 'hero-scout');
+  assert.equal(militaryView.formationMeta.summary, '3 支部队 · 每队最多 5 名名人');
+  assert.equal(UIStatePresenter.getScoutMissionRemainingSeconds(state.territoryState.scoutMissions[1], nowMs), 65);
+  assert.equal(UIStatePresenter.formatScoutCountdown(65), '1:05');
+  assert.equal(scoutView.statusText, '1 份报告待查看，另有 1 支侦察队仍在外。');
+  assert.equal(scoutView.cells.find((cell) => cell.id === 'n').action, 'claim');
+  assert.equal(scoutView.cells.find((cell) => cell.id === 'e').actionText, '1:05');
+  assert.equal(scoutView.cells.find((cell) => cell.id === 's').status, 'locked');
+});
+
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {
   const htmlPath = path.resolve(__dirname, '../../index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -469,6 +546,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'TaskGuidePresenter.js',
     'CivilizationPresenter.js',
     'FamousPersonPresenter.js',
+    'MilitaryPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
   ];
