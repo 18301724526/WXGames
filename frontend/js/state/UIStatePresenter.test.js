@@ -14,6 +14,7 @@ const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldRadarPresenter = require('./presenters/WorldRadarPresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
+const BattleScenePresenter = require('./presenters/BattleScenePresenter');
 
 test('UIStatePresenter merges server-planned explorer tiles into the world tile view', () => {
   const view = UIStatePresenter.buildWorldTileMapViewState({
@@ -426,6 +427,9 @@ test('UIStatePresenter delegates home resource and planning view state while pre
   assert.deepEqual(UIStatePresenter.buildCitySwitcherViewState(state), HomePresenter.buildCitySwitcherViewState(state));
   assert.deepEqual(UIStatePresenter.buildPopulationViewState(state), HomePresenter.buildPopulationViewState(state));
   assert.equal(UIStatePresenter.buildResourceViewState(state).text.populationStatus, '人口已无法增长，请推进时代');
+  assert.equal(HomePresenter.formatCompactNumber(1200), '1.2k');
+  assert.equal(HomePresenter.formatRate(0.33), '+0.33/s');
+  assert.equal(HomePresenter.formatNegativeRate(0.5), '-0.5/s');
   assert.equal(UIStatePresenter.buildCityPlanningViewState(state).text.populationGrowthStatus, '人口成长良好');
   assert.equal(UIStatePresenter.buildPopulationViewState(state).jobs.find((job) => job.id === 'craftsman').visible, true);
   assert.equal(UIStatePresenter.buildHomeFeatureViewState(state).entries[0].badge, 2);
@@ -698,6 +702,82 @@ test('UIStatePresenter delegates world site dialog view state while preserving f
   assert.equal(UIStatePresenter.getWorldSiteDialogContentSignature(territories, territoryState, uiState), direct.signature);
 });
 
+test('UIStatePresenter delegates battle scene view state while preserving facade contracts', () => {
+  const battle = {
+    report: {
+      id: 'battle-1',
+      result: 'victory',
+      groupSize: 50,
+      attacker: {
+        leaderName: '霍去病',
+        leaderTitle: '骠骑将军',
+        speed: 12,
+        soldiersStart: 160,
+        soldiersEnd: 110,
+        skill: { name: '长驱直入', cooldown: 2 },
+      },
+      defender: {
+        leaderName: '守将甲',
+        leaderTitle: '寨主',
+        speed: 8,
+        soldiersStart: 140,
+        soldiersEnd: 0,
+        skill: { name: '山地伏击', cooldown: 3 },
+      },
+      turns: [
+        {
+          actor: 'attacker',
+          action: 'skill',
+          lines: ['霍去病列阵。', '霍去病发动战法 长驱直入。', '敌军动摇。'],
+          cooldownBefore: 0,
+          cooldownAfter: 2,
+          soldiersBefore: { attacker: 160, defender: 140 },
+          soldiersAfter: { attacker: 160, defender: 90 },
+          statusesBefore: { attacker: [], defender: [] },
+          statusesAfter: {
+            attacker: [{ key: 'shield', value: 24, turnsRemaining: 1 }],
+            defender: [{ key: 'armorBreak', stacks: 2, turnsRemaining: 2 }],
+          },
+        },
+        {
+          actor: 'defender',
+          actionType: 'skill',
+          lines: ['守将甲稳住阵脚。', '守将甲释放技能 山地伏击。'],
+          cooldownBefore: 0,
+          cooldownAfter: 3,
+          soldiersBefore: { attacker: 160, defender: 90 },
+          soldiersAfter: { attacker: 110, defender: 90 },
+          statusesBefore: {
+            attacker: [{ key: 'shield', value: 24, turnsRemaining: 1 }],
+            defender: [{ key: 'armorBreak', stacks: 2, turnsRemaining: 2 }],
+          },
+          statusesAfter: {
+            attacker: [{ key: 'burn', stacks: 1, turnsRemaining: 2 }],
+            defender: [],
+          },
+        },
+      ],
+    },
+  };
+
+  const view = UIStatePresenter.buildBattleSceneViewState(battle, { turnIndex: 1, phase: 'impact' });
+  const direct = BattleScenePresenter.buildBattleSceneViewState(battle, { turnIndex: 1, phase: 'impact' });
+
+  assert.deepEqual(view, direct);
+  assert.equal(typeof UIStatePresenter.buildBattleSceneViewState, 'function');
+  assert.equal(view.visible, true);
+  assert.equal(view.title, '霍去病队 vs 守将甲队');
+  assert.equal(view.attacker.soldiers, 110);
+  assert.equal(view.defender.soldiers, 90);
+  assert.equal(view.defender.skillState.state, 'cooldown');
+  assert.equal(view.defender.skillState.stateText, '冷却 3 回合');
+  assert.deepEqual(UIStatePresenter.makeVisualGroups(120, 50).map((group) => group.soldiers), [50, 50, 20]);
+  assert.equal(UIStatePresenter.getBattleTurnSoldiers(battle.report.turns[0], 'defender', 'after', 0), 90);
+  assert.equal(UIStatePresenter.formatBattleStatusBadge({ key: 'poison', stacks: 2, turnsRemaining: 3 }).text, '中毒 x2 3回合');
+  assert.deepEqual(UIStatePresenter.buildBattleStatusBadges([{ key: 'shield', value: 18 }, { key: 'burn' }]).map((badge) => badge.text), ['守御 18', '灼烧']);
+  assert.deepEqual(UIStatePresenter.getBattleTurnLines(battle.report.turns[0], { active: true, phase: 'cutin' }), ['霍去病列阵。', '霍去病发动战法 长驱直入。']);
+});
+
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {
   const htmlPath = path.resolve(__dirname, '../../index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -712,6 +792,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'MilitaryPresenter.js',
     'WorldRadarPresenter.js',
     'WorldSitePresenter.js',
+    'BattleScenePresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
   ];

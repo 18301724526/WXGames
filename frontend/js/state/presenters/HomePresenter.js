@@ -12,7 +12,8 @@
     }
 
     static trimDecimal(value) {
-      return String(value).replace(/\.0$/, '');
+      const text = `${value}`;
+      return text.endsWith('.0') ? text.slice(0, -2) : text;
     }
 
     static formatCompactNumber(value, options = {}) {
