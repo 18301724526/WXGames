@@ -12,6 +12,7 @@ const HomePresenter = require('./presenters/HomePresenter');
 const MilitaryPresenter = require('./presenters/MilitaryPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
+const WorldRadarPresenter = require('./presenters/WorldRadarPresenter');
 
 test('UIStatePresenter merges server-planned explorer tiles into the world tile view', () => {
   const view = UIStatePresenter.buildWorldTileMapViewState({
@@ -535,6 +536,68 @@ test('UIStatePresenter delegates military and scout view state while preserving 
   assert.equal(scoutView.cells.find((cell) => cell.id === 's').status, 'locked');
 });
 
+test('UIStatePresenter delegates world radar view state while preserving facade contracts', () => {
+  const territories = [
+    {
+      id: 'capital',
+      x: 0,
+      y: 0,
+      relativeX: 0,
+      relativeY: 0,
+      status: 'occupied',
+      owner: 'player',
+      type: 'city',
+      naturalName: '首都',
+      cityName: '晨星城',
+      art: 'assets/art/world-site-city-cutout.png',
+    },
+    {
+      id: 'empty-city',
+      x: 4,
+      y: -2,
+      relativeX: 4,
+      relativeY: -2,
+      status: 'discovered',
+      owner: 'neutral',
+      type: 'city',
+      naturalName: '空城',
+      art: 'assets/art/world-site-city-cutout.png',
+    },
+    {
+      id: 'forest-camp',
+      x: 3,
+      y: -1,
+      relativeX: 3,
+      relativeY: -1,
+      status: 'contested',
+      owner: 'neutral',
+      type: 'camp',
+      naturalName: '林地营地',
+      art: 'assets/art/world-site-camp-cutout.png',
+    },
+  ];
+  const options = { panX: '12.5', panY: -4 };
+
+  const view = UIStatePresenter.buildWorldRadarViewState(territories, options);
+  const direct = WorldRadarPresenter.buildWorldRadarViewState(territories, options);
+  const layout = UIStatePresenter.buildWorldRadarLayout(territories);
+  const directLayout = WorldRadarPresenter.buildWorldRadarLayout(territories);
+
+  assert.deepEqual(view, direct);
+  assert.deepEqual([...layout.entries()], [...directLayout.entries()]);
+  assert.deepEqual(UIStatePresenter.getWorldRadarPosition(territories[1], 5), WorldRadarPresenter.getWorldRadarPosition(territories[1], 5));
+  assert.deepEqual(UIStatePresenter.relativeVisualOffset(4, -2, 'empty-city'), WorldRadarPresenter.relativeVisualOffset(4, -2, 'empty-city'));
+  assert.equal(UIStatePresenter.seededNoise(123), WorldRadarPresenter.seededNoise(123));
+  assert.equal(UIStatePresenter.roundOffset(1.234), 1.23);
+  assert.equal(UIStatePresenter.measureWorldRadarSpacing({ left: 55, top: 55 }, [{ left: 50, top: 50 }]).toFixed(2), '7.07');
+  assert.deepEqual(UIStatePresenter.resolveWorldRadarPosition({ distance: 0 }), { left: 50, top: 50 });
+  assert.equal(UIStatePresenter.getWorldMapSignature(territories), WorldRadarPresenter.getWorldMapSignature(territories));
+  assert.equal(view.pan.x, 12.5);
+  assert.equal(view.pan.y, -4);
+  assert.equal(view.sites.find((site) => site.id === 'capital').position.left, '50.00');
+  assert.equal(view.sites.find((site) => site.id === 'empty-city').name, '空城');
+});
+
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {
   const htmlPath = path.resolve(__dirname, '../../index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -547,6 +610,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'CivilizationPresenter.js',
     'FamousPersonPresenter.js',
     'MilitaryPresenter.js',
+    'WorldRadarPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
   ];
