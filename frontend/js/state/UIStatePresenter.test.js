@@ -13,6 +13,7 @@ const MilitaryPresenter = require('./presenters/MilitaryPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldRadarPresenter = require('./presenters/WorldRadarPresenter');
+const WorldSitePresenter = require('./presenters/WorldSitePresenter');
 
 test('UIStatePresenter merges server-planned explorer tiles into the world tile view', () => {
   const view = UIStatePresenter.buildWorldTileMapViewState({
@@ -598,6 +599,105 @@ test('UIStatePresenter delegates world radar view state while preserving facade 
   assert.equal(view.sites.find((site) => site.id === 'empty-city').name, '空城');
 });
 
+test('UIStatePresenter delegates world site dialog view state while preserving facade contracts', () => {
+  const territories = [
+    {
+      id: 'empty-city',
+      status: 'discovered',
+      owner: 'neutral',
+      occupationMode: 'settlement',
+      type: 'city',
+      naturalName: '无主空城',
+      effects: { foodOutputMultiplier: 0.2, threatDefense: 3 },
+      originDistance: 2,
+      scale: 2,
+      threat: 1,
+      defense: 0,
+      recommendedSoldiers: 100,
+    },
+    {
+      id: 'tribe-camp',
+      status: 'discovered',
+      owner: 'tribe',
+      occupationMode: 'conquest',
+      type: 'camp',
+      naturalName: '山谷部落',
+      effects: { woodOutputMultiplier: 0.15 },
+      defense: 180,
+      recommendedSoldiers: 200,
+      garrison: {
+        leader: {
+          name: '守将甲',
+          title: '寨主',
+          qualityLabel: '精良',
+          abilityKit: { abilities: [{ slot: 'activeSkill', name: '山地伏击' }] },
+        },
+      },
+      lastBattle: {
+        success: false,
+        casualties: 12,
+        leaderName: '先锋',
+        report: {
+          system: 'speed-basic-attack-v1',
+          summary: '战斗已经结束。',
+          attacker: { speed: 12, soldiersEnd: 88 },
+          defender: { speed: 8, soldiersEnd: 30 },
+        },
+      },
+    },
+    {
+      id: 'claimed-city',
+      status: 'occupied',
+      owner: 'player',
+      cityName: '河湾城',
+      naturalName: '河湾',
+      effects: {},
+    },
+    {
+      id: 'ready-site',
+      status: 'contested',
+      owner: 'neutral',
+      naturalName: '前哨',
+      mission: { status: 'ready', mode: 'settlement', durationSeconds: 90 },
+    },
+  ];
+  const territoryState = {
+    availableSoldiers: 250,
+    missionDurationSeconds: 120,
+    famousPersons: {
+      people: [
+        { id: 'hero-mil', name: '霍去病', title: '骠骑', roles: ['military'] },
+      ],
+    },
+  };
+  const uiState = { selectedSiteId: 'tribe-camp', expeditionConfigSiteId: 'tribe-camp', expeditionSoldiers: 200 };
+
+  const view = UIStatePresenter.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+  const direct = WorldSitePresenter.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+  const tribeDetail = view.details.find((detail) => detail.id === 'tribe-camp');
+  const emptyAction = UIStatePresenter.buildWorldSiteActionViewState(territories[0], territoryState, {});
+  const occupiedAction = UIStatePresenter.buildWorldSiteActionViewState(territories[2], territoryState, {});
+  const readyAction = UIStatePresenter.buildWorldSiteActionViewState(territories[3], territoryState, {});
+
+  assert.deepEqual(view, direct);
+  assert.deepEqual(UIStatePresenter.buildWorldSiteDetailViewState(territories[1], territoryState, uiState), WorldSitePresenter.buildWorldSiteDetailViewState(territories[1], territoryState, uiState));
+  assert.equal(view.showModal, true);
+  assert.equal(tribeDetail.text.owner, '有主 · 部落');
+  assert.equal(tribeDetail.text.defenderLeader, '守将 守将甲 · 寨主 · 精良');
+  assert.equal(tribeDetail.text.defenderSkill, '敌方战法 山地伏击');
+  assert.equal(tribeDetail.text.battleReport[1], '速度：己方 12 / 敌方 8');
+  assert.equal(tribeDetail.action.expeditionConfig.disabled, false);
+  assert.equal(tribeDetail.action.expeditionConfig.fields.leader.value, 'hero-mil');
+  assert.equal(emptyAction.buttons[2].action, 'conquer');
+  assert.equal(emptyAction.hint, '该地区无主，派出 100 士兵即可建立据点。');
+  assert.equal(occupiedAction.kind, 'city-command');
+  assert.equal(occupiedAction.buttons.find((button) => button.action === 'rename-city').label, '改名');
+  assert.equal(readyAction.buttons[0].action, 'claim');
+  assert.equal(UIStatePresenter.formatWorldDuration(65), '1:05');
+  assert.equal(UIStatePresenter.getWorldSiteMarchInfo(territories[3], territoryState), '行军耗时 1:30，已抵达待接管');
+  assert.equal(UIStatePresenter.getWorldSiteDialogContentSignature(territories, territoryState, uiState), direct.signature);
+});
+
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {
   const htmlPath = path.resolve(__dirname, '../../index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -611,6 +711,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'FamousPersonPresenter.js',
     'MilitaryPresenter.js',
     'WorldRadarPresenter.js',
+    'WorldSitePresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
   ];
