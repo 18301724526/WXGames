@@ -431,7 +431,13 @@
         if (this.canvasShell && typeof this.canvasShell.selectedFamousPersonId !== 'undefined') this.selectedFamousPersonId = this.canvasShell.selectedFamousPersonId;
         if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
         this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
-        this.tutorialController?.refreshCurrentHighlight?.();
+        if (
+          !this.pendingTutorialAdvisorDialogue
+          && !this.tutorialAdvisorDialogue
+          && !this.canvasShell?.tutorialAdvisorDialogue
+        ) {
+          this.tutorialController?.refreshCurrentHighlight?.();
+        }
         return true;
       }
       if (!this.renderer?.render) return false;
@@ -1668,23 +1674,37 @@
 
     async handleBuildingSuccess(result, action, buildingId) {
       if (this.commandService?.handleBuildingSuccess) {
-        const handled = await this.commandService.handleBuildingSuccess(result, action, buildingId);
+        this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
+        try {
+          const handled = await this.commandService.handleBuildingSuccess(result, action, buildingId);
+          this.tutorialController?.sync?.(this.tutorial);
+          this.maybeShowHouseBuiltAdvisor(action, buildingId);
+          return handled;
+        } finally {
+          this.pendingTutorialAdvisorDialogue = false;
+        }
+      }
+      this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
+      try {
+        this.applyApiState(result);
+        this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
+        this.log(`Success: ${result?.message || ''}`);
         this.tutorialController?.sync?.(this.tutorial);
         this.maybeShowHouseBuiltAdvisor(action, buildingId);
-        return handled;
+        return true;
+      } finally {
+        this.pendingTutorialAdvisorDialogue = false;
       }
-      this.applyApiState(result);
-      this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
-      this.log(`Success: ${result?.message || ''}`);
-      this.tutorialController?.sync?.(this.tutorial);
-      this.maybeShowHouseBuiltAdvisor(action, buildingId);
-      return true;
     }
 
     maybeShowHouseBuiltAdvisor(action, buildingId) {
       const steps = this.tutorialController?.constructor?.TUTORIAL_STEPS || {};
       if (action !== 'build' || buildingId !== 'house') return false;
       if (Number(this.tutorial?.currentStep) !== Number(steps.houseBuilt)) return false;
+      return this.showHouseBuiltAdvisorDialogue();
+    }
+
+    showHouseBuiltAdvisorDialogue() {
       const message = '民居已经建立起来了，族人终于有了稳定的居所。文明也向前迈出了一步。';
       this.state = {
         ...(this.state || {}),
@@ -1695,10 +1715,12 @@
         },
       };
       this.showAdvisor = false;
+      this.tutorialHighlight = null;
       this.tutorialAdvisorDialogue = { message, advisorName: '谋士', source: 'houseBuilt' };
       if (this.canvasShell) {
         this.canvasShell.showAdvisor = false;
         this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
+        this.canvasShell.tutorialHighlight = null;
       }
       this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
       return true;

@@ -15,9 +15,11 @@
       this.onBusy && this.onBusy(true);
       try {
         const result = action === 'upgrade' ? await this.api.upgrade(buildingId) : await this.api.build(buildingId);
-        this.onSuccess && this.onSuccess(result, action, buildingId);
+        if (this.onSuccess) await this.onSuccess(result, action, buildingId);
+        return result;
       } catch (error) {
         this.onError && this.onError(error, action, buildingId);
+        return false;
       } finally {
         this.busy = false;
         this.onBusy && this.onBusy(false);

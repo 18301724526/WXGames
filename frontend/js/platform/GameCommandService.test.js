@@ -370,6 +370,88 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
   assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
 });
 
+test('CanvasGameApp waits for house-built advisor before refreshing civilization highlight', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'buildings', softGuide: null },
+    commandService: {
+      async handleBuildingSuccess(result) {
+        app.applyApiState(result);
+        return true;
+      },
+    },
+    stateNormalizer: {
+      normalizeGameState(data) {
+        return {
+          ...(data.gameState || {}),
+          currentTab: 'buildings',
+          militaryView: 'army',
+          softGuide: null,
+        };
+      },
+      normalizeTutorialState(data) {
+        return data.tutorial || {};
+      },
+    },
+  });
+  app.tutorial = {
+    completed: false,
+    currentStep: TutorialGuideController.TUTORIAL_STEPS.houseGuideReady,
+  };
+  app.state = {
+    currentTab: 'buildings',
+    militaryView: 'army',
+    tutorial: app.tutorial,
+    softGuide: null,
+  };
+  app.tutorialController = new TutorialGuideController({ game: app });
+  app.tutorialController.refreshCurrentHighlight = () => {
+    calls.push(['refreshCurrentHighlight', Boolean(app.pendingTutorialAdvisorDialogue)]);
+    return true;
+  };
+  app.canvasShell = {
+    renderReadOnly() {
+      calls.push(['renderReadOnly', Boolean(app.pendingTutorialAdvisorDialogue)]);
+    },
+    hideTutorialHighlight() {
+      calls.push(['hideTutorialHighlight']);
+      this.tutorialHighlight = null;
+      return true;
+    },
+    tutorialHighlight: { source: 'old' },
+  };
+
+  const result = {
+    gameState: {
+      currentTab: 'buildings',
+      militaryView: 'army',
+      tutorial: {
+        completed: false,
+        currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
+      },
+    },
+    tutorial: {
+      completed: false,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
+    },
+  };
+
+  assert.equal(await app.handleBuildingSuccess(result, 'build', 'house'), true);
+
+  assert.equal(app.pendingTutorialAdvisorDialogue, false);
+  assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
+  assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
+  assert.equal(app.canvasShell.tutorialHighlight, null);
+  assert.equal(calls.some(([name]) => name === 'refreshCurrentHighlight'), false);
+  assert.deepEqual(
+    calls.filter(([name]) => name === 'renderReadOnly').map((call) => call[1]),
+    [true, true],
+  );
+});
+
 test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highlight refresh', () => {
   const calls = [];
   const timers = [];
