@@ -500,6 +500,7 @@
 
     isTutorialActionAllowed(action = {}) {
       if (!action?.type || action.type === 'blockCanvasModal') return false;
+      if (this.rewardReveal && action.type === 'closeRewardReveal') return true;
       const targetAction = action.allowedAction || action;
       if (this.tutorialHighlight?.allowedAction
         && this.isTutorialHighlightActionAllowed(targetAction, this.tutorialHighlight)) {
@@ -1699,6 +1700,7 @@
         ...reveal,
         createdAt: this.now(),
       };
+      this.tutorialHighlight = null;
       this.startFloatTimer();
       this.renderActive();
       return true;
@@ -1707,7 +1709,10 @@
     closeRewardReveal() {
       const hadReveal = Boolean(this.rewardReveal);
       this.rewardReveal = null;
-      if (hadReveal) this.renderActive();
+      if (hadReveal) {
+        this.renderActive();
+        this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
+      }
       return hadReveal;
     }
 

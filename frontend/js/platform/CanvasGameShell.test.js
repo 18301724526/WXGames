@@ -299,6 +299,34 @@ test('CanvasGameShell still allows tutorial target taps to advance', () => {
   ]);
 });
 
+test('CanvasGameShell lets reward reveal close above tutorial highlight', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'closeRewardReveal' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type]);
+        return true;
+      },
+    },
+  });
+  shell.rewardReveal = { rewardText: '+10' };
+  shell.tutorialHighlight = {
+    allowedAction: { type: 'buildBuilding', buildingId: 'farm' },
+  };
+
+  assert.equal(shell.handleTap({ x: 120, y: 420 }, {}), true);
+  assert.deepEqual(calls, [
+    ['handle', 'closeRewardReveal'],
+  ]);
+});
+
 test('CanvasGameShell blocks non-matching actions during guided highlights', () => {
   const calls = [];
   const event = {

@@ -124,11 +124,15 @@ test('TutorialGuideController guides first era advancement and task reward claim
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
 
+  game.activeCommandPanel = 'civilization';
+  game.canvasShell.activeCommandPanel = 'civilization';
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo1 },
   });
   assert.equal(game.showAdvisor, false);
   assert.equal(game.canvasShell.showAdvisor, false);
+  assert.equal(game.activeCommandPanel, '');
+  assert.equal(game.canvasShell.activeCommandPanel, '');
   assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:task-center-button');
   assert.equal(game.canvasShell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
   assert.match(game.tutorialAdvisorDialogue.message, /任务|物资|农田|火种/);
@@ -151,6 +155,11 @@ test('TutorialGuideController guides first era advancement and task reward claim
     taskId: 'main_first_supplies',
     category: 'main',
   });
+
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.farmPrepReserved });
+  game.rewardReveal = { rewardText: '+10' };
+  assert.equal(controller.refreshCurrentHighlight(), false);
+  assert.equal(calls.at(-1).hideHighlight, true);
 });
 
 test('TutorialGuideController treats tutorial spine advisor dialogue as an open advisor', () => {

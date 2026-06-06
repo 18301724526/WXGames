@@ -232,6 +232,24 @@
       );
     }
 
+    isRewardRevealOpen() {
+      return Boolean(this.game?.canvasShell?.rewardReveal || this.game?.rewardReveal);
+    }
+
+    clearBlockingCommandPanels() {
+      const game = this.game || {};
+      let changed = false;
+      if (game.activeCommandPanel) {
+        game.activeCommandPanel = '';
+        changed = true;
+      }
+      if (game.canvasShell?.activeCommandPanel) {
+        game.canvasShell.activeCommandPanel = '';
+        changed = true;
+      }
+      return changed;
+    }
+
     showSoftGuide(target, message) {
       const game = this.game || {};
       game.canvasShell?.hideTutorialHighlight?.();
@@ -250,6 +268,7 @@
         game.canvasShell.showAdvisor = false;
         game.canvasShell.tutorialAdvisorDialogue = dialogue;
       }
+      if (target !== 'tech-tree') this.clearBlockingCommandPanels();
       game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
       return true;
     }
@@ -770,6 +789,10 @@
 
     refreshCurrentHighlight() {
       if (this.isAdvisorOpen()) {
+        this.game?.canvasShell?.hideTutorialHighlight?.();
+        return false;
+      }
+      if (this.isRewardRevealOpen()) {
         this.game?.canvasShell?.hideTutorialHighlight?.();
         return false;
       }

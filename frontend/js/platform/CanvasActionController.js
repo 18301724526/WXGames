@@ -282,7 +282,10 @@
       const closed = typeof this.host?.closeRewardReveal === 'function'
         ? this.host.closeRewardReveal()
         : (this.host.rewardReveal = null, true);
-      if (closed) this.afterHandled(action);
+      if (closed) {
+        this.afterHandled(action);
+        this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
+      }
       return closed !== false;
     }
 

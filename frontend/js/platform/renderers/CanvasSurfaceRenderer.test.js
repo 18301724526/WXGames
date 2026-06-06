@@ -141,6 +141,14 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
     allowedAction: { type: 'openTaskCenter' },
   });
 
+  renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'closeRewardReveal' });
+  renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
+    type: 'blockCanvasModal',
+    allowedAction: { type: 'buildBuilding', buildingId: 'farm' },
+  });
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'closeRewardReveal' });
+
   renderer.withSuppressedHitTargets(() => {
     renderer.addHitTarget({ x: 0, y: 0, width: 10, height: 10 }, { type: 'suppressed' });
   });
@@ -224,6 +232,7 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
   assert.equal(CanvasSurfaceHitTargets.containsPoint(hitTargets[0], { x: 20, y: 20 }), true);
   assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter' }), true);
   assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter', disabled: true }), false);
+  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeRewardReveal' }), true);
   assert.equal(CanvasSurfaceHitTargets.matchesTutorialShieldAllowedAction(
     { type: 'openWorldSite', cityId: 'capital' },
     { type: 'openWorldSite', cityId: 'capital' },
