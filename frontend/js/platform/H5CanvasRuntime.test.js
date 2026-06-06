@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const H5CanvasRuntime = require('./H5CanvasRuntime');
 
@@ -162,4 +164,17 @@ test('H5CanvasRuntime aligns padded layer canvases to the same 9:16 frame', () =
     padding: 120,
     rect: null,
   });
+});
+
+test('H5CanvasRuntime browser dependencies load before the runtime script', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const viewportIndex = html.indexOf('js/platform/H5CanvasViewport.js');
+  const inputIndex = html.indexOf('js/platform/H5CanvasInputController.js');
+  const runtimeIndex = html.indexOf('js/platform/H5CanvasRuntime.js');
+
+  assert.ok(viewportIndex >= 0);
+  assert.ok(inputIndex >= 0);
+  assert.ok(runtimeIndex >= 0);
+  assert.ok(viewportIndex < runtimeIndex);
+  assert.ok(inputIndex < runtimeIndex);
 });

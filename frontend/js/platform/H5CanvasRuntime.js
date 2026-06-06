@@ -1,6 +1,10 @@
 (function (global) {
+  const H5CanvasViewport = global.H5CanvasViewport || (typeof require === 'function' ? require('./H5CanvasViewport') : null);
+  const H5CanvasInputController = global.H5CanvasInputController || (typeof require === 'function' ? require('./H5CanvasInputController') : null);
+
   class H5CanvasRuntime {
     constructor(options = {}) {
+      if (!H5CanvasViewport || !H5CanvasInputController) throw new Error('H5 canvas runtime dependencies are unavailable');
       this.document = options.document || global.document || null;
       this.runtime = options.runtime || global;
       this.kind = 'h5';
@@ -18,18 +22,14 @@
       this.viewportWidth = 0;
       this.viewportHeight = 0;
       this.lockAspectRatio = options.lockAspectRatio !== false;
-      this.frameAspectRatio = Math.max(0.1, Number(options.frameAspectRatio) || (9 / 16));
+      this.frameAspectRatio = Math.max(0.1, Number(options.frameAspectRatio) || H5CanvasViewport.DEFAULT_FRAME_ASPECT_RATIO);
       this.frameRect = { x: 0, y: 0, width: 0, height: 0, viewportWidth: 0, viewportHeight: 0 };
       this.tapHandlers = [];
       this.dragHandlers = [];
       this.gestureHandlers = [];
       this.pointerMoveHandlers = [];
-      this.pointerDown = null;
-      this.dragActive = false;
-      this.dragMoved = false;
-      this.activePinch = null;
-      this.suppressTapUntil = 0;
       this.resizeHandlers = [];
+      this.inputController = new H5CanvasInputController(this);
       this.handleResize = this.handleResize.bind(this);
       this.handlePointerDown = this.handlePointerDown.bind(this);
       this.handlePointerMove = this.handlePointerMove.bind(this);
@@ -38,8 +38,6 @@
       this.handleTouchStart = this.handleTouchStart.bind(this);
       this.handleTouchMove = this.handleTouchMove.bind(this);
       this.handleTouchEnd = this.handleTouchEnd.bind(this);
-      this.lastTapAt = 0;
-      this.lastTapKey = '';
     }
 
     ensureCanvas() {
@@ -66,18 +64,7 @@
     }
 
     applyCanvasLayerStyle(canvas, options = {}) {
-      if (!canvas?.style) return;
-      const padding = Math.max(0, Number(options.padding ?? canvas._viewportPadding) || 0);
-      canvas._viewportPadding = padding;
-      canvas.style.position = 'fixed';
-      canvas.style.inset = 'auto';
-      canvas.style.display = 'block';
-      canvas.style.pointerEvents = options.pointerEvents || 'none';
-      canvas.style.touchAction = 'none';
-      canvas.style.zIndex = String(options.zIndex ?? 998);
-      canvas.style.background = 'transparent';
-      canvas.style.transformOrigin = '0 0';
-      canvas.style.backfaceVisibility = 'hidden';
+      return H5CanvasViewport.applyCanvasLayerStyle(canvas, options);
     }
 
     ensureLayerCanvas(name = 'worldMap', options = {}) {
@@ -121,8 +108,7 @@
       }
       this.layerCanvases.set(key, canvas);
       if (!this.width || !this.height) {
-        const viewport = this.getViewportSize();
-        this.applyViewportFrame(viewport);
+        this.applyViewportFrame(this.getViewportSize());
         this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
       }
       this.resizeCanvas(canvas);
@@ -130,9 +116,7 @@
     }
 
     shouldClipLayerToFrame(options = {}, canvas = null) {
-      if (options.clipToFrame !== undefined) return Boolean(options.clipToFrame);
-      const padding = Math.max(0, Number(options.padding ?? canvas?._viewportPadding) || 0);
-      return !options.rect && padding > 0;
+      return H5CanvasViewport.shouldClipLayerToFrame(options, canvas);
     }
 
     ensureLayerHost(key = 'worldMap', canvas = null, options = {}) {
@@ -163,19 +147,7 @@
     }
 
     applyLayerHostStyle(host, options = {}) {
-      if (!host?.style) return;
-      const frame = this.frameRect || { x: 0, y: 0, width: this.width, height: this.height };
-      host.style.position = 'fixed';
-      host.style.inset = 'auto';
-      host.style.left = `${Number(frame.x) || 0}px`;
-      host.style.top = `${Number(frame.y) || 0}px`;
-      host.style.width = `${Math.max(1, Number(frame.width) || this.width || 1)}px`;
-      host.style.height = `${Math.max(1, Number(frame.height) || this.height || 1)}px`;
-      host.style.overflow = 'hidden';
-      host.style.pointerEvents = 'none';
-      host.style.zIndex = String(options.zIndex ?? 998);
-      host.style.background = 'transparent';
-      host.style.transformOrigin = '0 0';
+      return H5CanvasViewport.applyLayerHostStyle(host, this, options);
     }
 
     getLayerCanvas(name = 'worldMap') {
@@ -183,21 +155,7 @@
     }
 
     getLayerMetrics(name = 'worldMap') {
-      const canvas = this.getLayerCanvas(name);
-      const padding = Math.max(0, Number(canvas?._viewportPadding) || 0);
-      const fixedRect = canvas?._fixedRect || null;
-      return {
-        width: fixedRect ? Math.max(1, Number(fixedRect.width) || 1) : this.width + padding * 2,
-        height: fixedRect ? Math.max(1, Number(fixedRect.height) || 1) : this.height + padding * 2,
-        viewportWidth: this.width,
-        viewportHeight: this.height,
-        browserWidth: this.viewportWidth || this.width,
-        browserHeight: this.viewportHeight || this.height,
-        frameX: Number(this.frameRect?.x) || 0,
-        frameY: Number(this.frameRect?.y) || 0,
-        padding,
-        rect: fixedRect,
-      };
+      return H5CanvasViewport.getLayerMetrics(this.getLayerCanvas(name), this);
     }
 
     setLayerTransform(name = 'worldMap', transform = '') {
@@ -295,44 +253,14 @@
     }
 
     getBrowserViewportSize() {
-      const vv = this.runtime.visualViewport;
-      const docElement = this.document?.documentElement || {};
-      return {
-        width: Math.max(1, Math.floor(vv?.width || this.runtime.innerWidth || docElement.clientWidth || 390)),
-        height: Math.max(1, Math.floor(vv?.height || this.runtime.innerHeight || docElement.clientHeight || 844)),
-      };
+      return H5CanvasViewport.getBrowserViewportSize(this.runtime, this.document);
     }
 
     getViewportFrame(viewport = this.getBrowserViewportSize()) {
-      const browserWidth = Math.max(1, Number(viewport.width) || 390);
-      const browserHeight = Math.max(1, Number(viewport.height) || 844);
-      if (!this.lockAspectRatio) {
-        return {
-          x: 0,
-          y: 0,
-          width: Math.floor(browserWidth),
-          height: Math.floor(browserHeight),
-          viewportWidth: Math.floor(browserWidth),
-          viewportHeight: Math.floor(browserHeight),
-        };
-      }
-      const targetRatio = Math.max(0.1, Number(this.frameAspectRatio) || (9 / 16));
-      let width = browserWidth;
-      let height = width / targetRatio;
-      if (height > browserHeight) {
-        height = browserHeight;
-        width = height * targetRatio;
-      }
-      const gameWidth = Math.max(1, Math.round(width));
-      const gameHeight = Math.max(1, Math.round(height));
-      return {
-        x: Math.max(0, Math.floor((browserWidth - gameWidth) / 2)),
-        y: Math.max(0, Math.floor((browserHeight - gameHeight) / 2)),
-        width: gameWidth,
-        height: gameHeight,
-        viewportWidth: Math.floor(browserWidth),
-        viewportHeight: Math.floor(browserHeight),
-      };
+      return H5CanvasViewport.getViewportFrame(viewport, {
+        lockAspectRatio: this.lockAspectRatio,
+        frameAspectRatio: this.frameAspectRatio,
+      });
     }
 
     getViewportSize() {
@@ -340,27 +268,14 @@
     }
 
     applyViewportFrame(frame = {}) {
-      this.frameRect = {
-        x: Number(frame.x) || 0,
-        y: Number(frame.y) || 0,
-        width: Math.max(1, Number(frame.width) || 1),
-        height: Math.max(1, Number(frame.height) || 1),
-        viewportWidth: Math.max(1, Number(frame.viewportWidth) || Number(frame.width) || 1),
-        viewportHeight: Math.max(1, Number(frame.viewportHeight) || Number(frame.height) || 1),
-      };
-      this.viewportWidth = this.frameRect.viewportWidth;
-      this.viewportHeight = this.frameRect.viewportHeight;
-      this.width = this.frameRect.width;
-      this.height = this.frameRect.height;
-      return this.frameRect;
+      return H5CanvasViewport.applyViewportFrame(this, frame);
     }
 
     resize() {
       const canvas = this.canvas || this.ensureCanvas();
       if (!canvas) return null;
-      const viewport = this.getViewportSize();
       this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
-      this.applyViewportFrame(viewport);
+      this.applyViewportFrame(this.getViewportSize());
       this.resizeCanvas(canvas);
       this.layerCanvases.forEach((layerCanvas) => this.resizeCanvas(layerCanvas));
       this.resizeHandlers.forEach((handler) => handler({ width: this.width, height: this.height, pixelRatio: this.pixelRatio }));
@@ -368,57 +283,11 @@
     }
 
     resizeCanvas(canvas) {
-      if (!canvas) return null;
-      const padding = Math.max(0, Number(canvas._viewportPadding) || 0);
-      const fixedRect = canvas._fixedRect || null;
-      const logicalWidth = fixedRect ? Math.max(1, Number(fixedRect.width) || 1) : this.width + padding * 2;
-      const logicalHeight = fixedRect ? Math.max(1, Number(fixedRect.height) || 1) : this.height + padding * 2;
-      const pixelRatio = Math.max(1, Number(canvas._pixelRatioOverride) || this.pixelRatio || 1);
-      const nextWidth = Math.floor(logicalWidth * pixelRatio);
-      const nextHeight = Math.floor(logicalHeight * pixelRatio);
-      if (canvas.width !== nextWidth) canvas.width = nextWidth;
-      if (canvas.height !== nextHeight) canvas.height = nextHeight;
-      if (canvas.style) {
-        const frame = this.frameRect || { x: 0, y: 0 };
-        const left = fixedRect ? Number(fixedRect.x) || 0 : -padding;
-        const top = fixedRect ? Number(fixedRect.y) || 0 : -padding;
-        const layerHost = canvas._layerHost || null;
-        if (layerHost) {
-          this.applyLayerHostStyle(layerHost, { zIndex: canvas.style.zIndex });
-        }
-        canvas.style.position = layerHost ? 'absolute' : 'fixed';
-        canvas.style.inset = 'auto';
-        canvas.style.left = `${layerHost ? left : (Number(frame.x) || 0) + left}px`;
-        canvas.style.top = `${layerHost ? top : (Number(frame.y) || 0) + top}px`;
-        canvas.style.width = `${logicalWidth}px`;
-        canvas.style.height = `${logicalHeight}px`;
-      }
-      if (canvas._contextType && canvas._contextType !== '2d') return canvas;
-      const ctx = canvas.getContext?.('2d');
-      if (ctx) {
-        if (typeof ctx.setTransform === 'function') ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        else if (typeof ctx.scale === 'function') ctx.scale(pixelRatio, pixelRatio);
-      }
-      return canvas;
+      return H5CanvasViewport.resizeCanvas(canvas, this);
     }
 
     bindEvents() {
-      if (!this.canvas || this.eventsBound) return;
-      this.eventsBound = true;
-      this.runtime.addEventListener?.('resize', this.handleResize);
-      const eventTarget = this.canvas;
-      eventTarget.addEventListener?.('pointerdown', this.handlePointerDown, { capture: true });
-      eventTarget.addEventListener?.('pointermove', this.handlePointerMove, { capture: true });
-      eventTarget.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
-      this.document?.addEventListener?.('pointerup', this.handlePointerUp, { capture: true });
-      eventTarget.addEventListener?.('wheel', this.handleWheel, { capture: true, passive: false });
-      eventTarget.addEventListener?.('touchstart', this.handleTouchStart, { capture: true, passive: false });
-      eventTarget.addEventListener?.('touchmove', this.handleTouchMove, { capture: true, passive: false });
-      eventTarget.addEventListener?.('touchend', this.handleTouchEnd, { capture: true, passive: false });
-      eventTarget.addEventListener?.('touchcancel', this.handleTouchEnd, { capture: true, passive: false });
-      if (!global.PointerEvent) {
-        eventTarget.addEventListener?.('click', this.handlePointerUp, { capture: true });
-      }
+      return this.inputController.bindEvents();
     }
 
     handleResize() {
@@ -426,223 +295,59 @@
     }
 
     toCanvasPoint(event = {}) {
-      const canvas = this.canvas;
-      const rect = canvas?.getBoundingClientRect?.() || { left: 0, top: 0, width: this.width, height: this.height };
-      const touch = event.changedTouches?.[0] || event.touches?.[0] || event;
-      const scaleX = rect.width ? this.width / rect.width : 1;
-      const scaleY = rect.height ? this.height / rect.height : 1;
-      return {
-        x: (Number(touch.clientX ?? touch.pageX ?? touch.x ?? 0) - rect.left) * scaleX,
-        y: (Number(touch.clientY ?? touch.pageY ?? touch.y ?? 0) - rect.top) * scaleY,
-      };
+      return H5CanvasViewport.toCanvasPoint(this.canvas, this, event);
     }
 
     getEventTime(event = {}) {
-      const eventTime = Number(event.timeStamp);
-      return Number.isFinite(eventTime) && eventTime > 0 ? eventTime : this.now();
+      return this.inputController.getEventTime(event);
     }
 
     getTouchPoints(event = {}) {
-      const touches = Array.from(event.touches || []);
-      if (touches.length) return touches.map((touch) => this.toCanvasPoint(touch));
-      return Array.from(event.changedTouches || []).map((touch) => this.toCanvasPoint(touch));
+      return this.inputController.getTouchPoints(event);
     }
 
     getGestureCenter(points = []) {
-      const usable = points.slice(0, 2);
-      const total = usable.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
-      const count = Math.max(1, usable.length);
-      return { x: total.x / count, y: total.y / count };
+      return this.inputController.getGestureCenter(points);
     }
 
     getGestureDistance(points = []) {
-      if (points.length < 2) return 0;
-      const dx = points[0].x - points[1].x;
-      const dy = points[0].y - points[1].y;
-      return Math.hypot(dx, dy);
+      return this.inputController.getGestureDistance(points);
     }
 
     dispatchGesture(gesture, event = {}) {
-      if (!gesture || !this.gestureHandlers.length) return false;
-      let handled = false;
-      this.gestureHandlers.forEach((handler) => {
-        if (handler(gesture, event)) handled = true;
-      });
-      if (handled) {
-        this.dragMoved = true;
-        this.suppressTapUntil = this.getEventTime(event) + 260;
-        if (event?.cancelable !== false) event.preventDefault?.();
-        event.stopPropagation?.();
-      }
-      return handled;
+      return this.inputController.dispatchGesture(gesture, event);
     }
 
     shouldIgnoreDuplicateTap(point, event = {}) {
-      const now = this.getEventTime(event);
-      const key = `${event.type || 'tap'}:${Math.round(point.x)}:${Math.round(point.y)}`;
-      if (key === this.lastTapKey && now - this.lastTapAt < 180) return true;
-      this.lastTapKey = key;
-      this.lastTapAt = now;
-      return false;
+      return this.inputController.shouldIgnoreDuplicateTap(point, event);
     }
 
     handlePointerDown(event) {
-      if (event?.touches?.length >= 2 || this.activePinch) return false;
-      if (event?.pointerType === 'touch' && this.pointerDown) return false;
-      const point = this.toCanvasPoint(event);
-      const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? 1;
-      try {
-        event.currentTarget?.setPointerCapture?.(pointerId);
-      } catch (error) {}
-      this.pointerDown = { ...point, pointerId };
-      this.dragActive = false;
-      this.dragMoved = false;
-      let handled = false;
-      this.dragHandlers.forEach((handler) => {
-        if (handler('start', { ...point, pointerId }, event)) handled = true;
-      });
-      if (handled) {
-        this.dragActive = true;
-        if (event?.cancelable !== false) event.preventDefault?.();
-        event.stopPropagation?.();
-      }
-      return handled;
+      return this.inputController.handlePointerDown(event);
     }
 
     handlePointerMove(event) {
-      const point = this.toCanvasPoint(event);
-      this.pointerMoveHandlers.forEach((handler) => handler(point, event));
-      if (this.activePinch) return false;
-      if (!this.pointerDown || !this.dragActive) return false;
-      const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown.pointerId;
-      if (pointerId !== this.pointerDown.pointerId) return false;
-      if (Math.abs(point.x - this.pointerDown.x) > 3 || Math.abs(point.y - this.pointerDown.y) > 3) this.dragMoved = true;
-      let handled = false;
-      this.dragHandlers.forEach((handler) => {
-        if (handler('move', { ...point, pointerId }, event)) handled = true;
-      });
-      if (handled) {
-        if (event?.cancelable !== false) event.preventDefault?.();
-        event.stopPropagation?.();
-      }
-      return handled;
+      return this.inputController.handlePointerMove(event);
     }
 
     handlePointerUp(event) {
-      const point = this.toCanvasPoint(event);
-      const pointerId = event.pointerId ?? event.changedTouches?.[0]?.identifier ?? event.touches?.[0]?.identifier ?? this.pointerDown?.pointerId ?? 1;
-      try {
-        event.currentTarget?.releasePointerCapture?.(pointerId);
-      } catch (error) {}
-      if (this.dragActive) {
-        this.dragHandlers.forEach((handler) => handler('end', { ...point, pointerId }, event));
-      }
-      const skipTap = this.dragMoved || this.getEventTime(event) < this.suppressTapUntil;
-      this.pointerDown = null;
-      this.dragActive = false;
-      this.dragMoved = false;
-      if (skipTap) {
-        if (event?.cancelable !== false) event.preventDefault?.();
-        event.stopPropagation?.();
-        return true;
-      }
-      if (this.shouldIgnoreDuplicateTap(point, event)) return false;
-      let handled = false;
-      this.tapHandlers.forEach((handler) => {
-        if (handler(point, event)) handled = true;
-      });
-      if (handled && event?.cancelable !== false) event.preventDefault?.();
-      if (handled) event.stopPropagation?.();
-      return handled;
+      return this.inputController.handlePointerUp(event);
     }
 
     handleWheel(event = {}) {
-      const deltaY = Number(event.deltaY) || 0;
-      if (!deltaY) return false;
-      const point = this.toCanvasPoint(event);
-      const scaleDelta = Math.max(0.82, Math.min(1.22, Math.exp(-deltaY * 0.0015)));
-      return this.dispatchGesture({
-        type: 'wheelZoom',
-        scaleDelta,
-        centerX: point.x,
-        centerY: point.y,
-        x: point.x,
-        y: point.y,
-      }, event);
+      return this.inputController.handleWheel(event);
     }
 
     handleTouchStart(event = {}) {
-      const points = this.getTouchPoints(event);
-      if (points.length < 2) {
-        if (!global.PointerEvent) return this.handlePointerDown(event);
-        return false;
-      }
-      if (this.dragActive) {
-        const center = this.getGestureCenter(points);
-        this.dragHandlers.forEach((handler) => handler('cancel', center, event));
-        this.dragActive = false;
-      }
-      this.pointerDown = null;
-      this.dragMoved = true;
-      this.activePinch = {
-        distance: Math.max(1, this.getGestureDistance(points)),
-        center: this.getGestureCenter(points),
-      };
-      this.suppressTapUntil = this.getEventTime(event) + 260;
-      if (event?.cancelable !== false) event.preventDefault?.();
-      return true;
+      return this.inputController.handleTouchStart(event);
     }
 
     handleTouchMove(event = {}) {
-      if (!this.activePinch) {
-        if (!global.PointerEvent) return this.handlePointerMove(event);
-        return false;
-      }
-      const points = this.getTouchPoints(event);
-      if (points.length < 2) return false;
-      const distance = Math.max(1, this.getGestureDistance(points));
-      const center = this.getGestureCenter(points);
-      const previousDistance = Math.max(1, Number(this.activePinch.distance) || distance);
-      const previousCenter = this.activePinch.center || center;
-      this.activePinch = { distance, center };
-      const scaleDelta = Math.max(0.82, Math.min(1.22, distance / previousDistance));
-      return this.dispatchGesture({
-        type: 'pinchZoom',
-        phase: 'move',
-        scaleDelta,
-        centerX: center.x,
-        centerY: center.y,
-        deltaX: center.x - previousCenter.x,
-        deltaY: center.y - previousCenter.y,
-        x: center.x,
-        y: center.y,
-      }, event);
+      return this.inputController.handleTouchMove(event);
     }
 
     handleTouchEnd(event = {}) {
-      if ((event.touches?.length || 0) >= 2) return this.handleTouchMove(event);
-      if (!this.activePinch) {
-        if (!global.PointerEvent) return this.handlePointerUp(event);
-        return false;
-      }
-      const previousCenter = this.activePinch.center || this.getGestureCenter(this.getTouchPoints(event));
-      const handled = this.dispatchGesture({
-        type: 'pinchZoom',
-        phase: 'end',
-        scaleDelta: 1,
-        centerX: previousCenter.x,
-        centerY: previousCenter.y,
-        deltaX: 0,
-        deltaY: 0,
-        x: previousCenter.x,
-        y: previousCenter.y,
-      }, event);
-      this.activePinch = null;
-      this.dragMoved = true;
-      this.suppressTapUntil = this.getEventTime(event) + 260;
-      if (event?.cancelable !== false) event.preventDefault?.();
-      event.stopPropagation?.();
-      return handled || true;
+      return this.inputController.handleTouchEnd(event);
     }
 
     onTap(handler) {
