@@ -83,6 +83,18 @@
     return null;
   })();
 
+  const EventPresenter = (() => {
+    if (global.EventPresenter) return global.EventPresenter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./presenters/EventPresenter');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
     static MIN_EXPEDITION_SOLDIERS = 100;
@@ -814,289 +826,116 @@
       return BuildingPresenter.buildBuildingViewState(...args);
     }
 
-    static getEventResourceLabel(resource) {
-      return {
-        food: '食物',
-        knowledge: '知识',
-        wood: '木材',
-        iron: '铁矿',
-        stone: '石料',
-        metal: '铁矿',
-      }[resource] || resource;
+    static getEventResourceLabel(...args) {
+      return EventPresenter.getEventResourceLabel(...args);
     }
 
-    static formatEventResourcePart(resource, value) {
-      const amount = this.toNumber(value);
-      if (!amount) return '';
-      const sign = amount > 0 ? '+' : '-';
-      return `${this.getEventResourceLabel(resource)} ${sign}${this.formatResourceAmount(Math.abs(amount))}`;
+    static formatEventResourcePart(...args) {
+      return EventPresenter.formatEventResourcePart(...args);
     }
 
-    static buildEventResourcePart(resource, value) {
-      const amount = this.toNumber(value);
-      if (!amount) return null;
-      const sign = amount > 0 ? '+' : '-';
-      return {
-        type: 'resource',
-        resource: resource === 'metal' ? 'iron' : resource,
-        text: `${sign}${this.formatResourceAmount(Math.abs(amount))}`,
-      };
+    static buildEventResourcePart(...args) {
+      return EventPresenter.buildEventResourcePart(...args);
     }
 
-    static formatEventDuration(seconds) {
-      const total = this.toInteger(seconds);
-      if (total <= 0) return '';
-      if (total < 60) return `${total}秒`;
-      const minutes = Math.floor(total / 60);
-      const rest = total % 60;
-      return rest ? `${minutes}分${rest}秒` : `${minutes}分钟`;
+    static formatEventDuration(...args) {
+      return EventPresenter.formatEventDuration(...args);
     }
 
-    static formatEventBuffEffect(effect = {}) {
-      const value = this.toNumber(effect.value);
-      const duration = this.formatEventDuration(effect.durationSeconds);
-      const prefix = duration ? `${duration} ` : '';
-      if (effect.buffType === 'resourceMultiplier') {
-        return `${prefix}${this.getEventResourceLabel(effect.target)}产出 ${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`;
-      }
-      if (effect.buffType === 'offlineEfficiencyBonus') {
-        return `${prefix}离线收益效率 ${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`;
-      }
-      if (effect.buffType === 'happinessFlat') {
-        return `${prefix}幸福度 ${value >= 0 ? '+' : ''}${this.formatCompactNumber(value, { floorSmall: false })}`;
-      }
-      return effect.label ? `${prefix}${effect.label}` : `${prefix}临时加成`;
+    static formatEventBuffEffect(...args) {
+      return EventPresenter.formatEventBuffEffect(...args);
     }
 
-    static formatEventEffect(effect = {}) {
-      const value = this.toNumber(effect.value);
-      if (effect.type === 'resource') return this.formatEventResourcePart(effect.key, value);
-      if (effect.type === 'soldiers') {
-        if (!value) return '';
-        return `士兵 ${value > 0 ? '+' : '-'}${this.formatResourceAmount(Math.abs(value))}`;
-      }
-      if (effect.type === 'buff') return this.formatEventBuffEffect(effect);
-      return '';
+    static formatEventEffect(...args) {
+      return EventPresenter.formatEventEffect(...args);
     }
 
-    static buildEventEffectPart(effect = {}) {
-      const value = this.toNumber(effect.value);
-      if (!value) return null;
-      if (effect.type === 'resource') return this.buildEventResourcePart(effect.key, value);
-      if (effect.type === 'soldiers') {
-        const sign = value > 0 ? '+' : '-';
-        return { type: 'resource', resource: 'soldier', text: `${sign}${this.formatResourceAmount(Math.abs(value))}` };
-      }
-      if (effect.type === 'buff') return { type: 'text', text: this.formatEventBuffEffect(effect) };
-      return null;
+    static buildEventEffectPart(...args) {
+      return EventPresenter.buildEventEffectPart(...args);
     }
 
-    static formatEventEffects(effects = [], filter = 'all') {
-      return (effects || [])
-        .map((effect) => {
-          const value = this.toNumber(effect?.value);
-          const isBuff = effect?.type === 'buff';
-          const isPositive = isBuff ? value >= 0 : value > 0;
-          const isNegative = value < 0;
-          if (filter === 'positive' && !isPositive) return '';
-          if (filter === 'negative' && !isNegative) return '';
-          return this.formatEventEffect(effect);
-        })
-        .filter(Boolean)
-        .join(' ');
+    static formatEventEffects(...args) {
+      return EventPresenter.formatEventEffects(...args);
     }
 
-    static buildEventEffectParts(effects = [], filter = 'all') {
-      return (effects || [])
-        .map((effect) => {
-          const value = this.toNumber(effect?.value);
-          const isBuff = effect?.type === 'buff';
-          const isPositive = isBuff ? value >= 0 : value > 0;
-          const isNegative = value < 0;
-          if (filter === 'positive' && !isPositive) return null;
-          if (filter === 'negative' && !isNegative) return null;
-          return this.buildEventEffectPart(effect);
-        })
-        .filter(Boolean);
+    static buildEventEffectParts(...args) {
+      return EventPresenter.buildEventEffectParts(...args);
     }
 
-    static formatEventRequirements(requirements = {}) {
-      if (!requirements || typeof requirements !== 'object') return '';
-      const parts = [];
-      const defense = Number(requirements.defense);
-      const soldiers = Number(requirements.soldiers);
-      if (Number.isFinite(defense)) parts.push(`防御 ${this.formatResourceAmount(defense)}`);
-      if (Number.isFinite(soldiers)) parts.push(`士兵 ${this.formatResourceAmount(soldiers)}`);
-      return parts.join('，');
+    static formatEventRequirements(...args) {
+      return EventPresenter.formatEventRequirements(...args);
     }
 
-    static buildEventRequirementParts(requirements = {}) {
-      if (!requirements || typeof requirements !== 'object') return [];
-      const parts = [];
-      const defense = Number(requirements.defense);
-      const soldiers = Number(requirements.soldiers);
-      if (Number.isFinite(defense)) parts.push({ type: 'text', text: `防御 ${this.formatResourceAmount(defense)}` });
-      if (Number.isFinite(soldiers)) parts.push({ type: 'resource', resource: 'soldier', text: String(this.formatResourceAmount(soldiers)) });
-      return parts;
+    static buildEventRequirementParts(...args) {
+      return EventPresenter.buildEventRequirementParts(...args);
     }
 
-    static formatEventReward(reward) {
-      if (!reward) return '事件已完成';
-      const parts = [];
-      if (reward.food) parts.push(this.formatEventResourcePart('food', reward.food));
-      if (reward.knowledge) parts.push(this.formatEventResourcePart('knowledge', reward.knowledge));
-      if (reward.wood) parts.push(this.formatEventResourcePart('wood', reward.wood));
-      if (reward.iron || reward.metal) parts.push(this.formatEventResourcePart('iron', reward.iron || reward.metal));
-      if (reward.stone) parts.push(this.formatEventResourcePart('stone', reward.stone));
-      return parts.join(' ') || '事件已完成';
+    static formatEventReward(...args) {
+      return EventPresenter.formatEventReward(...args);
     }
 
-    static buildEventRewardParts(reward = {}) {
-      if (!reward || typeof reward !== 'object') return [];
-      return ['food', 'wood', 'iron', 'stone', 'knowledge']
-        .map((resource) => this.buildEventResourcePart(resource, reward[resource] ?? (resource === 'iron' ? reward.metal : undefined)))
-        .filter(Boolean);
+    static buildEventRewardParts(...args) {
+      return EventPresenter.buildEventRewardParts(...args);
     }
 
-    static getEventOptionRewardText(option = {}) {
-      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
-      const directEffects = Array.isArray(option.effects) ? option.effects : [];
-      const effectReward = this.formatEventEffects(option.requirements ? successEffects : directEffects, 'positive');
-      const explicitReward = option.reward ? this.formatEventReward(option.reward) : '';
-      return effectReward || explicitReward;
+    static getEventOptionRewardText(...args) {
+      return EventPresenter.getEventOptionRewardText(...args);
     }
 
-    static getEventOptionRewardParts(option = {}) {
-      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
-      const directEffects = Array.isArray(option.effects) ? option.effects : [];
-      const effectParts = this.buildEventEffectParts(option.requirements ? successEffects : directEffects, 'positive');
-      const explicitParts = option.reward ? this.buildEventRewardParts(option.reward) : [];
-      return effectParts.length ? effectParts : explicitParts;
+    static getEventOptionRewardParts(...args) {
+      return EventPresenter.getEventOptionRewardParts(...args);
     }
 
-    static getEventOptionCostText(option = {}) {
-      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
-      const directEffects = Array.isArray(option.effects) ? option.effects : [];
-      return this.formatEventEffects(option.requirements ? successEffects : directEffects, 'negative');
+    static getEventOptionCostText(...args) {
+      return EventPresenter.getEventOptionCostText(...args);
     }
 
-    static getEventOptionCostParts(option = {}) {
-      const successEffects = Array.isArray(option.successEffects) ? option.successEffects : [];
-      const directEffects = Array.isArray(option.effects) ? option.effects : [];
-      return this.buildEventEffectParts(option.requirements ? successEffects : directEffects, 'negative');
+    static getEventOptionCostParts(...args) {
+      return EventPresenter.getEventOptionCostParts(...args);
     }
 
-    static getEventOptionPenaltyText(option = {}) {
-      const failureEffects = Array.isArray(option.failureEffects) ? option.failureEffects : [];
-      const timeoutEffects = Array.isArray(option.timeoutEffects) ? option.timeoutEffects : [];
-      return this.formatEventEffects(failureEffects.length ? failureEffects : timeoutEffects, 'negative');
+    static getEventOptionPenaltyText(...args) {
+      return EventPresenter.getEventOptionPenaltyText(...args);
     }
 
-    static getEventOptionPenaltyParts(option = {}) {
-      const failureEffects = Array.isArray(option.failureEffects) ? option.failureEffects : [];
-      const timeoutEffects = Array.isArray(option.timeoutEffects) ? option.timeoutEffects : [];
-      return this.buildEventEffectParts(failureEffects.length ? failureEffects : timeoutEffects, 'negative');
+    static getEventOptionPenaltyParts(...args) {
+      return EventPresenter.getEventOptionPenaltyParts(...args);
     }
 
-    static buildEventOptionRows(option = {}) {
-      const requirementText = this.formatEventRequirements(option.requirements);
-      const rewardText = this.getEventOptionRewardText(option);
-      const costText = this.getEventOptionCostText(option);
-      const penaltyText = this.getEventOptionPenaltyText(option);
-      return [
-        { label: '需求', text: requirementText || '无', tone: 'requirement', parts: this.buildEventRequirementParts(option.requirements), empty: !requirementText },
-        { label: '奖励', text: rewardText || '无', tone: 'reward', parts: this.getEventOptionRewardParts(option), empty: !rewardText },
-        { label: '消耗', text: costText || '无', tone: 'cost', parts: this.getEventOptionCostParts(option), empty: !costText },
-        { label: '惩罚', text: penaltyText || '无', tone: 'penalty', parts: this.getEventOptionPenaltyParts(option), empty: !penaltyText },
-      ];
+    static buildEventOptionRows(...args) {
+      return EventPresenter.buildEventOptionRows(...args);
     }
 
-    static getEventOptionPreview(option) {
-      if (option?.preview) return option.preview;
-      if (option?.reward) return this.formatEventReward(option.reward);
-      const rows = this.buildEventOptionRows(option);
-      const visibleRows = rows.filter((row) => !row.empty);
-      if (visibleRows.length) return visibleRows.map((row) => `${row.label} ${row.text}`).join('；');
-      return this.formatEventReward(option?.reward);
+    static getEventOptionPreview(...args) {
+      return EventPresenter.getEventOptionPreview(...args);
     }
 
-    static getRemainingSeconds(expiresAt, nowMs = Date.now()) {
-      const expiresAtMs = new Date(expiresAt).getTime();
-      if (!Number.isFinite(expiresAtMs)) return null;
-      return Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));
+    static getRemainingSeconds(...args) {
+      return EventPresenter.getRemainingSeconds(...args);
     }
 
-    static formatRemainingTime(expiresAt, nowMs = Date.now()) {
-      const seconds = this.getRemainingSeconds(expiresAt, nowMs);
-      if (seconds === null) return '';
-      const minutes = Math.floor(seconds / 60);
-      const rest = seconds % 60;
-      return `${minutes}:${String(rest).padStart(2, '0')}`;
+    static formatRemainingTime(...args) {
+      return EventPresenter.formatRemainingTime(...args);
     }
 
-    static getEventHint(event, nowMs = Date.now()) {
-      const remaining = this.formatRemainingTime(event?.expiresAt, nowMs);
-      if (event?.type === 'threat') {
-        if (!remaining) return '超时将按失败处理';
-        return `剩余 ${remaining}，超时将按失败处理`;
-      }
-      if (event?.type === 'regular') {
-        if (!remaining) return '超时将自动失效';
-        return `剩余 ${remaining}，超时将自动失效`;
-      }
-      return '点击查看详情';
+    static getEventHint(...args) {
+      return EventPresenter.getEventHint(...args);
     }
 
-    static buildEventCardViewState(event = {}, nowMs = Date.now()) {
-      return {
-        id: event.id || '',
-        icon: event.icon || '📜',
-        iconAsset: 'assets/art/icon-event-cutout.webp',
-        title: event.title || '',
-        description: event.description || '',
-        hint: this.getEventHint(event, nowMs),
-        classState: {
-          'is-special': event.type === 'special',
-          'is-threat': event.type === 'threat',
-        },
-      };
+    static buildEventCardViewState(...args) {
+      return EventPresenter.buildEventCardViewState(...args);
     }
 
-    static buildEventHistoryItemViewState(event = {}) {
-      const selectedOption = event.selectedOptionId
-        ? event.options?.find((item) => item.id === event.selectedOptionId)
-        : null;
-      return {
-        icon: event.icon || '📜',
-        iconAsset: 'assets/art/icon-event-cutout.webp',
-        title: event.title || '',
-        result: event.resultSummary || this.formatEventReward(selectedOption?.reward),
-        className: event.type === 'threat' ? 'threat' : 'positive',
-      };
+    static buildEventHistoryItemViewState(...args) {
+      return EventPresenter.buildEventHistoryItemViewState(...args);
     }
 
-    static buildEventViewState(state = {}, options = {}) {
-      const nowMs = options.nowMs ?? Date.now();
-      const eventQueue = Array.isArray(state.eventQueue) ? state.eventQueue : [];
-      const eventHistory = Array.isArray(state.eventHistory) ? state.eventHistory : [];
-      const pendingCards = eventQueue.map((event) => this.buildEventCardViewState(event, nowMs));
-      const historyItems = eventHistory.map((event) => this.buildEventHistoryItemViewState(event));
-      return {
-        badge: {
-          hidden: !eventQueue.length,
-          text: eventQueue.length > 9 ? '9+' : String(eventQueue.length),
-        },
-        pending: {
-          isEmpty: !pendingCards.length,
-          emptyText: '暂无待处理事件',
-          cards: pendingCards,
-        },
-        history: {
-          isEmpty: !historyItems.length,
-          emptyText: '暂无事件记录',
-          items: historyItems,
-        },
-      };
+    static buildEventViewState(...args) {
+      return EventPresenter.buildEventViewState(...args);
+    }
+
+    static buildEventModalViewState(...args) {
+      return EventPresenter.buildEventModalViewState(...args);
     }
 
     static buildTechViewState(state = {}) {
@@ -1104,56 +943,6 @@
         return TechPresenter.buildTechViewState(state);
       }
       return { points: 0, researchedCount: 0, availableCount: 0, eras: [], nodes: [], links: [], treeEras: [], selectedTech: null };
-    }
-
-    static buildEventModalViewState(eventData = {}, options = {}) {
-      const nowMs = options.nowMs ?? Date.now();
-      const eventOptions = Array.isArray(eventData.options) ? eventData.options : [];
-      const optionViews = eventOptions.map((option) => {
-        const rows = this.buildEventOptionRows(option);
-        return {
-          id: option.id || '',
-          label: option.label || '处理事件',
-          preview: this.getEventOptionPreview(option),
-          rows,
-        };
-      });
-      const firstOption = optionViews[0];
-      const singleOptionPreview = optionViews.length === 1
-        ? optionViews[0].preview
-        : '选择一种处理方式';
-      const expiryHint = ['threat', 'regular'].includes(eventData?.type)
-        ? this.getEventHint(eventData, nowMs)
-        : '';
-
-      const metaRows = [];
-      if (expiryHint) {
-        metaRows.push({
-          label: '时限',
-          text: expiryHint,
-          tone: eventData?.type === 'threat' ? 'penalty' : 'time',
-        });
-      }
-      if (optionViews.length > 1) {
-        metaRows.push({ label: '选项', text: '选择一种处理方式', tone: 'neutral' });
-      }
-
-      return {
-        iconAsset: 'assets/art/icon-event-cutout.webp',
-        text: {
-          title: eventData.title || '',
-          description: eventData.description || '',
-          reward: expiryHint ? `${singleOptionPreview} | ${expiryHint}` : singleOptionPreview,
-        },
-        metaRows,
-        options: optionViews,
-        claimButton: {
-          optionId: firstOption?.id || '',
-          label: firstOption?.label || '处理事件',
-          hidden: optionViews.length !== 1,
-        },
-        showModal: true,
-      };
     }
 
     static buildMilitaryViewState(state = {}) {

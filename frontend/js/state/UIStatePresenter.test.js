@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const UIStatePresenter = require('./UIStatePresenter');
 const BuildingPresenter = require('./presenters/BuildingPresenter');
+const EventPresenter = require('./presenters/EventPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
 const HomePresenter = require('./presenters/HomePresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
@@ -181,6 +182,59 @@ test('UIStatePresenter delegates building view state while preserving facade con
   assert.deepEqual(UIStatePresenter.buildCostViewState({ wood: 1234 }).parts[0], { resource: 'wood', value: 1234, text: '1.2k' });
 });
 
+test('UIStatePresenter delegates event view state while preserving facade contracts', () => {
+  const nowMs = Date.UTC(2026, 5, 6, 8, 0, 0);
+  const state = {
+    eventQueue: [
+      {
+        id: 'forest-whisper',
+        title: 'Forest Whisper',
+        description: 'A scout hears movement beyond the trees.',
+        type: 'regular',
+        expiresAt: new Date(nowMs + 90_000).toISOString(),
+        options: [{
+          id: 'listen',
+          label: 'Listen',
+          requirements: { soldiers: 3, defense: 1 },
+          successEffects: [
+            { type: 'resource', key: 'wood', value: 80 },
+            { type: 'buff', buffType: 'resourceMultiplier', target: 'wood', value: 0.15, durationSeconds: 120 },
+          ],
+          failureEffects: [{ type: 'soldiers', value: -1 }],
+        }],
+      },
+      {
+        id: 'iron-cache',
+        title: 'Iron Cache',
+        type: 'special',
+        reward: { iron: 12 },
+        options: [{ id: 'claim', label: 'Claim', reward: { iron: 12 } }],
+      },
+    ],
+    eventHistory: [{
+      id: 'old-event',
+      title: 'Old Event',
+      type: 'threat',
+      selectedOptionId: 'fight',
+      options: [{ id: 'fight', reward: { food: 10 } }],
+    }],
+  };
+
+  const view = UIStatePresenter.buildEventViewState(state, { nowMs });
+  const direct = EventPresenter.buildEventViewState(state, { nowMs });
+  const modal = UIStatePresenter.buildEventModalViewState(state.eventQueue[0], { nowMs });
+
+  assert.deepEqual(view, direct);
+  assert.deepEqual(modal, EventPresenter.buildEventModalViewState(state.eventQueue[0], { nowMs }));
+  assert.equal(typeof UIStatePresenter.buildEventViewState, 'function');
+  assert.equal(view.badge.text, '2');
+  assert.equal(view.pending.cards[0].id, 'forest-whisper');
+  assert.equal(view.pending.cards[0].iconAsset, 'assets/art/icon-event-cutout.webp');
+  assert.equal(modal.options[0].rows.length, 4);
+  assert.equal(modal.claimButton.optionId, 'listen');
+  assert.deepEqual(UIStatePresenter.buildEventResourcePart('metal', 12), { type: 'resource', resource: 'iron', text: '+12' });
+});
+
 test('UIStatePresenter delegates home resource and planning view state while preserving facade contracts', () => {
   const state = {
     currentEra: 2,
@@ -299,6 +353,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'TechPresenter.js',
     'HomePresenter.js',
     'BuildingPresenter.js',
+    'EventPresenter.js',
     'FamousPersonPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
