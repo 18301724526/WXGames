@@ -12,6 +12,7 @@ const createTerritoryCombatTargets = require('../services/territory/TerritoryCom
 const createTerritoryConquestMissions = require('../services/territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
 const createTerritoryNaming = require('../services/territory/TerritoryNaming');
+const createTerritoryScoutAreas = require('../services/territory/TerritoryScoutAreas');
 const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 const createTerritoryScoutResults = require('../services/territory/TerritoryScoutResults');
@@ -37,6 +38,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryInitialState.js',
     'TerritoryMilitaryMissions.js',
     'TerritoryNaming.js',
+    'TerritoryScoutAreas.js',
     'TerritoryScoutPlanner.js',
     'TerritoryScoutRecords.js',
     'TerritoryScoutResults.js',
@@ -221,6 +223,86 @@ test('territory scout records module owns report and area normalization contract
     { q: 2, r: 1, tileId: 'tile_2_1' },
     { q: 2, r: 2, tileId: 'tile_2_2' },
   ]);
+});
+
+test('territory scout areas module owns route reveal and existing site contracts', () => {
+  const trails = [];
+  const revealedTargets = [];
+  const Areas = createTerritoryScoutAreas({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      buildScoutRoute: ({ q, r }, direction, actionPoints, options) => Array.from({ length: actionPoints }, (_, index) => ({
+        q: direction === 'e' ? q + options.startDistance + index : q,
+        r,
+        step: index + 1,
+      })),
+      ensureWorldMap: () => ({ seed: 'seed' }),
+      getScoutRevealArea: (_seed, route) => route.flatMap((step) => [
+        { q: step.q, r: step.r, step: step.step, kind: 'main' },
+        { q: step.q, r: step.r + 1, step: step.step, kind: 'branch' },
+      ]),
+      revealScoutArea: (_gameState, targets) => {
+        revealedTargets.push(...targets.map((coord) => ({ q: coord.q, r: coord.r })));
+        return targets.map((coord) => ({
+          id: `tile_${coord.q}_${coord.r}`,
+          q: coord.q,
+          r: coord.r,
+          terrain: 'plains',
+        }));
+      },
+      recordScoutTrail: (_gameState, mission, tileIds, completed) => {
+        trails.push({ missionId: mission.id, tileIds: [...tileIds], completed });
+      },
+    },
+  });
+
+  const gameState = {
+    territories: [
+      { id: 'capital', x: 0, y: 0 },
+      { id: 'far-site', x: 3, y: 0 },
+      { id: 'near-site', x: 2, y: 0 },
+    ],
+  };
+  const mission = {
+    id: 'scout-areas',
+    direction: 'e',
+    originX: 0,
+    originY: 0,
+    targetX: 2,
+    targetY: 0,
+    scoutDistance: 2,
+    actionPoints: 2,
+    revealAreaSource: 'directional-route-v1',
+    status: 'ready',
+    revealedTileIds: [],
+  };
+
+  const revealArea = Areas.ensureMissionRevealArea(gameState, mission, new Date('2026-06-06T00:00:00.000Z'));
+  assert.deepEqual(mission.route.map((step) => [step.q, step.r]), [[1, 0], [2, 0]]);
+  assert.deepEqual(revealArea.map((coord) => [coord.q, coord.r, coord.kind]), [
+    [1, 0, 'main'],
+    [1, 1, 'branch'],
+    [2, 0, 'main'],
+    [2, 1, 'branch'],
+  ]);
+  assert.deepEqual(Areas.getScoutResolvedCoordinate(mission), { x: 2, y: 0 });
+  assert.equal(Areas.getExistingScoutAreaSite(gameState, mission).id, 'near-site');
+
+  const revealed = Areas.ensureScoutMissionAreaRevealed(gameState, mission, new Date('2026-06-06T00:01:00.000Z'));
+  assert.equal(revealed.length, 4);
+  assert.equal(mission.route.every((step) => step.revealed), true);
+  assert.deepEqual(mission.revealedTileIds, ['tile_1_0', 'tile_1_1', 'tile_2_0', 'tile_2_1']);
+  assert.deepEqual(revealedTargets, [
+    { q: 1, r: 0 },
+    { q: 1, r: 1 },
+    { q: 2, r: 0 },
+    { q: 2, r: 1 },
+  ]);
+  assert.deepEqual(trails[0], {
+    missionId: 'scout-areas',
+    tileIds: ['tile_1_0', 'tile_1_1', 'tile_2_0', 'tile_2_1'],
+    completed: true,
+  });
 });
 
 test('territory military missions module owns selectors and soldier allocation contracts', () => {
