@@ -13,6 +13,7 @@ const createTerritoryMilitaryMissions = require('../services/territory/Territory
 const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 const createTerritoryScoutResults = require('../services/territory/TerritoryScoutResults');
+const createTerritorySiteMigration = require('../services/territory/TerritorySiteMigration');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const territoryRoot = path.join(serviceRoot, 'territory');
@@ -35,6 +36,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryScoutRecords.js',
     'TerritoryScoutResults.js',
     'TerritoryShared.js',
+    'TerritorySiteMigration.js',
     'TerritoryVisuals.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -526,6 +528,109 @@ test('territory scout results module owns scout outcomes reports and generated s
   assert.equal(created.site.garrison.leader.id, 'leader-1');
   assert.equal(created.report.normalized, true);
   assert.equal(created.report.tileId, 'tile_3_0');
+});
+
+test('territory site migration module owns current-rule retargeting contracts', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const battleTargets = [];
+  const Migration = createTerritorySiteMigration({
+    WorldMapService: {
+      WORLD_MAP_VERSION: 3,
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      ensureWorldMap: (gameState) => {
+        gameState.worldMap = gameState.worldMap || {
+          seed: 'seed',
+          tiles: [
+            { id: 'tile_0_0', q: 0, r: 0, siteId: 'capital' },
+            { id: 'tile_1_0', q: 1, r: 0, siteId: 'old-site' },
+            { id: 'tile_2_0', q: 2, r: 0, siteId: 'other-site' },
+          ],
+        };
+        return gameState.worldMap;
+      },
+      buildScoutRoute: ({ q, r }, direction, actionPoints, options) => {
+        const start = options.startDistance;
+        return Array.from({ length: actionPoints }, (_, index) => ({
+          q: direction === 'e' ? q + start + index : q,
+          r,
+          step: index + 1,
+        }));
+      },
+      getScoutRevealArea: (_seed, route) => route.map((step) => ({
+        q: step.q,
+        r: step.r,
+        step: step.step,
+        kind: 'main',
+      })),
+      canPlaceSiteOnTerrain: (_seed, q) => q !== 1,
+      chooseTerrain: (_seed, q) => (q === 3 ? 'forest' : 'plains'),
+    },
+    getDirectionProgressScore: () => 0.5,
+    getTerrainSiteScore: (terrain) => (terrain === 'forest' ? 6 : 7),
+    normalizeBattleTarget: (target, territory, timestamp) => {
+      battleTargets.push({ target, territory, timestamp });
+      return { normalized: true, target };
+    },
+    normalizeDirection: (direction) => (direction === 'e' ? 'e' : null),
+  });
+
+  const gameState = {
+    scoutState: {
+      areas: [
+        {
+          siteId: 'old-site',
+          direction: 'e',
+          originX: 0,
+          originY: 0,
+          targetX: 2,
+          targetY: 0,
+          scoutedAt: '2026-06-06T00:00:00.000Z',
+        },
+      ],
+    },
+    scoutedCoordinates: [{ x: 1, y: 0, result: 'site' }],
+    territories: [
+      { id: 'capital', x: 0, y: 0 },
+      {
+        id: 'old-site',
+        x: 1,
+        y: 0,
+        type: 'camp',
+        naturalName: '旧据点',
+        discoveredAt: '2026-06-06T00:00:00.000Z',
+        garrison: { id: 'garrison_old' },
+        battleTarget: { site: { id: 'old-site' }, defender: { id: 'old-defender' } },
+      },
+    ],
+  };
+
+  const mission = Migration.buildMigrationMissionForTerritory(gameState, gameState.territories[1], now);
+  assert.equal(mission.direction, 'e');
+  assert.equal(mission.targetX, 2);
+  assert.equal(mission.route.length, TerritoryConstants.SCOUT_ACTION_POINTS);
+  assert.equal(mission.revealedTileIds[0], 'tile_1_0');
+
+  const coords = Migration.getMigrationSearchCoordinates(mission, 2);
+  assert.ok(coords.some((coord) => coord.q === 2 && coord.r === 0));
+  assert.ok(!coords.some((coord) => coord.q === 0 && coord.r === 0));
+
+  const score = Migration.scoreMigratedSiteCandidate(gameState, mission, gameState.territories[1], { q: 3, r: 0, priority: 1 }, [gameState.territories[0]], 'seed');
+  assert.equal(score.q, 3);
+  assert.equal(score.terrain, 'forest');
+  assert.equal(score.searchPriority, 1);
+  assert.ok(score.score > 0);
+
+  assert.equal(Migration.migrateTerritorySitesToCurrentWorldRules(gameState, 2, now), true);
+  const migrated = gameState.territories[1];
+  assert.notEqual(migrated.x, 1);
+  assert.equal(migrated.mapTerrain, 'plains');
+  assert.equal(migrated.garrison.siteId, 'old-site');
+  assert.equal(migrated.battleTarget.normalized, true);
+  assert.equal(battleTargets.length, 1);
+  assert.deepEqual(gameState.scoutedCoordinates, []);
+  assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_0_0').siteId, 'capital');
+  assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, null);
+  assert.equal(Migration.migrateTerritorySitesToCurrentWorldRules(gameState, 3, now), false);
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {
