@@ -4,48 +4,47 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
-const docPath = path.join(repoRoot, 'docs', 'architecture_refactor_plan_2026-06-04.md');
-const doc = fs.readFileSync(docPath, 'utf8');
+const tutorialPlanPath = path.join(repoRoot, 'docs', '完整新手强引导与任务系统实施计划_2026-06-05.md');
+const architecturePlanPath = path.join(repoRoot, 'docs', 'architecture_refactor_plan_2026-06-04.md');
 
-function assertIncludes(text, label) {
+const tutorialPlan = fs.readFileSync(tutorialPlanPath, 'utf8');
+const architecturePlan = fs.readFileSync(architecturePlanPath, 'utf8');
+
+function assertIncludes(doc, text, label) {
   if (!doc.includes(text)) {
-    throw new Error(`Missing required refactor-plan text: ${label}`);
+    throw new Error(`Missing required plan text: ${label}`);
   }
 }
 
-function assertMatch(pattern, label) {
+function assertMatch(doc, pattern, label) {
   if (!pattern.test(doc)) {
-    throw new Error(`Missing required refactor-plan pattern: ${label}`);
+    throw new Error(`Missing required plan pattern: ${label}`);
   }
 }
 
-assertIncludes('每一步必须先写或更新回归测试，再提交代码。', 'test-before-commit rule');
-assertIncludes('每一步提交后必须推送到服务器远端 `origin`。', 'push-to-origin rule');
-assertIncludes('每一步必须更新本文档的提交留档', 'commit archive rule');
-assertIncludes('## 提交留档', 'archive section');
-assertIncludes('### Step 0 留档', 'current step archive');
+assertIncludes(
+  tutorialPlan,
+  '必须执行真实浏览器测试、单元测试、代码检查，并推送 GitHub `origin` 与服务器私服 Git `private`',
+  'current double-remote quality gate',
+);
+assertIncludes(tutorialPlan, '## 原始需求记录', 'original request archive');
+assertIncludes(tutorialPlan, '## P0 任务', 'P0 section');
+assertIncludes(tutorialPlan, '## P1 任务', 'P1 section');
+assertIncludes(tutorialPlan, '## P2 任务', 'P2 section');
+assertIncludes(tutorialPlan, '### P1.7 科技系统收尾讲解并交还控制权（已完成）', 'final tech tutorial completed');
+assertIncludes(tutorialPlan, '### P2.1 全系统覆盖引导补齐（已完成）', 'all-system tutorial coverage completed');
+assertIncludes(tutorialPlan, '### P2.2 策划友好的任务导表软件（已完成）', 'planner-friendly task uploader completed');
+assertMatch(tutorialPlan, /P2\.3\.\d+ 完成/, 'P2.3 refactor progress entries');
 
-for (let step = 0; step <= 7; step += 1) {
-  assertIncludes(`### Step ${step}`, `step ${step} section`);
-}
+assertIncludes(
+  architecturePlan,
+  '推送到 GitHub `origin/main` 与服务器私服 Git `private/main`',
+  'architecture plan current double-remote rule',
+);
+assertIncludes(
+  architecturePlan,
+  '当前执行规则以 GitHub `origin` + 服务器私服 `private` 的双远端要求为准',
+  'legacy remote naming note',
+);
 
-const routeSection = doc.split('\n## 测试策略')[0].split('\n## 重构路线')[1] || '';
-const stepSections = routeSection.split(/\n### Step \d+：/).slice(1);
-if (stepSections.length < 8) {
-  throw new Error(`Expected at least 8 step sections, found ${stepSections.length}`);
-}
-
-stepSections.forEach((section, index) => {
-  assertMatchInSection(section, /回归测试：/, index, 'regression test heading');
-  assertMatchInSection(section, /提交要求：/, index, 'commit requirement heading');
-  assertMatchInSection(section, /推送到服务器远端 `origin\/main`/, index, 'push target');
-  assertMatchInSection(section, /留档要求：/, index, 'archive requirement heading');
-});
-
-function assertMatchInSection(section, pattern, step, label) {
-  if (!pattern.test(section)) {
-    throw new Error(`Step ${step} missing ${label}`);
-  }
-}
-
-console.log('Refactor plan document guard passed.');
+console.log('Refactor and tutorial plan document guards passed.');
