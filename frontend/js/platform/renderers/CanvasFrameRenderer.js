@@ -61,6 +61,7 @@
     renderMapHomeMilitaryFrame(state = {}, topBarBottom = 84, activeTab = 'military', options = {}) {
       if (options.skipWorldMapLayer) this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
       else this.renderMapHomeWorldView(state, topBarBottom, options);
+      this.renderMapHomeExplorerHud(state, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
       this.renderMapHomeOverlays(state, options);
       this.renderFrameFeedback(state, options, {
@@ -155,6 +156,7 @@
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
+      this.renderCanvasDebugResetButton(options);
     }
 
     renderMapHomeOverlays(state = {}, options = {}) {
@@ -181,6 +183,103 @@
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
+    }
+
+    renderMapHomeExplorerHud(state = {}, topBarBottom = 84, options = {}) {
+      const layout = this.getWorldMapLayerLayout?.(state, topBarBottom, { ...options, isMapHome: true }) || null;
+      const map = layout?.map || { x: 0, y: topBarBottom, width: this.width, height: Math.max(160, this.height - topBarBottom - 64) };
+      const explorer = state.worldExplorerState || {};
+      const active = explorer.activeMission || null;
+      const ready = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
+      const panelWidth = Math.min(184, Math.max(132, map.width - 24));
+      const panelHeight = active || ready ? 48 : 34;
+      const x = Math.max(8, map.x + 12);
+      const y = Math.max(map.y + 10, topBarBottom + 10);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(19, 18, 14, 0.78)',
+        stroke: 'rgba(255, 226, 177, 0.18)',
+        radius: 8,
+        inset: 'rgba(255, 231, 184, 0.06)',
+      });
+      if (ready) {
+        this.drawText('探索队已返回', x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
+        const buttonW = 58;
+        const buttonH = 24;
+        const buttonX = x + panelWidth - buttonW - 8;
+        const buttonY = y + 12;
+        this.drawButton(buttonX, buttonY, buttonW, buttonH, '归队', { size: 11, radius: 7 });
+        this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, { type: 'claimExplore', missionId: ready.id });
+      } else if (active) {
+        const route = Array.isArray(active.route) ? active.route : [];
+        const done = route.filter((step) => step.revealed).length;
+        const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
+        const remainingSeconds = this.getExplorerMissionRemainingSeconds(active);
+        this.drawText(`探索中 ${done}/${total}`, x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
+        this.drawText(`${remainingSeconds}s`, x + panelWidth - 12, y + 14, {
+          size: 11,
+          color: '#f0b45b',
+          align: 'right',
+        });
+        const barX = x + 12;
+        const barY = y + 32;
+        const barW = panelWidth - 24;
+        const progress = Math.max(0, Math.min(1, done / total));
+        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.14)';
+        this.ctx.fillRect(barX, barY, barW, 4);
+        this.ctx.fillStyle = '#74d3a0';
+        this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
+      } else {
+        this.drawText('探索队', x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
+        const buttonW = 64;
+        const buttonH = 24;
+        const buttonX = x + panelWidth - buttonW - 8;
+        const buttonY = y + 5;
+        this.drawButton(buttonX, buttonY, buttonW, buttonH, '探索', { size: 11, radius: 7 });
+        this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
+          type: 'startExplore',
+          mode: 'random',
+          routeLength: explorer.randomRouteLength || 8,
+          formationSlot: 1,
+          cityId: state.activeCityId || 'capital',
+        });
+      }
+      const resetW = 76;
+      const resetH = 28;
+      const resetX = Math.max(8, map.x + map.width - resetW - 12);
+      const resetY = Math.max(map.y + 10, topBarBottom + 10);
+      this.drawButton(resetX, resetY, resetW, resetH, '回到本城', { size: 11, radius: 8 });
+      this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
+      return true;
+    }
+
+    getExplorerMissionRemainingSeconds(mission = {}, nowMs = this.getNow?.() || Date.now()) {
+      if (!mission || mission.status === 'ready') return 0;
+      const nextStepAtMs = new Date(mission.nextStepAt).getTime();
+      if (Number.isFinite(nextStepAtMs)) {
+        return Math.max(0, Math.ceil((nextStepAtMs - Number(nowMs)) / 1000));
+      }
+      const completesAtMs = new Date(mission.completesAt).getTime();
+      if (Number.isFinite(completesAtMs)) {
+        return Math.max(0, Math.ceil((completesAtMs - Number(nowMs)) / 1000));
+      }
+      return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
+    }
+
+    renderCanvasDebugResetButton(options = {}) {
+      if (options.debugResetAccount === false) return false;
+      const width = 76;
+      const height = 28;
+      const margin = 8;
+      const dockTop = this.height - 60 - (Number(this.bottomSafeArea) || 0);
+      const x = Math.max(margin, this.width - width - margin);
+      const y = Math.max(92, Math.min(dockTop - height - margin, this.height - height - margin));
+      this.drawButton(x, y, width, height, '重置账号', {
+        size: 11,
+        radius: 8,
+        active: false,
+      });
+      this.addHitTarget({ x, y, width, height }, { type: 'resetGame', source: 'debugResetAccount' });
+      return true;
     }
   }
 

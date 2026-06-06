@@ -494,7 +494,8 @@
       });
       const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
         || this.territoryController?.uiState?.tileMapWaterAnimated);
-      if (resolvedActiveTab === 'military' && waterAnimated) this.startTileMapWaterTimer();
+      const explorerAnimated = Boolean(this.state?.worldExplorerState?.activeMission);
+      if (resolvedActiveTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
     }
@@ -513,6 +514,11 @@
             return;
           }
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+          if (this.state?.worldExplorerState?.activeMission) {
+            this.renderRuntimeWorldMap({ force: true });
+            this.renderAnimationFrame('military');
+            return;
+          }
           if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {
             this.renderRuntimeWorldMap({
               reuseCachedWorldTileView: true,
@@ -529,6 +535,11 @@
             return;
           }
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+          if (this.state?.worldExplorerState?.activeMission) {
+            this.renderRuntimeWorldMap({ force: true });
+            this.renderAnimationFrame('military');
+            return;
+          }
           if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {
             this.renderRuntimeWorldMap({
               reuseCachedWorldTileView: true,

@@ -525,3 +525,54 @@ test('CanvasGameShell blocks all drags while a guided highlight is active', () =
 
   assert.deepEqual(calls, []);
 });
+
+test('CanvasGameShell refreshes both map layer and HUD while exploration is active', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    runtime: {
+      setInterval(callback, ms) {
+        calls.push(['setInterval', ms]);
+        intervalCallback = callback;
+        return 1;
+      },
+      clearInterval(timer) {
+        calls.push(['clearInterval', timer]);
+      },
+    },
+    renderer: {},
+    worldMapRenderer: {},
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      worldExplorerState: {
+        activeMission: { id: 'explore-1', status: 'active' },
+      },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.getActiveTab = () => 'military';
+  shell.isWorldMapDragging = () => false;
+  shell.isWorldMapDragCoolingDown = () => false;
+  shell.renderWorldMapLayerFrame = (options) => {
+    calls.push(['renderWorldMapLayerFrame', options]);
+    return true;
+  };
+  shell.renderAnimationFrame = () => {
+    calls.push(['renderAnimationFrame']);
+    return true;
+  };
+
+  assert.equal(shell.startTileMapWaterTimer(), true);
+  intervalCallback();
+
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+});

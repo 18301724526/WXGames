@@ -24,6 +24,18 @@ function createHost(overrides = {}) {
     beginFrame(options) { calls.push(['beginFrame', options]); },
     clear() { calls.push(['clear']); },
     collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
+    getWorldMapLayerLayout() {
+      calls.push(['getWorldMapLayerLayout']);
+      return { map: { x: 0, y: 96, width: 390, height: 684 } };
+    },
+    addHitTarget(...args) { calls.push(['addHitTarget', args]); },
+    drawButton(...args) { calls.push(['drawButton', args]); },
+    drawPanel(...args) { calls.push(['drawPanel', args]); },
+    drawText(...args) { calls.push(['drawText', args]); },
+    ctx: {
+      fillRect(...args) { calls.push(['fillRect', args]); },
+      fillStyle: '',
+    },
     endFrame(options) { calls.push(['endFrame', options]); },
     getTransitionFrame(transition) {
       calls.push(['getTransitionFrame', transition]);
@@ -123,6 +135,9 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
 
   const names = callNames(host);
   assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
+  assert.equal(names.includes('getWorldMapLayerLayout'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'startExplore'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
   assert.equal(names.includes('renderMapCommandPanel'), true);
   assert.equal(names.includes('renderSubcityListPanel'), true);
   assert.equal(names.includes('renderSettingsPanel'), true);
@@ -185,6 +200,58 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   assert.equal(names.includes('renderAdvisorPanel'), true);
   assert.equal(names.includes('renderWorldSiteModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
+});
+
+test('CanvasFrameRenderer renders explorer countdown and claim controls on the UI frame', () => {
+  const readyHost = createHost();
+  const renderer = new CanvasFrameRenderer({ host: readyHost });
+  renderer.renderMapHomeExplorerHud({
+    worldExplorerState: { readyMissions: [{ id: 'mission-1' }] },
+  }, 96, {});
+
+  assert.equal(readyHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'claimExplore' && call[1][1].missionId === 'mission-1'), true);
+
+  const activeHost = createHost({
+    getNow() {
+      return new Date('2026-06-06T00:00:04.250Z').getTime();
+    },
+  });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({
+    worldExplorerState: {
+      activeMission: {
+        status: 'active',
+        nextStepAt: '2026-06-06T00:00:10.000Z',
+        route: [{ revealed: false }],
+      },
+    },
+  }, 96, {});
+
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'fillRect'), true);
+});
+
+test('CanvasFrameRenderer renders debug reset as canvas hit target above tutorial shields', () => {
+  const host = createHost({
+    renderTutorialHighlight(...args) {
+      this.calls.push(['renderTutorialHighlight', args]);
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'blockCanvasModal' });
+    },
+  });
+  const renderer = new CanvasFrameRenderer({ host });
+
+  renderer.render({ resources: {} }, {
+    activeTab: 'resources',
+    tutorialHighlight: {
+      rect: { left: 12, top: 160, width: 80, height: 40 },
+      message: 'guide',
+    },
+  });
+
+  const resetIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetGame');
+  const blockIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'blockCanvasModal');
+  assert.equal(resetIndex > -1, true);
+  assert.equal(blockIndex > -1, true);
+  assert.equal(resetIndex > blockIndex, true);
 });
 
 test('CanvasFrameRenderer prioritizes tutorial spine advisor over generic advisor panels', () => {

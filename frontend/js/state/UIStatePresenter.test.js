@@ -153,6 +153,23 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
         plannedTiles: [
           { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', visibility: 'scouted' },
         ],
+        plannedSites: [{
+          tileId: 'tile_1_0',
+          q: 1,
+          r: 0,
+          siteId: 'site_1_0',
+          materialized: true,
+          site: {
+            id: 'site_1_0',
+            x: 1,
+            y: 0,
+            naturalName: 'Empty City',
+            type: 'town',
+            owner: 'neutral',
+            status: 'discovered',
+            art: 'assets/art/world-site-town-cutout.png',
+          },
+        }],
         revealedTileIds: ['tile_1_0'],
       }],
       activeMission: {
@@ -180,6 +197,8 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(view.pan.x, 12.5);
   assert.equal(view.pan.y, -4);
   assert.equal(view.sites[0].id, 'capital');
+  assert.equal(view.sites.some((site) => site.id === 'site_1_0' && site.owner === 'neutral'), true);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_0' && tile.site?.id === 'site_1_0'), true);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_0_1').templateAssets.length, 2);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_-1_0').mountainNeighbors, 1);
   assert.equal(view.activeScouts.length, 2);
@@ -191,6 +210,7 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.deepEqual(UIStatePresenter.normalizeWorldTile({ q: 3, r: -1, terrain: 'forest' }).feature.key, 'treeCluster');
   assert.deepEqual(UIStatePresenter.getWorldExplorerMissions(options.worldExplorerState).map((mission) => mission.id), ['explore-1']);
   assert.equal(UIStatePresenter.getWorldExplorerPlannedTiles(options.worldExplorerState).length, 2);
+  assert.equal(UIStatePresenter.getWorldExplorerPlannedSites(options.worldExplorerState).length, 1);
   assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState));
 });
 

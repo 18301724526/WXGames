@@ -143,8 +143,9 @@
 
     getMapDataSignature(state = this.getState()) {
       const territoryState = state?.territoryState || {};
+      const worldExplorerState = state?.worldExplorerState || {};
       if (typeof this.presenter?.getWorldTileMapSignature === 'function') {
-        return this.presenter.getWorldTileMapSignature(territoryState);
+        return this.presenter.getWorldTileMapSignature(territoryState, worldExplorerState);
       }
       const worldMap = territoryState.worldMap || {};
       const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
@@ -182,6 +183,17 @@
           revealArea: mission.revealArea || [],
           revealedTileIds: mission.revealedTileIds || [],
           actionPointsRemaining: mission.actionPointsRemaining,
+        })),
+        explorerMissions: [
+          worldExplorerState.activeMission,
+          ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+        ].filter(Boolean).map((mission) => ({
+          id: mission.id,
+          status: mission.status,
+          route: mission.route || [],
+          plannedTiles: mission.plannedTiles || [],
+          plannedSites: mission.plannedSites || [],
+          revealedTileIds: mission.revealedTileIds || [],
         })),
       });
     }

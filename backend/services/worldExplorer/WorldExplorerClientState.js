@@ -36,6 +36,7 @@ function getClientMission(mission, now = new Date()) {
       siteId: site.siteId,
       materialized: Boolean(site.materialized),
       revealedAt: site.revealedAt || null,
+      site: clone(site.site || null),
     })),
     formation: clone(mission.formation || {}),
     position: lastRevealed

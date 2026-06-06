@@ -1837,11 +1837,6 @@
       return result === undefined ? false : result;
     }
 
-    renderMapHomeExplorerHud(...args) {
-      const result = this.delegateWorldMapLayerRenderer('renderMapHomeExplorerHud', args);
-      return result === undefined ? false : result;
-    }
-
     renderMapHomeEmptyWorld(...args) {
       const result = this.delegateWorldMapLayerRenderer('renderMapHomeEmptyWorld', args);
       return result === undefined ? false : result;
@@ -1973,6 +1968,16 @@
     renderMapHomeOverlays(state = {}, options = {}) {
       const result = this.delegateFrameRenderer('renderMapHomeOverlays', arguments);
       return result === undefined ? undefined : result;
+    }
+
+    renderMapHomeExplorerHud(...args) {
+      const result = this.delegateFrameRenderer('renderMapHomeExplorerHud', args);
+      return result === undefined ? false : result;
+    }
+
+    renderCanvasDebugResetButton(...args) {
+      const result = this.delegateFrameRenderer('renderCanvasDebugResetButton', args);
+      return result === undefined ? false : result;
     }
   }
 

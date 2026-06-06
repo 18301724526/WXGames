@@ -139,6 +139,56 @@ test('WorldMapCanvasRenderer keeps world map hit target contract in hit-target-o
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital'), true);
 });
 
+test('WorldMapCanvasRenderer renders active explorer units as map-layer animation', () => {
+  const calls = [];
+  const baseCtx = createHost().ctx;
+  const host = createHost({
+    getNow() {
+      return new Date('2026-06-06T00:00:05.000Z').getTime();
+    },
+    getAsset(path) {
+      calls.push(['getAsset', path]);
+      return { width: 80, height: 120, naturalWidth: 80, naturalHeight: 120 };
+    },
+    ctx: {
+      ...baseCtx,
+      drawImage(...args) { calls.push(['drawImage', args]); },
+      save() {},
+      restore() {},
+      beginPath() {},
+      ellipse() {},
+      fill() {},
+      fillStyle: '',
+    },
+  });
+  const renderer = new WorldMapCanvasRenderer({ host });
+  const tileMapView = {
+    ...createTileMapView(),
+    activeScouts: [{
+      id: 'explore-1',
+      kind: 'worldExplore',
+      status: 'active',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, tileId: 'tile_1_0', revealed: false },
+        { q: 2, r: 0, tileId: 'tile_2_0', revealed: false },
+      ],
+    }],
+  };
+
+  assert.equal(renderer.renderWorldScoutUnits(tileMapView, {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }), true);
+  assert.equal(calls.some((call) => call[0] === 'getAsset' && String(call[1]).includes('assets/art/units/spearman/move/')), true);
+  assert.equal(calls.some((call) => call[0] === 'drawImage'), true);
+});
+
 test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is split out', () => {
   const host = createHost({
     presenter: {},

@@ -2308,6 +2308,11 @@
           return;
         }
         if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+        if (this.lastGame?.state?.worldExplorerState?.activeMission) {
+          if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true });
+          this.renderAnimationFrame();
+          return;
+        }
         if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap(this.lastGame?.state, {})) {
           this.renderWorldMapLayerFrame({
             reuseCachedWorldTileView: true,

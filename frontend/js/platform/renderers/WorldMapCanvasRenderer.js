@@ -23,6 +23,30 @@
     return null;
   })();
 
+  const sharedUnitSpriteManifest = (() => {
+    if (global.UnitSpriteManifest) return global.UnitSpriteManifest;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UnitSpriteManifest');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const sharedTutorialIntroUnitRenderer = (() => {
+    if (global.TutorialIntroUnitRenderer) return global.TutorialIntroUnitRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TutorialIntroUnitRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -64,6 +88,14 @@
 
     static getTileMapGeometry() {
       return sharedTileMapGeometry || null;
+    }
+
+    static getUnitSpriteManifest() {
+      return sharedUnitSpriteManifest || null;
+    }
+
+    static getTutorialIntroUnitRenderer() {
+      return sharedTutorialIntroUnitRenderer || null;
     }
 
     render(tileMapView = {}, x = 0, y = 0, width = 0, height = 0, uiState = {}, options = {}) {
@@ -1676,6 +1708,72 @@
       });
     }
 
+    getWorldScoutUnitRoutePoints(mission = {}, viewport = {}, geometry = {}) {
+      const route = Array.isArray(mission.route) ? mission.route : [];
+      const origin = mission.origin && typeof mission.origin === 'object' ? mission.origin : null;
+      const path = origin ? [origin, ...route] : route;
+      return path.map((step) => this.getWorldTileScreenCenter(step, viewport, geometry));
+    }
+
+    getWorldScoutUnitProgress(mission = {}) {
+      if (!mission || mission.status !== 'active') return null;
+      const route = Array.isArray(mission.route) ? mission.route : [];
+      if (!route.length) return null;
+      const startedAtMs = new Date(mission.startedAt).getTime();
+      if (!Number.isFinite(startedAtMs)) return null;
+      const nowMs = this.getNow?.() || Date.now();
+      const stepDurationMs = Math.max(1000, Number(mission.stepDurationSeconds) * 1000 || 10000);
+      const totalDurationMs = Math.max(stepDurationMs, stepDurationMs * route.length);
+      const elapsed = Math.max(0, Number(nowMs) - startedAtMs);
+      return Math.max(0, Math.min(1, elapsed / totalDurationMs));
+    }
+
+    getWorldScoutUnitPoint(mission = {}, viewport = {}, geometry = {}) {
+      const progress = this.getWorldScoutUnitProgress(mission);
+      if (progress === null) return null;
+      const points = this.getWorldScoutUnitRoutePoints(mission, viewport, geometry);
+      if (points.length < 2) return null;
+      const scaled = progress * (points.length - 1);
+      const index = Math.min(points.length - 2, Math.floor(scaled));
+      const localT = Math.max(0, Math.min(1, scaled - index));
+      const from = points[index];
+      const to = points[index + 1];
+      return {
+        x: from.x + (to.x - from.x) * localT,
+        y: from.y + (to.y - from.y) * localT,
+        progress,
+      };
+    }
+
+    getWorldScoutUnitFramePath(mission = {}) {
+      const manifest = this.constructor.getUnitSpriteManifest();
+      if (!manifest?.getFramePaths) return '';
+      const frames = manifest.getFramePaths('spearman', 'move');
+      if (!frames.length) return '';
+      const frameMs = manifest.getFrameDurationMs?.('spearman', 'move') || 80;
+      const startedAtMs = new Date(mission.startedAt).getTime();
+      const nowMs = this.getNow?.() || Date.now();
+      const elapsed = Number.isFinite(startedAtMs) ? Math.max(0, Number(nowMs) - startedAtMs) : Number(nowMs);
+      return frames[Math.floor(elapsed / Math.max(1, frameMs)) % frames.length] || frames[0];
+    }
+
+    renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
+      const unitRenderer = this.constructor.getTutorialIntroUnitRenderer();
+      if (!unitRenderer?.renderUnit) return false;
+      const geometry = tileMapView.geometry || {};
+      let rendered = false;
+      (tileMapView.activeScouts || []).forEach((mission) => {
+        if (mission.kind !== 'worldExplore' || mission.status !== 'active') return;
+        const point = this.getWorldScoutUnitPoint(mission, viewport, geometry);
+        if (!point) return;
+        const scale = Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
+        const framePath = this.getWorldScoutUnitFramePath(mission);
+        unitRenderer.renderUnit(this, point.x, point.y + 6 * scale, scale, framePath);
+        rendered = true;
+      });
+      return rendered;
+    }
+
     renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}, options = {}) {
       const geometry = tileMapView.geometry || {};
       const scaleBasisWidth = Number(options.scaleBasisWidth) || width;
@@ -1751,6 +1849,7 @@
           });
         }
         this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
+        this.renderWorldScoutUnits(tileMapView, viewport);
         this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
 
         this.ctx.restore();

@@ -12,6 +12,13 @@
 
 ## 正确架构
 
+0. Canvas-only UI 是死规矩
+   - 游戏业务 UI 禁止迁回 DOM，禁止新增 DOM 按钮、DOM 面板、DOM HUD 或 DOM 浮层。
+   - 任务、引导、建筑、人口、事件、军事、科技、文明、名人、弹窗、HUD、调试按钮等游戏内可见业务界面，都只能由 Canvas 绘制和 Canvas hitTargets 承载。
+   - 允许使用多 canvas 分层：世界地图 canvas、HUD/UI canvas、教程/Spine/对话 canvas。
+   - 浏览器 H5 宿主层只能创建 canvas、挂载 canvas、绑定输入事件；不能用 DOM overlay、DOM 节点或 HTML 字符串替代任何游戏 UI。
+   - 地图层和 UI 层的分离只能在 canvas runtime 内完成，不能以 DOM overlay 替代。
+
 1. `WorldMapRuntime` 常驻
    - 持有 `camera.x/y`、拖动状态、地图命中区域、地图渲染调度。
    - 拖动时只更新 camera，不派发全局 `worldMapDrag` action。

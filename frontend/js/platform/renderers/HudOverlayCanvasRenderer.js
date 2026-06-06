@@ -53,6 +53,9 @@
       if (options.isMapHome && activeTab === 'military' && options.skipWorldMapLayer) {
         this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
       }
+      if (options.isMapHome && activeTab === 'military') {
+        this.renderMapHomeExplorerHud?.(state, topBarBottom, options);
+      }
       this.renderTabs(activeTab, state, options);
       if (options.isMapHome && activeTab === 'military') {
         this.renderMapHomeOverlays(state, options);
@@ -61,6 +64,7 @@
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);
         this.renderNetworkOverlay(options.network || null);
+        this.renderCanvasDebugResetButton?.(options);
         this.endFrame(options);
         return;
       }
@@ -124,6 +128,7 @@
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
+      this.renderCanvasDebugResetButton?.(options);
       this.endFrame(options);
     }
   }

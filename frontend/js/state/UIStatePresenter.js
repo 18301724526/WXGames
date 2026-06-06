@@ -839,6 +839,10 @@
       return WorldTileMapPresenter.getWorldExplorerPlannedTiles(...args);
     }
 
+    static getWorldExplorerPlannedSites(...args) {
+      return WorldTileMapPresenter.getWorldExplorerPlannedSites(...args);
+    }
+
     static buildWorldTileMapViewState(...args) {
       return WorldTileMapPresenter.buildWorldTileMapViewState(...args);
     }

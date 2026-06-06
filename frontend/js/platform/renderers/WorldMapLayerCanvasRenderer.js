@@ -126,11 +126,9 @@
             ...options,
             isMapHome: true,
           });
-          this.renderMapHomeExplorerHud(state, layout, topBarBottom);
           return true;
         }
         this.renderMapHomeEmptyWorld(layout, topBarBottom, options);
-        this.renderMapHomeExplorerHud(state, layout, topBarBottom);
         return true;
       }
       if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
@@ -149,13 +147,6 @@
         originX: offsetX + visibleWidth * 0.5,
         originY: offsetY + visibleMapY + visibleMapH * 0.42,
       });
-      const resetW = 76;
-      const resetH = 28;
-      const resetX = Math.max(8, layout.map.x + layout.map.width - resetW - 12);
-      const resetY = Math.max(layout.map.y + 10, topBarBottom + 10);
-      this.drawButton(resetX, resetY, resetW, resetH, '\u56de\u5230\u672c\u57ce', { size: 11, radius: 8 });
-      this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
-      this.renderMapHomeExplorerHud(state, layout, topBarBottom);
       return true;
     }
 
@@ -168,10 +159,7 @@
         ...options,
         worldExplorerState: state.worldExplorerState || {},
       });
-      if (!tileMapView?.tiles?.length) {
-        this.renderMapHomeExplorerHud(state, layout, topBarBottom);
-        return true;
-      }
+      if (!tileMapView?.tiles?.length) return true;
       const offsetX = Number(this.viewportOffsetX) || 0;
       const offsetY = Number(this.viewportOffsetY) || 0;
       const visibleWidth = Number(this.viewportWidth) || Math.max(1, this.width - offsetX * 2);
@@ -197,69 +185,6 @@
       };
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      this.renderMapHomeExplorerHud(state, layout, topBarBottom);
-      return true;
-    }
-
-    renderMapHomeExplorerHud(state = {}, layout = {}, topBarBottom = 84) {
-      const explorer = state.worldExplorerState || {};
-      const active = explorer.activeMission || null;
-      const ready = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
-      const map = layout.map || { x: 0, y: topBarBottom, width: this.width };
-      const width = Math.min(184, Math.max(132, map.width - 24));
-      const height = active || ready ? 48 : 34;
-      const x = Math.max(8, map.x + 12);
-      const y = Math.max(map.y + 10, topBarBottom + 10);
-      this.drawPanel(x, y, width, height, {
-        fill: 'rgba(19, 18, 14, 0.78)',
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.06)',
-      });
-      if (ready) {
-        this.drawText('\u63a2\u7d22\u961f\u5df2\u8fd4\u56de', x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
-        const buttonW = 58;
-        const buttonH = 24;
-        const buttonX = x + width - buttonW - 8;
-        const buttonY = y + 12;
-        this.drawButton(buttonX, buttonY, buttonW, buttonH, '\u5f52\u961f', { size: 11, radius: 7 });
-        this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, { type: 'claimExplore', missionId: ready.id });
-        return true;
-      }
-      if (active) {
-        const route = Array.isArray(active.route) ? active.route : [];
-        const done = route.filter((step) => step.revealed).length;
-        const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
-        const remainingSeconds = this.getExplorerMissionRemainingSeconds(active);
-        this.drawText(`\u63a2\u7d22\u4e2d ${done}/${total}`, x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
-        this.drawText(`${remainingSeconds}s`, x + width - 12, y + 14, {
-          size: 11,
-          color: '#f0b45b',
-          align: 'right',
-        });
-        const barX = x + 12;
-        const barY = y + 32;
-        const barW = width - 24;
-        const progress = Math.max(0, Math.min(1, done / total));
-        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.14)';
-        this.ctx.fillRect(barX, barY, barW, 4);
-        this.ctx.fillStyle = '#74d3a0';
-        this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
-        return true;
-      }
-      this.drawText('\u63a2\u7d22\u961f', x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
-      const buttonW = 64;
-      const buttonH = 24;
-      const buttonX = x + width - buttonW - 8;
-      const buttonY = y + 5;
-      this.drawButton(buttonX, buttonY, buttonW, buttonH, '\u63a2\u7d22', { size: 11, radius: 7 });
-      this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
-        type: 'startExplore',
-        mode: 'random',
-        routeLength: explorer.randomRouteLength || 8,
-        formationSlot: 1,
-        cityId: state.activeCityId || 'capital',
-      });
       return true;
     }
 

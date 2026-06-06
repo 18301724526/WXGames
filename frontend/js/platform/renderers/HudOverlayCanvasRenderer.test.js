@@ -20,6 +20,7 @@ function createHost(overrides = {}) {
     clear() { calls.push(['clear']); },
     collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
     endFrame(options) { calls.push(['endFrame', options]); },
+    renderMapHomeExplorerHud(...args) { calls.push(['renderMapHomeExplorerHud', args]); },
     renderAdvisorPanel(...args) { calls.push(['renderAdvisorPanel', args]); },
     renderArmyFormationEditor(...args) { calls.push(['renderArmyFormationEditor', args]); },
     renderBattleSceneOverlay(...args) { calls.push(['renderBattleSceneOverlay', args]); },
@@ -42,6 +43,7 @@ function createHost(overrides = {}) {
     renderTalentPolicyPanel(...args) { calls.push(['renderTalentPolicyPanel', args]); },
     renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
     renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
+    renderCanvasDebugResetButton(...args) { calls.push(['renderCanvasDebugResetButton', args]); },
     renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
     renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
     renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
@@ -100,6 +102,7 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
 
   const names = callNames(host);
   assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
+  assert.equal(names.includes('renderMapHomeExplorerHud'), true);
   assert.equal(names.includes('renderMapHomeOverlays'), true);
   assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
@@ -135,7 +138,23 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
   assert.equal(names.includes('renderLogsPanel'), true);
   assert.equal(names.includes('renderTechDetailModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
+  assert.equal(names.includes('renderCanvasDebugResetButton'), true);
   assert.equal(names.at(-1), 'endFrame');
+});
+
+test('HudOverlayCanvasRenderer renders canvas debug reset on map home overlay frames', () => {
+  const host = createHost();
+  const renderer = new HudOverlayCanvasRenderer({ host });
+
+  renderer.renderHudOverlay({ militaryView: 'world' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+  });
+
+  const names = callNames(host);
+  assert.equal(names.includes('renderCanvasDebugResetButton'), true);
+  assert.equal(names.at(-2), 'renderCanvasDebugResetButton');
 });
 
 test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic advisor panel', () => {
