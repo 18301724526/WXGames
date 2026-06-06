@@ -483,6 +483,37 @@ test('TutorialAdvisorDialogueRenderer reuses intro spine portrait and closes fro
   assert.equal(typeof TutorialAdvisorDialogueRenderer.render, 'function');
 });
 
+test('TutorialCanvasRenderer keeps advisor dialogue layer when no intro is active', () => {
+  const host = createHost();
+  const calls = [];
+  const renderer = new TutorialCanvasRenderer({
+    host,
+    advisorRenderer: {
+      renderTutorialIntroAdvisorPortrait() {
+        calls.push(['portrait']);
+        return true;
+      },
+      disposeTutorialAdvisorSpine() {
+        calls.push(['disposeSpine']);
+        return true;
+      },
+    },
+  });
+
+  renderer.renderTutorialAdvisorDialogue(
+    '民居已经建立起来了，族人终于有了稳定的居所。',
+    '谋士',
+    { action: { type: 'closeAdvisor', source: 'houseBuilt' } },
+  );
+  const targetsAfterDialogue = host.hitTargets.length;
+
+  assert.equal(renderer.renderTutorialIntro({}, { tutorialIntro: null, tutorialAdvisorDialogue: { source: 'houseBuilt' } }), false);
+
+  assert.equal(calls.some((call) => call[0] === 'disposeSpine'), false);
+  assert.equal(host.hitTargets.length, targetsAfterDialogue);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeAdvisor'), true);
+});
+
 test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', () => {
   const layout = TutorialIntroDialogueLayout.buildDialogueLayout({
     width: 390,

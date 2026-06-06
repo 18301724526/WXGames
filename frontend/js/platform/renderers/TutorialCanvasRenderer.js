@@ -84,8 +84,10 @@
     renderTutorialIntro(state = {}, options = {}) {
       const intro = options.tutorialIntro || null;
       if (!intro?.active || !this.ctx) {
-        SharedTutorialDialogueLayer?.clear?.(this, true);
-        this.disposeTutorialAdvisorSpine();
+        if (!options.tutorialAdvisorDialogue) {
+          SharedTutorialDialogueLayer?.clear?.(this, true);
+          this.disposeTutorialAdvisorSpine();
+        }
         return false;
       }
       const target = this.resolveTutorialIntroTarget(intro, state, options);
