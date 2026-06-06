@@ -474,7 +474,7 @@
       return this.game?.canvasShell?.getCanvasTarget?.(type, predicate) || null;
     }
 
-    showHighlight(type, predicate, message, allowedAction) {
+    showHighlight(type, predicate, message, allowedAction, options = {}) {
       let target = this.getCanvasTarget(type, predicate);
       if (!target && !this.retryingHighlightAfterRender) {
         this.retryingHighlightAfterRender = true;
@@ -486,7 +486,7 @@
       return this.game?.canvasShell?.showTutorialHighlight?.(
         target,
         message,
-        { allowedAction, source: 'strongTutorial' },
+        { ...options, allowedAction, source: options.source || 'strongTutorial' },
       ) || false;
     }
 
@@ -688,9 +688,6 @@
         host[key] = next;
         changed = true;
       };
-      game.activeTab = 'resources';
-      game.militaryView = 'army';
-      game.mapHomeActive = true;
       if (game.state) {
         setIfChanged(game.state, 'currentTab', 'resources');
         setIfChanged(game.state, 'militaryView', 'army');
@@ -698,7 +695,7 @@
       updateState(game, {
         activeTab: 'resources',
         militaryView: 'army',
-        mapHomeActive: true,
+        mapHomeActive: false,
         showCityManagement: false,
         showTaskCenter: false,
         showFamousPersons: false,
@@ -716,7 +713,7 @@
       game.territoryController?.closeSiteDialog?.({ render: false });
       if (shell) {
         updateState(shell, {
-          mapHomeActive: true,
+          mapHomeActive: false,
           showCityManagement: false,
           showTaskCenter: false,
           showFamousPersons: false,
@@ -733,36 +730,52 @@
         });
         shell.closeWorldSiteHud?.({ render: false });
       }
-      if (changed && !this.renderingResourcesGuide) {
+      if (!this.renderingResourcesGuide) {
         this.renderingResourcesGuide = true;
-        if (typeof game.resolveMapHomeViewState === 'function' && game.state) {
-          const homeView = game.resolveMapHomeViewState(game.state, {
-            requestedTab: 'resources',
-            militaryView: 'army',
-            allowDefaultMapHome: false,
-            forceMapHome: false,
-          });
-          setIfChanged(game, 'mapHomeActive', homeView.isMapHome);
-          setIfChanged(game, 'activeTab', homeView.activeTab);
-          setIfChanged(game, 'militaryView', homeView.militaryView);
-          setIfChanged(game.state, 'currentTab', homeView.activeTab);
-          setIfChanged(game.state, 'militaryView', homeView.militaryView);
+        try {
+          if (typeof game.resolveMapHomeViewState === 'function' && game.state) {
+            const homeView = game.resolveMapHomeViewState(game.state, {
+              requestedTab: 'resources',
+              militaryView: 'army',
+              allowDefaultMapHome: false,
+              forceMapHome: false,
+            });
+            setIfChanged(game, 'mapHomeActive', false);
+            setIfChanged(game, 'activeTab', homeView.activeTab);
+            setIfChanged(game, 'militaryView', homeView.militaryView);
+            setIfChanged(game.state, 'currentTab', homeView.activeTab);
+            setIfChanged(game.state, 'militaryView', homeView.militaryView);
+          }
+          if (shell && typeof shell.renderReadOnly === 'function') {
+            shell.mapHomeActive = false;
+            shell.renderReadOnly(game.state, 'resources', {
+              forceMapHome: false,
+              allowDefaultMapHome: false,
+            });
+          } else {
+            game.renderCanvasSurface?.('resources');
+          }
+          if (!game.renderCanvasSurface && shell?.renderReadOnly) {
+            shell.renderReadOnly(game.state, 'resources', {
+              forceMapHome: false,
+              allowDefaultMapHome: false,
+            });
+          }
+        } finally {
+          this.renderingResourcesGuide = false;
         }
-        if (shell && typeof shell.renderReadOnly === 'function') {
-          shell.mapHomeActive = false;
-          shell.renderReadOnly(game.state, 'resources', {
-            forceMapHome: false,
-            allowDefaultMapHome: false,
-          });
-        } else {
-          game.renderCanvasSurface?.('resources');
-        }
-        if (!game.renderCanvasSurface && shell?.renderReadOnly) {
-          shell.renderReadOnly(game.state, 'resources');
-        }
-        this.renderingResourcesGuide = false;
       }
       return true;
+    }
+
+    getResourcesGuideHighlightOptions() {
+      return {
+        renderActiveTab: 'resources',
+        renderOptions: {
+          forceMapHome: false,
+          allowDefaultMapHome: false,
+        },
+      };
     }
 
     isTalentPolicyOpen() {
@@ -1124,6 +1137,7 @@
             (action) => !action.disabled,
             '先打开方针，看看文明会怎样自动安排人才。',
             { type: 'openTalentPolicy' },
+            this.getResourcesGuideHighlightOptions(),
           );
         }
         if (step === TUTORIAL_STEPS.talentPolicyOpened) {
@@ -1134,6 +1148,7 @@
               (action) => !action.disabled,
               '打开方针面板，确认一套适合当前阶段的人才安排。',
               { type: 'openTalentPolicy' },
+              this.getResourcesGuideHighlightOptions(),
             );
           }
           return this.showHighlight(
@@ -1150,7 +1165,7 @@
             return this.game?.canvasShell?.showTutorialHighlight?.(
               picked.target,
               '现在手动调整一次人才分配，之后你就能按城市需要微调岗位。',
-              { allowedAction: picked.action, source: 'strongTutorial' },
+              { ...this.getResourcesGuideHighlightOptions(), allowedAction: picked.action, source: 'strongTutorial' },
             ) || false;
           }
           return false;

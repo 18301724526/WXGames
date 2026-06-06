@@ -299,6 +299,41 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
   assert.deepEqual(target.action, { type: 'closeFamousPersons' });
 });
 
+test('CanvasGameShell re-renders highlighted resource guides outside map home', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      hitTargets: [],
+    },
+  });
+  shell.lastGame = { state: { currentTab: 'resources', militaryView: 'army' } };
+  shell.renderReadOnly = (state, activeTab, options) => {
+    calls.push(['renderReadOnly', activeTab, options]);
+    return true;
+  };
+  shell.renderActive = () => {
+    calls.push(['renderActive']);
+    return true;
+  };
+
+  assert.equal(shell.showTutorialHighlight(
+    { x: 24, y: 96, width: 80, height: 32 },
+    'open policy',
+    {
+      allowedAction: { type: 'openTalentPolicy' },
+      renderActiveTab: 'resources',
+      renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
+    },
+  ), true);
+
+  assert.deepEqual(calls, [
+    ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
+  ]);
+  assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
+});
+
 test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {
   const calls = [];
   const event = {
@@ -413,6 +448,46 @@ test('CanvasGameShell lets reward reveal close above tutorial highlight', () => 
   assert.equal(shell.handleTap({ x: 120, y: 420 }, {}), true);
   assert.deepEqual(calls, [
     ['handle', 'closeRewardReveal'],
+  ]);
+});
+
+test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'resetGame', source: 'debugResetAccount' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.source]);
+        return true;
+      },
+    },
+  });
+  shell.showTutorialHighlight(
+    { x: 100, y: 100, width: 100, height: 80 },
+    'locked guide',
+    { allowedAction: { type: 'openTalentPolicy' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 380, y: 690 }, event), true);
+
+  assert.deepEqual(calls, [
+    ['handle', 'resetGame', 'debugResetAccount'],
+    ['preventDefault'],
+    ['stopPropagation'],
   ]);
 });
 

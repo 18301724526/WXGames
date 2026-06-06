@@ -814,6 +814,62 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.canOpenTab('resources'), false);
 });
 
+test('TutorialGuideController exits map home before guiding talent policy', () => {
+  const calls = [];
+  const shell = {
+    mapHomeActive: true,
+    activeCommandPanel: 'military',
+    showTalentPolicy: false,
+    renderReadOnly(state, tab, options) {
+      calls.push(['renderReadOnly', tab, options]);
+      this.mapHomeActive = Boolean(options?.forceMapHome);
+      this.hitTargets = [
+        { x: 300, y: 116, width: 58, height: 28, action: { type: 'openTalentPolicy' } },
+      ];
+      return true;
+    },
+    getCanvasTarget(type, predicate) {
+      const target = (this.hitTargets || []).find((item) => (
+        item.action?.type === type
+        && (typeof predicate !== 'function' || predicate(item.action))
+      ));
+      return target ? { ...target, getRect: () => ({ left: target.x, top: target.y, width: target.width, height: target.height }) } : null;
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push(['highlight', target.action, options]);
+      return true;
+    },
+  };
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
+    state: { currentTab: 'military', militaryView: 'world' },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+    activeCommandPanel: 'military',
+    canvasShell: shell,
+    resolveMapHomeViewState(state, options) {
+      calls.push(['resolveMapHomeViewState', options]);
+      return { activeTab: 'resources', requestedTab: 'resources', militaryView: 'army', isMapHome: false };
+    },
+  };
+  const controller = new TutorialGuideController({ game });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.refreshCurrentHighlight(), true);
+
+  assert.equal(game.mapHomeActive, false);
+  assert.equal(shell.mapHomeActive, false);
+  assert.equal(game.state.currentTab, 'resources');
+  assert.deepEqual(
+    calls.find((call) => call[0] === 'renderReadOnly'),
+    ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
+  );
+  const highlightCall = calls.find((call) => call[0] === 'highlight');
+  assert.deepEqual(highlightCall[1], { type: 'openTalentPolicy' });
+  assert.deepEqual(highlightCall[2].renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
+});
+
 test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {
   const calls = [];
   const shell = {

@@ -58,7 +58,16 @@ getGuideCanvasTarget(type, predicate = null) {
       return this.getCanvasTarget(type, predicate);
     },
 
-renderGuideFrame() {
+    renderGuideFrame() {
+      return this.renderActive();
+    },
+
+renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
+      const activeTab = highlight?.renderActiveTab || this.getActiveTab();
+      const renderOptions = highlight?.renderOptions || null;
+      if (renderOptions && typeof this.renderReadOnly === 'function') {
+        return this.renderReadOnly(this.lastGame?.state, activeTab, renderOptions);
+      }
       return this.renderActive();
     },
 
@@ -154,6 +163,8 @@ showTutorialHighlight(target, message, options = {}) {
         rect,
         message: String(message ?? ''),
         allowedAction: options.allowedAction || null,
+        renderActiveTab: options.renderActiveTab || null,
+        renderOptions: options.renderOptions || null,
         transition: {
           fromRect: previousRect,
           toRect: rect,
@@ -164,7 +175,7 @@ showTutorialHighlight(target, message, options = {}) {
         source: options.source || 'guide',
       };
       this.startFloatTimer();
-      this.renderActive();
+      this.renderGuideHighlightFrame(this.tutorialHighlight);
       return true;
     },
 
