@@ -136,7 +136,7 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   const names = callNames(host);
   assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
   assert.equal(names.includes('getWorldMapLayerLayout'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'startExplore'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'startExplore'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
   assert.equal(names.includes('renderMapCommandPanel'), true);
   assert.equal(names.includes('renderSubcityListPanel'), true);

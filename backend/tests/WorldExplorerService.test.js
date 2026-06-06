@@ -111,3 +111,46 @@ test('guided world exploration rejects a formation without the tutorial scout', 
   assert.equal(result.error, 'EXPLORE_TUTORIAL_FORMATION_REQUIRED');
   assert.equal(gameState.exploreMissions.length, 0);
 });
+
+test('world march starts a manual route and can be stopped at a requested tile', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+
+  assert.equal(started.success, true);
+  assert.equal(started.mission.mode, 'manual');
+  assert.equal(started.mission.route.at(-1).q, 2);
+
+  const stopped = WorldExplorerService.stopWorldMarch(gameState, started.mission.id, {
+    targetQ: 1,
+    targetR: 0,
+  }, new Date('2026-06-06T00:00:01.000Z'));
+
+  assert.equal(stopped.success, true);
+  assert.equal(stopped.mission.target.q, 1);
+});
+
+test('world march can be redirected home', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS + 1),
+  );
+
+  assert.equal(returned.success, true);
+  assert.equal(returned.mission.target.q, 0);
+  assert.equal(returned.mission.target.r, 0);
+});

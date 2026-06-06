@@ -50,6 +50,15 @@ function execute(action, gameState, payload = {}) {
   if (action === 'startExplore') {
     return WorldExplorerService.startExplore(gameState, payload);
   }
+  if (action === 'startWorldMarch') {
+    return WorldExplorerService.startWorldMarch(gameState, payload);
+  }
+  if (action === 'returnWorldMarch') {
+    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId);
+  }
+  if (action === 'stopWorldMarch') {
+    return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, payload);
+  }
   if (action === 'claimExplore') {
     return WorldExplorerService.claimExplore(gameState, payload.missionId);
   }

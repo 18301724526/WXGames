@@ -1,5 +1,5 @@
 (function (global) {
-  const DEFAULT_UNIT_ID = 'spearman';
+  const DEFAULT_UNIT_ID = 'tutorial_intro_soldier';
   const DEFAULT_ANIMATION = 'move';
   const DEFAULT_FRAME_MS = 80;
 

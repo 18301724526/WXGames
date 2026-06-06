@@ -15,6 +15,8 @@
       this.dragState = null;
       this.uiState = {
         selectedSiteId: '',
+        worldMarchTarget: null,
+        selectedWorldActorId: '',
         worldPanX: 0,
         worldPanY: 0,
         expeditionConfigSiteId: '',
@@ -79,6 +81,8 @@
 
     startWorldDrag(pointer = {}) {
       this.closeSiteDialog({ render: false });
+      this.uiState.worldMarchTarget = null;
+      this.uiState.selectedWorldActorId = '';
       const current = this.getWorldPan();
       const position = this.getPointerPosition(pointer);
       this.dragState = {
@@ -107,11 +111,15 @@
     openSiteDialog(siteId) {
       if (!siteId) return;
       this.uiState.selectedSiteId = siteId;
+      this.uiState.worldMarchTarget = null;
+      this.uiState.selectedWorldActorId = '';
       this.onRenderRequested();
     }
 
     closeSiteDialog(options = {}) {
       this.uiState.selectedSiteId = '';
+      this.uiState.worldMarchTarget = null;
+      this.uiState.selectedWorldActorId = '';
       this.clearExpeditionDraft({ render: false });
       if (options.render !== false) this.onRenderRequested();
     }

@@ -30,6 +30,15 @@ test('CanvasPreloadAssetManifest exposes immutable tutorial march frame paths', 
   assert.equal(CanvasPreloadAssetManifest.getTutorialMarchUnitFramePaths().length, 11);
 });
 
+test('CanvasPreloadAssetManifest exposes scout squad frame paths separately', () => {
+  const frames = CanvasPreloadAssetManifest.getWorldScoutUnitFramePaths();
+
+  assert.equal(frames.length, 11);
+  assert.equal(frames[0], 'assets/art/units/spearman/move/001.png');
+  frames.length = 0;
+  assert.equal(CanvasPreloadAssetManifest.getWorldScoutUnitFramePaths().length, 11);
+});
+
 test('CanvasPreloadAssetManifest composes tile map, battle frame, and famous portrait paths', () => {
   class StubRendererClass {
     static getBattleUnitFramePaths() {

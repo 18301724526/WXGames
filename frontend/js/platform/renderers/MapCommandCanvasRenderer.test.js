@@ -47,7 +47,7 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'tech'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'civilization'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'military'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'military'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openFamousPersons'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openTaskCenter' && target.action.source === 'taskIcon'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);

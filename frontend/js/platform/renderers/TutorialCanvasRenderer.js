@@ -12,7 +12,7 @@
   }
 
   const SharedUnitSpriteManifest = resolveRendererDependency('UnitSpriteManifest', '../../config/UnitSpriteManifest');
-  const TUTORIAL_MARCH_UNIT_ID = 'spearman';
+  const TUTORIAL_MARCH_UNIT_ID = 'tutorial_intro_soldier';
   const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
   const SharedTutorialIntroMarchModel = resolveRendererDependency('TutorialIntroMarchModel', './TutorialIntroMarchModel');
   const SharedTutorialIntroUnitRenderer = resolveRendererDependency('TutorialIntroUnitRenderer', './TutorialIntroUnitRenderer');

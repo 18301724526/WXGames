@@ -312,7 +312,9 @@
           && y >= target.y
           && y <= target.y + target.height
         ) {
-          if (target.action?.background) backgroundAction = target.action;
+          if (target.action?.background) {
+            if (!backgroundAction) backgroundAction = target.action;
+          }
           else return target.action;
         }
       }
@@ -397,6 +399,13 @@
         'openWorldSite',
         'resetWorldPan',
         'worldMapDrag',
+        'selectWorldMarchTarget',
+        'openWorldMarchFormationPicker',
+        'startWorldMarch',
+        'closeWorldMarchHud',
+        'selectWorldActor',
+        'returnWorldMarch',
+        'stopWorldMarch',
         'enterCity',
         'renameCity',
         'territoryAction',

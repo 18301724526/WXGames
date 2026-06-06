@@ -79,6 +79,91 @@ function startExplore(gameState, options = {}, now = new Date()) {
   };
 }
 
+function startWorldMarch(gameState, options = {}, now = new Date()) {
+  return startExplore(gameState, {
+    ...options,
+    mode: 'manual',
+  }, now);
+}
+
+function findActiveMission(gameState, missionId, now = new Date()) {
+  normalizeExploreState(gameState, now);
+  return (gameState.exploreMissions || []).find((item) => item.id === missionId && item.status === 'active') || null;
+}
+
+function getLastRevealedOrOrigin(mission) {
+  const revealed = [...(mission.route || [])].reverse().find((step) => step.revealed);
+  return revealed || mission.origin || { q: 0, r: 0 };
+}
+
+function rebaseMissionRoute(mission, route, now = new Date()) {
+  const normalizedRoute = route.map((step, index) => ({
+    q: step.q,
+    r: step.r,
+    step: index + 1,
+    tileId: step.tileId || WorldMapService.getTileId(step.q, step.r),
+    revealed: false,
+    revealedAt: null,
+  }));
+  mission.route = normalizedRoute;
+  mission.target = normalizedRoute.at(-1)
+    ? { q: normalizedRoute.at(-1).q, r: normalizedRoute.at(-1).r }
+    : { q: mission.origin?.q || 0, r: mission.origin?.r || 0 };
+  mission.status = normalizedRoute.length ? 'active' : 'ready';
+  mission.startedAt = now.toISOString();
+  mission.nextStepAt = normalizedRoute.length
+    ? new Date(now.getTime() + mission.stepDurationMs).toISOString()
+    : null;
+  mission.completesAt = normalizedRoute.length
+    ? new Date(now.getTime() + mission.stepDurationMs * normalizedRoute.length).toISOString()
+    : now.toISOString();
+  mission.completedAt = normalizedRoute.length ? null : now.toISOString();
+  return mission;
+}
+
+function returnWorldMarch(gameState, missionId, now = new Date()) {
+  const mission = findActiveMission(gameState, missionId, now);
+  if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  const current = getLastRevealedOrOrigin(mission);
+  const origin = mission.origin || { q: 0, r: 0 };
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const routeResult = buildManualRoute(current, { q: origin.q, r: origin.r }, worldMap.seed);
+  if (!routeResult.success) {
+    rebaseMissionRoute(mission, [], now);
+  } else {
+    rebaseMissionRoute(mission, routeResult.route, now);
+  }
+  return {
+    success: true,
+    message: 'Explorer returning.',
+    mission: getClientMission(mission, now),
+    tutorial: gameState.tutorial,
+  };
+}
+
+function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
+  const mission = findActiveMission(gameState, missionId, now);
+  if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  const current = getLastRevealedOrOrigin(mission);
+  const target = {
+    q: options.targetQ ?? options.stopQ ?? options.q ?? current.q,
+    r: options.targetR ?? options.stopR ?? options.r ?? current.r,
+  };
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const routeResult = buildManualRoute(current, target, worldMap.seed);
+  if (!routeResult.success) {
+    rebaseMissionRoute(mission, [], now);
+  } else {
+    rebaseMissionRoute(mission, routeResult.route, now);
+  }
+  return {
+    success: true,
+    message: 'Explorer stopping.',
+    mission: getClientMission(mission, now),
+    tutorial: gameState.tutorial,
+  };
+}
+
 function claimExplore(gameState, missionId, now = new Date()) {
   normalizeExploreState(gameState, now);
   const mission = (gameState.exploreMissions || []).find((item) => item.id === missionId);
@@ -98,5 +183,8 @@ function claimExplore(gameState, missionId, now = new Date()) {
 module.exports = {
   countActiveMissions,
   startExplore,
+  startWorldMarch,
+  returnWorldMarch,
+  stopWorldMarch,
   claimExplore,
 };

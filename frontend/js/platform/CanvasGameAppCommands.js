@@ -463,6 +463,66 @@
             }
           },
 
+      async startWorldMarch(options = {}) {
+            try {
+              const api = this.getGameApi();
+              const result = api.startWorldMarch
+                ? await api.startWorldMarch({ ...options, mode: 'manual' })
+                : await api.startExplore({ ...options, mode: 'manual' });
+              this.applyApiState(result);
+              this.territoryUiState = {
+                ...(this.territoryUiState || {}),
+                worldMarchTarget: null,
+                selectedWorldActorId: '',
+              };
+              if (this.canvasShell?.territoryUiState) {
+                this.canvasShell.territoryUiState.worldMarchTarget = null;
+                this.canvasShell.territoryUiState.selectedWorldActorId = '';
+              }
+              this.tutorialController?.sync?.(this.tutorial);
+              this.tutorialController?.onExploreStarted?.(result);
+              this.showFloatingText(result.message || 'March started');
+              this.log(result.message || 'March started');
+              return true;
+            } catch (error) {
+              this.log(`March failed: ${error.payload?.message || error.message}`);
+              this.renderCanvasSurface(this.state?.currentTab);
+              return false;
+            }
+          },
+
+      async returnWorldMarch(missionId) {
+            if (!missionId) return false;
+            try {
+              const api = this.getGameApi();
+              const result = await api.returnWorldMarch(missionId);
+              this.applyApiState(result);
+              this.showFloatingText(result.message || 'Returning');
+              this.log(result.message || 'Returning');
+              return true;
+            } catch (error) {
+              this.log(`Return failed: ${error.payload?.message || error.message}`);
+              this.renderCanvasSurface(this.state?.currentTab);
+              return false;
+            }
+          },
+
+      async stopWorldMarch(missionId, options = {}) {
+            if (!missionId) return false;
+            try {
+              const api = this.getGameApi();
+              const result = await api.stopWorldMarch(missionId, options);
+              this.applyApiState(result);
+              this.showFloatingText(result.message || 'Stopped');
+              this.log(result.message || 'Stopped');
+              return true;
+            } catch (error) {
+              this.log(`Stop failed: ${error.payload?.message || error.message}`);
+              this.renderCanvasSurface(this.state?.currentTab);
+              return false;
+            }
+          },
+
       async claimExplore(missionId) {
             if (!missionId) return false;
             try {
@@ -541,6 +601,8 @@
               this.territoryUiState = {
                 ...(this.territoryUiState || {}),
                 selectedSiteId: '',
+                worldMarchTarget: null,
+                selectedWorldActorId: '',
               };
               this.territoryController?.closeSiteDialog?.();
               if (this.canvasShell) {
@@ -549,6 +611,8 @@
                 this.canvasShell.territoryUiState = {
                   ...(this.canvasShell.territoryUiState || {}),
                   selectedSiteId: '',
+                  worldMarchTarget: null,
+                  selectedWorldActorId: '',
                 };
               }
               const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });

@@ -54,3 +54,18 @@ test('WorldMapRuntime includes world explorer state in map bake signature', () =
   state = createState('ready');
   assert.equal(runtime.isMapBakeDirty(state), true);
 });
+
+test('WorldMapRuntime keeps the topmost background tile action over map drag', () => {
+  const runtime = new WorldMapRuntime({ renderer: { renderWorldMapLayer() {} } });
+  runtime.hitTargets = [
+    { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+    { x: 40, y: 40, width: 80, height: 60, action: { type: 'selectWorldMarchTarget', targetQ: 1, targetR: 0, background: true } },
+  ];
+
+  assert.deepEqual(runtime.getHitTarget({ x: 60, y: 60 }), {
+    type: 'selectWorldMarchTarget',
+    targetQ: 1,
+    targetR: 0,
+    background: true,
+  });
+});

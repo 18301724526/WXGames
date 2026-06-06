@@ -229,18 +229,11 @@
         this.ctx.fillStyle = '#74d3a0';
         this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
       } else {
-        this.drawText('探索队', x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
-        const buttonW = 64;
-        const buttonH = 24;
-        const buttonX = x + panelWidth - buttonW - 8;
-        const buttonY = y + 5;
-        this.drawButton(buttonX, buttonY, buttonW, buttonH, '探索', { size: 11, radius: 7 });
-        this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
-          type: 'startExplore',
-          mode: 'random',
-          routeLength: explorer.randomRouteLength || 8,
-          formationSlot: 1,
-          cityId: state.activeCityId || 'capital',
+        this.drawText('点选地图行军', x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
+        this.drawText('选择目标后派出队伍', x + panelWidth - 12, y + 12, {
+          size: 10,
+          color: '#74d3a0',
+          align: 'right',
         });
       }
       const resetW = 76;

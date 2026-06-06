@@ -84,9 +84,13 @@ test('WorldExplorerService facade preserves the legacy API', () => {
     'getClientState',
     'normalizeExploreState',
     'normalizeMission',
+    'returnWorldMarch',
+    'stopWorldMarch',
     'startExplore',
+    'startWorldMarch',
   ];
 
   assert.deepEqual(Object.keys(WorldExplorerService).sort(), expectedApi.sort());
   assert.equal(typeof Actions.startExplore, 'function');
+  assert.equal(typeof Actions.startWorldMarch, 'function');
 });

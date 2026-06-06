@@ -77,10 +77,10 @@
       if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
       if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
       if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutExploreClaimed) {
-        return ['civilization', 'military'].includes(tabId);
+        return ['civilization', 'resources', 'military'].includes(tabId);
       }
       if (step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed) {
-        return ['military'].includes(tabId);
+        return ['resources', 'military'].includes(tabId);
       }
       if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
         return tabId === 'resources';
@@ -317,6 +317,22 @@
       return this.game?.canvasShell?.armyFormationEditor || this.game?.armyFormationEditor || {};
     }
 
+    getWorldMarchTarget() {
+      return this.game?.territoryController?.uiState?.worldMarchTarget
+        || this.game?.canvasShell?.territoryUiState?.worldMarchTarget
+        || this.game?.territoryUiState?.worldMarchTarget
+        || null;
+    }
+
+    isWorldMarchTargetSelected() {
+      const target = this.getWorldMarchTarget();
+      return Boolean(target && Number.isFinite(Number(target.q)) && Number.isFinite(Number(target.r)));
+    }
+
+    isWorldMarchFormationPickerOpen() {
+      return Boolean(this.getWorldMarchTarget()?.pickerOpen);
+    }
+
     isFamousPersonsOpen() {
       return Boolean(this.game?.showFamousPersons || this.game?.canvasShell?.showFamousPersons);
     }
@@ -431,6 +447,13 @@
 
     async onMilitaryViewSwitched(view = '') {
       if (view === 'world' && this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
+        return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
+      }
+      return this.state;
+    }
+
+    async onWorldMarchTargetSelected() {
+      if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
         return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
       }
       return this.state;
@@ -768,6 +791,74 @@
       return true;
     }
 
+    ensureMapHomeGuideVisible() {
+      const game = this.game || {};
+      const shell = game.canvasShell || null;
+      let changed = false;
+      const setIfChanged = (host, key, value) => {
+        if (!host || host[key] === value) return;
+        host[key] = value;
+        changed = true;
+      };
+      const mergeUiState = (host, key, patch = {}) => {
+        if (!host || typeof host !== 'object') return;
+        const current = host[key] || {};
+        const next = { ...current, ...patch };
+        const changedEntry = Object.entries(patch).some(([field, value]) => current[field] !== value);
+        if (!changedEntry) return;
+        host[key] = next;
+        changed = true;
+      };
+      if (game.state) {
+        setIfChanged(game.state, 'currentTab', 'military');
+        setIfChanged(game.state, 'militaryView', 'world');
+      }
+      setIfChanged(game, 'activeTab', 'military');
+      setIfChanged(game, 'militaryView', 'world');
+      setIfChanged(game, 'mapHomeActive', true);
+      setIfChanged(game, 'activeCommandPanel', '');
+      setIfChanged(game, 'showCityManagement', false);
+      setIfChanged(game, 'showSubcityList', false);
+      setIfChanged(game, 'showTaskCenter', false);
+      setIfChanged(game, 'showFamousPersons', false);
+      setIfChanged(game, 'showTalentPolicy', false);
+      setIfChanged(game, 'activeEventId', null);
+      mergeUiState(game, 'territoryUiState', {
+        selectedSiteId: '',
+        expeditionConfigSiteId: '',
+        expeditionSoldiers: '',
+        expeditionTroopType: '',
+        expeditionLeader: '',
+      });
+      game.territoryController?.closeSiteDialog?.({ render: false });
+      if (shell) {
+        setIfChanged(shell, 'mapHomeActive', true);
+        setIfChanged(shell, 'activeCommandPanel', '');
+        setIfChanged(shell, 'showCityManagement', false);
+        setIfChanged(shell, 'showSubcityList', false);
+        setIfChanged(shell, 'showTaskCenter', false);
+        setIfChanged(shell, 'showFamousPersons', false);
+        setIfChanged(shell, 'showTalentPolicy', false);
+        setIfChanged(shell, 'activeEventId', null);
+        mergeUiState(shell, 'territoryUiState', {
+          selectedSiteId: '',
+          expeditionConfigSiteId: '',
+          expeditionSoldiers: '',
+          expeditionTroopType: '',
+          expeditionLeader: '',
+        });
+      }
+      if (changed) {
+        shell?.hideTutorialHighlight?.();
+        if (typeof shell?.renderReadOnly === 'function') {
+          shell.renderReadOnly(game.state, 'military', { forceMapHome: true, isMapHome: true });
+        } else {
+          game.renderCanvasSurface?.('military');
+        }
+      }
+      return true;
+    }
+
     getResourcesGuideHighlightOptions() {
       return {
         renderActiveTab: 'resources',
@@ -1017,29 +1108,30 @@
         const explorer = this.game?.state?.worldExplorerState || {};
         const activeMission = explorer.activeMission || null;
         const readyMission = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
-        if (step === TUTORIAL_STEPS.scoutFormationSaved && !this.isCommandPanelOpen('military')) {
-          this.prepareCommandPanelGuide('military');
+        if (step === TUTORIAL_STEPS.scoutFormationSaved) {
+          this.ensureMapHomeGuideVisible();
           return this.showHighlight(
-            'openCommandPanel',
-            (action) => !action.disabled && action.panel === 'military',
-            '\u7f16\u961f\u5df2\u7ecf\u5c31\u7eea\uff0c\u6253\u5f00\u519b\u4e8b\uff0c\u51c6\u5907\u8ba9\u4fa6\u5bdf\u961f\u51fa\u57ce\u3002',
-            { type: 'openCommandPanel', panel: 'military' },
-          );
-        }
-        if (step === TUTORIAL_STEPS.scoutFormationSaved && this.isCommandPanelOpen('military')) {
-          return this.showHighlight(
-            'switchMilitaryView',
-            (action) => !action.disabled && action.view === 'world',
-            '\u5207\u5230\u4e16\u754c\u5730\u56fe\uff0c\u770b\u770b\u4fa6\u5bdf\u961f\u8981\u63a2\u7684\u8def\u3002',
-            { type: 'switchMilitaryView', view: 'world' },
-          );
-        }
-        if (step === TUTORIAL_STEPS.scoutWorldPanelOpened) {
-          return this.showHighlight(
-            'startExplore',
+            'selectWorldMarchTarget',
             (action) => !action.disabled,
-            '\u70b9\u51fb\u63a2\u7d22\uff0c\u540e\u7aef\u4f1a\u5148\u786e\u5b9a\u8def\u7ebf\u548c\u5c06\u8981\u63ed\u5f00\u7684\u5730\u5757\u3002',
-            { type: 'startExplore' },
+            '\u70b9\u9009\u5927\u5730\u56fe\u4e0a\u7684\u4e00\u5757\u76ee\u6807\u5730\uff0c\u6211\u4eec\u4f1a\u628a\u4fa6\u5bdf\u961f\u6d3e\u5f80\u90a3\u91cc\u3002',
+            { type: 'selectWorldMarchTarget' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutWorldPanelOpened && !this.isWorldMarchFormationPickerOpen()) {
+          this.ensureMapHomeGuideVisible();
+          return this.showHighlight(
+            'openWorldMarchFormationPicker',
+            (action) => !action.disabled,
+            '\u76ee\u6807\u5df2\u7ecf\u6807\u51fa\uff0c\u70b9\u51fb\u884c\u519b\uff0c\u9009\u62e9\u672c\u6b21\u51fa\u57ce\u7684\u961f\u4f0d\u3002',
+            { type: 'openWorldMarchFormationPicker' },
+          );
+        }
+        if (step === TUTORIAL_STEPS.scoutWorldPanelOpened && this.isWorldMarchFormationPickerOpen()) {
+          return this.showHighlight(
+            'startWorldMarch',
+            (action) => !action.disabled && Number(action.formationSlot || action.slot || 1) === 1,
+            '\u9009\u62e9\u7b2c\u4e00\u652f\u4fa6\u5bdf\u961f\u51fa\u57ce\uff0c\u8def\u7ebf\u4f1a\u7559\u5728\u5927\u5730\u56fe\u4e0a\u3002',
+            { type: 'startWorldMarch', formationSlot: 1 },
           );
         }
         if (step === TUTORIAL_STEPS.scoutExploreStarted && readyMission) {

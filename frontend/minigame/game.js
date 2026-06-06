@@ -1,6 +1,7 @@
 require('../js/config/GameConfig');
 require('../js/config/FamousPortraitLayout');
 require('../js/domain/TileMapGeometry');
+require('../js/domain/WorldMarchSystem');
 require('../js/config/TileMapAssetManifest');
 require('../js/config/UnitSpriteManifest');
 require('../js/state/UIStatePresenter');
@@ -14,6 +15,8 @@ require('../js/platform/renderers/CanvasSurfaceRenderer');
 require('../js/platform/renderers/CanvasAssetRenderer');
 require('../js/platform/renderers/CanvasPreloadAssetManifest');
 require('../js/platform/renderers/WorldTileWaterCanvasRenderer');
+require('../js/platform/renderers/WorldActorCanvasRenderer');
+require('../js/platform/renderers/WorldMarchHudCanvasRenderer');
 require('../js/platform/renderers/WorldMapCanvasRenderer');
 require('../js/platform/renderers/CanvasWorldMapFacade');
 require('../js/platform/renderers/WorldMapLayerCanvasRenderer');

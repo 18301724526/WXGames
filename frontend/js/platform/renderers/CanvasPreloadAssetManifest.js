@@ -10,11 +10,16 @@
     }
     return null;
   })();
-  const TUTORIAL_MARCH_UNIT_ID = 'spearman';
+  const TUTORIAL_MARCH_UNIT_ID = 'tutorial_intro_soldier';
+  const WORLD_SCOUT_UNIT_ID = 'scout_squad_default';
   const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
 
   function getTutorialMarchUnitFramePaths() {
     return SharedUnitSpriteManifest?.getFramePaths?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || [];
+  }
+
+  function getWorldScoutUnitFramePaths() {
+    return SharedUnitSpriteManifest?.getFramePaths?.(WORLD_SCOUT_UNIT_ID, 'move') || [];
   }
 
   const BASE_PRELOAD_ASSET_PATHS = [
@@ -58,6 +63,7 @@
     'assets/art/world-site-ruins-cutout.png',
     'assets/art/world-site-town-cutout.png',
     ...getTutorialMarchUnitFramePaths(),
+    ...getWorldScoutUnitFramePaths(),
     'assets/art/spine/tutorial/advisor/tutorial_advisor.png',
     'assets/art/battle/battlefield-forest-camp.png',
   ];
@@ -65,6 +71,10 @@
   class CanvasPreloadAssetManifest {
     static getTutorialMarchUnitFramePaths() {
       return getTutorialMarchUnitFramePaths();
+    }
+
+    static getWorldScoutUnitFramePaths() {
+      return getWorldScoutUnitFramePaths();
     }
 
     static getBasePreloadAssetPaths() {

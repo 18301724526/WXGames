@@ -582,3 +582,64 @@ test('CanvasActionController centers far guided world sites inside the map viewp
   assert.equal(Math.round(projectedX), 210);
   assert.equal(Math.round(projectedY), Math.round(visibleMapY + visibleMapH * 0.46));
 });
+
+test('CanvasActionController advances tutorial after selecting a world march target', async () => {
+  const calls = [];
+  const game = {
+    territoryUiState: {},
+    territoryController: {
+      closeSiteDialog(options) {
+        calls.push(['closeSiteDialog', options]);
+      },
+    },
+    tutorialController: {
+      async onWorldMarchTargetSelected(action) {
+        calls.push(['onWorldMarchTargetSelected', action.targetQ, action.targetR]);
+        return true;
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    runtime: {
+      setTimeout(callback) {
+        calls.push(['setTimeout']);
+        callback?.();
+      },
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction(action) {
+      calls.push(['renderCanvasAction', action.type]);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  const handled = await controller.handle_selectWorldMarchTarget({
+    type: 'selectWorldMarchTarget',
+    targetQ: 3,
+    targetR: -2,
+    tileId: 'tile_3_-2',
+  });
+
+  assert.equal(handled, true);
+  assert.deepEqual(host.territoryUiState.worldMarchTarget, {
+    q: 3,
+    r: -2,
+    tileId: 'tile_3_-2',
+    pickerOpen: false,
+  });
+  assert.equal(host.territoryUiState.selectedWorldActorId, '');
+  assert.equal(host.territoryUiState.selectedSiteId, '');
+  assert.deepEqual(calls, [
+    ['closeSiteDialog', { render: false }],
+    ['onWorldMarchTargetSelected', 3, -2],
+    ['renderCanvasAction', 'selectWorldMarchTarget'],
+    ['refreshCurrentHighlight'],
+    ['setTimeout'],
+    ['refreshCurrentHighlight'],
+  ]);
+});

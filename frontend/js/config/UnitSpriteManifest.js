@@ -1,5 +1,35 @@
 (function (global) {
   const UNIT_SPRITES = Object.freeze({
+    tutorial_intro_soldier: Object.freeze({
+      id: 'tutorial_intro_soldier',
+      label: 'Tutorial Intro Soldier',
+      animations: Object.freeze({
+        move: Object.freeze({
+          id: 'move',
+          frameCount: 11,
+          frameDurationMs: 80,
+          basePath: 'assets/art/units/spearman/move',
+          framePrefix: '',
+          frameExtension: 'png',
+          framePad: 3,
+        }),
+      }),
+    }),
+    scout_squad_default: Object.freeze({
+      id: 'scout_squad_default',
+      label: 'Scout Squad',
+      animations: Object.freeze({
+        move: Object.freeze({
+          id: 'move',
+          frameCount: 11,
+          frameDurationMs: 80,
+          basePath: 'assets/art/units/spearman/move',
+          framePrefix: '',
+          frameExtension: 'png',
+          framePad: 3,
+        }),
+      }),
+    }),
     spearman: Object.freeze({
       id: 'spearman',
       label: 'Spearman',

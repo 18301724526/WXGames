@@ -148,6 +148,8 @@ test('dispatches territory actions through the territory action handler', () => 
     targetQ: 2,
     targetR: -1,
     routeLength: 4,
+    stopQ: undefined,
+    stopR: undefined,
     formationSlot: undefined,
     slot: undefined,
     q: undefined,
@@ -156,6 +158,24 @@ test('dispatches territory actions through the territory action handler', () => 
     y: undefined,
     expedition: undefined,
   });
+});
+
+test('dispatches world march actions through the territory action handler', () => {
+  const { calls, registry } = createRegistryWithCalls();
+
+  const result = registry.execute({
+    action: 'stopWorldMarch',
+    body: { missionId: 'explore-1', targetQ: 1, targetR: 0 },
+    gameState: {},
+    tutorial: {},
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(calls[0].type, 'territory');
+  assert.equal(calls[0].action, 'stopWorldMarch');
+  assert.equal(calls[0].payload.missionId, 'explore-1');
+  assert.equal(calls[0].payload.targetQ, 1);
+  assert.equal(calls[0].payload.targetR, 0);
 });
 
 test('returns a stable result for unknown actions', () => {

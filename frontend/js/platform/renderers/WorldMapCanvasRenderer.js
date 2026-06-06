@@ -34,6 +34,39 @@
     }
     return null;
   })();
+  const sharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMarchSystem');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const SharedWorldActorCanvasRenderer = (() => {
+    if (global.WorldActorCanvasRenderer) return global.WorldActorCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldActorCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const SharedWorldMarchHudCanvasRenderer = (() => {
+    if (global.WorldMarchHudCanvasRenderer) return global.WorldMarchHudCanvasRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMarchHudCanvasRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const sharedTutorialIntroUnitRenderer = (() => {
     if (global.TutorialIntroUnitRenderer) return global.TutorialIntroUnitRenderer;
@@ -50,6 +83,11 @@
   class WorldMapCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      const ActorRendererClass = options.worldActorRendererClass || SharedWorldActorCanvasRenderer;
+      const childHost = options.childHost || options.host || this;
+      this.worldActorRenderer = options.worldActorRenderer || (ActorRendererClass ? new ActorRendererClass({ host: childHost }) : null);
+      const MarchHudRendererClass = options.worldMarchHudRendererClass || SharedWorldMarchHudCanvasRenderer;
+      this.worldMarchHudRenderer = options.worldMarchHudRenderer || (MarchHudRendererClass ? new MarchHudRendererClass({ host: childHost }) : null);
       return new Proxy(this, {
         get(target, prop, receiver) {
           const ownValue = Reflect.get(target, prop, receiver);
@@ -1758,6 +1796,61 @@
     }
 
     renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
+      const actors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
+        nowMs: this.getNow?.() || Date.now(),
+      }) || [];
+      return this.renderWorldActors(actors, viewport, tileMapView.geometry || {});
+    }
+
+    renderWorldActors(actors = [], viewport = {}, geometry = {}) {
+      if (!this.worldActorRenderer?.renderActors) return false;
+      return this.worldActorRenderer.renderActors(actors, viewport, geometry);
+    }
+
+    addWorldActorHitTargets(actors = [], viewport = {}, geometry = {}) {
+      if (!this.worldActorRenderer?.addActorHitTargets) return false;
+      return this.worldActorRenderer.addActorHitTargets(actors, viewport, geometry);
+    }
+
+    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
+      if (!this.worldMarchHudRenderer?.renderWorldMarchHud) return false;
+      return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame);
+    }
+
+    getNearestWorldTileAtPoint(point = {}, tileMapView = {}, viewport = {}) {
+      return sharedWorldMarchSystem?.screenPointToNearestTile?.(point, tileMapView, viewport) || null;
+    }
+
+    addWorldMarchTileHitTargets(tileMapView = {}, viewport = {}, frame = {}) {
+      if (!Array.isArray(tileMapView.tiles) || !tileMapView.tiles.length) return false;
+      const geometry = tileMapView.geometry || {};
+      (tileMapView.tiles || []).forEach((tile) => {
+        const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
+        if (
+          center.x < frame.x - 48
+          || center.x > frame.x + frame.width + 48
+          || center.y < frame.y - 32
+          || center.y > frame.y + frame.height + 32
+        ) return;
+        const tileWidth = (Number(geometry.tileWidth) || 192) * (Number(viewport.scale) || 1) * 0.86;
+        const tileHeight = (Number(geometry.tileHeight) || 96) * (Number(viewport.scale) || 1) * 0.86;
+        this.addHitTarget({
+          x: center.x - tileWidth / 2,
+          y: center.y - tileHeight / 2,
+          width: tileWidth,
+          height: tileHeight,
+        }, {
+          type: 'selectWorldMarchTarget',
+          tileId: tile.id,
+          targetQ: tile.q,
+          targetR: tile.r,
+          background: true,
+        });
+      });
+      return true;
+    }
+
+    renderWorldScoutUnitsLegacy(tileMapView = {}, viewport = {}) {
       const unitRenderer = this.constructor.getTutorialIntroUnitRenderer();
       if (!unitRenderer?.renderUnit) return false;
       const geometry = tileMapView.geometry || {};
@@ -1828,7 +1921,12 @@
         }
         const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
         if (hitTargetsOnly) {
+          this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
           this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+          const actors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
+            nowMs: this.getNow?.() || Date.now(),
+          }) || [];
+          this.addWorldActorHitTargets(actors, viewport, geometry);
           return;
         }
 
@@ -1849,8 +1947,14 @@
           });
         }
         this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
-        this.renderWorldScoutUnits(tileMapView, viewport);
+        const actors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
+          nowMs: this.getNow?.() || Date.now(),
+        }) || [];
+        this.renderWorldActors(actors, viewport, geometry);
+        this.renderWorldMarchHud(options.state || {}, uiState, actors, viewport, geometry, frame);
+        this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
         this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+        this.addWorldActorHitTargets(actors, viewport, geometry);
 
         this.ctx.restore();
       } finally {

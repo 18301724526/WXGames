@@ -10,6 +10,9 @@
     changeArmyFormationPage: { method: 'changeArmyFormationPage' },
     saveArmyFormation: { method: 'saveArmyFormation' },
     startExplore: { method: 'startExplore', coerceBoolean: true },
+    startWorldMarch: { method: 'startWorldMarch', coerceBoolean: true },
+    returnWorldMarch: { method: 'returnWorldMarch', coerceBoolean: true },
+    stopWorldMarch: { method: 'stopWorldMarch', coerceBoolean: true },
     claimExplore: { method: 'claimExplore', coerceBoolean: true },
   };
 
@@ -54,6 +57,10 @@
     selectBuildingCategory: { method: 'selectBuildingCategory' },
     selectTechNode: { method: 'selectTechNode' },
     closeTechDetail: { method: 'closeTechDetail' },
+    selectWorldMarchTarget: { method: 'selectWorldMarchTarget' },
+    openWorldMarchFormationPicker: { method: 'openWorldMarchFormationPicker' },
+    closeWorldMarchHud: { method: 'closeWorldMarchHud' },
+    selectWorldActor: { method: 'selectWorldActor' },
   };
 
   const SUPPORTED_ACTIONS = [
@@ -91,6 +98,13 @@
     'resetWorldPan',
     'worldMapDrag',
     'startExplore',
+    'selectWorldMarchTarget',
+    'openWorldMarchFormationPicker',
+    'closeWorldMarchHud',
+    'startWorldMarch',
+    'selectWorldActor',
+    'returnWorldMarch',
+    'stopWorldMarch',
     'claimExplore',
     'changeExpeditionSoldiers',
     'changeExpeditionLeader',

@@ -18,6 +18,9 @@ const TERRITORY_ACTIONS = new Set([
   'renamePolity',
   'switchCity',
   'startExplore',
+  'startWorldMarch',
+  'returnWorldMarch',
+  'stopWorldMarch',
   'claimExplore',
 ]);
 
@@ -45,6 +48,8 @@ function buildTerritoryPayload(body = {}) {
     mode: body.mode,
     targetQ: body.targetQ,
     targetR: body.targetR,
+    stopQ: body.stopQ,
+    stopR: body.stopR,
     routeLength: body.routeLength,
     formationSlot: body.formationSlot,
     slot: body.slot,

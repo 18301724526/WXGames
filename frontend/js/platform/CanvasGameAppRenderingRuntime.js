@@ -749,6 +749,8 @@
             this.territoryUiState = {
               ...(this.territoryUiState || {}),
               selectedSiteId: '',
+              worldMarchTarget: null,
+              selectedWorldActorId: '',
               expeditionConfigSiteId: '',
               expeditionSoldiers: '',
               expeditionTroopType: '',
@@ -780,6 +782,8 @@
               this.canvasShell.territoryUiState = {
                 ...(this.canvasShell.territoryUiState || {}),
                 selectedSiteId: '',
+                worldMarchTarget: null,
+                selectedWorldActorId: '',
                 expeditionConfigSiteId: '',
                 expeditionSoldiers: '',
                 expeditionTroopType: '',

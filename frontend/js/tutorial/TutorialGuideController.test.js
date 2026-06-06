@@ -434,15 +434,17 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'saveArmyFormation' });
 });
 
-test('TutorialGuideController guides scout formation into world exploration and claim', async () => {
+test('TutorialGuideController guides scout formation into map march and claim', async () => {
   const calls = [];
+  const territoryUiState = {};
   const shell = {
     activeCommandPanel: '',
+    territoryUiState,
     getCanvasTarget(type, predicate) {
       const targets = {
-        openCommandPanel: { type: 'openCommandPanel', panel: 'military' },
-        switchMilitaryView: { type: 'switchMilitaryView', view: 'world' },
-        startExplore: { type: 'startExplore', formationSlot: 1 },
+        selectWorldMarchTarget: { type: 'selectWorldMarchTarget', targetQ: 2, targetR: -1 },
+        openWorldMarchFormationPicker: { type: 'openWorldMarchFormationPicker', targetQ: 2, targetR: -1 },
+        startWorldMarch: { type: 'startWorldMarch', formationSlot: 1, targetQ: 2, targetR: -1 },
         claimExplore: { type: 'claimExplore', missionId: 'explore-1' },
       };
       const action = targets[type];
@@ -457,15 +459,23 @@ test('TutorialGuideController guides scout formation into world exploration and 
       calls.push({ hideHighlight: true });
       return true;
     },
+    renderReadOnly(state, tab, options) {
+      calls.push({ renderReadOnly: true, tab, options });
+      return true;
+    },
   };
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFormationSaved },
     state: {
-      currentTab: 'military',
-      militaryView: 'army',
+      currentTab: 'resources',
+      militaryView: 'world',
       worldExplorerState: {},
     },
     activeCommandPanel: '',
+    territoryUiState,
+    activeTab: 'resources',
+    militaryView: 'world',
+    mapHomeActive: false,
     canvasShell: shell,
     renderCanvasSurface() {
       calls.push({ render: true });
@@ -483,17 +493,21 @@ test('TutorialGuideController guides scout formation into world exploration and 
   controller.sync(game.tutorial);
 
   assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'military' });
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'selectWorldMarchTarget' });
+  assert.equal(game.mapHomeActive, true);
+  assert.equal(game.state.currentTab, 'military');
 
-  shell.activeCommandPanel = 'military';
-  game.activeCommandPanel = 'military';
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'switchMilitaryView', view: 'world' });
-
-  await controller.onMilitaryViewSwitched('world');
+  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: false };
+  shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
+  await controller.onWorldMarchTargetSelected();
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutWorldPanelOpened);
   assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'startExplore' });
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldMarchFormationPicker' });
+
+  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true };
+  shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'startWorldMarch', formationSlot: 1 });
 
   controller.onExploreStarted({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreStarted },

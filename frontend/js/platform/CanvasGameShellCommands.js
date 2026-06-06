@@ -388,12 +388,16 @@ clearWorldSiteHudSelection() {
         if (!uiState || typeof uiState !== 'object') return false;
         const hadValue = Boolean(
           uiState.selectedSiteId
+          || uiState.worldMarchTarget
+          || uiState.selectedWorldActorId
           || uiState.expeditionConfigSiteId
           || uiState.expeditionSoldiers
           || uiState.expeditionTroopType
           || uiState.expeditionLeader
         );
         uiState.selectedSiteId = '';
+        uiState.worldMarchTarget = null;
+        uiState.selectedWorldActorId = '';
         uiState.expeditionConfigSiteId = '';
         uiState.expeditionSoldiers = '';
         uiState.expeditionTroopType = '';

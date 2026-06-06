@@ -152,6 +152,8 @@
           };
           this.territoryUiState = {
             selectedSiteId: '',
+            worldMarchTarget: null,
+            selectedWorldActorId: '',
             worldPanX: 0,
             worldPanY: 0,
             expeditionConfigSiteId: '',

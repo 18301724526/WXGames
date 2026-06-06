@@ -119,7 +119,7 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 }
 
 function validateScoutExploreAction(step, action, payload, gameState) {
-  if (action === 'startExplore') {
+  if (action === 'startExplore' || action === 'startWorldMarch') {
     if (step >= TUTORIAL_STEPS.scoutExploreClaimed) return { allowed: true };
     if (step < TUTORIAL_STEPS.scoutFormationSaved) {
       return blocked('Please finish the scout formation guide before exploring.');
@@ -193,6 +193,7 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
     'assignFamousAttributePoint',
     'setArmyFormation',
     'startExplore',
+    'startWorldMarch',
     'claimExplore',
   ].includes(action)) {
     return blocked('Please finish claiming and naming the new city first.');
@@ -248,7 +249,8 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
 
   if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };
 
-  if (action === 'startExplore' || action === 'claimExplore') {
+  if (['startExplore', 'startWorldMarch', 'claimExplore', 'returnWorldMarch', 'stopWorldMarch'].includes(action)) {
+    if (action === 'returnWorldMarch' || action === 'stopWorldMarch') return { allowed: true };
     return validateScoutExploreAction(step, action, payload, gameState);
   }
 

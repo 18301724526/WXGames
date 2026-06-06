@@ -61,6 +61,17 @@
       return this.host?.buildingController || this.getGameHost()?.buildingController || null;
     }
 
+    getSharedTerritoryUiState() {
+      const game = this.getGameHost();
+      const uiState = this.host.territoryUiState
+        || game?.territoryUiState
+        || game?.territoryController?.getUiState?.()
+        || {};
+      this.host.territoryUiState = uiState;
+      if (game && game !== this.host && typeof game === 'object') game.territoryUiState = uiState;
+      return uiState;
+    }
+
     setField(key, value, target = this.host) {
       if (target && typeof target === 'object') target[key] = value;
     }
@@ -1316,6 +1327,123 @@
         formationSlot: action.formationSlot || action.slot || 1,
         cityId: action.cityId || game?.state?.activeCityId || 'capital',
       })));
+    }
+
+    handle_selectWorldMarchTarget(action) {
+      const q = Math.floor(Number(action.targetQ ?? action.q));
+      const r = Math.floor(Number(action.targetR ?? action.r));
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+      const uiState = this.getSharedTerritoryUiState();
+      uiState.worldMarchTarget = {
+        q,
+        r,
+        tileId: action.tileId || `tile_${q}_${r}`,
+        pickerOpen: false,
+      };
+      uiState.selectedWorldActorId = '';
+      uiState.selectedSiteId = '';
+      uiState.expeditionConfigSiteId = '';
+      const game = this.getGameHost();
+      game?.territoryController?.closeSiteDialog?.({ render: false });
+      const tutorialResult = game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
+      return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
+        if (allowed !== false) {
+          this.afterHandled(action);
+          game?.tutorialController?.refreshCurrentHighlight?.();
+          const scheduler = this.host?.runtime || game?.runtime || global;
+          scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+        }
+        return allowed !== false;
+      }));
+    }
+
+    handle_openWorldMarchFormationPicker(action) {
+      const q = Math.floor(Number(action.targetQ ?? action.q));
+      const r = Math.floor(Number(action.targetR ?? action.r));
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+      const uiState = this.getSharedTerritoryUiState();
+      uiState.worldMarchTarget = {
+        q,
+        r,
+        tileId: action.tileId || `tile_${q}_${r}`,
+        pickerOpen: true,
+      };
+      uiState.selectedWorldActorId = '';
+      return this.afterHandled(action);
+    }
+
+    handle_closeWorldMarchHud(action) {
+      const uiState = this.getSharedTerritoryUiState();
+      uiState.worldMarchTarget = null;
+      uiState.selectedWorldActorId = '';
+      return this.afterHandled(action);
+    }
+
+    handle_selectWorldActor(action) {
+      const actorId = action.actorId || action.missionId || '';
+      if (!actorId) return false;
+      const uiState = this.getSharedTerritoryUiState();
+      uiState.selectedWorldActorId = actorId;
+      uiState.worldMarchTarget = null;
+      uiState.selectedSiteId = '';
+      return this.afterHandled(action);
+    }
+
+    handle_startWorldMarch(action) {
+      const q = Math.floor(Number(action.targetQ ?? action.q));
+      const r = Math.floor(Number(action.targetR ?? action.r));
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+      const run = () => {
+        const game = this.getGameHost();
+        const options = {
+          mode: 'manual',
+          targetQ: q,
+          targetR: r,
+          formationSlot: action.formationSlot || action.slot || 1,
+          cityId: action.cityId || game?.state?.activeCityId || 'capital',
+        };
+        if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
+        if (typeof game?.startExplore === 'function') return game.startExplore(options);
+        return this.runAction(() => this.host.api.startExplore(options));
+      };
+      return this.finalize(Promise.resolve(run()).then((result) => {
+        if (result !== false) {
+          const uiState = this.getSharedTerritoryUiState();
+          uiState.worldMarchTarget = null;
+          uiState.selectedWorldActorId = '';
+        }
+        return result !== false;
+      }));
+    }
+
+    handle_returnWorldMarch(action) {
+      const missionId = action.missionId || action.actorId || '';
+      if (!missionId) return false;
+      const game = this.getGameHost();
+      const run = () => {
+        if (typeof game?.returnWorldMarch === 'function') return game.returnWorldMarch(missionId);
+        return this.runAction(() => this.host.api.returnWorldMarch(missionId));
+      };
+      return this.finalize(Promise.resolve(run()).then((result) => {
+        if (result !== false) this.getSharedTerritoryUiState().selectedWorldActorId = '';
+        return result !== false;
+      }));
+    }
+
+    handle_stopWorldMarch(action) {
+      const missionId = action.missionId || action.actorId || '';
+      if (!missionId) return false;
+      const targetQ = Number(action.targetQ ?? action.q);
+      const targetR = Number(action.targetR ?? action.r);
+      const game = this.getGameHost();
+      const run = () => {
+        if (typeof game?.stopWorldMarch === 'function') return game.stopWorldMarch(missionId, { targetQ, targetR });
+        return this.runAction(() => this.host.api.stopWorldMarch(missionId, { targetQ, targetR }));
+      };
+      return this.finalize(Promise.resolve(run()).then((result) => {
+        if (result !== false) this.getSharedTerritoryUiState().selectedWorldActorId = '';
+        return result !== false;
+      }));
     }
 
     handle_claimExplore(action) {
