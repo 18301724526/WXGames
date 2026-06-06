@@ -7,6 +7,7 @@ const BattleService = require('../services/BattleService');
 const BattleConfig = require('../config/BattleConfig');
 const Shared = require('../services/battle/BattleShared');
 const { createBattleLeaders } = require('../services/battle/BattleLeaders');
+const Statuses = require('../services/battle/BattleStatuses');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const battleRoot = path.join(serviceRoot, 'battle');
@@ -15,16 +16,17 @@ function lineCount(filePath) {
   return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).length;
 }
 
-test('BattleService delegates leader and shared helper responsibilities to battle modules', () => {
+test('BattleService delegates focused responsibilities to battle modules', () => {
   const facadePath = path.join(serviceRoot, 'BattleService.js');
   const moduleFiles = fs.readdirSync(battleRoot)
     .filter((name) => name.endsWith('.js'))
     .sort();
 
-  assert.ok(lineCount(facadePath) < 1100, 'BattleService should keep shrinking during staged decomposition');
+  assert.ok(lineCount(facadePath) < 850, 'BattleService should keep shrinking during staged decomposition');
   assert.deepEqual(moduleFiles, [
     'BattleLeaders.js',
     'BattleShared.js',
+    'BattleStatuses.js',
   ]);
   for (const fileName of moduleFiles) {
     assert.ok(lineCount(path.join(battleRoot, fileName)) < 500, `${fileName} should stay below 500 lines`);
@@ -92,6 +94,40 @@ test('battle leader module owns leader snapshots and skill selection contracts',
   const basicOnly = leaders.getBattleSkill({ leader: { id: 'civil', abilityKit: { battlePolicy: 'basicAttackOnly' } } }, 'attacker');
   assert.equal(basicOnly, null);
   assert.equal(leaders.getBattleSkill({}, 'defender').id, BattleConfig.getFallbackSkill('defender').id);
+});
+
+test('battle status module owns shield, stacking, and damage-over-time contracts', () => {
+  const statusSystem = Statuses.createBattleStatuses({
+    defaultSoldierScale: 100,
+    calculateDamage: () => 30,
+  });
+  const defender = {
+    side: 'defender',
+    name: '守军',
+    soldiers: 200,
+    maxSoldiers: 200,
+    attributes: { intelligence: 50 },
+    statuses: [],
+  };
+
+  const shield = statusSystem.applyStatusToUnit(defender, { key: 'shield', value: 0.2, turnsRemaining: 2 });
+  assert.equal(shield.type, 'statusApplied');
+  assert.equal(shield.key, 'shield');
+  assert.equal(defender.statuses[0].shieldRemaining, 40);
+
+  const absorbed = statusSystem.applyDamageWithStatuses(defender, 25);
+  assert.equal(absorbed.dealt, 0);
+  assert.equal(absorbed.absorbed, 25);
+  assert.equal(defender.soldiers, 200);
+  assert.equal(defender.statuses[0].shieldRemaining, 15);
+
+  const burn = statusSystem.applyStatusToUnit(defender, { key: 'burn', value: 0.12, turnsRemaining: 1 });
+  assert.equal(burn.label, Statuses.getStatusLabel('burn'));
+  const events = statusSystem.tickStatusesAtActionStart(defender);
+  assert.ok(events.some((event) => event.type === 'shieldAbsorb'));
+  assert.ok(events.some((event) => event.type === 'statusTick'));
+  assert.equal(defender.soldiers, 185);
+  assert.equal(Statuses.sanitizeStatuses(defender.statuses).length, 0);
 });
 
 test('BattleService facade preserves exported battle API and conquest smoke behavior', () => {
