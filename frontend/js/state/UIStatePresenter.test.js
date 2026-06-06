@@ -6,6 +6,7 @@ const path = require('node:path');
 const UIStatePresenter = require('./UIStatePresenter');
 const BuildingPresenter = require('./presenters/BuildingPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
+const HomePresenter = require('./presenters/HomePresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 
 test('UIStatePresenter merges server-planned explorer tiles into the world tile view', () => {
@@ -180,6 +181,88 @@ test('UIStatePresenter delegates building view state while preserving facade con
   assert.deepEqual(UIStatePresenter.buildCostViewState({ wood: 1234 }).parts[0], { resource: 'wood', value: 1234, text: '1.2k' });
 });
 
+test('UIStatePresenter delegates home resource and planning view state while preserving facade contracts', () => {
+  const state = {
+    currentEra: 2,
+    gameDay: 12,
+    happiness: 88,
+    resources: {
+      food: 1200,
+      wood: 345,
+      stone: 78,
+      iron: 9,
+      knowledge: 42,
+      foodOutputPerSecond: 3.25,
+      foodConsumptionPerSecond: 1.5,
+      foodNetPerSecond: 1.75,
+      woodPerSecond: 0.4,
+      stonePerSecond: 0.2,
+      ironPerSecond: 0.1,
+      knowledgePerSecond: 0.6,
+    },
+    population: {
+      total: 5,
+      unassigned: 1,
+      farmers: 2,
+      scholars: 1,
+      craftsmen: 1,
+      maxPop: 8,
+      capacity: {
+        active: true,
+        limitingSource: 'era',
+        eraCap: 5,
+        housingCap: 8,
+      },
+    },
+    cityState: {
+      activeCityId: 'city-2',
+      capitalCityId: 'capital',
+      cities: [
+        {
+          id: 'capital',
+          name: '首都',
+          isCapital: true,
+          population: { total: 3 },
+          totalBuildings: 2,
+          planning: { terrainLabel: '平原', habitabilityLabel: '平稳' },
+        },
+        {
+          id: 'city-2',
+          name: '河湾',
+          population: { total: 5 },
+          totalBuildings: 4,
+          planning: {
+            terrainId: 'river',
+            terrainLabel: '河湾',
+            terrainSummary: '水网密集。',
+            terrainHint: '适合农业与贸易。',
+            habitability: 16,
+            habitabilityLabel: '良好',
+            habitabilityTone: 'positive',
+            populationGrowthMultiplier: 1.18,
+            habitabilityNotes: ['水源充足，人口成长良好。'],
+          },
+        },
+      ],
+    },
+    taskCenter: {
+      visible: true,
+      summary: { claimableCount: 2, activeCount: 3, totalCount: 4 },
+      tabs: [{ id: 'main', label: '主线任务', badge: 2 }],
+      categories: { main: { tasks: [] } },
+    },
+  };
+
+  assert.deepEqual(UIStatePresenter.buildResourceViewState(state), HomePresenter.buildResourceViewState(state));
+  assert.deepEqual(UIStatePresenter.buildCitySwitcherViewState(state), HomePresenter.buildCitySwitcherViewState(state));
+  assert.deepEqual(UIStatePresenter.buildPopulationViewState(state), HomePresenter.buildPopulationViewState(state));
+  assert.equal(UIStatePresenter.buildResourceViewState(state).text.populationStatus, '人口已无法增长，请推进时代');
+  assert.equal(UIStatePresenter.buildCityPlanningViewState(state).text.populationGrowthStatus, '人口成长良好');
+  assert.equal(UIStatePresenter.buildPopulationViewState(state).jobs.find((job) => job.id === 'craftsman').visible, true);
+  assert.equal(UIStatePresenter.buildHomeFeatureViewState(state).entries[0].badge, 2);
+  assert.equal(UIStatePresenter.calculatePopulationGrowthMultiplier(16), 1.16);
+});
+
 test('UIStatePresenter delegates talent policy view state while preserving facade contracts', () => {
   const state = {
     currentEra: 2,
@@ -214,6 +297,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
   const html = fs.readFileSync(htmlPath, 'utf8');
   const expectedOrder = [
     'TechPresenter.js',
+    'HomePresenter.js',
     'BuildingPresenter.js',
     'FamousPersonPresenter.js',
     'TalentPolicyPresenter.js',
