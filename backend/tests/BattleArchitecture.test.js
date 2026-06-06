@@ -8,6 +8,8 @@ const BattleConfig = require('../config/BattleConfig');
 const Shared = require('../services/battle/BattleShared');
 const { createBattleLeaders } = require('../services/battle/BattleLeaders');
 const Statuses = require('../services/battle/BattleStatuses');
+const SkillRuntime = require('../services/battle/BattleSkillRuntime');
+const { createBattleReports } = require('../services/battle/BattleReports');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const battleRoot = path.join(serviceRoot, 'battle');
@@ -22,10 +24,12 @@ test('BattleService delegates focused responsibilities to battle modules', () =>
     .filter((name) => name.endsWith('.js'))
     .sort();
 
-  assert.ok(lineCount(facadePath) < 850, 'BattleService should keep shrinking during staged decomposition');
+  assert.ok(lineCount(facadePath) < 500, 'BattleService should keep the facade below 500 lines');
   assert.deepEqual(moduleFiles, [
     'BattleLeaders.js',
+    'BattleReports.js',
     'BattleShared.js',
+    'BattleSkillRuntime.js',
     'BattleStatuses.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -128,6 +132,90 @@ test('battle status module owns shield, stacking, and damage-over-time contracts
   assert.ok(events.some((event) => event.type === 'statusTick'));
   assert.equal(defender.soldiers, 185);
   assert.equal(Statuses.sanitizeStatuses(defender.statuses).length, 0);
+});
+
+test('battle skill runtime module owns cast conditions and side-effect contracts', () => {
+  const statusSystem = Statuses.createBattleStatuses({ defaultSoldierScale: 100, calculateDamage: () => 20 });
+  const runtime = SkillRuntime.createBattleSkillRuntime({
+    getPassiveTraitsFromAbilityKit: () => [{
+      id: 'passive-1',
+      name: '守备整训',
+      effects: [{ key: 'attributeBonus', attribute: 'command', value: 8 }],
+    }],
+    healSoldiers: statusSystem.healSoldiers,
+    applyStatusToUnit: statusSystem.applyStatusToUnit,
+  });
+  const unit = {
+    side: 'attacker',
+    name: '先锋',
+    soldiers: 80,
+    maxSoldiers: 100,
+    morale: 100,
+    skillCooldownRemaining: 0,
+    ownActionCount: 0,
+    attributes: { command: 50, force: 60, intelligence: 40 },
+    statuses: [],
+    leader: { abilityKit: {} },
+  };
+  const target = { side: 'defender', name: '守军', soldiers: 90, maxSoldiers: 100, statuses: [] };
+  const skill = {
+    id: 'skill-1',
+    name: '火袭',
+    castConditions: [{ type: 'cooldownReady' }, { type: 'targetAlive' }, { type: 'firstOwnAction' }],
+    effects: [
+      { key: 'shield', value: 0.1, turns: 2 },
+      { key: 'burn', value: 0.12, turns: 1 },
+    ],
+  };
+
+  assert.equal(runtime.canCastSkill(unit, target, skill), true);
+  assert.equal(runtime.describeActionDecision(unit, target, skill).reason, 'castSkill');
+  const passiveEvents = runtime.applyPreBattlePassives(unit);
+  assert.equal(unit.attributes.command, 58);
+  assert.equal(passiveEvents[0].type, 'passiveTrait');
+  const sideEffects = runtime.applySkillSideEffects(unit, target, skill, 30);
+  assert.ok(sideEffects.structured.some((effect) => effect.key === 'shield'));
+  assert.ok(sideEffects.structured.some((effect) => effect.key === 'burn'));
+  assert.equal(Statuses.sanitizeStatuses(unit.statuses).length, 1);
+  assert.equal(Statuses.sanitizeStatuses(target.statuses).length, 1);
+});
+
+test('battle reports module owns map, unit snapshot, legacy report, and experience contracts', () => {
+  const reports = createBattleReports({
+    BattleConfig,
+    DEFAULT_SOLDIER_SCALE: BattleService.DEFAULT_SOLDIER_SCALE,
+    MIN_BATTLE_SOLDIERS: BattleService.MIN_BATTLE_SOLDIERS,
+    MORALE_EFFECT_ENABLED: BattleConfig.MORALE_EFFECT_ENABLED,
+    DAMAGE_TYPE_LABELS: { blade: '兵刃伤害' },
+    getBattleSkill: () => ({ id: 'fallback-skill' }),
+    getDefenderLeaderSnapshot: () => null,
+    getBattleSpeed: () => 66,
+    getBattleVisualGroups: (soldiers) => Shared.getBattleVisualGroups(soldiers, BattleService.DEFAULT_SOLDIER_SCALE),
+  });
+  const territory = { id: 'camp-1', type: 'camp', owner: 'tribe', naturalName: '林地营地', defense: 160 };
+  const legacy = reports.createLegacyBattleReport(
+    { expedition: { leader: 'leader-1' }, soldiersCommitted: 300 },
+    territory,
+    { success: true, casualties: 20 },
+    new Date('2026-06-06T00:00:00.000Z'),
+  );
+  assert.equal(legacy.mode, 'legacy');
+  assert.equal(legacy.visual.groupSize, BattleService.DEFAULT_SOLDIER_SCALE);
+  assert.equal(reports.formatDamageLine('守军', 'blade', 12, 88), '[守军] 受到兵刃伤害 12（88）');
+
+  const unit = reports.makeUnit('attacker', {
+    name: '先锋',
+    soldiers: 180,
+    maxSoldiers: 200,
+    morale: 95,
+    attributes: { force: 80 },
+    leader: { id: 'leader-1', appearance: { portrait: 'x' } },
+    skill: { id: 'skill-1' },
+  });
+  const snapshot = reports.buildReportUnitSnapshot(unit, { leaderId: 'leader-1', leaderTitle: '破阵者' });
+  assert.equal(snapshot.speed, 66);
+  assert.equal(snapshot.groupsStart.length, 2);
+  assert.equal(reports.createExperienceSummary(unit, { maxSoldiers: 100, soldiers: 0 }, true).victoryBonus, 20);
 });
 
 test('BattleService facade preserves exported battle API and conquest smoke behavior', () => {

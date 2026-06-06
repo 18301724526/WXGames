@@ -2,8 +2,7 @@ const BattleConfig = require('../config/BattleConfig');
 const {
   clamp,
   clone,
-  getBattleVisualGroups: buildBattleVisualGroups,
-  normalizeAttributes,
+  getBattleVisualGroups: getRawBattleVisualGroups,
   toInteger,
 } = require('./battle/BattleShared');
 const {
@@ -11,13 +10,16 @@ const {
 } = require('./battle/BattleLeaders');
 const {
   createBattleStatuses,
-  createFloatingText,
-  getStatusLabel,
   getStatusTotalValue,
-  getStatusTurns,
-  getStatusValue,
   sanitizeStatuses,
 } = require('./battle/BattleStatuses');
+const {
+  createBattleSkillRuntime,
+  getSkillCooldown,
+} = require('./battle/BattleSkillRuntime');
+const {
+  createBattleReports,
+} = require('./battle/BattleReports');
 
 const {
   DEFAULT_SOLDIER_SCALE,
@@ -26,7 +28,6 @@ const {
   BATTLE_SYSTEM,
   MORALE_EFFECT_ENABLED,
 } = BattleConfig;
-
 const DAMAGE_TYPE_LABELS = {
   blade: '兵刃伤害',
   strategy: '谋略伤害',
@@ -35,7 +36,6 @@ const DAMAGE_TYPE_LABELS = {
 };
 
 const BATTLE_RULE_VERSION = 'battle-rules-v3';
-
 const battleLeaders = createBattleLeaders({ BattleConfig });
 const {
   getBattleSkill,
@@ -53,10 +53,6 @@ function getEffectiveAttribute(value) {
 
 function getBattleSpeed(unit) {
   return Math.max(1, Math.round(getEffectiveAttribute(unit.attributes?.speed ?? 45)));
-}
-
-function getSkillCooldown(skill = {}) {
-  return Math.max(2, toInteger(skill.cooldown, 3));
 }
 
 function calculateDamage(attacker, defender, options = {}) {
@@ -87,343 +83,43 @@ const {
   tickStatusesAtActionStart,
 } = battleStatuses;
 
-function getSkillEffectMultiplier(skill = {}, key, fallback = 0) {
-  const effect = Array.isArray(skill.effects) ? skill.effects.find((item) => item?.key === key) : null;
-  const value = effect?.multiplier ?? effect?.value;
-  return Number.isFinite(Number(value)) ? Number(value) : fallback;
-}
+const battleSkillRuntime = createBattleSkillRuntime({
+  getPassiveTraitsFromAbilityKit,
+  healSoldiers,
+  applyStatusToUnit,
+});
+const {
+  applyPreBattlePassives,
+  applySkillSideEffects,
+  canCastSkill,
+  describeActionDecision,
+  getSkillEffectMultiplier,
+} = battleSkillRuntime;
 
-function applyAttributeBonus(unit, effect = {}) {
-  const attribute = effect.attribute || effect.keyAttribute;
-  const value = toInteger(effect.value, 0);
-  if (!attribute || value === 0) return null;
-  const before = toInteger(unit.attributes?.[attribute], 0);
-  unit.attributes = { ...unit.attributes, [attribute]: before + value };
-  if (attribute === 'intelligence') unit.attributes.strategy = unit.attributes.intelligence;
-  if (attribute === 'strategy') unit.attributes.intelligence = unit.attributes.strategy;
-  return {
-    type: 'attributeBonus',
-    target: unit.side,
-    attribute,
-    value,
-    before,
-    after: unit.attributes[attribute],
-    text: `[${unit.name}] ${attribute} +${value}（${unit.attributes[attribute]}）`,
-  };
-}
+const getBattleVisualGroups = (soldiers, groupSize = DEFAULT_SOLDIER_SCALE) => getRawBattleVisualGroups(soldiers, groupSize);
 
-function applyPreBattlePassives(unit) {
-  const traits = getPassiveTraitsFromAbilityKit(unit.leader?.abilityKit);
-  const events = [];
-  traits.forEach((trait) => {
-    const effects = Array.isArray(trait.effects) ? trait.effects : [];
-    const applied = effects
-      .map((effect) => {
-        if (effect?.key === 'attributeBonus') return applyAttributeBonus(unit, effect);
-        return null;
-      })
-      .filter(Boolean);
-    if (applied.length) {
-      events.push({
-        phase: 'preparation',
-        type: 'passiveTrait',
-        actor: unit.side,
-        actorName: unit.name,
-        traitId: trait.id || '',
-        traitName: trait.name || '被动特质',
-        effects: applied,
-        lines: [
-          `[${unit.name}] 触发被动 [${trait.name || '被动特质'}]`,
-          ...applied.map((effect) => effect.text),
-        ],
-      });
-    }
-  });
-  return events;
-}
-
-function applySkillSideEffects(unit, target, skill = {}, dealt = 0) {
-  const effects = Array.isArray(skill.effects) ? skill.effects : [];
-  const notes = [];
-  const structured = [];
-  effects.forEach((effect) => {
-    if (!effect || typeof effect !== 'object') return;
-    if (effect.key === 'lifesteal') {
-      const recovered = healSoldiers(unit, Math.round(dealt * (Number(effect.value) || 0)));
-      if (recovered > 0) {
-        notes.push(`恢复 ${recovered} 士兵`);
-        structured.push({ type: 'heal', target: unit.side, value: recovered, text: `[${unit.name}] 恢复兵力 ${recovered}（${unit.soldiers}）` });
-      }
-    } else if (effect.key === 'heal') {
-      const recovered = healSoldiers(unit, Math.round(unit.maxSoldiers * (Number(effect.value) || 0)));
-      if (recovered > 0) {
-        notes.push(`整队恢复 ${recovered} 士兵`);
-        structured.push({ type: 'heal', target: unit.side, value: recovered, text: `[${unit.name}] 整队恢复兵力 ${recovered}（${unit.soldiers}）` });
-      }
-    } else if (effect.key === 'shield') {
-      const applied = applyStatusToUnit(unit, {
-        key: 'shield',
-        value: getStatusValue(effect),
-        turnsRemaining: getStatusTurns(effect),
-        sourceSkillId: skill.id || '',
-        sourceSkillName: skill.name || '',
-        sourceSide: unit.side,
-        targetSide: unit.side,
-      });
-      if (applied) {
-        notes.push(`获得守御 ${applied.value}`);
-        structured.push(applied);
-      }
-    } else if (effect.key === 'attributeBonus') {
-      const applied = applyAttributeBonus(unit, effect);
-      if (applied) {
-        structured.push({
-          ...applied,
-          type: 'buff',
-          floatingText: createFloatingText(`${applied.attribute} +${applied.value}`, unit.side, 'buff'),
-        });
-        notes.push('属性提升');
-      }
-    } else if (effect.key === 'morale') {
-      structured.push({ type: 'morale', target: unit.side, value: unit.morale, text: `[${unit.name}] 士气保持 ${unit.morale}` });
-      notes.push('士气保持');
-    } else if (effect.key === 'armorBreak') {
-      const applied = applyStatusToUnit(target, {
-        key: 'armorBreak',
-        value: getStatusValue(effect),
-        turnsRemaining: getStatusTurns(effect),
-        maxStacks: effect.maxStacks,
-        sourceSkillId: skill.id || '',
-        sourceSkillName: skill.name || '',
-        sourceSide: unit.side,
-        targetSide: target.side,
-        appliedAtRound: unit.ownActionCount + 1,
-      });
-      if (applied) {
-        structured.push(applied);
-        notes.push('破甲');
-      }
-    } else if (effect.key === 'burn' || effect.key === 'poison') {
-      const applied = applyStatusToUnit(target, {
-        key: effect.key,
-        value: getStatusValue(effect),
-        turnsRemaining: getStatusTurns(effect),
-        maxStacks: effect.maxStacks,
-        sourceSkillId: skill.id || '',
-        sourceSkillName: skill.name || '',
-        sourceSide: unit.side,
-        targetSide: target.side,
-        sourceAttributes: clone(unit.attributes || {}),
-        appliedAtRound: unit.ownActionCount + 1,
-      });
-      if (applied) {
-        structured.push(applied);
-        notes.push(getStatusLabel(effect.key));
-      }
-    }
-  });
-  return { notes, structured };
-}
-
-function getSoldierRatio(unit) {
-  return unit.maxSoldiers > 0 ? unit.soldiers / unit.maxSoldiers : 0;
-}
-
-function hasStatus(unit, key) {
-  if (!key) return false;
-  return Array.isArray(unit.statuses) && unit.statuses.some((status) => status?.key === key);
-}
-
-function isCastConditionMet(condition = {}, unit, target) {
-  if (!condition || typeof condition !== 'object') return true;
-  const threshold = Number(condition.value ?? condition.pct ?? condition.threshold);
-  switch (condition.type) {
-    case 'cooldownReady':
-      return unit.skillCooldownRemaining <= 0;
-    case 'targetAlive':
-      return target.soldiers > 0;
-    case 'selfSoldierBelowPct':
-      return getSoldierRatio(unit) < (Number.isFinite(threshold) ? threshold : 1);
-    case 'selfSoldierAbovePct':
-      return getSoldierRatio(unit) > (Number.isFinite(threshold) ? threshold : 0);
-    case 'targetSoldierBelowPct':
-      return getSoldierRatio(target) < (Number.isFinite(threshold) ? threshold : 1);
-    case 'targetHasStatus':
-      return hasStatus(target, condition.key || condition.status);
-    case 'selfHasStatus':
-      return hasStatus(unit, condition.key || condition.status);
-    case 'firstOwnAction':
-      return toInteger(unit.ownActionCount, 0) === 0;
-    default:
-      return true;
-  }
-}
-
-function canCastSkill(unit, target, skill = null) {
-  if (!skill || unit.skillCooldownRemaining > 0 || target.soldiers <= 0) return false;
-  const conditions = Array.isArray(skill.castConditions) && skill.castConditions.length
-    ? skill.castConditions
-    : [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
-  return conditions.every((condition) => isCastConditionMet(condition, unit, target));
-}
-
-function getSkillCastConditionResults(unit, target, skill = null) {
-  if (!skill) return [];
-  const conditions = Array.isArray(skill.castConditions) && skill.castConditions.length
-    ? skill.castConditions
-    : [{ type: 'cooldownReady' }, { type: 'targetAlive' }];
-  return conditions.map((condition) => ({
-    ...condition,
-    met: isCastConditionMet(condition, unit, target),
-  }));
-}
-
-function describeActionDecision(unit, target, skill = null) {
-  if (!skill) {
-    return {
-      skillId: '',
-      skillName: '',
-      canCast: false,
-      reason: 'noActiveSkill',
-      conditionResults: [],
-      cooldownRemaining: 0,
-      ownActionCountBefore: toInteger(unit.ownActionCount, 0),
-    };
-  }
-  const conditionResults = getSkillCastConditionResults(unit, target, skill);
-  const cooldownRemaining = Math.max(0, toInteger(unit.skillCooldownRemaining, 0));
-  const targetAlive = target.soldiers > 0;
-  const canCast = cooldownRemaining <= 0 && targetAlive && conditionResults.every((condition) => condition.met);
-  const failed = conditionResults.find((condition) => !condition.met);
-  return {
-    skillId: skill.id || '',
-    skillName: skill.name || '',
-    canCast,
-    reason: canCast
-      ? 'castSkill'
-      : (cooldownRemaining > 0 ? 'cooldownNotReady' : (!targetAlive ? 'targetDefeated' : `conditionNotMet:${failed?.type || 'unknown'}`)),
-    conditionResults,
-    cooldownRemaining,
-    ownActionCountBefore: toInteger(unit.ownActionCount, 0),
-  };
-}
-
-function getBattleMapForTerritory(territory = {}) {
-  return BattleConfig.getBattleMapForType(territory.type);
-}
-
-function getBattleStageForTerritory(territory = {}) {
-  return BattleConfig.getBattleStageForType(territory.type);
-}
-
-function getBattleVisualGroups(soldiers, groupSize = DEFAULT_SOLDIER_SCALE) {
-  return buildBattleVisualGroups(soldiers, groupSize);
-}
-
-function getDefenderProfile(territory) {
-  const profile = BattleConfig.getDefenderProfileForOwner(territory.owner, territory.naturalName);
-  const soldiers = Math.max(
-    MIN_BATTLE_SOLDIERS,
-    toInteger(territory.battleTarget?.defender?.soldiers, toInteger(territory.garrison?.soldiers, toInteger(territory.defense, MIN_BATTLE_SOLDIERS))),
-  );
-  return {
-    id: territory.id,
-    name: profile.name,
-    leader: null,
-    soldiers,
-    maxSoldiers: soldiers,
-    morale: profile.morale,
-    attributes: normalizeAttributes(profile),
-    skill: getBattleSkill({}, 'defender'),
-  };
-}
-
-function getDefenderBattleProfile(territory) {
-  const fallback = getDefenderProfile(territory);
-  const leader = getDefenderLeaderSnapshot(territory);
-  if (!leader) return fallback;
-  return {
-    ...fallback,
-    id: leader.id,
-    name: leader.name,
-    leader,
-    attributes: leader.attributes,
-    skill: getBattleSkill({ leader }, 'defender'),
-  };
-}
-
-function createLegacyBattleReport(mission, territory, result, now = new Date()) {
-  return {
-    id: `battle_${territory.id}_${now.getTime()}`,
-    mode: 'legacy',
-    result: result.success ? 'victory' : 'defeat',
-    summary: result.success
-      ? `部队凭借兵力优势控制了${territory.naturalName}。`
-      : `${territory.naturalName}守备坚决，部队未能建立优势。`,
-    rounds: [],
-    attacker: {
-      leaderId: mission.expedition?.leader || 'unavailable',
-      leaderName: '无名领队',
-      soldiersStart: mission.soldiersCommitted,
-      soldiersEnd: Math.max(0, mission.soldiersCommitted - result.casualties),
-    },
-    defender: {
-      name: territory.naturalName || '守军',
-      soldiersStart: territory.defense || 0,
-      soldiersEnd: result.success ? 0 : Math.max(0, (territory.defense || 0) - Math.floor(mission.soldiersCommitted / 2)),
-    },
-    visual: {
-      groupSize: DEFAULT_SOLDIER_SCALE,
-      map: getBattleMapForTerritory(territory),
-    },
-  };
-}
-
-function makeUnit(side, base) {
-  return {
-    ...base,
-    side,
-    morale: toInteger(base.morale, 100),
-    moraleEffectEnabled: MORALE_EFFECT_ENABLED,
-    attributes: normalizeAttributes(base.attributes || {}),
-    skillCooldownRemaining: 0,
-    ownActionCount: 0,
-    statuses: Array.isArray(base.statuses) ? clone(base.statuses) : [],
-  };
-}
-
-function formatDamageLine(targetName, damageType, dealt, remaining) {
-  const label = DAMAGE_TYPE_LABELS[damageType] || '伤害';
-  return `[${targetName}] 受到${label} ${dealt}（${remaining}）`;
-}
-
-function createPreparationEvents(attacker, defender) {
-  return [
-    {
-      phase: 'preparation',
-      type: 'status',
-      lines: [
-        `[${attacker.name}] 士气 ${attacker.morale}`,
-        `[${defender.name}] 士气 ${defender.morale}`,
-        `士气影响：${MORALE_EFFECT_ENABLED ? '生效' : '未启用'}`,
-      ],
-    },
-  ];
-}
-
-function createExperienceSummary(attacker, defender, success) {
-  const enemyLoss = Math.max(0, defender.maxSoldiers - defender.soldiers);
-  const ownLoss = Math.max(0, attacker.maxSoldiers - attacker.soldiers);
-  const victoryBonus = success ? Math.max(20, Math.round(defender.maxSoldiers * 0.05)) : 0;
-  const total = Math.max(0, Math.round(enemyLoss * 1 + ownLoss * 0.25 + victoryBonus));
-  return {
-    total,
-    enemyLoss,
-    ownLoss,
-    victoryBonus,
-    formula: 'enemyLoss * 1 + ownLoss * 0.25 + victoryBonus',
-  };
-}
+const battleReports = createBattleReports({
+  BattleConfig,
+  DEFAULT_SOLDIER_SCALE,
+  MIN_BATTLE_SOLDIERS,
+  MORALE_EFFECT_ENABLED,
+  DAMAGE_TYPE_LABELS,
+  getBattleSkill,
+  getDefenderLeaderSnapshot,
+  getBattleSpeed,
+  getBattleVisualGroups,
+});
+const {
+  buildReportUnitSnapshot,
+  createExperienceSummary,
+  createLegacyBattleReport,
+  createPreparationEvents,
+  formatDamageLine,
+  getBattleMapForTerritory,
+  getBattleStageForTerritory,
+  getDefenderBattleProfile,
+  makeUnit,
+} = battleReports;
 
 function simulateConquestBattle(gameState, mission, territory, now = new Date()) {
   const targetTerritory = mission?.battleTarget
