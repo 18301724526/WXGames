@@ -46,6 +46,52 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
   });
 });
 
+test('CanvasGameShell refreshes tutorial highlight after naming input is filled', async () => {
+  const calls = [];
+  const game = {
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+        return true;
+      },
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime: {
+      requestTextInput() {
+        calls.push(['requestTextInput']);
+        return Promise.resolve('River City');
+      },
+      setTimeout(callback, delayMs) {
+        calls.push(['setTimeout', delayMs]);
+        callback();
+      },
+    },
+  });
+  shell.lastGame = game;
+  shell.naming = {
+    visible: true,
+    view: { title: 'Name city', maxLength: 12 },
+    inputValue: '',
+    submitting: false,
+  };
+  shell.renderActive = () => {
+    calls.push(['renderActive', shell.naming.inputValue]);
+    return true;
+  };
+
+  assert.equal(shell.requestNamingInput(), true);
+  await Promise.resolve();
+
+  assert.equal(shell.naming.inputValue, 'River City');
+  assert.deepEqual(calls, [
+    ['requestTextInput'],
+    ['renderActive', 'River City'],
+    ['setTimeout', 0],
+    ['refreshCurrentHighlight'],
+  ]);
+});
+
 test('CanvasGameShell preserves world map layer when drag snapshot refresh misses', () => {
   const calls = [];
   const shell = new CanvasGameShell({

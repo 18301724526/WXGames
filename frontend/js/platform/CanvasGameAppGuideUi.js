@@ -70,6 +70,7 @@
             this.naming.inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
             if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
             this.render();
+            this.scheduleTutorialHighlightRefresh(0);
           },
 
       submitNaming(inputName = null) {

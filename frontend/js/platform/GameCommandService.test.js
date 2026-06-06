@@ -524,3 +524,53 @@ test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highli
   timers[0]();
   assert.deepEqual(calls.at(-1), ['refreshCurrentHighlight']);
 });
+
+test('CanvasGameApp refreshes tutorial highlight after naming input is filled', async () => {
+  const calls = [];
+  const timers = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    runtime: {
+      async requestTextInput() {
+        calls.push(['requestTextInput']);
+        return 'River League';
+      },
+    },
+    scheduler: {
+      setTimeout(callback, delayMs) {
+        calls.push(['setTimeout', delayMs]);
+        timers.push(callback);
+        return 1;
+      },
+    },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+        return true;
+      },
+    },
+  });
+  app.naming = {
+    visible: true,
+    view: { title: 'Name', maxLength: 12 },
+    inputValue: '',
+    submitting: false,
+  };
+  app.canvasShell = { naming: app.naming };
+  app.render = () => calls.push(['render', app.naming.inputValue]);
+
+  await app.requestNamingInput();
+
+  assert.equal(app.naming.inputValue, 'River League');
+  assert.equal(app.canvasShell.naming, app.naming);
+  assert.deepEqual(calls, [
+    ['requestTextInput'],
+    ['render', 'River League'],
+    ['setTimeout', 0],
+  ]);
+
+  timers[0]();
+  assert.deepEqual(calls.at(-1), ['refreshCurrentHighlight']);
+});

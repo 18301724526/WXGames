@@ -266,6 +266,10 @@ requestNamingInput() {
           inputValue: String(value).trim().slice(0, maxLength),
         };
         this.renderActive();
+        const game = this.getCanvasGameHost?.() || this.lastGame || null;
+        const refresh = () => game?.tutorialController?.refreshCurrentHighlight?.();
+        if (typeof this.runtime?.setTimeout === 'function') this.runtime.setTimeout(refresh, 0);
+        else refresh();
       }).catch(() => {});
       return true;
     },
