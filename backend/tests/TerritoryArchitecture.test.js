@@ -16,6 +16,7 @@ const createTerritoryScoutPlanner = require('../services/territory/TerritoryScou
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 const createTerritoryScoutResults = require('../services/territory/TerritoryScoutResults');
 const createTerritorySiteMigration = require('../services/territory/TerritorySiteMigration');
+const createTerritoryStateNormalizer = require('../services/territory/TerritoryStateNormalizer');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const territoryRoot = path.join(serviceRoot, 'territory');
@@ -41,6 +42,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryScoutResults.js',
     'TerritoryShared.js',
     'TerritorySiteMigration.js',
+    'TerritoryStateNormalizer.js',
     'TerritoryVisuals.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -758,6 +760,145 @@ test('territory conquest missions module owns settlement and battle resolution c
   assert.equal(battleState.territories[0].garrison, null);
   assert.equal(battleState.territories[0].lastBattle.leaderGrowth.leader, 'leader-1');
   assert.deepEqual(experienceGrants[0], { leader: 'leader-1', experience: { leader: 12 } });
+});
+
+test('territory state normalizer owns territory, mission, and world sync contracts', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const calls = {
+    boundSites: [],
+    ensuredMaps: 0,
+    migrated: [],
+    readiness: 0,
+    limited: 0,
+  };
+  const Normalizer = createTerritoryStateNormalizer({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      getWorldMapVersion: (worldMap) => worldMap?.version || 1,
+      buildScoutRoute: ({ q, r }, direction, actionPoints) => Array.from({ length: actionPoints }, (_, index) => ({
+        q: direction === 'e' ? q + index + 1 : q,
+        r,
+        step: index + 1,
+      })),
+      ensureWorldMap: (gameState) => {
+        calls.ensuredMaps += 1;
+        gameState.worldMap = gameState.worldMap || { version: 1, seed: 'seed', tiles: [] };
+        gameState.worldMap.tiles = gameState.worldMap.tiles || [];
+        return gameState.worldMap;
+      },
+      revealTile: (gameState, q, r) => {
+        const tile = { id: `tile_${q}_${r}`, q, r, discovered: true, terrain: 'plains' };
+        gameState.worldMap.tiles.push(tile);
+        return tile;
+      },
+      bindSiteToTile: (gameState, x, y, siteId, _now, options) => {
+        calls.boundSites.push({ x, y, siteId, options });
+        const tileId = `tile_${x}_${y}`;
+        const tile = (gameState.worldMap.tiles || []).find((item) => item.id === tileId);
+        if (tile) tile.siteId = siteId;
+      },
+    },
+    enforceScoutMissionLimit: (gameState) => {
+      calls.limited += 1;
+      return gameState.warMissions;
+    },
+    getMissionSoldierAllocations: (mission) => mission.soldierAllocations || [{ cityId: 'capital', soldiers: 200 }],
+    migrateTerritorySitesToCurrentWorldRules: (_gameState, previousWorldMapVersion, timestamp) => {
+      calls.migrated.push({ previousWorldMapVersion, timestamp: timestamp.toISOString() });
+      return false;
+    },
+    normalizeBattleTarget: (target) => ({ ...target, normalized: true }),
+    normalizeDirection: (direction) => (direction === 'bad' ? null : direction),
+    normalizeGarrison: (raw, territory) => (territory.owner === 'tribe'
+      ? { id: `garrison_${territory.id}`, siteId: territory.id, leader: { id: 'leader-1' } }
+      : raw || null),
+    normalizeScoutCoordinates: (coordinates) => (Array.isArray(coordinates) ? coordinates : [])
+      .filter((coord) => coord?.result)
+      .sort((a, b) => a.x - b.x),
+    normalizeScoutReport: (report) => (report ? { ...report, normalized: true } : null),
+    normalizeScoutReports: (reports) => (Array.isArray(reports) ? reports : []),
+    normalizeScoutState: (state) => ({ emptyStreak: 0, areas: [], ...(state || {}) }),
+    updateMissionReadiness: (gameState) => {
+      calls.readiness += 1;
+      gameState.warMissions = gameState.warMissions.map((mission) => (
+        mission.id === 'scout-ready' ? { ...mission, status: 'ready' } : mission
+      ));
+      return gameState.warMissions;
+    },
+    upsertScoutCoordinateRecord: (gameState, record) => {
+      gameState.scoutedCoordinates = [...(gameState.scoutedCoordinates || []), record]
+        .filter((coord, index, all) => index === all.findIndex((item) => item.x === coord.x && item.y === coord.y));
+      return record;
+    },
+  });
+
+  const gameState = {
+    polity: { name: '  River League  ', capitalCityName: '  Capital  ', color: '#abc' },
+    worldMap: {
+      version: 7,
+      seed: 'seed',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, discovered: true },
+        { id: 'tile_1_0', q: 1, r: 0, discovered: true, siteId: 'ghost-site' },
+        { id: 'tile_2_0', q: 2, r: 0, discovered: true },
+      ],
+    },
+    territories: [
+      { id: 'river_plain', status: 'scouted', naturalName: 'Legacy River' },
+      { id: 'camp-1', x: 3, y: 0, type: 'camp', owner: 'tribe', status: 'discovered', defense: 5, recommendedSoldiers: 7 },
+      { id: 'zero', x: 0, y: 0, status: 'discovered' },
+    ],
+    warMissions: [
+      { id: 'bad-scout', kind: 'scout', direction: 'bad' },
+      {
+        id: 'scout-ready',
+        kind: 'scout',
+        direction: 'e',
+        originX: 0,
+        originY: 0,
+        targetX: 2,
+        targetY: 0,
+        actionPoints: 2,
+        status: 'active',
+      },
+      {
+        id: 'conquest-1',
+        kind: 'conquest',
+        territoryId: 'camp-1',
+        soldiersCommitted: 2,
+        expedition: { soldiers: 2, troopType: 'spears', leader: 'leader-1' },
+        status: 'ready',
+      },
+    ],
+    scoutReports: [{ id: 'report-1' }],
+    scoutedCoordinates: [{ x: 9, y: 9, result: 'empty' }],
+    scoutState: { emptyStreak: 2 },
+  };
+
+  Normalizer.normalizeTerritoryState(gameState, now);
+
+  assert.equal(gameState.territories[0].id, 'capital');
+  assert.equal(gameState.territories.some((territory) => territory.id === 'zero'), false);
+  const legacy = gameState.territories.find((territory) => territory.id === 'river_plain');
+  assert.equal(legacy.x, 1);
+  assert.equal(legacy.y, 0);
+  assert.equal(legacy.status, 'discovered');
+  assert.equal(legacy.owner, 'neutral');
+  const camp = gameState.territories.find((territory) => territory.id === 'camp-1');
+  assert.equal(camp.defense, 500);
+  assert.equal(camp.garrison.siteId, 'camp-1');
+  assert.deepEqual(gameState.warMissions.map((mission) => mission.id), ['scout-ready', 'conquest-1']);
+  assert.equal(gameState.warMissions[0].status, 'ready');
+  assert.equal(gameState.warMissions[0].route.length, 2);
+  assert.equal(gameState.warMissions[1].soldiersCommitted, 200);
+  assert.equal(gameState.polity.name, 'River League');
+  assert.equal(gameState.scoutState.emptyStreak, 2);
+  assert.ok(gameState.scoutedCoordinates.some((coord) => coord.siteId === 'camp-1'));
+  assert.ok(calls.boundSites.some((call) => call.siteId === 'camp-1' && call.options.visibility === 'scouted'));
+  assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, 'river_plain');
+  assert.equal(calls.migrated[0].previousWorldMapVersion, 7);
+  assert.equal(calls.readiness, 1);
+  assert.equal(calls.limited, 1);
 });
 
 test('territory naming module owns city and polity naming contracts', () => {
