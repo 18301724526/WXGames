@@ -69,6 +69,33 @@ read_config_version() {
     node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(String(data.version || 'unknown'));" "$config_path"
 }
 
+ensure_shared_link() {
+    local expected_shared
+    local resolved_shared
+
+    mkdir -p "$(dirname "$SHARED_LINK")"
+    expected_shared="$(readlink -f "$WORK_TREE/shared")"
+    resolved_shared="$(readlink -f "$SHARED_LINK" 2>/dev/null || true)"
+
+    if [ "$resolved_shared" = "$expected_shared" ]; then
+        echo "[Deploy] shared 链接已正确，复用: $SHARED_LINK"
+        return
+    fi
+
+    if ln -sfn "$WORK_TREE/shared" "$SHARED_LINK"; then
+        return
+    fi
+
+    resolved_shared="$(readlink -f "$SHARED_LINK" 2>/dev/null || true)"
+    if [ "$resolved_shared" = "$expected_shared" ]; then
+        echo "[Deploy] shared 链接可用，跳过重建: $SHARED_LINK"
+        return
+    fi
+
+    echo "[Deploy] 无法创建 shared 链接: $SHARED_LINK" >&2
+    exit 1
+}
+
 verify_shared_sync() {
     local work_tree_config="$WORK_TREE/shared/buildingConfig.json"
     local shared_config="$SHARED_LINK/buildingConfig.json"
@@ -191,8 +218,7 @@ echo "[Deploy] 发布前端静态文件..."
 publish_frontend_assets
 
 echo "[Deploy] 同步 shared/ 目录..."
-mkdir -p "$(dirname "$SHARED_LINK")"
-ln -sfn "$WORK_TREE/shared" "$SHARED_LINK"
+ensure_shared_link
 verify_shared_sync
 
 echo "[Deploy] 同步 backend/ 到运行目录..."
