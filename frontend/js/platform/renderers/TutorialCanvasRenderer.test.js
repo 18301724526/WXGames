@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const TutorialAdvisorCanvasRenderer = require('./TutorialAdvisorCanvasRenderer');
+const TutorialDialogueLayer = require('./TutorialDialogueLayer');
 const TutorialIntroDialogueLayout = require('./TutorialIntroDialogueLayout');
 const TutorialIntroMarchModel = require('./TutorialIntroMarchModel');
 const TutorialIntroUnitRenderer = require('./TutorialIntroUnitRenderer');
@@ -445,6 +446,8 @@ test('TutorialCanvasRenderer places intro dialogue at tuned left offset', () => 
   assert.equal(panel[1], 96);
   const name = calls.find((call) => call[0] === 'drawText');
   assert.equal(name[2], 120);
+  assert.equal(calls.some((call) => call[0] === 'drawText' && call[1] === '点击继续'), true);
+  assert.ok(calls.findIndex((call) => call[0] === 'portrait') < calls.findIndex((call) => call[0] === 'drawPanel'));
 });
 
 test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', () => {
@@ -460,4 +463,53 @@ test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', (
   assert.equal(layout.panel.width, 276);
   assert.ok(layout.portrait.x < layout.panel.x);
   assert.ok(lineCount(path.join(__dirname, 'TutorialIntroDialogueLayout.js')) < 500);
+});
+
+test('TutorialDialogueLayer renders above the spine layer and restores host context', () => {
+  const calls = [];
+  const dialogueCtx = {
+    clearRect(...args) { calls.push(['clearRect', ...args]); },
+  };
+  const canvas = {
+    width: 390,
+    height: 693,
+    getContext(type) {
+      calls.push(['getContext', type]);
+      return dialogueCtx;
+    },
+  };
+  const runtime = {
+    width: 390,
+    height: 693,
+    ensureLayerCanvas(name, options) {
+      calls.push(['ensureLayerCanvas', name, options]);
+      return canvas;
+    },
+    setLayerVisible(name, visible) {
+      calls.push(['setLayerVisible', name, visible]);
+    },
+    getLayerCanvas() {
+      return canvas;
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 693 };
+    },
+  };
+  const mainCtx = { main: true };
+  const host = { ctx: mainCtx };
+  const renderer = { host, h5Runtime: runtime, width: 390, height: 693 };
+
+  assert.equal(TutorialDialogueLayer.begin(renderer), dialogueCtx);
+  const ensureCall = calls.find((call) => call[0] === 'ensureLayerCanvas');
+  assert.equal(ensureCall[1], 'tutorialDialogue');
+  assert.equal(ensureCall[2].zIndex, 1001);
+  assert.deepEqual(ensureCall[2].rect, { x: 0, y: 0, width: 390, height: 693 });
+  assert.equal(calls.some((call) => call[0] === 'clearRect'), true);
+  TutorialDialogueLayer.withHostContext(renderer, dialogueCtx, () => {
+    assert.equal(host.ctx, dialogueCtx);
+  });
+  assert.equal(host.ctx, mainCtx);
+  assert.equal(TutorialDialogueLayer.clear(renderer, true), true);
+  assert.equal(calls.some((call) => call[0] === 'setLayerVisible' && call[2] === false), true);
+  assert.ok(lineCount(path.join(__dirname, 'TutorialDialogueLayer.js')) < 500);
 });

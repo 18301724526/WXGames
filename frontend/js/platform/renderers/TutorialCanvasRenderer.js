@@ -19,7 +19,7 @@
   const SharedTutorialIntroUnitRenderer = resolveRendererDependency('TutorialIntroUnitRenderer', './TutorialIntroUnitRenderer');
   const SharedTutorialIntroDialogueLayout = resolveRendererDependency('TutorialIntroDialogueLayout', './TutorialIntroDialogueLayout');
   const SharedTutorialAdvisorCanvasRenderer = resolveRendererDependency('TutorialAdvisorCanvasRenderer', './TutorialAdvisorCanvasRenderer');
-
+  const SharedTutorialDialogueLayer = resolveRendererDependency('TutorialDialogueLayer', './TutorialDialogueLayer');
   class TutorialCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -47,7 +47,6 @@
         },
       });
     }
-
     render(state = {}, options = {}) {
       return this.renderTutorialIntro(state, options);
     }
@@ -86,16 +85,19 @@
     renderTutorialIntro(state = {}, options = {}) {
       const intro = options.tutorialIntro || null;
       if (!intro?.active || !this.ctx) {
+        SharedTutorialDialogueLayer?.clear?.(this, true);
         this.disposeTutorialAdvisorSpine();
         return false;
       }
       const target = this.resolveTutorialIntroTarget(intro, state, options);
       const unitTarget = this.resolveTutorialIntroUnitTarget(intro, state, options) || target;
       if (!target || !unitTarget) {
+        SharedTutorialDialogueLayer?.clear?.(this, true);
         this.disposeTutorialAdvisorSpine();
         return false;
       }
       if (intro.step === 'march' || intro.step === 'entering') {
+        SharedTutorialDialogueLayer?.clear?.(this, true);
         this.disposeTutorialAdvisorSpine();
         this.renderTutorialIntroMarch(intro, unitTarget);
         return true;
@@ -352,25 +354,40 @@
       });
       const panel = dialogue.panel;
       const portrait = dialogue.portrait;
+      const dialogueCtx = SharedTutorialDialogueLayer?.begin?.(this) || null;
+      const renderContent = () => {
+        this.renderTutorialIntroAdvisorPortrait(portrait.x, portrait.y, portrait.width, portrait.height);
+        this.drawPanel(panel.x, panel.y, panel.width, panel.height, {
+          fill: 'rgba(23, 17, 12, 0.94)',
+          stroke: 'rgba(246, 214, 147, 0.3)',
+          radius: 8,
+          inset: 'rgba(255, 231, 184, 0.08)',
+        });
+        this.drawText(advisorName, panel.x + 24, panel.y + 24, {
+          size: 14,
+          bold: true,
+          color: '#ffd98a',
+        });
+        const lines = this.wrapTextLimit(message, panel.width - 48, 3, { size: 13 });
+        this.drawTextLines(lines, panel.x + 24, panel.y + 46, {
+          size: 13,
+          color: '#f7ecd0',
+          lineHeight: 18,
+        });
+        this.drawText('点击继续', panel.x + panel.width - 24, panel.y + panel.height - 17, {
+          size: 11,
+          color: 'rgba(255, 230, 181, 0.66)',
+          align: 'right',
+          baseline: 'middle',
+        });
+      };
 
-      this.drawPanel(panel.x, panel.y, panel.width, panel.height, {
-        fill: 'rgba(23, 17, 12, 0.94)',
-        stroke: 'rgba(246, 214, 147, 0.3)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
-      this.renderTutorialIntroAdvisorPortrait(portrait.x, portrait.y, portrait.width, portrait.height);
-      this.drawText(advisorName, panel.x + 24, panel.y + 24, {
-        size: 14,
-        bold: true,
-        color: '#ffd98a',
-      });
-      const lines = this.wrapTextLimit(message, panel.width - 48, 3, { size: 13 });
-      this.drawTextLines(lines, panel.x + 24, panel.y + 46, {
-        size: 13,
-        color: '#f7ecd0',
-        lineHeight: 18,
-      });
+      if (!dialogueCtx) {
+        renderContent();
+        return false;
+      }
+      SharedTutorialDialogueLayer.withHostContext(this, dialogueCtx, renderContent);
+      return true;
     }
 
     renderTutorialHighlight(highlight = null) {
