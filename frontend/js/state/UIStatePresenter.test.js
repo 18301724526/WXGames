@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const UIStatePresenter = require('./UIStatePresenter');
+const BuildingPresenter = require('./presenters/BuildingPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 
@@ -103,6 +104,82 @@ test('UIStatePresenter delegates famous person view state while preserving facad
   assert.equal(UIStatePresenter.formatFamousPersonSkill({ name: 'Aptitude', effects: [{ key: 'knowledgeOutputPct', value: 0.15 }] }).includes('知识产出提高 15%'), true);
 });
 
+test('UIStatePresenter delegates building view state while preserving facade contracts', () => {
+  const buildingConfig = {
+    categories: {
+      agriculture: { label: '农业', order: 1 },
+      livelihood: { label: '民生', order: 2 },
+      military: { label: '军事', order: 3 },
+    },
+    house: {
+      id: 'house',
+      name: '民居',
+      category: 'livelihood',
+      maxLevel: 3,
+      effects: { perLevel: { populationCap: 2 } },
+      ui: {
+        description: '容纳更多人口。',
+        effectText: [{ field: 'populationCapBonus', label: '人口上限' }],
+      },
+      maintenance: { habitabilityPressure: 0.5, perLevelPerMinute: { food: 0.3 } },
+    },
+    farm: {
+      id: 'farm',
+      name: '农田',
+      category: 'agriculture',
+      maxLevel: 5,
+      effects: { perLevel: { foodOutputMultiplier: 0.2 } },
+      ui: {
+        description: '提供稳定粮食。',
+        effectText: [{ field: 'foodOutputBonus', label: '粮食', format: 'percent' }],
+      },
+      maintenance: { habitabilityPressure: 0, perLevelPerMinute: {} },
+    },
+    barracks: {
+      id: 'barracks',
+      name: '兵营',
+      category: 'military',
+      maxLevel: 2,
+      military: {
+        soldierCapByLevel: [0, 20, 40],
+        trainingIntervalSecondsByLevel: [0, 30, 20],
+        trainingBatchSizeByLevel: [0, 1, 2],
+      },
+      effects: { perLevel: { defense: 1 } },
+      ui: { effectText: [] },
+      maintenance: { habitabilityPressure: 1.2, perLevelPerMinute: { food: 0.6 } },
+    },
+  };
+  const state = {
+    unlockedBuildings: ['house', 'farm', 'barracks'],
+    buildings: { house: { level: 1 }, farm: 0, barracks: 1 },
+    buildingCosts: {
+      house: { wood: 15 },
+      farm: { food: 5, wood: 10 },
+      barracks: { wood: 50 },
+    },
+    resources: { food: 20, wood: 12 },
+    softGuide: { mode: 'strong', target: 'card-farm' },
+    military: { soldiers: 3, soldierCap: 20, trainingProgress: 4, trainingIntervalSeconds: 30, trainingBatchSize: 1, defense: 2 },
+    buildingEffects: {
+      byBuilding: { house: { level: 1, populationCapBonus: 2 } },
+      threatDefense: 1,
+    },
+  };
+  const tutorial = { currentStep: 7, completed: false };
+
+  const view = UIStatePresenter.buildBuildingViewState(state, tutorial, buildingConfig, { activeCategory: 'all' });
+  const direct = BuildingPresenter.buildBuildingViewState(state, tutorial, buildingConfig, { activeCategory: 'all' });
+
+  assert.deepEqual(view, direct);
+  assert.equal(typeof UIStatePresenter.buildBuildingViewState, 'function');
+  assert.equal(view.cards.length, 3);
+  assert.equal(view.cards.find((card) => card.id === 'farm').button.disabled, false);
+  assert.equal(view.cards.find((card) => card.id === 'house').button.label, '引导中锁定');
+  assert.equal(view.cards.find((card) => card.id === 'barracks').militaryLines[0], '士兵 3/20 · 防御 3');
+  assert.deepEqual(UIStatePresenter.buildCostViewState({ wood: 1234 }).parts[0], { resource: 'wood', value: 1234, text: '1.2k' });
+});
+
 test('UIStatePresenter delegates talent policy view state while preserving facade contracts', () => {
   const state = {
     currentEra: 2,
@@ -137,6 +214,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
   const html = fs.readFileSync(htmlPath, 'utf8');
   const expectedOrder = [
     'TechPresenter.js',
+    'BuildingPresenter.js',
     'FamousPersonPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',

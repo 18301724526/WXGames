@@ -59,6 +59,18 @@
     return null;
   })();
 
+  const BuildingPresenter = (() => {
+    if (global.BuildingPresenter) return global.BuildingPresenter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./presenters/BuildingPresenter');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
     static MIN_EXPEDITION_SOLDIERS = 100;
@@ -883,400 +895,116 @@
       };
     }
 
-    static getBuildingLevel(buildings, id) {
-      const entry = buildings?.[id];
-      return entry && typeof entry === 'object' ? this.toInteger(entry.level) : this.toInteger(entry);
+    static getBuildingLevel(...args) {
+      return BuildingPresenter.getBuildingLevel(...args);
     }
 
-    static getBuildingActionLabel(cost, level) {
-      if (cost === null) return '已满级';
-      return level > 0 ? '升级' : '建造';
+    static getBuildingActionLabel(...args) {
+      return BuildingPresenter.getBuildingActionLabel(...args);
     }
 
-    static isBuildingOpenEnded(config = {}) {
-      return Boolean(config?.scalePlan?.openEnded);
+    static isBuildingOpenEnded(...args) {
+      return BuildingPresenter.isBuildingOpenEnded(...args);
     }
 
-    static getExtraBuildingEffectEfficiency(curve, extraIndex) {
-      if (curve === 'linear') return 1;
-      if (curve === 'step') return 0.5;
-      const floor = 0.05;
-      return floor + (1 - floor) / Math.sqrt(extraIndex + 2);
+    static getExtraBuildingEffectEfficiency(...args) {
+      return BuildingPresenter.getExtraBuildingEffectEfficiency(...args);
     }
 
-    static getVisibleBuildingIds(state = {}) {
-      const unlocked = Array.isArray(state.unlockedBuildings) ? state.unlockedBuildings : [];
-      const built = Object.entries(state.buildings || {})
-        .filter(([, entry]) => (entry && typeof entry === 'object' ? entry.level : entry) > 0)
-        .map(([id]) => id);
-      return Array.from(new Set([...unlocked, ...built]));
+    static getVisibleBuildingIds(...args) {
+      return BuildingPresenter.getVisibleBuildingIds(...args);
     }
 
-    static getBuildingConfig(state = {}, buildingConfig = {}, id) {
-      return state.buildingDefinitions?.[id] || buildingConfig[id] || null;
+    static getBuildingConfig(...args) {
+      return BuildingPresenter.getBuildingConfig(...args);
     }
 
-    static getBuildingCategoryDefinitions(state = {}, buildingConfig = {}) {
-      const source = state.buildingCategories || buildingConfig.categories || {};
-      const fallback = {
-        agriculture: { label: '农业', order: 1 },
-        livelihood: { label: '民生', order: 2 },
-        production: { label: '生产', order: 3 },
-        culture: { label: '文化', order: 4 },
-        entertainment: { label: '娱乐', order: 5 },
-        military: { label: '军事', order: 6 },
-      };
-      return { ...fallback, ...(source && typeof source === 'object' ? source : {}) };
+    static getBuildingCategoryDefinitions(...args) {
+      return BuildingPresenter.getBuildingCategoryDefinitions(...args);
     }
 
-    static getBuildingCategory(config = {}) {
-      return config.category || 'production';
+    static getBuildingCategory(...args) {
+      return BuildingPresenter.getBuildingCategory(...args);
     }
 
-    static buildBuildingCategoryTabs(cards = [], activeCategory = 'all', definitions = {}) {
-      const counts = cards.reduce((result, card) => {
-        const category = card.category || 'production';
-        result[category] = (result[category] || 0) + 1;
-        return result;
-      }, {});
-      const categoryTabs = Object.entries(definitions)
-        .map(([id, definition]) => ({
-          id,
-          label: definition?.label || id,
-          order: Number(definition?.order) || 99,
-          count: counts[id] || 0,
-        }))
-        .filter((tab) => tab.count > 0)
-        .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
-      const tabs = [
-        { id: 'all', label: '全部', count: cards.length, active: activeCategory === 'all' },
-        ...categoryTabs,
-      ];
-      const hasActive = tabs.some((tab) => tab.id === activeCategory && tab.count > 0);
-      const resolvedActiveCategory = hasActive ? activeCategory : 'all';
-      return tabs.map((tab) => ({
-        ...tab,
-        active: tab.id === resolvedActiveCategory,
-      }));
+    static buildBuildingCategoryTabs(...args) {
+      return BuildingPresenter.buildBuildingCategoryTabs(...args);
     }
 
-    static buildCostViewState(cost) {
-      if (cost === null) return { text: '已满级', parts: [], isMax: true };
-      if (!cost) return { text: '免费建造', parts: [], isMax: false };
-      const parts = ['wood', 'iron', 'stone', 'food', 'knowledge', 'metal']
-        .filter((resource) => cost[resource])
-        .map((resource) => ({
-          resource,
-          value: cost[resource],
-          text: this.formatResourceAmount(cost[resource]),
-        }));
-      return {
-        text: parts.length ? '' : '免费建造',
-        parts,
-        isMax: false,
-      };
+    static buildCostViewState(...args) {
+      return BuildingPresenter.buildCostViewState(...args);
     }
 
-    static getBuildingEffectSummary(config = {}, level = 0) {
-      const currentLevel = Math.max(0, this.toInteger(level));
-      const perLevel = config.effects?.perLevel || {};
-      const summary = { level: currentLevel };
-      if (perLevel.foodOutputMultiplier) summary.foodOutputBonus = this.calculateBuildingEffectBonus(config, 'foodOutputMultiplier', currentLevel);
-      if (perLevel.populationCap) summary.populationCapBonus = this.calculateBuildingEffectBonus(config, 'populationCap', currentLevel);
-      if (perLevel.knowledgeOutputMultiplier) summary.knowledgeOutputBonus = this.calculateBuildingEffectBonus(config, 'knowledgeOutputMultiplier', currentLevel);
-      if (perLevel.craftsmanOutputMultiplier) summary.craftsmanOutputBonus = this.calculateBuildingEffectBonus(config, 'craftsmanOutputMultiplier', currentLevel);
-      if (perLevel.woodOutputBase) summary.woodOutputBase = this.calculateBuildingEffectBonus(config, 'woodOutputBase', currentLevel);
-      if (perLevel.stoneOutputBase) summary.stoneOutputBase = this.calculateBuildingEffectBonus(config, 'stoneOutputBase', currentLevel);
-      if (perLevel.ironOutputBase) summary.ironOutputBase = this.calculateBuildingEffectBonus(config, 'ironOutputBase', currentLevel);
-      if (perLevel.offlineEfficiency) summary.offlineEfficiencyBonus = this.calculateBuildingEffectBonus(config, 'offlineEfficiency', currentLevel);
-      if (perLevel.defense) summary.defenseLevel = this.calculateBuildingEffectBonus(config, 'defense', currentLevel);
-      if (perLevel.threatDefense) summary.threatDefenseBonus = this.calculateBuildingEffectBonus(config, 'threatDefense', currentLevel);
-      if (perLevel.globalOutputMultiplier) summary.globalOutputBonus = this.calculateBuildingEffectBonus(config, 'globalOutputMultiplier', currentLevel);
-      return summary;
+    static getBuildingEffectSummary(...args) {
+      return BuildingPresenter.getBuildingEffectSummary(...args);
     }
 
-    static calculateBuildingEffectBonus(config = {}, field = '', level = 0) {
-      const currentLevel = Math.max(0, this.toInteger(level));
-      const perLevel = this.toNumber(config.effects?.perLevel?.[field]);
-      if (currentLevel <= 0 || perLevel <= 0) return 0;
-      const configuredMaxLevel = this.toInteger(config.maxLevel);
-      if (configuredMaxLevel <= 0) return Math.round(currentLevel * perLevel * 1000) / 1000;
-      const maxLevel = Math.max(1, configuredMaxLevel);
-      let total = Math.min(currentLevel, maxLevel) * perLevel;
-      if (this.isBuildingOpenEnded(config) && currentLevel > maxLevel) {
-        const curve = config.scalePlan?.effectCurve || 'diminishing';
-        for (let index = 0; index < currentLevel - maxLevel; index += 1) {
-          total += perLevel * this.getExtraBuildingEffectEfficiency(curve, index);
-        }
-      }
-      return Math.round(total * 1000000) / 1000000;
+    static calculateBuildingEffectBonus(...args) {
+      return BuildingPresenter.calculateBuildingEffectBonus(...args);
     }
 
-    static formatBuildingEffectValue(template, value, previousValue = null) {
-      if (!template?.field || !template?.label || typeof value !== 'number' || value <= 0) return '';
-      let totalText = '';
-      let deltaText = '';
-      const previous = typeof previousValue === 'number' ? previousValue : null;
-      const delta = previous === null ? 0 : value - previous;
-      if (template.field === 'populationCapBonus') {
-        totalText = `${template.label} ${this.toDisplayPopulation(value)}`;
-        if (delta > 0) deltaText = `提升 ${this.toDisplayPopulation(delta)}`;
-      } else if (template.format === 'percent') {
-        totalText = `${template.label}效率 ${Math.round((1 + value) * 100)}%`;
-        if (delta > 0) {
-          const deltaPercent = delta * 100;
-          deltaText = `提升 ${deltaPercent < 1 ? '<1' : Math.round(deltaPercent)}%`;
-        }
-      } else {
-        totalText = `${template.label} ${this.formatCompactNumber(value, { floorSmall: false })}`;
-        if (delta > 0) deltaText = `提升 ${this.formatCompactNumber(delta, { floorSmall: false })}`;
-      }
-      return deltaText ? `${totalText}（${deltaText}）` : totalText;
+    static formatBuildingEffectValue(...args) {
+      return BuildingPresenter.formatBuildingEffectValue(...args);
     }
 
-    static formatMilitaryEffectParts(config = {}, level = 0, previousLevel = null) {
-      const military = config.military || {};
-      const currentLevel = Math.max(0, this.toInteger(level));
-      const previous = previousLevel === null ? null : Math.max(0, this.toInteger(previousLevel));
-      const parts = [];
-      const soldierCaps = Array.isArray(military.soldierCapByLevel) ? military.soldierCapByLevel : [];
-      const intervals = Array.isArray(military.trainingIntervalSecondsByLevel) ? military.trainingIntervalSecondsByLevel : [];
-      const batchSizes = Array.isArray(military.trainingBatchSizeByLevel) ? military.trainingBatchSizeByLevel : [];
-      const cap = this.toInteger(soldierCaps[currentLevel]);
-      const previousCap = previous === null ? null : this.toInteger(soldierCaps[previous]);
-      if (cap > 0) {
-        const delta = previousCap === null ? 0 : cap - previousCap;
-        parts.push(delta > 0 ? `士兵容量 ${cap}（提升 ${delta}）` : `士兵容量 ${cap}`);
-      }
-      const interval = this.toInteger(intervals[currentLevel]);
-      const previousInterval = previous === null ? null : this.toInteger(intervals[previous]);
-      if (interval > 0) {
-        const faster = previousInterval && previousInterval > interval ? previousInterval - interval : 0;
-        const batchSize = this.toInteger(batchSizes[currentLevel], 1);
-        const batchText = batchSize > 1 ? `${interval}秒/${batchSize}兵` : `${interval}秒/人`;
-        parts.push(faster > 0 ? `训练速度 ${batchText}（加快 ${faster}秒）` : `训练速度 ${batchText}`);
-      }
-      return parts;
+    static formatMilitaryEffectParts(...args) {
+      return BuildingPresenter.formatMilitaryEffectParts(...args);
     }
 
-    static formatBuildingEffectText(config = {}, level = 0, previousLevel = null, effectOverride = null) {
-      const effect = effectOverride || this.getBuildingEffectSummary(config, level);
-      const previousEffect = previousLevel === null ? null : this.getBuildingEffectSummary(config, previousLevel);
-      const templates = config?.ui?.effectText || [];
-      const parts = templates
-        .map((template) => this.formatBuildingEffectValue(
-          template,
-          effect?.[template.field],
-          previousEffect?.[template.field],
-        ))
-        .filter(Boolean);
-      parts.push(...this.formatMilitaryEffectParts(config, level, previousLevel));
-      return parts.join('，');
+    static formatBuildingEffectText(...args) {
+      return BuildingPresenter.formatBuildingEffectText(...args);
     }
 
-    static getBuildingEffectText(config, buildingEffects = {}) {
-      const effect = buildingEffects?.byBuilding?.[config?.id] || {};
-      const level = this.toInteger(effect.level);
-      return this.formatBuildingEffectText(config, level);
+    static getBuildingEffectText(...args) {
+      return BuildingPresenter.getBuildingEffectText(...args);
     }
 
-    static getResourceDisplayName(resource) {
-      return {
-        food: '食物',
-        knowledge: '知识',
-        wood: '木材',
-        iron: '铁矿',
-        stone: '石料',
-        metal: '铁矿',
-      }[resource] || resource;
+    static getResourceDisplayName(...args) {
+      return BuildingPresenter.getResourceDisplayName(...args);
     }
 
-    static getMaintenanceResourceKeys(maintenance = {}) {
-      return Object.entries(maintenance.perLevelPerMinute || {})
-        .filter(([, value]) => this.toNumber(value) > 0)
-        .map(([resource]) => resource);
+    static getMaintenanceResourceKeys(...args) {
+      return BuildingPresenter.getMaintenanceResourceKeys(...args);
     }
 
-    static formatHabitabilityPressure(value) {
-      const pressure = this.toNumber(value);
-      if (pressure <= 0) return '宜居压力平稳';
-      if (pressure <= 1) return '宜居压力轻微';
-      if (pressure <= 2) return '宜居压力较高';
-      return '宜居压力沉重';
+    static formatHabitabilityPressure(...args) {
+      return BuildingPresenter.formatHabitabilityPressure(...args);
     }
 
-    static formatHabitabilityPressureShort(value) {
-      const pressure = this.toNumber(value);
-      if (pressure <= 0) return '平稳';
-      if (pressure <= 1) return '轻微';
-      if (pressure <= 2) return '较高';
-      return '沉重';
+    static formatHabitabilityPressureShort(...args) {
+      return BuildingPresenter.formatHabitabilityPressureShort(...args);
     }
 
-    static formatBuildingScale(level = 0) {
-      const currentLevel = this.toInteger(level);
-      if (currentLevel <= 0) return '未建造';
-      if (currentLevel <= 2) return '小';
-      if (currentLevel <= 4) return '中';
-      return '大';
+    static formatBuildingScale(...args) {
+      return BuildingPresenter.formatBuildingScale(...args);
     }
 
-    static formatMaintenanceRate(value) {
-      const perSecond = this.toNumber(value) / 60;
-      if (perSecond <= 0) return '';
-      const rounded = perSecond < 0.01
-        ? Math.round(perSecond * 1000) / 1000
-        : Math.round(perSecond * 100) / 100;
-      return this.trimDecimal(rounded);
+    static formatMaintenanceRate(...args) {
+      return BuildingPresenter.formatMaintenanceRate(...args);
     }
 
-    static formatBuildingMaintenanceText(config = {}, level = 0) {
-      const maintenance = config.maintenance || {};
-      const currentLevel = this.toInteger(level);
-      if (currentLevel <= 0) return '维护所需：无';
-      const parts = Object.entries(maintenance.perLevelPerMinute || {})
-        .map(([resource, value]) => {
-          const rate = this.formatMaintenanceRate(this.toNumber(value) * currentLevel);
-          return rate ? `${this.getResourceDisplayName(resource)} ${rate}/s` : '';
-        })
-        .filter(Boolean);
-      return `维护所需：${parts.join('，') || '无'}`;
+    static formatBuildingMaintenanceText(...args) {
+      return BuildingPresenter.formatBuildingMaintenanceText(...args);
     }
 
-    static formatBuildingCityImpactText(config = {}) {
-      return `城市影响：${this.formatHabitabilityPressure(config.maintenance?.habitabilityPressure)}`;
+    static formatBuildingCityImpactText(...args) {
+      return BuildingPresenter.formatBuildingCityImpactText(...args);
     }
 
-    static getBuildingMilitaryLines(id, military = {}, buildingEffects = {}) {
-      if (id !== 'barracks' || !military || !military.soldierCap) return [];
-      const soldiers = this.toInteger(military.soldiers);
-      const cap = this.toInteger(military.soldierCap);
-      const progress = this.toInteger(military.trainingProgress);
-      const interval = this.toInteger(military.trainingIntervalSeconds);
-      const batchSize = this.toInteger(military.trainingBatchSize, 1);
-      const defense = this.toInteger((military.defense || 0) + (buildingEffects?.threatDefense || 0));
-      return [
-        `士兵 ${soldiers}/${cap} · 防御 ${defense}`,
-        soldiers >= cap ? '训练已满' : `下一批 ${batchSize} 兵 · ${progress}/${interval}秒`,
-      ];
+    static getBuildingMilitaryLines(...args) {
+      return BuildingPresenter.getBuildingMilitaryLines(...args);
     }
 
-    static canAffordCost(resources = {}, cost) {
-      if (!cost || cost === null) return true;
-      return ['wood', 'iron', 'stone', 'food', 'knowledge', 'metal']
-        .every((resource) => this.toNumber(resources?.[resource]) >= this.toNumber(cost?.[resource]));
+    static canAffordCost(...args) {
+      return BuildingPresenter.canAffordCost(...args);
     }
 
-    static buildBuildingCardViewState(state = {}, tutorial = {}, buildingConfig = {}, id) {
-      const config = this.getBuildingConfig(state, buildingConfig, id);
-      if (!config) return null;
-      const level = this.getBuildingLevel(state.buildings, id);
-      const cost = state.buildingCosts && Object.prototype.hasOwnProperty.call(state.buildingCosts, id)
-        ? state.buildingCosts[id]
-        : undefined;
-      const actionLabel = this.getBuildingActionLabel(cost, level);
-      const guideTarget = state.softGuide?.mode === 'strong' ? state.softGuide.target : null;
-      const guidedBuildingId = {
-        'card-farm': 'farm',
-        'card-house': 'house',
-        'card-lumbermill': 'lumbermill',
-        'card-barracks': 'barracks',
-        'card-watchtower': 'watchtower',
-        'card-barracks-upgrade': 'barracks',
-      }[guideTarget] || null;
-      const tutorialSteps = global.TutorialGuideController?.TUTORIAL_STEPS || {
-        houseGuideReady: 3,
-        houseBuilt: 4,
-        buildingsTabOpened: 7,
-        farmBuilt: 9,
-        buildingsTabOpenedForLumbermill: 14,
-        lumbermillBuilt: 15,
-      };
-      const step = Number(tutorial?.currentStep) || 0;
-      const disabledByTutorial = Boolean(tutorial && !tutorial.completed && guidedBuildingId !== id && (
-        (step >= tutorialSteps.houseGuideReady && step < tutorialSteps.houseBuilt && id !== 'house')
-        || (step >= tutorialSteps.buildingsTabOpened && step < tutorialSteps.farmBuilt && id !== 'farm')
-        || (step >= tutorialSteps.buildingsTabOpenedForLumbermill && step <= tutorialSteps.lumbermillBuilt && id !== 'lumbermill')
-      ));
-      const isMax = cost === null || actionLabel === '已满级' || actionLabel === '宸叉弧绾?' || actionLabel === 'max';
-      const canAfford = this.canAffordCost(state.resources, cost);
-      const disabledByCost = !isMax && !canAfford;
-      const disabled = disabledByTutorial || isMax || disabledByCost;
-      const maxLevel = this.toInteger(config.maxLevel);
-      const nextLevel = isMax ? null : level + 1;
-      const currentEffectSummary = state.buildingEffects?.byBuilding?.[id] || this.getBuildingEffectSummary(config, level);
-      const currentEffectText = this.formatBuildingEffectText(config, level, null, currentEffectSummary) || '无';
-      const nextEffectValue = nextLevel === null
-        ? '当前时代暂不可继续扩建'
-        : (this.formatBuildingEffectText(config, nextLevel, level) || '无');
-      const nextEffectLabel = level > 0 ? '下一级效果' : '建成后效果';
-      const effectText = currentEffectText === '无' ? '' : currentEffectText;
-      const militaryLines = this.getBuildingMilitaryLines(id, state.military, state.buildingEffects);
-      const descText = config?.ui?.description || '';
-
-      return {
-        id,
-        name: config.name || id,
-        art: config.art || '',
-        icon: config.icon || '',
-        level,
-        levelText: `等级 ${level}`,
-        category: this.getBuildingCategory(config),
-        maxLevel,
-        scaleText: `规模：${this.formatBuildingScale(level)}`,
-        metaText: `等级：${level}　规模：${this.formatBuildingScale(level)}`,
-        isMuted: disabledByTutorial,
-        effectText,
-        currentEffectText: `当前效果：${currentEffectText}`,
-        nextEffectText: `${nextEffectLabel}：${nextEffectValue}`,
-        maintenanceText: this.formatBuildingMaintenanceText(config, level),
-        cityImpactText: this.formatBuildingCityImpactText(config),
-        costTitle: level > 0 ? '升级所需' : '建造所需',
-        descText,
-        militaryLines,
-        button: {
-          action: level ? 'upgrade' : 'build',
-          disabled,
-          label: disabledByTutorial ? '引导中锁定' : disabledByCost ? '资源不足' : actionLabel,
-        },
-        cost: this.buildCostViewState(cost),
-        structure: {
-          hasEffect: currentEffectText !== '无' || nextEffectValue !== '无',
-          hasMilitary: Boolean(config.military),
-          hasDescription: Boolean(descText),
-          hasPlanning: true,
-        },
-      };
+    static buildBuildingCardViewState(...args) {
+      return BuildingPresenter.buildBuildingCardViewState(...args);
     }
 
-    static buildBuildingViewState(state = {}, tutorial = {}, buildingConfig = {}, options = {}) {
-      const ids = this.getVisibleBuildingIds(state);
-      const allCards = ids
-        .map((id) => this.buildBuildingCardViewState(state, tutorial, buildingConfig, id))
-        .filter(Boolean);
-      const activeCategory = options.activeCategory || 'all';
-      const categoryDefinitions = this.getBuildingCategoryDefinitions(state, buildingConfig);
-      const categoryTabs = this.buildBuildingCategoryTabs(allCards, activeCategory, categoryDefinitions);
-      const resolvedActiveCategory = categoryTabs.find((tab) => tab.active)?.id || 'all';
-      const cards = resolvedActiveCategory === 'all'
-        ? allCards
-        : allCards.filter((card) => card.category === resolvedActiveCategory);
-      return {
-        ids: allCards.map((card) => card.id),
-        filteredIds: cards.map((card) => card.id),
-        isEmpty: cards.length === 0,
-        emptyText: allCards.length === 0 ? '当前时代暂无可建造建筑' : '当前分类暂无可建造建筑',
-        activeCategory: resolvedActiveCategory,
-        categoryTabs,
-        cards,
-        structureSignature: JSON.stringify(cards.map((card) => ({
-          id: card.id,
-          name: card.name,
-          art: card.art,
-          icon: card.icon,
-          structure: card.structure,
-        }))),
-      };
+    static buildBuildingViewState(...args) {
+      return BuildingPresenter.buildBuildingViewState(...args);
     }
 
     static getEventResourceLabel(resource) {
