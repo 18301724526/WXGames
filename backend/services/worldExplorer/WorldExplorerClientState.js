@@ -47,6 +47,8 @@ function getClientMission(mission, now = new Date()) {
       ? Math.max(0, Math.ceil((nextStepAtMs - now.getTime()) / 1000))
       : 0,
     startedAt: mission.startedAt,
+    nextStepAt: mission.nextStepAt || null,
+    completesAt: mission.completesAt || null,
     completedAt: mission.completedAt || null,
   };
 }

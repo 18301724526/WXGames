@@ -219,6 +219,28 @@ test('WorldMapLayerCanvasRenderer preserves explorer ready and active HUD contra
   assert.equal(activeHost.calls.some((call) => call[0] === 'fillRect'), true);
 });
 
+test('WorldMapLayerCanvasRenderer computes explorer countdown from next step time', () => {
+  const host = createHost({
+    getNow() {
+      return new Date('2026-06-06T00:00:04.250Z').getTime();
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  renderer.renderMapHomeExplorerHud({
+    worldExplorerState: {
+      activeMission: {
+        status: 'active',
+        remainingSeconds: 10,
+        nextStepAt: '2026-06-06T00:00:10.000Z',
+        route: [{ revealed: false }],
+      },
+    },
+  }, { map: { x: 0, y: 96, width: 390 } }, 96);
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '6s'), true);
+});
+
 test('WorldMapLayerCanvasRenderer preserves hit-target-only world site and explorer collection', () => {
   const host = createHost();
   const renderer = new WorldMapLayerCanvasRenderer({ host });

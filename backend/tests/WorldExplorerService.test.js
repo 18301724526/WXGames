@@ -63,6 +63,8 @@ test('guided world exploration returns server-planned tiles and the first empty 
   assert.equal(result.mission.plannedTiles.length, 4);
   assert.equal(result.mission.plannedSites.length, 1);
   assert.equal(result.mission.formation.slot, 1);
+  assert.equal(result.mission.nextStepAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS).toISOString());
+  assert.equal(result.mission.completesAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * 4).toISOString());
   assert.deepEqual(result.mission.formation.memberIds, ['fp-tutorial-scout']);
   assert.equal(gameState.territories.length, 1);
   assert.equal(gameState.territories[0].id, 'capital');

@@ -73,6 +73,23 @@
       if (!keep.has('activeEventId') && 'activeEventId' in this.host) this.host.activeEventId = null;
     }
 
+    closePanelsOn(target, except = []) {
+      if (!target || target === this.host || typeof target !== 'object') return;
+      const keep = new Set(except);
+      CLOSEABLE_PANELS.forEach((key) => {
+        if (!keep.has(key) && key in target) target[key] = key === 'activeCommandPanel' ? '' : false;
+      });
+      if (!keep.has('activeEventId') && 'activeEventId' in target) target.activeEventId = null;
+    }
+
+    closePanelsEverywhere(except = []) {
+      this.closePanels(except);
+      const game = this.getGameHost();
+      this.closePanelsOn(game, except);
+      this.closePanelsOn(game?.canvasShell, except);
+      return game;
+    }
+
     render(action = {}) {
       if (typeof this.host?.renderCanvasAction === 'function') return this.host.renderCanvasAction(action);
       if (typeof this.host?.renderGuideFrame === 'function') return this.host.renderGuideFrame();
@@ -509,19 +526,26 @@
       const tab = action.tab
         || (this.host?.hasClaimableMainTask?.() ? 'main' : this.host.activeTaskCenterTab)
         || 'main';
+      const game = this.closePanelsEverywhere(['showTaskCenter']);
       this.host.showTaskCenter = true;
       this.host.activeTaskCenterTab = tab;
-      const game = this.getGameHost();
       if (game && game !== this.host) {
         game.showTaskCenter = true;
         game.activeTaskCenterTab = tab;
       }
-      this.closePanels(['showTaskCenter']);
+      if (game?.canvasShell && game.canvasShell !== this.host) {
+        game.canvasShell.showTaskCenter = true;
+        game.canvasShell.activeTaskCenterTab = tab;
+      }
       this.host.showTaskCenter = true;
       this.host.activeTaskCenterTab = tab;
       if (game && game !== this.host) {
         game.showTaskCenter = true;
         game.activeTaskCenterTab = tab;
+      }
+      if (game?.canvasShell && game.canvasShell !== this.host) {
+        game.canvasShell.showTaskCenter = true;
+        game.canvasShell.activeTaskCenterTab = tab;
       }
       const handled = this.afterHandled(action);
       game?.tutorialController?.refreshCurrentHighlight?.();

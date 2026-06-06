@@ -2251,7 +2251,8 @@
       const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
         || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
         || this.territoryUiState?.tileMapWaterAnimated);
-      if (homeView.activeTab === 'military' && waterAnimated) this.startTileMapWaterTimer();
+      const explorerAnimated = Boolean(state.worldExplorerState?.activeMission);
+      if (homeView.activeTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
     }

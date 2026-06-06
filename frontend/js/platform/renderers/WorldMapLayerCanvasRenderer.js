@@ -230,8 +230,9 @@
         const route = Array.isArray(active.route) ? active.route : [];
         const done = route.filter((step) => step.revealed).length;
         const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
+        const remainingSeconds = this.getExplorerMissionRemainingSeconds(active);
         this.drawText(`\u63a2\u7d22\u4e2d ${done}/${total}`, x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
-        this.drawText(`${Math.max(0, Number(active.remainingSeconds) || 0)}s`, x + width - 12, y + 14, {
+        this.drawText(`${remainingSeconds}s`, x + width - 12, y + 14, {
           size: 11,
           color: '#f0b45b',
           align: 'right',
@@ -260,6 +261,19 @@
         cityId: state.activeCityId || 'capital',
       });
       return true;
+    }
+
+    getExplorerMissionRemainingSeconds(mission = {}, nowMs = this.getNow?.() || Date.now()) {
+      if (!mission || mission.status === 'ready') return 0;
+      const nextStepAtMs = new Date(mission.nextStepAt).getTime();
+      if (Number.isFinite(nextStepAtMs)) {
+        return Math.max(0, Math.ceil((nextStepAtMs - Number(nowMs)) / 1000));
+      }
+      const completesAtMs = new Date(mission.completesAt).getTime();
+      if (Number.isFinite(completesAtMs)) {
+        return Math.max(0, Math.ceil((completesAtMs - Number(nowMs)) / 1000));
+      }
+      return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
     }
 
     renderMapHomeEmptyWorld(layout = {}, topBarBottom = 84, options = {}) {

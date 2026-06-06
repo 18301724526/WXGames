@@ -348,6 +348,56 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
   ]);
 });
 
+test('CanvasActionController opens task center above city management after lumbermill guide', () => {
+  const calls = [];
+  const shell = {
+    showTaskCenter: false,
+    showCityManagement: true,
+    showSubcityList: true,
+    activeCommandPanel: 'capital',
+    activeEventId: 'event-1',
+    activeTaskCenterTab: '',
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const game = {
+    showTaskCenter: false,
+    showCityManagement: true,
+    showSubcityList: true,
+    activeCommandPanel: 'capital',
+    activeEventId: 'event-1',
+    activeTaskCenterTab: '',
+    canvasShell: shell,
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+  };
+  const controller = new CanvasActionController({ host: shell });
+
+  assert.equal(controller.handle_openTaskCenter({ type: 'openTaskCenter', tab: 'main' }), true);
+
+  assert.equal(shell.showTaskCenter, true);
+  assert.equal(game.showTaskCenter, true);
+  assert.equal(shell.showCityManagement, false);
+  assert.equal(game.showCityManagement, false);
+  assert.equal(shell.showSubcityList, false);
+  assert.equal(game.showSubcityList, false);
+  assert.equal(shell.activeCommandPanel, '');
+  assert.equal(game.activeCommandPanel, '');
+  assert.equal(shell.activeEventId, null);
+  assert.equal(game.activeEventId, null);
+  assert.equal(shell.activeTaskCenterTab, 'main');
+  assert.equal(game.activeTaskCenterTab, 'main');
+  assert.deepEqual(calls, [['render'], ['refreshCurrentHighlight']]);
+});
+
 test('CanvasActionController syncs talent policy panel across shell and game hosts after tutorial advance', async () => {
   const calls = [];
   let resolveAdvance = null;
