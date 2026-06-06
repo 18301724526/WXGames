@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const UIStatePresenter = require('./UIStatePresenter');
 const BuildingPresenter = require('./presenters/BuildingPresenter');
+const CivilizationPresenter = require('./presenters/CivilizationPresenter');
 const EventPresenter = require('./presenters/EventPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
 const HomePresenter = require('./presenters/HomePresenter');
@@ -304,6 +305,48 @@ test('UIStatePresenter delegates task center and guidebook view state while pres
   assert.equal(guidebookView.subtitle.includes('River Plain'), true);
 });
 
+test('UIStatePresenter delegates civilization view state while preserving facade contracts', () => {
+  const state = {
+    currentEra: 1,
+    currentEraName: 'Agriculture',
+    currentEraDescription: 'Food surplus changes the camp.',
+    gameDay: 9,
+    happiness: 91,
+    totalBuildings: 4,
+    population: { total: 7 },
+    techs: { pottery: true, irrigation: true },
+    eraProgress: {
+      percentage: 125,
+      canAdvance: true,
+      targetEraName: 'Bronze',
+      conditions: [
+        { name: 'Population', current: 7, required: 6, met: true },
+        { name: 'Food', current: 18, required: 20, met: false },
+      ],
+    },
+  };
+
+  const lockedView = UIStatePresenter.buildCivilizationViewState(state, { currentStep: 8, completed: false });
+  const directLockedView = CivilizationPresenter.buildCivilizationViewState(state, { currentStep: 8, completed: false });
+  const unlockedView = UIStatePresenter.buildCivilizationViewState(state, { currentStep: 9, completed: false });
+  const subCityView = UIStatePresenter.buildCivilizationViewState({ ...state, isCapitalCity: false }, { completed: true });
+
+  assert.deepEqual(lockedView, directLockedView);
+  assert.equal(UIStatePresenter.canAdvanceEraByTutorial(state, { currentStep: 8, completed: false }), false);
+  assert.equal(UIStatePresenter.canAdvanceEraByTutorial(state, { currentStep: 9, completed: false }), true);
+  assert.equal(lockedView.progress.percentage, 100);
+  assert.equal(lockedView.advanceButton.disabled, true);
+  assert.equal(lockedView.advanceButton.canAdvanceByTutorial, false);
+  assert.equal(unlockedView.advanceButton.disabled, false);
+  assert.equal(subCityView.advanceButton.disabled, true);
+  assert.deepEqual(UIStatePresenter.buildEraConditionViewState(state.eraProgress.conditions[0]), {
+    name: 'Population',
+    met: true,
+    className: 'met',
+    progressText: '7/6',
+  });
+});
+
 test('UIStatePresenter delegates home resource and planning view state while preserving facade contracts', () => {
   const state = {
     currentEra: 2,
@@ -424,6 +467,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'BuildingPresenter.js',
     'EventPresenter.js',
     'TaskGuidePresenter.js',
+    'CivilizationPresenter.js',
     'FamousPersonPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',

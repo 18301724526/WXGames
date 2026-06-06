@@ -107,6 +107,18 @@
     return null;
   })();
 
+  const CivilizationPresenter = (() => {
+    if (global.CivilizationPresenter) return global.CivilizationPresenter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./presenters/CivilizationPresenter');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
     static MIN_EXPEDITION_SOLDIERS = 100;
@@ -457,68 +469,17 @@
       return HomePresenter.buildCitySwitcherViewState(...args);
     }
 
-    static canAdvanceEraByTutorial(state = {}, tutorial = {}) {
-      if (tutorial.completed) return true;
-      const step = Number(tutorial.currentStep) || 0;
-      if (this.toNumber(state.currentEra) === 0) return step >= 2;
-      if (this.toNumber(state.currentEra) === 1) return step >= 9;
-      return true;
+    static canAdvanceEraByTutorial(...args) {
+      return CivilizationPresenter.canAdvanceEraByTutorial(...args);
     }
 
-    static buildEraConditionViewState(condition = {}) {
-      return {
-        name: condition.name || '',
-        met: Boolean(condition.met),
-        className: condition.met ? 'met' : 'unmet',
-        progressText: `${condition.current}/${condition.required}`,
-      };
+    static buildEraConditionViewState(...args) {
+      return CivilizationPresenter.buildEraConditionViewState(...args);
     }
 
-    static buildCivilizationViewState(state = {}, tutorial = {}, options = {}) {
-      const eraName = state.currentEraName || '原始时代';
-      const progress = state.eraProgress || { percentage: 0, canAdvance: false, conditions: [] };
-      const percentage = Math.max(0, Math.min(100, this.toNumber(progress.percentage)));
-      const canAdvanceByTutorial = this.canAdvanceEraByTutorial(state, tutorial);
-      const canOpenCivilizationTab = options.canOpenCivilizationTab !== false;
-      const canAdvance = Boolean(progress.canAdvance)
-        && state.isCapitalCity !== false
-        && canAdvanceByTutorial
-        && canOpenCivilizationTab;
-
-      let advanceLabel = '条件不足，无法进阶';
-      if (state.isCapitalCity === false) advanceLabel = '分城跟随主城时代';
-      else if (progress.canAdvance && !canAdvanceByTutorial) advanceLabel = '引导未解锁';
-      else if (progress.canAdvance) advanceLabel = '满足条件，可进阶';
-
-      return {
-        text: {
-          eraName,
-          civOverviewEraName: eraName,
-          civOverviewDay: `第 ${state.gameDay || 1} 天`,
-          civOverviewPop: this.toDisplayPopulation(state.population?.total),
-          civOverviewBuildings: this.toInteger(state.totalBuildings),
-          civOverviewTechs: `${Object.keys(state.techs || {}).length}/0`,
-          civOverviewHappiness: `${state.happiness || 100}%`,
-          eraProgressText: `总进度: ${percentage}%`,
-          eraTargetName: progress.targetEraName || '时代未开放',
-          advanceLabel,
-          featureDescription: state.currentEraDescription || `${eraName}：继续建设你的文明。`,
-        },
-        progress: {
-          percentage,
-          width: `${percentage}%`,
-          canAdvance: Boolean(progress.canAdvance),
-        },
-        advanceButton: {
-          disabled: !canAdvance,
-          canAdvance,
-          canAdvanceByTutorial,
-          canOpenCivilizationTab,
-        },
-        conditions: (progress.conditions || []).map((condition) => this.buildEraConditionViewState(condition)),
-      };
+    static buildCivilizationViewState(...args) {
+      return CivilizationPresenter.buildCivilizationViewState(...args);
     }
-
     static buildMilitaryNavigationViewState(state = {}) {
       const requestedView = ['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army';
       const activeView = requestedView;
