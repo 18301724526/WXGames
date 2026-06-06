@@ -1,10 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const TechCanvasRenderer = require('./TechCanvasRenderer');
+const TechTreeLayoutModel = require('./TechTreeLayoutModel');
+const TechTreeCanvasRenderer = require('./TechTreeCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
-test('TechCanvasRenderer owns tech tree layout calculations', () => {
+test('TechTreeLayoutModel owns tech tree layout calculations', () => {
+  assert.equal(typeof TechTreeLayoutModel.getTechRouteCatalog, 'function');
+  assert.equal(typeof TechTreeLayoutModel.getTechNodeRoutes, 'function');
+  assert.equal(typeof TechTreeLayoutModel.getTechTreeLayout, 'function');
+
   const renderer = new TechCanvasRenderer({ host: {} });
   const layout = renderer.getTechTreeLayout({
     tree: {
@@ -24,6 +32,47 @@ test('TechCanvasRenderer owns tech tree layout calculations', () => {
   assert.equal(layout.zoom, 1.1);
   assert.ok(layout.panX <= layout.maxPanX);
   assert.ok(layout.panY <= layout.maxPanY);
+});
+
+test('TechTreeCanvasRenderer renders tree hit targets and scroll contract', () => {
+  const calls = [];
+  const renderer = new TechCanvasRenderer({
+    host: {
+      lastTechTreeScroll: null,
+      ctx: { globalAlpha: 1, fillRect() {} },
+      drawPanel(...args) { calls.push(['drawPanel', ...args]); },
+      drawLine(...args) { calls.push(['drawLine', ...args]); },
+      drawText(...args) { calls.push(['drawText', ...args]); },
+      drawCurvePath(...args) { calls.push(['drawCurvePath', ...args]); },
+      drawCircle(...args) { calls.push(['drawCircle', ...args]); },
+      drawAsset() { return true; },
+      truncateText(text) { return text; },
+      withTransformedClip(x, y, width, height, panX, panY, zoom, callback) {
+        calls.push(['withTransformedClip', panX, panY, zoom]);
+        callback();
+      },
+      withTranslatedClip(x, y, width, height, dx, dy, callback) {
+        calls.push(['withTranslatedClip', dx, dy]);
+        callback();
+      },
+      addHitTarget(rect, meta) { calls.push(['hit', rect, meta]); },
+    },
+  });
+  const view = {
+    selectedTechId: 'fire',
+    tree: {
+      eras: [{ era: 1, column: 1, name: 'Era 1' }],
+      nodes: [{ id: 'fire', era: 1, route: 'knowledge', tree: { column: 1, row: 1, parents: [] } }],
+    },
+  };
+
+  const result = TechTreeCanvasRenderer.renderTechTreePanel(renderer, view, { x: 20, y: 80, width: 320, height: 260 }, {});
+
+  assert.equal(result.renderedCards, 1);
+  assert.equal(renderer.host.lastTechTreeScroll.panel.width, 320);
+  assert.ok(calls.some((call) => call[0] === 'withTransformedClip'));
+  assert.ok(calls.some((call) => call[0] === 'hit' && call[2].type === 'selectTechNode'));
+  assert.ok(calls.some((call) => call[0] === 'hit' && call[2].type === 'techTreeDrag'));
 });
 
 test('CanvasGameRenderer owns a tech renderer and routes renderTech through it', () => {
@@ -95,4 +144,15 @@ test('CanvasGameRenderer gives split renderers the unbound presenter object', ()
 
   assert.equal(renderer.techRenderer.presenter, replacementPresenter);
   assert.equal(typeof renderer.techRenderer.presenter.buildTechViewState, 'function');
+});
+
+test('frontend loads tech tree helpers before the tech canvas renderer', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'index.html'), 'utf8');
+  const layoutIndex = html.indexOf('TechTreeLayoutModel.js');
+  const treeRendererIndex = html.indexOf('TechTreeCanvasRenderer.js');
+  const rendererIndex = html.indexOf('TechCanvasRenderer.js');
+
+  assert.ok(layoutIndex > 0);
+  assert.ok(treeRendererIndex > layoutIndex);
+  assert.ok(rendererIndex > treeRendererIndex);
 });
