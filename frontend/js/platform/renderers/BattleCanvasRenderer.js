@@ -1,4 +1,46 @@
 (function (global) {
+  const BattleCanvasModel = (() => {
+    if (global.BattleCanvasModel) return global.BattleCanvasModel;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./BattleCanvasModel');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const BattleFloatingTextRenderer = (() => {
+    if (global.BattleFloatingTextRenderer) return global.BattleFloatingTextRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./BattleFloatingTextRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const BattleEffectRenderer = (() => {
+    if (global.BattleEffectRenderer) return global.BattleEffectRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./BattleEffectRenderer');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function model(method, args = [], fallback = undefined) {
+    const fn = BattleCanvasModel?.[method];
+    if (typeof fn === 'function') return fn(...args);
+    return typeof fallback === 'function' ? fallback() : fallback;
+  }
+
   class BattleCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -13,8 +55,11 @@
           }
           return undefined;
         },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
+        set(target, prop, value) {
+          if (prop === 'host' || prop in target) {
+            target[prop] = value;
+            return true;
+          }
           if (target.host && prop in target.host) {
             target.host[prop] = value;
             return true;
@@ -26,40 +71,27 @@
     }
 
     static getBattleUnitAssetVersion() {
-      return 'battle-units-split-v1-20260529';
+      return model('getBattleUnitAssetVersion', [], 'battle-units-split-v1-20260529');
     }
 
     static getBattleUnitFrameCount() {
-      return 4;
+      return model('getBattleUnitFrameCount', [], 4);
     }
 
     static getBattleUnitKey(side = 'attacker') {
-      return side === 'attacker' ? 'player' : 'enemy';
+      return model('getBattleUnitKey', [side], side === 'attacker' ? 'player' : 'enemy');
     }
 
     static getBattleUnitFramePath(unit = 'player', pose = 'idle', frameIndex = 0, rootPath = '') {
-      const safeUnit = unit === 'enemy' ? 'enemy' : 'player';
-      const safePose = ['idle', 'move', 'attack', 'die'].includes(pose) ? pose : 'idle';
-      const count = this.getBattleUnitFrameCount();
-      const index = Math.max(0, Math.min(count - 1, Math.floor(Number(frameIndex) || 0)));
-      const file = String(index + 1).padStart(2, '0') + '.png';
-      const root = rootPath && !String(rootPath).endsWith('.png')
-        ? String(rootPath).replace(/\/+$/, '')
-        : 'assets/art/battle/units/' + safeUnit;
-      return root + '/' + safePose + '/' + file;
+      return model(
+        'getBattleUnitFramePath',
+        [unit, pose, frameIndex, rootPath],
+        'assets/art/battle/units/player/idle/01.png',
+      );
     }
 
     static getBattleUnitFramePaths() {
-      const poses = ['idle', 'move', 'attack', 'die'];
-      const paths = [];
-      ['player', 'enemy'].forEach((unit) => {
-        poses.forEach((pose) => {
-          for (let index = 0; index < this.getBattleUnitFrameCount(); index += 1) {
-            paths.push(this.getBattleUnitFramePath(unit, pose, index));
-          }
-        });
-      });
-      return paths;
+      return model('getBattleUnitFramePaths', [], []);
     }
 
     render(state = {}, options = {}) {
@@ -67,184 +99,134 @@
     }
 
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
-      if (!activeTurn) return 'idle';
-      if (phase === 'prepare' || phase === 'cutin' || phase === 'settle') return 'idle';
-      if (activeTurn.actor === side) return phase === 'move' ? 'move' : 'attack';
-      if (activeTurn.target === side) {
-        if (phase === 'impact' && this.isBattleSideDefeatedByTurn(side, activeTurn)) return 'die';
-        return phase === 'impact' ? 'hit' : 'idle';
-      }
-      return 'idle';
+      return model('getBattleUnitPose', [side, activeTurn, phase], 'idle');
     }
 
     getBattleTurnSoldierCount(turn = {}, side = 'attacker', timing = 'after', fallback = 0) {
-      const nested = turn?.[`soldiers${timing === 'after' ? 'After' : 'Before'}`]?.[side];
-      if (nested !== undefined && nested !== null) return Number(nested) || 0;
-      const legacyKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
-      if (turn?.[legacyKey] !== undefined && turn?.[legacyKey] !== null) return Number(turn[legacyKey]) || 0;
-      return Number(fallback) || 0;
+      return model('getBattleTurnSoldierCount', [turn, side, timing, fallback], Number(fallback) || 0);
     }
 
     isBattleSideDefeatedByTurn(side = 'attacker', turn = {}) {
-      const before = this.getBattleTurnSoldierCount(turn, side, 'before', 1);
-      const after = this.getBattleTurnSoldierCount(turn, side, 'after', before);
-      return before > 0 && after <= 0;
+      return model('isBattleSideDefeatedByTurn', [side, turn], false);
     }
 
     getBattlePlaybackPhase(progress = 0, activeTurn = null) {
-      if (!activeTurn) {
-        return { phase: 'ended', phaseProgress: 1 };
-      }
-      const value = Math.max(0, Math.min(1, Number(progress) || 0));
-      const isSkill = activeTurn.action === 'skill' || activeTurn.actionType === 'skill' || activeTurn.presentation?.cutIn;
-      if (isSkill) {
-        if (value < 0.70) {
-          return { phase: 'cutin', phaseProgress: value / 0.70 };
-        }
-        if (value < 0.76) {
-          return { phase: 'prepare', phaseProgress: (value - 0.70) / 0.06 };
-        }
-        if (value < 0.84) {
-          return { phase: 'move', phaseProgress: (value - 0.76) / 0.08 };
-        }
-        if (value < 0.96) {
-          return { phase: 'impact', phaseProgress: (value - 0.84) / 0.12 };
-        }
-        return { phase: 'settle', phaseProgress: (value - 0.96) / 0.04 };
-      }
-      if (value < 0.12) {
-        return { phase: 'prepare', phaseProgress: value / 0.12 };
-      }
-      if (value < 0.46) {
-        return { phase: 'move', phaseProgress: (value - 0.12) / 0.34 };
-      }
-      if (value < 0.82) {
-        return { phase: 'impact', phaseProgress: (value - 0.46) / 0.36 };
-      }
-      return { phase: 'settle', phaseProgress: (value - 0.82) / 0.18 };
+      return model('getBattlePlaybackPhase', [progress, activeTurn], { phase: 'ended', phaseProgress: 1 });
     }
 
     getBattleEngagementProgress(turnIndex = 0, phase = 'prepare', phaseProgress = 0, activeTurn = null) {
-      if (!activeTurn) return 1;
-      const index = Math.max(0, Math.floor(Number(turnIndex) || 0));
-      if (index > 0) return 1;
-      if (phase === 'prepare') return 0;
-      if (phase === 'move') return Math.max(0, Math.min(1, Number(phaseProgress) || 0));
-      return 1;
+      return model('getBattleEngagementProgress', [turnIndex, phase, phaseProgress, activeTurn], 1);
     }
 
     getBattleUnitFormationPosition(side = 'attacker', area = {}, index = 0, columns = 1) {
-      const safeColumns = Math.max(1, Math.floor(Number(columns) || 1));
-      const col = index % safeColumns;
-      const row = Math.floor(index / safeColumns);
-      return {
-        col,
-        row,
-        x: side === 'attacker'
-          ? area.x + col * 30 + 22
-          : area.x + area.width - col * 30 - 22,
-        y: area.y + row * 34 + 72 + (col % 2) * 5,
-      };
+      return model('getBattleUnitFormationPosition', [side, area, index, columns], { x: 0, y: 0, col: 0, row: 0 });
     }
 
     getBattleUnitEngagementPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21) {
-      const formation = this.getBattleUnitFormationPosition(side, area, index, columns);
-      const centerX = this.width / 2;
-      const laneCenter = (Math.max(1, columns) - 1) / 2;
-      const laneOffset = (formation.col - laneCenter) * 7 + (((index * 13) % 5) - 2) * 2;
-      const frontGap = 20 + Math.min(10, formation.row * 3);
-      return {
-        x: centerX + (side === 'attacker' ? -frontGap : frontGap) + laneOffset,
-        y: formation.y + (((index * 7) % 5) - 2) * 2,
-        scale,
-      };
+      return model('getBattleUnitEngagementPosition', [side, area, index, columns, scale, this.width], { x: 0, y: 0, scale });
     }
 
     easeBattleUnitProgress(progress = 0) {
-      const value = Math.max(0, Math.min(1, Number(progress) || 0));
-      return 1 - Math.pow(1 - value, 3);
+      return model('easeBattleUnitProgress', [progress], 0);
     }
 
     getBattleUnitEngagementDelay(index = 0) {
-      const row = Math.floor(Math.max(0, Number(index) || 0) / 5);
-      return Math.min(0.34, (Math.max(0, Number(index) || 0) % 5) * 0.045 + row * 0.035);
+      return model('getBattleUnitEngagementDelay', [index], 0);
     }
 
     getBattleUnitEngagementRatio(index = 0, engagementProgress = 1) {
-      const progress = Math.max(0, Math.min(1, Number(engagementProgress) || 0));
-      if (progress >= 1) return 1;
-      if (progress <= 0) return 0;
-      const delay = this.getBattleUnitEngagementDelay(index);
-      return this.easeBattleUnitProgress((progress - delay) / Math.max(0.01, 1 - delay));
+      return model('getBattleUnitEngagementRatio', [index, engagementProgress], 1);
     }
 
     getBattleUnitBattlefieldPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21, engagementProgress = 1) {
-      const formation = this.getBattleUnitFormationPosition(side, area, index, columns);
-      const engaged = this.getBattleUnitEngagementPosition(side, area, index, columns, scale);
-      const ratio = this.getBattleUnitEngagementRatio(index, engagementProgress);
-      return {
-        x: formation.x + (engaged.x - formation.x) * ratio,
-        y: formation.y + (engaged.y - formation.y) * ratio,
-        formation,
-        engaged,
-        ratio,
-      };
+      return model(
+        'getBattleUnitBattlefieldPosition',
+        [side, area, index, columns, scale, engagementProgress, this.width],
+        { x: 0, y: 0, formation: {}, engaged: {}, ratio: 1 },
+      );
     }
 
     getBattleUnitSpec(side = 'attacker', spritePath = '') {
-      const unit = this.constructor.getBattleUnitKey(side);
-      const root = spritePath && !String(spritePath).endsWith('.png') ? spritePath : `assets/art/battle/units/${unit}`;
-      return {
-        unit,
-        root,
+      return model('getBattleUnitSpec', [side, spritePath], {
+        unit: 'player',
+        root: 'assets/art/battle/units/player',
         frameCount: this.constructor.getBattleUnitFrameCount(),
         width: 500,
         height: 400,
-      };
+      });
     }
 
     getBattleFramePose(pose = 'idle') {
-      if (pose === 'skill') return 'attack';
-      if (pose === 'hit') return 'idle';
-      if (pose === 'defeated') return 'die';
-      if (pose === 'die') return 'die';
-      return ['idle', 'move', 'attack'].includes(pose) ? pose : 'idle';
+      return model('getBattleFramePose', [pose], 'idle');
     }
 
     getBattleFrameIndex(pose = 'idle', frame = 0, progress = 0) {
-      const count = this.constructor.getBattleUnitFrameCount();
-      if (pose === 'attack' || pose === 'skill' || pose === 'die' || pose === 'defeated') {
-        return Math.max(0, Math.min(count - 1, Math.floor(Math.max(0, Math.min(1, Number(progress) || 0)) * count)));
-      }
-      return Math.abs(Math.floor(Number(frame) || 0)) % count;
+      return model('getBattleFrameIndex', [pose, frame, progress], 0);
     }
 
     getBattleFrameSpritePath(side = 'attacker', pose = 'idle', frame = 0, spritePath = '', progress = 0) {
-      const spec = this.getBattleUnitSpec(side, spritePath);
-      const framePose = this.getBattleFramePose(pose);
-      const frameIndex = this.getBattleFrameIndex(pose, frame, progress);
-      return this.constructor.getBattleUnitFramePath(spec.unit, framePose, frameIndex, spec.root);
+      return model(
+        'getBattleFrameSpritePath',
+        [side, pose, frame, spritePath, progress],
+        'assets/art/battle/units/player/idle/01.png',
+      );
     }
 
     getBattleSideSpritePath(sideView = {}, side = 'attacker') {
-      return sideView.sprite || `assets/art/battle/units/${this.constructor.getBattleUnitKey(side)}`;
+      return model('getBattleSideSpritePath', [sideView, side], 'assets/art/battle/units/player');
+    }
+
+    getBattleStatusBadgeColors(tone = 'status') {
+      return model('getBattleStatusBadgeColors', [tone], {
+        fill: 'rgba(52, 43, 76, 0.84)',
+        stroke: 'rgba(217, 198, 255, 0.50)',
+        color: '#dfd2ff',
+      });
+    }
+
+    getBattleTurnDamage(turn = null) {
+      return model('getBattleTurnDamage', [turn], 0);
+    }
+
+    getBattleDamageFloatText(turn = null) {
+      return model('getBattleDamageFloatText', [turn], '');
+    }
+
+    getBattleScenePlayback(battleScene = {}, now = 0) {
+      return model('getBattleScenePlayback', [battleScene, now], {
+        frame: Math.floor((now || 0) / 140),
+        requestedTurnIndex: 0,
+        rawActiveTurn: null,
+        playback: { phase: 'ended', phaseProgress: 1 },
+      });
+    }
+
+    getBattleSceneLayout(width = this.width, height = this.height) {
+      return model('getBattleSceneLayout', [width, height], {
+        topY: 20,
+        fieldTop: 116,
+        logH: 122,
+        logY: height - 192,
+        attackerArea: { x: 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
+        defenderArea: { x: width - Math.min(170, width * 0.42) - 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
+        buttonY: height - 54,
+      });
     }
 
     drawBattleMapBackground(map = {}) {
       const path = map.background || 'assets/art/battle/battlefield-forest-camp.png';
       if (this.drawCoverAsset(path, 0, 0, this.width, this.height)) return;
+      if (!this.ctx) return;
       this.ctx.fillStyle = '#1d2119';
       this.ctx.fillRect(0, 0, this.width, this.height);
     }
 
     drawBattleSoldierFrame(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
       const spec = this.getBattleUnitSpec(side, spritePath);
-      const path = this.getBattleFrameSpritePath(side, pose, frame, spritePath, progress);
-      const image = this.getAsset(path);
+      const image = this.getAsset(this.getBattleFrameSpritePath(side, pose, frame, spritePath, progress));
       if (!image || typeof this.ctx?.drawImage !== 'function') return false;
-      const alpha = Math.max(0.25, Math.min(1, Number(ratio) || 1));
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
+      this.ctx.globalAlpha = previousAlpha * Math.max(0.25, Math.min(1, Number(ratio) || 1));
       const sourceWidth = Number(image.naturalWidth || image.width || spec.width);
       const sourceHeight = Number(image.naturalHeight || image.height || spec.height);
       const dw = sourceWidth * scale;
@@ -252,30 +234,31 @@
       const drawX = x - dw / 2;
       const drawY = y - dh;
       this.ctx.drawImage(image, drawX, drawY, dw, dh);
-      if (pose === 'hit') {
-        const flashAlpha = Math.max(0, Math.sin(Math.max(0, Math.min(1, Number(progress) || 0)) * Math.PI)) * 0.36;
-        if (flashAlpha > 0.01 && typeof this.ctx.filter === 'string') {
-          const afterImageAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : previousAlpha;
-          this.ctx.globalAlpha = afterImageAlpha * flashAlpha;
-          const previousFilter = this.ctx.filter;
-          this.ctx.filter = 'brightness(2.4) saturate(0)';
-          this.ctx.drawImage(image, drawX, drawY, dw, dh);
-          this.ctx.filter = previousFilter;
-        }
-      }
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      this.drawBattleHitFlash(image, { drawX, drawY, dw, dh, pose, progress, previousAlpha });
+      this.ctx.globalAlpha = previousAlpha;
       return true;
+    }
+
+    drawBattleHitFlash(image, options = {}) {
+      if (options.pose !== 'hit' || typeof this.ctx?.filter !== 'string') return;
+      const flashAlpha = Math.sin(Math.max(0, Math.min(1, Number(options.progress) || 0)) * Math.PI) * 0.36;
+      if (flashAlpha <= 0.01) return;
+      const alpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : options.previousAlpha;
+      const previousFilter = this.ctx.filter;
+      this.ctx.globalAlpha = alpha * flashAlpha;
+      this.ctx.filter = 'brightness(2.4) saturate(0)';
+      this.ctx.drawImage(image, options.drawX, options.drawY, options.dw, options.dh);
+      this.ctx.filter = previousFilter;
     }
 
     drawBattleSoldierFallback(x, y, side = 'attacker', ratio = 1) {
       if (!this.ctx) return;
-      const alpha = Math.max(0.25, Math.min(1, Number(ratio) || 1));
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
+      this.ctx.globalAlpha = previousAlpha * Math.max(0.25, Math.min(1, Number(ratio) || 1));
       const color = side === 'attacker' ? '#74d3a0' : '#e07b62';
       this.drawCircle(x, y - 18, 5, { fill: color });
       this.drawPanel(x - 6, y - 14, 12, 16, { fill: color, radius: 2 });
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      this.ctx.globalAlpha = previousAlpha;
     }
 
     drawBattleSoldierSprite(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
@@ -290,39 +273,36 @@
     drawBattleArmy(sideView = {}, area = {}, options = {}) {
       const groups = sideView.groups || [];
       const pose = options.pose || 'idle';
-      const visualGroups = groups.length || !(pose === 'die' || pose === 'defeated')
-        ? groups
-        : [{ ratio: 1, soldiers: 0, capacity: 1 }];
+      const visualGroups = groups.length || !(pose === 'die' || pose === 'defeated') ? groups : [{ ratio: 1, soldiers: 0, capacity: 1 }];
       const side = sideView.side || 'attacker';
       const frame = Number(options.frame) || 0;
       const progress = Math.max(0, Math.min(1, Number(options.progress) || 0));
       const engagementProgress = Math.max(0, Math.min(1, Number(options.engagementProgress ?? 1) || 0));
       const actionType = options.actionType || '';
       const columns = Math.max(1, Math.floor(area.width / 34));
-      const dir = side === 'attacker' ? 1 : -1;
       const activeCount = pose === 'idle' ? 0 : Math.min(visualGroups.length, actionType === 'skill' ? 5 : 3);
-      const hitOffset = pose === 'hit' ? Math.sin(frame * 2.2) * 5 * dir : 0;
+      const hitOffset = pose === 'hit' ? Math.sin(frame * 2.2) * 5 * (side === 'attacker' ? 1 : -1) : 0;
       visualGroups.slice(0, 18).forEach((group, index) => {
-        const isActiveSoldier = index < activeCount;
-        const stagger = isActiveSoldier ? Math.max(0, 1 - index * 0.12) : 0;
-        const activePose = isActiveSoldier ? pose : 'idle';
-        const scale = actionType === 'skill' && isActiveSoldier ? 0.245 : 0.21;
-        const position = this.getBattleUnitBattlefieldPosition(side, area, index, columns, scale, engagementProgress);
-        const activeOffset = isActiveSoldier ? hitOffset * stagger : 0;
+        const active = index < activeCount;
+        const position = this.getBattleUnitBattlefieldPosition(side, area, index, columns, active ? 0.245 : 0.21, engagementProgress);
         this.drawBattleSoldierSprite(
-          position.x + activeOffset,
+          position.x + (active ? hitOffset * Math.max(0, 1 - index * 0.12) : 0),
           position.y,
           side,
-          activePose,
+          active ? pose : 'idle',
           frame + index,
           group.ratio,
-          scale,
+          active ? 0.245 : 0.21,
           this.getBattleSideSpritePath(sideView, side),
           progress,
         );
       });
-      if (groups.length > 18) {
-        this.drawText(`+${groups.length - 18}`, side === 'attacker' ? area.x + area.width - 28 : area.x + 10, area.y + area.height - 22, {
+      this.drawBattleArmyCount(sideView, area, side, groups.length);
+    }
+
+    drawBattleArmyCount(sideView = {}, area = {}, side = 'attacker', groupCount = 0) {
+      if (groupCount > 18) {
+        this.drawText(`+${groupCount - 18}`, side === 'attacker' ? area.x + area.width - 28 : area.x + 10, area.y + area.height - 22, {
           size: 12,
           bold: true,
           color: '#f6e8c8',
@@ -336,72 +316,45 @@
       });
     }
 
-    getBattleStatusBadgeColors(tone = 'status') {
-      if (tone === 'guard') return {
-        fill: 'rgba(26, 64, 72, 0.84)',
-        stroke: 'rgba(132, 215, 255, 0.56)',
-        color: '#bdeaff',
-      };
-      if (tone === 'dot') return {
-        fill: 'rgba(82, 50, 26, 0.86)',
-        stroke: 'rgba(255, 180, 94, 0.58)',
-        color: '#ffd0a0',
-      };
-      if (tone === 'break') return {
-        fill: 'rgba(78, 34, 34, 0.86)',
-        stroke: 'rgba(255, 138, 114, 0.58)',
-        color: '#ffb3a0',
-      };
-      return {
-        fill: 'rgba(52, 43, 76, 0.84)',
-        stroke: 'rgba(217, 198, 255, 0.50)',
-        color: '#dfd2ff',
-      };
-    }
-
     drawBattleSideState(sideView = {}, area = {}, side = 'attacker') {
       const panelWidth = Math.min(154, Math.max(128, area.width + 8));
-      const panelHeight = 72;
       const x = side === 'attacker' ? area.x : area.x + area.width - panelWidth;
       const y = Math.max(92, area.y - 74);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
+      this.drawPanel(x, y, panelWidth, 72, {
         fill: 'rgba(18, 14, 10, 0.64)',
         stroke: side === 'attacker' ? 'rgba(116, 211, 160, 0.28)' : 'rgba(224, 123, 98, 0.28)',
         radius: 8,
         inset: 'rgba(255, 231, 184, 0.06)',
       });
       const skillState = sideView.skillState || null;
-      const skillName = skillState?.skillName ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true }) : '无战法';
-      this.drawText(skillName, x + 10, y + 11, {
-        size: 11,
-        bold: true,
-        color: skillState?.active ? '#ffe6b5' : '#cbbd96',
-      });
-      const stateText = skillState?.stateText || '只普攻';
+      const skillName = skillState?.skillName ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true }) : '\u65e0\u6218\u6cd5';
+      const stateText = skillState?.stateText || '\u53ea\u666e\u653b';
+      this.drawText(skillName, x + 10, y + 11, { size: 11, bold: true, color: skillState?.active ? '#ffe6b5' : '#cbbd96' });
       this.drawText(this.truncateText(stateText, 68, { size: 10, bold: true }), x + panelWidth - 10, y + 11, {
         size: 10,
         bold: true,
         color: skillState?.state === 'ready' ? '#74d3a0' : (skillState?.state === 'casting' ? '#ffd66e' : '#aeb0b8'),
         align: 'right',
       });
-      const statuses = Array.isArray(sideView.statuses) ? sideView.statuses : [];
-      if (!statuses.length) {
-        this.drawText('状态：无', x + 10, y + 42, {
-          size: 11,
-          color: '#8d8f99',
-        });
+      this.drawBattleStatusBadges(sideView.statuses, x, y, panelWidth);
+    }
+
+    drawBattleStatusBadges(statuses = [], x = 0, y = 0, panelWidth = 140) {
+      const list = Array.isArray(statuses) ? statuses : [];
+      if (!list.length) {
+        this.drawText('\u72b6\u6001\uff1a\u65e0', x + 10, y + 42, { size: 11, color: '#8d8f99' });
         return;
       }
       let cursorX = x + 10;
       let cursorY = y + 40;
-      statuses.slice(0, 4).forEach((status) => {
-        const label = this.truncateText(status.text || status.label || '状态', 68, { size: 10, bold: true });
+      list.slice(0, 4).forEach((status) => {
+        const label = this.truncateText(status.text || status.label || '\u72b6\u6001', 68, { size: 10, bold: true });
         const width = Math.min(74, Math.max(38, this.measureTextWidth(label, { size: 10, bold: true }) + 14));
         if (cursorX + width > x + panelWidth - 8) {
           cursorX = x + 10;
           cursorY += 20;
         }
-        if (cursorY > y + panelHeight - 17) return;
+        if (cursorY > y + 55) return;
         const colors = this.getBattleStatusBadgeColors(status.tone);
         this.drawPanel(cursorX, cursorY, width, 16, {
           fill: colors.fill,
@@ -421,216 +374,22 @@
     }
 
     drawBattleActionEffect(activeTurn = null, progress = 0) {
-      if (!activeTurn) return;
-      const isSkill = activeTurn.action === 'skill' || activeTurn.actionType === 'skill';
-      const impactProgress = Math.max(0, Math.min(1, Number(progress) || 0));
-      if (impactProgress <= 0) return;
-      const x = activeTurn.target === 'defender' ? this.width * 0.58 : this.width * 0.42;
-      const y = Math.max(270, this.height * 0.48);
-      const pulse = Math.sin(impactProgress * Math.PI);
-      this.drawCircle(x, y, (isSkill ? 42 : 24) * pulse, {
-        fill: isSkill ? 'rgba(255, 196, 76, 0.20)' : 'rgba(255, 245, 210, 0.14)',
-        stroke: isSkill ? 'rgba(255, 226, 122, 0.72)' : 'rgba(255, 245, 210, 0.42)',
-        width: isSkill ? 3 : 2,
-      });
-      if (isSkill) {
-        this.drawText(activeTurn.skillName || '技能', x, y - 54 * pulse, {
-          size: 14,
-          bold: true,
-          color: '#ffe6b5',
-          align: 'center',
-        });
-      }
+      return BattleEffectRenderer?.drawBattleActionEffect?.(this, activeTurn, progress);
     }
 
     drawBattleSkillCutIn(activeTurn = null, progress = 0) {
-      const shouldShowCutIn = activeTurn?.presentation?.cutIn || activeTurn?.action === 'skill' || activeTurn?.actionType === 'skill';
-      if (!shouldShowCutIn) return;
-      const cutInProgress = Math.max(0, Math.min(1, Number(progress) || 0));
-      if (cutInProgress <= 0) return;
-      const actorSide = activeTurn.actor === 'defender' ? 'defender' : 'attacker';
-      const easeOut = (value) => 1 - Math.pow(1 - Math.max(0, Math.min(1, value)), 3);
-      const easeIn = (value) => Math.pow(Math.max(0, Math.min(1, value)), 3);
-      const getFlyProgress = (value) => {
-        if (value < 0.28) return { stage: 'enter', ratio: easeOut(value / 0.28) };
-        if (value < 0.76) return { stage: 'hold', ratio: 1 };
-        return { stage: 'exit', ratio: easeIn((value - 0.76) / 0.24) };
-      };
-      const flyProgress = getFlyProgress(cutInProgress);
-      const fadeIn = Math.min(1, cutInProgress / 0.16);
-      const fadeOut = cutInProgress < 0.82 ? 1 : Math.max(0, 1 - (cutInProgress - 0.82) / 0.18);
-      const alpha = Math.max(0, Math.min(1, fadeIn * fadeOut));
-      const portraitSize = Math.min(142, Math.max(104, this.width * 0.34));
-      const portraitY = Math.max(104, this.height * 0.25);
-      const portraitCenterX = this.width / 2 - Math.min(84, this.width * 0.22);
-      const portraitHoldX = portraitCenterX - portraitSize / 2;
-      const portraitStartX = -portraitSize - 28;
-      const portraitEndX = this.width + 28;
-      const portraitX = flyProgress.stage === 'exit'
-        ? portraitHoldX + (portraitEndX - portraitHoldX) * flyProgress.ratio
-        : portraitStartX + (portraitHoldX - portraitStartX) * flyProgress.ratio;
-      const titleWidth = Math.min(238, this.width * 0.58);
-      const titleHeight = 72;
-      const titleY = portraitY + portraitSize * 0.3;
-      const titleCenterX = this.width / 2 + Math.min(74, this.width * 0.19);
-      const titleHoldX = titleCenterX - titleWidth / 2;
-      const titleStartX = this.width + 28;
-      const titleEndX = -titleWidth - 28;
-      const titleX = flyProgress.stage === 'exit'
-        ? titleHoldX + (titleEndX - titleHoldX) * flyProgress.ratio
-        : titleStartX + (titleHoldX - titleStartX) * flyProgress.ratio;
-      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (this.ctx && typeof this.ctx.globalAlpha === 'number') {
-        this.ctx.globalAlpha = previousAlpha * alpha;
-      }
-
-      if (this.ctx && typeof this.ctx.fillRect === 'function') {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
-        this.ctx.fillRect(0, Math.max(0, portraitY - 34), this.width, portraitSize + 70);
-      }
-      this.drawPanel(portraitX, portraitY, portraitSize, portraitSize, {
-        fill: actorSide === 'attacker' ? 'rgba(20, 56, 45, 0.90)' : 'rgba(84, 40, 32, 0.90)',
-        stroke: 'rgba(255, 226, 177, 0.44)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.12)',
-      });
-      const portraitDrawn = this.drawFamousPortrait(
-        { appearance: activeTurn.actorPortrait || {} },
-        portraitX,
-        portraitY,
-        portraitSize,
-        {
-          frameWidth: portraitSize,
-          frameHeight: portraitSize,
-          radius: 10,
-          scale: 1.7,
-          offsetY: 0.12,
-        },
-      );
-      if (!portraitDrawn) {
-        this.drawText(String(activeTurn.actorName || '将').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
-          size: 26,
-          bold: true,
-          color: '#f6e8c8',
-          align: 'center',
-          baseline: 'middle',
-        });
-      }
-
-      this.drawPanel(titleX, titleY, titleWidth, titleHeight, {
-        fill: 'rgba(20, 16, 12, 0.88)',
-        stroke: actorSide === 'attacker' ? 'rgba(116, 211, 160, 0.48)' : 'rgba(224, 123, 98, 0.48)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.10)',
-      });
-      const accentX = actorSide === 'attacker' ? titleX + 10 : titleX + titleWidth - 14;
-      this.drawPanel(accentX, titleY + 12, 4, titleHeight - 24, {
-        fill: actorSide === 'attacker' ? '#74d3a0' : '#e07b62',
-        stroke: actorSide === 'attacker' ? '#74d3a0' : '#e07b62',
-        radius: 2,
-      });
-      const textX = titleX + (actorSide === 'attacker' ? 24 : 14);
-      const textWidth = titleWidth - 38;
-      this.drawText(this.truncateText(activeTurn.actorName || '', textWidth, { size: 13, bold: true }), textX, titleY + 12, {
-        size: 13,
-        bold: true,
-        color: '#cbbd96',
-      });
-      this.drawText(this.truncateText(activeTurn.skillName || '战法', textWidth, { size: 24, bold: true }), textX, titleY + 36, {
-        size: 24,
-        bold: true,
-        color: '#ffe6b5',
-      });
-      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-    }
-
-    getBattleTurnDamage(turn = null) {
-      if (!turn) return 0;
-      const explicitDamage = Number(turn.damage);
-      if (Number.isFinite(explicitDamage) && explicitDamage > 0) return Math.floor(explicitDamage);
-      const target = turn.target === 'attacker' ? 'attacker' : 'defender';
-      const before = this.getBattleTurnSoldierCount(turn, target, 'before', 0);
-      const after = this.getBattleTurnSoldierCount(turn, target, 'after', before);
-      return Math.max(0, before - after);
-    }
-
-    getBattleDamageFloatText(turn = null) {
-      const damage = this.getBattleTurnDamage(turn);
-      if (damage <= 0) return '';
-      if (turn?.action === 'skill' && turn?.damageLabel) return `${turn.damageLabel} -${damage}`;
-      return `-${damage}`;
+      return BattleEffectRenderer?.drawBattleSkillCutIn?.(this, activeTurn, progress);
     }
 
     drawBattleDamageFloat(activeTurn = null, phase = 'prepare', phaseProgress = 0, targetArea = null) {
-      if (!activeTurn || phase !== 'impact' || !targetArea) return;
-      const text = this.getBattleDamageFloatText(activeTurn);
-      if (!text) return;
-      const progress = Math.max(0, Math.min(1, Number(phaseProgress) || 0));
-      const rise = progress * 42;
-      const pop = 1 + Math.sin(progress * Math.PI) * 0.16;
-      const alpha = Math.max(0, Math.min(1, 1 - Math.max(0, progress - 0.68) / 0.32));
-      const isSkill = activeTurn.action === 'skill';
-      const x = this.width / 2 + (activeTurn.target === 'defender' ? 34 : -34);
-      const y = targetArea.y + Math.max(34, targetArea.height * 0.22) - rise;
-      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
-      this.drawText(text, x + 1, y + 1, {
-        size: Math.round(19 * pop),
-        bold: true,
-        color: 'rgba(24, 15, 10, 0.82)',
-        align: 'center',
-        baseline: 'middle',
-      });
-      this.drawText(text, x, y, {
-        size: Math.round(19 * pop),
-        bold: true,
-        color: isSkill ? '#ffd66e' : '#ff8a72',
-        align: 'center',
-        baseline: 'middle',
-      });
-      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return BattleFloatingTextRenderer?.drawBattleDamageFloat?.(this, activeTurn, phase, phaseProgress, targetArea);
     }
 
     drawBattleStatusFloatingTexts(activeTurn = null, phase = 'prepare', phaseProgress = 0, areas = {}) {
-      if (!activeTurn || !['prepare', 'impact', 'settle'].includes(phase)) return;
-      const texts = Array.isArray(activeTurn.floatingTexts) ? activeTurn.floatingTexts : [];
-      if (!texts.length) return;
-      const progress = Math.max(0, Math.min(1, Number(phaseProgress) || 0));
-      const phaseOffset = phase === 'prepare' ? 0 : (phase === 'impact' ? 0.34 : 0.68);
-      const alpha = Math.max(0, Math.min(1, 1 - Math.max(0, phaseOffset + progress - 0.72) / 0.28));
-      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha * alpha;
-      texts.slice(0, 4).forEach((item, index) => {
-        const target = item?.target === 'attacker' ? 'attacker' : 'defender';
-        const area = target === 'attacker' ? areas.attacker : areas.defender;
-        if (!area) return;
-        const kind = item.kind || 'status';
-        const color = kind === 'shield'
-          ? '#84d7ff'
-          : (kind === 'damageOverTime' ? '#ffb45e' : '#d9c6ff');
-        const x = area.x + area.width / 2 + (target === 'attacker' ? -18 : 18);
-        const y = area.y + Math.max(22, area.height * 0.16) - progress * 28 - index * 17;
-        const text = String(item.text || '').trim();
-        if (!text) return;
-        this.drawText(text, x + 1, y + 1, {
-          size: 13,
-          bold: true,
-          color: 'rgba(19, 14, 10, 0.86)',
-          align: 'center',
-          baseline: 'middle',
-        });
-        this.drawText(text, x, y, {
-          size: 13,
-          bold: true,
-          color,
-          align: 'center',
-          baseline: 'middle',
-        });
-      });
-      if (this.ctx && typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return BattleFloatingTextRenderer?.drawBattleStatusFloatingTexts?.(this, activeTurn, phase, phaseProgress, areas);
     }
 
-    drawBattleLeader(sideView = {}, x, y, side = 'attacker') {
+    drawBattleLeader(sideView = {}, x = 0, y = 0, side = 'attacker') {
       const radius = 32;
       this.drawCircle(x, y, radius + 5, {
         fill: side === 'attacker' ? 'rgba(116, 211, 160, 0.12)' : 'rgba(224, 123, 98, 0.12)',
@@ -646,20 +405,7 @@
           offsetY: 0.12,
         })
         : false;
-      if (!portrait) {
-        this.drawCircle(x, y, radius, {
-          fill: side === 'attacker' ? '#2f6f59' : '#7f3d32',
-          stroke: 'rgba(255, 226, 177, 0.5)',
-          width: 2,
-        });
-        this.drawText(String(sideView.leaderName || sideView.name || '将').slice(0, 1), x, y, {
-          size: 22,
-          bold: true,
-          color: '#f6e8c8',
-          align: 'center',
-          baseline: 'middle',
-        });
-      }
+      if (!portrait) this.drawBattleLeaderFallback(sideView, x, y, side, radius);
       this.drawText(this.truncateText(sideView.leaderName || sideView.name || '', 96, { size: 12, bold: true }), x, y + radius + 10, {
         size: 12,
         bold: true,
@@ -668,17 +414,25 @@
       });
     }
 
+    drawBattleLeaderFallback(sideView = {}, x = 0, y = 0, side = 'attacker', radius = 32) {
+      this.drawCircle(x, y, radius, {
+        fill: side === 'attacker' ? '#2f6f59' : '#7f3d32',
+        stroke: 'rgba(255, 226, 177, 0.5)',
+        width: 2,
+      });
+      this.drawText(String(sideView.leaderName || sideView.name || '\u5c06').slice(0, 1), x, y, {
+        size: 22,
+        bold: true,
+        color: '#f6e8c8',
+        align: 'center',
+        baseline: 'middle',
+      });
+    }
+
     renderBattleSceneOverlay(state = {}, options = {}) {
       if (!this.presenter || typeof this.presenter.buildBattleSceneViewState !== 'function') return;
-      const frame = Math.floor((this.getNow() || 0) / 140);
-      const turnDuration = Math.max(1, Number(options.battleScene?.turnDurationMs) || 720);
-      const turnStartedAt = Number(options.battleScene?.turnStartedAt) || this.getNow();
-      const turnElapsed = ((this.getNow() - turnStartedAt) % turnDuration + turnDuration) % turnDuration;
-      const turnProgress = turnElapsed / turnDuration;
-      const reportTurns = options.battleScene?.report?.turns || [];
-      const requestedTurnIndex = Math.max(0, Math.min(reportTurns.length, Number(options.battleScene?.turnIndex) || 0));
-      const rawActiveTurn = requestedTurnIndex < reportTurns.length ? reportTurns[requestedTurnIndex] : null;
-      const playback = this.getBattlePlaybackPhase(turnProgress, rawActiveTurn);
+      const now = this.getNow();
+      const { frame, requestedTurnIndex, rawActiveTurn, playback } = this.getBattleScenePlayback(options.battleScene || {}, now);
       const view = this.presenter.buildBattleSceneViewState(options.battleScene || {}, {
         turnIndex: requestedTurnIndex,
         phase: playback.phase,
@@ -686,91 +440,88 @@
       if (!view.visible) return;
       this.setHitTargets([]);
       this.drawBattleMapBackground(view.map);
-      const activeTurn = view.activeTurn;
-      const turnPhase = playback.phase;
-      const phaseProgress = playback.phaseProgress;
-      const engagementProgress = this.getBattleEngagementProgress(requestedTurnIndex, turnPhase, phaseProgress, activeTurn);
-      const attackerPose = this.getBattleUnitPose('attacker', activeTurn, turnPhase);
-      const defenderPose = this.getBattleUnitPose('defender', activeTurn, turnPhase);
-      const topY = 20;
-      this.drawPanel(16, topY, this.width - 32, 68, {
+      this.drawBattleSceneChrome(view, playback, requestedTurnIndex);
+      this.drawBattleSceneArmies(view, {
+        frame,
+        activeTurn: view.activeTurn || rawActiveTurn,
+        turnPhase: playback.phase,
+        phaseProgress: playback.phaseProgress,
+        requestedTurnIndex,
+      });
+      this.drawBattleSceneLog(view);
+      this.drawBattleSceneButtons(view);
+    }
+
+    drawBattleSceneChrome(view = {}, playback = {}, requestedTurnIndex = 0) {
+      const layout = this.getBattleSceneLayout(this.width, this.height);
+      this.drawPanel(16, layout.topY, this.width - 32, 68, {
         fill: 'rgba(20, 16, 12, 0.72)',
         stroke: 'rgba(255, 226, 177, 0.22)',
         radius: 10,
       });
-      this.drawText(this.truncateText(view.title, this.width - 80, { size: 18, bold: true }), this.width / 2, topY + 12, {
+      this.drawText(this.truncateText(view.title, this.width - 80, { size: 18, bold: true }), this.width / 2, layout.topY + 12, {
         size: 18,
         bold: true,
         color: '#ffe6b5',
         align: 'center',
       });
-      const currentTurnText = view.ended
-        ? `第 ${Math.max(1, view.turnCount)}/${Math.max(1, view.turnCount)} 手`
-        : `第 ${Math.min(view.turnIndex + 1, Math.max(1, view.turnCount))}/${Math.max(1, view.turnCount)} 手`;
-      this.drawText(`${currentTurnText} · ${view.resultText}`, this.width / 2, topY + 40, {
+      const total = Math.max(1, view.turnCount || 1);
+      const current = view.ended ? total : Math.min((view.turnIndex ?? requestedTurnIndex) + 1, total);
+      const turnText = '\u7b2c' + current + '/' + total + ' \u624b';
+      this.drawText(`${turnText} - ${view.resultText || ''}`, this.width / 2, layout.topY + 40, {
         size: 12,
         color: '#d6b16e',
         align: 'center',
       });
+    }
 
-      const fieldTop = 116;
-      const logH = 122;
-      const logY = this.height - logH - 70;
-      const armyTop = fieldTop + 138;
-      const armyHeight = Math.max(120, logY - armyTop - 28);
-      const laneWidth = Math.min(170, this.width * 0.42);
-      const attackerArea = {
-        x: 18,
-        y: armyTop,
-        width: laneWidth,
-        height: armyHeight,
-      };
-      const defenderArea = {
-        x: this.width - laneWidth - 18,
-        y: armyTop,
-        width: laneWidth,
-        height: armyHeight,
-      };
-      this.drawBattleLeader(view.attacker, 72, fieldTop + 64, 'attacker');
-      this.drawBattleLeader(view.defender, this.width - 72, fieldTop + 64, 'defender');
-      this.drawBattleSideState(view.attacker, attackerArea, 'attacker');
-      this.drawBattleSideState(view.defender, defenderArea, 'defender');
-      this.drawBattleArmy(view.attacker, attackerArea, { pose: attackerPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
-      this.drawBattleArmy(view.defender, defenderArea, { pose: defenderPose, frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
+    drawBattleSceneArmies(view = {}, context = {}) {
+      const activeTurn = context.activeTurn;
+      const turnPhase = context.turnPhase || 'ended';
+      const phaseProgress = context.phaseProgress || 1;
+      const layout = this.getBattleSceneLayout(this.width, this.height);
+      const engagementProgress = this.getBattleEngagementProgress(context.requestedTurnIndex, turnPhase, phaseProgress, activeTurn);
+      const attackerPose = this.getBattleUnitPose('attacker', activeTurn, turnPhase);
+      const defenderPose = this.getBattleUnitPose('defender', activeTurn, turnPhase);
+      this.drawBattleLeader(view.attacker, 72, layout.fieldTop + 64, 'attacker');
+      this.drawBattleLeader(view.defender, this.width - 72, layout.fieldTop + 64, 'defender');
+      this.drawBattleSideState(view.attacker, layout.attackerArea, 'attacker');
+      this.drawBattleSideState(view.defender, layout.defenderArea, 'defender');
+      this.drawBattleArmy(view.attacker, layout.attackerArea, { pose: attackerPose, frame: context.frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
+      this.drawBattleArmy(view.defender, layout.defenderArea, { pose: defenderPose, frame: context.frame, progress: phaseProgress, engagementProgress, actionType: activeTurn?.action });
       this.drawBattleActionEffect(turnPhase === 'impact' ? activeTurn : null, phaseProgress);
       this.drawBattleSkillCutIn(turnPhase === 'cutin' ? activeTurn : null, phaseProgress);
-      this.drawBattleDamageFloat(
-        activeTurn,
-        turnPhase,
-        phaseProgress,
-        activeTurn?.target === 'attacker' ? attackerArea : defenderArea,
-      );
+      this.drawBattleDamageFloat(activeTurn, turnPhase, phaseProgress, activeTurn?.target === 'attacker' ? layout.attackerArea : layout.defenderArea);
       this.drawBattleStatusFloatingTexts(activeTurn, turnPhase, phaseProgress, {
-        attacker: attackerArea,
-        defender: defenderArea,
+        attacker: layout.attackerArea,
+        defender: layout.defenderArea,
       });
+    }
 
-      this.drawPanel(16, logY, this.width - 32, logH, {
+    drawBattleSceneLog(view = {}) {
+      const layout = this.getBattleSceneLayout(this.width, this.height);
+      this.drawPanel(16, layout.logY, this.width - 32, layout.logH, {
         fill: 'rgba(20, 16, 12, 0.76)',
         stroke: 'rgba(255, 226, 177, 0.18)',
         radius: 10,
       });
-      const lines = view.logLines.length ? view.logLines : ['双方列阵，战斗即将开始。'];
-      lines.slice(-4).forEach((line, index) => {
-        this.drawText(this.truncateText(line, this.width - 56, { size: 12 }), 28, logY + 14 + index * 24, {
+      const lines = view.logLines?.length ? view.logLines : ['\u53cc\u65b9\u5217\u9635\uff0c\u6218\u6597\u5373\u5c06\u5f00\u59cb\u3002'];
+      lines.slice(-4).forEach((line, index, list) => {
+        this.drawText(this.truncateText(line, this.width - 56, { size: 12 }), 28, layout.logY + 14 + index * 24, {
           size: 12,
-          color: index === lines.slice(-4).length - 1 ? '#f6e8c8' : '#aeb0b8',
+          color: index === list.length - 1 ? '#f6e8c8' : '#aeb0b8',
         });
       });
-
-      const buttonY = this.height - 54;
-      this.drawButton(18, buttonY, 88, 36, '返回', { size: 12, radius: 8 });
-      this.addHitTarget({ x: 18, y: buttonY, width: 88, height: 36 }, { type: 'closeBattleScene' });
-      const primaryLabel = view.ended ? '完成' : '跳过';
-      this.drawButton(this.width - 106, buttonY, 88, 36, primaryLabel, { size: 12, radius: 8, active: true });
-      this.addHitTarget({ x: this.width - 106, y: buttonY, width: 88, height: 36 }, { type: view.ended ? 'closeBattleScene' : 'skipBattleScene' });
     }
 
+    drawBattleSceneButtons(view = {}) {
+      const layout = this.getBattleSceneLayout(this.width, this.height);
+      this.drawButton(18, layout.buttonY, 88, 36, '\u8fd4\u56de', { size: 12, radius: 8 });
+      this.addHitTarget({ x: 18, y: layout.buttonY, width: 88, height: 36 }, { type: 'closeBattleScene' });
+      const primaryLabel = view.ended ? '\u5b8c\u6210' : '\u8df3\u8fc7';
+      this.drawButton(this.width - 106, layout.buttonY, 88, 36, primaryLabel, { size: 12, radius: 8, active: true });
+      this.addHitTarget({ x: this.width - 106, y: layout.buttonY, width: 88, height: 36 }, { type: view.ended ? 'closeBattleScene' : 'skipBattleScene' });
+    }
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = BattleCanvasRenderer;
