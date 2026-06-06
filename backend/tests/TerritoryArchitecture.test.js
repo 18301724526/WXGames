@@ -10,6 +10,7 @@ const TerritoryInitialState = require('../services/territory/TerritoryInitialSta
 const TerritoryShared = require('../services/territory/TerritoryShared');
 const createTerritoryCombatTargets = require('../services/territory/TerritoryCombatTargets');
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
+const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
@@ -29,6 +30,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryConstants.js',
     'TerritoryInitialState.js',
     'TerritoryMilitaryMissions.js',
+    'TerritoryScoutPlanner.js',
     'TerritoryScoutRecords.js',
     'TerritoryShared.js',
     'TerritoryVisuals.js',
@@ -337,6 +339,80 @@ test('territory military missions module advances scout reveal steps and enforce
   };
   MilitaryMissions.enforceScoutMissionLimit(limitState);
   assert.deepEqual(limitState.warMissions.map((item) => item.id), ['old', 'middle', 'ready']);
+});
+
+test('territory scout planner module owns scout origins and frontier target scoring', () => {
+  const Planner = createTerritoryScoutPlanner({
+    WorldMapService: {
+      SCOUT_REVEAL_MAIN_LIMIT: 3,
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      ensureWorldMap: () => ({
+        seed: 'seed',
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, visibility: 'controlled' },
+          { id: 'tile_2_0', q: 2, r: 0, visibility: 'controlled', siteId: 'frontier-site' },
+          { id: 'tile_1_0', q: 1, r: 0, discovered: true },
+        ],
+      }),
+      buildScoutRoute: ({ q, r }, direction, actionPoints, options) => {
+        const start = options.startDistance;
+        return Array.from({ length: actionPoints }, (_, index) => ({
+          q: direction === 'e' ? q + start + index : q,
+          r,
+          step: index + 1,
+        }));
+      },
+      getScoutRevealArea: (_seed, route) => route.flatMap((step) => [
+        { q: step.q, r: step.r, step: step.step, kind: 'main' },
+        { q: step.q, r: step.r + 1, step: step.step, kind: 'branch' },
+      ]),
+    },
+    getScoutOrigin: () => ({
+      cityId: 'capital',
+      territoryId: 'capital',
+      name: '棣栭兘',
+      x: 0,
+      y: 0,
+    }),
+    normalizeScoutState: (state) => ({
+      areas: [],
+      ...(state && typeof state === 'object' ? state : {}),
+    }),
+  });
+
+  const gameState = {
+    territories: [
+      { id: 'capital', status: 'occupied', cityName: '棣栭兘', x: 0, y: 0 },
+      { id: 'frontier', status: 'occupied', naturalName: '鍓嶅摠', x: 2, y: 0 },
+      { id: 'occupied-east', status: 'discovered', x: 3, y: 0 },
+    ],
+    scoutedCoordinates: [{ x: 1, y: 0 }],
+    scoutState: {
+      areas: [{ tileIds: ['tile_4_0', 'tile_4_1'] }],
+    },
+  };
+
+  assert.deepEqual(Planner.getKnownWorldCoordinateKeys(gameState), new Set(['0,0', '2,0', '1,0']));
+  assert.deepEqual(Planner.getScoutedAreaTileIdSet(gameState), new Set(['tile_4_0', 'tile_4_1']));
+  assert.deepEqual(Planner.getControlledScoutOrigins(gameState).map((origin) => ({
+    cityId: origin.cityId,
+    territoryId: origin.territoryId,
+    x: origin.x,
+    y: origin.y,
+  })), [
+    { cityId: 'capital', territoryId: 'capital', x: 0, y: 0 },
+    { cityId: 'frontier', territoryId: 'frontier', x: 2, y: 0 },
+  ]);
+
+  const target = Planner.findNextCoordinate(gameState, 'e');
+  assert.equal(target.origin.territoryId, 'frontier');
+  assert.equal(target.x, 4);
+  assert.equal(target.y, 0);
+  assert.equal(target.distance, 2);
+  assert.ok(target.newTileCount > 0);
+  assert.equal(target.routeStartDistance, 1);
+
+  assert.equal(Planner.findNextCoordinate(gameState, 'bad'), null);
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {
