@@ -44,6 +44,12 @@ require('../js/tutorial/TutorialGuideController');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasActionController');
 require('../js/platform/GameCommandService');
+require('../js/platform/CanvasGameAppStateSync');
+require('../js/platform/CanvasGameAppRenderingRuntime');
+require('../js/platform/CanvasGameAppBattleScene');
+require('../js/platform/CanvasGameAppCommands');
+require('../js/platform/CanvasGameAppGuideUi');
+require('../js/platform/CanvasGameAppInputRouter');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();
