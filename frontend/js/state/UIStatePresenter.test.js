@@ -15,33 +15,92 @@ const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldRadarPresenter = require('./presenters/WorldRadarPresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
 const BattleScenePresenter = require('./presenters/BattleScenePresenter');
+const WorldTileMapPresenter = require('./presenters/WorldTileMapPresenter');
 
-test('UIStatePresenter merges server-planned explorer tiles into the world tile view', () => {
-  const view = UIStatePresenter.buildWorldTileMapViewState({
+test('UIStatePresenter delegates world tile map view state while preserving facade contracts', () => {
+  const territoryState = {
     worldMap: {
       version: 1,
       seed: 'presenter-explorer-seed',
-      tiles: [{
-        id: 'tile_0_0',
-        q: 0,
-        r: 0,
-        terrain: 'capital',
-        visibility: 'controlled',
-        siteId: 'capital',
-      }],
+      tiles: [
+        {
+          id: 'tile_0_0',
+          q: 0,
+          r: 0,
+          terrain: 'capital',
+          visibility: 'controlled',
+          siteId: 'capital',
+        },
+        {
+          id: 'tile_-1_0',
+          q: -1,
+          r: 0,
+          terrain: 'mountain',
+          visibility: 'scouted',
+          intel: { level: 1, knownTerrain: true, knownSite: false },
+        },
+        {
+          id: 'tile_-2_0',
+          q: -2,
+          r: 0,
+          terrain: 'mountain',
+          visibility: 'scouted',
+        },
+        {
+          id: 'tile_0_1',
+          q: 0,
+          r: 1,
+          terrain: 'ocean',
+          oceanTemplates: ['nw', 'river-mouth-ne'],
+          visibility: 'scouted',
+        },
+      ],
     },
     territories: [{
       id: 'capital',
       x: 0,
       y: 0,
-      type: 'capital',
+      type: 'city',
       owner: 'player',
       status: 'occupied',
       cityName: 'Capital',
     }],
-    scoutMissions: [],
-  }, {
+    scoutMissions: [{
+      id: 'legacy-scout',
+      kind: 'scout',
+      direction: 'east',
+      status: 'active',
+      actionPoints: 3,
+      actionPointsRemaining: 1,
+      route: [{ q: 0, r: 0, step: 1, revealed: true }],
+      revealArea: [{ q: 1, r: 0, step: 2, kind: 'branch', revealed: false }],
+      revealedTileIds: ['tile_0_0'],
+    }],
+    scoutAreas: [{
+      id: 'area-1',
+      missionId: 'legacy-scout',
+      direction: 'east',
+      result: 'empty',
+      targetX: 1,
+      targetY: 0,
+      coords: [{ q: 1, r: 0 }],
+    }],
+  };
+  const options = {
+    panX: 12.5,
+    panY: -4,
     worldExplorerState: {
+      missions: [{
+        id: 'explore-1',
+        status: 'ready',
+        route: [
+          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: true },
+        ],
+        plannedTiles: [
+          { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', visibility: 'scouted' },
+        ],
+        revealedTileIds: ['tile_1_0'],
+      }],
       activeMission: {
         id: 'explore-1',
         status: 'active',
@@ -56,13 +115,29 @@ test('UIStatePresenter merges server-planned explorer tiles into the world tile 
         revealedTileIds: [],
       },
     },
-  });
+  };
 
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState, options);
+  const direct = WorldTileMapPresenter.buildWorldTileMapViewState(territoryState, options);
+
+  assert.deepEqual(view, direct);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_0' && tile.terrain === 'plains'), true);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0' && tile.terrain === 'forest'), true);
-  assert.equal(view.activeScouts.length, 1);
-  assert.equal(view.activeScouts[0].kind, 'worldExplore');
-  assert.equal(view.activeScouts[0].route.length, 2);
+  assert.equal(view.pan.x, 12.5);
+  assert.equal(view.pan.y, -4);
+  assert.equal(view.sites[0].id, 'capital');
+  assert.equal(view.tiles.find((tile) => tile.id === 'tile_0_1').templateAssets.length, 2);
+  assert.equal(view.tiles.find((tile) => tile.id === 'tile_-1_0').mountainNeighbors, 1);
+  assert.equal(view.activeScouts.length, 2);
+  assert.equal(view.activeScouts.some((mission) => mission.kind === 'worldExplore'), true);
+  assert.equal(view.activeScouts.find((mission) => mission.kind === 'worldExplore').route.length, 2);
+  assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_1_0');
+  assert.equal(typeof UIStatePresenter.getTileMapManifest().getTerrainAsset, 'function');
+  assert.equal(typeof UIStatePresenter.getTileMapGeometry().sortTilesForIsoDraw, 'function');
+  assert.deepEqual(UIStatePresenter.normalizeWorldTile({ q: 3, r: -1, terrain: 'forest' }).feature.key, 'treeCluster');
+  assert.deepEqual(UIStatePresenter.getWorldExplorerMissions(options.worldExplorerState).map((mission) => mission.id), ['explore-1']);
+  assert.equal(UIStatePresenter.getWorldExplorerPlannedTiles(options.worldExplorerState).length, 2);
+  assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState));
 });
 
 test('UIStatePresenter delegates famous person view state while preserving facade contracts', () => {
@@ -793,6 +868,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'WorldRadarPresenter.js',
     'WorldSitePresenter.js',
     'BattleScenePresenter.js',
+    'WorldTileMapPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
   ];
