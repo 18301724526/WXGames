@@ -9,6 +9,7 @@ const EventPresenter = require('./presenters/EventPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
 const HomePresenter = require('./presenters/HomePresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
+const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 
 test('UIStatePresenter merges server-planned explorer tiles into the world tile view', () => {
   const view = UIStatePresenter.buildWorldTileMapViewState({
@@ -235,6 +236,74 @@ test('UIStatePresenter delegates event view state while preserving facade contra
   assert.deepEqual(UIStatePresenter.buildEventResourcePart('metal', 12), { type: 'resource', resource: 'iron', text: '+12' });
 });
 
+test('UIStatePresenter delegates task center and guidebook view state while preserving facade contracts', () => {
+  const state = {
+    guideTasks: {
+      visible: true,
+      tasks: [
+        { id: 'legacy-task', title: 'Legacy Task', status: 'active', target: 'buildings' },
+      ],
+    },
+    taskCenter: {
+      visible: true,
+      tabs: [
+        { id: 'main', label: 'Main', badge: 1 },
+        { id: 'daily', label: 'Daily' },
+      ],
+      categories: {
+        main: {
+          label: 'Main',
+          emptyText: 'No main tasks',
+          tasks: [
+            { id: 'claimable-main', title: 'Claim Supplies', status: 'claimable', claimed: false },
+            { id: 'completed-main', title: 'Done', status: 'completed', claimed: true },
+          ],
+        },
+        daily: {
+          label: 'Daily',
+          tasks: [{ id: 'daily-go', title: 'Scout', status: 'active', target: 'scout-north' }],
+        },
+      },
+    },
+    guidebook: {
+      activeTab: 'policy',
+      categories: [
+        { id: 'planning', label: 'Plan', title: 'Planning', lines: ['Build around terrain.'] },
+        { id: 'policy', label: 'Policy', title: 'Talent Policy', lines: ['Assign talent deliberately.'] },
+      ],
+    },
+    cityState: {
+      activeCityId: 'capital',
+      cities: [{
+        id: 'capital',
+        planning: {
+          terrainLabel: 'River Plain',
+          habitabilityLabel: 'Stable',
+          habitability: 12,
+          populationGrowthMultiplier: 1.12,
+        },
+      }],
+    },
+  };
+
+  const taskView = UIStatePresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
+  const directTaskView = TaskGuidePresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
+  const guidebookView = UIStatePresenter.buildGuidebookViewState(state, { activeTab: 'planning' });
+  const directGuidebookView = TaskGuidePresenter.buildGuidebookViewState(state, {
+    activeTab: 'planning',
+    buildCityPlanningViewState: (sourceState) => HomePresenter.buildCityPlanningViewState(sourceState),
+  });
+
+  assert.deepEqual(taskView, directTaskView);
+  assert.deepEqual(guidebookView, directGuidebookView);
+  assert.equal(taskView.activeTab, 'daily');
+  assert.equal(taskView.tabs.find((tab) => tab.id === 'main').badge, 1);
+  assert.deepEqual(taskView.categories.main.tasks[0].action, { type: 'claimTaskReward', taskId: 'claimable-main', category: 'main' });
+  assert.equal(taskView.categories.daily.tasks[0].action.type, 'goToGuideTaskTarget');
+  assert.equal(guidebookView.activeCategory.id, 'planning');
+  assert.equal(guidebookView.subtitle.includes('River Plain'), true);
+});
+
 test('UIStatePresenter delegates home resource and planning view state while preserving facade contracts', () => {
   const state = {
     currentEra: 2,
@@ -354,6 +423,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'HomePresenter.js',
     'BuildingPresenter.js',
     'EventPresenter.js',
+    'TaskGuidePresenter.js',
     'FamousPersonPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
