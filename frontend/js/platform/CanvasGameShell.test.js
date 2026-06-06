@@ -1,7 +1,50 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const CanvasGameShell = require('./CanvasGameShell');
+
+const SHELL_MODULES = [
+  'CanvasGameShellMounting',
+  'CanvasGameShellInputRouter',
+  'CanvasGameShellCommands',
+  'CanvasGameShellGuideUi',
+  'CanvasGameShellWorldMapRuntime',
+  'CanvasGameShellRenderingRuntime',
+  'CanvasGameShellSystemUi',
+];
+
+test('CanvasGameShell installs responsibility modules into the compatibility facade', () => {
+  const proto = CanvasGameShell.prototype;
+  const expectedMethods = {
+    mounting: ['createRenderer', 'mount'],
+    inputRouter: ['bindInput', 'handleTap', 'handleDrag', 'handleGesture'],
+    commands: ['openCityManagement', 'openArmyFormation', 'forwardCanvasAction', 'closeWorldSiteHud'],
+    guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
+    worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
+    renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions', 'setTechTreeZoom'],
+    systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
+  };
+
+  Object.entries(expectedMethods).forEach(([group, methods]) => {
+    methods.forEach((method) => {
+      assert.equal(typeof proto[method], 'function', `${group}.${method} should be installed`);
+    });
+  });
+});
+
+test('index.html loads CanvasGameShell modules before the facade', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const facadePosition = html.indexOf('CanvasGameShell.js');
+  assert.notEqual(facadePosition, -1);
+
+  SHELL_MODULES.forEach((moduleName) => {
+    const modulePosition = html.indexOf(`${moduleName}.js`);
+    assert.notEqual(modulePosition, -1, `${moduleName}.js should be loaded`);
+    assert.equal(modulePosition < facadePosition, true, `${moduleName}.js should load before CanvasGameShell.js`);
+  });
+});
 
 test('CanvasGameShell preserves world map layer when drag snapshot refresh misses', () => {
   const calls = [];
