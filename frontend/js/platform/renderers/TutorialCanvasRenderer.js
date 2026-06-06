@@ -1,30 +1,24 @@
 (function (global) {
-  const SharedUnitSpriteManifest = (() => {
-    if (global.UnitSpriteManifest) return global.UnitSpriteManifest;
-    if (typeof module !== 'undefined' && module.exports) {
+  function resolveRendererDependency(globalKey, modulePath) {
+    if (global[globalKey]) return global[globalKey];
+    if (typeof module !== 'undefined' && module.exports && typeof require === 'function') {
       try {
-        return require('../../config/UnitSpriteManifest');
+        return require(modulePath);
       } catch (error) {
         return null;
       }
     }
     return null;
-  })();
+  }
+
+  const SharedUnitSpriteManifest = resolveRendererDependency('UnitSpriteManifest', '../../config/UnitSpriteManifest');
   const TUTORIAL_MARCH_UNIT_ID = 'spearman';
   const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
   const TUTORIAL_INTRO_DIALOGUE_LEFT = 96;
-
-  const SharedTutorialAdvisorCanvasRenderer = (() => {
-    if (global.TutorialAdvisorCanvasRenderer) return global.TutorialAdvisorCanvasRenderer;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('./TutorialAdvisorCanvasRenderer');
-      } catch (error) {
-        return null;
-      }
-    }
-    return null;
-  })();
+  const SharedTutorialIntroMarchModel = resolveRendererDependency('TutorialIntroMarchModel', './TutorialIntroMarchModel');
+  const SharedTutorialIntroUnitRenderer = resolveRendererDependency('TutorialIntroUnitRenderer', './TutorialIntroUnitRenderer');
+  const SharedTutorialIntroDialogueLayout = resolveRendererDependency('TutorialIntroDialogueLayout', './TutorialIntroDialogueLayout');
+  const SharedTutorialAdvisorCanvasRenderer = resolveRendererDependency('TutorialAdvisorCanvasRenderer', './TutorialAdvisorCanvasRenderer');
 
   class TutorialCanvasRenderer {
     constructor(options = {}) {
@@ -204,168 +198,71 @@
     }
 
     getTutorialIntroEnterRoute(target = {}, intro = {}, now = this.getNow()) {
-      const base = this.getTutorialIntroMarchRoute(target, 1);
-      const rect = this.normalizeMarchTargetRect(target);
-      const startedAt = Number(intro.enterStartedAt) || now;
-      const duration = Math.max(1, Number(intro.enterDurationMs) || 780);
-      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
-      const eased = this.easeInOutCubic(progress);
-      return {
-        ...base,
-        progress,
-        x: base.end.x + (rect.centerX - base.end.x) * eased,
-        y: base.end.y + (rect.centerY + rect.height * 0.05 - base.end.y) * eased,
-        alpha: Math.max(0, 1 - Math.max(0, progress - 0.28) / 0.72),
-      };
+      return SharedTutorialIntroMarchModel.getEnterRoute(target, intro, now, {
+        width: this.width,
+        height: this.height,
+        bottomSafeArea: this.bottomSafeArea,
+      });
     }
 
     easeInOutCubic(value = 0) {
-      const t = Math.max(0, Math.min(1, Number(value) || 0));
-      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      return SharedTutorialIntroMarchModel.easeInOutCubic(value);
     }
 
     getTutorialIntroMarchRoute(target = {}, progress = 0) {
-      const rect = this.normalizeMarchTargetRect(target);
-      const start = this.getTutorialIntroMarchStart(rect);
-      const end = this.getTutorialIntroMarchEnd(rect, start);
-      const arcLift = Math.min(84, Math.max(40, this.height * 0.08));
-      const control = {
-        x: (start.x + end.x) / 2,
-        y: Math.min(start.y, end.y) - arcLift,
-      };
-      const t = Math.max(0, Math.min(1, Number(progress) || 0));
-      const oneMinusT = 1 - t;
-      return {
-        start,
-        end,
-        control,
-        progress: t,
-        x: oneMinusT * oneMinusT * start.x + 2 * oneMinusT * t * control.x + t * t * end.x,
-        y: oneMinusT * oneMinusT * start.y + 2 * oneMinusT * t * control.y + t * t * end.y,
-      };
+      return SharedTutorialIntroMarchModel.getMarchRoute(target, progress, {
+        width: this.width,
+        height: this.height,
+        bottomSafeArea: this.bottomSafeArea,
+      });
     }
 
     normalizeMarchTargetRect(target = {}) {
-      const x = Number(target.x ?? target.left) || 0;
-      const y = Number(target.y ?? target.top) || 0;
-      const width = Math.max(24, Number(target.width) || 0);
-      const height = Math.max(24, Number(target.height) || 0);
-      return {
-        x,
-        y,
-        width,
-        height,
-        centerX: x + width / 2,
-        centerY: y + height / 2,
-      };
+      return SharedTutorialIntroMarchModel.normalizeTargetRect(target);
     }
 
     getTutorialIntroMarchStart(target = {}) {
-      const horizontalDistance = Math.max(180, this.width * 0.55);
-      const x = Math.min(-42, (Number(target.centerX) || 0) - horizontalDistance);
-      const lowerLaneY = (Number(target.centerY) || 0) + Math.max(150, this.height * 0.28);
-      const maxY = Math.max(96, this.height - this.bottomSafeArea - 102);
-      const y = Math.max(72, Math.min(maxY, lowerLaneY));
-      return { x, y };
+      return SharedTutorialIntroMarchModel.getStartPoint(target, {
+        width: this.width,
+        height: this.height,
+        bottomSafeArea: this.bottomSafeArea,
+      });
     }
 
     getTutorialIntroMarchEnd(target = {}, start = {}) {
-      const centerX = Number(target.centerX) || 0;
-      const centerY = Number(target.centerY) || 0;
-      const halfWidth = Math.max(16, Number(target.width) / 2 || 0);
-      const halfHeight = Math.max(16, Number(target.height) / 2 || 0);
-      const dx = (Number(start.x) || 0) - centerX || -1;
-      const dy = (Number(start.y) || 0) - centerY || 1;
-      const edgeScale = 1 / Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight, 0.001);
-      const length = Math.max(1, Math.hypot(dx, dy));
-      const standOff = Math.max(4, Math.min(8, Math.min(Number(target.width) || 0, Number(target.height) || 0) * 0.12));
-      return {
-        x: centerX + dx * edgeScale + (dx / length) * standOff,
-        y: centerY + dy * edgeScale + (dy / length) * standOff,
-      };
+      return SharedTutorialIntroMarchModel.getEndPoint(target, start);
     }
 
     renderTutorialIntroUnit(x, y, scale = 1, intro = {}) {
-      if (this.renderTutorialIntroUnitSprite(x, y, scale, intro)) return;
-      this.renderTutorialIntroUnitFallback(x, y, scale);
+      const framePath = this.getTutorialIntroUnitFramePath(this.getNow(), intro);
+      SharedTutorialIntroUnitRenderer.renderUnit(this, x, y, scale, framePath);
     }
 
     getTutorialIntroUnitFramePaths() {
-      return SharedUnitSpriteManifest?.getFramePaths?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || [];
+      return SharedTutorialIntroMarchModel.getFramePaths(
+        SharedUnitSpriteManifest,
+        TUTORIAL_MARCH_UNIT_ID,
+        TUTORIAL_MARCH_UNIT_ANIMATION,
+      );
     }
 
     getTutorialIntroUnitFramePath(now = this.getNow(), intro = {}) {
-      const frames = this.getTutorialIntroUnitFramePaths();
-      if (!frames.length) return '';
-      if (intro.freezeFrame) return frames[0];
-      const startedAt = Number(intro.startedAt) || now;
-      const frameMs = SharedUnitSpriteManifest?.getFrameDurationMs?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || 80;
-      const frameIndex = Math.floor(Math.max(0, now - startedAt) / frameMs) % frames.length;
-      return frames[frameIndex];
+      return SharedTutorialIntroMarchModel.getFramePath({
+        manifest: SharedUnitSpriteManifest,
+        now,
+        intro,
+        unitId: TUTORIAL_MARCH_UNIT_ID,
+        animation: TUTORIAL_MARCH_UNIT_ANIMATION,
+      });
     }
 
     renderTutorialIntroUnitSprite(x, y, scale = 1, intro = {}) {
       const framePath = this.getTutorialIntroUnitFramePath(this.getNow(), intro);
-      if (!framePath) return false;
-      const image = this.getAsset?.(framePath);
-      const sourceWidth = Number(image?.naturalWidth || image?.width || 0);
-      const sourceHeight = Number(image?.naturalHeight || image?.height || 0);
-      if (!image || sourceWidth <= 0 || sourceHeight <= 0 || typeof this.ctx?.drawImage !== 'function') return false;
-      const targetHeight = 68 * scale;
-      const targetWidth = targetHeight * (sourceWidth / sourceHeight);
-      const drawX = x - targetWidth * 0.5;
-      const drawY = y - targetHeight + 11 * scale;
-      this.ctx.save?.();
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
-      this.ctx.beginPath?.();
-      this.ctx.ellipse?.(x, y + 10 * scale, Math.max(13, targetWidth * 0.32), 5.5 * scale, -0.18, 0, Math.PI * 2);
-      this.ctx.fill?.();
-      this.ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
-      this.ctx.restore?.();
-      return true;
+      return SharedTutorialIntroUnitRenderer.drawSprite(this, x, y, scale, framePath);
     }
 
     renderTutorialIntroUnitFallback(x, y, scale = 1) {
-      const ctx = this.ctx;
-      if (!ctx) return;
-      const now = this.getNow();
-      const leg = Math.sin(now / 90) * 4 * scale;
-      ctx.save?.();
-      ctx.translate?.(x, y);
-      ctx.scale?.(scale, scale);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
-      ctx.beginPath?.();
-      ctx.ellipse?.(0, 10, 15, 6, -0.18, 0, Math.PI * 2);
-      ctx.fill?.();
-      ctx.fillStyle = '#f0cf8a';
-      ctx.strokeStyle = 'rgba(45, 31, 22, 0.92)';
-      ctx.lineWidth = 2;
-      ctx.beginPath?.();
-      ctx.arc?.(0, -20, 7, 0, Math.PI * 2);
-      ctx.fill?.();
-      ctx.stroke?.();
-      ctx.fillStyle = '#8c3d31';
-      ctx.strokeStyle = 'rgba(48, 34, 22, 0.92)';
-      ctx.lineWidth = 2;
-      this.roundRectPath(-9, -12, 18, 23, 6);
-      ctx.fill?.();
-      ctx.stroke?.();
-      ctx.strokeStyle = '#2c2318';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath?.();
-      ctx.moveTo?.(-5, 10);
-      ctx.lineTo?.(-7 + leg, 22);
-      ctx.moveTo?.(5, 10);
-      ctx.lineTo?.(7 - leg, 22);
-      ctx.stroke?.();
-      ctx.strokeStyle = '#d9bd73';
-      ctx.lineWidth = 3;
-      ctx.beginPath?.();
-      ctx.moveTo?.(7, -7);
-      ctx.lineTo?.(19, -14);
-      ctx.stroke?.();
-      ctx.restore?.();
+      SharedTutorialIntroUnitRenderer.drawFallback(this, x, y, scale);
     }
 
     renderTutorialIntroSpotlight(target = {}, message = '', options = {}) {
@@ -446,32 +343,30 @@
     }
 
     renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
-      const layout = this.getLayout();
-      const panelH = 136;
-      const contentRight = Number(layout.contentRight) || ((Number(layout.contentX) || 0) + (Number(layout.contentWidth) || 0));
-      const panelRight = Math.min(contentRight, this.width - 18);
-      const panelX = Math.max(layout.contentX, Math.min(TUTORIAL_INTRO_DIALOGUE_LEFT, panelRight - 192));
-      const panelW = Math.max(192, panelRight - panelX);
-      const panelY = Math.max(84, this.height - panelH - 76 - this.bottomSafeArea);
-      const portraitW = Math.min(188, Math.max(134, layout.contentWidth * 0.42));
-      const portraitH = Math.min(330, Math.max(248, this.height * 0.38));
-      const portraitX = Math.max(layout.contentX - 72, panelX + 12 - portraitW);
-      const portraitY = Math.max(48, panelY - portraitH + 44);
+      const dialogue = SharedTutorialIntroDialogueLayout.buildDialogueLayout({
+        width: this.width,
+        height: this.height,
+        bottomSafeArea: this.bottomSafeArea,
+        layout: this.getLayout(),
+        dialogueLeft: TUTORIAL_INTRO_DIALOGUE_LEFT,
+      });
+      const panel = dialogue.panel;
+      const portrait = dialogue.portrait;
 
-      this.drawPanel(panelX, panelY, panelW, panelH, {
+      this.drawPanel(panel.x, panel.y, panel.width, panel.height, {
         fill: 'rgba(23, 17, 12, 0.94)',
         stroke: 'rgba(246, 214, 147, 0.3)',
         radius: 8,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderTutorialIntroAdvisorPortrait(portraitX, portraitY, portraitW, portraitH);
-      this.drawText(advisorName, panelX + 24, panelY + 24, {
+      this.renderTutorialIntroAdvisorPortrait(portrait.x, portrait.y, portrait.width, portrait.height);
+      this.drawText(advisorName, panel.x + 24, panel.y + 24, {
         size: 14,
         bold: true,
         color: '#ffd98a',
       });
-      const lines = this.wrapTextLimit(message, panelW - 48, 3, { size: 13 });
-      this.drawTextLines(lines, panelX + 24, panelY + 46, {
+      const lines = this.wrapTextLimit(message, panel.width - 48, 3, { size: 13 });
+      this.drawTextLines(lines, panel.x + 24, panel.y + 46, {
         size: 13,
         color: '#f7ecd0',
         lineHeight: 18,

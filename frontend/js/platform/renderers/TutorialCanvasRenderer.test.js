@@ -1,9 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const TutorialAdvisorCanvasRenderer = require('./TutorialAdvisorCanvasRenderer');
+const TutorialIntroDialogueLayout = require('./TutorialIntroDialogueLayout');
+const TutorialIntroMarchModel = require('./TutorialIntroMarchModel');
+const TutorialIntroUnitRenderer = require('./TutorialIntroUnitRenderer');
 const TutorialCanvasRenderer = require('./TutorialCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
+
+function lineCount(filePath) {
+  return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).length;
+}
 
 function createCtx(calls = []) {
   return {
@@ -139,6 +148,32 @@ test('TutorialCanvasRenderer moves intro march unit from fog edge to city tile e
   assert.ok(Math.hypot(end.x - targetCenter.x, end.y - targetCenter.y) < 56);
 });
 
+test('TutorialIntroMarchModel owns route, enter fade, frame, and line-count contracts', () => {
+  const viewport = { width: 390, height: 693, bottomSafeArea: 12 };
+  const target = { x: 170, y: 300, width: 72, height: 56 };
+  const route = TutorialIntroMarchModel.getMarchRoute(target, 0.5, viewport);
+  const end = TutorialIntroMarchModel.getMarchRoute(target, 1, viewport);
+  const entering = TutorialIntroMarchModel.getEnterRoute(target, { enterStartedAt: 1000, enterDurationMs: 800 }, 1700, viewport);
+  const manifest = {
+    getFramePaths() {
+      return ['001.png', '002.png', '003.png'];
+    },
+    getFrameDurationMs() {
+      return 100;
+    },
+  };
+
+  assert.ok(route.start.x < 0);
+  assert.ok(route.x > route.start.x);
+  assert.ok(route.x < end.x);
+  assert.ok(entering.x > end.x);
+  assert.ok(entering.alpha < 0.4);
+  assert.equal(TutorialIntroMarchModel.getFramePath({ manifest, now: 1250, intro: { startedAt: 1000 } }), '003.png');
+  assert.equal(TutorialIntroMarchModel.getFramePath({ manifest, now: 1250, intro: { freezeFrame: true } }), '001.png');
+  assert.ok(lineCount(path.join(__dirname, 'TutorialCanvasRenderer.js')) < 500);
+  assert.ok(lineCount(path.join(__dirname, 'TutorialIntroMarchModel.js')) < 500);
+});
+
 test('TutorialCanvasRenderer draws intro march unit from sprite frames when loaded', () => {
   const host = createHost({
     getAsset(assetPath) {
@@ -155,6 +190,27 @@ test('TutorialCanvasRenderer draws intro march unit from sprite frames when load
   assert.equal(drawImage[1].naturalWidth, 215);
   assert.equal(host.drawCalls.some((call) => call[0] === 'drawPanel'), false);
 });
+
+test('TutorialIntroUnitRenderer owns sprite and fallback drawing contracts', () => {
+  const calls = [];
+  const host = {
+    ctx: createCtx(calls),
+    getNow() { return 1000; },
+    getAsset(assetPath) {
+      if (assetPath === 'frame.png') return { naturalWidth: 215, naturalHeight: 510 };
+      return null;
+    },
+    roundRectPath() { calls.push(['roundRectPath']); },
+  };
+
+  assert.equal(TutorialIntroUnitRenderer.drawSprite(host, 120, 240, 1, 'frame.png'), true);
+  assert.equal(calls.some((call) => call[0] === 'drawImage'), true);
+  calls.length = 0;
+  assert.equal(TutorialIntroUnitRenderer.renderUnit(host, 120, 240, 1, ''), false);
+  assert.equal(calls.some((call) => call[0] === 'roundRectPath'), true);
+  assert.ok(lineCount(path.join(__dirname, 'TutorialIntroUnitRenderer.js')) < 500);
+});
+
 
 test('TutorialCanvasRenderer keeps the march unit parked on the first frame during click guidance', () => {
   const loaded = [];
@@ -389,4 +445,19 @@ test('TutorialCanvasRenderer places intro dialogue at tuned left offset', () => 
   assert.equal(panel[1], 96);
   const name = calls.find((call) => call[0] === 'drawText');
   assert.equal(name[2], 120);
+});
+
+test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', () => {
+  const layout = TutorialIntroDialogueLayout.buildDialogueLayout({
+    width: 390,
+    height: 844,
+    bottomSafeArea: 12,
+    layout: { contentX: 10, contentWidth: 370, contentRight: 380 },
+    dialogueLeft: 96,
+  });
+
+  assert.equal(layout.panel.x, 96);
+  assert.equal(layout.panel.width, 276);
+  assert.ok(layout.portrait.x < layout.panel.x);
+  assert.ok(lineCount(path.join(__dirname, 'TutorialIntroDialogueLayout.js')) < 500);
 });
