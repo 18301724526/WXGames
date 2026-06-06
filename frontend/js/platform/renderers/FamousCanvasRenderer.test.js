@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const FamousCanvasRenderer = require('./FamousCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
@@ -123,4 +125,55 @@ test('FamousCanvasRenderer panel rendering keeps modal and pager hit target cont
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeFamousPersons'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'seekFamousPerson'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'changeFamousPersonsPage'), true);
+});
+
+test('FamousCanvasRenderer delegates skill badges and tooltips to the skill renderer', () => {
+  const panels = [];
+  const lines = [];
+  const host = createHost({
+    hoverPoint: { x: 18, y: 24 },
+    drawPanel(x, y, width, height) { panels.push({ x, y, width, height }); },
+    drawTextLines(wrapped) { lines.push(wrapped); },
+  });
+  const renderer = new FamousCanvasRenderer({ host });
+  const card = {
+    id: 'hero-1',
+    skillDetails: [
+      { name: 'Pathfinder', kindText: 'Scout', description: 'Reveal nearby land.', meta: 'Passive' },
+    ],
+    skillBadges: [
+      { text: 'Scout: Pathfinder' },
+    ],
+  };
+
+  renderer.renderSkillBadges(card, 10, 20, 150, { cardId: card.id });
+
+  assert.equal(host.famousSkillHitTargets.length, 1);
+  assert.equal(host.famousSkillHitTargets[0].action.type, 'showFamousSkillTooltip');
+  assert.deepEqual(host.activeFamousSkillTooltip, host.famousSkillHitTargets[0].action);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'showFamousSkillTooltip'), true);
+
+  renderer.renderFamousSkillTooltip(host.activeFamousSkillTooltip);
+
+  assert.equal(panels.length >= 2, true);
+  assert.equal(lines.length, 1);
+});
+
+test('index.html loads famous renderer helpers before the compatibility facade', () => {
+  const htmlPath = path.resolve(__dirname, '../../../index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const expectedOrder = [
+    'FamousCanvasModel.js',
+    'FamousPortraitCanvasRenderer.js',
+    'FamousSkillCanvasRenderer.js',
+    'FamousPanelCanvasRenderer.js',
+    'TalentPolicyCanvasRenderer.js',
+    'FamousCanvasRenderer.js',
+  ];
+  const positions = expectedOrder.map((name) => html.indexOf(name));
+
+  positions.forEach((position, index) => {
+    assert.notEqual(position, -1, `${expectedOrder[index]} should be loaded`);
+    if (index > 0) assert.equal(positions[index - 1] < position, true, `${expectedOrder[index - 1]} should load before ${expectedOrder[index]}`);
+  });
 });
