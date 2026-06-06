@@ -9,6 +9,7 @@ const TerritoryVisuals = require('../services/territory/TerritoryVisuals');
 const TerritoryInitialState = require('../services/territory/TerritoryInitialState');
 const TerritoryShared = require('../services/territory/TerritoryShared');
 const createTerritoryCombatTargets = require('../services/territory/TerritoryCombatTargets');
+const createTerritoryConquestMissions = require('../services/territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
 const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
@@ -29,6 +30,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
 
   assert.deepEqual(moduleFiles, [
     'TerritoryCombatTargets.js',
+    'TerritoryConquestMissions.js',
     'TerritoryConstants.js',
     'TerritoryInitialState.js',
     'TerritoryMilitaryMissions.js',
@@ -631,6 +633,129 @@ test('territory site migration module owns current-rule retargeting contracts', 
   assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_0_0').siteId, 'capital');
   assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, null);
   assert.equal(Migration.migrateTerritorySitesToCurrentWorldRules(gameState, 3, now), false);
+});
+
+test('territory conquest missions module owns settlement and battle resolution contracts', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const boundTiles = [];
+  const experienceGrants = [];
+  const Conquest = createTerritoryConquestMissions({
+    BattleService: {
+      getLeaderSnapshot: (_gameState, leader) => (leader === 'leader-1' ? { id: leader, name: '先锋' } : null),
+      simulateConquestBattle: (_gameState, mission, territory) => ({
+        success: mission.soldiersCommitted >= territory.defense,
+        casualties: 30,
+        report: {
+          id: 'battle-1',
+          attacker: { leaderName: '先锋' },
+          experience: { leader: 12 },
+        },
+      }),
+      createLegacyBattleReport: () => ({ id: 'legacy-battle' }),
+    },
+    getFamousPersonService: () => ({
+      MAX_CANDIDATES: 3,
+      ensureFamousPersonState: (gameState) => {
+        gameState.famousPersons = gameState.famousPersons || { candidates: [] };
+        return gameState.famousPersons;
+      },
+      createFamousPersonCandidate: () => ({ id: 'candidate-1', source: { type: 'postWar' } }),
+      grantBattleExperience: (_gameState, leader, experience) => {
+        experienceGrants.push({ leader, experience });
+        return { leader, levelUp: false };
+      },
+    }),
+    WorldMapService: {
+      bindSiteToTile: (_gameState, x, y, siteId, _now, options) => {
+        boundTiles.push({ x, y, siteId, options });
+      },
+    },
+    allocateSoldiersForMission: (_gameState, required) => [{ cityId: 'capital', soldiers: required }],
+    attachBattleTileSnapshot: (report, snapshot, battleTarget) => ({ ...report, snapshot, battleTarget }),
+    getActiveMissionForTerritory: (gameState, territoryId) => (
+      gameState.warMissions || []
+    ).find((mission) => mission.territoryId === territoryId && ['active', 'ready'].includes(mission.status)) || null,
+    getAvailableSoldiers: (gameState) => gameState.availableSoldiers,
+    getMissionSoldierAllocations: (mission) => mission.soldierAllocations || [],
+    getNamingPrompt: () => ({ type: 'city', territoryId: 'site-1' }),
+    getTerritory: (gameState, territoryId) => (
+      gameState.territories || []
+    ).find((territory) => territory.id === territoryId) || null,
+    getTerritoryBattleTargetSnapshot: (_gameState, territory) => ({ id: `target_${territory.id}` }),
+    getTerritoryBattleTileSnapshot: (_gameState, territory) => ({
+      tileId: `tile_${territory.x}_${territory.y}`,
+      q: territory.x,
+      r: territory.y,
+      mapTerrain: territory.mapTerrain || 'plains',
+      terrain: territory.terrain || 'plains',
+      tile: { id: `tile_${territory.x}_${territory.y}`, q: territory.x, r: territory.y, terrain: territory.mapTerrain || 'plains' },
+    }),
+    normalizeBattleTarget: (target) => ({ ...target, normalized: true }),
+  });
+
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral' }), 'settlement');
+  assert.equal(Conquest.getOccupationMode({ owner: 'tribe' }), 'conquest');
+  assert.equal(Conquest.normalizeExpeditionConfig({ soldiers: 20 }, { owner: 'tribe', defense: 250 }).soldiers, TerritoryConstants.MIN_EXPEDITION_SOLDIERS);
+
+  const settlementState = {
+    availableSoldiers: TerritoryConstants.MIN_EXPEDITION_SOLDIERS,
+    activeCityId: 'capital',
+    warMissions: [],
+    territories: [{
+      id: 'site-1',
+      x: 2,
+      y: 0,
+      naturalName: 'River Bend',
+      owner: 'neutral',
+      status: 'discovered',
+      defense: TerritoryConstants.MIN_EXPEDITION_SOLDIERS,
+    }],
+  };
+  const startedSettlement = Conquest.startConquest(settlementState, 'site-1', {}, now);
+  assert.equal(startedSettlement.success, true);
+  assert.equal(startedSettlement.mission.mode, 'settlement');
+  assert.equal(startedSettlement.mission.soldiersCommitted, TerritoryConstants.MIN_EXPEDITION_SOLDIERS);
+  assert.equal(settlementState.territories[0].status, 'contested');
+  settlementState.warMissions[0].status = 'ready';
+  const claimedSettlement = Conquest.claimConquest(settlementState, 'site-1', now);
+  assert.equal(claimedSettlement.success, true);
+  assert.equal(claimedSettlement.outcome, 'success');
+  assert.equal(claimedSettlement.namingPrompt.type, 'city');
+  assert.equal(settlementState.territories[0].status, 'occupied');
+  assert.equal(settlementState.territories[0].owner, 'player');
+  assert.equal(boundTiles.at(-1).options.visibility, 'controlled');
+
+  const battleState = {
+    availableSoldiers: 300,
+    activeCityId: 'capital',
+    cities: { capital: { id: 'capital', military: { soldiers: 300 } } },
+    warMissions: [],
+    territories: [{
+      id: 'camp-1',
+      x: 3,
+      y: 0,
+      naturalName: 'Forest Camp',
+      owner: 'tribe',
+      status: 'discovered',
+      defense: 200,
+      recommendedSoldiers: 200,
+      garrison: { id: 'garrison-1' },
+      defenderLeader: { id: 'defender-1' },
+    }],
+  };
+  const startedBattle = Conquest.startConquest(battleState, 'camp-1', { soldiers: 220, leader: 'leader-1' }, now);
+  assert.equal(startedBattle.success, true);
+  assert.equal(startedBattle.mission.mode, 'conquest');
+  assert.equal(startedBattle.mission.expedition.leaderSnapshot.name, '先锋');
+  battleState.warMissions[0].status = 'ready';
+  const claimedBattle = Conquest.claimConquest(battleState, 'camp-1', now);
+  assert.equal(claimedBattle.success, true);
+  assert.equal(claimedBattle.outcome, 'success');
+  assert.equal(claimedBattle.casualties, 30);
+  assert.equal(battleState.cities.capital.military.soldiers, 270);
+  assert.equal(battleState.territories[0].garrison, null);
+  assert.equal(battleState.territories[0].lastBattle.leaderGrowth.leader, 'leader-1');
+  assert.deepEqual(experienceGrants[0], { leader: 'leader-1', experience: { leader: 12 } });
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {

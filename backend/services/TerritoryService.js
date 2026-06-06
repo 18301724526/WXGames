@@ -1,4 +1,3 @@
-const BattleService = require('./BattleService');
 const DefenderLeaderService = require('./DefenderLeaderService');
 const WorldMapService = require('./WorldMapService');
 const TerritoryClientAssembler = require('./TerritoryClientAssembler');
@@ -11,7 +10,6 @@ const {
   MAX_REPORTS,
   MAX_SCOUT_DISTANCE,
   MIN_EXPEDITION_SOLDIERS,
-  POST_WAR_FAMOUS_PERSON_ENABLED,
   SCOUT_ACTION_POINTS,
   SCOUT_DURATION_MS,
   SCOUT_SITE_MIN_DISTANCE,
@@ -24,6 +22,7 @@ const {
   normalizeVisualOffset,
 } = require('./territory/TerritoryVisuals');
 const createTerritoryCombatTargets = require('./territory/TerritoryCombatTargets');
+const createTerritoryConquestMissions = require('./territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('./territory/TerritoryMilitaryMissions');
 const createTerritoryScoutPlanner = require('./territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('./territory/TerritoryScoutRecords');
@@ -116,6 +115,27 @@ const {
   ensureMissionRevealArea,
   isDirectionalScoutAreaMission,
 });
+const BattleService = require('./BattleService');
+const ConquestMissions = createTerritoryConquestMissions({
+  BattleService,
+  getFamousPersonService: () => require('./FamousPersonService'),
+  WorldMapService,
+  allocateSoldiersForMission,
+  attachBattleTileSnapshot,
+  getActiveMissionForTerritory,
+  getAvailableSoldiers,
+  getMissionSoldierAllocations,
+  getNamingPrompt,
+  getTerritory,
+  getTerritoryBattleTargetSnapshot,
+  getTerritoryBattleTileSnapshot,
+  normalizeBattleTarget,
+});
+const {
+  claimConquest: resolveConquestClaim,
+  getOccupationMode,
+  startConquest: createConquestMission,
+} = ConquestMissions;
 const ScoutPlanner = createTerritoryScoutPlanner({
   WorldMapService,
   getScoutOrigin,
@@ -677,26 +697,6 @@ function getScoutOrigin(gameState) {
   };
 }
 
-function isUnownedTerritory(territory) {
-  return territory?.owner === 'neutral';
-}
-
-function getOccupationMode(territory) {
-  return isUnownedTerritory(territory) ? 'settlement' : 'conquest';
-}
-
-function normalizeExpeditionConfig(rawConfig, territory) {
-  const fallbackSoldiers = getOccupationMode(territory) === 'settlement'
-    ? MIN_EXPEDITION_SOLDIERS
-    : Math.max(MIN_EXPEDITION_SOLDIERS, territory?.recommendedSoldiers || territory?.defense || MIN_EXPEDITION_SOLDIERS);
-  const raw = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
-  return {
-    troopType: typeof raw.troopType === 'string' && raw.troopType.trim() ? raw.troopType.trim() : 'unavailable',
-    leader: typeof raw.leader === 'string' && raw.leader.trim() ? raw.leader.trim() : 'unavailable',
-    soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, Math.floor(Number(raw.soldiers) || fallbackSoldiers)),
-  };
-}
-
 function getTerritoryEffects(gameState) {
   const effects = {
     foodOutputMultiplier: 0,
@@ -949,185 +949,13 @@ function scoutTerritory(gameState, direction, now = new Date()) {
 
 function startConquest(gameState, territoryId, expeditionInput, now = new Date()) {
   normalizeTerritoryState(gameState, now);
-  const territory = getTerritory(gameState, territoryId);
-  if (!territory) return { success: false, error: 'TERRITORY_NOT_FOUND', message: '地点不存在' };
-  if (territory.status !== 'discovered') return { success: false, error: 'TERRITORY_NOT_DISCOVERED', message: '只能占领已发现且未控制的地点' };
-  if (getActiveMissionForTerritory(gameState, territoryId)) return { success: false, error: 'MISSION_EXISTS', message: '该地点已有进行中的军事行动' };
-  const occupationMode = getOccupationMode(territory);
-  const expedition = normalizeExpeditionConfig(
-    expeditionInput && typeof expeditionInput === 'object'
-      ? expeditionInput
-      : { soldiers: expeditionInput },
-    territory,
-  );
-  const committed = occupationMode === 'settlement' ? MIN_EXPEDITION_SOLDIERS : expedition.soldiers;
-  if (committed > getAvailableSoldiers(gameState)) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
-  const soldierAllocations = allocateSoldiersForMission(gameState, committed);
-  if (!soldierAllocations) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '可用士兵不足' };
-  const leaderSnapshot = BattleService.getLeaderSnapshot(gameState, expedition.leader);
-  const battleTarget = getTerritoryBattleTargetSnapshot(gameState, territory, now);
-  const mission = {
-    id: `conquest_${territoryId}_${now.getTime()}`,
-    kind: 'conquest',
-    territoryId,
-    mode: occupationMode,
-    sourceCityId: soldierAllocations[0]?.cityId || gameState.activeCityId || 'capital',
-    soldierAllocations,
-    soldiersCommitted: committed,
-    battleTarget,
-    expedition: {
-      ...expedition,
-      soldiers: committed,
-      ...(leaderSnapshot ? { leaderSnapshot } : {}),
-    },
-    startedAt: now.toISOString(),
-    completesAt: new Date(now.getTime() + CONQUEST_DURATION_MS).toISOString(),
-    status: 'active',
-  };
-  gameState.warMissions = [...(gameState.warMissions || []), mission];
-  territory.status = 'contested';
-  return {
-    success: true,
-    message: occupationMode === 'settlement'
-      ? `已派出 ${MIN_EXPEDITION_SOLDIERS} 士兵前往${territory.naturalName}建立据点`
-      : `已派出 ${committed} 士兵前往${territory.naturalName}`,
-    mission,
-  };
-}
-
-function resolveMission(gameState, mission, territory, now = new Date()) {
-  const tileSnapshot = getTerritoryBattleTileSnapshot(gameState, territory, now);
-  const battleTarget = normalizeBattleTarget(mission.battleTarget || territory.battleTarget || getTerritoryBattleTargetSnapshot(gameState, territory, now), territory, now.toISOString());
-  if (mission.mode === 'settlement') {
-    territory.lastBattle = {
-      resolvedAt: now.toISOString(),
-      soldiersCommitted: mission.soldiersCommitted,
-      casualties: 0,
-      success: true,
-      mode: 'settlement',
-      tileId: tileSnapshot.tileId,
-      q: tileSnapshot.q,
-      r: tileSnapshot.r,
-      mapTerrain: tileSnapshot.mapTerrain,
-      terrain: tileSnapshot.terrain,
-      tile: { ...tileSnapshot.tile },
-      battleTarget,
-    };
-    territory.status = 'occupied';
-    territory.owner = 'player';
-    territory.occupiedAt = now.toISOString();
-    territory.cityName = null;
-    WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, { visibility: 'controlled' });
-    return { success: true, casualties: 0 };
-  }
-  const battle = BattleService.simulateConquestBattle(gameState, mission, territory, now);
-  const success = battle ? battle.success : mission.soldiersCommitted >= territory.defense;
-  const casualties = battle
-    ? battle.casualties
-    : success
-      ? Math.min(Math.max(0, mission.soldiersCommitted - 1), Math.floor(territory.defense / 3))
-      : Math.ceil(mission.soldiersCommitted / 2);
-  let remainingCasualties = casualties;
-  for (const allocation of getMissionSoldierAllocations(mission)) {
-    if (remainingCasualties <= 0) break;
-    const proportionalCasualties = Math.min(
-      allocation.soldiers,
-      Math.ceil((casualties * allocation.soldiers) / Math.max(1, mission.soldiersCommitted)),
-      remainingCasualties,
-    );
-    const sourceCity = gameState.cities?.[allocation.cityId] || null;
-    const military = sourceCity?.military || gameState.military || {};
-    military.soldiers = Math.max(0, Math.floor(military.soldiers || 0) - proportionalCasualties);
-    if (sourceCity) sourceCity.military = military;
-    else gameState.military = military;
-    remainingCasualties -= proportionalCasualties;
-  }
-  territory.lastBattle = {
-    resolvedAt: now.toISOString(),
-    soldiersCommitted: mission.soldiersCommitted,
-    casualties,
-    success,
-    mode: 'conquest',
-    tileId: tileSnapshot.tileId,
-    q: tileSnapshot.q,
-    r: tileSnapshot.r,
-    mapTerrain: tileSnapshot.mapTerrain,
-    terrain: tileSnapshot.terrain,
-    tile: { ...tileSnapshot.tile },
-    battleTarget,
-    leaderId: mission.expedition?.leader || 'unavailable',
-    leaderName: battle?.report?.attacker?.leaderName || mission.expedition?.leaderSnapshot?.name || '',
-    report: attachBattleTileSnapshot(
-      battle?.report || BattleService.createLegacyBattleReport(mission, territory, { success, casualties }, now),
-      tileSnapshot,
-      battleTarget,
-    ),
-  };
-  const FamousPersonService = require('./FamousPersonService');
-  const leaderGrowth = FamousPersonService.grantBattleExperience(
-    gameState,
-    mission.expedition?.leader,
-    territory.lastBattle.report?.experience,
-    now,
-  );
-  territory.lastBattle.leaderGrowth = leaderGrowth;
-  if (territory.lastBattle.report) territory.lastBattle.report.leaderGrowth = leaderGrowth;
-  if (success) {
-    territory.status = 'occupied';
-    territory.owner = 'player';
-    territory.defenderLeader = null;
-    territory.garrison = null;
-    territory.occupiedAt = now.toISOString();
-    territory.cityName = null;
-    WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, { visibility: 'controlled' });
-  } else {
-    territory.status = 'discovered';
-  }
-  return { success, casualties };
-}
-
-function createPostWarCandidate(gameState, mission, territory, result, now = new Date()) {
-  if (!POST_WAR_FAMOUS_PERSON_ENABLED) return null;
-  if (!result?.success || mission.mode === 'settlement') return null;
-  const FamousPersonService = require('./FamousPersonService');
-  const famousPersonState = FamousPersonService.ensureFamousPersonState(gameState);
-  if (famousPersonState.candidates.length >= FamousPersonService.MAX_CANDIDATES) return null;
-  const candidate = FamousPersonService.createFamousPersonCandidate(gameState, { source: 'postWar' }, now);
-  candidate.source = {
-    ...candidate.source,
-    territoryId: territory.id,
-    territoryName: territory.naturalName || territory.cityName || '',
-    battleReportId: territory.lastBattle?.report?.id || null,
-    leaderId: territory.lastBattle?.leaderId || mission.expedition?.leader || 'unavailable',
-  };
-  famousPersonState.candidates = [candidate, ...famousPersonState.candidates].slice(0, FamousPersonService.MAX_CANDIDATES);
-  return clone(candidate);
+  return createConquestMission(gameState, territoryId, expeditionInput, now);
 }
 
 function claimConquest(gameState, territoryId, now = new Date()) {
   normalizeTerritoryState(gameState, now);
-  const territory = getTerritory(gameState, territoryId);
-  if (!territory) return { success: false, error: 'TERRITORY_NOT_FOUND', message: '地点不存在' };
-  const mission = getActiveMissionForTerritory(gameState, territoryId);
-  if (!mission) return { success: false, error: 'MISSION_NOT_FOUND', message: '没有可完成的军事行动' };
-  if (mission.status !== 'ready') return { success: false, error: 'MISSION_NOT_READY', message: '军事行动尚未完成' };
-  const result = resolveMission(gameState, mission, territory, now);
-  const postWarCandidate = createPostWarCandidate(gameState, mission, territory, result, now);
-  gameState.warMissions = (gameState.warMissions || []).filter((item) => item.id !== mission.id);
-  return {
-    success: true,
-    message: result.success
-      ? `已控制${territory.naturalName}${postWarCandidate ? '，战后有人愿意投奔' : ''}`
-      : `${territory.naturalName}占领失败，士兵正在整队返回`,
-    outcome: result.success ? 'success' : 'failure',
-    casualties: result.casualties,
-    battleReport: territory.lastBattle?.report || null,
-    postWarCandidate,
-    territory,
-    namingPrompt: getNamingPrompt(gameState),
-  };
+  return resolveConquestClaim(gameState, territoryId, now);
 }
-
 function renameCity(gameState, territoryId, cityName) {
   normalizeTerritoryState(gameState);
   const name = sanitizeName(cityName);
