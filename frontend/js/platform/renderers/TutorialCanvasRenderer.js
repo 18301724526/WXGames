@@ -14,12 +14,11 @@
   const SharedUnitSpriteManifest = resolveRendererDependency('UnitSpriteManifest', '../../config/UnitSpriteManifest');
   const TUTORIAL_MARCH_UNIT_ID = 'spearman';
   const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
-  const TUTORIAL_INTRO_DIALOGUE_LEFT = 96;
   const SharedTutorialIntroMarchModel = resolveRendererDependency('TutorialIntroMarchModel', './TutorialIntroMarchModel');
   const SharedTutorialIntroUnitRenderer = resolveRendererDependency('TutorialIntroUnitRenderer', './TutorialIntroUnitRenderer');
-  const SharedTutorialIntroDialogueLayout = resolveRendererDependency('TutorialIntroDialogueLayout', './TutorialIntroDialogueLayout');
   const SharedTutorialAdvisorCanvasRenderer = resolveRendererDependency('TutorialAdvisorCanvasRenderer', './TutorialAdvisorCanvasRenderer');
   const SharedTutorialDialogueLayer = resolveRendererDependency('TutorialDialogueLayer', './TutorialDialogueLayer');
+  const SharedTutorialAdvisorDialogueRenderer = resolveRendererDependency('TutorialAdvisorDialogueRenderer', './TutorialAdvisorDialogueRenderer');
   class TutorialCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -345,49 +344,16 @@
     }
 
     renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
-      const dialogue = SharedTutorialIntroDialogueLayout.buildDialogueLayout({
-        width: this.width,
-        height: this.height,
-        bottomSafeArea: this.bottomSafeArea,
-        layout: this.getLayout(),
-        dialogueLeft: TUTORIAL_INTRO_DIALOGUE_LEFT,
-      });
-      const panel = dialogue.panel;
-      const portrait = dialogue.portrait;
-      const dialogueCtx = SharedTutorialDialogueLayer?.begin?.(this) || null;
-      const renderContent = () => {
-        this.renderTutorialIntroAdvisorPortrait(portrait.x, portrait.y, portrait.width, portrait.height);
-        this.drawPanel(panel.x, panel.y, panel.width, panel.height, {
-          fill: 'rgba(23, 17, 12, 0.94)',
-          stroke: 'rgba(246, 214, 147, 0.3)',
-          radius: 8,
-          inset: 'rgba(255, 231, 184, 0.08)',
-        });
-        this.drawText(advisorName, panel.x + 24, panel.y + 24, {
-          size: 14,
-          bold: true,
-          color: '#ffd98a',
-        });
-        const lines = this.wrapTextLimit(message, panel.width - 48, 3, { size: 13 });
-        this.drawTextLines(lines, panel.x + 24, panel.y + 46, {
-          size: 13,
-          color: '#f7ecd0',
-          lineHeight: 18,
-        });
-        this.drawText('点击继续', panel.x + panel.width - 24, panel.y + panel.height - 17, {
-          size: 11,
-          color: 'rgba(255, 230, 181, 0.66)',
-          align: 'right',
-          baseline: 'middle',
-        });
-      };
+      return this.renderTutorialAdvisorDialogue(message, advisorName);
+    }
 
-      if (!dialogueCtx) {
-        renderContent();
-        return false;
-      }
-      SharedTutorialDialogueLayer.withHostContext(this, dialogueCtx, renderContent);
-      return true;
+    renderTutorialAdvisorDialogue(message = '', advisorName = '谋士', options = {}) {
+      return SharedTutorialAdvisorDialogueRenderer?.render?.(this, message, advisorName, options) || false;
+    }
+
+    clearTutorialAdvisorDialogue() {
+      SharedTutorialAdvisorDialogueRenderer?.clear?.(this, true);
+      return this.disposeTutorialAdvisorSpine();
     }
 
     renderTutorialHighlight(highlight = null) {

@@ -481,6 +481,7 @@
         ...(this.battleScene ? { battleScene: this.battleScene } : {}),
         naming: this.naming,
         tutorialIntro: this.tutorialIntro || null,
+        tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
         tutorialHighlight: null,
         loading: this.loading,
         network: this.networkState,
@@ -1684,16 +1685,21 @@
       const steps = this.tutorialController?.constructor?.TUTORIAL_STEPS || {};
       if (action !== 'build' || buildingId !== 'house') return false;
       if (Number(this.tutorial?.currentStep) !== Number(steps.houseBuilt)) return false;
+      const message = '民居已经建立起来了，族人终于有了稳定的居所。文明也向前迈出了一步。';
       this.state = {
         ...(this.state || {}),
         softGuide: {
           mode: 'strong',
           target: 'tab-civilization',
-          message: '民居已经立起来了，族人终于有了稳定的居所。文明也向前迈出了一步。',
+          message,
         },
       };
-      this.showAdvisor = true;
-      if (this.canvasShell) this.canvasShell.showAdvisor = true;
+      this.showAdvisor = false;
+      this.tutorialAdvisorDialogue = { message, advisorName: '谋士', source: 'houseBuilt' };
+      if (this.canvasShell) {
+        this.canvasShell.showAdvisor = false;
+        this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
+      }
       this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
       return true;
     }
@@ -2468,6 +2474,9 @@
         || this.showCitySwitcher
         || this.showSubcityList
         || this.showCityManagement
+        || this.showAdvisor
+        || this.tutorialAdvisorDialogue
+        || this.canvasShell?.tutorialAdvisorDialogue
         || this.showTaskCenter
         || this.showGuidebook
         || this.showFamousPersons

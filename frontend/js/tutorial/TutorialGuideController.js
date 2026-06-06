@@ -224,7 +224,12 @@
     }
 
     isAdvisorOpen() {
-      return Boolean(this.game?.canvasShell?.showAdvisor || this.game?.showAdvisor);
+      return Boolean(
+        this.game?.canvasShell?.showAdvisor
+        || this.game?.showAdvisor
+        || this.game?.canvasShell?.tutorialAdvisorDialogue
+        || this.game?.tutorialAdvisorDialogue,
+      );
     }
 
     showSoftGuide(target, message) {
@@ -422,7 +427,11 @@
     async onAdvisorClosed() {
       const game = this.game || {};
       game.showAdvisor = false;
-      if (game.canvasShell) game.canvasShell.showAdvisor = false;
+      game.tutorialAdvisorDialogue = null;
+      if (game.canvasShell) {
+        game.canvasShell.showAdvisor = false;
+        game.canvasShell.tutorialAdvisorDialogue = null;
+      }
       if (this.getCurrentStep() !== TUTORIAL_STEPS.finalTechOpened) {
         this.refreshCurrentHighlight();
         return this.state;

@@ -325,6 +325,8 @@
         || this.showSubcityList
         || this.showCityManagement
         || this.showAdvisor
+        || this.tutorialAdvisorDialogue
+        || this.lastGame?.tutorialAdvisorDialogue
         || this.showTaskCenter
         || this.showGuidebook
         || this.showTalentPolicy
@@ -410,6 +412,8 @@
         || this.showSubcityList
         || this.showCityManagement
         || this.showAdvisor
+        || this.tutorialAdvisorDialogue
+        || this.lastGame?.tutorialAdvisorDialogue
         || this.showTaskCenter
         || this.showGuidebook
         || this.showTalentPolicy
@@ -2140,6 +2144,7 @@
         network: this.networkState,
         floatingTexts: this.getFloatingTextView(),
         tutorialIntro: this.lastGame?.tutorialIntro || this.tutorialIntro || null,
+        tutorialAdvisorDialogue: this.lastGame?.tutorialAdvisorDialogue || this.tutorialAdvisorDialogue || null,
         tutorialHighlight: this.tutorialHighlight,
         rewardReveal: this.rewardReveal,
       };

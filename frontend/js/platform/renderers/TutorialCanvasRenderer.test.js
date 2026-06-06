@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const TutorialAdvisorCanvasRenderer = require('./TutorialAdvisorCanvasRenderer');
+const TutorialAdvisorDialogueRenderer = require('./TutorialAdvisorDialogueRenderer');
 const TutorialDialogueLayer = require('./TutorialDialogueLayer');
 const TutorialIntroDialogueLayout = require('./TutorialIntroDialogueLayout');
 const TutorialIntroMarchModel = require('./TutorialIntroMarchModel');
@@ -448,6 +449,38 @@ test('TutorialCanvasRenderer places intro dialogue at tuned left offset', () => 
   assert.equal(name[2], 120);
   assert.equal(calls.some((call) => call[0] === 'drawText' && call[1] === '点击继续'), true);
   assert.ok(calls.findIndex((call) => call[0] === 'portrait') < calls.findIndex((call) => call[0] === 'drawPanel'));
+});
+
+test('TutorialAdvisorDialogueRenderer reuses intro spine portrait and closes from dialogue panel', () => {
+  const host = createHost();
+  const calls = [];
+  host.drawPanel = (...args) => calls.push(['drawPanel', ...args]);
+  host.drawText = (...args) => calls.push(['drawText', ...args]);
+  const renderer = new TutorialCanvasRenderer({
+    host,
+    advisorRenderer: {
+      renderTutorialIntroAdvisorPortrait() {
+        calls.push(['portrait']);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(renderer.renderTutorialAdvisorDialogue(
+    '民居已经建立起来了。',
+    '谋士',
+    { action: { type: 'closeAdvisor', source: 'houseBuilt' } },
+  ), false);
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
+  assert.equal(host.hitTargets.some((target) => (
+    target.action.type === 'closeAdvisor'
+    && target.action.source === 'houseBuilt'
+  )), true);
+  assert.equal(calls.some((call) => call[0] === 'drawText' && call[1] === '点击继续'), true);
+  assert.ok(calls.findIndex((call) => call[0] === 'portrait') < calls.findIndex((call) => call[0] === 'drawPanel'));
+  assert.ok(lineCount(path.join(__dirname, 'TutorialAdvisorDialogueRenderer.js')) < 500);
+  assert.equal(typeof TutorialAdvisorDialogueRenderer.render, 'function');
 });
 
 test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', () => {

@@ -1764,6 +1764,16 @@
       return result === undefined ? false : result;
     }
 
+    renderTutorialAdvisorDialogue(...args) {
+      const result = this.delegateTutorialRenderer('renderTutorialAdvisorDialogue', args);
+      return result === undefined ? false : result;
+    }
+
+    clearTutorialAdvisorDialogue(...args) {
+      const result = this.delegateTutorialRenderer('clearTutorialAdvisorDialogue', args);
+      return result === undefined ? false : result;
+    }
+
     renderTutorialIntroAdvisorPortrait(...args) {
       const result = this.delegateTutorialRenderer('renderTutorialIntroAdvisorPortrait', args);
       return result === undefined ? false : result;

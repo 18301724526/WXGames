@@ -55,6 +55,19 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   assert.equal(options.now, 4321.25);
 });
 
+test('CanvasGameShell treats tutorial advisor dialogue as a blocking overlay', () => {
+  const shell = new CanvasGameShell({});
+
+  shell.tutorialAdvisorDialogue = { source: 'houseBuilt' };
+  assert.equal(shell.hasBlockingOverlayOpen(), true);
+  assert.equal(shell.hasBlockingOverlayExceptTechTree(), true);
+
+  shell.tutorialAdvisorDialogue = null;
+  shell.lastGame = { tutorialAdvisorDialogue: { source: 'houseBuilt' } };
+  assert.equal(shell.hasBlockingOverlayOpen(), true);
+  assert.equal(shell.hasBlockingOverlayExceptTechTree(), true);
+});
+
 test('CanvasGameShell can render resources without default map-home coercion', () => {
   const calls = [];
   const state = {

@@ -149,6 +149,18 @@ test('TutorialGuideController guides first era advancement and task reward claim
   });
 });
 
+test('TutorialGuideController treats tutorial spine advisor dialogue as an open advisor', () => {
+  const controller = new TutorialGuideController({
+    game: {
+      showAdvisor: false,
+      tutorialAdvisorDialogue: { source: 'houseBuilt' },
+      canvasShell: { showAdvisor: false },
+    },
+  });
+
+  assert.equal(controller.isAdvisorOpen(), true);
+});
+
 test('TutorialGuideController guides farm, forest event, lumbermill, and second main task', () => {
   const calls = [];
   const shell = {

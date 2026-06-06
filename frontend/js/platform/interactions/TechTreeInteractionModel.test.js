@@ -191,6 +191,7 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
   const calls = [];
   const game = {
     showAdvisor: true,
+    tutorialAdvisorDialogue: { source: 'houseBuilt' },
     tutorialController: {
       async onAdvisorClosed() {
         calls.push(['onAdvisorClosed']);
@@ -205,6 +206,12 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
   };
   const host = {
     showAdvisor: true,
+    tutorialAdvisorDialogue: { source: 'houseBuilt' },
+    renderer: {
+      clearTutorialAdvisorDialogue() {
+        calls.push(['clearTutorialAdvisorDialogue']);
+      },
+    },
     getCanvasGameHost() {
       return game;
     },
@@ -219,7 +226,10 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
 
   assert.equal(host.showAdvisor, false);
   assert.equal(game.showAdvisor, false);
+  assert.equal(host.tutorialAdvisorDialogue, null);
+  assert.equal(game.tutorialAdvisorDialogue, null);
   assert.deepEqual(calls, [
+    ['clearTutorialAdvisorDialogue'],
     ['onAdvisorClosed'],
     ['advisorClosedDone'],
     ['render'],

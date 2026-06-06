@@ -76,7 +76,13 @@
       if (options.showCitySwitcher) {
         this.renderCitySwitcherMenu(state);
       }
-      if (options.showAdvisor) {
+      if (options.tutorialAdvisorDialogue) {
+        this.renderTutorialAdvisorDialogue(
+          options.tutorialAdvisorDialogue.message,
+          options.tutorialAdvisorDialogue.advisorName || '谋士',
+          { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
+        );
+      } else if (options.showAdvisor) {
         this.renderAdvisorPanel(state);
       }
       if (options.showTaskCenter) {

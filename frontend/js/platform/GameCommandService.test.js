@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const GameCommandService = require('./GameCommandService');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
+const TutorialGuideController = require('../tutorial/TutorialGuideController');
 
 function createCommandHost(api) {
   const calls = [];
@@ -340,6 +341,33 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
   assert.equal(app.canvasShell.showTaskCenter, true);
   assert.equal(app.activeTaskCenterTab, 'main');
   assert.deepEqual(calls.map(([name]) => name), ['hideTutorialHighlight', 'shell_handle_openTaskCenter', 'refreshCurrentHighlight']);
+});
+
+test('CanvasGameApp shows tutorial spine advisor dialogue after first house build', () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'buildings', softGuide: null },
+  });
+  app.tutorial = {
+    completed: false,
+    currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
+  };
+  app.tutorialController = new TutorialGuideController({ game: app });
+  app.canvasShell = {};
+  app.renderCanvasSurface = (tab) => calls.push(['renderCanvasSurface', tab]);
+
+  assert.equal(app.maybeShowHouseBuiltAdvisor('build', 'house'), true);
+
+  assert.equal(app.showAdvisor, false);
+  assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
+  assert.equal(app.tutorialAdvisorDialogue.advisorName, '谋士');
+  assert.match(app.tutorialAdvisorDialogue.message, /民居已经建立起来/);
+  assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
+  assert.equal(app.state.softGuide.target, 'tab-civilization');
+  assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
 });
 
 test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highlight refresh', () => {

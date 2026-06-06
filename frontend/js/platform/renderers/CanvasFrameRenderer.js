@@ -63,7 +63,10 @@
       else this.renderMapHomeWorldView(state, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
       this.renderMapHomeOverlays(state, options);
-      this.renderFrameFeedback(state, options, { includeTutorialIntro: true });
+      this.renderFrameFeedback(state, options, {
+        includeTutorialIntro: true,
+        skipTutorialAdvisorDialogue: true,
+      });
       this.endFrame(options);
     }
 
@@ -79,7 +82,7 @@
       const advisorOffset = this.getAdvisorFrameOffset(state);
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
       this.renderFrameMainPanel(state, activeTab, panelTop, availableHeight, tabsTop, options);
-      this.renderAdvisor(state);
+      if (!options.tutorialAdvisorDialogue) this.renderAdvisor(state);
       this.renderTabs(activeTab, state, options);
       this.renderStandardOverlays(state, activeTab, options);
       this.renderFrameFeedback(state, options);
@@ -143,6 +146,11 @@
 
     renderFrameFeedback(state = {}, options = {}, flags = {}) {
       if (flags.includeTutorialIntro) this.renderTutorialIntro(state, options);
+      if (options.tutorialAdvisorDialogue && !flags.skipTutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
+        options.tutorialAdvisorDialogue.message,
+        options.tutorialAdvisorDialogue.advisorName || '谋士',
+        { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
+      );
       this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
@@ -159,7 +167,12 @@
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showSettings) this.renderSettingsPanel();
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
-      if (options.showAdvisor) this.renderAdvisorPanel(state);
+      if (options.tutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
+        options.tutorialAdvisorDialogue.message,
+        options.tutorialAdvisorDialogue.advisorName || '谋士',
+        { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
+      );
+      else if (options.showAdvisor) this.renderAdvisorPanel(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);

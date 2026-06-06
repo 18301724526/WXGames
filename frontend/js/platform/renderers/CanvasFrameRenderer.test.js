@@ -61,6 +61,7 @@ function createHost(overrides = {}) {
     renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
     renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
     renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
+    renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
     renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
     renderTutorialIntro(...args) { calls.push(['renderTutorialIntro', args]); },
     renderWorldSiteModal(...args) { calls.push(['renderWorldSiteModal', args]); },
@@ -184,6 +185,39 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   assert.equal(names.includes('renderAdvisorPanel'), true);
   assert.equal(names.includes('renderWorldSiteModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
+});
+
+test('CanvasFrameRenderer prioritizes tutorial spine advisor over generic advisor panels', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+  const tutorialAdvisorDialogue = {
+    message: '民居已经建立起来了。',
+    advisorName: '谋士',
+    source: 'houseBuilt',
+  };
+
+  renderer.render({ resources: {}, softGuide: { message: 'generic' } }, {
+    activeTab: 'resources',
+    showAdvisor: true,
+    tutorialAdvisorDialogue,
+  });
+
+  let names = callNames(host);
+  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
+  assert.equal(names.includes('renderAdvisor'), false);
+  assert.equal(names.includes('renderAdvisorPanel'), false);
+
+  host.calls.length = 0;
+  renderer.renderMapHomeOverlays({}, {
+    showAdvisor: true,
+    tutorialAdvisorDialogue,
+  });
+
+  names = callNames(host);
+  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
+  assert.equal(names.includes('renderAdvisorPanel'), false);
+  const dialogueCall = host.calls.find((call) => call[0] === 'renderTutorialAdvisorDialogue');
+  assert.deepEqual(dialogueCall[1][2], { action: { type: 'closeAdvisor', source: 'houseBuilt' } });
 });
 
 test('CanvasGameRenderer exposes root frame rendering through facade', () => {

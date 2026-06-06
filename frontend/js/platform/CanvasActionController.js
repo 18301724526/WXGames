@@ -435,8 +435,14 @@
 
     handle_closeAdvisor(action) {
       this.host.showAdvisor = false;
+      this.host.tutorialAdvisorDialogue = null;
+      this.host.renderer?.clearTutorialAdvisorDialogue?.();
       const game = this.getGameHost();
       if (game && game !== this.host) game.showAdvisor = false;
+      if (game && typeof game === 'object') {
+        game.tutorialAdvisorDialogue = null;
+        if (game.canvasShell) game.canvasShell.tutorialAdvisorDialogue = null;
+      }
       const closeResult = typeof game?.tutorialController?.onAdvisorClosed === 'function'
         ? game.tutorialController.onAdvisorClosed(action)
         : true;

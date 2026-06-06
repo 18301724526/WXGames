@@ -43,6 +43,7 @@ function createHost(overrides = {}) {
     renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
     renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
     renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
+    renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
     renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
     renderTutorialIntro(...args) { calls.push(['renderTutorialIntro', args]); },
     renderWorldSiteModal(...args) { calls.push(['renderWorldSiteModal', args]); },
@@ -135,6 +136,28 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
   assert.equal(names.includes('renderTechDetailModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
   assert.equal(names.at(-1), 'endFrame');
+});
+
+test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic advisor panel', () => {
+  const host = createHost();
+  const renderer = new HudOverlayCanvasRenderer({ host });
+  const options = {
+    activeTab: 'resources',
+    showAdvisor: true,
+    tutorialAdvisorDialogue: {
+      message: '民居已经建立起来了。',
+      advisorName: '谋士',
+      source: 'houseBuilt',
+    },
+  };
+
+  renderer.renderHudOverlay({ resources: {} }, options);
+
+  const names = callNames(host);
+  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
+  assert.equal(names.includes('renderAdvisorPanel'), false);
+  const dialogueCall = host.calls.find((call) => call[0] === 'renderTutorialAdvisorDialogue');
+  assert.deepEqual(dialogueCall[1][2], { action: { type: 'closeAdvisor', source: 'houseBuilt' } });
 });
 
 test('CanvasGameRenderer exposes HUD overlay rendering through facade', () => {
