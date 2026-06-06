@@ -16,6 +16,60 @@ const WorldRadarPresenter = require('./presenters/WorldRadarPresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
 const BattleScenePresenter = require('./presenters/BattleScenePresenter');
 const WorldTileMapPresenter = require('./presenters/WorldTileMapPresenter');
+const ShellPresenter = require('./presenters/ShellPresenter');
+
+test('UIStatePresenter delegates shell view state while preserving facade contracts', () => {
+  assert.equal(UIStatePresenter.toNumber('12.5'), ShellPresenter.toNumber('12.5'));
+  assert.equal(UIStatePresenter.toInteger('12.9'), ShellPresenter.toInteger('12.9'));
+  assert.equal(UIStatePresenter.trimDecimal('4.0'), ShellPresenter.trimDecimal('4.0'));
+  assert.equal(UIStatePresenter.formatCompactNumber(15320), ShellPresenter.formatCompactNumber(15320));
+  assert.equal(UIStatePresenter.formatResourceAmount(999.8), ShellPresenter.formatResourceAmount(999.8));
+  assert.equal(UIStatePresenter.formatRate(0.335), ShellPresenter.formatRate(0.335));
+  assert.equal(UIStatePresenter.formatNegativeRate(0.335), ShellPresenter.formatNegativeRate(0.335));
+  assert.equal(UIStatePresenter.toDisplayPopulation(7), ShellPresenter.toDisplayPopulation(7));
+
+  const credentials = {
+    username: 'fallback-user',
+    rememberEnabled: true,
+    rememberedUsername: 'saved-user',
+    rememberedPassword: 'saved-password',
+  };
+  assert.deepEqual(UIStatePresenter.buildAuthCredentialViewState(credentials), ShellPresenter.buildAuthCredentialViewState(credentials));
+  assert.deepEqual(UIStatePresenter.buildAuthShellViewState({ authenticated: false, message: 'login required' }), ShellPresenter.buildAuthShellViewState({ authenticated: false, message: 'login required' }));
+
+  const highlightRect = { top: 18, left: 40, width: 112, height: 48, bottom: 66 };
+  const viewport = { innerWidth: 390, innerHeight: 720 };
+  assert.deepEqual(UIStatePresenter.buildTutorialHighlightViewState(highlightRect, viewport), ShellPresenter.buildTutorialHighlightViewState(highlightRect, viewport));
+
+  const shellState = {
+    currentTab: 'territory',
+    militaryView: 'world',
+    territoryState: {
+      worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0 }] },
+      polity: { name: 'Test Polity' },
+      occupiedCount: 2,
+      discoveredCount: 5,
+    },
+  };
+  assert.deepEqual(UIStatePresenter.buildTabNavigationViewState(shellState, { requestedTab: 'territory' }), ShellPresenter.buildTabNavigationViewState(shellState, { requestedTab: 'territory' }));
+  assert.equal(UIStatePresenter.hasWorldTileMap(shellState), true);
+  assert.equal(UIStatePresenter.canUseMapHome(shellState), ShellPresenter.canUseMapHome(shellState));
+  assert.deepEqual(UIStatePresenter.resolveMapHomeViewState(shellState, { requestedTab: 'military', militaryView: 'world' }), ShellPresenter.resolveMapHomeViewState(shellState, { requestedTab: 'military', militaryView: 'world' }));
+  assert.deepEqual(
+    UIStatePresenter.buildTabLockViewState([{ id: 'resources' }, { tabId: 'events' }], (id) => id !== 'events'),
+    ShellPresenter.buildTabLockViewState([{ id: 'resources' }, { tabId: 'events' }], (id) => id !== 'events'),
+  );
+
+  const guide = { message: 'Go scout', target: 'scout-action-first' };
+  assert.deepEqual(UIStatePresenter.buildAdvisorViewState(guide), ShellPresenter.buildAdvisorViewState(guide));
+  assert.equal(UIStatePresenter.getAdvisorTargetTab('tab-events'), ShellPresenter.getAdvisorTargetTab('tab-events'));
+  const namingPrompt = { type: 'city', territoryId: 'city-1', title: 'Name City', message: 'Choose a city name' };
+  assert.deepEqual(UIStatePresenter.buildNamingPromptViewState(namingPrompt), ShellPresenter.buildNamingPromptViewState(namingPrompt));
+  assert.deepEqual(UIStatePresenter.buildRecentLogViewState(['started', { text: 'finished' }]), ShellPresenter.buildRecentLogViewState(['started', { text: 'finished' }]));
+  const requestLogs = [{ timestamp: '10:00', method: 'POST', path: '/api/test', statusCode: 500, duration: 12.8 }];
+  assert.deepEqual(UIStatePresenter.buildRequestLogViewState(requestLogs), ShellPresenter.buildRequestLogViewState(requestLogs));
+  assert.deepEqual(UIStatePresenter.buildTerritorySummaryViewState(shellState.territoryState), ShellPresenter.buildTerritorySummaryViewState(shellState.territoryState));
+});
 
 test('UIStatePresenter delegates world tile map view state while preserving facade contracts', () => {
   const territoryState = {
@@ -869,6 +923,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'WorldSitePresenter.js',
     'BattleScenePresenter.js',
     'WorldTileMapPresenter.js',
+    'ShellPresenter.js',
     'TalentPolicyPresenter.js',
     'UIStatePresenter.js',
   ];
