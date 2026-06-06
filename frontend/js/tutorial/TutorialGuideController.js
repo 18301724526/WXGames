@@ -235,6 +235,7 @@
     showSoftGuide(target, message) {
       const game = this.game || {};
       game.canvasShell?.hideTutorialHighlight?.();
+      const dialogue = { message, advisorName: '谋士', source: `softGuide:${target || 'tutorial'}` };
       game.state = {
         ...(game.state || {}),
         softGuide: {
@@ -243,8 +244,12 @@
           message,
         },
       };
-      game.showAdvisor = true;
-      if (game.canvasShell) game.canvasShell.showAdvisor = true;
+      game.showAdvisor = false;
+      game.tutorialAdvisorDialogue = dialogue;
+      if (game.canvasShell) {
+        game.canvasShell.showAdvisor = false;
+        game.canvasShell.tutorialAdvisorDialogue = dialogue;
+      }
       game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
       return true;
     }

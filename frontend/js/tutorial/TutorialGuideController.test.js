@@ -127,15 +127,19 @@ test('TutorialGuideController guides first era advancement and task reward claim
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo1 },
   });
-  assert.equal(game.showAdvisor, true);
+  assert.equal(game.showAdvisor, false);
+  assert.equal(game.canvasShell.showAdvisor, false);
+  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:task-center-button');
+  assert.equal(game.canvasShell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
+  assert.match(game.tutorialAdvisorDialogue.message, /任务|物资|农田|火种/);
   assert.equal(game.state.softGuide.target, 'task-center-button');
 
   controller.sync(game.tutorial);
   assert.equal(controller.refreshCurrentHighlight(), false);
   assert.equal(calls.some((call) => call.hideHighlight), true);
 
-  game.showAdvisor = false;
-  game.canvasShell.showAdvisor = false;
+  game.tutorialAdvisorDialogue = null;
+  game.canvasShell.tutorialAdvisorDialogue = null;
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTaskCenter' });
 
@@ -232,11 +236,15 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo2 },
   });
-  assert.equal(game.showAdvisor, true);
+  assert.equal(game.showAdvisor, false);
+  assert.equal(game.canvasShell.showAdvisor, false);
+  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:events-button');
+  assert.equal(game.canvasShell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
+  assert.match(game.tutorialAdvisorDialogue.message, /事件|森林|木材/);
   assert.equal(game.state.softGuide.target, 'events-button');
 
-  game.showAdvisor = false;
-  game.canvasShell.showAdvisor = false;
+  game.tutorialAdvisorDialogue = null;
+  game.canvasShell.tutorialAdvisorDialogue = null;
   controller.sync(game.tutorial);
   shell.activeCommandPanel = 'civilization';
   game.activeCommandPanel = 'civilization';
@@ -360,11 +368,15 @@ test('TutorialGuideController guides era three, scout famous card, and army form
       grants: { scoutFamousPerson: { personId: 'fp-scout' } },
     },
   });
-  assert.equal(game.showAdvisor, true);
+  assert.equal(game.showAdvisor, false);
+  assert.equal(shell.showAdvisor, false);
+  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:famous-persons-button');
+  assert.equal(shell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
+  assert.match(game.tutorialAdvisorDialogue.message, /名人|侦察|卡片/);
   assert.equal(game.state.softGuide.target, 'famous-persons-button');
 
-  game.showAdvisor = false;
-  shell.showAdvisor = false;
+  game.tutorialAdvisorDialogue = null;
+  shell.tutorialAdvisorDialogue = null;
   controller.sync(game.tutorial);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openFamousPersons' });
@@ -852,10 +864,12 @@ test('TutorialGuideController guides final tech explanation and completes tutori
   game.activeCommandPanel = 'tech';
   await controller.onCommandPanelOpened('tech');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.finalTechOpened);
-  assert.equal(game.showAdvisor, true);
-  assert.equal(shell.showAdvisor, true);
+  assert.equal(game.showAdvisor, false);
+  assert.equal(shell.showAdvisor, false);
+  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:tech-tree');
+  assert.equal(shell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
   assert.equal(game.state.softGuide.target, 'tech-tree');
-  assert.match(game.state.softGuide.message, /科技点/);
+  assert.equal(game.tutorialAdvisorDialogue.message, game.state.softGuide.message);
 
   await controller.onAdvisorClosed();
 
