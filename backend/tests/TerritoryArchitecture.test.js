@@ -11,6 +11,7 @@ const TerritoryShared = require('../services/territory/TerritoryShared');
 const createTerritoryCombatTargets = require('../services/territory/TerritoryCombatTargets');
 const createTerritoryConquestMissions = require('../services/territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
+const createTerritoryNaming = require('../services/territory/TerritoryNaming');
 const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
 const createTerritoryScoutResults = require('../services/territory/TerritoryScoutResults');
@@ -34,6 +35,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryConstants.js',
     'TerritoryInitialState.js',
     'TerritoryMilitaryMissions.js',
+    'TerritoryNaming.js',
     'TerritoryScoutPlanner.js',
     'TerritoryScoutRecords.js',
     'TerritoryScoutResults.js',
@@ -756,6 +758,58 @@ test('territory conquest missions module owns settlement and battle resolution c
   assert.equal(battleState.territories[0].garrison, null);
   assert.equal(battleState.territories[0].lastBattle.leaderGrowth.leader, 'leader-1');
   assert.deepEqual(experienceGrants[0], { leader: 'leader-1', experience: { leader: 12 } });
+});
+
+test('territory naming module owns city and polity naming contracts', () => {
+  const Naming = createTerritoryNaming({
+    getTerritory: (gameState, territoryId) => (
+      gameState.territories || []
+    ).find((territory) => territory.id === territoryId) || null,
+  });
+
+  assert.equal(Naming.sanitizeName(''), null);
+  assert.equal(Naming.sanitizeName('  '), null);
+  assert.equal(Naming.sanitizeName('  123456789012345  '), '123456789012');
+
+  const oneCityState = {
+    polity: { name: null, namePrompted: false, capitalCityName: 'Capital' },
+    territories: [
+      { id: 'capital', status: 'occupied', cityName: 'Capital', naturalName: 'Capital' },
+      { id: 'site-1', status: 'discovered', cityName: null, naturalName: 'River Bend' },
+    ],
+  };
+  assert.equal(Naming.getOccupiedCount(oneCityState), 1);
+  assert.equal(Naming.renamePolity(oneCityState, 'Alliance').error, 'POLITY_NOT_READY');
+
+  const namingState = {
+    polity: { name: null, namePrompted: false, capitalCityName: 'Capital' },
+    territories: [
+      { id: 'capital', status: 'occupied', cityName: 'Capital', naturalName: 'Capital' },
+      { id: 'site-1', status: 'occupied', cityName: null, naturalName: 'River Bend' },
+      { id: 'site-2', status: 'discovered', cityName: null, naturalName: 'Hill Gate' },
+    ],
+  };
+
+  assert.equal(Naming.getPendingCityNamingTerritory(namingState).id, 'site-1');
+  assert.equal(Naming.getNamingPrompt(namingState).type, 'city');
+  assert.equal(Naming.getNamingPrompt(namingState).territoryId, 'site-1');
+  assert.equal(Naming.renameCity(namingState, 'site-1', '  ').error, 'INVALID_NAME');
+  assert.equal(Naming.renameCity(namingState, 'site-2', 'Hill City').error, 'TERRITORY_NOT_OCCUPIED');
+
+  const renamedCity = Naming.renameCity(namingState, 'site-1', '  123456789012345  ');
+  assert.equal(renamedCity.success, true);
+  assert.equal(namingState.territories[1].cityName, '123456789012');
+  assert.equal(renamedCity.namingPrompt.type, 'polity');
+
+  const renamedCapital = Naming.renameCity(namingState, 'capital', 'New Capital');
+  assert.equal(renamedCapital.success, true);
+  assert.equal(namingState.polity.capitalCityName, 'New Capital');
+
+  const renamedPolity = Naming.renamePolity(namingState, '  River League  ');
+  assert.equal(renamedPolity.success, true);
+  assert.equal(namingState.polity.name, 'River League');
+  assert.equal(namingState.polity.namePrompted, true);
+  assert.equal(renamedPolity.namingPrompt, null);
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {

@@ -24,6 +24,7 @@ const {
 const createTerritoryCombatTargets = require('./territory/TerritoryCombatTargets');
 const createTerritoryConquestMissions = require('./territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('./territory/TerritoryMilitaryMissions');
+const createTerritoryNaming = require('./territory/TerritoryNaming');
 const createTerritoryScoutPlanner = require('./territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('./territory/TerritoryScoutRecords');
 const createTerritoryScoutResults = require('./territory/TerritoryScoutResults');
@@ -115,6 +116,15 @@ const {
   ensureMissionRevealArea,
   isDirectionalScoutAreaMission,
 });
+const Naming = createTerritoryNaming({
+  getTerritory,
+});
+const {
+  getNamingPrompt,
+  getOccupiedCount,
+  renameCity: applyCityName,
+  renamePolity: applyPolityName,
+} = Naming;
 const BattleService = require('./BattleService');
 const ConquestMissions = createTerritoryConquestMissions({
   BattleService,
@@ -715,35 +725,6 @@ function getTerritoryEffects(gameState) {
   return effects;
 }
 
-function getOccupiedCount(gameState) {
-  return (gameState.territories || []).filter((territory) => territory.status === 'occupied').length;
-}
-
-function getPendingCityNamingTerritory(gameState) {
-  return (gameState.territories || []).find((territory) => territory.status === 'occupied' && !territory.cityName) || null;
-}
-
-function getNamingPrompt(gameState) {
-  const city = getPendingCityNamingTerritory(gameState);
-  if (city) {
-    return { type: 'city', territoryId: city.id, title: '为新城市命名', message: `你已经控制${city.naturalName}，为这座新城市取个名字吧。` };
-  }
-  if (getOccupiedCount(gameState) >= 2 && !gameState.polity?.name) {
-    return {
-      type: 'polity',
-      title: '为势力命名',
-      message: '你的旗帜已经越过最初的边界。为这片新兴势力取一个名字吧。',
-    };
-  }
-  return null;
-}
-
-function sanitizeName(name) {
-  const value = typeof name === 'string' ? name.trim() : '';
-  if (!value) return null;
-  return value.slice(0, MAX_NAME_LENGTH);
-}
-
 function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomSource = Math.random) {
   if (mission.resolvedTarget) return { site: mission.siteId ? getTerritory(gameState, mission.siteId) : null, report: mission.report || null };
   const targetX = toInteger(mission.targetX, 0);
@@ -958,26 +939,13 @@ function claimConquest(gameState, territoryId, now = new Date()) {
 }
 function renameCity(gameState, territoryId, cityName) {
   normalizeTerritoryState(gameState);
-  const name = sanitizeName(cityName);
-  if (!name) return { success: false, error: 'INVALID_NAME', message: '请输入城市名' };
-  const territory = getTerritory(gameState, territoryId);
-  if (!territory) return { success: false, error: 'TERRITORY_NOT_FOUND', message: '地点不存在' };
-  if (territory.status !== 'occupied') return { success: false, error: 'TERRITORY_NOT_OCCUPIED', message: '只能命名已控制城市' };
-  territory.cityName = name;
-  if (territory.id === 'capital') gameState.polity.capitalCityName = name;
-  return { success: true, message: `城市已命名为${name}`, territory, namingPrompt: getNamingPrompt(gameState) };
+  return applyCityName(gameState, territoryId, cityName);
 }
 
 function renamePolity(gameState, polityName) {
   normalizeTerritoryState(gameState);
-  const name = sanitizeName(polityName);
-  if (!name) return { success: false, error: 'INVALID_NAME', message: '请输入势力名' };
-  if (getOccupiedCount(gameState) < 2) return { success: false, error: 'POLITY_NOT_READY', message: '至少控制第二处地点后才能命名势力' };
-  gameState.polity.name = name;
-  gameState.polity.namePrompted = true;
-  return { success: true, message: `势力已命名为${name}`, polity: gameState.polity, namingPrompt: getNamingPrompt(gameState) };
+  return applyPolityName(gameState, polityName);
 }
-
 function getClientTerritoryState(gameState, now = new Date()) {
   return TerritoryClientAssembler.getClientTerritoryState(gameState, now, {
     CONQUEST_DURATION_MS,
