@@ -12,6 +12,7 @@ const createTerritoryCombatTargets = require('../services/territory/TerritoryCom
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
 const createTerritoryScoutPlanner = require('../services/territory/TerritoryScoutPlanner');
 const createTerritoryScoutRecords = require('../services/territory/TerritoryScoutRecords');
+const createTerritoryScoutResults = require('../services/territory/TerritoryScoutResults');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const territoryRoot = path.join(serviceRoot, 'territory');
@@ -32,6 +33,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     'TerritoryMilitaryMissions.js',
     'TerritoryScoutPlanner.js',
     'TerritoryScoutRecords.js',
+    'TerritoryScoutResults.js',
     'TerritoryShared.js',
     'TerritoryVisuals.js',
   ]);
@@ -413,6 +415,117 @@ test('territory scout planner module owns scout origins and frontier target scor
   assert.equal(target.routeStartDistance, 1);
 
   assert.equal(Planner.findNextCoordinate(gameState, 'bad'), null);
+});
+
+test('territory scout results module owns scout outcomes reports and generated site contracts', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const Results = createTerritoryScoutResults({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      ensureWorldMap: () => ({
+        seed: 'seed',
+        tiles: [
+          { id: 'tile_2_0', q: 2, r: 0, terrain: 'plains' },
+          { id: 'tile_3_0', q: 3, r: 0, terrain: 'forest' },
+        ],
+      }),
+      chooseTerrain: (_seed, q) => (q === 3 ? 'forest' : 'plains'),
+      canPlaceSiteOnTerrain: (_seed, q) => q !== 9,
+    },
+    ensureMissionRevealArea: (_gameState, mission) => mission.revealArea || [],
+    getScoutCoordinateRecord: (gameState, q, r) => (
+      gameState.scoutedCoordinates || []
+    ).find((coord) => coord.x === q && coord.y === r) || null,
+    getScoutResolvedCoordinate: (mission) => ({
+      x: Number.isFinite(Number(mission.siteX)) ? Number(mission.siteX) : Number(mission.targetX),
+      y: Number.isFinite(Number(mission.siteY)) ? Number(mission.siteY) : Number(mission.targetY),
+    }),
+    getSiteSpacingProfile: (_gameState, q) => (q === 4
+      ? { valid: false, nearestDistance: 1, score: -100 }
+      : { valid: true, nearestDistance: 5, score: 10 }),
+    normalizeGarrison: (_raw, site) => (site.owner === 'neutral' ? null : {
+      id: `garrison_${site.id}`,
+      leader: { id: 'leader-1', abilityKit: { id: 'shield-wall' } },
+    }),
+    normalizeScoutReport: (report) => ({ ...report, normalized: true }),
+    normalizeScoutState: (state) => ({
+      emptyStreak: 0,
+      neutralSiteStreak: 0,
+      areas: [],
+      ...(state && typeof state === 'object' ? state : {}),
+    }),
+  });
+
+  const guaranteeState = {
+    scoutState: { emptyStreak: TerritoryConstants.SCOUT_SITE_GUARANTEE_AFTER, neutralSiteStreak: 0 },
+  };
+  assert.equal(Results.rollScoutOutcome(guaranteeState, () => 0.99), 'site');
+  assert.equal(Results.rollScoutOutcome({ scoutState: { emptyStreak: 0 } }, () => 0.99), 'empty');
+  assert.equal(Results.recordScoutOutcome(guaranteeState, 'empty'), TerritoryConstants.SCOUT_SITE_GUARANTEE_AFTER + 1);
+  assert.equal(Results.recordScoutOutcome(guaranteeState, 'site'), 0);
+  assert.equal(Results.recordDiscoveredSiteOwnership(guaranteeState, 'neutral'), 1);
+  assert.equal(Results.recordDiscoveredSiteOwnership(guaranteeState, 'tribe'), 0);
+  assert.equal(Results.getOwnedSiteChance(3, 3), 1);
+
+  const mission = {
+    id: 'scout-1',
+    direction: 'e',
+    originX: 0,
+    originY: 0,
+    targetX: 2,
+    targetY: 0,
+    originName: 'Capital',
+    scoutDistance: 2,
+    revealAreaSource: 'directional-route-v1',
+    revealArea: [
+      { q: 2, r: 0, step: 1, kind: 'main', revealed: true },
+      { q: 3, r: 0, step: 2, kind: 'branch', revealed: false },
+    ],
+    revealedTileIds: ['tile_3_0'],
+  };
+  const gameState = {
+    scoutState: { emptyStreak: 0, neutralSiteStreak: 0 },
+    scoutedCoordinates: [{ x: 2, y: 0, result: 'empty' }],
+    territories: [{ id: 'capital', x: 0, y: 0 }],
+  };
+
+  assert.deepEqual(Results.getScoutCandidateCoordinates(gameState, mission, now), [
+    { q: 3, r: 0 },
+    { q: 2, r: 0 },
+  ]);
+  assert.deepEqual(Results.pickScoutSiteCoordinate(gameState, mission, now), {
+    q: 3,
+    r: 0,
+    terrain: 'forest',
+    distance: 3,
+    nearestSiteDistance: 5,
+    spacingScore: 10,
+    score: Results.scoreScoutSiteCandidate(gameState, mission, { q: 3, r: 0 }, 'seed').score,
+  });
+
+  const emptyReport = Results.createEmptyScoutReport(gameState, mission, now);
+  assert.equal(emptyReport.normalized, true);
+  assert.equal(emptyReport.tileId, 'tile_2_0');
+  assert.equal(emptyReport.revealArea.length, 2);
+  assert.equal(emptyReport.revealArea[0].tileId, 'tile_2_0');
+
+  const created = Results.createSiteFromScout({
+    scoutState: { neutralSiteStreak: 3 },
+    territories: [{ id: 'capital' }],
+  }, {
+    ...mission,
+    siteX: 3,
+    siteY: 0,
+    siteTerrain: 'forest',
+    scoutDistance: 3,
+  }, now, () => 0);
+  assert.equal(created.site.id, 'site_3_0');
+  assert.equal(created.site.type, 'camp');
+  assert.equal(created.site.owner, 'tribe');
+  assert.equal(created.site.effects.woodOutputMultiplier, 0.1);
+  assert.equal(created.site.garrison.leader.id, 'leader-1');
+  assert.equal(created.report.normalized, true);
+  assert.equal(created.report.tileId, 'tile_3_0');
 });
 
 test('TerritoryService facade preserves the legacy territory API', () => {
