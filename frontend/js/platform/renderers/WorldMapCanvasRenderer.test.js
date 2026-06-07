@@ -144,6 +144,18 @@ test('WorldMapCanvasRenderer keeps world map hit target contract in hit-target-o
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), true);
 });
 
+test('WorldMapCanvasRenderer exposes tile map context on its host', () => {
+  const host = createHost();
+  const renderer = new WorldMapCanvasRenderer({ host });
+  const tileMapView = createTileMapView();
+
+  renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
+
+  assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
+  assert.deepEqual(host.lastWorldTileMapContext.frame, { x: 11, y: 91, width: 358, height: 298 });
+  assert.equal(host.lastWorldTileMapContext.viewport.originX, 190);
+});
+
 test('WorldMapCanvasRenderer collects world march formation picker targets in hit-target-only mode', () => {
   const host = createHost({
     presenter: {

@@ -1893,6 +1893,9 @@
         geometry,
         frame,
       };
+      if (this.host && this.host !== this) {
+        this.host.lastWorldTileMapContext = this.lastWorldTileMapContext;
+      }
       const hitTargetsOnly = Boolean(options.hitTargetsOnly);
       const snapshotOnly = Boolean(options.snapshotOnly);
       const previousFastDragActive = this.worldTileFastDragActive;

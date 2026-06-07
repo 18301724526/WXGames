@@ -107,3 +107,40 @@ test('WorldMapRuntime converts map background taps into fog march targets', () =
   assert.equal(calls[0].known, false);
   assert.equal(calls[0].terrainLabel, '未知');
 });
+
+test('WorldMapRuntime reads tile context from the split world map renderer', () => {
+  const calls = [];
+  const lastWorldTileMapContext = {
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainLabel: 'Plains', visibility: 'scouted' }],
+    },
+    viewport: {
+      originX: 100,
+      originY: 100,
+      panX: 0,
+      panY: 0,
+      scale: 0.5,
+    },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      renderWorldMapLayer() {},
+      worldMapRenderer: { lastWorldTileMapContext },
+    },
+    presenter: {},
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  runtime.hitTargets = [
+    { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+  ];
+
+  assert.equal(runtime.handleTap({ x: 148, y: 220 }), true);
+  assert.equal(calls[0].type, 'selectWorldMarchTarget');
+  assert.equal(calls[0].tileId, 'tile_3_2');
+  assert.equal(calls[0].known, false);
+});

@@ -1844,11 +1844,19 @@
 
     renderWorldMapLayer(...args) {
       const result = this.delegateWorldMapLayerRenderer('renderWorldMapLayer', args);
+      this.lastWorldTileMapContext = this.worldMapRenderer?.lastWorldTileMapContext
+        || this.worldMapLayerRenderer?.lastWorldTileMapContext
+        || this.lastWorldTileMapContext
+        || null;
       return result === undefined ? false : result;
     }
 
     renderWorldMapSnapshotLayer(...args) {
       const result = this.delegateWorldMapLayerRenderer('renderWorldMapSnapshotLayer', args);
+      this.lastWorldTileMapContext = this.worldMapRenderer?.lastWorldTileMapContext
+        || this.worldMapLayerRenderer?.lastWorldTileMapContext
+        || this.lastWorldTileMapContext
+        || null;
       return result === undefined ? false : result;
     }
     delegateMapCommandRenderer(method, args = []) {

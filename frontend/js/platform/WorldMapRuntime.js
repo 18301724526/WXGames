@@ -440,8 +440,16 @@
       return this.hitTargets;
     }
 
+    getLastTileMapContext() {
+      return this.lastTileMapContext
+        || this.renderer?.lastWorldTileMapContext
+        || this.renderer?.worldMapRenderer?.lastWorldTileMapContext
+        || this.renderer?.worldMapLayerRenderer?.lastWorldTileMapContext
+        || null;
+    }
+
     getBackgroundMarchTargetAction(point = {}) {
-      const context = this.lastTileMapContext || this.renderer?.lastWorldTileMapContext || null;
+      const context = this.getLastTileMapContext();
       const tileMapView = context?.tileMapView || null;
       const viewport = context?.viewport || null;
       const geometry = context?.geometry || tileMapView?.geometry || viewport?.geometry || null;
@@ -518,7 +526,7 @@
       this.lastLayout = this.getLayerLayout(state, { topBarBottom });
       if (rendered) {
         this.syncWaterAnimationFlag(uiState);
-        this.lastTileMapContext = this.renderer?.lastWorldTileMapContext || null;
+        this.lastTileMapContext = this.getLastTileMapContext();
         this.hasBakedMapLayer = true;
         this.mapBakeDirty = false;
         this.markBakedCamera(this.camera);

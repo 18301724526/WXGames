@@ -30,3 +30,11 @@
 - `WorldMapCanvasRenderer`: stores the current tile-map viewport context and emits tile target metadata.
 - `WorldMarchHudCanvasRenderer`: draws target info, command button, formation picker, and related hit targets only.
 - `CanvasActionController`: stores UI state and forwards business actions to the game/API layer.
+
+## Runtime Context Note
+
+The live map layer is rendered through `CanvasGameRenderer -> WorldMapLayerCanvasRenderer -> WorldMapCanvasRenderer`.
+Fog/background targeting depends on the latest tile-map viewport context, so `WorldMapCanvasRenderer` must publish
+`lastWorldTileMapContext` to its host, and `WorldMapRuntime` must read the context from the outer renderer or the split
+`worldMapRenderer`/`worldMapLayerRenderer` instances. This keeps background fog clicks working in the real layered canvas
+runtime, not only in isolated renderer tests.
