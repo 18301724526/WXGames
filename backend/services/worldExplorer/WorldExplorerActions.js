@@ -51,6 +51,66 @@ function getIdleFormationMission(gameState, formation = {}) {
   }) || null;
 }
 
+function isTraceEnabled(options = {}) {
+  return Boolean(options?.debugTrace || options?.worldMarchTrace);
+}
+
+function summarizeCoord(coord = {}) {
+  if (!coord || typeof coord !== 'object') return null;
+  const q = Number(coord.q ?? coord.x ?? 0);
+  const r = Number(coord.r ?? coord.y ?? 0);
+  return {
+    q,
+    r,
+    tileId: coord.tileId || WorldMapService.getTileId(q, r),
+  };
+}
+
+function summarizeMission(mission = null) {
+  if (!mission || typeof mission !== 'object') return null;
+  const route = Array.isArray(mission.route) ? mission.route : [];
+  const plannedTiles = Array.isArray(mission.plannedTiles) ? mission.plannedTiles : [];
+  const plannedSites = Array.isArray(mission.plannedSites) ? mission.plannedSites : [];
+  const revealedTileIds = Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [];
+  return {
+    id: mission.id || '',
+    mode: mission.mode || '',
+    status: mission.status || '',
+    origin: summarizeCoord(mission.origin),
+    target: summarizeCoord(mission.target),
+    position: summarizeCoord(mission.position),
+    routeCount: route.length,
+    routeIds: route.slice(0, 8).map((step) => step.tileId || WorldMapService.getTileId(step.q, step.r)),
+    plannedTileCount: plannedTiles.length,
+    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => tile.id || WorldMapService.getTileId(tile.q, tile.r)),
+    plannedSiteCount: plannedSites.length,
+    plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
+    revealedTileCount: revealedTileIds.length,
+    revealedTileIds: revealedTileIds.slice(0, 8),
+    formation: mission.formation ? {
+      cityId: mission.formation.cityId || 'capital',
+      slot: normalizeFormationSlot(mission.formation.slot),
+      memberCount: Array.isArray(mission.formation.memberIds) ? mission.formation.memberIds.length : 0,
+    } : null,
+    startedAt: mission.startedAt || '',
+    nextStepAt: mission.nextStepAt || '',
+    completesAt: mission.completesAt || '',
+  };
+}
+
+function traceWorldMarch(stage, options = {}, payload = {}) {
+  if (!isTraceEnabled(options)) return false;
+  try {
+    console.info('[WorldMarchTrace:server]', stage, {
+      at: new Date().toISOString(),
+      ...payload,
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function startExplore(gameState, options = {}, now = new Date()) {
   normalizeExploreState(gameState, now);
   const formationValidation = validateTutorialFormation(gameState, options);
@@ -118,10 +178,27 @@ function startExplore(gameState, options = {}, now = new Date()) {
 
 function startWorldMarch(gameState, options = {}, now = new Date()) {
   normalizeExploreState(gameState, now);
+  traceWorldMarch('actions:startWorldMarch:begin', options, {
+    target: {
+      q: options.targetQ ?? options.q ?? options.x ?? null,
+      r: options.targetR ?? options.r ?? options.y ?? null,
+    },
+    formationSlot: options.formationSlot ?? options.slot ?? null,
+    existingMissions: (gameState.exploreMissions || []).map(summarizeMission),
+  });
   const formationValidation = validateTutorialFormation(gameState, options);
-  if (!formationValidation.success) return formationValidation;
+  if (!formationValidation.success) {
+    traceWorldMarch('actions:startWorldMarch:formationRejected', options, {
+      result: formationValidation,
+    });
+    return formationValidation;
+  }
   const busyMission = getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
+    traceWorldMarch('actions:startWorldMarch:busyFormation', options, {
+      formation: formationValidation.formation,
+      busyMission: summarizeMission(busyMission),
+    });
     return {
       success: false,
       error: 'EXPLORE_FORMATION_BUSY',
@@ -130,6 +207,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     };
   }
   if (countActiveMissions(gameState) >= MAX_ACTIVE_EXPLORE_MISSIONS) {
+    traceWorldMarch('actions:startWorldMarch:limitReached', options, {
+      activeCount: countActiveMissions(gameState),
+      maxActive: MAX_ACTIVE_EXPLORE_MISSIONS,
+    });
     return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: 'An explorer mission is already active.' };
   }
   const origin = getExploreOrigin(gameState);
@@ -142,13 +223,37 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     q: options.targetQ ?? options.q ?? options.x,
     r: options.targetR ?? options.r ?? options.y,
   }, worldMap.seed);
+  traceWorldMarch('actions:startWorldMarch:routeResult', options, {
+    origin: summarizeCoord(origin),
+    marchOrigin: summarizeCoord(marchOrigin),
+    target: summarizeCoord(routeResult.target || {
+      q: options.targetQ ?? options.q ?? options.x,
+      r: options.targetR ?? options.r ?? options.y,
+    }),
+    success: routeResult.success,
+    error: routeResult.error || '',
+    routeCount: Array.isArray(routeResult.route) ? routeResult.route.length : 0,
+    routeIds: (routeResult.route || []).slice(0, 8).map((step) => step.tileId || WorldMapService.getTileId(step.q, step.r)),
+  });
   if (!routeResult.success) return routeResult;
   const route = routeResult.route || [];
   if (!route.length) {
+    traceWorldMarch('actions:startWorldMarch:emptyRoute', options, {
+      origin: summarizeCoord(origin),
+      marchOrigin: summarizeCoord(marchOrigin),
+    });
     return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: 'No explorer route could be generated.' };
   }
   const plannedTiles = createPlannedTiles(gameState, route, now);
   const plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now);
+  traceWorldMarch('actions:startWorldMarch:planned', options, {
+    plannedTileCount: plannedTiles.length,
+    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => tile.id || WorldMapService.getTileId(tile.q, tile.r)),
+    plannedTerrain: plannedTiles.slice(0, 8).map((tile) => `${tile.id || WorldMapService.getTileId(tile.q, tile.r)}:${tile.terrain}`),
+    plannedSiteCount: plannedSites.length,
+    plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
+    idleMission: summarizeMission(idleMission),
+  });
   const mission = idleMission || normalizeMission({
     id: `explore_manual_${now.getTime()}`,
     mode: 'manual',
@@ -174,12 +279,18 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     gameState.exploreMissions = [...(gameState.exploreMissions || []), mission];
   }
   gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
-  return {
+  const result = {
     success: true,
     message: 'Explorer mission started.',
     mission: getClientMission(mission, now),
     tutorial: gameState.tutorial,
   };
+  traceWorldMarch('actions:startWorldMarch:result', options, {
+    mission: summarizeMission(mission),
+    clientMission: summarizeMission(result.mission),
+    allMissions: (gameState.exploreMissions || []).map(summarizeMission),
+  });
+  return result;
 }
 
 function findActiveMission(gameState, missionId, now = new Date()) {

@@ -215,8 +215,28 @@
 
     syncMapDataSignature(state = this.getState(), options = {}) {
       const signature = this.getMapDataSignature(state, options);
-      if (signature === this.lastMapDataSignature) return false;
+      if (signature === this.lastMapDataSignature) {
+        global.WorldMarchTrace?.logDedup?.('runtime:signature:unchanged', [
+          signature.length,
+          state?.worldExplorerState?.activeMission?.id || '',
+          state?.worldExplorerState?.activeMission?.status || '',
+          (state?.worldExplorerState?.activeMission?.revealedTileIds || []).length,
+          Math.floor(Number(options.epochNowMs || Date.now()) / 10000),
+        ].join('|'), {
+          signatureLength: signature.length,
+          activeMission: global.WorldMarchTrace?.summarizeMission?.(state?.worldExplorerState?.activeMission),
+          mapBakeDirty: this.mapBakeDirty,
+          hasBakedMapLayer: this.hasBakedMapLayer,
+        });
+        return false;
+      }
       const hadPreviousSignature = Boolean(this.lastMapDataSignature);
+      global.WorldMarchTrace?.log?.('runtime:signature:changed', {
+        hadPreviousSignature,
+        previousLength: this.lastMapDataSignature.length,
+        nextLength: signature.length,
+        activeMission: global.WorldMarchTrace?.summarizeMission?.(state?.worldExplorerState?.activeMission),
+      });
       this.lastMapDataSignature = signature;
       if (hadPreviousSignature) {
         this.mapBakeDirty = true;
@@ -492,6 +512,13 @@
         }
       }
       if (!this.canRender(state)) {
+        global.WorldMarchTrace?.warn?.('runtime:render:cannotRender', {
+          enabled: this.enabled,
+          hasRenderer: Boolean(this.renderer),
+          hasPresenter: Boolean(this.presenter),
+          tileCount: Array.isArray(state?.territoryState?.worldMap?.tiles) ? state.territoryState.worldMap.tiles.length : 0,
+          activeMission: global.WorldMarchTrace?.summarizeMission?.(state?.worldExplorerState?.activeMission),
+        });
         this.renderer?.clearAll?.();
         this.hitTargets = [];
         this.baseHitTargets = [];
@@ -509,6 +536,23 @@
         && this.hasBakedMapLayer
         && !this.isMapBakeDirty(state, renderOptions)
         && typeof this.renderer.renderWorldMapSnapshotLayer === 'function');
+      global.WorldMarchTrace?.logDedup?.('runtime:render:begin', [
+        snapshotOnly,
+        canUseSnapshotLayer,
+        this.hasBakedMapLayer,
+        this.mapBakeDirty,
+        state?.worldExplorerState?.activeMission?.id || '',
+        state?.worldExplorerState?.activeMission?.status || '',
+        (state?.worldExplorerState?.activeMission?.revealedTileIds || []).length,
+        Math.floor(Number(renderOptions.epochNowMs) / 10000),
+      ].join('|'), {
+        snapshotOnly,
+        canUseSnapshotLayer,
+        hasBakedMapLayer: this.hasBakedMapLayer,
+        mapBakeDirty: this.mapBakeDirty,
+        epochNowMs: renderOptions.epochNowMs,
+        activeMission: global.WorldMarchTrace?.summarizeMission?.(state?.worldExplorerState?.activeMission),
+      });
       const now = this.now();
       if (!options.force && this.lastRenderAt && now - this.lastRenderAt < Math.max(1, this.frameMs - 1)) return false;
       this.lastRenderAt = now;
@@ -529,6 +573,17 @@
         });
         this.syncWaterAnimationFlag(uiState);
         this.lastLayout = this.getLayerLayout(state, { topBarBottom });
+        global.WorldMarchTrace?.logDedup?.('runtime:render:snapshot', [
+          renderedSnapshot,
+          state?.worldExplorerState?.activeMission?.id || '',
+          state?.worldExplorerState?.activeMission?.status || '',
+          (state?.worldExplorerState?.activeMission?.revealedTileIds || []).length,
+          Math.floor(Number(renderOptions.epochNowMs) / 10000),
+        ].join('|'), {
+          rendered: Boolean(renderedSnapshot),
+          hitTargetCount: this.hitTargets.length,
+          activeMission: global.WorldMarchTrace?.summarizeMission?.(state?.worldExplorerState?.activeMission),
+        });
         return renderedSnapshot;
       }
       this.syncMapDataSignature(state, renderOptions);
@@ -554,6 +609,22 @@
         this.markBakedCamera(this.camera);
         this.syncHitTargetsFromRenderer();
       }
+      global.WorldMarchTrace?.logDedup?.('runtime:render:full', [
+        rendered,
+        this.hasBakedMapLayer,
+        this.mapBakeDirty,
+        this.hitTargets.length,
+        state?.worldExplorerState?.activeMission?.id || '',
+        state?.worldExplorerState?.activeMission?.status || '',
+        (state?.worldExplorerState?.activeMission?.revealedTileIds || []).length,
+        Math.floor(Number(renderOptions.epochNowMs) / 10000),
+      ].join('|'), {
+        rendered: Boolean(rendered),
+        hasBakedMapLayer: this.hasBakedMapLayer,
+        mapBakeDirty: this.mapBakeDirty,
+        hitTargetCount: this.hitTargets.length,
+        activeMission: global.WorldMarchTrace?.summarizeMission?.(state?.worldExplorerState?.activeMission),
+      });
       return rendered;
     }
   }

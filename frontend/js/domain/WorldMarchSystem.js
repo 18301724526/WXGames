@@ -171,7 +171,7 @@
     const positionSource = status === 'idle'
       ? target
       : (lastRevealed || mission.position || mission.origin || target);
-    return {
+    const derived = {
       ...mission,
       status,
       route: revealedRoute,
@@ -180,6 +180,32 @@
       nextStepAt,
       remainingSeconds: getRemainingSeconds({ ...mission, status, nextStepAt }, nowMs),
     };
+    const trace = global.WorldMarchTrace;
+    if (trace?.enabled?.()) {
+      const position = normalizeCoord(positionSource, target);
+      const nextStep = nextUnrevealed ? {
+        tileId: nextUnrevealed.tileId || tileId(nextUnrevealed.q, nextUnrevealed.r),
+        step: nextUnrevealed.step,
+        revealAt: Number.isFinite(nextStepAtMs) ? new Date(nextStepAtMs).toISOString() : null,
+      } : null;
+      trace.logDedup?.(
+        'domain:deriveMissionForTime',
+        [
+          mission.id || '',
+          status,
+          revealedTileIds.length,
+          position.tileId,
+          nextStep?.tileId || '',
+          Math.floor(nowMs / 10000),
+        ].join('|'),
+        {
+          nowMs,
+          mission: trace.summarizeMission?.(derived),
+          nextStep,
+        },
+      );
+    }
+    return derived;
   }
 
   function lerp(a, b, t) {

@@ -20,12 +20,31 @@
     async request(method, path, body) {
       const headers = { 'Content-Type': 'application/json' };
       if (this.token) headers.Authorization = `Bearer ${this.token}`;
+      const trace = global.WorldMarchTrace;
+      if (trace?.enabled?.()) headers['X-World-March-Trace'] = '1';
+      const actionBody = body && typeof body === 'object' ? body : {};
+      const isWorldMarchAction = path === '/game/action'
+        && ['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch', 'claimExplore', 'startExplore']
+          .includes(actionBody.action);
+      const isWorldMarchSync = trace?.enabled?.() && ['/game/state', '/game/heartbeat'].includes(path);
+      const tracedBody = isWorldMarchAction && trace?.enabled?.()
+        ? { ...actionBody, debugTrace: true, worldMarchTrace: true }
+        : actionBody;
       const requestPayload = {
         url: this.buildUrl(path),
         method,
         headers,
-        body: method === 'GET' ? undefined : JSON.stringify(body || {}),
+        body: method === 'GET' ? undefined : JSON.stringify(tracedBody || {}),
       };
+      if (isWorldMarchAction) {
+        trace?.log?.('api:request', {
+          method,
+          path,
+          body: trace.summarizeActionBody?.(tracedBody),
+        });
+      } else if (isWorldMarchSync) {
+        trace?.log?.('api:syncRequest', { method, path });
+      }
       const response = this.transport && typeof this.transport.request === 'function'
         ? await this.transport.request(requestPayload)
         : await fetch(requestPayload.url, {
@@ -35,9 +54,37 @@
         });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (isWorldMarchAction) {
+          trace?.error?.('api:error', {
+            status: response.status,
+            body: trace.summarizeActionBody?.(tracedBody),
+            payload: trace.summarizeApiPayload?.(data) || data,
+          });
+        } else if (isWorldMarchSync) {
+          trace?.error?.('api:syncError', {
+            status: response.status,
+            path,
+            payload: trace.summarizeApiPayload?.(data) || data,
+          });
+        }
         const error = new Error(data.message || data.error || `HTTP ${response.status}`);
         error.payload = data;
         throw error;
+      }
+      if (isWorldMarchAction) {
+        trace?.log?.('api:response', {
+          status: response.status,
+          body: trace.summarizeActionBody?.(tracedBody),
+          payload: trace.summarizeApiPayload?.(data) || data,
+        });
+      } else if (isWorldMarchSync) {
+        trace?.log?.('api:syncResponse', {
+          status: response.status,
+          path,
+          payload: path === '/game/heartbeat'
+            ? { type: data.type, serverTime: data.serverTime, hasGameState: Boolean(data.gameState) }
+            : (trace.summarizeApiPayload?.(data) || data),
+        });
       }
       return data;
     }

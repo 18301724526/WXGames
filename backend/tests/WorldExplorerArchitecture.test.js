@@ -32,6 +32,7 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
     'WorldExplorerProgression.js',
     'WorldExplorerRoutePlanner.js',
     'WorldExplorerShared.js',
+    'WorldExplorerTrace.js',
     'WorldExplorerTutorial.js',
   ]);
   for (const fileName of moduleFiles) {

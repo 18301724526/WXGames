@@ -11,6 +11,10 @@
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
       applyState(payload = {}) {
+            global.WorldMarchTrace?.log?.('app:applyState:input', {
+              payload: global.WorldMarchTrace?.summarizeApiPayload?.(payload) || null,
+              before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+            });
             const nextState = payload.gameState || payload.state || this.state;
             const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
             const localTab = this.getActiveTab();
@@ -45,6 +49,9 @@
             }
             this.tutorialController?.sync?.(nextTutorial);
             this.setPendingBuildingAction(null, { render: false });
+            global.WorldMarchTrace?.log?.('app:applyState:after', {
+              after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+            });
             this.render();
           },
 
@@ -53,16 +60,27 @@
           },
 
       applyApiState(data = {}) {
+            global.WorldMarchTrace?.log?.('app:applyApiState:input', {
+              payload: global.WorldMarchTrace?.summarizeApiPayload?.(data) || null,
+              before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+            });
             if (this.stateNormalizer?.normalizeGameState) {
               const nextState = this.stateNormalizer.normalizeGameState(data);
               this.tutorial = this.stateNormalizer.normalizeTutorialState?.(data) || this.tutorial || {};
               this.syncFromServer(nextState, data.tutorial, data.eraProgress);
+              global.WorldMarchTrace?.log?.('app:applyApiState:afterNormalizer', {
+                after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               return;
             }
             this.applyState(data);
           },
 
       syncFromServer(serverState, tutorial, eraProgress) {
+            global.WorldMarchTrace?.log?.('app:syncFromServer:input', {
+              server: global.WorldMarchTrace?.summarizeWorldExplorerState?.(serverState?.worldExplorerState),
+              before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+            });
             const localTab = this.getActiveTab();
             const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
             const homeView = this.resolveMapHomeViewState(serverState, {
@@ -113,6 +131,9 @@
               if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
             }
             this.setPendingBuildingAction(null, { render: false });
+            global.WorldMarchTrace?.log?.('app:syncFromServer:after', {
+              after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+            });
             this.render();
           },
 

@@ -38,7 +38,7 @@ const defaultDeps = {
 };
 
 function buildTerritoryPayload(body = {}) {
-  return {
+  const payload = {
     territoryId: body.territoryId,
     cityId: body.cityId,
     soldiers: body.soldiers,
@@ -59,6 +59,9 @@ function buildTerritoryPayload(body = {}) {
     y: body.y,
     expedition: body.expedition,
   };
+  if (body.debugTrace !== undefined) payload.debugTrace = body.debugTrace;
+  if (body.worldMarchTrace !== undefined) payload.worldMarchTrace = body.worldMarchTrace;
+  return payload;
 }
 
 function createGameActionRegistry(overrides = {}) {

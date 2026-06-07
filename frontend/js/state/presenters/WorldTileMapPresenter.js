@@ -318,11 +318,20 @@
         });
       });
       const nowMs = this.getEpochNowMs(options);
-      return [...byId.values()].map((mission) => (
+      const missions = [...byId.values()].map((mission) => (
         sharedWorldMarchSystem?.deriveMissionForTime
           ? sharedWorldMarchSystem.deriveMissionForTime(mission, { nowMs })
           : mission
       )).filter(Boolean);
+      global.WorldMarchTrace?.logDedup?.(
+        'presenter:missions',
+        missions.map((mission) => `${mission.id}:${mission.status}:${(mission.revealedTileIds || []).length}`).join(',') || 'none',
+        {
+          nowMs,
+          missions: missions.map((mission) => global.WorldMarchTrace?.summarizeMission?.(mission)),
+        },
+      );
+      return missions;
     }
 
     static getWorldExplorerPlannedTiles(worldExplorerState = {}, options = {}) {
@@ -349,7 +358,16 @@
           });
         });
       });
-      return [...byId.values()];
+      const plannedTiles = [...byId.values()];
+      global.WorldMarchTrace?.logDedup?.(
+        'presenter:plannedTiles',
+        plannedTiles.map((tile) => tile.id || `tile_${tile.q}_${tile.r}`).join(',') || 'none',
+        {
+          plannedTiles: global.WorldMarchTrace?.summarizePlannedTiles?.(plannedTiles),
+          source: global.WorldMarchTrace?.summarizeWorldExplorerState?.(worldExplorerState),
+        },
+      );
+      return plannedTiles;
     }
 
     static getWorldExplorerPlannedSites(worldExplorerState = {}, options = {}) {
@@ -383,7 +401,19 @@
           });
         });
       });
-      return [...byId.values()];
+      const plannedSites = [...byId.values()];
+      global.WorldMarchTrace?.logDedup?.(
+        'presenter:plannedSites',
+        plannedSites.map((site) => site.id || `site_${site.x}_${site.y}`).join(',') || 'none',
+        {
+          plannedSites: {
+            count: plannedSites.length,
+            ids: plannedSites.map((site) => site.id || `site_${site.x}_${site.y}`).slice(0, 8),
+          },
+          source: global.WorldMarchTrace?.summarizeWorldExplorerState?.(worldExplorerState),
+        },
+      );
+      return plannedSites;
     }
 
     static getWorldTileId(q, r) {
@@ -480,7 +510,7 @@
           scoutedAt: area.scoutedAt || '',
         }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
-      return {
+      const viewState = {
         signature: this.getWorldTileMapSignature(territoryState, worldExplorerState, options),
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
@@ -500,6 +530,25 @@
         activeScouts: [...activeScouts, ...explorerScouts],
         scoutAreas,
       };
+      global.WorldMarchTrace?.logDedup?.(
+        'presenter:buildWorldTileMapViewState',
+        [
+          rawTiles.length,
+          plannedTiles.length,
+          plannedSites.length,
+          mergedTiles.length,
+          explorerScouts.map((mission) => `${mission.id}:${mission.status}:${mission.revealedTileIds?.length || 0}`).join(','),
+        ].join('|'),
+        {
+          rawTileCount: rawTiles.length,
+          plannedTileCount: plannedTiles.length,
+          plannedSiteCount: plannedSites.length,
+          mergedTileCount: mergedTiles.length,
+          drawTileCount: drawTiles.length,
+          activeScouts: explorerScouts.map((mission) => global.WorldMarchTrace?.summarizeMission?.(mission)),
+        },
+      );
+      return viewState;
     }
   }
 

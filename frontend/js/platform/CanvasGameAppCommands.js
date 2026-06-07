@@ -468,11 +468,27 @@
 
       async startWorldMarch(options = {}) {
             try {
+              const trace = global.WorldMarchTrace;
+              trace?.log?.('app:startWorldMarch:begin', {
+                options: {
+                  mode: options.mode || 'manual',
+                  targetQ: options.targetQ ?? options.q ?? options.x ?? null,
+                  targetR: options.targetR ?? options.r ?? options.y ?? null,
+                  formationSlot: options.formationSlot ?? options.slot ?? null,
+                },
+                before: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               const api = this.getGameApi();
               const result = api.startWorldMarch
                 ? await api.startWorldMarch({ ...options, mode: 'manual' })
                 : await api.startExplore({ ...options, mode: 'manual' });
+              trace?.log?.('app:startWorldMarch:apiResult', {
+                result: trace.summarizeApiPayload?.(result) || result,
+              });
               this.applyApiState(result);
+              trace?.log?.('app:startWorldMarch:afterApply', {
+                after: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               this.territoryUiState = {
                 ...(this.territoryUiState || {}),
                 worldMarchTarget: null,
@@ -488,6 +504,10 @@
               this.log(result.message || 'March started');
               return true;
             } catch (error) {
+              global.WorldMarchTrace?.error?.('app:startWorldMarch:error', {
+                message: error.payload?.message || error.message,
+                payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
+              });
               this.log(`March failed: ${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
@@ -497,13 +517,26 @@
       async returnWorldMarch(missionId) {
             if (!missionId) return false;
             try {
+              global.WorldMarchTrace?.log?.('app:returnWorldMarch:begin', {
+                missionId,
+                before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               const api = this.getGameApi();
               const result = await api.returnWorldMarch(missionId);
               this.applyApiState(result);
+              global.WorldMarchTrace?.log?.('app:returnWorldMarch:afterApply', {
+                result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
+                after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               this.showFloatingText(result.message || 'Returning');
               this.log(result.message || 'Returning');
               return true;
             } catch (error) {
+              global.WorldMarchTrace?.error?.('app:returnWorldMarch:error', {
+                missionId,
+                message: error.payload?.message || error.message,
+                payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
+              });
               this.log(`Return failed: ${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
@@ -513,13 +546,30 @@
       async stopWorldMarch(missionId, options = {}) {
             if (!missionId) return false;
             try {
+              global.WorldMarchTrace?.log?.('app:stopWorldMarch:begin', {
+                missionId,
+                options: {
+                  targetQ: options.targetQ ?? options.stopQ ?? options.q ?? null,
+                  targetR: options.targetR ?? options.stopR ?? options.r ?? null,
+                },
+                before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               const api = this.getGameApi();
               const result = await api.stopWorldMarch(missionId, options);
               this.applyApiState(result);
+              global.WorldMarchTrace?.log?.('app:stopWorldMarch:afterApply', {
+                result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
+                after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+              });
               this.showFloatingText(result.message || 'Stopped');
               this.log(result.message || 'Stopped');
               return true;
             } catch (error) {
+              global.WorldMarchTrace?.error?.('app:stopWorldMarch:error', {
+                missionId,
+                message: error.payload?.message || error.message,
+                payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
+              });
               this.log(`Stop failed: ${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
