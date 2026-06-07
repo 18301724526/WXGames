@@ -160,12 +160,25 @@
     getBusyFormationMap(state = {}) {
       const explorer = state?.worldExplorerState || {};
       const busyFormations = Array.isArray(explorer.busyFormations) ? explorer.busyFormations : [];
+      const missions = Array.isArray(explorer.missions)
+        ? explorer.missions
+        : [
+          explorer.activeMission,
+          ...(Array.isArray(explorer.readyMissions) ? explorer.readyMissions : []),
+          ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+        ].filter(Boolean);
+      const missionById = new Map(missions.map((mission) => [mission?.id, mission]).filter(([id]) => id));
+      const nowMs = WorldMarchSystem?.toNumber?.(this.host?.epochNowMs ?? this.epochNowMs, Date.now()) ?? Date.now();
       const map = new Map();
       busyFormations.forEach((item = {}) => {
-        if (item.status === 'idle') return;
+        const mission = missionById.get(item.missionId || '');
+        const status = mission && WorldMarchSystem?.getEffectiveMissionStatus
+          ? WorldMarchSystem.getEffectiveMissionStatus(mission, nowMs)
+          : item.status;
+        if (status === 'idle') return;
         const cityId = item.cityId || 'capital';
         const slot = Math.max(1, Math.floor(Number(item.slot) || 1));
-        map.set(`${cityId}:${slot}`, item);
+        map.set(`${cityId}:${slot}`, { ...item, status });
       });
       return map;
     }

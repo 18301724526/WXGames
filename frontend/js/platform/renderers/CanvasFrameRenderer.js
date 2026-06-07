@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const SharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMarchSystem');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasFrameRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -201,8 +213,13 @@
       const layout = this.getWorldMapLayerLayout?.(state, topBarBottom, { ...options, isMapHome: true }) || null;
       const map = layout?.map || { x: 0, y: topBarBottom, width: this.width, height: Math.max(160, this.height - topBarBottom - 64) };
       const explorer = state.worldExplorerState || {};
-      const active = explorer.activeMission || null;
-      const ready = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
+      const nowMs = this.getEpochNowMs();
+      const activeMission = explorer.activeMission && SharedWorldMarchSystem?.deriveMissionForTime
+        ? SharedWorldMarchSystem.deriveMissionForTime(explorer.activeMission, { nowMs })
+        : explorer.activeMission || null;
+      const active = activeMission?.status === 'active' ? activeMission : null;
+      const derivedReady = activeMission?.status === 'ready' ? activeMission : null;
+      const ready = derivedReady || (Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null);
       const panelWidth = Math.min(184, Math.max(132, map.width - 24));
       const panelHeight = active || ready ? 48 : 34;
       const x = Math.max(8, map.x + 12);

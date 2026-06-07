@@ -81,6 +81,13 @@
     return Math.max(stepDurationMs, route.length * stepDurationMs);
   }
 
+  function getMissionStepDurationMs(mission = {}) {
+    return Math.max(1000, toInteger(
+      mission.stepDurationMs,
+      Math.max(1, toNumber(mission.stepDurationSeconds, 10)) * 1000,
+    ));
+  }
+
   function getMissionProgress(mission = {}, nowMs = Date.now()) {
     const route = normalizeRoute(mission.route);
     if (!route.length) return { progress: 0, segmentIndex: 0, segmentProgress: 0, elapsedMs: 0, durationMs: 0 };
@@ -101,6 +108,78 @@
     const segmentIndex = Math.min(Math.max(0, route.length - 1), Math.floor(scaled));
     const segmentProgress = progress >= 1 ? 1 : Math.max(0, Math.min(1, scaled - segmentIndex));
     return { progress, segmentIndex, segmentProgress, elapsedMs, durationMs };
+  }
+
+  function isExpiredActiveMission(mission = {}, nowMs = Date.now()) {
+    if (!mission || mission.status !== 'active') return false;
+    const completesAtMs = toTimestamp(mission.completesAt, Number.NaN);
+    return Number.isFinite(completesAtMs) && completesAtMs <= toNumber(nowMs, Date.now());
+  }
+
+  function getEffectiveMissionStatus(mission = {}, nowMs = Date.now()) {
+    if (isExpiredActiveMission(mission, nowMs)) return mission.mode === 'random' ? 'ready' : 'idle';
+    return mission.status || '';
+  }
+
+  function getRouteStepRevealTimeMs(mission = {}, step = {}) {
+    const startedAtMs = toTimestamp(mission.startedAt, Number.NaN);
+    if (!Number.isFinite(startedAtMs)) return Number.NaN;
+    const stepIndex = Math.max(1, toInteger(step.step, 1));
+    return startedAtMs + getMissionStepDurationMs(mission) * stepIndex;
+  }
+
+  function isRouteStepTimeRevealed(mission = {}, step = {}, nowMs = Date.now()) {
+    const revealAtMs = getRouteStepRevealTimeMs(mission, step);
+    return Number.isFinite(revealAtMs) && revealAtMs <= toNumber(nowMs, Date.now());
+  }
+
+  function isRouteStepRevealed(mission = {}, step = {}, nowMs = Date.now()) {
+    if (!step) return false;
+    if (step.revealed) return true;
+    const id = step.tileId || tileId(step.q, step.r);
+    const revealedTileIds = new Set((Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : []).map(String));
+    if (revealedTileIds.has(id)) return true;
+    const status = getEffectiveMissionStatus(mission, nowMs);
+    if (['ready', 'idle'].includes(status)) return true;
+    if (mission.status !== 'active') return false;
+    return isRouteStepTimeRevealed(mission, step, nowMs);
+  }
+
+  function deriveMissionForTime(mission = {}, options = {}) {
+    if (!mission || typeof mission !== 'object') return null;
+    const nowMs = toNumber(options.nowMs, Date.now());
+    const route = normalizeRoute(mission.route);
+    const revealedRoute = route.map((step) => ({
+      ...step,
+      revealed: isRouteStepRevealed(mission, step, nowMs),
+      revealedAt: step.revealedAt || (isRouteStepRevealed(mission, step, nowMs)
+        ? new Date(Number.isFinite(getRouteStepRevealTimeMs(mission, step)) ? getRouteStepRevealTimeMs(mission, step) : nowMs).toISOString()
+        : null),
+    }));
+    const revealedTileIds = Array.from(new Set([
+      ...(Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : []),
+      ...revealedRoute.filter((step) => step.revealed).map((step) => step.tileId || tileId(step.q, step.r)),
+    ]));
+    const status = getEffectiveMissionStatus(mission, nowMs);
+    const lastRevealed = [...revealedRoute].reverse().find((step) => step.revealed) || null;
+    const nextUnrevealed = revealedRoute.find((step) => !step.revealed) || null;
+    const nextStepAtMs = nextUnrevealed ? getRouteStepRevealTimeMs(mission, nextUnrevealed) : Number.NaN;
+    const nextStepAt = Number.isFinite(nextStepAtMs) && status === 'active'
+      ? new Date(nextStepAtMs).toISOString()
+      : null;
+    const target = normalizeCoord(mission.target || route.at(-1), route.at(-1) || mission.position || mission.origin || {});
+    const positionSource = status === 'idle'
+      ? target
+      : (lastRevealed || mission.position || mission.origin || target);
+    return {
+      ...mission,
+      status,
+      route: revealedRoute,
+      revealedTileIds,
+      position: normalizeCoord(positionSource, target),
+      nextStepAt,
+      remainingSeconds: getRemainingSeconds({ ...mission, status, nextStepAt }, nowMs),
+    };
   }
 
   function lerp(a, b, t) {
@@ -150,8 +229,10 @@
   }
 
   function buildActorFromMission(mission = {}, options = {}) {
-    if (!mission || !['active', 'idle'].includes(mission.status)) return null;
+    if (!mission) return null;
     const nowMs = toNumber(options.nowMs, Date.now());
+    const status = getEffectiveMissionStatus(mission, nowMs);
+    if (!['active', 'idle'].includes(status)) return null;
     const route = normalizeRoute(mission.route);
     if (!route.length) return null;
     const origin = normalizeCoord(mission.origin || {});
@@ -159,16 +240,16 @@
     const position = mission.position && typeof mission.position === 'object'
       ? normalizeCoord(mission.position, target)
       : target;
-    const current = mission.status === 'idle' ? position : getCurrentCoord(mission, nowMs);
+    const current = status === 'idle' ? target : getCurrentCoord(mission, nowMs);
     const stopTile = chooseStopTile(mission, nowMs);
     const formation = mission.formation || {};
     return {
       id: mission.id || '',
       missionId: mission.id || '',
       type: 'scout',
-      status: mission.status,
+      status,
       unitKey: mission.unitKey || 'scout_squad_default',
-      animationId: mission.status === 'idle' ? 'idle' : 'move',
+      animationId: status === 'idle' ? 'idle' : 'move',
       origin,
       target,
       current,
@@ -282,7 +363,14 @@
     normalizeRoute,
     getMissionPath,
     getMissionDurationMs,
+    getMissionStepDurationMs,
     getMissionProgress,
+    isExpiredActiveMission,
+    getEffectiveMissionStatus,
+    getRouteStepRevealTimeMs,
+    isRouteStepTimeRevealed,
+    isRouteStepRevealed,
+    deriveMissionForTime,
     getCurrentCoord,
     chooseStopTile,
     getRemainingSeconds,

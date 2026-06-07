@@ -23,6 +23,30 @@
     return null;
   })();
 
+  const sharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMarchSystem');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const sharedWorldTime = (() => {
+    if (global.WorldTime) return global.WorldTime;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldTime');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldTileMapPresenter {
     static toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -41,18 +65,16 @@
       return sharedTileMapGeometry || null;
     }
 
-    static getWorldTileMapSignature(territoryState = {}, worldExplorerState = {}) {
+    static getEpochNowMs(options = {}) {
+      return sharedWorldTime?.getEpochNowMs?.(options, Date.now()) ?? Date.now();
+    }
+
+    static getWorldTileMapSignature(territoryState = {}, worldExplorerState = {}, options = {}) {
       const worldMap = territoryState.worldMap || {};
       const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
       const sites = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const missions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
-      const explorerMissions = Array.isArray(worldExplorerState.missions)
-        ? worldExplorerState.missions
-        : [
-          worldExplorerState.activeMission,
-          ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
-          ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
-        ].filter(Boolean);
+      const explorerMissions = this.getWorldExplorerMissions(worldExplorerState, options);
       return JSON.stringify({
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
@@ -102,6 +124,7 @@
         explorerMissions: explorerMissions.map((mission) => ({
           id: mission.id,
           status: mission.status,
+          position: mission.position || null,
           route: mission.route || [],
           plannedTiles: (mission.plannedTiles || []).map((tile) => ({
             id: tile.id,
@@ -264,7 +287,7 @@
       };
     }
 
-    static getWorldExplorerMissions(worldExplorerState = {}) {
+    static getWorldExplorerMissions(worldExplorerState = {}, options = {}) {
       const fromList = Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : [];
       const fromSlots = [
         worldExplorerState.activeMission,
@@ -294,17 +317,27 @@
           revealedTileIds: keepRichArray('revealedTileIds'),
         });
       });
-      return [...byId.values()];
+      const nowMs = this.getEpochNowMs(options);
+      return [...byId.values()].map((mission) => (
+        sharedWorldMarchSystem?.deriveMissionForTime
+          ? sharedWorldMarchSystem.deriveMissionForTime(mission, { nowMs })
+          : mission
+      )).filter(Boolean);
     }
 
-    static getWorldExplorerPlannedTiles(worldExplorerState = {}) {
+    static getWorldExplorerPlannedTiles(worldExplorerState = {}, options = {}) {
       const byId = new Map();
-      this.getWorldExplorerMissions(worldExplorerState).forEach((mission) => {
+      this.getWorldExplorerMissions(worldExplorerState, options).forEach((mission) => {
+        const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
+        const revealedRouteTileIds = new Set((Array.isArray(mission.route) ? mission.route : [])
+          .filter((step) => step?.revealed)
+          .map((step) => step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`));
         (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => {
           if (!tile || typeof tile !== 'object') return;
           const q = this.toInteger(tile.q);
           const r = this.toInteger(tile.r);
           const id = tile.id || `tile_${q}_${r}`;
+          if (!revealedTileIds.has(id) && !revealedRouteTileIds.has(id)) return;
           byId.set(id, {
             ...tile,
             id,
@@ -319,9 +352,9 @@
       return [...byId.values()];
     }
 
-    static getWorldExplorerPlannedSites(worldExplorerState = {}) {
+    static getWorldExplorerPlannedSites(worldExplorerState = {}, options = {}) {
       const byId = new Map();
-      this.getWorldExplorerMissions(worldExplorerState).forEach((mission) => {
+      this.getWorldExplorerMissions(worldExplorerState, options).forEach((mission) => {
         const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
         const routeByTileId = new Map((Array.isArray(mission.route) ? mission.route : []).map((step) => [
           step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
@@ -361,15 +394,15 @@
       const worldMap = territoryState.worldMap || {};
       const rawTiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
       const worldExplorerState = options.worldExplorerState || {};
-      const plannedTiles = this.getWorldExplorerPlannedTiles(worldExplorerState);
+      const plannedTiles = this.getWorldExplorerPlannedTiles(worldExplorerState, options);
       const rawTileById = new Map(rawTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile]));
       plannedTiles.forEach((tile) => {
         const existing = rawTileById.get(tile.id);
-        rawTileById.set(tile.id, existing ? { ...tile, ...existing } : tile);
+        rawTileById.set(tile.id, existing ? { ...existing, ...tile } : tile);
       });
       const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const territoryById = new Map(territories.map((site) => [site.id, site]));
-      const plannedSites = this.getWorldExplorerPlannedSites(worldExplorerState)
+      const plannedSites = this.getWorldExplorerPlannedSites(worldExplorerState, options)
         .filter((site) => !territoryById.has(site.id));
       plannedSites.forEach((site) => {
         const tileId = this.getWorldTileId(site.x, site.y);
@@ -425,7 +458,7 @@
           })),
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
         }));
-      const explorerScouts = this.getWorldExplorerMissions(worldExplorerState)
+      const explorerScouts = this.getWorldExplorerMissions(worldExplorerState, options)
         .filter((mission) => ['active', 'ready', 'idle'].includes(mission.status))
         .map((mission) => this.normalizeWorldExplorerMission(mission))
         .filter(Boolean);
@@ -448,7 +481,7 @@
         }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
       return {
-        signature: this.getWorldTileMapSignature(territoryState, worldExplorerState),
+        signature: this.getWorldTileMapSignature(territoryState, worldExplorerState, options),
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
         pan: {

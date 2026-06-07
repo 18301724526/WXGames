@@ -105,6 +105,35 @@ test('WorldMarchHudCanvasRenderer allows idle formations to march again', () => 
   assert.equal(start.action.disabled, false);
 });
 
+test('WorldMarchHudCanvasRenderer allows expired active manual marches to reuse the formation', () => {
+  const host = createHost({
+    epochNowMs: new Date('2026-06-06T00:00:25.000Z').getTime(),
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({
+    activeCityId: 'capital',
+    worldExplorerState: {
+      activeMission: {
+        id: 'explore-1',
+        status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
+        completesAt: '2026-06-06T00:00:20.000Z',
+        route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+        formation: { cityId: 'capital', slot: 1 },
+      },
+      busyFormations: [{ cityId: 'capital', slot: 1, missionId: 'explore-1', status: 'active' }],
+    },
+  }, {
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
+  assert.equal(Boolean(start), true);
+  assert.equal(start.action.disabled, false);
+});
+
 test('WorldMarchHudCanvasRenderer reads formations from last game state when refreshed with action state', () => {
   const host = createHost({
     lastGame: {

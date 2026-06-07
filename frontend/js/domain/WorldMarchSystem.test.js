@@ -71,6 +71,35 @@ test('WorldMarchSystem renders idle missions at their position without remaining
   assert.equal(actors[0].remainingSeconds, 0);
 });
 
+test('WorldMarchSystem derives expired manual marches as idle at the target', () => {
+  const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
+  const mission = createMission({
+    status: 'active',
+    mode: 'manual',
+    position: { q: 0, r: 0, tileId: 'tile_0_0' },
+  });
+  const derived = WorldMarchSystem.deriveMissionForTime(mission, { nowMs });
+  const actor = WorldMarchSystem.buildActorFromMission(mission, { nowMs });
+
+  assert.equal(derived.status, 'idle');
+  assert.equal(derived.route.every((step) => step.revealed), true);
+  assert.equal(derived.position.tileId, 'tile_2_0');
+  assert.equal(actor.status, 'idle');
+  assert.equal(actor.animationId, 'idle');
+  assert.equal(actor.current.tileId, 'tile_2_0');
+  assert.equal(actor.remainingSeconds, 0);
+});
+
+test('WorldMarchSystem derives expired random explores as ready', () => {
+  const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
+  const derived = WorldMarchSystem.deriveMissionForTime(createMission({
+    mode: 'random',
+  }), { nowMs });
+
+  assert.equal(derived.status, 'ready');
+  assert.equal(derived.route.every((step) => step.revealed), true);
+});
+
 test('WorldMarchSystem chooses previous tile before halfway through a segment', () => {
   const nowMs = new Date('2026-06-06T00:00:03.000Z').getTime();
   const stopTile = WorldMarchSystem.chooseStopTile(createMission(), nowMs);

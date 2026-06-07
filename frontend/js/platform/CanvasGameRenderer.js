@@ -1066,6 +1066,8 @@
         panX,
         panY,
         worldExplorerState: options.worldExplorerState || {},
+        epochNowMs: options.epochNowMs,
+        serverNowMs: options.serverNowMs,
       });
       this.worldTileViewCache = {
         territoryState,

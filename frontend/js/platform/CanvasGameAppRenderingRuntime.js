@@ -465,7 +465,7 @@
             const runtime = coordinator?.getMapRuntime?.();
             if (!coordinator?.canRender?.(this.state)) return false;
             if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
-            return Boolean(options.force || runtime.isMapBakeDirty(this.state));
+            return Boolean(options.force || runtime.isMapBakeDirty(this.state, options));
           },
 
       refreshWorldMapLayerFromSnapshot(options = {}) {

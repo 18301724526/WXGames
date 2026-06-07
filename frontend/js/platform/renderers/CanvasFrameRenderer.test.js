@@ -220,8 +220,15 @@ test('CanvasFrameRenderer renders explorer countdown and claim controls on the U
     worldExplorerState: {
       activeMission: {
         status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
         nextStepAt: '2026-06-06T00:00:10.000Z',
-        route: [{ revealed: false }],
+        completesAt: '2026-06-06T00:00:20.000Z',
+        stepDurationSeconds: 10,
+        route: [
+          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+          { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+        ],
       },
     },
   }, 96, {});
@@ -242,14 +249,46 @@ test('CanvasFrameRenderer keeps explorer countdown on epoch time, not animation 
     worldExplorerState: {
       activeMission: {
         status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
         nextStepAt: '2026-06-06T00:00:10.000Z',
-        route: [{ revealed: false }],
+        completesAt: '2026-06-06T00:00:20.000Z',
+        stepDurationSeconds: 10,
+        route: [
+          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+          { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+        ],
       },
     },
   }, 96, {});
 
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), true);
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('1780')), false);
+});
+
+test('CanvasFrameRenderer treats expired manual active mission as idle in explorer HUD', () => {
+  const activeHost = createHost({
+    epochNowMs: new Date('2026-06-06T00:00:25.000Z').getTime(),
+  });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({
+    worldExplorerState: {
+      activeMission: {
+        id: 'manual-1',
+        status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
+        completesAt: '2026-06-06T00:00:20.000Z',
+        stepDurationSeconds: 10,
+        route: [
+          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+          { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+        ],
+      },
+    },
+  }, 96, {});
+
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '0s'), false);
 });
 
 test('CanvasFrameRenderer renders debug reset as canvas hit target above tutorial shields', () => {

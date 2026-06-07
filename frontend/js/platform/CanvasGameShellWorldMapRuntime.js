@@ -157,7 +157,7 @@ shouldRenderRuntimeWorldMap(state = this.lastGame?.state, options = {}) {
       const runtime = coordinator?.getMapRuntime?.();
       if (!coordinator?.canRender?.(state)) return false;
       if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
-      return Boolean(options.force || runtime.isMapBakeDirty(state));
+      return Boolean(options.force || runtime.isMapBakeDirty(state, options));
     },
 
 getFrozenWorldMapWaterTimeMs() {

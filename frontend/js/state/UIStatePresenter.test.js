@@ -143,6 +143,7 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   const options = {
     panX: 12.5,
     panY: -4,
+    epochNowMs: new Date('2026-06-06T00:00:15.000Z').getTime(),
     worldExplorerState: {
       missions: [{
         id: 'explore-1',
@@ -175,6 +176,10 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
       activeMission: {
         id: 'explore-1',
         status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
+        completesAt: '2026-06-06T00:00:20.000Z',
+        stepDurationSeconds: 10,
         route: [
           { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
           { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
@@ -193,7 +198,7 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
 
   assert.deepEqual(view, direct);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_0' && tile.terrain === 'plains'), true);
-  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0' && tile.terrain === 'forest'), true);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0' && tile.terrain === 'forest'), false);
   assert.equal(view.pan.x, 12.5);
   assert.equal(view.pan.y, -4);
   assert.equal(view.sites[0].id, 'capital');
@@ -209,9 +214,64 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(typeof UIStatePresenter.getTileMapGeometry().sortTilesForIsoDraw, 'function');
   assert.deepEqual(UIStatePresenter.normalizeWorldTile({ q: 3, r: -1, terrain: 'forest' }).feature.key, 'treeCluster');
   assert.deepEqual(UIStatePresenter.getWorldExplorerMissions(options.worldExplorerState).map((mission) => mission.id), ['explore-1']);
-  assert.equal(UIStatePresenter.getWorldExplorerPlannedTiles(options.worldExplorerState).length, 2);
-  assert.equal(UIStatePresenter.getWorldExplorerPlannedSites(options.worldExplorerState).length, 1);
-  assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState));
+  assert.equal(UIStatePresenter.getWorldExplorerPlannedTiles(options.worldExplorerState, options).length, 1);
+  assert.equal(UIStatePresenter.getWorldExplorerPlannedSites(options.worldExplorerState, options).length, 1);
+  assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options));
+});
+
+test('UIStatePresenter reveals manual world march planned tiles by route time', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'seed',
+      tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', visibility: 'scouted' }],
+    },
+    territories: [],
+  };
+  const worldExplorerState = {
+    activeMission: {
+      id: 'manual-1',
+      status: 'active',
+      mode: 'manual',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      completesAt: '2026-06-06T00:00:20.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+      ],
+      plannedTiles: [
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', visibility: 'scouted' },
+        { id: 'tile_2_0', q: 2, r: 0, terrain: 'hills', visibility: 'scouted' },
+      ],
+      plannedSites: [{
+        tileId: 'tile_2_0',
+        q: 2,
+        r: 0,
+        siteId: 'site_2_0',
+        materialized: false,
+        site: { id: 'site_2_0', x: 2, y: 0, type: 'town', owner: 'neutral', status: 'discovered' },
+      }],
+      revealedTileIds: [],
+    },
+  };
+  const before = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const afterFirst = new Date('2026-06-06T00:00:15.000Z').getTime();
+  const afterDone = new Date('2026-06-06T00:00:25.000Z').getTime();
+
+  assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: before }).map((tile) => tile.id), []);
+  assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: afterFirst }).map((tile) => tile.id), ['tile_1_0']);
+  assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: afterDone }).map((tile) => tile.id), ['tile_1_0', 'tile_2_0']);
+
+  const doneView = UIStatePresenter.buildWorldTileMapViewState(territoryState, {
+    worldExplorerState,
+    epochNowMs: afterDone,
+  });
+  assert.equal(doneView.tiles.some((tile) => tile.id === 'tile_2_0' && tile.terrain === 'hills'), true);
+  assert.equal(doneView.sites.some((site) => site.id === 'site_2_0'), true);
+  assert.equal(doneView.activeScouts.find((mission) => mission.id === 'manual-1').status, 'idle');
 });
 
 test('UIStatePresenter delegates famous person view state while preserving facade contracts', () => {

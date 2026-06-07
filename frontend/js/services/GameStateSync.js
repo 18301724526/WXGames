@@ -31,7 +31,6 @@
           if (this.onConnectionState) this.onConnectionState({ status: 'online', failureCount: 0, data });
         }
         if (this.onHeartbeat) this.onHeartbeat(data);
-        else if (this.onState && data?.gameState) this.onState(data);
         return data;
       } catch (error) {
         this.failureCount += 1;

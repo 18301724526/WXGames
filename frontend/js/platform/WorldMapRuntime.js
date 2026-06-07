@@ -154,11 +154,11 @@
       return this.camera;
     }
 
-    getMapDataSignature(state = this.getState()) {
+    getMapDataSignature(state = this.getState(), options = {}) {
       const territoryState = state?.territoryState || {};
       const worldExplorerState = state?.worldExplorerState || {};
       if (typeof this.presenter?.getWorldTileMapSignature === 'function') {
-        return this.presenter.getWorldTileMapSignature(territoryState, worldExplorerState);
+        return this.presenter.getWorldTileMapSignature(territoryState, worldExplorerState, options);
       }
       const worldMap = territoryState.worldMap || {};
       const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
@@ -213,8 +213,8 @@
       });
     }
 
-    syncMapDataSignature(state = this.getState()) {
-      const signature = this.getMapDataSignature(state);
+    syncMapDataSignature(state = this.getState(), options = {}) {
+      const signature = this.getMapDataSignature(state, options);
       if (signature === this.lastMapDataSignature) return false;
       const hadPreviousSignature = Boolean(this.lastMapDataSignature);
       this.lastMapDataSignature = signature;
@@ -229,13 +229,13 @@
       return hadPreviousSignature;
     }
 
-    getCurrentMapDataSignature(state = this.getState()) {
-      return this.getMapDataSignature(state);
+    getCurrentMapDataSignature(state = this.getState(), options = {}) {
+      return this.getMapDataSignature(state, options);
     }
 
-    isMapBakeDirty(state = this.getState()) {
+    isMapBakeDirty(state = this.getState(), options = {}) {
       if (!this.hasBakedMapLayer || this.mapBakeDirty) return true;
-      return this.getCurrentMapDataSignature(state) !== this.lastMapDataSignature;
+      return this.getCurrentMapDataSignature(state, options) !== this.lastMapDataSignature;
     }
 
     invalidateBake() {
@@ -501,9 +501,13 @@
         return false;
       }
       const snapshotOnly = Boolean(options.snapshotOnly || this.isDragging());
+      const renderOptions = {
+        ...options,
+        epochNowMs: options.epochNowMs || Date.now(),
+      };
       const canUseSnapshotLayer = Boolean(snapshotOnly
         && this.hasBakedMapLayer
-        && !this.isMapBakeDirty(state)
+        && !this.isMapBakeDirty(state, renderOptions)
         && typeof this.renderer.renderWorldMapSnapshotLayer === 'function');
       const now = this.now();
       if (!options.force && this.lastRenderAt && now - this.lastRenderAt < Math.max(1, this.frameMs - 1)) return false;
@@ -513,6 +517,7 @@
       if (canUseSnapshotLayer) {
         const renderedSnapshot = this.renderer.renderWorldMapSnapshotLayer(state, {
           ...options,
+          epochNowMs: renderOptions.epochNowMs,
           activeTab: 'military',
           isMapHome: true,
           territoryUiState: uiState,
@@ -526,9 +531,10 @@
         this.lastLayout = this.getLayerLayout(state, { topBarBottom });
         return renderedSnapshot;
       }
-      this.syncMapDataSignature(state);
+      this.syncMapDataSignature(state, renderOptions);
       const rendered = this.renderer.renderWorldMapLayer(state, {
         ...options,
+        epochNowMs: renderOptions.epochNowMs,
         activeTab: 'military',
         isMapHome: true,
         territoryUiState: uiState,
