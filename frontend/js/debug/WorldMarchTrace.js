@@ -1,5 +1,5 @@
 (function (global) {
-  const URL_KEYS = ['worldMarchTrace', 'codexMarchTrace'];
+  const URL_KEYS = ['worldMarchTrace', 'codexMarchTrace', 'codexTrace'];
   const STORAGE_KEY = 'worldMarchTrace';
   const MAX_DEDUP_ENTRIES = 300;
   const deduped = new Map();

@@ -389,6 +389,9 @@
       if (this.URLCtor) {
         try {
           const url = new this.URLCtor(href);
+          if (url.searchParams.has('worldMarchTrace') || url.searchParams.has('codexMarchTrace') || url.searchParams.has('codexTrace')) {
+            url.searchParams.set('worldMarchTrace', '1');
+          }
           url.searchParams.set('reload', this.now().toString());
           return url.toString();
         } catch (error) {

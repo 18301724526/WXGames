@@ -65,6 +65,13 @@
             body: trace.summarizeActionBody?.(tracedBody),
             payload: trace.summarizeApiPayload?.(data) || data,
           });
+          if (!trace?.enabled?.() && global.console?.error) {
+            global.console.error('[GameAPI] world march action failed', {
+              status: response.status,
+              body: trace?.summarizeActionBody?.(tracedBody) || tracedBody,
+              payload: trace?.summarizeApiPayload?.(data) || data,
+            });
+          }
         } else if (isWorldMarchSync) {
           trace?.error?.('api:syncError', {
             status: response.status,
