@@ -4,6 +4,11 @@
       this.baseUrl = baseUrl;
       this.token = token || null;
       this.transport = options.transport || null;
+      global.WorldMarchTrace?.log?.('api:boot', {
+        baseUrl,
+        hasToken: Boolean(this.token),
+        trace: global.WorldMarchTrace?.getBootState?.(),
+      });
     }
 
     setToken(token) {

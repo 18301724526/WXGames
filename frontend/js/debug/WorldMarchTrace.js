@@ -40,6 +40,19 @@
     return readStorageFlag();
   }
 
+  function getBootState() {
+    let storageValue = null;
+    try {
+      storageValue = global?.localStorage?.getItem?.(STORAGE_KEY) ?? null;
+    } catch (_) {}
+    return {
+      enabled: enabled(),
+      search: global?.location?.search || '',
+      storageKey: STORAGE_KEY,
+      storageValue,
+    };
+  }
+
   function setEnabled(value) {
     try {
       if (value) global?.localStorage?.setItem?.(STORAGE_KEY, '1');
@@ -258,6 +271,7 @@
   const api = {
     enabled,
     setEnabled,
+    getBootState,
     log,
     logDedup,
     warn,
@@ -274,5 +288,10 @@
   };
 
   global.WorldMarchTrace = api;
+  try {
+    const bootState = getBootState();
+    const writer = bootState.enabled ? global?.console?.warn : global?.console?.info;
+    writer?.call?.(global.console, '[WorldMarchTrace]', 'boot', bootState);
+  } catch (_) {}
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
