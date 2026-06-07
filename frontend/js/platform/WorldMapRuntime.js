@@ -1,4 +1,16 @@
 (function (global) {
+  const WorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMarchSystem');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapRuntime {
     constructor(options = {}) {
       this.runtime = options.runtime || null;
@@ -29,6 +41,7 @@
       this.hasBakedMapLayer = false;
       this.mapBakeDirty = true;
       this.lastMapDataSignature = '';
+      this.lastTileMapContext = null;
     }
 
     setRenderer(renderer) {
@@ -323,7 +336,13 @@
 
     handleTap(point = {}, event = null) {
       const action = this.getHitTarget(point);
-      if (!action || action.disabled || action.type === 'worldMapDrag') return false;
+      if (!action || action.disabled) return false;
+      if (action.type === 'worldMapDrag') {
+        const inferredAction = this.getBackgroundMarchTargetAction(point);
+        if (!inferredAction) return false;
+        if (this.onAction) return this.onAction(inferredAction, event) !== false;
+        return false;
+      }
       if (action.type === 'resetWorldPan') {
         this.resetCamera({ source: 'resetWorldPan', render: !this.onAction });
       }
@@ -421,6 +440,31 @@
       return this.hitTargets;
     }
 
+    getBackgroundMarchTargetAction(point = {}) {
+      const context = this.lastTileMapContext || this.renderer?.lastWorldTileMapContext || null;
+      const tileMapView = context?.tileMapView || null;
+      const viewport = context?.viewport || null;
+      const geometry = context?.geometry || tileMapView?.geometry || viewport?.geometry || null;
+      if (!tileMapView || !viewport || !geometry || !WorldMarchSystem?.screenPointToAxialTile) return null;
+      const inferred = WorldMarchSystem.screenPointToAxialTile(point, viewport, geometry);
+      if (!Number.isFinite(Number(inferred?.q)) || !Number.isFinite(Number(inferred?.r))) return null;
+      const knownTile = (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find((tile) => (
+        (tile.id && tile.id === inferred.tileId)
+        || (Math.floor(Number(tile.q)) === inferred.q && Math.floor(Number(tile.r)) === inferred.r)
+      )) || null;
+      const known = Boolean(knownTile && knownTile.visibility !== 'unknown' && knownTile.discovered !== false);
+      return {
+        type: 'selectWorldMarchTarget',
+        tileId: knownTile?.id || inferred.tileId,
+        targetQ: inferred.q,
+        targetR: inferred.r,
+        known,
+        terrain: known ? (knownTile.terrain || '') : '',
+        terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : '未知',
+        background: true,
+      };
+    }
+
     render(options = {}) {
       const state = options.state || this.getState();
       if (!this.canRender(state)) {
@@ -474,6 +518,7 @@
       this.lastLayout = this.getLayerLayout(state, { topBarBottom });
       if (rendered) {
         this.syncWaterAnimationFlag(uiState);
+        this.lastTileMapContext = this.renderer?.lastWorldTileMapContext || null;
         this.hasBakedMapLayer = true;
         this.mapBakeDirty = false;
         this.markBakedCamera(this.camera);

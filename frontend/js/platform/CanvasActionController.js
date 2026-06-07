@@ -1384,12 +1384,16 @@
       const game = this.getGameHost();
       game?.territoryController?.closeSiteDialog?.({ render: false });
       const uiState = this.getSharedTerritoryUiState();
-      uiState.worldMarchTarget = {
+      const nextTarget = {
         q,
         r,
         tileId: action.tileId || `tile_${q}_${r}`,
         pickerOpen: false,
       };
+      if (action.known !== undefined) nextTarget.known = Boolean(action.known);
+      if (action.terrain) nextTarget.terrain = action.terrain;
+      if (action.terrainLabel) nextTarget.terrainLabel = action.terrainLabel;
+      uiState.worldMarchTarget = nextTarget;
       uiState.selectedWorldActorId = '';
       uiState.selectedSiteId = '';
       uiState.expeditionConfigSiteId = '';
@@ -1410,12 +1414,18 @@
       const r = Math.floor(Number(action.targetR ?? action.r));
       if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
       const uiState = this.getSharedTerritoryUiState();
-      uiState.worldMarchTarget = {
+      const previousTarget = uiState.worldMarchTarget || {};
+      const nextTarget = {
         q,
         r,
         tileId: action.tileId || `tile_${q}_${r}`,
         pickerOpen: true,
       };
+      if (action.known !== undefined) nextTarget.known = Boolean(action.known);
+      else if (previousTarget.known !== undefined) nextTarget.known = Boolean(previousTarget.known);
+      if (action.terrain || previousTarget.terrain) nextTarget.terrain = action.terrain || previousTarget.terrain;
+      if (action.terrainLabel || previousTarget.terrainLabel) nextTarget.terrainLabel = action.terrainLabel || previousTarget.terrainLabel;
+      uiState.worldMarchTarget = nextTarget;
       uiState.selectedWorldActorId = '';
       return this.refreshWorldMarchLayer(action);
     }

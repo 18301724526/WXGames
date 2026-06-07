@@ -69,3 +69,41 @@ test('WorldMapRuntime keeps the topmost background tile action over map drag', (
     background: true,
   });
 });
+
+test('WorldMapRuntime converts map background taps into fog march targets', () => {
+  const calls = [];
+  const renderer = {
+    renderWorldMapLayer() {},
+    lastWorldTileMapContext: {
+      tileMapView: {
+        geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainLabel: '平原', visibility: 'scouted' }],
+      },
+      viewport: {
+        originX: 100,
+        originY: 100,
+        panX: 0,
+        panY: 0,
+        scale: 0.5,
+      },
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer,
+    presenter: {},
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  runtime.hitTargets = [
+    { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+  ];
+  runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
+
+  assert.equal(runtime.handleTap({ x: 148, y: 220 }), true);
+  assert.equal(calls[0].type, 'selectWorldMarchTarget');
+  assert.equal(calls[0].known, false);
+  assert.equal(calls[0].terrainLabel, '未知');
+});

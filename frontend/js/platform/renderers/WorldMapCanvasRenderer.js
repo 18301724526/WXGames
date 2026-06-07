@@ -1844,6 +1844,9 @@
           tileId: tile.id,
           targetQ: tile.q,
           targetR: tile.r,
+          known: tile.visibility !== 'unknown' && tile.discovered !== false,
+          terrain: tile.terrain || '',
+          terrainLabel: tile.terrainLabel || tile.terrain || '',
           background: true,
         });
       });
@@ -1884,6 +1887,12 @@
         geometry,
       };
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
+      this.lastWorldTileMapContext = {
+        tileMapView,
+        viewport,
+        geometry,
+        frame,
+      };
       const hitTargetsOnly = Boolean(options.hitTargetsOnly);
       const snapshotOnly = Boolean(options.snapshotOnly);
       const previousFastDragActive = this.worldTileFastDragActive;

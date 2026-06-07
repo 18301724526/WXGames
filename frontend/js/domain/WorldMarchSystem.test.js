@@ -54,3 +54,13 @@ test('WorldMarchSystem maps a screen point to the nearest rendered tile', () => 
 
   assert.equal(target.tileId, 'tile_1_0');
 });
+
+test('WorldMarchSystem maps fog screen points back to axial tile coordinates', () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const viewport = { originX: 100, originY: 100, panX: 0, panY: 0, scale: 0.5 };
+  const point = WorldMarchSystem.getTileScreenCenter({ q: 3, r: -2 }, viewport, geometry);
+  const target = WorldMarchSystem.screenPointToAxialTile(point, viewport, geometry);
+
+  assert.equal(target.tileId, 'tile_3_-2');
+  assert.equal(target.inferred, true);
+});

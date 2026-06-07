@@ -217,6 +217,27 @@
     return best;
   }
 
+  function screenPointToAxialTile(point = {}, viewport = {}, geometry = {}) {
+    const scale = Math.max(0.0001, toNumber(viewport.scale, 1));
+    const stepX = Math.max(1, toNumber(geometry.stepX, 96));
+    const stepY = Math.max(1, toNumber(geometry.stepY, 48));
+    const localX = (toNumber(point.x) - toNumber(viewport.originX) - toNumber(viewport.panX)) / scale;
+    const localY = (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
+    const projectedQMinusR = localX / stepX;
+    const projectedQPlusR = localY / stepY;
+    const q = Math.round((projectedQMinusR + projectedQPlusR) / 2);
+    const r = Math.round((projectedQPlusR - projectedQMinusR) / 2);
+    return {
+      id: tileId(q, r),
+      q,
+      r,
+      tileId: tileId(q, r),
+      center: getTileScreenCenter({ q, r }, viewport, geometry),
+      tile: null,
+      inferred: true,
+    };
+  }
+
   function getMarchTargetUiState(uiState = {}) {
     const target = uiState.worldMarchTarget || null;
     if (!target || typeof target !== 'object') return null;
@@ -228,6 +249,9 @@
       r,
       tileId: target.tileId || tileId(q, r),
       pickerOpen: Boolean(target.pickerOpen),
+      known: target.known === undefined ? undefined : Boolean(target.known),
+      terrain: target.terrain || '',
+      terrainLabel: target.terrainLabel || '',
     };
   }
 
@@ -247,6 +271,7 @@
     buildActors,
     getTileScreenCenter,
     screenPointToNearestTile,
+    screenPointToAxialTile,
     getMarchTargetUiState,
   };
 

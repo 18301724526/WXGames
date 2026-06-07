@@ -55,25 +55,63 @@
       };
     }
 
+    getTargetIntel(target = {}) {
+      const hasTerrainLabel = Boolean(target.terrainLabel || target.terrain);
+      const known = target.known === true
+        || (target.known !== false && hasTerrainLabel && target.terrainLabel !== '未知');
+      const terrainLabel = known
+        ? (target.terrainLabel || target.terrain || '地形')
+        : '未知';
+      return {
+        known,
+        title: known ? terrainLabel : '未知区域',
+        subtitle: known ? '已侦明地形' : '派遣队伍揭开迷雾',
+      };
+    }
+
     renderTargetHud(target = {}, viewport = {}, geometry = {}, frame = {}) {
       const point = this.getTileScreenCenter(target, viewport, geometry);
-      const rect = this.clampHudRect({
-        x: point.x + 18,
-        y: point.y - 64,
-        width: 112,
-        height: 54,
+      const intel = this.getTargetIntel(target);
+      const infoRect = this.clampHudRect({
+        x: point.x - 74,
+        y: point.y - 86,
+        width: 148,
+        height: 48,
       }, frame);
-      this.drawSmallHudPanel(rect.x, rect.y, rect.width, rect.height, `目标 ${target.q},${target.r}`);
-      const buttonW = 58;
-      const buttonH = 24;
-      const buttonX = rect.x + rect.width - buttonW - 8;
-      const buttonY = rect.y + 22;
-      this.drawButton(buttonX, buttonY, buttonW, buttonH, '行军', { size: 11, radius: 7 });
-      this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
+      let buttonRect = this.clampHudRect({
+        x: infoRect.x + infoRect.width + 8,
+        y: infoRect.y + 8,
+        width: 68,
+        height: 32,
+      }, frame);
+      const overlapsInfo = buttonRect.x < infoRect.x + infoRect.width + 4
+        && buttonRect.y < infoRect.y + infoRect.height + 4;
+      if (overlapsInfo) {
+        buttonRect = this.clampHudRect({
+          x: infoRect.x + infoRect.width - 68,
+          y: infoRect.y + infoRect.height + 8,
+          width: 68,
+          height: 32,
+        }, frame);
+      }
+      this.drawSmallHudPanel(infoRect.x, infoRect.y, infoRect.width, infoRect.height, intel.title);
+      this.drawText(intel.subtitle, infoRect.x + 12, infoRect.y + 31, {
+        size: 10,
+        color: intel.known ? '#74d3a0' : '#aeb0b8',
+      });
+      this.drawButton(buttonRect.x, buttonRect.y, buttonRect.width, buttonRect.height, '行军', {
+        size: 13,
+        radius: 8,
+        active: true,
+      });
+      this.addHitTarget({ x: buttonRect.x, y: buttonRect.y, width: buttonRect.width, height: buttonRect.height }, {
         type: 'openWorldMarchFormationPicker',
         targetQ: target.q,
         targetR: target.r,
         tileId: target.tileId,
+        known: target.known,
+        terrain: target.terrain,
+        terrainLabel: target.terrainLabel,
       });
       return true;
     }
@@ -82,13 +120,19 @@
       const view = this.presenter?.buildMilitaryViewState?.(state) || {};
       const formations = Array.isArray(view.formations) ? view.formations.slice(0, 3) : [];
       const width = Math.min(340, Math.max(260, (Number(frame.width) || this.width || 390) - 28));
-      const height = 152;
+      const height = 148;
       const x = (Number(frame.x) || 0) + ((Number(frame.width) || this.width || 390) - width) / 2;
-      const y = (Number(frame.y) || 0) + Math.max(76, (Number(frame.height) || this.height || 844) - height - 76);
+      const frameY = Number(frame.y) || 0;
+      const frameH = Number(frame.height) || this.height || 844;
+      const minY = frameY + 8;
+      const maxY = frameY + Math.max(8, frameH - height - 8);
+      const preferredY = frameY + Math.max(74, Math.floor(frameH * 0.34));
+      const y = Math.max(minY, Math.min(maxY, preferredY));
+      const intel = this.getTargetIntel(target);
       this.drawSmallHudPanel(x, y, width, height, '选择出征队伍');
-      this.drawText(`目的地 ${target.q},${target.r}`, x + width - 12, y + 13, {
+      this.drawText(intel.title, x + width - 12, y + 13, {
         size: 11,
-        color: '#74d3a0',
+        color: intel.known ? '#74d3a0' : '#aeb0b8',
         align: 'right',
       });
       const gap = 8;
@@ -105,7 +149,7 @@
           radius: 7,
           inset: 'rgba(255, 231, 184, 0.05)',
         });
-        this.drawText(this.truncateText(formation.name || `部队${index + 1}`, cardW - 10, { size: 11, bold: true }), cardX + cardW / 2, cardY + 16, {
+        this.drawText(this.truncateText(formation.name || `队伍${index + 1}`, cardW - 10, { size: 11, bold: true }), cardX + cardW / 2, cardY + 16, {
           size: 11,
           bold: true,
           color: empty ? '#aeb0b8' : '#ffe6b5',

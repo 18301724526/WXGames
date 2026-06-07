@@ -47,6 +47,7 @@ test('WorldMarchHudCanvasRenderer renders target march action', () => {
   }, { stepX: 96, stepY: 48 }, { x: 0, y: 84, width: 390, height: 696 });
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes(',')), false);
 });
 
 test('WorldMarchHudCanvasRenderer renders formation picker with start action', () => {
@@ -62,6 +63,36 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   assert.equal(Boolean(start), true);
   assert.equal(start.action.targetQ, 2);
   assert.equal(empty.action.disabled, true);
+  assert.equal(start.rect.y >= 84, true);
+  assert.equal(start.rect.y + start.rect.height <= 84 + 696, true);
+});
+
+test('WorldMarchHudCanvasRenderer separates target info and march command', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({}, {
+    worldMarchTarget: { q: -4, r: 2, tileId: 'tile_-4_2', known: false, terrainLabel: '未知' },
+  }, [], {
+    originX: 120,
+    originY: 130,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }, { x: 0, y: 84, width: 390, height: 696 });
+
+  const infoPanel = host.calls.find((call) => call[0] === 'drawPanel' && call[1][2] === 148 && call[1][3] === 48);
+  const marchButton = host.calls.find((call) => call[0] === 'drawButton' && call[1][4] === '行军');
+  assert.equal(Boolean(infoPanel), true);
+  assert.equal(Boolean(marchButton), true);
+  const info = { x: infoPanel[1][0], y: infoPanel[1][1], width: infoPanel[1][2], height: infoPanel[1][3] };
+  const button = { x: marchButton[1][0], y: marchButton[1][1], width: marchButton[1][2], height: marchButton[1][3] };
+  const overlap = button.x < info.x + info.width
+    && button.x + button.width > info.x
+    && button.y < info.y + info.height
+    && button.y + button.height > info.y;
+  assert.equal(overlap, false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '未知区域'), true);
 });
 
 test('WorldMarchHudCanvasRenderer renders selected actor commands', () => {
