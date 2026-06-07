@@ -615,6 +615,10 @@ test('CanvasActionController advances tutorial after selecting a world march tar
       calls.push(['renderCanvasAction', action.type]);
       return true;
     },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['requestWorldMapRenderAnimationFrame', options]);
+      return true;
+    },
   };
   const controller = new CanvasActionController({ host, awaitAsync: true });
 
@@ -638,8 +642,148 @@ test('CanvasActionController advances tutorial after selecting a world march tar
     ['closeSiteDialog', { render: false }],
     ['onWorldMarchTargetSelected', 3, -2],
     ['renderCanvasAction', 'selectWorldMarchTarget'],
+    ['requestWorldMapRenderAnimationFrame', { force: true, invalidateWorldTileView: false }],
     ['refreshCurrentHighlight'],
     ['setTimeout'],
     ['refreshCurrentHighlight'],
   ]);
+});
+
+test('CanvasActionController refreshes world map layer after world march HUD changes', async () => {
+  const calls = [];
+  const shell = {
+    territoryUiState: {},
+    renderCanvasAction(action) {
+      calls.push(['renderCanvasAction', action.type]);
+      return true;
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['requestWorldMapRenderAnimationFrame', options]);
+      return true;
+    },
+    getCanvasGameHost() {
+      return game;
+    },
+  };
+  const game = {
+    canvasShell: shell,
+    territoryUiState: shell.territoryUiState,
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return true;
+    },
+    returnWorldMarch(missionId) {
+      calls.push(['returnWorldMarch', missionId]);
+      return true;
+    },
+    stopWorldMarch(missionId, options) {
+      calls.push(['stopWorldMarch', missionId, options]);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host: shell, awaitAsync: true });
+
+  assert.equal(controller.handle_openWorldMarchFormationPicker({
+    type: 'openWorldMarchFormationPicker',
+    targetQ: 2,
+    targetR: -1,
+    tileId: 'tile_2_-1',
+  }), true);
+  assert.deepEqual(shell.territoryUiState.worldMarchTarget, {
+    q: 2,
+    r: -1,
+    tileId: 'tile_2_-1',
+    pickerOpen: true,
+  });
+
+  assert.equal(controller.handle_closeWorldMarchHud({ type: 'closeWorldMarchHud' }), true);
+  assert.equal(shell.territoryUiState.worldMarchTarget, null);
+
+  assert.equal(controller.handle_selectWorldActor({
+    type: 'selectWorldActor',
+    missionId: 'march-1',
+  }), true);
+  assert.equal(shell.territoryUiState.selectedWorldActorId, 'march-1');
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: 0,
+    formationSlot: 1,
+  }), true);
+  assert.equal(shell.territoryUiState.worldMarchTarget, null);
+  assert.equal(shell.territoryUiState.selectedWorldActorId, '');
+
+  assert.equal(await controller.handle_returnWorldMarch({
+    type: 'returnWorldMarch',
+    missionId: 'march-1',
+  }), true);
+
+  assert.equal(await controller.handle_stopWorldMarch({
+    type: 'stopWorldMarch',
+    missionId: 'march-1',
+    targetQ: 1,
+    targetR: 0,
+  }), true);
+
+  const refreshes = calls.filter((call) => call[0] === 'requestWorldMapRenderAnimationFrame');
+  assert.equal(refreshes.length, 6);
+  assert.deepEqual(refreshes.map((call) => call[1]), Array.from({ length: 6 }, () => ({
+    force: true,
+    invalidateWorldTileView: false,
+  })));
+  assert.deepEqual(calls.filter((call) => call[0] === 'renderCanvasAction').map((call) => call[1]), [
+    'openWorldMarchFormationPicker',
+    'closeWorldMarchHud',
+    'selectWorldActor',
+    'startWorldMarch',
+    'returnWorldMarch',
+    'stopWorldMarch',
+  ]);
+});
+
+test('CanvasActionController writes world march selection into territory controller UI state', async () => {
+  const calls = [];
+  const controllerUiState = {};
+  const game = {
+    territoryUiState: {},
+    territoryController: {
+      uiState: controllerUiState,
+      closeSiteDialog(options) {
+        calls.push(['closeSiteDialog', options]);
+      },
+    },
+  };
+  const host = {
+    territoryUiState: {},
+    lastGame: game,
+    renderCanvasAction(action) {
+      calls.push(['renderCanvasAction', action.type]);
+      return true;
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['requestWorldMapRenderAnimationFrame', options]);
+      return true;
+    },
+  };
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  assert.equal(await controller.handle_selectWorldMarchTarget({
+    type: 'selectWorldMarchTarget',
+    targetQ: 5,
+    targetR: -3,
+  }), true);
+
+  assert.strictEqual(host.territoryUiState, controllerUiState);
+  assert.strictEqual(game.territoryUiState, controllerUiState);
+  assert.deepEqual(controllerUiState.worldMarchTarget, {
+    q: 5,
+    r: -3,
+    tileId: 'tile_5_-3',
+    pickerOpen: false,
+  });
+  assert.equal(controllerUiState.selectedSiteId, '');
+  assert.equal(controllerUiState.selectedWorldActorId, '');
+  assert.equal(calls.some((call) => call[0] === 'requestWorldMapRenderAnimationFrame'), true);
 });

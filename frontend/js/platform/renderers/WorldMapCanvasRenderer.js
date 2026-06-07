@@ -1927,6 +1927,7 @@
             nowMs: this.getNow?.() || Date.now(),
           }) || [];
           this.addWorldActorHitTargets(actors, viewport, geometry);
+          this.renderWorldMarchHud(options.state || {}, uiState, actors, viewport, geometry, frame);
           return;
         }
 

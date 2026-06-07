@@ -133,10 +133,40 @@ test('WorldMapCanvasRenderer keeps world map hit target contract in hit-target-o
   const host = createHost();
   const renderer = new WorldMapCanvasRenderer({ host });
 
-  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, { selectedSiteId: 'capital' }, { hitTargetsOnly: true });
+  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {
+    selectedSiteId: 'capital',
+    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0' },
+  }, { hitTargetsOnly: true });
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), true);
+});
+
+test('WorldMapCanvasRenderer collects world march formation picker targets in hit-target-only mode', () => {
+  const host = createHost({
+    presenter: {
+      buildMilitaryViewState() {
+        return {
+          formations: [
+            { slot: 1, cityId: 'capital', name: 'Scout A', members: [{ id: 'fp-1' }] },
+          ],
+        };
+      },
+    },
+  });
+  const renderer = new WorldMapCanvasRenderer({ host });
+
+  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {
+    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0', pickerOpen: true },
+  }, {
+    hitTargetsOnly: true,
+    state: { activeCityId: 'capital' },
+  });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeWorldMarchHud'), true);
 });
 
 test('WorldMapCanvasRenderer renders active explorer units as map-layer animation', () => {

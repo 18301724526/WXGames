@@ -63,12 +63,17 @@
 
     getSharedTerritoryUiState() {
       const game = this.getGameHost();
-      const uiState = this.host.territoryUiState
+      const territoryController = this.host?.territoryController || game?.territoryController || null;
+      const uiState = territoryController?.uiState
+        || this.host.territoryUiState
         || game?.territoryUiState
-        || game?.territoryController?.getUiState?.()
+        || territoryController?.getUiState?.()
         || {};
       this.host.territoryUiState = uiState;
       if (game && game !== this.host && typeof game === 'object') game.territoryUiState = uiState;
+      if (territoryController && typeof territoryController === 'object' && !territoryController.uiState) {
+        territoryController.uiState = uiState;
+      }
       return uiState;
     }
 
@@ -122,6 +127,49 @@
     afterHandled(action = {}) {
       if (action.type !== 'switchTab' && action.type !== 'goToGuideTaskTarget') this.render(action);
       return true;
+    }
+
+    getWorldMapLayerHost() {
+      const game = this.getGameHost();
+      if (game?.canvasShell) return game.canvasShell;
+      if (this.host?.canvasShell) return this.host.canvasShell;
+      if (typeof this.host?.requestWorldMapRenderAnimationFrame === 'function'
+        || typeof this.host?.renderWorldMapLayerFrame === 'function') return this.host;
+      if (typeof game?.requestWorldMapRenderAnimationFrame === 'function'
+        || typeof game?.renderWorldMapLayerFrame === 'function') return game;
+      return null;
+    }
+
+    refreshWorldMapLayer(options = {}) {
+      const refreshOptions = {
+        force: true,
+        invalidateWorldTileView: false,
+        ...options,
+      };
+      const game = this.getGameHost();
+      const candidates = [
+        this.getWorldMapLayerHost(),
+        game?.canvasShell,
+        this.host?.canvasShell,
+        this.host,
+        game,
+      ].filter(Boolean);
+      for (const target of candidates) {
+        if (typeof target?.requestWorldMapRenderAnimationFrame === 'function') {
+          return target.requestWorldMapRenderAnimationFrame(refreshOptions) !== false;
+        }
+        if (typeof target?.renderWorldMapLayerFrame === 'function') {
+          return target.renderWorldMapLayerFrame(refreshOptions) !== false;
+        }
+      }
+      if (typeof game?.renderRuntimeWorldMap === 'function') return game.renderRuntimeWorldMap(refreshOptions) !== false;
+      return false;
+    }
+
+    refreshWorldMarchLayer(action = {}) {
+      const handled = this.afterHandled(action);
+      this.refreshWorldMapLayer();
+      return handled;
     }
 
     finalize(result) {
@@ -1348,7 +1396,7 @@
       const tutorialResult = game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
       return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
         if (allowed !== false) {
-          this.afterHandled(action);
+          this.refreshWorldMarchLayer(action);
           game?.tutorialController?.refreshCurrentHighlight?.();
           const scheduler = this.host?.runtime || game?.runtime || global;
           scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
@@ -1369,14 +1417,14 @@
         pickerOpen: true,
       };
       uiState.selectedWorldActorId = '';
-      return this.afterHandled(action);
+      return this.refreshWorldMarchLayer(action);
     }
 
     handle_closeWorldMarchHud(action) {
       const uiState = this.getSharedTerritoryUiState();
       uiState.worldMarchTarget = null;
       uiState.selectedWorldActorId = '';
-      return this.afterHandled(action);
+      return this.refreshWorldMarchLayer(action);
     }
 
     handle_selectWorldActor(action) {
@@ -1386,7 +1434,7 @@
       uiState.selectedWorldActorId = actorId;
       uiState.worldMarchTarget = null;
       uiState.selectedSiteId = '';
-      return this.afterHandled(action);
+      return this.refreshWorldMarchLayer(action);
     }
 
     handle_startWorldMarch(action) {
@@ -1411,6 +1459,7 @@
           const uiState = this.getSharedTerritoryUiState();
           uiState.worldMarchTarget = null;
           uiState.selectedWorldActorId = '';
+          this.refreshWorldMarchLayer(action);
         }
         return result !== false;
       }));
@@ -1425,7 +1474,10 @@
         return this.runAction(() => this.host.api.returnWorldMarch(missionId));
       };
       return this.finalize(Promise.resolve(run()).then((result) => {
-        if (result !== false) this.getSharedTerritoryUiState().selectedWorldActorId = '';
+        if (result !== false) {
+          this.getSharedTerritoryUiState().selectedWorldActorId = '';
+          this.refreshWorldMarchLayer(action);
+        }
         return result !== false;
       }));
     }
@@ -1441,7 +1493,10 @@
         return this.runAction(() => this.host.api.stopWorldMarch(missionId, { targetQ, targetR }));
       };
       return this.finalize(Promise.resolve(run()).then((result) => {
-        if (result !== false) this.getSharedTerritoryUiState().selectedWorldActorId = '';
+        if (result !== false) {
+          this.getSharedTerritoryUiState().selectedWorldActorId = '';
+          this.refreshWorldMarchLayer(action);
+        }
         return result !== false;
       }));
     }
