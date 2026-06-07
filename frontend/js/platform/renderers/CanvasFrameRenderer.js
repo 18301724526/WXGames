@@ -1,4 +1,16 @@
 (function (global) {
+  const SharedWorldTime = (() => {
+    if (global.WorldTime) return global.WorldTime;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldTime');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasFrameRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -245,17 +257,12 @@
       return true;
     }
 
-    getExplorerMissionRemainingSeconds(mission = {}, nowMs = this.getNow?.() || Date.now()) {
-      if (!mission || mission.status === 'ready') return 0;
-      const nextStepAtMs = new Date(mission.nextStepAt).getTime();
-      if (Number.isFinite(nextStepAtMs)) {
-        return Math.max(0, Math.ceil((nextStepAtMs - Number(nowMs)) / 1000));
-      }
-      const completesAtMs = new Date(mission.completesAt).getTime();
-      if (Number.isFinite(completesAtMs)) {
-        return Math.max(0, Math.ceil((completesAtMs - Number(nowMs)) / 1000));
-      }
-      return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
+    getEpochNowMs() {
+      return SharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
+    }
+
+    getExplorerMissionRemainingSeconds(mission = {}, nowMs = this.getEpochNowMs()) {
+      return SharedWorldTime?.getRemainingSeconds?.(mission, nowMs) ?? Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
     }
 
     renderCanvasDebugResetButton(options = {}) {

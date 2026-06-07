@@ -218,6 +218,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
       return {
         now: this.now(),
+        epochNowMs: Date.now(),
         activeTab: homeView.activeTab,
         mode: 'hud',
         isMapHome: homeView.isMapHome,

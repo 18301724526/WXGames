@@ -230,6 +230,28 @@ test('CanvasFrameRenderer renders explorer countdown and claim controls on the U
   assert.equal(activeHost.calls.some((call) => call[0] === 'fillRect'), true);
 });
 
+test('CanvasFrameRenderer keeps explorer countdown on epoch time, not animation frame time', () => {
+  const epochNowMs = new Date('2026-06-06T00:00:04.250Z').getTime();
+  const activeHost = createHost({
+    epochNowMs,
+    getNow() {
+      return 4321.25;
+    },
+  });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({
+    worldExplorerState: {
+      activeMission: {
+        status: 'active',
+        nextStepAt: '2026-06-06T00:00:10.000Z',
+        route: [{ revealed: false }],
+      },
+    },
+  }, 96, {});
+
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('1780')), false);
+});
+
 test('CanvasFrameRenderer renders debug reset as canvas hit target above tutorial shields', () => {
   const host = createHost({
     renderTutorialHighlight(...args) {

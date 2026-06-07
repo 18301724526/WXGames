@@ -45,6 +45,17 @@
     }
     return null;
   })();
+  const sharedWorldTime = (() => {
+    if (global.WorldTime) return global.WorldTime;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldTime');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const SharedWorldActorCanvasRenderer = (() => {
     if (global.WorldActorCanvasRenderer) return global.WorldActorCanvasRenderer;
     if (typeof module !== 'undefined' && module.exports) {
@@ -1757,9 +1768,9 @@
       if (!mission || mission.status !== 'active') return null;
       const route = Array.isArray(mission.route) ? mission.route : [];
       if (!route.length) return null;
-      const startedAtMs = new Date(mission.startedAt).getTime();
+      const startedAtMs = sharedWorldTime?.toEpochMs?.(mission.startedAt, Number.NaN) ?? new Date(mission.startedAt).getTime();
       if (!Number.isFinite(startedAtMs)) return null;
-      const nowMs = this.getNow?.() || Date.now();
+      const nowMs = this.getEpochNowMs();
       const stepDurationMs = Math.max(1000, Number(mission.stepDurationSeconds) * 1000 || 10000);
       const totalDurationMs = Math.max(stepDurationMs, stepDurationMs * route.length);
       const elapsed = Math.max(0, Number(nowMs) - startedAtMs);
@@ -1789,15 +1800,13 @@
       const frames = manifest.getFramePaths('spearman', 'move');
       if (!frames.length) return '';
       const frameMs = manifest.getFrameDurationMs?.('spearman', 'move') || 80;
-      const startedAtMs = new Date(mission.startedAt).getTime();
       const nowMs = this.getNow?.() || Date.now();
-      const elapsed = Number.isFinite(startedAtMs) ? Math.max(0, Number(nowMs) - startedAtMs) : Number(nowMs);
-      return frames[Math.floor(elapsed / Math.max(1, frameMs)) % frames.length] || frames[0];
+      return frames[Math.floor(Number(nowMs) / Math.max(1, frameMs)) % frames.length] || frames[0];
     }
 
     renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
       const actors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
-        nowMs: this.getNow?.() || Date.now(),
+        nowMs: this.getEpochNowMs(),
       }) || [];
       return this.renderWorldActors(actors, viewport, tileMapView.geometry || {});
     }
@@ -1827,6 +1836,10 @@
 
     getNearestWorldTileAtPoint(point = {}, tileMapView = {}, viewport = {}) {
       return sharedWorldMarchSystem?.screenPointToNearestTile?.(point, tileMapView, viewport) || null;
+    }
+
+    getEpochNowMs() {
+      return sharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }
 
     addWorldMarchTileHitTargets(tileMapView = {}, viewport = {}, frame = {}) {
@@ -1944,7 +1957,7 @@
           this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
           this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
           const actors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
-            nowMs: this.getNow?.() || Date.now(),
+            nowMs: this.getEpochNowMs(),
           }) || [];
           this.addWorldActorHitTargets(actors, viewport, geometry);
           this.renderWorldMarchHud(options.state || {}, uiState, actors, viewport, geometry, frame);
@@ -1969,7 +1982,7 @@
         }
         this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
         const actors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
-          nowMs: this.getNow?.() || Date.now(),
+          nowMs: this.getEpochNowMs(),
         }) || [];
         this.renderWorldActors(actors, viewport, geometry);
         this.renderWorldMarchHud(options.state || {}, uiState, actors, viewport, geometry, frame);

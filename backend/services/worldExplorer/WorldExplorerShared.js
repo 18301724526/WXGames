@@ -20,6 +20,16 @@ function toInteger(value, fallback = 0) {
 }
 
 function toTimestamp(value, fallback = 0) {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (value instanceof Date) {
+    const stamp = value.getTime();
+    return Number.isFinite(stamp) ? stamp : fallback;
+  }
+  if (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '' && /^-?\d+(\.\d+)?$/.test(value.trim()))) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.abs(number) < 1000000000000 ? number * 1000 : number;
+  }
   const time = new Date(value).getTime();
   return Number.isFinite(time) ? time : fallback;
 }

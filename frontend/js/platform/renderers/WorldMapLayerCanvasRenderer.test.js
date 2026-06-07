@@ -206,6 +206,23 @@ test('WorldMapLayerCanvasRenderer computes explorer countdown from next step tim
   }), 6);
 });
 
+test('WorldMapLayerCanvasRenderer ignores performance.now for explorer countdowns', () => {
+  const renderer = new WorldMapLayerCanvasRenderer({
+    host: createHost({
+      epochNowMs: new Date('2026-06-06T00:00:04.250Z').getTime(),
+      getNow() {
+        return 4321.25;
+      },
+    }),
+  });
+
+  assert.equal(renderer.getExplorerMissionRemainingSeconds({
+    status: 'active',
+    nextStepAt: '2026-06-06T00:00:10.000Z',
+    route: [{ revealed: false }],
+  }), 6);
+});
+
 test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collection without explorer HUD', () => {
   const host = createHost();
   const renderer = new WorldMapLayerCanvasRenderer({ host });

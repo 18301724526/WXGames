@@ -34,6 +34,18 @@ test('WorldMarchSystem computes actor progress, remaining time, and stop tile', 
   assert.equal(actor.formation.slot, 1);
 });
 
+test('WorldMarchSystem accepts epoch seconds from legacy mission timestamps', () => {
+  const nowMs = new Date('2026-06-06T00:00:06.000Z').getTime();
+  const actor = WorldMarchSystem.buildActorFromMission(createMission({
+    startedAt: Math.floor(new Date('2026-06-06T00:00:00.000Z').getTime() / 1000),
+    completesAt: Math.floor(new Date('2026-06-06T00:00:20.000Z').getTime() / 1000),
+  }), { nowMs });
+
+  assert.equal(actor.current.q > 0, true);
+  assert.equal(actor.current.q < 1, true);
+  assert.equal(actor.remainingSeconds, 14);
+});
+
 test('WorldMarchSystem does not render returned ready missions as map actors', () => {
   const nowMs = new Date('2026-06-06T00:00:30.000Z').getTime();
   const actors = WorldMarchSystem.buildActors({

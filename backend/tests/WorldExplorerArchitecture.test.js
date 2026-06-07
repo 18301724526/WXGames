@@ -9,6 +9,7 @@ const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissio
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
 const ClientState = require('../services/worldExplorer/WorldExplorerClientState');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
+const Shared = require('../services/worldExplorer/WorldExplorerShared');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -93,4 +94,12 @@ test('WorldExplorerService facade preserves the legacy API', () => {
   assert.deepEqual(Object.keys(WorldExplorerService).sort(), expectedApi.sort());
   assert.equal(typeof Actions.startExplore, 'function');
   assert.equal(typeof Actions.startWorldMarch, 'function');
+});
+
+test('WorldExplorerShared normalizes epoch-second mission timestamps', () => {
+  const epochMs = new Date('2026-06-06T00:00:10.000Z').getTime();
+
+  assert.equal(Shared.toTimestamp('2026-06-06T00:00:10.000Z'), epochMs);
+  assert.equal(Shared.toTimestamp(epochMs), epochMs);
+  assert.equal(Shared.toTimestamp(Math.floor(epochMs / 1000)), epochMs);
 });

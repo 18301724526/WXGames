@@ -231,6 +231,49 @@ test('WorldMapCanvasRenderer renders active explorer units as map-layer animatio
   assert.equal(calls.some((call) => call[0] === 'drawImage'), true);
 });
 
+test('WorldMapCanvasRenderer computes world march actors from epoch time, not frame time', () => {
+  const capturedActors = [];
+  const host = createHost({
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+    getNow() {
+      return 4321.25;
+    },
+  });
+  const tileMapView = {
+    ...createTileMapView(),
+    activeScouts: [{
+      id: 'explore-1',
+      kind: 'worldExplore',
+      status: 'active',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      completesAt: '2026-06-06T00:00:20.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, tileId: 'tile_1_0', revealed: false },
+        { q: 2, r: 0, tileId: 'tile_2_0', revealed: false },
+      ],
+    }],
+  };
+  const renderer = new WorldMapCanvasRenderer({
+    host,
+    worldActorRenderer: {
+      addActorHitTargets(actors) {
+        capturedActors.push(...actors);
+        return true;
+      },
+    },
+  });
+
+  renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
+
+  assert.equal(capturedActors.length, 1);
+  assert.equal(capturedActors[0].current.q > 0, true);
+  assert.equal(capturedActors[0].current.q < 1, true);
+  assert.equal(capturedActors[0].remainingSeconds, 15);
+});
+
 test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is split out', () => {
   const host = createHost({
     presenter: {},

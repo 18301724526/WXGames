@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const WorldTime = (() => {
+    if (global.WorldTime) return global.WorldTime;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldTime');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -21,6 +32,8 @@
   }
 
   function toTimestamp(value, fallback = 0) {
+    const epochMs = WorldTime?.toEpochMs?.(value, Number.NaN);
+    if (Number.isFinite(epochMs)) return epochMs;
     const stamp = value instanceof Date ? value.getTime() : new Date(value).getTime();
     return Number.isFinite(stamp) ? stamp : fallback;
   }
@@ -122,6 +135,9 @@
 
   function getRemainingSeconds(mission = {}, nowMs = Date.now()) {
     if (!mission || mission.status === 'ready') return 0;
+    if (WorldTime?.getRemainingSeconds) {
+      return WorldTime.getRemainingSeconds(mission, nowMs);
+    }
     const completesAtMs = toTimestamp(mission.completesAt, 0);
     if (completesAtMs) return Math.max(0, Math.ceil((completesAtMs - toNumber(nowMs, Date.now())) / 1000));
     const progress = getMissionProgress(mission, nowMs);
