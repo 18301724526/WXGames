@@ -177,8 +177,9 @@ function createWorldContext() {
       geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48 },
       tiles: [
         { id: 'visible', q: 0, r: 0, discovered: true, visible: true, visibility: 'controlled' },
-        { id: 'explored', q: 1, r: 0, discovered: true, visible: false, visibility: 'scouted' },
-        { id: 'unknown', q: 2, r: 0, discovered: false, visible: false, visibility: 'unknown' },
+        { id: 'visible-east', q: 1, r: 0, discovered: true, visible: true, visibility: 'scouted' },
+        { id: 'explored', q: 2, r: 0, discovered: true, visible: false, visibility: 'scouted' },
+        { id: 'unknown', q: 3, r: 0, discovered: false, visible: false, visibility: 'unknown' },
       ],
     },
     viewport: { originX: 130, originY: 120, panX: 0, panY: 0, scale: 0.5 },
@@ -190,14 +191,19 @@ function createWorldContext() {
         drawRect: { x: 82, y: 96, width: 96, height: 48 },
       },
       {
-        tile: { id: 'explored', q: 1, r: 0, discovered: true, visible: false, visibility: 'scouted' },
+        tile: { id: 'visible-east', q: 1, r: 0, discovered: true, visible: true, visibility: 'scouted' },
         center: { x: 178, y: 144 },
         drawRect: { x: 130, y: 120, width: 96, height: 48 },
       },
       {
-        tile: { id: 'unknown', q: 2, r: 0, discovered: false, visible: false, visibility: 'unknown' },
+        tile: { id: 'explored', q: 2, r: 0, discovered: true, visible: false, visibility: 'scouted' },
         center: { x: 226, y: 168 },
         drawRect: { x: 178, y: 144, width: 96, height: 48 },
+      },
+      {
+        tile: { id: 'unknown', q: 3, r: 0, discovered: false, visible: false, visibility: 'unknown' },
+        center: { x: 274, y: 192 },
+        drawRect: { x: 226, y: 168, width: 96, height: 48 },
       },
     ],
   };
@@ -239,7 +245,7 @@ test('WorldFogCanvasRenderer writes explored and visible masks separately', () =
   });
   const context = createWorldContext();
 
-  const mask = renderer.writeMaskFromEntries(
+  const { mask } = renderer.prepareMaskFromEntries(
     context.tileMapView,
     context.entries,
     context.viewport,
@@ -258,12 +264,106 @@ test('WorldFogCanvasRenderer writes explored and visible masks separately', () =
   assert.equal(renderer.isVisibleTile({ discovered: true, visible: true, visibility: 'scouted' }), true);
 });
 
+test('WorldFogCanvasRenderer caches mask uploads across animated redraws', () => {
+  const calls = [];
+  const gl = createFakeGl(calls);
+  const renderer = new WorldFogCanvasRenderer({
+    gl,
+    canvas: createCanvas(gl),
+    pixelRatio: 1,
+    width: 390,
+    height: 844,
+    maskSize: 128,
+  });
+  const context = createWorldContext();
+
+  assert.equal(renderer.renderWorldFog(context), true);
+  assert.equal(calls.filter((call) => call[0] === 'texImage2D').length, 2);
+  assert.equal(renderer.renderWorldFog(context), true);
+
+  assert.equal(calls.filter((call) => call[0] === 'texImage2D').length, 2);
+  assert.equal(calls.filter((call) => call[0] === 'drawArrays').length, 2);
+});
+
+test('WorldFogCanvasRenderer reuses mask texture during small camera pans', () => {
+  const calls = [];
+  const gl = createFakeGl(calls);
+  const renderer = new WorldFogCanvasRenderer({
+    gl,
+    canvas: createCanvas(gl),
+    pixelRatio: 1,
+    width: 390,
+    height: 844,
+    maskSize: 128,
+    maskPanReuseLimit: 80,
+  });
+  const context = createWorldContext();
+  const panDelta = { x: 32, y: -18 };
+  const pannedContext = {
+    ...context,
+    viewport: {
+      ...context.viewport,
+      panX: context.viewport.panX + panDelta.x,
+      panY: context.viewport.panY + panDelta.y,
+    },
+    entries: context.entries.map((entry) => ({
+      ...entry,
+      center: {
+        x: entry.center.x + panDelta.x,
+        y: entry.center.y + panDelta.y,
+      },
+      drawRect: {
+        ...entry.drawRect,
+        x: entry.drawRect.x + panDelta.x,
+        y: entry.drawRect.y + panDelta.y,
+      },
+    })),
+  };
+
+  assert.equal(renderer.renderWorldFog(context), true);
+  assert.equal(renderer.renderWorldFog(pannedContext), true);
+
+  assert.equal(calls.filter((call) => call[0] === 'texImage2D').length, 2);
+  assert.equal(calls.some((call) => call[0] === 'uniform2f' && call[1] === 'uMaskOffset' && call[2] === panDelta.x && call[3] === panDelta.y), true);
+});
+
+test('WorldFogCanvasRenderer builds a continuous visible-region mask across neighboring tiles', () => {
+  const calls = [];
+  const gl = createFakeGl(calls);
+  const renderer = new WorldFogCanvasRenderer({
+    gl,
+    canvas: createCanvas(gl),
+    pixelRatio: 1,
+    width: 390,
+    height: 844,
+    maskSize: 128,
+  });
+  const context = createWorldContext();
+  const { mask } = renderer.prepareMaskFromEntries(
+    context.tileMapView,
+    context.entries,
+    context.viewport,
+    context.frame,
+    context.tileMapView.geometry,
+  );
+  const maskFrame = mask.maskFrame || context.frame;
+  const scaleX = mask.width / maskFrame.width;
+  const scaleY = mask.height / maskFrame.height;
+  const seamX = Math.round((154 - maskFrame.x) * scaleX);
+  const seamY = Math.round((132 - maskFrame.y) * scaleY);
+  const seamValue = mask.visible[seamY * mask.width + seamX];
+
+  assert.equal(seamValue >= 240, true);
+});
+
 test('WorldFogCanvasRenderer shader samples masks inside the map frame', () => {
   const source = WorldFogCanvasRenderer.FRAGMENT_SHADER_SOURCE;
 
   assert.match(source, /sampler2D uExploredMask/);
   assert.match(source, /sampler2D uVisibleMask/);
-  assert.match(source, /maskUv = \(pixel - uFrame\.xy\)/);
+  assert.match(source, /uMaskFrame/);
+  assert.match(source, /uMaskOffset/);
+  assert.match(source, /maskUv = \(pixel - uMaskFrame\.xy - uMaskOffset\)/);
   assert.match(source, /visible -> transparent|visibleAlpha/s);
   assert.equal(source.includes('texture2D(uExploredMask, vUv)'), false);
   assert.equal(source.includes('stroke'), false);

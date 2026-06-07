@@ -17,6 +17,8 @@
     uniform sampler2D uVisibleMask;
     uniform vec2 uResolution;
     uniform vec4 uFrame;
+    uniform vec4 uMaskFrame;
+    uniform vec2 uMaskOffset;
     uniform float uTime;
     uniform float uFeather;
     uniform float uNoiseStrength;
@@ -50,7 +52,7 @@
         return;
       }
 
-      vec2 maskUv = (pixel - uFrame.xy) / max(uFrame.zw, vec2(1.0));
+      vec2 maskUv = (pixel - uMaskFrame.xy - uMaskOffset) / max(uMaskFrame.zw, vec2(1.0));
       float explored = texture2D(uExploredMask, maskUv).r;
       float visible = texture2D(uVisibleMask, maskUv).r;
       float visibleAlpha = 1.0 - smoothstep(0.10, 0.86, visible);
@@ -81,16 +83,26 @@
       this.viewportOffsetY = Number(options.viewportOffsetY) || 0;
       this.viewportWidth = Math.max(1, Number(options.viewportWidth) || this.width);
       this.viewportHeight = Math.max(1, Number(options.viewportHeight) || this.height);
-      this.maskSize = Math.max(128, Math.min(1536, Number(options.maskSize) || 1024));
+      this.maskSize = Math.max(128, Math.min(1024, Number(options.maskSize) || 640));
+      this.maskPanReuseLimit = Math.max(32, Number(options.maskPanReuseLimit) || 144);
       this.feather = Math.max(0, Number(options.feather) || 48);
       this.noiseStrength = Math.max(0, Math.min(0.22, Number(options.noiseStrength) || 0.055));
       this.startedAt = this.now();
       this.maskCache = {
+        key: '',
         width: 0,
         height: 0,
         explored: null,
         visible: null,
+        exploredBase: null,
+        visibleBase: null,
+        insideDistance: null,
+        outsideDistance: null,
+        referencePanX: 0,
+        referencePanY: 0,
+        maskFrame: null,
       };
+      this.uploadedMaskKey = '';
       this.program = null;
       this.buffer = null;
       this.textures = {
@@ -222,6 +234,8 @@
           uVisibleMask: gl.getUniformLocation(this.program, 'uVisibleMask'),
           uResolution: gl.getUniformLocation(this.program, 'uResolution'),
           uFrame: gl.getUniformLocation(this.program, 'uFrame'),
+          uMaskFrame: gl.getUniformLocation(this.program, 'uMaskFrame'),
+          uMaskOffset: gl.getUniformLocation(this.program, 'uMaskOffset'),
           uTime: gl.getUniformLocation(this.program, 'uTime'),
           uFeather: gl.getUniformLocation(this.program, 'uFeather'),
           uNoiseStrength: gl.getUniformLocation(this.program, 'uNoiseStrength'),
@@ -336,7 +350,7 @@
       ];
     }
 
-    ensureMaskCache(width = this.maskSize, height = this.maskSize) {
+    ensureMaskCache(width = this.maskSize, height = this.maskSize, key = '') {
       const maskWidth = Math.max(1, Math.floor(width));
       const maskHeight = Math.max(1, Math.floor(height));
       const size = maskWidth * maskHeight;
@@ -345,18 +359,42 @@
         || this.maskCache.height !== maskHeight
         || this.maskCache.explored?.length !== size
         || this.maskCache.visible?.length !== size
+        || this.maskCache.exploredBase?.length !== size
+        || this.maskCache.visibleBase?.length !== size
+        || this.maskCache.insideDistance?.length !== size
+        || this.maskCache.outsideDistance?.length !== size
       ) {
         this.maskCache = {
+          key: '',
           width: maskWidth,
           height: maskHeight,
           explored: new Uint8Array(size),
           visible: new Uint8Array(size),
+          exploredBase: new Uint8Array(size),
+          visibleBase: new Uint8Array(size),
+          insideDistance: new Float32Array(size),
+          outsideDistance: new Float32Array(size),
+          referencePanX: 0,
+          referencePanY: 0,
+          maskFrame: null,
         };
-      } else {
-        this.maskCache.explored.fill(0);
-        this.maskCache.visible.fill(0);
       }
+      if (this.maskCache.key === key) return this.maskCache;
+      this.resetMaskCache(this.maskCache);
       return this.maskCache;
+    }
+
+    resetMaskCache(cache = this.maskCache) {
+      if (!cache) return null;
+      cache.explored?.fill?.(0);
+      cache.visible?.fill?.(0);
+      cache.exploredBase?.fill?.(0);
+      cache.visibleBase?.fill?.(0);
+      cache.key = '';
+      cache.referencePanX = 0;
+      cache.referencePanY = 0;
+      cache.maskFrame = null;
+      return cache;
     }
 
     getMaskDimensions(frame = {}) {
@@ -372,58 +410,203 @@
       };
     }
 
+    getExpandedMaskFrame(frame = {}) {
+      const padding = Math.max(0, Number(this.maskPanReuseLimit) || 0);
+      const x = Number(frame.x) || 0;
+      const y = Number(frame.y) || 0;
+      const width = Math.max(1, Number(frame.width) || this.width || 1);
+      const height = Math.max(1, Number(frame.height) || this.height || 1);
+      return {
+        x: x - padding,
+        y: y - padding,
+        width: width + padding * 2,
+        height: height + padding * 2,
+      };
+    }
+
     smoothstep(edge0 = 0, edge1 = 1, value = 0) {
       if (edge0 === edge1) return value < edge0 ? 0 : 1;
       const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
       return t * t * (3 - 2 * t);
     }
 
-    rasterizeSoftDiamond(mask, maskWidth, maskHeight, points, value = 255, featherPx = 18) {
+    getMaskCacheKey(tileMapView = {}, entries = [], viewport = {}, frame = {}, geometry = {}, dimensions = {}) {
+      const round = (value, precision = 10) => Math.round((Number(value) || 0) * precision) / precision;
+      const tileSignatureText = (Array.isArray(entries) ? entries : []).map((entry) => {
+        const tile = entry?.tile || {};
+        return [
+          tile.id || this.getTileKey(tile),
+          tile.q ?? tile.x ?? 0,
+          tile.r ?? tile.y ?? 0,
+          tile.visibility || '',
+          tile.discovered === false ? 0 : 1,
+          tile.visible === false ? 0 : 1,
+          round((Number(entry?.center?.x) || 0) - (Number(viewport.panX) || 0)),
+          round((Number(entry?.center?.y) || 0) - (Number(viewport.panY) || 0)),
+          round((Number(entry?.drawRect?.x) || 0) - (Number(viewport.panX) || 0)),
+          round((Number(entry?.drawRect?.y) || 0) - (Number(viewport.panY) || 0)),
+          round(entry?.drawRect?.width),
+          round(entry?.drawRect?.height),
+        ].join(':');
+      }).join('|');
+      const tileSignature = this.hashText(tileSignatureText);
+      return [
+        tileSignature,
+        (Array.isArray(entries) ? entries : []).length,
+        dimensions.width || 0,
+        dimensions.height || 0,
+        round(frame.x),
+        round(frame.y),
+        round(frame.width),
+        round(frame.height),
+        round(viewport.originX),
+        round(viewport.originY),
+        round(viewport.scale, 1000),
+        Number(geometry.tileWidth) || 192,
+        Number(geometry.tileHeight) || 96,
+        Number(geometry.stepX) || 96,
+        Number(geometry.stepY) || 48,
+        Number.isFinite(Number(geometry.anchorY)) ? Number(geometry.anchorY) : 0.5,
+        tileSignature,
+      ].join('::');
+    }
+
+    hashText(text = '') {
+      let hash = 2166136261;
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(36);
+    }
+
+    rasterizeHardDiamond(mask, maskWidth, maskHeight, points) {
       if (!mask || !Array.isArray(points) || points.length < 4) return false;
-      const minX = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x)) - featherPx));
-      const maxX = Math.min(maskWidth - 1, Math.ceil(Math.max(...points.map((point) => point.x)) + featherPx));
-      const minY = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y)) - featherPx));
-      const maxY = Math.min(maskHeight - 1, Math.ceil(Math.max(...points.map((point) => point.y)) + featherPx));
+      const minX = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x))));
+      const maxX = Math.min(maskWidth - 1, Math.ceil(Math.max(...points.map((point) => point.x))));
+      const minY = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y))));
+      const maxY = Math.min(maskHeight - 1, Math.ceil(Math.max(...points.map((point) => point.y))));
       const centerX = (points[0].x + points[2].x) * 0.5;
       const centerY = (points[1].y + points[3].y) * 0.5;
       const halfW = Math.max(1, Math.abs(points[1].x - points[3].x) * 0.5);
       const halfH = Math.max(1, Math.abs(points[2].y - points[0].y) * 0.5);
-      const feather = Math.max(0.001, Number(featherPx) || 0);
-      const distanceScale = Math.max(1, Math.min(halfW, halfH));
       for (let y = minY; y <= maxY; y += 1) {
         for (let x = minX; x <= maxX; x += 1) {
           const diamondDistance = Math.abs((x + 0.5 - centerX) / halfW) + Math.abs((y + 0.5 - centerY) / halfH) - 1;
-          const distancePx = diamondDistance * distanceScale;
-          if (distancePx > feather) continue;
-          const coverage = distancePx <= 0 ? 1 : Math.max(0, 1 - this.smoothstep(0, feather, distancePx));
-          const index = y * maskWidth + x;
-          const nextValue = Math.max(mask[index] || 0, Math.round(value * coverage));
-          mask[index] = nextValue;
+          if (diamondDistance <= 0) mask[y * maskWidth + x] = 1;
         }
       }
       return true;
     }
 
-    writeMaskFromEntries(tileMapView = {}, entries = [], viewport = {}, frame = {}, geometry = {}) {
-      const dimensions = this.getMaskDimensions(frame);
-      const cache = this.ensureMaskCache(dimensions.width, dimensions.height);
-      const scaleX = cache.width / Math.max(1, Number(frame.width) || this.width || 1);
-      const scaleY = cache.height / Math.max(1, Number(frame.height) || this.height || 1);
-      const diamondFeather = Math.max(12, Math.min(96, Math.max(scaleX, scaleY) * this.feather));
+    computeDistanceToValue(source = null, targetValue = 1, output = null, width = 1, height = 1) {
+      if (!source || !output) return null;
+      const inf = Math.max(width, height) * 4;
+      const diagonal = 1.41421356237;
+      const size = width * height;
+      for (let index = 0; index < size; index += 1) {
+        output[index] = source[index] === targetValue ? 0 : inf;
+      }
+      for (let y = 0; y < height; y += 1) {
+        const row = y * width;
+        for (let x = 0; x < width; x += 1) {
+          const index = row + x;
+          let value = output[index];
+          if (x > 0) value = Math.min(value, output[index - 1] + 1);
+          if (y > 0) {
+            value = Math.min(value, output[index - width] + 1);
+            if (x > 0) value = Math.min(value, output[index - width - 1] + diagonal);
+            if (x < width - 1) value = Math.min(value, output[index - width + 1] + diagonal);
+          }
+          output[index] = value;
+        }
+      }
+      for (let y = height - 1; y >= 0; y -= 1) {
+        const row = y * width;
+        for (let x = width - 1; x >= 0; x -= 1) {
+          const index = row + x;
+          let value = output[index];
+          if (x < width - 1) value = Math.min(value, output[index + 1] + 1);
+          if (y < height - 1) {
+            value = Math.min(value, output[index + width] + 1);
+            if (x > 0) value = Math.min(value, output[index + width - 1] + diagonal);
+            if (x < width - 1) value = Math.min(value, output[index + width + 1] + diagonal);
+          }
+          output[index] = value;
+        }
+      }
+      return output;
+    }
+
+    writeSoftUnionMask(base = null, output = null, width = 1, height = 1, options = {}) {
+      if (!base || !output) return false;
+      const insideDistance = this.computeDistanceToValue(base, 1, this.maskCache.insideDistance, width, height);
+      const outsideDistance = this.computeDistanceToValue(base, 0, this.maskCache.outsideDistance, width, height);
+      const insideInset = Math.max(0, Number(options.insideInset) || 0);
+      const outsideFeather = Math.max(1, Number(options.outsideFeather) || 1);
+      const size = width * height;
+      for (let index = 0; index < size; index += 1) {
+        const signedDistance = base[index] ? -outsideDistance[index] : insideDistance[index];
+        const fade = this.smoothstep(-insideInset, outsideFeather, signedDistance);
+        output[index] = Math.max(0, Math.min(255, Math.round(255 * (1 - fade))));
+      }
+      return true;
+    }
+
+    prepareMaskFromEntries(tileMapView = {}, entries = [], viewport = {}, frame = {}, geometry = {}) {
+      const maskFrame = this.getExpandedMaskFrame(frame);
+      const dimensions = this.getMaskDimensions(maskFrame);
       const fogEntries = this.getFogEntries(tileMapView, entries, viewport, geometry);
+      const key = this.getMaskCacheKey(tileMapView, fogEntries, viewport, maskFrame, geometry, dimensions);
+      const cache = this.ensureMaskCache(dimensions.width, dimensions.height, key);
+      const panX = Number(viewport.panX) || 0;
+      const panY = Number(viewport.panY) || 0;
+      const panDeltaX = panX - (Number(cache.referencePanX) || 0);
+      const panDeltaY = panY - (Number(cache.referencePanY) || 0);
+      const reuseLimit = Math.max(0, Number(this.maskPanReuseLimit) || 0);
+      if (
+        cache.key === key
+        && cache.explored
+        && cache.visible
+        && cache.maskFrame
+        && Math.abs(panDeltaX) <= reuseLimit
+        && Math.abs(panDeltaY) <= reuseLimit
+      ) {
+        return {
+          mask: cache,
+          changed: false,
+          sampleOffset: { x: panDeltaX, y: panDeltaY },
+        };
+      }
+      this.resetMaskCache(cache);
+      const scaleX = cache.width / Math.max(1, Number(maskFrame.width) || this.width || 1);
+      const scaleY = cache.height / Math.max(1, Number(maskFrame.height) || this.height || 1);
       fogEntries.forEach((entry) => {
         const tile = entry.tile || {};
         const explored = this.isExploredTile(tile);
         const visible = this.isVisibleTile(tile);
         if (!explored && !visible) return;
-        const points = this.getTileDiamond(entry, viewport, geometry, frame).map((point) => ({
+        const points = this.getTileDiamond(entry, viewport, geometry, maskFrame).map((point) => ({
           x: point.x * scaleX,
           y: point.y * scaleY,
         }));
-        if (explored) this.rasterizeSoftDiamond(cache.explored, cache.width, cache.height, points, 255, diamondFeather);
-        if (visible) this.rasterizeSoftDiamond(cache.visible, cache.width, cache.height, points, 255, diamondFeather);
+        if (explored) this.rasterizeHardDiamond(cache.exploredBase, cache.width, cache.height, points);
+        if (visible) this.rasterizeHardDiamond(cache.visibleBase, cache.width, cache.height, points);
       });
-      return cache;
+      const feather = Math.max(10, Math.min(56, Math.max(scaleX, scaleY) * this.feather));
+      this.writeSoftUnionMask(cache.exploredBase, cache.explored, cache.width, cache.height, {
+        insideInset: Math.max(1, feather * 0.18),
+        outsideFeather: feather,
+      });
+      this.writeSoftUnionMask(cache.visibleBase, cache.visible, cache.width, cache.height, {
+        insideInset: Math.max(3, feather * 0.58),
+        outsideFeather: feather,
+      });
+      cache.key = key;
+      cache.referencePanX = panX;
+      cache.referencePanY = panY;
+      cache.maskFrame = { ...maskFrame };
+      return { mask: cache, changed: true, sampleOffset: { x: 0, y: 0 } };
     }
 
     uploadTexture(gl, texture, unit, mask = null, width = 1, height = 1) {
@@ -445,7 +628,14 @@
       return true;
     }
 
-    useProgram(gl, frame = {}, mask = null) {
+    bindTexture(gl, texture, unit) {
+      if (!texture) return false;
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      return true;
+    }
+
+    useProgram(gl, frame = {}, mask = null, options = {}) {
       const pixelRatio = Math.max(1, Number(this.pixelRatio) || 1);
       const drawingWidth = Math.max(1, gl.drawingBufferWidth || this.canvas?.width || Math.ceil(this.width * pixelRatio));
       const drawingHeight = Math.max(1, gl.drawingBufferHeight || this.canvas?.height || Math.ceil(this.height * pixelRatio));
@@ -472,12 +662,30 @@
         Math.max(1, Number(frame.width) || this.width || 1) * pixelRatio,
         Math.max(1, Number(frame.height) || this.height || 1) * pixelRatio,
       );
+      const maskFrame = mask?.maskFrame || frame || {};
+      const sampleOffset = options.sampleOffset || {};
+      gl.uniform4f?.(
+        this.locations.uMaskFrame,
+        (Number(maskFrame.x) || 0) * pixelRatio,
+        (Number(maskFrame.y) || 0) * pixelRatio,
+        Math.max(1, Number(maskFrame.width) || Number(frame.width) || this.width || 1) * pixelRatio,
+        Math.max(1, Number(maskFrame.height) || Number(frame.height) || this.height || 1) * pixelRatio,
+      );
+      gl.uniform2f?.(
+        this.locations.uMaskOffset,
+        (Number(sampleOffset.x) || 0) * pixelRatio,
+        (Number(sampleOffset.y) || 0) * pixelRatio,
+      );
       gl.uniform1f?.(this.locations.uTime, (this.now() - this.startedAt) * 0.001);
       gl.uniform1f?.(this.locations.uFeather, Math.max(1, this.feather * pixelRatio));
       gl.uniform1f?.(this.locations.uNoiseStrength, this.noiseStrength);
-      if (mask) {
+      if (mask && options.uploadMask !== false) {
         this.uploadTexture(gl, this.textures.explored, 0, mask.explored, mask.width, mask.height);
         this.uploadTexture(gl, this.textures.visible, 1, mask.visible, mask.width, mask.height);
+        this.uploadedMaskKey = mask.key || '';
+      } else {
+        this.bindTexture(gl, this.textures.explored, 0);
+        this.bindTexture(gl, this.textures.visible, 1);
       }
       return true;
     }
@@ -490,9 +698,11 @@
         return false;
       }
       const geometry = tileMapView.geometry || viewport.geometry || {};
-      const mask = this.writeMaskFromEntries(tileMapView, entries, viewport, frame, geometry);
+      const prepared = this.prepareMaskFromEntries(tileMapView, entries, viewport, frame, geometry);
+      const mask = prepared.mask;
       const gl = this.getContext();
-      this.useProgram(gl, frame, mask);
+      const uploadMask = prepared.changed || this.uploadedMaskKey !== mask.key;
+      this.useProgram(gl, frame, mask, { uploadMask, sampleOffset: prepared.sampleOffset });
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       return true;
     }
