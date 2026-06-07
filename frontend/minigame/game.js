@@ -17,6 +17,7 @@ require('../js/platform/renderers/CanvasPreloadAssetManifest');
 require('../js/platform/renderers/WorldTileWaterCanvasRenderer');
 require('../js/platform/renderers/WorldActorCanvasRenderer');
 require('../js/platform/renderers/WorldMarchHudCanvasRenderer');
+require('../js/platform/renderers/WorldFogCanvasRenderer');
 require('../js/platform/renderers/WorldMapCanvasRenderer');
 require('../js/platform/renderers/CanvasWorldMapFacade');
 require('../js/platform/renderers/WorldMapLayerCanvasRenderer');

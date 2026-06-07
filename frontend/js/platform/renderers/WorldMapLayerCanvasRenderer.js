@@ -383,6 +383,10 @@
         geometry,
       };
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
+      const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
+      if (typeof this.renderWorldTileFogMask === 'function') {
+        this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
+      }
       this.worldTileWaterTimeOverride = options.waterTimeMs !== null
         && options.waterTimeMs !== undefined
         && Number.isFinite(Number(options.waterTimeMs))
