@@ -135,7 +135,7 @@ test('world march starts a manual route and can be stopped at a requested tile',
   assert.equal(stopped.mission.target.q, 1);
 });
 
-test('world march blocks reusing a busy formation until returned mission is claimed', () => {
+test('world march becomes idle at destination and can continue from its current tile', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
@@ -157,33 +157,23 @@ test('world march blocks reusing a busy formation until returned mission is clai
 
   const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
   WorldExplorerService.advanceExploreMissions(gameState, finishAt);
-  assert.equal(gameState.exploreMissions[0].status, 'ready');
+  assert.equal(gameState.exploreMissions[0].status, 'idle');
+  assert.deepEqual(WorldExplorerService.getClientState(gameState, finishAt).busyFormations, []);
+  assert.equal(WorldExplorerService.getClientState(gameState, finishAt).idleMissions[0].position.q, 2);
 
-  const readyRepeat = WorldExplorerService.startWorldMarch(gameState, {
-    targetQ: 1,
-    targetR: 1,
-    formationSlot: 1,
-  }, finishAt);
-
-  assert.equal(readyRepeat.success, false);
-  assert.equal(readyRepeat.error, 'EXPLORE_FORMATION_BUSY');
-  assert.deepEqual(WorldExplorerService.getClientState(gameState, finishAt).busyFormations, [{
-    cityId: 'capital',
-    slot: 1,
-    missionId: started.mission.id,
-    status: 'ready',
-  }]);
-
-  const claimed = WorldExplorerService.claimExplore(gameState, started.mission.id, finishAt);
-  assert.equal(claimed.success, true);
-
-  const afterClaim = WorldExplorerService.startWorldMarch(gameState, {
-    targetQ: 1,
+  const continued = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
     targetR: 1,
     formationSlot: 1,
   }, new Date(finishAt.getTime() + 1));
 
-  assert.equal(afterClaim.success, true);
+  assert.equal(continued.success, true);
+  assert.equal(gameState.exploreMissions.length, 1);
+  assert.equal(gameState.exploreMissions[0].id, started.mission.id);
+  assert.equal(continued.mission.origin.q, 2);
+  assert.equal(continued.mission.origin.r, 0);
+  assert.equal(continued.mission.route.at(-1).q, 2);
+  assert.equal(continued.mission.route.at(-1).r, 1);
 });
 
 test('world march can be redirected home', () => {
@@ -204,4 +194,16 @@ test('world march can be redirected home', () => {
   assert.equal(returned.success, true);
   assert.equal(returned.mission.target.q, 0);
   assert.equal(returned.mission.target.r, 0);
+});
+
+test('random exploration still finishes as claimable ready report', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startExplore(gameState, { mode: 'random', routeLength: 2, formationSlot: 1 }, now);
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
+
+  assert.equal(gameState.exploreMissions[0].status, 'ready');
+  assert.equal(WorldExplorerService.getClientState(gameState, finishAt).readyMissions.length, 1);
 });

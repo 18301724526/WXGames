@@ -64,8 +64,8 @@ test('world explorer modules preserve the public exploration contract', () => {
   assert.equal(manual.success, true);
   assert.equal(mission.route.length, 2);
   Progression.normalizeExploreState(state, new Date(now.getTime() + 30000));
-  assert.equal(state.exploreMissions[0].status, 'ready');
-  assert.equal(ClientState.getClientState(state, now).readyMissions.length, 1);
+  assert.equal(state.exploreMissions[0].status, 'idle');
+  assert.equal(ClientState.getClientState(state, now).idleMissions.length, 1);
 });
 
 test('WorldExplorerService facade preserves the legacy API', () => {

@@ -51,6 +51,7 @@
         : [
           worldExplorerState.activeMission,
           ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+          ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
         ].filter(Boolean);
       return JSON.stringify({
         version: worldMap.version || 0,
@@ -92,6 +93,7 @@
         missions: missions.map((mission) => ({
           id: mission.id,
           status: mission.status,
+          position: mission.position || null,
           route: mission.route || [],
           revealArea: mission.revealArea || [],
           revealedTileIds: mission.revealedTileIds || [],
@@ -235,6 +237,20 @@
             tileId: mission.origin.tileId || `tile_${this.toInteger(mission.origin.q)}_${this.toInteger(mission.origin.r)}`,
           }
           : null,
+        target: mission.target && typeof mission.target === 'object'
+          ? {
+            q: this.toInteger(mission.target.q),
+            r: this.toInteger(mission.target.r),
+            tileId: mission.target.tileId || `tile_${this.toInteger(mission.target.q)}_${this.toInteger(mission.target.r)}`,
+          }
+          : null,
+        position: mission.position && typeof mission.position === 'object'
+          ? {
+            q: this.toInteger(mission.position.q),
+            r: this.toInteger(mission.position.r),
+            tileId: mission.position.tileId || `tile_${this.toInteger(mission.position.q)}_${this.toInteger(mission.position.r)}`,
+          }
+          : null,
         actionPoints: route.length,
         actionPointsRemaining: route.filter((step) => !step.revealed).length,
         route,
@@ -253,6 +269,7 @@
       const fromSlots = [
         worldExplorerState.activeMission,
         ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+        ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
       ].filter(Boolean);
       const byId = new Map();
       [...fromList, ...fromSlots].forEach((mission) => {
@@ -409,7 +426,7 @@
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
         }));
       const explorerScouts = this.getWorldExplorerMissions(worldExplorerState)
-        .filter((mission) => ['active', 'ready'].includes(mission.status))
+        .filter((mission) => ['active', 'ready', 'idle'].includes(mission.status))
         .map((mission) => this.normalizeWorldExplorerMission(mission))
         .filter(Boolean);
       const scoutAreas = (Array.isArray(territoryState.scoutAreas) ? territoryState.scoutAreas : [])

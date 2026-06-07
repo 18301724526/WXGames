@@ -62,3 +62,28 @@ test('WorldActorCanvasRenderer draws scout actor and exposes selection hit targe
   assert.equal(host.calls.some((call) => call[0] === 'getAsset' && call[1].includes('assets/art/units/spearman/move/')), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor' && target.action.missionId === 'explore-1'), true);
 });
+
+test('WorldActorCanvasRenderer keeps idle units on first frame without march arrow', () => {
+  const host = createHost();
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const actor = {
+    id: 'explore-1',
+    missionId: 'explore-1',
+    status: 'idle',
+    unitKey: 'scout_squad_default',
+    current: { q: 1, r: 0 },
+    target: { q: 2, r: 0 },
+  };
+
+  assert.equal(renderer.renderActors([actor], {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }), true);
+
+  assert.equal(host.calls.some((call) => call[0] === 'stroke'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'getAsset' && call[1].endsWith('/001.png')), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});

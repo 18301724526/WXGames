@@ -63,7 +63,7 @@ function normalizeMission(rawMission) {
     .sort((a, b) => a.step - b.step);
   if (!route.length) return null;
   const mode = rawMission.mode === 'manual' ? 'manual' : 'random';
-  const status = ['active', 'ready', 'cancelled'].includes(rawMission.status)
+  const status = ['active', 'ready', 'idle', 'cancelled'].includes(rawMission.status)
     ? rawMission.status
     : 'active';
   const origin = rawMission.origin && typeof rawMission.origin === 'object'
@@ -71,11 +71,21 @@ function normalizeMission(rawMission) {
     : {};
   const originQ = toInteger(origin.q ?? rawMission.originQ ?? rawMission.originX, 0);
   const originR = toInteger(origin.r ?? rawMission.originR ?? rawMission.originY, 0);
+  const homeOrigin = rawMission.homeOrigin && typeof rawMission.homeOrigin === 'object'
+    ? rawMission.homeOrigin
+    : origin;
+  const homeOriginQ = toInteger(homeOrigin.q ?? originQ, originQ);
+  const homeOriginR = toInteger(homeOrigin.r ?? originR, originR);
   const stepDurationMs = Math.max(1000, toInteger(rawMission.stepDurationMs, EXPLORE_STEP_DURATION_MS));
   const revealedTileIds = Array.from(new Set([
     ...(Array.isArray(rawMission.revealedTileIds) ? rawMission.revealedTileIds : []),
     ...route.filter((step) => step.revealed).map((step) => step.tileId),
   ].filter(Boolean).map(String)));
+  const rawPosition = rawMission.position && typeof rawMission.position === 'object'
+    ? rawMission.position
+    : null;
+  const positionQ = toInteger(rawPosition?.q ?? rawPosition?.x ?? route.filter((step) => step.revealed).at(-1)?.q ?? originQ, originQ);
+  const positionR = toInteger(rawPosition?.r ?? rawPosition?.y ?? route.filter((step) => step.revealed).at(-1)?.r ?? originR, originR);
   return {
     id: typeof rawMission.id === 'string' && rawMission.id ? rawMission.id : `explore_${mode}_${Date.now()}`,
     kind: 'worldExplore',
@@ -87,13 +97,31 @@ function normalizeMission(rawMission) {
       cityId: origin.cityId || rawMission.sourceCityId || 'capital',
       territoryId: origin.territoryId || rawMission.originTerritoryId || 'capital',
       name: origin.name || rawMission.originName || '',
+      tileId: origin.tileId || WorldMapService.getTileId(originQ, originR),
+    },
+    homeOrigin: {
+      q: homeOriginQ,
+      r: homeOriginR,
+      cityId: homeOrigin.cityId || origin.cityId || rawMission.sourceCityId || 'capital',
+      territoryId: homeOrigin.territoryId || origin.territoryId || rawMission.originTerritoryId || 'capital',
+      name: homeOrigin.name || origin.name || rawMission.originName || '',
+      tileId: homeOrigin.tileId || WorldMapService.getTileId(homeOriginQ, homeOriginR),
     },
     target: rawMission.target && typeof rawMission.target === 'object'
       ? {
         q: toInteger(rawMission.target.q ?? rawMission.target.x, route.at(-1)?.q || originQ),
         r: toInteger(rawMission.target.r ?? rawMission.target.y, route.at(-1)?.r || originR),
+        tileId: rawMission.target.tileId || WorldMapService.getTileId(
+          toInteger(rawMission.target.q ?? rawMission.target.x, route.at(-1)?.q || originQ),
+          toInteger(rawMission.target.r ?? rawMission.target.y, route.at(-1)?.r || originR),
+        ),
       }
-      : { q: route.at(-1)?.q || originQ, r: route.at(-1)?.r || originR },
+      : { q: route.at(-1)?.q || originQ, r: route.at(-1)?.r || originR, tileId: WorldMapService.getTileId(route.at(-1)?.q || originQ, route.at(-1)?.r || originR) },
+    position: {
+      q: positionQ,
+      r: positionR,
+      tileId: rawPosition?.tileId || WorldMapService.getTileId(positionQ, positionR),
+    },
     route,
     plannedTiles: (Array.isArray(rawMission.plannedTiles) ? rawMission.plannedTiles : [])
       .map(normalizePlannedTile)

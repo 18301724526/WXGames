@@ -200,9 +200,11 @@
         explorerMissions: [
           worldExplorerState.activeMission,
           ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+          ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
         ].filter(Boolean).map((mission) => ({
           id: mission.id,
           status: mission.status,
+          position: mission.position || null,
           route: mission.route || [],
           plannedTiles: mission.plannedTiles || [],
           plannedSites: mission.plannedSites || [],

@@ -56,6 +56,21 @@ test('WorldMarchSystem does not render returned ready missions as map actors', (
   assert.deepEqual(actors, []);
 });
 
+test('WorldMarchSystem renders idle missions at their position without remaining travel', () => {
+  const nowMs = new Date('2026-06-06T00:00:30.000Z').getTime();
+  const actors = WorldMarchSystem.buildActors({
+    idleMissions: [createMission({
+      status: 'idle',
+      position: { q: 2, r: 0, tileId: 'tile_2_0' },
+    })],
+  }, { nowMs });
+
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].status, 'idle');
+  assert.equal(actors[0].current.tileId, 'tile_2_0');
+  assert.equal(actors[0].remainingSeconds, 0);
+});
+
 test('WorldMarchSystem chooses previous tile before halfway through a segment', () => {
   const nowMs = new Date('2026-06-06T00:00:03.000Z').getTime();
   const stopTile = WorldMarchSystem.chooseStopTile(createMission(), nowMs);

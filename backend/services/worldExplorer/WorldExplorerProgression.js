@@ -8,6 +8,11 @@ const {
   normalizePlannedSite,
   normalizeMissions,
 } = require('./WorldExplorerMissionNormalizer');
+const {
+  advanceTutorialStep,
+  ensureTutorialFirstCityClaimSoldiers,
+} = require('./WorldExplorerTutorial');
+const { TUTORIAL_STEPS } = require('../../config/TutorialFlowConfig');
 
 function getPlannedTileById(mission) {
   return new Map((mission.plannedTiles || []).map((tile) => [tile.id || WorldMapService.getTileId(tile.q, tile.r), tile]));
@@ -89,6 +94,11 @@ function advanceExploreMissions(gameState, now = new Date()) {
       const revealedTiles = revealStep(gameState, mission, step, now);
       step.revealed = true;
       step.revealedAt = now.toISOString();
+      mission.position = {
+        q: step.q,
+        r: step.r,
+        tileId: step.tileId || WorldMapService.getTileId(step.q, step.r),
+      };
       newlyRevealedTiles.push(...revealedTiles);
       mission.revealedTileIds = Array.from(new Set([
         ...(mission.revealedTileIds || []),
@@ -98,9 +108,13 @@ function advanceExploreMissions(gameState, now = new Date()) {
     }
     mission.nextStepAt = new Date(nextStepAtMs).toISOString();
     if (mission.route.every((step) => step.revealed)) {
-      mission.status = 'ready';
+      mission.status = mission.mode === 'manual' ? 'idle' : 'ready';
       mission.completedAt = mission.completedAt || now.toISOString();
       mission.nextStepAt = null;
+      if (mission.status === 'idle' && gameState.tutorial?.currentStep === TUTORIAL_STEPS.scoutExploreStarted) {
+        gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreClaimed);
+        ensureTutorialFirstCityClaimSoldiers(gameState);
+      }
     }
   }
   return newlyRevealedTiles;

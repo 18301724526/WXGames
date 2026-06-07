@@ -84,7 +84,7 @@
   function getMissionProgress(mission = {}, nowMs = Date.now()) {
     const route = normalizeRoute(mission.route);
     if (!route.length) return { progress: 0, segmentIndex: 0, segmentProgress: 0, elapsedMs: 0, durationMs: 0 };
-    if (mission.status === 'ready') {
+    if (mission.status === 'ready' || mission.status === 'idle') {
       return {
         progress: 1,
         segmentIndex: Math.max(0, route.length - 1),
@@ -134,7 +134,7 @@
   }
 
   function getRemainingSeconds(mission = {}, nowMs = Date.now()) {
-    if (!mission || mission.status === 'ready') return 0;
+    if (!mission || mission.status === 'ready' || mission.status === 'idle') return 0;
     if (WorldTime?.getRemainingSeconds) {
       return WorldTime.getRemainingSeconds(mission, nowMs);
     }
@@ -150,13 +150,16 @@
   }
 
   function buildActorFromMission(mission = {}, options = {}) {
-    if (!mission || mission.status !== 'active') return null;
+    if (!mission || !['active', 'idle'].includes(mission.status)) return null;
     const nowMs = toNumber(options.nowMs, Date.now());
     const route = normalizeRoute(mission.route);
     if (!route.length) return null;
     const origin = normalizeCoord(mission.origin || {});
     const target = normalizeCoord(mission.target || route.at(-1), route.at(-1));
-    const current = mission.status === 'ready' ? target : getCurrentCoord(mission, nowMs);
+    const position = mission.position && typeof mission.position === 'object'
+      ? normalizeCoord(mission.position, target)
+      : target;
+    const current = mission.status === 'idle' ? position : getCurrentCoord(mission, nowMs);
     const stopTile = chooseStopTile(mission, nowMs);
     const formation = mission.formation || {};
     return {
@@ -165,7 +168,7 @@
       type: 'scout',
       status: mission.status,
       unitKey: mission.unitKey || 'scout_squad_default',
-      animationId: 'move',
+      animationId: mission.status === 'idle' ? 'idle' : 'move',
       origin,
       target,
       current,
@@ -186,6 +189,7 @@
     const missions = [];
     if (Array.isArray(worldExplorerState.missions)) missions.push(...worldExplorerState.missions);
     if (worldExplorerState.activeMission) missions.push(worldExplorerState.activeMission);
+    if (Array.isArray(worldExplorerState.idleMissions)) missions.push(...worldExplorerState.idleMissions);
     const seen = new Set();
     return missions
       .filter((mission) => {

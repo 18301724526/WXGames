@@ -19,6 +19,9 @@ function getClientMission(mission, now = new Date()) {
     revealedAt: step.revealedAt || null,
   }));
   const lastRevealed = [...route].reverse().find((step) => step.revealed);
+  const positionSource = mission.position && typeof mission.position === 'object'
+    ? mission.position
+    : (lastRevealed || mission.origin || {});
   const nextStepAtMs = toTimestamp(mission.nextStepAt, 0);
   return {
     id: mission.id,
@@ -26,6 +29,7 @@ function getClientMission(mission, now = new Date()) {
     mode: mission.mode,
     status: mission.status,
     origin: clone(mission.origin || {}),
+    homeOrigin: clone(mission.homeOrigin || mission.origin || {}),
     target: clone(mission.target || {}),
     route,
     plannedTiles: (mission.plannedTiles || []).map((tile) => clone(tile)),
@@ -39,9 +43,11 @@ function getClientMission(mission, now = new Date()) {
       site: clone(site.site || null),
     })),
     formation: clone(mission.formation || {}),
-    position: lastRevealed
-      ? { q: lastRevealed.q, r: lastRevealed.r, tileId: lastRevealed.tileId }
-      : { q: mission.origin?.q || 0, r: mission.origin?.r || 0, tileId: WorldMapService.getTileId(mission.origin?.q || 0, mission.origin?.r || 0) },
+    position: {
+      q: positionSource.q || 0,
+      r: positionSource.r || 0,
+      tileId: positionSource.tileId || WorldMapService.getTileId(positionSource.q || 0, positionSource.r || 0),
+    },
     revealedTileIds: [...(mission.revealedTileIds || [])],
     stepDurationSeconds: Math.floor((mission.stepDurationMs || EXPLORE_STEP_DURATION_MS) / 1000),
     remainingSeconds: mission.status === 'active' && nextStepAtMs
@@ -69,6 +75,7 @@ function getClientState(gameState, now = new Date()) {
     missions,
     activeMission: missions.find((mission) => mission.status === 'active') || null,
     readyMissions: missions.filter((mission) => mission.status === 'ready'),
+    idleMissions: missions.filter((mission) => mission.status === 'idle'),
     busyFormations,
     maxActiveMissions: MAX_ACTIVE_EXPLORE_MISSIONS,
     randomRouteLength: DEFAULT_RANDOM_ROUTE_LENGTH,

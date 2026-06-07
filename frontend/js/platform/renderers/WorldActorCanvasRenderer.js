@@ -53,9 +53,10 @@
 
     getActorFramePath(actor = {}) {
       const unitKey = actor.unitKey || 'scout_squad_default';
-      const animationId = actor.animationId || 'move';
+      const animationId = actor.status === 'idle' ? 'move' : (actor.animationId || 'move');
       const frames = UnitSpriteManifest?.getFramePaths?.(unitKey, animationId) || [];
       if (!frames.length) return '';
+      if (actor.status === 'idle') return frames[0];
       const frameMs = UnitSpriteManifest?.getFrameDurationMs?.(unitKey, animationId) || 80;
       const nowMs = this.getNow?.() || Date.now();
       return frames[Math.floor(Number(nowMs) / Math.max(1, frameMs)) % frames.length] || frames[0];

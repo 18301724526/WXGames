@@ -162,6 +162,7 @@
       const busyFormations = Array.isArray(explorer.busyFormations) ? explorer.busyFormations : [];
       const map = new Map();
       busyFormations.forEach((item = {}) => {
+        if (item.status === 'idle') return;
         const cityId = item.cityId || 'capital';
         const slot = Math.max(1, Math.floor(Number(item.slot) || 1));
         map.set(`${cityId}:${slot}`, item);
