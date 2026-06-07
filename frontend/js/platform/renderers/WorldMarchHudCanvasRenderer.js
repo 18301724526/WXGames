@@ -55,6 +55,31 @@
       };
     }
 
+    getVisibleHudFrame(frame = {}) {
+      const baseFrame = {
+        x: Number(frame.x) || 0,
+        y: Number(frame.y) || 0,
+        width: Math.max(1, Number(frame.width) || this.width || 390),
+        height: Math.max(1, Number(frame.height) || this.height || 844),
+      };
+      const offsetX = Math.max(0, Number(this.viewportOffsetX) || 0);
+      const offsetY = Math.max(0, Number(this.viewportOffsetY) || 0);
+      const viewportWidth = Math.max(0, Number(this.viewportWidth) || 0);
+      const viewportHeight = Math.max(0, Number(this.viewportHeight) || 0);
+      if (!viewportWidth || !viewportHeight) return baseFrame;
+      const left = Math.max(baseFrame.x, offsetX);
+      const top = Math.max(baseFrame.y, offsetY);
+      const right = Math.min(baseFrame.x + baseFrame.width, offsetX + viewportWidth);
+      const bottom = Math.min(baseFrame.y + baseFrame.height, offsetY + viewportHeight);
+      if (right - left < 120 || bottom - top < 120) return baseFrame;
+      return {
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+      };
+    }
+
     getTargetIntel(target = {}) {
       const hasTerrainLabel = Boolean(target.terrainLabel || target.terrain);
       const known = target.known === true
@@ -70,6 +95,7 @@
     }
 
     renderTargetHud(target = {}, viewport = {}, geometry = {}, frame = {}) {
+      const hudFrame = this.getVisibleHudFrame(frame);
       const point = this.getTileScreenCenter(target, viewport, geometry);
       const intel = this.getTargetIntel(target);
       const infoRect = this.clampHudRect({
@@ -77,13 +103,13 @@
         y: point.y - 86,
         width: 148,
         height: 48,
-      }, frame);
+      }, hudFrame);
       let buttonRect = this.clampHudRect({
         x: infoRect.x + infoRect.width + 8,
         y: infoRect.y + 8,
         width: 68,
         height: 32,
-      }, frame);
+      }, hudFrame);
       const overlapsInfo = buttonRect.x < infoRect.x + infoRect.width + 4
         && buttonRect.y < infoRect.y + infoRect.height + 4;
       if (overlapsInfo) {
@@ -92,7 +118,7 @@
           y: infoRect.y + infoRect.height + 8,
           width: 68,
           height: 32,
-        }, frame);
+        }, hudFrame);
       }
       this.drawSmallHudPanel(infoRect.x, infoRect.y, infoRect.width, infoRect.height, intel.title);
       this.drawText(intel.subtitle, infoRect.x + 12, infoRect.y + 31, {
@@ -117,13 +143,14 @@
     }
 
     renderFormationPicker(state = {}, target = {}, frame = {}) {
+      const hudFrame = this.getVisibleHudFrame(frame);
       const view = this.presenter?.buildMilitaryViewState?.(state) || {};
       const formations = Array.isArray(view.formations) ? view.formations.slice(0, 3) : [];
-      const width = Math.min(340, Math.max(260, (Number(frame.width) || this.width || 390) - 28));
+      const width = Math.min(340, Math.max(260, (Number(hudFrame.width) || this.width || 390) - 28));
       const height = 148;
-      const x = (Number(frame.x) || 0) + ((Number(frame.width) || this.width || 390) - width) / 2;
-      const frameY = Number(frame.y) || 0;
-      const frameH = Number(frame.height) || this.height || 844;
+      const x = (Number(hudFrame.x) || 0) + ((Number(hudFrame.width) || this.width || 390) - width) / 2;
+      const frameY = Number(hudFrame.y) || 0;
+      const frameH = Number(hudFrame.height) || this.height || 844;
       const minY = frameY + 8;
       const maxY = frameY + Math.max(8, frameH - height - 8);
       const preferredY = frameY + Math.max(74, Math.floor(frameH * 0.34));
@@ -184,13 +211,14 @@
     }
 
     renderActorHud(actor = {}, viewport = {}, geometry = {}, frame = {}) {
+      const hudFrame = this.getVisibleHudFrame(frame);
       const point = this.getTileScreenCenter(actor.current || actor.origin || {}, viewport, geometry);
       const rect = this.clampHudRect({
         x: point.x - 78,
         y: point.y - 102,
         width: 156,
         height: 64,
-      }, frame);
+      }, hudFrame);
       this.drawSmallHudPanel(rect.x, rect.y, rect.width, rect.height, actor.formation?.label || '侦察队');
       const buttonW = 58;
       const buttonH = 24;

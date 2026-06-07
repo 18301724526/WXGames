@@ -95,6 +95,44 @@ test('WorldMarchHudCanvasRenderer separates target info and march command', () =
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '未知区域'), true);
 });
 
+test('WorldMarchHudCanvasRenderer clamps HUD controls to the visible game viewport', () => {
+  const host = createHost({
+    width: 805,
+    height: 1120,
+    viewportOffsetX: 200,
+    viewportOffsetY: 200,
+    viewportWidth: 405,
+    viewportHeight: 720,
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+  const frame = { x: 1, y: 73, width: 803, height: 982 };
+
+  renderer.renderWorldMarchHud({}, {
+    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0', known: true, terrainLabel: 'Plains' },
+  }, [], {
+    originX: 402.5,
+    originY: 405.12,
+    panX: 0,
+    panY: 0,
+    scale: 0.78,
+  }, { stepX: 96, stepY: 48 }, frame);
+
+  const marchButton = host.calls.find((call) => call[0] === 'drawButton' && call[1][4] === '行军');
+  assert.equal(Boolean(marchButton), true);
+  assert.equal(marchButton[1][0] + marchButton[1][2] <= 200 + 405 - 8, true);
+
+  host.calls.length = 0;
+  host.hitTargets.length = 0;
+  renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
+    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0', pickerOpen: true },
+  }, [], {}, {}, frame);
+
+  const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
+  assert.equal(starts.length, 3);
+  assert.equal(starts.every((target) => target.rect.x >= 200 && target.rect.x + target.rect.width <= 200 + 405), true);
+  assert.equal(starts.every((target) => target.rect.y >= 200 && target.rect.y + target.rect.height <= 200 + 720), true);
+});
+
 test('WorldMarchHudCanvasRenderer renders selected actor commands', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
