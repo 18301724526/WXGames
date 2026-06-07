@@ -338,15 +338,16 @@ handleTap(point, event) {
         return handled;
       }
       if (!action || action.disabled) {
+        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        if (runtimeHandled) return runtimeHandled;
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
           if (event?.preventDefault) event.preventDefault();
           if (event?.stopPropagation) event.stopPropagation();
           return true;
         }
-        const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
-        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-        return handled;
+        return false;
       }
       if (action.background && action.type !== 'closeWorldSite') {
         const closed = this.closeWorldSiteHud({ direct: true });

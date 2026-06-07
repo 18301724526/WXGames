@@ -205,6 +205,57 @@ test('CanvasGameShell routes unobstructed world map tile taps through runtime ac
   ]);
 });
 
+test('CanvasGameShell routes world map HUD taps before closing existing map HUD state', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        calls.push(['rendererHit', point.x, point.y]);
+        return null;
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.targetQ, action.targetR]);
+        return true;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.closeWorldSiteHud = () => {
+    calls.push(['closeWorldSiteHud']);
+    return true;
+  };
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point) {
+      calls.push(['runtimeTap', point.x, point.y]);
+      return shell.actionController.handle({ type: 'openWorldMarchFormationPicker', targetQ: 1, targetR: 1 });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 232, y: 330 }, {}), true);
+  assert.deepEqual(calls, [
+    ['rendererHit', 232, 330],
+    ['runtimeTap', 232, 330],
+    ['handle', 'openWorldMarchFormationPicker', 1, 1],
+  ]);
+});
+
 test('CanvasGameShell can render resources without default map-home coercion', () => {
   const calls = [];
   const state = {
