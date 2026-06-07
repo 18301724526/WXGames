@@ -337,6 +337,18 @@ handleTap(point, event) {
         if (handled) this.stopCanvasEvent(event);
         return handled;
       }
+      if (action?.type === 'worldMapDrag') {
+        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        if (runtimeHandled) return runtimeHandled;
+        const closed = this.closeWorldSiteHud({ direct: true });
+        if (closed) {
+          if (event?.preventDefault) event.preventDefault();
+          if (event?.stopPropagation) event.stopPropagation();
+          return true;
+        }
+        return false;
+      }
       if (!action || action.disabled) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
@@ -357,7 +369,7 @@ handleTap(point, event) {
           return true;
         }
       }
-      if (action.type === 'worldMapDrag' || action.type === 'worldRadarDrag') {
+      if (action.type === 'worldRadarDrag') {
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
           if (event?.preventDefault) event.preventDefault();

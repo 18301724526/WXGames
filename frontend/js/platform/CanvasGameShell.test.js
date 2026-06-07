@@ -205,6 +205,57 @@ test('CanvasGameShell routes unobstructed world map tile taps through runtime ac
   ]);
 });
 
+test('CanvasGameShell routes foreground world map drag background taps through runtime actions', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        calls.push(['rendererHit', point.x, point.y]);
+        return { type: 'worldMapDrag', background: true };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.targetQ, action.targetR]);
+        return true;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.closeWorldSiteHud = () => {
+    calls.push(['closeWorldSiteHud']);
+    return true;
+  };
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point, event) {
+      calls.push(['runtimeTap', point.x, point.y, Boolean(event)]);
+      return shell.actionController.handle({ type: 'selectWorldMarchTarget', targetQ: 1, targetR: 1 });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 210, y: 372 }, {}), true);
+  assert.deepEqual(calls, [
+    ['rendererHit', 210, 372],
+    ['runtimeTap', 210, 372, true],
+    ['handle', 'selectWorldMarchTarget', 1, 1],
+  ]);
+});
+
 test('CanvasGameShell routes world map HUD taps before closing existing map HUD state', () => {
   const calls = [];
   const shell = new CanvasGameShell({
