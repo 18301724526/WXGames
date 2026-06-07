@@ -143,6 +143,51 @@ verify_runtime_config() {
     echo "[Deploy] 运行时配置版本已确认: $runtime_version"
 }
 
+read_pm2_process() {
+    pm2 jlist | node -e "const name=process.argv[1]; let input=''; process.stdin.on('data', (chunk) => input += chunk); process.stdin.on('end', () => { const list = JSON.parse(input || '[]'); const proc = list.find((item) => item && item.name === name); if (!proc) process.exit(2); const env = proc.pm2_env || {}; process.stdout.write([env.status || '', proc.pid || 0, env.pm_cwd || '', env.pm_exec_path || ''].join('\t')); });" "$PM2_APP_NAME"
+}
+
+get_listener_pids() {
+    ss -ltnp 2>/dev/null \
+        | awk -v port=":${API_PORT}" '$4 ~ port "$" { print }' \
+        | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' \
+        | sort -u
+}
+
+verify_pm2_listener() {
+    local attempt
+    local snapshot
+    local status
+    local pm2_pid
+    local pm2_cwd
+    local pm2_exec
+    local listener_pids
+
+    for attempt in 1 2 3 4 5 6 7 8 9 10; do
+        snapshot="$(read_pm2_process 2>/dev/null || true)"
+        status="$(printf '%s' "$snapshot" | awk -F '\t' '{print $1}')"
+        pm2_pid="$(printf '%s' "$snapshot" | awk -F '\t' '{print $2}')"
+        pm2_cwd="$(printf '%s' "$snapshot" | awk -F '\t' '{print $3}')"
+        pm2_exec="$(printf '%s' "$snapshot" | awk -F '\t' '{print $4}')"
+        listener_pids="$(get_listener_pids || true)"
+
+        if [ "$status" = "online" ] \
+            && [ -n "$pm2_pid" ] \
+            && [ "$pm2_pid" != "0" ] \
+            && printf '%s\n' "$listener_pids" | grep -qx "$pm2_pid"; then
+            echo "[Deploy] PM2 listener confirmed: app=$PM2_APP_NAME pid=$pm2_pid port=$API_PORT cwd=$pm2_cwd script=$pm2_exec"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "[Deploy] PM2 listener verification failed: app=$PM2_APP_NAME status=${status:-unknown} pm2_pid=${pm2_pid:-none} listener_pids=${listener_pids:-none}" >&2
+    echo "[Deploy] Another PM2 user or stale process may own port $API_PORT." >&2
+    pm2 show "$PM2_APP_NAME" >&2 || true
+    ss -ltnp >&2 || true
+    exit 1
+}
+
 publish_frontend_assets() {
     local frontend_source="$WORK_TREE/frontend"
     local resolved_source
@@ -187,6 +232,7 @@ require_command npm
 require_command pm2
 require_command rsync
 require_command curl
+require_command ss
 
 mkdir -p "$WORK_TREE"
 GIT_DIR_PATH="$(resolve_git_dir)" || {
@@ -248,6 +294,7 @@ if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
 else
     pm2 start server.js --name "$PM2_APP_NAME" --update-env
 fi
+verify_pm2_listener
 
 echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do

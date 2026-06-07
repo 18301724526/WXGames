@@ -163,6 +163,22 @@ test('dispatches territory actions through the territory action handler', () => 
 test('dispatches world march actions through the territory action handler', () => {
   const { calls, registry } = createRegistryWithCalls();
 
+  const started = registry.execute({
+    action: 'startWorldMarch',
+    body: { mode: 'manual', targetQ: 2, targetR: -1, formationSlot: 1, cityId: 'capital' },
+    gameState: {},
+    tutorial: {},
+  });
+
+  assert.equal(started.success, true);
+  assert.equal(calls[0].type, 'territory');
+  assert.equal(calls[0].action, 'startWorldMarch');
+  assert.equal(calls[0].payload.mode, 'manual');
+  assert.equal(calls[0].payload.targetQ, 2);
+  assert.equal(calls[0].payload.targetR, -1);
+  assert.equal(calls[0].payload.formationSlot, 1);
+  assert.equal(calls[0].payload.cityId, 'capital');
+
   const result = registry.execute({
     action: 'stopWorldMarch',
     body: { missionId: 'explore-1', targetQ: 1, targetR: 0 },
@@ -171,11 +187,11 @@ test('dispatches world march actions through the territory action handler', () =
   });
 
   assert.equal(result.success, true);
-  assert.equal(calls[0].type, 'territory');
-  assert.equal(calls[0].action, 'stopWorldMarch');
-  assert.equal(calls[0].payload.missionId, 'explore-1');
-  assert.equal(calls[0].payload.targetQ, 1);
-  assert.equal(calls[0].payload.targetR, 0);
+  assert.equal(calls[1].type, 'territory');
+  assert.equal(calls[1].action, 'stopWorldMarch');
+  assert.equal(calls[1].payload.missionId, 'explore-1');
+  assert.equal(calls[1].payload.targetQ, 1);
+  assert.equal(calls[1].payload.targetR, 0);
 });
 
 test('returns a stable result for unknown actions', () => {
