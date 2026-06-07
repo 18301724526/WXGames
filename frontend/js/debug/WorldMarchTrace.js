@@ -30,7 +30,13 @@
 
   function enabled() {
     const urlFlag = readUrlFlag();
-    if (urlFlag !== null) return urlFlag;
+    if (urlFlag !== null) {
+      try {
+        if (urlFlag) global?.localStorage?.setItem?.(STORAGE_KEY, '1');
+        else global?.localStorage?.removeItem?.(STORAGE_KEY);
+      } catch (_) {}
+      return urlFlag;
+    }
     return readStorageFlag();
   }
 
