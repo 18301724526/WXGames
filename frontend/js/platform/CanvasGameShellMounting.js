@@ -25,7 +25,7 @@ createRenderer(canvas) {
         ? this.runtime.ensureLayerCanvas('worldMap', { padding: worldMapLayerPadding, zIndex: 997 })
         : null;
       const fogCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
-        ? this.runtime.ensureLayerCanvas('worldFog', { padding: worldMapLayerPadding, zIndex: 998 })
+        ? this.runtime.ensureLayerCanvas('worldFog', { padding: worldMapLayerPadding, zIndex: 998, contextType: 'webgl' })
         : null;
       if (mapCanvas && !this.worldMapRenderer) {
         const layerMetrics = this.runtime?.getLayerMetrics?.('worldMap') || {};
@@ -58,9 +58,24 @@ createRenderer(canvas) {
       const FogRendererCtor = WorldFogCanvasRendererBase || global.WorldFogCanvasRenderer;
       if (fogCanvas && !this.worldFogRenderer && FogRendererCtor) {
         const fogMetrics = this.runtime?.getLayerMetrics?.('worldFog') || this.runtime?.getLayerMetrics?.('worldMap') || {};
+        const gl = fogCanvas.getContext?.('webgl', {
+          alpha: true,
+          antialias: false,
+          depth: false,
+          stencil: false,
+          preserveDrawingBuffer: false,
+          premultipliedAlpha: true,
+        }) || fogCanvas.getContext?.('experimental-webgl', {
+          alpha: true,
+          antialias: false,
+          depth: false,
+          stencil: false,
+          preserveDrawingBuffer: false,
+          premultipliedAlpha: true,
+        }) || null;
         this.worldFogRenderer = new FogRendererCtor({
           canvas: fogCanvas,
-          ctx: fogCanvas.getContext?.('2d') || null,
+          gl,
           pixelRatio: this.runtime?.pixelRatio,
           width: fogMetrics.width || this.runtime?.width,
           height: fogMetrics.height || this.runtime?.height,

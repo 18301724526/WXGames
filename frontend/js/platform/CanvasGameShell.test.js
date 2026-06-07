@@ -126,6 +126,57 @@ test('CanvasGameShell preserves world map layer when drag snapshot refresh misse
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldFog', 32, -18])), true);
 });
 
+test('CanvasGameShell mounts world fog as a WebGL layer', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const calls = [];
+  const contexts = [];
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.presenter = options.presenter || null;
+      this.width = options.width || 390;
+      this.height = options.height || 844;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+    }
+    setAssetsChangedHandler() {}
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  const runtime = {
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+    ensureLayerCanvas(name, options) {
+      calls.push(['ensureLayerCanvas', name, options]);
+      return {
+        getContext(type, attrs) {
+          contexts.push([name, type, attrs]);
+          return type === 'webgl' ? { createShader() {}, createProgram() {}, drawArrays() {} } : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 844, viewportWidth: 390, viewportHeight: 844, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+  });
+
+  try {
+    shell.createRenderer({});
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+  }
+
+  const fogLayerCall = calls.find((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldFog');
+  assert.equal(fogLayerCall?.[2]?.contextType, 'webgl');
+  assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === 'webgl'), true);
+  assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
+});
+
 test('CanvasGameShell passes runtime frame time into render options', () => {
   const shell = new CanvasGameShell({
     runtime: {
