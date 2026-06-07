@@ -452,6 +452,21 @@
       return this.state;
     }
 
+    onFamousPersonsClosed() {
+      const game = this.game || {};
+      const shell = game.canvasShell || null;
+      game.showFamousPersons = false;
+      game.famousPersonsPage = 0;
+      game.selectedFamousPersonId = '';
+      if (shell) {
+        shell.showFamousPersons = false;
+        shell.famousPersonsPage = 0;
+        shell.selectedFamousPersonId = '';
+      }
+      this.refreshCurrentHighlight();
+      return this.state;
+    }
+
     async onWorldMarchTargetSelected() {
       if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
         return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);

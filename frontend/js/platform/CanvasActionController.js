@@ -672,9 +672,13 @@
       if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       this.host.renderer?.clearFamousSkillTooltip?.();
       const handled = this.afterHandled(action);
-      game?.tutorialController?.refreshCurrentHighlight?.();
+      const tutorial = game?.tutorialController || null;
+      const result = tutorial?.onFamousPersonsClosed
+        ? tutorial.onFamousPersonsClosed()
+        : tutorial?.refreshCurrentHighlight?.();
       const scheduler = this.host?.runtime || game?.runtime || global;
-      scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+      scheduler?.setTimeout?.(() => tutorial?.refreshCurrentHighlight?.(), 0);
+      if (result?.catch) result.catch((error) => this.log?.(error));
       return handled;
     }
 

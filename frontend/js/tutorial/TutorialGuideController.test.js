@@ -413,10 +413,12 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   shell.showFamousPersons = false;
   shell.activeCommandPanel = 'civilization';
   game.activeCommandPanel = 'civilization';
-  assert.equal(controller.refreshCurrentHighlight(), true);
+  controller.onFamousPersonsClosed();
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'military' });
   assert.equal(shell.activeCommandPanel, '');
   assert.equal(game.activeCommandPanel, '');
+  assert.equal(game.showFamousPersons, false);
+  assert.equal(shell.showFamousPersons, false);
 
   shell.activeCommandPanel = 'military';
   assert.equal(controller.refreshCurrentHighlight(), true);

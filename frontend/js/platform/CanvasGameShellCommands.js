@@ -89,7 +89,14 @@ closeFamousPersons() {
       this.showFamousPersons = false;
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
+      const game = this.lastGame || null;
+      if (game && typeof game === 'object') {
+        if ('showFamousPersons' in game) game.showFamousPersons = false;
+        if ('famousPersonsPage' in game) game.famousPersonsPage = 0;
+        if ('selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
+      }
       this.renderer?.clearFamousSkillTooltip?.();
+      game?.tutorialController?.onFamousPersonsClosed?.();
       return true;
     },
 

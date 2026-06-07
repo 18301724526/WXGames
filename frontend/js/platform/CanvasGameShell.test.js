@@ -449,6 +449,91 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
   assert.deepEqual(target.action, { type: 'closeFamousPersons' });
 });
 
+test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial', () => {
+  const calls = [];
+  const game = {
+    showFamousPersons: true,
+    famousPersonsPage: 2,
+    selectedFamousPersonId: 'fp-scout',
+    tutorialController: {
+      onFamousPersonsClosed() {
+        calls.push(['onFamousPersonsClosed']);
+      },
+    },
+  };
+  const shell = new CanvasGameShell({
+    renderer: {
+      clearFamousSkillTooltip() {
+        calls.push(['clearFamousSkillTooltip']);
+      },
+    },
+  });
+  shell.lastGame = game;
+  shell.showFamousPersons = true;
+  shell.famousPersonsPage = 1;
+  shell.selectedFamousPersonId = 'fp-scout';
+
+  assert.equal(shell.closeFamousPersons(), true);
+
+  assert.equal(shell.showFamousPersons, false);
+  assert.equal(shell.famousPersonsPage, 0);
+  assert.equal(shell.selectedFamousPersonId, '');
+  assert.equal(game.showFamousPersons, false);
+  assert.equal(game.famousPersonsPage, 0);
+  assert.equal(game.selectedFamousPersonId, '');
+  assert.deepEqual(calls, [['clearFamousSkillTooltip'], ['onFamousPersonsClosed']]);
+});
+
+test('CanvasGameShell action controller advances tutorial after closeFamousPersons tap', () => {
+  const calls = [];
+  const game = {
+    showFamousPersons: true,
+    famousPersonsPage: 2,
+    selectedFamousPersonId: 'fp-scout',
+    tutorialController: {
+      onFamousPersonsClosed() {
+        calls.push(['onFamousPersonsClosed']);
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime: {
+      setTimeout(callback, delayMs) {
+        calls.push(['setTimeout', delayMs]);
+        callback();
+      },
+    },
+    renderer: {
+      clearFamousSkillTooltip() {
+        calls.push(['clearFamousSkillTooltip']);
+      },
+    },
+  });
+  shell.lastGame = game;
+  shell.showFamousPersons = true;
+  shell.famousPersonsPage = 1;
+  shell.selectedFamousPersonId = 'fp-scout';
+  shell.renderActive = () => {
+    calls.push(['renderActive']);
+    return true;
+  };
+
+  assert.equal(shell.actionController.handle({ type: 'closeFamousPersons' }), true);
+
+  assert.equal(shell.showFamousPersons, false);
+  assert.equal(game.showFamousPersons, false);
+  assert.deepEqual(calls, [
+    ['clearFamousSkillTooltip'],
+    ['renderActive'],
+    ['onFamousPersonsClosed'],
+    ['setTimeout', 0],
+    ['refreshCurrentHighlight'],
+  ]);
+});
+
 test('CanvasGameShell re-renders highlighted resource guides outside map home', () => {
   const calls = [];
   const shell = new CanvasGameShell({
