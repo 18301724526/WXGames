@@ -98,6 +98,36 @@ test('WorldFogCanvasRenderer cuts known fog by tile diamonds, not radial spotlig
   assert.equal(renderer.maskCache.pixelWidth < renderer.cache.pixelWidth, true);
 });
 
+test('WorldFogCanvasRenderer draws veil only around known-to-unknown boundary edges', () => {
+  const ctx = createCtx([]);
+  const renderer = new WorldFogCanvasRenderer({
+    ctx,
+    canvas: createCanvas(ctx),
+    pixelRatio: 1,
+    width: 390,
+    height: 844,
+  });
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48 };
+  const viewport = { originX: 130, originY: 120, panX: 0, panY: 0, scale: 0.5 };
+  const frame = { x: 0, y: 0, width: 300, height: 240 };
+  const entries = [
+    renderer.normalizeEntry({ id: 'tile_0_0', q: 0, r: 0, discovered: true, visible: true, visibility: 'scouted' }, viewport, geometry),
+    renderer.normalizeEntry({ id: 'tile_1_0', q: 1, r: 0, discovered: true, visible: true, visibility: 'scouted' }, viewport, geometry),
+  ];
+
+  const edges = renderer.getKnownBoundaryEdges(entries, viewport, geometry, frame);
+  const normalizedEdges = edges.map((edge) => [
+    Math.round(edge.from.x),
+    Math.round(edge.from.y),
+    Math.round(edge.to.x),
+    Math.round(edge.to.y),
+  ].join(','));
+
+  assert.equal(edges.length, 6);
+  assert.equal(normalizedEdges.includes('178,144,130,168'), false);
+  assert.equal(normalizedEdges.includes('130,120,178,144'), false);
+});
+
 test('WorldFogCanvasRenderer renders low-res textured fog when only known tiles are provided', () => {
   const calls = [];
   const ctx = createCtx(calls);

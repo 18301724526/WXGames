@@ -140,29 +140,73 @@
       ctx.closePath?.();
     }
 
-    traceKnownRegion(ctx, entries = [], viewport = {}, geometry = {}, frame = {}, options = {}) {
-      const outset = Math.max(0, Number(options.outset) || 0);
+    traceKnownRegion(ctx, entries = [], viewport = {}, geometry = {}, frame = {}) {
       entries.forEach((entry) => {
-        if (!outset) {
-          this.drawTileDiamond(ctx, entry, viewport, geometry, frame);
-          return;
-        }
-        const points = this.getTileDiamondPoints(entry, viewport, geometry, frame);
-        const cx = points.reduce((sum, point) => sum + point.x, 0) / Math.max(1, points.length);
-        const cy = points.reduce((sum, point) => sum + point.y, 0) / Math.max(1, points.length);
-        const expanded = points.map((point) => {
-          const dx = point.x - cx;
-          const dy = point.y - cy;
-          const length = Math.max(1, Math.hypot(dx, dy));
-          return {
-            x: point.x + dx / length * outset,
-            y: point.y + dy / length * outset,
-          };
-        });
-        ctx.moveTo?.(expanded[0].x, expanded[0].y);
-        expanded.slice(1).forEach((point) => ctx.lineTo?.(point.x, point.y));
-        ctx.closePath?.();
+        this.drawTileDiamond(ctx, entry, viewport, geometry, frame);
       });
+    }
+
+    getTileBoundaryNeighborKey(tile = {}, edgeIndex = 0) {
+      const q = Math.floor(Number(tile.q ?? tile.x) || 0);
+      const r = Math.floor(Number(tile.r ?? tile.y) || 0);
+      const neighbors = [
+        [q, r - 1],
+        [q + 1, r],
+        [q, r + 1],
+        [q - 1, r],
+      ];
+      const neighbor = neighbors[Math.max(0, Math.min(neighbors.length - 1, edgeIndex))] || neighbors[0];
+      return `${neighbor[0]},${neighbor[1]}`;
+    }
+
+    getKnownBoundaryEdges(entries = [], viewport = {}, geometry = {}, frame = {}) {
+      const knownEntries = this.getKnownEntries(entries);
+      const knownKeys = new Set(knownEntries.map((entry) => this.getTileKey(entry.tile)));
+      const edges = [];
+      knownEntries.forEach((entry) => {
+        const points = this.getTileDiamondPoints(entry, viewport, geometry, frame);
+        if (points.length < 4) return;
+        for (let edgeIndex = 0; edgeIndex < 4; edgeIndex += 1) {
+          if (knownKeys.has(this.getTileBoundaryNeighborKey(entry.tile, edgeIndex))) continue;
+          edges.push({
+            from: points[edgeIndex],
+            to: points[(edgeIndex + 1) % points.length],
+          });
+        }
+      });
+      return edges;
+    }
+
+    getBoundaryFogWidth(viewport = {}, geometry = {}) {
+      const scale = Math.max(0.05, Number(viewport.scale) || 1);
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      return Math.max(10, tileHeight * 0.32);
+    }
+
+    drawKnownBoundaryVeil(ctx, entries = [], viewport = {}, geometry = {}, frame = {}) {
+      const edges = this.getKnownBoundaryEdges(entries, viewport, geometry, frame);
+      if (!edges.length) return false;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.beginPath?.();
+      edges.forEach((edge) => {
+        ctx.moveTo?.(edge.from.x, edge.from.y);
+        ctx.lineTo?.(edge.to.x, edge.to.y);
+      });
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(3, 8, 7, 0.52)';
+      ctx.lineWidth = this.getBoundaryFogWidth(viewport, geometry);
+      ctx.stroke?.();
+      ctx.beginPath?.();
+      edges.forEach((edge) => {
+        ctx.moveTo?.(edge.from.x, edge.from.y);
+        ctx.lineTo?.(edge.to.x, edge.to.y);
+      });
+      ctx.strokeStyle = 'rgba(55, 76, 62, 0.16)';
+      ctx.lineWidth = Math.max(2, this.getBoundaryFogWidth(viewport, geometry) * 0.42);
+      ctx.stroke?.();
+      return true;
     }
 
     hashNoise(x = 0, y = 0, seed = '') {
@@ -178,12 +222,6 @@
     getMaskScale(width = 1, height = 1) {
       const longest = Math.max(1, Number(width) || 1, Number(height) || 1);
       return Math.max(0.18, Math.min(0.42, 320 / longest));
-    }
-
-    getMaskFeatherOutset(viewport = {}, geometry = {}) {
-      const scale = Math.max(0.05, Number(viewport.scale) || 1);
-      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      return Math.max(8, tileHeight * 0.18);
     }
 
     getMaskContext(width, height, maskScale = 0.25) {
@@ -251,11 +289,10 @@
       if (knownEntries.length) {
         ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath?.();
-        this.traceKnownRegion(ctx, knownEntries, viewport, geometry, frame, {
-          outset: this.getMaskFeatherOutset(viewport, geometry),
-        });
+        this.traceKnownRegion(ctx, knownEntries, viewport, geometry, frame);
         ctx.fillStyle = 'rgba(0, 0, 0, 1)';
         ctx.fill?.();
+        this.drawKnownBoundaryVeil(ctx, knownEntries, viewport, geometry, frame);
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
