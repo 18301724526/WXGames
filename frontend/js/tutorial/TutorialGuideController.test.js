@@ -317,6 +317,7 @@ test('TutorialGuideController guides era three, scout famous card, and army form
         openArmyFormation: { type: 'openArmyFormation', cityId: 'capital', slot: 1 },
         toggleArmyFormationMember: { type: 'toggleArmyFormationMember', personId: 'fp-scout' },
         saveArmyFormation: { type: 'saveArmyFormation' },
+        selectWorldMarchTarget: { type: 'selectWorldMarchTarget', targetQ: 2, targetR: -1 },
       };
       const action = targets[type];
       if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
@@ -460,6 +461,42 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   game.armyFormationEditor = shell.armyFormationEditor;
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'saveArmyFormation' });
+
+  shell.showCityManagement = true;
+  game.showCityManagement = true;
+  shell.territoryUiState = {
+    selectedSiteId: 'capital',
+    worldMarchTarget: { q: 8, r: -3, pickerOpen: true },
+    selectedWorldActorId: 'old-march',
+  };
+  game.territoryUiState = {
+    selectedSiteId: 'capital',
+    worldMarchTarget: { q: 8, r: -3, pickerOpen: true },
+    selectedWorldActorId: 'old-march',
+  };
+  const handled = controller.onArmyFormationSaved({
+    tutorial: {
+      completed: false,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFormationSaved,
+      grants: { scoutFamousPerson: { personId: 'fp-scout' } },
+    },
+  });
+  assert.equal(handled, true);
+  assert.equal(game.showCityManagement, false);
+  assert.equal(shell.showCityManagement, false);
+  assert.equal(game.armyFormationEditor.open, false);
+  assert.equal(shell.armyFormationEditor.open, false);
+  assert.equal(game.mapHomeActive, true);
+  assert.equal(shell.mapHomeActive, true);
+  assert.equal(game.state.currentTab, 'military');
+  assert.equal(game.state.militaryView, 'world');
+  assert.equal(game.territoryUiState.selectedSiteId, '');
+  assert.equal(game.territoryUiState.worldMarchTarget, null);
+  assert.equal(game.territoryUiState.selectedWorldActorId, '');
+  assert.equal(shell.territoryUiState.selectedSiteId, '');
+  assert.equal(shell.territoryUiState.worldMarchTarget, null);
+  assert.equal(shell.territoryUiState.selectedWorldActorId, '');
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'selectWorldMarchTarget' });
 });
 
 test('TutorialGuideController clears stale highlight when the next target is unavailable', () => {

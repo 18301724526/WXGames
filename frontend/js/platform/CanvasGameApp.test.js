@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasGameApp = require('./CanvasGameApp');
+const CanvasGameAppCommands = require('./CanvasGameAppCommands');
 
 const APP_MODULES = [
   'CanvasGameAppStateSync',
@@ -49,4 +50,70 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
     assert.equal(htmlPosition < facadeHtmlPosition, true, `${moduleName}.js should load before CanvasGameApp.js`);
     assert.equal(minigamePosition < facadeMinigamePosition, true, `${moduleName} should require before CanvasGameApp`);
   });
+});
+
+test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
+  class Host {}
+  CanvasGameAppCommands.install(Host);
+  const calls = [];
+  const host = new Host();
+  Object.assign(host, {
+    state: { currentTab: 'buildings' },
+    tutorial: { completed: false, currentStep: 22 },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['fp-scout'],
+      page: 0,
+      saving: false,
+    },
+    canvasShell: {},
+    getGameApi() {
+      return {
+        async setArmyFormation(cityId, slot, memberIds) {
+          calls.push(['setArmyFormation', cityId, slot, memberIds]);
+          return {
+            message: 'saved',
+            tutorial: { completed: false, currentStep: 22 },
+          };
+        },
+      };
+    },
+    applyApiState(result) {
+      calls.push(['applyApiState', result.tutorial.currentStep]);
+      this.tutorial = result.tutorial;
+    },
+    tutorialController: {
+      onArmyFormationSaved(result) {
+        calls.push(['onArmyFormationSaved', result.tutorial.currentStep]);
+        return true;
+      },
+      sync() {
+        calls.push(['sync']);
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  assert.equal(await host.saveArmyFormation(), true);
+  assert.deepEqual(calls, [
+    ['renderCanvasSurface', 'buildings'],
+    ['setArmyFormation', 'capital', 1, ['fp-scout']],
+    ['applyApiState', 22],
+    ['onArmyFormationSaved', 22],
+    ['showFloatingText', 'saved'],
+    ['log', 'saved'],
+  ]);
 });

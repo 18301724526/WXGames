@@ -328,6 +328,20 @@
       return this.game?.canvasShell?.armyFormationEditor || this.game?.armyFormationEditor || {};
     }
 
+    getClosedArmyFormationEditor() {
+      return { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+    }
+
+    closeArmyFormationEditorEverywhere() {
+      const game = this.game || {};
+      const closed = this.getClosedArmyFormationEditor();
+      game.armyFormationEditor = { ...closed };
+      if (game.canvasShell && typeof game.canvasShell === 'object') {
+        game.canvasShell.armyFormationEditor = { ...closed };
+      }
+      return closed;
+    }
+
     getWorldMarchTarget() {
       return this.game?.territoryController?.uiState?.worldMarchTarget
         || this.game?.canvasShell?.territoryUiState?.worldMarchTarget
@@ -461,6 +475,20 @@
         return this.advanceTo(TUTORIAL_STEPS.formationPanelOpened);
       }
       return this.state;
+    }
+
+    onArmyFormationSaved(result = {}) {
+      this.sync(result.tutorial || this.game?.tutorial || this.state);
+      const step = this.getCurrentStep();
+      if (step === TUTORIAL_STEPS.scoutFormationSaved || step === TUTORIAL_STEPS.scoutWorldPanelOpened) {
+        this.closeArmyFormationEditorEverywhere();
+        this.ensureMapHomeGuideVisible({ clearWorldMarchTarget: true });
+        this.refreshCurrentHighlight();
+        return true;
+      }
+      this.closeArmyFormationEditorEverywhere();
+      this.refreshCurrentHighlight();
+      return false;
     }
 
     async onMilitaryViewSwitched(view = '') {
@@ -874,9 +902,10 @@
       return true;
     }
 
-    ensureMapHomeGuideVisible() {
+    ensureMapHomeGuideVisible(options = {}) {
       const game = this.game || {};
       const shell = game.canvasShell || null;
+      const clearWorldMarchTarget = options.clearWorldMarchTarget === true;
       let changed = false;
       const setIfChanged = (host, key, value) => {
         if (!host || host[key] === value) return;
@@ -906,14 +935,32 @@
       setIfChanged(game, 'showFamousPersons', false);
       setIfChanged(game, 'showTalentPolicy', false);
       setIfChanged(game, 'activeEventId', null);
+      this.closeArmyFormationEditorEverywhere();
       mergeUiState(game, 'territoryUiState', {
         selectedSiteId: '',
+        ...(clearWorldMarchTarget ? {
+          worldMarchTarget: null,
+          selectedWorldActorId: '',
+        } : {}),
         expeditionConfigSiteId: '',
         expeditionSoldiers: '',
         expeditionTroopType: '',
         expeditionLeader: '',
       });
-      game.territoryController?.closeSiteDialog?.({ render: false });
+      if (game.territoryController?.uiState) {
+        mergeUiState(game.territoryController, 'uiState', {
+          selectedSiteId: '',
+          ...(clearWorldMarchTarget ? {
+            worldMarchTarget: null,
+            selectedWorldActorId: '',
+          } : {}),
+          expeditionConfigSiteId: '',
+          expeditionSoldiers: '',
+          expeditionTroopType: '',
+          expeditionLeader: '',
+        });
+      }
+      if (clearWorldMarchTarget) game.territoryController?.closeSiteDialog?.({ render: false });
       if (shell) {
         setIfChanged(shell, 'mapHomeActive', true);
         setIfChanged(shell, 'activeCommandPanel', '');
@@ -925,19 +972,21 @@
         setIfChanged(shell, 'activeEventId', null);
         mergeUiState(shell, 'territoryUiState', {
           selectedSiteId: '',
+          ...(clearWorldMarchTarget ? {
+            worldMarchTarget: null,
+            selectedWorldActorId: '',
+          } : {}),
           expeditionConfigSiteId: '',
           expeditionSoldiers: '',
           expeditionTroopType: '',
           expeditionLeader: '',
         });
       }
-      if (changed) {
-        shell?.hideTutorialHighlight?.();
-        if (typeof shell?.renderReadOnly === 'function') {
-          shell.renderReadOnly(game.state, 'military', { forceMapHome: true, isMapHome: true });
-        } else {
-          game.renderCanvasSurface?.('military');
-        }
+      shell?.hideTutorialHighlight?.();
+      if (typeof shell?.renderReadOnly === 'function') {
+        shell.renderReadOnly(game.state, 'military', { forceMapHome: true, isMapHome: true });
+      } else if (changed || options.forceRender !== false) {
+        game.renderCanvasSurface?.('military');
       }
       return true;
     }
@@ -1198,7 +1247,7 @@
         const activeMission = explorer.activeMission || null;
         const readyMission = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
         if (step === TUTORIAL_STEPS.scoutFormationSaved) {
-          this.ensureMapHomeGuideVisible();
+          this.ensureMapHomeGuideVisible({ clearWorldMarchTarget: true });
           return this.showHighlight(
             'selectWorldMarchTarget',
             (action) => !action.disabled,

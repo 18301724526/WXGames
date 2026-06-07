@@ -168,12 +168,15 @@
             try {
               const result = await this.getGameApi().setArmyFormation(cityId, slot, memberIds);
               this.applyApiState(result);
-              this.tutorialController?.sync?.(this.tutorial);
               this.closeArmyFormationEditor({ render: false });
+              const tutorialHandled = this.tutorialController?.onArmyFormationSaved?.(result) === true;
               this.showFloatingText(result.message || '编队已保存');
               this.log(result.message || '编队已保存');
-              this.tutorialController?.refreshCurrentHighlight?.();
-              this.renderCanvasSurface(this.state?.currentTab);
+              if (!tutorialHandled) {
+                this.tutorialController?.sync?.(this.tutorial);
+                this.tutorialController?.refreshCurrentHighlight?.();
+                this.renderCanvasSurface(this.state?.currentTab);
+              }
               return true;
             } catch (error) {
               const message = error.payload?.message || error.message || '编队保存失败';
