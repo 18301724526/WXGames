@@ -413,7 +413,11 @@
       this.host.activeCityManagementTab = tab;
       const game = this.getGameHost();
       if (game && game !== this.host) game.activeCityManagementTab = tab;
-      return this.afterHandled(action);
+      const handled = this.afterHandled(action);
+      game?.tutorialController?.onCityManagementOpened?.(tab);
+      const scheduler = this.host?.runtime || game?.runtime || global;
+      scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+      return handled;
     }
 
     handle_openArmyFormation(action) {
@@ -1040,6 +1044,10 @@
           this.host.showCityManagement = true;
           this.host.activeCityManagementTab = action.tab || 'buildings';
           this.afterHandled(action);
+          const tab = action.tab || 'buildings';
+          game?.tutorialController?.onCityManagementOpened?.(tab);
+          const scheduler = this.host?.runtime || game?.runtime || global;
+          scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
         }
         return allowed !== false;
       }));

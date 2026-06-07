@@ -223,6 +223,17 @@
       return Boolean(this.game?.showTaskCenter || this.game?.canvasShell?.showTaskCenter);
     }
 
+    isCityManagementOpen() {
+      return Boolean(this.game?.showCityManagement || this.game?.canvasShell?.showCityManagement);
+    }
+
+    isCityManagementTabOpen(tab = '') {
+      const activeTab = this.game?.canvasShell?.activeCityManagementTab
+        || this.game?.activeCityManagementTab
+        || '';
+      return activeTab === tab;
+    }
+
     isAdvisorOpen() {
       return Boolean(
         this.game?.canvasShell?.showAdvisor
@@ -355,6 +366,13 @@
         || '';
     }
 
+    getCapitalCityId() {
+      return this.game?.state?.cityState?.capitalCityId
+        || this.game?.state?.activeCityId
+        || this.game?.activeCityId
+        || 'capital';
+    }
+
     getTerritories() {
       return this.game?.state?.territoryState?.territories || [];
     }
@@ -467,6 +485,15 @@
       return this.state;
     }
 
+    onCityManagementOpened(tab = '') {
+      if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed && tab === 'military') {
+        this.refreshCurrentHighlight();
+        return this.state;
+      }
+      this.refreshCurrentHighlight();
+      return this.state;
+    }
+
     async onWorldMarchTargetSelected() {
       if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
         return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
@@ -520,7 +547,10 @@
         target = this.getCanvasTarget(type, predicate);
         this.retryingHighlightAfterRender = false;
       }
-      if (!target) return false;
+      if (!target) {
+        this.game?.canvasShell?.hideTutorialHighlight?.();
+        return false;
+      }
       return this.game?.canvasShell?.showTutorialHighlight?.(
         target,
         message,
@@ -574,6 +604,44 @@
         '\u70b9\u5f00\u4fa6\u5bdf\u961f\u53d1\u73b0\u7684\u7a7a\u57ce\uff0c\u51c6\u5907\u5efa\u7acb\u7b2c\u4e8c\u5904\u636e\u70b9\u3002',
         { allowedAction: { type: 'openWorldSite', siteId }, source: 'strongTutorial' },
       ) || false;
+    }
+
+    showCapitalSiteOpenHighlight(siteId = this.getCapitalCityId()) {
+      const target = this.getCanvasTarget(
+        'openWorldSite',
+        (action) => !action.disabled && (!siteId || action.siteId === siteId || action.territoryId === siteId),
+      );
+      if (!target) return false;
+      if (!this.isCanvasTargetVisible(target)) return false;
+      return this.game?.canvasShell?.showTutorialHighlight?.(
+        target,
+        '\u70b9\u5f00\u4e3b\u57ce\uff0c\u53bb\u57ce\u5185\u519b\u4e8b\u9875\u914d\u7f6e\u7b2c\u4e00\u652f\u4fa6\u5bdf\u7f16\u961f\u3002',
+        { allowedAction: { type: 'openWorldSite', siteId }, source: 'strongTutorial' },
+      ) || false;
+    }
+
+    showCapitalEnterHighlight(siteId = this.getCapitalCityId()) {
+      return this.showHighlight(
+        'enterCity',
+        (action) => !action.disabled && (!siteId || action.cityId === siteId || action.territoryId === siteId || action.siteId === siteId),
+        '\u8fdb\u5165\u4e3b\u57ce\uff0c\u5728\u57ce\u5185\u519b\u4e8b\u9875\u914d\u7f6e\u4fa6\u5bdf\u7f16\u961f\u3002',
+        { type: 'enterCity', cityId: siteId },
+      );
+    }
+
+    focusCapitalSite(siteId = this.getCapitalCityId()) {
+      if (!siteId) return false;
+      const shell = this.game?.canvasShell || null;
+      const actionController = shell?.actionController || this.game?.actionController || null;
+      if (typeof actionController?.centerWorldMapOnSite === 'function') {
+        actionController.centerWorldMapOnSite(siteId);
+      }
+      this.ensureMapHomeGuideVisible();
+      const highlighted = this.showCapitalSiteOpenHighlight(siteId);
+      if (!highlighted) {
+        setTimeout(() => this.showCapitalSiteOpenHighlight(siteId), 80);
+      }
+      return highlighted;
     }
 
     focusFirstCitySite(siteId = '') {
@@ -1078,25 +1146,31 @@
           return this.showHighlight(
             'closeFamousPersons',
             (action) => !action.disabled,
-            '\u5173\u95ed\u540d\u4eba\u9762\u677f\uff0c\u63a5\u4e0b\u6765\u53bb\u519b\u4e8b\u91cc\u914d\u7f6e\u7f16\u961f\u3002',
+            '\u5173\u95ed\u540d\u4eba\u9762\u677f\uff0c\u63a5\u4e0b\u6765\u56de\u4e3b\u57ce\u914d\u7f6e\u7b2c\u4e00\u652f\u4fa6\u5bdf\u7f16\u961f\u3002',
             { type: 'closeFamousPersons' },
           );
         }
-        if (step === TUTORIAL_STEPS.famousCardViewed && !this.isCommandPanelOpen('military')) {
-          this.prepareCommandPanelGuide('military');
+        const capitalCityId = this.getCapitalCityId();
+        if (step === TUTORIAL_STEPS.famousCardViewed && this.isWorldSiteSelected(capitalCityId) && !this.isFamousPersonsOpen() && !this.isCityManagementOpen()) {
+          return this.showCapitalEnterHighlight(capitalCityId);
+        }
+        if (step === TUTORIAL_STEPS.famousCardViewed && !this.isFamousPersonsOpen() && !this.isCityManagementOpen()) {
+          return this.focusCapitalSite(capitalCityId);
+        }
+        if (step === TUTORIAL_STEPS.famousCardViewed && this.isCityManagementOpen() && !this.isCityManagementTabOpen('military')) {
           return this.showHighlight(
-            'openCommandPanel',
-            (action) => !action.disabled && action.panel === 'military',
-            '\u6253\u5f00\u519b\u4e8b\uff0c\u6211\u4eec\u8981\u628a\u8fd9\u4f4d\u540d\u4eba\u653e\u8fdb\u4fa6\u5bdf\u7f16\u961f\u3002',
-            { type: 'openCommandPanel', panel: 'military' },
+            'switchCityManagementTab',
+            (action) => !action.disabled && action.tab === 'military',
+            '\u5207\u5230\u57ce\u5185\u519b\u4e8b\uff0c\u6211\u4eec\u8981\u628a\u8fd9\u4f4d\u540d\u4eba\u653e\u8fdb\u4fa6\u5bdf\u7f16\u961f\u3002',
+            { type: 'switchCityManagementTab', tab: 'military' },
           );
         }
-        if (step === TUTORIAL_STEPS.famousCardViewed && this.isCommandPanelOpen('military') && !this.getArmyFormationEditor().open) {
+        if (step === TUTORIAL_STEPS.famousCardViewed && this.isCityManagementOpen() && this.isCityManagementTabOpen('military') && !this.getArmyFormationEditor().open) {
           return this.showHighlight(
             'openArmyFormation',
             (action) => !action.disabled && Number(action.slot || 1) === 1,
             '\u70b9\u51fb\u7b2c\u4e00\u5f20\u7f16\u961f\u5361\u7247\uff0c\u628a\u4fa6\u5bdf\u540d\u4eba\u653e\u8fdb\u961f\u4f0d\u3002',
-            { type: 'openArmyFormation', cityId: this.game?.state?.activeCityId || 'capital', slot: 1 },
+            { type: 'openArmyFormation', cityId: capitalCityId, slot: 1 },
           );
         }
         const editor = this.getArmyFormationEditor();

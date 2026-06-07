@@ -299,6 +299,9 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   const calls = [];
   const shell = {
     activeCommandPanel: '',
+    showCityManagement: false,
+    activeCityManagementTab: '',
+    territoryUiState: { selectedSiteId: '' },
     armyFormationEditor: { open: false, cityId: '', slot: 1, memberIds: [] },
     getCanvasTarget(type, predicate) {
       const targets = {
@@ -308,12 +311,13 @@ test('TutorialGuideController guides era three, scout famous card, and army form
         openFamousPersonDetail: { type: 'openFamousPersonDetail', personId: 'fp-scout' },
         closeFamousPersonDetail: { type: 'closeFamousPersonDetail' },
         closeFamousPersons: { type: 'closeFamousPersons' },
-        openCommandPanelMilitary: { type: 'openCommandPanel', panel: 'military' },
+        openWorldSite: { type: 'openWorldSite', siteId: 'capital' },
+        enterCity: { type: 'enterCity', cityId: 'capital' },
+        switchCityManagementTab: { type: 'switchCityManagementTab', tab: 'military' },
         openArmyFormation: { type: 'openArmyFormation', cityId: 'capital', slot: 1 },
         toggleArmyFormationMember: { type: 'toggleArmyFormationMember', personId: 'fp-scout' },
         saveArmyFormation: { type: 'saveArmyFormation' },
       };
-      if (type === 'openCommandPanel' && predicate?.(targets.openCommandPanelMilitary)) return { x: 10, y: 20, width: 100, height: 30 };
       const action = targets[type];
       if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
       return null;
@@ -325,6 +329,12 @@ test('TutorialGuideController guides era three, scout famous card, and army form
     hideTutorialHighlight() {
       calls.push({ hideHighlight: true });
       return true;
+    },
+    actionController: {
+      centerWorldMapOnSite(siteId) {
+        calls.push({ centerWorldMapOnSite: siteId });
+        return true;
+      },
     },
   };
   const game = {
@@ -345,7 +355,11 @@ test('TutorialGuideController guides era three, scout famous card, and army form
           capital: [{ slot: 1, memberIds: [] }],
         },
       },
+      territoryState: {
+        territories: [{ id: 'capital', q: 0, r: 0 }],
+      },
     },
+    territoryUiState: shell.territoryUiState,
     canvasShell: shell,
     selectedFamousPersonId: '',
     renderCanvasSurface() {
@@ -414,13 +428,25 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   shell.activeCommandPanel = 'civilization';
   game.activeCommandPanel = 'civilization';
   controller.onFamousPersonsClosed();
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'military' });
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldSite', siteId: 'capital' });
   assert.equal(shell.activeCommandPanel, '');
   assert.equal(game.activeCommandPanel, '');
   assert.equal(game.showFamousPersons, false);
   assert.equal(shell.showFamousPersons, false);
 
-  shell.activeCommandPanel = 'military';
+  shell.territoryUiState.selectedSiteId = 'capital';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'enterCity', cityId: 'capital' });
+
+  shell.showCityManagement = true;
+  game.showCityManagement = true;
+  shell.activeCityManagementTab = 'buildings';
+  game.activeCityManagementTab = 'buildings';
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'switchCityManagementTab', tab: 'military' });
+
+  shell.activeCityManagementTab = 'military';
+  game.activeCityManagementTab = 'military';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openArmyFormation', cityId: 'capital', slot: 1 });
 
@@ -434,6 +460,38 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   game.armyFormationEditor = shell.armyFormationEditor;
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'saveArmyFormation' });
+});
+
+test('TutorialGuideController clears stale highlight when the next target is unavailable', () => {
+  const calls = [];
+  const shell = {
+    getCanvasTarget() {
+      return null;
+    },
+    hideTutorialHighlight() {
+      calls.push(['hideTutorialHighlight']);
+      return true;
+    },
+  };
+  const game = {
+    state: { currentTab: 'resources' },
+    canvasShell: shell,
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  };
+  const controller = new TutorialGuideController({ game });
+
+  assert.equal(controller.showHighlight(
+    'openCommandPanel',
+    (action) => action.panel === 'military',
+    'Missing target',
+    { type: 'openCommandPanel', panel: 'military' },
+  ), false);
+  assert.deepEqual(calls, [
+    ['renderCanvasSurface', 'resources'],
+    ['hideTutorialHighlight'],
+  ]);
 });
 
 test('TutorialGuideController guides scout formation into map march and claim', async () => {
