@@ -752,6 +752,9 @@ test('CanvasActionController writes world march selection into territory control
       uiState: controllerUiState,
       closeSiteDialog(options) {
         calls.push(['closeSiteDialog', options]);
+        controllerUiState.selectedSiteId = '';
+        controllerUiState.worldMarchTarget = null;
+        controllerUiState.selectedWorldActorId = '';
       },
     },
   };

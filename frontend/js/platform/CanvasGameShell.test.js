@@ -157,6 +157,54 @@ test('CanvasGameShell treats tutorial advisor dialogue as a blocking overlay', (
   assert.equal(shell.hasBlockingOverlayExceptTechTree(), true);
 });
 
+test('CanvasGameShell routes unobstructed world map tile taps through runtime actions', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        calls.push(['rendererHit', point.x, point.y]);
+        return null;
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.targetQ, action.targetR]);
+        return true;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.hasBlockingOverlayOpen = () => false;
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point, event) {
+      calls.push(['runtimeTap', point.x, point.y, Boolean(event)]);
+      return shell.actionController.handle({ type: 'selectWorldMarchTarget', targetQ: 1, targetR: 1 });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 200, y: 360 }, {}), true);
+  assert.deepEqual(calls, [
+    ['rendererHit', 200, 360],
+    ['runtimeTap', 200, 360, true],
+    ['handle', 'selectWorldMarchTarget', 1, 1],
+  ]);
+});
+
 test('CanvasGameShell can render resources without default map-home coercion', () => {
   const calls = [];
   const state = {

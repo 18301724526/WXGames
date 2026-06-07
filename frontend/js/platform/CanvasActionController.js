@@ -1381,6 +1381,8 @@
       const q = Math.floor(Number(action.targetQ ?? action.q));
       const r = Math.floor(Number(action.targetR ?? action.r));
       if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+      const game = this.getGameHost();
+      game?.territoryController?.closeSiteDialog?.({ render: false });
       const uiState = this.getSharedTerritoryUiState();
       uiState.worldMarchTarget = {
         q,
@@ -1391,8 +1393,6 @@
       uiState.selectedWorldActorId = '';
       uiState.selectedSiteId = '';
       uiState.expeditionConfigSiteId = '';
-      const game = this.getGameHost();
-      game?.territoryController?.closeSiteDialog?.({ render: false });
       const tutorialResult = game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
       return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
         if (allowed !== false) {
