@@ -95,7 +95,7 @@
     }
 
     hasMilitaryData(state = {}) {
-      return Boolean(state?.military || state?.famousPersons || state?.cityState || state?.activeCityId);
+      return Boolean(state?.military || state?.famousPersons || state?.cityState);
     }
 
     resolveStateCandidates(state = {}) {
