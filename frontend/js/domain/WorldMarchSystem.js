@@ -134,7 +134,7 @@
   }
 
   function buildActorFromMission(mission = {}, options = {}) {
-    if (!mission || !['active', 'ready'].includes(mission.status)) return null;
+    if (!mission || mission.status !== 'active') return null;
     const nowMs = toNumber(options.nowMs, Date.now());
     const route = normalizeRoute(mission.route);
     if (!route.length) return null;
@@ -170,7 +170,6 @@
     const missions = [];
     if (Array.isArray(worldExplorerState.missions)) missions.push(...worldExplorerState.missions);
     if (worldExplorerState.activeMission) missions.push(worldExplorerState.activeMission);
-    if (Array.isArray(worldExplorerState.readyMissions)) missions.push(...worldExplorerState.readyMissions);
     const seen = new Set();
     return missions
       .filter((mission) => {

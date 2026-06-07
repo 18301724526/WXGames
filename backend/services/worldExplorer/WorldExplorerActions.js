@@ -24,10 +24,35 @@ function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
 }
 
+function normalizeFormationSlot(value, fallback = 1) {
+  const slot = Math.floor(Number(value));
+  return Number.isFinite(slot) && slot > 0 ? slot : fallback;
+}
+
+function getBusyFormationMission(gameState, formation = {}) {
+  const cityId = formation.cityId || 'capital';
+  const slot = normalizeFormationSlot(formation.slot);
+  return (gameState.exploreMissions || []).find((mission) => {
+    if (!['active', 'ready'].includes(mission?.status)) return false;
+    const missionFormation = mission.formation || {};
+    return (missionFormation.cityId || 'capital') === cityId
+      && normalizeFormationSlot(missionFormation.slot) === slot;
+  }) || null;
+}
+
 function startExplore(gameState, options = {}, now = new Date()) {
   normalizeExploreState(gameState, now);
   const formationValidation = validateTutorialFormation(gameState, options);
   if (!formationValidation.success) return formationValidation;
+  const busyMission = getBusyFormationMission(gameState, formationValidation.formation);
+  if (busyMission) {
+    return {
+      success: false,
+      error: 'EXPLORE_FORMATION_BUSY',
+      message: 'This formation is already marching.',
+      mission: getClientMission(busyMission, now),
+    };
+  }
   if (countActiveMissions(gameState) >= MAX_ACTIVE_EXPLORE_MISSIONS) {
     return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: 'An explorer mission is already active.' };
   }

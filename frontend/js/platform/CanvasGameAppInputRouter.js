@@ -86,7 +86,8 @@
             if (action?.type === 'blockCanvasModal') {
               return this.actionController?.handle?.(action);
             }
-            if (!action || action.disabled) {
+            if (action?.disabled) return true;
+            if (!action) {
               const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
               this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
               return handled;

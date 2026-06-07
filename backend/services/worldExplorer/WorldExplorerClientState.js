@@ -57,10 +57,19 @@ function getClientMission(mission, now = new Date()) {
 function getClientState(gameState, now = new Date()) {
   normalizeExploreState(gameState, now);
   const missions = (gameState.exploreMissions || []).map((mission) => getClientMission(mission, now));
+  const busyFormations = missions
+    .filter((mission) => ['active', 'ready'].includes(mission.status))
+    .map((mission) => ({
+      cityId: mission.formation?.cityId || mission.origin?.cityId || 'capital',
+      slot: Math.max(1, Math.floor(Number(mission.formation?.slot) || 1)),
+      missionId: mission.id,
+      status: mission.status,
+    }));
   return {
     missions,
     activeMission: missions.find((mission) => mission.status === 'active') || null,
     readyMissions: missions.filter((mission) => mission.status === 'ready'),
+    busyFormations,
     maxActiveMissions: MAX_ACTIVE_EXPLORE_MISSIONS,
     randomRouteLength: DEFAULT_RANDOM_ROUTE_LENGTH,
     maxManualRouteLength: MAX_MANUAL_ROUTE_LENGTH,

@@ -68,6 +68,25 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   assert.equal(start.rect.y + start.rect.height <= 84 + 696, true);
 });
 
+test('WorldMarchHudCanvasRenderer disables busy formations in march picker', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({
+    activeCityId: 'capital',
+    worldExplorerState: {
+      busyFormations: [{ cityId: 'capital', slot: 1, missionId: 'explore-1', status: 'active' }],
+    },
+  }, {
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
+  assert.equal(Boolean(start), true);
+  assert.equal(start.action.disabled, true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '行军中'), true);
+});
+
 test('WorldMarchHudCanvasRenderer reads formations from last game state when refreshed with action state', () => {
   const host = createHost({
     lastGame: {

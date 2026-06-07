@@ -157,6 +157,24 @@
       return Number(formation.memberCount) > 0;
     }
 
+    getBusyFormationMap(state = {}) {
+      const explorer = state?.worldExplorerState || {};
+      const busyFormations = Array.isArray(explorer.busyFormations) ? explorer.busyFormations : [];
+      const map = new Map();
+      busyFormations.forEach((item = {}) => {
+        const cityId = item.cityId || 'capital';
+        const slot = Math.max(1, Math.floor(Number(item.slot) || 1));
+        map.set(`${cityId}:${slot}`, item);
+      });
+      return map;
+    }
+
+    getFormationBusyInfo(formation = {}, militaryState = {}, state = {}) {
+      const cityId = formation.cityId || militaryState.activeCityId || 'capital';
+      const slot = Math.max(1, Math.floor(Number(formation.slot) || 1));
+      return this.getBusyFormationMap(state).get(`${cityId}:${slot}`) || null;
+    }
+
     renderTargetHud(target = {}, viewport = {}, geometry = {}, frame = {}) {
       const hudFrame = this.getVisibleHudFrame(frame);
       const point = this.getTileScreenCenter(target, viewport, geometry);
@@ -234,27 +252,30 @@
         const formation = formations[index] || { slot: index + 1, cityId: militaryState.activeCityId || 'capital', members: [] };
         const cardX = x + 12 + index * (cardW + gap);
         const empty = !this.formationHasMembers(formation);
+        const busy = this.getFormationBusyInfo(formation, militaryState, state);
+        const disabled = empty || Boolean(busy);
         this.drawPanel(cardX, cardY, cardW, cardH, {
-          fill: empty ? 'rgba(41, 39, 32, 0.78)' : 'rgba(35, 49, 34, 0.84)',
-          stroke: empty ? 'rgba(255, 226, 177, 0.14)' : 'rgba(116, 211, 160, 0.44)',
+          fill: disabled ? 'rgba(41, 39, 32, 0.78)' : 'rgba(35, 49, 34, 0.84)',
+          stroke: disabled ? 'rgba(255, 226, 177, 0.14)' : 'rgba(116, 211, 160, 0.44)',
           radius: 7,
           inset: 'rgba(255, 231, 184, 0.05)',
         });
         this.drawText(this.truncateText(formation.name || `队伍${index + 1}`, cardW - 10, { size: 11, bold: true }), cardX + cardW / 2, cardY + 16, {
           size: 11,
           bold: true,
-          color: empty ? '#aeb0b8' : '#ffe6b5',
+          color: disabled ? '#aeb0b8' : '#ffe6b5',
           align: 'center',
         });
         this.drawText(`${formation.memberCount ?? formation.members?.length ?? 0}/${formation.maxMembers || 5}`, cardX + cardW / 2, cardY + 42, {
           size: 18,
           bold: true,
-          color: empty ? '#8e918a' : '#74d3a0',
+          color: disabled ? '#8e918a' : '#74d3a0',
           align: 'center',
         });
-        this.drawText(empty ? '未编队' : '出征', cardX + cardW / 2, cardY + 65, {
+        const statusText = empty ? '未编队' : (busy?.status === 'ready' ? '待归队' : busy ? '行军中' : '出征');
+        this.drawText(statusText, cardX + cardW / 2, cardY + 65, {
           size: 10,
-          color: empty ? '#8e918a' : '#f0b45b',
+          color: disabled ? '#8e918a' : '#f0b45b',
           align: 'center',
         });
         this.addHitTarget({ x: cardX, y: cardY, width: cardW, height: cardH }, {
@@ -265,7 +286,7 @@
           tileId: target.tileId,
           formationSlot: formation.slot || index + 1,
           cityId: formation.cityId || militaryState.activeCityId || 'capital',
-          disabled: empty,
+          disabled,
         });
       });
       const closeSize = 26;

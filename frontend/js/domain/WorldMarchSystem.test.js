@@ -34,6 +34,16 @@ test('WorldMarchSystem computes actor progress, remaining time, and stop tile', 
   assert.equal(actor.formation.slot, 1);
 });
 
+test('WorldMarchSystem does not render returned ready missions as map actors', () => {
+  const nowMs = new Date('2026-06-06T00:00:30.000Z').getTime();
+  const actors = WorldMarchSystem.buildActors({
+    missions: [createMission({ status: 'ready' })],
+    readyMissions: [createMission({ id: 'ready-slot', status: 'ready' })],
+  }, { nowMs });
+
+  assert.deepEqual(actors, []);
+});
+
 test('WorldMarchSystem chooses previous tile before halfway through a segment', () => {
   const nowMs = new Date('2026-06-06T00:00:03.000Z').getTime();
   const stopTile = WorldMarchSystem.chooseStopTile(createMission(), nowMs);

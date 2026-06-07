@@ -349,7 +349,12 @@ handleTap(point, event) {
         }
         return false;
       }
-      if (!action || action.disabled) {
+      if (action?.disabled) {
+        if (event?.preventDefault) event.preventDefault();
+        if (event?.stopPropagation) event.stopPropagation();
+        return true;
+      }
+      if (!action) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         if (runtimeHandled) return runtimeHandled;
