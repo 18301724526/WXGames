@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const sharedUIStatePresenter = (() => {
+    if (global.UIStatePresenter) return global.UIStatePresenter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../state/UIStatePresenter');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class WorldMarchHudCanvasRenderer {
     constructor(options = {}) {
@@ -126,6 +137,20 @@
       return this.resolveStateCandidates(state).find((candidate) => this.hasMilitaryData(candidate)) || state || {};
     }
 
+    getMilitaryPresenter() {
+      return [
+        this.presenter,
+        this.host?.presenter,
+        this.host?.host?.presenter,
+        sharedUIStatePresenter,
+      ].find((presenter) => presenter && typeof presenter.buildMilitaryViewState === 'function') || null;
+    }
+
+    buildMilitaryViewState(state = {}) {
+      const presenter = this.getMilitaryPresenter();
+      return presenter?.buildMilitaryViewState?.(state) || { formations: [] };
+    }
+
     formationHasMembers(formation = {}) {
       if (Array.isArray(formation.members) && formation.members.length > 0) return true;
       if (Array.isArray(formation.memberIds) && formation.memberIds.length > 0) return true;
@@ -183,7 +208,7 @@
     renderFormationPicker(state = {}, target = {}, frame = {}) {
       const hudFrame = this.getVisibleHudFrame(frame);
       const militaryState = this.resolveMilitaryState(state);
-      const view = this.presenter?.buildMilitaryViewState?.(militaryState) || {};
+      const view = this.buildMilitaryViewState(militaryState);
       const formations = Array.isArray(view.formations) ? view.formations.slice(0, 3) : [];
       const width = Math.min(340, Math.max(260, (Number(hudFrame.width) || this.width || 390) - 28));
       const height = 148;

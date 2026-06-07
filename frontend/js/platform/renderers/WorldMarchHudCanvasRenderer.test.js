@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 require('../../domain/TileMapGeometry');
 require('../../domain/WorldMarchSystem');
+require('../../state/UIStatePresenter');
 const WorldMarchHudCanvasRenderer = require('./WorldMarchHudCanvasRenderer');
 
 function createHost(overrides = {}) {
@@ -195,6 +196,35 @@ test('WorldMarchHudCanvasRenderer skips activeCity-only state when resolving for
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(start.action.disabled, false);
+});
+
+test('WorldMarchHudCanvasRenderer falls back to shared presenter when host presenter is split out', () => {
+  const state = {
+    activeCityId: 'capital',
+    military: {
+      formations: {
+        capital: [
+          { slot: 1, cityId: 'capital', name: '部队一', memberIds: ['fp-1'], maxMembers: 5 },
+          { slot: 2, cityId: 'capital', name: '部队二', memberIds: [], maxMembers: 5 },
+        ],
+      },
+    },
+    famousPersons: {
+      people: [{ id: 'fp-1', name: '孟隼' }],
+    },
+  };
+  const host = createHost({
+    presenter: {},
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud(state, {
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
+  assert.equal(starts.find((target) => target.action.formationSlot === 1).action.disabled, false);
+  assert.equal(starts.find((target) => target.action.formationSlot === 2).action.disabled, true);
 });
 
 test('WorldMarchHudCanvasRenderer separates target info and march command', () => {
