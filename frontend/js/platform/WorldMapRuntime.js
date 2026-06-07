@@ -475,6 +475,20 @@
 
     render(options = {}) {
       const state = options.state || this.getState();
+      this.lastGameState = state;
+      this.lastWorldMarchState = state;
+      if (this.renderer) {
+        this.renderer.lastGameState = state;
+        this.renderer.lastWorldMarchState = state;
+        if (this.renderer.worldMapRenderer) {
+          this.renderer.worldMapRenderer.lastGameState = state;
+          this.renderer.worldMapRenderer.lastWorldMarchState = state;
+        }
+        if (this.renderer.worldMapLayerRenderer) {
+          this.renderer.worldMapLayerRenderer.lastGameState = state;
+          this.renderer.worldMapLayerRenderer.lastWorldMarchState = state;
+        }
+      }
       if (!this.canRender(state)) {
         this.renderer?.clearAll?.();
         this.hitTargets = [];

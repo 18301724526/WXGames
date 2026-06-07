@@ -106,6 +106,54 @@ test('WorldMarchHudCanvasRenderer reads formations from last game state when ref
   assert.equal(start.action.disabled, false);
 });
 
+test('WorldMarchHudCanvasRenderer reads formations from renderer chain state in map runtime flow', () => {
+  const fullState = {
+    activeCityId: 'capital',
+    military: {
+      formations: {
+        capital: [{ slot: 1, cityId: 'capital', name: '部队一', memberIds: ['fp-1'], maxMembers: 5 }],
+      },
+    },
+    famousPersons: {
+      people: [{ id: 'fp-1', name: '孟隼' }],
+    },
+  };
+  const host = createHost({
+    worldMapRenderer: {
+      lastWorldMarchState: fullState,
+    },
+    presenter: {
+      buildMilitaryViewState(state = {}) {
+        const formation = state.military?.formations?.capital?.[0] || {};
+        return {
+          formations: [
+            {
+              slot: 1,
+              cityId: 'capital',
+              name: formation.name || '部队一',
+              memberIds: formation.memberIds || [],
+              memberCount: Array.isArray(formation.memberIds) ? formation.memberIds.length : 0,
+              maxMembers: formation.maxMembers || 5,
+            },
+            { slot: 2, cityId: 'capital', name: '部队二', memberCount: 0, maxMembers: 5, memberIds: [] },
+            { slot: 3, cityId: 'capital', name: '部队三', memberCount: 0, maxMembers: 5, memberIds: [] },
+          ],
+        };
+      },
+    },
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({ type: 'openWorldMarchFormationPicker' }, {
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
+  assert.equal(starts.length, 3);
+  assert.equal(starts.find((target) => target.action.formationSlot === 1).action.disabled, false);
+  assert.equal(starts.find((target) => target.action.formationSlot === 2).action.disabled, true);
+});
+
 test('WorldMarchHudCanvasRenderer separates target info and march command', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });

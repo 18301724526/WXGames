@@ -94,13 +94,42 @@
       };
     }
 
+    hasMilitaryData(state = {}) {
+      return Boolean(state?.military || state?.famousPersons || state?.cityState || state?.activeCityId);
+    }
+
+    resolveStateCandidates(state = {}) {
+      return [
+        state,
+        this.lastGameState,
+        this.lastWorldMarchState,
+        this.host?.lastGameState,
+        this.host?.lastWorldMarchState,
+        this.host?.lastGame?.state,
+        this.host?.state,
+        this.host?.host?.lastGameState,
+        this.host?.host?.lastWorldMarchState,
+        this.host?.host?.lastGame?.state,
+        this.host?.host?.state,
+        this.host?.worldMapRenderer?.lastGameState,
+        this.host?.worldMapRenderer?.lastWorldMarchState,
+        this.host?.worldMapLayerRenderer?.lastGameState,
+        this.host?.worldMapLayerRenderer?.lastWorldMarchState,
+        this.host?.host?.worldMapRenderer?.lastGameState,
+        this.host?.host?.worldMapRenderer?.lastWorldMarchState,
+        this.host?.host?.worldMapLayerRenderer?.lastGameState,
+        this.host?.host?.worldMapLayerRenderer?.lastWorldMarchState,
+      ];
+    }
+
     resolveMilitaryState(state = {}) {
-      if (state?.military || state?.famousPersons || state?.cityState || state?.activeCityId) return state;
-      return this.lastGame?.state
-        || this.host?.lastGame?.state
-        || this.host?.host?.lastGame?.state
-        || state
-        || {};
+      return this.resolveStateCandidates(state).find((candidate) => this.hasMilitaryData(candidate)) || state || {};
+    }
+
+    formationHasMembers(formation = {}) {
+      if (Array.isArray(formation.members) && formation.members.length > 0) return true;
+      if (Array.isArray(formation.memberIds) && formation.memberIds.length > 0) return true;
+      return Number(formation.memberCount) > 0;
     }
 
     renderTargetHud(target = {}, viewport = {}, geometry = {}, frame = {}) {
@@ -179,7 +208,7 @@
       [0, 1, 2].forEach((index) => {
         const formation = formations[index] || { slot: index + 1, cityId: militaryState.activeCityId || 'capital', members: [] };
         const cardX = x + 12 + index * (cardW + gap);
-        const empty = !Array.isArray(formation.members) || formation.members.length === 0;
+        const empty = !this.formationHasMembers(formation);
         this.drawPanel(cardX, cardY, cardW, cardH, {
           fill: empty ? 'rgba(41, 39, 32, 0.78)' : 'rgba(35, 49, 34, 0.84)',
           stroke: empty ? 'rgba(255, 226, 177, 0.14)' : 'rgba(116, 211, 160, 0.44)',

@@ -1814,6 +1814,14 @@
 
     renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
       if (!this.worldMarchHudRenderer?.renderWorldMarchHud) return false;
+      this.lastGameState = state;
+      this.lastWorldMarchState = state;
+      if (this.host && this.host !== this) {
+        this.host.lastGameState = state;
+        this.host.lastWorldMarchState = state;
+      }
+      this.worldMarchHudRenderer.lastGameState = state;
+      this.worldMarchHudRenderer.lastWorldMarchState = state;
       return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame);
     }
 
