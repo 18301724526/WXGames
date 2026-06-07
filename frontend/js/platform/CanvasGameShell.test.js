@@ -122,7 +122,8 @@ test('CanvasGameShell preserves world map layer when drag snapshot refresh misse
   assert.equal(refresh[1].clearTransform, false);
   assert.equal(refresh[1].preserveOnMiss, true);
   assert.deepEqual(offset, { x: 32, y: -18 });
-  assert.deepEqual(calls.at(-1), ['setLayerTranslate', 'worldMap', 32, -18]);
+  assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldMap', 32, -18])), true);
+  assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldFog', 32, -18])), true);
 });
 
 test('CanvasGameShell passes runtime frame time into render options', () => {

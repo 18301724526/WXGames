@@ -1,4 +1,13 @@
 (function (global) {
+  var WorldFogCanvasRendererBase = global.WorldFogCanvasRenderer;
+  if (typeof module !== 'undefined' && module.exports && !WorldFogCanvasRendererBase) {
+    try {
+      WorldFogCanvasRendererBase = require('./renderers/WorldFogCanvasRenderer');
+    } catch (error) {
+      WorldFogCanvasRendererBase = null;
+    }
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -13,7 +22,10 @@ createRenderer(canvas) {
       const sharedWorldTileDryCompositeCache = new Map();
       const worldMapLayerPadding = this.getWorldMapLayerPadding();
       const mapCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
-        ? this.runtime.ensureLayerCanvas('worldMap', { padding: worldMapLayerPadding })
+        ? this.runtime.ensureLayerCanvas('worldMap', { padding: worldMapLayerPadding, zIndex: 997 })
+        : null;
+      const fogCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
+        ? this.runtime.ensureLayerCanvas('worldFog', { padding: worldMapLayerPadding, zIndex: 998 })
         : null;
       if (mapCanvas && !this.worldMapRenderer) {
         const layerMetrics = this.runtime?.getLayerMetrics?.('worldMap') || {};
@@ -42,6 +54,21 @@ createRenderer(canvas) {
             this.requestWorldMapRenderAnimationFrame();
           });
         }
+      }
+      const FogRendererCtor = WorldFogCanvasRendererBase || global.WorldFogCanvasRenderer;
+      if (fogCanvas && !this.worldFogRenderer && FogRendererCtor) {
+        const fogMetrics = this.runtime?.getLayerMetrics?.('worldFog') || this.runtime?.getLayerMetrics?.('worldMap') || {};
+        this.worldFogRenderer = new FogRendererCtor({
+          canvas: fogCanvas,
+          ctx: fogCanvas.getContext?.('2d') || null,
+          pixelRatio: this.runtime?.pixelRatio,
+          width: fogMetrics.width || this.runtime?.width,
+          height: fogMetrics.height || this.runtime?.height,
+          viewportOffsetX: Number(fogMetrics.padding) || 0,
+          viewportOffsetY: Number(fogMetrics.padding) || 0,
+          viewportWidth: fogMetrics.viewportWidth || this.runtime?.width,
+          viewportHeight: fogMetrics.viewportHeight || this.runtime?.height,
+        });
       }
       this.renderer = new RendererCtor({
         canvas,

@@ -138,8 +138,34 @@ syncWorldMapRendererLayerMetrics() {
       this.worldMapRenderer.viewportOffsetY = padding;
       this.worldMapRenderer.viewportWidth = Number(metrics.viewportWidth) || this.runtime?.width || width;
       this.worldMapRenderer.viewportHeight = Number(metrics.viewportHeight) || this.runtime?.height || height;
+      if (this.worldFogRenderer?.setMetrics) {
+        const fogMetrics = this.runtime.getLayerMetrics('worldFog') || metrics;
+        this.worldFogRenderer.setMetrics({
+          width: Number(fogMetrics.width) || width,
+          height: Number(fogMetrics.height) || height,
+          pixelRatio: this.runtime?.pixelRatio || this.worldFogRenderer.pixelRatio,
+          viewportOffsetX: Number(fogMetrics.padding) || padding,
+          viewportOffsetY: Number(fogMetrics.padding) || padding,
+          viewportWidth: Number(fogMetrics.viewportWidth) || this.worldMapRenderer.viewportWidth,
+          viewportHeight: Number(fogMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight,
+        });
+      }
       if (changed) this.worldMapRuntime?.invalidateBake?.();
       return true;
+    },
+
+renderWorldFogLayer(context = null) {
+      if (!this.worldFogRenderer?.renderWorldFog) return false;
+      const fogContext = context
+        || this.worldMapRenderer?.lastWorldFogContext
+        || this.worldMapRenderer?.lastWorldTileMapContext
+        || null;
+      if (!fogContext?.tileMapView || !fogContext?.viewport || !fogContext?.frame) {
+        this.worldFogRenderer.clear?.();
+        return false;
+      }
+      this.syncWorldMapRendererLayerMetrics();
+      return this.worldFogRenderer.renderWorldFog(fogContext);
     },
 
 renderRuntimeWorldMap(state = this.lastGame?.state, options = {}) {
@@ -149,6 +175,7 @@ renderRuntimeWorldMap(state = this.lastGame?.state, options = {}) {
       if (!options.snapshotOnly) this.clearWorldMapLayerTransform();
       const rendered = coordinator.render(state, options);
       this.worldMapRuntime = coordinator.getMapRuntime();
+      if (rendered) this.renderWorldFogLayer();
       return rendered;
     },
 
@@ -259,20 +286,24 @@ updateWorldMapDragCompositor() {
       }
       if (typeof this.runtime?.setLayerTranslate === 'function') {
         this.runtime.setLayerTranslate('worldMap', offset.x, offset.y);
+        this.runtime.setLayerTranslate('worldFog', offset.x, offset.y);
       }
       return offset;
     },
 
 clearWorldMapLayerTransform() {
-      return typeof this.runtime?.clearLayerTransform === 'function'
-        ? this.runtime.clearLayerTransform('worldMap')
-        : false;
+      if (typeof this.runtime?.clearLayerTransform !== 'function') return false;
+      const mapCleared = this.runtime.clearLayerTransform('worldMap');
+      this.runtime.clearLayerTransform('worldFog');
+      return mapCleared;
     },
 
 setWorldMapLayerVisible(visible = true) {
-      return typeof this.runtime?.setLayerVisible === 'function'
-        ? this.runtime.setLayerVisible('worldMap', visible !== false)
-        : false;
+      if (typeof this.runtime?.setLayerVisible !== 'function') return false;
+      const mapVisible = this.runtime.setLayerVisible('worldMap', visible !== false);
+      this.runtime.setLayerVisible('worldFog', visible !== false);
+      if (visible === false) this.worldFogRenderer?.clear?.();
+      return mapVisible;
     },
 
 refreshWorldMapLayerFromSnapshot(options = {}) {
@@ -302,6 +333,7 @@ refreshWorldMapLayerFromSnapshot(options = {}) {
         showFpsOverlay: false,
       });
       if (!rendered) return false;
+      this.renderWorldFogLayer();
       if (options.commitCamera !== false) runtime?.markBakedCamera?.(runtime.camera);
       if (options.clearTransform !== false) this.clearWorldMapLayerTransform();
       return true;
@@ -417,6 +449,7 @@ renderWorldMapLayer(state = this.lastGame?.state, options = null) {
           : null,
         showFpsOverlay: false,
       });
+      if (rendered) this.renderWorldFogLayer();
       if (rendered) this.lastWorldMapLayerRenderAt = this.now();
       return rendered;
     },

@@ -878,78 +878,9 @@
     }
 
     renderWorldTileFogMask(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
-      if (!this.ctx || typeof this.ctx.drawImage !== 'function') return;
-      const knownEntries = this.getWorldTileFogRevealEntries(Array.isArray(entries) ? entries : []);
-      const geometry = tileMapView.geometry || viewport.geometry || {};
-      const scale = Number(viewport.scale) || 1;
-      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
-      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
-      const width = Math.max(1, Math.ceil(Number(frame.width) || 1));
-      const height = Math.max(1, Math.ceil(Number(frame.height) || 1));
-      const cacheScale = Math.max(1, Number(this.pixelRatio) || 1);
-      const work = this.getWorldTileLayerCacheContext('worldTileFogMaskCache', width, height, cacheScale);
-      if (!work?.canvas || !work?.ctx) return;
-      const readNumber = (value, fallback = 0) => {
-        const next = Number(value);
-        return Number.isFinite(next) ? next : fallback;
-      };
-      const ctx = work.ctx;
-      ctx.setTransform?.(1, 0, 0, 1, 0, 0);
-      ctx.clearRect?.(0, 0, work.pixelWidth || work.canvas.width, work.pixelHeight || work.canvas.height);
-      ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#000000';
-      ctx.fillRect?.(0, 0, width, height);
-      if (knownEntries.length) {
-        const minX = Math.min(...knownEntries.map((entry) => readNumber(entry.drawRect?.x, readNumber(entry.center?.x))));
-        const minY = Math.min(...knownEntries.map((entry) => readNumber(entry.drawRect?.y, readNumber(entry.center?.y))));
-        const maxX = Math.max(...knownEntries.map((entry) => (
-          readNumber(entry.drawRect?.x, readNumber(entry.center?.x))
-          + readNumber(entry.drawRect?.width, tileWidth)
-        )));
-        const maxY = Math.max(...knownEntries.map((entry) => (
-          readNumber(entry.drawRect?.y, readNumber(entry.center?.y))
-          + readNumber(entry.drawRect?.height, tileHeight)
-        )));
-        const centerX = (minX + maxX) * 0.5;
-        const centerY = (minY + maxY) * 0.5;
-        const radiusX = Math.max(tileWidth * 1.05, (maxX - minX) * 0.5 + tileWidth * 0.28);
-        const radiusY = Math.max(tileHeight * 1.35, (maxY - minY) * 0.5 + tileHeight * 0.42);
-        const radius = Math.max(radiusX, radiusY, 1);
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.save?.();
-        ctx.translate?.(centerX - (Number(frame.x) || 0), centerY - (Number(frame.y) || 0));
-        ctx.scale?.(radiusX / radius, radiusY / radius);
-        const gradient = typeof ctx.createRadialGradient === 'function'
-          ? ctx.createRadialGradient(0, 0, Math.max(4, radius * 0.42), 0, 0, radius)
-          : 'rgba(0, 0, 0, 1)';
-        if (gradient?.addColorStop) {
-          [
-            [0, 'rgba(0, 0, 0, 1)'],
-            [0.54, 'rgba(0, 0, 0, 1)'],
-            [0.86, 'rgba(0, 0, 0, 0.5)'],
-            [1, 'rgba(0, 0, 0, 0)'],
-          ].forEach(([offset, color]) => gradient.addColorStop(offset, color));
-        }
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc?.(0, 0, radius, 0, Math.PI * 2);
-        ctx.fill?.();
-        ctx.restore?.();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      this.ctx.drawImage(
-        work.canvas,
-        0,
-        0,
-        work.pixelWidth || work.canvas.width,
-        work.pixelHeight || work.canvas.height,
-        Number(frame.x) || 0,
-        Number(frame.y) || 0,
-        width,
-        height,
-      );
+      this.lastWorldFogContext = { tileMapView, viewport, frame, entries };
+      if (this.host && this.host !== this) this.host.lastWorldFogContext = this.lastWorldFogContext;
+      return false;
     }
 
     getWorldTileStaticCacheScale() {
