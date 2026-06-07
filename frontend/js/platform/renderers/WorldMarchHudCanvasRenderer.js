@@ -94,6 +94,15 @@
       };
     }
 
+    resolveMilitaryState(state = {}) {
+      if (state?.military || state?.famousPersons || state?.cityState || state?.activeCityId) return state;
+      return this.lastGame?.state
+        || this.host?.lastGame?.state
+        || this.host?.host?.lastGame?.state
+        || state
+        || {};
+    }
+
     renderTargetHud(target = {}, viewport = {}, geometry = {}, frame = {}) {
       const hudFrame = this.getVisibleHudFrame(frame);
       const point = this.getTileScreenCenter(target, viewport, geometry);
@@ -144,7 +153,8 @@
 
     renderFormationPicker(state = {}, target = {}, frame = {}) {
       const hudFrame = this.getVisibleHudFrame(frame);
-      const view = this.presenter?.buildMilitaryViewState?.(state) || {};
+      const militaryState = this.resolveMilitaryState(state);
+      const view = this.presenter?.buildMilitaryViewState?.(militaryState) || {};
       const formations = Array.isArray(view.formations) ? view.formations.slice(0, 3) : [];
       const width = Math.min(340, Math.max(260, (Number(hudFrame.width) || this.width || 390) - 28));
       const height = 148;
@@ -167,7 +177,7 @@
       const cardH = 84;
       const cardW = Math.floor((width - 24 - gap * 2) / 3);
       [0, 1, 2].forEach((index) => {
-        const formation = formations[index] || { slot: index + 1, cityId: state.activeCityId || 'capital', members: [] };
+        const formation = formations[index] || { slot: index + 1, cityId: militaryState.activeCityId || 'capital', members: [] };
         const cardX = x + 12 + index * (cardW + gap);
         const empty = !Array.isArray(formation.members) || formation.members.length === 0;
         this.drawPanel(cardX, cardY, cardW, cardH, {
@@ -200,7 +210,7 @@
           targetR: target.r,
           tileId: target.tileId,
           formationSlot: formation.slot || index + 1,
-          cityId: formation.cityId || state.activeCityId || 'capital',
+          cityId: formation.cityId || militaryState.activeCityId || 'capital',
           disabled: empty,
         });
       });
