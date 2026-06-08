@@ -3,6 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+require('../domain/WorldTime');
+require('../domain/WorldMarchProgressSnapshot');
+const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
 
 const SHELL_MODULES = [
@@ -25,6 +28,8 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
     renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions', 'setTechTreeZoom'],
     systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
+    layerRegistry: ['ensureCanvasLayer', 'setCanvasLayerTranslate', 'setCanvasLayerVisible', 'getCanvasLayerMetrics'],
+    debugOverlay: ['isDebugOverlayEnabled', 'createDebugOverlaySnapshot'],
   };
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
@@ -38,12 +43,79 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const facadePosition = html.indexOf('CanvasGameShell.js');
   assert.notEqual(facadePosition, -1);
+  const layerRegistryPosition = html.indexOf('CanvasLayerRegistry.js');
+  assert.notEqual(layerRegistryPosition, -1, 'CanvasLayerRegistry.js should be loaded');
+  assert.equal(layerRegistryPosition < facadePosition, true, 'CanvasLayerRegistry.js should load before CanvasGameShell.js');
 
   SHELL_MODULES.forEach((moduleName) => {
     const modulePosition = html.indexOf(`${moduleName}.js`);
     assert.notEqual(modulePosition, -1, `${moduleName}.js should be loaded`);
     assert.equal(modulePosition < facadePosition, true, `${moduleName}.js should load before CanvasGameShell.js`);
   });
+});
+
+test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+    runtime: {
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options]);
+        return { name, options };
+      },
+      getLayerMetrics(name) {
+        calls.push(['getLayerMetrics', name]);
+        return { width: 300, height: 200 };
+      },
+      setLayerTranslate(name, x, y) {
+        calls.push(['setLayerTranslate', name, x, y]);
+        return true;
+      },
+      setLayerVisible(name, visible) {
+        calls.push(['setLayerVisible', name, visible]);
+        return true;
+      },
+    },
+  });
+
+  shell.ensureCanvasLayer('worldMap', { padding: 220 });
+  shell.ensureCanvasLayer('worldFog', { padding: 220 });
+  shell.getCanvasLayerMetrics('worldMap');
+  shell.setCanvasLayerTranslate('worldFog', 7, -3);
+  shell.setCanvasLayerVisible('worldFog', false);
+
+  assert.deepEqual(calls, [
+    ['ensureLayerCanvas', 'worldMap', { zIndex: 997, padding: 220 }],
+    ['ensureLayerCanvas', 'worldFog', { zIndex: 998, contextType: 'webgl', padding: 220 }],
+    ['getLayerMetrics', 'worldMap'],
+    ['setLayerTranslate', 'worldFog', 7, -3],
+    ['setLayerVisible', 'worldFog', false],
+  ]);
+});
+
+test('CanvasGameShell layer helpers ignore disabled feature layers', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    runtime: {
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options]);
+        return {};
+      },
+      setLayerTranslate(name, x, y) {
+        calls.push(['setLayerTranslate', name, x, y]);
+        return true;
+      },
+      setLayerVisible(name, visible) {
+        calls.push(['setLayerVisible', name, visible]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.ensureCanvasLayer('worldFog', { padding: 220 }), null);
+  assert.equal(shell.setCanvasLayerTranslate('worldFog', 7, -3), false);
+  assert.equal(shell.setCanvasLayerVisible('worldFog', false), false);
+  assert.deepEqual(calls, []);
 });
 
 test('CanvasGameShell refreshes tutorial highlight after naming input is filled', async () => {
@@ -123,10 +195,10 @@ test('CanvasGameShell preserves world map layer when drag snapshot refresh misse
   assert.equal(refresh[1].preserveOnMiss, true);
   assert.deepEqual(offset, { x: 32, y: -18 });
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldMap', 32, -18])), true);
-  assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldFog', 32, -18])), true);
+  assert.equal(calls.some((call) => call[0] === 'setLayerTranslate' && call[1] === 'worldFog'), false);
 });
 
-test('CanvasGameShell mounts world fog as a WebGL layer', () => {
+test('CanvasGameShell does not mount world fog by default', () => {
   const previousRenderer = global.H5CanvasGameRenderer;
   const calls = [];
   const contexts = [];
@@ -171,10 +243,194 @@ test('CanvasGameShell mounts world fog as a WebGL layer', () => {
     global.H5CanvasGameRenderer = previousRenderer;
   }
 
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldMap'), true);
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldFog'), false);
+  assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === 'webgl'), false);
+  assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
+});
+
+test('CanvasGameShell mounts world fog as a WebGL layer when the feature flag is enabled', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const calls = [];
+  const contexts = [];
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.presenter = options.presenter || null;
+      this.width = options.width || 390;
+      this.height = options.height || 844;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+    }
+    setAssetsChangedHandler() {}
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  const runtime = {
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+    ensureLayerCanvas(name, options) {
+      calls.push(['ensureLayerCanvas', name, options]);
+      return {
+        getContext(type, attrs) {
+          contexts.push([name, type, attrs]);
+          return type === 'webgl' ? { createShader() {}, createProgram() {}, drawArrays() {} } : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 844, viewportWidth: 390, viewportHeight: 844, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+  });
+
+  try {
+    shell.createRenderer({});
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+  }
+
   const fogLayerCall = calls.find((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldFog');
   assert.equal(fogLayerCall?.[2]?.contextType, 'webgl');
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === 'webgl'), true);
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
+});
+
+test('CanvasGameShell routes enabled fog rendering through the visual plugin registry', () => {
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+  });
+  const calls = [];
+  shell.worldFogRenderer = {
+    renderWorldFog(context) {
+      calls.push(['renderWorldFog', context]);
+      return true;
+    },
+    clear() {
+      calls.push(['clear']);
+    },
+  };
+  const tileMapView = {
+    version: 1,
+    seed: 'shell-fog-test',
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [
+      { id: 'tile_1_0', q: 1, r: 0, visibility: 'visible', discovered: true, visible: true },
+      { id: 'tile_2_0', q: 2, r: 0, visibility: 'unknown', discovered: false, visible: false },
+    ],
+  };
+  const renderSnapshot = WorldMapRenderSnapshot.createSnapshot({
+    tileMapView,
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+  });
+  shell.worldMapRenderer = {
+    lastWorldTileMapContext: {
+      renderSnapshot,
+      tileMapView,
+      viewport: renderSnapshot.viewport,
+      geometry: tileMapView.geometry,
+      frame: renderSnapshot.frame,
+    },
+    lastWorldFogContext: {
+      tileMapView,
+      viewport: renderSnapshot.viewport,
+      geometry: tileMapView.geometry,
+      frame: renderSnapshot.frame,
+      entries: [],
+    },
+  };
+  shell.syncWorldMapRendererLayerMetrics = () => {
+    calls.push(['syncMetrics']);
+    return true;
+  };
+
+  assert.equal(shell.renderWorldFogLayer(), true);
+
+  const renderCall = calls.find((call) => call[0] === 'renderWorldFog');
+  assert.equal(renderCall?.[1]?.fogVisualSnapshot?.schema, 'world-fog-visual-snapshot-v1');
+  assert.equal(renderCall?.[1]?.entries.length, 2);
+  assert.equal(renderCall?.[1]?.entries[0].tile.visible, true);
+});
+
+test('CanvasGameShell does not invoke visual fog plugins when fog is disabled', () => {
+  const shell = new CanvasGameShell({});
+  const calls = [];
+  const previousRegistry = global.WorldMapVisualPluginRegistry;
+  global.WorldMapVisualPluginRegistry = {
+    createRendererContext() {
+      calls.push(['createRendererContext']);
+      return null;
+    },
+  };
+  shell.worldFogRenderer = {
+    renderWorldFog() {
+      calls.push(['renderWorldFog']);
+      return true;
+    },
+    clear() {
+      calls.push(['clear']);
+    },
+  };
+  shell.worldMapRenderer = {
+    lastWorldFogContext: {
+      tileMapView: { tiles: [] },
+      viewport: { scale: 1 },
+      frame: { x: 0, y: 0, width: 100, height: 100 },
+    },
+  };
+
+  try {
+    assert.equal(shell.renderWorldFogLayer(), false);
+  } finally {
+    global.WorldMapVisualPluginRegistry = previousRegistry;
+  }
+
+  assert.deepEqual(calls, [['clear']]);
+});
+
+test('CanvasGameShell keeps debug overlays disabled by default', () => {
+  const shell = new CanvasGameShell({
+    renderer: { currentFps: 60 },
+  });
+
+  assert.equal(shell.isDebugOverlayEnabled('fps'), false);
+  assert.equal(shell.createDebugOverlaySnapshot({ fps: 60 }), null);
+});
+
+test('CanvasGameShell creates debug overlay snapshots only when the debug flag is enabled', () => {
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { DEBUG_OVERLAYS_ENABLED: true } },
+    renderer: { currentFps: 60, fpsSamples: [60] },
+  });
+  shell.worldMapRuntime = {
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+    lastMapDataSignature: 'abc',
+    hitTargets: [],
+  };
+
+  const snapshot = shell.createDebugOverlaySnapshot({
+    visibilitySnapshot: {
+      counts: { unknown: 0, explored: 1, visible: 2, controlled: 1 },
+      signature: 'visibility',
+    },
+    lastInputAction: { type: 'worldMapDrag', background: true },
+  }, {
+    enabledOverlayKeys: ['fps', 'worldMapBake', 'visibility', 'inputTrace'],
+  });
+
+  assert.equal(shell.isDebugOverlayEnabled('fps'), true);
+  assert.deepEqual(snapshot.keys, ['fps', 'worldMapBake', 'visibility', 'inputTrace']);
+  assert.equal(snapshot.values[0], '60');
+  assert.equal(snapshot.values[2], 'U0 E1 V2 C1');
 });
 
 test('CanvasGameShell passes runtime frame time into render options', () => {

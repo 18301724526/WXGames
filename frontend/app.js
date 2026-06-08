@@ -129,6 +129,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.canvasShell = window.CanvasGameShell?.mount(this, {
       document,
       runtime: window,
+      config: this.config,
       presenter: this.presenter,
       previewEnabled: true,
       inputEnabled: true,

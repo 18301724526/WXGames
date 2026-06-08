@@ -3,6 +3,14 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
     WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
+  var WorldMapVisualPluginRegistryBase = global.WorldMapVisualPluginRegistry;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapVisualPluginRegistryBase) {
+    try {
+      WorldMapVisualPluginRegistryBase = require('./WorldMapVisualPluginRegistry');
+    } catch (error) {
+      WorldMapVisualPluginRegistryBase = null;
+    }
+  }
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -121,8 +129,8 @@ getWorldMapLayerPadding() {
     },
 
 syncWorldMapRendererLayerMetrics() {
-      if (!this.worldMapRenderer || typeof this.runtime?.getLayerMetrics !== 'function') return false;
-      const metrics = this.runtime.getLayerMetrics('worldMap');
+      if (!this.worldMapRenderer) return false;
+      const metrics = this.getCanvasLayerMetrics?.('worldMap', null);
       if (!metrics) return false;
       const width = Number(metrics.width) || this.runtime?.width || this.worldMapRenderer.width;
       const height = Number(metrics.height) || this.runtime?.height || this.worldMapRenderer.height;
@@ -138,8 +146,8 @@ syncWorldMapRendererLayerMetrics() {
       this.worldMapRenderer.viewportOffsetY = padding;
       this.worldMapRenderer.viewportWidth = Number(metrics.viewportWidth) || this.runtime?.width || width;
       this.worldMapRenderer.viewportHeight = Number(metrics.viewportHeight) || this.runtime?.height || height;
-      if (this.worldFogRenderer?.setMetrics) {
-        const fogMetrics = this.runtime.getLayerMetrics('worldFog') || metrics;
+      if (this.isFogOfWarEnabled?.() === true && this.worldFogRenderer?.setMetrics) {
+        const fogMetrics = this.getCanvasLayerMetrics?.('worldFog', metrics) || metrics;
         this.worldFogRenderer.setMetrics({
           width: Number(fogMetrics.width) || width,
           height: Number(fogMetrics.height) || height,
@@ -155,6 +163,10 @@ syncWorldMapRendererLayerMetrics() {
     },
 
 renderWorldFogLayer(context = null) {
+      if (this.isFogOfWarEnabled?.() !== true) {
+        this.worldFogRenderer?.clear?.();
+        return false;
+      }
       if (!this.worldFogRenderer?.renderWorldFog) return false;
       const fogContext = context
         || this.worldMapRenderer?.lastWorldFogContext
@@ -164,8 +176,16 @@ renderWorldFogLayer(context = null) {
         this.worldFogRenderer.clear?.();
         return false;
       }
+      const visualRegistry = WorldMapVisualPluginRegistryBase || global.WorldMapVisualPluginRegistry;
+      const visualContext = visualRegistry?.createRendererContext?.('worldFog', {
+        ...(this.worldMapRenderer?.lastWorldTileMapContext || {}),
+        ...(fogContext || {}),
+        config: this.config,
+      }, {
+        config: this.config,
+      }) || null;
       this.syncWorldMapRendererLayerMetrics();
-      return this.worldFogRenderer.renderWorldFog(fogContext);
+      return this.worldFogRenderer.renderWorldFog(visualContext || fogContext);
     },
 
 renderRuntimeWorldMap(state = this.lastGame?.state, options = {}) {
@@ -279,30 +299,25 @@ updateWorldMapDragCompositor() {
       }
       if (
         typeof this.runtime?.ensureLayerCanvas === 'function'
-        && typeof this.runtime?.getLayerCanvas === 'function'
-        && !this.runtime.getLayerCanvas('worldMap')
+        && !this.getCanvasLayerCanvas?.('worldMap')
       ) {
-        this.runtime.ensureLayerCanvas('worldMap', { padding: this.getWorldMapLayerPadding() });
+        this.ensureCanvasLayer?.('worldMap', { padding: this.getWorldMapLayerPadding() });
       }
-      if (typeof this.runtime?.setLayerTranslate === 'function') {
-        this.runtime.setLayerTranslate('worldMap', offset.x, offset.y);
-        this.runtime.setLayerTranslate('worldFog', offset.x, offset.y);
-      }
+      this.setCanvasLayerTranslate?.('worldMap', offset.x, offset.y);
+      this.setCanvasLayerTranslate?.('worldFog', offset.x, offset.y);
       return offset;
     },
 
 clearWorldMapLayerTransform() {
-      if (typeof this.runtime?.clearLayerTransform !== 'function') return false;
-      const mapCleared = this.runtime.clearLayerTransform('worldMap');
-      this.runtime.clearLayerTransform('worldFog');
+      const mapCleared = this.clearCanvasLayerTransform?.('worldMap') || false;
+      this.clearCanvasLayerTransform?.('worldFog');
       return mapCleared;
     },
 
 setWorldMapLayerVisible(visible = true) {
-      if (typeof this.runtime?.setLayerVisible !== 'function') return false;
-      const mapVisible = this.runtime.setLayerVisible('worldMap', visible !== false);
-      this.runtime.setLayerVisible('worldFog', visible !== false);
-      if (visible === false) this.worldFogRenderer?.clear?.();
+      const mapVisible = this.setCanvasLayerVisible?.('worldMap', visible !== false) || false;
+      const fogVisible = this.setCanvasLayerVisible?.('worldFog', visible !== false) || false;
+      if (visible === false && fogVisible) this.worldFogRenderer?.clear?.();
       return mapVisible;
     },
 

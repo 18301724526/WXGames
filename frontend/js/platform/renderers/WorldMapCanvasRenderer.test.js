@@ -152,6 +152,7 @@ test('WorldMapCanvasRenderer exposes tile map context on its host', () => {
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
 
   assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
+  assert.equal(host.lastWorldTileMapContext.renderSnapshot.schema, 'world-map-render-snapshot-v1');
   assert.deepEqual(host.lastWorldTileMapContext.frame, { x: 11, y: 91, width: 358, height: 298 });
   assert.equal(host.lastWorldTileMapContext.viewport.originX, 190);
 });
@@ -269,9 +270,774 @@ test('WorldMapCanvasRenderer computes world march actors from epoch time, not fr
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
 
   assert.equal(capturedActors.length, 1);
+  assert.equal(host.lastWorldTileMapContext.renderSnapshot.actors.length, 1);
   assert.equal(capturedActors[0].current.q > 0, true);
   assert.equal(capturedActors[0].current.q < 1, true);
   assert.equal(capturedActors[0].remainingSeconds, 15);
+});
+
+test('WorldMapCanvasRenderer delegates static and scout layers to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapStaticLayerRenderer: {
+      renderWorldTileStaticLayer(...args) {
+        calls.push(['static', ...args]);
+        return 'static-ok';
+      },
+      renderWorldScoutRouteLayer(...args) {
+        calls.push(['scout', ...args]);
+        return 'scout-ok';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0] }];
+  const uiState = { selectedSiteId: 'capital' };
+
+  assert.equal(renderer.renderWorldTileStaticLayer(tileMapView, viewport, frame, entries, uiState), 'static-ok');
+  assert.equal(renderer.renderWorldScoutRouteLayer(tileMapView, viewport, frame, entries), 'scout-ok');
+  assert.equal(calls[0][0], 'static');
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][5], uiState);
+  assert.equal(calls[1][0], 'scout');
+  assert.equal(calls[1][4], entries);
+});
+
+test('WorldMapCanvasRenderer delegates static entry rendering to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapStaticEntryRenderer: {
+      getWorldTileImageAspect(...args) {
+        calls.push(['image-aspect', ...args]);
+        return 0.8;
+      },
+      drawWorldOverlayShadow(...args) {
+        calls.push(['overlay-shadow', ...args]);
+        return 'shadow-ok';
+      },
+      drawWorldOverlayAsset(...args) {
+        calls.push(['overlay-asset', ...args]);
+        return 'asset-ok';
+      },
+      drawWorldTerrainFeature(...args) {
+        calls.push(['terrain-feature', ...args]);
+        return 'terrain-ok';
+      },
+      drawWorldTileFeature(...args) {
+        calls.push(['tile-feature', ...args]);
+        return 'feature-ok';
+      },
+      drawWorldTileSite(...args) {
+        calls.push(['tile-site', ...args]);
+        return 'site-ok';
+      },
+      renderWorldTileStaticEntries(...args) {
+        calls.push(['static-entries', ...args]);
+        return 'entries-ok';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const geometry = tileMapView.geometry;
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0], center: { x: 1, y: 2 }, drawRect: { x: 0, y: 0, width: 10, height: 5 } }];
+  const uiState = { selectedSiteId: 'capital' };
+
+  assert.equal(renderer.getWorldTileImageAspect('feature.png'), 0.8);
+  assert.equal(renderer.drawWorldOverlayShadow(1, 2, 3, 4, { alpha: 0.5 }), 'shadow-ok');
+  assert.equal(renderer.drawWorldOverlayAsset('feature.png', {}, 1, 2, 3, 4, 0.9), 'asset-ok');
+  assert.equal(renderer.drawWorldTerrainFeature(tileMapView.tiles[0], viewport, geometry, 192, 96), 'terrain-ok');
+  assert.equal(renderer.drawWorldTileFeature(tileMapView.tiles[0], viewport, geometry, 192, 96), 'feature-ok');
+  assert.equal(renderer.drawWorldTileSite(tileMapView.tiles[0], viewport, geometry, 192, 96, uiState, {}), 'site-ok');
+  assert.equal(renderer.renderWorldTileStaticEntries(tileMapView, viewport, frame, entries, uiState, { addHitTargets: false }), 'entries-ok');
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'image-aspect',
+    'overlay-shadow',
+    'overlay-asset',
+    'terrain-feature',
+    'tile-feature',
+    'tile-site',
+    'static-entries',
+  ]);
+  assert.equal(calls[6][1], tileMapView);
+  assert.equal(calls[6][4], entries);
+  assert.equal(calls[6][5], uiState);
+});
+
+test('WorldMapCanvasRenderer delegates water layer orchestration to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapWaterLayerRenderer: {
+      renderWorldTileWaterLayer(...args) {
+        calls.push(['water-layer', ...args]);
+        return 'water-ok';
+      },
+      getWorldTileWaterAnimationFrameIndex(...args) {
+        calls.push(['water-frame-index', ...args]);
+        return 3;
+      },
+      getWorldTileWaterLayerCacheKey(...args) {
+        calls.push(['water-cache-key', ...args]);
+        return 'water-key';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0] }];
+
+  assert.equal(renderer.renderWorldTileWaterLayer(tileMapView, viewport, frame, entries), 'water-ok');
+  assert.equal(renderer.getWorldTileWaterAnimationFrameIndex(375), 3);
+  assert.equal(renderer.getWorldTileWaterLayerCacheKey(tileMapView, viewport, frame, entries, { frameIndex: 3 }), 'water-key');
+  assert.equal(calls[0][0], 'water-layer');
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[1][0], 'water-frame-index');
+  assert.equal(calls[2][0], 'water-cache-key');
+});
+
+test('WorldMapCanvasRenderer delegates water entry rendering to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapWaterEntryRenderer: {
+      renderWorldTileWaterEntries(...args) {
+        calls.push(['water-entries', ...args]);
+        return 'water-entries-ok';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const entries = [{ tile: { id: 'water-1', water: { kind: 'river', asset: 'river.png' } } }];
+
+  assert.equal(renderer.renderWorldTileWaterEntries(tileMapView, viewport, entries, 1234), 'water-entries-ok');
+  assert.equal(calls[0][0], 'water-entries');
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][3], entries);
+  assert.equal(calls[0][4], 1234);
+});
+
+test('WorldMapCanvasRenderer delegates static chunk orchestration to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapStaticChunkRenderer: {
+      getWorldTileStaticChunkCacheKey(...args) {
+        calls.push(['static-chunk-key', ...args]);
+        return 'chunk-key';
+      },
+      renderWorldTileStaticChunk(...args) {
+        calls.push(['static-chunk', ...args]);
+        return 'chunk-ok';
+      },
+      renderWorldTileStaticChunks(...args) {
+        calls.push(['static-chunks', ...args]);
+        return 'chunks-ok';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const layout = { chunkX: 0, chunkY: 0, frame: { x: 0, y: 0, width: 10, height: 10 }, entries: [] };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const uiState = { selectedSiteId: 'capital' };
+
+  assert.equal(renderer.getWorldTileStaticChunkCacheKey(tileMapView, viewport, layout, uiState, { cacheScale: 2 }), 'chunk-key');
+  assert.equal(renderer.renderWorldTileStaticChunk(tileMapView, layout, uiState, 2), 'chunk-ok');
+  assert.equal(renderer.renderWorldTileStaticChunks(tileMapView, [layout], frame, uiState), 'chunks-ok');
+  assert.equal(calls[0][0], 'static-chunk-key');
+  assert.equal(calls[1][0], 'static-chunk');
+  assert.equal(calls[2][0], 'static-chunks');
+});
+
+test('WorldMapCanvasRenderer delegates snapshot cache rendering to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapSnapshotCacheRenderer: {
+      renderWorldTileSnapshotChunkCacheMap(...args) {
+        calls.push(['snapshot-chunk-map', ...args]);
+        return 'chunk-map-ok';
+      },
+      getWorldTileSnapshotDrawLayout(...args) {
+        calls.push(['snapshot-layout', ...args]);
+        return { drawX: 1, drawY: 2 };
+      },
+      renderWorldTileSnapshotLayerCache(...args) {
+        calls.push(['snapshot-layer', ...args]);
+        return 'layer-ok';
+      },
+      renderWorldTileSnapshotCache(...args) {
+        calls.push(['snapshot-cache', ...args]);
+        return 'snapshot-ok';
+      },
+    },
+  });
+
+  const cacheMap = new Map();
+  const cachedLayout = { frame: { x: 0, y: 0, width: 10, height: 10 } };
+  const viewport = { originX: 1, originY: 2 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const tileMapView = createTileMapView();
+
+  assert.equal(renderer.renderWorldTileSnapshotChunkCacheMap(cacheMap, viewport, frame), 'chunk-map-ok');
+  assert.deepEqual(renderer.getWorldTileSnapshotDrawLayout(cachedLayout, viewport), { drawX: 1, drawY: 2 });
+  assert.equal(renderer.renderWorldTileSnapshotLayerCache({ canvas: {} }, cachedLayout, viewport, frame), 'layer-ok');
+  assert.equal(renderer.renderWorldTileSnapshotCache(tileMapView, viewport, frame), 'snapshot-ok');
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'snapshot-chunk-map',
+    'snapshot-layout',
+    'snapshot-layer',
+    'snapshot-cache',
+  ]);
+});
+
+test('WorldMapCanvasRenderer delegates fast-drag composite cache to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapFastDragCompositeRenderer: {
+      getWorldTileFastDragCompositeSignature(...args) {
+        calls.push(['fast-drag-signature', ...args]);
+        return 'fast-drag-key';
+      },
+      renderWorldTileFastDragComposite(...args) {
+        calls.push(['fast-drag-render', ...args]);
+        return 'fast-drag-render-ok';
+      },
+      updateWorldTileFastDragComposite(...args) {
+        calls.push(['fast-drag-update', ...args]);
+        return 'fast-drag-update-ok';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0] }];
+  const layout = { frame, drawX: 1, drawY: 2 };
+
+  assert.equal(renderer.getWorldTileFastDragCompositeSignature(), 'fast-drag-key');
+  assert.equal(renderer.renderWorldTileFastDragComposite(tileMapView, viewport, frame, entries), 'fast-drag-render-ok');
+  assert.equal(renderer.updateWorldTileFastDragComposite(layout, frame), 'fast-drag-update-ok');
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'fast-drag-signature',
+    'fast-drag-render',
+    'fast-drag-update',
+  ]);
+  assert.equal(calls[1][1], tileMapView);
+  assert.equal(calls[1][4], entries);
+  assert.equal(calls[2][1], layout);
+});
+
+test('WorldMapCanvasRenderer delegates scout route helpers to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapScoutRenderer: {
+      renderWorldScoutRoutes(...args) {
+        calls.push(['scout-routes', ...args]);
+        return 'routes-ok';
+      },
+      getWorldScoutUnitRoutePoints(...args) {
+        calls.push(['scout-route-points', ...args]);
+        return [{ x: 1, y: 2 }];
+      },
+      getWorldScoutUnitProgress(...args) {
+        calls.push(['scout-progress', ...args]);
+        return 0.5;
+      },
+      getWorldScoutUnitPoint(...args) {
+        calls.push(['scout-point', ...args]);
+        return { x: 3, y: 4, progress: 0.5 };
+      },
+      getWorldScoutUnitFramePath(...args) {
+        calls.push(['scout-frame', ...args]);
+        return 'frame.png';
+      },
+      renderWorldScoutUnitsLegacy(...args) {
+        calls.push(['scout-units-legacy', ...args]);
+        return 'legacy-ok';
+      },
+    },
+  });
+
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const geometry = tileMapView.geometry;
+  const mission = { id: 'scout-1', route: [{ q: 1, r: 0 }] };
+
+  assert.equal(renderer.renderWorldScoutRoutes(tileMapView, viewport), 'routes-ok');
+  assert.deepEqual(renderer.getWorldScoutUnitRoutePoints(mission, viewport, geometry), [{ x: 1, y: 2 }]);
+  assert.equal(renderer.getWorldScoutUnitProgress(mission), 0.5);
+  assert.deepEqual(renderer.getWorldScoutUnitPoint(mission, viewport, geometry), { x: 3, y: 4, progress: 0.5 });
+  assert.equal(renderer.getWorldScoutUnitFramePath(mission), 'frame.png');
+  assert.equal(renderer.renderWorldScoutUnitsLegacy(tileMapView, viewport), 'legacy-ok');
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'scout-routes',
+    'scout-route-points',
+    'scout-progress',
+    'scout-point',
+    'scout-frame',
+    'scout-units-legacy',
+  ]);
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[1][1], mission);
+});
+
+test('WorldMapCanvasRenderer delegates world site overlay helpers to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapSiteOverlayRenderer: {
+      getWorldSiteDialogPresenter(...args) {
+        calls.push(['site-presenter', ...args]);
+        return { id: 'presenter' };
+      },
+      buildWorldSiteDialogViewState(...args) {
+        calls.push(['site-view', ...args]);
+        return { selectedSiteId: 'capital', showModal: true, details: [] };
+      },
+      buildFallbackWorldSiteDialogViewState(...args) {
+        calls.push(['site-fallback', ...args]);
+        return { selectedSiteId: 'fallback', showModal: false, details: [] };
+      },
+      renderWorldSiteAction(...args) {
+        calls.push(['site-action', ...args]);
+        return 99;
+      },
+      renderWorldExpeditionConfig(...args) {
+        calls.push(['site-expedition', ...args]);
+        return 123;
+      },
+      renderWorldSiteModal(...args) {
+        calls.push(['site-modal', ...args]);
+        return 'modal-ok';
+      },
+      renderWorldCityCommandLegacyOverlay(...args) {
+        calls.push(['city-legacy', ...args]);
+        return 'legacy-ok';
+      },
+      getWorldCityCommandAnchor(...args) {
+        calls.push(['city-anchor', ...args]);
+        return { anchorX: 1, anchorY: 2 };
+      },
+      getWorldSiteCanvasAnchor(...args) {
+        calls.push(['site-anchor', ...args]);
+        return { center: { x: 1, y: 2 } };
+      },
+      getWorldCityCommandButtonAction(...args) {
+        calls.push(['city-action', ...args]);
+        return { type: 'enterCity' };
+      },
+      drawWorldCityCommandPrimaryButton(...args) {
+        calls.push(['city-primary', ...args]);
+        return 'primary-ok';
+      },
+      drawWorldCityCommandSideButton(...args) {
+        calls.push(['city-side', ...args]);
+        return 'side-ok';
+      },
+      renderWorldCityCommandOverlay(...args) {
+        calls.push(['city-overlay', ...args]);
+        return 'overlay-ok';
+      },
+    },
+  });
+
+  const territories = [{ id: 'capital' }];
+  const territoryState = { territories };
+  const uiState = { selectedSiteId: 'capital' };
+  const state = { territoryState };
+  const options = { territoryUiState: uiState };
+  const detail = { id: 'capital' };
+  const button = { action: 'enter-city', territoryId: 'capital' };
+
+  assert.deepEqual(renderer.getWorldSiteDialogPresenter(), { id: 'presenter' });
+  assert.equal(renderer.buildWorldSiteDialogViewState(territories, territoryState, uiState).showModal, true);
+  assert.equal(renderer.buildFallbackWorldSiteDialogViewState(territories, territoryState, uiState).selectedSiteId, 'fallback');
+  assert.equal(renderer.renderWorldSiteAction({ buttons: [] }, 1, 2, 3), 99);
+  assert.equal(renderer.renderWorldExpeditionConfig({}, 1, 2, 3), 123);
+  assert.equal(renderer.renderWorldSiteModal(state, options), 'modal-ok');
+  assert.equal(renderer.renderWorldCityCommandLegacyOverlay(detail, territories, state, options), 'legacy-ok');
+  assert.deepEqual(renderer.getWorldCityCommandAnchor(detail, territories, state, options), { anchorX: 1, anchorY: 2 });
+  assert.deepEqual(renderer.getWorldSiteCanvasAnchor('capital', state, options), { center: { x: 1, y: 2 } });
+  assert.deepEqual(renderer.getWorldCityCommandButtonAction(button), { type: 'enterCity' });
+  assert.equal(renderer.drawWorldCityCommandPrimaryButton(button, 1, 2, 3), 'primary-ok');
+  assert.equal(renderer.drawWorldCityCommandSideButton(button, 1, 2, 3, 4), 'side-ok');
+  assert.equal(renderer.renderWorldCityCommandOverlay(detail, territories, state, options), 'overlay-ok');
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'site-presenter',
+    'site-view',
+    'site-fallback',
+    'site-action',
+    'site-expedition',
+    'site-modal',
+    'city-legacy',
+    'city-anchor',
+    'site-anchor',
+    'city-action',
+    'city-primary',
+    'city-side',
+    'city-overlay',
+  ]);
+});
+
+test('WorldMapCanvasRenderer delegates military world view to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapMilitaryViewRenderer: {
+      renderMilitaryWorldView(...args) {
+        calls.push(['military-world-view', ...args]);
+        return 'military-ok';
+      },
+    },
+  });
+  const state = { territoryState: { territories: [] } };
+  const options = { territoryUiState: {} };
+
+  assert.equal(renderer.renderMilitaryWorldView(state, 1, 2, 3, 4, options), 'military-ok');
+  assert.deepEqual(calls.map((call) => call[0]), ['military-world-view']);
+  assert.equal(calls[0][1], state);
+  assert.equal(calls[0][5], 4);
+  assert.equal(calls[0][6], options);
+});
+
+test('WorldMapCanvasRenderer delegates fog mask context capture to split renderer', () => {
+  const calls = [];
+  const host = createHost();
+  const renderer = new WorldMapCanvasRenderer({
+    host,
+    worldMapFogMaskContextRenderer: {
+      getWorldTileKey(...args) {
+        calls.push(['fog-key', ...args]);
+        return 'fog-key-ok';
+      },
+      getWorldTileFogRevealEntries(...args) {
+        calls.push(['fog-reveal', ...args]);
+        return [{ tile: { id: 'inner' } }];
+      },
+      renderWorldTileFogMask(...args) {
+        calls.push(['fog-mask', ...args]);
+        host.lastWorldFogContext = { tileMapView: args[0], viewport: args[1], frame: args[2], entries: args[3] };
+        return false;
+      },
+    },
+  });
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0] }];
+
+  assert.equal(renderer.getWorldTileKey(tileMapView.tiles[0]), 'fog-key-ok');
+  assert.deepEqual(renderer.getWorldTileFogRevealEntries(entries), [{ tile: { id: 'inner' } }]);
+  assert.equal(renderer.renderWorldTileFogMask(tileMapView, viewport, frame, entries), false);
+  assert.deepEqual(calls.map((call) => call[0]), ['fog-key', 'fog-reveal', 'fog-mask']);
+  assert.equal(calls[2][1], tileMapView);
+  assert.equal(calls[2][4], entries);
+  assert.equal(host.lastWorldFogContext.tileMapView, tileMapView);
+});
+
+test('WorldMapCanvasRenderer delegates tile-map frame orchestration to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapTileMapRenderer: {
+      renderWorldTileMap(...args) {
+        calls.push(['tile-map', ...args]);
+        return 'tile-map-ok';
+      },
+    },
+  });
+  const tileMapView = createTileMapView();
+  const uiState = { selectedSiteId: 'capital' };
+  const options = { hitTargetsOnly: true };
+
+  assert.equal(renderer.renderWorldTileMap(tileMapView, 1, 2, 3, 4, uiState, options), 'tile-map-ok');
+  assert.deepEqual(calls.map((call) => call[0]), ['tile-map']);
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][5], 4);
+  assert.equal(calls[0][6], uiState);
+  assert.equal(calls[0][7], options);
+});
+
+test('WorldMapCanvasRenderer delegates actor and march HUD helpers to split renderer', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapActorHudRenderer: {
+      renderWorldScoutUnits(...args) {
+        calls.push(['scout-units', ...args]);
+        return 'scout-units-ok';
+      },
+      renderWorldActors(...args) {
+        calls.push(['actors', ...args]);
+        return 'actors-ok';
+      },
+      addWorldActorHitTargets(...args) {
+        calls.push(['actor-targets', ...args]);
+        return 'targets-ok';
+      },
+      renderWorldMarchHud(...args) {
+        calls.push(['march-hud', ...args]);
+        return 'hud-ok';
+      },
+      getNearestWorldTileAtPoint(...args) {
+        calls.push(['nearest-tile', ...args]);
+        return { id: 'nearest' };
+      },
+      getEpochNowMs(...args) {
+        calls.push(['epoch-now', ...args]);
+        return 123456;
+      },
+    },
+  });
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const geometry = tileMapView.geometry;
+  const actors = [{ id: 'actor-1' }];
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+
+  assert.equal(renderer.renderWorldScoutUnits(tileMapView, viewport), 'scout-units-ok');
+  assert.equal(renderer.renderWorldActors(actors, viewport, geometry), 'actors-ok');
+  assert.equal(renderer.addWorldActorHitTargets(actors, viewport, geometry), 'targets-ok');
+  assert.equal(renderer.renderWorldMarchHud({ id: 'state' }, {}, actors, viewport, geometry, frame), 'hud-ok');
+  assert.deepEqual(renderer.getNearestWorldTileAtPoint({ x: 1, y: 2 }, tileMapView, viewport), { id: 'nearest' });
+  assert.equal(renderer.getEpochNowMs(), 123456);
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'scout-units',
+    'actors',
+    'actor-targets',
+    'march-hud',
+    'nearest-tile',
+    'epoch-now',
+  ]);
+});
+
+test('WorldMapCanvasRenderer delegates layout helpers to split facade', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapLayoutFacade: {
+      getWorldTileScreenCenter(...args) {
+        calls.push(['screen-center', ...args]);
+        return { x: 1, y: 2 };
+      },
+      getWorldTileDrawRect(...args) {
+        calls.push(['draw-rect', ...args]);
+        return { x: 3, y: 4, width: 5, height: 6 };
+      },
+      getWorldTileRenderEntries(...args) {
+        calls.push(['render-entries', ...args]);
+        return [{ tile: { id: 'tile-1' } }];
+      },
+      getWorldTileStaticChunkLayouts(...args) {
+        calls.push(['chunk-layouts', ...args]);
+        return [{ chunkX: 0, chunkY: 0 }];
+      },
+    },
+  });
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const geometry = tileMapView.geometry;
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+
+  assert.deepEqual(renderer.getWorldTileScreenCenter(tileMapView.tiles[0], viewport, geometry), { x: 1, y: 2 });
+  assert.deepEqual(renderer.getWorldTileDrawRect({ x: 1, y: 2 }, 1, geometry), { x: 3, y: 4, width: 5, height: 6 });
+  assert.deepEqual(renderer.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry), [{ tile: { id: 'tile-1' } }]);
+  assert.deepEqual(renderer.getWorldTileStaticChunkLayouts(tileMapView, viewport, frame, geometry), [{ chunkX: 0, chunkY: 0 }]);
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'screen-center',
+    'draw-rect',
+    'render-entries',
+    'chunk-layouts',
+  ]);
+});
+
+test('WorldMapCanvasRenderer delegates render utility helpers to split facade', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapRenderUtilityFacade: {
+      drawIsoDiamond(...args) {
+        calls.push(['diamond', ...args]);
+        return 'diamond-ok';
+      },
+      getFallbackTerrainFill(...args) {
+        calls.push(['fill', ...args]);
+        return 'fill-ok';
+      },
+      hashString(...args) {
+        calls.push(['hash', ...args]);
+        return 123;
+      },
+      random01(...args) {
+        calls.push(['random', ...args]);
+        return 0.25;
+      },
+    },
+  });
+
+  assert.equal(renderer.drawIsoDiamond(1, 2, 3, 4, { stroke: '#fff' }), 'diamond-ok');
+  assert.equal(renderer.getFallbackTerrainFill('forest'), 'fill-ok');
+  assert.equal(renderer.hashString('abc'), 123);
+  assert.equal(renderer.random01('seed', 1, 2, 'salt'), 0.25);
+  assert.deepEqual(calls.map((call) => call[0]), ['diamond', 'fill', 'hash', 'random']);
+  assert.deepEqual(calls[0].slice(1), [1, 2, 3, 4, { stroke: '#fff' }]);
+  assert.equal(calls[1][1], 'forest');
+  assert.equal(calls[2][1], 'abc');
+  assert.deepEqual(calls[3].slice(1), ['seed', 1, 2, 'salt']);
+});
+
+test('WorldMapCanvasRenderer delegates cache helpers to split facade', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapCacheFacade: {
+      getWorldTileStaticCacheKey(...args) {
+        calls.push(['static-key', ...args]);
+        return 'static-key-ok';
+      },
+      getWorldTileLayerCacheContext(...args) {
+        calls.push(['layer-context', ...args]);
+        return { id: 'layer-context-ok' };
+      },
+      createWorldTileLayerWork(...args) {
+        calls.push(['layer-work', ...args]);
+        return { id: 'layer-work-ok' };
+      },
+      drawWorldTileLayerCache(...args) {
+        calls.push(['layer-draw', ...args]);
+        return 'layer-draw-ok';
+      },
+      resolveWorldTileStaticCacheLayout(...args) {
+        calls.push(['resolve-layout', ...args]);
+        return { kind: 'viewport' };
+      },
+      getWorldTileScoutRouteCacheKey(...args) {
+        calls.push(['scout-key', ...args]);
+        return 'scout-key-ok';
+      },
+    },
+  });
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0] }];
+  const uiState = { selectedSiteId: 'capital' };
+  const work = { canvas: {}, scale: 1 };
+  const layout = { frame, drawX: 1, drawY: 2 };
+
+  assert.equal(renderer.getWorldTileStaticCacheKey(tileMapView, viewport, frame, entries, uiState, { cacheScale: 2 }), 'static-key-ok');
+  assert.deepEqual(renderer.getWorldTileLayerCacheContext('cache-a', 10, 20, 2), { id: 'layer-context-ok' });
+  assert.deepEqual(renderer.createWorldTileLayerWork(10, 20, 2), { id: 'layer-work-ok' });
+  assert.equal(renderer.drawWorldTileLayerCache(work, layout, frame), 'layer-draw-ok');
+  assert.deepEqual(renderer.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries), { kind: 'viewport' });
+  assert.equal(renderer.getWorldTileScoutRouteCacheKey(tileMapView, viewport, frame, { cacheScale: 2 }), 'scout-key-ok');
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'static-key',
+    'layer-context',
+    'layer-work',
+    'layer-draw',
+    'resolve-layout',
+    'scout-key',
+  ]);
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][4], entries);
+  assert.equal(calls[3][1], work);
+  assert.equal(calls[4][3], frame);
+});
+
+test('WorldMapCanvasRenderer delegates cache config helpers to split facade', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapCacheConfigFacade: {
+      getWorldTileStaticChunkSize() {
+        calls.push(['chunk-size']);
+        return 2048;
+      },
+      getWorldTileStaticChunkCacheLimit() {
+        calls.push(['chunk-limit']);
+        return 64;
+      },
+      getWorldTileStaticChunkCacheScale() {
+        calls.push(['chunk-scale']);
+        return 2;
+      },
+      getWorldTileDragCachePanRange() {
+        calls.push(['drag-range']);
+        return 240;
+      },
+      getWorldTileStaticCacheScale() {
+        calls.push(['cache-scale']);
+        return 3;
+      },
+      getWorldTileStaticCachePixelBudget() {
+        calls.push(['pixel-budget']);
+        return 32000000;
+      },
+    },
+  });
+
+  assert.equal(renderer.getWorldTileStaticChunkSize(), 2048);
+  assert.equal(renderer.getWorldTileStaticChunkCacheLimit(), 64);
+  assert.equal(renderer.getWorldTileStaticChunkCacheScale(), 2);
+  assert.equal(renderer.getWorldTileDragCachePanRange(), 240);
+  assert.equal(renderer.getWorldTileStaticCacheScale(), 3);
+  assert.equal(renderer.getWorldTileStaticCachePixelBudget(), 32000000);
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'chunk-size',
+    'chunk-limit',
+    'chunk-scale',
+    'drag-range',
+    'cache-scale',
+    'pixel-budget',
+  ]);
+});
+
+test('WorldMapCanvasRenderer delegates hit-target helpers to split facade', () => {
+  const calls = [];
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost(),
+    worldMapHitTargetFacade: {
+      addWorldTileSiteHitTargets(...args) {
+        calls.push(['site-targets', ...args]);
+        return 'site-targets-ok';
+      },
+      addWorldMarchTileHitTargets(...args) {
+        calls.push(['march-targets', ...args]);
+        return 'march-targets-ok';
+      },
+    },
+  });
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const entries = [{ tile: tileMapView.tiles[0] }];
+  const uiState = { selectedSiteId: 'capital' };
+
+  assert.equal(renderer.addWorldTileSiteHitTargets(tileMapView, viewport, entries, uiState), 'site-targets-ok');
+  assert.equal(renderer.addWorldMarchTileHitTargets(tileMapView, viewport, frame), 'march-targets-ok');
+  assert.deepEqual(calls.map((call) => call[0]), ['site-targets', 'march-targets']);
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][3], entries);
+  assert.equal(calls[0][4], uiState);
+  assert.equal(calls[1][3], frame);
 });
 
 test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is split out', () => {

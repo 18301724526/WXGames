@@ -11,12 +11,14 @@ const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
+const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
 
 function createInitialGameState(playerId) {
   const buildings = BuildingState.createInitialBuildingState();
   const buildingEffects = BuildingEffectCalculator.calculate(buildings);
   return {
     playerId,
+    saveMetadata: GameStateMigrationPipeline.createSaveMetadata(),
     resources: { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
     buildings,
     buildingEffects,
@@ -58,7 +60,8 @@ function createInitialGameState(playerId) {
 }
 
 function normalizeState(rawState) {
-  const state = rawState ? { ...rawState } : createInitialGameState('unknown');
+  const migrated = GameStateMigrationPipeline.migrateState(rawState || createInitialGameState('unknown'));
+  const state = migrated.state;
   state.resources = {
     food: state.resources?.food || 0,
     knowledge: state.resources?.knowledge || 0,

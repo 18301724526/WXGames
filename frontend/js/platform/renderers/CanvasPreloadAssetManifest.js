@@ -1,4 +1,15 @@
 (function (global) {
+  const SharedAssetKeyRegistry = (() => {
+    if (global.AssetKeyRegistry) return global.AssetKeyRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/AssetKeyRegistry');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const SharedUnitSpriteManifest = (() => {
     if (global.UnitSpriteManifest) return global.UnitSpriteManifest;
     if (typeof module !== 'undefined' && module.exports) {
@@ -13,6 +24,49 @@
   const TUTORIAL_MARCH_UNIT_ID = 'tutorial_intro_soldier';
   const WORLD_SCOUT_UNIT_ID = 'scout_squad_default';
   const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
+  const BASE_PRELOAD_ASSET_KEYS = Object.freeze([
+    'background:civilization',
+    'ui:icon:home',
+    'ui:icon:fire',
+    'ui:icon:wood',
+    'ui:icon:iron',
+    'ui:icon:stone',
+    'ui:icon:food',
+    'ui:icon:knowledge',
+    'ui:icon:population',
+    'ui:icon:happiness',
+    'ui:icon:farmer',
+    'ui:icon:scholar',
+    'ui:icon:craftsman',
+    'ui:icon:science',
+    'ui:icon:soldier',
+    'ui:icon:event',
+    'tech:route:agriculture',
+    'tech:route:livelihood',
+    'tech:route:administration',
+    'tech:route:knowledge',
+    'tech:route:culture',
+    'tech:route:engineering',
+    'tech:route:industry',
+    'tech:route:exploration',
+    'tech:route:trade',
+    'tech:route:military',
+    'building:house',
+    'building:farm',
+    'building:lumbermill',
+    'building:barracks',
+    'building:academy',
+    'building:workshop',
+    'building:temple',
+    'building:watchtower',
+    'world-site:camp',
+    'world-site:city',
+    'world-site:outpost',
+    'world-site:ruins',
+    'world-site:town',
+    'spine:tutorial-advisor:texture',
+    'battle:background:forest-camp',
+  ]);
 
   function getTutorialMarchUnitFramePaths() {
     return SharedUnitSpriteManifest?.getFramePaths?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || [];
@@ -22,7 +76,7 @@
     return SharedUnitSpriteManifest?.getFramePaths?.(WORLD_SCOUT_UNIT_ID, 'move') || [];
   }
 
-  const BASE_PRELOAD_ASSET_PATHS = [
+  const FALLBACK_BASE_PRELOAD_ASSET_PATHS = Object.freeze([
     'assets/art/civilization-bg.webp',
     'assets/art/icon-home-cutout.png',
     'assets/art/icon-fire-cutout.webp',
@@ -62,13 +116,24 @@
     'assets/art/world-site-outpost-cutout.png',
     'assets/art/world-site-ruins-cutout.png',
     'assets/art/world-site-town-cutout.png',
-    ...getTutorialMarchUnitFramePaths(),
-    ...getWorldScoutUnitFramePaths(),
     'assets/art/spine/tutorial/advisor/tutorial_advisor.png',
     'assets/art/battle/battlefield-forest-camp.png',
-  ];
+  ]);
+
+  function uniquePaths(paths = []) {
+    return Array.from(new Set((Array.isArray(paths) ? paths : []).filter(Boolean)));
+  }
+
+  function getBaseStaticPreloadAssetPaths() {
+    const paths = SharedAssetKeyRegistry?.getAssetPaths?.(BASE_PRELOAD_ASSET_KEYS) || [];
+    return paths.length ? paths : [...FALLBACK_BASE_PRELOAD_ASSET_PATHS];
+  }
 
   class CanvasPreloadAssetManifest {
+    static getBasePreloadAssetKeys() {
+      return [...BASE_PRELOAD_ASSET_KEYS];
+    }
+
     static getTutorialMarchUnitFramePaths() {
       return getTutorialMarchUnitFramePaths();
     }
@@ -78,7 +143,11 @@
     }
 
     static getBasePreloadAssetPaths() {
-      return [...BASE_PRELOAD_ASSET_PATHS];
+      return uniquePaths([
+        ...getBaseStaticPreloadAssetPaths(),
+        ...getTutorialMarchUnitFramePaths(),
+        ...getWorldScoutUnitFramePaths(),
+      ]);
     }
 
     static getBattleUnitFramePaths(rendererClass) {

@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const WorldMapInputActionMap = (() => {
+    if (global.WorldMapInputActionMap) return global.WorldMapInputActionMap;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMapInputActionMap');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class WorldMapRuntime {
     constructor(options = {}) {
@@ -336,24 +347,10 @@
     }
 
     getHitTarget(point = {}) {
-      const x = Number(point.x);
-      const y = Number(point.y);
-      let backgroundAction = null;
-      for (let index = this.hitTargets.length - 1; index >= 0; index -= 1) {
-        const target = this.hitTargets[index];
-        if (
-          x >= target.x
-          && x <= target.x + target.width
-          && y >= target.y
-          && y <= target.y + target.height
-        ) {
-          if (target.action?.background) {
-            if (!backgroundAction) backgroundAction = target.action;
-          }
-          else return target.action;
-        }
+      if (WorldMapInputActionMap?.getHitTarget) {
+        return WorldMapInputActionMap.getHitTarget(point, this.hitTargets);
       }
-      return backgroundAction;
+      return null;
     }
 
     handleTap(point = {}, event = null) {
@@ -436,28 +433,12 @@
     syncHitTargetsFromRenderer() {
       const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
       const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
-      const allowedTypes = new Set([
-        'openWorldSite',
-        'resetWorldPan',
-        'worldMapDrag',
-        'selectWorldMarchTarget',
-        'openWorldMarchFormationPicker',
-        'startWorldMarch',
-        'closeWorldMarchHud',
-        'selectWorldActor',
-        'returnWorldMarch',
-        'stopWorldMarch',
-        'enterCity',
-        'renameCity',
-        'territoryAction',
-      ]);
-      this.baseHitTargets = (this.renderer?.hitTargets || [])
-        .filter((target) => allowedTypes.has(target?.action?.type))
-        .map((target) => ({
-          ...target,
-          x: (Number(target.x) || 0) - viewportOffsetX,
-          y: (Number(target.y) || 0) - viewportOffsetY,
-        }));
+      this.baseHitTargets = WorldMapInputActionMap?.normalizeHitTargets
+        ? WorldMapInputActionMap.normalizeHitTargets(this.renderer?.hitTargets || [], {
+          offsetX: -viewportOffsetX,
+          offsetY: -viewportOffsetY,
+        })
+        : [];
       this.hitTargets = this.getOffsetHitTargets();
       return this.hitTargets;
     }
@@ -472,27 +453,12 @@
 
     getBackgroundMarchTargetAction(point = {}) {
       const context = this.getLastTileMapContext();
-      const tileMapView = context?.tileMapView || null;
-      const viewport = context?.viewport || null;
-      const geometry = context?.geometry || tileMapView?.geometry || viewport?.geometry || null;
-      if (!tileMapView || !viewport || !geometry || !WorldMarchSystem?.screenPointToAxialTile) return null;
-      const inferred = WorldMarchSystem.screenPointToAxialTile(point, viewport, geometry);
-      if (!Number.isFinite(Number(inferred?.q)) || !Number.isFinite(Number(inferred?.r))) return null;
-      const knownTile = (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find((tile) => (
-        (tile.id && tile.id === inferred.tileId)
-        || (Math.floor(Number(tile.q)) === inferred.q && Math.floor(Number(tile.r)) === inferred.r)
-      )) || null;
-      const known = Boolean(knownTile && knownTile.visibility !== 'unknown' && knownTile.discovered !== false);
-      return {
-        type: 'selectWorldMarchTarget',
-        tileId: knownTile?.id || inferred.tileId,
-        targetQ: inferred.q,
-        targetR: inferred.r,
-        known,
-        terrain: known ? (knownTile.terrain || '') : '',
-        terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : '未知',
-        background: true,
-      };
+      if (WorldMapInputActionMap?.getBackgroundMarchTargetAction) {
+        return WorldMapInputActionMap.getBackgroundMarchTargetAction(point, context, {
+          screenPointToAxialTile: WorldMarchSystem?.screenPointToAxialTile,
+        });
+      }
+      return null;
     }
 
     render(options = {}) {

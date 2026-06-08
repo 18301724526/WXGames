@@ -11,12 +11,22 @@
     <div id="app" aria-hidden="true"></div>
 
     <script src="js/config/GameConfig.js?v=army-formation-v1"></script>
+    <script src="js/config/FeatureFlags.js?v=architecture-refactor-feature-flags-v1"></script>
     <script src="js/debug/WorldMarchTrace.js?v=world-march-trace-v2"></script>
     <script src="js/domain/BuildingState.js?v=army-formation-v1"></script>
     <script src="js/domain/GameState.js?v=army-formation-v1"></script>
     <script src="js/domain/TileMapGeometry.js?v=army-formation-v1"></script>
     <script src="js/domain/WorldTime.js?v=world-march-epoch-time-v1"></script>
+    <script src="js/domain/WorldMarchProgressSnapshot.js?v=architecture-refactor-march-progress-v1"></script>
     <script src="js/domain/WorldMarchSystem.js?v=world-march-trace-v1"></script>
+    <script src="js/domain/WorldMapVisibilityModel.js?v=architecture-refactor-visibility-v1"></script>
+    <script src="js/domain/WorldMapEntitySnapshot.js?v=architecture-refactor-entity-snapshot-v1"></script>
+    <script src="js/domain/WorldMapRenderSnapshot.js?v=architecture-refactor-render-snapshot-v1"></script>
+    <script src="js/domain/WorldMapPerformanceBudget.js?v=architecture-refactor-performance-budget-v1"></script>
+    <script src="js/domain/WorldFogVisualSnapshot.js?v=architecture-refactor-fog-visual-snapshot-v1"></script>
+    <script src="js/domain/WorldMapInputActionMap.js?v=architecture-refactor-input-action-map-v1"></script>
+    <script src="js/domain/DebugOverlaySnapshot.js?v=architecture-refactor-debug-overlay-snapshot-v1"></script>
+    <script src="js/config/AssetKeyRegistry.js?v=architecture-refactor-asset-key-registry-v1"></script>
     <script src="js/config/TileMapAssetManifest.js?v=army-formation-v1"></script>
     <script src="js/config/UnitSpriteManifest.js?v=unit-sprite-manifest-v1"></script>
     <script src="js/state/GameStateManager.js?v=army-formation-v1"></script>
@@ -46,6 +56,31 @@
     <script src="js/platform/renderers/WorldActorCanvasRenderer.js?v=world-march-idle-v1"></script>
     <script src="js/platform/renderers/WorldMarchHudCanvasRenderer.js?v=world-march-local-progress-v1"></script>
     <script src="js/platform/renderers/WorldFogCanvasRenderer.js?v=world-fog-webgl-mask-v2"></script>
+    <script src="js/platform/renderers/WorldMapRendererDependencyRegistry.js?v=architecture-refactor-world-map-dependency-registry-v1"></script>
+    <script src="js/platform/renderers/WorldMapRendererHostBridge.js?v=architecture-refactor-world-map-host-bridge-v1"></script>
+    <script src="js/platform/renderers/WorldMapRendererCompositionFactory.js?v=architecture-refactor-world-map-composition-factory-v1"></script>
+    <script src="js/platform/renderers/WorldMapLayoutModel.js?v=architecture-refactor-world-map-layout-v1"></script>
+    <script src="js/platform/renderers/WorldMapRenderUtilityFacade.js?v=architecture-refactor-world-map-render-utility-facade-v1"></script>
+    <script src="js/platform/renderers/WorldMapLayoutFacade.js?v=architecture-refactor-world-map-layout-facade-v1"></script>
+    <script src="js/platform/renderers/WorldMapHitTargetModel.js?v=architecture-refactor-world-map-hit-target-v1"></script>
+    <script src="js/platform/renderers/WorldMapHitTargetFacade.js?v=architecture-refactor-world-map-hit-target-facade-v1"></script>
+    <script src="js/platform/renderers/WorldMapCachePolicy.js?v=architecture-refactor-world-map-cache-policy-v1"></script>
+    <script src="js/platform/renderers/WorldMapLayerCacheStore.js?v=architecture-refactor-world-map-layer-cache-store-v1"></script>
+    <script src="js/platform/renderers/WorldMapCacheFacade.js?v=architecture-refactor-world-map-cache-facade-v1"></script>
+    <script src="js/platform/renderers/WorldMapCacheConfigFacade.js?v=architecture-refactor-world-map-cache-config-facade-v1"></script>
+    <script src="js/platform/renderers/WorldMapStaticLayerRenderer.js?v=architecture-refactor-world-map-static-layer-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapStaticEntryRenderer.js?v=architecture-refactor-world-map-static-entry-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapStaticChunkRenderer.js?v=architecture-refactor-world-map-static-chunk-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapWaterLayerRenderer.js?v=architecture-refactor-world-map-water-layer-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapWaterEntryRenderer.js?v=architecture-refactor-world-map-water-entry-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapSnapshotCacheRenderer.js?v=architecture-refactor-world-map-snapshot-cache-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapFastDragCompositeRenderer.js?v=architecture-refactor-world-map-fast-drag-composite-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapScoutRenderer.js?v=architecture-refactor-world-map-scout-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapSiteOverlayRenderer.js?v=architecture-refactor-world-map-site-overlay-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapMilitaryViewRenderer.js?v=architecture-refactor-world-map-military-view-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapFogMaskContextRenderer.js?v=architecture-refactor-world-map-fog-mask-context-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapTileMapRenderer.js?v=architecture-refactor-world-map-tile-map-renderer-v1"></script>
+    <script src="js/platform/renderers/WorldMapActorHudRenderer.js?v=architecture-refactor-world-map-actor-hud-renderer-v1"></script>
     <script src="js/platform/renderers/WorldMapCanvasRenderer.js?v=world-fog-layer-v1"></script>
     <script src="js/platform/renderers/CanvasWorldMapFacade.js?v=architecture-refactor-world-map-facade-v1"></script>
     <script src="js/platform/renderers/WorldMapLayerCanvasRenderer.js?v=world-march-epoch-time-v1"></script>
@@ -118,6 +153,9 @@
     <script src="js/platform/H5CanvasViewport.js?v=architecture-refactor-h5-runtime-v1"></script>
     <script src="js/platform/H5CanvasInputController.js?v=architecture-refactor-h5-runtime-v1"></script>
     <script src="js/platform/H5CanvasRuntime.js?v=architecture-refactor-h5-runtime-v1"></script>
+    <script src="js/platform/CanvasLayerRegistry.js?v=architecture-refactor-layer-registry-v1"></script>
+    <script src="js/platform/WorldMapVisualPluginRegistry.js?v=architecture-refactor-visual-plugin-registry-v1"></script>
+    <script src="js/platform/DebugOverlayRegistry.js?v=architecture-refactor-debug-overlay-registry-v1"></script>
     <script src="js/platform/CanvasActionDispatchRegistry.js?v=architecture-refactor-canvas-action-dispatch-registry-v1"></script>
     <script src="js/platform/CanvasActionDispatcher.js?v=architecture-refactor-canvas-action-dispatcher-v2"></script>
     <script src="js/platform/CanvasGameShellMounting.js?v=world-fog-webgl-layer-v1"></script>

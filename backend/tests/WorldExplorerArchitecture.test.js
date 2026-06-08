@@ -28,6 +28,7 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
   assert.deepEqual(moduleFiles, [
     'WorldExplorerActions.js',
     'WorldExplorerClientState.js',
+    'WorldExplorerDtoMapper.js',
     'WorldExplorerMissionNormalizer.js',
     'WorldExplorerProgression.js',
     'WorldExplorerRoutePlanner.js',

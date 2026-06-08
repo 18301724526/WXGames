@@ -21,6 +21,17 @@
     }
     return null;
   })();
+  const WorldMarchProgressSnapshot = (() => {
+    if (global.WorldMarchProgressSnapshot) return global.WorldMarchProgressSnapshot;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMarchProgressSnapshot');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -39,10 +50,12 @@
   }
 
   function tileId(q, r) {
+    if (WorldMarchProgressSnapshot?.tileId) return WorldMarchProgressSnapshot.tileId(q, r);
     return `tile_${toInteger(q)}_${toInteger(r)}`;
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
+    if (WorldMarchProgressSnapshot?.normalizeCoord) return WorldMarchProgressSnapshot.normalizeCoord(coord, fallback);
     const q = toInteger(coord.q ?? coord.x, fallback.q ?? 0);
     const r = toInteger(coord.r ?? coord.y, fallback.r ?? 0);
     return {
@@ -53,6 +66,7 @@
   }
 
   function normalizeRoute(route = []) {
+    if (WorldMarchProgressSnapshot?.normalizeRoute) return WorldMarchProgressSnapshot.normalizeRoute(route);
     return (Array.isArray(route) ? route : [])
       .map((step, index) => {
         if (!step || typeof step !== 'object') return null;
@@ -68,11 +82,13 @@
   }
 
   function getMissionPath(mission = {}) {
+    if (WorldMarchProgressSnapshot?.getMissionPath) return WorldMarchProgressSnapshot.getMissionPath(mission);
     const origin = normalizeCoord(mission.origin || {});
     return [origin, ...normalizeRoute(mission.route)];
   }
 
   function getMissionDurationMs(mission = {}) {
+    if (WorldMarchProgressSnapshot?.getMissionDurationMs) return WorldMarchProgressSnapshot.getMissionDurationMs(mission);
     const route = normalizeRoute(mission.route);
     const stepDurationMs = Math.max(1000, toInteger(
       mission.stepDurationMs,
@@ -82,6 +98,7 @@
   }
 
   function getMissionStepDurationMs(mission = {}) {
+    if (WorldMarchProgressSnapshot?.getMissionStepDurationMs) return WorldMarchProgressSnapshot.getMissionStepDurationMs(mission);
     return Math.max(1000, toInteger(
       mission.stepDurationMs,
       Math.max(1, toNumber(mission.stepDurationSeconds, 10)) * 1000,
@@ -89,6 +106,7 @@
   }
 
   function getMissionProgress(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.getMissionProgress) return WorldMarchProgressSnapshot.getMissionProgress(mission, nowMs);
     const route = normalizeRoute(mission.route);
     if (!route.length) return { progress: 0, segmentIndex: 0, segmentProgress: 0, elapsedMs: 0, durationMs: 0 };
     if (mission.status === 'ready' || mission.status === 'idle') {
@@ -111,17 +129,20 @@
   }
 
   function isExpiredActiveMission(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.isExpiredActiveMission) return WorldMarchProgressSnapshot.isExpiredActiveMission(mission, nowMs);
     if (!mission || mission.status !== 'active') return false;
     const completesAtMs = toTimestamp(mission.completesAt, Number.NaN);
     return Number.isFinite(completesAtMs) && completesAtMs <= toNumber(nowMs, Date.now());
   }
 
   function getEffectiveMissionStatus(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.getEffectiveMissionStatus) return WorldMarchProgressSnapshot.getEffectiveMissionStatus(mission, nowMs);
     if (isExpiredActiveMission(mission, nowMs)) return mission.mode === 'random' ? 'ready' : 'idle';
     return mission.status || '';
   }
 
   function getRouteStepRevealTimeMs(mission = {}, step = {}) {
+    if (WorldMarchProgressSnapshot?.getRouteStepRevealTimeMs) return WorldMarchProgressSnapshot.getRouteStepRevealTimeMs(mission, step);
     const startedAtMs = toTimestamp(mission.startedAt, Number.NaN);
     if (!Number.isFinite(startedAtMs)) return Number.NaN;
     const stepIndex = Math.max(1, toInteger(step.step, 1));
@@ -129,11 +150,13 @@
   }
 
   function isRouteStepTimeRevealed(mission = {}, step = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.isRouteStepTimeRevealed) return WorldMarchProgressSnapshot.isRouteStepTimeRevealed(mission, step, nowMs);
     const revealAtMs = getRouteStepRevealTimeMs(mission, step);
     return Number.isFinite(revealAtMs) && revealAtMs <= toNumber(nowMs, Date.now());
   }
 
   function isRouteStepRevealed(mission = {}, step = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.isRouteStepRevealed) return WorldMarchProgressSnapshot.isRouteStepRevealed(mission, step, nowMs);
     if (!step) return false;
     if (step.revealed) return true;
     const id = step.tileId || tileId(step.q, step.r);
@@ -146,6 +169,7 @@
   }
 
   function deriveMissionForTime(mission = {}, options = {}) {
+    if (WorldMarchProgressSnapshot?.deriveMissionForTime) return WorldMarchProgressSnapshot.deriveMissionForTime(mission, options);
     if (!mission || typeof mission !== 'object') return null;
     const nowMs = toNumber(options.nowMs, Date.now());
     const route = normalizeRoute(mission.route);
@@ -213,6 +237,7 @@
   }
 
   function getCurrentCoord(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.getCurrentCoord) return WorldMarchProgressSnapshot.getCurrentCoord(mission, nowMs);
     const path = getMissionPath(mission);
     if (path.length <= 1) return path[0] || normalizeCoord({});
     const progress = getMissionProgress(mission, nowMs);
@@ -230,6 +255,7 @@
   }
 
   function chooseStopTile(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.chooseStopTile) return WorldMarchProgressSnapshot.chooseStopTile(mission, nowMs);
     const path = getMissionPath(mission);
     if (path.length <= 1) return path[0] || normalizeCoord({});
     const progress = getMissionProgress(mission, nowMs);
@@ -239,6 +265,7 @@
   }
 
   function getRemainingSeconds(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchProgressSnapshot?.getRemainingSeconds) return WorldMarchProgressSnapshot.getRemainingSeconds(mission, nowMs);
     if (!mission || mission.status === 'ready' || mission.status === 'idle') return 0;
     if (WorldTime?.getRemainingSeconds) {
       return WorldTime.getRemainingSeconds(mission, nowMs);
@@ -250,11 +277,13 @@
   }
 
   function getFormationLabel(formation = {}, fallbackSlot = 1) {
+    if (WorldMarchProgressSnapshot?.getFormationLabel) return WorldMarchProgressSnapshot.getFormationLabel(formation, fallbackSlot);
     const slot = Math.max(1, toInteger(formation.slot, fallbackSlot));
     return formation.name || `部队${slot}`;
   }
 
   function buildActorFromMission(mission = {}, options = {}) {
+    if (WorldMarchProgressSnapshot?.buildActorFromMission) return WorldMarchProgressSnapshot.buildActorFromMission(mission, options);
     if (!mission) return null;
     const nowMs = toNumber(options.nowMs, Date.now());
     const status = getEffectiveMissionStatus(mission, nowMs);
@@ -293,6 +322,7 @@
   }
 
   function buildActors(worldExplorerState = {}, options = {}) {
+    if (WorldMarchProgressSnapshot?.buildActors) return WorldMarchProgressSnapshot.buildActors(worldExplorerState, options);
     const missions = [];
     if (Array.isArray(worldExplorerState.missions)) missions.push(...worldExplorerState.missions);
     if (worldExplorerState.activeMission) missions.push(worldExplorerState.activeMission);

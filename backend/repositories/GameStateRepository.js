@@ -14,6 +14,7 @@ class GameStateRepository {
       );
       CREATE TABLE IF NOT EXISTS game_states (
         playerId TEXT PRIMARY KEY,
+        saveMetadata TEXT,
         resources TEXT,
         buildings TEXT,
         population TEXT,
@@ -57,6 +58,9 @@ class GameStateRepository {
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
     if (!columns.some((column) => column.name === 'tutorial')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN tutorial TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'saveMetadata')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN saveMetadata TEXT').run();
     }
     if (!columns.some((column) => column.name === 'softGuideState')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN softGuideState TEXT').run();
@@ -122,6 +126,7 @@ class GameStateRepository {
     if (!row) return null;
     return {
       playerId: row.playerId,
+      saveMetadata: row.saveMetadata ? JSON.parse(row.saveMetadata) : null,
       resources: JSON.parse(row.resources || '{}'),
       buildings: JSON.parse(row.buildings || '{}'),
       population: JSON.parse(row.population || '{}'),
@@ -185,15 +190,16 @@ class GameStateRepository {
   save(gameState) {
     this.db.prepare(`
       INSERT OR REPLACE INTO game_states (
-        playerId, resources, buildings, population, techs, techEffects, currentEra,
+        playerId, saveMetadata, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
+      JSON.stringify(gameState.saveMetadata || {}),
       JSON.stringify(gameState.resources || {}),
       JSON.stringify(gameState.buildings || {}),
       JSON.stringify(gameState.population || {}),

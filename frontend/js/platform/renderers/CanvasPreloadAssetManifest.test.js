@@ -4,6 +4,18 @@ const assert = require('node:assert/strict');
 const CanvasPreloadAssetManifest = require('./CanvasPreloadAssetManifest');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
+test('CanvasPreloadAssetManifest exposes stable base preload asset keys', () => {
+  const keys = CanvasPreloadAssetManifest.getBasePreloadAssetKeys();
+
+  assert.equal(keys.includes('background:civilization'), true);
+  assert.equal(keys.includes('ui:icon:home'), true);
+  assert.equal(keys.includes('world-site:city'), true);
+  assert.equal(keys.includes('battle:background:forest-camp'), true);
+
+  keys.push('mutated:key');
+  assert.equal(CanvasPreloadAssetManifest.getBasePreloadAssetKeys().includes('mutated:key'), false);
+});
+
 test('CanvasPreloadAssetManifest preserves base preload assets', () => {
   const base = CanvasPreloadAssetManifest.getBasePreloadAssetPaths();
 
@@ -14,6 +26,7 @@ test('CanvasPreloadAssetManifest preserves base preload assets', () => {
   assert.equal(base.includes('assets/art/battle/battlefield-forest-camp.png'), true);
   assert.equal(base.includes('assets/art/units/spearman/move/001.png'), true);
   assert.equal(base.includes('assets/art/units/spearman/move/011.png'), true);
+  assert.equal(new Set(base).size, base.length);
 
   base.push('mutated.png');
   assert.equal(CanvasPreloadAssetManifest.getBasePreloadAssetPaths().includes('mutated.png'), false);

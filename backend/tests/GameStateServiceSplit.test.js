@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const GameStateService = require('../services/GameStateService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
+const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const TutorialService = require('../services/TutorialService');
 const TerritoryService = require('../services/TerritoryService');
 const WorldExplorerService = require('../services/WorldExplorerService');
@@ -32,6 +33,29 @@ test('GameStateService keeps normalizeState compatible with GameStateNormalizer'
   assert.equal(viaFacade.activeCityId, viaModule.activeCityId);
   assert.deepEqual(Object.keys(viaFacade.buildings), Object.keys(viaModule.buildings));
   assert.equal(Boolean(viaFacade.territoryState), Boolean(viaModule.territoryState));
+});
+
+test('GameStateService normalizes legacy saves through the migration pipeline', () => {
+  const rawState = {
+    playerId: 'legacy-save-normalize-test',
+    resources: { food: 10, metal: 4 },
+    population: { total: 3, maxPop: 3, farmers: 3 },
+    buildings: {},
+    techs: {},
+    currentEra: 0,
+    taskProgress: {},
+    eventQueue: null,
+    updatedAt: '2026-06-04T00:00:00.000Z',
+  };
+
+  const normalized = GameStateService.normalizeState(clone(rawState));
+
+  assert.equal(normalized.saveMetadata.schema, GameStateMigrationPipeline.SAVE_SCHEMA_NAME);
+  assert.equal(normalized.saveMetadata.schemaVersion, GameStateMigrationPipeline.CURRENT_SCHEMA_VERSION);
+  assert.deepEqual(normalized.saveMetadata.migrations.map((entry) => entry.id), ['initialize-save-schema-v1']);
+  assert.equal(normalized.resources.iron, 4);
+  assert.equal(normalized.resources.metal, 4);
+  assert.deepEqual(normalized.taskProgress.claimed, {});
 });
 
 test('GameStateService keeps getClientGameState compatible with ClientGameStateAssembler', () => {

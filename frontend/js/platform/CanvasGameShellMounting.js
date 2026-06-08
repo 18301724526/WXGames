@@ -21,14 +21,11 @@ createRenderer(canvas) {
       const sharedWorldTileMaskMetricsCache = new Map();
       const sharedWorldTileDryCompositeCache = new Map();
       const worldMapLayerPadding = this.getWorldMapLayerPadding();
-      const mapCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
-        ? this.runtime.ensureLayerCanvas('worldMap', { padding: worldMapLayerPadding, zIndex: 997 })
-        : null;
-      const fogCanvas = typeof this.runtime?.ensureLayerCanvas === 'function'
-        ? this.runtime.ensureLayerCanvas('worldFog', { padding: worldMapLayerPadding, zIndex: 998, contextType: 'webgl' })
-        : null;
+      const mapCanvas = this.ensureCanvasLayer?.('worldMap', { padding: worldMapLayerPadding }) || null;
+      const fogEnabled = this.isCanvasLayerEnabled?.('worldFog') === true;
+      const fogCanvas = this.ensureCanvasLayer?.('worldFog', { padding: worldMapLayerPadding }) || null;
       if (mapCanvas && !this.worldMapRenderer) {
-        const layerMetrics = this.runtime?.getLayerMetrics?.('worldMap') || {};
+        const layerMetrics = this.getCanvasLayerMetrics?.('worldMap', {}) || {};
         this.worldMapRenderer = new RendererCtor({
           canvas: mapCanvas,
           presenter: this.presenter,
@@ -55,9 +52,9 @@ createRenderer(canvas) {
           });
         }
       }
-      const FogRendererCtor = WorldFogCanvasRendererBase || global.WorldFogCanvasRenderer;
-      if (fogCanvas && !this.worldFogRenderer && FogRendererCtor) {
-        const fogMetrics = this.runtime?.getLayerMetrics?.('worldFog') || this.runtime?.getLayerMetrics?.('worldMap') || {};
+      const FogRendererCtor = fogEnabled ? (WorldFogCanvasRendererBase || global.WorldFogCanvasRenderer) : null;
+      if (fogEnabled && fogCanvas && !this.worldFogRenderer && FogRendererCtor) {
+        const fogMetrics = this.getCanvasLayerMetrics?.('worldFog', this.getCanvasLayerMetrics?.('worldMap', {}) || {}) || {};
         const gl = fogCanvas.getContext?.('webgl', {
           alpha: true,
           antialias: false,

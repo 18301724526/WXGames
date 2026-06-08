@@ -4,6 +4,7 @@ const Database = require('better-sqlite3');
 
 const GameStateRepository = require('../repositories/GameStateRepository');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
+const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 
 test('GameStateRepository persists task progress with the game state', () => {
   const db = new Database(':memory:');
@@ -21,6 +22,31 @@ test('GameStateRepository persists task progress with the game state', () => {
   assert.deepEqual(saved.taskProgress.claimed.main_first_supplies, {
     claimedAt: '2026-06-05T00:00:00.000Z',
   });
+  db.close();
+});
+
+test('GameStateRepository persists save metadata with the game state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  const state = GameStateNormalizer.createInitialGameState('save-metadata-repo-test');
+  state.saveMetadata = GameStateMigrationPipeline.createSaveMetadata({
+    schemaVersion: GameStateMigrationPipeline.CURRENT_SCHEMA_VERSION,
+    migrations: [{
+      id: 'initialize-save-schema-v1',
+      fromVersion: 0,
+      toVersion: 1,
+      migratedAt: '2026-06-08T00:00:00.000Z',
+    }],
+  });
+
+  repository.save(state);
+  const saved = repository.findByPlayerId('save-metadata-repo-test');
+
+  assert.equal(saved.saveMetadata.schema, GameStateMigrationPipeline.SAVE_SCHEMA_NAME);
+  assert.equal(saved.saveMetadata.schemaVersion, GameStateMigrationPipeline.CURRENT_SCHEMA_VERSION);
+  assert.equal(saved.saveMetadata.migrations[0].id, 'initialize-save-schema-v1');
   db.close();
 });
 
