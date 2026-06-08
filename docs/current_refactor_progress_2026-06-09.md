@@ -1,6 +1,6 @@
 # Current Refactor Progress - 2026-06-09
 
-This is an operational progress note for the current Codex run. It is not a product or architecture authority; the authority docs remain:
+This is the operational progress note for the current Codex run. It is not a product or architecture authority; the authority docs remain:
 
 - `docs/current_product_design_2026-06-09.md`
 - `docs/current_gameplay_design_2026-06-09.md`
@@ -13,63 +13,66 @@ This is an operational progress note for the current Codex run. It is not a prod
 ## Current Status
 
 - Branch: `main`
-- Latest committed and deployed commit before the current local patch: `056e4c5b05bc08eb7ee8356b10c34783ce1c11d3`
+- Latest committed, pushed, and deployed commit before the current local patch: `6d0680bb0b0822ec95d41d7b314155fbcddb2b75`
 - Latest deployed fixes:
   - `7bb8a034a8d609a54b4c857b44d53c13ffece299 fix: expose world march hud hit targets`
   - `056e4c5b05bc08eb7ee8356b10c34783ce1c11d3 fix: refresh world march tutorial highlight`
+  - `6d0680bb0b0822ec95d41d7b314155fbcddb2b75 fix: refresh authority state for world exploration`
 - Current local patch, not committed yet:
-  - `frontend/js/services/GameStateSync.js`
-  - `frontend/js/services/GameStateSync.test.js`
-  - `frontend/js/platform/CanvasGameApp.js`
-  - `frontend/js/platform/CanvasGameApp.test.js`
+  - `frontend/app.js`
   - `frontend/index.html`
+  - `frontend/js/ui/H5GameHostSync.test.js`
+  - `docs/current_refactor_progress_2026-06-09.md`
+  - `docs/current_codex_transfer_2026-06-09.md`
 - Online H5 URL: `http://47.116.32.216/wxgame/`
 - Protected Cocos root: `http://47.116.32.216/`
+- Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
 
-## Verified Before Current Patch
+## Verified And Deployed So Far
 
-- Focused renderer/tutorial tests after the world march HUD hit-target fix:
-  - `node --test frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/CanvasGameShell.test.js`
-  - Passed: 93 tests
-- Focused tests after the tutorial highlight refresh fix:
-  - `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/tutorial/TutorialGuideController.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/CanvasGameShell.test.js`
-  - Passed: 84 tests
-- `npm.cmd run test:architecture`
-  - Passed: 380 tests
-  - Passed stable block manifest guard
-  - Passed official document guard
-  - Passed `git diff --check`
-- `npm.cmd test`
-  - Passed: 741 tests
-- Deploy stamp after `056e4c5b05bc08eb7ee8356b10c34783ce1c11d3`:
-  - `/wxgame/.wxgame-deploy-version.json`
+After `7bb8a034a8d609a54b4c857b44d53c13ffece299`:
+
+- Fixed the visible world march HUD `行军` button hit target.
+
+After `056e4c5b05bc08eb7ee8356b10c34783ce1c11d3`:
+
+- Fixed stale tutorial highlight after opening the world march formation picker.
+
+After `6d0680bb0b0822ec95d41d7b314155fbcddb2b75`:
+
+- Added `GameStateSync` authority refresh at world exploration timing boundaries.
+- Wired `CanvasGameApp` to apply refreshed authority state through `applyApiState`.
+- Updated `frontend/index.html` cache keys for `GameStateSync.js` and `CanvasGameApp.js` to `authority-state-refresh-v1`.
+
+Verification for `6d0680bb0b0822ec95d41d7b314155fbcddb2b75`:
+
+```powershell
+node --test frontend/js/services/GameStateSync.test.js frontend/js/platform/CanvasGameApp.test.js frontend/js/tutorial/TutorialGuideController.test.js frontend/js/platform/CanvasGameShell.test.js
+npm.cmd run test:architecture
+npm.cmd test
+```
+
+Results:
+
+- Focused tests: 58 passed
+- Architecture gate: 380 passed
+- Stable block manifest guard: passed
+- Official document guard: passed
+- `git diff --check`: passed
+- Full test suite: 744 passed
+
+Deployment verification after `6d0680bb0b0822ec95d41d7b314155fbcddb2b75`:
+
+- `/wxgame/.wxgame-deploy-version.json`
+  - `commit`: `6d0680bb0b0822ec95d41d7b314155fbcddb2b75`
   - `workTree`: `/www/wwwroot/h5`
   - `frontendPublicDir`: `/www/wwwroot/h5`
-- API health:
-  - `http://47.116.32.216:3000/api/health` returned OK
-- Cocos root protection:
-  - `http://47.116.32.216/` still contains `Cocos Creator`
-  - root page still contains `civilization-fire-next-client`
+- `http://47.116.32.216:3000/api/health` returned OK.
+- `http://47.116.32.216/` still contains `Cocos Creator`.
+- `http://47.116.32.216/` still contains `civilization-fire-next-client`.
+- `http://47.116.32.216/wxgame/` contains `authority-state-refresh-v1`.
 
-## Current Patch Verification
-
-- Focused test passed:
-  - `node --test frontend/js/services/GameStateSync.test.js frontend/js/platform/CanvasGameApp.test.js frontend/js/tutorial/TutorialGuideController.test.js frontend/js/platform/CanvasGameShell.test.js`
-  - Passed: 58 tests
-- `npm.cmd run test:architecture`
-  - Passed: 380 tests
-  - Passed stable block manifest guard
-  - Passed official document guard
-  - Passed `git diff --check`
-- `npm.cmd test`
-  - Passed: 744 tests
-- Behavior added:
-  - Heartbeat remains lightweight liveness only.
-  - When a local active world exploration mission reaches `nextStepAt` or `completesAt`, `GameStateSync` performs a throttled `/game/state` authority refresh.
-  - `CanvasGameApp` applies the refreshed authority state through the existing `applyApiState` path.
-  - `frontend/index.html` cache keys for `GameStateSync.js` and `CanvasGameApp.js` were updated to `authority-state-refresh-v1`.
-
-## Latest Online Tutorial Playtest
+## Online Tutorial Playtest After Deployed Commit `6d0680bb`
 
 Command:
 
@@ -80,7 +83,7 @@ npm.cmd run playtest:online-tutorial
 Latest completed run directory:
 
 ```text
-F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-08T21-10-00-214Z
+F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-08T21-21-50-653Z
 ```
 
 Result:
@@ -94,23 +97,53 @@ Result:
 - Request failures: none
 - Page errors: none
 - Positive evidence:
-  - Previous blocker fixed: `highlight-openWorldMarchFormationPicker-37...`
-  - Previous blocker fixed: `highlight-startWorldMarch-38...`
+  - Previous blocker fixed: `highlight-openWorldMarchFormationPicker-37`
+  - Previous blocker fixed: `highlight-startWorldMarch-38`
   - Step 23 successfully advanced into `scoutExploreStarted`.
   - Screenshot crops were nonblank.
-- Current issue being fixed:
-  - While waiting on step 24, the playtest only saw `/version` requests and no `/game/state` refresh.
-  - `worldExplorerState.activeMission` remained active even though its timing had reached the next sync point.
-  - The current local patch makes the frontend refresh authority state when the active world exploration mission reaches a server-owned timing boundary.
+- Remaining blocker:
+  - While waiting on step 24, the playtest still saw only `/version` in `requestLogs` and no `/game/state`.
+  - Final state still had an active manual exploration mission with unrevealed route state.
+  - Root cause found in H5 host wiring: `frontend/app.js` creates a new `GameStateSync` inside `H5GameHost.init()`, replacing the constructor-time service. The replacement service only had heartbeat, connection, and error handlers wired, so it had no `onState` callback and no local state provider.
+
+## Current Local Patch Verification
+
+Current local patch behavior:
+
+- `frontend/app.js` wires the H5-created `GameStateSync` to:
+  - `onState = (data) => this.applyApiState(data)`
+  - `setStateProvider(() => this.state)`
+- The same state-provider wiring is repeated after `gameModules.mount()` as a defensive guard against module mount replacement.
+- `frontend/index.html` updates `app.js` to the `authority-state-refresh-v1` cache key.
+- `frontend/js/ui/H5GameHostSync.test.js` verifies that H5 host initialization wires authority state refresh after replacing the constructor sync service.
+
+Verification already passed for this local patch:
+
+```powershell
+node --test frontend/js/ui/H5GameHostSync.test.js frontend/js/services/GameStateSync.test.js frontend/js/platform/CanvasGameApp.test.js
+npm.cmd run test:architecture
+npm.cmd test
+```
+
+Results:
+
+- Focused tests: 8 passed
+- Architecture gate: 380 passed
+- Stable block manifest guard: passed
+- Official document guard: passed
+- `git diff --check`: passed
+- Full test suite: 745 passed
 
 ## Next Required Gates
 
-Before committing and deploying the current patch:
+Before continuing deeper architecture work:
 
-1. Commit and push to `origin/main` and `private/main`.
-2. Verify deployment stamp, API health, and Cocos root protection.
-3. Rerun `npm.cmd run playtest:online-tutorial`.
-4. Update this document and `docs/current_codex_transfer_2026-06-09.md`.
+1. Commit the current local patch.
+2. Push to `origin/main`.
+3. Push to `private/main` to deploy.
+4. Verify deployment stamp, API health, and Cocos root protection.
+5. Rerun `npm.cmd run playtest:online-tutorial`.
+6. Update this document and `docs/current_codex_transfer_2026-06-09.md` with the new online result.
 
 ## Next Architecture Work
 
