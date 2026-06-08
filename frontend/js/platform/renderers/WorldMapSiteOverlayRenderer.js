@@ -1,4 +1,16 @@
 (function (global) {
+  const sharedUIStatePresenter = (() => {
+    if (global.UIStatePresenter) return global.UIStatePresenter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../state/UIStatePresenter');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapSiteOverlayRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -27,7 +39,12 @@
     }
 
     getWorldSiteDialogPresenter() {
-      return this.presenter || this.host?.presenter || null;
+      return [
+        this.presenter,
+        this.host?.presenter,
+        this.host?.host?.presenter,
+        sharedUIStatePresenter,
+      ].find((presenter) => presenter && typeof presenter.buildWorldSiteDialogViewState === 'function') || null;
     }
 
     buildWorldSiteDialogViewState(territories = [], territoryState = {}, uiState = {}) {

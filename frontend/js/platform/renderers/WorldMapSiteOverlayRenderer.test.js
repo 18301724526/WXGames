@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+require('../../state/UIStatePresenter');
 const WorldMapSiteOverlayRenderer = require('./WorldMapSiteOverlayRenderer');
 
 function createHost(overrides = {}) {
@@ -134,6 +135,32 @@ test('WorldMapSiteOverlayRenderer passes tutorial context into world site presen
     },
   }, { territoryUiState: { selectedSiteId: 'site-1' } });
 
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'conquer' && !target.action.disabled), true);
+});
+
+test('WorldMapSiteOverlayRenderer falls back to shared presenter for guided first city actions', () => {
+  const host = createHost();
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+
+  renderer.renderWorldSiteModal({
+    tutorial: {
+      currentStep: 25,
+      grants: { firstExploreEmptyCity: { siteId: 'site-1' } },
+    },
+    territoryState: {
+      availableSoldiers: 0,
+      territories: [{
+        id: 'site-1',
+        status: 'discovered',
+        owner: 'neutral',
+        occupationMode: 'settlement',
+        naturalName: 'Empty Site',
+        recommendedSoldiers: 100,
+      }],
+    },
+  }, { territoryUiState: { selectedSiteId: 'site-1' } });
+
+  assert.equal(renderer.getWorldSiteDialogPresenter(), globalThis.UIStatePresenter);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'conquer' && !target.action.disabled), true);
 });
 
