@@ -89,6 +89,56 @@
     };
   }
 
+  function hashSignatureParts(parts = []) {
+    let hash = 2166136261;
+    for (let partIndex = 0; partIndex < parts.length; partIndex += 1) {
+      const text = String(parts[partIndex] ?? '');
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      hash ^= 31;
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function getWorldTileEntitySignature(tileMapView = {}) {
+    const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
+    const parts = [];
+    for (let index = 0; index < tiles.length; index += 1) {
+      const tile = tiles[index] || {};
+      parts.push(
+        tile.id || '',
+        tile.terrain || '',
+        tile.terrainAsset || '',
+        tile.water?.kind || '',
+        tile.water?.asset || '',
+        (Array.isArray(tile.templateAssets) ? tile.templateAssets : [])
+          .map((asset = {}) => `${asset.key || ''}:${asset.asset || ''}:${asset.type || ''}`)
+          .join(','),
+        tile.siteId || '',
+        tile.site?.id || '',
+        tile.site?.art || '',
+        tile.site?.owner || '',
+        tile.site?.status || '',
+        tile.site?.name || tile.site?.title || '',
+        tile.site?.scale || '',
+        tile.site?.offset?.x || 0,
+        tile.site?.offset?.y || 0,
+        tile.feature?.key || '',
+        tile.feature?.asset || '',
+        tile.feature?.scale || '',
+        tile.feature?.offset?.x || 0,
+        tile.feature?.offset?.y || 0,
+        tile.visibility || '',
+        tile.discovered === false ? 0 : 1,
+        tile.visible === false ? 0 : 1,
+      );
+    }
+    return `${tiles.length}:${hashSignatureParts(parts)}`;
+  }
+
   function getWorldTileLocalEntriesCacheKey(tileMapView = {}, viewport = {}, geometry = {}) {
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const scale = Number(viewport.scale) || 1;
@@ -97,6 +147,7 @@
       tileMapView.version || '',
       tileMapView.seed || '',
       tiles.length,
+      getWorldTileEntitySignature(tileMapView),
       Math.round(scale * 1000),
       Number(geometry.tileWidth) || 192,
       Number(geometry.tileHeight) || 96,
@@ -138,6 +189,7 @@
       tileMapView.version || '',
       tileMapView.seed || '',
       tiles.length,
+      getWorldTileEntitySignature(tileMapView),
       Math.round((Number(viewport.originX) || 0) * 10) / 10,
       Math.round((Number(viewport.originY) || 0) * 10) / 10,
       Math.round((Number(viewport.panX) || 0) * 10) / 10,
@@ -369,6 +421,8 @@
     getWorldTileDrawRect,
     getWorldOverlayAnchor,
     getWorldTileSiteLayout,
+    hashSignatureParts,
+    getWorldTileEntitySignature,
     getWorldTileLocalEntriesCacheKey,
     getWorldTileRenderEntriesCacheKey,
     getWorldTileLocalViewport,

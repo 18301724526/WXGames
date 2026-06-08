@@ -20,6 +20,12 @@ test('CanvasGameRendererCoreFacades installs surface and asset facade methods', 
   assert.deepEqual(renderer.getLayout(), { contentX: 12, contentWidth: 366, contentRight: 378 });
   renderer.addHitTarget({ x: 1, y: 2, width: 3, height: 4 }, { type: 'tap' });
   assert.deepEqual(renderer.hitTargets, [{ x: 1, y: 2, width: 3, height: 4, action: { type: 'tap' } }]);
+  assert.equal(renderer.appendWorldMapRuntimeHitTargets([
+    { x: 5, y: 6, width: 7, height: 8, action: { type: 'openWorldSite', siteId: 'site_2_2' } },
+  ]), true);
+  assert.equal(renderer.hitTargets.some((target) => (
+    target.action.type === 'openWorldSite' && target.action.siteId === 'site_2_2'
+  )), true);
   assert.equal(renderer.getAsset('missing'), null);
 });
 

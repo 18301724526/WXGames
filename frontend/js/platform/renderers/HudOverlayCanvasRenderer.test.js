@@ -18,6 +18,11 @@ function createHost(overrides = {}) {
     },
     beginFrame(options) { calls.push(['beginFrame', options]); },
     clear() { calls.push(['clear']); },
+    appendWorldMapRuntimeHitTargets(targets = []) {
+      calls.push(['appendWorldMapRuntimeHitTargets', targets]);
+      targets.forEach((target) => hitTargets.push(target));
+      return targets.length > 0;
+    },
     collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
     endFrame(options) { calls.push(['endFrame', options]); },
     renderMapHomeExplorerHud(...args) { calls.push(['renderMapHomeExplorerHud', args]); },
@@ -107,6 +112,25 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
   assert.equal(names.at(-1), 'endFrame');
+});
+
+test('HudOverlayCanvasRenderer preserves runtime world-map site targets on skipped map layers', () => {
+  const host = createHost();
+  const renderer = new HudOverlayCanvasRenderer({ host });
+
+  renderer.renderHudOverlay({ militaryView: 'world' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    worldMapRuntimeHitTargets: [
+      { x: 10, y: 20, width: 30, height: 40, action: { type: 'openWorldSite', siteId: 'site_2_2' } },
+    ],
+  });
+
+  assert.equal(callNames(host).includes('appendWorldMapRuntimeHitTargets'), true);
+  assert.equal(host.hitTargets.some((target) => (
+    target.action.type === 'openWorldSite' && target.action.siteId === 'site_2_2'
+  )), true);
 });
 
 test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow', () => {

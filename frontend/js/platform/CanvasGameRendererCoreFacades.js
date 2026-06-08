@@ -111,6 +111,19 @@
       return undefined;
     },
 
+    appendWorldMapRuntimeHitTargets(targets = []) {
+      if (!Array.isArray(targets) || !targets.length) return false;
+      targets.forEach((target) => {
+        this.addHitTarget({
+          x: target.x,
+          y: target.y,
+          width: target.width,
+          height: target.height,
+        }, target.action);
+      });
+      return true;
+    },
+
     getHitTarget(...args) {
       const result = this.delegateSurfaceRenderer('getHitTarget', args);
       return result === undefined ? null : result;

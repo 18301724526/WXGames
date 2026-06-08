@@ -64,6 +64,7 @@
         activeTab: 'military',
         isMapHome: true,
         skipWorldMapLayer: true,
+        worldMapRuntimeHitTargets: Array.isArray(runtime.hitTargets) ? runtime.hitTargets : [],
         preserveCanvas: true,
         territoryUiState,
         network: this.networkState,

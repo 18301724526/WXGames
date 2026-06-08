@@ -76,6 +76,9 @@
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
               skipWorldMapLayer: worldMapLayerRendered,
+              worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
+                ? this.worldMapRuntime.hitTargets
+                : [],
               preserveCanvas: worldMapLayerRendered,
               showResourceDetails: this.showResourceDetails,
               showCitySwitcher: this.showCitySwitcher,

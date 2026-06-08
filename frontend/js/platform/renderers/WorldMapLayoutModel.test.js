@@ -150,6 +150,34 @@ test('WorldMapLayoutModel exposes stable cache keys without serializing tile pay
   assert.equal(renderKey.length < 120, true);
 });
 
+test('WorldMapLayoutModel cache keys change when tile site ownership changes without tile count changes', () => {
+  const viewport = { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 };
+  const frame = { x: 0, y: 0, width: 300, height: 300 };
+  const withoutSite = {
+    signature: 'same-signature',
+    version: '1',
+    seed: 'layout-test',
+    tiles: [{ id: 'tile_2_2', q: 2, r: 2, terrain: 'plains', discovered: true }],
+  };
+  const withSite = {
+    ...withoutSite,
+    tiles: [{
+      ...withoutSite.tiles[0],
+      siteId: 'site_2_2',
+      site: { id: 'site_2_2', type: 'town', art: 'assets/art/world-site-town-cutout.png', owner: 'neutral' },
+    }],
+  };
+
+  assert.notEqual(
+    WorldMapLayoutModel.getWorldTileLocalEntriesCacheKey(withoutSite, viewport, geometry),
+    WorldMapLayoutModel.getWorldTileLocalEntriesCacheKey(withSite, viewport, geometry),
+  );
+  assert.notEqual(
+    WorldMapLayoutModel.getWorldTileRenderEntriesCacheKey(withoutSite, viewport, frame),
+    WorldMapLayoutModel.getWorldTileRenderEntriesCacheKey(withSite, viewport, frame),
+  );
+});
+
 test('WorldMapLayoutModel loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

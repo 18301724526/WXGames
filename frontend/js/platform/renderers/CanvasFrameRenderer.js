@@ -83,7 +83,10 @@
     }
 
     renderMapHomeMilitaryFrame(state = {}, topBarBottom = 84, activeTab = 'military', options = {}) {
-      if (options.skipWorldMapLayer) this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
+      if (options.skipWorldMapLayer) {
+        this.appendWorldMapRuntimeHitTargets?.(options.worldMapRuntimeHitTargets);
+        this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
+      }
       else this.renderMapHomeWorldView(state, topBarBottom, options);
       this.renderMapHomeExplorerHud(state, topBarBottom, options);
       this.renderTabs(activeTab, state, options);

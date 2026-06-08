@@ -321,7 +321,13 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
       }
       this.setWorldMapLayerVisible(worldMapLayerRendered);
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
-        ? { ...renderOptions, skipWorldMapLayer: true }
+        ? {
+          ...renderOptions,
+          skipWorldMapLayer: true,
+          worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
+            ? this.worldMapRuntime.hitTargets
+            : [],
+        }
         : {
           ...renderOptions,
           mode: undefined,

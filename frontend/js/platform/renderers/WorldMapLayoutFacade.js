@@ -129,6 +129,53 @@
       };
     }
 
+    getWorldTileEntitySignature(tileMapView = {}) {
+      const layoutModel = this.getWorldMapLayoutModel();
+      if (layoutModel?.getWorldTileEntitySignature) {
+        return layoutModel.getWorldTileEntitySignature(tileMapView);
+      }
+      const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
+      let hash = 2166136261;
+      const push = (value) => {
+        const text = String(value ?? '');
+        for (let index = 0; index < text.length; index += 1) {
+          hash ^= text.charCodeAt(index);
+          hash = Math.imul(hash, 16777619);
+        }
+        hash ^= 31;
+        hash = Math.imul(hash, 16777619);
+      };
+      for (let index = 0; index < tiles.length; index += 1) {
+        const tile = tiles[index] || {};
+        push(tile.id || '');
+        push(tile.terrain || '');
+        push(tile.terrainAsset || '');
+        push(tile.water?.kind || '');
+        push(tile.water?.asset || '');
+        push((Array.isArray(tile.templateAssets) ? tile.templateAssets : [])
+          .map((asset = {}) => `${asset.key || ''}:${asset.asset || ''}:${asset.type || ''}`)
+          .join(','));
+        push(tile.siteId || '');
+        push(tile.site?.id || '');
+        push(tile.site?.art || '');
+        push(tile.site?.owner || '');
+        push(tile.site?.status || '');
+        push(tile.site?.name || tile.site?.title || '');
+        push(tile.site?.scale || '');
+        push(tile.site?.offset?.x || 0);
+        push(tile.site?.offset?.y || 0);
+        push(tile.feature?.key || '');
+        push(tile.feature?.asset || '');
+        push(tile.feature?.scale || '');
+        push(tile.feature?.offset?.x || 0);
+        push(tile.feature?.offset?.y || 0);
+        push(tile.visibility || '');
+        push(tile.discovered === false ? 0 : 1);
+        push(tile.visible === false ? 0 : 1);
+      }
+      return `${tiles.length}:${(hash >>> 0).toString(36)}`;
+    }
+
     getWorldTileRenderEntries(tileMapView = {}, viewport = {}, frame = {}, geometry = {}) {
       const layoutModel = this.getWorldMapLayoutModel();
       if (layoutModel?.getWorldTileRenderEntries && layoutModel?.getWorldTileRenderEntriesCacheKey) {
@@ -148,6 +195,7 @@
         tileMapView.version || '',
         tileMapView.seed || '',
         tiles.length,
+        this.getWorldTileEntitySignature(tileMapView),
         Math.round((Number(viewport.originX) || 0) * 10) / 10,
         Math.round((Number(viewport.originY) || 0) * 10) / 10,
         Math.round((Number(viewport.panX) || 0) * 10) / 10,
@@ -204,6 +252,7 @@
         tileMapView.version || '',
         tileMapView.seed || '',
         tiles.length,
+        this.getWorldTileEntitySignature(tileMapView),
         Math.round(scale * 1000),
         Number(geometry.tileWidth) || 192,
         Number(geometry.tileHeight) || 96,

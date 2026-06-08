@@ -23,6 +23,7 @@ function createHost(overrides = {}) {
     },
     beginFrame(options) { calls.push(['beginFrame', options]); },
     clear() { calls.push(['clear']); },
+    appendWorldMapRuntimeHitTargets(...args) { calls.push(['appendWorldMapRuntimeHitTargets', args]); },
     collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
     getWorldMapLayerLayout() {
       calls.push(['getWorldMapLayerLayout']);
@@ -123,6 +124,9 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
     activeTab: 'military',
     isMapHome: true,
     skipWorldMapLayer: true,
+    worldMapRuntimeHitTargets: [
+      { x: 10, y: 20, width: 30, height: 40, action: { type: 'openWorldSite', siteId: 'site_2_2' } },
+    ],
     activeCommandPanel: 'capital',
     showSubcityList: true,
     showSettings: true,
@@ -134,6 +138,7 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   renderer.render({ territoryState: {} }, options);
 
   const names = callNames(host);
+  assert.equal(names.includes('appendWorldMapRuntimeHitTargets'), true);
   assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
   assert.equal(names.includes('getWorldMapLayerLayout'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'startExplore'), false);
