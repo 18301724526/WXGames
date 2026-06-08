@@ -320,6 +320,34 @@ test('TutorialCanvasRenderer draws tutorial highlight and blocks outside the foc
   assert.equal(host.drawCalls.some((call) => call[0] === 'drawTextLines'), true);
 });
 
+test('TutorialCanvasRenderer preserves focused tile action payload for tutorial taps', () => {
+  const host = createHost();
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  renderer.renderTutorialHighlight({
+    rect: { left: 40, top: 50, width: 90, height: 70 },
+    message: 'Pick a tile.',
+    allowedAction: { type: 'selectWorldMarchTarget' },
+    targetAction: {
+      type: 'selectWorldMarchTarget',
+      tileId: 'tile_2_2',
+      targetQ: 2,
+      targetR: 2,
+      background: true,
+    },
+    pulseStartedAt: 900,
+  });
+
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'blockCanvasModal').length, 4);
+  const target = host.hitTargets.find((item) => item.action.type === 'selectWorldMarchTarget');
+  assert.deepEqual(target.action, {
+    type: 'selectWorldMarchTarget',
+    tileId: 'tile_2_2',
+    targetQ: 2,
+    targetR: 2,
+  });
+});
+
 test('TutorialCanvasRenderer keeps transitioned highlight focus rect clickable', () => {
   const host = createHost();
   const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });

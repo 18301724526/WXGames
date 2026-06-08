@@ -392,7 +392,9 @@
       };
       const focusRect = transition?.toRect || highlight.rect || rect;
       this.addTutorialShield(focusRect);
-      if (highlight.allowedAction) {
+      const focusAction = highlight.targetAction || highlight.allowedAction || null;
+      if (focusAction) {
+        const { background, ...action } = focusAction;
         this.addHitTarget(
           {
             x: Number(focusRect.left ?? focusRect.x) || overlay.x,
@@ -400,7 +402,7 @@
             width: Number(focusRect.width) || overlay.width,
             height: Number(focusRect.height) || overlay.height,
           },
-          highlight.allowedAction,
+          action,
         );
       }
 

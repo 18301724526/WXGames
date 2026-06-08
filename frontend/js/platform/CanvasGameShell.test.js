@@ -896,6 +896,44 @@ test('CanvasGameShell re-renders highlighted resource guides outside map home', 
   assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
 });
 
+test('CanvasGameShell stores original guide target action for highlight hit forwarding', () => {
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      hitTargets: [],
+    },
+  });
+  shell.renderActive = () => true;
+
+  assert.equal(shell.showTutorialHighlight(
+    {
+      x: 24,
+      y: 96,
+      width: 80,
+      height: 32,
+      action: {
+        type: 'selectWorldMarchTarget',
+        tileId: 'tile_2_2',
+        targetQ: 2,
+        targetR: 2,
+        background: true,
+      },
+    },
+    'pick a tile',
+    { allowedAction: { type: 'selectWorldMarchTarget' } },
+  ), true);
+
+  assert.deepEqual(shell.tutorialHighlight.allowedAction, { type: 'selectWorldMarchTarget' });
+  assert.deepEqual(shell.tutorialHighlight.targetAction, {
+    type: 'selectWorldMarchTarget',
+    tileId: 'tile_2_2',
+    targetQ: 2,
+    targetR: 2,
+    background: true,
+  });
+});
+
 test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {
   const calls = [];
   const event = {

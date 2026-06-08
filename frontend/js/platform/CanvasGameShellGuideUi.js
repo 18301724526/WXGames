@@ -163,6 +163,7 @@ showTutorialHighlight(target, message, options = {}) {
         rect,
         message: String(message ?? ''),
         allowedAction: options.allowedAction || null,
+        targetAction: options.targetAction || target?.action || null,
         renderActiveTab: options.renderActiveTab || null,
         renderOptions: options.renderOptions || null,
         transition: {
