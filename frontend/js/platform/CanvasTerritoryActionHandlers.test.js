@@ -145,6 +145,18 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     pickerOpen: false,
   });
 
+  assert.equal(controller.handle_openWorldMarchFormationPicker({
+    type: 'openWorldMarchFormationPicker',
+    targetQ: 4,
+    targetR: -2,
+  }), true);
+  assert.deepEqual(host.territoryUiState.worldMarchTarget, {
+    q: 4,
+    r: -2,
+    tileId: 'tile_4_-2',
+    pickerOpen: true,
+  });
+
   assert.equal(await controller.handle_startWorldMarch({
     type: 'startWorldMarch',
     targetQ: 4,
@@ -160,6 +172,11 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     ['refreshCurrentHighlight'],
     ['setTimeout'],
     ['refreshCurrentHighlight'],
+    ['render', 'openWorldMarchFormationPicker'],
+    ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
+    ['refreshCurrentHighlight'],
+    ['setTimeout'],
+    ['refreshCurrentHighlight'],
     ['startWorldMarch', {
       mode: 'manual',
       targetQ: 4,
@@ -169,6 +186,9 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     }],
     ['render', 'startWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
+    ['refreshCurrentHighlight'],
+    ['setTimeout'],
+    ['refreshCurrentHighlight'],
   ]);
 });
 

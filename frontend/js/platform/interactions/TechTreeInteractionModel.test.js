@@ -669,6 +669,17 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     canvasShell: shell,
     territoryUiState: shell.territoryUiState,
     state: { activeCityId: 'capital' },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    runtime: {
+      setTimeout(callback) {
+        calls.push(['setTimeout']);
+        callback?.();
+      },
+    },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
       return true;
@@ -741,6 +752,8 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     'returnWorldMarch',
     'stopWorldMarch',
   ]);
+  assert.equal(calls.filter((call) => call[0] === 'refreshCurrentHighlight').length, 12);
+  assert.equal(calls.filter((call) => call[0] === 'setTimeout').length, 6);
 });
 
 test('CanvasActionController writes world march selection into territory controller UI state', async () => {

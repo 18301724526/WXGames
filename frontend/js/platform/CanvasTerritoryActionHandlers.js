@@ -18,6 +18,18 @@
         return true;
       },
 
+      refreshWorldMarchTutorialHighlight() {
+        const game = this.getGameHost();
+        const tutorialController = game?.tutorialController || this.host?.tutorialController || null;
+        if (!tutorialController || typeof tutorialController.refreshCurrentHighlight !== 'function') return false;
+        tutorialController.refreshCurrentHighlight();
+        const scheduler = this.host?.runtime || game?.runtime || global;
+        if (typeof scheduler?.setTimeout === 'function') {
+          scheduler.setTimeout(() => tutorialController.refreshCurrentHighlight(), 0);
+        }
+        return true;
+      },
+
       getWorldTileForSite(siteId) {
         const worldMap = this.getState()?.territoryState?.worldMap || {};
         const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
@@ -144,9 +156,7 @@
         return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
           if (allowed !== false) {
             this.refreshWorldMarchLayer(action);
-            game?.tutorialController?.refreshCurrentHighlight?.();
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+            this.refreshWorldMarchTutorialHighlight();
           }
           return allowed !== false;
         }));
@@ -170,14 +180,18 @@
         if (action.terrainLabel || previousTarget.terrainLabel) nextTarget.terrainLabel = action.terrainLabel || previousTarget.terrainLabel;
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
-        return this.refreshWorldMarchLayer(action);
+        const handled = this.refreshWorldMarchLayer(action);
+        this.refreshWorldMarchTutorialHighlight();
+        return handled;
       },
 
       handle_closeWorldMarchHud(action) {
         const uiState = this.getSharedTerritoryUiState();
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
-        return this.refreshWorldMarchLayer(action);
+        const handled = this.refreshWorldMarchLayer(action);
+        this.refreshWorldMarchTutorialHighlight();
+        return handled;
       },
 
       handle_selectWorldActor(action) {
@@ -187,7 +201,9 @@
         uiState.selectedWorldActorId = actorId;
         uiState.worldMarchTarget = null;
         uiState.selectedSiteId = '';
-        return this.refreshWorldMarchLayer(action);
+        const handled = this.refreshWorldMarchLayer(action);
+        this.refreshWorldMarchTutorialHighlight();
+        return handled;
       },
 
       handle_startWorldMarch(action) {
@@ -213,6 +229,7 @@
             uiState.worldMarchTarget = null;
             uiState.selectedWorldActorId = '';
             this.refreshWorldMarchLayer(action);
+            this.refreshWorldMarchTutorialHighlight();
           }
           return result !== false;
         }));
@@ -230,6 +247,7 @@
           if (result !== false) {
             this.getSharedTerritoryUiState().selectedWorldActorId = '';
             this.refreshWorldMarchLayer(action);
+            this.refreshWorldMarchTutorialHighlight();
           }
           return result !== false;
         }));
@@ -249,6 +267,7 @@
           if (result !== false) {
             this.getSharedTerritoryUiState().selectedWorldActorId = '';
             this.refreshWorldMarchLayer(action);
+            this.refreshWorldMarchTutorialHighlight();
           }
           return result !== false;
         }));
