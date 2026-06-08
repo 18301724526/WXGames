@@ -74,6 +74,8 @@
     ['renderWorldTileWaterLayer', false],
     ['renderWorldTileStaticEntries', false],
     ['renderWorldTileWaterEntries', false],
+    ['addWorldMapDragHitTarget', false],
+    ['addWorldMarchTileHitTargets', false],
     ['addWorldTileSiteHitTargets', false],
     ['renderWorldScoutRoutes', false],
     ['renderWorldTileMap', false],

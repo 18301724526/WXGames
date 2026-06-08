@@ -578,6 +578,11 @@
       return this.worldMapHitTargetFacade.addWorldTileSiteHitTargets(tileMapView, viewport, entries, uiState);
     }
 
+    addWorldMapDragHitTarget(x = 0, y = 0, width = 0, height = 0) {
+      if (!this.worldMapTileMapRenderer?.addWorldMapDragHitTarget) return false;
+      return this.worldMapTileMapRenderer.addWorldMapDragHitTarget(x, y, width, height);
+    }
+
     renderWorldScoutRoutes(tileMapView = {}, viewport = {}) {
       if (!this.worldMapScoutRenderer?.renderWorldScoutRoutes) return false;
       return this.worldMapScoutRenderer.renderWorldScoutRoutes(tileMapView, viewport);

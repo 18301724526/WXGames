@@ -757,6 +757,10 @@ test('WorldMapCanvasRenderer delegates tile-map frame orchestration to split ren
   const renderer = new WorldMapCanvasRenderer({
     host: createHost(),
     worldMapTileMapRenderer: {
+      addWorldMapDragHitTarget(...args) {
+        calls.push(['drag-target', ...args]);
+        return 'drag-target-ok';
+      },
       renderWorldTileMap(...args) {
         calls.push(['tile-map', ...args]);
         return 'tile-map-ok';
@@ -767,12 +771,14 @@ test('WorldMapCanvasRenderer delegates tile-map frame orchestration to split ren
   const uiState = { selectedSiteId: 'capital' };
   const options = { hitTargetsOnly: true };
 
+  assert.equal(renderer.addWorldMapDragHitTarget(10, 20, 30, 40), 'drag-target-ok');
   assert.equal(renderer.renderWorldTileMap(tileMapView, 1, 2, 3, 4, uiState, options), 'tile-map-ok');
-  assert.deepEqual(calls.map((call) => call[0]), ['tile-map']);
-  assert.equal(calls[0][1], tileMapView);
-  assert.equal(calls[0][5], 4);
-  assert.equal(calls[0][6], uiState);
-  assert.equal(calls[0][7], options);
+  assert.deepEqual(calls.map((call) => call[0]), ['drag-target', 'tile-map']);
+  assert.deepEqual(calls[0].slice(1), [10, 20, 30, 40]);
+  assert.equal(calls[1][1], tileMapView);
+  assert.equal(calls[1][5], 4);
+  assert.equal(calls[1][6], uiState);
+  assert.equal(calls[1][7], options);
 });
 
 test('WorldMapCanvasRenderer delegates actor and march HUD helpers to split renderer', () => {

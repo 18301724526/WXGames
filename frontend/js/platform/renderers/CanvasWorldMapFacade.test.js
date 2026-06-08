@@ -23,6 +23,14 @@ test('CanvasWorldMapFacade delegates calls with original arguments', () => {
   const calls = [];
   const host = new Host();
   host.worldMapRenderer = {
+    addWorldMapDragHitTarget(...args) {
+      calls.push(['addWorldMapDragHitTarget', args]);
+      return 'drag-target-ok';
+    },
+    addWorldMarchTileHitTargets(...args) {
+      calls.push(['addWorldMarchTileHitTargets', args]);
+      return 'march-targets-ok';
+    },
     renderWorldTileMap(...args) {
       calls.push(['renderWorldTileMap', args]);
       return { rendered: true, args };
@@ -35,9 +43,13 @@ test('CanvasWorldMapFacade delegates calls with original arguments', () => {
   const tile = { q: 1, r: 2 };
   const viewport = { scale: 1.25 };
 
+  assert.equal(host.addWorldMapDragHitTarget(1, 2, 3, 4), 'drag-target-ok');
+  assert.equal(host.addWorldMarchTileHitTargets(tile, viewport, { x: 0, y: 0, width: 10, height: 10 }), 'march-targets-ok');
   assert.deepEqual(host.renderWorldTileMap(tile, viewport), { rendered: true, args: [tile, viewport] });
   assert.deepEqual(host.getWorldTileDrawRect(tile, viewport), { x: 1, y: 2, width: 3, height: 4 });
   assert.deepEqual(calls, [
+    ['addWorldMapDragHitTarget', [1, 2, 3, 4]],
+    ['addWorldMarchTileHitTargets', [tile, viewport, { x: 0, y: 0, width: 10, height: 10 }]],
     ['renderWorldTileMap', [tile, viewport]],
     ['getWorldTileDrawRect', [tile, viewport]],
   ]);

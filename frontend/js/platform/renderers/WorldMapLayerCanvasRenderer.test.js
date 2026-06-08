@@ -259,6 +259,31 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
   assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
 });
 
+test('CanvasGameRenderer exposes map-home world march targets through world-map facades', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: createCtx(),
+    presenter: {
+      buildWorldTileMapViewState() {
+        return createTileMapView();
+      },
+    },
+    width: 390,
+    height: 844,
+    viewportWidth: 390,
+    viewportHeight: 844,
+  });
+
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    militaryView: 'world',
+    territoryState: { worldMap: createTileMapView() },
+    worldExplorerState: { randomRouteLength: 6 },
+  }, 96, { territoryUiState: {} });
+
+  assert.equal(collected, true);
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
+});
+
 test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
   const host = createHost({ pixelRatio: 2 });
   const renderer = new WorldMapLayerCanvasRenderer({ host });
