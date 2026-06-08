@@ -242,9 +242,72 @@ function clampClip(clip, viewport) {
 
 async function getState(page) {
   return page.evaluate(() => {
+    const summarizeHitTargets = (targets = []) => {
+      const list = Array.isArray(targets) ? targets : [];
+      const counts = {};
+      const siteTargets = [];
+      const tileTargets = [];
+      list.forEach((target) => {
+        const action = target?.action || {};
+        const type = action.type || 'unknown';
+        counts[type] = (counts[type] || 0) + 1;
+        if (type === 'openWorldSite') {
+          siteTargets.push({
+            siteId: action.siteId || '',
+            tileId: action.tileId || '',
+            x: Number(target.x ?? target.rect?.x) || 0,
+            y: Number(target.y ?? target.rect?.y) || 0,
+            width: Number(target.width ?? target.rect?.width) || 0,
+            height: Number(target.height ?? target.rect?.height) || 0,
+          });
+        }
+        if (type === 'selectWorldMarchTarget') {
+          tileTargets.push({
+            tileId: action.tileId || '',
+            targetQ: action.targetQ,
+            targetR: action.targetR,
+          });
+        }
+      });
+      return {
+        total: list.length,
+        counts,
+        siteTargets,
+        tileTargets: tileTargets.slice(-16),
+      };
+    };
+    const summarizeTileMapView = (view = null) => {
+      if (!view) return null;
+      const tiles = Array.isArray(view.tiles) ? view.tiles : [];
+      return {
+        signature: view.signature || '',
+        version: view.version || 0,
+        seed: view.seed || '',
+        tileCount: tiles.length,
+        sites: tiles
+          .filter((tile) => tile?.siteId || tile?.site)
+          .map((tile) => ({
+            id: tile.id,
+            q: tile.q,
+            r: tile.r,
+            siteId: tile.siteId || '',
+            site: tile.site ? {
+              id: tile.site.id || '',
+              type: tile.site.type || '',
+              owner: tile.site.owner || '',
+              status: tile.site.status || '',
+              art: tile.site.art || '',
+              scale: tile.site.scale || '',
+            } : null,
+          })),
+      };
+    };
     const game = window.Game || null;
     const shell = game?.canvasShell || null;
     const renderer = shell?.renderer || null;
+    const worldMapRenderer = shell?.worldMapRenderer || renderer?.worldMapRenderer || null;
+    const coordinator = shell?.worldMapRuntimeCoordinator || game?.worldMapRuntimeCoordinator || null;
+    const worldMapRuntime = coordinator?.getMapRuntime?.() || shell?.worldMapRuntime || game?.worldMapRuntime || null;
     const runtime = shell?.runtime || game?.runtime || null;
     const canvas = runtime?.canvas
       || document.querySelector('[data-canvas-hud-input]')
@@ -329,6 +392,20 @@ async function getState(page) {
         height: Number(target.height) || 0,
         action: target.action || null,
       })),
+      worldMapDebug: {
+        mainRendererHitTargets: summarizeHitTargets(renderer?.hitTargets),
+        worldMapRendererHitTargets: summarizeHitTargets(worldMapRenderer?.hitTargets),
+        runtimeHitTargets: summarizeHitTargets(worldMapRuntime?.hitTargets),
+        runtimeBaseHitTargets: summarizeHitTargets(worldMapRuntime?.baseHitTargets),
+        rendererWorldTileViewCache: summarizeTileMapView(renderer?.worldTileViewCache?.view),
+        worldMapRendererWorldTileViewCache: summarizeTileMapView(worldMapRenderer?.worldTileViewCache?.view),
+        lastWorldTileMapContext: summarizeTileMapView(
+          worldMapRuntime?.lastTileMapContext?.tileMapView
+          || worldMapRuntime?.getLastTileMapContext?.()?.tileMapView
+          || worldMapRenderer?.lastWorldTileMapContext?.tileMapView
+          || renderer?.lastWorldTileMapContext?.tileMapView,
+        ),
+      },
       stateSummary: game?.state ? {
         gameDay: game.state.gameDay,
         totalBuildings: game.state.totalBuildings,

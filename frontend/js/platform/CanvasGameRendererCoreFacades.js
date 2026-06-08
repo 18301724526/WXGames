@@ -440,6 +440,73 @@
       return (tileMapView.tiles || []).some((tile) => tile.water?.asset);
     },
 
+    getWorldTileMapFallbackSignature(territoryState = {}, worldExplorerState = {}) {
+      const worldMap = territoryState.worldMap || {};
+      const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+      const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
+      const explorerMissions = [
+        worldExplorerState.activeMission,
+        ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
+        ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
+        ...(Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : []),
+      ].filter(Boolean);
+      return JSON.stringify({
+        version: worldMap.version || 0,
+        seed: worldMap.seed || '',
+        tiles: tiles.map((tile) => ({
+          id: tile.id,
+          q: tile.q,
+          r: tile.r,
+          terrain: tile.terrain,
+          visibility: tile.visibility || '',
+          discovered: tile.discovered !== false,
+          visible: tile.visible !== false,
+          siteId: tile.siteId || null,
+        })),
+        territories: territories.map((site) => ({
+          id: site.id,
+          x: site.x ?? site.q,
+          y: site.y ?? site.r,
+          status: site.status,
+          owner: site.owner,
+          type: site.type,
+          art: site.art,
+          name: site.cityName || site.naturalName,
+        })),
+        explorerMissions: explorerMissions.map((mission) => ({
+          id: mission.id,
+          status: mission.status,
+          position: mission.position || null,
+          revealedTileIds: mission.revealedTileIds || [],
+          plannedTiles: (mission.plannedTiles || []).map((tile) => ({
+            id: tile.id,
+            q: tile.q,
+            r: tile.r,
+            terrain: tile.terrain,
+            visibility: tile.visibility || '',
+            siteId: tile.siteId || null,
+          })),
+          plannedSites: (mission.plannedSites || []).map((site) => ({
+            tileId: site.tileId || '',
+            q: site.q,
+            r: site.r,
+            siteId: site.siteId || site.site?.id || null,
+            materialized: Boolean(site.materialized),
+            site: site.site ? {
+              id: site.site.id,
+              x: site.site.x,
+              y: site.site.y,
+              status: site.site.status,
+              owner: site.site.owner,
+              type: site.site.type,
+              art: site.site.art,
+              name: site.site.cityName || site.site.naturalName,
+            } : null,
+          })),
+        })),
+      });
+    },
+
     resolveWorldTileMapView(territoryState = {}, uiState = {}, options = {}) {
       if (!this.presenter?.buildWorldTileMapViewState) return null;
       const panX = Number(uiState.worldPanX) || 0;
@@ -454,16 +521,12 @@
       };
       const currentSignature = typeof this.presenter.getWorldTileMapSignature === 'function'
         ? String(this.presenter.getWorldTileMapSignature(territoryState, worldExplorerState, viewOptions) ?? '')
-        : null;
+        : this.getWorldTileMapFallbackSignature(territoryState, worldExplorerState);
       const cached = this.worldTileViewCache;
       const canReuse = Boolean(options.reuseCachedWorldTileView
         && cached
         && cached.territoryState === territoryState
-        && (
-          currentSignature !== null
-            ? cached.signature === currentSignature
-            : cached.worldExplorerState === worldExplorerState
-        ));
+        && cached.signature === currentSignature);
       if (canReuse) {
         cached.view.pan = { x: panX, y: panY };
         return cached.view;
@@ -472,7 +535,7 @@
       this.worldTileViewCache = {
         territoryState,
         worldExplorerState,
-        signature: view?.signature || currentSignature || '',
+        signature: currentSignature || view?.signature || '',
         view,
       };
       return view;

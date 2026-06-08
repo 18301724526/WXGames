@@ -108,6 +108,60 @@ test('CanvasGameRendererCoreFacades invalidates world tile view cache when explo
   assert.deepEqual(rebuiltView.sites.map((site) => site.id), ['capital', 'site_2_2']);
 });
 
+test('CanvasGameRendererCoreFacades invalidates world tile view cache from fallback map data signature', () => {
+  let buildCount = 0;
+  const renderer = new CanvasGameRenderer({
+    presenter: {
+      buildWorldTileMapViewState(sourceTerritory, options = {}) {
+        buildCount += 1;
+        return {
+          signature: `fallback:${buildCount}`,
+          pan: { x: options.panX, y: options.panY },
+          tiles: (sourceTerritory.worldMap.tiles || []).map((tile) => ({
+            id: tile.id,
+            siteId: tile.siteId || null,
+            site: (sourceTerritory.territories || []).find((site) => site.id === tile.siteId) || null,
+          })),
+          sites: (sourceTerritory.territories || []).map((site) => ({ id: site.id })),
+        };
+      },
+    },
+  });
+  const before = {
+    worldMap: {
+      version: 7,
+      seed: 'world-test',
+      tiles: [{ id: 'tile_0_0', q: 0, r: 0, siteId: 'capital' }],
+    },
+    territories: [{ id: 'capital', x: 0, y: 0, status: 'occupied', owner: 'player' }],
+  };
+  const after = {
+    worldMap: {
+      version: 7,
+      seed: 'world-test',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, siteId: 'capital' },
+        { id: 'tile_2_2', q: 2, r: 2, siteId: 'site_2_2' },
+      ],
+    },
+    territories: [
+      { id: 'capital', x: 0, y: 0, status: 'occupied', owner: 'player' },
+      { id: 'site_2_2', x: 2, y: 2, status: 'discovered', owner: 'neutral', type: 'town' },
+    ],
+  };
+
+  const firstView = renderer.resolveWorldTileMapView(before, {}, { reuseCachedWorldTileView: true });
+  const rebuiltView = renderer.resolveWorldTileMapView(after, {}, { reuseCachedWorldTileView: true });
+  const reusedView = renderer.resolveWorldTileMapView(after, { worldPanX: 8, worldPanY: 4 }, { reuseCachedWorldTileView: true });
+
+  assert.equal(buildCount, 2);
+  assert.notEqual(rebuiltView, firstView);
+  assert.equal(reusedView, rebuiltView);
+  assert.deepEqual(reusedView.pan, { x: 8, y: 4 });
+  assert.deepEqual(rebuiltView.sites.map((site) => site.id), ['capital', 'site_2_2']);
+  assert.equal(rebuiltView.tiles.some((tile) => tile.id === 'tile_2_2' && tile.site?.id === 'site_2_2'), true);
+});
+
 test('CanvasGameRendererCoreFacades loads before CanvasGameRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../..', 'minigame/game.js'), 'utf8');
