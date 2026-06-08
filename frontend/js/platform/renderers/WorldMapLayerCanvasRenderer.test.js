@@ -67,6 +67,14 @@ function createHost(overrides = {}) {
       },
     },
     addHitTarget(rect, action) { hitTargets.push({ rect, action }); },
+    addWorldMapDragHitTarget(x, y, width, height) {
+      calls.push(['addWorldMapDragHitTarget', x, y, width, height]);
+      hitTargets.push({ rect: { x, y, width, height }, action: { type: 'worldMapDrag', background: true } });
+    },
+    addWorldMarchTileHitTargets(tileMapView, viewport, frame) {
+      calls.push(['addWorldMarchTileHitTargets', tileMapView, viewport, frame]);
+      hitTargets.push({ rect: { x: frame.x + 20, y: frame.y + 20, width: 44, height: 36 }, action: { type: 'selectWorldMarchTarget', targetQ: 1, targetR: 0 } });
+    },
     addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState) {
       calls.push(['addWorldTileSiteHitTargets', tileMapView, viewport, visibleEntries, uiState]);
     },
@@ -235,7 +243,11 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
 
   assert.equal(collected, true);
   assert.equal(host.calls.some((call) => call[0] === 'getWorldTileRenderEntries'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldMapDragHitTarget'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldMarchTileHitTargets'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldTileSiteHitTargets'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'startExplore'), false);
 
   const emptyHost = createHost();

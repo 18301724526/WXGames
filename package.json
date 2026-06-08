@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "node scripts/run-node-tests.js",
-    "test:architecture": "node scripts/run-architecture-smoke.js"
+    "test:architecture": "node scripts/run-architecture-smoke.js",
+    "playtest:online-tutorial": "node scripts/playtest-online-tutorial.js"
   },
   "repository": {
     "type": "git",
@@ -23,7 +24,8 @@
   },
   "homepage": "https://github.com/18301724526/WXGames#readme",
   "devDependencies": {
-    "playwright": "^1.60.0"
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0"
   },
   "dependencies": {
     "asn1": "^0.2.6",
