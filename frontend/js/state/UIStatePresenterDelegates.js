@@ -176,6 +176,7 @@
       'buildWorldExpeditionDraftViewState',
       'buildWorldExpeditionConfigViewState',
       'makeWorldSiteActionButton',
+      'isGuidedFirstCitySettlement',
       'buildWorldSiteActionViewState',
       'getWorldSiteLastBattleNote',
       'getWorldSiteBattleReportLines',

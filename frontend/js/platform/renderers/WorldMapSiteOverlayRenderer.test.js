@@ -81,6 +81,62 @@ test('WorldMapSiteOverlayRenderer delegates dialog view state to presenter when 
   );
 });
 
+test('WorldMapSiteOverlayRenderer passes tutorial context into world site presenter state', () => {
+  const host = createHost({
+    state: {
+      tutorial: {
+        currentStep: 25,
+        grants: { firstExploreEmptyCity: { siteId: 'site-1' } },
+      },
+    },
+    presenter: {
+      buildWorldSiteDialogViewState(territories, territoryState, uiState) {
+        assert.equal(territoryState.availableSoldiers, 0);
+        assert.equal(territoryState.tutorial.currentStep, 25);
+        assert.equal(territoryState.tutorial.grants.firstExploreEmptyCity.siteId, 'site-1');
+        assert.equal(uiState.selectedSiteId, 'site-1');
+        return {
+          selectedSiteId: 'site-1',
+          showModal: true,
+          details: [{
+            id: 'site-1',
+            text: {
+              name: 'Empty Site',
+              status: 'discovered',
+              owner: 'neutral',
+              distance: '',
+              scale: '',
+              threat: '',
+              summary: '',
+              defense: '',
+              soldiers: '',
+            },
+            action: {
+              kind: 'single',
+              buttons: [{ label: 'Claim', action: 'conquer', territoryId: 'site-1' }],
+            },
+          }],
+        };
+      },
+    },
+  });
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+
+  renderer.renderWorldSiteModal({
+    territoryState: {
+      availableSoldiers: 0,
+      territories: [{
+        id: 'site-1',
+        status: 'discovered',
+        owner: 'neutral',
+        naturalName: 'Empty Site',
+      }],
+    },
+  }, { territoryUiState: { selectedSiteId: 'site-1' } });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'conquer' && !target.action.disabled), true);
+});
+
 test('WorldMapSiteOverlayRenderer builds occupied-city fallback action view state', () => {
   const renderer = new WorldMapSiteOverlayRenderer({ host: createHost() });
   const view = renderer.buildWorldSiteDialogViewState([

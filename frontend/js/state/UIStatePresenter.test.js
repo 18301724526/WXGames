@@ -960,6 +960,34 @@ test('UIStatePresenter delegates world site dialog view state while preserving f
   assert.equal(UIStatePresenter.getWorldSiteDialogContentSignature(territories, territoryState, uiState), direct.signature);
 });
 
+test('UIStatePresenter keeps guided first empty city conquer action enabled with tutorial soldier grant', () => {
+  const guidedSite = {
+    id: 'site_2_2',
+    status: 'discovered',
+    owner: 'neutral',
+    occupationMode: 'settlement',
+    type: 'town',
+    naturalName: 'Clear Spring',
+    defense: 100,
+    recommendedSoldiers: 100,
+  };
+  const territoryState = {
+    availableSoldiers: 0,
+    tutorial: {
+      currentStep: 25,
+      completed: false,
+      grants: {
+        firstExploreEmptyCity: { siteId: 'site_2_2' },
+      },
+    },
+  };
+  const action = UIStatePresenter.buildWorldSiteActionViewState(guidedSite, territoryState, {});
+  const conquer = action.buttons.find((button) => button.action === 'conquer');
+
+  assert.equal(UIStatePresenter.isGuidedFirstCitySettlement(guidedSite, territoryState, {}), true);
+  assert.equal(conquer.disabled, false);
+});
+
 test('UIStatePresenter delegates battle scene view state while preserving facade contracts', () => {
   const battle = {
     report: {

@@ -1,6 +1,8 @@
 (function (global) {
   class WorldSitePresenter {
     static MIN_EXPEDITION_SOLDIERS = 100;
+    static TUTORIAL_SCOUT_EXPLORE_CLAIMED_STEP = 25;
+    static TUTORIAL_FIRST_CITY_CONQUEST_STARTED_STEP = 26;
 
     static toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -132,13 +134,29 @@
       };
     }
 
+    static isGuidedFirstCitySettlement(site = {}, territoryState = {}, uiState = {}) {
+      const tutorial = territoryState.tutorial || uiState.tutorial || {};
+      if (tutorial.completed || tutorial.disabled) return false;
+      const step = this.toInteger(tutorial.currentStep, -1);
+      if (
+        step < this.TUTORIAL_SCOUT_EXPLORE_CLAIMED_STEP
+        || step >= this.TUTORIAL_FIRST_CITY_CONQUEST_STARTED_STEP
+      ) {
+        return false;
+      }
+      const grantSiteId = tutorial.grants?.firstExploreEmptyCity?.siteId;
+      if (!grantSiteId || String(grantSiteId) !== String(site.id || '')) return false;
+      return site.status === 'discovered' && site.owner === 'neutral';
+    }
+
     static buildWorldSiteActionViewState(site = {}, territoryState = {}, uiState = {}) {
       const availableSoldiers = this.toInteger(territoryState.availableSoldiers);
       const mission = site.mission || null;
       if (site.status === 'discovered') {
         const isOwnedTarget = site.occupationMode === 'conquest';
         const expanded = uiState.expeditionConfigSiteId === site.id;
-        const directDisabled = availableSoldiers < this.MIN_EXPEDITION_SOLDIERS;
+        const directDisabled = availableSoldiers < this.MIN_EXPEDITION_SOLDIERS
+          && !this.isGuidedFirstCitySettlement(site, territoryState, uiState);
         return {
           kind: 'group',
           buttons: [
