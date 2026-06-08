@@ -78,6 +78,23 @@ function createHost(overrides = {}) {
     addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState) {
       calls.push(['addWorldTileSiteHitTargets', tileMapView, viewport, visibleEntries, uiState]);
     },
+    addWorldActorHitTargets(actors, viewport, geometry) {
+      calls.push(['addWorldActorHitTargets', actors, viewport, geometry]);
+    },
+    renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame) {
+      calls.push(['renderWorldMarchHud', state, uiState, actors, viewport, geometry, frame]);
+      if (!uiState.worldMarchTarget) return false;
+      hitTargets.push({
+        rect: { x: frame.x + 72, y: frame.y + 42, width: 68, height: 32 },
+        action: {
+          type: 'openWorldMarchFormationPicker',
+          targetQ: uiState.worldMarchTarget.q,
+          targetR: uiState.worldMarchTarget.r,
+          tileId: uiState.worldMarchTarget.tileId,
+        },
+      });
+      return true;
+    },
     beginFrame(options) { calls.push(['beginFrame', options]); },
     clearAll() { calls.push(['clearAll']); },
     createGradient() { return '#123'; },
@@ -259,6 +276,32 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
   assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
 });
 
+test('WorldMapLayerCanvasRenderer collects map-home world march HUD action targets', () => {
+  const host = createHost({
+    lastWorldTileMapContext: { actors: [{ id: 'scout-1' }] },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+  const uiState = {
+    worldMarchTarget: { q: 2, r: 2, tileId: 'tile_2_2', terrain: 'plains', terrainLabel: 'Plains' },
+  };
+
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    activeCityId: 'capital',
+    territoryState: { worldMap: createTileMapView() },
+    worldExplorerState: { randomRouteLength: 6 },
+  }, 96, { territoryUiState: uiState });
+
+  assert.equal(collected, true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'
+    && target.action.targetQ === 2
+    && target.action.targetR === 2
+    && target.action.tileId === 'tile_2_2'), true);
+});
+
 test('CanvasGameRenderer exposes map-home world march targets through world-map facades', () => {
   const renderer = new CanvasGameRenderer({
     ctx: createCtx(),
@@ -282,6 +325,66 @@ test('CanvasGameRenderer exposes map-home world march targets through world-map 
   assert.equal(collected, true);
   assert.equal(renderer.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.equal(renderer.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
+});
+
+test('CanvasGameRenderer exposes map-home world march HUD picker target through facades', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: {
+      fillRect() {},
+      clearRect() {},
+      drawImage() {},
+      beginPath() {},
+      closePath() {},
+      moveTo() {},
+      lineTo() {},
+      rect() {},
+      arc() {},
+      fill() {},
+      stroke() {},
+      save() {},
+      restore() {},
+      clip() {},
+      fillText() {},
+      measureText(text) { return { width: String(text || '').length * 8 }; },
+    },
+    presenter: {
+      buildMilitaryNavigationViewState() {
+        return { activeView: 'world' };
+      },
+      buildMilitaryViewState() {
+        return {
+          formations: [
+            { slot: 1, cityId: 'capital', name: 'Scout A', memberCount: 1, maxMembers: 5, members: [{ id: 'fp-1' }] },
+          ],
+        };
+      },
+      buildWorldTileMapViewState() {
+        return createTileMapView();
+      },
+    },
+    width: 390,
+    height: 844,
+    viewportWidth: 390,
+    viewportHeight: 844,
+  });
+  const uiState = {
+    worldMarchTarget: { q: 2, r: 2, tileId: 'tile_2_2', terrain: 'plains', terrainLabel: 'Plains' },
+  };
+
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    activeCityId: 'capital',
+    militaryView: 'world',
+    territoryState: { worldMap: createTileMapView() },
+    worldExplorerState: { randomRouteLength: 6 },
+  }, 96, { territoryUiState: uiState });
+
+  assert.equal(collected, true);
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'
+    && target.action.targetQ === 2
+    && target.action.targetR === 2
+    && target.action.tileId === 'tile_2_2'), true);
 });
 
 test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {

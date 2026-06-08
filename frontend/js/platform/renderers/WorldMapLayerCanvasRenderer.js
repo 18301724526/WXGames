@@ -200,6 +200,11 @@
       this.addWorldMapDragHitTarget?.(layout.map.x, layout.map.y, layout.map.width, layout.map.height);
       this.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+      const actors = Array.isArray(this.lastWorldTileMapContext?.actors)
+        ? this.lastWorldTileMapContext.actors
+        : (this.worldMapRenderer?.lastWorldTileMapContext?.actors || []);
+      this.addWorldActorHitTargets?.(actors, viewport, geometry);
+      this.renderWorldMarchHud?.(options.state || state, uiState, actors, viewport, geometry, frame);
       return true;
     }
 
