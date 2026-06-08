@@ -18,6 +18,7 @@
     <script src="js/domain/TileMapGeometry.js?v=army-formation-v1"></script>
     <script src="js/domain/WorldTime.js?v=world-march-epoch-time-v1"></script>
     <script src="js/domain/WorldMarchProgressSnapshot.js?v=architecture-refactor-march-progress-v1"></script>
+    <script src="js/domain/WorldMarchGeometry.js?v=architecture-refactor-world-march-geometry-v1"></script>
     <script src="js/domain/WorldMarchSystem.js?v=world-march-trace-v1"></script>
     <script src="js/domain/WorldMapVisibilityModel.js?v=architecture-refactor-visibility-v1"></script>
     <script src="js/domain/WorldMapEntitySnapshot.js?v=architecture-refactor-entity-snapshot-v1"></script>
@@ -41,9 +42,12 @@
     <script src="js/state/presenters/WorldRadarPresenter.js?v=architecture-refactor-world-radar-presenter-v1"></script>
     <script src="js/state/presenters/WorldSitePresenter.js?v=architecture-refactor-world-site-presenter-v1"></script>
     <script src="js/state/presenters/BattleScenePresenter.js?v=architecture-refactor-battle-scene-presenter-v1"></script>
+    <script src="js/state/presenters/WorldTileMapTileNormalizer.js?v=architecture-refactor-world-tile-normalizer-v1"></script>
+    <script src="js/state/presenters/WorldTileMapExplorerNormalizer.js?v=architecture-refactor-world-explorer-normalizer-v1"></script>
     <script src="js/state/presenters/WorldTileMapPresenter.js?v=world-march-trace-v1"></script>
     <script src="js/state/presenters/ShellPresenter.js?v=architecture-refactor-shell-presenter-v1"></script>
     <script src="js/state/presenters/TalentPolicyPresenter.js?v=architecture-refactor-talent-policy-presenter-v1"></script>
+    <script src="js/state/UIStatePresenterDelegates.js?v=architecture-refactor-ui-state-presenter-delegates-v1"></script>
     <script src="js/state/UIStatePresenter.js?v=canvas-layer-split-explorer-v1"></script>
     <script src="js/api/GameAPI.js?v=world-march-trace-v2"></script>
     <script src="js/config/FamousPortraitLayout.js?v=army-formation-v1"></script>
@@ -121,7 +125,15 @@
     <script src="js/platform/renderers/HudTabPageCanvasRenderer.js?v=p2-system-guide-v1"></script>
     <script src="js/platform/renderers/HudOverlayCanvasRenderer.js?v=canvas-layer-split-explorer-v1"></script>
     <script src="js/platform/renderers/CanvasFrameRenderer.js?v=world-march-local-progress-v1"></script>
+    <script src="js/platform/CanvasGameRendererCompositionFactory.js?v=architecture-refactor-canvas-game-composition-factory-v1"></script>
+    <script src="js/platform/CanvasGameRendererCoreFacades.js?v=architecture-refactor-canvas-game-core-facades-v1"></script>
+    <script src="js/platform/CanvasGameRendererPageFacades.js?v=architecture-refactor-canvas-game-page-facades-v1"></script>
     <script src="js/platform/CanvasGameRenderer.js?v=world-march-local-progress-v1"></script>
+    <script src="js/platform/WorldMapRuntimeBakePolicy.js?v=architecture-refactor-world-map-runtime-bake-policy-v1"></script>
+    <script src="js/platform/WorldMapRuntimeCameraPolicy.js?v=architecture-refactor-world-map-runtime-camera-policy-v1"></script>
+    <script src="js/platform/WorldMapRuntimeInputPolicy.js?v=architecture-refactor-world-map-runtime-input-policy-v1"></script>
+    <script src="js/platform/WorldMapRuntimeRenderPolicy.js?v=architecture-refactor-world-map-runtime-render-policy-v1"></script>
+    <script src="js/platform/WorldMapRuntimeRenderPipeline.js?v=architecture-refactor-world-map-runtime-render-pipeline-v1"></script>
     <script src="js/platform/WorldMapRuntime.js?v=world-march-trace-v1"></script>
     <script src="js/platform/WorldMapRuntimeCoordinator.js?v=architecture-refactor-world-map-runtime-coordinator-v1"></script>
     <script src="js/platform/MiniGameCanvasRenderer.js?v=architecture-refactor-mini-game-renderer-v1"></script>
@@ -129,11 +141,23 @@
     <script src="js/vendor/spine-3.8/spine-webgl.js?v=tutorial-spine-20260604"></script>
     <script src="js/platform/SpineWebglPlayer.js?v=tutorial-spine-layer-v2"></script>
     <script src="js/tutorial/TutorialIntroOverlay.js?v=tutorial-walk-slower-v1"></script>
+    <script src="js/tutorial/TutorialGuideStepPolicy.js?v=architecture-refactor-tutorial-guide-step-policy-v1"></script>
+    <script src="js/tutorial/TutorialGuideTargetResolver.js?v=architecture-refactor-tutorial-guide-target-resolver-v1"></script>
+    <script src="js/tutorial/TutorialGuidePhaseHighlights.js?v=architecture-refactor-tutorial-guide-phase-highlights-v1"></script>
+    <script src="js/tutorial/TutorialGuideUiStateCoordinator.js?v=architecture-refactor-tutorial-guide-ui-state-v1"></script>
     <script src="js/tutorial/TutorialGuideController.js?v=scout-guide-after-formation-save-v1"></script>
     <script src="js/platform/interactions/TechTreeInteractionModel.js?v=architecture-refactor-step-7"></script>
+    <script src="js/platform/CanvasTerritoryActionHandlers.js?v=architecture-refactor-territory-action-handlers-v1"></script>
+    <script src="js/platform/CanvasCityActionHandlers.js?v=architecture-refactor-city-action-handlers-v1"></script>
+    <script src="js/platform/CanvasFamousActionHandlers.js?v=architecture-refactor-famous-action-handlers-v1"></script>
+    <script src="js/platform/CanvasTalentPolicyActionHandlers.js?v=architecture-refactor-talent-policy-action-handlers-v1"></script>
+    <script src="js/platform/CanvasShellActionHandlers.js?v=architecture-refactor-shell-action-handlers-v1"></script>
     <script src="js/platform/CanvasActionController.js?v=scout-guide-capital-formation-v1"></script>
     <script src="js/platform/GameCommandService.js?v=p1-house-guide-v1"></script>
     <script src="js/platform/CanvasGameAppStateSync.js?v=world-march-trace-v1"></script>
+    <script src="js/platform/CanvasGameAppRenderPolicy.js?v=architecture-refactor-game-app-render-policy-v1"></script>
+    <script src="js/platform/CanvasGameAppRenderScheduler.js?v=architecture-refactor-game-app-render-scheduler-v1"></script>
+    <script src="js/platform/CanvasGameAppWorldMapRuntimeBridge.js?v=architecture-refactor-game-app-world-map-bridge-v1"></script>
     <script src="js/platform/CanvasGameAppRenderingRuntime.js?v=world-march-local-progress-v1"></script>
     <script src="js/platform/CanvasGameAppBattleScene.js?v=architecture-refactor-canvas-game-app-sr-v1"></script>
     <script src="js/platform/CanvasGameAppCommands.js?v=world-march-trace-v1"></script>
@@ -162,6 +186,10 @@
     <script src="js/platform/CanvasGameShellInputRouter.js?v=world-march-busy-v1"></script>
     <script src="js/platform/CanvasGameShellCommands.js?v=famous-close-guide-v1"></script>
     <script src="js/platform/CanvasGameShellGuideUi.js?v=architecture-refactor-canvas-game-shell-sr-v1"></script>
+    <script src="js/platform/CanvasGameShellWorldMapRuntimePolicy.js?v=architecture-refactor-shell-world-map-runtime-policy-v1"></script>
+    <script src="js/platform/CanvasGameShellWorldMapLayerBridge.js?v=architecture-refactor-shell-world-map-layer-bridge-v1"></script>
+    <script src="js/platform/CanvasGameShellWorldMapDragRuntime.js?v=architecture-refactor-shell-world-map-drag-runtime-v1"></script>
+    <script src="js/platform/CanvasGameShellWorldMapFrameRuntime.js?v=architecture-refactor-shell-world-map-frame-runtime-v1"></script>
     <script src="js/platform/CanvasGameShellWorldMapRuntime.js?v=world-march-local-progress-v1"></script>
     <script src="js/platform/CanvasGameShellRenderingRuntime.js?v=architecture-refactor-canvas-game-shell-sr-v1"></script>
     <script src="js/platform/CanvasGameShellSystemUi.js?v=architecture-refactor-canvas-game-shell-sr-v1"></script>

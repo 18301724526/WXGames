@@ -43,6 +43,18 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellGuideUi) {
     CanvasGameShellGuideUi = require('./CanvasGameShellGuideUi');
   }
+  var CanvasGameShellWorldMapLayerBridge = global.CanvasGameShellWorldMapLayerBridge;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapLayerBridge) {
+    CanvasGameShellWorldMapLayerBridge = require('./CanvasGameShellWorldMapLayerBridge');
+  }
+  var CanvasGameShellWorldMapDragRuntime = global.CanvasGameShellWorldMapDragRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapDragRuntime) {
+    CanvasGameShellWorldMapDragRuntime = require('./CanvasGameShellWorldMapDragRuntime');
+  }
+  var CanvasGameShellWorldMapFrameRuntime = global.CanvasGameShellWorldMapFrameRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapFrameRuntime) {
+    CanvasGameShellWorldMapFrameRuntime = require('./CanvasGameShellWorldMapFrameRuntime');
+  }
   var CanvasGameShellWorldMapRuntime = global.CanvasGameShellWorldMapRuntime;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapRuntime) {
     CanvasGameShellWorldMapRuntime = require('./CanvasGameShellWorldMapRuntime');
@@ -285,6 +297,9 @@ static mount(game, options = {}) {
     CanvasGameShellInputRouter,
     CanvasGameShellCommands,
     CanvasGameShellGuideUi,
+    CanvasGameShellWorldMapLayerBridge,
+    CanvasGameShellWorldMapDragRuntime,
+    CanvasGameShellWorldMapFrameRuntime,
     CanvasGameShellWorldMapRuntime,
     CanvasGameShellRenderingRuntime,
     CanvasGameShellSystemUi,

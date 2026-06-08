@@ -4,26 +4,115 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
-const tutorialPlanPath = path.join(repoRoot, 'docs', '完整新手强引导与任务系统实施计划_2026-06-05.md');
-const architecturePlanPath = path.join(repoRoot, 'docs', 'architecture_refactor_plan_2026-06-04.md');
-const worldMapRuntimeArchitecturePath = path.join(repoRoot, 'docs', 'world_map_runtime_architecture.md');
-const unifiedCanvasPlanPath = path.join(repoRoot, 'docs', '统一Canvas多平台核心推进计划_v0.1.md');
+const docsRoot = path.join(repoRoot, 'docs');
 
-const tutorialPlan = fs.readFileSync(tutorialPlanPath, 'utf8');
-const architecturePlan = fs.readFileSync(architecturePlanPath, 'utf8');
-const worldMapRuntimeArchitecture = fs.readFileSync(worldMapRuntimeArchitecturePath, 'utf8');
-const unifiedCanvasPlan = fs.readFileSync(unifiedCanvasPlanPath, 'utf8');
+const officialDocPaths = [
+  'docs/current_gameplay_design_2026-06-09.md',
+  'docs/current_technical_architecture_2026-06-09.md',
+  'docs/current_product_design_2026-06-09.md',
+  'docs/long_term_architecture_refactor_plan_2026-06-08.md',
+  'docs/architecture_module_responsibility_index_2026-06-08.md',
+  'docs/stable_block_promotion_matrix_2026-06-09.md',
+  'docs/stable_block_manifest_2026-06-09.json',
+];
 
-function assertIncludes(doc, text, label) {
-  if (!doc.includes(text)) {
-    throw new Error(`Missing required plan text: ${label}`);
+const obsoleteDocPatterns = [
+  /_v\d/i,
+  /v\d+\.\d+/i,
+  /handoff/i,
+  /release_notes/i,
+  /test_cases/i,
+  /implementation_steps/i,
+  /architecture_refactor_plan_2026-06-04/i,
+  /world_map_runtime_architecture/i,
+  /完整新手强引导/,
+  /统一Canvas/,
+  /设计_v/,
+  /任务_v/,
+  /策划案_v/,
+  /路线图_v/,
+  /调优补充_v/,
+  /交接文档/,
+  /素材清理记录/,
+];
+
+const requiredText = {
+  'docs/current_gameplay_design_2026-06-09.md': [
+    '后端权威 / Server Authority',
+    '菱形等距 tile 世界地图',
+    '敌对势力直接拦截或攻击',
+    'Excel/table source -> validation tool -> JSON/registry',
+  ],
+  'docs/current_technical_architecture_2026-06-09.md': [
+    'Canvas-only',
+    'diamond isometric square-tile',
+    'full wrapping torus',
+    'CommandAuthorityContract',
+    'AoiSyncSnapshot',
+  ],
+  'docs/current_product_design_2026-06-09.md': [
+    '实时操作的 Civilization-like 策略经营游戏',
+    '30 FPS',
+    '账号长期存在，世界可以重开',
+  ],
+  'docs/long_term_architecture_refactor_plan_2026-06-08.md': [
+    'P11 - Stable Block Hardening',
+    'stable_block_promotion_matrix_2026-06-09.md',
+  ],
+  'docs/architecture_module_responsibility_index_2026-06-08.md': [
+    'Stable Promotion Convention',
+    'docs/stable_block_promotion_matrix_2026-06-09.md',
+  ],
+  'docs/stable_block_promotion_matrix_2026-06-09.md': [
+    'diamond isometric square-tile map',
+    'full wrapping torus',
+    'ServerTimelineSnapshot',
+  ],
+};
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function readText(relativePath) {
+  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+}
+
+function collectDocs() {
+  return fs.readdirSync(docsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => `docs/${entry.name}`);
+}
+
+function assertOfficialDocsExist() {
+  for (const relativePath of officialDocPaths) {
+    assert(fs.existsSync(path.join(repoRoot, relativePath)), `Missing official doc: ${relativePath}`);
   }
 }
 
-function assertMatch(doc, pattern, label) {
-  if (!pattern.test(doc)) {
-    throw new Error(`Missing required plan pattern: ${label}`);
+function assertRequiredText() {
+  for (const [relativePath, snippets] of Object.entries(requiredText)) {
+    const text = readText(relativePath);
+    for (const snippet of snippets) {
+      assert(text.includes(snippet), `Missing required text in ${relativePath}: ${snippet}`);
+    }
   }
+}
+
+function assertNoReplacementChars() {
+  for (const relativePath of officialDocPaths.filter((item) => item.endsWith('.md'))) {
+    const text = readText(relativePath);
+    assert(!text.includes('\uFFFD'), `Replacement character found in ${relativePath}`);
+  }
+}
+
+function assertNoObsoleteDocs() {
+  const official = new Set(officialDocPaths);
+  const obsolete = collectDocs().filter((relativePath) => (
+    !official.has(relativePath)
+    && obsoleteDocPatterns.some((pattern) => pattern.test(path.basename(relativePath)))
+  ));
+  assert(obsolete.length === 0, `Obsolete/non-authoritative docs remain:\n${obsolete.join('\n')}`);
 }
 
 function collectFiles(directory, result = []) {
@@ -31,6 +120,7 @@ function collectFiles(directory, result = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
+      if (entry.name === 'vendor' || entry.name === 'node_modules') continue;
       collectFiles(fullPath, result);
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
       result.push(fullPath);
@@ -68,60 +158,19 @@ function assertCanvasBusinessLayerHasNoDomUi() {
         .filter(({ line }) => forbiddenPattern.test(line))
         .map(({ relative: fileName, lineNumber, line }) => `${fileName}:${lineNumber}: ${line.trim()}`);
     });
-  if (offenders.length) {
-    throw new Error(
-      [
-        'Canvas business layer must not use DOM UI APIs. Use Canvas rendering and Canvas hitTargets only.',
-        ...offenders,
-      ].join('\n'),
-    );
-  }
+  assert(
+    offenders.length === 0,
+    [
+      'Canvas business layer must not use DOM UI APIs. Use Canvas rendering and Canvas hitTargets only.',
+      ...offenders,
+    ].join('\n'),
+  );
 }
 
-assertIncludes(
-  tutorialPlan,
-  '必须执行真实浏览器测试、单元测试、代码检查，并推送 GitHub `origin` 与服务器私服 Git `private`',
-  'current double-remote quality gate',
-);
-assertIncludes(tutorialPlan, '## 原始需求记录', 'original request archive');
-assertIncludes(tutorialPlan, '## P0 任务', 'P0 section');
-assertIncludes(tutorialPlan, '## P1 任务', 'P1 section');
-assertIncludes(tutorialPlan, '## P2 任务', 'P2 section');
-assertIncludes(tutorialPlan, '### P1.7 科技系统收尾讲解并交还控制权（已完成）', 'final tech tutorial completed');
-assertIncludes(tutorialPlan, '### P2.1 全系统覆盖引导补齐（已完成）', 'all-system tutorial coverage completed');
-assertIncludes(tutorialPlan, '### P2.2 策划友好的任务导表软件（已完成）', 'planner-friendly task uploader completed');
-assertMatch(tutorialPlan, /P2\.3\.\d+ 完成/, 'P2.3 refactor progress entries');
-
-assertIncludes(
-  architecturePlan,
-  '推送到 GitHub `origin/main` 与服务器私服 Git `private/main`',
-  'architecture plan current double-remote rule',
-);
-assertIncludes(
-  architecturePlan,
-  '当前执行规则以 GitHub `origin` + 服务器私服 `private` 的双远端要求为准',
-  'legacy remote naming note',
-);
-assertIncludes(
-  worldMapRuntimeArchitecture,
-  'Canvas-only UI 是死规矩',
-  'world map canvas-only UI rule',
-);
-assertIncludes(
-  worldMapRuntimeArchitecture,
-  '浏览器 H5 宿主层只能创建 canvas、挂载 canvas、绑定输入事件；不能用 DOM overlay、DOM 节点或 HTML 字符串替代任何游戏 UI',
-  'world map host-only DOM boundary',
-);
-assertIncludes(
-  unifiedCanvasPlan,
-  '这是死规矩',
-  'unified canvas plan DOM UI ban',
-);
-assertIncludes(
-  unifiedCanvasPlan,
-  '任务、引导、建筑、人口、事件、军事、科技、文明、名人、弹窗、HUD、调试按钮等游戏内可见业务界面都不得使用 DOM',
-  'unified canvas plan visible UI DOM ban',
-);
+assertOfficialDocsExist();
+assertRequiredText();
+assertNoReplacementChars();
+assertNoObsoleteDocs();
 assertCanvasBusinessLayerHasNoDomUi();
 
-console.log('Refactor and tutorial plan document guards passed.');
+console.log('[official-docs] passed');

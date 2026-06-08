@@ -1,0 +1,121 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const CanvasGameAppWorldMapRuntimeBridge = require('./CanvasGameAppWorldMapRuntimeBridge');
+
+test('CanvasGameAppWorldMapRuntimeBridge installs world map methods on app prototype', () => {
+  class App {}
+  assert.equal(CanvasGameAppWorldMapRuntimeBridge.install(App), true);
+
+  [
+    'getFrozenWorldMapWaterTimeMs',
+    'ensureWorldMapRuntimeCoordinator',
+    'renderRuntimeWorldMap',
+    'shouldRenderRuntimeWorldMap',
+    'refreshWorldMapLayerFromSnapshot',
+  ].forEach((methodName) => {
+    assert.equal(typeof App.prototype[methodName], 'function');
+  });
+});
+
+test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and cooldown', () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+
+  let now = 1000;
+  const app = new App();
+  app.now = () => now;
+  app.getWorldMapDragCooldownMs = () => 220;
+  app.worldMapRuntime = { waterTimeMs: 123 };
+  app.worldMapDragWaterTimeMs = null;
+  app.worldMapDragCooldownUntil = 0;
+  app.worldMapPinchDragging = true;
+
+  assert.equal(app.getFrozenWorldMapWaterTimeMs(), 1000);
+  assert.equal(app.isWorldMapDragging(), true);
+  now = 1200;
+  app.finishWorldMapSnapshotDrag();
+
+  assert.equal(app.isWorldMapDragging(), false);
+  assert.equal(app.isWorldMapDragCoolingDown(), true);
+  assert.equal(app.worldMapPinchDragging, false);
+  assert.equal(app.worldMapRuntime.waterTimeMs, null);
+  assert.equal(app.worldMapDragCooldownUntil, 1420);
+});
+
+test('CanvasGameAppWorldMapRuntimeBridge delegates render decisions to coordinator', () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+
+  const calls = [];
+  const runtime = {
+    isMapBakeDirty(state, options) {
+      calls.push(['isMapBakeDirty', state.id, options.force]);
+      return false;
+    },
+  };
+  const coordinator = {
+    canRender(state) {
+      calls.push(['canRender', state.id]);
+      return true;
+    },
+    render(state, options) {
+      calls.push(['render', state.id, options.force]);
+      return 'rendered';
+    },
+    getMapRuntime() {
+      calls.push(['getMapRuntime']);
+      return runtime;
+    },
+  };
+  const app = new App();
+  app.state = { id: 'state-1' };
+  app.worldMapRuntimeCoordinator = coordinator;
+
+  assert.equal(app.shouldRenderRuntimeWorldMap(), false);
+  assert.equal(app.shouldRenderRuntimeWorldMap({ force: true }), true);
+  assert.equal(app.renderRuntimeWorldMap({ force: true }), 'rendered');
+  assert.equal(app.worldMapRuntime, runtime);
+  assert.deepEqual(calls, [
+    ['getMapRuntime'],
+    ['canRender', 'state-1'],
+    ['isMapBakeDirty', 'state-1', undefined],
+    ['getMapRuntime'],
+    ['canRender', 'state-1'],
+    ['render', 'state-1', true],
+    ['getMapRuntime'],
+  ]);
+});
+
+test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits camera', () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+
+  const calls = [];
+  const runtime = {
+    camera: { x: 2, y: 3 },
+    getCameraUiState: () => ({ worldPanX: 2, worldPanY: 3 }),
+    markBakedCamera(camera) {
+      calls.push(['markBakedCamera', camera]);
+    },
+  };
+  const app = new App();
+  app.state = { id: 'state-2' };
+  app.worldMapDragWaterTimeMs = 345;
+  app.worldMapRuntimeCoordinator = {
+    getMapRuntime: () => runtime,
+  };
+  app.renderer = {
+    getTopBarBottom: () => 91,
+    renderWorldMapSnapshotLayer(state, options) {
+      calls.push(['renderWorldMapSnapshotLayer', state.id, options.topBarBottom, options.waterTimeMs]);
+      return true;
+    },
+  };
+
+  assert.equal(app.refreshWorldMapLayerFromSnapshot(), true);
+  assert.deepEqual(calls, [
+    ['renderWorldMapSnapshotLayer', 'state-2', 91, 345],
+    ['markBakedCamera', runtime.camera],
+  ]);
+});

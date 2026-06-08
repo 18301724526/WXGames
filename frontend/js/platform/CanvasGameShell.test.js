@@ -13,6 +13,9 @@ const SHELL_MODULES = [
   'CanvasGameShellInputRouter',
   'CanvasGameShellCommands',
   'CanvasGameShellGuideUi',
+  'CanvasGameShellWorldMapLayerBridge',
+  'CanvasGameShellWorldMapDragRuntime',
+  'CanvasGameShellWorldMapFrameRuntime',
   'CanvasGameShellWorldMapRuntime',
   'CanvasGameShellRenderingRuntime',
   'CanvasGameShellSystemUi',
@@ -51,6 +54,22 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
     const modulePosition = html.indexOf(`${moduleName}.js`);
     assert.notEqual(modulePosition, -1, `${moduleName}.js should be loaded`);
     assert.equal(modulePosition < facadePosition, true, `${moduleName}.js should load before CanvasGameShell.js`);
+  });
+  assert.equal(
+    html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
+    true,
+    'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameShellWorldMapRuntime.js',
+  );
+  [
+    'CanvasGameShellWorldMapLayerBridge.js',
+    'CanvasGameShellWorldMapDragRuntime.js',
+    'CanvasGameShellWorldMapFrameRuntime.js',
+  ].forEach((scriptName) => {
+    assert.equal(
+      html.indexOf(scriptName) < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
+      true,
+      `${scriptName} should load before CanvasGameShellWorldMapRuntime.js`,
+    );
   });
 });
 

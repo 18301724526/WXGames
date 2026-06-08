@@ -12,6 +12,56 @@ SHARED_LINK="/opt/wxgame-workspace/shared"
 BRANCH="${1:-main}"
 PM2_APP_NAME="server"
 API_PORT="${PORT:-3000}"
+ALLOWED_WORK_TREE="/www/wwwroot/h5"
+ALLOWED_FRONTEND_PUBLIC_DIR="/www/wwwroot/h5"
+COCOS_PROJECT_ROOT="/www/wwwroot/civilization-fire-next"
+
+normalize_configured_path() {
+    local input_path="$1"
+    while [ "$input_path" != "/" ] && [ "${input_path%/}" != "$input_path" ]; do
+        input_path="${input_path%/}"
+    done
+    printf '%s' "$input_path"
+}
+
+WORK_TREE="$(normalize_configured_path "$WORK_TREE")"
+FRONTEND_PUBLIC_DIR="$(normalize_configured_path "$FRONTEND_PUBLIC_DIR")"
+BACKEND_DIR="$(normalize_configured_path "$BACKEND_DIR")"
+SHARED_LINK="$(normalize_configured_path "$SHARED_LINK")"
+
+assert_not_under_path() {
+    local label="$1"
+    local path_value
+    local forbidden_root
+
+    path_value="$(normalize_configured_path "$2")"
+    forbidden_root="$(normalize_configured_path "$3")"
+
+    if [ "$path_value" = "$forbidden_root" ] || [[ "$path_value" == "$forbidden_root/"* ]]; then
+        echo "[Deploy] Refusing to use $label=$path_value because it is inside protected path $forbidden_root" >&2
+        exit 1
+    fi
+}
+
+assert_safe_deploy_paths() {
+    assert_not_under_path "WORK_TREE" "$WORK_TREE" "$COCOS_PROJECT_ROOT"
+    assert_not_under_path "FRONTEND_PUBLIC_DIR" "$FRONTEND_PUBLIC_DIR" "$COCOS_PROJECT_ROOT"
+    assert_not_under_path "BACKEND_DIR" "$BACKEND_DIR" "$COCOS_PROJECT_ROOT"
+    assert_not_under_path "SHARED_LINK" "$SHARED_LINK" "$COCOS_PROJECT_ROOT"
+
+    if [ "${ALLOW_WXGAME_DEPLOY_PATH_OVERRIDE:-0}" != "1" ]; then
+        if [ "$WORK_TREE" != "$ALLOWED_WORK_TREE" ]; then
+            echo "[Deploy] Refusing WORK_TREE=$WORK_TREE. Expected $ALLOWED_WORK_TREE." >&2
+            echo "[Deploy] Set ALLOW_WXGAME_DEPLOY_PATH_OVERRIDE=1 only for an intentional wxgame path migration." >&2
+            exit 1
+        fi
+        if [ "$FRONTEND_PUBLIC_DIR" != "$ALLOWED_FRONTEND_PUBLIC_DIR" ]; then
+            echo "[Deploy] Refusing FRONTEND_PUBLIC_DIR=$FRONTEND_PUBLIC_DIR. Expected $ALLOWED_FRONTEND_PUBLIC_DIR." >&2
+            echo "[Deploy] This protects the separate Cocos deployment from accidental rsync --delete." >&2
+            exit 1
+        fi
+    fi
+}
 
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -225,6 +275,7 @@ publish_frontend_assets() {
 echo "[Deploy] 开始部署..."
 
 sanitize_git_env
+assert_safe_deploy_paths
 
 require_command git
 require_command node

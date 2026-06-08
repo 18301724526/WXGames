@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 require('./TileMapGeometry');
+require('./WorldMarchGeometry');
 const WorldMarchSystem = require('./WorldMarchSystem');
 
 function createMission(overrides = {}) {
@@ -129,4 +132,34 @@ test('WorldMarchSystem maps fog screen points back to axial tile coordinates', (
 
   assert.equal(target.tileId, 'tile_3_-2');
   assert.equal(target.inferred, true);
+});
+
+test('WorldMarchSystem delegates geometry facade behavior', () => {
+  assert.deepEqual(WorldMarchSystem.getMarchTargetUiState({
+    worldMarchTarget: { q: '2', r: '-1', pickerOpen: true },
+  }), {
+    q: 2,
+    r: -1,
+    tileId: 'tile_2_-1',
+    pickerOpen: true,
+    known: undefined,
+    terrain: '',
+    terrainLabel: '',
+  });
+});
+
+test('entrypoints load world march geometry before WorldMarchSystem', () => {
+  const rootDir = path.resolve(__dirname, '../../..');
+  const html = fs.readFileSync(path.join(rootDir, 'frontend/index.html'), 'utf8');
+  const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
+
+  assert.ok(html.indexOf('WorldMarchGeometry.js') >= 0, 'index.html should load WorldMarchGeometry');
+  assert.ok(
+    html.indexOf('WorldMarchGeometry.js') < html.indexOf('WorldMarchSystem.js'),
+    'index.html should load WorldMarchGeometry before WorldMarchSystem',
+  );
+  assert.ok(
+    minigame.indexOf("require('../js/domain/WorldMarchGeometry')") < minigame.indexOf("require('../js/domain/WorldMarchSystem')"),
+    'minigame should load WorldMarchGeometry before WorldMarchSystem',
+  );
 });

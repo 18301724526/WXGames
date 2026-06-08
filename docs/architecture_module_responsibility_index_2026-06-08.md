@@ -49,7 +49,8 @@
 2. Check whether the module is `stable`, `candidate`, `active-refactor`, or `legacy`.
 3. If the module is stable, extend through the listed extension path instead of editing internals.
 4. If the module is legacy, prefer adding an adapter/new module and then shrinking legacy responsibilities.
-5. Update this document in the same change whenever a module's responsibility, public API, or extension path changes.
+5. Before promoting a module to `stable`, verify it against `docs/stable_block_promotion_matrix_2026-06-09.md`.
+6. Update this document in the same change whenever a module's responsibility, public API, extension path, or stability status changes.
 
 状态说明 / Status Meanings:
 
@@ -65,6 +66,14 @@
 - `npm run test:architecture` is the required final gate before commit/deploy. It runs baseline syntax checks, all candidate/stable focused tests currently registered in `scripts/run-architecture-smoke.js`, and `git diff --check`.
 - 新 candidate/stable 模块进入 baseline 时，必须同步加入 `scripts/run-architecture-smoke.js` 的 `CHECK_FILES` and, when it has tests, `TEST_FILES`.
 - P3-001 through P3-025 are complete in the plan, but their split modules remain `candidate` here until they have survived longer feature iteration without contract churn.
+
+Stable 晋升约定 / Stable Promotion Convention:
+
+- `stable` means the block is closed for feature iteration. Feature work must extend through the listed extension path instead of editing internals.
+- A `candidate` module can become `stable` only after its stable surface is checked against `docs/stable_block_promotion_matrix_2026-06-09.md`.
+- World-map stable contracts must use diamond isometric square-tile terminology; legacy `q/r` fields are compatibility aliases, not hex/axial public semantics.
+- Realtime/multiplayer stable contracts must stay backend-authoritative: frontend submits intent, server owns timeline/result, frontend interpolates confirmed state.
+- Large-map stable contracts must not assume a full world array in frontend memory. They must support chunk/window loading, persistent revealed terrain, and full-direction wrapping.
 
 ## 2. 已完成或候选模块 / Completed Or Candidate Modules
 
@@ -208,7 +217,7 @@
 
 ### `frontend/js/platform/CanvasGameShell.js`
 
-状态 / Status: active-refactor
+状态 / Status: candidate facade
 
 负责 / Owns:
 
@@ -275,34 +284,140 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/platform/CanvasGameShellWorldMapRuntime.js`
+### `frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.js`
 
-状态 / Status: active-refactor
+状态 / Status: candidate
 
 负责 / Owns:
 
-- world map runtime coordinator 集成
-- world map layer metrics 同步
-- world map layer 渲染请求
-- 拖拽 compositor 行为 / drag compositor behavior
-- 通过 shell helpers 管理 world map layer 可见性和 transform
-- 仅在 fog feature 启用时分发 fog render
-- fog 开启时通过 `WorldMapVisualPluginRegistry` 获取 visual plugin renderer context
+- pure snapshot render option resolution for shell world-map refreshes
+- world-tile water animation frame timing and layer padding policy
+- world-map drag state, cooldown, transform limit, drag offset, and pan normalization
+- runtime world-map frame option derivation and snapshot-water refresh detection
 
-重要安装方法 / Important Installed Methods:
+公开 API / Public API:
 
-- `ensureWorldMapRuntimeCoordinator()`
-- `ensureWorldMapRuntime()`
-- `isWorldMapHomeActive()`
+- `CanvasGameShellWorldMapRuntimePolicy.hasNumber(value)`
+- `CanvasGameShellWorldMapRuntimePolicy.getSnapshotRenderOptions(waterTimeMs, fallbackWaterTimeMs)`
+- `CanvasGameShellWorldMapRuntimePolicy.getWaterAnimationFrameMs(options)`
+- `CanvasGameShellWorldMapRuntimePolicy.getLayerPadding(options)`
+- `CanvasGameShellWorldMapRuntimePolicy.getDragCooldownMs(value)`
+- `CanvasGameShellWorldMapRuntimePolicy.isDragging(waterTimeMs)`
+- `CanvasGameShellWorldMapRuntimePolicy.isDragCoolingDown(cooldownUntil, nowMs)`
+- `CanvasGameShellWorldMapRuntimePolicy.getDragTransformLimit(layerPadding)`
+- `CanvasGameShellWorldMapRuntimePolicy.isDragTransformNearLimit(offset, options)`
+- `CanvasGameShellWorldMapRuntimePolicy.getDragOffset(runtime)`
+- `CanvasGameShellWorldMapRuntimePolicy.getWorldMapPan(uiState)`
+- `CanvasGameShellWorldMapRuntimePolicy.resolveRuntimeFrameOptions(options, state)`
+- `CanvasGameShellWorldMapRuntimePolicy.isSnapshotWaterRefresh(options)`
+
+扩展方式 / Extension Path:
+
+- 新 shell world-map runtime pure policy first extends this module with focused tests。
+- Shell/coordinator/render side effects stay in `CanvasGameShellWorldMapRuntime`.
+- Rendering and cache internals stay in renderer/runtime modules, not this policy.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameShellWorldMapLayerBridge.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- world map renderer layer metrics sync
+- fog renderer metrics sync when fog is enabled
+- fog render dispatch through `WorldMapVisualPluginRegistry`
+- world map/fog layer transform and visibility helpers
+- world-map snapshot layer refresh and baked-camera commit
+
+公开 API / Public API:
+
+- `CanvasGameShellWorldMapLayerBridge.install(CanvasGameShell)`
+
+安装到 shell 的公开 API / Public API Installed On Shell:
+
 - `syncWorldMapRendererLayerMetrics()`
 - `renderWorldFogLayer(context)`
-- `renderRuntimeWorldMap(state, options)`
-- `shouldRenderRuntimeWorldMap(state, options)`
-- `getWorldMapLayerPadding()`
-- `updateWorldMapDragCompositor()`
 - `clearWorldMapLayerTransform()`
 - `setWorldMapLayerVisible(visible)`
 - `refreshWorldMapLayerFromSnapshot(options)`
+
+扩展方式 / Extension Path:
+
+- New shell-owned world-map layer/fog/snapshot side effects extend this bridge with focused tests.
+- Pure shell world-map policy stays in `CanvasGameShellWorldMapRuntimePolicy`.
+- Renderer drawing/cache internals stay in renderer modules.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameShellWorldMapDragRuntime.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- shell world-map snapshot water-time lifecycle
+- drag cooldown and drag state checks
+- drag offset/transform-limit helpers through `CanvasGameShellWorldMapRuntimePolicy`
+- drag compositor snapshot refresh, transform clearing, and layer translate fallback
+
+公开 API / Public API:
+
+- `CanvasGameShellWorldMapDragRuntime.install(CanvasGameShell)`
+
+安装到 shell 的公开 API / Public API Installed On Shell:
+
+- `getWorldMapSnapshotRenderOptions(waterTimeMs)`
+- `getWorldMapLayerPadding()`
+- `getFrozenWorldMapWaterTimeMs()`
+- `isWorldMapDragging()`
+- `isWorldMapDragCoolingDown()`
+- `getWorldMapDragCooldownMs()`
+- `hasPendingWorldMapCompositeCommit()`
+- `getWorldMapPan()`
+- `startWorldMapSnapshotDrag()`
+- `finishWorldMapSnapshotDrag()`
+- `getWorldMapRuntimeDragOffset()`
+- `getWorldMapDragTransformLimit()`
+- `isWorldMapDragTransformNearLimit(offset)`
+- `updateWorldMapDragCompositor()`
+
+扩展方式 / Extension Path:
+
+- New shell drag/compositor side effects extend this runtime with focused tests.
+- Pure drag math and option derivation stay in `CanvasGameShellWorldMapRuntimePolicy`.
+- Render frame scheduling stays in `CanvasGameShellWorldMapFrameRuntime`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- world-map frame request queuing
+- runtime/snapshot frame option handoff through `CanvasGameShellWorldMapRuntimePolicy`
+- fallback non-runtime world-map layer rendering
+- tile-map water timer lifecycle
+
+公开 API / Public API:
+
+- `CanvasGameShellWorldMapFrameRuntime.install(CanvasGameShell)`
+
+安装到 shell 的公开 API / Public API Installed On Shell:
+
+- `getWorldTileWaterAnimationFrameMs()`
 - `renderWorldMapLayerFrame(options)`
 - `requestWorldMapRenderAnimationFrame(options)`
 - `renderWorldMapLayer(state, options)`
@@ -311,13 +426,51 @@ P0 新增公开 API / Public API Added During P0:
 
 扩展方式 / Extension Path:
 
-- 在 `WorldMapRuntime` 完全拆清之前，camera/runtime coordination 可以继续在这里收口。
-- 图层生命周期必须走 `CanvasGameShell` helpers。
-- visibility/fog 玩法规则不能加在这里；只能消费 `WorldMapVisualPluginRegistry` 输出的 renderer context。
+- New world-map frame/timer orchestration extends this runtime with focused tests.
+- Layer/fog/snapshot refresh side effects stay in `CanvasGameShellWorldMapLayerBridge`.
+- Coordinator integration stays in `CanvasGameShellWorldMapRuntime`.
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `node --test frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameShellWorldMapRuntime.js` - 122 lines
+
+状态 / Status: candidate facade
+
+负责 / Owns:
+
+- world map runtime coordinator integration
+- coordinator-backed map-home active checks
+- runtime drag routing through the coordinator
+- runtime world-map render dispatch and dirty-check decision handoff
+
+公开 API / Public API:
+
+- `CanvasGameShellWorldMapRuntime.install(CanvasGameShell)`
+
+安装到 shell 的公开 API / Public API Installed On Shell:
+
+- `ensureWorldMapRuntimeCoordinator()`
+- `ensureWorldMapRuntime()`
+- `isWorldMapHomeActive()`
+- `canRouteWorldMapRuntimeDrag(point)`
+- `handleWorldMapRuntimeDrag(phase, point, event)`
+- `renderRuntimeWorldMap(state, options)`
+- `shouldRenderRuntimeWorldMap(state, options)`
+
+扩展方式 / Extension Path:
+
+- New coordinator integration behavior extends this facade only when it cannot belong to layer, drag, or frame runtime modules.
+- Layer/fog/snapshot behavior extends `CanvasGameShellWorldMapLayerBridge`.
+- Drag water-time/compositor behavior extends `CanvasGameShellWorldMapDragRuntime`.
+- Frame/timer behavior extends `CanvasGameShellWorldMapFrameRuntime`.
+- Pure shell world-map runtime calculations extend `CanvasGameShellWorldMapRuntimePolicy`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.test.js frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldFogCanvasRenderer.js`
@@ -565,15 +718,47 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMarchSystem.js`
+### `frontend/js/domain/WorldMarchGeometry.js`
 
-状态 / Status: active-refactor facade
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure tile screen projection for world march actors and target controls
+- nearest rendered world-tile lookup from screen points
+- axial tile inference from screen points and viewport geometry
+- march target UI-state normalization for HUD/render helpers
+
+公开 API / Public API:
+
+- `WorldMarchGeometry.toNumber(value, fallback)`
+- `WorldMarchGeometry.toInteger(value, fallback)`
+- `WorldMarchGeometry.tileId(q, r)`
+- `WorldMarchGeometry.getTileScreenCenter(coord, viewport, geometry)`
+- `WorldMarchGeometry.screenPointToNearestTile(point, tileMapView, viewport)`
+- `WorldMarchGeometry.screenPointToAxialTile(point, viewport, geometry)`
+- `WorldMarchGeometry.getMarchTargetUiState(uiState)`
+
+扩展方式 / Extension Path:
+
+- 新 world-march screen/input geometry first extends this module with focused tests。
+- New gameplay march progress or arrival rules stay in `WorldMarchProgressSnapshot` or later systems modules.
+- `WorldMarchSystem` keeps compatibility methods only; do not add new geometry bodies back there.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/domain/WorldMarchSystem.js` - 53 lines
+
+状态 / Status: candidate facade
 
 负责 / Owns:
 
 - 保留旧世界行军 public API，避免一次性改动 renderer/HUD/presenter 调用
-- 继续承接 tile screen geometry、screen point to axial tile、march target UI state 等旧 helper
 - 行军进度、抵达状态、actor 生成等 gameplay calculation 已委托 `WorldMarchProgressSnapshot`
+- tile screen geometry、screen point to axial tile、march target UI state 等旧 helper 已委托 `WorldMarchGeometry`
 
 公开 API / Public API:
 
@@ -593,12 +778,12 @@ P0 新增公开 API / Public API Added During P0:
 扩展方式 / Extension Path:
 
 - 新行军玩法规则加到 `WorldMarchProgressSnapshot` 或后续 `systems` 模块，不加到本文件。
-- 新 screen/input mapping 应进入 input/action adapter，而不是继续扩大本 facade。
-- 后续 P1/P2 可以逐步让 renderer/HUD 直接消费 `WorldMarchProgressSnapshot`，再缩小本文件。
+- 新 screen/input geometry 应进入 `WorldMarchGeometry`；action mapping 进入 input/action adapter。
+- Renderer/HUD can continue using this compatibility facade, but new callers should prefer `WorldMarchProgressSnapshot` or `WorldMarchGeometry` directly.
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMarchSystem.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js`
+- `node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapRenderSnapshot.js`
@@ -2147,15 +2332,810 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/platform/CanvasTerritoryActionHandlers.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- `CanvasActionController` 的 territory/world-site/world-march/expedition/battle-scene action handlers
+- world map drag target selection and expedition launch/cancel orchestration
+- battle scene close/skip action compatibility
+- installed legacy `handle_*` method names for the territory action domain
+
+公开 API / Public API:
+
+- `CanvasTerritoryActionHandlers.install(CanvasActionController)`
+
+扩展方式 / Extension Path:
+
+- 新 territory/world-site/world-march action 先扩展本模块，再让 `CanvasActionController` 只保留 facade/dispatch 行为。
+- 新 gameplay simulation 不进入本模块；本模块只负责 action-to-controller/API/UI-state orchestration。
+- 如果 action 属于 building/event/tech/famous/talent policy/shell domain，扩展对应 domain handler module。
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasCityActionHandlers.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- `CanvasActionController` city-management/event/task-center/city-selection action handlers
+- building and tech action forwarding plus local pending state sync
+- city enter/selection and task reward orchestration
+- installed legacy `handle_*` method names for the city action domain
+
+公开 API / Public API:
+
+- `CanvasCityActionHandlers.install(CanvasActionController)`
+
+扩展方式 / Extension Path:
+
+- 新 city-management/event/task-center/building/tech action 先扩展本模块。
+- 新 territory/world-map actions stay in `CanvasTerritoryActionHandlers`.
+- 新 famous-person/talent-policy/shell actions stay in their focused handler modules.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasFamousActionHandlers.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- famous-person panel/detail/search action handlers
+- famous-person accept/dismiss/attribute/page action forwarding
+- tutorial refresh hooks for famous-person UI actions
+- installed legacy `handle_*` method names for the famous-person action domain
+
+公开 API / Public API:
+
+- `CanvasFamousActionHandlers.install(CanvasActionController)`
+
+扩展方式 / Extension Path:
+
+- 新 famous-person canvas action 先扩展本模块。
+- Famous-person view-state shape stays in presenter modules; gameplay/service changes stay outside this handler.
+- Do not add famous-person handlers directly to `CanvasActionController`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasTalentPolicyActionHandlers.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- talent-policy panel/draft/apply/confirm/save/delete action handlers
+- talent-policy draft normalization and finalization helper behavior previously embedded in `CanvasActionController`
+- tutorial and shell/game panel sync hooks for talent-policy UI actions
+- installed legacy `handle_*` method names for the talent-policy action domain
+
+公开 API / Public API:
+
+- `CanvasTalentPolicyActionHandlers.install(CanvasActionController)`
+
+扩展方式 / Extension Path:
+
+- 新 talent-policy canvas action 先扩展本模块。
+- Talent policy data derivation belongs in state/domain presenters or services, not in the controller facade.
+- Do not add talent-policy handlers directly to `CanvasActionController`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasTalentPolicyActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasShellActionHandlers.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- shell/system/account/naming/advisor/guidebook/army-formation action handlers
+- tab switching, command panel, reward reveal, settings/logs/auth/reset/logout action orchestration
+- naming finalization helper behavior previously embedded in `CanvasActionController`
+- installed legacy `handle_*` method names for shell/system action domains
+
+公开 API / Public API:
+
+- `CanvasShellActionHandlers.install(CanvasActionController)`
+
+扩展方式 / Extension Path:
+
+- 新 shell/system/account/naming/advisor/guidebook action 先扩展本模块。
+- Domain gameplay actions stay in territory/city/famous/talent-policy handlers.
+- Do not add shell/system handlers directly to `CanvasActionController`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/CanvasGameApp.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameRendererCompositionFactory.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- `CanvasGameRenderer` child renderer dependency lookup and construction
+- injected instance precedence over class/global/CommonJS fallback
+- child renderer property ordering and presenter sync helpers
+- H5/minigame load-order contract before `CanvasGameRenderer`
+
+公开 API / Public API:
+
+- `CanvasGameRendererCompositionFactory.create(options)`
+- `CanvasGameRendererCompositionFactory.getChildRendererSpecs()`
+- `CanvasGameRendererCompositionFactory.getChildRendererKeys()`
+- `CanvasGameRendererCompositionFactory.getChildRenderers(host, rendererKeys)`
+- `CanvasGameRendererCompositionFactory.syncChildRendererPresenter(host, renderer)`
+- `CanvasGameRendererCompositionFactory.syncChildRendererPresenters(host, rendererKeys)`
+
+性能约束 / Performance Constraints:
+
+- Composition happens once per `CanvasGameRenderer` instance.
+- Per-frame rendering uses cached child renderer references.
+- Dependency lookup does not scan directories or allocate per frame.
+
+扩展方式 / Extension Path:
+
+- 新 child renderer wiring 先扩展 `CHILD_RENDERER_SPECS` and focused tests。
+- Do not add child renderer construction branches back into `CanvasGameRenderer`.
+- New rendering behavior still belongs in the owning renderer; this factory only wires modules.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameRendererCompositionFactory.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameRendererCoreFacades.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- core `CanvasGameRenderer` compatibility method installation for surface, asset, world-tile-water, and famous helpers
+- delegate fallback behavior for historical renderer method names
+- H5/minigame load-order contract before `CanvasGameRenderer`
+
+公开 API / Public API:
+
+- `CanvasGameRendererCoreFacades.CORE_FACADE_METHODS`
+- `CanvasGameRendererCoreFacades.installCoreFacades(CanvasGameRenderer)`
+
+扩展方式 / Extension Path:
+
+- 新 core surface/asset/world-tile-water/famous compatibility method 先扩展 `CORE_FACADE_METHODS` with a focused test。
+- New page/panel/HUD compatibility methods belong in `CanvasGameRendererPageFacades`.
+- Do not add these compatibility methods directly to `CanvasGameRenderer`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameRendererCoreFacades.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/CanvasAssetRenderer.test.js frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.test.js frontend/js/platform/renderers/FamousCanvasRenderer.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameRendererPageFacades.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- page/panel/HUD/frame compatibility method installation for `CanvasGameRenderer`
+- command, tutorial, tech, building, event, city, home, overlay, advisor, tab compatibility helpers
+- render routing pass-through methods historically exposed by `CanvasGameRenderer`
+- H5/minigame load-order contract before `CanvasGameRenderer`
+
+公开 API / Public API:
+
+- `CanvasGameRendererPageFacades.PAGE_FACADE_METHODS`
+- `CanvasGameRendererPageFacades.installPageFacades(CanvasGameRenderer)`
+
+扩展方式 / Extension Path:
+
+- 新 page/panel/HUD/frame compatibility method 先扩展 `PAGE_FACADE_METHODS` with a focused test。
+- New core surface/asset/famous/world-tile-water compatibility methods belong in `CanvasGameRendererCoreFacades`.
+- Do not add page/panel compatibility methods directly to `CanvasGameRenderer`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameRendererPageFacades.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/HudTabPageCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameAppRenderPolicy.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure app render policy for map-home view-state resolution
+- stable canvas tab order
+- guide-driven preferred military-view selection
+
+公开 API / Public API:
+
+- `CanvasGameAppRenderPolicy.TAB_ORDER`
+- `CanvasGameAppRenderPolicy.resolveMapHomeViewState(state, options)`
+- `CanvasGameAppRenderPolicy.getTabOrder()`
+- `CanvasGameAppRenderPolicy.getPreferredMilitaryView(tabId, guide)`
+
+扩展方式 / Extension Path:
+
+- 新 map-home render policy or tab-order behavior 先扩展本模块，并同步 focused tests。
+- Presenter-specific view-state formatting stays in presenter modules.
+- Do not add pure render policy branches back into `CanvasGameAppRenderingRuntime`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameAppRenderPolicy.test.js frontend/js/platform/CanvasGameApp.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameAppRenderScheduler.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- app render clock, wait, interval, and `requestAnimationFrame` adapter helpers
+- transition duration and animation frame defaults
+- world tile water animation frame duration
+- world-map drag cooldown default
+
+公开 API / Public API:
+
+- `CanvasGameAppRenderScheduler.now(host)`
+- `CanvasGameAppRenderScheduler.wait(host, ms)`
+- `CanvasGameAppRenderScheduler.getRequestAnimationFrame(host)`
+- `CanvasGameAppRenderScheduler.getAnimationFrameMs(host)`
+- `CanvasGameAppRenderScheduler.getTransitionDurationMs(host)`
+- `CanvasGameAppRenderScheduler.getWorldMapDragCooldownMs(host)`
+- `CanvasGameAppRenderScheduler.getWorldTileWaterAnimationFrameMs(host)`
+- `CanvasGameAppRenderScheduler.getIntervalHost(host)`
+- `CanvasGameAppRenderScheduler.setIntervalForHost(host, callback, delay)`
+- `CanvasGameAppRenderScheduler.clearIntervalForHost(host, timer)`
+
+扩展方式 / Extension Path:
+
+- 新 render scheduling/timing rule 先扩展本模块，并保留 injected scheduler/runtime fallback tests。
+- Do not add direct `setInterval` / `clearInterval` fallback branches back into `CanvasGameAppRenderingRuntime`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameAppRenderScheduler.test.js frontend/js/platform/CanvasGameApp.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameAppWorldMapRuntimeBridge.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- world-map runtime compatibility method installation for `CanvasGameApp`
+- runtime coordinator creation and map-runtime ownership bridge
+- snapshot drag water-time lifecycle and drag cooldown state
+- runtime world-map render decision and baked-layer refresh helpers
+- H5/minigame load-order contract before `CanvasGameAppRenderingRuntime`
+
+公开 API / Public API:
+
+- `CanvasGameAppWorldMapRuntimeBridge.WORLD_MAP_RUNTIME_METHODS`
+- `CanvasGameAppWorldMapRuntimeBridge.install(CanvasGameApp)`
+
+安装到 `CanvasGameApp` 的主要方法 / Main Installed Methods:
+
+- `ensureWorldMapRuntimeCoordinator()`
+- `ensureWorldMapRuntime()`
+- `isWorldMapHomeActive()`
+- `renderRuntimeWorldMap(options)`
+- `shouldRenderRuntimeWorldMap(options)`
+- `refreshWorldMapLayerFromSnapshot(options)`
+- `startWorldMapSnapshotDrag()`
+- `finishWorldMapSnapshotDrag()`
+- `renderWorldMapSnapshotDragFrame()`
+
+扩展方式 / Extension Path:
+
+- 新 world-map runtime bridge behavior 先扩展 `WORLD_MAP_RUNTIME_METHODS` with focused tests。
+- World-map gameplay rules stay in world-map domain/systems/services.
+- Renderer-layer drawing stays in world-map renderer modules.
+- Do not add world-map runtime compatibility methods back into `CanvasGameAppRenderingRuntime`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameAppWorldMapRuntimeBridge.test.js frontend/js/platform/CanvasGameApp.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/state/presenters/WorldTileMapTileNormalizer.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure single world-tile normalization for presenter/view-state consumption
+- terrain asset, feature, template, water, and site overlay normalization
+- tile visibility/intel field normalization
+- mountain neighbor count derivation from injected tile terrain index
+
+公开 API / Public API:
+
+- `WorldTileMapTileNormalizer.toNumber(value, fallback)`
+- `WorldTileMapTileNormalizer.toInteger(value, fallback)`
+- `WorldTileMapTileNormalizer.getTileMapManifest(options)`
+- `WorldTileMapTileNormalizer.getWorldTileId(q, r)`
+- `WorldTileMapTileNormalizer.getMountainNeighborCount(tile, siteById)`
+- `WorldTileMapTileNormalizer.normalizeIntel(intel)`
+- `WorldTileMapTileNormalizer.normalizeTemplateAssets(templateAssets)`
+- `WorldTileMapTileNormalizer.normalizeWaterAsset(manifest, terrainAsset)`
+- `WorldTileMapTileNormalizer.normalizeFeature(manifest, terrainAsset)`
+- `WorldTileMapTileNormalizer.normalizeSite(manifest, site)`
+- `WorldTileMapTileNormalizer.normalizeWorldTile(tile, siteById, options)`
+
+扩展方式 / Extension Path:
+
+- 新单 tile render/view-state 字段先扩展本模块，并同步 focused tests。
+- Multi-tile map composition stays in `WorldTileMapPresenter`.
+- Gameplay visibility or exploration rules stay in domain/systems, not this normalizer.
+
+回归 / Regression:
+
+- `node --test frontend/js/state/presenters/WorldTileMapTileNormalizer.test.js frontend/js/state/UIStatePresenter.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/state/presenters/WorldTileMapExplorerNormalizer.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure world-explorer mission normalization for world tile-map presenter data
+- mission merge from list/active/ready/idle slots with richer-array preservation
+- epoch-time based mission derivation through injected `WorldMarchSystem` / `WorldTime`
+- planned tile and planned site reveal filtering for presenter view-state composition
+- coordinate and world tile id normalization shared by explorer presenter helpers
+
+公开 API / Public API:
+
+- `WorldTileMapExplorerNormalizer.toNumber(value, fallback)`
+- `WorldTileMapExplorerNormalizer.toInteger(value, fallback)`
+- `WorldTileMapExplorerNormalizer.getWorldTileId(q, r)`
+- `WorldTileMapExplorerNormalizer.getEpochNowMs(options)`
+- `WorldTileMapExplorerNormalizer.normalizeCoord(coord)`
+- `WorldTileMapExplorerNormalizer.normalizeWorldExplorerMission(mission)`
+- `WorldTileMapExplorerNormalizer.mergeWorldExplorerMissions(worldExplorerState)`
+- `WorldTileMapExplorerNormalizer.getWorldExplorerMissions(worldExplorerState, options)`
+- `WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(worldExplorerState, options)`
+- `WorldTileMapExplorerNormalizer.getWorldExplorerPlannedSites(worldExplorerState, options)`
+
+扩展方式 / Extension Path:
+
+- 新 world-explorer presenter-only mission/planned-tile/planned-site normalization 先扩展本模块，并同步 focused tests。
+- Map-level composition stays in `WorldTileMapPresenter`.
+- Gameplay progression, march timing rules, or persistence DTO mapping stay in domain/client-state modules, not this normalizer.
+
+回归 / Regression:
+
+- `node --test frontend/js/state/presenters/WorldTileMapExplorerNormalizer.test.js frontend/js/state/UIStatePresenter.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/WorldMapRuntimeBakePolicy.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure world-map data signature generation for runtime bake decisions
+- presenter-backed signature delegation with fallback compact serialization
+- signature sync result derivation without mutating runtime state
+- pure bake-dirty checks from runtime state plus current map data
+
+公开 API / Public API:
+
+- `WorldMapRuntimeBakePolicy.getMapDataSignature(state, options)`
+- `WorldMapRuntimeBakePolicy.getSignatureSyncResult(previousSignature, nextSignature)`
+- `WorldMapRuntimeBakePolicy.isMapBakeDirty(runtimeState, state, options)`
+
+扩展方式 / Extension Path:
+
+- 新 map-bake signature fields or bake-dirty policy first extend this module with focused tests。
+- Runtime side effects such as logging, renderer cache invalidation, and camera/baked-layer state stay in `WorldMapRuntime`.
+- Renderer cache key policy stays in renderer/cache modules, not this runtime policy.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/WorldMapRuntimeBakePolicy.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/WorldMapRuntimeCameraPolicy.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure world-map runtime camera initialization and UI-state composition
+- UI camera sync and set-camera change resolution
+- drag start/move/end camera math without renderer/runtime side effects
+- baked-camera offset calculation
+- drag-layer hit-target offset normalization and application
+
+公开 API / Public API:
+
+- `WorldMapRuntimeCameraPolicy.toNumber(value, fallback)`
+- `WorldMapRuntimeCameraPolicy.toLegacyAxis(value, fallback)`
+- `WorldMapRuntimeCameraPolicy.createInitialCamera(options)`
+- `WorldMapRuntimeCameraPolicy.createCameraUiState(base, camera)`
+- `WorldMapRuntimeCameraPolicy.syncCameraFromUi(camera, uiState)`
+- `WorldMapRuntimeCameraPolicy.resolveCameraChange(camera, x, y)`
+- `WorldMapRuntimeCameraPolicy.getCameraOffsetFromBaked(camera, bakedCamera)`
+- `WorldMapRuntimeCameraPolicy.createDragState(point, camera)`
+- `WorldMapRuntimeCameraPolicy.resolveDragCamera(drag, point)`
+- `WorldMapRuntimeCameraPolicy.canEndDrag(drag, point)`
+- `WorldMapRuntimeCameraPolicy.normalizeDragLayerOffset(x, y)`
+- `WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(hitTargets, offset)`
+
+扩展方式 / Extension Path:
+
+- 新 camera/drag pure calculation first extends this module with focused tests。
+- Map bounds, render scheduling, callbacks, and renderer cache side effects stay in `WorldMapRuntime`.
+- Input action mapping stays in `WorldMapInputActionMap`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/WorldMapRuntimeCameraPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/WorldMapRuntimeInputPolicy.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure runtime input-layout availability checks
+- map input rectangle fallback resolution from layout, renderer, runtime, and system metrics
+- inclusive point-in-map bounds checks without renderer/runtime side effects
+
+公开 API / Public API:
+
+- `WorldMapRuntimeInputPolicy.hasInputLayout(layout)`
+- `WorldMapRuntimeInputPolicy.createInputMapRect(options)`
+- `WorldMapRuntimeInputPolicy.isPointInMap(point, map)`
+
+扩展方式 / Extension Path:
+
+- 新 world-map input geometry calculations first extend this module with focused tests。
+- Runtime state collection, drag/tap side effects, and renderer calls stay in `WorldMapRuntime`.
+- Input action mapping stays in `WorldMapInputActionMap`.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/WorldMapRuntimeInputPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/WorldMapRuntimeRenderPolicy.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- pure runtime render context derivation
+- snapshot/full render option composition for `WorldMapRuntimeRenderPipeline`
+- render throttling predicate
+- cannot-render state reset payloads
+- render trace key/data payload derivation without renderer/runtime mutation
+
+公开 API / Public API:
+
+- `WorldMapRuntimeRenderPolicy.createRenderContext(options, runtimeState)`
+- `WorldMapRuntimeRenderPolicy.canUseSnapshotLayer(renderContext, runtimeState)`
+- `WorldMapRuntimeRenderPolicy.shouldThrottleRender(options, timing)`
+- `WorldMapRuntimeRenderPolicy.createCannotRenderState()`
+- `WorldMapRuntimeRenderPolicy.createCannotRenderTrace(runtimeState, state)`
+- `WorldMapRuntimeRenderPolicy.createRenderBeginTrace(state, renderContext, runtimeState)`
+- `WorldMapRuntimeRenderPolicy.createSnapshotRenderOptions(options, context)`
+- `WorldMapRuntimeRenderPolicy.createSnapshotTrace(state, rendered, context)`
+- `WorldMapRuntimeRenderPolicy.createFullRenderOptions(options, context)`
+- `WorldMapRuntimeRenderPolicy.createFullTrace(state, rendered, runtimeState, epochNowMs)`
+
+扩展方式 / Extension Path:
+
+- New pure world-map runtime render calculations first extend this module with focused tests.
+- Renderer calls, runtime state publication, and trace dispatch stay in `WorldMapRuntimeRenderPipeline`.
+- Camera, bake, and input geometry calculations stay in their P9 policy modules.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/WorldMapRuntimeRenderPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/WorldMapRuntimeRenderPipeline.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- historical `WorldMapRuntime.render()` flow orchestration
+- render-state publication onto split renderer instances
+- cannot-render trace dispatch and runtime bake/input state reset
+- snapshot-layer render branch and full-layer render branch
+- runtime render trace dispatch while delegating pure trace payloads to `WorldMapRuntimeRenderPolicy`
+
+公开 API / Public API:
+
+- `WorldMapRuntimeRenderPipeline.publishStateToRenderer(host, state)`
+- `WorldMapRuntimeRenderPipeline.handleCannotRender(host, state)`
+- `WorldMapRuntimeRenderPipeline.renderSnapshotLayer(host, state, options, context)`
+- `WorldMapRuntimeRenderPipeline.renderFullLayer(host, state, options, context)`
+- `WorldMapRuntimeRenderPipeline.render(host, options)`
+
+扩展方式 / Extension Path:
+
+- New render-flow side effects for `WorldMapRuntime.render()` extend this pipeline with focused tests.
+- Pure render decisions, option composition, and trace payloads stay in `WorldMapRuntimeRenderPolicy`.
+- New renderer drawing details still belong in renderer modules, not in this pipeline.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/state/UIStatePresenterDelegates.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- dependency resolution for the `UIStatePresenter` compatibility facade
+- direct static delegate method registration from focused presenter modules
+- custom facade delegates for guidebook, home feature, and tech fallback composition
+- load-order contract before `UIStatePresenter`
+
+公开 API / Public API:
+
+- `UIStatePresenterDelegates.DEPENDENCY_DEFINITIONS`
+- `UIStatePresenterDelegates.DELEGATE_METHODS`
+- `UIStatePresenterDelegates.createDependencies(overrides)`
+- `UIStatePresenterDelegates.install(UIStatePresenter, overrides)`
+
+扩展方式 / Extension Path:
+
+- 新 static UI presenter compatibility method first adds a focused presenter implementation, then registers a delegate here with tests。
+- Cross-presenter composition stays in custom delegate installers here until it deserves its own presenter module.
+- Do not add method bodies back into `UIStatePresenter`.
+
+回归 / Regression:
+
+- `node --test frontend/js/state/UIStatePresenterDelegates.test.js frontend/js/state/UIStatePresenter.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasActionController.js` - 226 lines
+
+状态 / Status: candidate facade
+
+负责 / Owns:
+
+- compatibility dispatch facade for historical `handle_*` action methods
+- shared host/state/controller lookup helpers used by installed action modules
+- shared panel closing, render routing, async finalization, action forwarding, and world-map refresh helpers
+- tech-tree drag/zoom delegation to `TechTreeInteractionModel`
+
+重要公开模式 / Important Public Pattern:
+
+- `new CanvasActionController(host, options)`
+- `handle(action)`
+- installed `handle_<actionType>(action)` methods from focused handler modules
+
+目标拆分 / Target Split:
+
+1. Keep territory/world-site/world-march handlers in `CanvasTerritoryActionHandlers`.
+2. Keep city-management/event/task-center/building/tech handlers in `CanvasCityActionHandlers`.
+3. Keep famous-person handlers in `CanvasFamousActionHandlers`.
+4. Keep talent-policy handlers in `CanvasTalentPolicyActionHandlers`.
+5. Keep shell/system/account/naming/advisor/guidebook/army-formation handlers in `CanvasShellActionHandlers`.
+6. Keep this file as the dispatch/helper facade.
+
+当前扩展方式 / Extension Path Now:
+
+- Territory/world-site/world-march actions extend `CanvasTerritoryActionHandlers`.
+- City-management/event/task-center/building/tech actions extend `CanvasCityActionHandlers`.
+- Famous-person actions extend `CanvasFamousActionHandlers`.
+- Talent-policy actions extend `CanvasTalentPolicyActionHandlers`.
+- Shell/system/account/naming/advisor/guidebook/army-formation actions extend `CanvasShellActionHandlers`.
+- Avoid adding direct `handle_*` implementations here; add or extend a focused handler module instead.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasTalentPolicyActionHandlers.test.js frontend/js/platform/CanvasShellActionHandlers.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/CanvasGameRenderer.js` - 303 lines
+
+状态 / Status: candidate facade
+
+负责 / Owns:
+
+- main canvas renderer compatibility facade
+- shared constructor state for legacy renderer callers
+- static asset/preload helper surface
+- child renderer composition through `CanvasGameRendererCompositionFactory`
+- core renderer compatibility methods installed by `CanvasGameRendererCoreFacades`
+- page/panel/HUD compatibility methods installed by `CanvasGameRendererPageFacades`
+- world map and battle compatibility methods installed by `CanvasWorldMapFacade` and `CanvasBattleFacade`
+- presenter sync delegation for split child renderers
+
+重要公开方法 / Important Public Methods:
+
+- `new CanvasGameRenderer(options)`
+- static asset helpers: `getPreloadAssetPaths()`, `getAssetRequestPath()`, `getBattleUnitFramePath()`, `getTileMapAssetManifest()`, `getTileMapGeometry()`
+- composition helpers: `setPresenter()`, `getChildRenderers()`, `syncChildRendererPresenter()`, `syncChildRendererPresenters()`
+- installed compatibility methods from `CanvasGameRendererCoreFacades`, `CanvasGameRendererPageFacades`, `CanvasWorldMapFacade`, and `CanvasBattleFacade`
+
+目标拆分 / Target Split:
+
+1. Keep child renderer composition in `CanvasGameRendererCompositionFactory`.
+2. Keep core surface/asset/world-tile-water/famous compatibility methods in `CanvasGameRendererCoreFacades`.
+3. Keep page/panel/HUD/frame compatibility methods in `CanvasGameRendererPageFacades`.
+4. Keep world-map and battle compatibility installers in their focused facade modules.
+5. Keep this file as a compatibility facade.
+
+当前扩展方式 / Extension Path Now:
+
+- New child renderer wiring extends `CanvasGameRendererCompositionFactory`.
+- New core surface/asset/world-tile-water/famous compatibility methods extend `CanvasGameRendererCoreFacades`.
+- New page/panel/HUD/frame compatibility methods extend `CanvasGameRendererPageFacades`.
+- New world-map compatibility helpers extend `CanvasWorldMapFacade` or the owning world-map split renderer/facade.
+- New battle compatibility helpers extend `CanvasBattleFacade` or `BattleCanvasRenderer`.
+- New visual surfaces should prefer standalone renderer modules.
+- Do not add gameplay state derivation or direct render method implementations here.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameRendererCompositionFactory.test.js frontend/js/platform/CanvasGameRendererCoreFacades.test.js frontend/js/platform/CanvasGameRendererPageFacades.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/tutorial/TutorialGuideStepPolicy.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- tutorial step constants used by the frontend guide controller
+- pure tab access gating rules
+- pure guide-active range predicates for house, first-era, farm, era2, scout, first-city, post-naming, and final-tech phases
+- compatibility source for `TutorialGuideController.TUTORIAL_STEPS`
+
+公开 API / Public API:
+
+- `TutorialGuideStepPolicy.TUTORIAL_STEPS`
+- `TutorialGuideStepPolicy.normalizeStep(step)`
+- `TutorialGuideStepPolicy.canOpenTab(tabId, context)`
+- `TutorialGuideStepPolicy.isGuideRangeActive(step, completed, startStep, endStep, options)`
+- `TutorialGuideStepPolicy.isHouseGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isFirstEraGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isFarmGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isEra2GuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isScoutFormationGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isScoutExploreGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isFirstCityGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isFinalTechGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isPostNamingSystemGuideActive(step, completed)`
+- `TutorialGuideStepPolicy.isLumbermillGuideActive(step, completed)`
+
+扩展方式 / Extension Path:
+
+- 新 frontend tutorial step or tab gate first extends this policy, then `TutorialGuideController` consumes it.
+- Keep this file pure: no game object, API calls, renderer, shell, canvas target lookup, or tutorial highlight side effects.
+- Backend tutorial step contracts still belong in backend tutorial services; keep values synchronized through tests and docs.
+
+回归 / Regression:
+
+- `node --test frontend/js/tutorial/TutorialGuideStepPolicy.test.js frontend/js/tutorial/TutorialGuideController.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/tutorial/TutorialGuideTargetResolver.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- canvas target lookup through the shell
+- retry-after-render highlight dispatch for temporarily missing targets
+- canvas target rect normalization
+- viewport visibility checks for tutorial targets
+- open-world-site highlight dispatch used by capital/first-city guide steps
+
+公开 API / Public API:
+
+- `new TutorialGuideTargetResolver({ host })`
+- `getCanvasTarget(type, predicate)`
+- `showHighlight(type, predicate, message, allowedAction, options)`
+- `getCanvasTargetRect(target)`
+- `isCanvasTargetVisible(target, padding)`
+- `showOpenWorldSiteHighlight(options)`
+
+扩展方式 / Extension Path:
+
+- New target geometry, visibility, or generic highlight dispatch behavior extends this resolver.
+- Phase-specific guide decisions still belong in current/future phase guide modules, not in this resolver.
+- Keep this file free of tutorial step progression, API calls, backend state mutation, and gameplay rules.
+
+回归 / Regression:
+
+- `node --test frontend/js/tutorial/TutorialGuideTargetResolver.test.js frontend/js/tutorial/TutorialGuideController.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/tutorial/TutorialGuidePhaseHighlights.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- historical `TutorialGuideController.refreshCurrentHighlight()` compatibility method installation
+- first-era, farm, era2, scout, first-city, post-naming, and final-tech guide highlight branching
+- phase-specific highlight action/message selection while delegating target lookup and UI state helpers
+
+公开 API / Public API:
+
+- `TutorialGuidePhaseHighlights.install(TutorialGuideController)`
+
+扩展方式 / Extension Path:
+
+- New phase highlight branch behavior extends this installer or a future smaller phase module.
+- Pure step range gates stay in `TutorialGuideStepPolicy`.
+- Generic target lookup/visibility/highlight dispatch stays in `TutorialGuideTargetResolver`.
+- UI state setup helpers stay in `TutorialGuideUiStateCoordinator`.
+
+回归 / Regression:
+
+- `node --test frontend/js/tutorial/TutorialGuidePhaseHighlights.test.js frontend/js/tutorial/TutorialGuideController.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/tutorial/TutorialGuideUiStateCoordinator.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- guide UI state helper method installation for `TutorialGuideController`
+- command panel cleanup and soft guide dialogue state
+- army formation editor reset helpers
+- guided capital/first-city focus helpers
+- building guide visibility, resources guide visibility, and generic building guide display
+
+公开 API / Public API:
+
+- `TutorialGuideUiStateCoordinator.UI_STATE_METHODS`
+- `TutorialGuideUiStateCoordinator.install(TutorialGuideController)`
+
+扩展方式 / Extension Path:
+
+- New tutorial UI state setup helper extends this coordinator when it mutates shell/game UI flags for guide visibility.
+- Phase-specific guide branch selection stays in `TutorialGuidePhaseHighlights`.
+- Target geometry and highlight dispatch stay in `TutorialGuideTargetResolver`.
+- Keep backend/tutorial progression and gameplay rules out of this module.
+
+回归 / Regression:
+
+- `node --test frontend/js/tutorial/TutorialGuideUiStateCoordinator.test.js frontend/js/tutorial/TutorialGuideController.test.js`
+- `npm run test:architecture`
+
 ### `scripts/run-architecture-smoke.js`
 
 状态 / Status: candidate
 
 负责 / Owns:
 
-- P0/P1/P2/P3 candidate/stable baseline 的快速架构回归
+- P0/P1/P2/P3/P4/P5/P6 candidate/stable baseline 的快速架构回归
 - 架构相关文件语法检查 / syntax checks
-- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, game state migration pipeline, and world explorer DTO mapper
+- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, canvas action handler split modules, canvas game renderer composition/facade modules, tutorial guide policy/resolver/phase/UI-state modules, game state migration pipeline, and world explorer DTO mapper
 - `git diff --check`
 
 公开命令 / Public Command:
@@ -2171,6 +3151,167 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
+- `npm run test:architecture`
+
+### `docs/stable_block_promotion_matrix_2026-06-09.md`
+
+状态 / Status: stable governance
+
+负责 / Owns:
+
+- confirmed product and architecture invariants used to promote modules from `candidate` to `stable`
+- Canvas-only UI and cross-platform frontend rules
+- diamond isometric square-tile world-map contract, full-direction wrapping, chunk/window loading, and reveal persistence
+- backend-authoritative command, server timeline, AOI sync, and frontend interpolation principles
+- performance-tier, config-version, reproducible world generation, and season carryover boundaries
+- first-pass lists for stable candidates, interface-only candidates, and modules that must remain flexible
+
+公开约定 / Public Contract:
+
+- `stable` promotion must freeze long-term mechanisms, not unfinished gameplay tuning.
+- New stable world-map contracts use `x/y` or `col/row`; old `q/r` names are compatibility aliases.
+- Frontend command code sends intent and pending state only; backend owns accepted results.
+- Large-map modules must support window/chunk data and persistent revealed terrain.
+- Config/data registries must be versioned and schema-validated before becoming stable.
+
+扩展方式 / Extension Path:
+
+- New confirmed invariants are added here first, then reflected in module entries when a file is promoted.
+- Do not use this document to freeze volatile gameplay numbers, map generation formulas, battle simulation details, or season carryover rewards.
+- If a future design decision contradicts this matrix, update this matrix and the affected module entries in the same architecture task.
+
+回归 / Regression:
+
+- documentation review
+- `npm run test:architecture`
+
+### `docs/stable_block_manifest_2026-06-09.json`
+
+状态 / Status: stable governance
+
+负责 / Owns:
+
+- machine-readable stable block file list
+- allowed reopen reason vocabulary
+- extension-path metadata for guarded stable blocks
+- candidate promotion queue for later hardening
+
+公开约定 / Public Contract:
+
+- `stableBlocks[].files` lists stable files guarded by `scripts/check-stable-blocks.js`.
+- `reopenPolicy.allowedReasons` is the only accepted reason list for stable reopen work.
+- A module is not a sealed stable block until it is listed here and in its responsibility-index entry.
+
+扩展方式 / Extension Path:
+
+- Add newly promoted stable files here in the same task that changes their responsibility-index status.
+- Do not list candidate files here until their stable surface has passed the promotion matrix.
+
+回归 / Regression:
+
+- `node scripts/check-stable-blocks.js`
+- `npm run test:architecture`
+
+### `scripts/check-stable-blocks.js`
+
+状态 / Status: stable governance
+
+负责 / Owns:
+
+- stable block manifest validation
+- responsibility-index stable entry coverage checks
+- stable file change detection
+- explicit stable reopen reason enforcement
+
+公开命令 / Public Command:
+
+- `node scripts/check-stable-blocks.js`
+
+扩展方式 / Extension Path:
+
+- New stable guard behavior extends this script with focused syntax/architecture checks.
+- Keep slow full-test behavior out of this script; it must remain part of the fast architecture gate.
+
+回归 / Regression:
+
+- `node --check scripts/check-stable-blocks.js`
+- `node scripts/check-stable-blocks.js`
+- `npm run test:architecture`
+
+### `docs/current_product_design_2026-06-09.md`
+
+状态 / Status: authoritative
+
+负责 / Owns:
+
+- current product positioning
+- platform principles
+- long-term retained product domains
+- account/season, performance, and update-experience product rules
+
+公开约定 / Public Contract:
+
+- This is the current product design authority.
+- Early roadmap, handoff, v0.x, and release-note documents are not product authority.
+
+扩展方式 / Extension Path:
+
+- Product-level direction changes update this file and the stable promotion matrix when they affect stable boundaries.
+
+回归 / Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
+- `npm run test:architecture`
+
+### `docs/current_gameplay_design_2026-06-09.md`
+
+状态 / Status: authoritative
+
+负责 / Owns:
+
+- current gameplay loops and domain boundaries
+- backend-authoritative command rules
+- current city/resource/building/technology/famous-person/world-map/exploration/battle/task/tutorial facts
+- flexible gameplay areas that must not be prematurely sealed
+
+公开约定 / Public Contract:
+
+- This is the current gameplay design authority.
+- Specific volatile formulas remain flexible unless promoted through stable block governance.
+
+扩展方式 / Extension Path:
+
+- Gameplay additions update this file when they change a current domain boundary or stable/flexible classification.
+
+回归 / Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
+- `npm run test:architecture`
+
+### `docs/current_technical_architecture_2026-06-09.md`
+
+状态 / Status: authoritative
+
+负责 / Owns:
+
+- current technical architecture summary
+- layer direction
+- Canvas-only boundary
+- world-map technical boundary
+- backend authority, realtime sync, config/data, stable guard, and official-doc rules
+
+公开约定 / Public Contract:
+
+- This is the current technical design authority.
+- Historical architecture plans are not the active technical entrypoint unless this file links to them.
+
+扩展方式 / Extension Path:
+
+- Architecture changes update this file when they change layer direction, official guardrails, or stable block governance.
+
+回归 / Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldMapCanvasRenderer.js` - 718 lines
@@ -2292,146 +3433,120 @@ P0 新增公开 API / Public API Added During P0:
 
 These files are not "bad"; they are high-risk because they own too many responsibilities. New feature work should avoid adding more responsibility to them.
 
-### `frontend/js/platform/CanvasActionController.js` - 1727 lines
+### `frontend/js/tutorial/TutorialGuideController.js` - 665 lines
 
-状态 / Status: legacy
+状态 / Status: candidate facade
 
-当前负责 / Currently Owns:
-
-- many canvas action handlers
-- action-to-service calls
-- local UI state mutation
-- tutorial advancement hooks
-- world map drag and action routing
-- building/event/tech/military/world site commands
-
-重要公开模式 / Important Public Pattern:
-
-- `handle(action)`
-- many `handle_<actionType>(action)` methods
-
-目标拆分 / Target Split:
-
-1. Extract action registry per domain.
-2. Extract world map action handlers.
-3. Extract building/event/tech action handlers.
-4. Keep this file as a dispatch facade.
-
-当前扩展方式 / Extension Path Now:
-
-- Prefer adding new action dispatch entries to registry modules.
-- Avoid adding more `handle_*` methods unless there is no domain handler yet.
-
-### `frontend/js/platform/CanvasGameRenderer.js` - 1714 lines
-
-状态 / Status: legacy
-
-当前负责 / Currently Owns:
-
-- main canvas renderer facade
-- composition of many page/panel renderers
-- HUD/page routing
-- render options and view composition
-- some world map facade coordination
-
-目标拆分 / Target Split:
-
-1. Extract route-to-renderer table.
-2. Extract HUD composition.
-3. Extract page render orchestration.
-4. Keep this file as a compatibility facade.
-
-当前扩展方式 / Extension Path Now:
-
-- New visual surfaces should prefer standalone renderer modules.
-- Do not add gameplay state derivation here.
-
-### `frontend/js/tutorial/TutorialGuideController.js` - 1371 lines
-
-状态 / Status: legacy
-
-当前负责 / Currently Owns:
+负责 / Owns:
 
 - tutorial step state
-- tutorial target resolution
-- tutorial gating rules
 - tutorial API sync
-- guide highlight progression
-- special-case onboarding behavior
+- tutorial progression event callbacks
+- compatibility static `TUTORIAL_STEPS` API
+- compatibility helper methods installed by `TutorialGuidePhaseHighlights` and `TutorialGuideUiStateCoordinator`
+- compatibility access to `TutorialGuideStepPolicy` through `TUTORIAL_STEPS`
+- compatibility helper methods delegated to `TutorialGuideTargetResolver`
 
-目标拆分 / Target Split:
+已拆出 / Extracted:
 
-1. Extract tutorial step definitions.
-2. Extract target resolver.
-3. Extract progression/gating state machine.
-4. Keep controller as orchestration facade.
+- P6-001: step constants, tab access gates, and guide-active range predicates moved to `TutorialGuideStepPolicy`.
+- P6-002: canvas target lookup, retry-after-render highlight dispatch, rect normalization, visibility checks, and open-world-site highlight dispatch moved to `TutorialGuideTargetResolver`.
+- P6-003: historical `refreshCurrentHighlight()` phase branching moved to `TutorialGuidePhaseHighlights`.
+- P6-004: guide UI state setup helpers moved to `TutorialGuideUiStateCoordinator`.
+
+仍需拆分 / Remaining Split:
+
+1. Future small-step work may split tutorial progression event callbacks if they grow again.
+2. Keep controller as API sync and orchestration facade.
 
 当前扩展方式 / Extension Path Now:
 
+- New frontend tutorial step constants or tab gates extend `TutorialGuideStepPolicy`.
+- New target lookup/highlight geometry extends `TutorialGuideTargetResolver`.
+- New phase highlight selection extends `TutorialGuidePhaseHighlights`.
+- New guide UI state setup helper extends `TutorialGuideUiStateCoordinator`.
 - Add new tutorial data as definitions/config where possible.
-- Avoid hard-coding new guide branches in the controller.
+- Avoid adding new phase branches or UI state helpers directly to the controller facade.
 
-### `frontend/js/platform/CanvasGameAppRenderingRuntime.js` - 887 lines
+### `frontend/js/platform/CanvasGameAppRenderingRuntime.js` - 712 lines
 
-状态 / Status: legacy
+状态 / Status: candidate facade
 
-当前负责 / Currently Owns:
+负责 / Owns:
 
-- app-level render loop
-- animation frame scheduling
-- map-home render branching
-- world map runtime fallback behavior
+- app-level render orchestration compatibility facade
 - loading/render active/read-only behavior
+- render surface option assembly for `CanvasGameRenderer`
+- transition and tab switch orchestration
+- local view reset and compatibility render helpers
+- policy delegation through `CanvasGameAppRenderPolicy`
+- scheduler delegation through `CanvasGameAppRenderScheduler`
+- world-map runtime compatibility methods installed by `CanvasGameAppWorldMapRuntimeBridge`
 
-目标拆分 / Target Split:
+已拆出 / Extracted:
 
-1. Extract render scheduler.
-2. Extract map-home render policy.
-3. Extract app render mode policy.
-4. Keep install module as facade.
+1. P7-001: map-home render policy, tab order, and preferred military-view selection moved to `CanvasGameAppRenderPolicy`.
+2. P7-002: clock/wait/interval/requestAnimationFrame helpers and timing defaults moved to `CanvasGameAppRenderScheduler`.
+3. P7-003: world-map runtime coordinator, drag snapshot lifecycle, render decisions, and baked-layer refresh helpers moved to `CanvasGameAppWorldMapRuntimeBridge`.
+4. Keep this file as the render orchestration facade.
 
 当前扩展方式 / Extension Path Now:
 
-- New render timing rules should become policy helpers first.
+- New pure app render policy extends `CanvasGameAppRenderPolicy`.
+- New render timing or injected scheduler behavior extends `CanvasGameAppRenderScheduler`.
+- New world-map runtime bridge compatibility methods extend `CanvasGameAppWorldMapRuntimeBridge`.
+- New gameplay rules stay in domain/systems/services, not in this facade.
+- Avoid adding new direct world-map runtime or scheduling helper methods here.
 
-### `frontend/js/state/UIStatePresenter.js` - 672 lines
+回归 / Regression:
 
-状态 / Status: legacy-candidate
+- `node --test frontend/js/platform/CanvasGameAppRenderPolicy.test.js frontend/js/platform/CanvasGameAppRenderScheduler.test.js frontend/js/platform/CanvasGameAppWorldMapRuntimeBridge.test.js frontend/js/platform/CanvasGameApp.test.js`
+- `npm run test:architecture`
 
-当前负责 / Currently Owns:
+### `frontend/js/state/UIStatePresenter.js` - 23 lines
 
-- static facade over many presenter modules
-- formatting helpers
-- resource/building/event/famous/world/talent policy view helpers
+状态 / Status: candidate facade
+
+负责 / Owns:
+
+- compatibility static facade for historical UI state presenter API
+- compatibility constants `POPULATION_PER_OFFICIAL` and `MIN_EXPEDITION_SOLDIERS`
+- delegate installation through `UIStatePresenterDelegates`
 
 目标拆分 / Target Split:
 
 1. Keep as compatibility facade.
-2. Move domain-specific helpers to `frontend/js/state/presenters/*`.
-3. Stop adding new domain helper implementations directly here.
+2. Done: P10-001 moved dependency resolution and static method delegate installation into `UIStatePresenterDelegates`.
+3. Domain-specific helpers stay in `frontend/js/state/presenters/*`.
 
 当前扩展方式 / Extension Path Now:
 
 - Add or extend presenter modules under `frontend/js/state/presenters`.
-- Expose pass-through static methods here only for compatibility.
+- Register compatibility static delegates in `UIStatePresenterDelegates`.
+- Do not add method bodies back into this facade.
 
-### `frontend/js/platform/WorldMapRuntime.js` - 596 lines
+### `frontend/js/platform/WorldMapRuntime.js` - 411 lines
 
-状态 / Status: active-refactor
+状态 / Status: candidate facade
 
 当前负责 / Currently Owns:
 
 - world map camera state
 - drag/pinch camera movement
-- map bake signatures
+- map bake runtime state and renderer cache invalidation side effects
 - hit target sync
 - render requests
 - world-map input action map integration
+- bake policy delegation through `WorldMapRuntimeBakePolicy`
+- camera policy delegation through `WorldMapRuntimeCameraPolicy`
+- input geometry delegation through `WorldMapRuntimeInputPolicy`
+- render pipeline delegation through `WorldMapRuntimeRenderPipeline`
 
 重要公开方法 / Important Public Methods:
 
 - `canRender(state)`
 - `getLayerLayout(state, options)`
+- `getInputMapRect(state)`
 - `isMapBakeDirty(state, options)`
 - `invalidateBake()`
 - `setCamera(x, y, options)`
@@ -2443,27 +3558,32 @@ These files are not "bad"; they are high-risk because they own too many responsi
 
 目标拆分 / Target Split:
 
-1. Keep runtime focused on camera/bake/input runtime state.
-2. Move map signature policy into a pure helper.
-3. Continue shrinking raw input mapping now that P1-005 moved background target action mapping into `WorldMapInputActionMap`.
+1. Keep runtime focused on camera/bake/input runtime compatibility state.
+2. Done: P9-001 moved map signature generation, signature sync result derivation, and pure bake-dirty checks into `WorldMapRuntimeBakePolicy`.
+3. Done: P9-002 moved initial camera normalization, camera UI-state composition, UI camera sync, camera change resolution, drag math, baked-camera offset, and drag-layer hit-target offsets into `WorldMapRuntimeCameraPolicy`.
+4. Done: P9-003 moved input-layout availability, map input rectangle fallback resolution, and point-in-map bounds checks into `WorldMapRuntimeInputPolicy`.
+5. Done: P9-004 moved pure render decisions into `WorldMapRuntimeRenderPolicy` and render-flow orchestration into `WorldMapRuntimeRenderPipeline`.
 
 当前扩展方式 / Extension Path Now:
 
-- Add camera/runtime behavior here only.
+- Add pure camera/drag calculations through `WorldMapRuntimeCameraPolicy`.
+- Add render-flow side effects through `WorldMapRuntimeRenderPipeline`.
 - Add new world-map input mapping through `WorldMapInputActionMap`.
+- Add pure world-map input geometry through `WorldMapRuntimeInputPolicy`.
+- Add map-bake signature or dirty-check changes through `WorldMapRuntimeBakePolicy`.
+- Add pure render context, throttle, renderer option, and trace payload changes through `WorldMapRuntimeRenderPolicy`.
 - Do not add gameplay simulation or rendering details.
 
-### `frontend/js/state/presenters/WorldTileMapPresenter.js` - 540 lines
+### `frontend/js/state/presenters/WorldTileMapPresenter.js` - 319 lines
 
-状态 / Status: active-refactor
+状态 / Status: candidate facade
 
-当前负责 / Currently Owns:
+负责 / Owns:
 
-- building normalized world tile map view state
-- tile/site normalization
-- explorer mission normalization
-- planned tile/site derivation
-- world tile signature
+- map-level normalized world tile map view-state composition
+- world tile-map signature composition across territory/world-explorer state
+- compatibility delegation for `normalizeWorldTile()`
+- compatibility delegation for world-explorer mission/planned tile/planned site helpers
 
 重要公开方法 / Important Public Methods:
 
@@ -2477,24 +3597,36 @@ These files are not "bad"; they are high-risk because they own too many responsi
 
 目标拆分 / Target Split:
 
-1. Extract tile normalization.
-2. Extract explorer mission normalization.
-3. Extract visibility/exploration state later under P1.
+1. Done: P8-001 extracted tile/site/terrain/template/water/intel normalization to `WorldTileMapTileNormalizer`.
+2. Done: P8-002 extracted explorer mission normalization, mission merge/time derivation, planned tile/site filtering, and tile-id creation to `WorldTileMapExplorerNormalizer`.
+3. Future visibility/exploration state changes should land under P1 domain modules before this facade composes the view state.
 
 当前扩展方式 / Extension Path Now:
 
-- Add pure presenter helpers here only if they convert state to render/view state.
+- Single-tile normalization extends `WorldTileMapTileNormalizer`.
+- World-explorer mission/planned tile/planned site normalization extends `WorldTileMapExplorerNormalizer`.
+- Add pure presenter helpers here only if they compose map-level render/view state.
 - Do not add renderer behavior.
+
+回归 / Regression:
+
+- `node --test frontend/js/state/presenters/WorldTileMapExplorerNormalizer.test.js frontend/js/state/presenters/WorldTileMapTileNormalizer.test.js frontend/js/state/UIStatePresenter.test.js`
+- `npm run test:architecture`
 
 ## 4. P0-005 拆分顺序 / Split Order
 
 Recommended first split sequence:
 
-1. `WorldMapCanvasRenderer.js`: extract layout/cache/hit-target helper modules first because it blocks world map and fog rebuild work.
-2. `CanvasActionController.js`: extract domain action handlers so new features stop adding `handle_*` methods to one file.
-3. `CanvasGameRenderer.js`: extract render routing and HUD composition once action boundaries are clearer.
-4. `TutorialGuideController.js`: extract step definitions and target resolver after action/render targets are stable.
-5. `UIStatePresenter.js` and `WorldTileMapPresenter.js`: continue moving domain helpers into presenter modules as needed by P1 world map systems.
+1. Done: `WorldMapCanvasRenderer.js` is a candidate facade after P3-001 through P3-025.
+2. Done: `CanvasActionController.js` is a candidate facade after P4-001 through P4-005.
+3. Done: `CanvasGameRenderer.js` is a candidate facade after P5-001 through P5-003.
+4. Done: `TutorialGuideController.js` is a candidate facade after P6-001 through P6-004.
+5. Done: `CanvasGameAppRenderingRuntime.js` is a candidate facade after P7-001 through P7-003.
+6. Done: `WorldTileMapPresenter.js` is a candidate facade after P8-001 through P8-002.
+7. Done: `WorldMapRuntime.js` is a candidate facade after P9-001 through P9-004 moved bake, camera, input geometry, render policy, and render pipeline behavior into focused modules.
+8. Done: `UIStatePresenter.js` is a candidate facade after P10-001 moved delegate installation into `UIStatePresenterDelegates`.
+9. Done: `CanvasGameShellWorldMapRuntime.js` is a candidate facade after P0-004b/P0-004c moved pure shell world-map policy, layer/fog/snapshot bridge behavior, drag runtime behavior, and frame/timer runtime behavior into focused modules.
+10. Next: watch `CanvasGameAppRenderingRuntime.js`, `CanvasGameRendererPageFacades.js`, and `CanvasGameShell.js` for future growth; current oversized legacy list no longer has an urgent presenter facade.
 
 ## 5. 更新日志 / Update Log
 
@@ -2503,9 +3635,12 @@ Recommended first split sequence:
 | 2026-06-08 | Created module responsibility index. Added completed P0 modules, current public APIs, extension paths, and P0-005 oversized-module split order. |
 | 2026-06-08 | Added architecture baseline script responsibility and public command `npm run test:architecture`; `run-architecture-smoke.js` remains the historical script filename. |
 | 2026-06-08 | Standardized documentation style: Chinese-first explanations with English module/API/architecture keyword labels. |
+| 2026-06-08 | Added `CanvasGameShellWorldMapRuntimePolicy` candidate module for pure shell world-map snapshot options, water timing, layer padding, drag cooldown/limit checks, drag offset/pan normalization, and frame option derivation; `CanvasGameShellWorldMapRuntime` delegates these policies and dropped to 455 lines. |
+| 2026-06-08 | Added `CanvasGameShellWorldMapLayerBridge`, `CanvasGameShellWorldMapDragRuntime`, and `CanvasGameShellWorldMapFrameRuntime` for P0-004c; `CanvasGameShellWorldMapRuntime` now keeps coordinator/render decision integration only and dropped to 122 lines as a candidate facade. |
 | 2026-06-08 | Added `WorldMapVisibilityModel` candidate module with compact visibility snapshot API and performance constraints. |
 | 2026-06-08 | Added `WorldMapEntitySnapshot` candidate module for normalized world map entities/components with compact indexes. |
 | 2026-06-08 | Added `WorldMarchProgressSnapshot` candidate module for pure march progress, actor rows, and arrival result rows; `WorldMarchSystem` now acts as a compatibility facade for march calculations. |
+| 2026-06-08 | Added `WorldMarchGeometry` candidate module for pure tile screen projection, nearest-tile lookup, axial point inference, and march target UI-state normalization; `WorldMarchSystem` now delegates progress and geometry helpers and dropped to 53 lines as a candidate facade. |
 | 2026-06-08 | Added `WorldMapRenderSnapshot` candidate module as the single world-map renderer input contract and wired `WorldMapCanvasRenderer.renderWorldTileMap()` to expose `lastWorldTileMapContext.renderSnapshot`. |
 | 2026-06-08 | Added `WorldMapInputActionMap` candidate module for pure world-map input-to-action mapping and wired `WorldMapRuntime` to delegate hit-target filtering/background march target inference. |
 | 2026-06-08 | Added `WorldExplorerDtoMapper` candidate module as the backend world explorer API DTO boundary; `WorldExplorerClientState` now delegates response shape after progression. |
@@ -2541,3 +3676,18 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMapRendererHostBridge` candidate module for P3-025; `WorldMapCanvasRenderer` now delegates legacy host compatibility proxy behavior and dropped to 718 lines. |
 | 2026-06-08 | Reclassified `WorldMapCanvasRenderer` as a `candidate facade` after P3-001 through P3-025 passed architecture regression; P3 split modules remain `candidate` while their contracts are observed through later feature work. |
 | 2026-06-08 | Standardized regression documentation: module entries list focused commands plus `npm run test:architecture`, and the architecture command is documented as the baseline gate covering registered candidate/stable tests, syntax checks, and `git diff --check`. |
+| 2026-06-08 | Added `CanvasTerritoryActionHandlers` candidate module for P4-001; `CanvasActionController` now delegates territory/world-site/world-march/expedition/battle-scene handlers and dropped to 1208 lines. |
+| 2026-06-08 | Added `CanvasCityActionHandlers` candidate module for P4-002; `CanvasActionController` now delegates city-management/event/task-center/city-selection/building/tech/task-reward/building-list handlers and dropped to 797 lines. |
+| 2026-06-08 | Added `CanvasFamousActionHandlers`, `CanvasTalentPolicyActionHandlers`, and `CanvasShellActionHandlers` for P4-003 through P4-005; `CanvasActionController` now delegates famous-person, talent-policy, shell/system/account/naming/advisor/guidebook/army-formation handlers and dropped to 226 lines as a candidate facade. |
+| 2026-06-08 | Added `CanvasGameRendererCompositionFactory`, `CanvasGameRendererCoreFacades`, and `CanvasGameRendererPageFacades` for P5-001 through P5-003; `CanvasGameRenderer` now delegates child composition and compatibility method installation, dropping to 303 lines as a candidate facade. |
+| 2026-06-08 | Added `TutorialGuideStepPolicy` candidate module for P6-001; `TutorialGuideController` now delegates step constants, tab access gates, and guide-active range predicates while remaining legacy for target resolution and phase guide branching. |
+| 2026-06-08 | Added `TutorialGuideTargetResolver` candidate module for P6-002; `TutorialGuideController` now delegates canvas target lookup, retry-after-render highlight dispatch, rect normalization, visibility checks, and open-world-site highlight dispatch while dropping to 1368 lines. |
+| 2026-06-08 | Added `TutorialGuidePhaseHighlights` and `TutorialGuideUiStateCoordinator` for P6-003 through P6-004; `TutorialGuideController` now delegates phase highlight branching and guide UI state helpers, dropping to 665 lines as a candidate facade. |
+| 2026-06-08 | Added `CanvasGameAppRenderPolicy`, `CanvasGameAppRenderScheduler`, and `CanvasGameAppWorldMapRuntimeBridge` for P7-001 through P7-003; `CanvasGameAppRenderingRuntime` now delegates pure render policy, timing helpers, and world-map runtime bridge methods, dropping to 666 lines as a candidate facade. |
+| 2026-06-08 | Added `WorldTileMapTileNormalizer` for P8-001; `WorldTileMapPresenter` now delegates single tile terrain/site/template/water/intel normalization and dropped to 479 lines. |
+| 2026-06-08 | Added `WorldTileMapExplorerNormalizer` for P8-002; `WorldTileMapPresenter` now delegates explorer mission, planned tile, planned site, and tile-id helpers and dropped to 319 lines as a candidate facade. |
+| 2026-06-08 | Added `WorldMapRuntimeBakePolicy` for P9-001; `WorldMapRuntime` now delegates map data signature generation, signature sync results, and pure bake-dirty checks while retaining runtime side effects, dropping to 565 lines. |
+| 2026-06-08 | Added `WorldMapRuntimeCameraPolicy` for P9-002; `WorldMapRuntime` now delegates initial camera normalization, camera UI-state composition, UI sync, drag math, baked-camera offsets, and drag-layer hit-target offsets, dropping to 541 lines. |
+| 2026-06-08 | Added `WorldMapRuntimeInputPolicy` for P9-003; `WorldMapRuntime` now delegates input-layout availability, map input rectangle resolution, and point-in-map checks while retaining runtime state collection, dropping to 491 lines. |
+| 2026-06-08 | Added `WorldMapRuntimeRenderPolicy` and `WorldMapRuntimeRenderPipeline` for P9-004; `WorldMapRuntime.render()` now delegates render context/throttle/option/trace decisions and snapshot/full render flow, dropping to 411 lines as a candidate facade. |
+| 2026-06-08 | Added `UIStatePresenterDelegates` for P10-001; `UIStatePresenter` now delegates dependency resolution and static method installation to the registry and dropped to 23 lines as a candidate facade. |

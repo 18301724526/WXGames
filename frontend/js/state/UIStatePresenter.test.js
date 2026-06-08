@@ -1002,9 +1002,12 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'WorldRadarPresenter.js',
     'WorldSitePresenter.js',
     'BattleScenePresenter.js',
+    'WorldTileMapTileNormalizer.js',
+    'WorldTileMapExplorerNormalizer.js',
     'WorldTileMapPresenter.js',
     'ShellPresenter.js',
     'TalentPolicyPresenter.js',
+    'UIStatePresenterDelegates.js',
     'UIStatePresenter.js',
   ];
   const positions = expectedOrder.map((name) => html.indexOf(name));
@@ -1013,4 +1016,13 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     assert.notEqual(position, -1, `${expectedOrder[index]} should be loaded`);
     if (index > 0) assert.equal(positions[index - 1] < position, true, `${expectedOrder[index - 1]} should load before ${expectedOrder[index]}`);
   });
+});
+
+test('UIStatePresenter facade is installed by delegate registry', () => {
+  assert.equal(typeof UIStatePresenter.toNumber, 'function');
+  assert.equal(typeof UIStatePresenter.buildGuidebookViewState, 'function');
+  assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'function');
+  assert.equal(typeof UIStatePresenter.buildTechViewState, 'function');
+  assert.equal(UIStatePresenter.POPULATION_PER_OFFICIAL, 100);
+  assert.equal(UIStatePresenter.MIN_EXPEDITION_SOLDIERS, 100);
 });

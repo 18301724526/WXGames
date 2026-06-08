@@ -1,0 +1,206 @@
+(function (global) {
+  var WorldMapRuntimeCoordinatorBase = global.WorldMapRuntimeCoordinator;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
+    WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
+  }
+
+  const WORLD_MAP_RUNTIME_METHODS = Object.freeze({
+    getFrozenWorldMapWaterTimeMs() {
+      if (
+        this.worldMapDragWaterTimeMs === null
+        || this.worldMapDragWaterTimeMs === undefined
+        || !Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+      ) {
+        this.worldMapDragWaterTimeMs = this.now();
+      }
+      return this.worldMapDragWaterTimeMs;
+    },
+
+    isWorldMapDragging() {
+      return this.worldMapDragWaterTimeMs !== null
+        && this.worldMapDragWaterTimeMs !== undefined
+        && Number.isFinite(Number(this.worldMapDragWaterTimeMs));
+    },
+
+    isWorldMapDragCoolingDown() {
+      return Number(this.worldMapDragCooldownUntil) > this.now();
+    },
+
+    startWorldMapSnapshotDrag() {
+      this.worldMapDragWaterTimeMs = this.now();
+      return this.worldMapDragWaterTimeMs;
+    },
+
+    finishWorldMapSnapshotDrag() {
+      this.worldMapDragCooldownUntil = this.now() + this.getWorldMapDragCooldownMs();
+      this.worldMapDragWaterTimeMs = null;
+      this.worldMapPinchDragging = false;
+      if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
+    },
+
+    renderWorldMapSnapshotDragFrame() {
+      if (!this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!runtime || !coordinator?.canRender?.(this.state)) return false;
+      const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
+      const topBarBottom = typeof this.renderer.getTopBarBottom === 'function'
+        ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
+        : 84;
+      const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        activeTab: 'military',
+        isMapHome: true,
+        territoryUiState,
+        topBarBottom,
+        frameless: true,
+        preserveOnMiss: false,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: this.now(),
+        showFpsOverlay: false,
+      });
+      if (!rendered) return false;
+      this.renderer.render(this.state, {
+        activeTab: 'military',
+        isMapHome: true,
+        skipWorldMapLayer: true,
+        preserveCanvas: true,
+        territoryUiState,
+        network: this.networkState,
+      });
+      return true;
+    },
+
+    getWorldMapSnapshotRenderOptions(waterTimeMs = this.getFrozenWorldMapWaterTimeMs()) {
+      const hasWaterTimeMs = waterTimeMs !== null
+        && waterTimeMs !== undefined
+        && Number.isFinite(Number(waterTimeMs));
+      const resolvedWaterTimeMs = hasWaterTimeMs
+        ? Number(waterTimeMs)
+        : this.getFrozenWorldMapWaterTimeMs();
+      return {
+        force: true,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: resolvedWaterTimeMs,
+      };
+    },
+
+    ensureWorldMapRuntimeCoordinator() {
+      if (this.worldMapRuntimeCoordinator) return this.worldMapRuntimeCoordinator;
+      const CoordinatorCtor = WorldMapRuntimeCoordinatorBase || global.WorldMapRuntimeCoordinator;
+      if (!CoordinatorCtor) return null;
+      this.worldMapRuntimeCoordinator = new CoordinatorCtor({
+        host: this,
+        worldMapRuntime: this.worldMapRuntime,
+        useWorldMapRuntime: this.useWorldMapRuntime,
+        renderOnDrag: false,
+        getRenderer: () => this.renderer,
+        getPresenter: () => this.presenter,
+        getState: () => this.state || {},
+        getBaseUiState: () => this.territoryController?.uiState
+          || this.territoryController?.getUiState?.()
+          || this.territoryUiState
+          || {},
+        getLocalUiState: () => this.territoryUiState || {},
+        getTerritoryController: () => this.territoryController,
+        getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
+          ? this.renderer.getTopBarBottom(state, { isMapHome: true })
+          : 84),
+        getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
+        getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
+        getForceMapHome: () => this.mapHomeActive,
+        canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
+        onAction: (action) => {
+          const handled = this.actionController?.handle?.(action);
+          this.advanceTutorialIntroAfterHandled(handled, action);
+          return handled;
+        },
+        onBeforeDrag: ({ phase, runtime }) => {
+          if (phase === 'start') {
+            const waterTimeMs = this.startWorldMapSnapshotDrag();
+            if (runtime) runtime.waterTimeMs = waterTimeMs;
+          }
+        },
+        onAfterDrag: ({ phase, handled }) => {
+          if (handled && phase === 'move') this.renderWorldMapSnapshotDragFrame();
+          if (handled && (phase === 'end' || phase === 'cancel')) this.finishWorldMapSnapshotDrag();
+        },
+      });
+      return this.worldMapRuntimeCoordinator;
+    },
+
+    ensureWorldMapRuntime() {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (!coordinator) return this.worldMapRuntime;
+      this.worldMapRuntime = coordinator.ensureRuntime();
+      return this.worldMapRuntime;
+    },
+
+    isWorldMapHomeActive() {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (coordinator) return coordinator.isMapHomeActive(this.state);
+      const homeView = this.resolveMapHomeViewState(this.state, {
+        requestedTab: this.state?.currentTab || this.activeTab || 'resources',
+        militaryView: this.state?.militaryView || this.militaryView,
+        forceMapHome: this.mapHomeActive,
+      });
+      return Boolean(homeView.isMapHome && homeView.activeTab === 'military' && homeView.militaryView === 'world');
+    },
+
+    renderRuntimeWorldMap(options = {}) {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      if (!coordinator) return false;
+      const rendered = coordinator.render(this.state, options);
+      this.worldMapRuntime = coordinator.getMapRuntime();
+      return rendered;
+    },
+
+    shouldRenderRuntimeWorldMap(options = {}) {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!coordinator?.canRender?.(this.state)) return false;
+      if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
+      return Boolean(options.force || runtime.isMapBakeDirty(this.state, options));
+    },
+
+    refreshWorldMapLayerFromSnapshot(options = {}) {
+      const coordinator = this.ensureWorldMapRuntimeCoordinator();
+      const runtime = coordinator?.getMapRuntime?.();
+      if (!runtime || !this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
+      const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
+      const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        activeTab: 'military',
+        isMapHome: true,
+        territoryUiState,
+        topBarBottom: typeof this.renderer.getTopBarBottom === 'function'
+          ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
+          : 84,
+        frameless: true,
+        preserveOnMiss: true,
+        reuseCachedWorldTileView: true,
+        snapshotOnly: true,
+        waterTimeMs: options.waterTimeMs ?? this.worldMapDragWaterTimeMs,
+        showFpsOverlay: false,
+      });
+      if (!rendered) return false;
+      if (options.commitCamera !== false) runtime.markBakedCamera?.(runtime.camera);
+      return true;
+    },
+  });
+
+  function install(CanvasGameApp) {
+    if (!CanvasGameApp?.prototype) return false;
+    Object.entries(WORLD_MAP_RUNTIME_METHODS).forEach(([name, method]) => {
+      CanvasGameApp.prototype[name] = method;
+    });
+    return true;
+  }
+
+  const CanvasGameAppWorldMapRuntimeBridge = {
+    WORLD_MAP_RUNTIME_METHODS,
+    install,
+  };
+  global.CanvasGameAppWorldMapRuntimeBridge = CanvasGameAppWorldMapRuntimeBridge;
+  if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameAppWorldMapRuntimeBridge;
+})(typeof window !== 'undefined' ? window : globalThis);

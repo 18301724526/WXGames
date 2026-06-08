@@ -23,11 +23,11 @@
     return null;
   })();
 
-  const sharedWorldMarchSystem = (() => {
-    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+  const sharedTileNormalizer = (() => {
+    if (global.WorldTileMapTileNormalizer) return global.WorldTileMapTileNormalizer;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('./WorldTileMapTileNormalizer');
       } catch (error) {
         return null;
       }
@@ -35,11 +35,11 @@
     return null;
   })();
 
-  const sharedWorldTime = (() => {
-    if (global.WorldTime) return global.WorldTime;
+  const sharedExplorerNormalizer = (() => {
+    if (global.WorldTileMapExplorerNormalizer) return global.WorldTileMapExplorerNormalizer;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldTime');
+        return require('./WorldTileMapExplorerNormalizer');
       } catch (error) {
         return null;
       }
@@ -63,10 +63,6 @@
 
     static getTileMapGeometry() {
       return sharedTileMapGeometry || null;
-    }
-
-    static getEpochNowMs(options = {}) {
-      return sharedWorldTime?.getEpochNowMs?.(options, Date.now()) ?? Date.now();
     }
 
     static getWorldTileMapSignature(territoryState = {}, worldExplorerState = {}, options = {}) {
@@ -161,263 +157,29 @@
     }
 
     static normalizeWorldTile(tile = {}, siteById = new Map()) {
-      const manifest = this.getTileMapManifest();
-      const terrain = tile.terrain || 'plains';
-      const terrainAsset = manifest.getTerrainAsset?.(terrain) || manifest.terrain?.[terrain] || manifest.terrain?.plains || {};
-      const featureAsset = terrainAsset.feature ? manifest.getFeatureAsset?.(terrainAsset.feature) : null;
-      const templateAssets = manifest.getTileTemplateAssets?.(tile) || [];
-      const site = tile.siteId ? siteById.get(tile.siteId) : null;
-      const siteAsset = site ? manifest.getSiteAsset?.(site.type || 'town') : null;
-      const mountainNeighbors = terrain === 'mountain'
-        ? [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]
-          .filter(([dq, dr]) => {
-            const id = `tile_${this.toInteger(tile.q) + dq}_${this.toInteger(tile.r) + dr}`;
-            return siteById.__tileTerrainById?.get(id) === 'mountain';
-          }).length
-        : 0;
-      return {
-        id: tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`,
-        q: this.toInteger(tile.q),
-        r: this.toInteger(tile.r),
-        terrain,
-        terrainLabel: terrainAsset.label || terrain,
-        terrainAsset: terrainAsset.path || '',
-        waterAsset: terrainAsset.water ? manifest.getWaterAsset?.(terrainAsset.water)?.path || '' : '',
-        templateAssets: templateAssets.map((asset) => ({
-          label: asset.label || '',
-          key: asset.key || '',
-          type: asset.templateType || '',
-          asset: asset.path || '',
-        })).filter((asset) => asset.asset),
-        water: terrainAsset.water ? {
-          kind: terrainAsset.water,
-          asset: manifest.getWaterAsset?.(terrainAsset.water)?.path || '',
-          uvScale: manifest.getWaterAsset?.(terrainAsset.water)?.uvScale || 1,
-          speedX: manifest.getWaterAsset?.(terrainAsset.water)?.speedX || 0,
-          speedY: manifest.getWaterAsset?.(terrainAsset.water)?.speedY || 0,
-          alpha: manifest.getWaterAsset?.(terrainAsset.water)?.alpha || 1,
-        } : null,
-        riverPorts: Array.isArray(tile.riverPorts) ? tile.riverPorts.filter(Boolean) : [],
-        oceanTemplates: Array.isArray(tile.oceanTemplates) ? tile.oceanTemplates.filter(Boolean) : [],
-        transitionKey: typeof tile.transitionKey === 'string' ? tile.transitionKey : '',
-        mountainNeighbors,
-        feature: featureAsset ? {
-          key: terrainAsset.feature,
-          asset: featureAsset.path || '',
-          overlayKey: featureAsset.overlayKey || '',
-          scale: featureAsset.scale || 0.5,
-          offset: manifest.getOverlayOffset?.(featureAsset.overlayKey) || { x: 0, y: 0 },
-        } : null,
-        discovered: tile.discovered !== false,
-        visible: tile.visible !== false,
-        visibility: tile.visibility || (tile.discovered === false ? 'unknown' : 'scouted'),
-        discoveredAt: tile.discoveredAt || '',
-        lastScoutedAt: tile.lastScoutedAt || '',
-        intel: tile.intel && typeof tile.intel === 'object' ? {
-          level: this.toInteger(tile.intel.level, 0),
-          knownTerrain: Boolean(tile.intel.knownTerrain),
-          knownSite: Boolean(tile.intel.knownSite),
-          knownOwner: Boolean(tile.intel.knownOwner),
-          knownGarrison: Boolean(tile.intel.knownGarrison),
-          knownLeader: Boolean(tile.intel.knownLeader),
-          knownSkill: Boolean(tile.intel.knownSkill),
-        } : null,
-        siteId: tile.siteId || null,
-        site: site ? {
-          id: site.id || '',
-          type: site.type || '',
-          status: site.status || '',
-          owner: site.owner || '',
-          name: site.cityName || site.naturalName || '',
-          title: site.naturalName || site.cityName || '',
-          art: site.art || siteAsset?.path || '',
-          overlayKey: siteAsset?.overlayKey || manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`,
-          offset: manifest.getOverlayOffset?.(siteAsset?.overlayKey || manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`) || { x: 0, y: 0 },
-          scale: siteAsset?.scale || 0.46,
-        } : null,
-      };
+      return sharedTileNormalizer.normalizeWorldTile(tile, siteById, {
+        manifest: this.getTileMapManifest(),
+      });
     }
 
     static normalizeWorldExplorerMission(mission = {}) {
-      if (!mission || typeof mission !== 'object') return null;
-      const route = (Array.isArray(mission.route) ? mission.route : []).map((step, index) => ({
-        q: this.toInteger(step.q),
-        r: this.toInteger(step.r),
-        step: this.toInteger(step.step, index + 1),
-        tileId: step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
-        revealed: Boolean(step.revealed),
-      }));
-      if (!route.length) return null;
-      return {
-        id: mission.id || '',
-        kind: 'worldExplore',
-        direction: mission.mode || 'random',
-        status: mission.status || '',
-        origin: mission.origin && typeof mission.origin === 'object'
-          ? {
-            q: this.toInteger(mission.origin.q),
-            r: this.toInteger(mission.origin.r),
-            tileId: mission.origin.tileId || `tile_${this.toInteger(mission.origin.q)}_${this.toInteger(mission.origin.r)}`,
-          }
-          : null,
-        target: mission.target && typeof mission.target === 'object'
-          ? {
-            q: this.toInteger(mission.target.q),
-            r: this.toInteger(mission.target.r),
-            tileId: mission.target.tileId || `tile_${this.toInteger(mission.target.q)}_${this.toInteger(mission.target.r)}`,
-          }
-          : null,
-        position: mission.position && typeof mission.position === 'object'
-          ? {
-            q: this.toInteger(mission.position.q),
-            r: this.toInteger(mission.position.r),
-            tileId: mission.position.tileId || `tile_${this.toInteger(mission.position.q)}_${this.toInteger(mission.position.r)}`,
-          }
-          : null,
-        actionPoints: route.length,
-        actionPointsRemaining: route.filter((step) => !step.revealed).length,
-        route,
-        revealArea: route,
-        revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
-        stepDurationSeconds: this.toInteger(mission.stepDurationSeconds, 0),
-        startedAt: mission.startedAt || '',
-        nextStepAt: mission.nextStepAt || '',
-        completesAt: mission.completesAt || '',
-        completedAt: mission.completedAt || '',
-      };
+      return sharedExplorerNormalizer.normalizeWorldExplorerMission(mission);
     }
 
     static getWorldExplorerMissions(worldExplorerState = {}, options = {}) {
-      const fromList = Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : [];
-      const fromSlots = [
-        worldExplorerState.activeMission,
-        ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
-        ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
-      ].filter(Boolean);
-      const byId = new Map();
-      [...fromList, ...fromSlots].forEach((mission) => {
-        if (!mission || typeof mission !== 'object') return;
-        const id = mission.id || `explore-${byId.size}`;
-        const existing = byId.get(id);
-        if (!existing) {
-          byId.set(id, mission);
-          return;
-        }
-        const keepRichArray = (key) => (
-          Array.isArray(mission[key]) && mission[key].length
-            ? mission[key]
-            : (Array.isArray(existing[key]) ? existing[key] : mission[key])
-        );
-        byId.set(id, {
-          ...existing,
-          ...mission,
-          route: keepRichArray('route'),
-          plannedTiles: keepRichArray('plannedTiles'),
-          plannedSites: keepRichArray('plannedSites'),
-          revealedTileIds: keepRichArray('revealedTileIds'),
-        });
-      });
-      const nowMs = this.getEpochNowMs(options);
-      const missions = [...byId.values()].map((mission) => (
-        sharedWorldMarchSystem?.deriveMissionForTime
-          ? sharedWorldMarchSystem.deriveMissionForTime(mission, { nowMs })
-          : mission
-      )).filter(Boolean);
-      global.WorldMarchTrace?.logDedup?.(
-        'presenter:missions',
-        missions.map((mission) => `${mission.id}:${mission.status}:${(mission.revealedTileIds || []).length}`).join(',') || 'none',
-        {
-          nowMs,
-          missions: missions.map((mission) => global.WorldMarchTrace?.summarizeMission?.(mission)),
-        },
-      );
-      return missions;
+      return sharedExplorerNormalizer.getWorldExplorerMissions(worldExplorerState, options);
     }
 
     static getWorldExplorerPlannedTiles(worldExplorerState = {}, options = {}) {
-      const byId = new Map();
-      this.getWorldExplorerMissions(worldExplorerState, options).forEach((mission) => {
-        const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
-        const revealedRouteTileIds = new Set((Array.isArray(mission.route) ? mission.route : [])
-          .filter((step) => step?.revealed)
-          .map((step) => step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`));
-        (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => {
-          if (!tile || typeof tile !== 'object') return;
-          const q = this.toInteger(tile.q);
-          const r = this.toInteger(tile.r);
-          const id = tile.id || `tile_${q}_${r}`;
-          if (!revealedTileIds.has(id) && !revealedRouteTileIds.has(id)) return;
-          byId.set(id, {
-            ...tile,
-            id,
-            q,
-            r,
-            visibility: tile.visibility || 'scouted',
-            discovered: tile.discovered !== false,
-            visible: tile.visible !== false,
-          });
-        });
-      });
-      const plannedTiles = [...byId.values()];
-      global.WorldMarchTrace?.logDedup?.(
-        'presenter:plannedTiles',
-        plannedTiles.map((tile) => tile.id || `tile_${tile.q}_${tile.r}`).join(',') || 'none',
-        {
-          plannedTiles: global.WorldMarchTrace?.summarizePlannedTiles?.(plannedTiles),
-          source: global.WorldMarchTrace?.summarizeWorldExplorerState?.(worldExplorerState),
-        },
-      );
-      return plannedTiles;
+      return sharedExplorerNormalizer.getWorldExplorerPlannedTiles(worldExplorerState, options);
     }
 
     static getWorldExplorerPlannedSites(worldExplorerState = {}, options = {}) {
-      const byId = new Map();
-      this.getWorldExplorerMissions(worldExplorerState, options).forEach((mission) => {
-        const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
-        const routeByTileId = new Map((Array.isArray(mission.route) ? mission.route : []).map((step) => [
-          step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
-          step,
-        ]));
-        (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).forEach((plannedSite) => {
-          if (!plannedSite || typeof plannedSite !== 'object') return;
-          const rawSite = plannedSite.site && typeof plannedSite.site === 'object' ? plannedSite.site : null;
-          const q = this.toInteger(plannedSite.q ?? rawSite?.x);
-          const r = this.toInteger(plannedSite.r ?? rawSite?.y);
-          const tileId = plannedSite.tileId || `tile_${q}_${r}`;
-          const routeStep = routeByTileId.get(tileId);
-          if (!plannedSite.materialized && !plannedSite.revealedAt && !revealedTileIds.has(tileId) && !routeStep?.revealed) return;
-          const id = plannedSite.siteId || rawSite?.id || `site_${q}_${r}`;
-          byId.set(id, {
-            ...(rawSite || {}),
-            id,
-            x: this.toInteger(rawSite?.x ?? q),
-            y: this.toInteger(rawSite?.y ?? r),
-            naturalName: rawSite?.naturalName || rawSite?.cityName || '空城',
-            cityName: rawSite?.cityName || null,
-            type: rawSite?.type || 'town',
-            owner: rawSite?.owner || 'neutral',
-            status: rawSite?.status || 'discovered',
-            art: rawSite?.art || '',
-          });
-        });
-      });
-      const plannedSites = [...byId.values()];
-      global.WorldMarchTrace?.logDedup?.(
-        'presenter:plannedSites',
-        plannedSites.map((site) => site.id || `site_${site.x}_${site.y}`).join(',') || 'none',
-        {
-          plannedSites: {
-            count: plannedSites.length,
-            ids: plannedSites.map((site) => site.id || `site_${site.x}_${site.y}`).slice(0, 8),
-          },
-          source: global.WorldMarchTrace?.summarizeWorldExplorerState?.(worldExplorerState),
-        },
-      );
-      return plannedSites;
+      return sharedExplorerNormalizer.getWorldExplorerPlannedSites(worldExplorerState, options);
     }
 
     static getWorldTileId(q, r) {
-      return `tile_${this.toInteger(q)}_${this.toInteger(r)}`;
+      return sharedExplorerNormalizer.getWorldTileId(q, r);
     }
 
     static buildWorldTileMapViewState(territoryState = {}, options = {}) {

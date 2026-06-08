@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "status": "active",
+  "purpose": "Machine-readable stable block manifest used by scripts/check-stable-blocks.js.",
+  "stableBlocks": [
+    {
+      "id": "stable-block-promotion-matrix",
+      "status": "stable",
+      "owner": "architecture",
+      "files": [
+        "docs/stable_block_promotion_matrix_2026-06-09.md"
+      ],
+      "stableSurface": [
+        "confirmed product and architecture invariants",
+        "stable promotion criteria",
+        "stable candidate classification rules"
+      ],
+      "extensionPaths": [
+        "add new confirmed invariants to the matrix before promoting modules",
+        "update affected module responsibility entries in the same task"
+      ],
+      "allowedReopenReasons": [
+        "bug",
+        "performance",
+        "security",
+        "contract-hardening",
+        "governance-update"
+      ]
+    },
+    {
+      "id": "stable-block-guard",
+      "status": "stable",
+      "owner": "architecture",
+      "files": [
+        "docs/stable_block_manifest_2026-06-09.json",
+        "scripts/check-stable-blocks.js"
+      ],
+      "stableSurface": [
+        "stable block file list",
+        "allowed stable reopen reason vocabulary",
+        "extension path metadata for guarded blocks",
+        "stable manifest validation and stable reopen enforcement"
+      ],
+      "extensionPaths": [
+        "add newly promoted stable files to stableBlocks",
+        "keep candidate modules out of this manifest until promotion is complete"
+      ],
+      "allowedReopenReasons": [
+        "bug",
+        "performance",
+        "security",
+        "contract-hardening",
+        "governance-update"
+      ]
+    }
+  ],
+  "candidatePromotionQueue": [
+    "frontend/js/config/FeatureFlags.js",
+    "frontend/js/config/AssetKeyRegistry.js",
+    "backend/services/GameStateMigrationPipeline.js",
+    "backend/services/worldExplorer/WorldExplorerDtoMapper.js",
+    "frontend/js/domain/WorldMapPerformanceBudget.js",
+    "frontend/js/domain/WorldMapRenderSnapshot.js",
+    "frontend/js/domain/WorldMapEntitySnapshot.js",
+    "frontend/js/domain/WorldMapVisibilityModel.js",
+    "frontend/js/platform/WorldMapRuntimeBakePolicy.js",
+    "frontend/js/platform/WorldMapRuntimeRenderPolicy.js"
+  ],
+  "reopenPolicy": {
+    "environmentFlag": "ALLOW_STABLE_BLOCK_REOPEN",
+    "environmentReason": "STABLE_BLOCK_REOPEN_REASON",
+    "allowedReasons": [
+      "bug",
+      "performance",
+      "security",
+      "contract-hardening",
+      "governance-update"
+    ],
+    "note": "Architecture checks fail when a tracked stable file is changed unless ALLOW_STABLE_BLOCK_REOPEN=1 and STABLE_BLOCK_REOPEN_REASON is one of the allowed reasons."
+  }
+}

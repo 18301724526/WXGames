@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const WorldMapRuntime = require('./WorldMapRuntime');
 
@@ -143,4 +145,136 @@ test('WorldMapRuntime reads tile context from the split world map renderer', () 
   assert.equal(calls[0].type, 'selectWorldMarchTarget');
   assert.equal(calls[0].tileId, 'tile_3_2');
   assert.equal(calls[0].known, false);
+});
+
+test('WorldMapRuntime camera helpers preserve render and hit target side effects', () => {
+  const calls = [];
+  const runtime = new WorldMapRuntime({
+    renderer: { renderWorldMapLayer() {} },
+    presenter: {},
+    getBaseUiState: () => ({ selectedSiteId: 'capital', worldPanX: 4, worldPanY: 5 }),
+    onCameraChanged(camera, options) {
+      calls.push(['camera', camera.x, camera.y, options.source || 'none']);
+    },
+  });
+  runtime.requestRender = (options = {}) => {
+    calls.push(['render', Boolean(options.snapshotOnly), Boolean(options.reuseCachedWorldTileView)]);
+    return true;
+  };
+  runtime.baseHitTargets = [{ x: 10, y: 20, action: { type: 'worldMapDrag' } }];
+  runtime.bakedCamera = { x: 2, y: 3 };
+
+  assert.deepEqual(runtime.syncCameraFromUi(), { x: 4, y: 5 });
+  assert.deepEqual(runtime.getCameraUiState(), {
+    selectedSiteId: 'capital',
+    worldPanX: 4,
+    worldPanY: 5,
+  });
+  assert.equal(runtime.setCamera(12, 8, { source: 'pinchPan', render: false }), true);
+  assert.deepEqual(runtime.dragLayerOffset, { x: 10, y: 5 });
+  assert.deepEqual(runtime.hitTargets[0], { x: 20, y: 25, action: { type: 'worldMapDrag' } });
+  assert.equal(runtime.setCamera(12, 8), false);
+  assert.deepEqual(calls, [
+    ['camera', 12, 8, 'pinchPan'],
+  ]);
+});
+
+test('WorldMapRuntime drag helpers delegate camera math but keep map guards', () => {
+  const calls = [];
+  const runtime = new WorldMapRuntime({
+    renderer: { renderWorldMapLayer() {} },
+    presenter: {},
+    onCameraChanged(camera, options) {
+      calls.push(['camera', camera.x, camera.y, options.source]);
+    },
+  });
+  runtime.canRender = () => true;
+  runtime.isPointInMap = (point) => point.x >= 0 && point.y >= 0;
+  runtime.requestRender = (options = {}) => {
+    calls.push(['render', Boolean(options.snapshotOnly), options.force]);
+    return true;
+  };
+
+  assert.equal(runtime.beginDrag({ pointerId: 1, x: -1, y: 10 }), false);
+  assert.equal(runtime.beginDrag({ pointerId: 1, x: 20, y: 30 }), true);
+  assert.equal(runtime.moveDrag({ pointerId: 2, x: 40, y: 55 }), false);
+  assert.equal(runtime.moveDrag({ pointerId: 1, x: 40, y: 55 }), true);
+  assert.deepEqual(runtime.camera, { x: 20, y: 25 });
+  assert.equal(runtime.endDrag({ pointerId: 2 }), false);
+  assert.equal(runtime.endDrag({ pointerId: 1 }), true);
+  assert.equal(runtime.isDragging(), false);
+  assert.deepEqual(calls, [
+    ['camera', 20, 25, 'drag'],
+    ['render', true, true],
+  ]);
+});
+
+test('WorldMapRuntime input helpers delegate map rect resolution', () => {
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      renderWorldMapLayer() {},
+      getWorldMapLayerLayout() {
+        return { panel: {} };
+      },
+      viewportWidth: 360,
+      viewportHeight: 640,
+      bottomSafeArea: 10,
+    },
+    runtime: {
+      getSystemInfo() {
+        return { windowWidth: 390, windowHeight: 844 };
+      },
+    },
+    presenter: {},
+    getTopBarBottom: () => 48,
+    getState: () => createState(),
+  });
+
+  assert.deepEqual(runtime.getInputMapRect(), {
+    x: 0,
+    y: 48,
+    width: 360,
+    height: 522,
+  });
+  assert.equal(runtime.isPointInMap({ x: 360, y: 570 }), true);
+  assert.equal(runtime.isPointInMap({ x: 361, y: 570 }), false);
+});
+
+test('entrypoints load runtime policies before WorldMapRuntime', () => {
+  const rootDir = path.resolve(__dirname, '../../..');
+  const html = fs.readFileSync(path.join(rootDir, 'frontend/index.html'), 'utf8');
+  const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
+
+  [
+    'WorldMapRuntimeBakePolicy.js',
+    'WorldMapRuntimeCameraPolicy.js',
+    'WorldMapRuntimeInputPolicy.js',
+    'WorldMapRuntimeRenderPolicy.js',
+    'WorldMapRuntimeRenderPipeline.js',
+  ].forEach((scriptName) => {
+    assert.ok(
+      html.indexOf(scriptName) >= 0,
+      `index.html should load ${scriptName}`,
+    );
+    assert.ok(
+      html.indexOf(scriptName) < html.indexOf('WorldMapRuntime.js'),
+      `index.html should load ${scriptName} before WorldMapRuntime`,
+    );
+  });
+  [
+    "require('../js/platform/WorldMapRuntimeBakePolicy')",
+    "require('../js/platform/WorldMapRuntimeCameraPolicy')",
+    "require('../js/platform/WorldMapRuntimeInputPolicy')",
+    "require('../js/platform/WorldMapRuntimeRenderPolicy')",
+    "require('../js/platform/WorldMapRuntimeRenderPipeline')",
+  ].forEach((requireText) => {
+    assert.ok(
+      minigame.indexOf(requireText) >= 0,
+      `minigame should include ${requireText}`,
+    );
+    assert.ok(
+      minigame.indexOf(requireText) < minigame.indexOf("require('../js/platform/WorldMapRuntime')"),
+      `minigame should load ${requireText} before WorldMapRuntime`,
+    );
+  });
 });

@@ -1,0 +1,178 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
+
+class HostController {
+  constructor(host) {
+    this.host = host;
+    this.awaitAsync = true;
+  }
+
+  getGameHost() {
+    return this.host?.lastGame || this.host;
+  }
+
+  getState() {
+    return this.host?.state || this.getGameHost()?.state || {};
+  }
+
+  closePanels(except = []) {
+    const keep = new Set(except);
+    ['showSettings', 'showLogs', 'showAdvisor', 'activeCommandPanel'].forEach((key) => {
+      if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
+    });
+    if (!keep.has('activeEventId') && 'activeEventId' in this.host) this.host.activeEventId = null;
+  }
+
+  forward() {
+    return undefined;
+  }
+
+  finalize(result) {
+    if (!result || typeof result.then !== 'function') return result !== false;
+    return result.then((value) => value !== false);
+  }
+
+  render(action = {}) {
+    this.host.renderCanvasAction?.(action);
+    return true;
+  }
+
+  afterHandled(action) {
+    if (action.type !== 'switchTab' && action.type !== 'goToGuideTaskTarget') this.render(action);
+    return true;
+  }
+
+  handle(action, meta = {}) {
+    const handler = this[`handle_${action.type}`];
+    return handler.call(this, action, meta);
+  }
+}
+
+CanvasShellActionHandlers.install(HostController);
+
+test('CanvasShellActionHandlers installs shell compatibility methods', () => {
+  assert.equal(typeof HostController.prototype.handle_switchTab, 'function');
+  assert.equal(typeof HostController.prototype.handle_openSettings, 'function');
+  assert.equal(typeof HostController.prototype.handle_submitNaming, 'function');
+});
+
+test('switch tab preserves page transition contract after delegated tab selection', async () => {
+  const calls = [];
+  const game = {
+    activeTab: 'military',
+    getActiveTab() {
+      return this.activeTab;
+    },
+    handleCanvasTabSelection(tab) {
+      calls.push(['select', tab]);
+      this.activeTab = tab;
+      return true;
+    },
+  };
+  const host = {
+    buildingOffset: 4,
+    state: { currentTab: 'resources' },
+    lastGame: game,
+    resolveMapHomeViewState(state, options) {
+      calls.push(['resolve', state.currentTab, options.requestedTab]);
+      return { activeTab: options.requestedTab };
+    },
+    startPageTransition(previousTab, nextTab, options) {
+      calls.push(['transition', previousTab, nextTab, options.fromBuildingOffset]);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_switchTab({ type: 'switchTab', tab: 'tech' }), true);
+  assert.deepEqual(calls, [
+    ['select', 'tech'],
+    ['resolve', 'resources', 'tech'],
+  ]);
+});
+
+test('advisor close clears dialogue across shell and game then resumes tutorial', async () => {
+  const calls = [];
+  const game = {
+    showAdvisor: true,
+    tutorialAdvisorDialogue: { source: 'houseBuilt' },
+    canvasShell: null,
+    tutorialController: {
+      async onAdvisorClosed() {
+        calls.push(['closed']);
+        return true;
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refresh']);
+      },
+    },
+  };
+  const host = {
+    showAdvisor: true,
+    tutorialAdvisorDialogue: { source: 'houseBuilt' },
+    lastGame: game,
+    renderer: {
+      clearTutorialAdvisorDialogue() {
+        calls.push(['clear']);
+      },
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  game.canvasShell = host;
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
+  assert.equal(host.showAdvisor, false);
+  assert.equal(game.showAdvisor, false);
+  assert.equal(host.tutorialAdvisorDialogue, null);
+  assert.equal(game.tutorialAdvisorDialogue, null);
+  assert.deepEqual(calls, [['clear'], ['closed'], ['render', 'closeAdvisor'], ['refresh']]);
+});
+
+test('submit naming closes shell and game naming after successful submit', async () => {
+  const calls = [];
+  const game = {
+    submitNaming(name) {
+      calls.push(['submit', name]);
+      return Promise.resolve(true);
+    },
+    closeNamingModal() {
+      calls.push(['gameClose']);
+    },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refresh']);
+      },
+    },
+  };
+  const host = {
+    lastGame: game,
+    getNamingName() {
+      return 'River City';
+    },
+    closeNaming() {
+      calls.push(['hostClose']);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_submitNaming({ type: 'submitNaming' }), true);
+  assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose'], ['refresh']]);
+});
+
+test('shell action handler entrypoints load before CanvasActionController', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');
+
+  assert.equal(html.indexOf('CanvasShellActionHandlers.js') < html.indexOf('CanvasActionController.js'), true);
+  assert.equal(minigame.indexOf("require('../js/platform/CanvasShellActionHandlers')")
+    < minigame.indexOf("require('../js/platform/CanvasActionController')"), true);
+});

@@ -35,3 +35,8 @@ backend/*.backup.*
 backend/*.pre-tick
 backend/*.step*.bak
 backend/data/*.bak*
+
+# Local secrets
+password.txt
+*password*.txt
+*credentials*.txt
