@@ -117,3 +117,46 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
     ['log', 'saved'],
   ]);
 });
+
+test('CanvasGameApp wires authority state refreshes from the sync service', () => {
+  const calls = [];
+  const syncService = {
+    setStateProvider(provider) {
+      calls.push(['setStateProvider']);
+      this.provider = provider;
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    syncService,
+    useWorldMapRuntime: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      worldExplorerState: {
+        activeMission: { id: 'explore-1', status: 'active' },
+      },
+    },
+  });
+  app.applyApiState = (data) => calls.push([
+    'applyApiState',
+    data.gameState.worldExplorerState.idleMissions[0].id,
+  ]);
+
+  syncService.onState({
+    gameState: {
+      worldExplorerState: {
+        activeMission: null,
+        idleMissions: [{ id: 'explore-1', status: 'idle' }],
+      },
+    },
+  });
+
+  assert.equal(syncService.provider(), app.state);
+  assert.deepEqual(calls, [
+    ['setStateProvider'],
+    ['applyApiState', 'explore-1'],
+  ]);
+});

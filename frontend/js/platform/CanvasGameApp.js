@@ -184,12 +184,14 @@
             : null);
           if (this.syncService) {
             if (!this.syncService.onHeartbeat) this.syncService.onHeartbeat = (data) => this.applyHeartbeat(data);
+            if (!this.syncService.onState) this.syncService.onState = (data) => this.applyApiState(data);
             if (!this.syncService.onConnectionState) this.syncService.onConnectionState = (state) => this.applyConnectionState(state);
             if (!this.syncService.onError) {
               this.syncService.onError = (error) => {
                 if (error?.payload?.error && this.handleAuthError) this.handleAuthError(error.payload);
               };
             }
+            this.syncService.setStateProvider?.(() => this.state);
           }
           this.updateChecker = options.updateChecker || null;
           this.networkState = {
