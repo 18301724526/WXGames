@@ -282,6 +282,14 @@ renderActive(options = {}) {
         this.renderer?.invalidateWorldTileViewCache?.();
         this.worldMapRenderer?.invalidateWorldTileViewCache?.();
       }
+      const guideActiveTab = this.tutorialHighlight?.renderActiveTab;
+      if (guideActiveTab) {
+        return this.renderReadOnly(
+          this.lastGame?.state,
+          guideActiveTab,
+          this.tutorialHighlight?.renderOptions || {},
+        );
+      }
       return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
     },
 

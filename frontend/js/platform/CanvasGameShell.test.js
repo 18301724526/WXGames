@@ -665,6 +665,43 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   assert.equal(shell.mapHomeActive, false);
 });
 
+test('CanvasGameShell keeps guided resource render target during active refreshes', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', renderState.currentTab, options.activeTab, options.isMapHome]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    activeTab: 'military',
+    militaryView: 'world',
+    tutorial: {},
+  };
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = () => false;
+  shell.tutorialHighlight = {
+    renderActiveTab: 'resources',
+    renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
+  };
+
+  assert.equal(shell.renderActive(), true);
+
+  assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
+  assert.equal(state.currentTab, 'resources');
+  assert.equal(state.militaryView, 'army');
+  assert.equal(shell.mapHomeActive, false);
+});
+
 test('CanvasGameShell routes map command tech tree drag through command panel hit target', () => {
   const calls = [];
   const shell = new CanvasGameShell({
