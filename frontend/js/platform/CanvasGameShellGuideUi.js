@@ -65,6 +65,25 @@ getGuideCanvasTarget(type, predicate = null) {
 renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
       const activeTab = highlight?.renderActiveTab || this.getActiveTab();
       const renderOptions = highlight?.renderOptions || null;
+      if (highlight?.renderActiveTab) {
+        const renderView = this.resolveMapHomeViewState?.(this.lastGame?.state || {}, {
+          requestedTab: activeTab,
+          militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView,
+          ...(renderOptions || {}),
+        }) || { activeTab, militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView, isMapHome: false };
+        const nextActiveTab = renderView.activeTab || activeTab;
+        const nextMilitaryView = nextActiveTab === 'military' ? renderView.militaryView : 'army';
+        this.mapHomeActive = Boolean(renderView.isMapHome);
+        if (this.lastGame && typeof this.lastGame === 'object') {
+          if ('activeTab' in this.lastGame) this.lastGame.activeTab = nextActiveTab;
+          if ('militaryView' in this.lastGame && nextMilitaryView) this.lastGame.militaryView = nextMilitaryView;
+          if ('mapHomeActive' in this.lastGame) this.lastGame.mapHomeActive = Boolean(renderView.isMapHome);
+          if (this.lastGame.state && typeof this.lastGame.state === 'object') {
+            this.lastGame.state.currentTab = nextActiveTab;
+            if (nextMilitaryView) this.lastGame.state.militaryView = nextMilitaryView;
+          }
+        }
+      }
       if (renderOptions && typeof this.renderReadOnly === 'function') {
         return this.renderReadOnly(this.lastGame?.state, activeTab, renderOptions);
       }

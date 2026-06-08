@@ -870,7 +870,12 @@ test('CanvasGameShell re-renders highlighted resource guides outside map home', 
       hitTargets: [],
     },
   });
-  shell.lastGame = { state: { currentTab: 'resources', militaryView: 'army' } };
+  shell.lastGame = {
+    state: { currentTab: 'military', militaryView: 'world' },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+  };
   shell.renderReadOnly = (state, activeTab, options) => {
     calls.push(['renderReadOnly', activeTab, options]);
     return true;
@@ -894,6 +899,11 @@ test('CanvasGameShell re-renders highlighted resource guides outside map home', 
     ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
   ]);
   assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
+  assert.equal(shell.lastGame.state.currentTab, 'resources');
+  assert.equal(shell.lastGame.state.militaryView, 'army');
+  assert.equal(shell.lastGame.activeTab, 'resources');
+  assert.equal(shell.lastGame.militaryView, 'army');
+  assert.equal(shell.lastGame.mapHomeActive, false);
 });
 
 test('CanvasGameShell stores original guide target action for highlight hit forwarding', () => {

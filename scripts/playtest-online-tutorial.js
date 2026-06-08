@@ -640,15 +640,22 @@ async function fillNamingIfOpen(page) {
   if (!state.naming?.visible) return null;
   if (!String(state.naming.inputValue || '').trim()) {
     await writeSnapshot(page, `naming-before-fill-step-${state.tutorialStep}`, state);
-    await page.evaluate(() => {
+    const promptType = state.naming?.prompt?.type
+      || state.naming?.view?.prompt?.type
+      || state.naming?.view?.type
+      || '';
+    const value = promptType === 'polity' ? 'Fireseed' : 'Riverbend';
+    await page.evaluate((nextValue) => {
+      window.__codexNamingAutoValue = nextValue;
+    }, value);
+    await clickByPredicate(page, `request-naming-input-step-${state.tutorialStep}`, (action) => (
+      action.type === 'requestNamingInput' && !action.disabled
+    ), 6000);
+    await page.waitForFunction(() => {
       const game = window.Game;
       const shell = game?.canvasShell;
-      const view = shell?.naming?.view || game?.naming?.view || shell?.naming?.prompt || game?.naming?.prompt || {};
-      const value = view?.type === 'polity' ? 'Fireseed' : 'Riverbend';
-      if (shell?.naming) shell.naming.inputValue = value;
-      if (game?.naming) game.naming.inputValue = value;
-      shell?.renderActive?.();
-    });
+      return Boolean(String(shell?.naming?.inputValue || game?.naming?.inputValue || '').trim());
+    }, null, { timeout: 6000 });
     await waitForRender(page, 300);
   }
   return clickByPredicate(page, `submit-naming-step-${state.tutorialStep}`, (action) => (
@@ -916,6 +923,14 @@ async function main() {
     if (resp.status() >= 400) badResponses.push({ url: resp.url(), status: resp.status() });
   });
   await page.addInitScript(({ token, username }) => {
+    const originalPrompt = window.prompt;
+    window.__codexPromptCalls = [];
+    window.prompt = (message, defaultValue) => {
+      window.__codexPromptCalls.push({ message: String(message || ''), defaultValue: String(defaultValue || '') });
+      if (window.__codexNamingAutoValue !== undefined) return window.__codexNamingAutoValue;
+      if (typeof originalPrompt === 'function') return originalPrompt(message, defaultValue);
+      return defaultValue || '';
+    };
     localStorage.setItem('cf_token', token);
     localStorage.setItem('cf_username', username);
     [
