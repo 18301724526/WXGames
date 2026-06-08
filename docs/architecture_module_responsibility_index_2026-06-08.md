@@ -59,6 +59,13 @@
 - `legacy`: oversized or mixed responsibility; do not add new responsibility here.
 - `test`: regression owner.
 
+回归约定 / Regression Convention:
+
+- 每个模块的 `回归 / Regression` 先列自己的 focused command，再列 `npm run test:architecture` if the module is part of the current architecture baseline.
+- `npm run test:architecture` is the required final gate before commit/deploy. It runs baseline syntax checks, all candidate/stable focused tests currently registered in `scripts/run-architecture-smoke.js`, and `git diff --check`.
+- 新 candidate/stable 模块进入 baseline 时，必须同步加入 `scripts/run-architecture-smoke.js` 的 `CHECK_FILES` and, when it has tests, `TEST_FILES`.
+- P3-001 through P3-025 are complete in the plan, but their split modules remain `candidate` here until they have survived longer feature iteration without contract churn.
+
 ## 2. 已完成或候选模块 / Completed Or Candidate Modules
 
 ### `frontend/js/config/GameConfig.js`
@@ -92,6 +99,7 @@
 
 - `node --check frontend/js/config/GameConfig.js`
 - feature consumers should have focused tests.
+- `npm run test:architecture`
 
 ### `frontend/js/config/FeatureFlags.js`
 
@@ -118,6 +126,7 @@
 回归 / Regression:
 
 - `node --test frontend/js/config/FeatureFlags.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/config/AssetKeyRegistry.js`
 
@@ -159,6 +168,7 @@
 回归 / Regression:
 
 - `node --test frontend/js/config/AssetKeyRegistry.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasLayerRegistry.js`
 
@@ -194,6 +204,7 @@
 回归 / Regression:
 
 - `node --test frontend/js/platform/CanvasLayerRegistry.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameShell.js`
 
@@ -234,6 +245,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameShellMounting.js`
 
@@ -261,6 +273,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameShellWorldMapRuntime.js`
 
@@ -305,6 +318,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldFogCanvasRenderer.js`
 
@@ -334,6 +348,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/CanvasPreloadAssetManifest.js`
 
@@ -372,6 +387,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapVisibilityModel.js`
 
@@ -413,6 +429,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/domain/WorldMapVisibilityModel.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapEntitySnapshot.js`
 
@@ -453,6 +470,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/domain/WorldMapEntitySnapshot.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapPerformanceBudget.js`
 
@@ -484,7 +502,7 @@ P0 新增公开 API / Public API Added During P0:
 
 扩展方式 / Extension Path:
 
-- 新的大地图 snapshot 或 cache policy 先增加 check，再加入 tests 和 architecture smoke。
+- 新的大地图 snapshot 或 cache policy 先增加 check，再加入 tests 和 architecture baseline。
 - 如需真实帧耗时采样，作为 meta 或单独 perf smoke，不替代结构预算。
 - 不要在 gameplay/render hot path 每帧调用预算检查；它是测试/诊断边界。
 
@@ -581,6 +599,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test frontend/js/domain/WorldMarchSystem.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js`
+- `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapRenderSnapshot.js`
 
@@ -2057,6 +2076,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test backend/tests/GameStateRepository.test.js`
+- `npm run test:architecture`
 
 ### `backend/services/worldExplorer/WorldExplorerDtoMapper.js`
 
@@ -2125,6 +2145,7 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js`
+- `npm run test:architecture`
 
 ### `scripts/run-architecture-smoke.js`
 
@@ -2132,9 +2153,9 @@ P0 新增公开 API / Public API Added During P0:
 
 负责 / Owns:
 
-- P0/P1/P2 refactor base 的快速架构回归
+- P0/P1/P2/P3 candidate/stable baseline 的快速架构回归
 - 架构相关文件语法检查 / syntax checks
-- feature flags、asset key registry、preload asset manifest、layer registry、shell lifecycle、frozen fog renderer、world map snapshots、world map performance budget、march progress snapshot、world map render snapshot、fog visual snapshot、visual plugin registry、debug overlay snapshot、debug overlay registry、world map input action map、world map renderer split modules、game state migration pipeline、world explorer DTO mapper 的 focused tests
+- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, game state migration pipeline, and world explorer DTO mapper
 - `git diff --check`
 
 公开命令 / Public Command:
@@ -2143,23 +2164,20 @@ P0 新增公开 API / Public API Added During P0:
 
 扩展方式 / Extension Path:
 
-- 新的 stable/candidate 架构模块成为 baseline 后，把语法检查加入这里。
-- P0/P1 边界成为强约束后，把 focused test 加入这里。
+- 新的 stable/candidate 架构模块成为 baseline 后，把语法检查加入 `CHECK_FILES`。
+- 新 baseline 模块有 focused test 时，把测试文件加入 `TEST_FILES`。
 - 不要加入耗时全量测试；这个脚本必须足够快，适合每个小步重构后运行。
+- `smoke` is a historical filename; the command is the mandatory architecture baseline regression gate before commit/deploy.
 
 回归 / Regression:
 
 - `npm run test:architecture`
 
-## 3. 遗留或未完成模块 / Legacy Or Not Yet Completed Modules
-
-These files are not "bad"; they are high-risk because they own too many responsibilities. New feature work should avoid adding more responsibility to them.
-
 ### `frontend/js/platform/renderers/WorldMapCanvasRenderer.js` - 718 lines
 
-状态 / Status: active-refactor facade
+状态 / Status: candidate facade
 
-当前负责 / Currently Owns:
+负责 / Owns:
 
 - world tile drawing
 - compatibility facade dependency consumption through `WorldMapRendererDependencyRegistry`
@@ -2225,11 +2243,12 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - delegated actor/HUD helpers: `renderWorldScoutUnits()`, `renderWorldActors()`, `addWorldActorHitTargets()`, `renderWorldMarchHud()`, `getNearestWorldTileAtPoint()`, `getEpochNowMs()`
 - `lastWorldTileMapContext.renderSnapshot`
 
-目标拆分 / Target Split:
+候选边界说明 / Candidate Boundary Notes:
 
-1. Extract remaining legacy radar/non-tile world map view rendering.
-2. Extract remaining fog context capture handoff once fog rebuild resumes.
-3. Keep this file as a facade after extraction.
+- P3-001 through P3-025 are complete for the world-map renderer split. This file is no longer classified as a legacy blocker.
+- It remains a compatibility facade because older callers still use the historical public method names.
+- Its remaining direct ownership is limited to the world-map renderer facade surface and low-level drawing compatibility; new feature logic still belongs in the split modules listed above.
+- If future work wants to shrink the facade further, add a new roadmap item instead of treating P3 as incomplete.
 
 当前扩展方式 / Extension Path Now:
 
@@ -2263,6 +2282,15 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - P3-023 后，新 renderer/facade dependency 先扩展 `WorldMapRendererDependencyRegistry`；不要在本文件顶部新增重复 `global`/`require` 解析块。
 - P3-024 后，新 child renderer/facade composition 先扩展 `WorldMapRendererCompositionFactory`；不要在本文件 constructor 新增实例化分支。
 - P3-025 后，新 legacy host compatibility proxy behavior 先扩展 `WorldMapRendererHostBridge`；不要在本文件 constructor 新增 proxy 分支。
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapRendererCompositionFactory.test.js frontend/js/platform/renderers/WorldMapRendererHostBridge.test.js`
+- `npm run test:architecture`
+
+## 3. 遗留或未完成模块 / Legacy Or Not Yet Completed Modules
+
+These files are not "bad"; they are high-risk because they own too many responsibilities. New feature work should avoid adding more responsibility to them.
 
 ### `frontend/js/platform/CanvasActionController.js` - 1727 lines
 
@@ -2473,7 +2501,7 @@ Recommended first split sequence:
 | Date | Change |
 | --- | --- |
 | 2026-06-08 | Created module responsibility index. Added completed P0 modules, current public APIs, extension paths, and P0-005 oversized-module split order. |
-| 2026-06-08 | Added architecture smoke script responsibility and public command `npm run test:architecture`. |
+| 2026-06-08 | Added architecture baseline script responsibility and public command `npm run test:architecture`; `run-architecture-smoke.js` remains the historical script filename. |
 | 2026-06-08 | Standardized documentation style: Chinese-first explanations with English module/API/architecture keyword labels. |
 | 2026-06-08 | Added `WorldMapVisibilityModel` candidate module with compact visibility snapshot API and performance constraints. |
 | 2026-06-08 | Added `WorldMapEntitySnapshot` candidate module for normalized world map entities/components with compact indexes. |
@@ -2511,3 +2539,5 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMapRendererDependencyRegistry` candidate module for P3-023; `WorldMapCanvasRenderer` now consumes registry-backed dependencies and dropped to 822 lines. |
 | 2026-06-08 | Added `WorldMapRendererCompositionFactory` candidate module for P3-024; `WorldMapCanvasRenderer` now delegates child renderer/facade composition and dropped to 741 lines. |
 | 2026-06-08 | Added `WorldMapRendererHostBridge` candidate module for P3-025; `WorldMapCanvasRenderer` now delegates legacy host compatibility proxy behavior and dropped to 718 lines. |
+| 2026-06-08 | Reclassified `WorldMapCanvasRenderer` as a `candidate facade` after P3-001 through P3-025 passed architecture regression; P3 split modules remain `candidate` while their contracts are observed through later feature work. |
+| 2026-06-08 | Standardized regression documentation: module entries list focused commands plus `npm run test:architecture`, and the architecture command is documented as the baseline gate covering registered candidate/stable tests, syntax checks, and `git diff --check`. |

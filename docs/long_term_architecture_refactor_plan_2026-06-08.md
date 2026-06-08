@@ -156,7 +156,7 @@ P0 work removes high-risk coupling and creates regression locks. The game must r
 | P0-003 | Define frontend feature flag contract | Feature flags are centralized under `GameConfig.FEATURES`, resolved through `FeatureFlags`, and passed into shell/app constructors. | `node --test frontend/js/config/FeatureFlags.test.js frontend/js/platform/CanvasGameShell.test.js` |
 | P0-004 | Lock render shell responsibilities | `CanvasGameShell` owns canvas layer lifecycle through `CanvasLayerRegistry`; renderers keep drawing responsibilities. | `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/CanvasGameShell.test.js` |
 | P0-005 | Inventory oversized modules | `architecture_module_responsibility_index_2026-06-08.md` lists completed modules, legacy modules above 500 lines, public APIs, extension paths, and split order. | documentation review |
-| P0-006 | Add smoke command set | `npm run test:architecture` runs the P0 architecture syntax checks, focused tests, and `git diff --check`. | `npm run test:architecture` |
+| P0-006 | Add architecture baseline command set | `npm run test:architecture` runs registered candidate/stable architecture syntax checks, focused tests, and `git diff --check`. `smoke` remains the historical script filename, but the command is the required baseline regression gate. | `npm run test:architecture` |
 
 ### P1 - 抽取稳定玩法积木 / Extract Stable Gameplay Blocks
 
@@ -253,13 +253,21 @@ Every implementation step should finish with:
 
 - syntax check for touched JS files
 - focused unit tests for touched behavior
+- `npm run test:architecture` before commit/deploy when the touched module is in the candidate/stable architecture baseline
 - `git status --short`
 - note in this document if the step changes architectural direction
 
 代码层优先 / Code-Level First:
 
-- 能用 Node tests、syntax checks、architecture smoke 闭环的步骤，不再要求开发者打开游戏手测。
+- 能用 Node tests、syntax checks、architecture baseline 闭环的步骤，不再要求开发者打开游戏手测。
 - 只有当改动触达真实输入、Canvas 像素、浏览器兼容、资源加载或线上部署风险时，才把 browser/playtest 作为额外验收。
+
+命令选择 / Which Command To Run:
+
+- Run the step's focused command first while developing; it is the fastest signal for the module you just changed.
+- Run `npm run test:architecture` before commit/deploy. It must include every candidate/stable baseline module's syntax check and focused test as those modules enter the baseline.
+- If a focused command is not yet registered in `scripts/run-architecture-smoke.js`, add it to `CHECK_FILES` and/or `TEST_FILES` in the same step that promotes the module into the baseline.
+- P3-001 through P3-025 are done in this plan. Their modules remain `candidate` in the responsibility index until later feature work proves the contracts stable.
 
 P0-001 快速命令 / Suggested Quick Command:
 
@@ -302,7 +310,7 @@ git diff --check
 - Update `docs/architecture_module_responsibility_index_2026-06-08.md` whenever a module responsibility, public API, extension path, or stability status changes.
 - Update this plan's current status table whenever a P0/P1/P2 step changes status.
 
-架构 smoke / Architecture Smoke:
+架构基线回归 / Architecture Baseline Regression:
 
 ```powershell
 npm run test:architecture
@@ -592,7 +600,7 @@ node --test frontend/js/platform/renderers/WorldMapRendererHostBridge.test.js fr
 | P0-003 | done | `FeatureFlags` is the single frontend feature-flag resolver. Regression passed: `node --test frontend/js/config/FeatureFlags.test.js frontend/js/platform/CanvasGameShell.test.js`. |
 | P0-004 | done | `CanvasLayerRegistry` defines shell-owned layer contracts; world map/fog lifecycle calls now go through shell helpers. Regression passed: `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/config/FeatureFlags.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js`. |
 | P0-005 | done | Added `architecture_module_responsibility_index_2026-06-08.md` with completed module responsibilities, unresolved legacy modules, public APIs, extension paths, and first split order. |
-| P0-006 | done | Added `scripts/run-architecture-smoke.js` and `npm run test:architecture` for repeatable P0 architecture regression. |
+| P0-006 | done | Added `scripts/run-architecture-smoke.js` and `npm run test:architecture` for repeatable architecture baseline regression; `smoke` remains the historical script filename. |
 | P1-001 | done | Added `WorldMapVisibilityModel` as a pure domain model for compact visibility snapshots. Performance constraint: parallel arrays + O(1) `indexById`, no renderer dependencies, no `JSON.stringify` signatures. Regression is included in `npm run test:architecture`. |
 | P1-002 | done | Added `WorldMapEntitySnapshot` as a pure domain snapshot for tiles/sites/missions/actors. Performance constraint: flat entity arrays + O(1) per-kind indexes, no deep-copy entity maps. Regression is included in `npm run test:architecture`. |
 | P1-003 | done | Added `WorldMarchProgressSnapshot` as a pure march boundary for mission progress rows, actor rows, and arrival result rows. `WorldMarchSystem` keeps its old public API as a compatibility facade for geometry/input helpers and delegates march calculation to the snapshot module. Performance constraint: flat arrays + O(1) indexes, incremental signatures, large-mission regression, no renderer dependencies. Regression is included in `npm run test:architecture`. |
