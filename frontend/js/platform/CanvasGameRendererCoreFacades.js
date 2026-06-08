@@ -431,24 +431,35 @@
       if (!this.presenter?.buildWorldTileMapViewState) return null;
       const panX = Number(uiState.worldPanX) || 0;
       const panY = Number(uiState.worldPanY) || 0;
+      const worldExplorerState = options.worldExplorerState || {};
+      const viewOptions = {
+        panX,
+        panY,
+        worldExplorerState,
+        epochNowMs: options.epochNowMs,
+        serverNowMs: options.serverNowMs,
+      };
+      const currentSignature = typeof this.presenter.getWorldTileMapSignature === 'function'
+        ? String(this.presenter.getWorldTileMapSignature(territoryState, worldExplorerState, viewOptions) ?? '')
+        : null;
       const cached = this.worldTileViewCache;
       const canReuse = Boolean(options.reuseCachedWorldTileView
         && cached
-        && cached.territoryState === territoryState);
+        && cached.territoryState === territoryState
+        && (
+          currentSignature !== null
+            ? cached.signature === currentSignature
+            : cached.worldExplorerState === worldExplorerState
+        ));
       if (canReuse) {
         cached.view.pan = { x: panX, y: panY };
         return cached.view;
       }
-      const view = this.presenter.buildWorldTileMapViewState(territoryState, {
-        panX,
-        panY,
-        worldExplorerState: options.worldExplorerState || {},
-        epochNowMs: options.epochNowMs,
-        serverNowMs: options.serverNowMs,
-      });
+      const view = this.presenter.buildWorldTileMapViewState(territoryState, viewOptions);
       this.worldTileViewCache = {
         territoryState,
-        signature: view?.signature || '',
+        worldExplorerState,
+        signature: view?.signature || currentSignature || '',
         view,
       };
       return view;
