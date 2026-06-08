@@ -14,6 +14,7 @@ PM2_APP_NAME="server"
 API_PORT="${PORT:-3000}"
 ALLOWED_WORK_TREE="/www/wwwroot/h5"
 ALLOWED_FRONTEND_PUBLIC_DIR="/www/wwwroot/h5"
+DEFAULT_REPO_GIT_DIR="/home/git/wxgame.git"
 COCOS_PROJECT_ROOT="/www/wwwroot/civilization-fire-next"
 
 normalize_configured_path() {
@@ -95,7 +96,15 @@ resolve_git_dir() {
         normalize_path "$REPO_GIT_DIR"
         return
     fi
+    if [ -d "$DEFAULT_REPO_GIT_DIR" ]; then
+        normalize_path "$DEFAULT_REPO_GIT_DIR"
+        return
+    fi
     if [ -d "$WORK_TREE/.git" ]; then
+        if [ "${ALLOW_WORK_TREE_GIT_DEPLOY:-0}" != "1" ]; then
+            echo "[Deploy] Refusing to deploy from $WORK_TREE/.git. Set REPO_GIT_DIR=$DEFAULT_REPO_GIT_DIR or ALLOW_WORK_TREE_GIT_DEPLOY=1 intentionally." >&2
+            return 1
+        fi
         normalize_path "$WORK_TREE/.git"
         return
     fi
@@ -112,6 +121,16 @@ resolve_git_dir() {
 
 git_repo() {
     git --git-dir="$GIT_DIR_PATH" --work-tree="$WORK_TREE" "$@"
+}
+
+write_deploy_version() {
+    local deployed_commit
+    local deployed_at
+
+    deployed_commit="$(git_repo rev-parse "$BRANCH")"
+    deployed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    node -e "const fs=require('fs'); const data={branch:process.argv[1],commit:process.argv[2],deployedAt:process.argv[3],workTree:process.argv[4],frontendPublicDir:process.argv[5]}; fs.writeFileSync(process.argv[6], JSON.stringify(data, null, 2) + '\n');" \
+        "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$FRONTEND_PUBLIC_DIR/.wxgame-deploy-version.json"
 }
 
 read_config_version() {
@@ -313,6 +332,7 @@ fi
 
 echo "[Deploy] 发布前端静态文件..."
 publish_frontend_assets
+write_deploy_version
 
 echo "[Deploy] 同步 shared/ 目录..."
 ensure_shared_link
