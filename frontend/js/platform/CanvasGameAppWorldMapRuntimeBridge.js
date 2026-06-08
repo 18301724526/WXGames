@@ -6,14 +6,11 @@
 
   const WORLD_MAP_RUNTIME_METHODS = Object.freeze({
     getFrozenWorldMapWaterTimeMs() {
-      if (
-        this.worldMapDragWaterTimeMs === null
-        || this.worldMapDragWaterTimeMs === undefined
-        || !Number.isFinite(Number(this.worldMapDragWaterTimeMs))
-      ) {
-        this.worldMapDragWaterTimeMs = this.now();
-      }
-      return this.worldMapDragWaterTimeMs;
+      return this.worldMapDragWaterTimeMs !== null
+        && this.worldMapDragWaterTimeMs !== undefined
+        && Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+        ? Number(this.worldMapDragWaterTimeMs)
+        : this.now();
     },
 
     isWorldMapDragging() {

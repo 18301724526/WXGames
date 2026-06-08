@@ -32,6 +32,8 @@ test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and coo
   app.worldMapPinchDragging = true;
 
   assert.equal(app.getFrozenWorldMapWaterTimeMs(), 1000);
+  assert.equal(app.isWorldMapDragging(), false);
+  assert.equal(app.startWorldMapSnapshotDrag(), 1000);
   assert.equal(app.isWorldMapDragging(), true);
   now = 1200;
   app.finishWorldMapSnapshotDrag();

@@ -34,6 +34,8 @@ test('CanvasGameShellWorldMapDragRuntime tracks drag water time and cooldown', (
   const shell = createShell();
 
   assert.equal(shell.getFrozenWorldMapWaterTimeMs(), 1000);
+  assert.equal(shell.isWorldMapDragging(), false);
+  assert.equal(shell.startWorldMapSnapshotDrag(), 1000);
   assert.equal(shell.isWorldMapDragging(), true);
   shell.setNow(1200);
   assert.equal(shell.finishWorldMapSnapshotDrag(), true);

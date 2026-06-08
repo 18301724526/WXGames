@@ -20,14 +20,9 @@
       },
 
       getFrozenWorldMapWaterTimeMs() {
-        if (
-          this.worldMapDragWaterTimeMs === null
-          || this.worldMapDragWaterTimeMs === undefined
-          || !Number.isFinite(Number(this.worldMapDragWaterTimeMs))
-        ) {
-          this.worldMapDragWaterTimeMs = this.now();
-        }
-        return this.worldMapDragWaterTimeMs;
+        return WorldMapRuntimePolicy.hasNumber(this.worldMapDragWaterTimeMs)
+          ? Number(this.worldMapDragWaterTimeMs)
+          : this.now();
       },
 
       isWorldMapDragging() {
