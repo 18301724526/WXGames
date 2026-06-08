@@ -168,6 +168,41 @@ test('submit naming closes shell and game naming after successful submit', async
   assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose'], ['refresh']]);
 });
 
+test('submit naming prefers game promise instead of boolean forward result', async () => {
+  const calls = [];
+  const game = {
+    submitNaming(name) {
+      calls.push(['submit', name]);
+      return Promise.resolve(true);
+    },
+    closeNamingModal() {
+      calls.push(['gameClose']);
+    },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refresh']);
+      },
+    },
+  };
+  const host = {
+    lastGame: game,
+    getNamingName() {
+      return 'River City';
+    },
+    closeNaming() {
+      calls.push(['hostClose']);
+    },
+  };
+  const controller = new HostController(host);
+  controller.forward = (action) => {
+    calls.push(['forward', action.type]);
+    return true;
+  };
+
+  assert.equal(await controller.handle_submitNaming({ type: 'submitNaming' }), true);
+  assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose'], ['refresh']]);
+});
+
 test('shell action handler entrypoints load before CanvasActionController', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');

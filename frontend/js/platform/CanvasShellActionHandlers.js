@@ -328,13 +328,13 @@
 
       handle_submitNaming(action) {
         const name = action.name || this.host?.getNamingName?.();
-        const forwarded = this.forward({ ...action, name });
-        if (forwarded !== undefined) return this.finalizeNamingSubmit(forwarded, action);
         const game = this.getGameHost();
         const result = typeof game?.submitNaming === 'function'
           ? game.submitNaming(name)
           : this.host?.submitNaming?.();
-        return this.finalizeNamingSubmit(result, action);
+        if (result !== undefined) return this.finalizeNamingSubmit(result, action);
+        const forwarded = this.forward({ ...action, name });
+        return forwarded === undefined ? false : this.finalizeNamingSubmit(forwarded, action);
       },
 
       handle_blockCanvasModal() {
