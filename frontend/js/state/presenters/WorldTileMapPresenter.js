@@ -194,6 +194,24 @@
       });
       const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const territoryById = new Map(territories.map((site) => [site.id, site]));
+      territories.forEach((site) => {
+        if (!site?.id) return;
+        const q = this.toInteger(site.x ?? site.q);
+        const r = this.toInteger(site.y ?? site.r);
+        const tileId = this.getWorldTileId(q, r);
+        const existing = rawTileById.get(tileId);
+        rawTileById.set(tileId, {
+          ...(existing || { id: tileId, q, r, terrain: site.mapTerrain || site.terrain || 'plains' }),
+          id: tileId,
+          q: this.toInteger(existing?.q ?? q),
+          r: this.toInteger(existing?.r ?? r),
+          terrain: existing?.terrain || site.mapTerrain || site.terrain || 'plains',
+          visibility: existing?.visibility || (site.owner === 'player' ? 'controlled' : 'scouted'),
+          discovered: existing?.discovered !== false,
+          visible: existing?.visible !== false,
+          siteId: existing?.siteId || site.id,
+        });
+      });
       const plannedSites = this.getWorldExplorerPlannedSites(worldExplorerState, options)
         .filter((site) => !territoryById.has(site.id));
       plannedSites.forEach((site) => {

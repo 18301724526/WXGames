@@ -274,6 +274,55 @@ test('UIStatePresenter reveals manual world march planned tiles by route time', 
   assert.equal(doneView.activeScouts.find((mission) => mission.id === 'manual-1').status, 'idle');
 });
 
+test('UIStatePresenter binds discovered territory sites back onto world tiles', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'site-bind-seed',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', visibility: 'controlled' },
+        { id: 'tile_2_2', q: 2, r: 2, terrain: 'plains', siteId: null, visibility: 'scouted' },
+      ],
+    },
+    territories: [
+      { id: 'capital', x: 0, y: 0, type: 'capital', owner: 'player', status: 'occupied', cityName: 'Capital' },
+      {
+        id: 'site_2_2',
+        x: 2,
+        y: 2,
+        type: 'town',
+        owner: 'neutral',
+        status: 'discovered',
+        naturalName: 'Clear Spring',
+        art: 'assets/art/world-site-town-cutout.png',
+      },
+    ],
+  };
+
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState, {
+    worldExplorerState: {
+      idleMissions: [{
+        id: 'manual-1',
+        status: 'idle',
+        route: [
+          { q: 1, r: 1, step: 1, tileId: 'tile_1_1', revealed: true },
+          { q: 2, r: 2, step: 2, tileId: 'tile_2_2', revealed: true },
+        ],
+        plannedTiles: [
+          { id: 'tile_1_1', q: 1, r: 1, terrain: 'plains' },
+          { id: 'tile_2_2', q: 2, r: 2, terrain: 'plains', siteId: null },
+        ],
+        revealedTileIds: ['tile_1_1', 'tile_2_2'],
+      }],
+    },
+  });
+  const discoveredTile = view.tiles.find((tile) => tile.id === 'tile_2_2');
+
+  assert.equal(discoveredTile.siteId, 'site_2_2');
+  assert.equal(discoveredTile.site.id, 'site_2_2');
+  assert.equal(view.sites.some((site) => site.id === 'site_2_2' && site.tileId === 'tile_2_2'), true);
+});
+
 test('UIStatePresenter delegates famous person view state while preserving facade contracts', () => {
   const state = {
     famousPersons: {
