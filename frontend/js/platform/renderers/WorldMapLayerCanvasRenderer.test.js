@@ -387,6 +387,68 @@ test('CanvasGameRenderer exposes map-home world march HUD picker target through 
     && target.action.tileId === 'tile_2_2'), true);
 });
 
+test('CanvasGameRenderer keeps discovered world site targets after map runtime collection', () => {
+  const renderer = new CanvasGameRenderer({
+    ctx: createCtx(),
+    presenter: {
+      buildMilitaryNavigationViewState() {
+        return { activeView: 'world' };
+      },
+      buildMilitaryViewState() {
+        return { formations: [] };
+      },
+      buildWorldTileMapViewState() {
+        return {
+          seed: 'test-seed',
+          pan: { x: 0, y: 0 },
+          geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+          tiles: [{
+            id: 'tile_2_2',
+            q: 2,
+            r: 2,
+            terrain: 'plains',
+            terrainLabel: 'Plains',
+            discovered: true,
+            visible: true,
+            siteId: 'site_2_2',
+            site: {
+              id: 'site_2_2',
+              type: 'town',
+              owner: 'neutral',
+              status: 'discovered',
+              name: 'Spring Town',
+              art: 'assets/art/world-site-town-cutout.png',
+              scale: 0.46,
+            },
+          }],
+          sites: [{ id: 'site_2_2', tileId: 'tile_2_2' }],
+        };
+      },
+    },
+    width: 390,
+    height: 844,
+    viewportWidth: 390,
+    viewportHeight: 844,
+  });
+
+  renderer.collectMapHomeWorldSiteHitTargets({
+    activeCityId: 'capital',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [] } },
+    worldExplorerState: { idleMissions: [] },
+  }, 96, { territoryUiState: {} });
+
+  assert.equal(renderer.hitTargets.some((target) => (
+    target.action.type === 'openWorldSite'
+    && target.action.siteId === 'site_2_2'
+    && target.action.tileId === 'tile_2_2'
+  )), true);
+  assert.equal(renderer.hitTargets.some((target) => (
+    target.action.type === 'selectWorldMarchTarget'
+    && target.action.tileId === 'tile_2_2'
+  )), true);
+});
+
 test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
   const host = createHost({ pixelRatio: 2 });
   const renderer = new WorldMapLayerCanvasRenderer({ host });

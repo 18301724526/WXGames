@@ -10,7 +10,7 @@ const CONFIG = {
   password: process.env.PLAYTEST_PASSWORD || '123456',
   resetAccount: process.env.PLAYTEST_RESET_ACCOUNT !== '0',
   headless: process.env.PLAYTEST_HEADLESS !== '0',
-  maxActions: Number(process.env.PLAYTEST_MAX_ACTIONS || 48),
+  maxActions: Number(process.env.PLAYTEST_MAX_ACTIONS || 72),
   viewportWidth: Number(process.env.PLAYTEST_VIEWPORT_WIDTH || 1365),
   viewportHeight: Number(process.env.PLAYTEST_VIEWPORT_HEIGHT || 768),
   outputRoot: process.env.PLAYTEST_OUTPUT_DIR || path.join('.local-logs', 'online-tutorial'),
@@ -186,6 +186,28 @@ function findTarget(state, predicate) {
   return null;
 }
 
+function getFirstCitySiteId(state = {}) {
+  const grantSiteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId;
+  if (grantSiteId) return grantSiteId;
+  const explorer = state.stateSummary?.worldExplorerState || {};
+  for (const bucket of ['readyMissions', 'idleMissions', 'missions']) {
+    const missions = Array.isArray(explorer[bucket]) ? explorer[bucket] : [];
+    for (const mission of missions) {
+      const sites = Array.isArray(mission?.plannedSites) ? mission.plannedSites : [];
+      for (const site of sites) {
+        const siteId = site?.siteId || site?.site?.id;
+        if (siteId) return siteId;
+      }
+    }
+  }
+  const territories = Array.isArray(state.territoryState?.territories) ? state.territoryState.territories : [];
+  const firstNonCapital = territories.find((site) => site?.id && site.id !== 'capital');
+  if (firstNonCapital?.id) return firstNonCapital.id;
+  const tiles = Array.isArray(state.territoryState?.tiles) ? state.territoryState.tiles : [];
+  const firstSiteTile = tiles.find((tile) => tile?.siteId && tile.siteId !== 'capital');
+  return firstSiteTile?.siteId || '';
+}
+
 function toViewportRect(state, target, padding = 0) {
   const canvas = state.canvas || {};
   const frameWidth = Number(canvas.logicalWidth) || Number(canvas.rect?.width) || CONFIG.viewportWidth;
@@ -230,6 +252,10 @@ async function getState(page) {
       || document.querySelector('canvas');
     const rect = canvas?.getBoundingClientRect?.();
     const hitTargets = Array.isArray(renderer?.hitTargets) ? renderer.hitTargets : [];
+    const territoryState = game?.state?.territoryState || {};
+    const worldMap = territoryState.worldMap || {};
+    const worldTiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+    const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
     return {
       title: document.title,
       url: location.href,
@@ -269,6 +295,33 @@ async function getState(page) {
       naming: shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
+      territoryState: {
+        worldMapVersion: worldMap.version || 0,
+        worldMapSeed: worldMap.seed || '',
+        territories: territories.slice(0, 80).map((site) => ({
+          id: site.id,
+          x: site.x ?? site.q,
+          y: site.y ?? site.r,
+          status: site.status,
+          owner: site.owner,
+          type: site.type,
+          cityName: site.cityName,
+          naturalName: site.naturalName,
+        })),
+        tiles: worldTiles
+          .filter((tile) => tile?.siteId || tile?.id === 'tile_2_2' || tile?.id === 'capital-tile' || tile?.id === 'tile_0_0')
+          .slice(0, 120)
+          .map((tile) => ({
+            id: tile.id,
+            q: tile.q,
+            r: tile.r,
+            siteId: tile.siteId || '',
+            terrain: tile.terrain,
+            visibility: tile.visibility,
+            discovered: tile.discovered,
+            visible: tile.visible,
+          })),
+      },
       hitTargets: hitTargets.map((target) => ({
         x: Number(target.x) || 0,
         y: Number(target.y) || 0,
@@ -317,6 +370,68 @@ async function waitForRender(page, ms = 700) {
   await page.waitForTimeout(ms);
   await page.evaluate(() => window.Game?.canvasShell?.renderActive?.());
   await page.waitForTimeout(150);
+}
+
+async function refreshAuthorityStateAndWorldMap(page, label = 'refresh-authority-state') {
+  const result = await page.evaluate(async () => {
+    const game = window.Game || null;
+    const shell = game?.canvasShell || null;
+    const renderer = shell?.renderer || game?.renderer || null;
+    const coordinator = shell?.worldMapRuntimeCoordinator || game?.worldMapRuntimeCoordinator || null;
+    const runtime = coordinator?.getMapRuntime?.() || shell?.worldMapRuntime || game?.worldMapRuntime || null;
+    const api = game?.gameAPI || game?.api || game?.syncService?.api || null;
+    const summary = {
+      fetchedAuthorityState: false,
+      appliedAuthorityState: false,
+      tutorialStep: Number(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0) || 0,
+      invalidated: [],
+    };
+
+    try {
+      if (typeof api?.getState === 'function') {
+        const data = await api.getState();
+        summary.fetchedAuthorityState = true;
+        summary.responseTutorialStep = Number(data?.tutorial?.currentStep ?? data?.gameState?.tutorial?.currentStep ?? 0) || 0;
+        if (typeof game?.applyApiState === 'function') {
+          game.applyApiState(data);
+          summary.appliedAuthorityState = true;
+        } else if (typeof game?.applyState === 'function') {
+          game.applyState(data);
+          summary.appliedAuthorityState = true;
+        }
+      } else if (typeof game?.syncService?.fetchNow === 'function') {
+        await game.syncService.fetchNow();
+        summary.fetchedAuthorityState = true;
+      }
+    } catch (error) {
+      summary.error = error?.message || String(error);
+    }
+
+    try {
+      renderer?.invalidateWorldTileCaches?.();
+      summary.invalidated.push('renderer.invalidateWorldTileCaches');
+    } catch (_) {}
+    try {
+      renderer?.invalidateWorldTileViewCache?.();
+      summary.invalidated.push('renderer.invalidateWorldTileViewCache');
+    } catch (_) {}
+    try {
+      runtime?.invalidateBake?.();
+      summary.invalidated.push('worldMapRuntime.invalidateBake');
+    } catch (_) {}
+    try {
+      shell?.renderActive?.({ invalidateWorldTileView: true });
+      summary.invalidated.push('shell.renderActive');
+    } catch (_) {}
+    try {
+      game?.renderCanvasSurface?.(game?.state?.currentTab || game?.activeTab);
+      summary.invalidated.push('game.renderCanvasSurface');
+    } catch (_) {}
+    return summary;
+  });
+  events.push({ type: 'script', text: `${label}: ${JSON.stringify(sanitize(result))}` });
+  await waitForRender(page, 400);
+  return result;
 }
 
 async function writeSnapshot(page, label, state = null, extra = {}) {
@@ -393,14 +508,19 @@ async function clickTarget(page, label, state, target) {
   return { label, action: sanitize(target.action), step: state.tutorialStep, stepName: STEP_NAMES[state.tutorialStep] || '' };
 }
 
-async function clickByPredicate(page, label, predicate, timeoutMs = 12000) {
+async function clickByPredicate(page, label, predicate, timeoutMs = 12000, options = {}) {
   const start = Date.now();
   let lastState = null;
+  let attempt = 0;
   while (Date.now() - start < timeoutMs) {
+    attempt += 1;
     const state = await getState(page);
     lastState = state;
     const target = findTarget(state, predicate);
     if (target) return clickTarget(page, label, state, target);
+    if (typeof options.onMiss === 'function') {
+      await options.onMiss({ page, state, label, attempt, elapsedMs: Date.now() - start });
+    }
     await waitForRender(page, 300);
   }
   const summary = {
@@ -592,6 +712,100 @@ async function chooseNextAction(page, iteration) {
     }
     await waitForRender(page, 2000);
     return { label: `wait-explore-${iteration}`, action: { type: 'waitExplore' }, step };
+  }
+  if (step === 25) {
+    let siteId = getFirstCitySiteId(state);
+    if (!state.territoryUiState?.selectedSiteId || (siteId && state.territoryUiState.selectedSiteId !== siteId)) {
+      return clickByPredicate(
+        page,
+        `open-first-city-site-${iteration}`,
+        (action) => (
+          action.type === 'openWorldSite' && (!siteId || action.siteId === siteId) && !action.disabled
+        ),
+        18000,
+        {
+          onMiss: async ({ page: missPage, state: missState, attempt }) => {
+            if (attempt !== 1 && attempt % 3 !== 0) return;
+            const refresh = await refreshAuthorityStateAndWorldMap(missPage, `step-25-refresh-${attempt}`);
+            const refreshedState = await getState(missPage);
+            const refreshedSiteId = getFirstCitySiteId(refreshedState);
+            if (refreshedSiteId && refreshedSiteId !== siteId) siteId = refreshedSiteId;
+            if (attempt === 1 || refreshedSiteId || refresh?.error) {
+              await writeSnapshot(missPage, `step-25-refresh-${attempt}`, refreshedState, {
+                requestedSiteId: siteId,
+                refreshedSiteId,
+                refresh,
+                previousState: {
+                  tutorialStep: missState.tutorialStep,
+                  territoryState: missState.territoryState,
+                  territoryUiState: missState.territoryUiState,
+                },
+              });
+            }
+          },
+        },
+      );
+    }
+    return clickByPredicate(page, `conquer-first-city-${iteration}`, (action) => (
+      action.type === 'conquer' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
+    ));
+  }
+  if (step === 26) {
+    const siteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId || state.territoryUiState?.selectedSiteId || '';
+    return clickByPredicate(page, `claim-first-city-${iteration}`, (action) => (
+      action.type === 'claimConquest' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
+    ));
+  }
+  if (step === 27) {
+    const siteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId || state.territoryUiState?.selectedSiteId || '';
+    return clickByPredicate(page, `rename-first-city-${iteration}`, (action) => (
+      action.type === 'renameCity' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
+    ));
+  }
+  if (step === 29) {
+    return clickByPredicate(page, `open-talent-policy-${iteration}`, (action) => (
+      action.type === 'openTalentPolicy' && !action.disabled
+    ));
+  }
+  if (step === 30) {
+    if (!state.talentPolicyOpen && !state.showTalentPolicy) {
+      const opened = findTarget(state, (action) => action.type === 'openTalentPolicy' && !action.disabled);
+      if (opened) return clickTarget(page, `open-talent-policy-${iteration}`, state, opened);
+    }
+    return clickByPredicate(page, `confirm-talent-policy-${iteration}`, (action) => (
+      action.type === 'confirmTalentPolicy' && !action.disabled
+    ));
+  }
+  if (step === 31) {
+    return clickByPredicate(page, `assign-manual-talent-${iteration}`, (action) => (
+      action.type === 'assignJob' && Number(action.delta) !== 0 && !action.disabled
+    ));
+  }
+  if (step === 32) {
+    return clickByPredicate(page, `open-famous-for-seek-${iteration}`, (action) => (
+      action.type === 'openFamousPersons' && !action.disabled
+    ));
+  }
+  if (step === 33) {
+    if (!state.showFamousPersons) {
+      const openFamous = findTarget(state, (action) => action.type === 'openFamousPersons' && !action.disabled);
+      if (openFamous) return clickTarget(page, `open-famous-for-seek-${iteration}`, state, openFamous);
+    }
+    return clickByPredicate(page, `seek-famous-${iteration}`, (action) => (
+      action.type === 'seekFamousPerson' && !action.disabled
+    ));
+  }
+  if (step === 34) {
+    return clickByPredicate(page, `open-final-tech-${iteration}`, (action) => (
+      action.type === 'openCommandPanel' && action.panel === 'tech' && !action.disabled
+    ));
+  }
+  if (step === 35) {
+    const advisor = await closeAdvisorDialogueIfOpen(page);
+    if (advisor) return advisor;
+    await page.evaluate(() => window.Game?.tutorialController?.onAdvisorClosed?.());
+    await waitForRender(page, 500);
+    return { label: `complete-final-tech-direct-${iteration}`, action: { type: 'completeFinalTech' }, step };
   }
 
   await writeSnapshot(page, `blocked-step-${step}-${iteration}`, state);

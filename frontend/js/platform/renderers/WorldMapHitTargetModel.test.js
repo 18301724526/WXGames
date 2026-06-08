@@ -97,6 +97,49 @@ test('WorldMapHitTargetModel creates site hit targets from layout entries', () =
   assert.equal(targets[0].rect.width > 0, true);
 });
 
+test('WorldMapHitTargetModel keeps discovered site targets when asset metrics are not ready', () => {
+  const tileMapView = {
+    geometry,
+    tiles: [{
+      id: 'tile_2_2',
+      q: 2,
+      r: 2,
+      terrain: 'plains',
+      discovered: true,
+      visible: true,
+      siteId: 'site_2_2',
+      site: {
+        id: 'site_2_2',
+        type: 'town',
+        status: 'discovered',
+        owner: 'neutral',
+        art: 'assets/art/world-site-town-cutout.png',
+        scale: 0.46,
+      },
+    }],
+  };
+  const viewport = { originX: 200, originY: 120, panX: 0, panY: 0, scale: 0.5 };
+  const entries = WorldMapLayoutModel.getWorldTileRenderEntries(
+    tileMapView,
+    viewport,
+    { x: 0, y: 0, width: 420, height: 320 },
+    geometry,
+  );
+  const targets = WorldMapHitTargetModel.createWorldTileSiteHitTargets(tileMapView, viewport, entries, {
+    ...createOptions(),
+    analyzeAssetAlphaBounds() {
+      return null;
+    },
+  });
+
+  assert.equal(targets.length, 1);
+  assert.equal(targets[0].action.type, 'openWorldSite');
+  assert.equal(targets[0].action.siteId, 'site_2_2');
+  assert.equal(targets[0].action.tileId, 'tile_2_2');
+  assert.equal(targets[0].rect.width > 0, true);
+  assert.equal(targets[0].rect.height > 0, true);
+});
+
 test('WorldMapHitTargetModel creates march targets for in-frame tiles only', () => {
   const tileMapView = createTileMapView();
   const viewport = { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 };

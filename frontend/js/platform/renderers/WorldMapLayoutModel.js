@@ -64,21 +64,31 @@
 
   function getWorldTileSiteLayout(tile = {}, viewport = {}, geometry = {}, tileWidth = 192, tileHeight = 96, center = null, options = {}) {
     const site = tile.site || null;
-    if (!site?.art || typeof options.analyzeAssetAlphaBounds !== 'function') return null;
-    const metrics = options.analyzeAssetAlphaBounds(site.art);
-    if (!metrics) return null;
+    if (!site?.id) return null;
+    const metrics = site.art && typeof options.analyzeAssetAlphaBounds === 'function'
+      ? options.analyzeAssetAlphaBounds(site.art)
+      : null;
+    const resolvedMetrics = metrics || {
+      x: 0,
+      y: 0,
+      width: 96,
+      height: 88,
+      sourceWidth: 96,
+      sourceHeight: 88,
+      fallback: true,
+    };
     const manifest = getTileMapAssetManifest(options);
     const targetKey = site.overlayKey || manifest.getSiteOverlayKey?.(site.type) || `site:${site.type || 'town'}`;
     const anchor = getWorldOverlayAnchor(tile, viewport, geometry, targetKey, site.offset, center, options);
     const drawW = tileWidth * (Number(site.scale) || 0.46);
-    const drawH = drawW * (metrics.height / Math.max(1, metrics.width));
+    const drawH = drawW * (resolvedMetrics.height / Math.max(1, resolvedMetrics.width));
     const baseX = anchor.x;
     const baseY = anchor.y - tileHeight * 0.16;
     const drawX = baseX - drawW * 0.5;
     const drawY = baseY - drawH * 0.86;
     return {
       site,
-      metrics,
+      metrics: resolvedMetrics,
       baseX,
       baseY,
       drawX,
