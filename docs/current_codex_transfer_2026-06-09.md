@@ -32,6 +32,7 @@ The user also wanted the online tutorial flow verified with screenshots before d
 8de49cce93060794b421b052630153c5a65bc9c3 fix: preserve naming submit promise
 1bb8ba95a67841c8de82f3cdafdea9b6e4cb224d fix: keep guided resource highlights visible
 f185057f2ec0c2c84b14cbb2eb607518f83fd0d4 fix: preserve guide render target during refresh
+fbdc3ca8e30c1514c08bef730df12ae840052411 refactor: add tile topology contracts
 ```
 
 Behavior fixed:
@@ -95,7 +96,7 @@ The online tutorial flow is verified with screenshot evidence. No active online 
 
 ## Current Patch
 
-P11-003 tile topology contract is complete and verified. If this note is read after the next commit, see the latest git log entry for `refactor: add tile topology contracts`.
+P11-003 tile topology contract is complete, verified, committed, pushed, and deployed.
 
 Changed files:
 
@@ -136,13 +137,48 @@ Results:
 - Architecture gate: 401 passed, stable block guard passed, official document guard passed, `git diff --check` passed
 - Full test suite: 768 passed
 
+Deployment checks after `fbdc3ca8e30c1514c08bef730df12ae840052411`:
+
+- Deploy stamp reported commit `fbdc3ca8e30c1514c08bef730df12ae840052411`.
+- Deploy stamp paths were `/www/wwwroot/h5`.
+- API health returned OK.
+- Root page still contained `Cocos Creator`.
+- Root page still contained `civilization-fire-next-client`.
+- Root page did not contain `TileCoord` or `authority-state-refresh-v1`.
+- H5 page contained `TileCoord.js?v=architecture-refactor-tile-topology-v1`.
+- H5 page contained `WorldTopology.js?v=architecture-refactor-tile-topology-v1`.
+- H5 page contained `authority-state-refresh-v1`.
+
+Online tutorial smoke after P11-003 deploy:
+
+```powershell
+$env:PLAYTEST_MAX_ACTIONS='140'; npm.cmd run playtest:online-tutorial
+```
+
+Output:
+
+```text
+F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-09T00-09-38-297Z
+```
+
+Result:
+
+- `stopReason: tutorial-completed`
+- `finalStep: 36`
+- `finalStepName: completed`
+- `tutorialCompleted: true`
+- `actionCount: 59`
+- `evidenceCount: 51`
+- `visualFindings: []`
+- `badResponses: []`
+- `requestFailures: []`
+- `pageErrors: []`
+
 ## Required Next Actions
 
-1. Stage only the P11-003 files and these two current working docs; keep `tools/` untracked.
-2. Commit with message: `refactor: add tile topology contracts`.
-3. Push to `origin/main`.
-4. Push to `private/main` if deployment is desired immediately.
-5. If deployed, verify deploy stamp, API health, Cocos root protection, and optionally rerun `npm.cmd run playtest:online-tutorial`.
+1. Commit and push this documentation update if it is not committed yet.
+2. Keep `tools/` untracked unless the user explicitly asks for it.
+3. Continue P11-004.
 
 ## After This Patch
 

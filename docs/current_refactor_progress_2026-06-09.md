@@ -13,8 +13,8 @@ This is the operational progress note for the current Codex run. It is not a pro
 ## Current Status
 
 - Branch: `main`
-- Latest committed, pushed, and deployed commit before P11-003: `f185057f2ec0c2c84b14cbb2eb607518f83fd0d4`
-- Current architecture patch: P11-003 tile topology contract, verified and ready to commit as `refactor: add tile topology contracts`.
+- Latest committed, pushed, and deployed commit: `fbdc3ca8e30c1514c08bef730df12ae840052411`
+- Current architecture patch: P11-003 tile topology contract, committed as `refactor: add tile topology contracts`.
 - Online H5 URL: `http://47.116.32.216/wxgame/`
 - Protected Cocos root: `http://47.116.32.216/`
 - Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
@@ -96,7 +96,7 @@ The online tutorial flow is currently verified with screenshot evidence. No acti
 
 ## Current Architecture Patch
 
-P11-003 tile topology contract is complete and verified. If this document is read after the next commit, see the latest git log entry for `refactor: add tile topology contracts`.
+P11-003 tile topology contract is complete, verified, committed, pushed, and deployed.
 
 Changed files:
 
@@ -140,14 +140,44 @@ Results:
 - `git diff --check`: passed
 - Full test suite: 768 passed
 
-## Next Required Gates
+Deployment verification after `fbdc3ca8e30c1514c08bef730df12ae840052411`:
 
-For this architecture patch:
+- `/wxgame/.wxgame-deploy-version.json`
+  - `commit`: `fbdc3ca8e30c1514c08bef730df12ae840052411`
+  - `workTree`: `/www/wwwroot/h5`
+  - `frontendPublicDir`: `/www/wwwroot/h5`
+- `http://47.116.32.216:3000/api/health` returned OK.
+- `http://47.116.32.216/` still contains `Cocos Creator`.
+- `http://47.116.32.216/` still contains `civilization-fire-next-client`.
+- `http://47.116.32.216/` does not contain `TileCoord` or `authority-state-refresh-v1`.
+- `http://47.116.32.216/wxgame/` contains `TileCoord.js?v=architecture-refactor-tile-topology-v1`.
+- `http://47.116.32.216/wxgame/` contains `WorldTopology.js?v=architecture-refactor-tile-topology-v1`.
+- `http://47.116.32.216/wxgame/` contains `authority-state-refresh-v1`.
 
-1. Commit with message: `refactor: add tile topology contracts` if not already committed.
-2. Push to `origin/main`.
-3. Push to `private/main` if deployment is desired immediately; it changes entrypoint script loading and is deploy-safe after tests.
-4. If deployed, verify deploy stamp, API health, Cocos root protection, and optionally rerun online tutorial smoke.
+Online tutorial smoke after P11-003 deploy:
+
+```powershell
+$env:PLAYTEST_MAX_ACTIONS='140'; npm.cmd run playtest:online-tutorial
+```
+
+Output:
+
+```text
+F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-09T00-09-38-297Z
+```
+
+Result:
+
+- Stop reason: `tutorial-completed`
+- Final tutorial step: `36`
+- Final step name: `completed`
+- Tutorial completed: `true`
+- Action count: `59`
+- Evidence count: `51`
+- Visual findings: none
+- Bad responses: none
+- Request failures: none
+- Page errors: none
 
 ## Next Architecture Work
 
