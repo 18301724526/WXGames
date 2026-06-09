@@ -193,34 +193,42 @@
         return this.afterHandled(action);
       },
 
+      getSystemUiHost() {
+        const game = this.getGameHost();
+        return game?.canvasShell || this.host?.canvasShell || this.host;
+      },
+
       handle_requestResetGame(action) {
-        const opened = this.host?.openResetConfirm?.({ source: action.source }) !== false;
+        const uiHost = this.getSystemUiHost();
+        if (typeof uiHost?.openResetConfirm !== 'function') return false;
+        const opened = uiHost.openResetConfirm({ source: action.source }) !== false;
         return opened ? true : this.afterHandled(action);
       },
 
       handle_closeConfirmDialog(action) {
-        const closed = this.host?.closeConfirmDialog?.();
+        const closed = this.getSystemUiHost()?.closeConfirmDialog?.();
         return closed !== false;
       },
 
       handle_confirmResetGame(action) {
-        const dialog = this.host?.confirmDialog || {};
+        const uiHost = this.getSystemUiHost();
+        const dialog = uiHost?.confirmDialog || {};
         if (dialog.visible && dialog.kind && dialog.kind !== 'resetGame') return false;
-        this.host?.setConfirmDialogSubmitting?.(true);
+        uiHost?.setConfirmDialogSubmitting?.(true);
         const result = this.getGameHost()?.resetGame?.({ confirmed: true, source: action.source || dialog.source || '' });
         const applyResetView = (success) => {
-          this.host?.setConfirmDialogSubmitting?.(false);
+          uiHost?.setConfirmDialogSubmitting?.(false);
           if (success === false) return false;
-          this.host?.closeConfirmDialog?.();
-          this.host?.resetLocalViewToResources?.({ skipRender: true });
+          uiHost?.closeConfirmDialog?.();
+          uiHost?.resetLocalViewToResources?.({ skipRender: true });
           const game = this.getGameHost();
-          if (game && game !== this.host) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
+          if (game && game !== uiHost) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
           this.render({ ...action, tab: 'military', militaryView: 'world', isMapHome: true });
           return true;
         };
         if (!result || typeof result.then !== 'function') return applyResetView(result);
         return this.finalize(result.then(applyResetView).catch((error) => {
-          this.host?.setConfirmDialogSubmitting?.(false);
+          uiHost?.setConfirmDialogSubmitting?.(false);
           throw error;
         }));
       },

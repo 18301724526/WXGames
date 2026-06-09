@@ -228,6 +228,29 @@ test('reset request opens canvas confirmation before executing reset', async () 
   ]);
 });
 
+test('reset request uses canvas shell when the action host is the game app', async () => {
+  const calls = [];
+  const canvasShell = {
+    openResetConfirm(options) {
+      calls.push(['shellOpenResetConfirm', options.source]);
+      return true;
+    },
+  };
+  const game = {
+    canvasShell,
+    resetGame() {
+      calls.push(['resetGame']);
+      return true;
+    },
+  };
+  const controller = new HostController(game);
+
+  assert.equal(controller.handle_requestResetGame({ type: 'requestResetGame', source: 'debugResetAccount' }), true);
+  assert.deepEqual(calls, [
+    ['shellOpenResetConfirm', 'debugResetAccount'],
+  ]);
+});
+
 test('confirm reset executes reset after canvas confirmation', async () => {
   const calls = [];
   const game = {
