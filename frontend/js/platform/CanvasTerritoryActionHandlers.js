@@ -88,15 +88,57 @@
 
       resetWorldMapCamera(options = {}) {
         const game = this.getGameHost();
+        const render = options.render !== false;
         const runtime = this.host?.ensureWorldMapRuntimeCoordinator?.()?.ensureRuntime?.()
           || game?.ensureWorldMapRuntimeCoordinator?.()?.ensureRuntime?.()
           || this.host?.worldMapRuntime
           || game?.worldMapRuntime;
+        const resetLayerHost = (target = null) => {
+          if (!target || typeof target !== 'object') return false;
+          target.worldMapDragWaterTimeMs = null;
+          target.worldMapDragFrameActive = false;
+          target.worldMapPinchDragging = false;
+          target.deferRenderUntilWorldMapDragEnd = false;
+          if (target.worldMapRuntime) target.worldMapRuntime.waterTimeMs = null;
+          target.clearWorldMapLayerTransform?.();
+          if (!render) return true;
+          if (typeof target.renderWorldMapLayerFrame === 'function') {
+            return target.renderWorldMapLayerFrame({
+              force: true,
+              reuseCachedWorldTileView: false,
+              snapshotOnly: false,
+              waterTimeMs: null,
+            }) !== false;
+          }
+          if (typeof target.requestWorldMapRenderAnimationFrame === 'function') {
+            return target.requestWorldMapRenderAnimationFrame({
+              force: true,
+              reuseCachedWorldTileView: false,
+              snapshotOnly: false,
+              waterTimeMs: null,
+            }) !== false;
+          }
+          return true;
+        };
+        const resetLayerHosts = (...targets) => {
+          const seen = new Set();
+          let handled = false;
+          targets.forEach((target) => {
+            if (!target || typeof target !== 'object' || seen.has(target)) return;
+            seen.add(target);
+            handled = resetLayerHost(target) || handled;
+          });
+          return handled;
+        };
         if (runtime?.resetCamera) {
-          runtime.resetCamera({ source: options.source || 'resetWorldPan', render: options.render !== false });
+          runtime.resetCamera({ source: options.source || 'resetWorldPan', render: false });
           const uiState = this.getSharedTerritoryUiState();
           uiState.worldPanX = 0;
           uiState.worldPanY = 0;
+          resetLayerHosts(game?.canvasShell, this.host, game);
+          if (render && typeof runtime.requestRender === 'function') {
+            runtime.requestRender({ force: true });
+          }
           return true;
         }
         const territory = this.getTerritoryController();
@@ -372,12 +414,12 @@
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
           if (forwarded !== false) {
-            this.resetWorldMapCamera({ source: 'resetWorldPan', render: false });
+            this.resetWorldMapCamera({ source: 'resetWorldPan' });
             this.afterHandled(action);
           }
           return forwarded !== false;
         }
-        this.resetWorldMapCamera({ source: 'resetWorldPan', render: false });
+        this.resetWorldMapCamera({ source: 'resetWorldPan' });
         return this.afterHandled(action);
       },
 

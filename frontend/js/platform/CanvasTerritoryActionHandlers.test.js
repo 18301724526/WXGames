@@ -223,6 +223,10 @@ test('CanvasTerritoryActionHandlers resets runtime world camera for return-home 
   };
   const host = {
     territoryUiState: { worldPanX: 32, worldPanY: -18 },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
     ensureWorldMapRuntimeCoordinator() {
       return {
         ensureRuntime() {
@@ -230,6 +234,10 @@ test('CanvasTerritoryActionHandlers resets runtime world camera for return-home 
           return runtime;
         },
       };
+    },
+    renderWorldMapLayerFrame(options) {
+      calls.push(['renderWorldMapLayerFrame', options]);
+      return true;
     },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
@@ -244,6 +252,13 @@ test('CanvasTerritoryActionHandlers resets runtime world camera for return-home 
   assert.deepEqual(calls, [
     ['ensureRuntime'],
     ['resetCamera', { source: 'resetWorldPan', render: false }],
+    ['clearTransform'],
+    ['renderWorldMapLayerFrame', {
+      force: true,
+      reuseCachedWorldTileView: false,
+      snapshotOnly: false,
+      waterTimeMs: null,
+    }],
     ['render', 'resetWorldPan'],
   ]);
 });
@@ -263,6 +278,10 @@ test('CanvasTerritoryActionHandlers resets local shell camera after forwarded re
       calls.push(['forward', action.type]);
       return true;
     },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
     ensureWorldMapRuntimeCoordinator() {
       return {
         ensureRuntime() {
@@ -270,6 +289,10 @@ test('CanvasTerritoryActionHandlers resets local shell camera after forwarded re
           return runtime;
         },
       };
+    },
+    renderWorldMapLayerFrame(options) {
+      calls.push(['renderWorldMapLayerFrame', options]);
+      return true;
     },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
@@ -285,6 +308,13 @@ test('CanvasTerritoryActionHandlers resets local shell camera after forwarded re
     ['forward', 'resetWorldPan'],
     ['ensureRuntime'],
     ['resetCamera', { source: 'resetWorldPan', render: false }],
+    ['clearTransform'],
+    ['renderWorldMapLayerFrame', {
+      force: true,
+      reuseCachedWorldTileView: false,
+      snapshotOnly: false,
+      waterTimeMs: null,
+    }],
     ['render', 'resetWorldPan'],
   ]);
 });
