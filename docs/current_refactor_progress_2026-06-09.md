@@ -13,8 +13,8 @@ This is the operational progress note for the current Codex run. It is not a pro
 ## Current Status
 
 - Branch: `main`
-- Latest committed, pushed, and deployed commit before the current patch: `fbdc3ca8e30c1514c08bef730df12ae840052411`
-- Current architecture patch: P11-004 large-map streaming contract, committed locally as `refactor: add large map streaming contracts`; push and deployment verification are next.
+- Latest architecture commit pushed and deployed: `712ca9012c867b9880b88692e1f97a4e7d544036`
+- Current architecture patch: P11-004 large-map streaming contract, committed as `refactor: add large map streaming contracts`, pushed to `origin/main` and `private/main`, and deployed to the H5 path.
 - Online H5 URL: `http://47.116.32.216/wxgame/`
 - Protected Cocos root: `http://47.116.32.216/`
 - Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
@@ -181,7 +181,7 @@ Result:
 
 ## Current Architecture Patch
 
-P11-004 large-map streaming contract is implemented, fully verified, and committed locally as `refactor: add large map streaming contracts`.
+P11-004 large-map streaming contract is complete, fully verified, committed, pushed, and deployed.
 
 Changed files:
 
@@ -232,6 +232,46 @@ Results:
 - Official document guard: passed
 - `git diff --check`: passed
 - Full test suite: 780 passed
+
+Deployment verification after `712ca9012c867b9880b88692e1f97a4e7d544036`:
+
+- `/wxgame/.wxgame-deploy-version.json`
+  - `commit`: `712ca9012c867b9880b88692e1f97a4e7d544036`
+  - `workTree`: `/www/wwwroot/h5`
+  - `frontendPublicDir`: `/www/wwwroot/h5`
+- `http://47.116.32.216:3000/api/health` returned OK with config version `2.3`.
+- `http://47.116.32.216/` still contains `Cocos Creator`.
+- `http://47.116.32.216/` still contains `civilization-fire-next-client`.
+- `http://47.116.32.216/` does not contain `WorldChunkAddress` or `authority-state-refresh-v1`.
+- `http://47.116.32.216/wxgame/` contains `WorldChunkAddress.js?v=architecture-refactor-large-map-contract-v1`.
+- `http://47.116.32.216/wxgame/` contains `WorldInterestWindow.js?v=architecture-refactor-large-map-contract-v1`.
+- `http://47.116.32.216/wxgame/` contains `WorldRevealStore.js?v=architecture-refactor-large-map-contract-v1`.
+- `http://47.116.32.216/wxgame/` contains `authority-state-refresh-v1`.
+
+Online tutorial smoke after P11-004 deploy:
+
+```powershell
+$env:PLAYTEST_MAX_ACTIONS='140'; npm.cmd run playtest:online-tutorial
+```
+
+Output:
+
+```text
+F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-09T00-30-51-079Z
+```
+
+Result:
+
+- Stop reason: `tutorial-completed`
+- Final tutorial step: `36`
+- Final step name: `completed`
+- Tutorial completed: `true`
+- Action count: `59`
+- Evidence count: `51`
+- Visual findings: none
+- Bad responses: none
+- Request failures: none
+- Page errors: none
 
 ## Next Architecture Work
 

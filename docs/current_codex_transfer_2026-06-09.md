@@ -33,6 +33,7 @@ The user also wanted the online tutorial flow verified with screenshots before d
 1bb8ba95a67841c8de82f3cdafdea9b6e4cb224d fix: keep guided resource highlights visible
 f185057f2ec0c2c84b14cbb2eb607518f83fd0d4 fix: preserve guide render target during refresh
 fbdc3ca8e30c1514c08bef730df12ae840052411 refactor: add tile topology contracts
+712ca9012c867b9880b88692e1f97a4e7d544036 refactor: add large map streaming contracts
 ```
 
 Behavior fixed:
@@ -96,7 +97,7 @@ The online tutorial flow is verified with screenshot evidence. No active online 
 
 ## Current Patch
 
-P11-004 large-map streaming contract is implemented, fully verified, and committed locally as `refactor: add large map streaming contracts`.
+P11-004 large-map streaming contract is complete, fully verified, committed, pushed, and deployed as `712ca9012c867b9880b88692e1f97a4e7d544036 refactor: add large map streaming contracts`.
 
 Changed files:
 
@@ -145,24 +146,11 @@ Results:
 - Architecture gate: 413 passed, stable block guard passed, official document guard passed, `git diff --check` passed
 - Full test suite: 780 passed
 
-Local commit:
+Deployment checks after `712ca9012c867b9880b88692e1f97a4e7d544036`:
 
-```powershell
-refactor: add large map streaming contracts
-```
-
-Next push:
-
-```powershell
-git push origin main
-git push private main
-```
-
-Deployment checks required after `git push private main`:
-
-- Deploy stamp reports the new P11-004 commit.
-- Deploy stamp paths remain `/www/wwwroot/h5`.
-- API health returns OK.
+- Deploy stamp reported commit `712ca9012c867b9880b88692e1f97a4e7d544036`.
+- Deploy stamp paths were `/www/wwwroot/h5`.
+- API health returned OK with config version `2.3`.
 - Root page still contains `Cocos Creator`.
 - Root page still contains `civilization-fire-next-client`.
 - Root page does not contain H5 markers such as `WorldChunkAddress` or `authority-state-refresh-v1`.
@@ -170,16 +158,35 @@ Deployment checks required after `git push private main`:
 - H5 page contains `WorldInterestWindow.js?v=architecture-refactor-large-map-contract-v1`.
 - H5 page contains `WorldRevealStore.js?v=architecture-refactor-large-map-contract-v1`.
 
-Recommended online tutorial smoke after deploy because H5 entrypoint scripts changed:
+Online tutorial smoke after P11-004 deploy:
 
 ```powershell
 $env:PLAYTEST_MAX_ACTIONS='140'; npm.cmd run playtest:online-tutorial
 ```
 
+Output:
+
+```text
+F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-09T00-30-51-079Z
+```
+
+Result:
+
+- `stopReason: tutorial-completed`
+- `finalStep: 36`
+- `finalStepName: completed`
+- `tutorialCompleted: true`
+- `actionCount: 59`
+- `evidenceCount: 51`
+- `visualFindings: []`
+- `badResponses: []`
+- `requestFailures: []`
+- `pageErrors: []`
+
 ## Required Next Actions
 
-1. Push `origin main` and `private main`.
-2. Verify deploy boundary and, preferably, rerun online tutorial smoke with screenshot evidence.
+1. Commit and push this final documentation update if it has not been committed yet.
+2. Continue P11-005 realtime authority contract.
 3. Keep `tools/` untracked unless the user explicitly asks for it.
 
 ## After This Patch
