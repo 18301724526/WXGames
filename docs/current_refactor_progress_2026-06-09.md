@@ -13,8 +13,8 @@ This is the operational progress note for the current Codex run. It is not a pro
 ## Current Status
 
 - Branch: `main`
-- Latest architecture commit pushed and deployed: `712ca9012c867b9880b88692e1f97a4e7d544036`
-- Current architecture patch: P11-005 realtime authority contract, verified locally and pending commit/deploy.
+- Latest architecture commit pushed and deployed: `94bf97ad94f72ff696d3c285e5c3bdafcc2d4107`
+- Current architecture patch: P11-005 realtime authority contract, committed as `refactor: add realtime authority contracts`, pushed to `origin/main` and `github/main`, and deployed to the H5 path.
 - Online H5 URL: `http://47.116.32.216/wxgame/`
 - Protected Cocos root: `http://47.116.32.216/`
 - Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
@@ -360,10 +360,51 @@ Results:
 - `git diff --check`: passed
 - Full test suite: 785 passed
 
-P11-005 local status:
+Deployment verification after `94bf97ad94f72ff696d3c285e5c3bdafcc2d4107`:
 
-- Complete and verified locally.
-- Pending commit, push, deploy, and online verification.
+- `/wxgame/.wxgame-deploy-version.json`
+  - `commit`: `94bf97ad94f72ff696d3c285e5c3bdafcc2d4107`
+  - `workTree`: `/www/wwwroot/h5`
+  - `frontendPublicDir`: `/www/wwwroot/h5`
+- `http://47.116.32.216:3000/api/health` returned OK with config version `2.3`.
+- `http://47.116.32.216/` still contains `Cocos Creator`.
+- `http://47.116.32.216/` still contains `civilization-fire-next-client`.
+- `http://47.116.32.216/` does not contain `authority-state-refresh-v1`.
+- `http://47.116.32.216/wxgame/` contains `authority-state-refresh-v1`.
+- `http://47.116.32.216/wxgame/` contains `CanvasGameShell`.
+- `http://47.116.32.216/wxgame/js/api/GameAPI.js` contains intent-only `stopWorldMarch(missionId)`.
+
+Online tutorial smoke after P11-005 deploy:
+
+```powershell
+$env:PLAYTEST_GAME_URL='http://47.116.32.216/wxgame/'
+$env:PLAYTEST_API_BASE='http://47.116.32.216:3000/api'
+$env:PLAYTEST_MAX_ACTIONS='140'
+npm.cmd run playtest:online-tutorial
+```
+
+Output:
+
+```text
+E:\Human\wxgame\.local-logs\online-tutorial-p11-005\2026-06-09T05-53-55-099Z
+```
+
+Result:
+
+- Stop reason: `tutorial-completed`
+- Final tutorial step: `36`
+- Final step name: `completed`
+- Tutorial completed: `true`
+- Action count: `64`
+- Evidence count: `51`
+- Visual findings: none
+- Bad responses: none
+- Request failures: none
+- Page errors: none
+
+P11-005 deployed status:
+
+- Complete, committed, pushed, deployed, and online verified.
 
 ## Next Architecture Work
 
