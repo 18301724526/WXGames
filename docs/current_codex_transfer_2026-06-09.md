@@ -150,52 +150,33 @@ The online tutorial flow is verified with strict screenshot evidence. The harnes
 
 ## Current Patch
 
-Backend wrapping-world and AI reveal sync is the current checkpoint. It is locally verified and queued for commit/push in this run; guarded H5 deploy and online browser playtest remain pending after push.
+Frontend march tap and smooth movement is the current checkpoint. It directly fixes two visible online issues reported by the user after the backend wrapping-world deploy: active march actors snapping tile-to-tile instead of moving smoothly, and black/fog tile taps selecting the wrong destination.
 
 Changed files:
 
-- `backend/services/worldMap/WorldMapConstants.js`
-- `backend/services/worldMap/WorldMapTopology.js`
-- `backend/services/worldMap/WorldMapShared.js`
-- `backend/services/worldMap/WorldMapTiles.js`
-- `backend/services/WorldMapService.js`
-- `backend/services/WorldAiExplorerService.js`
-- `backend/services/GameStateNormalizer.js`
-- `backend/services/GameStateMigrationPipeline.js`
-- `backend/services/realtime/AoiSyncSnapshot.js`
-- `backend/services/territory/TerritoryScoutPlanner.js`
-- `backend/services/territory/TerritoryStateNormalizer.js`
-- `backend/services/worldExplorer/WorldExplorerRoutePlanner.js`
-- `backend/tests/RealtimeAuthorityContract.test.js`
-- `backend/tests/WorldExplorerArchitecture.test.js`
-- `backend/tests/WorldMapArchitecture.test.js`
-- `scripts/run-architecture-smoke.js`
-- `docs/current_gameplay_design_2026-06-09.md`
-- `docs/current_technical_architecture_2026-06-09.md`
+- `frontend/js/domain/WorldMarchGeometry.js`
+- `frontend/js/domain/WorldMarchGeometry.test.js`
+- `frontend/js/platform/WorldMapRuntime.js`
+- `frontend/js/platform/WorldMapRuntime.test.js`
+- `frontend/js/platform/renderers/WorldActorCanvasRenderer.test.js`
 - `docs/current_refactor_progress_2026-06-09.md`
 - `docs/current_codex_transfer_2026-06-09.md`
 
 Behavior added:
 
-- `WorldMapTopology` adds backend full wrapping torus topology, canonical ids, display ids, wrapped delta/distance, topology metadata, and generation coordinates.
-- `WorldMapService` writes `worldQ/worldR/canonicalId` on tiles and merges by canonical id while preserving display `q/r` for current frontend rendering.
-- Terrain generation now uses canonical/generation coordinates, so wrapped coordinates such as `-1,0` and `1023,0` produce the same terrain.
-- New states use the shared server `DEFAULT_WORLD_SEED`; legacy `world-${playerId}` seeds normalize to the shared world seed.
-- `WorldAiExplorerService` adds bounded AI exploration. AI reveal first writes hidden server tiles.
-- `getClientWorldMap`, `AoiSyncSnapshot`, `TerritoryStateNormalizer`, `TerritoryScoutPlanner`, and `WorldExplorerRoutePlanner` filter hidden AI tiles so they do not leak into player-visible state or route planning before encounter.
-- Encounter sync is server-side and bounded: after AI/player reveal frontiers meet, AI-unlocked terrain syncs to player visibility up to `MAX_SYNC_TILES_PER_PASS`, preserving canonical identity while projecting display coords near player-visible tiles.
-- `GameStateNormalizer.normalizeState()` advances AI exploration through the capped service.
-- Architecture smoke now syntax-checks `WorldMapTopology.js` and `WorldAiExplorerService.js`.
+- Active march actor screen projection now preserves fractional `q/r` coordinates, so actors can draw between tile centers.
+- Static tile rendering remains on the existing integer tile geometry path.
+- Background/fog march target inference now subtracts the world-map layer padding before converting the tap point back to tile coordinates.
 
 Focused verification passed:
 
 ```powershell
-node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/WorldMapArchitecture.test.js
+node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js frontend/js/platform/renderers/WorldActorCanvasRenderer.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js
 ```
 
 Results:
 
-- Focused backend regression: 41 passed
+- Focused frontend regression: 32 passed
 
 Architecture verification passed:
 
@@ -205,7 +186,7 @@ npm.cmd run test:architecture
 
 Results:
 
-- Architecture gate: 477 passed, stable block guard passed, official document guard passed, `git diff --check` passed
+- Architecture gate: 479 passed, stable block guard passed, official document guard passed, `git diff --check` passed
 
 Before deploying or making further edits, rerun if there are changes after this checkpoint:
 

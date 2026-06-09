@@ -393,8 +393,13 @@
 
     getBackgroundMarchTargetAction(point = {}) {
       const context = this.getLastTileMapContext();
+      const normalizedPoint = {
+        ...point,
+        x: Number(point.x) - (Number(this.renderer?.viewportOffsetX) || 0),
+        y: Number(point.y) - (Number(this.renderer?.viewportOffsetY) || 0),
+      };
       if (WorldMapInputActionMap?.getBackgroundMarchTargetAction) {
-        return WorldMapInputActionMap.getBackgroundMarchTargetAction(point, context, {
+        return WorldMapInputActionMap.getBackgroundMarchTargetAction(normalizedPoint, context, {
           screenPointToAxialTile: WorldMarchSystem?.screenPointToAxialTile,
         });
       }

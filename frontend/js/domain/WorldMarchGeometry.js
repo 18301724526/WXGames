@@ -25,15 +25,27 @@
     return `tile_${toInteger(q)}_${toInteger(r)}`;
   }
 
-  function getTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
-    const helper = TileMapGeometry?.getTileScreenCenter;
-    if (typeof helper === 'function') return helper(coord, viewport, geometry);
+  function getContinuousTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
     const stepX = toNumber(geometry.stepX, 96);
     const stepY = toNumber(geometry.stepY, 48);
+    const q = toNumber(coord.q ?? coord.x, 0);
+    const r = toNumber(coord.r ?? coord.y, 0);
     return {
-      x: toNumber(viewport.originX) + toNumber(viewport.panX) + (toNumber(coord.q) - toNumber(coord.r)) * stepX * toNumber(viewport.scale, 1),
-      y: toNumber(viewport.originY) + toNumber(viewport.panY) + (toNumber(coord.q) + toNumber(coord.r)) * stepY * toNumber(viewport.scale, 1),
+      x: toNumber(viewport.originX) + toNumber(viewport.panX) + (q - r) * stepX * toNumber(viewport.scale, 1),
+      y: toNumber(viewport.originY) + toNumber(viewport.panY) + (q + r) * stepY * toNumber(viewport.scale, 1),
     };
+  }
+
+  function getTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
+    if (Number.isFinite(Number(coord?.q)) && !Number.isInteger(Number(coord.q))) {
+      return getContinuousTileScreenCenter(coord, viewport, geometry);
+    }
+    if (Number.isFinite(Number(coord?.r)) && !Number.isInteger(Number(coord.r))) {
+      return getContinuousTileScreenCenter(coord, viewport, geometry);
+    }
+    const helper = TileMapGeometry?.getTileScreenCenter;
+    if (typeof helper === 'function') return helper(coord, viewport, geometry);
+    return getContinuousTileScreenCenter(coord, viewport, geometry);
   }
 
   function screenPointToNearestTile(point = {}, tileMapView = {}, viewport = {}) {
@@ -101,6 +113,7 @@
     toNumber,
     toInteger,
     tileId,
+    getContinuousTileScreenCenter,
     getTileScreenCenter,
     screenPointToNearestTile,
     screenPointToAxialTile,

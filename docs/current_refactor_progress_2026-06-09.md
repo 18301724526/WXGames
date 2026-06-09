@@ -106,6 +106,34 @@ Results:
 - Official document guard: passed.
 - `git diff --check`: passed.
 
+## Frontend March Tap And Smooth Movement Fix - 2026-06-10
+
+Scope:
+
+- Fix the visible player-facing bug where active march actors animated in place and then snapped to the next tile.
+- Fix the visible player-facing bug where tapping a black/fog tile could select a different destination tile.
+
+Implementation status:
+
+- `WorldMarchGeometry.getTileScreenCenter()` now preserves fractional `q/r` coordinates for march actors instead of routing them through static tile geometry that floors coordinates.
+- Static tile rendering still uses the existing integer tile geometry path; only moving actor projection uses the continuous coordinate path.
+- `WorldMapRuntime.getBackgroundMarchTargetAction()` now subtracts the world-map layer `viewportOffsetX/Y` before inferring the fog/march target tile, matching the hit-target normalization already used by rendered targets.
+
+Verification:
+
+```powershell
+node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js frontend/js/platform/renderers/WorldActorCanvasRenderer.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js
+npm.cmd run test:architecture
+```
+
+Results:
+
+- Focused frontend regression: 32 passed.
+- Architecture gate: 479 passed.
+- Stable block manifest guard: passed.
+- Official document guard: passed.
+- `git diff --check`: passed.
+
 ## Verified And Deployed Tutorial Fixes
 
 Recent deployed commits:

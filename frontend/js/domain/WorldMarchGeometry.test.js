@@ -14,6 +14,16 @@ test('WorldMarchGeometry projects axial coordinates into screen centers', () => 
   });
 });
 
+test('WorldMarchGeometry preserves fractional march coordinates for smooth actor movement', () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const viewport = { originX: 100, originY: 100, panX: 0, panY: 0, scale: 0.5 };
+
+  assert.deepEqual(WorldMarchGeometry.getTileScreenCenter({ q: 0.5, r: 0 }, viewport, geometry), {
+    x: 124,
+    y: 112,
+  });
+});
+
 test('WorldMarchGeometry maps screen points to nearest rendered tiles', () => {
   const tileMapView = {
     geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
