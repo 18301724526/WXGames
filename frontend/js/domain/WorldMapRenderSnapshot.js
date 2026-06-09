@@ -104,10 +104,11 @@
   function buildMarchSnapshot(tileMapView = {}, options = {}) {
     if (options.marchSnapshot && typeof options.marchSnapshot === 'object') return options.marchSnapshot;
     const missions = Array.isArray(tileMapView.activeScouts) ? tileMapView.activeScouts : [];
+    const nowMs = options.nowMs ?? options.epochNowMs ?? options.serverNowMs;
     if (!MarchSnapshot?.createSnapshot) {
       return {
         schema: 'world-march-progress-snapshot-v1',
-        nowMs: toNumber(options.nowMs, Date.now()),
+        nowMs: toNumber(nowMs, Date.now()),
         missions: [],
         actors: [],
         arrivals: [],
@@ -117,7 +118,7 @@
       };
     }
     return MarchSnapshot.createSnapshot({ missions }, {
-      nowMs: options.nowMs,
+      nowMs,
       signatureTimeBucketMs: options.signatureTimeBucketMs,
     });
   }

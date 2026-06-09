@@ -284,6 +284,12 @@
       const now = Number.isFinite(optionNow) ? optionNow : Date.now();
       this.frameNow = now;
       this.lastRenderOptions = options || {};
+      if (this.host && typeof this.host === 'object') {
+        this.host.frameNow = now;
+        this.host.lastRenderOptions = this.lastRenderOptions;
+        if (options.epochNowMs !== undefined) this.host.epochNowMs = options.epochNowMs;
+        if (options.serverNowMs !== undefined) this.host.serverNowMs = options.serverNowMs;
+      }
       this.famousSkillHitTargets = [];
       this.activeFamousSkillTooltip = null;
       this.updateFps(now);

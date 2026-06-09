@@ -151,6 +151,7 @@
       const visibleMapY = Math.max(0, topBarBottom ?? 84);
       const visibleMapH = Math.max(160, visibleHeight - 64 - visibleMapY);
       this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
+        ...options,
         state,
         hitTargetsOnly: Boolean(options.skipWorldMapLayer),
         frameless: true,
@@ -302,6 +303,7 @@
         : null;
       const drawWorldMap = () => {
         this.renderWorldTileMap(tileMapView, layout.map.x, layout.map.y, layout.map.width, layout.map.height, uiState, {
+          ...options,
           state,
           frameless: Boolean(options.isMapHome),
           fastDrag: Boolean(options.reuseCachedWorldTileView),

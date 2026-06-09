@@ -1,4 +1,27 @@
 (function (global) {
+  var WorldMarchSystem = global.WorldMarchSystem;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
+    try {
+      WorldMarchSystem = require('../domain/WorldMarchSystem');
+    } catch (error) {
+      WorldMarchSystem = null;
+    }
+  }
+
+  function hasActiveWorldExplorerMission(state = {}, options = {}) {
+    const explorer = state?.worldExplorerState || {};
+    if (WorldMarchSystem?.hasActiveMission) {
+      return WorldMarchSystem.hasActiveMission(explorer, options);
+    }
+    const missions = [
+      explorer.activeMission,
+      ...(Array.isArray(explorer.missions) ? explorer.missions : []),
+      ...(Array.isArray(explorer.readyMissions) ? explorer.readyMissions : []),
+      ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+    ].filter(Boolean);
+    return missions.some((mission) => mission.status === 'active');
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -312,21 +335,26 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
       if (state.currentTab !== homeView.activeTab) state.currentTab = homeView.activeTab;
       const resolvedMilitaryView = homeView.activeTab === 'military' ? homeView.militaryView : 'army';
       if (resolvedMilitaryView && state.militaryView !== resolvedMilitaryView) state.militaryView = resolvedMilitaryView;
-      const renderOptions = {
-        ...this.buildRenderOptions(homeView.activeTab, territoryUiState, {
-          forceMapHome: homeView.isMapHome,
-          allowDefaultMapHome: options.allowDefaultMapHome,
-        }),
-        activeTab: homeView.activeTab,
-        isMapHome: homeView.isMapHome,
-      };
-      let worldMapLayerRendered = false;
-      if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
-        worldMapLayerRendered = this.shouldRenderRuntimeWorldMap(state, renderOptions)
-          ? this.renderRuntimeWorldMap(state, renderOptions) !== false
-          : Boolean(this.worldMapRuntime?.hasBakedMapLayer);
-      } else {
-        worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
+       const renderOptions = {
+         ...this.buildRenderOptions(homeView.activeTab, territoryUiState, {
+           forceMapHome: homeView.isMapHome,
+           allowDefaultMapHome: options.allowDefaultMapHome,
+         }),
+         epochNowMs: Date.now(),
+         activeTab: homeView.activeTab,
+         isMapHome: homeView.isMapHome,
+       };
+       let worldMapLayerRendered = false;
+       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
+         const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
+         worldMapLayerRendered = (explorerAnimated || this.shouldRenderRuntimeWorldMap(state, renderOptions))
+           ? this.renderRuntimeWorldMap(state, {
+             ...renderOptions,
+             force: explorerAnimated || renderOptions.force,
+           }) !== false
+           : Boolean(this.worldMapRuntime?.hasBakedMapLayer);
+       } else {
+         worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
       this.setWorldMapLayerVisible(worldMapLayerRendered);
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
@@ -343,11 +371,11 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           skipWorldMapLayer: false,
           preserveCanvas: false,
         });
-      const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
-        || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
-        || this.territoryUiState?.tileMapWaterAnimated);
-      const explorerAnimated = Boolean(state.worldExplorerState?.activeMission);
-      if (homeView.activeTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
+       const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
+         || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
+         || this.territoryUiState?.tileMapWaterAnimated);
+       const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
+       if (homeView.activeTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
       else this.stopTileMapWaterTimer();
       return true;
     },

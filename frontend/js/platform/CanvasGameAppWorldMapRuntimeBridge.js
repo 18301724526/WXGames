@@ -146,20 +146,26 @@
       return Boolean(homeView.isMapHome && homeView.activeTab === 'military' && homeView.militaryView === 'world');
     },
 
-    renderRuntimeWorldMap(options = {}) {
+    renderRuntimeWorldMap(stateOrOptions = this.state, maybeOptions = null) {
+      const hasExplicitState = maybeOptions !== null && maybeOptions !== undefined;
+      const state = hasExplicitState ? stateOrOptions : this.state;
+      const options = hasExplicitState ? (maybeOptions || {}) : (stateOrOptions || {});
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       if (!coordinator) return false;
-      const rendered = coordinator.render(this.state, options);
+      const rendered = coordinator.render(state || this.state, options);
       this.worldMapRuntime = coordinator.getMapRuntime();
       return rendered;
     },
 
-    shouldRenderRuntimeWorldMap(options = {}) {
+    shouldRenderRuntimeWorldMap(stateOrOptions = this.state, maybeOptions = null) {
+      const hasExplicitState = maybeOptions !== null && maybeOptions !== undefined;
+      const state = hasExplicitState ? stateOrOptions : this.state;
+      const options = hasExplicitState ? (maybeOptions || {}) : (stateOrOptions || {});
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
-      if (!coordinator?.canRender?.(this.state)) return false;
+      if (!coordinator?.canRender?.(state || this.state)) return false;
       if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
-      return Boolean(options.force || runtime.isMapBakeDirty(this.state, options));
+      return Boolean(options.force || runtime.isMapBakeDirty(state || this.state, options));
     },
 
     refreshWorldMapLayerFromSnapshot(options = {}) {

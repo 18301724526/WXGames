@@ -11,6 +11,23 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderScheduler) {
     CanvasGameAppRenderScheduler = require('./CanvasGameAppRenderScheduler');
   }
+  var WorldMarchSystem = global.WorldMarchSystem;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
+    WorldMarchSystem = require('../domain/WorldMarchSystem');
+  }
+  function hasActiveWorldExplorerMission(state = {}, options = {}) {
+    if (WorldMarchSystem?.hasActiveMission) {
+      return WorldMarchSystem.hasActiveMission(state?.worldExplorerState || {}, options);
+    }
+    const explorer = state?.worldExplorerState || {};
+    const missions = [
+      explorer.activeMission,
+      ...(Array.isArray(explorer.missions) ? explorer.missions : []),
+      ...(Array.isArray(explorer.readyMissions) ? explorer.readyMissions : []),
+      ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+    ].filter(Boolean);
+    return missions.some((mission) => mission.status === 'active');
+  }
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -67,9 +84,14 @@
             if (!this.renderer?.render) return false;
             const runtimeCanRenderWorldMap = Boolean(homeView.isMapHome
               && this.ensureWorldMapRuntimeCoordinator()?.canRender(this.state));
+            const runtimeRenderOptions = this.buildRenderOptions(resolvedActiveTab, this.territoryUiState);
+            const explorerAnimatedForRuntime = hasActiveWorldExplorerMission(this.state, runtimeRenderOptions);
             const worldMapLayerRendered = runtimeCanRenderWorldMap
-              ? (this.shouldRenderRuntimeWorldMap()
-                ? this.renderRuntimeWorldMap() !== false
+              ? (explorerAnimatedForRuntime || this.shouldRenderRuntimeWorldMap(runtimeRenderOptions)
+                ? this.renderRuntimeWorldMap({
+                  ...runtimeRenderOptions,
+                  force: explorerAnimatedForRuntime || runtimeRenderOptions.force,
+                }) !== false
                 : Boolean(this.worldMapRuntime?.hasBakedMapLayer))
               : false;
             this.renderer.render(this.state, {
@@ -122,7 +144,7 @@
             });
             const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
               || this.territoryController?.uiState?.tileMapWaterAnimated);
-            const explorerAnimated = Boolean(this.state?.worldExplorerState?.activeMission);
+            const explorerAnimated = explorerAnimatedForRuntime;
             if (resolvedActiveTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
             else this.stopTileMapWaterTimer();
             return true;
@@ -136,8 +158,11 @@
                 return;
               }
               if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
-              if (this.state?.worldExplorerState?.activeMission) {
-                this.renderRuntimeWorldMap({ force: true });
+              if (hasActiveWorldExplorerMission(this.state, { epochNowMs: Date.now() })) {
+                this.renderRuntimeWorldMap({
+                  ...this.buildRenderOptions('military', this.territoryUiState),
+                  force: true,
+                });
                 this.renderAnimationFrame('military');
                 return;
               }

@@ -54,7 +54,10 @@
       return this.host?.constructor?.getWorldMapHitTargetModel?.() || null;
     }
 
-    getWorldTileMapNowMs() {
+    getWorldTileMapNowMs(options = {}) {
+      const optionNow = options.nowMs ?? options.epochNowMs ?? options.serverNowMs;
+      const resolvedOptionNow = Number(optionNow);
+      if (Number.isFinite(resolvedOptionNow)) return resolvedOptionNow;
       return typeof this.getEpochNowMs === 'function' ? this.getEpochNowMs() : Date.now();
     }
 
@@ -69,7 +72,7 @@
           uiState,
         }, {
           ...options,
-          nowMs: this.getWorldTileMapNowMs(),
+          nowMs: this.getWorldTileMapNowMs(options),
         })
         : null;
       const geometry = renderSnapshot?.geometry || tileMapView.geometry || {};

@@ -78,6 +78,10 @@
       route,
       revealArea: route,
       revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
+      stepDurationMs: Math.max(1000, toInteger(
+        mission.stepDurationMs,
+        Math.max(1, toNumber(mission.stepDurationSeconds, 0)) * 1000,
+      )),
       stepDurationSeconds: toInteger(mission.stepDurationSeconds, 0),
       startedAt: mission.startedAt || '',
       nextStepAt: mission.nextStepAt || '',

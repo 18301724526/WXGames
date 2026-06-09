@@ -153,6 +153,36 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
 });
 
+test('WorldMapTileMapRenderer passes continuous march actors into render layer', () => {
+  const host = createHost();
+  const renderer = new WorldMapTileMapRenderer({ host });
+
+  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+  const actorCall = host.calls.find((call) => call[0] === 'renderWorldActors');
+  const actor = actorCall?.[1]?.[0];
+
+  assert.equal(Boolean(actor), true);
+  assert.equal(actor.current.q > 0, true);
+  assert.equal(actor.current.q < 1, true);
+});
+
+test('WorldMapTileMapRenderer keeps later epoch movement continuous', () => {
+  const host = createHost();
+  const renderer = new WorldMapTileMapRenderer({ host });
+
+  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
+    epochNowMs: new Date('2026-06-06T00:00:09.000Z').getTime(),
+  });
+  const actorCall = host.calls.find((call) => call[0] === 'renderWorldActors');
+  const actor = actorCall?.[1]?.[0];
+
+  assert.equal(Boolean(actor), true);
+  assert.equal(actor.current.q > 0.8, true);
+  assert.equal(actor.current.q < 1, true);
+});
+
 test('WorldMapTileMapRenderer hit-target-only skips paint and registers actors/HUD targets', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });

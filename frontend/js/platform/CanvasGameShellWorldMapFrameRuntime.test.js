@@ -118,3 +118,49 @@ test('CanvasGameShellWorldMapFrameRuntime renders active exploration frame and H
   assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
   assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
 });
+
+test('CanvasGameShellWorldMapFrameRuntime refreshes active missions from mission list', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const shell = createShell({
+    lastGame: {
+      state: {
+        currentTab: 'military',
+        militaryView: 'world',
+        worldExplorerState: {
+          activeMission: null,
+          missions: [{
+            id: 'explore-1',
+            status: 'active',
+            origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+            route: [{ q: 1, r: 0, tileId: 'tile_1_0', step: 1 }],
+            startedAt: '2099-06-06T00:00:00.000Z',
+            completesAt: '2099-06-06T00:00:10.000Z',
+          }],
+        },
+      },
+      mapHomeActive: true,
+    },
+    renderAnimationFrame() {
+      calls.push(['renderAnimationFrame']);
+      return true;
+    },
+    renderWorldMapLayerFrame(options) {
+      calls.push(['renderWorldMapLayerFrame', options]);
+      return true;
+    },
+    runtime: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 1;
+      },
+    },
+  });
+
+  assert.equal(shell.startTileMapWaterTimer(), true);
+  intervalCallback();
+
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1]?.force === true), true);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+});

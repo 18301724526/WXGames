@@ -337,6 +337,12 @@
     return result;
   }
 
+  function hasActiveMission(input = {}, options = {}) {
+    const nowMs = toTimestamp(options.nowMs ?? options.epochNowMs, Date.now());
+    return getMissionList(input, options.missions || input.missions)
+      .some((mission) => getEffectiveMissionStatus(mission, nowMs) === STATUS_ACTIVE);
+  }
+
   function normalizeMissionProgress(mission = {}, options = {}) {
     const nowMs = toNumber(options.nowMs, Date.now());
     const id = String(mission.id || options.id || `mission-${toInteger(options.index, 0)}`);
@@ -562,6 +568,7 @@
     getRemainingSeconds,
     getTravelRemainingSeconds,
     getFormationLabel,
+    hasActiveMission,
     normalizeMissionProgress,
     buildActorFromMission,
     buildActorFromProgress,

@@ -1387,3 +1387,62 @@ test('CanvasGameShell refreshes both map layer and HUD while exploration is acti
   assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
   assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
 });
+
+test('CanvasGameShell refreshes map layer for active missions kept in mission list', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    runtime: {
+      setInterval(callback, ms) {
+        calls.push(['setInterval', ms]);
+        intervalCallback = callback;
+        return 1;
+      },
+      clearInterval(timer) {
+        calls.push(['clearInterval', timer]);
+      },
+    },
+    renderer: {},
+    worldMapRenderer: {},
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      worldExplorerState: {
+        activeMission: null,
+        missions: [{
+          id: 'explore-1',
+          status: 'active',
+          origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+          route: [{ q: 1, r: 0, tileId: 'tile_1_0', step: 1 }],
+          startedAt: '2099-06-06T00:00:00.000Z',
+          completesAt: '2099-06-06T00:00:10.000Z',
+        }],
+      },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.getActiveTab = () => 'military';
+  shell.isWorldMapDragging = () => false;
+  shell.isWorldMapDragCoolingDown = () => false;
+  shell.renderWorldMapLayerFrame = (options) => {
+    calls.push(['renderWorldMapLayerFrame', options]);
+    return true;
+  };
+  shell.renderAnimationFrame = () => {
+    calls.push(['renderAnimationFrame']);
+    return true;
+  };
+
+  assert.equal(shell.startTileMapWaterTimer(), true);
+  intervalCallback();
+
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+});

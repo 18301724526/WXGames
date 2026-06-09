@@ -65,6 +65,38 @@ test('WorldMapRenderSnapshot normalizes frame, viewport, ui, and march actors', 
   assert.equal(WorldMapRenderSnapshot.getActors(snapshot)[0].missionId, 'explore-1');
 });
 
+test('WorldMapRenderSnapshot uses epochNowMs for continuous march actors', () => {
+  const snapshot = WorldMapRenderSnapshot.createSnapshot({
+    tileMapView: createTileMapView(),
+    x: 10,
+    y: 90,
+    width: 360,
+    height: 300,
+  }, {
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+  const actor = WorldMapRenderSnapshot.getActors(snapshot)[0];
+
+  assert.equal(actor.current.q > 0, true);
+  assert.equal(actor.current.q < 1, true);
+});
+
+test('WorldMapRenderSnapshot prefers epochNowMs when nowMs is absent', () => {
+  const snapshot = WorldMapRenderSnapshot.createSnapshot({
+    tileMapView: createTileMapView(),
+    x: 10,
+    y: 90,
+    width: 360,
+    height: 300,
+  }, {
+    epochNowMs: new Date('2026-06-06T00:00:15.000Z').getTime(),
+  });
+  const actor = WorldMapRenderSnapshot.getActors(snapshot)[0];
+
+  assert.equal(actor.current.q > 1, true);
+  assert.equal(actor.current.q < 2, true);
+});
+
 test('WorldMapRenderSnapshot keeps stable compact signatures', () => {
   const tileMapView = createTileMapView();
   const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();

@@ -16,6 +16,7 @@ test('WorldTileMapExplorerNormalizer normalizes explorer missions for map displa
       { q: '2', r: '0', step: '2' },
     ],
     revealedTileIds: ['tile_1_0'],
+    stepDurationMs: 10800,
     stepDurationSeconds: '10.8',
     startedAt: '2026-06-06T00:00:00.000Z',
     completesAt: '2026-06-06T00:00:20.000Z',
@@ -29,6 +30,7 @@ test('WorldTileMapExplorerNormalizer normalizes explorer missions for map displa
   assert.equal(normalized.actionPointsRemaining, 1);
   assert.deepEqual(normalized.route.map((step) => step.tileId), ['tile_1_0', 'tile_2_0']);
   assert.deepEqual(normalized.revealedTileIds, ['tile_1_0']);
+  assert.equal(normalized.stepDurationMs, 10800);
   assert.equal(normalized.stepDurationSeconds, 10);
 });
 

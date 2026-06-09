@@ -46,6 +46,7 @@
     getRemainingSeconds: delegate(WorldMarchProgressSnapshot, 'getRemainingSeconds', 0),
     buildActorFromMission: delegate(WorldMarchProgressSnapshot, 'buildActorFromMission', null),
     buildActors: delegate(WorldMarchProgressSnapshot, 'buildActors', []),
+    hasActiveMission: delegate(WorldMarchProgressSnapshot, 'hasActiveMission', false),
     getTileScreenCenter: delegate(WorldMarchGeometry, 'getTileScreenCenter', { x: 0, y: 0 }),
     screenPointToNearestTile: delegate(WorldMarchGeometry, 'screenPointToNearestTile', null),
     screenPointToAxialTile: delegate(WorldMarchGeometry, 'screenPointToAxialTile', null),

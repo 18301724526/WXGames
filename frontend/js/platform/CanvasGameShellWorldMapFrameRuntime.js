@@ -3,6 +3,28 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimePolicy) {
     WorldMapRuntimePolicy = require('./CanvasGameShellWorldMapRuntimePolicy');
   }
+  var WorldMarchSystem = global.WorldMarchSystem;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
+    try {
+      WorldMarchSystem = require('../domain/WorldMarchSystem');
+    } catch (error) {
+      WorldMarchSystem = null;
+    }
+  }
+
+  function hasActiveWorldExplorerMission(state = {}, options = {}) {
+    const explorer = state?.worldExplorerState || {};
+    if (WorldMarchSystem?.hasActiveMission) {
+      return WorldMarchSystem.hasActiveMission(explorer, options);
+    }
+    const missions = [
+      explorer.activeMission,
+      ...(Array.isArray(explorer.missions) ? explorer.missions : []),
+      ...(Array.isArray(explorer.readyMissions) ? explorer.readyMissions : []),
+      ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+    ].filter(Boolean);
+    return missions.some((mission) => mission.status === 'active');
+  }
 
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
@@ -19,20 +41,24 @@
 
       renderWorldMapLayerFrame(options = {}) {
         if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
+        const frameOptionsBase = {
+          ...options,
+          epochNowMs: options.epochNowMs ?? Date.now(),
+        };
         const coordinator = this.ensureWorldMapRuntimeCoordinator();
         const runtime = coordinator?.getMapRuntime?.();
         if (this.isWorldMapHomeActive() && coordinator?.canRender(this.lastGame.state)) {
-          const snapshotWaterRefresh = WorldMapRuntimePolicy.isSnapshotWaterRefresh(options);
-          if (!snapshotWaterRefresh && !this.shouldRenderRuntimeWorldMap(this.lastGame.state, options)) return false;
+          const snapshotWaterRefresh = WorldMapRuntimePolicy.isSnapshotWaterRefresh(frameOptionsBase);
+          if (!snapshotWaterRefresh && !this.shouldRenderRuntimeWorldMap(this.lastGame.state, frameOptionsBase)) return false;
           const runtimeDragging = Boolean(runtime?.isDragging?.());
-          const frameOptions = WorldMapRuntimePolicy.resolveRuntimeFrameOptions(options, {
+          const frameOptions = WorldMapRuntimePolicy.resolveRuntimeFrameOptions(frameOptionsBase, {
             runtimeDragging,
             dragFrameActive: this.worldMapDragFrameActive,
             shellDragging: this.isWorldMapDragging(),
             frozenWaterTimeMs: this.getFrozenWorldMapWaterTimeMs(),
           });
           return this.renderRuntimeWorldMap(this.lastGame.state, {
-            ...options,
+            ...frameOptionsBase,
             ...frameOptions,
           });
         }
@@ -43,12 +69,13 @@
         this.lastWorldMapLayerRenderAt = now;
         const reuseCachedWorldTileView = Boolean(options.reuseCachedWorldTileView || this.worldMapDragFrameActive || this.isWorldMapDragging());
         this.worldMapDragFrameActive = false;
-        const waterTimeMs = WorldMapRuntimePolicy.hasNumber(options.waterTimeMs)
-          ? Number(options.waterTimeMs)
+        const waterTimeMs = WorldMapRuntimePolicy.hasNumber(frameOptionsBase.waterTimeMs)
+          ? Number(frameOptionsBase.waterTimeMs)
           : (reuseCachedWorldTileView ? this.getFrozenWorldMapWaterTimeMs() : null);
         return this.renderWorldMapLayer(this.lastGame.state, {
+          ...frameOptionsBase,
           reuseCachedWorldTileView,
-          snapshotOnly: Boolean(options.snapshotOnly || reuseCachedWorldTileView),
+          snapshotOnly: Boolean(frameOptionsBase.snapshotOnly || reuseCachedWorldTileView),
           waterTimeMs,
         });
       },
@@ -97,11 +124,13 @@
           || this.lastGame?.territoryController?.getUiState?.()
           || this.territoryUiState
           || {};
+        const baseOptions = options || this.buildRenderOptions(homeView.activeTab, territoryUiState);
         const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
           ? this.renderer.getTopBarBottom(state, { isMapHome: homeView.isMapHome })
           : 84;
         const rendered = this.worldMapRenderer.renderWorldMapLayer(state, {
-          ...(options || this.buildRenderOptions(homeView.activeTab, territoryUiState)),
+          ...baseOptions,
+          epochNowMs: baseOptions.epochNowMs ?? Date.now(),
           activeTab: homeView.activeTab,
           isMapHome: homeView.isMapHome,
           territoryUiState,
@@ -126,8 +155,8 @@
             return;
           }
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
-          if (this.lastGame?.state?.worldExplorerState?.activeMission) {
-            if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true });
+          if (hasActiveWorldExplorerMission(this.lastGame?.state, { epochNowMs: Date.now() })) {
+            if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true, epochNowMs: Date.now() });
             this.renderAnimationFrame();
             return;
           }

@@ -47,6 +47,39 @@ test('WorldMarchProgressSnapshot normalizes active march progress, actor, and in
   assert.equal(WorldMarchProgressSnapshot.getActor(snapshot, 'explore-1').stopTile.tileId, 'tile_1_0');
 });
 
+test('WorldMarchProgressSnapshot detects active missions in mission lists', () => {
+  const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+
+  assert.equal(WorldMarchProgressSnapshot.hasActiveMission({
+    missions: [createMission()],
+    activeMission: null,
+  }, { nowMs }), true);
+  assert.equal(WorldMarchProgressSnapshot.hasActiveMission({
+    missions: [createMission({ status: 'idle' })],
+    activeMission: null,
+  }, { nowMs }), false);
+});
+
+test('WorldMarchProgressSnapshot keeps rebased missions moving between confirmed tiles', () => {
+  const nowMs = new Date('2026-06-06T00:00:15.000Z').getTime();
+  const actor = WorldMarchProgressSnapshot.buildActorFromMission(createMission({
+    origin: { q: 1, r: 0, tileId: 'tile_1_0' },
+    position: { q: 1, r: 0, tileId: 'tile_1_0' },
+    target: { q: 3, r: 0, tileId: 'tile_3_0' },
+    route: [
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 1, revealed: false },
+      { q: 3, r: 0, tileId: 'tile_3_0', step: 2, revealed: false },
+    ],
+    startedAt: '2026-06-06T00:00:10.000Z',
+    nextStepAt: '2026-06-06T00:00:20.000Z',
+    completesAt: '2026-06-06T00:00:30.000Z',
+  }), { nowMs });
+
+  assert.equal(actor.status, 'active');
+  assert.equal(actor.current.q > 1, true);
+  assert.equal(actor.current.q < 2, true);
+});
+
 test('WorldMarchProgressSnapshot exposes manual arrival as idle parked actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({
