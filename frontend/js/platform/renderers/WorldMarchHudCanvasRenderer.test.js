@@ -380,5 +380,8 @@ test('WorldMarchHudCanvasRenderer renders selected actor commands', () => {
   }, { stepX: 96, stepY: 48 }, { x: 0, y: 84, width: 390, height: 696 });
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'returnWorldMarch' && target.action.missionId === 'explore-1'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'stopWorldMarch' && target.action.targetQ === 1), true);
+  const stopTarget = host.hitTargets.find((target) => target.action.type === 'stopWorldMarch');
+  assert.equal(stopTarget?.action.missionId, 'explore-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(stopTarget.action, 'targetQ'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(stopTarget.action, 'targetR'), false);
 });

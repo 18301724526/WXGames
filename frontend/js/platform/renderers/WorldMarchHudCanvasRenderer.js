@@ -334,8 +334,6 @@
       this.addHitTarget({ x: stopX, y, width: buttonW, height: buttonH }, {
         type: 'stopWorldMarch',
         missionId: actor.missionId,
-        targetQ: actor.stopTile?.q,
-        targetR: actor.stopTile?.r,
       });
       return true;
     }

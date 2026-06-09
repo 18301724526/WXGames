@@ -105,6 +105,10 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
       calls.push(['startWorldMarch', options]);
       return Promise.resolve(true);
     },
+    stopWorldMarch(missionId) {
+      calls.push(['stopWorldMarch', missionId]);
+      return Promise.resolve(true);
+    },
     tutorialController: {
       onWorldMarchTargetSelected(action) {
         calls.push(['targetSelected', action.targetQ, action.targetR]);
@@ -165,6 +169,13 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
   }), true);
   assert.equal(host.territoryUiState.worldMarchTarget, null);
 
+  assert.equal(await controller.handle_stopWorldMarch({
+    type: 'stopWorldMarch',
+    missionId: 'march-1',
+    targetQ: 999,
+    targetR: 999,
+  }), true);
+
   assert.deepEqual(calls, [
     ['targetSelected', 4, -2],
     ['render', 'selectWorldMarchTarget'],
@@ -185,6 +196,12 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
       cityId: 'capital',
     }],
     ['render', 'startWorldMarch'],
+    ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
+    ['refreshCurrentHighlight'],
+    ['setTimeout'],
+    ['refreshCurrentHighlight'],
+    ['stopWorldMarch', 'march-1'],
+    ['render', 'stopWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
     ['refreshCurrentHighlight'],
     ['setTimeout'],

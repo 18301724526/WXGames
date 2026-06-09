@@ -19,6 +19,11 @@ const {
   validateTutorialFormation,
   ensureTutorialFirstCityClaimSoldiers,
 } = require('./WorldExplorerTutorial');
+const {
+  AoiSyncSnapshot,
+  CommandAuthorityContract,
+  ServerTimelineSnapshot,
+} = require('../realtime');
 
 function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
@@ -290,7 +295,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     clientMission: summarizeMission(result.mission),
     allMissions: (gameState.exploreMissions || []).map(summarizeMission),
   });
-  return result;
+  return attachMarchAuthority(result, gameState, mission, 'startWorldMarch', now, {
+    clientSequence: options.clientSequence,
+    aoiRadius: options.aoiRadius,
+  });
 }
 
 function findActiveMission(gameState, missionId, now = new Date()) {
@@ -344,6 +352,30 @@ function rebaseMissionRoute(mission, route, now = new Date(), options = {}) {
   return mission;
 }
 
+function attachMarchAuthority(result = {}, gameState = {}, mission = null, action = '', now = new Date(), options = {}) {
+  if (!mission) return result;
+  const timeline = ServerTimelineSnapshot.createMissionSnapshot(mission, { now });
+  const aoi = AoiSyncSnapshot.createSnapshot(gameState, {
+    now,
+    mission,
+    missionId: mission.id,
+    timeline,
+    radius: options.aoiRadius,
+  });
+  return CommandAuthorityContract.attach(result, {
+    type: action,
+    actorId: mission.id,
+    missionId: mission.id,
+    playerId: gameState.playerId || '',
+    clientSequence: options.clientSequence || null,
+    serverTime: now.toISOString(),
+  }, {
+    serverTime: now.toISOString(),
+    timeline,
+    aoi,
+  });
+}
+
 function returnWorldMarch(gameState, missionId, now = new Date()) {
   const mission = findActiveMission(gameState, missionId, now);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
@@ -352,39 +384,42 @@ function returnWorldMarch(gameState, missionId, now = new Date()) {
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const routeResult = buildManualRoute(current, { q: origin.q, r: origin.r }, worldMap.seed);
   if (!routeResult.success) {
-    rebaseMissionRoute(mission, [], now);
+    rebaseMissionRoute(mission, [], now, { origin: current });
   } else {
-    rebaseMissionRoute(mission, routeResult.route, now);
+    rebaseMissionRoute(mission, routeResult.route, now, { origin: current });
   }
-  return {
+  const result = {
     success: true,
     message: 'Explorer returning.',
     mission: getClientMission(mission, now),
     tutorial: gameState.tutorial,
   };
+  return attachMarchAuthority(result, gameState, mission, 'returnWorldMarch', now);
 }
 
 function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   const mission = findActiveMission(gameState, missionId, now);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  const timeline = ServerTimelineSnapshot.createMissionSnapshot(mission, { now });
   const current = getLastRevealedOrOrigin(mission);
-  const target = {
-    q: options.targetQ ?? options.stopQ ?? options.q ?? current.q,
-    r: options.targetR ?? options.stopR ?? options.r ?? current.r,
-  };
+  const target = timeline.stopTile || current;
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const routeResult = buildManualRoute(current, target, worldMap.seed);
   if (!routeResult.success) {
-    rebaseMissionRoute(mission, [], now);
+    rebaseMissionRoute(mission, [], now, { origin: current });
   } else {
-    rebaseMissionRoute(mission, routeResult.route, now);
+    rebaseMissionRoute(mission, routeResult.route, now, { origin: current });
   }
-  return {
+  const result = {
     success: true,
     message: 'Explorer stopping.',
     mission: getClientMission(mission, now),
     tutorial: gameState.tutorial,
   };
+  return attachMarchAuthority(result, gameState, mission, 'stopWorldMarch', now, {
+    clientSequence: options.clientSequence,
+    aoiRadius: options.aoiRadius,
+  });
 }
 
 function claimExplore(gameState, missionId, now = new Date()) {

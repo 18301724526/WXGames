@@ -11,10 +11,26 @@ backend/*.db
 backend/*.db-journal
 backend/*.db-shm
 backend/*.db-wal
+backend/*.sqlite
+backend/*.sqlite-journal
+backend/*.sqlite-shm
+backend/*.sqlite-wal
+backend/*.sqlite3
+backend/*.sqlite3-journal
+backend/*.sqlite3-shm
+backend/*.sqlite3-wal
 backend/data/*.db
 backend/data/*.db-journal
 backend/data/*.db-shm
 backend/data/*.db-wal
+backend/data/*.sqlite
+backend/data/*.sqlite-journal
+backend/data/*.sqlite-shm
+backend/data/*.sqlite-wal
+backend/data/*.sqlite3
+backend/data/*.sqlite3-journal
+backend/data/*.sqlite3-shm
+backend/data/*.sqlite3-wal
 data/
 
 backend/.env

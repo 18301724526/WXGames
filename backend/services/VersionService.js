@@ -4,7 +4,23 @@ const path = require('path');
 
 const DEFAULT_CACHE_MS = 5000;
 const IGNORED_DIRS = new Set(['.git', '.local-logs', '.trae', 'node_modules', 'logs', 'data']);
-const IGNORED_EXTENSIONS = new Set(['.db', '.db-shm', '.db-wal', '.db-journal', '.bak', '.backup', '.log']);
+const IGNORED_EXTENSIONS = new Set([
+  '.db',
+  '.db-shm',
+  '.db-wal',
+  '.db-journal',
+  '.sqlite',
+  '.sqlite-shm',
+  '.sqlite-wal',
+  '.sqlite-journal',
+  '.sqlite3',
+  '.sqlite3-shm',
+  '.sqlite3-wal',
+  '.sqlite3-journal',
+  '.bak',
+  '.backup',
+  '.log',
+]);
 
 function readJson(filePath) {
   try {

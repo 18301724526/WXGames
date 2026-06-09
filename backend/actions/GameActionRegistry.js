@@ -37,7 +37,8 @@ const defaultDeps = {
   TutorialService,
 };
 
-function buildTerritoryPayload(body = {}) {
+function buildTerritoryPayload(body = {}, actionOverride = '') {
+  const action = actionOverride || body.action || '';
   const payload = {
     territoryId: body.territoryId,
     cityId: body.cityId,
@@ -59,6 +60,18 @@ function buildTerritoryPayload(body = {}) {
     y: body.y,
     expedition: body.expedition,
   };
+  if (action === 'stopWorldMarch') {
+    delete payload.targetQ;
+    delete payload.targetR;
+    delete payload.stopQ;
+    delete payload.stopR;
+    delete payload.q;
+    delete payload.r;
+    delete payload.x;
+    delete payload.y;
+  }
+  if (body.clientSequence !== undefined) payload.clientSequence = body.clientSequence;
+  if (body.aoiRadius !== undefined) payload.aoiRadius = body.aoiRadius;
   if (body.debugTrace !== undefined) payload.debugTrace = body.debugTrace;
   if (body.worldMarchTrace !== undefined) payload.worldMarchTrace = body.worldMarchTrace;
   return payload;
@@ -144,7 +157,7 @@ function createGameActionRegistry(overrides = {}) {
 
   for (const action of TERRITORY_ACTIONS) {
     register(action, ({ gameState, body }) => (
-      deps.TerritoryAction.execute(action, gameState, buildTerritoryPayload(body))
+      deps.TerritoryAction.execute(action, gameState, buildTerritoryPayload(body, action))
     ));
   }
 

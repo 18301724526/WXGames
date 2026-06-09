@@ -256,12 +256,10 @@
       handle_stopWorldMarch(action) {
         const missionId = action.missionId || action.actorId || '';
         if (!missionId) return false;
-        const targetQ = Number(action.targetQ ?? action.q);
-        const targetR = Number(action.targetR ?? action.r);
         const game = this.getGameHost();
         const run = () => {
-          if (typeof game?.stopWorldMarch === 'function') return game.stopWorldMarch(missionId, { targetQ, targetR });
-          return this.runAction(() => this.host.api.stopWorldMarch(missionId, { targetQ, targetR }));
+          if (typeof game?.stopWorldMarch === 'function') return game.stopWorldMarch(missionId);
+          return this.runAction(() => this.host.api.stopWorldMarch(missionId));
         };
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {

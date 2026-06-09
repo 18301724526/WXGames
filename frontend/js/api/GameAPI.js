@@ -125,7 +125,7 @@
     startExplore(options = {}) { return this.request('POST', '/game/action', { action: 'startExplore', ...options }); }
     startWorldMarch(options = {}) { return this.request('POST', '/game/action', { action: 'startWorldMarch', ...options }); }
     returnWorldMarch(missionId) { return this.request('POST', '/game/action', { action: 'returnWorldMarch', missionId }); }
-    stopWorldMarch(missionId, options = {}) { return this.request('POST', '/game/action', { action: 'stopWorldMarch', missionId, ...options }); }
+    stopWorldMarch(missionId) { return this.request('POST', '/game/action', { action: 'stopWorldMarch', missionId }); }
     claimExplore(missionId) { return this.request('POST', '/game/action', { action: 'claimExplore', missionId }); }
     startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }

@@ -190,8 +190,10 @@ test('dispatches world march actions through the territory action handler', () =
   assert.equal(calls[1].type, 'territory');
   assert.equal(calls[1].action, 'stopWorldMarch');
   assert.equal(calls[1].payload.missionId, 'explore-1');
-  assert.equal(calls[1].payload.targetQ, 1);
-  assert.equal(calls[1].payload.targetR, 0);
+  assert.equal(calls[1].payload.targetQ, undefined);
+  assert.equal(calls[1].payload.targetR, undefined);
+  assert.equal(calls[1].payload.q, undefined);
+  assert.equal(calls[1].payload.r, undefined);
 });
 
 test('returns a stable result for unknown actions', () => {

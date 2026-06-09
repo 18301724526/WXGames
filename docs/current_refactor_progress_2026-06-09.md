@@ -14,7 +14,7 @@ This is the operational progress note for the current Codex run. It is not a pro
 
 - Branch: `main`
 - Latest architecture commit pushed and deployed: `712ca9012c867b9880b88692e1f97a4e7d544036`
-- Current architecture patch: P11-004 large-map streaming contract, committed as `refactor: add large map streaming contracts`, pushed to `origin/main` and `private/main`, and deployed to the H5 path.
+- Current architecture patch: P11-005 realtime authority contract, verified locally and pending commit/deploy.
 - Online H5 URL: `http://47.116.32.216/wxgame/`
 - Protected Cocos root: `http://47.116.32.216/`
 - Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
@@ -273,11 +273,103 @@ Result:
 - Request failures: none
 - Page errors: none
 
+## P11-005 Realtime Authority Contract
+
+Current local implementation:
+
+- Added `backend/services/realtime/CommandAuthorityContract.js`.
+- Added `backend/services/realtime/ServerTimelineSnapshot.js`.
+- Added `backend/services/realtime/AoiSyncSnapshot.js`.
+- Added `backend/services/realtime/index.js`.
+- Added `backend/tests/RealtimeAuthorityContract.test.js`.
+- `startWorldMarch`, `returnWorldMarch`, and `stopWorldMarch` now return an `authority` envelope with server-owned command/timeline/AOI metadata.
+- `stopWorldMarch` ignores frontend target/stop coordinates and derives the stop tile from the server timeline.
+- `GameActionRegistry` strips world-march stop coordinates before dispatch.
+- `CanvasTerritoryActionHandlers`, `CanvasGameAppCommands`, `GameAPI`, and `WorldMarchHudCanvasRenderer` now send stop as intent-only `missionId`.
+- `scoutTerritory`, `claimScout`, `startConquest`, and `claimConquest` attach the same command authority envelope.
+- `scripts/run-architecture-smoke.js` now includes realtime authority syntax checks and focused tests.
+- `backend/services/VersionService.js` now ignores local SQLite runtime files (`.sqlite`, `.sqlite-wal`, `.sqlite-shm`, `.sqlite3` variants) when computing deployment/source hashes, preventing local playtest database writes from triggering false update reloads.
+- `.gitignore` now ignores local SQLite runtime files under `backend/` and `backend/data/`.
+
+Focused verification already passed locally:
+
+```powershell
+node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/WorldExplorerService.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/GameActionRegistry.test.js backend/tests/TerritoryActionTutorial.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.test.js
+```
+
+Result:
+
+- Focused tests: 56 passed
+
+Additional local stability verification:
+
+```powershell
+node --test backend/tests/VersionService.test.js
+```
+
+Result:
+
+- Version service tests: 2 passed
+
+Local browser tutorial playtest with screenshots:
+
+```powershell
+$env:PLAYTEST_GAME_URL='http://127.0.0.1:8080/'
+$env:PLAYTEST_API_BASE='http://127.0.0.1:8080/api'
+$env:PLAYTEST_USERNAME='codexqa'
+$env:PLAYTEST_PASSWORD='123456'
+$env:PLAYTEST_RESET_ACCOUNT='1'
+$env:PLAYTEST_MAX_ACTIONS='140'
+$env:PLAYTEST_OUTPUT_DIR='.local-logs/local-tutorial-p11-005'
+npm.cmd run playtest:online-tutorial
+```
+
+Output:
+
+```text
+E:\Human\wxgame\.local-logs\local-tutorial-p11-005\2026-06-09T04-03-52-338Z
+```
+
+Result:
+
+- Stop reason: `tutorial-completed`
+- Final tutorial step: `36`
+- Final step name: `completed`
+- Tutorial completed: `true`
+- Action count: `60`
+- Evidence count: `51`
+- Visual findings: none
+- Bad responses: none
+- Request failures: none
+- Page errors: none
+
+Full local verification:
+
+```powershell
+$env:ALLOW_STABLE_BLOCK_REOPEN='1'
+$env:STABLE_BLOCK_REOPEN_REASON='governance-update'
+npm.cmd run test:architecture
+npm.cmd test
+```
+
+Results:
+
+- Architecture gate: 419 passed
+- Stable block manifest guard: passed with `governance-update` reopen env because the manifest promotion queue changed
+- Official document guard: passed
+- `git diff --check`: passed
+- Full test suite: 785 passed
+
+P11-005 local status:
+
+- Complete and verified locally.
+- Pending commit, push, deploy, and online verification.
+
 ## Next Architecture Work
 
-After P11-004 is committed, pushed, and deployed, continue:
+After P11-005 local verification is complete, continue:
 
-1. P11-005: Realtime authority contract.
-2. P11-006: Config/version hardening.
+1. P11-006: Config/version hardening.
+2. Downstream realtime adoption: multiplayer transport, presenter/runtime consumers, and AOI stress checks.
 
-Do not promote the new tile topology or large-map streaming modules to `stable` yet. They are `candidate` until realtime authority and downstream presenter/runtime/renderer consumers prove the extension surface without churn.
+Do not promote the new tile topology, large-map streaming, or realtime authority modules to `stable` yet. They are `candidate` until downstream presenter/runtime/renderer and multiplayer transport consumers prove the extension surface without churn.

@@ -9,7 +9,8 @@ const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissio
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
 const ClientState = require('../services/worldExplorer/WorldExplorerClientState');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
-const Shared = require('../services/worldExplorer/WorldExplorerShared');
+  const Shared = require('../services/worldExplorer/WorldExplorerShared');
+const Realtime = require('../services/realtime');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -104,4 +105,10 @@ test('WorldExplorerShared normalizes epoch-second mission timestamps', () => {
   assert.equal(Shared.toTimestamp('2026-06-06T00:00:10.000Z'), epochMs);
   assert.equal(Shared.toTimestamp(epochMs), epochMs);
   assert.equal(Shared.toTimestamp(Math.floor(epochMs / 1000)), epochMs);
+});
+
+test('realtime authority contracts expose the P11 backend-authoritative baselines', () => {
+  assert.equal(typeof Realtime.CommandAuthorityContract.accept, 'function');
+  assert.equal(typeof Realtime.ServerTimelineSnapshot.createMissionSnapshot, 'function');
+  assert.equal(typeof Realtime.AoiSyncSnapshot.createSnapshot, 'function');
 });

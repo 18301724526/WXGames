@@ -112,7 +112,7 @@ test('guided world exploration rejects a formation without the tutorial scout', 
   assert.equal(gameState.exploreMissions.length, 0);
 });
 
-test('world march starts a manual route and can be stopped at a requested tile', () => {
+test('world march starts a manual route and stops only at the server timeline tile', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
 
@@ -125,14 +125,21 @@ test('world march starts a manual route and can be stopped at a requested tile',
   assert.equal(started.success, true);
   assert.equal(started.mission.mode, 'manual');
   assert.equal(started.mission.route.at(-1).q, 2);
+  assert.equal(started.authority.status, 'accepted');
+  assert.equal(started.authority.command.type, 'startWorldMarch');
+  assert.equal(started.authority.timeline.stopTile.tileId, 'tile_0_0');
 
   const stopped = WorldExplorerService.stopWorldMarch(gameState, started.mission.id, {
-    targetQ: 1,
-    targetR: 0,
+    targetQ: 999,
+    targetR: 999,
   }, new Date('2026-06-06T00:00:01.000Z'));
 
   assert.equal(stopped.success, true);
-  assert.equal(stopped.mission.target.q, 1);
+  assert.equal(stopped.mission.target.q, 0);
+  assert.equal(stopped.mission.target.r, 0);
+  assert.equal(stopped.authority.status, 'accepted');
+  assert.equal(stopped.authority.command.type, 'stopWorldMarch');
+  assert.equal(stopped.authority.timeline.stopTile.tileId, 'tile_0_0');
 });
 
 test('world march becomes idle at destination and can continue from its current tile', () => {
@@ -194,6 +201,8 @@ test('world march can be redirected home', () => {
   assert.equal(returned.success, true);
   assert.equal(returned.mission.target.q, 0);
   assert.equal(returned.mission.target.r, 0);
+  assert.equal(returned.mission.origin.q, 1);
+  assert.equal(returned.authority.command.type, 'returnWorldMarch');
 });
 
 test('random exploration still finishes as claimable ready report', () => {

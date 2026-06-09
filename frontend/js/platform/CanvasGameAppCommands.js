@@ -543,19 +543,15 @@
             }
           },
 
-      async stopWorldMarch(missionId, options = {}) {
+      async stopWorldMarch(missionId) {
             if (!missionId) return false;
             try {
               global.WorldMarchTrace?.log?.('app:stopWorldMarch:begin', {
                 missionId,
-                options: {
-                  targetQ: options.targetQ ?? options.stopQ ?? options.q ?? null,
-                  targetR: options.targetR ?? options.stopR ?? options.r ?? null,
-                },
                 before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
               const api = this.getGameApi();
-              const result = await api.stopWorldMarch(missionId, options);
+              const result = await api.stopWorldMarch(missionId);
               this.applyApiState(result);
               global.WorldMarchTrace?.log?.('app:stopWorldMarch:afterApply', {
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,

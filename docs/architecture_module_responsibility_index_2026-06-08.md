@@ -2502,6 +2502,40 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test backend/tests/GameStateRepository.test.js`
 - `npm run test:architecture`
 
+### `backend/services/VersionService.js`
+
+Status: candidate
+
+璐熻矗 / Owns:
+
+- backend deployment version DTO for `/api/version` and `/api/health`
+- package version, git commit, source hash, deployment id, and checked timestamp calculation
+- source fingerprinting for `frontend`, `backend`, and `shared`
+- runtime-artifact filtering for `.git`, `.local-logs`, `node_modules`, logs, data folders, `.env`, database files, SQLite runtime files, backups, and logs
+- cached version calculation so frequent update polling does not scan the workspace every request
+
+Public API:
+
+- `new VersionService(options)`
+- `VersionService.getVersionInfo()`
+
+Performance Constraints:
+
+- Source scan is cached by `cacheMs`.
+- File hashing is limited to source directories and ignores runtime data.
+- No repository write, API route dependency, renderer import, DOM, or frontend state.
+
+Extension Path:
+
+- New runtime artifact patterns must be added to the ignore lists with `VersionService.test.js` coverage.
+- Deployment identity semantics stay here; config registry schema/version hardening belongs to P11-006 modules.
+- Do not make local database writes, screenshots, logs, or playtest evidence change `deploymentId`.
+
+Regression:
+
+- `node --test backend/tests/VersionService.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/worldExplorer/WorldExplorerDtoMapper.js`
 
 状态 / Status: candidate
@@ -2569,6 +2603,118 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/realtime/CommandAuthorityContract.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- backend-authoritative command envelope for accepted and rejected player intent
+- stable command metadata shape: `schema`, `status`, `commandId`, `serverTime`, `command`, `authority`, `timeline`, `aoi`, `rejection`
+- explicit frontend role declaration: frontend sends intent only; server owns validation, timeline, final coordinates, combat/occupation result, and AOI sync
+- attaching the authority envelope to legacy action results without changing legacy `success`, `message`, `mission`, or `tutorial` fields
+
+公开 API / Public API:
+
+- `CommandAuthorityContract.createCommandId(input)`
+- `CommandAuthorityContract.normalizeIntent(intent)`
+- `CommandAuthorityContract.createAuthorityResult(intent, options)`
+- `CommandAuthorityContract.accept(intent, options)`
+- `CommandAuthorityContract.reject(intent, options)`
+- `CommandAuthorityContract.attach(result, intent, options)`
+
+性能约束 / Performance Constraints:
+
+- O(1) envelope creation; no state scan, repository access, renderer import, or route dependency.
+- Does not decide gameplay results; callers provide validated timeline/AOI payloads.
+
+扩展方式 / Extension Path:
+
+- New command classes extend the envelope through `command` metadata or optional sibling payloads, not by changing legacy action result fields.
+- New rejection reasons stay structured under `rejection`.
+- Do not add gameplay simulation, transport delivery, or frontend interpolation logic here.
+
+回归 / Regression:
+
+- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/WorldExplorerService.test.js backend/tests/GameActionRegistry.test.js`
+- `npm run test:architecture`
+
+### `backend/services/realtime/ServerTimelineSnapshot.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- server-owned movement timeline snapshot for realtime missions
+- normalized route/path/progress calculation from server timestamps
+- confirmed position, interpolated current coordinate, and server-derived `stopTile`
+- frontend interpolation metadata that keeps final coordinates server-authoritative
+
+公开 API / Public API:
+
+- `ServerTimelineSnapshot.normalizeCoord(coord, fallback)`
+- `ServerTimelineSnapshot.normalizeRoute(route)`
+- `ServerTimelineSnapshot.getStepDurationMs(mission)`
+- `ServerTimelineSnapshot.getProgress(mission, options)`
+- `ServerTimelineSnapshot.getInterpolatedCoord(mission, options)`
+- `ServerTimelineSnapshot.getConfirmedPosition(mission)`
+- `ServerTimelineSnapshot.chooseStopTile(mission, options)`
+- `ServerTimelineSnapshot.createMissionSnapshot(mission, options)`
+
+性能约束 / Performance Constraints:
+
+- Linear over one mission route.
+- No world-map tile scan, repository access, API route dependency, renderer import, DOM, or frontend state.
+
+扩展方式 / Extension Path:
+
+- New realtime movement modes add focused timeline tests first.
+- Frontend interpolation may consume the snapshot, but may not feed final coordinates back into stop/arrival decisions.
+- Transport delivery belongs to later realtime sync modules.
+
+回归 / Regression:
+
+- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/WorldExplorerService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/realtime/AoiSyncSnapshot.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- bounded AOI snapshot for world-map realtime sync
+- AOI center/radius normalization
+- nearby mission, terrain tile, and territory slices without full-world payload assumptions
+- count metadata for transport/render consumers
+
+公开 API / Public API:
+
+- `AoiSyncSnapshot.normalizeRadius(value, fallback)`
+- `AoiSyncSnapshot.getDistance(a, b)`
+- `AoiSyncSnapshot.normalizeCenter(options)`
+- `AoiSyncSnapshot.isInRadius(coord, center, radius)`
+- `AoiSyncSnapshot.getAoiMissions(gameState, center, radius, options)`
+- `AoiSyncSnapshot.getAoiTiles(gameState, center, radius)`
+- `AoiSyncSnapshot.getAoiTerritories(gameState, center, radius)`
+- `AoiSyncSnapshot.createSnapshot(gameState, options)`
+
+性能约束 / Performance Constraints:
+
+- Linear over currently materialized missions/tiles/territories only.
+- No renderer import, DOM, API route, persistence write, or full-map generation.
+
+扩展方式 / Extension Path:
+
+- New AOI shapes or chunk/window integration extend this module with focused tests.
+- Multiplayer transport can consume the snapshot but should not add socket/session behavior here.
+- Large-map chunk/window contracts remain in `WorldChunkAddress` and `WorldInterestWindow`.
+
+回归 / Regression:
+
+- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/WorldExplorerService.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasTerritoryActionHandlers.js`
@@ -3374,7 +3520,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - P0/P1/P2/P3/P4/P5/P6 candidate/stable baseline 的快速架构回归
 - 架构相关文件语法检查 / syntax checks
-- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, canvas action handler split modules, canvas game renderer composition/facade modules, tutorial guide policy/resolver/phase/UI-state modules, game state migration pipeline, and world explorer DTO mapper
+- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, canvas action handler split modules, canvas game renderer composition/facade modules, tutorial guide policy/resolver/phase/UI-state modules, game state migration pipeline, world explorer DTO mapper, realtime authority contracts, and backend version service
 - `git diff --check`
 
 公开命令 / Public Command:
@@ -3931,3 +4077,4 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMapRuntimeRenderPolicy` and `WorldMapRuntimeRenderPipeline` for P9-004; `WorldMapRuntime.render()` now delegates render context/throttle/option/trace decisions and snapshot/full render flow, dropping to 411 lines as a candidate facade. |
 | 2026-06-08 | Added `UIStatePresenterDelegates` for P10-001; `UIStatePresenter` now delegates dependency resolution and static method installation to the registry and dropped to 23 lines as a candidate facade. |
 | 2026-06-09 | Added `WorldChunkAddress`, `WorldInterestWindow`, and `WorldRevealStore` for P11-004 large-map streaming contracts; H5/minigame entrypoints and `npm run test:architecture` now include the new candidate modules. |
+| 2026-06-09 | Added `CommandAuthorityContract`, `ServerTimelineSnapshot`, and `AoiSyncSnapshot` for P11-005 realtime authority contracts; world-march stop is now server-timeline derived, territory scout/conquest/claim actions attach authority envelopes, and `npm run test:architecture` includes realtime focused tests. |

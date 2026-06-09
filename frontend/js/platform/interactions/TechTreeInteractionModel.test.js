@@ -688,8 +688,8 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
       calls.push(['returnWorldMarch', missionId]);
       return true;
     },
-    stopWorldMarch(missionId, options) {
-      calls.push(['stopWorldMarch', missionId, options]);
+    stopWorldMarch(missionId) {
+      calls.push(['stopWorldMarch', missionId]);
       return true;
     },
   };
