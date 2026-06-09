@@ -42,6 +42,43 @@ test('TutorialGuideController only allows first house build during house guide',
   assert.equal(controller.canOpenTab('events'), false);
 });
 
+test('TutorialGuideController deduplicates concurrent advance requests for the same step', async () => {
+  const calls = [];
+  let resolveAdvance;
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.talentPolicyOpened },
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+      calls.push(['applyApiState', result.tutorial.currentStep]);
+    },
+  };
+  const api = {
+    advanceTutorial(step) {
+      calls.push(['advanceTutorial', step]);
+      return new Promise((resolve) => {
+        resolveAdvance = () => resolve({
+          tutorial: { completed: false, currentStep: step, phaseCompleted: {} },
+        });
+      });
+    },
+  };
+  const controller = new TutorialGuideController({ game, api });
+  controller.sync(game.tutorial);
+
+  const first = controller.advanceTo(TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
+  const second = controller.advanceTo(TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
+  assert.equal(calls.filter(([name]) => name === 'advanceTutorial').length, 1);
+
+  resolveAdvance();
+  const results = await Promise.all([first, second]);
+
+  assert.equal(results[0], results[1]);
+  assert.deepEqual(calls, [
+    ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied],
+    ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied],
+  ]);
+});
+
 test('TutorialGuideController highlights the house build button when available', () => {
   const calls = [];
   const shell = {
@@ -825,7 +862,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   const calls = [];
   const shell = {
     activeCommandPanel: 'military',
-    showTalentPolicy: false,
+    showCityManagement: false,
+    activeCityManagementTab: '',
     showFamousPersons: false,
     resetLocalViewToResources() {
       calls.push({ resetResources: true });
@@ -833,8 +871,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
     },
     getCanvasTarget(type, predicate) {
       const targets = {
-        openTalentPolicy: { type: 'openTalentPolicy' },
-        confirmTalentPolicy: { type: 'confirmTalentPolicy' },
+        openCityManagement: { type: 'openCityManagement', tab: 'people' },
+        switchCityManagementTab: { type: 'switchCityManagementTab', tab: 'people' },
         assignJob: [
           { type: 'assignJob', job: 'farmer', delta: 1, disabled: true },
           { type: 'assignJob', job: 'scholar', delta: 1 },
@@ -860,6 +898,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
     state: { currentTab: 'military' },
     activeCommandPanel: 'military',
+    showCityManagement: false,
+    activeCityManagementTab: '',
     canvasShell: shell,
     applyApiState(result) {
       this.tutorial = result.tutorial;
@@ -887,20 +927,14 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.canOpenTab('resources'), true);
   assert.equal(controller.canOpenTab('tech'), false);
   assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTalentPolicy' });
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCityManagement', tab: 'people' });
 
-  game.showTalentPolicy = true;
-  shell.showTalentPolicy = true;
+  game.showCityManagement = true;
+  shell.showCityManagement = true;
+  game.activeCityManagementTab = 'people';
+  shell.activeCityManagementTab = 'people';
   await controller.onTalentPolicyOpened();
-  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyOpened);
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'confirmTalentPolicy' });
-
-  game.showTalentPolicy = false;
-  shell.showTalentPolicy = false;
-  controller.onTalentPolicyApplied({
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied },
-  });
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
 
@@ -925,17 +959,16 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.canOpenTab('resources'), false);
 });
 
-test('TutorialGuideController exits map home before guiding talent policy', () => {
+test('TutorialGuideController exits map home before guiding people tab', () => {
   const calls = [];
   const shell = {
     mapHomeActive: true,
     activeCommandPanel: 'military',
-    showTalentPolicy: false,
     renderReadOnly(state, tab, options) {
       calls.push(['renderReadOnly', tab, options]);
       this.mapHomeActive = Boolean(options?.forceMapHome);
       this.hitTargets = [
-        { x: 300, y: 116, width: 58, height: 28, action: { type: 'openTalentPolicy' } },
+        { x: 300, y: 116, width: 58, height: 28, action: { type: 'openCityManagement', tab: 'people' } },
       ];
       return true;
     },
@@ -977,7 +1010,7 @@ test('TutorialGuideController exits map home before guiding talent policy', () =
     ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
   );
   const highlightCall = calls.find((call) => call[0] === 'highlight');
-  assert.deepEqual(highlightCall[1], { type: 'openTalentPolicy' });
+  assert.deepEqual(highlightCall[1], { type: 'openCityManagement', tab: 'people' });
   assert.deepEqual(highlightCall[2].renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
 });
 

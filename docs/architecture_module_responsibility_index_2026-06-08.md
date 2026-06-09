@@ -3457,9 +3457,9 @@ Regression:
 
 负责 / Owns:
 
-- talent-policy panel/draft/apply/confirm/save/delete action handlers
-- talent-policy draft normalization and finalization helper behavior previously embedded in `CanvasActionController`
-- tutorial and shell/game panel sync hooks for talent-policy UI actions
+- legacy `openTalentPolicy` compatibility route into city management people tab
+- direct `applyTalentPolicy` finalization helper behavior previously embedded in `CanvasActionController`
+- tutorial refresh/finalization hooks for talent-policy apply and city people-tab guidance
 - installed legacy `handle_*` method names for the talent-policy action domain
 
 公开 API / Public API:
@@ -3468,7 +3468,8 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- 新 talent-policy canvas action 先扩展本模块。
+- New talent-policy apply/compatibility action first extends this module.
+- New talent allocation UI belongs in `CityCanvasRenderer` / city-management people-tab flows, not a standalone talent-policy panel.
 - Talent policy data derivation belongs in state/domain presenters or services, not in the controller facade.
 - Do not add talent-policy handlers directly to `CanvasActionController`.
 
@@ -4387,6 +4388,33 @@ Regression:
 - `node scripts/verify-refactor-plan-doc.js`
 - `npm run test:architecture`
 
+### `docs/production_engineering_roadmap_2026-06-09.md`
+
+状态 / Status: authoritative
+
+负责 / Owns:
+
+- P12 production engineering roadmap
+- anti-mud production guardrails
+- CI architecture gate direction
+- release/deploy governance direction
+- observability, backup/restore, performance/capacity, security, config pipeline, stable promotion CI, and operations runbook priorities
+
+公开约定 / Public Contract:
+
+- This is the current production-engineering authority for the post-P0-P11 phase.
+- P12 implementation must update this document when production guardrails, deploy rules, CI gates, backup/restore rules, or operational runbooks change.
+
+扩展方式 / Extension Path:
+
+- Add or update P12 items through this roadmap and keep concrete modules/scripts/runbooks registered in this responsibility index.
+- Do not create separate release, handoff, or operations notes outside the official doc set unless they are registered here and guarded by `scripts/verify-refactor-plan-doc.js`.
+
+回归 / Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
+- `npm run test:architecture`
+
 ### `frontend/js/platform/renderers/WorldMapCanvasRenderer.js` - 718 lines
 
 状态 / Status: candidate facade
@@ -4775,3 +4803,5 @@ Recommended first split sequence:
 | 2026-06-09 | Added registry metadata/validation for core backend config modules: `GameConfig`, `EraConfig`, `TutorialFlowConfig`, `BattleConfig`, and `TechTreeConfig`; `npm run test:architecture` now syntax-checks those config modules and `ConfigRegistryContract.test.js` verifies their registry contracts. |
 | 2026-06-09 | Removed remaining business-code `Math.random` usage by moving talent-policy custom policy ids to backend crypto entropy; `TalentPolicyService.test.js` is included in `npm run test:architecture`. |
 | 2026-06-09 | P11-006 is now documented as complete for current config/version/random hardening. Future chance/drop/generated-result domains must add explicit authority adapters when introduced. P3 renderer split modules remain `candidate` while their completed `done` plan status reflects implementation completion, not stable promotion. |
+| 2026-06-09 | Added `docs/production_engineering_roadmap_2026-06-09.md` as the P12 production-engineering authority, registered it in the official doc set, and documented the next CI/deploy/observability/backup/performance/security/config/stable-promotion/runbook guardrails. |
+| 2026-06-09 | Deleted the standalone `TalentPolicyCanvasRenderer` panel. The legacy talent-policy shortcut now routes to city management people tab, and `CanvasTalentPolicyActionHandlers` owns only compatibility routing plus direct apply finalization. |

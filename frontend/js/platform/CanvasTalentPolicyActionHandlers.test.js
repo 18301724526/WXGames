@@ -21,7 +21,7 @@ class HostController {
 
   closePanels(except = []) {
     const keep = new Set(except);
-    ['showTalentPolicy', 'showTaskCenter', 'activeCommandPanel'].forEach((key) => {
+    ['showTaskCenter', 'activeCommandPanel'].forEach((key) => {
       if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
     });
   }
@@ -51,15 +51,16 @@ CanvasTalentPolicyActionHandlers.install(HostController);
 
 test('CanvasTalentPolicyActionHandlers installs talent policy compatibility methods', () => {
   assert.equal(typeof HostController.prototype.handle_openTalentPolicy, 'function');
-  assert.equal(typeof HostController.prototype.handle_confirmTalentPolicy, 'function');
+  assert.equal(typeof HostController.prototype.handle_applyTalentPolicy, 'function');
   assert.equal(typeof HostController.prototype.finalizeTalentPolicyApply, 'function');
 });
 
-test('open talent policy keeps shell and game panel open after async tutorial advance', async () => {
+test('open talent policy shortcut routes to city people tab after async tutorial advance', async () => {
   const calls = [];
   let resolveAdvance = null;
   const game = {
-    showTalentPolicy: false,
+    showCityManagement: false,
+    activeCityManagementTab: '',
     canvasShell: null,
     tutorialController: {
       onTalentPolicyOpened() {
@@ -74,22 +75,25 @@ test('open talent policy keeps shell and game panel open after async tutorial ad
     },
   };
   const host = {
-    showTalentPolicy: false,
+    showCityManagement: false,
+    activeCityManagementTab: '',
     showTaskCenter: true,
     lastGame: game,
     renderCanvasAction(action) {
       calls.push(['renderCanvasAction', action.type]);
     },
     render() {
-      calls.push(['render', this.showTalentPolicy]);
+      calls.push(['render', this.activeCityManagementTab]);
     },
   };
   game.canvasShell = host;
   const controller = new HostController(host);
 
   assert.equal(controller.handle_openTalentPolicy({ type: 'openTalentPolicy' }), true);
-  assert.equal(host.showTalentPolicy, true);
-  assert.equal(game.showTalentPolicy, true);
+  assert.equal(host.showCityManagement, true);
+  assert.equal(game.showCityManagement, true);
+  assert.equal(host.activeCityManagementTab, 'people');
+  assert.equal(game.activeCityManagementTab, 'people');
   assert.equal(host.showTaskCenter, false);
   assert.deepEqual(calls, [['renderCanvasAction', 'openTalentPolicy'], ['opened']]);
 
@@ -97,20 +101,21 @@ test('open talent policy keeps shell and game panel open after async tutorial ad
   await Promise.resolve();
   await Promise.resolve();
 
-  assert.equal(host.showTalentPolicy, true);
-  assert.equal(game.showTalentPolicy, true);
+  assert.equal(host.showCityManagement, true);
+  assert.equal(game.showCityManagement, true);
+  assert.equal(host.activeCityManagementTab, 'people');
+  assert.equal(game.activeCityManagementTab, 'people');
   assert.deepEqual(calls, [
     ['renderCanvasAction', 'openTalentPolicy'],
     ['opened'],
-    ['render', true],
+    ['render', 'people'],
     ['refresh'],
   ]);
 });
 
-test('confirm talent policy applies default base policy and closes panel after success', async () => {
+test('apply talent policy keeps policy service available without the old panel', async () => {
   const calls = [];
   const game = {
-    showTalentPolicy: true,
     applyTalentPolicy(policyId) {
       calls.push(['applyPolicy', policyId]);
       return Promise.resolve({ policyId });
@@ -125,26 +130,15 @@ test('confirm talent policy applies default base policy and closes panel after s
     },
   };
   const host = {
-    showTalentPolicy: true,
     lastGame: game,
-    state: {
-      talentPolicies: {
-        activePolicyId: 'balanced',
-        systemPolicies: [{ id: 'balanced' }],
-        defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
-      },
-    },
-    talentPolicyUiState: {},
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
   };
   const controller = new HostController(host);
 
-  assert.equal(await controller.handle_confirmTalentPolicy({ type: 'confirmTalentPolicy' }), true);
+  assert.equal(await controller.handle_applyTalentPolicy({ type: 'applyTalentPolicy', policyId: 'balanced' }), true);
 
-  assert.equal(host.showTalentPolicy, false);
-  assert.equal(game.showTalentPolicy, false);
   assert.deepEqual(calls, [
     ['applyPolicy', 'balanced'],
     ['applied', 'balanced'],

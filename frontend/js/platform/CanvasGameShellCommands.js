@@ -80,7 +80,6 @@ openFamousPersons() {
       this.selectedFamousPersonId = '';
       this.showTaskCenter = false;
       this.showGuidebook = false;
-      this.showTalentPolicy = false;
       this.activeCommandPanel = '';
       return true;
     },
@@ -288,7 +287,6 @@ resetForCanvasTabSwitch() {
       this.activeEventId = null;
       this.showGuidebook = false;
       this.showFamousPersons = false;
-      this.showTalentPolicy = false;
       this.showCityManagement = false;
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.rewardReveal = null;
@@ -327,7 +325,6 @@ resetLocalViewToResources(options = {}) {
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showFamousPersons = false;
-      this.showTalentPolicy = false;
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.activeCommandPanel = '';
       this.famousPersonsPage = 0;
@@ -376,9 +373,11 @@ syncForwardedLocalAction(action = {}) {
         return true;
       }
       if (action.type === 'openTalentPolicy') {
-        this.showTalentPolicy = true;
-        if (this.lastGame && typeof this.lastGame === 'object' && 'showTalentPolicy' in this.lastGame) {
-          this.lastGame.showTalentPolicy = true;
+        this.showCityManagement = true;
+        this.activeCityManagementTab = 'people';
+        if (this.lastGame && typeof this.lastGame === 'object') {
+          this.lastGame.showCityManagement = true;
+          this.lastGame.activeCityManagementTab = 'people';
         }
         return true;
       }

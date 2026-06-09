@@ -123,8 +123,6 @@
     closeIfOpen(shell, 'showTaskCenter');
     closeIfOpen(game, 'showFamousPersons');
     closeIfOpen(shell, 'showFamousPersons');
-    closeIfOpen(game, 'showTalentPolicy');
-    closeIfOpen(shell, 'showTalentPolicy');
     if (game.selectedFamousPersonId) {
       game.selectedFamousPersonId = '';
       changed = true;
@@ -238,7 +236,6 @@
       showFamousPersons: false,
       activeCommandPanel: '',
       activeEventId: null,
-      showTalentPolicy: false,
     });
     mergeUiState(game, 'territoryUiState', {
       selectedSiteId: '',
@@ -254,7 +251,6 @@
         showCityManagement: false,
         showTaskCenter: false,
         showFamousPersons: false,
-        showTalentPolicy: false,
         activeCommandPanel: '',
         activeEventId: null,
       });
@@ -306,6 +302,65 @@
   },
 
   getResourcesGuideHighlightOptions() {
+    return {
+      renderActiveTab: 'resources',
+      renderOptions: {
+        forceMapHome: false,
+        allowDefaultMapHome: false,
+      },
+    };
+  },
+
+  ensureCityPeopleGuideVisible(options = {}) {
+    const game = this.game || {};
+    const shell = game.canvasShell || null;
+    let changed = false;
+    const setIfChanged = (host, key, value) => {
+      if (!host || host[key] === value) return;
+      host[key] = value;
+      changed = true;
+    };
+    const patch = {
+      mapHomeActive: false,
+      showCityManagement: true,
+      activeCityManagementTab: 'people',
+      showTaskCenter: false,
+      showFamousPersons: false,
+      showSubcityList: false,
+      activeCommandPanel: '',
+      activeEventId: null,
+    };
+    if (game.state) {
+      setIfChanged(game.state, 'currentTab', 'resources');
+      setIfChanged(game.state, 'militaryView', 'army');
+    }
+    Object.entries(patch).forEach(([key, value]) => setIfChanged(game, key, value));
+    if (shell) Object.entries(patch).forEach(([key, value]) => setIfChanged(shell, key, value));
+    if (game.territoryUiState) {
+      setIfChanged(game.territoryUiState, 'selectedSiteId', '');
+      setIfChanged(game.territoryUiState, 'worldMarchTarget', null);
+      setIfChanged(game.territoryUiState, 'selectedWorldActorId', '');
+    }
+    if (shell?.territoryUiState) {
+      setIfChanged(shell.territoryUiState, 'selectedSiteId', '');
+      setIfChanged(shell.territoryUiState, 'worldMarchTarget', null);
+      setIfChanged(shell.territoryUiState, 'selectedWorldActorId', '');
+    }
+    game.territoryController?.closeSiteDialog?.({ render: false });
+    shell?.closeWorldSiteHud?.({ render: false });
+    shell?.hideTutorialHighlight?.();
+    if (typeof shell?.renderReadOnly === 'function') {
+      shell.renderReadOnly(game.state, 'resources', {
+        forceMapHome: false,
+        allowDefaultMapHome: false,
+      });
+    } else if (changed || options.forceRender !== false) {
+      game.renderCanvasSurface?.('resources');
+    }
+    return true;
+  },
+
+  getCityPeopleGuideHighlightOptions() {
     return {
       renderActiveTab: 'resources',
       renderOptions: {

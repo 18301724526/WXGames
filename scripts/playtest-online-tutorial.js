@@ -270,7 +270,6 @@ function isApiAction(actionType = '') {
     'conquer',
     'claimConquest',
     'submitNaming',
-    'confirmTalentPolicy',
     'assignJob',
     'seekFamousPerson',
   ]).has(actionType);
@@ -286,7 +285,6 @@ function expectedApiBodyAction(action = {}) {
   if (action.type === 'conquer') return 'startConquest';
   if (action.type === 'claimConquest') return 'claimConquest';
   if (action.type === 'submitNaming') return action.promptType === 'polity' ? 'renamePolity' : 'renameCity';
-  if (action.type === 'confirmTalentPolicy') return 'applyTalentPolicy';
   if (action.type === 'assignJob') return 'assign';
   if (action.type === 'seekFamousPerson') return 'seekFamousPerson';
   return '';
@@ -514,8 +512,8 @@ async function getState(page) {
       activeEventId: shell?.activeEventId || game?.activeEventId || game?.eventController?.activeEventId || '',
       showFamousPersons: Boolean(shell?.showFamousPersons || game?.showFamousPersons),
       selectedFamousPersonId: shell?.selectedFamousPersonId || game?.selectedFamousPersonId || '',
-      showTalentPolicy: Boolean(shell?.showTalentPolicy || game?.showTalentPolicy),
-      talentPolicyOpen: Boolean(shell?.showTalentPolicy || game?.showTalentPolicy),
+      cityPeopleOpen: Boolean((shell?.showCityManagement || game?.showCityManagement)
+        && (shell?.activeCityManagementTab || game?.activeCityManagementTab) === 'people'),
       naming: shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
@@ -996,6 +994,10 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       return !after.showFamousPersons ? pass('famous panel closed') : fail('famous panel is still open');
     case 'switchCityManagementTab':
       return after.activeCityManagementTab === action.tab ? pass('city management tab switched') : fail('city management tab did not switch');
+    case 'openCityManagement':
+      return after.cityManagementOpen && after.activeCityManagementTab === (action.tab || 'buildings')
+        ? pass(`city management ${action.tab || 'buildings'} tab opened`)
+        : fail('city management tab did not open');
     case 'openArmyFormation':
       return after.armyFormationEditor?.open ? pass('army formation editor opened') : fail('army formation editor did not open');
     case 'toggleArmyFormationMember':
@@ -1030,11 +1032,9 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
     case 'renameCity':
       return after.naming?.visible ? pass('city naming modal opened') : fail('city naming modal did not open');
     case 'openTalentPolicy':
-      return after.showTalentPolicy || after.talentPolicyOpen || stepAdvanced
-        ? pass('talent policy opened')
-        : fail('talent policy did not open');
-    case 'confirmTalentPolicy':
-      return stepAdvanced || apiOk ? pass('talent policy confirmed') : fail('talent policy did not apply');
+      return after.cityPeopleOpen || stepAdvanced
+        ? pass('legacy talent shortcut routed to city people tab')
+        : fail('legacy talent shortcut did not route to city people tab');
     case 'assignJob':
       return stepAdvanced || apiOk || hasChanged(before.stateSummary?.resources, after.stateSummary?.resources)
         ? pass('manual talent assignment changed state')
@@ -1417,17 +1417,19 @@ async function chooseNextAction(page, iteration) {
     ));
   }
   if (step === 29) {
-    return clickByPredicate(page, `open-talent-policy-${iteration}`, (action) => (
-      action.type === 'openTalentPolicy' && !action.disabled
+    return clickByPredicate(page, `open-city-people-${iteration}`, (action) => (
+      action.type === 'openCityManagement' && (action.tab || 'people') === 'people' && !action.disabled
     ));
   }
   if (step === 30) {
-    if (!state.talentPolicyOpen && !state.showTalentPolicy) {
-      const opened = findTarget(state, (action) => action.type === 'openTalentPolicy' && !action.disabled);
-      if (opened) return clickTarget(page, `open-talent-policy-${iteration}`, state, opened);
+    if (!state.cityManagementOpen) {
+      const opened = findTarget(state, (action) => (
+        action.type === 'openCityManagement' && (action.tab || 'people') === 'people' && !action.disabled
+      ));
+      if (opened) return clickTarget(page, `open-city-people-${iteration}`, state, opened);
     }
-    return clickByPredicate(page, `confirm-talent-policy-${iteration}`, (action) => (
-      action.type === 'confirmTalentPolicy' && !action.disabled
+    return clickByPredicate(page, `switch-city-people-${iteration}`, (action) => (
+      action.type === 'switchCityManagementTab' && action.tab === 'people' && !action.disabled
     ));
   }
   if (step === 31) {

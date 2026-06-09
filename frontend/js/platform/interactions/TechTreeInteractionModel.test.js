@@ -398,11 +398,12 @@ test('CanvasActionController opens task center above city management after lumbe
   assert.deepEqual(calls, [['render'], ['refreshCurrentHighlight']]);
 });
 
-test('CanvasActionController syncs talent policy panel across shell and game hosts after tutorial advance', async () => {
+test('CanvasActionController routes talent policy shortcut to city people tab after tutorial advance', async () => {
   const calls = [];
   let resolveAdvance = null;
   const shell = {
-    showTalentPolicy: false,
+    showCityManagement: false,
+    activeCityManagementTab: '',
     showTaskCenter: true,
     getCanvasGameHost() {
       return game;
@@ -414,12 +415,13 @@ test('CanvasActionController syncs talent policy panel across shell and game hos
       },
     },
     render() {
-      calls.push(['render', this.showTalentPolicy]);
+      calls.push(['render', this.activeCityManagementTab]);
       return true;
     },
   };
   const game = {
-    showTalentPolicy: false,
+    showCityManagement: false,
+    activeCityManagementTab: '',
     canvasShell: shell,
     tutorialController: {
       onTalentPolicyOpened() {
@@ -437,9 +439,12 @@ test('CanvasActionController syncs talent policy panel across shell and game hos
 
   assert.equal(controller.handle_openTalentPolicy({ type: 'openTalentPolicy' }), true);
 
-  assert.equal(shell.showTalentPolicy, true);
-  assert.equal(game.showTalentPolicy, true);
-  assert.equal(game.canvasShell.showTalentPolicy, true);
+  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.showCityManagement, true);
+  assert.equal(game.canvasShell.showCityManagement, true);
+  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.equal(game.activeCityManagementTab, 'people');
+  assert.equal(game.canvasShell.activeCityManagementTab, 'people');
   assert.equal(shell.showTaskCenter, false);
   assert.equal(calls.some((call) => call[0] === 'onTalentPolicyOpened'), true);
   assert.equal(calls.some((call) => call[0] === 'refreshCurrentHighlight'), false);
@@ -447,10 +452,10 @@ test('CanvasActionController syncs talent policy panel across shell and game hos
   resolveAdvance({ currentStep: 30 });
   await Promise.resolve();
 
-  assert.equal(shell.showTalentPolicy, true);
-  assert.equal(game.showTalentPolicy, true);
-  assert.equal(game.canvasShell.showTalentPolicy, true);
-  assert.deepEqual(calls.filter((call) => call[0] === 'render'), [['render', true], ['render', true]]);
+  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.showCityManagement, true);
+  assert.equal(game.canvasShell.showCityManagement, true);
+  assert.deepEqual(calls.filter((call) => call[0] === 'render'), [['render', 'people'], ['render', 'people']]);
   assert.equal(calls.filter((call) => call[0] === 'refreshCurrentHighlight').length, 1);
 });
 

@@ -260,8 +260,6 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         showFamousPersons: this.showFamousPersons,
         famousPersonsPage: this.famousPersonsPage,
         selectedFamousPersonId: this.selectedFamousPersonId,
-        showTalentPolicy: this.showTalentPolicy,
-        talentPolicyUiState: this.lastGame?.talentPolicyUiState || this.talentPolicyUiState || {},
         armyFormationEditor: this.armyFormationEditor,
         activeCommandPanel: this.activeCommandPanel || '',
         logs: this.lastGame?.requestLogs || [],

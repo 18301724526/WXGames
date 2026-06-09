@@ -12,6 +12,7 @@ const officialDocPaths = [
   'docs/current_product_design_2026-06-09.md',
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
+  'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
 ];
@@ -49,6 +50,7 @@ const requiredText = {
     'full wrapping torus',
     'CommandAuthorityContract',
     'AoiSyncSnapshot',
+    'Production Engineering',
   ],
   'docs/current_product_design_2026-06-09.md': [
     '实时操作的 Civilization-like 策略经营游戏',
@@ -57,11 +59,18 @@ const requiredText = {
   ],
   'docs/long_term_architecture_refactor_plan_2026-06-08.md': [
     'P11 - Stable Block Hardening',
+    'P12 - 生产工程化 / Production Engineering',
     'stable_block_promotion_matrix_2026-06-09.md',
   ],
   'docs/architecture_module_responsibility_index_2026-06-08.md': [
     'Stable Promotion Convention',
+    'docs/production_engineering_roadmap_2026-06-09.md',
     'docs/stable_block_promotion_matrix_2026-06-09.md',
+  ],
+  'docs/production_engineering_roadmap_2026-06-09.md': [
+    'Anti-Mud Rules',
+    'P12 - 生产工程化 / Production Engineering',
+    'Large-Studio Parity Definition',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

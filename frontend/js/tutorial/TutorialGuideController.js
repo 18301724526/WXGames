@@ -39,6 +39,7 @@
       this.api = options.api || null;
       this.state = options.state || null;
       this.focusedFirstCitySiteId = '';
+      this.pendingAdvanceByStep = new Map();
       this.targetResolver = options.targetResolver
         || (SharedTutorialGuideTargetResolver ? new SharedTutorialGuideTargetResolver({ host: this }) : null);
     }
@@ -103,11 +104,19 @@
     async advanceTo(step) {
       const nextStep = Number(step);
       if (!Number.isFinite(nextStep) || nextStep <= this.getCurrentStep()) return this.state;
+      if (this.pendingAdvanceByStep.has(nextStep)) return this.pendingAdvanceByStep.get(nextStep);
       const api = this.getApi();
       if (!api?.advanceTutorial) return this.sync({ ...(this.state || {}), currentStep: nextStep });
-      const result = await api.advanceTutorial(nextStep);
-      this.game?.applyApiState?.(result);
-      return this.sync(result?.tutorial || this.game?.tutorial || this.state);
+      const pending = (async () => {
+        const result = await api.advanceTutorial(nextStep);
+        this.game?.applyApiState?.(result);
+        return this.sync(result?.tutorial || this.game?.tutorial || this.state);
+      })()
+        .finally(() => {
+          this.pendingAdvanceByStep.delete(nextStep);
+        });
+      this.pendingAdvanceByStep.set(nextStep, pending);
+      return pending;
     }
 
     async markCityEntered() {
@@ -370,8 +379,12 @@
     }
 
     async onTalentPolicyOpened() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.polityNamed) {
-        return this.advanceTo(TUTORIAL_STEPS.talentPolicyOpened);
+      const step = this.getCurrentStep();
+      if (step === TUTORIAL_STEPS.polityNamed) {
+        await this.advanceTo(TUTORIAL_STEPS.talentPolicyOpened);
+      }
+      if (this.getCurrentStep() === TUTORIAL_STEPS.talentPolicyOpened) {
+        return this.advanceTo(TUTORIAL_STEPS.talentPolicyApplied);
       }
       return this.state;
     }
@@ -449,6 +462,9 @@
     }
 
     onCityManagementOpened(tab = '') {
+      if (tab === 'people') {
+        return this.onTalentPolicyOpened();
+      }
       if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed && tab === 'military') {
         this.refreshCurrentHighlight();
         return this.state;
@@ -577,7 +593,6 @@
       setIfChanged(game, 'showSubcityList', false);
       setIfChanged(game, 'showTaskCenter', false);
       setIfChanged(game, 'showFamousPersons', false);
-      setIfChanged(game, 'showTalentPolicy', false);
       setIfChanged(game, 'activeEventId', null);
       this.closeArmyFormationEditorEverywhere();
       mergeUiState(game, 'territoryUiState', {
@@ -612,7 +627,6 @@
         setIfChanged(shell, 'showSubcityList', false);
         setIfChanged(shell, 'showTaskCenter', false);
         setIfChanged(shell, 'showFamousPersons', false);
-        setIfChanged(shell, 'showTalentPolicy', false);
         setIfChanged(shell, 'activeEventId', null);
         mergeUiState(shell, 'territoryUiState', {
           selectedSiteId: '',
@@ -638,7 +652,7 @@
 
 
     isTalentPolicyOpen() {
-      return Boolean(this.game?.showTalentPolicy || this.game?.canvasShell?.showTalentPolicy);
+      return Boolean(this.isCityManagementOpen() && this.isCityManagementTabOpen('people'));
     }
 
     pickManualAssignAction() {

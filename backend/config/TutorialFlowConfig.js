@@ -99,6 +99,7 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
   [TUTORIAL_STEPS.scoutWorldPanelOpened]: TUTORIAL_STEPS.scoutFormationSaved,
   [TUTORIAL_STEPS.talentPolicyOpened]: TUTORIAL_STEPS.polityNamed,
+  [TUTORIAL_STEPS.talentPolicyApplied]: TUTORIAL_STEPS.talentPolicyOpened,
   [TUTORIAL_STEPS.famousSeekOpened]: TUTORIAL_STEPS.manualTalentAssigned,
   [TUTORIAL_STEPS.finalTechOpened]: TUTORIAL_STEPS.famousSeekCompleted,
   [TUTORIAL_STEPS.completed]: TUTORIAL_STEPS.finalTechOpened,

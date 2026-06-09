@@ -12,7 +12,23 @@
           game.showCityManagement = true;
           game.activeCityManagementTab = tab;
         }
-        return this.afterHandled(action);
+        const handled = this.afterHandled(action);
+        const result = game?.tutorialController?.onCityManagementOpened?.(tab);
+        const refreshAfterTutorialAdvance = () => {
+          this.host.showCityManagement = true;
+          this.host.activeCityManagementTab = tab;
+          if (game && game !== this.host) {
+            game.showCityManagement = true;
+            game.activeCityManagementTab = tab;
+          }
+          game?.tutorialController?.refreshCurrentHighlight?.();
+        };
+        if (result && typeof result.then === 'function') {
+          result.then(refreshAfterTutorialAdvance).catch((error) => this.log?.(error));
+        } else {
+          refreshAfterTutorialAdvance();
+        }
+        return handled;
       },
 
       handle_closeCityManagement(action) {

@@ -342,42 +342,63 @@
       if (step === TUTORIAL_STEPS.polityNamed) {
         this.ensureResourcesGuideVisible();
         return this.showHighlight(
-          'openTalentPolicy',
-          (action) => !action.disabled,
-          '先打开方针，看看文明会怎样自动安排人才。',
-          { type: 'openTalentPolicy' },
+          'openCityManagement',
+          (action) => !action.disabled && (action.tab || 'people') === 'people',
+          '打开城池人才页，之后人才分配都在入城后的城池面板里完成。',
+          { type: 'openCityManagement', tab: 'people' },
           this.getResourcesGuideHighlightOptions(),
         );
       }
       if (step === TUTORIAL_STEPS.talentPolicyOpened) {
-        if (!this.isTalentPolicyOpen()) {
+        if (!this.isCityManagementOpen()) {
           this.ensureResourcesGuideVisible();
           return this.showHighlight(
-            'openTalentPolicy',
-            (action) => !action.disabled,
-            '打开方针面板，确认一套适合当前阶段的人才安排。',
-            { type: 'openTalentPolicy' },
+            'openCityManagement',
+            (action) => !action.disabled && (action.tab || 'people') === 'people',
+            '打开城池人才页，进入人才标签后就可以手动调整岗位。',
+            { type: 'openCityManagement', tab: 'people' },
             this.getResourcesGuideHighlightOptions(),
           );
         }
-        return this.showHighlight(
-          'confirmTalentPolicy',
-          (action) => !action.disabled,
-          '确认这套方针，系统会先帮我们把人才分配到更合适的位置。',
-          { type: 'confirmTalentPolicy' },
-        );
+        if (!this.isCityManagementTabOpen('people')) {
+          return this.showHighlight(
+            'switchCityManagementTab',
+            (action) => !action.disabled && action.tab === 'people',
+            '切到人才标签，之后的人才调整都在这里完成。',
+            { type: 'switchCityManagementTab', tab: 'people' },
+          );
+        }
+        this.advanceTo(TUTORIAL_STEPS.talentPolicyApplied)
+          .then(() => this.refreshCurrentHighlight())
+          .catch(() => {});
+        this.game?.canvasShell?.hideTutorialHighlight?.();
+        return false;
       }
       if (step === TUTORIAL_STEPS.talentPolicyApplied) {
-        this.ensureResourcesGuideVisible();
+        this.ensureCityPeopleGuideVisible();
+        if (!this.isCityManagementTabOpen('people')) {
+          return this.showHighlight(
+            'switchCityManagementTab',
+            (action) => !action.disabled && action.tab === 'people',
+            '切到人才标签，手动调整一次岗位分配。',
+            { type: 'switchCityManagementTab', tab: 'people' },
+          );
+        }
         const picked = this.pickManualAssignAction();
         if (picked?.target) {
           return this.game?.canvasShell?.showTutorialHighlight?.(
             picked.target,
-            '现在手动调整一次人才分配，之后你就能按城市需要微调岗位。',
-            { ...this.getResourcesGuideHighlightOptions(), allowedAction: picked.action, source: 'strongTutorial' },
+            '现在在城池人才页手动调整一次人才分配，之后你就能按城市需要微调岗位。',
+            { ...this.getCityPeopleGuideHighlightOptions(), allowedAction: picked.action, source: 'strongTutorial' },
           ) || false;
         }
-        return false;
+        return this.showHighlight(
+          'assignJob',
+          (action) => !action.disabled && Number(action.delta) !== 0,
+          '在人才标签里手动调整一次岗位分配。',
+          { type: 'assignJob' },
+          this.getCityPeopleGuideHighlightOptions(),
+        );
       }
       if (step === TUTORIAL_STEPS.manualTalentAssigned) {
         return this.showHighlight(

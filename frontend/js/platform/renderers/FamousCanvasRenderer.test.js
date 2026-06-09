@@ -167,7 +167,6 @@ test('index.html loads famous renderer helpers before the compatibility facade',
     'FamousPortraitCanvasRenderer.js',
     'FamousSkillCanvasRenderer.js',
     'FamousPanelCanvasRenderer.js',
-    'TalentPolicyCanvasRenderer.js',
     'FamousCanvasRenderer.js',
   ];
   const positions = expectedOrder.map((name) => html.indexOf(name));

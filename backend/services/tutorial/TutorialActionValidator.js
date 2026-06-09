@@ -207,6 +207,7 @@ function validatePostNamingSystemGuideAction(step, action, payload = {}) {
     const requestedStep = Number(payload?.step);
     if (
       (step === TUTORIAL_STEPS.polityNamed && requestedStep === TUTORIAL_STEPS.talentPolicyOpened)
+      || (step === TUTORIAL_STEPS.talentPolicyOpened && requestedStep === TUTORIAL_STEPS.talentPolicyApplied)
       || (step === TUTORIAL_STEPS.manualTalentAssigned && requestedStep === TUTORIAL_STEPS.famousSeekOpened)
       || (step === TUTORIAL_STEPS.famousSeekCompleted && requestedStep === TUTORIAL_STEPS.finalTechOpened)
       || (step === TUTORIAL_STEPS.finalTechOpened && requestedStep === TUTORIAL_STEPS.completed)

@@ -15,7 +15,6 @@
   const FamousPortraitCanvasRenderer = global.FamousPortraitCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousPortraitCanvasRenderer') : null);
   const FamousSkillCanvasRenderer = global.FamousSkillCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousSkillCanvasRenderer') : null);
   const FamousPanelCanvasRenderer = global.FamousPanelCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousPanelCanvasRenderer') : null);
-  const TalentPolicyCanvasRenderer = global.TalentPolicyCanvasRenderer || (typeof require !== 'undefined' ? require('./TalentPolicyCanvasRenderer') : null);
 
   class FamousCanvasRenderer {
     constructor(options = {}) {
@@ -121,10 +120,6 @@
 
     renderFamousPersonsPanel(state = {}, options = {}) {
       return FamousPanelCanvasRenderer.renderFamousPersonsPanel(this, state, options);
-    }
-
-    renderTalentPolicyPanel(state = {}, options = {}) {
-      return TalentPolicyCanvasRenderer.renderTalentPolicyPanel(this, state, options);
     }
   }
 

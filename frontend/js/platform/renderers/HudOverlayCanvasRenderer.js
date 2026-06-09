@@ -100,9 +100,6 @@
       if (options.showFamousPersons) {
         this.renderFamousPersonsPanel(state, options);
       }
-      if (options.showTalentPolicy) {
-        this.renderTalentPolicyPanel(state, options);
-      }
       if (options.armyFormationEditor?.open) {
         this.renderArmyFormationEditor(state, options);
       }

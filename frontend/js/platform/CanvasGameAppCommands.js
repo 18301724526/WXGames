@@ -336,87 +336,16 @@
             }
           },
 
-      getTalentPolicyDraft() {
-            const policies = this.state?.talentPolicies || {};
-            const systemPolicies = Array.isArray(policies.systemPolicies) ? policies.systemPolicies : [];
-            const activeIsSystem = systemPolicies.some((policy) => policy.id === policies.activePolicyId);
-            const basePolicyId = this.talentPolicyUiState.basePolicyId
-              || this.canvasShell?.talentPolicyUiState?.basePolicyId
-              || (activeIsSystem ? policies.activePolicyId : null)
-              || 'balanced';
-            const defaults = policies.defaultTiers || { agriculture: 2, knowledge: 2, industry: 2 };
-            const tiers = this.talentPolicyUiState.tiers || this.canvasShell?.talentPolicyUiState?.tiers || {};
-            return {
-              basePolicyId,
-              tiers: {
-                agriculture: Number(tiers.agriculture ?? defaults.agriculture ?? 2),
-                knowledge: Number(tiers.knowledge ?? defaults.knowledge ?? 2),
-                industry: Number(tiers.industry ?? defaults.industry ?? 2),
-              },
-            };
-          },
-
       async applyTalentPolicy(policyId) {
             if (!policyId) return false;
             try {
               const result = await this.getGameApi().applyTalentPolicy(policyId);
               this.applyApiState(result);
-              this.showTalentPolicy = false;
-              if (this.canvasShell && 'showTalentPolicy' in this.canvasShell) {
-                this.canvasShell.showTalentPolicy = false;
-              }
               this.showFloatingText(result.message || 'Policy applied');
               this.log(result.message || 'Policy applied');
               return true;
             } catch (error) {
               this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
-              return false;
-            }
-          },
-
-      async applyTalentPolicyDraft() {
-            try {
-              const result = await this.getGameApi().applyTalentPolicy(null, this.getTalentPolicyDraft());
-              this.applyApiState(result);
-              this.showTalentPolicy = false;
-              if (this.canvasShell && 'showTalentPolicy' in this.canvasShell) {
-                this.canvasShell.showTalentPolicy = false;
-              }
-              this.showFloatingText(result.message || 'Policy applied');
-              this.log(result.message || 'Policy applied');
-              return true;
-            } catch (error) {
-              this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
-              return false;
-            }
-          },
-
-      async saveTalentPolicyDraft() {
-            try {
-              const result = await this.getGameApi().saveTalentPolicy(this.getTalentPolicyDraft());
-              this.applyApiState(result);
-              this.showFloatingText(result.message || 'Policy saved');
-              this.log(result.message || 'Policy saved');
-              return true;
-            } catch (error) {
-              this.log(`淇濆瓨澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
-              return false;
-            }
-          },
-
-      async deleteTalentPolicy(policyId) {
-            if (!policyId) return false;
-            try {
-              const result = await this.getGameApi().deleteTalentPolicy(policyId);
-              this.applyApiState(result);
-              this.showFloatingText(result.message || 'Policy deleted');
-              this.log(result.message || 'Policy deleted');
-              return true;
-            } catch (error) {
-              this.log(`鍒犻櫎澶辫触锟?{error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }

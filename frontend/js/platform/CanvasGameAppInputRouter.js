@@ -29,7 +29,6 @@
               || this.showTaskCenter
               || this.showGuidebook
               || this.showFamousPersons
-              || this.showTalentPolicy
               || this.armyFormationEditor?.open
               || this.confirmDialog?.visible
               || this.activeCommandPanel

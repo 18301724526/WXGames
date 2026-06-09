@@ -151,7 +151,6 @@
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
-      if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderTechDetailIfNeeded(state, activeTab, options);
@@ -206,7 +205,6 @@
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
-      if (options.showTalentPolicy) this.renderTalentPolicyPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderWorldSiteModal(state, options);

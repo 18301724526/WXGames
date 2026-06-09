@@ -114,8 +114,6 @@
               showFamousPersons: this.showFamousPersons,
               famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
               selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
-              showTalentPolicy: this.showTalentPolicy,
-              talentPolicyUiState: this.talentPolicyUiState,
               armyFormationEditor: this.canvasShell && 'armyFormationEditor' in this.canvasShell
                 ? this.canvasShell.armyFormationEditor
                 : this.armyFormationEditor,
@@ -508,7 +506,6 @@
             this.showTaskCenter = false;
             this.showGuidebook = false;
             this.showFamousPersons = false;
-            this.showTalentPolicy = false;
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
             this.activeCommandPanel = '';
             this.rewardReveal = null;
@@ -568,7 +565,6 @@
             this.showTaskCenter = false;
             this.showGuidebook = false;
             this.showFamousPersons = false;
-            this.showTalentPolicy = false;
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
             this.activeCommandPanel = '';
             this.famousPersonsPage = 0;
@@ -651,7 +647,6 @@
             if (this.canvasShell) this.canvasShell.techTreeZoom = 1;
             this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
             this.activeEventId = null;
-            this.showTalentPolicy = false;
             this.renderMilitaryView();
             this.renderCanvasSurface(this.state.currentTab);
             if (this.skipNextSoftGuideRender) {

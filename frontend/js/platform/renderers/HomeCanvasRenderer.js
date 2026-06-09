@@ -309,7 +309,7 @@
       });
       this.addHitTarget(
         { x: policyButtonX, y: policyButtonY, width: policyButtonWidth, height: policyButtonHeight },
-        { type: 'openTalentPolicy' },
+        { type: 'openCityManagement', tab: 'people', source: 'talentPolicyShortcut' },
       );
       this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 

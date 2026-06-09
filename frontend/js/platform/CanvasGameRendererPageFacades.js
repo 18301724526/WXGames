@@ -313,11 +313,6 @@
       return result === undefined ? false : result;
     },
 
-    renderTalentPolicyPanel(...args) {
-      const result = this.delegateFamousRenderer('renderTalentPolicyPanel', args);
-      return result === undefined ? false : result;
-    },
-
     delegateArmyFormationEditorRenderer(method, args = []) {
       const renderer = this.armyFormationEditorRenderer;
       if (!renderer || typeof renderer[method] !== 'function') return undefined;

@@ -33,7 +33,6 @@
     'showCityManagement',
     'showAdvisor',
     'showTaskCenter',
-    'showTalentPolicy',
     'showGuidebook',
     'showFamousPersons',
     'armyFormationEditor',
