@@ -542,6 +542,127 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/domain/TileCoord.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- 世界地图稳定 tile 坐标契约 / stable tile coordinate contract
+- `x/y` stable axes and `q/r` compatibility aliases
+- deterministic `tileId` generation from stable axes
+- coordinate offset, equality, and legacy `{ q, r }` conversion helpers
+
+公开 API / Public API:
+
+- `TileCoord.toNumber(value, fallback)`
+- `TileCoord.toInteger(value, fallback)`
+- `TileCoord.tileId(x, y)`
+- `TileCoord.readCoordAxis(source, primaryKey, aliasKey, fallback)`
+- `TileCoord.normalizeCoord(source, fallback, options)`
+- `TileCoord.normalizeDelta(delta)`
+- `TileCoord.offset(coord, delta, options)`
+- `TileCoord.equals(left, right)`
+- `TileCoord.toLegacy(coord)`
+
+性能约束 / Performance Constraints:
+
+- Pure synchronous helpers only.
+- No renderer, DOM, canvas, backend, network, or storage dependencies.
+- `normalizeCoord()` does not preserve stale tile ids unless explicitly requested.
+
+扩展方式 / Extension Path:
+
+- New stable tile-coordinate semantics extend this module with focused tests.
+- Keep `q/r` as compatibility aliases only; new stable contracts should use `x/y` or later `col/row`.
+- Do not add map generation, chunk loading, visibility, or movement rules here.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/TileCoord.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/domain/WorldTopology.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- full wrapping torus topology for world-map coordinates
+- world-size normalization without freezing final map dimensions
+- wrapped coordinate normalization and shortest wrapped delta/distance
+- edge-crossing offset helpers for full-direction world loops
+
+公开 API / Public API:
+
+- `WorldTopology.DEFAULT_WORLD_SIZE`
+- `WorldTopology.normalizeWorldSize(options)`
+- `WorldTopology.normalizeCoord(coord, options)`
+- `WorldTopology.getDelta(from, to, options)`
+- `WorldTopology.getWrappedDistance(from, to, options)`
+- `WorldTopology.offset(coord, delta, options)`
+- `WorldTopology.modulo(value, size)`
+- `WorldTopology.wrapDelta(delta, size)`
+
+性能约束 / Performance Constraints:
+
+- Pure synchronous calculations; no tile array scan.
+- Works from world size and coordinates only.
+- Does not own map generation, chunk streaming, reveal persistence, or renderer camera state.
+
+扩展方式 / Extension Path:
+
+- New topology helpers extend this module with focused tests.
+- Chunk/window/reveal behavior belongs to P11-004 modules, not here.
+- Camera or renderer panning behavior should consume this contract instead of redefining wrapping math.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldTopology.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/domain/TileMapGeometry.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- diamond isometric square-tile projection helpers
+- stable `x/y` coordinate normalization while preserving `q/r` aliases
+- screen center, draw rect, bounds, draw-order, and screen-point-to-coordinate conversion
+- legacy geometry facade for existing renderer/HUD callers
+
+公开 API / Public API:
+
+- `TileMapGeometry.DEFAULT_GEOMETRY`
+- `TileMapGeometry.normalizeCoord(tile, fallback)`
+- `TileMapGeometry.normalizeGeometry(options)`
+- `TileMapGeometry.projectTile(tile, options)`
+- `TileMapGeometry.getTileDrawRect(center, scale, options)`
+- `TileMapGeometry.getIsoSortValue(tile)`
+- `TileMapGeometry.sortTilesForIsoDraw(tiles)`
+- `TileMapGeometry.getBounds(tiles, options)`
+- `TileMapGeometry.getTileScreenCenter(tile, viewport, options)`
+- `TileMapGeometry.screenPointToCoord(point, viewport, options)`
+- `TileMapGeometry.tileId(x, y)`
+
+性能约束 / Performance Constraints:
+
+- Geometry math is pure and allocation-light.
+- Sorting remains caller-controlled and should not run in drag hot paths unless cached.
+- No renderer object, DOM object, canvas context, backend state, or map-generation rule lives here.
+
+扩展方式 / Extension Path:
+
+- New diamond isometric projection helpers extend this module.
+- New stable coordinate semantics extend `TileCoord`; wrapping topology extends `WorldTopology`.
+- Do not add chunk/window/reveal, gameplay movement, or renderer cache policy here.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/TileMapGeometry.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/domain/WorldMapVisibilityModel.js`
 
 状态 / Status: candidate

@@ -1,4 +1,16 @@
 (function (global) {
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const DEFAULT_GEOMETRY = {
     tileWidth: 192,
     tileHeight: 96,
@@ -11,6 +23,19 @@
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
+  }
+
+  function normalizeCoord(tile = {}, fallback = {}) {
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(tile, fallback);
+    const x = Math.floor(toNumber(tile.x ?? tile.q, fallback.x ?? fallback.q ?? 0));
+    const y = Math.floor(toNumber(tile.y ?? tile.r, fallback.y ?? fallback.r ?? 0));
+    return {
+      x,
+      y,
+      q: x,
+      r: y,
+      tileId: tile.tileId || tile.id || `tile_${x}_${y}`,
+    };
   }
 
   function normalizeGeometry(options = {}) {
@@ -27,11 +52,10 @@
 
   function projectTile(tile = {}, options = {}) {
     const geometry = normalizeGeometry(options);
-    const q = toNumber(tile.q ?? tile.x, 0);
-    const r = toNumber(tile.r ?? tile.y, 0);
+    const coord = normalizeCoord(tile);
     return {
-      x: (q - r) * geometry.stepX,
-      y: (q + r) * geometry.stepY,
+      x: (coord.x - coord.y) * geometry.stepX,
+      y: (coord.x + coord.y) * geometry.stepY,
     };
   }
 
@@ -50,14 +74,15 @@
   }
 
   function getIsoSortValue(tile = {}) {
-    return toNumber(tile.q ?? tile.x, 0) + toNumber(tile.r ?? tile.y, 0);
+    const coord = normalizeCoord(tile);
+    return coord.x + coord.y;
   }
 
   function sortTilesForIsoDraw(tiles = []) {
     return [...tiles].sort((a, b) => (
       getIsoSortValue(a) - getIsoSortValue(b)
-      || toNumber(a.r ?? a.y, 0) - toNumber(b.r ?? b.y, 0)
-      || toNumber(a.q ?? a.x, 0) - toNumber(b.q ?? b.x, 0)
+      || normalizeCoord(a).y - normalizeCoord(b).y
+      || normalizeCoord(a).x - normalizeCoord(b).x
       || String(a.id || '').localeCompare(String(b.id || ''))
     ));
   }
@@ -93,8 +118,25 @@
     };
   }
 
+  function screenPointToCoord(point = {}, viewport = {}, options = {}) {
+    const geometry = normalizeGeometry(options);
+    const scale = Math.max(0.0001, toNumber(viewport.scale, 1));
+    const localX = (toNumber(point.x) - toNumber(viewport.originX) - toNumber(viewport.panX)) / scale;
+    const localY = (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
+    const projectedXMinusY = localX / geometry.stepX;
+    const projectedXPlusY = localY / geometry.stepY;
+    const x = Math.round((projectedXMinusY + projectedXPlusY) / 2);
+    const y = Math.round((projectedXPlusY - projectedXMinusY) / 2);
+    return normalizeCoord({ x, y });
+  }
+
+  function tileId(x, y) {
+    return TileCoord?.tileId ? TileCoord.tileId(x, y) : `tile_${Math.floor(toNumber(x))}_${Math.floor(toNumber(y))}`;
+  }
+
   const TileMapGeometry = {
     DEFAULT_GEOMETRY,
+    normalizeCoord,
     normalizeGeometry,
     projectTile,
     getTileDrawRect,
@@ -102,6 +144,8 @@
     sortTilesForIsoDraw,
     getBounds,
     getTileScreenCenter,
+    screenPointToCoord,
+    tileId,
   };
 
   global.TileMapGeometry = TileMapGeometry;

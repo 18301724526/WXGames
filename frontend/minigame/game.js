@@ -1,6 +1,8 @@
 require('../js/config/GameConfig');
 require('../js/config/FeatureFlags');
 require('../js/config/FamousPortraitLayout');
+require('../js/domain/TileCoord');
+require('../js/domain/WorldTopology');
 require('../js/domain/TileMapGeometry');
 require('../js/domain/WorldTime');
 require('../js/domain/WorldMarchProgressSnapshot');
