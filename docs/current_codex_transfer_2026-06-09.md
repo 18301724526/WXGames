@@ -96,16 +96,16 @@ The online tutorial flow is verified with screenshot evidence. No active online 
 
 ## Current Patch
 
-P11-003 tile topology contract is complete, verified, committed, pushed, and deployed.
+P11-004 large-map streaming contract is implemented, fully verified, and committed locally as `refactor: add large map streaming contracts`.
 
 Changed files:
 
-- `frontend/js/domain/TileCoord.js`
-- `frontend/js/domain/TileCoord.test.js`
-- `frontend/js/domain/WorldTopology.js`
-- `frontend/js/domain/WorldTopology.test.js`
-- `frontend/js/domain/TileMapGeometry.js`
-- `frontend/js/domain/TileMapGeometry.test.js`
+- `frontend/js/domain/WorldChunkAddress.js`
+- `frontend/js/domain/WorldChunkAddress.test.js`
+- `frontend/js/domain/WorldInterestWindow.js`
+- `frontend/js/domain/WorldInterestWindow.test.js`
+- `frontend/js/domain/WorldRevealStore.js`
+- `frontend/js/domain/WorldRevealStore.test.js`
 - `frontend/index.html`
 - `frontend/minigame/game.js`
 - `scripts/run-architecture-smoke.js`
@@ -117,75 +117,76 @@ Changed files:
 
 Behavior added:
 
-- `TileCoord`: pure stable coordinate contract using `x/y`, with `q/r` compatibility aliases.
-- `WorldTopology`: pure full wrapping torus contract, including coordinate normalization and shortest wrapped delta/distance.
-- `TileMapGeometry`: now consumes `TileCoord`, keeps old public projection helpers, and adds `screenPointToCoord()`.
-- H5 and minigame entrypoints load `TileCoord` and `WorldTopology` before `TileMapGeometry`.
+- `WorldChunkAddress`: pure chunk addressing contract for chunk size, chunk id, chunk coordinate, chunk bounds, tile-to-chunk mapping, and wrapped tile-rect expansion.
+- `WorldInterestWindow`: pure visible/preload/AOI window contract, including topology summary, chunk lists, and wrapped edge membership checks.
+- `WorldRevealStore`: pure revealed-terrain persistence contract by tile id and chunk id, including materialized chunk ids and serializable output without renderer payloads or full `worldMap`.
+- H5 and minigame entrypoints load these contracts after `TileCoord`/`WorldTopology`.
 - Architecture smoke includes the new files and tests.
 
-Verification already passed:
+Focused verification already passed:
 
 ```powershell
-node --test frontend/js/domain/TileCoord.test.js frontend/js/domain/WorldTopology.test.js frontend/js/domain/TileMapGeometry.test.js
+node --test frontend/js/domain/WorldChunkAddress.test.js frontend/js/domain/WorldInterestWindow.test.js frontend/js/domain/WorldRevealStore.test.js
+```
+
+Results:
+
+- Focused tests: 12 passed
+
+Full verification already passed:
+
+```powershell
 npm.cmd run test:architecture
 npm.cmd test
 ```
 
 Results:
 
-- Focused tests: 11 passed
-- Architecture gate: 401 passed, stable block guard passed, official document guard passed, `git diff --check` passed
-- Full test suite: 768 passed
+- Architecture gate: 413 passed, stable block guard passed, official document guard passed, `git diff --check` passed
+- Full test suite: 780 passed
 
-Deployment checks after `fbdc3ca8e30c1514c08bef730df12ae840052411`:
+Local commit:
 
-- Deploy stamp reported commit `fbdc3ca8e30c1514c08bef730df12ae840052411`.
-- Deploy stamp paths were `/www/wwwroot/h5`.
-- API health returned OK.
-- Root page still contained `Cocos Creator`.
-- Root page still contained `civilization-fire-next-client`.
-- Root page did not contain `TileCoord` or `authority-state-refresh-v1`.
-- H5 page contained `TileCoord.js?v=architecture-refactor-tile-topology-v1`.
-- H5 page contained `WorldTopology.js?v=architecture-refactor-tile-topology-v1`.
-- H5 page contained `authority-state-refresh-v1`.
+```powershell
+refactor: add large map streaming contracts
+```
 
-Online tutorial smoke after P11-003 deploy:
+Next push:
+
+```powershell
+git push origin main
+git push private main
+```
+
+Deployment checks required after `git push private main`:
+
+- Deploy stamp reports the new P11-004 commit.
+- Deploy stamp paths remain `/www/wwwroot/h5`.
+- API health returns OK.
+- Root page still contains `Cocos Creator`.
+- Root page still contains `civilization-fire-next-client`.
+- Root page does not contain H5 markers such as `WorldChunkAddress` or `authority-state-refresh-v1`.
+- H5 page contains `WorldChunkAddress.js?v=architecture-refactor-large-map-contract-v1`.
+- H5 page contains `WorldInterestWindow.js?v=architecture-refactor-large-map-contract-v1`.
+- H5 page contains `WorldRevealStore.js?v=architecture-refactor-large-map-contract-v1`.
+
+Recommended online tutorial smoke after deploy because H5 entrypoint scripts changed:
 
 ```powershell
 $env:PLAYTEST_MAX_ACTIONS='140'; npm.cmd run playtest:online-tutorial
 ```
 
-Output:
-
-```text
-F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-09T00-09-38-297Z
-```
-
-Result:
-
-- `stopReason: tutorial-completed`
-- `finalStep: 36`
-- `finalStepName: completed`
-- `tutorialCompleted: true`
-- `actionCount: 59`
-- `evidenceCount: 51`
-- `visualFindings: []`
-- `badResponses: []`
-- `requestFailures: []`
-- `pageErrors: []`
-
 ## Required Next Actions
 
-1. Commit and push this documentation update if it is not committed yet.
-2. Keep `tools/` untracked unless the user explicitly asks for it.
-3. Continue P11-004.
+1. Push `origin main` and `private main`.
+2. Verify deploy boundary and, preferably, rerun online tutorial smoke with screenshot evidence.
+3. Keep `tools/` untracked unless the user explicitly asks for it.
 
 ## After This Patch
 
 Continue long-term architecture plan:
 
-- P11-004: Large-map streaming contract.
 - P11-005: Realtime authority contract.
 - P11-006: Config/version hardening.
 
-Do not promote `TileCoord`, `WorldTopology`, or `TileMapGeometry` to `stable` yet. They should remain `candidate` until P11-004 and later consumers prove the extension surface.
+Do not promote `TileCoord`, `WorldTopology`, `TileMapGeometry`, `WorldChunkAddress`, `WorldInterestWindow`, or `WorldRevealStore` to `stable` yet. They should remain `candidate` until realtime authority and downstream presenter/runtime/renderer consumers prove the extension surface.

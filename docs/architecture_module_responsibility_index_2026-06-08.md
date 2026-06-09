@@ -663,6 +663,124 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/domain/TileMapGeometry.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/domain/WorldChunkAddress.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- 大地图 chunk address contract
+- chunk size, chunk id, chunk coordinate, and chunk bounds normalization
+- tile-to-chunk mapping through stable `x/y` coordinates
+- wrapped tile-rect to unique chunk-list expansion
+
+公开 API / Public API:
+
+- `WorldChunkAddress.DEFAULT_CHUNK_SIZE`
+- `WorldChunkAddress.normalizeChunkSize(options)`
+- `WorldChunkAddress.normalizeTopologyOptions(options)`
+- `WorldChunkAddress.chunkId(chunkX, chunkY)`
+- `WorldChunkAddress.normalizeChunkCoord(input, options)`
+- `WorldChunkAddress.getChunkCoordForTile(tile, options)`
+- `WorldChunkAddress.getChunkBounds(chunk, options)`
+- `WorldChunkAddress.getWrappedRanges(minValue, maxValue, size, wrapping)`
+- `WorldChunkAddress.getChunksForTileRect(rect, options)`
+- `WorldChunkAddress.containsTile(chunk, tile, options)`
+
+性能约束 / Performance Constraints:
+
+- Uses world size, chunk size, and coordinates only.
+- Does not scan `worldMap.tiles` or assume a full world array exists on the frontend.
+- Wrapped rect expansion returns unique chunk references and is bounded by the window rectangle.
+
+扩展方式 / Extension Path:
+
+- New chunk addressing helpers extend this module with focused tests.
+- Window/AOI rules extend `WorldInterestWindow`.
+- Reveal persistence extends `WorldRevealStore`.
+- Do not add terrain generation, renderer cache internals, or server sync policy here.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldChunkAddress.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/domain/WorldInterestWindow.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- large-map visible/preload/AOI window contract
+- center coordinate normalization
+- visible, preload, and AOI tile rectangles
+- visible/preload/AOI chunk references for streaming and sync callers
+
+公开 API / Public API:
+
+- `WorldInterestWindow.DEFAULT_WINDOW`
+- `WorldInterestWindow.normalizeWindowOptions(options)`
+- `WorldInterestWindow.createTileRect(center, radiusX, radiusY)`
+- `WorldInterestWindow.createWindow(center, options)`
+- `WorldInterestWindow.getChunkIds(window, key)`
+- `WorldInterestWindow.containsTile(window, tile, key)`
+
+性能约束 / Performance Constraints:
+
+- Does not read or clone world tile payloads.
+- Window creation is bounded by window/chunk dimensions, not total world size.
+- Returns chunk references for callers to request/load/sync data lazily.
+
+扩展方式 / Extension Path:
+
+- New interest-region or AOI shape rules extend this module with focused tests.
+- Renderer camera adapters should translate camera state into this contract instead of opening raw world arrays.
+- Multiplayer sync can consume `aoiChunks` but should not add networking behavior here.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldInterestWindow.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/domain/WorldRevealStore.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- persistent revealed-terrain store contract
+- tile reveal records indexed by tile id and chunk id
+- materialized chunk id tracking
+- window/chunk reveal queries without requiring full world map payloads
+
+公开 API / Public API:
+
+- `WorldRevealStore.createStore(input, options)`
+- `WorldRevealStore.normalizeTileRecord(tile, options)`
+- `WorldRevealStore.mergeTileRecord(previous, next)`
+- `WorldRevealStore.getTile(store, idOrCoord)`
+- `WorldRevealStore.isRevealed(store, idOrCoord)`
+- `WorldRevealStore.getTilesForChunk(store, chunk)`
+- `WorldRevealStore.getTilesForWindow(store, window)`
+- `WorldRevealStore.toSerializable(store)`
+
+性能约束 / Performance Constraints:
+
+- Stores only revealed/materialized records, not full unknown world arrays.
+- Uses O(1) tile lookup and chunk-to-tile indexes.
+- Serializable form excludes renderer, canvas, DOM, and full `worldMap` payloads.
+
+扩展方式 / Extension Path:
+
+- New reveal record fields extend `normalizeTileRecord()` and tests.
+- Server materialization and chunk persistence can consume this shape but should not add persistence IO here.
+- Renderer/window consumers should query by chunk/window rather than scanning all revealed records every frame.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldRevealStore.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/domain/WorldMapVisibilityModel.js`
 
 状态 / Status: candidate
@@ -3812,3 +3930,4 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMapRuntimeInputPolicy` for P9-003; `WorldMapRuntime` now delegates input-layout availability, map input rectangle resolution, and point-in-map checks while retaining runtime state collection, dropping to 491 lines. |
 | 2026-06-08 | Added `WorldMapRuntimeRenderPolicy` and `WorldMapRuntimeRenderPipeline` for P9-004; `WorldMapRuntime.render()` now delegates render context/throttle/option/trace decisions and snapshot/full render flow, dropping to 411 lines as a candidate facade. |
 | 2026-06-08 | Added `UIStatePresenterDelegates` for P10-001; `UIStatePresenter` now delegates dependency resolution and static method installation to the registry and dropped to 23 lines as a candidate facade. |
+| 2026-06-09 | Added `WorldChunkAddress`, `WorldInterestWindow`, and `WorldRevealStore` for P11-004 large-map streaming contracts; H5/minigame entrypoints and `npm run test:architecture` now include the new candidate modules. |

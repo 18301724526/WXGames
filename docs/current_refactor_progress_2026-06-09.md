@@ -13,8 +13,8 @@ This is the operational progress note for the current Codex run. It is not a pro
 ## Current Status
 
 - Branch: `main`
-- Latest committed, pushed, and deployed commit: `fbdc3ca8e30c1514c08bef730df12ae840052411`
-- Current architecture patch: P11-003 tile topology contract, committed as `refactor: add tile topology contracts`.
+- Latest committed, pushed, and deployed commit before the current patch: `fbdc3ca8e30c1514c08bef730df12ae840052411`
+- Current architecture patch: P11-004 large-map streaming contract, committed locally as `refactor: add large map streaming contracts`; push and deployment verification are next.
 - Online H5 URL: `http://47.116.32.216/wxgame/`
 - Protected Cocos root: `http://47.116.32.216/`
 - Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
@@ -94,7 +94,7 @@ Result:
 
 The online tutorial flow is currently verified with screenshot evidence. No active online tutorial blocker remains.
 
-## Current Architecture Patch
+## Previous Architecture Patch
 
 P11-003 tile topology contract is complete, verified, committed, pushed, and deployed.
 
@@ -179,12 +179,65 @@ Result:
 - Request failures: none
 - Page errors: none
 
+## Current Architecture Patch
+
+P11-004 large-map streaming contract is implemented, fully verified, and committed locally as `refactor: add large map streaming contracts`.
+
+Changed files:
+
+- `frontend/js/domain/WorldChunkAddress.js`
+- `frontend/js/domain/WorldChunkAddress.test.js`
+- `frontend/js/domain/WorldInterestWindow.js`
+- `frontend/js/domain/WorldInterestWindow.test.js`
+- `frontend/js/domain/WorldRevealStore.js`
+- `frontend/js/domain/WorldRevealStore.test.js`
+- `frontend/index.html`
+- `frontend/minigame/game.js`
+- `scripts/run-architecture-smoke.js`
+- `docs/current_technical_architecture_2026-06-09.md`
+- `docs/long_term_architecture_refactor_plan_2026-06-08.md`
+- `docs/architecture_module_responsibility_index_2026-06-08.md`
+- `docs/current_refactor_progress_2026-06-09.md`
+- `docs/current_codex_transfer_2026-06-09.md`
+
+Behavior added:
+
+- `WorldChunkAddress` defines chunk size, chunk id, chunk coordinate, chunk bounds, tile-to-chunk mapping, and wrapped tile-rect expansion.
+- `WorldInterestWindow` defines visible, preload, and AOI windows over stable tile coordinates and chunk lists, including wrapped edge membership checks.
+- `WorldRevealStore` defines a persistent revealed-terrain store by tile id and chunk id, including materialized chunk ids and serializable output without renderer payloads or a full `worldMap`.
+- H5 and minigame entrypoints load the new large-map domain contracts after `TileCoord`/`WorldTopology` and before renderer-facing map modules.
+- The new files are included in `npm.cmd run test:architecture`.
+
+Focused verification already passed:
+
+```powershell
+node --test frontend/js/domain/WorldChunkAddress.test.js frontend/js/domain/WorldInterestWindow.test.js frontend/js/domain/WorldRevealStore.test.js
+```
+
+Results:
+
+- Focused tests: 12 passed
+
+Full verification already passed:
+
+```powershell
+npm.cmd run test:architecture
+npm.cmd test
+```
+
+Results:
+
+- Architecture gate: 413 passed
+- Stable block manifest guard: passed
+- Official document guard: passed
+- `git diff --check`: passed
+- Full test suite: 780 passed
+
 ## Next Architecture Work
 
-After P11-003 is committed, continue:
+After P11-004 is committed, pushed, and deployed, continue:
 
-1. P11-004: Large-map streaming contract.
-2. P11-005: Realtime authority contract.
-3. P11-006: Config/version hardening.
+1. P11-005: Realtime authority contract.
+2. P11-006: Config/version hardening.
 
-Do not promote the new tile topology modules to `stable` yet. They are `candidate` until downstream chunk/window/reveal and realtime contracts consume them without churn.
+Do not promote the new tile topology or large-map streaming modules to `stable` yet. They are `candidate` until realtime authority and downstream presenter/runtime/renderer consumers prove the extension surface without churn.
