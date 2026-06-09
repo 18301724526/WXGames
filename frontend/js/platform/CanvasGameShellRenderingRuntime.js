@@ -261,6 +261,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         auth: this.auth,
         loading: this.loading,
         network: this.networkState,
+        confirmDialog: this.confirmDialog,
         floatingTexts: this.getFloatingTextView(),
         tutorialIntro: this.lastGame?.tutorialIntro || this.tutorialIntro || null,
         tutorialAdvisorDialogue: this.lastGame?.tutorialAdvisorDialogue || this.tutorialAdvisorDialogue || null,

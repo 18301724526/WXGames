@@ -1113,7 +1113,7 @@ test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () =
     inputEnabled: true,
     renderer: {
       getHitTarget() {
-        return { type: 'resetGame', source: 'debugResetAccount' };
+        return { type: 'requestResetGame', source: 'debugResetAccount' };
       },
     },
     actionController: {
@@ -1132,7 +1132,7 @@ test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () =
   assert.equal(shell.handleTap({ x: 380, y: 690 }, event), true);
 
   assert.deepEqual(calls, [
-    ['handle', 'resetGame', 'debugResetAccount'],
+    ['handle', 'requestResetGame', 'debugResetAccount'],
     ['preventDefault'],
     ['stopPropagation'],
   ]);

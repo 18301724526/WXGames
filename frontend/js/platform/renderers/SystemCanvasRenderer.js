@@ -308,7 +308,7 @@
         radius: 8,
         active: false,
       });
-      this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'resetGame' });
+      this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'requestResetGame' });
 
       const btnY2 = btnY1 + btnHeight + 8;
       this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, '退出登录', {
@@ -319,6 +319,75 @@
       this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'logout' });
 
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
+    }
+
+    renderConfirmDialog(dialog = {}) {
+      if (!dialog || !dialog.visible) return false;
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeConfirmDialog', background: true });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.56)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(348, layout.contentWidth - 18);
+      const panelHeight = 222;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.max(86, Math.floor((this.height - panelHeight) / 2) - 12);
+
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(58, 42, 28, 0.98)'],
+            [1, 'rgba(23, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.26)',
+        radius: 13,
+        inset: 'rgba(255, 231, 184, 0.1)',
+      });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      this.drawText(this.truncateText(dialog.title || '请确认', panelWidth - 48, { size: 18, bold: true }), x + panelWidth / 2, y + 34, {
+        size: 18,
+        bold: true,
+        color: '#ffe6b5',
+        align: 'center',
+      });
+
+      const messageLines = this.wrapTextLimit(dialog.message || '', panelWidth - 48, 3, { size: 13 });
+      this.drawTextLines(messageLines, x + 24, y + 68, {
+        size: 13,
+        color: '#cbbd96',
+        lineHeight: 19,
+      });
+
+      const submitting = Boolean(dialog.submitting);
+      const buttonY = y + panelHeight - 54;
+      const buttonGap = 10;
+      const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
+      const cancelX = x + 18;
+      const confirmX = cancelX + buttonWidth + buttonGap;
+      this.drawButton(cancelX, buttonY, buttonWidth, 36, dialog.cancelLabel || '取消', {
+        size: 13,
+        radius: 9,
+        active: false,
+      });
+      this.addHitTarget({ x: cancelX, y: buttonY, width: buttonWidth, height: 36 }, submitting ? { type: 'blockCanvasModal' } : { type: 'closeConfirmDialog' });
+
+      this.drawButton(confirmX, buttonY, buttonWidth, 36, submitting ? '处理中' : (dialog.confirmLabel || '确定'), {
+        size: 13,
+        bold: true,
+        radius: 9,
+        active: true,
+      });
+      this.addHitTarget(
+        { x: confirmX, y: buttonY, width: buttonWidth, height: 36 },
+        submitting ? { type: 'blockCanvasModal' } : { type: 'confirmResetGame', source: dialog.source || '' },
+      );
+      return true;
     }
 
     renderLogsPanel(logs = []) {

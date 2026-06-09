@@ -118,6 +118,7 @@
               tutorialHighlight: null,
               loading: this.loading,
               network: this.networkState,
+              confirmDialog: this.confirmDialog || this.canvasShell?.confirmDialog || null,
             });
             const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
               || this.territoryController?.uiState?.tileMapWaterAnimated);

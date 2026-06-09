@@ -48,6 +48,7 @@ function createHost(overrides = {}) {
     renderBattleSceneOverlay(...args) { calls.push(['renderBattleSceneOverlay', args]); },
     renderCityManagementPanel(...args) { calls.push(['renderCityManagementPanel', args]); },
     renderCitySwitcherMenu(...args) { calls.push(['renderCitySwitcherMenu', args]); },
+    renderConfirmDialog(...args) { calls.push(['renderConfirmDialog', args]); },
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
     renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
@@ -313,7 +314,7 @@ test('CanvasFrameRenderer renders debug reset as canvas hit target above tutoria
     },
   });
 
-  const resetIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetGame');
+  const resetIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'requestResetGame');
   const blockIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'blockCanvasModal');
   assert.equal(resetIndex > -1, true);
   assert.equal(blockIndex > -1, true);

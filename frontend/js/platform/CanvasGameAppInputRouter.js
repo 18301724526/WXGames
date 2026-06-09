@@ -31,6 +31,7 @@
               || this.showFamousPersons
               || this.showTalentPolicy
               || this.armyFormationEditor?.open
+              || this.confirmDialog?.visible
               || this.activeCommandPanel
               || this.techDetailOpen
               || this.activeEventId

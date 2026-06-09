@@ -184,6 +184,7 @@
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
       this.renderCanvasDebugResetButton(options);
+      this.renderConfirmDialog(options.confirmDialog || null);
     }
 
     renderMapHomeOverlays(state = {}, options = {}) {
@@ -298,7 +299,7 @@
         radius: 8,
         active: false,
       });
-      this.addHitTarget({ x, y, width, height }, { type: 'resetGame', source: 'debugResetAccount' });
+      this.addHitTarget({ x, y, width, height }, { type: 'requestResetGame', source: 'debugResetAccount' });
       return true;
     }
   }

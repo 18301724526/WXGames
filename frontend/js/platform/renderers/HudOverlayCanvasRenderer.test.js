@@ -49,6 +49,7 @@ function createHost(overrides = {}) {
     renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
     renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
     renderCanvasDebugResetButton(...args) { calls.push(['renderCanvasDebugResetButton', args]); },
+    renderConfirmDialog(...args) { calls.push(['renderConfirmDialog', args]); },
     renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
     renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
     renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
@@ -163,6 +164,7 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
   assert.equal(names.includes('renderTechDetailModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
   assert.equal(names.includes('renderCanvasDebugResetButton'), true);
+  assert.equal(names.includes('renderConfirmDialog'), true);
   assert.equal(names.at(-1), 'endFrame');
 });
 
@@ -178,7 +180,22 @@ test('HudOverlayCanvasRenderer renders canvas debug reset on map home overlay fr
 
   const names = callNames(host);
   assert.equal(names.includes('renderCanvasDebugResetButton'), true);
-  assert.equal(names.at(-2), 'renderCanvasDebugResetButton');
+  assert.equal(names.at(-3), 'renderCanvasDebugResetButton');
+});
+
+test('HudOverlayCanvasRenderer renders confirm dialog above debug reset', () => {
+  const host = createHost();
+  const renderer = new HudOverlayCanvasRenderer({ host });
+
+  renderer.renderHudOverlay({ militaryView: 'world' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    confirmDialog: { visible: true, kind: 'resetGame' },
+  });
+
+  const names = callNames(host);
+  assert.equal(names.at(-3), 'renderCanvasDebugResetButton');
+  assert.equal(names.at(-2), 'renderConfirmDialog');
 });
 
 test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic advisor panel', () => {

@@ -78,7 +78,8 @@ test('SystemCanvasRenderer preserves settings and logs actions', () => {
   const renderer = new SystemCanvasRenderer({ host });
 
   renderer.renderSettingsPanel();
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'resetGame'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'requestResetGame'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'resetGame'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'logout'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeSettings' && target.action.background === true), true);
 
@@ -87,6 +88,29 @@ test('SystemCanvasRenderer preserves settings and logs actions', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'clearLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs' && target.action.background === true), true);
+});
+
+test('SystemCanvasRenderer renders reset confirmation as canvas actions', () => {
+  const host = createHost({
+    drawTextLines(lines) { this.calls.push(['drawTextLines', lines]); },
+    wrapTextLimit(text) { return [String(text || '')]; },
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  renderer.renderConfirmDialog({
+    visible: true,
+    kind: 'resetGame',
+    source: 'settings',
+    title: '重置游戏进度',
+    message: '当前账号的所有发展将回到初始状态。',
+    confirmLabel: '确认重置',
+    cancelLabel: '取消',
+  });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeConfirmDialog' && target.action.background === true), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeConfirmDialog' && !target.action.background), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'confirmResetGame' && target.action.source === 'settings'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
 });
 
 test('CanvasGameRenderer exposes system rendering through facade', () => {

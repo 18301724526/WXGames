@@ -129,8 +129,14 @@ window.mountAuthMethods = function(game, deps = {}) {
     authRuntime?.reload?.();
   };
 
-  game.resetGame = async function() {
-    if (!authRuntime?.confirmReset?.()) return false;
+  game.resetGame = async function(options = {}) {
+    if (!options.confirmed) {
+      if (typeof this.canvasShell?.openResetConfirm !== 'function') {
+        authRuntime?.alertMessage?.('确认界面未就绪，请稍后再试');
+        return false;
+      }
+      return this.canvasShell.openResetConfirm({ source: options.source || 'resetGame' }) !== false;
+    }
     try {
       const result = await this.apiPost('/player/reset', {});
       if (!result.success) {

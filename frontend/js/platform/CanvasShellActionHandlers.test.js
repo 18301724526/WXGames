@@ -203,6 +203,75 @@ test('submit naming prefers game promise instead of boolean forward result', asy
   assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose'], ['refresh']]);
 });
 
+test('reset request opens canvas confirmation before executing reset', async () => {
+  const calls = [];
+  const game = {
+    resetGame() {
+      calls.push(['resetGame']);
+      return true;
+    },
+  };
+  const host = {
+    lastGame: game,
+    openResetConfirm(options) {
+      calls.push(['openResetConfirm', options.source]);
+      return true;
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_requestResetGame({ type: 'requestResetGame', source: 'settings' }), true);
+  assert.equal(controller.handle_resetGame({ type: 'resetGame', source: 'legacy' }), true);
+  assert.deepEqual(calls, [
+    ['openResetConfirm', 'settings'],
+    ['openResetConfirm', 'legacy'],
+  ]);
+});
+
+test('confirm reset executes reset after canvas confirmation', async () => {
+  const calls = [];
+  const game = {
+    resetGame(options) {
+      calls.push(['resetGame', options]);
+      return Promise.resolve(true);
+    },
+    resetLocalViewToResources(options) {
+      calls.push(['gameResetView', options]);
+    },
+  };
+  const host = {
+    lastGame: game,
+    confirmDialog: { visible: true, kind: 'resetGame', source: 'settings' },
+    setConfirmDialogSubmitting(value) {
+      calls.push(['submitting', value]);
+      return true;
+    },
+    closeConfirmDialog() {
+      calls.push(['closeConfirmDialog']);
+      this.confirmDialog = null;
+      return true;
+    },
+    resetLocalViewToResources(options) {
+      calls.push(['hostResetView', options]);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type, action.tab]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_confirmResetGame({ type: 'confirmResetGame' }), true);
+  assert.deepEqual(calls, [
+    ['submitting', true],
+    ['resetGame', { confirmed: true, source: 'settings' }],
+    ['submitting', false],
+    ['closeConfirmDialog'],
+    ['hostResetView', { skipRender: true }],
+    ['gameResetView', { skipShell: true, skipRender: true }],
+    ['render', 'confirmResetGame', 'military'],
+  ]);
+});
+
 test('shell action handler entrypoints load before CanvasActionController', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');

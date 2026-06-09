@@ -193,6 +193,38 @@
         return this.afterHandled(action);
       },
 
+      handle_requestResetGame(action) {
+        const opened = this.host?.openResetConfirm?.({ source: action.source }) !== false;
+        return opened ? true : this.afterHandled(action);
+      },
+
+      handle_closeConfirmDialog(action) {
+        const closed = this.host?.closeConfirmDialog?.();
+        return closed !== false;
+      },
+
+      handle_confirmResetGame(action) {
+        const dialog = this.host?.confirmDialog || {};
+        if (dialog.visible && dialog.kind && dialog.kind !== 'resetGame') return false;
+        this.host?.setConfirmDialogSubmitting?.(true);
+        const result = this.getGameHost()?.resetGame?.({ confirmed: true, source: action.source || dialog.source || '' });
+        const applyResetView = (success) => {
+          this.host?.setConfirmDialogSubmitting?.(false);
+          if (success === false) return false;
+          this.host?.closeConfirmDialog?.();
+          this.host?.resetLocalViewToResources?.({ skipRender: true });
+          const game = this.getGameHost();
+          if (game && game !== this.host) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
+          this.render({ ...action, tab: 'military', militaryView: 'world', isMapHome: true });
+          return true;
+        };
+        if (!result || typeof result.then !== 'function') return applyResetView(result);
+        return this.finalize(result.then(applyResetView).catch((error) => {
+          this.host?.setConfirmDialogSubmitting?.(false);
+          throw error;
+        }));
+      },
+
       handle_openLogs(action) {
         this.host.showLogs = true;
         this.closePanels(['showLogs']);
@@ -296,18 +328,7 @@
       },
 
       handle_resetGame(action) {
-        this.closePanels();
-        const result = this.getGameHost()?.resetGame?.();
-        const applyResetView = (success) => {
-          if (success === false) return false;
-          this.host?.resetLocalViewToResources?.({ skipRender: true });
-          const game = this.getGameHost();
-          if (game && game !== this.host) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
-          this.render({ ...action, tab: 'military', militaryView: 'world', isMapHome: true });
-          return true;
-        };
-        if (!result || typeof result.then !== 'function') return applyResetView(result);
-        return this.finalize(result.then(applyResetView));
+        return this.handle_requestResetGame({ ...action, type: 'requestResetGame' });
       },
 
       handle_logout(action) {

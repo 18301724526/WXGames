@@ -41,6 +41,59 @@ closeRewardReveal() {
       return hadReveal;
     },
 
+openConfirmDialog(view = {}) {
+      this.confirmDialog = {
+        visible: true,
+        kind: view.kind || 'generic',
+        source: view.source || '',
+        title: view.title || '请确认',
+        message: view.message || '',
+        confirmLabel: view.confirmLabel || '确定',
+        cancelLabel: view.cancelLabel || '取消',
+        submitting: Boolean(view.submitting),
+      };
+      this.showSettings = false;
+      this.showLogs = false;
+      this.showResourceDetails = false;
+      this.showCitySwitcher = false;
+      this.showSubcityList = false;
+      this.showCityManagement = false;
+      this.showAdvisor = false;
+      this.showFamousPersons = false;
+      this.activeCommandPanel = '';
+      this.activeEventId = null;
+      this.renderActive();
+      return true;
+    },
+
+openResetConfirm(options = {}) {
+      return this.openConfirmDialog({
+        kind: 'resetGame',
+        source: options.source || '',
+        title: '重置游戏进度',
+        message: '当前账号的所有发展将回到初始状态。此操作不可撤销。',
+        confirmLabel: '确认重置',
+        cancelLabel: '取消',
+      });
+    },
+
+closeConfirmDialog() {
+      const hadDialog = Boolean(this.confirmDialog?.visible);
+      this.confirmDialog = null;
+      if (hadDialog) this.renderActive();
+      return hadDialog;
+    },
+
+setConfirmDialogSubmitting(isSubmitting) {
+      if (!this.confirmDialog?.visible) return false;
+      this.confirmDialog = {
+        ...this.confirmDialog,
+        submitting: Boolean(isSubmitting),
+      };
+      this.renderActive();
+      return true;
+    },
+
 getFloatingTextView(now = this.now()) {
       return this.floatingTexts
         .map((effect) => ({

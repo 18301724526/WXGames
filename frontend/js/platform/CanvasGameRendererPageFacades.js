@@ -189,6 +189,11 @@
       return this.delegateSystemRenderer('renderSettingsPanel', args);
     },
 
+    renderConfirmDialog(...args) {
+      const result = this.delegateSystemRenderer('renderConfirmDialog', args);
+      return result === undefined ? false : result;
+    },
+
     renderLogsPanel(...args) {
       return this.delegateSystemRenderer('renderLogsPanel', args);
     },

@@ -66,6 +66,7 @@
         this.renderRewardReveal(options.rewardReveal || null);
         this.renderNetworkOverlay(options.network || null);
         this.renderCanvasDebugResetButton?.(options);
+        this.renderConfirmDialog?.(options.confirmDialog || null);
         this.endFrame(options);
         return;
       }
@@ -130,6 +131,7 @@
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
       this.renderCanvasDebugResetButton?.(options);
+      this.renderConfirmDialog?.(options.confirmDialog || null);
       this.endFrame(options);
     }
   }
