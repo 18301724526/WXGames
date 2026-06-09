@@ -3538,6 +3538,38 @@ Regression:
 
 - `npm run test:architecture`
 
+### `scripts/playtest-online-tutorial.js`
+
+状态 / Status: candidate QA harness
+
+负责 / Owns:
+
+- online/local tutorial browser playtest orchestration for the Canvas H5 game
+- real browser login/reset/setup, prompt interception, and API call capture
+- per-action before/after full screenshots
+- target crop, exact target crop, and tutorial highlight crop evidence
+- PNG-based visual checks for target visibility, crop variance, and guided gold highlight pixels
+- center-point hitTarget verification and tutorial shield allowance checks
+- expected outcome verification after each click/wait/fill action
+- API response, bad-response, request-failure, page-error, and authority-envelope checks
+- `summary.json`, `verification-report.json`, `manualReviewIndex`, and screenshot evidence paths
+
+公开命令 / Public Command:
+
+- `npm run playtest:online-tutorial`
+
+扩展方式 / Extension Path:
+
+- New tutorial actions must add explicit expected outcome rules before being accepted as automated browser coverage.
+- New guided visual styles must extend the PNG/highlight metrics instead of weakening strict visual mode.
+- Do not reintroduce direct internal state-push fallbacks for user-visible tutorial steps; visible/clickable targets are required.
+- Do not treat this as a lightweight architecture smoke command. It is a slower browser-level acceptance gate for player visibility and clickability.
+
+回归 / Regression:
+
+- `node --check scripts/playtest-online-tutorial.js`
+- local/online `npm run playtest:online-tutorial` when touched behavior affects real input, Canvas visibility, tutorial guide flow, API action feedback, or deployment verification
+
 ### `docs/stable_block_promotion_matrix_2026-06-09.md`
 
 状态 / Status: stable governance

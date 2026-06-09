@@ -402,6 +402,65 @@ Result:
 - Request failures: none
 - Page errors: none
 
+## Strict Browser Tutorial Visual QA
+
+Current local patch:
+
+- `scripts/playtest-online-tutorial.js` now treats tutorial browser playtest as a strict player-visible acceptance gate.
+- The harness captures before/after full screenshots, target crops, exact target crops, and tutorial highlight crops for guided actions.
+- The harness uses `pngjs` to analyze PNG evidence for target visibility, crop variance, and guided gold-highlight pixels.
+- The harness checks center-point hitTargets, tutorial shield allowance, API success, expected state/action outcomes, and server-owned authority envelopes for world-march/conquest flows.
+- The harness writes `summary.json`, `verification-report.json`, `manualReviewIndex`, `verificationReports`, and `verificationFailures`.
+- Direct internal state-push fallbacks were removed for player-visible tutorial steps; missing visible/clickable targets fail the run.
+
+Final strict online run:
+
+```powershell
+$env:PLAYTEST_GAME_URL='http://47.116.32.216/wxgame/'
+$env:PLAYTEST_API_BASE='http://47.116.32.216:3000/api'
+$env:PLAYTEST_USERNAME='codexqa'
+$env:PLAYTEST_PASSWORD='123456'
+$env:PLAYTEST_RESET_ACCOUNT='1'
+$env:PLAYTEST_MAX_ACTIONS='160'
+$env:PLAYTEST_OUTPUT_DIR='.local-logs/online-tutorial-strict'
+npm.cmd run playtest:online-tutorial
+```
+
+Output:
+
+```text
+E:\Human\wxgame\.local-logs\online-tutorial-strict\2026-06-09T06-41-13-743Z
+```
+
+Result:
+
+- Stop reason: `tutorial-completed`
+- Final tutorial step: `36`
+- Final step name: `completed`
+- Tutorial completed: `true`
+- Action count: `56`
+- Evidence count: `51`
+- Verification report count: `58`
+- Verification failures: none
+- Visual findings: none
+- Bad responses: none
+- Request failures: none
+- Page errors: none
+- Captured API calls: `100`
+
+Manual screenshot review completed for:
+
+- `highlight-buildBuilding-6-before-full.png`
+- `highlight-selectWorldMarchTarget-38-before-full.png`
+- `wait-explore-41-before-full.png`
+- `highlight-conquer-46-before-full.png`
+- `highlight-assignJob-52-before-full.png`
+
+Manual review result:
+
+- Guided building, world-march target, exploration wait state, conquest button, and manual talent assignment button are visibly highlighted and player-clickable in the screenshots.
+- The strict run no longer uses code-level success as a substitute for player-visible evidence.
+
 P11-005 deployed status:
 
 - Complete, committed, pushed, deployed, and online verified.
@@ -412,5 +471,8 @@ After P11-005 local verification is complete, continue:
 
 1. P11-006: Config/version hardening.
 2. Downstream realtime adoption: multiplayer transport, presenter/runtime consumers, and AOI stress checks.
+3. Keep the strict browser tutorial visual QA harness as the acceptance gate for future tutorial/hitTarget/highlight/deploy-risk changes.
 
 Do not promote the new tile topology, large-map streaming, or realtime authority modules to `stable` yet. They are `candidate` until downstream presenter/runtime/renderer and multiplayer transport consumers prove the extension surface without churn.
+
+Current overall refactor progress estimate: about `96.5%`.

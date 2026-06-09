@@ -68,16 +68,23 @@ Deployment checks after `f185057f2ec0c2c84b14cbb2eb607518f83fd0d4`:
 
 ## Online Tutorial Status
 
-Latest online playtest:
+Latest strict online playtest:
 
 ```powershell
-$env:PLAYTEST_MAX_ACTIONS='140'; npm.cmd run playtest:online-tutorial
+$env:PLAYTEST_GAME_URL='http://47.116.32.216/wxgame/'
+$env:PLAYTEST_API_BASE='http://47.116.32.216:3000/api'
+$env:PLAYTEST_USERNAME='codexqa'
+$env:PLAYTEST_PASSWORD='123456'
+$env:PLAYTEST_RESET_ACCOUNT='1'
+$env:PLAYTEST_MAX_ACTIONS='160'
+$env:PLAYTEST_OUTPUT_DIR='.local-logs/online-tutorial-strict'
+npm.cmd run playtest:online-tutorial
 ```
 
 Output:
 
 ```text
-F:\AI Project\WXGamesLocal\.local-logs\online-tutorial\2026-06-08T23-54-53-188Z
+E:\Human\wxgame\.local-logs\online-tutorial-strict\2026-06-09T06-41-13-743Z
 ```
 
 Result:
@@ -86,14 +93,17 @@ Result:
 - `finalStep: 36`
 - `finalStepName: completed`
 - `tutorialCompleted: true`
-- `actionCount: 59`
+- `actionCount: 56`
 - `evidenceCount: 51`
+- `verificationReportCount: 58`
+- `verificationFailures: []`
 - `visualFindings: []`
 - `badResponses: []`
 - `requestFailures: []`
 - `pageErrors: []`
+- `apiCallCount: 100`
 
-The online tutorial flow is verified with screenshot evidence. No active online tutorial blocker remains.
+The online tutorial flow is verified with strict screenshot evidence. The harness now captures before/after full screenshots, target crops, exact target crops, highlight crops, PNG visibility/highlight metrics, center-point hitTarget checks, tutorial shield checks, API/result checks, and authority-envelope checks. Manual screenshot review covered building, world-march target, exploration wait, conquest, and manual talent assignment steps. No active online tutorial blocker remains.
 
 ## Current Patch
 

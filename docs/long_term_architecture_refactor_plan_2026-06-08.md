@@ -356,6 +356,7 @@ Every implementation step should finish with:
 
 - 能用 Node tests、syntax checks、architecture baseline 闭环的步骤，不再要求开发者打开游戏手测。
 - 只有当改动触达真实输入、Canvas 像素、浏览器兼容、资源加载或线上部署风险时，才把 browser/playtest 作为额外验收。
+- 当改动触达教程高亮、Canvas hitTargets、遮罩、玩家可见按钮、线上 H5 路径或后端 action 反馈时，browser/playtest 不是额外可选项，而是准入门槛。必须使用 `scripts/playtest-online-tutorial.js` 生成 before/after screenshots、目标裁剪图、highlight 裁剪图、PNG 像素指标、中心点命中检查、API/authority 结果检查，并人工抽查关键截图。
 
 命令选择 / Which Command To Run:
 

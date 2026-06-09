@@ -14,6 +14,11 @@ const CONFIG = {
   viewportWidth: Number(process.env.PLAYTEST_VIEWPORT_WIDTH || 1365),
   viewportHeight: Number(process.env.PLAYTEST_VIEWPORT_HEIGHT || 768),
   outputRoot: process.env.PLAYTEST_OUTPUT_DIR || path.join('.local-logs', 'online-tutorial'),
+  strictVisual: process.env.PLAYTEST_STRICT_VISUAL !== '0',
+  minVisibleTargetRatio: Number(process.env.PLAYTEST_MIN_VISIBLE_TARGET_RATIO || 0.72),
+  minTargetLumaStdDev: Number(process.env.PLAYTEST_MIN_TARGET_LUMA_STDDEV || 5),
+  minTargetUniqueColors: Number(process.env.PLAYTEST_MIN_TARGET_UNIQUE_COLORS || 18),
+  minHighlightGoldPixels: Number(process.env.PLAYTEST_MIN_HIGHLIGHT_GOLD_PIXELS || 24),
 };
 
 const STEP_NAMES = {
@@ -66,6 +71,8 @@ const requestFailures = [];
 const pageErrors = [];
 const actionEvidence = [];
 const visualFindings = [];
+const verificationReports = [];
+const verificationFailures = [];
 
 function fileNameSafe(value) {
   return String(value || 'item').replace(/[^a-z0-9._-]+/gi, '-').slice(0, 96);
@@ -159,6 +166,158 @@ function analyzePng(buffer) {
     transparentRatio: Number((count ? transparentCount / count : 0).toFixed(3)),
     suspiciousBlank: uniqueColors < 12 || stdev < 4 || (darkCount / Math.max(1, count) > 0.94 && stdev < 10),
   };
+}
+
+function analyzeHighlightPng(buffer) {
+  const png = PNG.sync.read(buffer);
+  const pixels = png.data;
+  let goldPixels = 0;
+  let warmEdgePixels = 0;
+  let brightPixels = 0;
+  let count = 0;
+  for (let y = 0; y < png.height; y += 1) {
+    for (let x = 0; x < png.width; x += 1) {
+      const idx = (png.width * y + x) << 2;
+      const r = pixels[idx];
+      const g = pixels[idx + 1];
+      const b = pixels[idx + 2];
+      const a = pixels[idx + 3];
+      if (a < 8) continue;
+      if (r > 215 && g > 165 && b < 105 && r >= g && g > b + 45) goldPixels += 1;
+      if (r > 175 && g > 130 && b < 125 && r > b + 55 && g > b + 20) warmEdgePixels += 1;
+      if (r + g + b > 650) brightPixels += 1;
+      count += 1;
+    }
+  }
+  return {
+    width: png.width,
+    height: png.height,
+    samples: count,
+    goldPixels,
+    warmEdgePixels,
+    brightPixels,
+    goldRatio: Number((count ? goldPixels / count : 0).toFixed(4)),
+    warmEdgeRatio: Number((count ? warmEdgePixels / count : 0).toFixed(4)),
+  };
+}
+
+function getTargetCenter(target = {}) {
+  return {
+    x: (Number(target.x) || 0) + (Number(target.width) || 0) / 2,
+    y: (Number(target.y) || 0) + (Number(target.height) || 0) / 2,
+  };
+}
+
+function getRectIntersectionRatio(rect = {}, bounds = {}) {
+  const left = Math.max(Number(rect.x) || 0, Number(bounds.x) || 0);
+  const top = Math.max(Number(rect.y) || 0, Number(bounds.y) || 0);
+  const right = Math.min((Number(rect.x) || 0) + (Number(rect.width) || 0), (Number(bounds.x) || 0) + (Number(bounds.width) || 0));
+  const bottom = Math.min((Number(rect.y) || 0) + (Number(rect.height) || 0), (Number(bounds.y) || 0) + (Number(bounds.height) || 0));
+  const area = Math.max(0, right - left) * Math.max(0, bottom - top);
+  const targetArea = Math.max(1, (Number(rect.width) || 0) * (Number(rect.height) || 0));
+  return area / targetArea;
+}
+
+function getActionTargetId(action = {}) {
+  return action.siteId
+    || action.territoryId
+    || action.cityId
+    || action.targetId
+    || action.personId
+    || action.taskId
+    || action.eventId
+    || action.missionId
+    || '';
+}
+
+function actionCompatible(expected = {}, actual = {}) {
+  if (!expected?.type || !actual?.type || actual.disabled) return false;
+  if (expected.type !== actual.type) return false;
+  const expectedId = getActionTargetId(expected);
+  const actualId = getActionTargetId(actual);
+  return Object.entries(expected).every(([key, value]) => {
+    if (key === 'type' || key === 'background' || value === undefined || value === null || value === '') return true;
+    if (actual[key] === value) return true;
+    if (['siteId', 'territoryId', 'cityId', 'targetId', 'personId', 'taskId', 'eventId', 'missionId'].includes(key)) {
+      return Boolean(expectedId && actualId && expectedId === actualId);
+    }
+    return false;
+  });
+}
+
+function createVerificationFailure(label, message, details = {}) {
+  const failure = {
+    label,
+    message,
+    details: sanitize(details),
+    screenshot: details.fullPath || details.beforeFullPath || details.afterFullPath || '',
+    targetScreenshot: details.cropPath || details.beforeTargetPath || '',
+    highlightScreenshot: details.highlightPath || details.beforeHighlightPath || '',
+  };
+  verificationFailures.push(failure);
+  return new Error(`${label}: ${message} ${JSON.stringify(failure.details)}`);
+}
+
+function isApiAction(actionType = '') {
+  return new Set([
+    'buildBuilding',
+    'advanceEra',
+    'claimTaskReward',
+    'claimEvent',
+    'saveArmyFormation',
+    'startWorldMarch',
+    'claimExplore',
+    'conquer',
+    'claimConquest',
+    'submitNaming',
+    'confirmTalentPolicy',
+    'assignJob',
+    'seekFamousPerson',
+  ]).has(actionType);
+}
+
+function expectedApiBodyAction(action = {}) {
+  if (action.type === 'buildBuilding') return 'build';
+  if (action.type === 'advanceEra') return 'advanceEra';
+  if (action.type === 'claimEvent') return 'claimEvent';
+  if (action.type === 'saveArmyFormation') return 'setArmyFormation';
+  if (action.type === 'startWorldMarch') return 'startWorldMarch';
+  if (action.type === 'claimExplore') return 'claimExplore';
+  if (action.type === 'conquer') return 'startConquest';
+  if (action.type === 'claimConquest') return 'claimConquest';
+  if (action.type === 'submitNaming') return action.promptType === 'polity' ? 'renamePolity' : 'renameCity';
+  if (action.type === 'confirmTalentPolicy') return 'applyTalentPolicy';
+  if (action.type === 'assignJob') return 'assign';
+  if (action.type === 'seekFamousPerson') return 'seekFamousPerson';
+  return '';
+}
+
+function actionRequiresAuthority(action = {}) {
+  return new Set(['startWorldMarch', 'conquer', 'claimConquest']).has(action.type);
+}
+
+function createManualReviewIndex() {
+  const byStep = new Map();
+  for (const report of verificationReports) {
+    const step = Number(report.beforeStep);
+    if (!byStep.has(step)) {
+      byStep.set(step, {
+        step,
+        stepName: STEP_NAMES[step] || '',
+        labels: [],
+        beforeFullPath: report.beforeFullPath || '',
+        beforeTargetPath: report.beforeTargetPath || '',
+        beforeHighlightPath: report.beforeHighlightPath || '',
+        afterFullPath: report.afterFullPath || '',
+        outcome: report.outcome?.reason || '',
+      });
+    }
+    byStep.get(step).labels.push(report.label);
+    if (report.beforeTargetPath) byStep.get(step).beforeTargetPath = report.beforeTargetPath;
+    if (report.beforeHighlightPath) byStep.get(step).beforeHighlightPath = report.beforeHighlightPath;
+    if (report.afterFullPath) byStep.get(step).afterFullPath = report.afterFullPath;
+  }
+  return [...byStep.values()].sort((a, b) => a.step - b.step);
 }
 
 function actionMatches(allowed = {}, action = {}) {
@@ -355,6 +514,8 @@ async function getState(page) {
       activeEventId: shell?.activeEventId || game?.activeEventId || game?.eventController?.activeEventId || '',
       showFamousPersons: Boolean(shell?.showFamousPersons || game?.showFamousPersons),
       selectedFamousPersonId: shell?.selectedFamousPersonId || game?.selectedFamousPersonId || '',
+      showTalentPolicy: Boolean(shell?.showTalentPolicy || game?.showTalentPolicy),
+      talentPolicyOpen: Boolean(shell?.showTalentPolicy || game?.showTalentPolicy),
       naming: shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
@@ -439,6 +600,7 @@ async function getState(page) {
         } : null,
       } : null,
       requestLogs: Array.isArray(game?.requestLogs) ? game.requestLogs.slice(-12) : [],
+      apiCalls: Array.isArray(window.__codexApiCalls) ? window.__codexApiCalls.slice(-100) : [],
     };
   });
 }
@@ -533,16 +695,33 @@ async function captureTargetEvidence(page, label, state, target, options = {}) {
   const safeLabel = fileNameSafe(label);
   const padded = clampClip(toViewportRect(state, target, options.padding ?? 18), viewport);
   const exact = clampClip(toViewportRect(state, target, 0), viewport);
+  const highlightRect = state.tutorialHighlight?.rect
+    ? clampClip(toViewportRect(state, {
+      x: Number(state.tutorialHighlight.rect.left ?? state.tutorialHighlight.rect.x) || 0,
+      y: Number(state.tutorialHighlight.rect.top ?? state.tutorialHighlight.rect.y) || 0,
+      width: Number(state.tutorialHighlight.rect.width) || 0,
+      height: Number(state.tutorialHighlight.rect.height) || 0,
+    }, options.highlightPadding ?? 10), viewport)
+    : null;
   const fullPath = path.join(outDir, `${safeLabel}-full.png`);
   const cropPath = path.join(outDir, `${safeLabel}-target.png`);
   const exactPath = path.join(outDir, `${safeLabel}-target-exact.png`);
+  const highlightPath = highlightRect ? path.join(outDir, `${safeLabel}-highlight.png`) : '';
   await page.screenshot({ path: fullPath, fullPage: true });
   const cropBuffer = await page.screenshot({ clip: padded });
   const exactBuffer = await page.screenshot({ clip: exact });
   fs.writeFileSync(cropPath, cropBuffer);
   fs.writeFileSync(exactPath, exactBuffer);
+  let highlightMetrics = null;
+  if (highlightRect) {
+    const highlightBuffer = await page.screenshot({ clip: highlightRect });
+    fs.writeFileSync(highlightPath, highlightBuffer);
+    highlightMetrics = analyzeHighlightPng(highlightBuffer);
+  }
   const cropMetrics = analyzePng(cropBuffer);
   const exactMetrics = analyzePng(exactBuffer);
+  const targetViewportRect = toViewportRect(state, target, 0);
+  const targetVisibleRatio = getRectIntersectionRatio(targetViewportRect, { x: 0, y: 0, width: viewport.width, height: viewport.height });
   const evidence = {
     label,
     step: state.tutorialStep,
@@ -555,34 +734,422 @@ async function captureTargetEvidence(page, label, state, target, options = {}) {
     fullPath,
     cropPath,
     exactPath,
+    highlightPath,
     cropMetrics,
     exactMetrics,
+    highlightMetrics,
+    targetVisibleRatio: Number(targetVisibleRatio.toFixed(3)),
     highlight: sanitize(state.tutorialHighlight),
   };
   actionEvidence.push(evidence);
-  if (cropMetrics.suspiciousBlank || exactMetrics.suspiciousBlank) {
-    visualFindings.push({
-      severity: 'warning',
+  const findings = [];
+  const highlightVisible = Boolean(highlightMetrics && highlightMetrics.goldPixels >= CONFIG.minHighlightGoldPixels);
+  if (targetVisibleRatio < CONFIG.minVisibleTargetRatio) {
+    findings.push(`target visible ratio ${targetVisibleRatio.toFixed(3)} is below ${CONFIG.minVisibleTargetRatio}`);
+  }
+  if (cropMetrics.suspiciousBlank
+    || (!highlightVisible && (
+      exactMetrics.suspiciousBlank
+      || exactMetrics.lumaStdDev < CONFIG.minTargetLumaStdDev
+      || exactMetrics.uniqueColors < CONFIG.minTargetUniqueColors
+    ))) {
+    findings.push('target crop is visually too flat to prove the button/highlight is visible');
+  }
+  if (state.tutorialHighlight?.allowedAction
+    && actionMatches(state.tutorialHighlight.allowedAction, target.action)
+    && (!highlightMetrics || highlightMetrics.goldPixels < CONFIG.minHighlightGoldPixels)) {
+    findings.push(`guided highlight gold border pixels ${highlightMetrics?.goldPixels || 0} is below ${CONFIG.minHighlightGoldPixels}`);
+  }
+  if (findings.length) {
+    const finding = {
+      severity: CONFIG.strictVisual ? 'error' : 'warning',
       label,
       step: state.tutorialStep,
       stepName: STEP_NAMES[state.tutorialStep] || '',
       action: sanitize(target.action),
-      reason: 'Target crop has low visual variance; inspect screenshot for clickable-but-invisible guide target.',
+      reason: findings.join('; '),
+      fullPath,
       cropPath,
       exactPath,
+      highlightPath,
       cropMetrics,
       exactMetrics,
-    });
+      highlightMetrics,
+      targetVisibleRatio: evidence.targetVisibleRatio,
+    };
+    visualFindings.push(finding);
+    if (CONFIG.strictVisual) {
+      throw createVerificationFailure(label, 'visual target verification failed', finding);
+    }
   }
   return evidence;
 }
 
+async function inspectCenterHit(page, state, target) {
+  const center = getTargetCenter(target);
+  return page.evaluate((point) => {
+    const game = window.Game || null;
+    const shell = game?.canvasShell || null;
+    const renderer = shell?.renderer || game?.renderer || null;
+    const hitAction = renderer?.getHitTarget?.(point) || null;
+    return {
+      point,
+      hitAction,
+      tutorialInputActive: Boolean(shell?.isTutorialInputActive?.()),
+      tutorialActionAllowed: Boolean(shell?.isTutorialActionAllowed?.(hitAction)),
+      blockedByTutorialShield: Boolean(shell?.isPointBlockedByTutorialShield?.(point)),
+    };
+  }, center);
+}
+
+async function assertTargetClickable(page, label, state, target) {
+  if (!target?.action?.type) {
+    throw createVerificationFailure(label, 'target has no action', { target });
+  }
+  if (target.action.disabled) {
+    throw createVerificationFailure(label, 'target action is disabled', { action: target.action });
+  }
+  const hit = await inspectCenterHit(page, state, target);
+  if (!actionCompatible(target.action, hit.hitAction)) {
+    throw createVerificationFailure(label, 'target center does not hit the expected action', {
+      expected: target.action,
+      hit,
+    });
+  }
+  if (hit.tutorialInputActive && !hit.tutorialActionAllowed) {
+    throw createVerificationFailure(label, 'tutorial shield blocks the expected action', {
+      expected: target.action,
+      hit,
+      highlight: state.tutorialHighlight,
+      intro: state.tutorialIntro,
+    });
+  }
+  return hit;
+}
+
+function getApiCallsAfter(beforeState = {}, afterState = {}) {
+  const beforeCalls = Array.isArray(beforeState.apiCalls) ? beforeState.apiCalls : [];
+  const afterCalls = Array.isArray(afterState.apiCalls) ? afterState.apiCalls : [];
+  const beforeMaxIndex = beforeCalls.reduce((max, call) => Math.max(max, Number(call?.index) || 0), -1);
+  return afterCalls.filter((call) => (Number(call?.index) || 0) > beforeMaxIndex);
+}
+
+function apiCallMatchesAction(call = {}, action = {}) {
+  if (!call || !action?.type) return false;
+  const body = call.body || {};
+  if (action.type === 'claimTaskReward') {
+    return call.path === '/game/tasks/claim' && (!action.taskId || body.taskId === action.taskId);
+  }
+  const expectedAction = expectedApiBodyAction(action);
+  if (!expectedAction) return false;
+  if (call.path !== '/game/action') return false;
+  if (action.type === 'submitNaming') {
+    return body.action === 'renameCity' || body.action === 'renamePolity';
+  }
+  if (body.action !== expectedAction) return false;
+  if (action.type === 'startWorldMarch' && action.formationSlot !== undefined) {
+    return Number(body.formationSlot ?? body.slot) === Number(action.formationSlot);
+  }
+  if (['claimExplore', 'claimConquest', 'conquer'].includes(action.type)) {
+    const expectedId = getActionTargetId(action);
+    const bodyId = body.missionId || body.territoryId || body.cityId || '';
+    return !expectedId || !bodyId || expectedId === bodyId;
+  }
+  return true;
+}
+
+function getSuccessfulApiCall(afterState = {}, action = {}, beforeState = {}) {
+  const calls = getApiCallsAfter(beforeState, afterState);
+  return calls.find((call) => (
+    apiCallMatchesAction(call, action)
+    && call.ok !== false
+    && call.error === undefined
+    && call.completed
+    && call.response?.success !== false
+  )) || null;
+}
+
+function hasChanged(beforeValue, afterValue) {
+  return JSON.stringify(sanitize(beforeValue)) !== JSON.stringify(sanitize(afterValue));
+}
+
+function countBuildings(state = {}) {
+  const buildings = state.stateSummary?.buildings;
+  if (Array.isArray(buildings)) return buildings.length;
+  if (buildings && typeof buildings === 'object') {
+    return Object.values(buildings).reduce((sum, value) => sum + (Number(value) || (value ? 1 : 0)), 0);
+  }
+  return 0;
+}
+
+function missionCounts(state = {}) {
+  const explorer = state.stateSummary?.worldExplorerState || {};
+  return {
+    active: Array.isArray(explorer.activeMissions) ? explorer.activeMissions.length : (explorer.activeMission ? 1 : 0),
+    ready: Array.isArray(explorer.readyMissions) ? explorer.readyMissions.length : 0,
+    idle: Array.isArray(explorer.idleMissions) ? explorer.idleMissions.length : 0,
+    missions: Array.isArray(explorer.missions) ? explorer.missions.length : 0,
+  };
+}
+
+function evaluateActionOutcome(before = {}, after = {}, action = {}) {
+  const actionType = action?.type || '';
+  const apiCall = getSuccessfulApiCall(after, action, before);
+  const stepAdvanced = Number(after.tutorialStep) > Number(before.tutorialStep);
+  const completed = Boolean(after.tutorialCompleted || after.tutorialStep >= 36);
+  const apiRequired = isApiAction(actionType);
+  const apiOk = !apiRequired || Boolean(apiCall);
+  const authorityOk = !actionRequiresAuthority(action) || (
+    apiCall?.response?.authority?.schema === 'command-authority-contract-v1'
+    && apiCall?.response?.authority?.status === 'accepted'
+    && apiCall?.response?.authority?.authority?.owner === 'server'
+  );
+  const base = {
+    pass: false,
+    reason: '',
+    apiCall: sanitize(apiCall),
+    apiOk,
+    authorityOk,
+  };
+  const pass = (reason, extra = {}) => ({ ...base, pass: apiOk && authorityOk, reason, ...extra });
+  const fail = (reason, extra = {}) => ({ ...base, pass: false, reason, ...extra });
+
+  if (completed) return pass('tutorial completed');
+
+  switch (actionType) {
+    case 'wait':
+    case 'waitExplore':
+      if (actionType === 'wait' && action.introStep && before.tutorialIntro?.active && before.tutorialIntro?.step === action.introStep) {
+        return pass(`intro ${action.introStep} wait state remains visible and valid`);
+      }
+      if (after.tutorialStep !== before.tutorialStep
+        || hasChanged(before.stateSummary?.worldExplorerState, after.stateSummary?.worldExplorerState)) {
+        return pass('wait observed state progress');
+      }
+      if (actionType === 'waitExplore') {
+        const counts = missionCounts(after);
+        if (counts.active > 0 || counts.ready > 0) {
+          return pass('explore wait state remains visible and valid', { missionCounts: counts });
+        }
+      }
+      return fail('wait did not observe state progress');
+    case 'closeAdvisor':
+      return !after.tutorialAdvisorDialogue ? pass('advisor dialogue closed') : fail('advisor dialogue is still visible');
+    case 'closeRewardReveal':
+      return !after.rewardReveal ? pass('reward reveal closed') : fail('reward reveal is still visible');
+    case 'requestNamingInput':
+      return after.naming?.visible && String(after.naming?.inputValue || '').trim()
+        ? pass('naming input is filled')
+        : fail('naming input is not visibly filled');
+    case 'submitNaming':
+      if (!apiOk) return fail('naming submit API did not succeed');
+      if (stepAdvanced) {
+        const nextPromptType = after.naming?.visible ? (after.naming?.prompt?.type || after.naming?.view?.prompt?.type || '') : '';
+        if (!after.naming?.visible || nextPromptType === 'polity') {
+          return pass(after.naming?.visible ? 'naming submitted and next naming prompt opened' : 'naming modal submitted and closed');
+        }
+      }
+      if (!after.naming?.visible && after.tutorialStep >= before.tutorialStep) {
+        return pass('naming modal submitted and closed');
+      }
+      return fail('naming submit did not advance or close');
+    case 'openWorldSite': {
+      const siteId = action.siteId || action.cityId || action.territoryId || '';
+      const selected = after.territoryUiState?.selectedSiteId || '';
+      return (siteId && selected === siteId) || after.cityManagementOpen || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
+        ? pass('world site opened or intro advanced')
+        : fail('world site did not open');
+    }
+    case 'enterCity':
+      return after.cityManagementOpen || stepAdvanced || before.currentTab !== after.currentTab
+        ? pass('city entered')
+        : fail('city did not open after enter action');
+    case 'buildBuilding':
+      return stepAdvanced || countBuildings(after) > countBuildings(before) || apiOk
+        ? pass('building action changed state')
+        : fail('building action did not change state');
+    case 'openCommandPanel':
+      return after.activeCommandPanel === action.panel || after.currentTab === action.panel || stepAdvanced
+        ? pass(`command panel ${action.panel || ''} opened`)
+        : fail('command panel did not open');
+    case 'advanceEra':
+      return Number(after.stateSummary?.currentEra || 0) > Number(before.stateSummary?.currentEra || 0) || stepAdvanced
+        ? pass('era advanced')
+        : fail('era did not advance');
+    case 'openTaskCenter':
+      return after.taskCenterOpen ? pass('task center opened') : fail('task center did not open');
+    case 'claimTaskReward':
+      return stepAdvanced || apiOk || hasChanged(before.stateSummary?.resources, after.stateSummary?.resources)
+        ? pass('task reward changed state')
+        : fail('task reward did not change state');
+    case 'openEvent':
+      return after.activeEventId ? pass('event modal opened') : fail('event modal did not open');
+    case 'claimEvent':
+      return stepAdvanced || apiOk ? pass('event claimed') : fail('event claim did not change state');
+    case 'openFamousPersons':
+      return after.showFamousPersons ? pass('famous panel opened') : fail('famous panel did not open');
+    case 'openFamousPersonDetail':
+      return after.selectedFamousPersonId || stepAdvanced ? pass('famous detail opened') : fail('famous detail did not open');
+    case 'closeFamousPersonDetail':
+      return !after.selectedFamousPersonId ? pass('famous detail closed') : fail('famous detail is still open');
+    case 'closeFamousPersons':
+      return !after.showFamousPersons ? pass('famous panel closed') : fail('famous panel is still open');
+    case 'switchCityManagementTab':
+      return after.activeCityManagementTab === action.tab ? pass('city management tab switched') : fail('city management tab did not switch');
+    case 'openArmyFormation':
+      return after.armyFormationEditor?.open ? pass('army formation editor opened') : fail('army formation editor did not open');
+    case 'toggleArmyFormationMember':
+      return hasChanged(before.armyFormationEditor, after.armyFormationEditor)
+        ? pass('formation member selection changed')
+        : fail('formation member selection did not change');
+    case 'saveArmyFormation':
+      return !after.armyFormationEditor?.open || stepAdvanced || apiOk
+        ? pass('formation saved')
+        : fail('formation editor did not save/close');
+    case 'selectWorldMarchTarget':
+      return after.territoryUiState?.worldMarchTarget || stepAdvanced
+        ? pass('world march target selected')
+        : fail('world march target was not selected');
+    case 'openWorldMarchFormationPicker':
+      return after.territoryUiState?.worldMarchTarget?.pickerOpen
+        ? pass('world march formation picker opened')
+        : fail('world march picker did not open');
+    case 'startWorldMarch': {
+      const beforeCounts = missionCounts(before);
+      const afterCounts = missionCounts(after);
+      return stepAdvanced || afterCounts.active > beforeCounts.active || afterCounts.ready > beforeCounts.ready || apiOk
+        ? pass('world march started')
+        : fail('world march did not start');
+    }
+    case 'claimExplore':
+      return stepAdvanced || apiOk ? pass('explore claimed') : fail('explore claim did not change state');
+    case 'conquer':
+      return stepAdvanced || apiOk ? pass('conquest started') : fail('conquest did not start');
+    case 'claimConquest':
+      return stepAdvanced || apiOk ? pass('conquest claimed') : fail('conquest claim did not change state');
+    case 'renameCity':
+      return after.naming?.visible ? pass('city naming modal opened') : fail('city naming modal did not open');
+    case 'openTalentPolicy':
+      return after.showTalentPolicy || after.talentPolicyOpen || stepAdvanced
+        ? pass('talent policy opened')
+        : fail('talent policy did not open');
+    case 'confirmTalentPolicy':
+      return stepAdvanced || apiOk ? pass('talent policy confirmed') : fail('talent policy did not apply');
+    case 'assignJob':
+      return stepAdvanced || apiOk || hasChanged(before.stateSummary?.resources, after.stateSummary?.resources)
+        ? pass('manual talent assignment changed state')
+        : fail('manual talent assignment did not change state');
+    case 'seekFamousPerson':
+      return stepAdvanced || apiOk ? pass('famous seek completed') : fail('famous seek did not complete');
+    default:
+      return stepAdvanced || hasChanged(before, after)
+        ? pass('state changed after click')
+        : fail(`no expected outcome rule passed for ${actionType || 'unknown action'}`);
+  }
+}
+
+async function waitForActionOutcome(page, before, action, timeoutMs = 12000) {
+  const start = Date.now();
+  let lastAfter = before;
+  let lastOutcome = evaluateActionOutcome(before, before, action);
+  while (Date.now() - start < timeoutMs) {
+    await waitForRender(page, 250);
+    const after = await getState(page);
+    lastAfter = after;
+    lastOutcome = evaluateActionOutcome(before, after, action);
+    if (lastOutcome.pass) return { after, outcome: lastOutcome };
+  }
+  return { after: lastAfter, outcome: lastOutcome };
+}
+
 async function clickTarget(page, label, state, target) {
-  await captureTargetEvidence(page, label, state, target);
+  const beforeEvidence = await captureTargetEvidence(page, `${label}-before`, state, target);
+  let hit = null;
+  try {
+    hit = await assertTargetClickable(page, label, state, target);
+  } catch (error) {
+    throw createVerificationFailure(label, 'target screenshot captured, but center clickability failed', {
+      action: target.action,
+      beforeFullPath: beforeEvidence.fullPath,
+      beforeTargetPath: beforeEvidence.cropPath,
+      beforeHighlightPath: beforeEvidence.highlightPath,
+      originalError: error.message,
+    });
+  }
   const rect = toViewportRect(state, target, 0);
   await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
-  await waitForRender(page, 900);
-  return { label, action: sanitize(target.action), step: state.tutorialStep, stepName: STEP_NAMES[state.tutorialStep] || '' };
+  const { after, outcome } = await waitForActionOutcome(page, state, target.action);
+  const afterSnapshot = await writeSnapshot(page, `${label}-after-step-${after.tutorialStep}`, after, {
+    beforeStep: state.tutorialStep,
+    action: sanitize(target.action),
+    outcome,
+  });
+  const report = {
+    label,
+    beforeStep: state.tutorialStep,
+    beforeStepName: STEP_NAMES[state.tutorialStep] || '',
+    afterStep: after.tutorialStep,
+    afterStepName: STEP_NAMES[after.tutorialStep] || '',
+    action: sanitize(target.action),
+    centerHit: sanitize(hit),
+    beforeFullPath: beforeEvidence.fullPath,
+    beforeTargetPath: beforeEvidence.cropPath,
+    beforeExactTargetPath: beforeEvidence.exactPath,
+    beforeHighlightPath: beforeEvidence.highlightPath,
+    afterFullPath: afterSnapshot.fullPath,
+    afterJsonPath: afterSnapshot.jsonPath,
+    outcome,
+  };
+  verificationReports.push(report);
+  if (!outcome.pass) {
+    throw createVerificationFailure(label, 'click did not produce the expected result', report);
+  }
+  return {
+    label,
+    action: sanitize(target.action),
+    step: state.tutorialStep,
+    stepName: STEP_NAMES[state.tutorialStep] || '',
+    afterStep: after.tutorialStep,
+    afterStepName: STEP_NAMES[after.tutorialStep] || '',
+    outcome,
+  };
+}
+
+async function recordWaitAction(page, label, state, action = {}, waitMs = 900, timeoutMs = 12000) {
+  const beforeSnapshot = await writeSnapshot(page, `${label}-before`, state, { action });
+  await page.waitForTimeout(waitMs);
+  await waitForRender(page, 300);
+  const { after, outcome } = await waitForActionOutcome(page, state, action, timeoutMs);
+  const afterSnapshot = await writeSnapshot(page, `${label}-after-step-${after.tutorialStep}`, after, {
+    beforeStep: state.tutorialStep,
+    action: sanitize(action),
+    outcome,
+  });
+  const report = {
+    label,
+    beforeStep: state.tutorialStep,
+    beforeStepName: STEP_NAMES[state.tutorialStep] || '',
+    afterStep: after.tutorialStep,
+    afterStepName: STEP_NAMES[after.tutorialStep] || '',
+    action: sanitize(action),
+    beforeFullPath: beforeSnapshot.fullPath,
+    afterFullPath: afterSnapshot.fullPath,
+    afterJsonPath: afterSnapshot.jsonPath,
+    outcome,
+  };
+  verificationReports.push(report);
+  if (!outcome.pass && action.type !== 'wait') {
+    throw createVerificationFailure(label, 'wait did not produce expected state progress', report);
+  }
+  return {
+    label,
+    action: sanitize(action),
+    step: state.tutorialStep,
+    stepName: STEP_NAMES[state.tutorialStep] || '',
+    afterStep: after.tutorialStep,
+    afterStepName: STEP_NAMES[after.tutorialStep] || '',
+    outcome,
+  };
 }
 
 async function clickByPredicate(page, label, predicate, timeoutMs = 12000, options = {}) {
@@ -615,9 +1182,12 @@ async function closeRewardIfOpen(page) {
   if (!state.rewardReveal) return null;
   const target = findTarget(state, (action) => action.type === 'closeRewardReveal' && !action.disabled);
   if (target) return clickTarget(page, 'close-reward', state, target);
-  await page.evaluate(() => window.Game?.canvasShell?.closeRewardReveal?.());
-  await waitForRender(page, 400);
-  return { label: 'close-reward-direct' };
+  await writeSnapshot(page, `missing-close-reward-step-${state.tutorialStep}`, state);
+  throw createVerificationFailure('close-reward', 'reward reveal is open but no visible close target exists', {
+    step: state.tutorialStep,
+    rewardReveal: state.rewardReveal,
+    targets: state.hitTargets.map((item) => item.action).slice(-80),
+  });
 }
 
 async function closeAdvisorDialogueIfOpen(page) {
@@ -625,14 +1195,12 @@ async function closeAdvisorDialogueIfOpen(page) {
   const target = findTarget(state, (action) => action.type === 'closeAdvisor' && !action.disabled);
   if (!state.tutorialAdvisorDialogue && !target) return null;
   if (target) return clickTarget(page, `close-advisor-step-${state.tutorialStep}`, state, target);
-  await page.evaluate(() => window.Game?.canvasShell?.actionController?.handle?.({ type: 'closeAdvisor' }));
-  await waitForRender(page, 500);
-  return {
-    label: `close-advisor-direct-step-${state.tutorialStep}`,
-    action: { type: 'closeAdvisor' },
+  await writeSnapshot(page, `missing-close-advisor-step-${state.tutorialStep}`, state);
+  throw createVerificationFailure('close-advisor', 'advisor dialogue is open but no visible close target exists', {
     step: state.tutorialStep,
-    stepName: STEP_NAMES[state.tutorialStep] || '',
-  };
+    dialogue: state.tutorialAdvisorDialogue,
+    targets: state.hitTargets.map((item) => item.action).slice(-80),
+  });
 }
 
 async function fillNamingIfOpen(page) {
@@ -674,8 +1242,7 @@ async function chooseNextAction(page, iteration) {
   const state = await getState(page);
   const introStep = state.tutorialIntro?.active ? state.tutorialIntro.step : '';
   if (introStep === 'march' || introStep === 'entering') {
-    await waitForRender(page, 700);
-    return { label: `wait-intro-${introStep}`, action: { type: 'wait', introStep }, step: state.tutorialStep };
+    return recordWaitAction(page, `wait-intro-${introStep}-${iteration}`, state, { type: 'wait', introStep }, 700, 1600);
   }
   if (introStep === 'city') {
     return clickByPredicate(page, `intro-open-capital-${iteration}`, (action) => (
@@ -773,9 +1340,13 @@ async function chooseNextAction(page, iteration) {
   if (step === 22) {
     const mapTarget = findTarget(state, (action) => action.type === 'selectWorldMarchTarget' && !action.disabled);
     if (mapTarget) return clickTarget(page, `select-world-march-target-${iteration}`, state, mapTarget);
-    await page.evaluate(() => window.Game?.tutorialController?.ensureMapHomeGuideVisible?.({ clearWorldMarchTarget: true }));
-    await waitForRender(page, 500);
-    return { label: 'force-map-home-for-world-march', action: { type: 'forceMapHome' }, step };
+    await writeSnapshot(page, `missing-world-march-target-step-${step}-${iteration}`, state);
+    throw createVerificationFailure('select-world-march-target', 'guided world march target is not visible/clickable', {
+      step,
+      highlight: state.tutorialHighlight,
+      worldMapDebug: state.worldMapDebug,
+      targets: state.hitTargets.map((item) => item.action).slice(-100),
+    });
   }
   if (step === 23 && !state.territoryUiState?.worldMarchTarget?.pickerOpen) {
     return clickByPredicate(page, `open-world-march-picker-${iteration}`, (action) => (
@@ -794,8 +1365,7 @@ async function chooseNextAction(page, iteration) {
         action.type === 'claimExplore' && (!action.missionId || action.missionId === readyMission.id) && !action.disabled
       ));
     }
-    await waitForRender(page, 2000);
-    return { label: `wait-explore-${iteration}`, action: { type: 'waitExplore' }, step };
+    return recordWaitAction(page, `wait-explore-${iteration}`, state, { type: 'waitExplore' }, 2000, 3600);
   }
   if (step === 25) {
     let siteId = getFirstCitySiteId(state);
@@ -887,9 +1457,12 @@ async function chooseNextAction(page, iteration) {
   if (step === 35) {
     const advisor = await closeAdvisorDialogueIfOpen(page);
     if (advisor) return advisor;
-    await page.evaluate(() => window.Game?.tutorialController?.onAdvisorClosed?.());
-    await waitForRender(page, 500);
-    return { label: `complete-final-tech-direct-${iteration}`, action: { type: 'completeFinalTech' }, step };
+    await writeSnapshot(page, `blocked-final-tech-step-${step}-${iteration}`, state);
+    throw createVerificationFailure('final-tech-completion', 'final tutorial step has no visible completion/advisor target', {
+      step,
+      highlight: state.tutorialHighlight,
+      targets: state.hitTargets.map((item) => item.action).slice(-100),
+    });
   }
 
   await writeSnapshot(page, `blocked-step-${step}-${iteration}`, state);
@@ -924,12 +1497,58 @@ async function main() {
   });
   await page.addInitScript(({ token, username }) => {
     const originalPrompt = window.prompt;
+    const originalFetch = window.fetch.bind(window);
     window.__codexPromptCalls = [];
+    window.__codexApiCalls = [];
     window.prompt = (message, defaultValue) => {
       window.__codexPromptCalls.push({ message: String(message || ''), defaultValue: String(defaultValue || '') });
       if (window.__codexNamingAutoValue !== undefined) return window.__codexNamingAutoValue;
       if (typeof originalPrompt === 'function') return originalPrompt(message, defaultValue);
       return defaultValue || '';
+    };
+    window.fetch = async (...args) => {
+      const startedAt = Date.now();
+      const request = args[0];
+      const init = args[1] || {};
+      const url = typeof request === 'string' ? request : String(request?.url || '');
+      const method = String(init.method || request?.method || 'GET').toUpperCase();
+      let body = null;
+      try {
+        const rawBody = init.body ?? request?.body ?? null;
+        body = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+      } catch {
+        body = typeof init.body === 'string' ? init.body.slice(0, 300) : null;
+      }
+      const entry = {
+        index: window.__codexApiCalls.length,
+        url,
+        path: (() => {
+          try { return new URL(url, location.href).pathname.replace(/^\/api/, '') || '/'; } catch (_) { return url; }
+        })(),
+        method,
+        body,
+        startedAt,
+        completed: false,
+      };
+      window.__codexApiCalls.push(entry);
+      try {
+        const response = await originalFetch(...args);
+        const clone = response.clone();
+        let payload = {};
+        try { payload = await clone.json(); } catch (_) {}
+        entry.completed = true;
+        entry.ok = response.ok;
+        entry.status = response.status;
+        entry.response = payload;
+        entry.durationMs = Date.now() - startedAt;
+        return response;
+      } catch (error) {
+        entry.completed = true;
+        entry.ok = false;
+        entry.error = error?.message || String(error);
+        entry.durationMs = Date.now() - startedAt;
+        throw error;
+      }
     };
     localStorage.setItem('cf_token', token);
     localStorage.setItem('cf_username', username);
@@ -971,30 +1590,62 @@ async function main() {
   if (!stopReason) stopReason = 'max-actions-reached';
 
   const finalState = await getState(page);
-  await writeSnapshot(page, 'zz-final', finalState, { actions, stopReason, actionEvidence, visualFindings });
+  const manualReviewIndex = createManualReviewIndex();
+  await writeSnapshot(page, 'zz-final', finalState, {
+    actions,
+    stopReason,
+    actionEvidence,
+    visualFindings,
+    verificationReports,
+    verificationFailures,
+    manualReviewIndex,
+  });
   const summary = {
     outputDir: outDir,
     gameUrl: CONFIG.gameUrl,
     apiBase: CONFIG.apiBase,
+    strictVisual: CONFIG.strictVisual,
     stopReason,
     finalStep: finalState.tutorialStep,
     finalStepName: STEP_NAMES[finalState.tutorialStep] || '',
     tutorialCompleted: finalState.tutorialCompleted,
     actionCount: actions.length,
     evidenceCount: actionEvidence.length,
+    verificationReportCount: verificationReports.length,
+    verificationFailures,
+    manualReviewIndex,
     visualFindings,
     badResponses,
     requestFailures,
     pageErrors,
+    apiCallCount: Array.isArray(finalState.apiCalls) ? finalState.apiCalls.length : 0,
     eventCount: events.length,
   };
+  const failed = stopReason !== 'tutorial-completed'
+    || !finalState.tutorialCompleted
+    || visualFindings.some((finding) => finding.severity === 'error')
+    || verificationFailures.length > 0
+    || badResponses.length > 0
+    || requestFailures.length > 0
+    || pageErrors.length > 0;
   fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify({
     ...summary,
     actions,
     actionEvidence,
+    verificationReports,
+  }, null, 2));
+  fs.writeFileSync(path.join(outDir, 'verification-report.json'), JSON.stringify({
+    runId,
+    config: CONFIG,
+    summary,
+    steps: verificationReports,
+    manualReviewIndex,
+    visualFindings,
+    verificationFailures,
   }, null, 2));
   console.log(JSON.stringify(summary, null, 2));
   await browser.close();
+  if (failed) process.exit(1);
 }
 
 main().catch((error) => {
