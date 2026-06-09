@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const WorldExplorerService = require('../services/WorldExplorerService');
+const WorldAiExplorerService = require('../services/WorldAiExplorerService');
+const WorldMapService = require('../services/WorldMapService');
 const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanner');
 const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissionNormalizer');
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
@@ -111,4 +113,61 @@ test('realtime authority contracts expose the P11 backend-authoritative baseline
   assert.equal(typeof Realtime.CommandAuthorityContract.accept, 'function');
   assert.equal(typeof Realtime.ServerTimelineSnapshot.createMissionSnapshot, 'function');
   assert.equal(typeof Realtime.AoiSyncSnapshot.createSnapshot, 'function');
+});
+
+test('world AI explorer stays focused and exposes the AI reveal sync contract', () => {
+  const aiPath = path.join(serviceRoot, 'WorldAiExplorerService.js');
+
+  assert.ok(lineCount(aiPath) < 300, 'WorldAiExplorerService should stay below 300 lines');
+  assert.deepEqual(Object.keys(WorldAiExplorerService).sort(), [
+    'DEFAULT_AI_EXPLORER_ID',
+    'DEFAULT_AI_FACTION_ID',
+    'DEFAULT_REVEAL_RADIUS',
+    'DEFAULT_STEP_DURATION_MS',
+    'DEFAULT_SYNC_RADIUS',
+    'MAX_ADVANCE_STEPS',
+    'MAX_SYNC_TILES_PER_PASS',
+    'WORLD_AI_SCHEMA',
+    'advanceAiExploration',
+    'normalizeExplorer',
+    'normalizeWorldAi',
+    'normalizeWorldAiState',
+    'pickNextStep',
+    'revealAiArea',
+    'syncAiRevealToPlayer',
+  ].sort());
+});
+
+test('AI explored terrain stays server-side until it meets the player reveal frontier', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'ai-sync-player',
+    worldMap: WorldMapService.createInitialWorldMap('ai-sync-seed', now),
+    worldAi: WorldAiExplorerService.normalizeWorldAi({
+      explorers: [{
+        id: 'ai-frontier-1',
+        factionId: 'ai-frontier',
+        position: { q: 1021, r: 0 },
+        revealedTileIds: [],
+        revealedCanonicalIds: [],
+      }],
+    }, now),
+  };
+  const explorer = gameState.worldAi.explorers[0];
+
+  WorldAiExplorerService.revealAiArea(gameState, explorer, 1021, 0, now);
+
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.canonicalId === 'tile_1021_0' && tile.visibility === 'hidden'), true);
+  assert.equal(WorldMapService.getClientWorldMap(gameState, now).tiles.some((tile) => tile.canonicalId === 'tile_1021_0'), false);
+
+  const synced = WorldAiExplorerService.syncAiRevealToPlayer(gameState, now);
+  const clientMap = WorldMapService.getClientWorldMap(gameState, now);
+  const syncedTile = clientMap.tiles.find((tile) => tile.canonicalId === 'tile_1021_0');
+
+  assert.equal(synced.length, 1);
+  assert.ok(syncedTile);
+  assert.equal(syncedTile.id, 'tile_-3_0');
+  assert.equal(syncedTile.q, -3);
+  assert.equal(syncedTile.r, 0);
+  assert.equal(syncedTile.visibility, 'scouted');
 });

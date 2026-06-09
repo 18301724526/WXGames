@@ -99,6 +99,7 @@ function migrateLegacyCollections(state) {
     .forEach((key) => {
       if (!Array.isArray(state[key])) state[key] = [];
     });
+  if (!state.worldAi || typeof state.worldAi !== 'object' || Array.isArray(state.worldAi)) state.worldAi = {};
   return state;
 }
 

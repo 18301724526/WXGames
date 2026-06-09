@@ -1,6 +1,9 @@
 const {
   CAPITAL_TILE_ID,
   DEFAULT_WORLD_SEED,
+  DEFAULT_WORLD_HEIGHT,
+  DEFAULT_WORLD_WIDTH,
+  DEFAULT_WORLD_WRAPPING,
   DIRECTION_VECTORS,
   SCOUT_REVEAL_BRANCH_LIMIT,
   SCOUT_REVEAL_BRANCH_SIDES,
@@ -12,13 +15,16 @@ const {
   START_REVEAL_RADIUS,
   START_SAFE_LAND_RADIUS,
   WORLD_MAP_VERSION,
+  WORLD_TOPOLOGY_VERSION,
 } = require('./worldMap/WorldMapConstants');
 const {
   clone,
+  getCanonicalTileId,
   getDistanceFromCapital,
   getTileId,
   toInteger,
 } = require('./worldMap/WorldMapShared');
+const WorldMapTopology = require('./worldMap/WorldMapTopology');
 const {
   createWorldMapGenerationMetadata,
   roll01,
@@ -63,6 +69,7 @@ function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
     version: WORLD_MAP_VERSION,
     seed,
     generationAuthority: createWorldMapGenerationMetadata(seed),
+    topology: WorldMapTopology.createWorldTopologyMetadata(),
     origin: { q: 0, r: 0 },
     tiles,
     scoutTrails: [],
@@ -71,12 +78,12 @@ function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
 
 function ensureStartingArea(tileMap, seed, now = new Date()) {
   for (const coord of getRevealArea(0, 0, START_REVEAL_RADIUS)) {
-    const id = getTileId(coord.q, coord.r);
-    const existing = tileMap.get(id);
+    const canonicalId = getCanonicalTileId(coord.q, coord.r);
+    const existing = tileMap.get(canonicalId);
     const isCapital = coord.q === 0 && coord.r === 0;
     if (existing) {
       if (isCapital) {
-        tileMap.set(id, normalizeTile({
+        tileMap.set(canonicalId, normalizeTile({
           ...existing,
           terrain: 'capital',
           siteId: 'capital',
@@ -87,7 +94,7 @@ function ensureStartingArea(tileMap, seed, now = new Date()) {
       }
       continue;
     }
-    tileMap.set(id, createTile(seed, coord.q, coord.r, now, {
+    tileMap.set(canonicalId, createTile(seed, coord.q, coord.r, now, {
       terrain: isCapital ? 'capital' : undefined,
       siteId: isCapital ? 'capital' : null,
       visibility: isCapital ? 'controlled' : 'scouted',
@@ -99,8 +106,9 @@ function ensureStartingArea(tileMap, seed, now = new Date()) {
 
 function getSeed(gameStateOrSeed) {
   if (typeof gameStateOrSeed === 'string' && gameStateOrSeed) return gameStateOrSeed;
-  if (gameStateOrSeed?.worldMap?.seed) return gameStateOrSeed.worldMap.seed;
-  return gameStateOrSeed?.playerId ? `world-${gameStateOrSeed.playerId}` : DEFAULT_WORLD_SEED;
+  const existingSeed = typeof gameStateOrSeed?.worldMap?.seed === 'string' ? gameStateOrSeed.worldMap.seed : '';
+  if (existingSeed && existingSeed !== `world-${gameStateOrSeed?.playerId || ''}`) return existingSeed;
+  return DEFAULT_WORLD_SEED;
 }
 
 function getWorldMapVersion(rawWorldMap) {
@@ -108,12 +116,15 @@ function getWorldMapVersion(rawWorldMap) {
 }
 
 function normalizeWorldMap(rawWorldMap, options = {}) {
-  const seed = rawWorldMap?.seed || options.seed || DEFAULT_WORLD_SEED;
+  const seed = options.seed || rawWorldMap?.seed || DEFAULT_WORLD_SEED;
   const now = options.now || new Date();
   const tileMap = new Map();
   for (const rawTile of Array.isArray(rawWorldMap?.tiles) ? rawWorldMap.tiles : []) {
     const tile = normalizeTile(rawTile, seed, now);
-    if (tile) tileMap.set(tile.id, tile);
+    if (tile) {
+      const canonicalKey = WorldMapTopology.getTileCanonicalKey(tile);
+      tileMap.set(canonicalKey, mergeTiles(tileMap.get(canonicalKey), tile, seed, now));
+    }
   }
   ensureStartingArea(tileMap, seed, now);
   const scoutTrails = (Array.isArray(rawWorldMap?.scoutTrails) ? rawWorldMap.scoutTrails : [])
@@ -123,6 +134,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
     version: WORLD_MAP_VERSION,
     seed,
     generationAuthority: createWorldMapGenerationMetadata(seed),
+    topology: WorldMapTopology.createWorldTopologyMetadata(rawWorldMap?.topology),
     origin: {
       q: toInteger(rawWorldMap?.origin?.q, 0),
       r: toInteger(rawWorldMap?.origin?.r, 0),
@@ -139,15 +151,49 @@ function ensureWorldMap(gameState, now = new Date()) {
 }
 
 function getTile(worldMap, q, r) {
-  return (worldMap?.tiles || []).find((tile) => tile.q === q && tile.r === r) || null;
+  const canonicalId = getCanonicalTileId(q, r);
+  return (worldMap?.tiles || []).find((tile) => (
+    WorldMapTopology.getTileCanonicalKey(tile) === canonicalId
+    || tile.q === q && tile.r === r
+  )) || null;
+}
+
+function mergeTiles(existing, tile, seed = DEFAULT_WORLD_SEED, now = new Date()) {
+  if (!existing) return tile;
+  const visibilityRank = { unknown: 0, hidden: 0, hinted: 1, scouted: 2, controlled: 3 };
+  const existingVisibility = existing.visibility || 'unknown';
+  const tileVisibility = tile.visibility || 'unknown';
+  const visibility = (visibilityRank[tileVisibility] || 0) >= (visibilityRank[existingVisibility] || 0)
+    ? tileVisibility
+    : existingVisibility;
+  const preferIncomingDisplay = existing.visible === false && tile.visible !== false;
+  return normalizeTile({
+    ...existing,
+    ...tile,
+    id: preferIncomingDisplay ? tile.id || existing.id : existing.id || tile.id,
+    q: preferIncomingDisplay ? toInteger(tile.q, existing.q) : toInteger(existing.q, tile.q),
+    r: preferIncomingDisplay ? toInteger(tile.r, existing.r) : toInteger(existing.r, tile.r),
+    x: preferIncomingDisplay ? toInteger(tile.x ?? tile.q, existing.q) : toInteger(existing.x ?? existing.q, tile.q),
+    y: preferIncomingDisplay ? toInteger(tile.y ?? tile.r, existing.r) : toInteger(existing.y ?? existing.r, tile.r),
+    siteId: tile.siteId || existing.siteId || null,
+    terrain: tile.terrain || existing.terrain,
+    visibility,
+    discovered: existing.discovered !== false || tile.discovered !== false,
+    visible: existing.visible !== false || tile.visible !== false,
+    discoveredAt: existing.discoveredAt || tile.discoveredAt,
+    lastScoutedAt: tile.lastScoutedAt || existing.lastScoutedAt,
+    intel: tile.intel || existing.intel,
+    generatedAt: existing.generatedAt || tile.generatedAt,
+  }, seed, now);
 }
 
 function upsertTile(worldMap, tile) {
-  const index = worldMap.tiles.findIndex((item) => item.id === tile.id);
-  if (index >= 0) worldMap.tiles[index] = { ...worldMap.tiles[index], ...tile };
+  const canonicalId = WorldMapTopology.getTileCanonicalKey(tile);
+  const index = worldMap.tiles.findIndex((item) => WorldMapTopology.getTileCanonicalKey(item) === canonicalId);
+  if (index >= 0) worldMap.tiles[index] = mergeTiles(worldMap.tiles[index], tile, worldMap.seed);
   else worldMap.tiles.push(tile);
   worldMap.tiles.sort((a, b) => Math.max(Math.abs(a.q), Math.abs(a.r)) - Math.max(Math.abs(b.q), Math.abs(b.r)) || a.q - b.q || a.r - b.r);
-  return tile;
+  return index >= 0 ? worldMap.tiles[index] : tile;
 }
 
 function revealTile(gameState, q, r, now = new Date(), overrides = {}) {
@@ -155,13 +201,18 @@ function revealTile(gameState, q, r, now = new Date(), overrides = {}) {
   const existing = getTile(worldMap, q, r);
   const isoNow = typeof now === 'string' ? now : now.toISOString();
   const hasSiteOverride = Object.prototype.hasOwnProperty.call(overrides, 'siteId');
+  const discovered = overrides.discovered !== undefined ? Boolean(overrides.discovered) : true;
+  const visible = overrides.visible !== undefined ? Boolean(overrides.visible) : true;
   const tile = existing
     ? normalizeTile({
       ...existing,
       ...overrides,
+      id: existing.visible === false && visible !== false ? getTileId(q, r) : existing.id,
+      q: existing.visible === false && visible !== false ? toInteger(q, existing.q) : existing.q,
+      r: existing.visible === false && visible !== false ? toInteger(r, existing.r) : existing.r,
       siteId: hasSiteOverride ? overrides.siteId : existing.siteId,
-      discovered: true,
-      visible: true,
+      discovered,
+      visible,
       visibility: overrides.visibility || existing.visibility || 'scouted',
       discoveredAt: existing.discoveredAt || existing.generatedAt || isoNow,
       lastScoutedAt: overrides.lastScoutedAt || isoNow,
@@ -324,12 +375,18 @@ function recordScoutTrail(gameState, mission, tileIds, returned = false) {
 }
 
 function getClientWorldMap(gameState, now = new Date()) {
-  return clone(ensureWorldMap(gameState, now));
+  const worldMap = clone(ensureWorldMap(gameState, now));
+  worldMap.tiles = (worldMap.tiles || []).filter((tile) => tile.visibility !== 'hidden' && tile.visible !== false);
+  return worldMap;
 }
 
 module.exports = {
   WORLD_MAP_VERSION,
+  WORLD_TOPOLOGY_VERSION,
   DEFAULT_WORLD_SEED,
+  DEFAULT_WORLD_HEIGHT,
+  DEFAULT_WORLD_WIDTH,
+  DEFAULT_WORLD_WRAPPING,
   CAPITAL_TILE_ID,
   START_REVEAL_RADIUS,
   START_SAFE_LAND_RADIUS,
@@ -344,6 +401,12 @@ module.exports = {
   getWorldMapVersion,
   getWorldWaterFeatures,
   createWorldMapGenerationMetadata,
+  createWorldTopologyMetadata: WorldMapTopology.createWorldTopologyMetadata,
+  getCanonicalTileId,
+  getWrappedDistance: WorldMapTopology.getWrappedDistance,
+  getWrappedDelta: WorldMapTopology.getDelta,
+  normalizeWorldCoord: WorldMapTopology.normalizeCoord,
+  normalizeWorldSize: WorldMapTopology.normalizeWorldSize,
   getTileId,
   chooseBaseTerrain,
   chooseTerrain,

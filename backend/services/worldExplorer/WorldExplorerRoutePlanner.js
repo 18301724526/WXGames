@@ -41,7 +41,7 @@ function getExploreOrigin(gameState) {
 function getKnownTileIds(gameState) {
   const worldMap = WorldMapService.ensureWorldMap(gameState);
   return new Set((worldMap.tiles || [])
-    .filter((tile) => tile && tile.discovered !== false)
+    .filter((tile) => tile && tile.discovered !== false && tile.visible !== false && tile.visibility !== 'hidden')
     .map((tile) => tile.id || WorldMapService.getTileId(tile.q, tile.r)));
 }
 

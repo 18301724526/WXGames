@@ -285,7 +285,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     WorldMapService.ensureWorldMap(gameState, new Date(now));
     const known = new Map();
     for (const tile of gameState.worldMap.tiles || []) {
-      if (!tile || tile.discovered === false) continue;
+      if (!tile || tile.discovered === false || tile.visible === false || tile.visibility === 'hidden') continue;
       const x = toInteger(tile.q, 0);
       const y = toInteger(tile.r, 0);
       known.set(getCoordinateKey(x, y), { x, y });

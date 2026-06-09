@@ -61,7 +61,7 @@ function getAoiMissions(gameState = {}, center = {}, radius = 0, options = {}) {
 function getAoiTiles(gameState = {}, center = {}, radius = 0) {
   const worldMap = WorldMapService.ensureWorldMap(gameState);
   return (Array.isArray(worldMap.tiles) ? worldMap.tiles : [])
-    .filter((tile) => tile && isInRadius(tile, center, radius))
+    .filter((tile) => tile && tile.visible !== false && tile.visibility !== 'hidden' && isInRadius(tile, center, radius))
     .map((tile) => ({
       id: tile.id || WorldMapService.getTileId(tile.q, tile.r),
       q: toInteger(tile.q, 0),

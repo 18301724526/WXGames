@@ -3,6 +3,7 @@ const {
   SIDE_ORDER,
   TILE_VISIBILITY_LEVELS,
 } = require('./WorldMapConstants');
+const WorldMapTopology = require('./WorldMapTopology');
 const {
   hashString,
   roll01,
@@ -42,7 +43,7 @@ function normalizeTileIntel(rawIntel, options = {}) {
   const visibility = normalizeTileVisibility(options.visibility, options);
   const fallbackLevel = visibility === 'controlled'
     ? 4
-    : visibility === 'unknown'
+    : visibility === 'unknown' || visibility === 'hidden'
       ? 0
       : 1;
   const level = visibility === 'controlled' ? 4 : clampIntelLevel(raw.level, fallbackLevel);
@@ -80,7 +81,7 @@ function normalizeSeedCoordArgs(seedOrQ, qOrR, rValue) {
 }
 
 function getDistanceFromCapital(q, r) {
-  return Math.max(Math.abs(q), Math.abs(r));
+  return WorldMapTopology.getDistanceFromCapital(q, r);
 }
 
 module.exports = {
@@ -89,6 +90,7 @@ module.exports = {
   getDistanceFromCapital,
   getSortedSideKey,
   getTileId,
+  getCanonicalTileId: WorldMapTopology.getCanonicalTileId,
   hashString,
   normalizeSeedCoordArgs,
   normalizeTileIntel,

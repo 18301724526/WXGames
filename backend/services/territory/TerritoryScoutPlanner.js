@@ -18,7 +18,7 @@ function createTerritoryScoutPlanner(dependencies = {}) {
   function getKnownWorldCoordinateKeys(gameState) {
     const worldMap = WorldMapService.ensureWorldMap(gameState);
     return new Set((worldMap.tiles || [])
-      .filter((tile) => tile.discovered !== false)
+      .filter((tile) => tile.discovered !== false && tile.visible !== false && tile.visibility !== 'hidden')
       .map((tile) => getCoordinateKey(tile.q, tile.r)));
   }
 
@@ -54,6 +54,7 @@ function createTerritoryScoutPlanner(dependencies = {}) {
 
     const worldMap = WorldMapService.ensureWorldMap(gameState);
     for (const tile of worldMap.tiles || []) {
+      if (tile.visible === false || tile.visibility === 'hidden') continue;
       if (tile.visibility !== 'controlled') continue;
       const x = toInteger(tile.q, 0);
       const y = toInteger(tile.r, 0);

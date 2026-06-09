@@ -7,6 +7,7 @@ const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
 const WorldMapService = require('./WorldMapService');
 const WorldExplorerService = require('./WorldExplorerService');
+const WorldAiExplorerService = require('./WorldAiExplorerService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const TechTreeService = require('./TechTreeService');
@@ -43,7 +44,7 @@ function createInitialGameState(playerId) {
     military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     polity: TerritoryService.createInitialPolity(),
     territories: TerritoryService.createInitialTerritories(),
-    worldMap: WorldMapService.createInitialWorldMap(`world-${playerId}`),
+    worldMap: WorldMapService.createInitialWorldMap(WorldMapService.DEFAULT_WORLD_SEED),
     activeCityId: CityService.CAPITAL_CITY_ID,
     cities: {},
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
@@ -53,6 +54,7 @@ function createInitialGameState(playerId) {
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0, areas: [] },
     exploreMissions: [],
+    worldAi: WorldAiExplorerService.normalizeWorldAi(),
     warMissions: [],
     scoutReports: [],
     updatedAt: new Date().toISOString(),
@@ -106,6 +108,7 @@ function normalizeState(rawState) {
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
   WorldExplorerService.normalizeExploreState(state);
+  WorldAiExplorerService.advanceAiExploration(state);
   TerritoryService.normalizeTerritoryState(state, new Date(), { previousWorldMapVersion });
   CityService.normalizeCities(state);
   WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);

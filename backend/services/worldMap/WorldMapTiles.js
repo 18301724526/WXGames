@@ -13,6 +13,7 @@ const {
   normalizeTileVisibility,
   toInteger,
 } = require('./WorldMapShared');
+const WorldMapTopology = require('./WorldMapTopology');
 const {
   roll01,
 } = require('./WorldMapGenerationAuthority');
@@ -28,12 +29,13 @@ function isStartSafeLandCoord(q, r) {
 }
 
 function chooseBaseTerrain(seed, q, r) {
-  if (q === 0 && r === 0) return 'capital';
-  const forest = roll01(seed, q, r, 'forest');
-  const ridge = roll01(seed, q, r, 'ridge');
-  const dry = roll01(seed, q, r, 'dry');
-  const rough = roll01(seed, q, r, 'rough');
-  const distance = getDistanceFromCapital(q, r);
+  const generation = WorldMapTopology.getGenerationCoord({ q, r });
+  if (generation.q === 0 && generation.r === 0) return 'capital';
+  const forest = roll01(seed, generation.q, generation.r, 'forest');
+  const ridge = roll01(seed, generation.q, generation.r, 'ridge');
+  const dry = roll01(seed, generation.q, generation.r, 'dry');
+  const rough = roll01(seed, generation.q, generation.r, 'rough');
+  const distance = getDistanceFromCapital(generation.q, generation.r);
   const settlementBias = Math.max(0, 4 - distance) * 0.06;
   if (rough > 0.9 - settlementBias && ridge > 0.72) return 'mountain';
   if (ridge > 0.8 - settlementBias || (rough > 0.84 && distance >= 4)) return 'hills';
@@ -45,61 +47,75 @@ function chooseBaseTerrain(seed, q, r) {
 
 function getTerrainTransitionKey(seed, q, r, terrain) {
   if (terrain !== 'plains' && terrain !== 'capital') return '';
+  const generation = WorldMapTopology.getGenerationCoord({ q, r });
   const desertSides = SIDE_ORDER.filter((side) => {
     const dir = SIDE_DIRECTIONS[side];
-    return chooseBaseTerrain(seed, q + dir.q, r + dir.r) === 'desert';
+    return chooseBaseTerrain(seed, generation.q + dir.q, generation.r + dir.r) === 'desert';
   });
   return getSortedSideKey(desertSides);
 }
 
 function chooseTerrain(seed, q, r) {
-  if (q === 0 && r === 0) return 'capital';
-  if (isStartSafeLandCoord(q, r)) return chooseBaseTerrain(seed, q, r);
-  if (chooseOceanTemplates(seed, q, r).length) return 'ocean';
-  if (getRiverPorts(seed, q, r).length) return 'river';
-  return chooseBaseTerrain(seed, q, r);
+  const generation = WorldMapTopology.getGenerationCoord({ q, r });
+  if (generation.q === 0 && generation.r === 0) return 'capital';
+  if (isStartSafeLandCoord(generation.q, generation.r)) return chooseBaseTerrain(seed, generation.q, generation.r);
+  if (chooseOceanTemplates(seed, generation.q, generation.r).length) return 'ocean';
+  if (getRiverPorts(seed, generation.q, generation.r).length) return 'river';
+  return chooseBaseTerrain(seed, generation.q, generation.r);
 }
 
 function decorateTile(tile, seed) {
-  if (tile?.id === CAPITAL_TILE_ID || (tile?.q === 0 && tile?.r === 0)) {
+  const topology = WorldMapTopology.normalizeCoord(tile || {});
+  if (tile?.id === CAPITAL_TILE_ID || (topology.worldQ === 0 && topology.worldR === 0)) {
     return {
       ...tile,
+      worldQ: topology.worldQ,
+      worldR: topology.worldR,
+      canonicalId: topology.canonicalId,
       terrain: 'capital',
       riverPorts: [],
       oceanTemplates: [],
       transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, 0, 0, 'capital'),
     };
   }
-  if (isStartSafeLandCoord(tile.q, tile.r)) {
-    const terrain = chooseBaseTerrain(seed, tile.q, tile.r);
+  const generation = WorldMapTopology.getGenerationCoord(tile);
+  if (isStartSafeLandCoord(generation.q, generation.r)) {
+    const terrain = chooseBaseTerrain(seed, generation.q, generation.r);
     return {
       ...tile,
+      worldQ: topology.worldQ,
+      worldR: topology.worldR,
+      canonicalId: topology.canonicalId,
       terrain,
       riverPorts: [],
       oceanTemplates: [],
-      transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, tile.q, tile.r, terrain),
+      transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, generation.q, generation.r, terrain),
     };
   }
-  const naturalOceanTemplates = chooseOceanTemplates(seed, tile.q, tile.r);
-  const naturalRiverPorts = getRiverPorts(seed, tile.q, tile.r);
+  const naturalOceanTemplates = chooseOceanTemplates(seed, generation.q, generation.r);
+  const naturalRiverPorts = getRiverPorts(seed, generation.q, generation.r);
   const terrain = naturalOceanTemplates.length
     ? 'ocean'
     : naturalRiverPorts.length
       ? 'river'
-      : chooseBaseTerrain(seed, tile.q, tile.r);
+      : chooseBaseTerrain(seed, generation.q, generation.r);
   const oceanTemplates = terrain === 'ocean' ? naturalOceanTemplates : [];
   const riverPorts = terrain === 'river' ? naturalRiverPorts : [];
   return {
     ...tile,
+    worldQ: topology.worldQ,
+    worldR: topology.worldR,
+    canonicalId: topology.canonicalId,
     terrain,
     riverPorts,
     oceanTemplates,
-    transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, tile.q, tile.r, terrain),
+    transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, generation.q, generation.r, terrain),
   };
 }
 
 function createTile(seed, q, r, now = new Date(), overrides = {}) {
   const isoNow = typeof now === 'string' ? now : now.toISOString();
+  const topology = WorldMapTopology.normalizeCoord({ q, r });
   const terrain = overrides.terrain || chooseTerrain(seed, q, r);
   const discovered = overrides.discovered !== undefined ? Boolean(overrides.discovered) : true;
   const controlled = Boolean(overrides.controlled || overrides.visibility === 'controlled' || overrides.siteId === 'capital');
@@ -107,9 +123,14 @@ function createTile(seed, q, r, now = new Date(), overrides = {}) {
   const discoveredAt = overrides.discoveredAt || overrides.generatedAt || (discovered ? isoNow : null);
   const lastScoutedAt = overrides.lastScoutedAt || (visibility !== 'unknown' ? isoNow : null);
   return decorateTile({
-    id: getTileId(q, r),
+    id: overrides.id || getTileId(q, r),
     q,
     r,
+    x: q,
+    y: r,
+    worldQ: topology.worldQ,
+    worldR: topology.worldR,
+    canonicalId: topology.canonicalId,
     terrain,
     discovered,
     visible: overrides.visible !== undefined ? Boolean(overrides.visible) : discovered,
@@ -129,8 +150,12 @@ function normalizeTile(rawTile, seed, now = new Date()) {
   if (!rawTile || typeof rawTile !== 'object') return null;
   const q = toInteger(rawTile.q, 0);
   const r = toInteger(rawTile.r, 0);
+  const topology = WorldMapTopology.normalizeCoord({ q, r });
   return createTile(seed, q, r, now, {
     id: rawTile.id || getTileId(q, r),
+    canonicalId: rawTile.canonicalId || topology.canonicalId,
+    worldQ: rawTile.worldQ ?? topology.worldQ,
+    worldR: rawTile.worldR ?? topology.worldR,
     terrain: TERRAIN_TYPES.includes(rawTile.terrain) || rawTile.terrain === 'capital' || rawTile.terrain === 'ocean'
       ? rawTile.terrain
       : chooseTerrain(seed, q, r),

@@ -7,6 +7,7 @@ const WorldMapService = require('../services/WorldMapService');
 const Constants = require('../services/worldMap/WorldMapConstants');
 const Shared = require('../services/worldMap/WorldMapShared');
 const GenerationAuthority = require('../services/worldMap/WorldMapGenerationAuthority');
+const Topology = require('../services/worldMap/WorldMapTopology');
 const Water = require('../services/worldMap/WorldMapWater');
 const Tiles = require('../services/worldMap/WorldMapTiles');
 
@@ -29,6 +30,7 @@ test('WorldMapService delegates terrain, water, and shared responsibilities to f
     'WorldMapGenerationAuthority.js',
     'WorldMapShared.js',
     'WorldMapTiles.js',
+    'WorldMapTopology.js',
     'WorldMapWater.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -113,10 +115,77 @@ test('world map tile module owns terrain and tile normalization contracts', () =
   assert.equal(Tiles.chooseTerrain('architecture-tile-seed', 0, 0), 'capital');
 });
 
+test('world map topology owns full wrapping server coordinates', () => {
+  assert.deepEqual(Topology.normalizeCoord({ q: -1, r: 1024 }), {
+    q: -1,
+    r: 1024,
+    x: -1,
+    y: 1024,
+    tileId: 'tile_-1_1024',
+    worldQ: 1023,
+    worldR: 0,
+    generationQ: -1,
+    generationR: 0,
+    canonicalId: 'tile_1023_0',
+    worldWidth: 1024,
+    worldHeight: 1024,
+    wrapped: true,
+  });
+  assert.equal(Topology.getCanonicalTileId(-1, 0), 'tile_1023_0');
+  assert.equal(Topology.getWrappedDistance({ q: 0, r: 0 }, { q: 1023, r: 1023 }), 1);
+  assert.deepEqual(Topology.createWorldTopologyMetadata(), {
+    schema: Topology.SCHEMA,
+    version: Topology.WORLD_TOPOLOGY_VERSION,
+    coordinateSystem: Topology.COORDINATE_SYSTEM,
+    width: 1024,
+    height: 1024,
+    wrapping: true,
+    canonicalTileId: 'worldQ/worldR',
+    displayTileId: 'q/r',
+  });
+});
+
+test('world map service uses canonical ids for wrapping merge without moving display coords', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'wrap-merge-player',
+    worldMap: WorldMapService.createInitialWorldMap('wrap-merge-seed', now),
+  };
+
+  const leftEdge = WorldMapService.revealTile(gameState, -1, 0, now, { visibility: 'scouted' });
+  const rightEdge = WorldMapService.revealTile(gameState, 1023, 0, now, { visibility: 'controlled', siteId: 'edge-site' });
+  const matchingTiles = gameState.worldMap.tiles.filter((tile) => tile.canonicalId === 'tile_1023_0');
+
+  assert.equal(leftEdge.canonicalId, 'tile_1023_0');
+  assert.equal(rightEdge.id, 'tile_-1_0');
+  assert.equal(matchingTiles.length, 1);
+  assert.equal(matchingTiles[0].q, -1);
+  assert.equal(matchingTiles[0].siteId, 'edge-site');
+  assert.equal(WorldMapService.chooseTerrain('wrap-merge-seed', -1, 0), WorldMapService.chooseTerrain('wrap-merge-seed', 1023, 0));
+});
+
+test('legacy player-derived world seeds normalize to the shared server world', () => {
+  const gameState = {
+    playerId: 'seed-player',
+    worldMap: {
+      seed: 'world-seed-player',
+      tiles: [],
+    },
+  };
+
+  const worldMap = WorldMapService.ensureWorldMap(gameState, new Date('2026-06-06T00:00:00.000Z'));
+
+  assert.equal(worldMap.seed, Constants.DEFAULT_WORLD_SEED);
+  assert.equal(worldMap.generationAuthority.seed, Constants.DEFAULT_WORLD_SEED);
+});
+
 test('WorldMapService facade preserves public map API and scout reveal behavior', () => {
   const expectedApi = [
     'CAPITAL_TILE_ID',
+    'DEFAULT_WORLD_HEIGHT',
     'DEFAULT_WORLD_SEED',
+    'DEFAULT_WORLD_WIDTH',
+    'DEFAULT_WORLD_WRAPPING',
     'DIRECTION_VECTORS',
     'SCOUT_REVEAL_BRANCH_LIMIT',
     'SCOUT_REVEAL_MAIN_LIMIT',
@@ -127,6 +196,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'START_REVEAL_RADIUS',
     'START_SAFE_LAND_RADIUS',
     'WORLD_MAP_VERSION',
+    'WORLD_TOPOLOGY_VERSION',
     'bindSiteToTile',
     'buildScoutRoute',
     'canPlaceSiteOnTerrain',
@@ -136,7 +206,9 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'createInitialWorldMap',
     'createTile',
     'createWorldMapGenerationMetadata',
+    'createWorldTopologyMetadata',
     'ensureWorldMap',
+    'getCanonicalTileId',
     'getClientWorldMap',
     'getDistanceFromCapital',
     'getRevealArea',
@@ -146,7 +218,11 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'getTileId',
     'getWorldMapVersion',
     'getWorldWaterFeatures',
+    'getWrappedDelta',
+    'getWrappedDistance',
+    'normalizeWorldCoord',
     'normalizeWorldMap',
+    'normalizeWorldSize',
     'recordScoutTrail',
     'revealScoutArea',
     'revealTile',
@@ -163,8 +239,9 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     mode: 'seeded-hash',
     action: 'worldMaterialization',
     subjectId: 'world-map',
-    seed: 'world-architecture-player',
+    seed: Constants.DEFAULT_WORLD_SEED,
   });
+  assert.equal(worldMap.topology.schema, Topology.SCHEMA);
   assert.equal(worldMap.tiles.some((tile) => tile.id === Constants.CAPITAL_TILE_ID && tile.visibility === 'controlled'), true);
   const route = WorldMapService.buildScoutRoute({ q: 0, r: 0 }, 'e', 3);
   assert.deepEqual(route.map((coord) => coord.q), [1, 2, 3]);

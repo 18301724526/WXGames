@@ -62,6 +62,50 @@ Results:
 - Official document guard: passed.
 - `git diff --check`: passed.
 
+## Backend Wrapping World And AI Reveal Sync - 2026-06-10
+
+Scope requested by user:
+
+- Land server-authoritative wrapping world logic before deeper frontend large-map work.
+- Keep one shared server world instead of per-player random worlds.
+- Allow AI to explore the same world.
+- When AI/player explored areas meet, sync AI-unlocked terrain to the player without making the frontend do heavy generation work.
+
+Local implementation status:
+
+- Added `backend/services/worldMap/WorldMapTopology.js` as the backend topology contract for `diamond-isometric-square`, full wrapping torus, canonical tile ids, display tile ids, wrapped delta/distance, and generation coordinates.
+- `WorldMapService` now attaches topology metadata and stores `worldQ/worldR/canonicalId` on tiles.
+- Tile normalize/upsert now merges by canonical id, while preserving display `q/r` for current frontend compatibility. This prevents duplicate world tiles at wrap boundaries without making `q=-1` render as `q=1023`.
+- Terrain generation uses canonical/generation coordinates, so wrapped coordinates produce the same terrain.
+- New game states use shared `DEFAULT_WORLD_SEED`; legacy `world-${playerId}` seeds normalize to the shared server world seed.
+- Added `backend/services/WorldAiExplorerService.js` as a candidate AI exploration service.
+- AI reveal writes hidden server tiles first. `getClientWorldMap`, AOI snapshot, territory bridge logic, territory scout planner, and world explorer route planner filter hidden tiles so AI exploration does not leak into player-visible state before encounter.
+- Encounter sync is server-side and bounded: when AI reveal frontier meets player reveal frontier, AI-unlocked terrain syncs to the player up to `MAX_SYNC_TILES_PER_PASS`, preserving canonical identity and projecting display coordinates near the player's current revealed area for current frontend compatibility.
+- `GameStateNormalizer.normalizeState()` advances AI exploration through a capped service call, so ordinary state loads/actions can progress the AI without frontend simulation authority.
+- `scripts/run-architecture-smoke.js` now syntax-checks `WorldMapTopology.js` and `WorldAiExplorerService.js`.
+
+Important caveats:
+
+- This is a backend state/contract patch, not a full frontend large-map streaming patch.
+- Frontend presenter/runtime/renderer still need to consume canonical tile identity, chunk/window/reveal-store contracts, and eventually stop relying on full `worldMap.tiles`.
+- Multiplayer transport and true AOI delta delivery are still future work.
+- This checkpoint is locally verified and queued for commit/push in this run. Guarded H5 deploy and online browser playtest remain pending after push.
+
+Verification:
+
+```powershell
+node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/WorldMapArchitecture.test.js
+npm.cmd run test:architecture
+```
+
+Results:
+
+- Focused backend regression: 41 passed.
+- Architecture gate: 477 passed.
+- Stable block manifest guard: passed.
+- Official document guard: passed.
+- `git diff --check`: passed.
+
 ## Verified And Deployed Tutorial Fixes
 
 Recent deployed commits:
@@ -585,14 +629,16 @@ P11-006 phase 8 status:
 
 ## Next Architecture Work
 
-After P11-006 local completion, continue:
+After P11-006 local completion and backend wrapping-world/AI reveal sync, continue:
 
-1. Run final full architecture gate and whitespace check for the complete local P11-006 patch.
-2. Downstream realtime adoption: multiplayer transport, presenter/runtime consumers, and AOI stress checks.
-3. Stable promotion observation: keep P11 modules as `candidate` until downstream consumers prove extension surfaces without churn.
-4. Keep the strict browser tutorial visual QA harness as the acceptance gate for future tutorial/hitTarget/highlight/deploy-risk changes.
+1. Deploy the backend wrapping-world/AI reveal sync checkpoint through the guarded H5 path if the user asks for it to go online.
+2. Run online browser playtest after deploy, especially map edge wrapping, manual march reveal, AI-synced reveal if a test state can force encounter, HUD anchoring, and return-home.
+3. Downstream realtime adoption: multiplayer transport, presenter/runtime consumers, and AOI stress checks.
+4. Frontend large-map adoption: presenter/runtime/renderer consume canonical tile identity, chunk/window/reveal store, and bounded AOI snapshots.
+5. Stable promotion observation: keep P11 modules as `candidate` until downstream consumers prove extension surfaces without churn.
+6. Keep the strict browser tutorial visual QA harness as the acceptance gate for future tutorial/hitTarget/highlight/deploy-risk changes.
 
-Do not promote the new tile topology, large-map streaming, realtime authority, config registry, or random authority modules to `stable` yet. They are `candidate` until downstream presenter/runtime/renderer, multiplayer transport, and config-update consumers prove the extension surface without churn.
+Do not promote the new backend topology, AI exploration sync, tile topology, large-map streaming, realtime authority, config registry, or random authority modules to `stable` yet. They are `candidate` until downstream presenter/runtime/renderer, multiplayer transport, and config-update consumers prove the extension surface without churn.
 
 Final P11-006 full gate:
 

@@ -1,5 +1,9 @@
 const WORLD_MAP_VERSION = 7;
+const WORLD_TOPOLOGY_VERSION = 1;
 const DEFAULT_WORLD_SEED = 'world-seed-v1';
+const DEFAULT_WORLD_WIDTH = 1024;
+const DEFAULT_WORLD_HEIGHT = 1024;
+const DEFAULT_WORLD_WRAPPING = true;
 const CAPITAL_TILE_ID = 'tile_0_0';
 const START_REVEAL_RADIUS = 2;
 const START_SAFE_LAND_RADIUS = 1;
@@ -12,7 +16,7 @@ const HOME_RIVER_LENGTH = 7;
 const RIVER_MOUTH_SCAN_RADIUS = 32;
 
 const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
-const TILE_VISIBILITY_LEVELS = ['unknown', 'hinted', 'scouted', 'controlled'];
+const TILE_VISIBILITY_LEVELS = ['unknown', 'hidden', 'hinted', 'scouted', 'controlled'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
 const SIDE_DIRECTIONS = {
   nw: { q: -1, r: 0 },
@@ -62,6 +66,9 @@ const SCOUT_REVEAL_BRANCH_SIDES = {
 module.exports = {
   CAPITAL_TILE_ID,
   DEFAULT_WORLD_SEED,
+  DEFAULT_WORLD_HEIGHT,
+  DEFAULT_WORLD_WIDTH,
+  DEFAULT_WORLD_WRAPPING,
   DIRECTION_VECTORS,
   HOME_RIVER_LENGTH,
   OCEAN_CORNER_BY_CORE_OFFSET,
@@ -81,4 +88,5 @@ module.exports = {
   TILE_VISIBILITY_LEVELS,
   WATER_FEATURE_CACHE_LIMIT,
   WORLD_MAP_VERSION,
+  WORLD_TOPOLOGY_VERSION,
 };
