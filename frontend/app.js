@@ -171,6 +171,33 @@ class H5GameHost extends CanvasGameAppBase {
   }
 }
 
+function consumeCodexIabAuthFromUrl(runtime = null) {
+  const host = runtime || window;
+  try {
+    const location = host.location;
+    const storage = host.localStorage;
+    if (!location || !storage) return false;
+
+    const url = new URL(location.href);
+    const token = url.searchParams.get('codexIabToken');
+    if (!token) return false;
+
+    storage.setItem('cf_token', token);
+    storage.setItem('cf_username', url.searchParams.get('codexIabUser') || 'codexqa');
+
+    url.searchParams.delete('codexIabToken');
+    url.searchParams.delete('codexIabUser');
+    url.searchParams.set('codexIabAuth', '1');
+    host.history?.replaceState?.(null, host.document?.title || '', `${url.pathname}${url.search}${url.hash}`);
+    return true;
+  } catch (error) {
+    console.warn('[codex-iab-auth] failed to consume token from URL', error);
+    return false;
+  }
+}
+
+consumeCodexIabAuthFromUrl(window);
+
 const Game = new H5GameHost();
 
 window.H5GameBootstrap?.mount(Game, { document, runtime: window });
