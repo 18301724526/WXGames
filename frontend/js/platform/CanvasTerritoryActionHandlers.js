@@ -86,6 +86,30 @@
         return true;
       },
 
+      resetWorldMapCamera(options = {}) {
+        const game = this.getGameHost();
+        const runtime = this.host?.ensureWorldMapRuntimeCoordinator?.()?.ensureRuntime?.()
+          || game?.ensureWorldMapRuntimeCoordinator?.()?.ensureRuntime?.()
+          || this.host?.worldMapRuntime
+          || game?.worldMapRuntime;
+        if (runtime?.resetCamera) {
+          runtime.resetCamera({ source: options.source || 'resetWorldPan', render: options.render !== false });
+          const uiState = this.getSharedTerritoryUiState();
+          uiState.worldPanX = 0;
+          uiState.worldPanY = 0;
+          return true;
+        }
+        const territory = this.getTerritoryController();
+        if (territory?.resetWorldPan) {
+          territory.resetWorldPan();
+          return true;
+        }
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.worldPanX = 0;
+        uiState.worldPanY = 0;
+        return false;
+      },
+
       handle_scoutTerritory(action) {
         const forwarded = this.forward(action);
         if (forwarded !== undefined) return forwarded !== false;
@@ -346,15 +370,14 @@
 
       handle_resetWorldPan(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
-        const territory = this.getTerritoryController();
-        if (territory?.resetWorldPan) {
-          territory.resetWorldPan();
-          return true;
+        if (forwarded !== undefined) {
+          if (forwarded !== false) {
+            this.resetWorldMapCamera({ source: 'resetWorldPan', render: false });
+            this.afterHandled(action);
+          }
+          return forwarded !== false;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.worldPanX = 0;
-        this.host.territoryUiState.worldPanY = 0;
+        this.resetWorldMapCamera({ source: 'resetWorldPan', render: false });
         return this.afterHandled(action);
       },
 

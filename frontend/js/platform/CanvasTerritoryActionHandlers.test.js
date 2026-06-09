@@ -37,6 +37,9 @@ class HostController {
   }
 
   forward() {
+    if (typeof this.host?.forwardCanvasAction === 'function') {
+      return this.host.forwardCanvasAction(...arguments);
+    }
     return undefined;
   }
 
@@ -206,6 +209,83 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     ['refreshCurrentHighlight'],
     ['setTimeout'],
     ['refreshCurrentHighlight'],
+  ]);
+});
+
+test('CanvasTerritoryActionHandlers resets runtime world camera for return-home control', () => {
+  const calls = [];
+  const runtime = {
+    camera: { x: 32, y: -18 },
+    resetCamera(options) {
+      calls.push(['resetCamera', options]);
+      this.camera = { x: 0, y: 0 };
+    },
+  };
+  const host = {
+    territoryUiState: { worldPanX: 32, worldPanY: -18 },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['ensureRuntime']);
+          return runtime;
+        },
+      };
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_resetWorldPan({ type: 'resetWorldPan' }), true);
+  assert.deepEqual(runtime.camera, { x: 0, y: 0 });
+  assert.equal(host.territoryUiState.worldPanX, 0);
+  assert.equal(host.territoryUiState.worldPanY, 0);
+  assert.deepEqual(calls, [
+    ['ensureRuntime'],
+    ['resetCamera', { source: 'resetWorldPan', render: false }],
+    ['render', 'resetWorldPan'],
+  ]);
+});
+
+test('CanvasTerritoryActionHandlers resets local shell camera after forwarded return-home action', () => {
+  const calls = [];
+  const runtime = {
+    camera: { x: -44, y: 26 },
+    resetCamera(options) {
+      calls.push(['resetCamera', options]);
+      this.camera = { x: 0, y: 0 };
+    },
+  };
+  const host = {
+    territoryUiState: { worldPanX: -44, worldPanY: 26 },
+    forwardCanvasAction(action) {
+      calls.push(['forward', action.type]);
+      return true;
+    },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['ensureRuntime']);
+          return runtime;
+        },
+      };
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_resetWorldPan({ type: 'resetWorldPan' }), true);
+  assert.deepEqual(runtime.camera, { x: 0, y: 0 });
+  assert.equal(host.territoryUiState.worldPanX, 0);
+  assert.equal(host.territoryUiState.worldPanY, 0);
+  assert.deepEqual(calls, [
+    ['forward', 'resetWorldPan'],
+    ['ensureRuntime'],
+    ['resetCamera', { source: 'resetWorldPan', render: false }],
+    ['render', 'resetWorldPan'],
   ]);
 });
 

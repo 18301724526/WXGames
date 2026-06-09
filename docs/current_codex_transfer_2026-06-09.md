@@ -26,6 +26,49 @@ The user also wanted the online tutorial flow verified with screenshots before d
 - Deploy script has path guards; keep them intact
 - Avoid creating docs with filenames containing `handoff`; official docs guard treats them as obsolete.
 
+## Current Online Playtest Thread
+
+The active user request is to test the live H5 game in the Codex in-app browser, especially:
+
+- world marching
+- HUD placement
+- return-home
+- unlocking new map tiles
+
+Evidence directory:
+
+```text
+F:\AI Project\WXGamesLocal\.local-logs\manual-online-playtest\2026-06-10-world-march
+```
+
+Current runtime fix:
+
+- `CanvasTerritoryActionHandlers.handle_resetWorldPan()` now resets the runtime world camera and shared `worldPanX/worldPanY`.
+- It also performs the local shell reset after a forwarded `resetWorldPan` action succeeds, covering the live split between `CanvasGameShell` and `CanvasGameApp`.
+
+Verified locally before commit/deploy:
+
+```powershell
+node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.test.js
+npm.cmd run test:architecture
+git diff --check
+```
+
+Results:
+
+- Focused runtime regression: 56 passed.
+- Architecture gate: 472 passed.
+- Stable block manifest guard: passed.
+- Official document guard: passed.
+- `git diff --check`: passed.
+
+Continue after deployment:
+
+- Refresh live `/wxgame/` with a cache-bust query.
+- Pan away, click `回到本城`, and capture a screenshot proving the city recenters.
+- Start another manual march and verify whether newly explored tiles become visible or require a claim action.
+- Keep the unrelated untracked `tools/` directory untouched.
+
 ## Completed, Pushed, And Deployed
 
 ```text

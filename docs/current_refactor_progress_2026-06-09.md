@@ -19,6 +19,49 @@ This is the operational progress note for the current Codex run. It is not a pro
 - Protected Cocos root: `http://47.116.32.216/`
 - Unrelated untracked `tools/` exists and must remain untouched unless the user explicitly asks for it.
 
+## Online World-March Playtest - 2026-06-10
+
+Scope requested by user:
+
+- Test the live H5 game in the Codex in-app browser.
+- Focus on world marching, HUD placement, return-home, and unlocking new map tiles.
+- Keep screenshot evidence because canvas-only UI can have invisible-but-clickable regressions.
+
+Evidence directory:
+
+```text
+F:\AI Project\WXGamesLocal\.local-logs\manual-online-playtest\2026-06-10-world-march
+```
+
+Observed before the fix:
+
+- HUD placement was stable while dragging: top resource bar, top-left march hint, right floating buttons, bottom dock, and target/march panels stayed anchored inside the canvas.
+- Map drag exposed large dark empty regions at the edge of the currently revealed diamond map. This is a product/streaming-map follow-up, not fixed in this patch.
+- `回到本城` did not recenter the world map after panning.
+- Manual march could be started online: select revealed tile, click `行军`, select `部队一`, then the scout unit and exploration countdown appeared.
+- After the march timer ended, map unlock/claim behavior still needs another online pass after deployment; screenshots before the fix were not sufficient to declare it complete.
+
+Fix in current runtime patch:
+
+- `CanvasTerritoryActionHandlers.handle_resetWorldPan()` now resets the world-map runtime camera, clears shared `worldPanX/worldPanY`, and also resets the local shell camera after a forwarded action succeeds.
+- This fixes the canvas shell + game app split where the action could be forwarded but the shell-owned runtime camera stayed panned.
+
+Verification before commit/deploy:
+
+```powershell
+node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.test.js
+npm.cmd run test:architecture
+git diff --check
+```
+
+Results:
+
+- Focused runtime regression: 56 passed.
+- Architecture gate: 472 passed.
+- Stable block manifest guard: passed.
+- Official document guard: passed.
+- `git diff --check`: passed.
+
 ## Verified And Deployed Tutorial Fixes
 
 Recent deployed commits:
