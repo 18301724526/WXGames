@@ -17,9 +17,12 @@ const {
   clone,
   getDistanceFromCapital,
   getTileId,
-  random01,
   toInteger,
 } = require('./worldMap/WorldMapShared');
+const {
+  createWorldMapGenerationMetadata,
+  roll01,
+} = require('./worldMap/WorldMapGenerationAuthority');
 const {
   chooseOceanTemplates,
   getRiverMouthTemplateForNeighborOfOcean,
@@ -59,6 +62,7 @@ function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
   return {
     version: WORLD_MAP_VERSION,
     seed,
+    generationAuthority: createWorldMapGenerationMetadata(seed),
     origin: { q: 0, r: 0 },
     tiles,
     scoutTrails: [],
@@ -118,6 +122,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
   return {
     version: WORLD_MAP_VERSION,
     seed,
+    generationAuthority: createWorldMapGenerationMetadata(seed),
     origin: {
       q: toInteger(rawWorldMap?.origin?.q, 0),
       r: toInteger(rawWorldMap?.origin?.r, 0),
@@ -225,7 +230,9 @@ function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
     addCoord(step.q, step.r, step.step, 'main');
     if (step.step > branchLimit || !branchSides.length) continue;
     branchSides.forEach((side, sideIndex) => {
-      const roll = random01(seed || DEFAULT_WORLD_SEED, step.q + side.q, step.r + side.r, `scout-branch-${direction}-${step.step}-${sideIndex}`);
+      const roll = roll01(seed || DEFAULT_WORLD_SEED, step.q + side.q, step.r + side.r, `scout-branch-${direction}-${step.step}-${sideIndex}`, {
+        action: 'scoutRevealArea',
+      });
       branchCandidates.push({
         q: step.q + side.q,
         r: step.r + side.r,
@@ -336,6 +343,7 @@ module.exports = {
   getDistanceFromCapital,
   getWorldMapVersion,
   getWorldWaterFeatures,
+  createWorldMapGenerationMetadata,
   getTileId,
   chooseBaseTerrain,
   chooseTerrain,

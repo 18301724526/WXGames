@@ -6,6 +6,7 @@ const path = require('node:path');
 const WorldMapService = require('../services/WorldMapService');
 const Constants = require('../services/worldMap/WorldMapConstants');
 const Shared = require('../services/worldMap/WorldMapShared');
+const GenerationAuthority = require('../services/worldMap/WorldMapGenerationAuthority');
 const Water = require('../services/worldMap/WorldMapWater');
 const Tiles = require('../services/worldMap/WorldMapTiles');
 
@@ -25,6 +26,7 @@ test('WorldMapService delegates terrain, water, and shared responsibilities to f
   assert.ok(lineCount(facadePath) < 500, 'WorldMapService should stay below 500 lines');
   assert.deepEqual(moduleFiles, [
     'WorldMapConstants.js',
+    'WorldMapGenerationAuthority.js',
     'WorldMapShared.js',
     'WorldMapTiles.js',
     'WorldMapWater.js',
@@ -34,10 +36,37 @@ test('WorldMapService delegates terrain, water, and shared responsibilities to f
   }
 });
 
-test('world map shared module owns stable ids, seeded random, and intel normalization', () => {
+test('world map generation authority owns deterministic server materialization rolls', () => {
+  const roll = GenerationAuthority.createDeterministicRoll({
+    seed: 'architecture-generation-seed',
+    q: 'primary',
+    r: 2,
+    salt: 'ocean-primary-radius',
+    action: 'waterBasin',
+    subjectId: 'basin:primary',
+  });
+  const repeat = GenerationAuthority.createDeterministicRoll({
+    seed: 'architecture-generation-seed',
+    q: 'primary',
+    r: 2,
+    salt: 'ocean-primary-radius',
+    action: 'waterBasin',
+    subjectId: 'basin:primary',
+  });
+
+  assert.equal(roll.schema, GenerationAuthority.SCHEMA);
+  assert.equal(roll.authority, 'server');
+  assert.equal(roll.domain, 'worldMap');
+  assert.equal(roll.mode, 'seeded-hash');
+  assert.equal(roll.q, 'primary');
+  assert.equal(roll.value, repeat.value);
+  assert.match(roll.rollId, /^[a-f0-9]{8}$/);
+  assert.equal(Shared.random01('architecture-generation-seed', 'primary', 2, 'ocean-primary-radius'), roll.value);
+});
+
+test('world map shared module owns stable ids and intel normalization', () => {
   assert.equal(Shared.getTileId(2, -1), 'tile_2_-1');
   assert.equal(Shared.toInteger('4.9'), 4);
-  assert.equal(Shared.random01('seed', 1, 2, 'terrain'), Shared.random01('seed', 1, 2, 'terrain'));
   assert.deepEqual(Shared.normalizeTileIntel({}, { visibility: 'controlled', discovered: true, controlled: true }), {
     level: 4,
     knownTerrain: true,
@@ -106,6 +135,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'chooseTerrain',
     'createInitialWorldMap',
     'createTile',
+    'createWorldMapGenerationMetadata',
     'ensureWorldMap',
     'getClientWorldMap',
     'getDistanceFromCapital',
@@ -126,6 +156,15 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
 
   const gameState = { playerId: 'architecture-player' };
   const worldMap = WorldMapService.ensureWorldMap(gameState, new Date('2026-06-06T00:00:00.000Z'));
+  assert.deepEqual(worldMap.generationAuthority, {
+    schema: GenerationAuthority.SCHEMA,
+    authority: 'server',
+    domain: 'worldMap',
+    mode: 'seeded-hash',
+    action: 'worldMaterialization',
+    subjectId: 'world-map',
+    seed: 'world-architecture-player',
+  });
   assert.equal(worldMap.tiles.some((tile) => tile.id === Constants.CAPITAL_TILE_ID && tile.visibility === 'controlled'), true);
   const route = WorldMapService.buildScoutRoute({ q: 0, r: 0 }, 'e', 3);
   assert.deepEqual(route.map((coord) => coord.q), [1, 2, 3]);

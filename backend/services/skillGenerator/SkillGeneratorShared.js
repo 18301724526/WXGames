@@ -1,3 +1,5 @@
+const SkillGeneratorRandomAuthority = require('./SkillGeneratorRandomAuthority');
+
 function round2(value) {
   return Math.round(value * 100) / 100;
 }
@@ -6,15 +8,22 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function rollUnit(randomSource = Math.random) {
-  const value = Number(randomSource());
+function resolveRandomSource(randomSource = null, options = {}) {
+  return typeof randomSource === 'function'
+    ? randomSource
+    : SkillGeneratorRandomAuthority.createFallbackRandomSource(options);
+}
+
+function rollUnit(randomSource = null, options = {}) {
+  const source = resolveRandomSource(randomSource, options);
+  const value = Number(source());
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(0.999999, value));
 }
 
-function pick(list, randomSource = Math.random) {
+function pick(list, randomSource = null, options = {}) {
   if (!Array.isArray(list) || !list.length) return null;
-  return list[Math.floor(rollUnit(randomSource) * list.length)];
+  return list[Math.floor(rollUnit(randomSource, options) * list.length)];
 }
 
 function sanitizeText(value, fallback = '') {
@@ -46,6 +55,7 @@ module.exports = {
   createSeedRandom,
   hashText,
   pick,
+  resolveRandomSource,
   rollUnit,
   round2,
   sanitizeText,

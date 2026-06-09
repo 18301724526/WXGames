@@ -1,4 +1,5 @@
 const SkillGeneratorService = require('./SkillGeneratorService');
+const DefenderLeaderRandomAuthority = require('./defenderLeader/DefenderLeaderRandomAuthority');
 
 const DEFENDER_LEADER_VERSION = 'defender-leader-v1';
 const APPEARANCE_VERSION = 'famous-portrait-v3.0';
@@ -93,13 +94,13 @@ function createSeedRandom(seed) {
   };
 }
 
-function rollUnit(randomSource = Math.random) {
-  const value = Number(randomSource());
+function rollUnit(randomSource = null) {
+  const value = Number(typeof randomSource === 'function' ? randomSource() : 0);
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(0.999999, value));
 }
 
-function pick(list, randomSource = Math.random) {
+function pick(list, randomSource = null) {
   if (!Array.isArray(list) || list.length === 0) return null;
   return list[Math.floor(rollUnit(randomSource) * list.length)];
 }
@@ -155,14 +156,17 @@ function normalizeAppearance(raw = {}, seed = '') {
   };
 }
 
-function createAttributes(profile, territory = {}, randomSource = Math.random) {
+function createAttributes(profile, territory = {}, randomSource = null) {
+  const source = typeof randomSource === 'function'
+    ? randomSource
+    : createSeedRandom(`defender:${territory.id || territory.naturalName || 'site'}:attributes`);
   const threat = Math.max(0, toInteger(territory.threat, 0));
   const scale = Math.max(1, toInteger(territory.scale, 1));
   const defense = Math.max(0, toInteger(territory.defense, 0));
   const threatBonus = threat * 2 + Math.max(0, scale - 1) + Math.floor(defense / 600);
   const attributes = {};
   Object.entries(profile.baseAttributes).forEach(([key, base]) => {
-    const variance = Math.floor(rollUnit(randomSource) * 9) - 3;
+    const variance = Math.floor(rollUnit(source) * 9) - 3;
     attributes[key] = clamp(base + threatBonus + variance, 1, 140);
   });
   attributes.strategy = attributes.intelligence;
@@ -174,9 +178,15 @@ function createDefenderLeader(territory = {}, options = {}) {
   const profile = getProfileForOwner(territory.owner);
   const seed = sanitizeText(
     options.seed,
-    `defender:${territory.id || territory.naturalName || 'site'}:${territory.owner || 'neutral'}:${territory.threat || 0}:${territory.defense || 0}`,
+    DefenderLeaderRandomAuthority.createLeaderSeed(territory),
   );
-  const randomSource = typeof options.randomSource === 'function' ? options.randomSource : createSeedRandom(seed);
+  const randomSource = typeof options.randomSource === 'function'
+    ? options.randomSource
+    : DefenderLeaderRandomAuthority.createLeaderRandomSource(territory, {
+      ...options,
+      seed,
+    });
+  const randomAuthority = DefenderLeaderRandomAuthority.createSourceMetadata(randomSource);
   const quality = SkillGeneratorService.normalizeQuality(options.quality || getQualityForThreat(territory.threat));
   const surname = pick(profile.surnamePool, randomSource) || profile.surnamePool[0];
   const given = pick(profile.givenPool, randomSource) || profile.givenPool[0];
@@ -201,6 +211,7 @@ function createDefenderLeader(territory = {}, options = {}) {
       territoryName: territory.naturalName || territory.cityName || '',
       owner: territory.owner || 'neutral',
       seed,
+      ...(randomAuthority ? { randomAuthority } : {}),
     },
     archetype: profile.archetype,
     archetypeLabel: profile.ownerLabel,

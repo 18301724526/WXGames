@@ -1,3 +1,9 @@
+const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+
+const CONFIG_VERSION = '1.0.0';
+const CONFIG_SCHEMA_VERSION = 1;
+const sourcePath = __filename;
+
 const DEFAULT_SOLDIER_SCALE = 100;
 const MIN_BATTLE_SOLDIERS = 100;
 const MAX_BATTLE_ROUNDS = 20;
@@ -154,6 +160,48 @@ function raw() {
   };
 }
 
+function createRegistryEntries() {
+  return {
+    rules: { id: 'rules', values: getBattleRules() },
+    fallbackLeader: { id: 'fallbackLeader', leader: getFallbackLeader() },
+    fallbackSkillAttacker: { id: 'fallbackSkillAttacker', role: 'attacker', skill: clone(FALLBACK_SKILLS.attacker) },
+    fallbackSkillDefender: { id: 'fallbackSkillDefender', role: 'defender', skill: clone(FALLBACK_SKILLS.defender) },
+    mapsByTerritoryType: { id: 'mapsByTerritoryType', values: clone(BATTLE_MAPS_BY_TERRITORY_TYPE) },
+    defaultBattleMap: { id: 'defaultBattleMap', value: clone(DEFAULT_BATTLE_MAP) },
+    stageAssets: { id: 'stageAssets', values: clone(BATTLE_STAGE_ASSETS) },
+    defenderProfilesByOwner: { id: 'defenderProfilesByOwner', values: clone(DEFENDER_PROFILES_BY_OWNER) },
+    defaultDefenderProfile: { id: 'defaultDefenderProfile', value: clone(DEFAULT_DEFENDER_PROFILE) },
+  };
+}
+
+function getRegistryMetadata() {
+  return ConfigRegistryContract.createRegistryMetadata({
+    id: 'battle-config',
+    schema: 'battle-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  });
+}
+
+function validateRegistry() {
+  return ConfigRegistryContract.validateRegistry({
+    id: 'battle-config',
+    schema: 'battle-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  }, {
+    requireEntries: true,
+    requireVersion: true,
+    requireObjectKeyMatch: true,
+  });
+}
+
 module.exports = {
   DEFAULT_SOLDIER_SCALE,
   MIN_BATTLE_SOLDIERS,
@@ -168,4 +216,8 @@ module.exports = {
   getBattleStageForType,
   getDefenderProfileForOwner,
   raw,
+  getVersion: () => CONFIG_VERSION,
+  getSourcePath: () => sourcePath,
+  getRegistryMetadata,
+  validateRegistry,
 };

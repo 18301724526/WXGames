@@ -1,3 +1,5 @@
+const crypto = require('node:crypto');
+
 const TutorialService = require('./TutorialService');
 const CityService = require('./CityService');
 
@@ -390,12 +392,19 @@ function makeCustomPolicyName(basePolicyId, tiers = {}) {
   return `${base.label}·微调`;
 }
 
+function createCustomPolicyId(now = Date.now(), randomBytes = null) {
+  const timestamp = Number.isFinite(Number(now)) ? Number(now) : Date.now();
+  const suffixBytes = Buffer.isBuffer(randomBytes) ? randomBytes : crypto.randomBytes(3);
+  const suffix = suffixBytes.toString('hex').slice(0, 6).padEnd(6, '0');
+  return `custom_${timestamp.toString(36)}_${suffix}`;
+}
+
 function saveCustomPolicy(gameState, payload = {}) {
   const state = ensureTalentPolicyState(gameState);
   const draft = buildDraftPolicy(payload);
   const now = new Date().toISOString();
   const id = String(payload.policyId || payload.id || '').trim()
-    || `custom_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    || createCustomPolicyId();
   const existing = state.custom.find((policy) => policy.id === id);
   const custom = {
     id,
@@ -469,6 +478,7 @@ module.exports = {
   normalizeTalentPolicyState,
   normalizeTiers,
   makeCustomPolicyName,
+  createCustomPolicyId,
   getClientState,
   buildAllocationPreview,
   applyPolicy,

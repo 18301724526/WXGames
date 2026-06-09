@@ -8,6 +8,8 @@ const Constants = require('../services/skillGenerator/SkillGeneratorConstants');
 const Normalizer = require('../services/skillGenerator/SkillGeneratorNormalizer');
 const Factory = require('../services/skillGenerator/SkillAbilityFactory');
 const KitService = require('../services/skillGenerator/SkillAbilityKitService');
+const SkillGeneratorRandomAuthority = require('../services/skillGenerator/SkillGeneratorRandomAuthority');
+const ServerRandomAuthorityContract = require('../services/random/ServerRandomAuthorityContract');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const skillRoot = path.join(serviceRoot, 'skillGenerator');
@@ -29,11 +31,39 @@ test('SkillGeneratorService stays a facade over focused generator modules', () =
     'SkillGeneratorConstants.js',
     'SkillGeneratorDescriptions.js',
     'SkillGeneratorNormalizer.js',
+    'SkillGeneratorRandomAuthority.js',
     'SkillGeneratorShared.js',
   ]);
   for (const fileName of moduleFiles) {
     assert.ok(lineCount(path.join(skillRoot, fileName)) < 500, `${fileName} should stay below 500 lines`);
   }
+});
+
+test('skill generator random authority owns ability kit random source metadata', () => {
+  const source = SkillGeneratorRandomAuthority.createAbilityKitRandomSource({
+    source: 'unit',
+    archetype: 'vanguard',
+    quality: 'great',
+    seed: 'unit:vanguard:great',
+  }, {
+    now: new Date('2026-06-09T00:00:00.000Z'),
+    randomSource: () => 0.42,
+  });
+
+  assert.equal(source(), 0.42);
+  assert.deepEqual(SkillGeneratorRandomAuthority.createSourceMetadata(source), {
+    schema: ServerRandomAuthorityContract.SCHEMA,
+    authority: ServerRandomAuthorityContract.AUTHORITY,
+    domain: SkillGeneratorRandomAuthority.DOMAIN,
+    action: SkillGeneratorRandomAuthority.DEFAULT_ACTION,
+    subjectId: 'abilityKit:unit:vanguard:great',
+    seed: 'unit:vanguard:great',
+  });
+  assert.equal(SkillGeneratorRandomAuthority.createAbilityKitSeed({
+    source: 'seek',
+    archetype: 'scout',
+    quality: 'good',
+  }), 'seek:scout:good');
 });
 
 test('skill generator constants and normalizer preserve public pools and migrations', () => {
@@ -104,6 +134,7 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
     seed: 'battle-kit',
   }, () => 0.2);
   assert.equal(battleKit.domain, 'battle');
+  assert.equal(battleKit.randomAuthority, undefined);
   assert.equal(battleKit.battlePolicy, 'useBattleSkill');
   assert.deepEqual(battleKit.abilities.map((ability) => ability.slot), ['activeSkill', 'passiveTrait']);
   assert.equal(SkillGeneratorService.getActiveBattleSkill(battleKit).slot, 'activeSkill');
@@ -128,6 +159,27 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
   }, () => 0.2);
   assert.equal(scoutKit.domain, 'hybrid');
   assert.deepEqual(scoutKit.abilities.map((ability) => ability.slot), ['activeSkill', 'scoutTrait']);
+});
+
+test('skill ability kit generation consumes server random authority by default', () => {
+  const kit = SkillGeneratorService.createAbilityKit({
+    abilityArchetype: 'strategist',
+    quality: 'great',
+    source: 'authority-test',
+    seed: 'authority-test:strategist:great',
+  });
+
+  assert.deepEqual(kit.randomAuthority, {
+    schema: ServerRandomAuthorityContract.SCHEMA,
+    authority: ServerRandomAuthorityContract.AUTHORITY,
+    domain: SkillGeneratorRandomAuthority.DOMAIN,
+    action: SkillGeneratorRandomAuthority.DEFAULT_ACTION,
+    subjectId: 'abilityKit:authority-test:strategist:great',
+    seed: 'authority-test:strategist:great',
+  });
+  assert.equal(kit.generatorInput.seed, 'authority-test:strategist:great');
+  assert.equal(kit.abilities.length, 2);
+  assert.equal(kit.budgetStatus, 'withinLimit');
 });
 
 test('skill ability kit service completes legacy and partial stored kits', () => {

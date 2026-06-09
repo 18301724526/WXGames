@@ -36,6 +36,7 @@ const {
   makeSkillName,
   normalizeAppearance,
 } = require('./famousPerson/FamousPersonGenerator');
+const FamousPersonRandomAuthority = require('./famousPerson/FamousPersonRandomAuthority');
 
 function normalizeStatus(raw = {}) {
   return {
@@ -295,10 +296,32 @@ function getCandidateIdAsPersonId(candidateId) {
   return String(candidateId || '').replace(/^fpc_/, 'fp_');
 }
 
-function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), randomSource = Math.random) {
+function resolveCandidateRandomSource(gameState, sourceType, now, randomSource = null) {
+  if (typeof randomSource === 'function') return randomSource;
+  return FamousPersonRandomAuthority.createCandidateRandomSource(gameState, sourceType, now);
+}
+
+function attachRandomAuthorityMetadata(candidate, randomSource) {
+  const metadata = FamousPersonRandomAuthority.createSourceMetadata(randomSource);
+  if (!candidate || !metadata) return candidate;
+  return {
+    ...candidate,
+    source: {
+      ...(candidate.source || {}),
+      randomAuthority: metadata,
+    },
+  };
+}
+
+function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), randomSource = null) {
   const requestedSource = SOURCE_TYPES[payload.source] ? payload.source : 'seek';
   const sourceType = ENABLED_SOURCE_TYPES.includes(requestedSource) ? requestedSource : 'seek';
-  return normalizePerson(buildFamousPersonCandidate(gameState, { ...payload, source: sourceType }, now, randomSource), { candidate: true });
+  const source = resolveCandidateRandomSource(gameState, sourceType, now, randomSource);
+  const candidate = normalizePerson(
+    buildFamousPersonCandidate(gameState, { ...payload, source: sourceType }, now, source),
+    { candidate: true },
+  );
+  return attachRandomAuthorityMetadata(candidate, source);
 }
 
 function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
@@ -338,7 +361,7 @@ function getSeekAvailability(gameState) {
   return { available: true, reason: null, message: null };
 }
 
-function seekFamousPerson(gameState, payload = {}, now = new Date(), randomSource = Math.random) {
+function seekFamousPerson(gameState, payload = {}, now = new Date(), randomSource = null) {
   const availability = getSeekAvailability(gameState);
   if (!availability.available) {
     return { success: false, error: availability.reason, message: availability.message };

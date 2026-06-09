@@ -104,6 +104,12 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.completed]: TUTORIAL_STEPS.finalTechOpened,
 });
 
+const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+
+const CONFIG_VERSION = '1.0.0';
+const CONFIG_SCHEMA_VERSION = 1;
+const sourcePath = __filename;
+
 function createPhaseCompleted(currentStep) {
   const step = Number.isFinite(currentStep) ? currentStep : TUTORIAL_STEPS.initial;
   return {
@@ -113,10 +119,77 @@ function createPhaseCompleted(currentStep) {
   };
 }
 
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function raw() {
+  return clone({
+    steps: TUTORIAL_STEPS,
+    eventSteps: TUTORIAL_EVENT_STEPS,
+    passThroughActions: PASS_THROUGH_ACTIONS,
+    clientStepGates: CLIENT_TUTORIAL_STEP_GATES,
+  });
+}
+
+function createRegistryEntries() {
+  const entries = {};
+  Object.entries(TUTORIAL_STEPS).forEach(([key, value]) => {
+    const id = `step:${key}`;
+    entries[id] = { id, key, value };
+  });
+  Object.entries(TUTORIAL_EVENT_STEPS).forEach(([key, value]) => {
+    const id = `event:${key}`;
+    entries[id] = { id, key, value };
+  });
+  PASS_THROUGH_ACTIONS.forEach((action) => {
+    const id = `passThrough:${action}`;
+    entries[id] = { id, action };
+  });
+  Object.entries(CLIENT_TUTORIAL_STEP_GATES).forEach(([step, minimumStep]) => {
+    const id = `clientGate:${step}`;
+    entries[id] = { id, step: Number(step), minimumStep };
+  });
+  return entries;
+}
+
+function getRegistryMetadata() {
+  return ConfigRegistryContract.createRegistryMetadata({
+    id: 'tutorial-flow-config',
+    schema: 'tutorial-flow-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  });
+}
+
+function validateRegistry() {
+  return ConfigRegistryContract.validateRegistry({
+    id: 'tutorial-flow-config',
+    schema: 'tutorial-flow-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  }, {
+    requireEntries: true,
+    requireVersion: true,
+    requireObjectKeyMatch: true,
+  });
+}
+
 module.exports = {
   TUTORIAL_STEPS,
   TUTORIAL_EVENT_STEPS,
   PASS_THROUGH_ACTIONS,
   CLIENT_TUTORIAL_STEP_GATES,
+  raw,
+  getVersion: () => CONFIG_VERSION,
+  getSourcePath: () => sourcePath,
+  getRegistryMetadata,
+  validateRegistry,
   createPhaseCompleted,
 };

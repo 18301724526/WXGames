@@ -107,18 +107,46 @@ The online tutorial flow is verified with strict screenshot evidence. The harnes
 
 ## Current Patch
 
-P11-004 large-map streaming contract is complete, fully verified, committed, pushed, and deployed as `712ca9012c867b9880b88692e1f97a4e7d544036 refactor: add large map streaming contracts`.
+P11-006 config/version/random hardening is complete locally and ready for final full gate plus the next commit/deploy cycle if requested.
 
 Changed files:
 
-- `frontend/js/domain/WorldChunkAddress.js`
-- `frontend/js/domain/WorldChunkAddress.test.js`
-- `frontend/js/domain/WorldInterestWindow.js`
-- `frontend/js/domain/WorldInterestWindow.test.js`
-- `frontend/js/domain/WorldRevealStore.js`
-- `frontend/js/domain/WorldRevealStore.test.js`
-- `frontend/index.html`
-- `frontend/minigame/game.js`
+- `backend/services/config/ConfigRegistryContract.js`
+- `backend/tests/ConfigRegistryContract.test.js`
+- `backend/services/random/ServerRandomAuthorityContract.js`
+- `backend/tests/ServerRandomAuthorityContract.test.js`
+- `backend/services/worldMap/WorldMapGenerationAuthority.js`
+- `backend/services/worldMap/WorldMapShared.js`
+- `backend/services/worldMap/WorldMapWater.js`
+- `backend/services/worldMap/WorldMapTiles.js`
+- `backend/services/WorldMapService.js`
+- `backend/tests/WorldMapArchitecture.test.js`
+- `backend/services/skillGenerator/SkillGeneratorRandomAuthority.js`
+- `backend/services/skillGenerator/SkillGeneratorShared.js`
+- `backend/services/skillGenerator/SkillGeneratorNormalizer.js`
+- `backend/services/skillGenerator/SkillAbilityFactory.js`
+- `backend/services/skillGenerator/SkillAbilityKitService.js`
+- `backend/tests/SkillGeneratorArchitecture.test.js`
+- `backend/services/defenderLeader/DefenderLeaderRandomAuthority.js`
+- `backend/services/DefenderLeaderService.js`
+- `backend/services/famousPerson/FamousPersonRandomAuthority.js`
+- `backend/services/famousPerson/FamousPersonGenerator.js`
+- `backend/services/famousPerson/FamousPersonShared.js`
+- `backend/services/FamousPersonService.js`
+- `backend/tests/FamousPersonArchitecture.test.js`
+- `backend/services/taskDefinitions/TaskDefinitionNormalizer.js`
+- `backend/config/GameConfig.js`
+- `backend/config/EraConfig.js`
+- `backend/config/TutorialFlowConfig.js`
+- `backend/config/BattleConfig.js`
+- `backend/config/TechTreeConfig.js`
+- `backend/config/BuildingConfig.js`
+- `backend/services/TalentPolicyService.js`
+- `backend/tests/TalentPolicyService.test.js`
+- `backend/services/territory/TerritoryScoutResults.js`
+- `backend/services/territory/TerritoryMilitaryMissions.js`
+- `backend/services/TerritoryService.js`
+- `backend/tests/TerritoryArchitecture.test.js`
 - `scripts/run-architecture-smoke.js`
 - `docs/current_technical_architecture_2026-06-09.md`
 - `docs/long_term_architecture_refactor_plan_2026-06-08.md`
@@ -128,33 +156,66 @@ Changed files:
 
 Behavior added:
 
-- `WorldChunkAddress`: pure chunk addressing contract for chunk size, chunk id, chunk coordinate, chunk bounds, tile-to-chunk mapping, and wrapped tile-rect expansion.
-- `WorldInterestWindow`: pure visible/preload/AOI window contract, including topology summary, chunk lists, and wrapped edge membership checks.
-- `WorldRevealStore`: pure revealed-terrain persistence contract by tile id and chunk id, including materialized chunk ids and serializable output without renderer payloads or full `worldMap`.
-- H5 and minigame entrypoints load these contracts after `TileCoord`/`WorldTopology`.
-- Architecture smoke includes the new files and tests.
+- `ConfigRegistryContract`: pure config registry/version contract for normalized versions, schema metadata, stable content hashes, entry id uniqueness validation, registry comparison, and recommended version bumps.
+- `TaskDefinitionNormalizer` now exposes `schema`, `schemaVersion`, `registry`, `registryValidation`, `registryErrors`, and `registryWarnings` while preserving legacy `version`, `hash`, `tasks`, `errors`, and `summary` fields.
+- `BuildingConfig` now exposes `getRegistryMetadata()` and `validateRegistry()` while preserving gameplay accessors.
+- `GameConfig`, `EraConfig`, `TutorialFlowConfig`, `BattleConfig`, and `TechTreeConfig` now expose config registry metadata/validation while preserving legacy exports and accessors.
+- `ServerRandomAuthorityContract`: pure backend random authority contract for bounded server-owned random roll envelopes, deterministic test injection, and chance-roll metadata.
+- `TerritoryScoutResults` now consumes server-authoritative random sources for scout outcome and generated-site template rolls while preserving deterministic test injection.
+- `FamousPersonRandomAuthority` now adapts famous-person candidate generation to server-authoritative random sources and records compact candidate `source.randomAuthority` metadata.
+- Famous-person candidate generation paths no longer default to `Math.random`; injected deterministic random sources still work for tests.
+- `DefenderLeaderRandomAuthority` now adapts defender-leader generation to server-authoritative random sources and records compact leader `source.randomAuthority` metadata.
+- Defender-leader generation paths no longer default to `Math.random`; injected deterministic random sources still work for tests.
+- `WorldMapGenerationAuthority` now owns deterministic world-map materialization rolls with `authority: server`, `domain: worldMap`, and `mode: seeded-hash`.
+- `WorldMapService`, `WorldMapWater`, and `WorldMapTiles` now consume `WorldMapGenerationAuthority.roll01()` for terrain, water, river, and scout-reveal branch materialization while preserving seeded reproducibility.
+- `WorldMapShared.random01()` remains as a compatibility wrapper over the authority module.
+- `WorldMapService` now attaches compact `generationAuthority` metadata during initial creation and normalization.
+- `SkillGeneratorRandomAuthority` adapts ability-kit generation to backend-authoritative random sources and records compact `randomAuthority` metadata for default generated kits.
+- Skill generator paths no longer default to `Math.random`; injected deterministic random sources still work for tests.
+- `TalentPolicyService.createCustomPolicyId()` now uses backend `crypto.randomBytes()` instead of business-code `Math.random`.
+- A business-code `Math.random` scan over backend services/config/tests, frontend JS, and scripts is clean.
+- Battle experience/reward output was inspected and is deterministic formula logic in `BattleReports.createExperienceSummary()`, so it is not a random authority migration target until chance drops/rewards are introduced.
+- Architecture smoke includes the new config registry, random authority, world-map authority, territory, famous-person, defender-leader, skill-generator, talent-policy, and core config files/tests.
 
 Focused verification already passed:
 
 ```powershell
-node --test frontend/js/domain/WorldChunkAddress.test.js frontend/js/domain/WorldInterestWindow.test.js frontend/js/domain/WorldRevealStore.test.js
+node --test backend/tests/WorldMapArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/TerritoryClientAssembler.test.js backend/tests/BattleArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerDtoMapper.test.js
 ```
 
 Results:
 
-- Focused tests: 12 passed
+- Focused combined regression: 72 passed
 
-Full verification already passed:
+Additional focused verification already passed:
+
+```powershell
+node --test backend/tests/TalentPolicyService.test.js backend/tests/SkillGeneratorArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/BattleArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js
+node --test backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js backend/tests/BattleArchitecture.test.js
+```
+
+Results:
+
+- Talent/skill random regression: 43 passed
+- Core config registry regression: 25 passed
+
+Architecture verification already passed:
 
 ```powershell
 npm.cmd run test:architecture
-npm.cmd test
 ```
 
 Results:
 
-- Architecture gate: 413 passed, stable block guard passed, official document guard passed, `git diff --check` passed
-- Full test suite: 780 passed
+- Architecture gate: 457 passed, stable block guard passed, official document guard passed, `git diff --check` passed
+
+After the final phase 6-8 edits, rerun before committing/deploying:
+
+```powershell
+npm.cmd run test:architecture
+git diff --check
+rg -n "Math\.random" backend/services backend/config backend/tests frontend/js scripts --glob '!frontend/js/vendor/**'
+```
 
 Deployment checks after `712ca9012c867b9880b88692e1f97a4e7d544036`:
 
@@ -195,15 +256,15 @@ Result:
 
 ## Required Next Actions
 
-1. Commit and push this final documentation update if it has not been committed yet.
-2. Continue P11-005 realtime authority contract.
-3. Keep `tools/` untracked unless the user explicitly asks for it.
+1. Run final full architecture gate for the completed local P11-006 patch.
+2. Commit, push, and deploy P11-006 only if the user asks for this checkpoint to go online.
+3. Keep unrelated untracked files untouched unless the user explicitly asks for them.
 
 ## After This Patch
 
 Continue long-term architecture plan:
 
-- P11-005: Realtime authority contract.
-- P11-006: Config/version hardening.
+- Future true random-result authority consumers only when new chance/drop domains are introduced.
+- Downstream realtime adoption: multiplayer transport, presenter/runtime consumers, and AOI stress checks.
 
-Do not promote `TileCoord`, `WorldTopology`, `TileMapGeometry`, `WorldChunkAddress`, `WorldInterestWindow`, or `WorldRevealStore` to `stable` yet. They should remain `candidate` until realtime authority and downstream presenter/runtime/renderer consumers prove the extension surface.
+Do not promote `TileCoord`, `WorldTopology`, `TileMapGeometry`, `WorldChunkAddress`, `WorldInterestWindow`, `WorldRevealStore`, realtime authority contracts, `ConfigRegistryContract`, `ServerRandomAuthorityContract`, `WorldMapGenerationAuthority`, or the domain random authority adapters to `stable` yet. They should remain `candidate` until downstream consumers prove the extension surface without churn.

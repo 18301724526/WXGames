@@ -12,6 +12,7 @@ const {
   toBoolean,
   toNumber,
 } = require('./TaskDefinitionShared');
+const ConfigRegistryContract = require('../config/ConfigRegistryContract');
 const RewardResolver = require('./TaskDefinitionRewardResolver');
 
 const HEADER_ALIASES = Object.freeze({
@@ -180,14 +181,31 @@ function normalizeDefinitions(raw = {}, options = {}) {
     return { ...task, reward, rewardText: RewardResolver.formatRewardText(resolvedReward.resources) };
   });
   const version = sanitizeText(raw.version, '0.1.0');
+  const registryValidation = ConfigRegistryContract.validateRegistry({
+    id: 'task-definitions',
+    schema: 'task-definition-registry',
+    schemaVersion: 1,
+    version,
+    source: sanitizeText(raw.source || options.source, 'default'),
+    entries: normalizedTasks,
+  }, {
+    requireEntries: true,
+    requireVersion: true,
+  });
   const hash = crypto
     .createHash('sha1')
     .update(JSON.stringify({ version, tasks: normalizedTasks }))
     .digest('hex')
     .slice(0, 12);
   return {
+    schema: 'task-definition-registry',
+    schemaVersion: 1,
     version,
     hash,
+    registry: registryValidation.metadata,
+    registryValidation,
+    registryErrors: registryValidation.errors,
+    registryWarnings: registryValidation.warnings,
     importedAt: sanitizeText(raw.importedAt, nowIso(options.now)),
     importedBy: sanitizeText(raw.importedBy || options.importedBy, 'system'),
     source: sanitizeText(raw.source || options.source, 'default'),

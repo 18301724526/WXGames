@@ -59,7 +59,7 @@ function clampActiveForQuality(template, quality, scout = false) {
   return { active, limit };
 }
 
-function createActiveSkill(abilityArchetype, quality, randomSource = Math.random, effectPool = null) {
+function createActiveSkill(abilityArchetype, quality, randomSource = null, effectPool = null) {
   const archetype = normalizeAbilityArchetype(abilityArchetype);
   const scout = archetype === 'scout';
   const templates = filterTemplatesForPool(ACTIVE_TEMPLATES[archetype] || ACTIVE_TEMPLATES.vanguard, effectPool);
@@ -87,7 +87,7 @@ function createActiveSkill(abilityArchetype, quality, randomSource = Math.random
   });
 }
 
-function createBattlePassive(abilityArchetype, quality, randomSource = Math.random, effectPool = null) {
+function createBattlePassive(abilityArchetype, quality, randomSource = null, effectPool = null) {
   const archetype = normalizeAbilityArchetype(abilityArchetype);
   const templates = filterTemplatesForPool(PASSIVE_TEMPLATES[archetype] || PASSIVE_TEMPLATES.vanguard, effectPool);
   const template = clone(pick(templates, randomSource) || templates[0]);
@@ -108,7 +108,7 @@ function createBattlePassive(abilityArchetype, quality, randomSource = Math.rand
   });
 }
 
-function createCivilAbility(abilityArchetype, slot, quality, randomSource = Math.random, effectPool = null) {
+function createCivilAbility(abilityArchetype, slot, quality, randomSource = null, effectPool = null) {
   const archetype = normalizeAbilityArchetype(abilityArchetype, 'governor');
   const templateGroup = CIVIL_TEMPLATES[archetype] || CIVIL_TEMPLATES.governor;
   const groupKey = slot === 'civilSecondary' ? 'secondary' : 'primary';
@@ -134,7 +134,7 @@ function createCivilAbility(abilityArchetype, slot, quality, randomSource = Math
   });
 }
 
-function createScoutTrait(quality, randomSource = Math.random, effectPool = null) {
+function createScoutTrait(quality, randomSource = null, effectPool = null) {
   const templates = filterTemplatesForPool(SCOUT_TRAITS, effectPool);
   const template = clone(pick(templates, randomSource) || templates[0]);
   const limit = QUALITY_BUDGETS[normalizeQuality(quality)].scoutTrait;

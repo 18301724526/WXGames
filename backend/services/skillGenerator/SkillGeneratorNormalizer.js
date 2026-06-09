@@ -23,7 +23,7 @@ function getQualityLabel(value) {
   return QUALITY_LABELS[normalizeQuality(value)];
 }
 
-function rollQuality(randomSource = Math.random) {
+function rollQuality(randomSource = null) {
   const roll = rollUnit(randomSource);
   if (roll < 0.324) return 'common';
   if (roll < 0.584) return 'good';

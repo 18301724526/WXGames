@@ -2,13 +2,13 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function rollUnit(randomSource = Math.random) {
-  const value = Number(randomSource());
+function rollUnit(randomSource = null) {
+  const value = Number(typeof randomSource === 'function' ? randomSource() : 0);
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(0.999999, value));
 }
 
-function pick(list, randomSource = Math.random) {
+function pick(list, randomSource = null) {
   if (!Array.isArray(list) || list.length === 0) return null;
   return list[Math.floor(rollUnit(randomSource) * list.length)];
 }

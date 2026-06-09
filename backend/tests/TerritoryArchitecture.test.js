@@ -8,6 +8,9 @@ const TerritoryConstants = require('../services/territory/TerritoryConstants');
 const TerritoryVisuals = require('../services/territory/TerritoryVisuals');
 const TerritoryInitialState = require('../services/territory/TerritoryInitialState');
 const TerritoryShared = require('../services/territory/TerritoryShared');
+const ServerRandomAuthorityContract = require('../services/random/ServerRandomAuthorityContract');
+const DefenderLeaderService = require('../services/DefenderLeaderService');
+const DefenderLeaderRandomAuthority = require('../services/defenderLeader/DefenderLeaderRandomAuthority');
 const createTerritoryCombatTargets = require('../services/territory/TerritoryCombatTargets');
 const createTerritoryConquestMissions = require('../services/territory/TerritoryConquestMissions');
 const createTerritoryMilitaryMissions = require('../services/territory/TerritoryMilitaryMissions');
@@ -154,6 +157,66 @@ test('territory combat targets module owns garrison and battle target contracts'
     knownLeader: true,
     knownSkill: true,
   });
+});
+
+test('server random authority contract owns backend random roll envelopes', () => {
+  const roll = ServerRandomAuthorityContract.createRoll({
+    domain: 'territory',
+    action: 'scoutOutcome',
+    subjectId: 'mission-1',
+    seed: 'world-seed',
+  }, {
+    now: new Date('2026-06-06T00:00:00.000Z'),
+    randomSource: () => 1.1,
+  });
+  const chance = ServerRandomAuthorityContract.rollChance(0.5, {
+    domain: 'territory',
+    action: 'scoutOutcome',
+    subjectId: 'mission-1',
+  }, {
+    now: new Date('2026-06-06T00:00:00.000Z'),
+    randomSource: () => 0.49,
+  });
+
+  assert.equal(roll.schema, ServerRandomAuthorityContract.SCHEMA);
+  assert.equal(roll.authority, 'server');
+  assert.equal(roll.domain, 'territory');
+  assert.equal(roll.action, 'scoutOutcome');
+  assert.equal(roll.value, ServerRandomAuthorityContract.MAX_UNIT_ROLL);
+  assert.match(roll.rollId, /^[a-f0-9]{16}$/);
+  assert.equal(chance.success, true);
+  assert.equal(chance.threshold, 0.5);
+});
+
+test('defender leader generation consumes server random authority by default', () => {
+  const territory = {
+    id: 'camp-authority',
+    owner: 'tribe',
+    naturalName: 'Authority Camp',
+    threat: 4,
+    defense: 160,
+    scale: 2,
+  };
+
+  const leader = DefenderLeaderService.createDefenderLeader(territory, {
+    createdAt: '2026-06-06T00:00:00.000Z',
+  });
+  const injected = DefenderLeaderService.createDefenderLeader(territory, {
+    randomSource: () => 0.42,
+    createdAt: '2026-06-06T00:00:00.000Z',
+  });
+
+  assert.deepEqual(leader.source.randomAuthority, {
+    schema: ServerRandomAuthorityContract.SCHEMA,
+    authority: ServerRandomAuthorityContract.AUTHORITY,
+    domain: DefenderLeaderRandomAuthority.DOMAIN,
+    action: DefenderLeaderRandomAuthority.DEFAULT_ACTION,
+    subjectId: 'leader:camp-authority:tribe',
+    seed: 'defender:camp-authority:tribe:4:160',
+  });
+  assert.equal(injected.source.randomAuthority, undefined);
+  assert.equal(leader.source.type, 'defender');
+  assert.equal(leader.status.assigned, 'defender');
 });
 
 test('territory query module owns territory lookup, origin, effects, and spacing contracts', () => {

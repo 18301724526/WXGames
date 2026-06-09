@@ -19,6 +19,7 @@ const {
   normalizeMapTerrainId,
   toInteger,
 } = require('./TerritoryShared');
+const ServerRandomAuthorityContract = require('../random/ServerRandomAuthorityContract');
 
 function createTerritoryScoutResults(dependencies = {}) {
   const {
@@ -186,15 +187,35 @@ function createTerritoryScoutResults(dependencies = {}) {
       .sort((a, b) => b.score - a.score || b.distance - a.distance || a.q - b.q || a.r - b.r)[0] || null;
   }
 
-  function rollScoutOutcome(gameState, randomSource = Math.random) {
+  function createTerritoryRandomSource(action, subjectId, options = {}) {
+    return ServerRandomAuthorityContract.createRandomSource({
+      domain: 'territory',
+      action,
+      subjectId,
+      seed: options.seed || subjectId,
+    }, {
+      now: options.now,
+      randomSource: options.randomSource,
+    });
+  }
+
+  function rollScoutOutcome(gameState, randomSource = null, options = {}) {
     gameState.scoutState = normalizeScoutState(gameState.scoutState);
     const emptyStreak = Math.max(0, Number(gameState.scoutState.emptyStreak) || 0);
     if (emptyStreak >= SCOUT_SITE_GUARANTEE_AFTER) {
       return 'site';
     }
-    const roll = rollUnit(randomSource);
     const siteChance = Math.min(1, SCOUT_SITE_BASE_CHANCE + emptyStreak * SCOUT_SITE_CHANCE_STEP);
-    return roll < siteChance ? 'site' : 'empty';
+    const roll = ServerRandomAuthorityContract.rollChance(siteChance, {
+      domain: 'territory',
+      action: 'scoutOutcome',
+      subjectId: options.subjectId || gameState.playerId || 'scout',
+      seed: options.seed || gameState.playerId || 'territory',
+    }, {
+      now: options.now,
+      randomSource,
+    });
+    return roll.success ? 'site' : 'empty';
   }
 
   function recordScoutOutcome(gameState, outcome) {
@@ -217,8 +238,11 @@ function createTerritoryScoutResults(dependencies = {}) {
     return items[Math.abs(seed) % items.length];
   }
 
-  function rollUnit(randomSource = Math.random) {
-    return Math.max(0, Math.min(0.999999, Number(typeof randomSource === 'function' ? randomSource() : Math.random()) || 0));
+  function rollUnit(randomSource = null, options = {}) {
+    const source = typeof randomSource === 'function'
+      ? randomSource
+      : createTerritoryRandomSource(options.action || 'unitRoll', options.subjectId || 'territory', options);
+    return ServerRandomAuthorityContract.normalizeUnitRoll(source());
   }
 
   function getOwnedSiteChance(distance, neutralSiteStreak = 0) {
@@ -246,13 +270,13 @@ function createTerritoryScoutResults(dependencies = {}) {
     return Math.max(0.1, Number(weights[terrain]) || 0.1);
   }
 
-  function pickWeightedTemplate(pool, terrain, distance, randomSource = Math.random) {
+  function pickWeightedTemplate(pool, terrain, distance, randomSource = null, options = {}) {
     const weighted = pool.map((template) => ({
       template,
       weight: getTemplateTerrainWeight(template, terrain) * getTemplateDistanceWeight(template, distance),
     }));
     const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
-    let cursor = rollUnit(randomSource) * totalWeight;
+    let cursor = rollUnit(randomSource, { ...options, action: options.action || 'siteTemplateWeight' }) * totalWeight;
     for (const item of weighted) {
       cursor -= item.weight;
       if (cursor <= 0) return item.template;
@@ -264,14 +288,18 @@ function createTerritoryScoutResults(dependencies = {}) {
     const distance = Math.max(1, toInteger(options.distance, 1));
     const terrain = typeof options.terrain === 'string' && options.terrain ? options.terrain : 'plains';
     const neutralSiteStreak = Math.max(0, toInteger(options.neutralSiteStreak, 0));
-    const randomSource = options.randomSource || Math.random;
+    const randomSource = options.randomSource || createTerritoryRandomSource(
+      'siteTemplate',
+      options.subjectId || `site:${terrain}:${distance}`,
+      options,
+    );
     const neutralPool = [SITE_TEMPLATES[0], SITE_TEMPLATES[1]];
     const ownedPool = distance <= 1
       ? [SITE_TEMPLATES[2]]
       : [SITE_TEMPLATES[2], SITE_TEMPLATES[3], SITE_TEMPLATES[4]];
     const isOwned = rollUnit(randomSource) < getOwnedSiteChance(distance, neutralSiteStreak);
     const pool = isOwned ? ownedPool : neutralPool;
-    return pickWeightedTemplate(pool, terrain, distance, randomSource);
+    return pickWeightedTemplate(pool, terrain, distance, randomSource, options);
   }
 
   function getSiteEffects(template, distance) {
@@ -283,7 +311,7 @@ function createTerritoryScoutResults(dependencies = {}) {
     return effects;
   }
 
-  function createSiteFromScout(gameState, mission, now = new Date(), randomSource = Math.random) {
+  function createSiteFromScout(gameState, mission, now = new Date(), randomSource = null) {
     const direction = mission.direction;
     const resolvedCoord = getScoutResolvedCoordinate(mission);
     const x = resolvedCoord.x;
@@ -300,6 +328,9 @@ function createTerritoryScoutResults(dependencies = {}) {
       distance,
       neutralSiteStreak: gameState.scoutState?.neutralSiteStreak || 0,
       randomSource,
+      now,
+      seed: WorldMapService.ensureWorldMap(gameState, now).seed,
+      subjectId: mission.id || `scout:${x}:${y}`,
     });
     const seed = Math.abs(x * 31 + y * 17 + discoveredCount * 13 + Object.keys(DIRECTIONS).indexOf(direction));
     const naturalName = pickText(template.naturalNames, seed);

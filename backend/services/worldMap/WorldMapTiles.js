@@ -11,9 +11,11 @@ const {
   getTileId,
   normalizeTileIntel,
   normalizeTileVisibility,
-  random01,
   toInteger,
 } = require('./WorldMapShared');
+const {
+  roll01,
+} = require('./WorldMapGenerationAuthority');
 const {
   chooseOceanTemplates,
   getRiverPorts,
@@ -27,10 +29,10 @@ function isStartSafeLandCoord(q, r) {
 
 function chooseBaseTerrain(seed, q, r) {
   if (q === 0 && r === 0) return 'capital';
-  const forest = random01(seed, q, r, 'forest');
-  const ridge = random01(seed, q, r, 'ridge');
-  const dry = random01(seed, q, r, 'dry');
-  const rough = random01(seed, q, r, 'rough');
+  const forest = roll01(seed, q, r, 'forest');
+  const ridge = roll01(seed, q, r, 'ridge');
+  const dry = roll01(seed, q, r, 'dry');
+  const rough = roll01(seed, q, r, 'rough');
   const distance = getDistanceFromCapital(q, r);
   const settlementBias = Math.max(0, 4 - distance) * 0.06;
   if (rough > 0.9 - settlementBias && ridge > 0.72) return 'mountain';

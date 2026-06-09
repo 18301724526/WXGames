@@ -28,6 +28,7 @@ const {
 const {
   withAbilityDescription,
 } = require('./SkillGeneratorDescriptions');
+const SkillGeneratorRandomAuthority = require('./SkillGeneratorRandomAuthority');
 
 function findAbilityBySlot(abilities = [], slot) {
   return abilities.find((ability) => ability?.slot === slot) || null;
@@ -162,7 +163,13 @@ function createAbilityKit(options = {}, randomSource = null) {
   const quality = normalizeQuality(options.quality);
   const meta = getAbilityMeta(abilityArchetype);
   const generatorInput = createGeneratorInput(options, abilityArchetype, quality, meta);
-  const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(generatorInput.seed);
+  const source = typeof randomSource === 'function'
+    ? randomSource
+    : SkillGeneratorRandomAuthority.createAbilityKitRandomSource(generatorInput, {
+      now: options.now,
+      randomSource: options.randomSource,
+    });
+  const randomAuthority = SkillGeneratorRandomAuthority.createSourceMetadata(source);
   const abilities = [];
   if (meta.domain === 'civil') {
     abilities.push(createCivilAbility(abilityArchetype, 'civilPrimary', quality, source, generatorInput.availableEffectPool));
@@ -184,6 +191,7 @@ function createAbilityKit(options = {}, randomSource = null) {
     source: generatorInput.source,
     seed: generatorInput.seed,
     generatorInput,
+    ...(randomAuthority ? { randomAuthority } : {}),
     abilities,
     budget: clone(QUALITY_BUDGETS[quality]),
     budgetChecks,
@@ -216,6 +224,9 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
   });
   const upgradedAbilities = completeAbilitySlots(abilities, abilityArchetype, quality, meta, generatorInput);
   const budgetChecks = createBudgetChecks(upgradedAbilities);
+  const randomAuthority = archetype?.randomAuthority && typeof archetype.randomAuthority === 'object'
+    ? clone(archetype.randomAuthority)
+    : null;
   return {
     archetype: normalizeAbilityArchetype(abilityArchetype),
     quality: normalizeQuality(quality),
@@ -225,6 +236,7 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
     source: generatorInput.source,
     seed: generatorInput.seed,
     generatorInput,
+    ...(randomAuthority ? { randomAuthority } : {}),
     abilities: upgradedAbilities,
     budget: clone(QUALITY_BUDGETS[normalizeQuality(quality)]),
     budgetChecks,
@@ -259,6 +271,9 @@ function normalizeAbilityKit(raw = {}, options = {}) {
     generatorInput,
   );
   const budgetChecks = createBudgetChecks(abilities);
+  const randomAuthority = raw.randomAuthority && typeof raw.randomAuthority === 'object'
+    ? clone(raw.randomAuthority)
+    : null;
   return {
     archetype: abilityArchetype,
     quality,
@@ -268,6 +283,7 @@ function normalizeAbilityKit(raw = {}, options = {}) {
     source: generatorInput.source,
     seed: generatorInput.seed,
     generatorInput,
+    ...(randomAuthority ? { randomAuthority } : {}),
     abilities,
     budget: raw.budget && typeof raw.budget === 'object' ? clone(raw.budget) : clone(QUALITY_BUDGETS[quality]),
     budgetChecks,

@@ -241,7 +241,7 @@ function normalizeDirection(direction) {
   return DIRECTIONS[key] ? key : null;
 }
 
-function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomSource = Math.random) {
+function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomSource = null) {
   if (mission.resolvedTarget) return { site: mission.siteId ? getTerritory(gameState, mission.siteId) : null, report: mission.report || null };
   const targetX = toInteger(mission.targetX, 0);
   const targetY = toInteger(mission.targetY, 0);
@@ -315,7 +315,11 @@ function resolveScoutMissionTarget(gameState, mission, now = new Date(), randomS
     return { site: recordedSite || null, report: mission.report };
   }
 
-  const outcome = rollScoutOutcome(gameState, randomSource);
+  const outcome = rollScoutOutcome(gameState, randomSource, {
+    now,
+    seed: WorldMapService.ensureWorldMap(gameState, now).seed,
+    subjectId: mission.id || `scout:${mission.targetX}:${mission.targetY}`,
+  });
   mission.resolvedTarget = true;
   mission.result = outcome;
   if (outcome === 'empty') {
@@ -421,7 +425,7 @@ function startScout(gameState, direction, now = new Date()) {
   return { success: true, message: `侦察队已向${DIRECTIONS[normalizedDirection].label}出发`, mission };
 }
 
-function claimScout(gameState, missionId, now = new Date(), randomSource = Math.random) {
+function claimScout(gameState, missionId, now = new Date(), randomSource = null) {
   normalizeTerritoryState(gameState, now);
   const mission = (gameState.warMissions || []).find((item) => item.id === missionId && getMissionKind(item) === 'scout');
   if (!mission) return { success: false, error: 'MISSION_NOT_FOUND', message: '没有找到侦察任务' };

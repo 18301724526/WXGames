@@ -3,6 +3,10 @@ const {
   SIDE_ORDER,
   TILE_VISIBILITY_LEVELS,
 } = require('./WorldMapConstants');
+const {
+  hashString,
+  roll01,
+} = require('./WorldMapGenerationAuthority');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -13,18 +17,8 @@ function toInteger(value, fallback = 0) {
   return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
-function hashString(input) {
-  let hash = 2166136261;
-  const text = String(input);
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 function random01(seed, q, r, salt) {
-  return hashString(`${seed}|${q}|${r}|${salt}`) / 4294967295;
+  return roll01(seed, q, r, salt);
 }
 
 function getTileId(q, r) {

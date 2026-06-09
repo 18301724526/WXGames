@@ -1,3 +1,9 @@
+const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+
+const CONFIG_VERSION = '1.0.0';
+const CONFIG_SCHEMA_VERSION = 1;
+const sourcePath = __filename;
+
 const TECH_POINT_GRANTS = {
   1: 1,
   2: 1,
@@ -407,6 +413,55 @@ const TECHS = TECH_ERAS.flatMap((eraConfig) => (
 
 const TECH_BY_ID = Object.fromEntries(TECHS.map((tech) => [tech.id, tech]));
 
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function raw() {
+  return clone({
+    techPointGrants: TECH_POINT_GRANTS,
+    techChoiceLimits: TECH_CHOICE_LIMITS,
+    resourceLabels: RESOURCE_LABELS,
+    buildingLabels: BUILDING_LABELS,
+    techEras: TECH_ERAS,
+    techRouteMeta: TECH_ROUTE_META,
+    techTreeLayout: TECH_TREE_LAYOUT,
+    techs: TECHS,
+  });
+}
+
+function createRegistryEntries() {
+  return Object.fromEntries(TECHS.map((tech) => [tech.id, clone(tech)]));
+}
+
+function getRegistryMetadata() {
+  return ConfigRegistryContract.createRegistryMetadata({
+    id: 'tech-tree-config',
+    schema: 'tech-tree-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  });
+}
+
+function validateRegistry() {
+  return ConfigRegistryContract.validateRegistry({
+    id: 'tech-tree-config',
+    schema: 'tech-tree-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  }, {
+    requireEntries: true,
+    requireVersion: true,
+    requireObjectKeyMatch: true,
+  });
+}
+
 module.exports = {
   TECH_POINT_GRANTS,
   TECH_CHOICE_LIMITS,
@@ -417,4 +472,9 @@ module.exports = {
   TECH_TREE_LAYOUT,
   TECHS,
   TECH_BY_ID,
+  raw,
+  getVersion: () => CONFIG_VERSION,
+  getSourcePath: () => sourcePath,
+  getRegistryMetadata,
+  validateRegistry,
 };

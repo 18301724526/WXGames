@@ -13,9 +13,11 @@ const {
   getDistanceFromCapital,
   getSortedSideKey,
   normalizeSeedCoordArgs,
-  random01,
   toInteger,
 } = require('./WorldMapShared');
+const {
+  roll01,
+} = require('./WorldMapGenerationAuthority');
 
 const WORLD_WATER_FEATURE_CACHE = new Map();
 
@@ -26,7 +28,7 @@ function rotateSide(side, steps) {
 }
 
 function pickSide(seed, salt) {
-  return SIDE_ORDER[Math.floor(random01(seed, 0, 0, salt) * SIDE_ORDER.length) % SIDE_ORDER.length];
+  return SIDE_ORDER[Math.floor(roll01(seed, 0, 0, salt) * SIDE_ORDER.length) % SIDE_ORDER.length];
 }
 
 function createOceanBasin(seed, id, side, options = {}) {
@@ -34,10 +36,10 @@ function createOceanBasin(seed, id, side, options = {}) {
   const lateralSide = rotateSide(side, options.lateralTurn || 1);
   const lateral = SIDE_DIRECTIONS[lateralSide] || SIDE_DIRECTIONS.se;
   const coastDistance = (options.baseDistance || 4)
-    + Math.floor(random01(seed, id, 0, `ocean-${id}-distance`) * (options.distanceSpread || 3));
-  const lateralOffset = Math.floor(random01(seed, id, 1, `ocean-${id}-lateral`) * 5) - 2;
+    + Math.floor(roll01(seed, id, 0, `ocean-${id}-distance`) * (options.distanceSpread || 3));
+  const lateralOffset = Math.floor(roll01(seed, id, 1, `ocean-${id}-lateral`) * 5) - 2;
   const lateralRadius = (options.baseRadius || 2)
-    + Math.floor(random01(seed, id, 2, `ocean-${id}-radius`) * (options.radiusSpread || 3));
+    + Math.floor(roll01(seed, id, 2, `ocean-${id}-radius`) * (options.radiusSpread || 3));
   const coastJitter = options.coastJitter || 3;
   const openCenterDistance = coastDistance + Math.ceil(coastJitter / 2);
   return {
@@ -58,7 +60,7 @@ function createOceanBasin(seed, id, side, options = {}) {
 function buildOceanBasins(seed) {
   const primarySide = pickSide(seed, 'primary-ocean-side');
   const secondarySide = SIDE_OPPOSITES[primarySide] || rotateSide(primarySide, 2);
-  const tertiarySide = rotateSide(primarySide, random01(seed, 0, 0, 'tertiary-ocean-turn') < 0.5 ? 1 : -1);
+  const tertiarySide = rotateSide(primarySide, roll01(seed, 0, 0, 'tertiary-ocean-turn') < 0.5 ? 1 : -1);
   return [
     createOceanBasin(seed, 'primary', primarySide, { baseDistance: 22, distanceSpread: 4, baseRadius: 2, radiusSpread: 3, coastJitter: 4 }),
     createOceanBasin(seed, 'secondary', secondarySide, { baseDistance: 27, distanceSpread: 5, baseRadius: 3, radiusSpread: 4, lateralTurn: -1, coastJitter: 5 }),
@@ -74,7 +76,7 @@ function getProjection(q, r, side) {
 function getOpenOceanCoastDistance(seed, basin, lateralProjection) {
   const jitter = Math.max(0, toInteger(basin.coastJitter, 0));
   if (!jitter) return basin.coastDistance;
-  const coastRoll = random01(seed, basin.id, lateralProjection, 'open-ocean-coast');
+  const coastRoll = roll01(seed, basin.id, lateralProjection, 'open-ocean-coast');
   return basin.coastDistance + Math.round((coastRoll - 0.5) * jitter);
 }
 
@@ -132,7 +134,7 @@ function hasOceanTemplateForBasins(seed, q, r, basins) {
 }
 
 function getRiverLength(seed) {
-  return HOME_RIVER_LENGTH + Math.floor(random01(seed, 0, 0, 'home-river-length') * 3);
+  return HOME_RIVER_LENGTH + Math.floor(roll01(seed, 0, 0, 'home-river-length') * 3);
 }
 
 function canBuildRiverPath(seed, q, r, oceanSide, length, basins) {
@@ -165,7 +167,7 @@ function findRiverChannel(seed, basins) {
       if (!canBuildRiverPath(seed, q, r, oceanSide, length, basins)) continue;
       const distance = getDistanceFromCapital(q, r);
       const shoreScore = getOceanBasinScoreForBasins(seed, q + oceanDir.q, r + oceanDir.r, basins);
-      const stableNoise = random01(seed, q, r, `river-channel-${oceanSide}`);
+      const stableNoise = roll01(seed, q, r, `river-channel-${oceanSide}`);
       candidates.push({
         q,
         r,

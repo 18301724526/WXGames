@@ -129,7 +129,7 @@ function createTerritoryMilitaryMissions(dependencies = {}) {
     return allocations;
   }
 
-  function advanceScoutMission(gameState, mission, now = new Date(), randomSource = Math.random) {
+  function advanceScoutMission(gameState, mission, now = new Date(), randomSource = null) {
     void randomSource;
     const nowMs = now.getTime();
     const route = Array.isArray(mission.route) ? mission.route : [];
@@ -176,7 +176,7 @@ function createTerritoryMilitaryMissions(dependencies = {}) {
     return mission;
   }
 
-  function updateMissionReadiness(gameState, now = new Date(), randomSource = Math.random) {
+  function updateMissionReadiness(gameState, now = new Date(), randomSource = null) {
     const nowMs = now.getTime();
     for (const mission of gameState?.warMissions || []) {
       if (getMissionKind(mission) === 'scout' && mission.status === 'active') {

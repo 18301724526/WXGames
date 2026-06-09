@@ -1,4 +1,6 @@
 const path = require('path');
+const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+
 const sourcePath = path.join(__dirname, '..', '..', 'shared', 'buildingConfig.json');
 const config = require(sourcePath);
 
@@ -197,10 +199,40 @@ function getScalePlanPreview(buildingId) {
   };
 }
 
+function getRegistryMetadata() {
+  return ConfigRegistryContract.createRegistryMetadata({
+    id: 'building-config',
+    schema: 'building-config-registry',
+    schemaVersion: 1,
+    version: config.version,
+    source: sourcePath,
+    entries: config.buildings || {},
+    content: config,
+  });
+}
+
+function validateRegistry() {
+  return ConfigRegistryContract.validateRegistry({
+    id: 'building-config',
+    schema: 'building-config-registry',
+    schemaVersion: 1,
+    version: config.version,
+    source: sourcePath,
+    entries: config.buildings || {},
+    content: config,
+  }, {
+    requireEntries: true,
+    requireVersion: true,
+    requireObjectKeyMatch: true,
+  });
+}
+
 module.exports = {
   raw: () => cloneConfig(config),
   getVersion: () => config.version || null,
   getSourcePath: () => sourcePath,
+  getRegistryMetadata,
+  validateRegistry,
   getAllBuildings,
   getBuilding,
   hasBuilding,

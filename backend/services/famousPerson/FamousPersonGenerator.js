@@ -81,9 +81,10 @@ function makeSkillName(effects = []) {
   return effects.map((effect) => EFFECTS[effect.key]?.label || effect.key).join('');
 }
 
-function createSkill(archetype, randomSource = Math.random) {
-  const pair = pick(archetype.skillPairs, randomSource) || archetype.skillPairs[0];
-  const effects = pair.map((key) => EFFECTS[key].create(rollUnit(randomSource)));
+function createSkill(archetype, randomSource = null) {
+  const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(`${archetype.id}:skill`);
+  const pair = pick(archetype.skillPairs, source) || archetype.skillPairs[0];
+  const effects = pair.map((key) => EFFECTS[key].create(rollUnit(source)));
   return {
     id: `skill_${pair.join('_')}`,
     name: makeSkillName(effects),
@@ -92,9 +93,10 @@ function createSkill(archetype, randomSource = Math.random) {
   };
 }
 
-function createAttributes(archetype, randomSource = Math.random) {
+function createAttributes(archetype, randomSource = null) {
+  const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(`${archetype.id}:attributes`);
   return Object.entries(archetype.attributes).reduce((result, [key, base]) => {
-    const variance = Math.floor(rollUnit(randomSource) * 15) - 4;
+    const variance = Math.floor(rollUnit(source) * 15) - 4;
     result[key] = clampAttributeValue(base + variance, base, ATTRIBUTE_INITIAL_MAX_VALUE);
     return result;
   }, {});
@@ -105,19 +107,21 @@ function getArchetypePool(sourceType) {
   return ARCHETYPES.filter((archetype) => archetype.roles.some((role) => source.roles.includes(role)));
 }
 
-function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), randomSource = Math.random) {
+function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), randomSource = null) {
   const sourceType = payload.source;
+  const fallbackSeed = `${gameState.playerId || 'player'}:${sourceType || 'seek'}:${now.getTime()}`;
+  const source = typeof randomSource === 'function' ? randomSource : createSeedRandom(fallbackSeed);
   const pool = getArchetypePool(sourceType);
-  const archetype = pick(pool, randomSource) || ARCHETYPES[0];
-  const quality = SkillGeneratorService.rollQuality(randomSource);
-  const surname = pick(SURNAMES, randomSource) || SURNAMES[0];
-  const given = pick(archetype.namePool, randomSource) || archetype.namePool[0];
-  const title = pick(archetype.titlePool, randomSource) || archetype.titlePool[0];
-  const rollId = Math.floor(rollUnit(randomSource) * 1000000).toString(36).padStart(4, '0');
+  const archetype = pick(pool, source) || ARCHETYPES[0];
+  const quality = SkillGeneratorService.rollQuality(source);
+  const surname = pick(SURNAMES, source) || SURNAMES[0];
+  const given = pick(archetype.namePool, source) || archetype.namePool[0];
+  const title = pick(archetype.titlePool, source) || archetype.titlePool[0];
+  const rollId = Math.floor(rollUnit(source) * 1000000).toString(36).padStart(4, '0');
   const activeCityId = gameState.activeCityId || CityService.CAPITAL_CITY_ID;
   const seed = `${gameState.playerId || 'player'}:${now.getTime()}:${rollId}`;
   const abilityArchetype = SkillGeneratorService.normalizeAbilityArchetype(archetype.abilityArchetype || archetype.id);
-  const abilityKit = SkillGeneratorService.createAbilityKit({ archetype: archetype.id, abilityArchetype, quality, source: sourceType, seed }, randomSource);
+  const abilityKit = SkillGeneratorService.createAbilityKit({ archetype: archetype.id, abilityArchetype, quality, source: sourceType, seed }, source);
   const activeSkill = SkillGeneratorService.getActiveBattleSkill(abilityKit);
   return {
     id: `fpc_${now.getTime().toString(36)}_${rollId}`,
@@ -136,12 +140,12 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
     quality,
     qualityLabel: SkillGeneratorService.getQualityLabel(quality),
     roles: [...archetype.roles],
-    attributes: createAttributes(archetype, randomSource),
+    attributes: createAttributes(archetype, source),
     traits: [archetype.label, SkillGeneratorService.getQualityLabel(quality)],
     abilityKit,
     skills: activeSkill ? [activeSkill] : [],
-    appearance: createAppearance(archetype, seed, randomSource),
-    status: { assigned: 'candidate', loyalty: 55 + Math.floor(rollUnit(randomSource) * 30) },
+    appearance: createAppearance(archetype, seed, source),
+    status: { assigned: 'candidate', loyalty: 55 + Math.floor(rollUnit(source) * 30) },
     createdAt: now.toISOString(),
     joinedAt: null,
     generatorVersion: GENERATOR_VERSION,

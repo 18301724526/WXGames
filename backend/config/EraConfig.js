@@ -69,6 +69,12 @@ const ERA_ADVANCEMENT = {
   },
 };
 
+const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+
+const CONFIG_VERSION = '1.0.0';
+const CONFIG_SCHEMA_VERSION = 1;
+const sourcePath = __filename;
+
 function getEraName(era) {
   return ERA_NAMES[era] || `时代${era}`;
 }
@@ -81,11 +87,73 @@ function getAdvanceConfig(currentEra) {
   return ERA_ADVANCEMENT[currentEra] || null;
 }
 
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function raw() {
+  return clone({
+    names: ERA_NAMES,
+    descriptions: ERA_DESCRIPTIONS,
+    buildingUnlocks: ERA_BUILDING_UNLOCKS,
+    advancement: ERA_ADVANCEMENT,
+  });
+}
+
+function createRegistryEntries() {
+  const entries = {};
+  ERA_NAMES.forEach((name, era) => {
+    const id = `era:${era}`;
+    entries[id] = {
+      id,
+      era,
+      name,
+      description: ERA_DESCRIPTIONS[era] || '',
+      buildingUnlocks: ERA_BUILDING_UNLOCKS[era] || [],
+      advancement: ERA_ADVANCEMENT[era] || null,
+    };
+  });
+  return entries;
+}
+
+function getRegistryMetadata() {
+  return ConfigRegistryContract.createRegistryMetadata({
+    id: 'era-config',
+    schema: 'era-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  });
+}
+
+function validateRegistry() {
+  return ConfigRegistryContract.validateRegistry({
+    id: 'era-config',
+    schema: 'era-config-registry',
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    version: CONFIG_VERSION,
+    source: sourcePath,
+    entries: createRegistryEntries(),
+    content: raw(),
+  }, {
+    requireEntries: true,
+    requireVersion: true,
+    requireObjectKeyMatch: true,
+  });
+}
+
 module.exports = {
   ERA_NAMES,
   ERA_DESCRIPTIONS,
   ERA_BUILDING_UNLOCKS,
   ERA_ADVANCEMENT,
+  raw,
+  getVersion: () => CONFIG_VERSION,
+  getSourcePath: () => sourcePath,
+  getRegistryMetadata,
+  validateRegistry,
   getEraName,
   getEraDescription,
   getAdvanceConfig,

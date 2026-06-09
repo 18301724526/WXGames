@@ -8,6 +8,8 @@ const Constants = require('../services/famousPerson/FamousPersonConstants');
 const Shared = require('../services/famousPerson/FamousPersonShared');
 const Progression = require('../services/famousPerson/FamousPersonProgression');
 const Generator = require('../services/famousPerson/FamousPersonGenerator');
+const FamousPersonRandomAuthority = require('../services/famousPerson/FamousPersonRandomAuthority');
+const ServerRandomAuthorityContract = require('../services/random/ServerRandomAuthorityContract');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const famousRoot = path.join(serviceRoot, 'famousPerson');
@@ -27,6 +29,7 @@ test('FamousPersonService delegates static and progression responsibilities to f
     'FamousPersonConstants.js',
     'FamousPersonGenerator.js',
     'FamousPersonProgression.js',
+    'FamousPersonRandomAuthority.js',
     'FamousPersonShared.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -96,6 +99,28 @@ test('famous person generator preserves candidate and tutorial scout contracts',
 
   assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'combo' }]), '血刃连袭');
   assert.equal(Generator.getArchetypePool('seek').some((item) => item.id === 'scout'), true);
+});
+
+test('famous person candidate generation consumes server random authority by default', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'famous-authority',
+    activeCityId: 'capital',
+    currentEra: 3,
+  };
+
+  const candidate = FamousPersonService.createFamousPersonCandidate(gameState, { source: 'seek' }, now);
+  const injected = FamousPersonService.createFamousPersonCandidate(gameState, { source: 'seek' }, now, () => 0.42);
+
+  assert.deepEqual(candidate.source.randomAuthority, {
+    schema: ServerRandomAuthorityContract.SCHEMA,
+    authority: ServerRandomAuthorityContract.AUTHORITY,
+    domain: FamousPersonRandomAuthority.DOMAIN,
+    action: FamousPersonRandomAuthority.DEFAULT_ACTION,
+    subjectId: 'candidate:famous-authority:seek:capital',
+    seed: 'famous-authority:seek:1780704000000:capital',
+  });
+  assert.equal(injected.source.randomAuthority, undefined);
 });
 
 test('FamousPersonService facade preserves seek, accept, and tutorial grant API', () => {

@@ -465,14 +465,105 @@ P11-005 deployed status:
 
 - Complete, committed, pushed, deployed, and online verified.
 
+P11-006 phase 1 status:
+
+- Complete locally.
+- Added `ConfigRegistryContract` as the candidate config registry/version contract.
+- `TaskDefinitionNormalizer` and `BuildingConfig` now expose registry metadata/validation while preserving legacy behavior.
+- Focused regression passed: `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js`.
+- Architecture gate passed with 424 tests at phase 1: `npm.cmd run test:architecture`.
+
+P11-006 phase 2 status:
+
+- Complete locally.
+- Added `ServerRandomAuthorityContract` as the candidate backend random authority contract.
+- `TerritoryScoutResults` now consumes server-authoritative random sources for scout outcome and generated-site template rolls while preserving deterministic test injection.
+- `TerritoryService` and `TerritoryMilitaryMissions` no longer use default `Math.random` for scout result paths.
+- Focused regression passed: `node --test backend/tests/ServerRandomAuthorityContract.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/TerritoryClientAssembler.test.js backend/tests/TerritoryActionTutorial.test.js backend/tests/ConfigRegistryContract.test.js`.
+- Architecture gate passed with 444 tests: `npm.cmd run test:architecture`.
+
+P11-006 phase 3 status:
+
+- Complete locally.
+- Added `FamousPersonRandomAuthority` as the famous-person random authority adapter.
+- Famous-person candidate generation now consumes backend-authoritative random sources by default and records compact `source.randomAuthority` metadata while preserving deterministic test injection.
+- `FamousPersonGenerator` / `FamousPersonShared` no longer use default `Math.random` in candidate generation paths.
+- Focused regression passed with 48 tests: `node --test backend/tests/ServerRandomAuthorityContract.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/SkillGeneratorArchitecture.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js`.
+- Architecture gate passed with 450 tests: `npm.cmd run test:architecture`.
+
+P11-006 phase 4 status:
+
+- Complete locally.
+- Added `DefenderLeaderRandomAuthority` as the defender-leader random authority adapter.
+- Defender-leader generation now consumes backend-authoritative random sources by default and records compact `source.randomAuthority` metadata while preserving deterministic test injection.
+- `DefenderLeaderService` no longer uses default `Math.random` in defender-leader generation paths.
+- Focused regression passed with 58 tests: `node --test backend/tests/ServerRandomAuthorityContract.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/TerritoryClientAssembler.test.js backend/tests/BattleArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js`.
+- Architecture gate passed with 451 tests: `npm.cmd run test:architecture`.
+
+P11-006 phase 5 status:
+
+- Complete locally.
+- Added `WorldMapGenerationAuthority` as the world-map deterministic materialization authority.
+- `WorldMapService`, `WorldMapWater`, and `WorldMapTiles` now consume `roll01()` from the world-map authority for seeded terrain, water, river, and scout-reveal branch rolls while preserving existing deterministic map output semantics.
+- `WorldMapShared.random01()` remains as a compatibility wrapper over `WorldMapGenerationAuthority.roll01()` so old callers do not need to fork the random/hash algorithm.
+- `createInitialWorldMap()` and `normalizeWorldMap()` now attach compact `generationAuthority` metadata with `authority: server`, `domain: worldMap`, and `mode: seeded-hash`.
+- Battle rewards were inspected: current battle experience/reward output is deterministic formula logic in `BattleReports.createExperienceSummary()`, so it is not a random authority migration target until chance rewards/drops are introduced.
+- Focused regression passed with 72 tests: `node --test backend/tests/WorldMapArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/TerritoryClientAssembler.test.js backend/tests/BattleArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerDtoMapper.test.js`.
+- Architecture gate passed with 457 tests: `npm.cmd run test:architecture`.
+
+P11-006 phase 6 status:
+
+- Complete locally.
+- Added `SkillGeneratorRandomAuthority` as the skill/ability-kit random authority adapter.
+- `SkillAbilityKitService`, `SkillAbilityFactory`, `SkillGeneratorNormalizer`, and `SkillGeneratorShared` no longer default to `Math.random`; default generation consumes backend-authoritative random sources and deterministic test injection remains supported.
+- Ability kits generated through the default authority now include compact `randomAuthority` metadata; explicitly injected deterministic sources preserve legacy test payloads without extra metadata.
+- Focused regression passed with 64 tests: `node --test backend/tests/SkillGeneratorArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/BattleArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js backend/tests/WorldMapArchitecture.test.js backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js`.
+
+P11-006 phase 7 status:
+
+- Complete locally.
+- Core backend config domains now expose `raw()`, `getVersion()`, `getSourcePath()`, `getRegistryMetadata()`, and `validateRegistry()` where applicable:
+  - `backend/config/GameConfig.js`
+  - `backend/config/EraConfig.js`
+  - `backend/config/TutorialFlowConfig.js`
+  - `backend/config/BattleConfig.js`
+  - `backend/config/TechTreeConfig.js`
+  - existing `backend/config/BuildingConfig.js`
+- `scripts/run-architecture-smoke.js` now syntax-checks those config modules as part of `npm.cmd run test:architecture`.
+- Focused config regression passed with 25 tests: `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js backend/tests/BattleArchitecture.test.js`.
+
+P11-006 phase 8 status:
+
+- Complete locally.
+- `TalentPolicyService.createCustomPolicyId()` now uses backend `crypto.randomBytes()` instead of business-code `Math.random`.
+- `backend/tests/TalentPolicyService.test.js` covers deterministic custom policy id formatting plus generated/explicit custom policy save behavior.
+- Business-code random scan is clean: `rg -n "Math\.random" backend/services backend/config backend/tests frontend/js scripts --glob '!frontend/js/vendor/**'` returns no matches.
+- Focused talent/skill random regression passed with 43 tests: `node --test backend/tests/TalentPolicyService.test.js backend/tests/SkillGeneratorArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/BattleArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`.
+
 ## Next Architecture Work
 
-After P11-005 local verification is complete, continue:
+After P11-006 local completion, continue:
 
-1. P11-006: Config/version hardening.
+1. Run final full architecture gate and whitespace check for the complete local P11-006 patch.
 2. Downstream realtime adoption: multiplayer transport, presenter/runtime consumers, and AOI stress checks.
-3. Keep the strict browser tutorial visual QA harness as the acceptance gate for future tutorial/hitTarget/highlight/deploy-risk changes.
+3. Stable promotion observation: keep P11 modules as `candidate` until downstream consumers prove extension surfaces without churn.
+4. Keep the strict browser tutorial visual QA harness as the acceptance gate for future tutorial/hitTarget/highlight/deploy-risk changes.
 
-Do not promote the new tile topology, large-map streaming, or realtime authority modules to `stable` yet. They are `candidate` until downstream presenter/runtime/renderer and multiplayer transport consumers prove the extension surface without churn.
+Do not promote the new tile topology, large-map streaming, realtime authority, config registry, or random authority modules to `stable` yet. They are `candidate` until downstream presenter/runtime/renderer, multiplayer transport, and config-update consumers prove the extension surface without churn.
 
-Current overall refactor progress estimate: about `96.5%`.
+Final P11-006 full gate:
+
+```powershell
+npm.cmd run test:architecture
+rg -n "Math\.random" backend/services backend/config backend/tests frontend/js scripts --glob '!frontend/js/vendor/**'
+```
+
+Results:
+
+- Architecture gate: 467 passed
+- Stable block manifest guard: passed
+- Official document guard: passed
+- `git diff --check`: passed
+- Business-code `Math.random` scan: clean
+
+Current overall refactor progress estimate: `100%` for the documented P0-P11 architecture refactor scope. Remaining work is follow-up adoption/observation, not incomplete refactor scope.

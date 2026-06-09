@@ -2399,6 +2399,662 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
 - `npm run test:architecture`
 
+### `backend/services/config/ConfigRegistryContract.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- 配置 registry 的纯契约 / pure config registry contract
+- registry id、schema、schemaVersion、version、contentHash、entryCount、entryIds metadata
+- stable JSON hashing with sorted object keys and stable entry ordering
+- entry id uniqueness validation and optional object-key/id match validation
+- config version comparison and bump recommendation: none/minor/major
+- no gameplay rule, route, repository, renderer, DOM, or filesystem write
+
+公开 API / Public API:
+
+- `ConfigRegistryContract.normalizeVersion(value, fallback)`
+- `ConfigRegistryContract.createStableContentHash(value, options)`
+- `ConfigRegistryContract.stableStringify(value)`
+- `ConfigRegistryContract.createRegistryMetadata(input, options)`
+- `ConfigRegistryContract.validateRegistry(input, options)`
+- `ConfigRegistryContract.compareRegistryVersions(before, after, options)`
+- `ConfigRegistryContract.recommendVersionBump(before, after, options)`
+
+性能约束 / Performance Constraints:
+
+- Linear scan over registry entries plus one `Set`/`Map` for id checks.
+- Stable hash sorts object keys recursively, so callers should pass compact config registry payloads, not full runtime state.
+- No deep copy of renderer/game state, no async I/O, no network, no database.
+
+扩展方式 / Extension Path:
+
+- New config domains consume this module through metadata/validation adapters instead of re-implementing version/hash rules.
+- Automatic client update prompts should consume `compareRegistryVersions()` / `recommendVersionBump()` outputs.
+- Server-authoritative random-result boundaries stay in later P11 config/random modules; do not add random generation here.
+
+回归 / Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/random/ServerRandomAuthorityContract.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- 后端权威随机数契约 / server-authoritative random roll contract
+- stable random roll envelope: `schema`, `authority`, `domain`, `action`, `subjectId`, `seed`, `sequence`, `serverTime`, `value`, `rollId`
+- bounded unit roll normalization in `[0, 0.999999]`
+- injectable deterministic random source for tests while keeping default runtime entropy backend-owned
+- chance roll helper that records threshold and server authority metadata
+- no gameplay result selection, no frontend import, no renderer/DOM, no persistence writes
+
+公开 API / Public API:
+
+- `ServerRandomAuthorityContract.SCHEMA`
+- `ServerRandomAuthorityContract.AUTHORITY`
+- `ServerRandomAuthorityContract.createScope(input, options)`
+- `ServerRandomAuthorityContract.createRoll(input, options)`
+- `ServerRandomAuthorityContract.createRandomSource(input, options)`
+- `ServerRandomAuthorityContract.rollChance(chance, input, options)`
+- `ServerRandomAuthorityContract.normalizeUnitRoll(value, fallback)`
+- `ServerRandomAuthorityContract.createRollId(roll)`
+
+性能约束 / Performance Constraints:
+
+- O(1) roll creation.
+- Default runtime entropy uses Node backend crypto, not frontend-provided values.
+- Roll envelopes are compact metadata and do not clone game state.
+
+扩展方式 / Extension Path:
+
+- New random-result domains first declare a `domain`/`action` and consume this contract through a narrow service adapter.
+- Gameplay services decide what a successful roll means; this contract only owns random authority and bounded roll metadata.
+- Future audit/persistence can store roll envelopes without changing frontend contracts.
+
+回归 / Regression:
+
+- `node --test backend/tests/ServerRandomAuthorityContract.test.js backend/tests/TerritoryArchitecture.test.js backend/tests/FamousPersonArchitecture.test.js`
+- `npm run test:architecture`
+
+### `backend/services/worldMap/WorldMapGenerationAuthority.js`
+
+Status: candidate
+
+Owns:
+
+- world-map deterministic materialization authority
+- stable `domain: worldMap`, `authority: server`, and `mode: seeded-hash` roll metadata
+- FNV-1a hash and normalized seed/key/salt handling for reproducible terrain, water, river, and scout-reveal branch rolls
+- compact `generationAuthority` metadata for persisted world maps
+- compatibility-preserving roll semantics for string and numeric stable keys
+
+Public API:
+
+- `WorldMapGenerationAuthority.SCHEMA`
+- `WorldMapGenerationAuthority.AUTHORITY`
+- `WorldMapGenerationAuthority.DOMAIN`
+- `WorldMapGenerationAuthority.DETERMINISTIC_MODE`
+- `WorldMapGenerationAuthority.HASH_SCALE`
+- `WorldMapGenerationAuthority.normalizeSeed(seed, fallback)`
+- `WorldMapGenerationAuthority.hashString(input)`
+- `WorldMapGenerationAuthority.createGenerationScope(input)`
+- `WorldMapGenerationAuthority.createDeterministicRoll(input)`
+- `WorldMapGenerationAuthority.createRollId(roll)`
+- `WorldMapGenerationAuthority.roll01(seed, q, r, salt, options)`
+- `WorldMapGenerationAuthority.createWorldMapGenerationMetadata(seed, options)`
+
+Performance Constraints:
+
+- O(length of stable key text) roll creation; no crypto, database, filesystem, renderer, DOM, or game-state clone.
+- Reuses seeded hash semantics so existing world seeds remain reproducible.
+- Metadata is compact and attached once per normalized world map, not per tile.
+
+Extension Path:
+
+- New world-map materialization decisions add a new `action`/`salt` here or consume `roll01()` through this module before changing terrain/water/tile services.
+- Keep gameplay placement rules in `WorldMapService` / territory/explorer services; this module only owns deterministic authority and metadata.
+- Do not add frontend visual randomness, renderer feature jitter, or non-world-map gameplay drops here.
+
+Regression:
+
+- `node --test backend/tests/WorldMapArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/WorldMapService.js`
+
+Status: candidate facade
+
+Owns:
+
+- backend world-map public facade for seed, version, origin, tile list, reveal, scout trail, and client map APIs
+- `generationAuthority` metadata attachment during initial world-map creation and normalization
+- delegation to focused world-map modules for terrain, water, tile normalization, IDs, and deterministic generation authority
+- scout reveal area branch materialization through `WorldMapGenerationAuthority.roll01()`
+
+Public API:
+
+- `WorldMapService.WORLD_MAP_VERSION`
+- `WorldMapService.DEFAULT_WORLD_SEED`
+- `WorldMapService.createWorldMapGenerationMetadata(seed, options)`
+- `WorldMapService.createInitialWorldMap(seed, now)`
+- `WorldMapService.normalizeWorldMap(rawWorldMap, options)`
+- `WorldMapService.ensureWorldMap(gameState, now)`
+- `WorldMapService.createTile(seed, q, r, now, overrides)`
+- `WorldMapService.revealTile(gameState, q, r, now, overrides)`
+- `WorldMapService.revealTileArea(gameState, q, r, now, options)`
+- `WorldMapService.getScoutRevealArea(seed, route, direction, options)`
+- `WorldMapService.revealScoutArea(gameState, revealArea, now)`
+- `WorldMapService.bindSiteToTile(gameState, q, r, siteId, now, options)`
+- `WorldMapService.buildScoutRoute(origin, direction, actionPoints, options)`
+- `WorldMapService.recordScoutTrail(gameState, mission, tileIds, returned)`
+- `WorldMapService.getClientWorldMap(gameState, now)`
+
+Performance Constraints:
+
+- Facade stays under 500 lines and delegates terrain/water/tile/generation decisions to focused modules.
+- Normalization uses one `Map` for tile upsert and stable sorting, with no renderer/frontend dependencies.
+- Scout reveal branch rolls are deterministic O(route length * branch side count).
+
+Extension Path:
+
+- New deterministic world-generation behavior first extends `WorldMapGenerationAuthority`.
+- New terrain/tile fields first extend `WorldMapTiles`; new ocean/river behavior first extends `WorldMapWater`.
+- Do not put renderer visuals, frontend hit targets, or territory battle/conquest rules into this facade.
+
+Regression:
+
+- `node --test backend/tests/WorldMapArchitecture.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
+### `backend/services/famousPerson/FamousPersonRandomAuthority.js`
+
+Status: candidate
+
+Owns:
+
+- famous-person candidate random authority adapter
+- stable `domain: famousPerson` and `action: candidateGeneration` scope values
+- candidate generation subject id and seed derivation from player/source/city/time
+- attaching compact random authority metadata to candidate `source.randomAuthority`
+- deterministic test injection by delegating to `ServerRandomAuthorityContract`
+
+Public API:
+
+- `FamousPersonRandomAuthority.DOMAIN`
+- `FamousPersonRandomAuthority.DEFAULT_ACTION`
+- `FamousPersonRandomAuthority.createCandidateRandomSource(gameState, sourceType, now, options)`
+- `FamousPersonRandomAuthority.createCandidateSeed(gameState, sourceType, now)`
+- `FamousPersonRandomAuthority.createCandidateSubjectId(gameState, sourceType)`
+- `FamousPersonRandomAuthority.createSourceMetadata(randomSource)`
+- `FamousPersonRandomAuthority.getAuthorityScope(randomSource)`
+
+Performance Constraints:
+
+- O(1) source setup; no game-state clone, database IO, frontend import, or persistence write.
+- Random source is created once at candidate generation entry and reused through archetype, quality, name, ability, attribute, appearance, and loyalty rolls.
+
+Extension Path:
+
+- New famous-person random-result domains add a new action/scope here before changing gameplay services.
+- Keep gameplay meaning in `FamousPersonService` / `FamousPersonGenerator`; this adapter only owns random authority metadata.
+- Do not reintroduce default `Math.random` in famous-person candidate generation paths.
+
+Regression:
+
+- `node --test backend/tests/FamousPersonArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/defenderLeader/DefenderLeaderRandomAuthority.js`
+
+Status: candidate
+
+Owns:
+
+- defender-leader random authority adapter
+- stable `domain: defenderLeader` and `action: leaderGeneration` scope values
+- defender leader subject id and seed derivation from territory id/name, owner, threat, and defense
+- compact random authority metadata for generated defender leaders at `source.randomAuthority`
+- deterministic test injection by delegating to `ServerRandomAuthorityContract`
+
+Public API:
+
+- `DefenderLeaderRandomAuthority.DOMAIN`
+- `DefenderLeaderRandomAuthority.DEFAULT_ACTION`
+- `DefenderLeaderRandomAuthority.createLeaderRandomSource(territory, options)`
+- `DefenderLeaderRandomAuthority.createLeaderSeed(territory)`
+- `DefenderLeaderRandomAuthority.createLeaderSubjectId(territory)`
+- `DefenderLeaderRandomAuthority.createSourceMetadata(randomSource)`
+- `DefenderLeaderRandomAuthority.getAuthorityScope(randomSource)`
+
+Performance Constraints:
+
+- O(1) source setup; no game-state clone, route handling, database IO, frontend import, or persistence write.
+- Random source is created once at defender-leader generation entry and reused through name, attribute, appearance, and related generated data.
+
+Extension Path:
+
+- New defender-leader random-result domains add a new action/scope here before changing gameplay services.
+- Keep gameplay meaning in `DefenderLeaderService`; this adapter only owns random authority metadata.
+- Do not reintroduce default `Math.random` in defender-leader generation paths.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js backend/tests/BattleArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/skillGenerator/SkillGeneratorRandomAuthority.js`
+
+Status: candidate
+
+Owns:
+
+- skill/ability-kit random authority adapter
+- stable `domain: skillGenerator` and default `action: abilityKitGeneration` scope values
+- ability-kit seed and subject id derivation from source/archetype/quality
+- fallback random source creation for low-level skill generator helpers that still need a random unit roll
+- compact random authority metadata for generated ability kits through `randomAuthority`
+- deterministic test injection by delegating to `ServerRandomAuthorityContract`
+
+Public API:
+
+- `SkillGeneratorRandomAuthority.DOMAIN`
+- `SkillGeneratorRandomAuthority.DEFAULT_ACTION`
+- `SkillGeneratorRandomAuthority.createAbilityKitSeed(input)`
+- `SkillGeneratorRandomAuthority.createAbilityKitSubjectId(input)`
+- `SkillGeneratorRandomAuthority.createAbilityKitRandomSource(input, options)`
+- `SkillGeneratorRandomAuthority.createFallbackRandomSource(options)`
+- `SkillGeneratorRandomAuthority.createSourceMetadata(randomSource)`
+- `SkillGeneratorRandomAuthority.getAuthorityScope(randomSource)`
+
+Performance Constraints:
+
+- O(1) source setup; no game-state clone, route handling, database IO, frontend import, or persistence write.
+- Random source is created once per ability-kit generation and reused through quality, archetype, active/passive/scout/civil ability rolls.
+
+Extension Path:
+
+- New skill random-result domains add a new action/scope here before changing skill generator services.
+- Keep gameplay meaning in `SkillAbilityKitService` / `SkillAbilityFactory`; this adapter only owns random authority metadata.
+- Do not reintroduce default `Math.random` in skill generator paths.
+
+Regression:
+
+- `node --test backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/territory/TerritoryScoutResults.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- territory scout result decisions, reports, and generated site payloads
+- scout outcome chance calculation using scout streak rules
+- scout site coordinate scoring and terrain/distance weighting
+- generated site template selection and report text
+- first consumer of `ServerRandomAuthorityContract` for backend-authoritative scout outcome/template rolls
+
+公开 API / Public API:
+
+- `createTerritoryScoutResults(dependencies)`
+- `rollScoutOutcome(gameState, randomSource, options)`
+- `pickTemplateForScoutSite(options)`
+- `pickWeightedTemplate(pool, terrain, distance, randomSource, options)`
+- `createSiteFromScout(gameState, mission, now, randomSource)`
+- `createEmptyScoutReport(gameState, mission, now, repeated)`
+- `pickScoutSiteCoordinate(gameState, mission, now)`
+- `recordScoutOutcome(gameState, outcome)`
+- `recordDiscoveredSiteOwnership(gameState, owner)`
+
+扩展方式 / Extension Path:
+
+- New scout result tables/config should enter config registry modules first, then be consumed here through injected data.
+- Random rolls must consume `ServerRandomAuthorityContract`; do not reintroduce default `Math.random` in this module.
+- Keep map terrain selection in `WorldMapService` and battle target/garrison normalization in territory combat modules.
+
+回归 / Regression:
+
+- `node --test backend/tests/ServerRandomAuthorityContract.test.js backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
+### `backend/services/taskDefinitions/TaskDefinitionNormalizer.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- task definition row/header normalization for JSON/xlsx import
+- task condition/action/reward shape normalization
+- task validation for required id/title, duplicate task id, condition/reward JSON, and reward formula errors
+- legacy task definition output fields: `version`, `hash`, `tasks`, `errors`, `summary`
+- task registry metadata/validation consumption through `ConfigRegistryContract`
+
+公开 API / Public API:
+
+- `TaskDefinitionNormalizer.HEADER_ALIASES`
+- `TaskDefinitionNormalizer.CATEGORY_IDS`
+- `TaskDefinitionNormalizer.RESOURCE_KEYS`
+- `TaskDefinitionNormalizer.getHeaderValue(row, key)`
+- `TaskDefinitionNormalizer.normalizeCategory(value)`
+- `TaskDefinitionNormalizer.normalizeTask(rawTask, index)`
+- `TaskDefinitionNormalizer.validateTasks(tasks)`
+- `TaskDefinitionNormalizer.normalizeDefinitions(raw, options)`
+
+扩展方式 / Extension Path:
+
+- New task import fields first extend `HEADER_ALIASES`, normalizer helpers, and focused tests.
+- Keep reward formula resolution in `TaskDefinitionRewardResolver`.
+- Keep import file parsing in `TaskDefinitionImportParser`.
+- Config version/hash rules stay in `ConfigRegistryContract`; this module only consumes registry metadata.
+
+回归 / Regression:
+
+- `node --test backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js backend/tests/ConfigRegistryContract.test.js`
+- `npm run test:architecture`
+
+### `backend/config/BuildingConfig.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- readonly building config accessors backed by `shared/buildingConfig.json`
+- build cost, upgrade cost, max-level, open-ended scale, maintenance, and preview helpers
+- effect bonus calculation for configured per-level building effects
+- building config registry metadata/validation consumption through `ConfigRegistryContract`
+
+公开 API / Public API:
+
+- `BuildingConfig.raw()`
+- `BuildingConfig.getVersion()`
+- `BuildingConfig.getSourcePath()`
+- `BuildingConfig.getRegistryMetadata()`
+- `BuildingConfig.validateRegistry()`
+- `BuildingConfig.getAllBuildings()`
+- `BuildingConfig.getBuilding(buildingId)`
+- `BuildingConfig.hasBuilding(buildingId)`
+- `BuildingConfig.getBuildCost(buildingId)`
+- `BuildingConfig.getUpgradeCost(buildingId, currentLevel)`
+- `BuildingConfig.getMaxLevel(buildingId)`
+- `BuildingConfig.canUpgrade(buildingId, currentLevel)`
+- `BuildingConfig.calculateEffectBonus(buildingId, field, level)`
+- `BuildingConfig.getScalePlan(buildingId)`
+- `BuildingConfig.getMaintenancePolicy()`
+- `BuildingConfig.getMaintenance(buildingId)`
+- `BuildingConfig.isMaintenanceActive()`
+- `BuildingConfig.getMaintenancePreview(buildingId)`
+- `BuildingConfig.getScalePlanPreview(buildingId)`
+
+性能约束 / Performance Constraints:
+
+- Accessors are synchronous readonly lookups over already-loaded JSON.
+- Cost/effect helpers clone only small public return payloads.
+- Registry validation scans building definitions linearly and does not mutate config.
+
+扩展方式 / Extension Path:
+
+- New building data fields are added to `shared/buildingConfig.json` and then exposed through narrow accessors/tests here.
+- New config registry/version behavior extends `ConfigRegistryContract`, not this module.
+- Do not add database writes, route handling, renderer behavior, or task reward resolution here.
+
+回归 / Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js`
+- `npm run test:architecture`
+
+### `backend/config/GameConfig.js`
+
+Status: candidate
+
+Owns:
+
+- backend resource and population tuning config
+- readonly `resources` and `population` compatibility exports
+- config registry metadata/validation consumption through `ConfigRegistryContract`
+
+Public API:
+
+- `GameConfig.resources`
+- `GameConfig.population`
+- `GameConfig.raw()`
+- `GameConfig.getVersion()`
+- `GameConfig.getSourcePath()`
+- `GameConfig.getRegistryMetadata()`
+- `GameConfig.validateRegistry()`
+
+Performance Constraints:
+
+- Synchronous readonly access over small in-memory config objects.
+- Registry validation scans two compact entries and hashes compact config content.
+
+Extension Path:
+
+- New resource/population tuning fields extend the config object and then focused service tests.
+- Registry/version behavior stays in `ConfigRegistryContract`.
+- Do not add runtime state mutation, database writes, routes, or renderer behavior here.
+
+Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/GameStateServiceSplit.test.js`
+- `npm run test:architecture`
+
+### `backend/config/EraConfig.js`
+
+Status: candidate
+
+Owns:
+
+- era names, descriptions, building unlocks, and advancement requirements
+- readonly era query helpers
+- config registry metadata/validation consumption through `ConfigRegistryContract`
+
+Public API:
+
+- `EraConfig.ERA_NAMES`
+- `EraConfig.ERA_DESCRIPTIONS`
+- `EraConfig.ERA_BUILDING_UNLOCKS`
+- `EraConfig.ERA_ADVANCEMENT`
+- `EraConfig.raw()`
+- `EraConfig.getVersion()`
+- `EraConfig.getSourcePath()`
+- `EraConfig.getRegistryMetadata()`
+- `EraConfig.validateRegistry()`
+- `EraConfig.getEraName(era)`
+- `EraConfig.getEraDescription(era)`
+- `EraConfig.getAdvanceConfig(currentEra)`
+
+Performance Constraints:
+
+- Era lookups are O(1) by numeric era id.
+- Registry validation scans the small era list and does not mutate config.
+
+Extension Path:
+
+- New era requirements or unlocks are added here and covered by advancement/task/tutorial tests.
+- Registry/version behavior stays in `ConfigRegistryContract`.
+- Do not add resource deduction, city mutation, route handling, or UI text rendering here.
+
+Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/TaskDefinitionService.test.js`
+- `npm run test:architecture`
+
+### `backend/config/TutorialFlowConfig.js`
+
+Status: candidate
+
+Owns:
+
+- backend tutorial step constants, event-step mapping, pass-through actions, and client step gates
+- phase-completion summary helper
+- config registry metadata/validation consumption through `ConfigRegistryContract`
+
+Public API:
+
+- `TutorialFlowConfig.TUTORIAL_STEPS`
+- `TutorialFlowConfig.TUTORIAL_EVENT_STEPS`
+- `TutorialFlowConfig.PASS_THROUGH_ACTIONS`
+- `TutorialFlowConfig.CLIENT_TUTORIAL_STEP_GATES`
+- `TutorialFlowConfig.raw()`
+- `TutorialFlowConfig.getVersion()`
+- `TutorialFlowConfig.getSourcePath()`
+- `TutorialFlowConfig.getRegistryMetadata()`
+- `TutorialFlowConfig.validateRegistry()`
+- `TutorialFlowConfig.createPhaseCompleted(currentStep)`
+
+Performance Constraints:
+
+- Step/gate lookups use frozen in-memory constants.
+- Registry validation builds compact step/action/gate entries only.
+
+Extension Path:
+
+- New tutorial steps update constants, event mapping/gates, tutorial services, frontend guide policy, and screenshot playtest expectations together.
+- Registry/version behavior stays in `ConfigRegistryContract`.
+- Do not add Canvas hit-target resolution or frontend highlight logic here.
+
+Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/TutorialArchitecture.test.js backend/tests/TutorialProgressService.test.js`
+- `npm run test:architecture`
+
+### `backend/config/BattleConfig.js`
+
+Status: candidate
+
+Owns:
+
+- battle rule constants, fallback leader/skills, battle-map assets, and defender profile config
+- readonly battle config accessors
+- config registry metadata/validation consumption through `ConfigRegistryContract`
+
+Public API:
+
+- `BattleConfig.DEFAULT_SOLDIER_SCALE`
+- `BattleConfig.MIN_BATTLE_SOLDIERS`
+- `BattleConfig.MAX_BATTLE_ROUNDS`
+- `BattleConfig.BATTLE_SYSTEM`
+- `BattleConfig.MORALE_EFFECT_ENABLED`
+- `BattleConfig.SKILL_RULES`
+- `BattleConfig.getBattleRules()`
+- `BattleConfig.getFallbackLeader()`
+- `BattleConfig.getFallbackSkill(role)`
+- `BattleConfig.getBattleMapForType(type)`
+- `BattleConfig.getBattleStageForType(type)`
+- `BattleConfig.getDefenderProfileForOwner(owner, territoryName)`
+- `BattleConfig.raw()`
+- `BattleConfig.getVersion()`
+- `BattleConfig.getSourcePath()`
+- `BattleConfig.getRegistryMetadata()`
+- `BattleConfig.validateRegistry()`
+
+Performance Constraints:
+
+- Accessors clone only small public payloads.
+- Registry validation hashes compact config, not battle runtime reports or unit state.
+
+Extension Path:
+
+- New battle config values enter this module first, then battle service/runtime tests.
+- Random battle rewards or drops must use `ServerRandomAuthorityContract` through a domain adapter before being consumed here.
+- Do not add battle simulation, report generation, route handling, or persistence writes here.
+
+Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/BattleArchitecture.test.js`
+- `npm run test:architecture`
+
+### `backend/config/TechTreeConfig.js`
+
+Status: candidate
+
+Owns:
+
+- tech point grants, choice limits, labels, era tech data, route metadata, layout metadata, and tech id index
+- tech tree metadata helper
+- config registry metadata/validation consumption through `ConfigRegistryContract`
+
+Public API:
+
+- `TechTreeConfig.TECH_POINT_GRANTS`
+- `TechTreeConfig.TECH_CHOICE_LIMITS`
+- `TechTreeConfig.RESOURCE_LABELS`
+- `TechTreeConfig.BUILDING_LABELS`
+- `TechTreeConfig.TECH_ERAS`
+- `TechTreeConfig.TECH_ROUTE_META`
+- `TechTreeConfig.TECH_TREE_LAYOUT`
+- `TechTreeConfig.TECHS`
+- `TechTreeConfig.TECH_BY_ID`
+- `TechTreeConfig.raw()`
+- `TechTreeConfig.getVersion()`
+- `TechTreeConfig.getSourcePath()`
+- `TechTreeConfig.getRegistryMetadata()`
+- `TechTreeConfig.validateRegistry()`
+
+Performance Constraints:
+
+- `TECH_BY_ID` is built once at module load for O(1) tech lookup.
+- Registry validation scans the flat `TECHS` array and does not clone runtime research state.
+
+Extension Path:
+
+- New tech rows extend `TECH_ERAS`/`TECH_TREE_LAYOUT`, then service and presenter tests.
+- Registry/version behavior stays in `ConfigRegistryContract`.
+- Do not add research mutation, resource spending, renderer layout drawing, or persistence writes here.
+
+Regression:
+
+- `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/GameRoutesTutorial.test.js`
+- `npm run test:architecture`
+
+### `backend/services/TalentPolicyService.js`
+
+Status: candidate
+
+Owns:
+
+- backend talent-policy state normalization, draft policy creation, preview allocation, apply/save/delete behavior
+- system policy and custom policy compatibility payloads
+- custom policy id creation through backend crypto-backed entropy
+- tutorial completion side effects for talent-policy milestones
+
+Public API:
+
+- `TalentPolicyService.DEFAULT_TIERS`
+- `TalentPolicyService.ROLE_DEFINITIONS`
+- `TalentPolicyService.TENDENCY_DEFINITIONS`
+- `TalentPolicyService.SYSTEM_POLICIES`
+- `TalentPolicyService.createInitialTalentPolicyState()`
+- `TalentPolicyService.normalizeTalentPolicyState(raw)`
+- `TalentPolicyService.normalizeTiers(raw)`
+- `TalentPolicyService.makeCustomPolicyName(basePolicyId)`
+- `TalentPolicyService.createCustomPolicyId(now, randomBytes)`
+- `TalentPolicyService.getClientState(gameState)`
+- `TalentPolicyService.buildAllocationPreview(gameState, policy)`
+- `TalentPolicyService.applyPolicy(gameState, payload)`
+- `TalentPolicyService.saveCustomPolicy(gameState, payload)`
+- `TalentPolicyService.deleteCustomPolicy(gameState, payload)`
+
+Performance Constraints:
+
+- Policy allocation is bounded by role/tendency count and city population fields, not by world-map size.
+- Custom policy id entropy is O(1) backend crypto metadata; no gameplay state clone or frontend-provided randomness.
+
+Extension Path:
+
+- New policy formulas extend policy definitions and focused service tests.
+- New probability-based policy outcomes must first declare a random authority adapter through `ServerRandomAuthorityContract`.
+- Do not reintroduce `Math.random`, renderer logic, route handling, or database writes here.
+
+Regression:
+
+- `node --test backend/tests/TalentPolicyService.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/GameStateMigrationPipeline.js`
 
 状态 / Status: candidate
@@ -3520,7 +4176,7 @@ Regression:
 
 - P0/P1/P2/P3/P4/P5/P6 candidate/stable baseline 的快速架构回归
 - 架构相关文件语法检查 / syntax checks
-- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, canvas action handler split modules, canvas game renderer composition/facade modules, tutorial guide policy/resolver/phase/UI-state modules, game state migration pipeline, world explorer DTO mapper, realtime authority contracts, and backend version service
+- all currently registered candidate/stable baseline focused tests: feature flags, asset key registry, preload asset manifest, layer registry, shell lifecycle, frozen fog renderer, world map snapshots, world map performance budget, march progress snapshot, world map render snapshot, fog visual snapshot, visual plugin registry, debug overlay snapshot, debug overlay registry, world map input action map, world map renderer split modules, canvas action handler split modules, canvas game renderer composition/facade modules, tutorial guide policy/resolver/phase/UI-state modules, game state migration pipeline, world explorer DTO mapper, realtime authority contracts, config registry contract, server random authority contract, famous-person and defender-leader random authority consumers, and backend version service
 - `git diff --check`
 
 公开命令 / Public Command:
@@ -4110,3 +4766,12 @@ Recommended first split sequence:
 | 2026-06-08 | Added `UIStatePresenterDelegates` for P10-001; `UIStatePresenter` now delegates dependency resolution and static method installation to the registry and dropped to 23 lines as a candidate facade. |
 | 2026-06-09 | Added `WorldChunkAddress`, `WorldInterestWindow`, and `WorldRevealStore` for P11-004 large-map streaming contracts; H5/minigame entrypoints and `npm run test:architecture` now include the new candidate modules. |
 | 2026-06-09 | Added `CommandAuthorityContract`, `ServerTimelineSnapshot`, and `AoiSyncSnapshot` for P11-005 realtime authority contracts; world-march stop is now server-timeline derived, territory scout/conquest/claim actions attach authority envelopes, and `npm run test:architecture` includes realtime focused tests. |
+| 2026-06-09 | Added `ConfigRegistryContract` for P11-006 config/version hardening phase 1; `TaskDefinitionNormalizer` and `BuildingConfig` now expose registry metadata/validation while preserving legacy gameplay/import fields, and `npm run test:architecture` includes the config registry focused test. |
+| 2026-06-09 | Added `ServerRandomAuthorityContract` for P11-006 config/random hardening phase 2; territory scout outcome and site template rolls now consume backend-authoritative random sources instead of default `Math.random`, and `npm run test:architecture` includes the random authority focused test. |
+| 2026-06-09 | Added `FamousPersonRandomAuthority` for P11-006 config/random hardening phase 3; famous-person candidate generation now consumes backend-authoritative random sources by default, exposes compact `source.randomAuthority` metadata, preserves deterministic injection for tests, and is included in `npm run test:architecture`. |
+| 2026-06-09 | Added `DefenderLeaderRandomAuthority` for P11-006 config/random hardening phase 4; defender-leader generation now consumes backend-authoritative random sources by default, exposes compact `source.randomAuthority` metadata, preserves deterministic injection for tests, and is included in `npm run test:architecture`. |
+| 2026-06-09 | Added `WorldMapGenerationAuthority` for P11-006 config/random hardening phase 5; world-map terrain, water, river, and scout-reveal branch materialization now consume a server-owned deterministic seeded-hash authority while `WorldMapShared.random01()` remains a compatibility wrapper. `WorldMapService` now attaches compact `generationAuthority` metadata, and `npm run test:architecture` includes `WorldMapArchitecture.test.js`. |
+| 2026-06-09 | Added `SkillGeneratorRandomAuthority` for P11-006 config/random hardening phase 6; skill ability-kit generation now consumes backend-authoritative random sources by default, exposes compact `randomAuthority` metadata, preserves deterministic injection for tests, and is included in `npm run test:architecture`. |
+| 2026-06-09 | Added registry metadata/validation for core backend config modules: `GameConfig`, `EraConfig`, `TutorialFlowConfig`, `BattleConfig`, and `TechTreeConfig`; `npm run test:architecture` now syntax-checks those config modules and `ConfigRegistryContract.test.js` verifies their registry contracts. |
+| 2026-06-09 | Removed remaining business-code `Math.random` usage by moving talent-policy custom policy ids to backend crypto entropy; `TalentPolicyService.test.js` is included in `npm run test:architecture`. |
+| 2026-06-09 | P11-006 is now documented as complete for current config/version/random hardening. Future chance/drop/generated-result domains must add explicit authority adapters when introduced. P3 renderer split modules remain `candidate` while their completed `done` plan status reflects implementation completion, not stable promotion. |
