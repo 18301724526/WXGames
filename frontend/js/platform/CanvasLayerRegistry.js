@@ -17,9 +17,17 @@
       inputSurface: false,
       role: 'world-visual-plugin',
     }),
+    worldActor: Object.freeze({
+      key: 'worldActor',
+      zIndex: 999,
+      contextType: '2d',
+      cameraSpace: 'world-dynamic',
+      inputSurface: false,
+      role: 'world-actor-layer',
+    }),
     mainHud: Object.freeze({
       key: 'mainHud',
-      zIndex: 999,
+      zIndex: 1000,
       contextType: '2d',
       pointerEvents: 'auto',
       cameraSpace: 'screen',
@@ -28,7 +36,7 @@
     }),
   });
 
-  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'mainHud']);
+  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud']);
 
   const RENDER_QUEUE = Object.freeze([
     'worldPanel',

@@ -24,6 +24,7 @@ createRenderer(canvas) {
       const mapCanvas = this.ensureCanvasLayer?.('worldMap', { padding: worldMapLayerPadding }) || null;
       const fogEnabled = this.isCanvasLayerEnabled?.('worldFog') === true;
       const fogCanvas = this.ensureCanvasLayer?.('worldFog', { padding: worldMapLayerPadding }) || null;
+      const actorCanvas = this.ensureCanvasLayer?.('worldActor', { padding: worldMapLayerPadding }) || null;
       if (mapCanvas && !this.worldMapRenderer) {
         const layerMetrics = this.getCanvasLayerMetrics?.('worldMap', {}) || {};
         this.worldMapRenderer = new RendererCtor({
@@ -49,6 +50,34 @@ createRenderer(canvas) {
             this.renderer?.invalidateWorldTileCaches?.();
             this.renderer?.invalidateWorldTileViewCache?.();
             this.requestWorldMapRenderAnimationFrame();
+          });
+        }
+      }
+      if (actorCanvas && this.worldMapRenderer && !this.worldActorLayerRenderer) {
+        const actorMetrics = this.getCanvasLayerMetrics?.('worldActor', this.getCanvasLayerMetrics?.('worldMap', {}) || {}) || {};
+        this.worldActorLayerRenderer = new RendererCtor({
+          canvas: actorCanvas,
+          presenter: this.presenter,
+          pixelRatio: this.runtime?.pixelRatio,
+          width: actorMetrics.width || this.runtime?.width,
+          height: actorMetrics.height || this.runtime?.height,
+          viewportOffsetX: Number(actorMetrics.padding) || 0,
+          viewportOffsetY: Number(actorMetrics.padding) || 0,
+          viewportWidth: actorMetrics.viewportWidth || this.runtime?.width,
+          viewportHeight: actorMetrics.viewportHeight || this.runtime?.height,
+          h5Runtime: this.runtime,
+          assetCache: sharedAssetCache,
+          assetMetricsCache: sharedAssetMetricsCache,
+          worldTileMaskCache: sharedWorldTileMaskCache,
+          worldTileMaskMetricsCache: sharedWorldTileMaskMetricsCache,
+          worldTileDryCompositeCache: sharedWorldTileDryCompositeCache,
+          showFpsOverlay: false,
+        });
+        this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
+        this.worldActorLayerRenderer.worldMapRenderer = this.worldMapRenderer;
+        if (typeof this.worldActorLayerRenderer.setAssetsChangedHandler === 'function') {
+          this.worldActorLayerRenderer.setAssetsChangedHandler(() => {
+            this.requestWorldMapRenderAnimationFrame({ force: true, invalidateWorldTileView: false });
           });
         }
       }
@@ -103,6 +132,7 @@ createRenderer(canvas) {
         });
       }
       if (this.worldMapRenderer) this.worldMapRenderer.presenter = this.renderer.presenter;
+      if (this.worldActorLayerRenderer) this.worldActorLayerRenderer.presenter = this.renderer.presenter;
       this.ensureWorldMapRuntime();
       return this.renderer;
     },

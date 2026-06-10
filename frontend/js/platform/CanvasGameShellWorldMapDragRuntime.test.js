@@ -85,5 +85,7 @@ test('CanvasGameShellWorldMapDragRuntime translates layers after snapshot miss',
 
   assert.deepEqual(shell.updateWorldMapDragCompositor(), { x: 12, y: -8 });
   assert.equal(calls.some((call) => call[0] === 'ensureCanvasLayer' && call[1] === 'worldMap'), true);
+  assert.equal(calls.some((call) => call[0] === 'ensureCanvasLayer' && call[1] === 'worldActor'), true);
   assert.equal(calls.some((call) => call[0] === 'translate' && call[1] === 'worldMap' && call[2] === 12), true);
+  assert.equal(calls.some((call) => call[0] === 'translate' && call[1] === 'worldActor' && call[2] === 12), true);
 });

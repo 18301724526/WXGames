@@ -139,6 +139,19 @@
     };
   }
 
+  function createActorRenderOptions(options = {}, context = {}) {
+    return {
+      ...options,
+      epochNowMs: context.epochNowMs,
+      activeTab: 'military',
+      isMapHome: true,
+      territoryUiState: context.uiState || {},
+      worldMapRuntimeContext: context.worldMapRuntimeContext || options.worldMapRuntimeContext || null,
+      preserveCanvas: true,
+      showFpsOverlay: false,
+    };
+  }
+
   function createFullTrace(state = {}, rendered = false, runtimeState = {}, epochNowMs = Date.now()) {
     const parts = getMissionTraceParts(state, epochNowMs);
     return {
@@ -170,6 +183,7 @@
     shouldThrottleRender,
     createCannotRenderState,
     createCannotRenderTrace,
+    createActorRenderOptions,
     createRenderBeginTrace,
     createSnapshotRenderOptions,
     createSnapshotTrace,

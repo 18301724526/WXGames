@@ -53,7 +53,7 @@
       canvas.setAttribute?.('data-canvas-hud-input', 'document-capture');
       this.applyCanvasLayerStyle(canvas, {
         pointerEvents: 'auto',
-        zIndex: 999,
+        zIndex: 1000,
       });
       const host = this.container || this.document.body;
       host?.appendChild?.(canvas);

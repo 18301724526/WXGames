@@ -246,6 +246,22 @@ test('WorldMapTileMapRenderer snapshot-only clips and redraws snapshot cache onl
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
 });
 
+test('WorldMapTileMapRenderer snapshot-only stays static so dynamic actors can live on their own layer', () => {
+  const host = createHost();
+  const renderer = new WorldMapTileMapRenderer({ host });
+
+  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
+    snapshotOnly: true,
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+
+  const callNames = host.calls.map((call) => call[0]);
+
+  assert.notEqual(callNames.indexOf('renderWorldTileSnapshotCache'), -1);
+  assert.equal(callNames.includes('renderWorldActors'), false);
+  assert.equal(host.lastWorldTileMapContext.actors.length, 1);
+});
+
 test('WorldMapTileMapRenderer restores fast-drag state after render', () => {
   const host = createHost({ worldTileFastDragActive: false });
   const renderer = new WorldMapTileMapRenderer({ host });

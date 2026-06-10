@@ -80,6 +80,7 @@
     ['renderWorldActors', false],
     ['addWorldActorHitTargets', false],
     ['renderWorldMarchHud', false],
+    ['renderWorldMapActorLayer', false],
     ['renderWorldScoutRoutes', false],
     ['getNearestWorldTileAtPoint', null],
     ['renderWorldTileMap', false],

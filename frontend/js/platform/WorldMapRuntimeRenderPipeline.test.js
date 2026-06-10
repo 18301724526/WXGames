@@ -68,7 +68,10 @@ function createHost(overrides = {}) {
       },
     },
     syncHitTargetsFromRenderer() {
-      this.hitTargets = this.renderer.hitTargets.slice();
+      this.hitTargets = [
+        ...(Array.isArray(this.renderer.hitTargets) ? this.renderer.hitTargets : []),
+        ...(Array.isArray(this.renderer.worldActorLayerRenderer?.hitTargets) ? this.renderer.worldActorLayerRenderer.hitTargets : []),
+      ];
       return this.hitTargets;
     },
     syncMapDataSignature(stateArg, optionsArg) {
@@ -116,6 +119,7 @@ test('WorldMapRuntimeRenderPipeline resets runtime render state when render is u
 
 test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is reusable', () => {
   const snapshotOptions = [];
+  const actorOptions = [];
   const host = createHost({
     hasBakedMapLayer: true,
     mapBakeDirty: false,
@@ -130,6 +134,10 @@ test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is
         snapshotOptions.push(options);
         return true;
       },
+      renderWorldMapActorLayer(state, options) {
+        actorOptions.push(options);
+        return true;
+      },
     },
   });
 
@@ -137,16 +145,26 @@ test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is
   assert.equal(snapshotOptions[0].snapshotOnly, true);
   assert.equal(snapshotOptions[0].reuseCachedWorldTileView, true);
   assert.equal(snapshotOptions[0].waterTimeMs, 55);
+  assert.equal(actorOptions[0].worldMapRuntimeContext.tileMapView instanceof Object, true);
+  assert.equal(actorOptions[0].territoryUiState.worldPanX, 1);
   assert.deepEqual(host.lastLayout, { map: { x: 0, y: 0, width: 100, height: 100 } });
 });
 
 test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state', () => {
   const fullOptions = [];
+  const actorOptions = [];
   const host = createHost({
     renderer: {
       hitTargets: [{ x: 8, y: 9, action: { type: 'resetWorldPan' } }],
+      worldActorLayerRenderer: {
+        hitTargets: [{ x: 18, y: 19, action: { type: 'selectWorldActor', actorId: 'scout-1' } }],
+      },
       renderWorldMapLayer(state, options) {
         fullOptions.push(options);
+        return true;
+      },
+      renderWorldMapActorLayer(state, options) {
+        actorOptions.push(options);
         return true;
       },
     },
@@ -160,4 +178,6 @@ test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state'
   assert.equal(host.mapBakeDirty, false);
   assert.deepEqual(host.bakedCamera, { x: 1, y: 2 });
   assert.equal(host.hitTargets[0].action.type, 'resetWorldPan');
+  assert.equal(actorOptions[0].worldMapRuntimeContext.tileMapView instanceof Object, true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
 });

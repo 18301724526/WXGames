@@ -31,18 +31,24 @@ test('CanvasLayerRegistry gates world fog through feature flags', () => {
 test('CanvasLayerRegistry defines the mature engine physical canvas stack', () => {
   assert.equal(CanvasLayerRegistry.getLayerName('mainHud'), 'mainHud');
   assert.deepEqual(CanvasLayerRegistry.getLayerOptions('mainHud'), {
-    zIndex: 999,
+    zIndex: 1000,
     pointerEvents: 'auto',
     role: 'screen-hud-input',
   });
+  assert.deepEqual(CanvasLayerRegistry.getLayerOptions('worldActor', { padding: 240 }), {
+    zIndex: 999,
+    padding: 240,
+  });
 
   const stack = CanvasLayerRegistry.getPhysicalLayerStack();
-  assert.deepEqual(stack.map((layer) => layer.key), ['worldMap', 'worldFog', 'mainHud']);
-  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999]);
+  assert.deepEqual(stack.map((layer) => layer.key), ['worldMap', 'worldFog', 'worldActor', 'mainHud']);
+  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000]);
   assert.equal(stack[0].cameraSpace, 'world');
   assert.equal(stack[1].cameraSpace, 'world-overlay');
-  assert.equal(stack[2].cameraSpace, 'screen');
-  assert.equal(stack[2].inputSurface, true);
+  assert.equal(stack[2].cameraSpace, 'world-dynamic');
+  assert.equal(stack[2].inputSurface, false);
+  assert.equal(stack[3].cameraSpace, 'screen');
+  assert.equal(stack[3].inputSurface, true);
   assert.equal(stack.filter((layer) => layer.inputSurface).length, 1);
 });
 

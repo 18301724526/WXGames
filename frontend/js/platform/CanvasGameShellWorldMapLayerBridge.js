@@ -29,6 +29,19 @@
         this.worldMapRenderer.viewportOffsetY = padding;
         this.worldMapRenderer.viewportWidth = Number(metrics.viewportWidth) || this.runtime?.width || width;
         this.worldMapRenderer.viewportHeight = Number(metrics.viewportHeight) || this.runtime?.height || height;
+        if (this.worldActorLayerRenderer) {
+          const actorMetrics = this.getCanvasLayerMetrics?.('worldActor', metrics) || metrics;
+          this.worldActorLayerRenderer.width = Number(actorMetrics.width) || width;
+          this.worldActorLayerRenderer.height = Number(actorMetrics.height) || height;
+          this.worldActorLayerRenderer.pixelRatio = this.runtime?.pixelRatio || this.worldActorLayerRenderer.pixelRatio;
+          this.worldActorLayerRenderer.viewportOffsetX = Number(actorMetrics.padding) || padding;
+          this.worldActorLayerRenderer.viewportOffsetY = Number(actorMetrics.padding) || padding;
+          this.worldActorLayerRenderer.viewportWidth = Number(actorMetrics.viewportWidth) || this.worldMapRenderer.viewportWidth;
+          this.worldActorLayerRenderer.viewportHeight = Number(actorMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight;
+          if (this.worldMapRenderer) {
+            this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
+          }
+        }
         if (this.isFogOfWarEnabled?.() === true && this.worldFogRenderer?.setMetrics) {
           const fogMetrics = this.getCanvasLayerMetrics?.('worldFog', metrics) || metrics;
           this.worldFogRenderer.setMetrics({
@@ -74,14 +87,45 @@
       clearWorldMapLayerTransform() {
         const mapCleared = this.clearCanvasLayerTransform?.('worldMap') || false;
         this.clearCanvasLayerTransform?.('worldFog');
+        this.clearCanvasLayerTransform?.('worldActor');
         return mapCleared;
       },
 
       setWorldMapLayerVisible(visible = true) {
         const mapVisible = this.setCanvasLayerVisible?.('worldMap', visible !== false) || false;
         const fogVisible = this.setCanvasLayerVisible?.('worldFog', visible !== false) || false;
+        const actorVisible = this.setCanvasLayerVisible?.('worldActor', visible !== false) || false;
         if (visible === false && fogVisible) this.worldFogRenderer?.clear?.();
+        if (visible === false && actorVisible) this.worldActorLayerRenderer?.clearAll?.();
         return mapVisible;
+      },
+
+      renderWorldActorLayer(options = {}) {
+        if (!this.worldMapRenderer || typeof this.worldMapRenderer.renderWorldMapActorLayer !== 'function') return false;
+        const state = options.state || this.lastGame?.state;
+        if (!state) return false;
+        this.syncWorldMapRendererLayerMetrics();
+        const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        const territoryUiState = options.territoryUiState
+          || runtime?.getCameraUiState?.()
+          || this.lastGame?.territoryController?.getUiState?.()
+          || this.territoryUiState
+          || {};
+        const rendered = this.worldMapRenderer.renderWorldMapActorLayer(state, {
+          ...this.buildRenderOptions('military', territoryUiState),
+          ...options,
+          activeTab: 'military',
+          isMapHome: true,
+          territoryUiState,
+          worldMapRuntimeContext: options.worldMapRuntimeContext
+            || runtime?.getLastTileMapContext?.()
+            || runtime?.lastTileMapContext
+            || this.worldMapRenderer.lastWorldTileMapContext
+            || null,
+          showFpsOverlay: false,
+        });
+        if (rendered && runtime?.syncHitTargetsFromRenderer) runtime.syncHitTargetsFromRenderer();
+        return rendered;
       },
 
       refreshWorldMapLayerFromSnapshot(options = {}) {
@@ -112,6 +156,11 @@
         });
         if (!rendered) return false;
         this.renderWorldFogLayer();
+        this.renderWorldActorLayer({
+          ...options,
+          state,
+          territoryUiState,
+        });
         if (options.commitCamera !== false) runtime?.markBakedCamera?.(runtime.camera);
         if (options.clearTransform !== false) this.clearWorldMapLayerTransform();
         return true;

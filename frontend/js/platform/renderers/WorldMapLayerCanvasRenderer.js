@@ -241,6 +241,73 @@
       return true;
     }
 
+    getWorldMapActorLayerContext(state = {}, options = {}) {
+      const context = options.worldMapRuntimeContext
+        || this.lastWorldTileMapContext
+        || this.worldMapRenderer?.lastWorldTileMapContext
+        || this.worldMapLayerRenderer?.lastWorldTileMapContext
+        || null;
+      if (!context?.tileMapView || !context?.viewport || !context?.frame) return null;
+      const renderSnapshot = context.renderSnapshot || null;
+      const uiState = options.territoryUiState || context.uiState || renderSnapshot?.ui || {};
+      const contextActors = Array.isArray(context.actors)
+        ? context.actors
+        : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []);
+      const actors = contextActors.length || !SharedWorldMarchSystem?.buildActors
+        ? contextActors
+        : SharedWorldMarchSystem.buildActors(state.worldExplorerState || {}, {
+          nowMs: options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs(),
+        });
+      return {
+        actors,
+        frame: context.frame || renderSnapshot?.frame || {},
+        geometry: context.geometry || renderSnapshot?.geometry || context.tileMapView?.geometry || {},
+        renderSnapshot,
+        tileMapView: context.tileMapView,
+        uiState,
+        viewport: context.viewport || renderSnapshot?.viewport || {},
+      };
+    }
+
+    publishWorldMapActorLayerContext(context = null) {
+      this.lastMapHomeWorldHudContext = context;
+      if (this.host && this.host !== this) {
+        this.host.lastMapHomeWorldHudContext = context;
+      }
+      return context;
+    }
+
+    renderWorldMapActorLayer(state = {}, options = {}) {
+      if (!this.ctx) return false;
+      const context = this.getWorldMapActorLayerContext(state, options);
+      this.beginFrame(options);
+      this.setHitTargets([]);
+      this.clearAll();
+      if (!context) {
+        this.publishWorldMapActorLayerContext(null);
+        this.endFrame({ ...options, showFpsOverlay: false });
+        return false;
+      }
+      const { actors, viewport, geometry, frame, uiState } = context;
+      let didClip = false;
+      if (this.ctx.save && this.ctx.beginPath && this.ctx.rect && this.ctx.clip) {
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(frame.x, frame.y, frame.width, frame.height);
+        this.ctx.clip();
+        didClip = true;
+      }
+      try {
+        this.renderWorldActors?.(actors, viewport, geometry);
+      } finally {
+        if (didClip && this.ctx.restore) this.ctx.restore();
+      }
+      this.renderWorldMarchHud?.(options.state || state, uiState, actors, viewport, geometry, frame);
+      this.publishWorldMapActorLayerContext(context);
+      this.endFrame({ ...options, showFpsOverlay: false });
+      return true;
+    }
+
     getEpochNowMs() {
       return SharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }

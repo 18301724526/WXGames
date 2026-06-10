@@ -529,6 +529,41 @@ test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawImage'), true);
 });
 
+test('WorldMapLayerCanvasRenderer paints dynamic actors and march HUD on a separate actor layer', () => {
+  const actorContext = {
+    actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: { selectedWorldActorId: 'explore-active-1' },
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: actorContext,
+    renderWorldActors(actors, viewport, geometry) {
+      host.calls.push(['renderWorldActors', actors, viewport, geometry]);
+      host.hitTargets.push({ rect: { x: 10, y: 20, width: 24, height: 24 }, action: { type: 'selectWorldActor', actorId: actors[0]?.id } });
+      return true;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    territoryUiState: actorContext.uiState,
+  });
+
+  assert.equal(rendered, true);
+  assert.equal(host.calls.some((call) => call[0] === 'beginFrame'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'clearAll'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), false);
+  assert.equal(host.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
 test('WorldMapLayerCanvasRenderer keeps current layer untouched when preserved snapshot misses', () => {
   const host = createHost({
     renderWorldTileSnapshotCache(...args) {

@@ -113,7 +113,6 @@
         this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
       }
       if (options.isMapHome && activeTab === 'military') {
-        this.renderMapHomeWorldMarchHud(state, options);
         this.renderMapHomeExplorerHud?.(state, topBarBottom, options);
       }
       this.renderTabs(activeTab, state, options);

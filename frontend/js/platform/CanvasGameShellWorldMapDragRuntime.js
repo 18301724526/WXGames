@@ -101,9 +101,11 @@
           && !this.getCanvasLayerCanvas?.('worldMap')
         ) {
           this.ensureCanvasLayer?.('worldMap', { padding: this.getWorldMapLayerPadding() });
+          this.ensureCanvasLayer?.('worldActor', { padding: this.getWorldMapLayerPadding() });
         }
         this.setCanvasLayerTranslate?.('worldMap', offset.x, offset.y);
         this.setCanvasLayerTranslate?.('worldFog', offset.x, offset.y);
+        this.setCanvasLayerTranslate?.('worldActor', offset.x, offset.y);
         return offset;
       },
     });

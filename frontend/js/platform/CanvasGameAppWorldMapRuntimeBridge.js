@@ -57,6 +57,18 @@
         showFpsOverlay: false,
       });
       if (!rendered) return false;
+      this.renderer.renderWorldMapActorLayer?.(this.state, {
+        activeTab: 'military',
+        isMapHome: true,
+        territoryUiState,
+        worldMapRuntimeContext: runtime.getLastTileMapContext?.()
+          || runtime.lastTileMapContext
+          || this.renderer?.lastWorldTileMapContext
+          || null,
+        preserveCanvas: true,
+        showFpsOverlay: false,
+      });
+      runtime.syncHitTargetsFromRenderer?.();
       this.renderer.render(this.state, {
         activeTab: 'military',
         isMapHome: true,
@@ -188,6 +200,18 @@
         showFpsOverlay: false,
       });
       if (!rendered) return false;
+      this.renderer.renderWorldMapActorLayer?.(this.state, {
+        activeTab: 'military',
+        isMapHome: true,
+        territoryUiState,
+        worldMapRuntimeContext: runtime.getLastTileMapContext?.()
+          || runtime.lastTileMapContext
+          || this.renderer?.lastWorldTileMapContext
+          || null,
+        preserveCanvas: true,
+        showFpsOverlay: false,
+      });
+      runtime.syncHitTargetsFromRenderer?.();
       if (options.commitCamera !== false) runtime.markBakedCamera?.(runtime.camera);
       return true;
     },

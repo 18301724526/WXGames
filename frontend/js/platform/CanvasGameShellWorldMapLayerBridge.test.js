@@ -52,6 +52,7 @@ test('CanvasGameShellWorldMapLayerBridge syncs map and fog metrics', () => {
         calls.push(metrics);
       },
     },
+    worldActorLayerRenderer: {},
     worldMapRuntime: {
       invalidateBake() {
         calls.push('invalidateBake');
@@ -62,6 +63,8 @@ test('CanvasGameShellWorldMapLayerBridge syncs map and fog metrics', () => {
   assert.equal(shell.syncWorldMapRendererLayerMetrics(), true);
   assert.equal(shell.worldMapRenderer.width, 300);
   assert.equal(shell.worldMapRenderer.viewportOffsetX, 10);
+  assert.equal(shell.worldActorLayerRenderer.width, 300);
+  assert.equal(shell.worldActorLayerRenderer.viewportOffsetX, 10);
   assert.equal(calls[0].pixelRatio, 2);
   assert.equal(calls.includes('invalidateBake'), true);
 });
@@ -84,6 +87,43 @@ test('CanvasGameShellWorldMapLayerBridge clears disabled fog and skips plugins',
   assert.deepEqual(calls, ['clear']);
 });
 
+test('CanvasGameShellWorldMapLayerBridge treats map, fog, and actor as one camera layer group', () => {
+  const calls = [];
+  const shell = createShell({
+    clearCanvasLayerTransform(name) {
+      calls.push(['clearTransform', name]);
+      return true;
+    },
+    setCanvasLayerVisible(name, visible) {
+      calls.push(['visible', name, visible]);
+      return true;
+    },
+    worldActorLayerRenderer: {
+      clearAll() {
+        calls.push(['clearActor']);
+      },
+    },
+    worldFogRenderer: {
+      clear() {
+        calls.push(['clearFog']);
+      },
+    },
+  });
+
+  assert.equal(shell.clearWorldMapLayerTransform(), true);
+  assert.equal(shell.setWorldMapLayerVisible(false), true);
+  assert.deepEqual(calls, [
+    ['clearTransform', 'worldMap'],
+    ['clearTransform', 'worldFog'],
+    ['clearTransform', 'worldActor'],
+    ['visible', 'worldMap', false],
+    ['visible', 'worldFog', false],
+    ['visible', 'worldActor', false],
+    ['clearFog'],
+    ['clearActor'],
+  ]);
+});
+
 test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits camera', () => {
   const calls = [];
   const runtime = {
@@ -102,6 +142,10 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     },
     renderWorldFogLayer() {
       calls.push(['renderFog']);
+      return true;
+    },
+    renderWorldActorLayer(options) {
+      calls.push(['renderActor', options.state.id, options.territoryUiState.worldPanX]);
       return true;
     },
     syncWorldMapRendererLayerMetrics() {
@@ -126,6 +170,7 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     ['syncMetrics'],
     ['renderSnapshot', 'state-1', 91, 123],
     ['renderFog'],
+    ['renderActor', 'state-1', 1],
     ['markBakedCamera', runtime.camera],
     ['clearTransform'],
   ]);

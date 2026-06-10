@@ -184,7 +184,7 @@ test('H5CanvasRuntime preserves the mature engine physical canvas stack styles',
   const mainCanvas = runtime.ensureCanvas();
   const worldCanvas = runtime.ensureLayerCanvas('worldMap', { zIndex: 997 });
 
-  assert.equal(mainCanvas.style.zIndex, '999');
+  assert.equal(mainCanvas.style.zIndex, '1000');
   assert.equal(mainCanvas.style.pointerEvents, 'auto');
   assert.equal(mainCanvas.attributes['data-canvas-hud-input'], 'document-capture');
   assert.equal(worldCanvas.style.zIndex, '997');

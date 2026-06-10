@@ -88,7 +88,6 @@
         this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
       }
       else this.renderMapHomeWorldView(state, topBarBottom, options);
-      this.renderMapHomeWorldMarchHud(state, options);
       this.renderMapHomeExplorerHud(state, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
       this.renderMapHomeOverlays(state, options);

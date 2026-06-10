@@ -150,7 +150,7 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   const names = callNames(host);
   assert.equal(names.includes('appendWorldMapRuntimeHitTargets'), true);
   assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
-  assert.equal(names.includes('renderWorldMarchHud'), true);
+  assert.equal(names.includes('renderWorldMarchHud'), false);
   assert.equal(names.includes('getWorldMapLayerLayout'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'startExplore'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
@@ -161,7 +161,7 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   assert.equal(names.at(-1), 'endFrame');
 });
 
-test('CanvasFrameRenderer prefers same-frame map-home HUD context over stale runtime context', () => {
+test('CanvasFrameRenderer keeps dynamic world HUD out of the main HUD frame', () => {
   const staleContext = {
     actors: [{ id: 'stale-scout' }],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -190,13 +190,11 @@ test('CanvasFrameRenderer prefers same-frame map-home HUD context over stale run
     worldMapRuntimeContext: staleContext,
   });
 
-  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
-  assert.deepEqual(hudCall[1][2], freshContext.actors);
-  assert.equal(hudCall[1][3], freshContext.viewport);
-  assert.equal(hudCall[1][5], freshContext.frame);
+  assert.equal(host.calls.some((call) => call[0] === 'collectMapHomeWorldSiteHitTargets'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
-test('CanvasFrameRenderer uses runtime HUD context when it contains the selected actor', () => {
+test('CanvasFrameRenderer leaves selected actor commands to the world actor layer', () => {
   const staleContext = {
     actors: [{ id: 'stale-scout' }],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -222,13 +220,11 @@ test('CanvasFrameRenderer uses runtime HUD context when it contains the selected
     worldMapRuntimeContext: runtimeContext,
   });
 
-  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
-  assert.deepEqual(hudCall[1][2], runtimeContext.actors);
-  assert.equal(hudCall[1][3], runtimeContext.viewport);
-  assert.equal(hudCall[1][5], runtimeContext.frame);
+  assert.equal(host.calls.some((call) => call[0] === 'collectMapHomeWorldSiteHitTargets'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
-test('CanvasFrameRenderer derives selected actor commands from world explorer state when HUD context is empty', () => {
+test('CanvasFrameRenderer does not derive dynamic actor commands on the screen HUD layer', () => {
   const emptyContext = {
     actors: [],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -263,11 +259,7 @@ test('CanvasFrameRenderer derives selected actor commands from world explorer st
     territoryUiState: { selectedWorldActorId: 'explore-active-1' },
   });
 
-  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
-  assert.equal(Boolean(hudCall), true);
-  assert.equal(hudCall[1][2].length, 1);
-  assert.equal(hudCall[1][2][0].missionId, 'explore-active-1');
-  assert.equal(hudCall[1][2][0].status, 'active');
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
 test('CanvasFrameRenderer preserves standard tab transition and modal overlays', () => {

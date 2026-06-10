@@ -99,15 +99,19 @@ test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
 
   shell.ensureCanvasLayer('worldMap', { padding: 220 });
   shell.ensureCanvasLayer('worldFog', { padding: 220 });
+  shell.ensureCanvasLayer('worldActor', { padding: 220 });
   shell.getCanvasLayerMetrics('worldMap');
   shell.setCanvasLayerTranslate('worldFog', 7, -3);
+  shell.setCanvasLayerTranslate('worldActor', 7, -3);
   shell.setCanvasLayerVisible('worldFog', false);
 
   assert.deepEqual(calls, [
     ['ensureLayerCanvas', 'worldMap', { zIndex: 997, padding: 220 }],
     ['ensureLayerCanvas', 'worldFog', { zIndex: 998, contextType: 'webgl', padding: 220 }],
+    ['ensureLayerCanvas', 'worldActor', { zIndex: 999, padding: 220 }],
     ['getLayerMetrics', 'worldMap'],
     ['setLayerTranslate', 'worldFog', 7, -3],
+    ['setLayerTranslate', 'worldActor', 7, -3],
     ['setLayerVisible', 'worldFog', false],
   ]);
 });
@@ -234,7 +238,7 @@ test('CanvasGameShell preserves world map layer when drag snapshot refresh misse
   assert.equal(refresh[1].preserveOnMiss, true);
   assert.deepEqual(offset, { x: 32, y: -18 });
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldMap', 32, -18])), true);
-  assert.equal(calls.some((call) => call[0] === 'setLayerTranslate' && call[1] === 'worldFog'), false);
+  assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldActor', 32, -18])), true);
 });
 
 test('CanvasGameShell does not mount world fog by default', () => {
@@ -283,6 +287,7 @@ test('CanvasGameShell does not mount world fog by default', () => {
   }
 
   assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldMap'), true);
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldActor'), true);
   assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldFog'), false);
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === 'webgl'), false);
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);

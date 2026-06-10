@@ -378,8 +378,13 @@
     syncHitTargetsFromRenderer() {
       const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
       const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
+      const actorTargets = this.renderer?.worldActorLayerRenderer?.hitTargets || [];
+      const sourceTargets = [
+        ...(Array.isArray(this.renderer?.hitTargets) ? this.renderer.hitTargets : []),
+        ...(Array.isArray(actorTargets) ? actorTargets : []),
+      ];
       this.baseHitTargets = WorldMapInputActionMap?.normalizeHitTargets
-        ? WorldMapInputActionMap.normalizeHitTargets(this.renderer?.hitTargets || [], {
+        ? WorldMapInputActionMap.normalizeHitTargets(sourceTargets, {
           offsetX: -viewportOffsetX,
           offsetY: -viewportOffsetY,
         })

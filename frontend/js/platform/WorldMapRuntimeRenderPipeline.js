@@ -71,6 +71,14 @@
       topBarBottom: context.topBarBottom,
       waterTimeMs: host.waterTimeMs,
     }));
+    if (rendered && typeof host.renderer.renderWorldMapActorLayer === 'function') {
+      host.renderer.renderWorldMapActorLayer(state, RenderPolicy.createActorRenderOptions(options, {
+        epochNowMs: context.epochNowMs,
+        uiState: context.uiState,
+        worldMapRuntimeContext: host.getLastTileMapContext?.() || host.lastTileMapContext,
+      }));
+      host.syncHitTargetsFromRenderer?.();
+    }
     host.syncWaterAnimationFlag(context.uiState);
     host.lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });
     logSnapshotRender(state, rendered, {
@@ -96,6 +104,13 @@
       host.lastTileMapContext = host.getLastTileMapContext();
       host.hasBakedMapLayer = true;
       host.mapBakeDirty = false;
+      if (typeof host.renderer.renderWorldMapActorLayer === 'function') {
+        host.renderer.renderWorldMapActorLayer(state, RenderPolicy.createActorRenderOptions(options, {
+          epochNowMs: context.epochNowMs,
+          uiState: context.uiState,
+          worldMapRuntimeContext: host.lastTileMapContext,
+        }));
+      }
       host.markBakedCamera(host.camera);
       host.syncHitTargetsFromRenderer();
     }

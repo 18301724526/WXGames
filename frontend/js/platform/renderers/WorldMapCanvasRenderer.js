@@ -628,6 +628,28 @@
       return this.worldMapActorHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame);
     }
 
+    renderWorldMapActorLayer(state = {}, options = {}) {
+      const target = this.worldActorLayerRenderer && this.worldActorLayerRenderer !== this
+        ? this.worldActorLayerRenderer
+        : this;
+      const layerContext = options.worldMapRuntimeContext
+        || this.lastWorldTileMapContext
+        || target.lastWorldTileMapContext
+        || null;
+      if (target !== this) {
+        target.lastWorldTileMapContext = layerContext;
+        target.lastGameState = state;
+        target.lastWorldMarchState = state;
+      }
+      if (target?.worldMapLayerRenderer?.renderWorldMapActorLayer) {
+        return target.worldMapLayerRenderer.renderWorldMapActorLayer(state, {
+          ...options,
+          worldMapRuntimeContext: layerContext,
+        });
+      }
+      return false;
+    }
+
     getNearestWorldTileAtPoint(point = {}, tileMapView = {}, viewport = {}) {
       if (!this.worldMapActorHudRenderer?.getNearestWorldTileAtPoint) return null;
       return this.worldMapActorHudRenderer.getNearestWorldTileAtPoint(point, tileMapView, viewport);
