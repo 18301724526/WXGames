@@ -253,15 +253,36 @@
             const minimumDurationMs = Number.isFinite(options.minimumDurationMs)
               ? Math.max(0, options.minimumDurationMs)
               : 3000;
+            const trace = global.H5LoadTrace;
             const startedAt = this.now();
+            trace?.phaseStart?.('assets:preload', {
+              message,
+              hideWhenDone,
+              minimumDurationMs,
+            });
             this.showLoading(message);
             try {
               const result = await this.preloadAssets((progress) => {
+                trace?.progress?.('assets:preload', { ...progress, message });
                 this.updateLoading({ ...progress, message });
               }, options.assetPaths || null);
               const elapsed = Math.max(0, this.now() - startedAt);
-              await this.wait(Math.max(0, minimumDurationMs - elapsed));
+              const minimumWaitMs = Math.max(0, minimumDurationMs - elapsed);
+              trace?.phaseEnd?.('assets:preload', {
+                ...result,
+                minimumWaitMs,
+              });
+              if (minimumWaitMs > 0) {
+                trace?.mark?.('assets:minimum-wait', {
+                  waitMs: Math.round(minimumWaitMs),
+                  reason: 'loading screen minimum duration',
+                });
+              }
+              await this.wait(minimumWaitMs);
               return result;
+            } catch (error) {
+              trace?.phaseFail?.('assets:preload', error);
+              throw error;
             } finally {
               this.updateLoading({ percentage: 100, message });
               if (hideWhenDone) this.hideLoading();

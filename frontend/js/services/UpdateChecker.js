@@ -22,6 +22,9 @@
     }
 
     async start() {
+      global.H5LoadTrace?.mark?.('version:watch:start', {
+        intervalMs: this.intervalMs,
+      });
       await this.safeCheck({ initialize: true });
       if (this.timer) return;
       this.timer = this.scheduler.setInterval(() => {
@@ -39,15 +42,28 @@
       try {
         return await this.check(options);
       } catch (error) {
+        global.H5LoadTrace?.phaseFail?.('version:check', error, {
+          initialize: Boolean(options.initialize),
+        });
         this.onError(error);
         return null;
       }
     }
 
     async check(options = {}) {
+      const trace = global.H5LoadTrace;
+      trace?.phaseStart?.('version:check', {
+        initialize: Boolean(options.initialize),
+      });
       const version = await this.fetchVersion();
       const nextDeploymentId = version?.deploymentId;
-      if (!nextDeploymentId) return null;
+      if (!nextDeploymentId) {
+        trace?.phaseEnd?.('version:check', {
+          initialize: Boolean(options.initialize),
+          deploymentId: '',
+        });
+        return null;
+      }
       if (!this.currentDeploymentId || options.initialize) {
         this.currentDeploymentId = nextDeploymentId;
         this.currentVersion = version?.version || '';
@@ -55,6 +71,11 @@
           type: 'initialized',
           version,
           deploymentId: nextDeploymentId,
+        });
+        trace?.phaseEnd?.('version:check', {
+          initialize: Boolean(options.initialize),
+          deploymentId: nextDeploymentId,
+          version: this.currentVersion,
         });
         return version;
       }
@@ -80,6 +101,12 @@
           deploymentId: nextDeploymentId,
           previousDeploymentId,
         });
+        trace?.phaseEnd?.('version:check', {
+          initialize: Boolean(options.initialize),
+          deploymentId: nextDeploymentId,
+          previousDeploymentId,
+          updated: true,
+        });
         this.onUpdate(updateVersion, previousDeploymentId);
         return updateVersion;
       }
@@ -87,6 +114,11 @@
         type: 'unchanged',
         version,
         deploymentId: nextDeploymentId,
+      });
+      trace?.phaseEnd?.('version:check', {
+        initialize: Boolean(options.initialize),
+        deploymentId: nextDeploymentId,
+        changed: false,
       });
       return version;
     }

@@ -11,6 +11,10 @@
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
       applyState(payload = {}) {
+            const loadTrace = global.H5LoadTrace;
+            loadTrace?.mark?.('state:apply:start', {
+              payload: loadTrace.summarizePayload?.(payload) || null,
+            });
             global.WorldMarchTrace?.log?.('app:applyState:input', {
               payload: global.WorldMarchTrace?.summarizeApiPayload?.(payload) || null,
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
@@ -53,6 +57,11 @@
               after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
             this.render();
+            loadTrace?.ready?.({
+              source: 'applyState',
+              activeTab: this.state?.currentTab || '',
+              militaryView: this.state?.militaryView || '',
+            });
           },
 
       getGameApi() {
@@ -77,6 +86,10 @@
           },
 
       syncFromServer(serverState, tutorial, eraProgress) {
+            const loadTrace = global.H5LoadTrace;
+            loadTrace?.mark?.('state:syncFromServer:start', {
+              payload: loadTrace.summarizePayload?.({ gameState: serverState }) || null,
+            });
             global.WorldMarchTrace?.log?.('app:syncFromServer:input', {
               server: global.WorldMarchTrace?.summarizeWorldExplorerState?.(serverState?.worldExplorerState),
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
@@ -135,6 +148,11 @@
               after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
             this.render();
+            loadTrace?.ready?.({
+              source: 'syncFromServer',
+              activeTab: this.state?.currentTab || '',
+              militaryView: this.state?.militaryView || '',
+            });
           },
 
       getSyncInterval() {
@@ -221,19 +239,39 @@
           },
 
       async syncOnce() {
+            const trace = global.H5LoadTrace;
+            trace?.phaseStart?.('state:syncOnce', {
+              hasToken: Boolean(this.token),
+              forceLog: true,
+            });
             const data = await this.api.getState();
             this.applyState(data);
+            trace?.phaseEnd?.('state:syncOnce', {
+              forceLog: true,
+              payload: trace.summarizePayload?.(data) || null,
+            });
             return data;
           },
 
       async startHeartbeat() {
             const api = this.getGameApi();
             api?.setToken?.(this.token);
+            const trace = global.H5LoadTrace;
+            trace?.phaseStart?.('state:first-sync', {
+              hasToken: Boolean(this.token),
+              hasSyncService: Boolean(this.syncService),
+              forceLog: true,
+            });
             try {
               if (this.syncService?.stop) this.syncService.stop();
               await this.syncOnce();
+              trace?.phaseEnd?.('state:first-sync', {
+                forceLog: true,
+                next: 'heartbeat:start',
+              });
               this.syncService?.start?.();
             } catch (error) {
+              trace?.phaseFail?.('state:first-sync', error);
               if (error.payload && error.payload.error && this.handleAuthError) {
                 this.handleAuthError(error.payload);
               } else {

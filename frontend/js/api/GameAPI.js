@@ -41,6 +41,11 @@
         headers,
         body: method === 'GET' ? undefined : JSON.stringify(tracedBody || {}),
       };
+      const loadTrace = global.H5LoadTrace;
+      const loadTraceSpan = loadTrace?.apiStart?.(method, path, requestPayload.url, {
+        hasToken: Boolean(this.token),
+        bodyBytes: requestPayload.body ? requestPayload.body.length : 0,
+      });
       if (isWorldMarchAction) {
         trace?.log?.('api:request', {
           method,
@@ -50,14 +55,24 @@
       } else if (isWorldMarchSync) {
         trace?.log?.('api:syncRequest', { method, path });
       }
-      const response = this.transport && typeof this.transport.request === 'function'
-        ? await this.transport.request(requestPayload)
-        : await fetch(requestPayload.url, {
-          method: requestPayload.method,
-          headers: requestPayload.headers,
-          body: requestPayload.body,
+      let response = null;
+      let data = {};
+      try {
+        response = this.transport && typeof this.transport.request === 'function'
+          ? await this.transport.request(requestPayload)
+          : await fetch(requestPayload.url, {
+            method: requestPayload.method,
+            headers: requestPayload.headers,
+            body: requestPayload.body,
+          });
+        data = await response.json().catch(() => ({}));
+      } catch (error) {
+        loadTrace?.apiFail?.(loadTraceSpan, error, {
+          status: response?.status || 0,
+          ok: false,
         });
-      const data = await response.json().catch(() => ({}));
+        throw error;
+      }
       if (!response.ok) {
         if (isWorldMarchAction) {
           trace?.error?.('api:error', {
@@ -81,8 +96,19 @@
         }
         const error = new Error(data.message || data.error || `HTTP ${response.status}`);
         error.payload = data;
+        error.status = response.status;
+        loadTrace?.apiFail?.(loadTraceSpan, error, {
+          status: response.status,
+          ok: false,
+          payload: loadTrace.summarizePayload?.(data) || null,
+        });
         throw error;
       }
+      loadTrace?.apiEnd?.(loadTraceSpan, {
+        status: response.status,
+        ok: true,
+        payload: loadTrace.summarizePayload?.(data) || null,
+      });
       if (isWorldMarchAction) {
         trace?.log?.('api:response', {
           status: response.status,

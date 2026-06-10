@@ -29,21 +29,41 @@ window.mountAuthMethods = function(game, deps = {}) {
       await game.loadGameAssets({ message, hideWhenDone: false });
       return;
     }
+    const trace = window.H5LoadTrace;
+    trace?.phaseStart?.('assets:preload', { message, source: 'canvasShell' });
     game.canvasShell?.showLoading?.(message);
-    await (game.canvasShell?.preloadAssets?.((progress) => {
-      game.canvasShell?.updateLoading?.({ ...progress, message });
-    }) || Promise.resolve());
-    game.canvasShell?.updateLoading?.({ percentage: 100, message });
+    try {
+      const result = await (game.canvasShell?.preloadAssets?.((progress) => {
+        trace?.progress?.('assets:preload', { ...progress, message });
+        game.canvasShell?.updateLoading?.({ ...progress, message });
+      }) || Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 }));
+      game.canvasShell?.updateLoading?.({ percentage: 100, message });
+      trace?.phaseEnd?.('assets:preload', result || {});
+    } catch (error) {
+      trace?.phaseFail?.('assets:preload', error);
+      throw error;
+    }
   }
 
   function startAuthenticatedSession() {
+    const trace = window.H5LoadTrace;
+    trace?.phaseStart?.('auth:session', {
+      hasToken: Boolean(game.token),
+      hasCanvasShell: Boolean(game.canvasShell),
+    });
     game.showLoading?.('\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe');
     showAuthenticatedShell();
     return waitForAuthenticatedAssets()
       .catch((error) => {
+        trace?.warn?.('assets:preload:ignored-error', {
+          error: error?.message || String(error || ''),
+        });
         console.warn('[auth.js] asset preload failed before heartbeat', error);
       })
-      .finally(() => game.startHeartbeat());
+      .finally(() => {
+        trace?.phaseEnd?.('auth:session', { next: 'state:first-sync' });
+        return game.startHeartbeat();
+      });
   }
 
   function persistRememberedCredentials(username, password, rememberPassword) {
@@ -93,14 +113,43 @@ window.mountAuthMethods = function(game, deps = {}) {
   };
 
   game.loginWithPassword = async function(username, password, rememberPassword) {
+    const trace = window.H5LoadTrace;
+    trace?.phaseStart?.('auth:login', {
+      username: username || '',
+      rememberPassword: Boolean(rememberPassword),
+    });
+    let span = null;
+    let resp = null;
+    let apiSettled = false;
     try {
       const url = `${this.apiBase}/player/login`;
-      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+      const body = JSON.stringify({ username, password });
+      span = trace?.apiStart?.('POST', '/player/login', url, {
+        hasToken: false,
+        bodyBytes: body.length,
+      });
+      resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       const data = await parseResponsePayload(resp);
       if (!resp.ok) {
+        const error = new Error(data.message || `HTTP ${resp.status}`);
+        trace?.apiFail?.(span, error, {
+          status: resp.status,
+          ok: false,
+        });
+        apiSettled = true;
+        trace?.phaseEnd?.('auth:login', {
+          status: resp.status,
+          ok: false,
+        });
         setLoginMessage(data.message || `服务器错误 (${resp.status})，请稍后再试`);
         return;
       }
+      trace?.apiEnd?.(span, {
+        status: resp.status,
+        ok: true,
+        hasGameState: Boolean(data.gameState),
+      });
+      apiSettled = true;
       if (data.token) {
         this.token = data.token; this.playerId = data.playerId;
         authStorage?.setToken?.(data.token);
@@ -113,11 +162,28 @@ window.mountAuthMethods = function(game, deps = {}) {
         if (data.gameState) {
           this.applyApiState(data);
         }
+        trace?.phaseEnd?.('auth:login', {
+          status: resp.status,
+          hasGameState: Boolean(data.gameState),
+          next: 'state:first-sync',
+        });
         this.startHeartbeat();
       } else {
+        trace?.phaseEnd?.('auth:login', {
+          status: resp.status,
+          ok: false,
+          reason: 'missing token',
+        });
         setLoginMessage(data.message || '登录失败');
       }
     } catch (e) {
+      if (!apiSettled) {
+        trace?.apiFail?.(span, e, {
+          status: resp?.status || 0,
+          ok: false,
+        });
+      }
+      trace?.phaseFail?.('auth:login', e);
       setLoginMessage('网络错误：' + e.message);
     }
   };
