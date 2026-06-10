@@ -11,9 +11,9 @@
     saveArmyFormation: { method: 'saveArmyFormation' },
     startExplore: { method: 'startExplore', coerceBoolean: true },
     startWorldMarch: { method: 'startWorldMarch', coerceBoolean: true },
-    returnWorldMarch: { method: 'returnWorldMarch', coerceBoolean: true },
-    stopWorldMarch: { method: 'stopWorldMarch', coerceBoolean: true },
-    claimExplore: { method: 'claimExplore', coerceBoolean: true },
+    returnWorldMarch: { method: 'returnWorldMarch', args: (action) => [action.missionId || action.actorId || ''], coerceBoolean: true },
+    stopWorldMarch: { method: 'stopWorldMarch', args: (action) => [action.missionId || action.actorId || ''], coerceBoolean: true },
+    claimExplore: { method: 'claimExplore', args: (action) => [action.missionId || action.value || ''], coerceBoolean: true },
   };
 
   const RENDER_ACTIONS = {

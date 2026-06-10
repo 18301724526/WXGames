@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const SharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMarchSystem');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapLayerCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -201,11 +213,31 @@
       this.addWorldMapDragHitTarget?.(layout.map.x, layout.map.y, layout.map.width, layout.map.height);
       this.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      const actors = Array.isArray(this.lastWorldTileMapContext?.actors)
-        ? this.lastWorldTileMapContext.actors
-        : (this.worldMapRenderer?.lastWorldTileMapContext?.actors || []);
+      const lastContext = options.worldMapRuntimeContext
+        || this.lastWorldTileMapContext
+        || this.worldMapRenderer?.lastWorldTileMapContext
+        || null;
+      const contextActors = Array.isArray(lastContext?.actors)
+        ? lastContext.actors
+        : (Array.isArray(lastContext?.renderSnapshot?.actors) ? lastContext.renderSnapshot.actors : []);
+      const actors = contextActors.length || !SharedWorldMarchSystem?.buildActors
+        ? contextActors
+        : SharedWorldMarchSystem.buildActors(state.worldExplorerState || {}, {
+          nowMs: options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs(),
+        });
       this.addWorldActorHitTargets?.(actors, viewport, geometry);
-      this.renderWorldMarchHud?.(options.state || state, uiState, actors, viewport, geometry, frame);
+      this.lastMapHomeWorldHudContext = {
+        actors,
+        frame,
+        geometry,
+        renderSnapshot: lastContext?.renderSnapshot || null,
+        tileMapView,
+        uiState,
+        viewport,
+      };
+      if (this.host && this.host !== this) {
+        this.host.lastMapHomeWorldHudContext = this.lastMapHomeWorldHudContext;
+      }
       return true;
     }
 

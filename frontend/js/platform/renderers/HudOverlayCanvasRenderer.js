@@ -1,4 +1,16 @@
 (function (global) {
+  const SharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMarchSystem');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class HudOverlayCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -23,6 +35,52 @@
           return true;
         },
       });
+    }
+
+    getMapHomeWorldHudContext(options = {}) {
+      const contexts = [
+        this.lastMapHomeWorldHudContext,
+        this.worldMapLayerRenderer?.lastMapHomeWorldHudContext,
+        options.worldMapRuntimeContext,
+        this.lastWorldTileMapContext,
+        this.worldMapRenderer?.lastWorldTileMapContext,
+        this.worldMapLayerRenderer?.lastWorldTileMapContext,
+      ].filter(Boolean);
+      const selectedActorId = options.territoryUiState?.selectedWorldActorId || '';
+      if (selectedActorId) {
+        const matchingContext = contexts.find((context) => {
+          const actors = this.getMapHomeWorldHudActors(context, options);
+          return actors.some((actor) => actor?.id === selectedActorId || actor?.missionId === selectedActorId);
+        });
+        if (matchingContext) return matchingContext;
+      }
+      return contexts[0] || null;
+    }
+
+    getMapHomeWorldHudActors(context = null, options = {}) {
+      const contextActors = Array.isArray(context?.actors)
+        ? context.actors
+        : (Array.isArray(context?.renderSnapshot?.actors) ? context.renderSnapshot.actors : []);
+      if (contextActors.length) return contextActors;
+      const state = options.state || this.lastGame?.state || this.host?.lastGame?.state || {};
+      const explorerState = state?.worldExplorerState;
+      if (!explorerState || !SharedWorldMarchSystem?.buildActors) return contextActors;
+      return SharedWorldMarchSystem.buildActors(explorerState, {
+        nowMs: options.epochNowMs ?? options.nowMs ?? Date.now(),
+      });
+    }
+
+    renderMapHomeWorldMarchHud(state = {}, options = {}) {
+      if (options.isMapHome !== true || (options.activeTab || 'resources') !== 'military') return false;
+      if (typeof this.renderWorldMarchHud !== 'function') return false;
+      const context = this.getMapHomeWorldHudContext({ ...options, state: options.state || state });
+      const renderSnapshot = context?.renderSnapshot || null;
+      const uiState = options.territoryUiState || context?.uiState || renderSnapshot?.ui || {};
+      const actors = this.getMapHomeWorldHudActors(context, { ...options, state: options.state || state });
+      const viewport = context?.viewport || renderSnapshot?.viewport || {};
+      const geometry = context?.geometry || renderSnapshot?.geometry || context?.tileMapView?.geometry || {};
+      const frame = context?.frame || renderSnapshot?.frame || {};
+      return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame);
     }
 
     renderHudOverlay(state = {}, options = {}) {
@@ -55,6 +113,7 @@
         this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
       }
       if (options.isMapHome && activeTab === 'military') {
+        this.renderMapHomeWorldMarchHud(state, options);
         this.renderMapHomeExplorerHud?.(state, topBarBottom, options);
       }
       this.renderTabs(activeTab, state, options);

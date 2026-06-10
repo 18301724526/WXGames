@@ -98,6 +98,29 @@ test('WorldMarchProgressSnapshot exposes manual arrival as idle parked actor', (
   assert.equal(arrival.claimable, false);
 });
 
+test('WorldMarchProgressSnapshot renders stopped idle missions without a route as parked actors', () => {
+  const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    idleMissions: [createMission({
+      status: 'idle',
+      target: { q: 0, r: 0, tileId: 'tile_0_0' },
+      position: { q: 0, r: 0, tileId: 'tile_0_0' },
+      route: [],
+      nextStepAt: null,
+      completesAt: '2026-06-06T00:00:01.000Z',
+      completedAt: '2026-06-06T00:00:01.000Z',
+    })],
+  }, { nowMs });
+  const mission = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
+  const actor = WorldMarchProgressSnapshot.getActor(snapshot, 'explore-1');
+
+  assert.equal(mission.status, WorldMarchProgressSnapshot.STATUS_IDLE);
+  assert.equal(mission.routeLength, 0);
+  assert.equal(actor.status, 'idle');
+  assert.equal(actor.current.tileId, 'tile_0_0');
+  assert.equal(actor.animationId, 'idle');
+});
+
 test('WorldMarchProgressSnapshot exposes random arrival as ready result without map actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({

@@ -2140,8 +2140,9 @@ P0 新增公开 API / Public API Added During P0:
 - world-map panel background and clip setup
 - world-map drag hit-target registration
 - snapshot-only cache redraw branch
-- hit-target-only pass for march tiles, sites, actors, and march HUD
-- main layer render ordering: scout route, water, static entries, fog context, actors, march HUD, hit targets
+- hit-target-only pass for march tiles, sites, and actors
+- main layer render ordering: scout route, water, static entries, fog context, actors, and map hit targets
+- publishes `lastWorldTileMapContext` for the `mainHud` HUD pass; it does not paint map-home march HUD or register formation-picker HUD targets
 - fast-drag state enable/restore around the frame
 - split implementation for `WorldMapCanvasRenderer.renderWorldTileMap()`
 
@@ -2157,8 +2158,8 @@ P0 新增公开 API / Public API Added During P0:
 - `addWorldMapDragHitTarget(x, y, width, height)`
 - `withWorldTileMapClip(x, y, width, height, callback)`
 - `renderWorldTileMapSnapshotOnly(tileMapView, viewport, frame, x, y, width, height)`
-- `renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot)`
-- `renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot)`
+- `renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors)`
+- `renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors)`
 - `renderWorldTileMap(tileMapView, x, y, width, height, uiState, options)`
 
 性能约束 / Performance Constraints:
@@ -2168,7 +2169,8 @@ P0 新增公开 API / Public API Added During P0:
 - Layer rendering delegates to existing cache-aware split renderers; this module does not repaint cache internals.
 - Snapshot-only redraw blits existing caches and skips visible-entry calculation.
 - `worldTileFastDragActive` is restored in `finally` even if a downstream renderer fails.
-- No gameplay mutation, no asset discovery, no fog visual rule ownership.
+- No gameplay mutation, no asset discovery, no fog visual rule ownership, no physical world-map HUD painting.
+- Extension note: new actor drawing details still extend `WorldActorCanvasRenderer`; map-home march HUD drawing belongs to the `mainHud` pass (`HudOverlayCanvasRenderer` / `CanvasFrameRenderer`) through the published world-map HUD context.
 
 扩展方式 / Extension Path:
 
@@ -2193,7 +2195,7 @@ P0 新增公开 API / Public API Added During P0:
 - actor render handoff to `WorldActorCanvasRenderer`
 - actor hit-target handoff to `WorldActorCanvasRenderer`
 - march HUD state publication to renderer/host/HUD renderer
-- march HUD render handoff to `WorldMarchHudCanvasRenderer`
+- compatibility march HUD render handoff to `WorldMarchHudCanvasRenderer` for the `mainHud` pass
 - nearest world-tile lookup through `WorldMarchSystem`
 - split implementation for actor/HUD compatibility helpers on `WorldMapCanvasRenderer`
 
@@ -2215,7 +2217,8 @@ P0 新增公开 API / Public API Added During P0:
 - Mission actors are derived once per caller pass with epoch time, not frame time.
 - Actor rendering and hit-target registration remain delegated to `WorldActorCanvasRenderer`.
 - HUD state is published by reference; no deep clone of game state.
-- No tile layout/cache orchestration, no fog visual rule ownership, no gameplay mutation.
+- No tile layout/cache orchestration, no fog visual rule ownership, no gameplay mutation, no physical world-map HUD painting.
+- Extension note: new march HUD visual/detail still extends `WorldMarchHudCanvasRenderer`; map-home invocation happens from `HudOverlayCanvasRenderer` / `CanvasFrameRenderer`, never from the physical `worldMap` layer.
 
 扩展方式 / Extension Path:
 
@@ -4676,7 +4679,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Register compatibility static delegates in `UIStatePresenterDelegates`.
 - Do not add method bodies back into this facade.
 
-### `frontend/js/platform/WorldMapRuntime.js` - 411 lines
+### `frontend/js/platform/WorldMapRuntime.js` - 423 lines
 
 状态 / Status: candidate facade
 
@@ -4688,6 +4691,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - hit target sync
 - render requests
 - world-map input action map integration
+- HUD-to-world-layer point conversion for background/fog march target inference; this adds physical layer padding and removes temporary drag-layer transform before calling `WorldMapInputActionMap`
 - bake policy delegation through `WorldMapRuntimeBakePolicy`
 - camera policy delegation through `WorldMapRuntimeCameraPolicy`
 - input geometry delegation through `WorldMapRuntimeInputPolicy`
@@ -4705,6 +4709,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - `handleTap(point, event)`
 - `requestRender(options)`
 - `render(options)`
+- `getLayerPointFromHudPoint(point)`
 - `getBackgroundMarchTargetAction(point)`
 
 目标拆分 / Target Split:
@@ -4856,3 +4861,5 @@ Recommended first split sequence:
 | 2026-06-09 | Added `docs/production_engineering_roadmap_2026-06-09.md` as the P12 production-engineering authority, registered it in the official doc set, and documented the next CI/deploy/observability/backup/performance/security/config/stable-promotion/runbook guardrails. |
 | 2026-06-09 | Deleted the standalone `TalentPolicyCanvasRenderer` panel. The legacy talent-policy shortcut now routes to city management people tab, and `CanvasTalentPolicyActionHandlers` owns only compatibility routing plus direct apply finalization. |
 | 2026-06-10 | Hardened the mature engine canvas layer contract: `CanvasLayerRegistry` now owns physical stack, logical render queue, and hit priority queue; `mainHud` is locked to the primary input canvas, while `worldMap` and optional `worldFog` remain non-input secondary layers. `H5CanvasRuntime.test.js` is now part of `npm run test:architecture`. |
+| 2026-06-10 | Moved map-home march HUD ownership back to the `mainHud` pass: `WorldMapTileMapRenderer` now publishes world HUD context and keeps only map/site/actor targets, while `HudOverlayCanvasRenderer` / `CanvasFrameRenderer` invoke `renderWorldMarchHud()` and prefer same-frame HUD context over stale runtime context. |
+| 2026-06-10 | Fixed world-map input/HUD command contracts: `WorldMapRuntime.getLayerPointFromHudPoint()` converts `mainHud` taps into padded world-layer coordinates while subtracting drag-layer transform, `WorldMarchHudCanvasRenderer` shows stop only for active actors, and return-home now accepts idle parked world-march missions. |

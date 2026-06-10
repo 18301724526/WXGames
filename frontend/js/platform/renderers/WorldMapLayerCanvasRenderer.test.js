@@ -276,9 +276,11 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
   assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
 });
 
-test('WorldMapLayerCanvasRenderer collects map-home world march HUD action targets', () => {
+test('WorldMapLayerCanvasRenderer collects map-home world targets without painting march HUD', () => {
   const host = createHost({
-    lastWorldTileMapContext: { actors: [{ id: 'scout-1' }] },
+    lastWorldTileMapContext: {
+      renderSnapshot: { actors: [{ id: 'scout-1' }] },
+    },
   });
   const renderer = new WorldMapLayerCanvasRenderer({ host });
   const uiState = {
@@ -293,13 +295,76 @@ test('WorldMapLayerCanvasRenderer collects map-home world march HUD action targe
 
   assert.equal(collected, true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
+  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
+  assert.equal(host.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
+  assert.equal(host.lastMapHomeWorldHudContext.uiState, uiState);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'
-    && target.action.targetQ === 2
-    && target.action.targetR === 2
-    && target.action.tileId === 'tile_2_2'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), false);
+});
+
+test('WorldMapLayerCanvasRenderer collects actor targets from runtime context', () => {
+  const runtimeContext = {
+    actors: [{ id: 'runtime-scout', missionId: 'explore-active-1' }],
+    renderSnapshot: { actors: [{ id: 'snapshot-scout' }] },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: {
+      actors: [{ id: 'stale-scout' }],
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    activeCityId: 'capital',
+    territoryState: { worldMap: createTileMapView() },
+    worldExplorerState: { randomRouteLength: 6 },
+  }, 96, {
+    territoryUiState: { selectedWorldActorId: 'explore-active-1' },
+    worldMapRuntimeContext: runtimeContext,
+  });
+
+  const actorCall = host.calls.find((call) => call[0] === 'addWorldActorHitTargets');
+  assert.equal(collected, true);
+  assert.deepEqual(actorCall[1], runtimeContext.actors);
+  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, runtimeContext.actors);
+});
+
+test('WorldMapLayerCanvasRenderer derives actor targets from world explorer state when runtime context is empty', () => {
+  const host = createHost({
+    lastWorldTileMapContext: {
+      actors: [],
+      renderSnapshot: { actors: [] },
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    activeCityId: 'capital',
+    territoryState: { worldMap: createTileMapView() },
+    worldExplorerState: {
+      activeMission: {
+        id: 'explore-active-1',
+        status: 'active',
+        origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+        route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+        target: { q: 1, r: 0, tileId: 'tile_1_0' },
+        startedAt: '2026-06-06T00:00:00.000Z',
+        stepDurationSeconds: 10,
+      },
+    },
+  }, 96, {
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+    territoryUiState: { selectedWorldActorId: 'explore-active-1' },
+  });
+
+  const actorCall = host.calls.find((call) => call[0] === 'addWorldActorHitTargets');
+  assert.equal(collected, true);
+  assert.equal(actorCall[1].length, 1);
+  assert.equal(actorCall[1][0].missionId, 'explore-active-1');
+  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, actorCall[1]);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
 test('CanvasGameRenderer exposes map-home world march targets through world-map facades', () => {
@@ -327,7 +392,7 @@ test('CanvasGameRenderer exposes map-home world march targets through world-map 
   assert.equal(renderer.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
 });
 
-test('CanvasGameRenderer exposes map-home world march HUD picker target through facades', () => {
+test('CanvasGameRenderer keeps map-home HUD picker out of world-map hit-target collection', () => {
   const renderer = new CanvasGameRenderer({
     ctx: {
       fillRect() {},
@@ -381,10 +446,7 @@ test('CanvasGameRenderer exposes map-home world march HUD picker target through 
   assert.equal(collected, true);
   assert.equal(renderer.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.equal(renderer.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
-  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'
-    && target.action.targetQ === 2
-    && target.action.targetR === 2
-    && target.action.tileId === 'tile_2_2'), true);
+  assert.equal(renderer.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), false);
 });
 
 test('CanvasGameRenderer keeps discovered world site targets after map runtime collection', () => {

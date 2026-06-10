@@ -49,10 +49,33 @@
     return false;
   }
 
+  const DEFAULT_PRIORITY_ACTIONS = Object.freeze([
+    'returnWorldMarch',
+    'stopWorldMarch',
+    'openWorldMarchFormationPicker',
+    'startWorldMarch',
+    'closeWorldMarchHud',
+    'selectWorldActor',
+  ]);
+
+  function getPriorityHitTarget(targets = [], point = {}, options = {}) {
+    const priorities = Array.isArray(options.priorities) ? options.priorities : DEFAULT_PRIORITY_ACTIONS;
+    for (const type of priorities) {
+      for (let index = targets.length - 1; index >= 0; index -= 1) {
+        const target = targets[index];
+        if (target.action?.type !== type || target.action?.background) continue;
+        if (containsPoint(target, point)) return target.action;
+      }
+    }
+    return null;
+  }
+
   function resolveHitTarget(hitTargets = [], point = {}, intro = null) {
     let backgroundAction = null;
     let tutorialShieldAction = null;
     const tutorialAllowedActions = [];
+    const priorityAction = getPriorityHitTarget(hitTargets, point);
+    if (priorityAction) return priorityAction;
     for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
       const target = hitTargets[index];
       if (!containsPoint(target, point)) continue;
@@ -77,6 +100,8 @@
 
   const api = {
     containsPoint,
+    DEFAULT_PRIORITY_ACTIONS,
+    getPriorityHitTarget,
     isAllowedUnderTutorialShield,
     matchesCurrentTutorialIntroAction,
     matchesTutorialShieldAllowedAction,

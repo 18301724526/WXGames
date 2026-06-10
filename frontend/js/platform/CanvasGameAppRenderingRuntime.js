@@ -101,6 +101,10 @@
               worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
                 ? this.worldMapRuntime.hitTargets
                 : [],
+              worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                || this.worldMapRuntime?.lastTileMapContext
+                || this.renderer?.lastWorldTileMapContext
+                || null,
               preserveCanvas: worldMapLayerRendered,
               showResourceDetails: this.showResourceDetails,
               showCitySwitcher: this.showCitySwitcher,

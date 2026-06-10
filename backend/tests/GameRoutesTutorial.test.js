@@ -543,6 +543,96 @@ test('game action route starts guided exploration with planned tiles in client s
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
 });
 
+test('game action route returns stopped world march as an idle client mission', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-world-march-stop-idle-test';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  const scoutPersonId = 'fp-route-scout';
+  gameState.currentEra = 3;
+  gameState.tutorial = {
+    ...TutorialService.manualAdvance(
+      gameState.tutorial,
+      TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
+    ),
+    completed: true,
+    disabled: true,
+    grants: {
+      scoutFamousPerson: { personId: scoutPersonId },
+    },
+  };
+  gameState.famousPeople = [{
+    id: scoutPersonId,
+    name: 'Scout',
+    archetype: 'scout',
+    abilityArchetype: 'scout',
+    quality: 'great',
+  }];
+  gameState.military = {
+    ...gameState.military,
+    soldiers: 10,
+    soldierCap: 10,
+    formations: {
+      capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+    },
+  };
+  gameState.cities = {
+    capital: {
+      id: 'capital',
+      territoryId: 'capital',
+      isCapital: true,
+      resources: { ...gameState.resources },
+      buildings: { ...gameState.buildings },
+      population: { ...gameState.population },
+      military: {
+        ...gameState.military,
+        formations: {
+          capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+        },
+      },
+    },
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return savedStates.at(-1) || gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return GameStateService.normalizeState(state);
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const startReq = {
+    playerId,
+    body: { action: 'startWorldMarch', targetQ: 3, targetR: 3, cityId: 'capital', formationSlot: 1 },
+  };
+  const startRes = createResponse();
+  route.handlers[0](startReq, startRes, () => route.handlers[1](startReq, startRes));
+  assert.equal(startRes.statusCode, 200);
+
+  const missionId = startRes.payload.mission.id;
+  const stopReq = { playerId, body: { action: 'stopWorldMarch', missionId } };
+  const stopRes = createResponse();
+  route.handlers[0](stopReq, stopRes, () => route.handlers[1](stopReq, stopRes));
+
+  assert.equal(stopRes.statusCode, 200);
+  assert.equal(stopRes.payload.mission.status, 'idle');
+  assert.equal(stopRes.payload.gameState.worldExplorerState.idleMissions[0].id, missionId);
+  assert.equal(stopRes.payload.gameState.worldExplorerState.missions.length, 1);
+  assert.equal(savedStates.at(-1).exploreMissions[0].status, 'idle');
+  assert.equal(savedStates.at(-1).exploreMissions[0].route.length, 0);
+});
+
 test('game action route enforces guided first empty city occupation target', () => {
   const { app, routes } = createAppHarness();
   const playerId = 'route-tutorial-first-city-test';

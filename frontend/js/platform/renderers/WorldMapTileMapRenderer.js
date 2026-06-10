@@ -87,6 +87,8 @@
       };
       const frame = renderSnapshot?.frame || { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
       return {
+        actors: Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [],
+        uiState,
         renderSnapshot,
         tileMapView,
         viewport,
@@ -107,13 +109,22 @@
       return context;
     }
 
-    getWorldTileMapActors(tileMapView = {}, renderSnapshot = null) {
+    getWorldTileMapActors(tileMapView = {}, renderSnapshot = null, options = {}) {
+      const snapshotActors = Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : null;
+      if (snapshotActors?.length) return snapshotActors;
+      const explorerState = options.worldExplorerState || options.state?.worldExplorerState || null;
+      const explorerActors = explorerState && sharedWorldMarchSystem?.buildActors
+        ? sharedWorldMarchSystem.buildActors(explorerState, { nowMs: this.getWorldTileMapNowMs(options) })
+        : [];
+      if (Array.isArray(explorerActors) && explorerActors.length) return explorerActors;
       if (this.worldMapActorHudRenderer?.buildWorldMapActors) {
-        return this.worldMapActorHudRenderer.buildWorldMapActors(tileMapView, renderSnapshot);
+        const actors = this.worldMapActorHudRenderer.buildWorldMapActors(tileMapView, renderSnapshot, options);
+        if (Array.isArray(actors) && actors.length) return actors;
       }
-      return renderSnapshot?.actors || sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
-        nowMs: this.getWorldTileMapNowMs(),
+      const tileActors = sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
+        nowMs: this.getWorldTileMapNowMs(options),
       }) || [];
+      return tileActors.length ? tileActors : (snapshotActors || []);
     }
 
     drawWorldTileMapPanel(x = 0, y = 0, width = 0, height = 0, hitTargetsOnly = false, options = {}) {
@@ -166,16 +177,14 @@
       });
     }
 
-    renderWorldTileMapHitTargets(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}, renderSnapshot = null) {
+    renderWorldTileMapHitTargets(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}, renderSnapshot = null, actors = null) {
       this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      const actors = this.getWorldTileMapActors(tileMapView, renderSnapshot);
-      this.addWorldActorHitTargets(actors, viewport, geometry);
-      this.renderWorldMarchHud(options.state || {}, uiState, actors, viewport, geometry, frame);
+      this.addWorldActorHitTargets(Array.isArray(actors) ? actors : this.getWorldTileMapActors(tileMapView, renderSnapshot, options), viewport, geometry);
       return true;
     }
 
-    renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}, renderSnapshot = null) {
+    renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}, renderSnapshot = null, actors = null) {
       if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
         this.renderWorldScoutRoutes(tileMapView, viewport);
       }
@@ -188,12 +197,11 @@
         });
       }
       this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
-      const actors = this.getWorldTileMapActors(tileMapView, renderSnapshot);
-      this.renderWorldActors(actors, viewport, geometry);
-      this.renderWorldMarchHud(options.state || {}, uiState, actors, viewport, geometry, frame);
+      const resolvedActors = Array.isArray(actors) ? actors : this.getWorldTileMapActors(tileMapView, renderSnapshot, options);
+      this.renderWorldActors(resolvedActors, viewport, geometry);
       this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      this.addWorldActorHitTargets(actors, viewport, geometry);
+      this.addWorldActorHitTargets(resolvedActors, viewport, geometry);
       return true;
     }
 
@@ -215,12 +223,14 @@
           return;
         }
         const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
+        const actors = this.getWorldTileMapActors(tileMapView, renderSnapshot, options);
+        context.actors = actors;
         if (hitTargetsOnly) {
-          this.renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot);
+          this.renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors);
           return;
         }
         this.withWorldTileMapClip(x, y, width, height, () => (
-          this.renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot)
+          this.renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors)
         ));
       } finally {
         this.worldTileFastDragActive = previousFastDragActive;

@@ -69,7 +69,11 @@
 
   function getMissionPath(mission = {}) {
     const origin = normalizeCoord(mission.origin || {});
-    return [origin, ...normalizeRoute(mission.route)];
+    const route = normalizeRoute(mission.route);
+    if (!route.length && mission.status === STATUS_IDLE) {
+      return [origin, normalizeCoord(mission.position || mission.target || mission.origin || {}, origin)];
+    }
+    return [origin, ...route];
   }
 
   function getMissionStepDurationMs(mission = {}) {
@@ -185,7 +189,7 @@
     const routeTarget = route.length ? route[route.length - 1] : null;
     const target = normalizeCoord(mission.target || routeTarget, routeTarget || mission.position || mission.origin || {});
     const positionSource = status === STATUS_IDLE
-      ? target
+      ? (mission.status === STATUS_IDLE ? (mission.position || target) : target)
       : (lastRevealed || mission.position || mission.origin || target);
     const derived = {
       ...mission,
@@ -291,12 +295,13 @@
     const status = getEffectiveMissionStatus(mission, nowMs);
     if (![STATUS_ACTIVE, STATUS_IDLE].includes(status)) return null;
     const route = normalizeRoute(mission.route);
-    if (!route.length) return null;
+    if (!route.length && status !== STATUS_IDLE) return null;
     const effectiveMission = status === mission.status ? mission : { ...mission, status };
     const origin = normalizeCoord(mission.origin || {});
     const routeTarget = route.length ? route[route.length - 1] : null;
-    const target = normalizeCoord(mission.target || routeTarget, routeTarget);
-    const current = status === STATUS_IDLE ? target : getCurrentCoord(effectiveMission, nowMs);
+    const target = normalizeCoord(mission.target || mission.position || routeTarget || origin, routeTarget || mission.position || origin);
+    const idlePosition = mission.status === STATUS_IDLE ? (mission.position || target) : target;
+    const current = status === STATUS_IDLE ? normalizeCoord(idlePosition, target) : getCurrentCoord(effectiveMission, nowMs);
     const stopTile = chooseStopTile(effectiveMission, nowMs);
     const formation = mission.formation || {};
     return {
@@ -352,12 +357,13 @@
     const route = normalizeRoute(source.route);
     const origin = normalizeCoord(source.origin || {});
     const routeTarget = route.length ? route[route.length - 1] : null;
-    const target = normalizeCoord(source.target || routeTarget, routeTarget || origin);
+    const target = normalizeCoord(source.target || routeTarget || source.position || origin, routeTarget || source.position || origin);
+    const isRouteBackedIdle = status === STATUS_IDLE && route.length > 0;
     const position = status === STATUS_IDLE
-      ? target
+      ? normalizeCoord(source.position || (isRouteBackedIdle ? target : source.origin) || target, target)
       : normalizeCoord(source.position || source.origin || target, target);
     const progress = getMissionProgress(effectiveMission, nowMs);
-    const current = status === STATUS_IDLE ? target : getCurrentCoord(effectiveMission, nowMs);
+    const current = status === STATUS_IDLE ? position : getCurrentCoord(effectiveMission, nowMs);
     const stopTile = chooseStopTile(effectiveMission, nowMs);
     const remainingSeconds = getRemainingSeconds(effectiveMission, nowMs);
     const travelRemainingSeconds = getTravelRemainingSeconds(effectiveMission, nowMs);
@@ -390,13 +396,14 @@
       completedAtMs: toTimestamp(source.completedAt, Number.NaN),
       arrivalKind,
       arrived: arrivalKind !== ARRIVAL_NONE,
-      actorId: [STATUS_ACTIVE, STATUS_IDLE].includes(status) && route.length ? id : '',
+      actorId: [STATUS_ACTIVE, STATUS_IDLE].includes(status) && (route.length || status === STATUS_IDLE) ? id : '',
       formation: normalizeFormation(source.formation || {}, origin),
     };
   }
 
   function buildActorFromProgress(row = {}) {
-    if (!row || ![STATUS_ACTIVE, STATUS_IDLE].includes(row.status) || !row.routeLength) return null;
+    if (!row || ![STATUS_ACTIVE, STATUS_IDLE].includes(row.status)) return null;
+    if (row.status !== STATUS_IDLE && !row.routeLength) return null;
     return {
       id: row.id || '',
       missionId: row.id || '',

@@ -306,9 +306,21 @@ function findActiveMission(gameState, missionId, now = new Date()) {
   return (gameState.exploreMissions || []).find((item) => item.id === missionId && item.status === 'active') || null;
 }
 
+function findReturnableMission(gameState, missionId, now = new Date()) {
+  normalizeExploreState(gameState, now);
+  return (gameState.exploreMissions || []).find((item) => (
+    item.id === missionId && ['active', 'idle'].includes(item.status)
+  )) || null;
+}
+
 function getLastRevealedOrOrigin(mission) {
   const revealed = [...(mission.route || [])].reverse().find((step) => step.revealed);
-  return revealed || mission.origin || { q: 0, r: 0 };
+  return revealed || mission.position || mission.origin || { q: 0, r: 0 };
+}
+
+function getReturnRouteOrigin(mission) {
+  if (mission?.status === 'idle' && mission.position) return mission.position;
+  return getLastRevealedOrOrigin(mission);
 }
 
 function rebaseMissionRoute(mission, route, now = new Date(), options = {}) {
@@ -377,9 +389,9 @@ function attachMarchAuthority(result = {}, gameState = {}, mission = null, actio
 }
 
 function returnWorldMarch(gameState, missionId, now = new Date()) {
-  const mission = findActiveMission(gameState, missionId, now);
+  const mission = findReturnableMission(gameState, missionId, now);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
-  const current = getLastRevealedOrOrigin(mission);
+  const current = getReturnRouteOrigin(mission);
   const origin = mission.homeOrigin || mission.origin || { q: 0, r: 0 };
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const routeResult = buildManualRoute(current, { q: origin.q, r: origin.r }, worldMap.seed);

@@ -20,9 +20,10 @@
           getRenderer: () => this.worldMapRenderer,
           getPresenter: () => this.presenter || this.renderer?.presenter,
           getState: () => this.lastGame?.state || {},
-          getBaseUiState: () => this.lastGame?.territoryController?.uiState
+          getBaseUiState: () => this.territoryUiState
+            || this.lastGame?.territoryUiState
+            || this.lastGame?.territoryController?.uiState
             || this.lastGame?.territoryController?.getUiState?.()
-            || this.territoryUiState
             || {},
           getLocalUiState: () => this.territoryUiState || {},
           getTerritoryController: () => this.lastGame?.territoryController || null,

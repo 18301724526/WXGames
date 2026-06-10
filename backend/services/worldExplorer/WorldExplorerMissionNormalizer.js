@@ -61,11 +61,11 @@ function normalizeMission(rawMission) {
     .map(normalizeRouteStep)
     .filter(Boolean)
     .sort((a, b) => a.step - b.step);
-  if (!route.length) return null;
   const mode = rawMission.mode === 'manual' ? 'manual' : 'random';
   const status = ['active', 'ready', 'idle', 'cancelled'].includes(rawMission.status)
     ? rawMission.status
     : 'active';
+  if (!route.length && status !== 'idle') return null;
   const origin = rawMission.origin && typeof rawMission.origin === 'object'
     ? rawMission.origin
     : {};
@@ -116,7 +116,11 @@ function normalizeMission(rawMission) {
           toInteger(rawMission.target.r ?? rawMission.target.y, route.at(-1)?.r || originR),
         ),
       }
-      : { q: route.at(-1)?.q || originQ, r: route.at(-1)?.r || originR, tileId: WorldMapService.getTileId(route.at(-1)?.q || originQ, route.at(-1)?.r || originR) },
+      : {
+        q: route.at(-1)?.q ?? positionQ,
+        r: route.at(-1)?.r ?? positionR,
+        tileId: WorldMapService.getTileId(route.at(-1)?.q ?? positionQ, route.at(-1)?.r ?? positionR),
+      },
     position: {
       q: positionQ,
       r: positionR,
@@ -145,7 +149,7 @@ function normalizeMission(rawMission) {
         memberIds: [],
       },
     startedAt: rawMission.startedAt || new Date().toISOString(),
-    nextStepAt: rawMission.nextStepAt || rawMission.startedAt || new Date().toISOString(),
+    nextStepAt: status === 'idle' ? null : rawMission.nextStepAt || rawMission.startedAt || new Date().toISOString(),
     completesAt: rawMission.completesAt || rawMission.startedAt || new Date().toISOString(),
     completedAt: rawMission.completedAt || null,
     claimedAt: rawMission.claimedAt || null,

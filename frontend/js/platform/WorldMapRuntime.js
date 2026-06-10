@@ -314,6 +314,11 @@
         if (this.onAction) return this.onAction(inferredAction, event) !== false;
         return false;
       }
+      if (action.type === 'selectWorldMarchTarget' && action.background) {
+        const inferredAction = this.getBackgroundMarchTargetAction(point) || action;
+        if (this.onAction) return this.onAction(inferredAction, event) !== false;
+        return false;
+      }
       if (action.type === 'resetWorldPan') {
         this.resetCamera({ source: 'resetWorldPan', render: !this.onAction });
       }
@@ -391,13 +396,20 @@
         || null;
     }
 
+    getLayerPointFromHudPoint(point = {}) {
+      const offsetX = Number(this.renderer?.viewportOffsetX) || 0;
+      const offsetY = Number(this.renderer?.viewportOffsetY) || 0;
+      const dragOffset = this.dragLayerOffset || {};
+      return {
+        ...point,
+        x: Number(point.x) + offsetX - (Number(dragOffset.x) || 0),
+        y: Number(point.y) + offsetY - (Number(dragOffset.y) || 0),
+      };
+    }
+
     getBackgroundMarchTargetAction(point = {}) {
       const context = this.getLastTileMapContext();
-      const normalizedPoint = {
-        ...point,
-        x: Number(point.x) - (Number(this.renderer?.viewportOffsetX) || 0),
-        y: Number(point.y) - (Number(this.renderer?.viewportOffsetY) || 0),
-      };
+      const normalizedPoint = this.getLayerPointFromHudPoint(point);
       if (WorldMapInputActionMap?.getBackgroundMarchTargetAction) {
         return WorldMapInputActionMap.getBackgroundMarchTargetAction(normalizedPoint, context, {
           screenPointToAxialTile: WorldMarchSystem?.screenPointToAxialTile,

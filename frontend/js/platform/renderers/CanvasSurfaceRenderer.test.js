@@ -123,6 +123,17 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
   assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'openWorldSite', cityId: 'capital' });
 
   renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' });
+  renderer.addHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' });
+  renderer.addHitTarget({ x: 15, y: 15, width: 36, height: 36 }, { type: 'enterCity', cityId: 'capital' });
+  assert.deepEqual(renderer.getHitTarget({ x: 24, y: 24 }), { type: 'selectWorldActor', missionId: 'march-1' });
+
+  renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 174, y: 236, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' });
+  renderer.addHitTarget({ x: 166, y: 231, width: 58, height: 24 }, { type: 'returnWorldMarch', missionId: 'march-1' });
+  assert.deepEqual(renderer.getHitTarget({ x: 195, y: 243 }), { type: 'returnWorldMarch', missionId: 'march-1' });
+
+  renderer.setHitTargets([]);
   renderer.addHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'openTaskCenter', tab: 'main' });
   renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
     type: 'blockCanvasModal',
@@ -245,6 +256,14 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
     type: 'blockCanvasModal',
     allowedAction: { type: 'openWorldSite', cityId: 'capital' },
   });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
+  ], { x: 24, y: 24 }), { type: 'selectWorldActor', missionId: 'march-1' });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 174, y: 236, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 166, y: 231, width: 58, height: 24 }, { type: 'returnWorldMarch', missionId: 'march-1' }),
+  ], { x: 195, y: 243 }), { type: 'returnWorldMarch', missionId: 'march-1' });
 });
 
 test('CanvasSurfaceTextLayout owns text layout helpers and line-count boundary', () => {

@@ -37,6 +37,13 @@ function createTileMapView() {
   };
 }
 
+function createTileMapViewWithoutScouts() {
+  return {
+    ...createTileMapView(),
+    activeScouts: [],
+  };
+}
+
 function createHost(overrides = {}) {
   const calls = [];
   const hitTargets = [];
@@ -137,6 +144,8 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
 
   assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
   assert.equal(host.lastWorldTileMapContext.renderSnapshot.schema, 'world-map-render-snapshot-v1');
+  assert.equal(host.lastWorldTileMapContext.uiState.selectedSiteId, 'tile-1');
+  assert.equal(host.lastWorldTileMapContext.actors.length, 1);
   assert.deepEqual(host.lastWorldTileMapContext.frame, { x: 11, y: 91, width: 358, height: 298 });
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.deepEqual(host.calls.filter((call) => call[0].startsWith('renderWorld') || call[0].startsWith('addWorld')).map((call) => call[0]), [
@@ -145,7 +154,6 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
     'renderWorldTileStaticLayer',
     'renderWorldTileFogMask',
     'renderWorldActors',
-    'renderWorldMarchHud',
     'addWorldMarchTileHitTargets',
     'addWorldTileSiteHitTargets',
     'addWorldActorHitTargets',
@@ -168,6 +176,36 @@ test('WorldMapTileMapRenderer passes continuous march actors into render layer',
   assert.equal(actor.current.q < 1, true);
 });
 
+test('WorldMapTileMapRenderer derives continuous actors from world explorer state when activeScouts is empty', () => {
+  const host = createHost();
+  const renderer = new WorldMapTileMapRenderer({ host });
+
+  renderer.renderWorldTileMap(createTileMapViewWithoutScouts(), 10, 90, 360, 300, {}, {
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+    state: {
+      worldExplorerState: {
+        activeMission: {
+          id: 'explore-active-1',
+          status: 'active',
+          origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+          route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+          target: { q: 1, r: 0, tileId: 'tile_1_0' },
+          startedAt: '2026-06-06T00:00:00.000Z',
+          stepDurationSeconds: 10,
+        },
+      },
+    },
+  });
+  const actorCall = host.calls.find((call) => call[0] === 'renderWorldActors');
+  const actor = actorCall?.[1]?.[0];
+
+  assert.equal(Boolean(actor), true);
+  assert.equal(actor.missionId, 'explore-active-1');
+  assert.equal(actor.current.q > 0, true);
+  assert.equal(actor.current.q < 1, true);
+  assert.equal(host.lastWorldTileMapContext.actors[0].missionId, 'explore-active-1');
+});
+
 test('WorldMapTileMapRenderer keeps later epoch movement continuous', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });
@@ -183,7 +221,7 @@ test('WorldMapTileMapRenderer keeps later epoch movement continuous', () => {
   assert.equal(actor.current.q < 1, true);
 });
 
-test('WorldMapTileMapRenderer hit-target-only skips paint and registers actors/HUD targets', () => {
+test('WorldMapTileMapRenderer hit-target-only skips paint and registers map/actor targets only', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });
 
@@ -193,7 +231,7 @@ test('WorldMapTileMapRenderer hit-target-only skips paint and registers actors/H
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldMarchTileHitTargets'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
 test('WorldMapTileMapRenderer snapshot-only clips and redraws snapshot cache only', () => {

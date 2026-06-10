@@ -312,6 +312,7 @@
     renderActorHud(actor = {}, viewport = {}, geometry = {}, frame = {}) {
       const hudFrame = this.getVisibleHudFrame(frame);
       const point = this.getTileScreenCenter(actor.current || actor.origin || {}, viewport, geometry);
+      const canStop = actor.status === 'active';
       const rect = this.clampHudRect({
         x: point.x - 78,
         y: point.y - 102,
@@ -323,18 +324,22 @@
       const buttonH = 24;
       const gap = 10;
       const y = rect.y + 28;
-      const returnX = rect.x + 14;
+      const buttonCount = canStop ? 2 : 1;
+      const totalButtonWidth = buttonW * buttonCount + gap * (buttonCount - 1);
+      const returnX = rect.x + Math.max(14, (rect.width - totalButtonWidth) / 2);
       const stopX = returnX + buttonW + gap;
       this.drawButton(returnX, y, buttonW, buttonH, '回城', { size: 11, radius: 7 });
-      this.drawButton(stopX, y, buttonW, buttonH, '停止', { size: 11, radius: 7 });
       this.addHitTarget({ x: returnX, y, width: buttonW, height: buttonH }, {
         type: 'returnWorldMarch',
         missionId: actor.missionId,
       });
-      this.addHitTarget({ x: stopX, y, width: buttonW, height: buttonH }, {
-        type: 'stopWorldMarch',
-        missionId: actor.missionId,
-      });
+      if (canStop) {
+        this.drawButton(stopX, y, buttonW, buttonH, '停止', { size: 11, radius: 7 });
+        this.addHitTarget({ x: stopX, y, width: buttonW, height: buttonH }, {
+          type: 'stopWorldMarch',
+          missionId: actor.missionId,
+        });
+      }
       return true;
     }
 

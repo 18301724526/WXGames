@@ -117,7 +117,7 @@ Implementation status:
 
 - `WorldMarchGeometry.getTileScreenCenter()` now preserves fractional `q/r` coordinates for march actors instead of routing them through static tile geometry that floors coordinates.
 - Static tile rendering still uses the existing integer tile geometry path; only moving actor projection uses the continuous coordinate path.
-- `WorldMapRuntime.getBackgroundMarchTargetAction()` now subtracts the world-map layer `viewportOffsetX/Y` before inferring the fog/march target tile, matching the hit-target normalization already used by rendered targets.
+- `WorldMapRuntime.getBackgroundMarchTargetAction()` now converts `mainHud` tap coordinates into padded world-layer coordinates before inferring the fog/march target tile: it adds the world-map layer `viewportOffsetX/Y` and subtracts any temporary drag-layer transform.
 
 Verification:
 

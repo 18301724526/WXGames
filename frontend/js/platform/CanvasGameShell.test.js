@@ -603,6 +603,53 @@ test('CanvasGameShell routes foreground world map drag background taps through r
   ]);
 });
 
+test('CanvasGameShell routes background march tile hit targets through runtime for precise coordinates', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        calls.push(['rendererHit', point.x, point.y]);
+        return { type: 'selectWorldMarchTarget', targetQ: 2, targetR: 2, background: true };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.targetQ, action.targetR]);
+        return true;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_2_2', q: 2, r: 2 }] } },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point, event) {
+      calls.push(['runtimeTap', point.x, point.y, Boolean(event)]);
+      return shell.actionController.handle({ type: 'selectWorldMarchTarget', targetQ: 3, targetR: 3 });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 195, y: 498.58 }, {}), true);
+  assert.deepEqual(calls, [
+    ['rendererHit', 195, 498.58],
+    ['runtimeTap', 195, 498.58, true],
+    ['handle', 'selectWorldMarchTarget', 3, 3],
+  ]);
+});
+
 test('CanvasGameShell routes world map HUD taps before closing existing map HUD state', () => {
   const calls = [];
   const shell = new CanvasGameShell({
@@ -683,6 +730,52 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   assert.equal(state.currentTab, 'resources');
   assert.equal(state.militaryView, 'army');
   assert.equal(shell.mapHomeActive, false);
+});
+
+test('CanvasGameShell renders HUD with the latest shared world actor selection', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [] } },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', renderState.currentTab, options.territoryUiState]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    territoryController: {
+      getUiState() {
+        return {
+          selectedWorldActorId: '',
+          worldMarchTarget: null,
+          worldPanX: 12,
+          worldPanY: -4,
+        };
+      },
+    },
+    territoryUiState: {
+      selectedWorldActorId: 'explore-active-1',
+      worldMarchTarget: null,
+    },
+    tutorial: {},
+  };
+  shell.territoryUiState = shell.lastGame.territoryUiState;
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = () => false;
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  const renderedUiState = calls.at(-1)[2];
+  assert.equal(renderedUiState.selectedWorldActorId, 'explore-active-1');
+  assert.equal(renderedUiState.worldPanX, 12);
+  assert.equal(renderedUiState.worldPanY, -4);
 });
 
 test('CanvasGameShell keeps guided resource render target during active refreshes', () => {

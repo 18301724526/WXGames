@@ -88,6 +88,7 @@
         this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
       }
       else this.renderMapHomeWorldView(state, topBarBottom, options);
+      this.renderMapHomeWorldMarchHud(state, options);
       this.renderMapHomeExplorerHud(state, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
       this.renderMapHomeOverlays(state, options);
@@ -96,6 +97,53 @@
         skipTutorialAdvisorDialogue: true,
       });
       this.endFrame(options);
+    }
+
+    getMapHomeWorldHudContext(options = {}) {
+      const contexts = [
+        this.lastMapHomeWorldHudContext,
+        this.worldMapLayerRenderer?.lastMapHomeWorldHudContext,
+        options.worldMapRuntimeContext,
+        this.lastWorldTileMapContext,
+        this.worldMapRenderer?.lastWorldTileMapContext,
+        this.worldMapLayerRenderer?.lastWorldTileMapContext,
+      ].filter(Boolean);
+      const selectedActorId = options.territoryUiState?.selectedWorldActorId || '';
+      if (selectedActorId) {
+        const matchingContext = contexts.find((context) => {
+          const actors = this.getMapHomeWorldHudActors(context, options);
+          return actors.some((actor) => actor?.id === selectedActorId || actor?.missionId === selectedActorId);
+        });
+        if (matchingContext) return matchingContext;
+      }
+      return contexts[0] || null;
+    }
+
+    getMapHomeWorldHudActors(context = null, options = {}) {
+      const renderSnapshot = context?.renderSnapshot || null;
+      const contextActors = Array.isArray(context?.actors)
+        ? context.actors
+        : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []);
+      if (contextActors.length) return contextActors;
+      const state = options.state || this.lastGame?.state || this.host?.lastGame?.state || {};
+      const explorerState = state?.worldExplorerState;
+      if (!explorerState || !SharedWorldMarchSystem?.buildActors) return contextActors;
+      return SharedWorldMarchSystem.buildActors(explorerState, {
+        nowMs: options.epochNowMs ?? options.nowMs ?? Date.now(),
+      });
+    }
+
+    renderMapHomeWorldMarchHud(state = {}, options = {}) {
+      if (options.isMapHome !== true || (options.activeTab || 'resources') !== 'military') return false;
+      if (typeof this.renderWorldMarchHud !== 'function') return false;
+      const context = this.getMapHomeWorldHudContext({ ...options, state: options.state || state });
+      const renderSnapshot = context?.renderSnapshot || null;
+      const uiState = options.territoryUiState || context?.uiState || renderSnapshot?.ui || {};
+      const actors = this.getMapHomeWorldHudActors(context, { ...options, state: options.state || state });
+      const viewport = context?.viewport || renderSnapshot?.viewport || {};
+      const geometry = context?.geometry || renderSnapshot?.geometry || context?.tileMapView?.geometry || {};
+      const frame = context?.frame || renderSnapshot?.frame || {};
+      return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame);
     }
 
     renderStandardFrame(state = {}, topBarBottom = 84, activeTab = 'resources', options = {}) {

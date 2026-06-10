@@ -142,6 +142,31 @@ test('world march starts a manual route and stops only at the server timeline ti
   assert.equal(stopped.authority.timeline.stopTile.tileId, 'tile_0_0');
 });
 
+test('stopped world march remains a client-visible idle mission after normalization', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+
+  const stopped = WorldExplorerService.stopWorldMarch(
+    gameState,
+    started.mission.id,
+    {},
+    new Date(now.getTime() + 1000),
+  );
+  const clientState = WorldExplorerService.getClientState(gameState, new Date(now.getTime() + 1001));
+
+  assert.equal(stopped.success, true);
+  assert.equal(stopped.mission.status, 'idle');
+  assert.equal(stopped.mission.route.length, 0);
+  assert.equal(clientState.missions.length, 1);
+  assert.equal(clientState.idleMissions[0].id, started.mission.id);
+  assert.equal(clientState.idleMissions[0].position.tileId, stopped.mission.position.tileId);
+});
+
 test('world march treats wrapped edge targets as adjacent movement', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
@@ -219,6 +244,34 @@ test('world march can be redirected home', () => {
   assert.equal(returned.mission.target.q, 0);
   assert.equal(returned.mission.target.r, 0);
   assert.equal(returned.mission.origin.q, 1);
+  assert.equal(returned.authority.command.type, 'returnWorldMarch');
+});
+
+test('idle world march can return home from its parked tile', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
+  assert.equal(gameState.exploreMissions[0].status, 'idle');
+  assert.equal(gameState.exploreMissions[0].position.q, 2);
+
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    new Date(finishAt.getTime() + 1),
+  );
+
+  assert.equal(returned.success, true);
+  assert.equal(returned.mission.origin.q, 2);
+  assert.equal(returned.mission.origin.r, 0);
+  assert.equal(returned.mission.target.q, 0);
+  assert.equal(returned.mission.target.r, 0);
   assert.equal(returned.authority.command.type, 'returnWorldMarch');
 });
 

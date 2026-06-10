@@ -368,6 +368,7 @@ test('WorldMarchHudCanvasRenderer renders selected actor commands', () => {
   }, [{
     id: 'explore-1',
     missionId: 'explore-1',
+    status: 'active',
     current: { q: 0, r: 0 },
     stopTile: { q: 1, r: 0 },
     formation: { label: 'Scout A' },
@@ -384,4 +385,29 @@ test('WorldMarchHudCanvasRenderer renders selected actor commands', () => {
   assert.equal(stopTarget?.action.missionId, 'explore-1');
   assert.equal(Object.prototype.hasOwnProperty.call(stopTarget.action, 'targetQ'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(stopTarget.action, 'targetR'), false);
+});
+
+test('WorldMarchHudCanvasRenderer hides stop command for idle parked actors', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({}, {
+    selectedWorldActorId: 'explore-idle',
+  }, [{
+    id: 'explore-idle',
+    missionId: 'explore-idle',
+    status: 'idle',
+    current: { q: 2, r: 0 },
+    target: { q: 2, r: 0 },
+    formation: { label: 'Scout Idle' },
+  }], {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }, { x: 0, y: 84, width: 390, height: 696 });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'returnWorldMarch' && target.action.missionId === 'explore-idle'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'stopWorldMarch'), false);
 });

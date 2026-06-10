@@ -225,6 +225,28 @@ setTechTreeZoom(zoom = 1) {
       return true;
     },
 
+resolveTerritoryUiState(overrideUiState = null) {
+      const territoryController = this.lastGame?.territoryController || null;
+      const controllerSnapshot = territoryController?.getUiState?.() || null;
+      const sources = [
+        controllerSnapshot,
+        this.lastGame?.territoryUiState,
+        this.territoryUiState,
+        territoryController?.uiState,
+        overrideUiState,
+      ].filter((source) => source && typeof source === 'object');
+      const resolved = Object.assign({}, ...sources);
+      const liveSelectedActorSource = [
+        this.lastGame?.territoryUiState,
+        this.territoryUiState,
+        territoryController?.uiState,
+      ].find((source) => source?.selectedWorldActorId);
+      if (liveSelectedActorSource?.selectedWorldActorId) {
+        resolved.selectedWorldActorId = liveSelectedActorSource.selectedWorldActorId;
+      }
+      return resolved;
+    },
+
 buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {}) {
       const state = this.lastGame?.state || {};
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
@@ -238,7 +260,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         allowDefaultMapHome: options.allowDefaultMapHome,
       });
       this.mapHomeActive = homeView.isMapHome;
-      const resolvedTerritoryUiState = territoryUiState || this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
+      const resolvedTerritoryUiState = this.resolveTerritoryUiState(territoryUiState);
       return {
         now: this.now(),
         epochNowMs: Date.now(),
@@ -261,6 +283,10 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         famousPersonsPage: this.famousPersonsPage,
         selectedFamousPersonId: this.selectedFamousPersonId,
         armyFormationEditor: this.armyFormationEditor,
+        worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+          || this.worldMapRuntime?.lastTileMapContext
+          || this.worldMapRenderer?.lastWorldTileMapContext
+          || null,
         activeCommandPanel: this.activeCommandPanel || '',
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
@@ -318,7 +344,7 @@ renderActive(options = {}) {
 renderReadOnly(state, activeTab = 'resources', options = {}) {
       if (!this.previewEnabled || !this.renderer || !state) return false;
       this.syncWorldMapRendererLayerMetrics();
-      const territoryUiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
+      const territoryUiState = this.resolveTerritoryUiState(options.territoryUiState);
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
         || activeTab === 'resources'
         || activeTab === 'territory';
@@ -362,6 +388,10 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
             ? this.worldMapRuntime.hitTargets
             : [],
+          worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+            || this.worldMapRuntime?.lastTileMapContext
+            || this.worldMapRenderer?.lastWorldTileMapContext
+            || null,
         }
         : {
           ...renderOptions,

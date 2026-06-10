@@ -53,6 +53,7 @@ function createHost(overrides = {}) {
     renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
     renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
     renderTutorialIntro(...args) { calls.push(['renderTutorialIntro', args]); },
+    renderWorldMarchHud(...args) { calls.push(['renderWorldMarchHud', args]); },
     renderWorldSiteModal(...args) { calls.push(['renderWorldSiteModal', args]); },
     setHitTargets(targets = []) {
       calls.push(['setHitTargets', targets]);
@@ -112,6 +113,147 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
   assert.equal(names.at(-1), 'endFrame');
+});
+
+test('HudOverlayCanvasRenderer owns map-home world march HUD rendering', () => {
+  const hudContext = {
+    actors: [{ id: 'scout-1' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: hudContext,
+  });
+  const renderer = new HudOverlayCanvasRenderer({ host });
+  const uiState = {
+    worldMarchTarget: { q: 2, r: 2, tileId: 'tile_2_2', pickerOpen: true },
+  };
+
+  renderer.renderHudOverlay({ id: 'state-1' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    territoryUiState: uiState,
+  });
+
+  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
+  assert.equal(Boolean(hudCall), true);
+  assert.equal(hudCall[1][0].id, 'state-1');
+  assert.equal(hudCall[1][1], uiState);
+  assert.deepEqual(hudCall[1][2], hudContext.actors);
+  assert.equal(hudCall[1][3], hudContext.viewport);
+  assert.equal(hudCall[1][4], hudContext.geometry);
+  assert.equal(hudCall[1][5], hudContext.frame);
+});
+
+test('HudOverlayCanvasRenderer prefers same-frame map-home HUD context over stale runtime context', () => {
+  const staleContext = {
+    actors: [{ id: 'stale-scout' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const freshContext = {
+    actors: [{ id: 'fresh-scout' }],
+    frame: { x: 2, y: 97, width: 386, height: 682 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    viewport: { originX: 196, originY: 361, scale: 0.78 },
+  };
+  const host = createHost({
+    collectMapHomeWorldSiteHitTargets(...args) {
+      this.calls.push(['collectMapHomeWorldSiteHitTargets', args]);
+      this.lastMapHomeWorldHudContext = freshContext;
+    },
+  });
+  const renderer = new HudOverlayCanvasRenderer({ host });
+
+  renderer.renderHudOverlay({ id: 'state-1' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    territoryUiState: {},
+    worldMapRuntimeContext: staleContext,
+  });
+
+  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
+  assert.deepEqual(hudCall[1][2], freshContext.actors);
+  assert.equal(hudCall[1][3], freshContext.viewport);
+  assert.equal(hudCall[1][5], freshContext.frame);
+});
+
+test('HudOverlayCanvasRenderer uses runtime HUD context when it contains the selected actor', () => {
+  const staleContext = {
+    actors: [{ id: 'stale-scout' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const runtimeContext = {
+    actors: [{ id: 'fresh-scout', missionId: 'explore-active-1' }],
+    frame: { x: 2, y: 97, width: 386, height: 682 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    viewport: { originX: 196, originY: 361, scale: 0.78 },
+  };
+  const host = createHost({
+    lastMapHomeWorldHudContext: staleContext,
+  });
+  const renderer = new HudOverlayCanvasRenderer({ host });
+
+  renderer.renderHudOverlay({ id: 'state-1' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    territoryUiState: { selectedWorldActorId: 'explore-active-1' },
+    worldMapRuntimeContext: runtimeContext,
+  });
+
+  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
+  assert.deepEqual(hudCall[1][2], runtimeContext.actors);
+  assert.equal(hudCall[1][3], runtimeContext.viewport);
+  assert.equal(hudCall[1][5], runtimeContext.frame);
+});
+
+test('HudOverlayCanvasRenderer derives selected actor commands from world explorer state when HUD context is empty', () => {
+  const emptyContext = {
+    actors: [],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48 },
+    viewport: { originX: 195, originY: 360, scale: 0.78, panX: 0, panY: 0 },
+  };
+  const host = createHost({
+    lastMapHomeWorldHudContext: emptyContext,
+  });
+  const renderer = new HudOverlayCanvasRenderer({ host });
+  const state = {
+    id: 'state-1',
+    worldExplorerState: {
+      activeMission: {
+        id: 'explore-active-1',
+        status: 'active',
+        origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+        route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+        target: { q: 1, r: 0, tileId: 'tile_1_0' },
+        startedAt: '2026-06-06T00:00:00.000Z',
+        stepDurationSeconds: 10,
+        formation: { cityId: 'capital', slot: 1, label: 'Scout A' },
+      },
+    },
+  };
+
+  renderer.renderHudOverlay(state, {
+    activeTab: 'military',
+    isMapHome: true,
+    skipWorldMapLayer: true,
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+    territoryUiState: { selectedWorldActorId: 'explore-active-1' },
+  });
+
+  const hudCall = host.calls.find((call) => call[0] === 'renderWorldMarchHud');
+  assert.equal(Boolean(hudCall), true);
+  assert.equal(hudCall[1][2].length, 1);
+  assert.equal(hudCall[1][2][0].missionId, 'explore-active-1');
+  assert.equal(hudCall[1][2][0].status, 'active');
 });
 
 test('HudOverlayCanvasRenderer preserves runtime world-map site targets on skipped map layers', () => {

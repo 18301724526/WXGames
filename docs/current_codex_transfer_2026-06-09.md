@@ -166,7 +166,7 @@ Behavior added:
 
 - Active march actor screen projection now preserves fractional `q/r` coordinates, so actors can draw between tile centers.
 - Static tile rendering remains on the existing integer tile geometry path.
-- Background/fog march target inference now subtracts the world-map layer padding before converting the tap point back to tile coordinates.
+- Background/fog march target inference now converts `mainHud` tap coordinates into padded world-layer coordinates before tile inference: it adds world-map layer padding and subtracts any temporary drag-layer transform.
 
 Focused verification passed:
 

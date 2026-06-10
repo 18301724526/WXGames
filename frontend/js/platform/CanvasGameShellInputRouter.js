@@ -349,6 +349,11 @@ handleTap(point, event) {
         }
         return false;
       }
+      if (action?.type === 'selectWorldMarchTarget' && action.background) {
+        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        if (runtimeHandled) return runtimeHandled;
+      }
       if (action?.disabled) {
         if (event?.preventDefault) event.preventDefault();
         if (event?.stopPropagation) event.stopPropagation();

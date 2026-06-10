@@ -110,25 +110,29 @@ test('WorldMapRuntime converts map background taps into fog march targets', () =
   assert.equal(calls[0].terrainLabel, '未知');
 });
 
-test('WorldMapRuntime subtracts layer padding before inferring fog march targets', () => {
+test('WorldMapRuntime converts HUD taps into padded world-layer coordinates before inferring fog march targets', () => {
   const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
   const renderer = {
-    viewportOffsetX: 12,
-    viewportOffsetY: 12,
+    viewportOffsetX: 120,
+    viewportOffsetY: 120,
     renderWorldMapLayer() {},
     lastWorldTileMapContext: {
       tileMapView: {
-        geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
-        tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainLabel: 'Plains', visibility: 'scouted' }],
+        geometry,
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainLabel: 'Plains', visibility: 'scouted' },
+          { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', terrainLabel: 'Forest', visibility: 'unknown', discovered: false },
+        ],
       },
       viewport: {
-        originX: 100,
-        originY: 100,
+        originX: 120 + 180,
+        originY: 120 + 180,
         panX: 0,
         panY: 0,
-        scale: 0.5,
+        scale: 1,
       },
-      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      geometry,
     },
   };
   const runtime = new WorldMapRuntime({
@@ -143,11 +147,101 @@ test('WorldMapRuntime subtracts layer padding before inferring fog march targets
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
   ];
   runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
+  const layerTileCenter = {
+    x: renderer.lastWorldTileMapContext.viewport.originX + geometry.stepX,
+    y: renderer.lastWorldTileMapContext.viewport.originY + geometry.stepY,
+  };
+  const hudPoint = {
+    x: layerTileCenter.x - renderer.viewportOffsetX,
+    y: layerTileCenter.y - renderer.viewportOffsetY,
+  };
 
-  assert.equal(runtime.handleTap({ x: 160, y: 136 }), true);
+  assert.equal(runtime.handleTap(hudPoint), true);
   assert.equal(calls[0].type, 'selectWorldMarchTarget');
   assert.equal(calls[0].targetQ, 1);
   assert.equal(calls[0].targetR, 0);
+});
+
+test('WorldMapRuntime recomputes background tile targets from the actual tap point', () => {
+  const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const renderer = {
+    viewportOffsetX: 200,
+    viewportOffsetY: 200,
+    renderWorldMapLayer() {},
+    lastWorldTileMapContext: {
+      tileMapView: {
+        geometry,
+        tiles: [
+          { id: 'tile_2_2', q: 2, r: 2, terrain: 'waste', terrainLabel: 'Waste', visibility: 'scouted' },
+        ],
+      },
+      viewport: {
+        originX: 395,
+        originY: 473.94,
+        panX: 0,
+        panY: 0,
+        scale: 0.78,
+      },
+      geometry,
+    },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer,
+    presenter: {},
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  const targetCenter = {
+    x: renderer.lastWorldTileMapContext.viewport.originX,
+    y: renderer.lastWorldTileMapContext.viewport.originY + (3 + 3) * geometry.stepY * renderer.lastWorldTileMapContext.viewport.scale,
+  };
+  const hudPoint = {
+    x: targetCenter.x - renderer.viewportOffsetX,
+    y: targetCenter.y - renderer.viewportOffsetY,
+  };
+  runtime.hitTargets = [
+    { x: 0, y: 0, width: 390, height: 620, action: { type: 'worldMapDrag', background: true } },
+    {
+      x: hudPoint.x - 70,
+      y: hudPoint.y - 40,
+      width: 140,
+      height: 80,
+      action: {
+        type: 'selectWorldMarchTarget',
+        targetQ: 2,
+        targetR: 2,
+        tileId: 'tile_2_2',
+        known: true,
+        background: true,
+      },
+    },
+  ];
+  runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
+
+  assert.equal(runtime.handleTap(hudPoint), true);
+  assert.equal(calls[0].type, 'selectWorldMarchTarget');
+  assert.equal(calls[0].targetQ, 3);
+  assert.equal(calls[0].targetR, 3);
+  assert.equal(calls[0].known, false);
+});
+
+test('WorldMapRuntime subtracts temporary drag transform when converting HUD taps to world-layer coordinates', () => {
+  const renderer = {
+    viewportOffsetX: 120,
+    viewportOffsetY: 120,
+    renderWorldMapLayer() {},
+  };
+  const runtime = new WorldMapRuntime({ renderer, presenter: {} });
+
+  runtime.setDragLayerOffset(32, -18);
+
+  assert.deepEqual(runtime.getLayerPointFromHudPoint({ x: 196, y: 268 }), {
+    x: 284,
+    y: 406,
+  });
 });
 
 test('WorldMapRuntime reads tile context from the split world map renderer', () => {

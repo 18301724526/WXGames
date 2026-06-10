@@ -90,6 +90,27 @@ test('CanvasActionDispatcher preserves legacy boolean coercion for explore actio
   assert.deepEqual(calls, [['startExplore'], ['render', 'startExplore']]);
 });
 
+test('CanvasActionDispatcher passes world march mission identifiers to legacy finish handlers', () => {
+  const calls = [];
+  const dispatcher = new CanvasActionDispatcher();
+
+  assert.equal(dispatcher.handle({ type: 'returnWorldMarch', missionId: 'march-1' }, {
+    returnWorldMarch(missionId) { calls.push(['returnWorldMarch', missionId]); },
+  }), true);
+  assert.equal(dispatcher.handle({ type: 'stopWorldMarch', actorId: 'march-2' }, {
+    stopWorldMarch(missionId) { calls.push(['stopWorldMarch', missionId]); },
+  }), true);
+  assert.equal(dispatcher.handle({ type: 'claimExplore', value: 'march-3' }, {
+    claimExplore(missionId) { calls.push(['claimExplore', missionId]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['returnWorldMarch', 'march-1'],
+    ['stopWorldMarch', 'march-2'],
+    ['claimExplore', 'march-3'],
+  ]);
+});
+
 test('index.html loads action registry before dispatcher', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const registryPosition = html.indexOf('CanvasActionDispatchRegistry.js');
