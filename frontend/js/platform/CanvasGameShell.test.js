@@ -112,6 +112,26 @@ test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
   ]);
 });
 
+test('CanvasGameShell maps the main HUD layer to the primary input canvas', () => {
+  const calls = [];
+  const primaryCanvas = { id: 'main' };
+  const shell = new CanvasGameShell({
+    runtime: {
+      ensureCanvas() {
+        calls.push(['ensureCanvas']);
+        return primaryCanvas;
+      },
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options]);
+        return { name, options };
+      },
+    },
+  });
+
+  assert.equal(shell.ensureCanvasLayer('mainHud'), primaryCanvas);
+  assert.deepEqual(calls, [['ensureCanvas']]);
+});
+
 test('CanvasGameShell layer helpers ignore disabled feature layers', () => {
   const calls = [];
   const shell = new CanvasGameShell({

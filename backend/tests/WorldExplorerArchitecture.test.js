@@ -171,3 +171,36 @@ test('AI explored terrain stays server-side until it meets the player reveal fro
   assert.equal(syncedTile.r, 0);
   assert.equal(syncedTile.visibility, 'scouted');
 });
+
+test('AI reveal sync only exposes AI tiles inside the encounter radius', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'ai-sync-radius-player',
+    worldMap: WorldMapService.createInitialWorldMap('ai-sync-radius-seed', now),
+    worldAi: WorldAiExplorerService.normalizeWorldAi({
+      explorers: [{
+        id: 'ai-frontier-1',
+        factionId: 'ai-frontier',
+        position: { q: 3, r: 0 },
+        revealedTileIds: [],
+        revealedCanonicalIds: [],
+      }],
+    }, now),
+  };
+  const explorer = gameState.worldAi.explorers[0];
+
+  WorldAiExplorerService.revealAiArea(gameState, explorer, 3, 0, now);
+  WorldAiExplorerService.revealAiArea(gameState, explorer, 20, 20, now);
+
+  const synced = WorldAiExplorerService.syncAiRevealToPlayer(gameState, now, {
+    syncRadius: 1,
+    syncLimit: 64,
+  });
+  const syncedCanonicalIds = synced.map((tile) => tile.canonicalId || WorldMapService.getCanonicalTileId(tile.q, tile.r));
+  const clientCanonicalIds = WorldMapService.getClientWorldMap(gameState, now).tiles
+    .map((tile) => tile.canonicalId || WorldMapService.getCanonicalTileId(tile.q, tile.r));
+
+  assert.equal(syncedCanonicalIds.includes('tile_3_0'), true);
+  assert.equal(syncedCanonicalIds.includes('tile_20_20'), false);
+  assert.equal(clientCanonicalIds.includes('tile_20_20'), false);
+});

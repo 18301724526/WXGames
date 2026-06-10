@@ -53,9 +53,9 @@ function getCoordinateKey(q, r) {
 }
 
 function getDistance(fromQ, fromR, toQ, toR) {
-  return Math.max(
-    Math.abs(toInteger(toQ, 0) - toInteger(fromQ, 0)),
-    Math.abs(toInteger(toR, 0) - toInteger(fromR, 0)),
+  return WorldMapService.getWrappedDistance(
+    { q: toInteger(fromQ, 0), r: toInteger(fromR, 0) },
+    { q: toInteger(toQ, 0), r: toInteger(toR, 0) },
   );
 }
 

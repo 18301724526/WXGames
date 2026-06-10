@@ -214,6 +214,7 @@ isCanvasLayerEnabled(name = '') {
 
 ensureCanvasLayer(name = '', overrides = {}) {
       if (this.isCanvasLayerEnabled(name) !== true) return null;
+      if (this.getCanvasLayerName(name) === 'mainHud') return this.runtime?.ensureCanvas?.() || null;
       if (typeof this.runtime?.ensureLayerCanvas !== 'function') return null;
       return this.runtime.ensureLayerCanvas(this.getCanvasLayerName(name), this.getCanvasLayerOptions(name, overrides));
     }

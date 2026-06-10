@@ -48,11 +48,19 @@ class GameStateRepository {
         scoutedCoordinates TEXT,
         scoutState TEXT,
         exploreMissions TEXT,
+        worldAi TEXT,
         warMissions TEXT,
         scoutReports TEXT,
         updatedAt TEXT
       );
+      CREATE TABLE IF NOT EXISTS shared_world_territories (
+        id TEXT PRIMARY KEY,
+        territory TEXT,
+        ownerPlayerId TEXT,
+        updatedAt TEXT
+      );
       CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
+      CREATE INDEX IF NOT EXISTS idx_shared_world_territories_owner ON shared_world_territories(ownerPlayerId);
     `);
 
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
@@ -113,6 +121,9 @@ class GameStateRepository {
     if (!columns.some((column) => column.name === 'exploreMissions')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN exploreMissions TEXT').run();
     }
+    if (!columns.some((column) => column.name === 'worldAi')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldAi TEXT').run();
+    }
     if (!columns.some((column) => column.name === 'warMissions')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN warMissions TEXT').run();
     }
@@ -124,7 +135,7 @@ class GameStateRepository {
   findByPlayerId(playerId) {
     const row = this.db.prepare('SELECT * FROM game_states WHERE playerId = ?').get(playerId);
     if (!row) return null;
-    return {
+    const state = {
       playerId: row.playerId,
       saveMetadata: row.saveMetadata ? JSON.parse(row.saveMetadata) : null,
       resources: JSON.parse(row.resources || '{}'),
@@ -160,10 +171,13 @@ class GameStateRepository {
       scoutedCoordinates: row.scoutedCoordinates ? JSON.parse(row.scoutedCoordinates) : null,
       scoutState: row.scoutState ? JSON.parse(row.scoutState) : null,
       exploreMissions: row.exploreMissions ? JSON.parse(row.exploreMissions) : null,
+      worldAi: row.worldAi ? JSON.parse(row.worldAi) : undefined,
       warMissions: row.warMissions ? JSON.parse(row.warMissions) : null,
       scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
       updatedAt: row.updatedAt,
     };
+    state.territories = this.mergeSharedWorldTerritories(state.territories);
+    return state;
   }
 
   findAll() {
@@ -195,8 +209,8 @@ class GameStateRepository {
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
-        scoutedCoordinates, scoutState, exploreMissions, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        scoutedCoordinates, scoutState, exploreMissions, worldAi, warMissions, scoutReports, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       gameState.playerId,
       JSON.stringify(gameState.saveMetadata || {}),
@@ -233,10 +247,72 @@ class GameStateRepository {
       JSON.stringify(gameState.scoutedCoordinates || []),
       JSON.stringify(gameState.scoutState || {}),
       JSON.stringify(gameState.exploreMissions || []),
+      JSON.stringify(gameState.worldAi || {}),
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
       new Date().toISOString(),
     );
+    this.saveSharedWorldTerritories(gameState);
+  }
+
+  getSharedWorldTerritories() {
+    return this.db.prepare('SELECT territory FROM shared_world_territories ORDER BY id ASC').all()
+      .map((row) => {
+        try {
+          return JSON.parse(row.territory || 'null');
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter((territory) => territory && typeof territory === 'object');
+  }
+
+  mergeSharedWorldTerritories(territories) {
+    const byId = new Map();
+    const add = (territory) => {
+      if (!territory || typeof territory !== 'object') return;
+      const id = territory.id || `site_${territory.x ?? territory.q}_${territory.y ?? territory.r}`;
+      byId.set(id, { ...(byId.get(id) || {}), ...territory, id });
+    };
+    (Array.isArray(territories) ? territories : []).forEach(add);
+    this.getSharedWorldTerritories().forEach(add);
+    return [...byId.values()];
+  }
+
+  getSharedTerritoryOwner(gameState, territory) {
+    if (!territory || typeof territory !== 'object') return '';
+    if (territory.type === 'capital' || territory.id === 'capital') return '';
+    if (typeof territory.ownerPlayerId === 'string' && territory.ownerPlayerId) return territory.ownerPlayerId;
+    if (territory.owner === 'player' && territory.status === 'occupied') return gameState.playerId || '';
+    return '';
+  }
+
+  saveSharedWorldTerritories(gameState) {
+    const now = new Date().toISOString();
+    const territories = Array.isArray(gameState?.territories) ? gameState.territories : [];
+    const ownedIds = [];
+    const upsert = this.db.prepare(`
+      INSERT OR REPLACE INTO shared_world_territories (id, territory, ownerPlayerId, updatedAt)
+      VALUES (?, ?, ?, ?)
+    `);
+    for (const territory of territories) {
+      const ownerPlayerId = this.getSharedTerritoryOwner(gameState, territory);
+      if (!ownerPlayerId) continue;
+      const id = territory.id || `site_${territory.x ?? territory.q}_${territory.y ?? territory.r}`;
+      if (ownerPlayerId === gameState.playerId) ownedIds.push(id);
+      upsert.run(id, JSON.stringify({ ...territory, id, ownerPlayerId }), ownerPlayerId, now);
+    }
+    const playerId = gameState?.playerId || '';
+    if (!playerId) return;
+    if (!ownedIds.length) {
+      this.db.prepare('DELETE FROM shared_world_territories WHERE ownerPlayerId = ?').run(playerId);
+      return;
+    }
+    const placeholders = ownedIds.map(() => '?').join(', ');
+    this.db.prepare(`
+      DELETE FROM shared_world_territories
+      WHERE ownerPlayerId = ? AND id NOT IN (${placeholders})
+    `).run(playerId, ...ownedIds);
   }
 
   touchPlayerActiveAt(playerId) {

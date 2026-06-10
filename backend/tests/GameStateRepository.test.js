@@ -5,6 +5,7 @@ const Database = require('better-sqlite3');
 const GameStateRepository = require('../repositories/GameStateRepository');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
+const WorldMapService = require('../services/WorldMapService');
 
 test('GameStateRepository persists task progress with the game state', () => {
   const db = new Database(':memory:');
@@ -74,4 +75,111 @@ test('GameStateRepository persists world explorer missions with the game state',
   assert.equal(saved.exploreMissions[0].plannedSites[0].siteId, 'site_1_0');
   assert.equal(saved.exploreMissions[0].formation.memberIds[0], 'fp-scout');
   db.close();
+});
+
+test('GameStateRepository persists world AI exploration state with the game state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('world-ai-repo-test');
+    state.worldAi = {
+      schema: 'world-ai-explorer-v1',
+      version: 1,
+      explorers: [{
+        id: 'ai-frontier-1',
+        factionId: 'ai-frontier',
+        position: { q: 12, r: -3, tileId: 'tile_12_-3', canonicalId: 'tile_12_1021' },
+        revealedTileIds: ['tile_12_-3'],
+        revealedCanonicalIds: ['tile_12_1021'],
+        stepDurationMs: 15000,
+        nextStepAt: '2026-06-06T00:00:15.000Z',
+        startedAt: '2026-06-06T00:00:00.000Z',
+        updatedAt: '2026-06-06T00:00:00.000Z',
+      }],
+      playerSyncedCanonicalIds: ['tile_1023_0'],
+      lastAdvancedAt: '2026-06-06T00:00:00.000Z',
+      updatedAt: '2026-06-06T00:00:00.000Z',
+    };
+
+    repository.save(state);
+    const saved = repository.findByPlayerId('world-ai-repo-test');
+
+    assert.deepEqual(saved.worldAi, state.worldAi);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository exposes shared world ownership across player saves', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-06T00:00:00.000Z');
+    const ownerState = GameStateNormalizer.createInitialGameState('shared-world-owner');
+    const spectatorState = GameStateNormalizer.createInitialGameState('shared-world-spectator');
+    const sharedSite = {
+      id: 'site_4_0',
+      x: 4,
+      y: 0,
+      naturalName: 'Shared Frontier',
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: ownerState.playerId,
+      status: 'occupied',
+    };
+
+    ownerState.territories = [...ownerState.territories, sharedSite];
+    WorldMapService.bindSiteToTile(ownerState, 4, 0, sharedSite.id, now, { visibility: 'controlled' });
+
+    repository.save(ownerState);
+    repository.save(spectatorState);
+    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
+    const visibleSharedSite = (spectatorReloaded.territories || []).find((site) => (
+      site.id === sharedSite.id || (site.x === sharedSite.x && site.y === sharedSite.y)
+    ));
+
+    assert.ok(visibleSharedSite, 'Shared world ownership must not be trapped inside one player save.');
+    assert.equal(visibleSharedSite.ownerPlayerId, ownerState.playerId);
+    assert.equal(visibleSharedSite.status, 'occupied');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository removes stale shared world ownership for a player save', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const ownerState = GameStateNormalizer.createInitialGameState('shared-world-owner-clear');
+    const spectatorState = GameStateNormalizer.createInitialGameState('shared-world-spectator-clear');
+    const sharedSite = {
+      id: 'site_5_0',
+      x: 5,
+      y: 0,
+      naturalName: 'Retired Frontier',
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: ownerState.playerId,
+      status: 'occupied',
+    };
+
+    ownerState.territories = [...ownerState.territories, sharedSite];
+    repository.save(ownerState);
+    repository.save(spectatorState);
+    assert.ok(repository.findByPlayerId(spectatorState.playerId).territories.some((site) => site.id === sharedSite.id));
+
+    ownerState.territories = ownerState.territories.filter((site) => site.id !== sharedSite.id);
+    repository.save(ownerState);
+    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
+
+    assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
+  } finally {
+    db.close();
+  }
 });

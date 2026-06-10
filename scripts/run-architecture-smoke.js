@@ -22,6 +22,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js',
   'frontend/js/platform/CanvasLayerRegistry.js',
   'frontend/js/platform/CanvasLayerRegistry.test.js',
+  'frontend/js/platform/H5CanvasRuntime.js',
+  'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShell.js',
   'frontend/js/platform/CanvasGameShellMounting.js',
   'frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.js',
@@ -207,8 +209,10 @@ const CHECK_FILES = Object.freeze([
   'backend/services/config/ConfigRegistryContract.js',
   'backend/services/GameStateMigrationPipeline.js',
   'backend/services/GameStateNormalizer.js',
+  'backend/repositories/GameStateRepository.js',
   'backend/tests/ConfigRegistryContract.test.js',
   'backend/tests/ServerRandomAuthorityContract.test.js',
+  'backend/tests/GameStateRepository.test.js',
   'backend/tests/WorldMapArchitecture.test.js',
   'backend/tests/SkillGeneratorArchitecture.test.js',
   'backend/tests/FamousPersonArchitecture.test.js',
@@ -225,6 +229,7 @@ const CHECK_FILES = Object.freeze([
 
 const TEST_FILES = Object.freeze([
   'frontend/js/platform/CanvasLayerRegistry.test.js',
+  'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js',
@@ -316,6 +321,7 @@ const TEST_FILES = Object.freeze([
   'backend/tests/VersionService.test.js',
   'backend/tests/WorldExplorerDtoMapper.test.js',
   'backend/tests/WorldExplorerArchitecture.test.js',
+  'backend/tests/GameStateRepository.test.js',
 ]);
 
 function run(label, command, args) {

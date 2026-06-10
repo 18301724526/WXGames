@@ -16,6 +16,9 @@
 - 核心玩法长期包含城市、资源、建筑、科技、名人、军队、编队、探索、占领、战斗、新手引导和任务系统；后续只会增加，不按删除这些核心领域设计。
 - 前端游戏内可见业务 UI 固定为 Canvas-only，不使用 DOM overlay 实现按钮、面板、弹窗、任务或引导。
 - H5 和各类小游戏平台共用一套通用前端架构，不维护多套业务 UI。
+- Canvas layer architecture follows mature engine separation: physical canvas stack, logical render queue, hit priority queue, animation category, input surface, and debug surface are explicit contracts.
+- `mainHud` is the only input surface. `worldMap` and optional `worldFog` are visual-only secondary layers with `pointer-events: none`.
+- Render order and hit priority must be registry-driven; new visual buckets or input priorities require focused tests before feature code consumes them.
 - 未来原生 App 属于复刻玩法或续作迭代，当前项目应优先沉淀可移植的数据契约、配置契约和领域规则。
 
 ### 1.2 世界地图 / World Map
@@ -75,6 +78,7 @@
 | 模块类型 / Block Type | 可封内容 / Stable Surface | 禁止封死 / Do Not Freeze |
 | --- | --- | --- |
 | `CanvasDomBoundary` | Canvas-only 规则、DOM UI 禁令、平台宿主边界 | 具体页面视觉风格 |
+| `CanvasLayerContract` | physical canvas stack、logical render queue、hit priority queue、single input surface、debug-last ordering | 具体页面视觉风格、具体特效表现 |
 | `TileCoord` / `TileMapGeometry` | 菱形等距投影、坐标转换、tile id、`q/r` 兼容 alias | hex 语义、具体地图生成 |
 | `WorldTopology` | 全方向环绕、坐标归一化、最短环绕距离 | 地图大小具体数值 |
 | `WorldChunkAddress` | chunk id、chunk 坐标、chunk 覆盖范围 | chunk 尺寸最终数值 |
@@ -128,9 +132,10 @@
 5. 有 extension path，未来功能通过 registry、strategy、pipeline、adapter、config 或新文件接入。
 6. 遵守后端权威，不信任前端提交的最终结果。
 7. 遵守 Canvas-only，不引入 DOM UI。
-8. 遵守地图不变量：diamond isometric tile、full wrapping topology、chunk/window、reveal persistence。
-9. 遵守配置不变量：versioned config、schema validation、runtime registry。
-10. 在 `architecture_module_responsibility_index_2026-06-08.md` 记录状态变化、公开 API、扩展方式和回归命令。
+8. 遵守成熟引擎层级契约：single input surface、physical canvas stack、render queue、hit priority queue、debug-last ordering。
+9. 遵守地图不变量：diamond isometric tile、full wrapping topology、chunk/window、reveal persistence。
+10. 遵守配置不变量：versioned config、schema validation、runtime registry。
+11. 在 `architecture_module_responsibility_index_2026-06-08.md` 记录状态变化、公开 API、扩展方式和回归命令。
 
 ## 4. 第一批晋升建议 / First Promotion Candidates
 

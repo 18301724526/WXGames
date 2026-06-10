@@ -13,9 +13,9 @@ function normalizeRadius(value, fallback = 4) {
 }
 
 function getDistance(a = {}, b = {}) {
-  return Math.max(
-    Math.abs(toInteger(a.q ?? a.x, 0) - toInteger(b.q ?? b.x, 0)),
-    Math.abs(toInteger(a.r ?? a.y, 0) - toInteger(b.r ?? b.y, 0)),
+  return WorldMapService.getWrappedDistance(
+    { q: toInteger(a.q ?? a.x, 0), r: toInteger(a.r ?? a.y, 0) },
+    { q: toInteger(b.q ?? b.x, 0), r: toInteger(b.r ?? b.y, 0) },
   );
 }
 

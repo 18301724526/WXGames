@@ -10,10 +10,13 @@ function createCanvas() {
     width: 0,
     height: 0,
     style: {},
+    attributes: {},
     listeners: [],
     children: [],
     parentNode: null,
-    setAttribute() {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
     addEventListener(type, handler) {
       this.listeners.push([type, handler]);
     },
@@ -164,6 +167,28 @@ test('H5CanvasRuntime aligns padded layer canvases to the same 9:16 frame', () =
     padding: 120,
     rect: null,
   });
+});
+
+test('H5CanvasRuntime preserves the mature engine physical canvas stack styles', () => {
+  const document = createDocument();
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: {
+      innerWidth: 390,
+      innerHeight: 844,
+      devicePixelRatio: 1,
+      addEventListener() {},
+    },
+  });
+
+  const mainCanvas = runtime.ensureCanvas();
+  const worldCanvas = runtime.ensureLayerCanvas('worldMap', { zIndex: 997 });
+
+  assert.equal(mainCanvas.style.zIndex, '999');
+  assert.equal(mainCanvas.style.pointerEvents, 'auto');
+  assert.equal(mainCanvas.attributes['data-canvas-hud-input'], 'document-capture');
+  assert.equal(worldCanvas.style.zIndex, '997');
+  assert.equal(worldCanvas.style.pointerEvents, 'none');
 });
 
 test('H5CanvasRuntime browser dependencies load before the runtime script', () => {

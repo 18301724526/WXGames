@@ -185,34 +185,46 @@ Stable 晋升约定 / Stable Promotion Convention:
 
 负责 / Owns:
 
-- Shell 拥有的画布层契约 / shell-owned canvas layer contracts
-- 稳定 layer key
-- 默认 `zIndex`
-- 默认 `contextType`
-- layer 级 feature gate
+- Mature engine canvas layer contract / 成熟引擎画布层契约
+- Shell-owned physical canvas stack: `worldMap`, `worldFog`, `mainHud`
+- Stable layer keys, default `zIndex`, default `contextType`, camera space, input-surface role, and feature gates
+- Logical render queue / 逻辑渲染队列
+- Hit priority queue / 命中优先级队列
+- Render/hit order comparison helpers
 
 公开 API / Public API:
 
 - `CanvasLayerRegistry.LAYERS`
+- `CanvasLayerRegistry.PHYSICAL_LAYER_ORDER`
+- `CanvasLayerRegistry.RENDER_QUEUE`
+- `CanvasLayerRegistry.HIT_PRIORITY_QUEUE`
 - `CanvasLayerRegistry.getLayer(name)`
 - `CanvasLayerRegistry.getLayerName(name)`
 - `CanvasLayerRegistry.getLayerOptions(name, overrides)`
+- `CanvasLayerRegistry.getPhysicalLayerStack()`
+- `CanvasLayerRegistry.getRenderQueue()`
+- `CanvasLayerRegistry.getHitPriorityQueue()`
+- `CanvasLayerRegistry.compareRenderOrder(left, right)`
+- `CanvasLayerRegistry.compareHitPriority(left, right)`
 - `CanvasLayerRegistry.isLayerEnabled(name, config, options)`
 
 当前图层 / Current Layers:
 
-- `worldMap`: key `worldMap`, `zIndex: 997`, `contextType: 2d`
-- `worldFog`: key `worldFog`, `zIndex: 998`, `contextType: webgl`, gated by `FOG_OF_WAR_ENABLED`
+- `worldMap`: key `worldMap`, `zIndex: 997`, `contextType: 2d`, `cameraSpace: world`, non-input world playfield
+- `worldFog`: key `worldFog`, `zIndex: 998`, `contextType: webgl`, `cameraSpace: world-overlay`, gated by `FOG_OF_WAR_ENABLED`
+- `mainHud`: key `mainHud`, `zIndex: 999`, `contextType: 2d`, `cameraSpace: screen`, the only input surface
 
 扩展方式 / Extension Path:
 
 - 新增 shell-owned layer 必须先注册到这里。
 - 需要开关控制的 layer 必须配置 `feature` key。
+- 新增 renderer bucket 或 hit-target priority 必须先更新 `RENDER_QUEUE` / `HIT_PRIORITY_QUEUE` 并补 focused tests。
 - 图层生命周期必须通过 `CanvasGameShell` helper，不允许 renderer 直接接管。
+- `mainHud` is registered here for the contract, but its lifecycle is the primary canvas created by `H5CanvasRuntime.ensureCanvas()`, not a secondary `ensureLayerCanvas()` layer.
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/CanvasLayerRegistry.test.js`
+- `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/H5CanvasRuntime.test.js frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameShell.js`
@@ -225,6 +237,7 @@ Stable 晋升约定 / Stable Promotion Convention:
 - shell 状态字段 / shell state fields
 - 注入 runtime/config/layer registry 依赖
 - shell 层级 canvas layer helper
+- `mainHud` layer requests are routed to the primary input canvas through `runtime.ensureCanvas()`
 - H5 shell 静态挂载入口 / static mount entry
 
 P0 新增公开 API / Public API Added During P0:
@@ -249,11 +262,48 @@ P0 新增公开 API / Public API Added During P0:
 - 只有跨 shell modules 共用的生命周期 helper 才能加到这里。
 - 具体功能行为应放到 shell module、domain 或 system 文件。
 - 新增 layer 必须先声明在 `CanvasLayerRegistry`。
+- `mainHud` is the screen/input layer; do not allocate it through `runtime.ensureLayerCanvas()`.
 - 调试覆盖层只通过 `DebugOverlayRegistry` 产出 snapshot，不在 shell 内拼字段。
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasLayerRegistry.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/H5CanvasRuntime.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- H5 primary canvas lifecycle through `ensureCanvas()`
+- Mature engine primary screen/HUD/input surface: `zIndex: 999`, `pointerEvents: auto`
+- Secondary layer canvas lifecycle through `ensureLayerCanvas(name, options)`
+- Non-input secondary layer styles: `pointerEvents: none`, explicit `zIndex`, frame alignment, padding and clipping
+- Browser viewport frame sizing, pixel ratio resize, and input coordinate conversion
+
+公开 API / Public API:
+
+- `ensureCanvas()`
+- `ensureLayerCanvas(name, options)`
+- `getLayerCanvas(name)`
+- `getLayerMetrics(name)`
+- `setLayerTranslate(name, x, y)`
+- `clearLayerTransform(name)`
+- `setLayerVisible(name, visible)`
+- `resize()`
+- `toCanvasPoint(event)`
+- `onTap(handler)`, `onDrag(handler)`, `onGesture(handler)`, `onPointerMove(handler)`, `onResize(handler)`
+
+扩展方式 / Extension Path:
+
+- New physical layer styles must be described in `CanvasLayerRegistry` first, then consumed through shell helpers.
+- Keep primary input capture on the main canvas; do not create another input-enabled layer without a registry/test change.
+- Secondary layers stay visual-only unless the mature engine layer contract is intentionally changed.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/H5CanvasRuntime.test.js frontend/js/platform/CanvasLayerRegistry.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameShellMounting.js`
@@ -4805,3 +4855,4 @@ Recommended first split sequence:
 | 2026-06-09 | P11-006 is now documented as complete for current config/version/random hardening. Future chance/drop/generated-result domains must add explicit authority adapters when introduced. P3 renderer split modules remain `candidate` while their completed `done` plan status reflects implementation completion, not stable promotion. |
 | 2026-06-09 | Added `docs/production_engineering_roadmap_2026-06-09.md` as the P12 production-engineering authority, registered it in the official doc set, and documented the next CI/deploy/observability/backup/performance/security/config/stable-promotion/runbook guardrails. |
 | 2026-06-09 | Deleted the standalone `TalentPolicyCanvasRenderer` panel. The legacy talent-policy shortcut now routes to city management people tab, and `CanvasTalentPolicyActionHandlers` owns only compatibility routing plus direct apply finalization. |
+| 2026-06-10 | Hardened the mature engine canvas layer contract: `CanvasLayerRegistry` now owns physical stack, logical render queue, and hit priority queue; `mainHud` is locked to the primary input canvas, while `worldMap` and optional `worldFog` remain non-input secondary layers. `H5CanvasRuntime.test.js` is now part of `npm run test:architecture`. |

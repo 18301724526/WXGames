@@ -28,6 +28,61 @@ test('CanvasLayerRegistry gates world fog through feature flags', () => {
   ), true);
 });
 
+test('CanvasLayerRegistry defines the mature engine physical canvas stack', () => {
+  assert.equal(CanvasLayerRegistry.getLayerName('mainHud'), 'mainHud');
+  assert.deepEqual(CanvasLayerRegistry.getLayerOptions('mainHud'), {
+    zIndex: 999,
+    pointerEvents: 'auto',
+    role: 'screen-hud-input',
+  });
+
+  const stack = CanvasLayerRegistry.getPhysicalLayerStack();
+  assert.deepEqual(stack.map((layer) => layer.key), ['worldMap', 'worldFog', 'mainHud']);
+  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999]);
+  assert.equal(stack[0].cameraSpace, 'world');
+  assert.equal(stack[1].cameraSpace, 'world-overlay');
+  assert.equal(stack[2].cameraSpace, 'screen');
+  assert.equal(stack[2].inputSurface, true);
+  assert.equal(stack.filter((layer) => layer.inputSurface).length, 1);
+});
+
+test('CanvasLayerRegistry locks logical render queue and hit priority order', () => {
+  assert.deepEqual(CanvasLayerRegistry.getRenderQueue(), [
+    'worldPanel',
+    'terrain',
+    'water',
+    'routes',
+    'sites',
+    'fogMask',
+    'actors',
+    'worldHud',
+    'screenHud',
+    'floatingControls',
+    'panels',
+    'modals',
+    'tutorial',
+    'feedback',
+    'debug',
+  ]);
+  assert.deepEqual(CanvasLayerRegistry.getHitPriorityQueue(), [
+    'mapBackground',
+    'mapTile',
+    'mapSite',
+    'mapActor',
+    'worldHud',
+    'screenHud',
+    'floatingControls',
+    'panel',
+    'modal',
+    'tutorialShield',
+    'debug',
+  ]);
+  assert.equal(CanvasLayerRegistry.compareRenderOrder('terrain', 'actors') < 0, true);
+  assert.equal(CanvasLayerRegistry.compareRenderOrder('modals', 'tutorial') < 0, true);
+  assert.equal(CanvasLayerRegistry.compareHitPriority('mapBackground', 'modal') < 0, true);
+  assert.equal(CanvasLayerRegistry.compareHitPriority('tutorialShield', 'modal') > 0, true);
+});
+
 test('CanvasLayerRegistry rejects unknown layer lifecycle requests', () => {
   assert.equal(CanvasLayerRegistry.getLayer('unknown'), null);
   assert.equal(CanvasLayerRegistry.isLayerEnabled('unknown'), false);

@@ -219,7 +219,7 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options));
 });
 
-test('UIStatePresenter reveals manual world march planned tiles by route time', () => {
+test('UIStatePresenter reveals manual world march planned tiles by server-confirmed state', () => {
   const territoryState = {
     worldMap: {
       version: 1,
@@ -239,8 +239,8 @@ test('UIStatePresenter reveals manual world march planned tiles by route time', 
       completesAt: '2026-06-06T00:00:20.000Z',
       stepDurationSeconds: 10,
       route: [
-        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
-        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: true },
+        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: true },
       ],
       plannedTiles: [
         { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', visibility: 'scouted' },
@@ -254,15 +254,13 @@ test('UIStatePresenter reveals manual world march planned tiles by route time', 
         materialized: false,
         site: { id: 'site_2_0', x: 2, y: 0, type: 'town', owner: 'neutral', status: 'discovered' },
       }],
-      revealedTileIds: [],
+      revealedTileIds: ['tile_1_0', 'tile_2_0'],
     },
   };
   const before = new Date('2026-06-06T00:00:05.000Z').getTime();
-  const afterFirst = new Date('2026-06-06T00:00:15.000Z').getTime();
   const afterDone = new Date('2026-06-06T00:00:25.000Z').getTime();
 
-  assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: before }).map((tile) => tile.id), []);
-  assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: afterFirst }).map((tile) => tile.id), ['tile_1_0']);
+  assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: before }).map((tile) => tile.id), ['tile_1_0', 'tile_2_0']);
   assert.deepEqual(UIStatePresenter.getWorldExplorerPlannedTiles(worldExplorerState, { epochNowMs: afterDone }).map((tile) => tile.id), ['tile_1_0', 'tile_2_0']);
 
   const doneView = UIStatePresenter.buildWorldTileMapViewState(territoryState, {

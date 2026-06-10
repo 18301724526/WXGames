@@ -84,6 +84,36 @@ test('AoiSyncSnapshot returns bounded area data instead of full world payloads',
   });
 });
 
+test('AoiSyncSnapshot treats wrapped edge tiles and territories as inside the radius', () => {
+  const gameState = createGameState();
+  gameState.worldMap.tiles.push({
+    id: 'tile_1023_0',
+    q: 1023,
+    r: 0,
+    terrain: 'forest',
+    visibility: 'scouted',
+    discovered: true,
+    visible: true,
+  });
+  gameState.territories.push({
+    id: 'edge-site',
+    x: 1023,
+    y: 0,
+    owner: 'neutral',
+    status: 'discovered',
+    type: 'town',
+  });
+
+  const snapshot = AoiSyncSnapshot.createSnapshot(gameState, {
+    now: new Date('2026-06-06T00:00:06.000Z'),
+    center: { q: 0, r: 0 },
+    radius: 1,
+  });
+
+  assert.equal(snapshot.tiles.some((tile) => tile.id === 'tile_1023_0'), true);
+  assert.equal(snapshot.territories.some((site) => site.id === 'edge-site'), true);
+});
+
 test('CommandAuthorityContract wraps accepted and rejected commands consistently', () => {
   const accepted = CommandAuthorityContract.accept({
     type: 'stopWorldMarch',

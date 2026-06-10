@@ -50,6 +50,9 @@ const requiredText = {
     'full wrapping torus',
     'CommandAuthorityContract',
     'AoiSyncSnapshot',
+    'Mature Engine Canvas Layer Contract',
+    'Hit priority queue',
+    'mainHud',
     'Production Engineering',
   ],
   'docs/current_product_design_2026-06-09.md': [
@@ -60,10 +63,15 @@ const requiredText = {
   'docs/long_term_architecture_refactor_plan_2026-06-08.md': [
     'P11 - Stable Block Hardening',
     'P12 - 生产工程化 / Production Engineering',
+    'Mature Engine Canvas Layer Contract',
+    'CanvasLayerRegistry` owns the layer metadata, physical order, render order, hit order',
     'stable_block_promotion_matrix_2026-06-09.md',
   ],
   'docs/architecture_module_responsibility_index_2026-06-08.md': [
     'Stable Promotion Convention',
+    'CanvasLayerRegistry.getPhysicalLayerStack()',
+    'CanvasLayerRegistry.compareHitPriority(left, right)',
+    'H5CanvasRuntime.test.js',
     'docs/production_engineering_roadmap_2026-06-09.md',
     'docs/stable_block_promotion_matrix_2026-06-09.md',
   ],
@@ -75,6 +83,8 @@ const requiredText = {
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',
     'full wrapping torus',
+    'CanvasLayerContract',
+    'single input surface',
     'ServerTimelineSnapshot',
   ],
 };

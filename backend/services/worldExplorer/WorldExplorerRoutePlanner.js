@@ -117,7 +117,8 @@ function buildRandomRoute(gameState, origin, routeLength = DEFAULT_RANDOM_ROUTE_
 function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED) {
   const targetQ = toInteger(target?.q ?? target?.x, origin.q);
   const targetR = toInteger(target?.r ?? target?.y, origin.r);
-  const distance = getDistance(origin.q, origin.r, targetQ, targetR);
+  const delta = WorldMapService.getWrappedDelta(origin, { q: targetQ, r: targetR });
+  const distance = Math.max(Math.abs(delta.q), Math.abs(delta.r));
   if (distance <= 0) {
     return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: 'Explore target is already the origin.' };
   }
@@ -127,9 +128,15 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
   const route = [];
   let q = origin.q;
   let r = origin.r;
+  let remainingQ = delta.q;
+  let remainingR = delta.r;
   for (let step = 1; step <= distance; step += 1) {
-    q += Math.sign(targetQ - q);
-    r += Math.sign(targetR - r);
+    const stepQ = Math.sign(remainingQ);
+    const stepR = Math.sign(remainingR);
+    q += stepQ;
+    r += stepR;
+    remainingQ -= stepQ;
+    remainingR -= stepR;
     if (WorldMapService.chooseTerrain(seed, q, r) === 'ocean') {
       return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
     }
@@ -142,7 +149,8 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
       revealedAt: null,
     });
   }
-  return { success: true, route, target: { q: targetQ, r: targetR } };
+  const routeTarget = route.at(-1) || { q: origin.q, r: origin.r };
+  return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
 }
 
 function createPlannedTiles(gameState, route, now = new Date()) {

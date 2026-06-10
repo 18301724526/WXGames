@@ -31,6 +31,39 @@ backend config/domain/calculators
 
 方向必须单向。Renderer 不拥有权威玩法状态；前端 runtime 不决定战斗、奖励、最终坐标或资源结果。
 
+### 2.1 成熟引擎画布层契约 / Mature Engine Canvas Layer Contract
+
+本项目的 Canvas 分层按成熟引擎共识固化：物理画布栈、逻辑渲染队列、命中优先级队列、动画类别、输入面和 debug 面分开建模。这个规则对齐 Unity `Canvas` render mode、Godot `CanvasLayer`、Phaser display list depth、Unreal UMG viewport `ZOrder`、Cocos Canvas priority 的共同思想：世界空间、屏幕 HUD、覆盖层、输入和 debug 不是同一个隐式顺序。
+
+物理画布栈 / Physical canvas stack:
+
+| Layer | zIndex | Context | Camera Space | Input | Role |
+| --- | ---: | --- | --- | --- | --- |
+| `worldMap` | 997 | `2d` | `world` | no | world playfield |
+| `worldFog` | 998 | `webgl` | `world-overlay` | no | optional visual plugin, gated by `FOG_OF_WAR_ENABLED` |
+| `mainHud` | 999 | `2d` | `screen` | yes | HUD, panels, tutorial, feedback, input capture |
+
+逻辑渲染队列 / Logical render queue:
+
+```text
+worldPanel -> terrain -> water -> routes -> sites -> fogMask -> actors -> worldHud -> screenHud -> floatingControls -> panels -> modals -> tutorial -> feedback -> debug
+```
+
+命中优先级队列 / Hit priority queue:
+
+```text
+mapBackground -> mapTile -> mapSite -> mapActor -> worldHud -> screenHud -> floatingControls -> panel -> modal -> tutorialShield -> debug
+```
+
+硬规则 / Hard rules:
+
+- `CanvasLayerRegistry` is the owner of the physical stack, render queue, and hit priority queue.
+- `mainHud` is the only input surface and is created by `H5CanvasRuntime.ensureCanvas()`; it must not be created as a secondary layer.
+- `worldMap` and `worldFog` use `pointer-events: none`; all player input is routed through `mainHud`.
+- Fog is visual-only. It may cover terrain/static information when enabled, but must not become gameplay authority or silently block HUD/input.
+- Renderer call order and hit-target registration must follow the registry queues or add a focused test that changes the contract intentionally.
+- Debug overlays live last in render/hit priority and stay feature-gated/default-off.
+
 ## 3. 前端技术边界 / Frontend Boundary
 
 当前代码事实：

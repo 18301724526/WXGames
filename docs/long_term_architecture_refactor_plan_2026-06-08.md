@@ -87,6 +87,38 @@ backend/config + backend/domain
 
 Direction must stay one-way. Renderers do not call backend services. Backend services do not know canvas layout.
 
+### 3.1b 成熟引擎画布层契约 / Mature Engine Canvas Layer Contract
+
+Canvas layering follows the same separation used by mature engines: physical surface stack, logical render queue, hit priority queue, animation category, input surface, and debug surface are independent contracts.
+
+Physical canvas stack:
+
+| Layer | zIndex | Context | Camera Space | Input | Lifecycle |
+| --- | ---: | --- | --- | --- | --- |
+| `worldMap` | 997 | `2d` | `world` | no | secondary layer via `ensureLayerCanvas()` |
+| `worldFog` | 998 | `webgl` | `world-overlay` | no | feature-gated visual plugin |
+| `mainHud` | 999 | `2d` | `screen` | yes | primary canvas via `ensureCanvas()` |
+
+Logical render queue:
+
+```text
+worldPanel -> terrain -> water -> routes -> sites -> fogMask -> actors -> worldHud -> screenHud -> floatingControls -> panels -> modals -> tutorial -> feedback -> debug
+```
+
+Hit priority queue:
+
+```text
+mapBackground -> mapTile -> mapSite -> mapActor -> worldHud -> screenHud -> floatingControls -> panel -> modal -> tutorialShield -> debug
+```
+
+Contract rules:
+
+- `CanvasLayerRegistry` owns the layer metadata, physical order, render order, hit order, and comparison helpers.
+- `CanvasGameShell.ensureCanvasLayer('mainHud')` must reuse the primary input canvas, not allocate a secondary layer.
+- New renderer work must either fit an existing queue bucket or update the registry and tests first.
+- New visual plugins must not own gameplay truth or input capture.
+- `npm run test:architecture` must include the registry tests and H5 canvas stack tests.
+
 ### 3.2 前端运行时边界 / Frontend Runtime Boundary
 
 The frontend should be split into these responsibilities:
@@ -161,7 +193,7 @@ P0 work removes high-risk coupling and creates regression locks. The game must r
 | P0-001 | Freeze fog of war by default | Main world map runs without fog layer allocation or fog renderer calls. Fog code remains available behind a feature flag. | `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js` |
 | P0-002 | Add architecture status doc checkpoint | Every active refactor step records status, owner files, rollback surface, and tests. | documentation review + `git diff --check` |
 | P0-003 | Define frontend feature flag contract | Feature flags are centralized under `GameConfig.FEATURES`, resolved through `FeatureFlags`, and passed into shell/app constructors. | `node --test frontend/js/config/FeatureFlags.test.js frontend/js/platform/CanvasGameShell.test.js` |
-| P0-004 | Lock render shell responsibilities | `CanvasGameShell` owns canvas layer lifecycle through `CanvasLayerRegistry`; renderers keep drawing responsibilities. | `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/CanvasGameShell.test.js` |
+| P0-004 | Lock render shell responsibilities | `CanvasGameShell` owns canvas layer lifecycle through `CanvasLayerRegistry`; renderers keep drawing responsibilities. The layer contract now follows mature engine separation: physical canvas stack, logical render queue, hit priority queue, single input surface, and debug-last ordering. | `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/H5CanvasRuntime.test.js frontend/js/platform/CanvasGameShell.test.js` |
 | P0-004b | Shell world-map runtime policy | `CanvasGameShellWorldMapRuntimePolicy` owns pure shell world-map snapshot option, water-frame timing, layer padding, drag cooldown, drag transform limit, drag offset, and frame option calculations. `CanvasGameShellWorldMapRuntime` delegates these policies while retaining shell/coordinator/render side effects, dropping to 455 lines. | `node --test frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.test.js frontend/js/platform/CanvasGameShell.test.js` |
 | P0-004c | Shell world-map runtime split | `CanvasGameShellWorldMapLayerBridge` owns layer metrics, fog dispatch, layer transform/visibility, and snapshot refresh; `CanvasGameShellWorldMapDragRuntime` owns shell drag water-time/cooldown/compositor helpers; `CanvasGameShellWorldMapFrameRuntime` owns world-map frame requests, fallback layer rendering, and water timer orchestration. `CanvasGameShellWorldMapRuntime` keeps coordinator/render decision integration only and drops to 122 lines as a candidate facade. | `node --test frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.test.js frontend/js/platform/CanvasGameShell.test.js` |
 | P0-005 | Inventory oversized modules | `architecture_module_responsibility_index_2026-06-08.md` lists completed modules, legacy modules above 500 lines, public APIs, extension paths, and split order. | documentation review |
@@ -711,7 +743,7 @@ node --test frontend/js/platform/renderers/WorldMapRendererHostBridge.test.js fr
 | P0-001 | done | Fog of war is behind a default-off feature flag. Regression passed: `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js`. |
 | P0-002 | done | This document is now the architecture checkpoint: completed P0 steps record status, changed boundary, and regression command. |
 | P0-003 | done | `FeatureFlags` is the single frontend feature-flag resolver. Regression passed: `node --test frontend/js/config/FeatureFlags.test.js frontend/js/platform/CanvasGameShell.test.js`. |
-| P0-004 | done | `CanvasLayerRegistry` defines shell-owned layer contracts; world map/fog lifecycle calls now go through shell helpers. Regression passed: `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/config/FeatureFlags.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js`. |
+| P0-004 | done | `CanvasLayerRegistry` defines shell-owned layer contracts plus mature engine physical stack, logical render queue, and hit priority queue. `mainHud` is locked as the primary screen/input canvas, while `worldMap` and optional `worldFog` remain secondary non-input layers. Regression passed: `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/H5CanvasRuntime.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/config/FeatureFlags.test.js frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js`. |
 | P0-004b | done | Added `CanvasGameShellWorldMapRuntimePolicy` as the pure shell world-map runtime policy boundary. It owns snapshot render option resolution, water-frame timing, layer padding, drag cooldown/limit checks, drag offset/pan normalization, and runtime frame option derivation; `CanvasGameShellWorldMapRuntime` delegates these policies while retaining shell/coordinator/render side effects and dropped to 455 lines. Regression is included in `npm run test:architecture`. |
 | P0-004c | done | Added `CanvasGameShellWorldMapLayerBridge`, `CanvasGameShellWorldMapDragRuntime`, and `CanvasGameShellWorldMapFrameRuntime` as focused shell world-map runtime boundaries. `CanvasGameShellWorldMapRuntime` now keeps coordinator/render decision integration only and dropped to 122 lines as a candidate facade. Regression is included in `npm run test:architecture`. |
 | P0-005 | done | Added `architecture_module_responsibility_index_2026-06-08.md` with completed module responsibilities, unresolved legacy modules, public APIs, extension paths, and first split order. |

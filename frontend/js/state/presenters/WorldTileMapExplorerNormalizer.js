@@ -144,7 +144,8 @@
 
   function getWorldExplorerPlannedTiles(worldExplorerState = {}, options = {}) {
     const byId = new Map();
-    getWorldExplorerMissions(worldExplorerState, options).forEach((mission) => {
+    void options;
+    mergeWorldExplorerMissions(worldExplorerState).forEach((mission) => {
       const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
       const revealedRouteTileIds = new Set((Array.isArray(mission.route) ? mission.route : [])
         .filter((step) => step?.revealed)
@@ -180,7 +181,8 @@
 
   function getWorldExplorerPlannedSites(worldExplorerState = {}, options = {}) {
     const byId = new Map();
-    getWorldExplorerMissions(worldExplorerState, options).forEach((mission) => {
+    void options;
+    mergeWorldExplorerMissions(worldExplorerState).forEach((mission) => {
       const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
       const routeByTileId = new Map((Array.isArray(mission.route) ? mission.route : []).map((step) => [
         step.tileId || getWorldTileId(step.q, step.r),

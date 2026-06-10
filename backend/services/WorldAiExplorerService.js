@@ -193,28 +193,27 @@ function syncAiRevealToPlayer(gameState, now = new Date(), options = {}) {
   const aiTilesByCanonicalId = getAiTilesByCanonicalId(gameState);
   const synced = [];
   const syncedIds = new Set(gameState.worldAi?.playerSyncedCanonicalIds || []);
-  const hasEncounter = [...aiTilesByCanonicalId.values()].some((aiTile) => (
-    playerTiles.some((playerTile) => WorldMapService.getWrappedDistance(playerTile, aiTile) <= syncRadius)
-  ));
-  if (!hasEncounter) return synced;
   const syncLimit = Math.max(1, toInteger(options.syncLimit, MAX_SYNC_TILES_PER_PASS));
   const candidates = [...aiTilesByCanonicalId.entries()]
     .filter(([canonicalId]) => !syncedIds.has(canonicalId))
-    .map(([canonicalId, aiTile]) => ({
-      canonicalId,
-      aiTile,
-      distance: findNearestPlayerTile(aiTile, playerTiles)
-        ? WorldMapService.getWrappedDistance(findNearestPlayerTile(aiTile, playerTiles), aiTile)
-        : Number.MAX_SAFE_INTEGER,
-    }))
+    .map(([canonicalId, aiTile]) => {
+      const nearestPlayerTile = findNearestPlayerTile(aiTile, playerTiles);
+      return {
+        canonicalId,
+        aiTile,
+        nearestPlayerTile,
+        distance: nearestPlayerTile
+          ? WorldMapService.getWrappedDistance(nearestPlayerTile, aiTile)
+          : Number.MAX_SAFE_INTEGER,
+      };
+    })
+    .filter((candidate) => candidate.nearestPlayerTile && candidate.distance <= syncRadius)
     .sort((a, b) => a.distance - b.distance || a.aiTile.q - b.aiTile.q || a.aiTile.r - b.aiTile.r);
-  for (const { canonicalId, aiTile } of candidates) {
+  for (const { canonicalId, aiTile, nearestPlayerTile } of candidates) {
     if (synced.length >= syncLimit) break;
-    const adjacentPlayerTile = findNearestPlayerTile(aiTile, playerTiles);
-    if (!adjacentPlayerTile) continue;
-    const delta = WorldMapService.getWrappedDelta(adjacentPlayerTile, aiTile);
-    const displayQ = toInteger(adjacentPlayerTile.q, 0) + delta.q;
-    const displayR = toInteger(adjacentPlayerTile.r, 0) + delta.r;
+    const delta = WorldMapService.getWrappedDelta(nearestPlayerTile, aiTile);
+    const displayQ = toInteger(nearestPlayerTile.q, 0) + delta.q;
+    const displayR = toInteger(nearestPlayerTile.r, 0) + delta.r;
     const tile = WorldMapService.revealTile(gameState, displayQ, displayR, now, {
       terrain: aiTile.terrain,
       riverPorts: aiTile.riverPorts,
@@ -228,7 +227,6 @@ function syncAiRevealToPlayer(gameState, now = new Date(), options = {}) {
       syncedFromFactionId: DEFAULT_AI_FACTION_ID,
     });
     synced.push(tile);
-    playerTiles.push(tile);
     syncedIds.add(canonicalId);
   }
   gameState.worldAi.playerSyncedCanonicalIds = Array.from(syncedIds);
