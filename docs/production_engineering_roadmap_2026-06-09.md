@@ -18,6 +18,13 @@ This document is the production-engineering authority for the post-refactor phas
 - Browser visual playtests are required only when a change touches real player input, Canvas visibility, tutorial highlights, online paths, deploy behavior, or backend action feedback.
 - The next risk is operational: a project can be architecturally clean locally but still fail in production because CI, deploy, rollback, monitoring, backup, and config governance are weak.
 
+Current deploy fact:
+
+- WXGames / 文明火种 deploys through the server-side bare repo at `/home/git/wxgame.git`.
+- Pushing `main` to that repo triggers `hooks/post-receive`, checks out to `/www/wwwroot/h5`, runs `/www/wwwroot/h5/deploy.sh main`, publishes `frontend/` into the H5 web root, rsyncs `backend/` into `/opt/wxgame-workspace/backend`, and restarts PM2 app `server`.
+- `/opt/wxgame-workspace/backend` is a runtime copy, not the deploy Git source. Do not infer "push does not deploy" only because that runtime directory is not a Git worktree.
+- H5 update prompts are driven by `/api/version` `deploymentId`, which hashes the deployed source state while ignoring local SQLite/log/runtime artifacts.
+
 ## 2. 反泥潭规则 / Anti-Mud Rules
 
 1. Local pass does not mean online safe. CI must run the same architecture gate before merge/deploy.

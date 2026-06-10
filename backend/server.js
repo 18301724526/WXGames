@@ -103,7 +103,7 @@ setInterval(() => {
     const activeSince = new Date(now.getTime() - BACKGROUND_ACTIVE_WINDOW_MS).toISOString();
     const gameStates = repository.findRecentlyActive(activeSince, BACKGROUND_ACTIVE_LIMIT);
     for (const rawState of gameStates) {
-      const gameState = gameStateService.normalizeState(rawState);
+      const gameState = gameStateService.advanceRuntimeState(rawState, now);
       CityService.advanceAllCities(gameState, Math.floor(BACKGROUND_TICK_INTERVAL_MS / 1000));
       TerritoryService.updateMissionReadiness(gameState);
       EventService.cleanupRuntimeState(gameState);

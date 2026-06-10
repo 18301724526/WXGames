@@ -343,6 +343,10 @@ function grantTutorialScoutFamousPerson(gameState, now = new Date()) {
 
 function getSeekAvailability(gameState) {
   const state = ensureFamousPersonState(gameState);
+  return getSeekAvailabilityFromState(gameState, state);
+}
+
+function getSeekAvailabilityFromState(gameState, state = normalizeFamousPersonState(null)) {
   const currentEra = Math.max(0, toInteger(gameState.currentEra, 0));
   if (currentEra < MIN_SEEK_ERA) {
     return {
@@ -428,11 +432,20 @@ function dismissFamousPersonCandidate(gameState, candidateId) {
 
 function getClientState(gameState = {}) {
   const state = ensureFamousPersonState(gameState);
-  const availability = getSeekAvailability(gameState);
+  return getClientStateFromNormalized({
+    ...gameState,
+    famousPersonState: state,
+  });
+}
+
+function getClientStateFromNormalized(gameState = {}) {
+  const state = gameState.famousPersonState || normalizeFamousPersonState(null);
+  const people = Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [];
+  const availability = getSeekAvailabilityFromState(gameState, state);
   return {
-    people: clone(gameState.famousPeople),
+    people: clone(people),
     candidates: clone(state.candidates),
-    count: gameState.famousPeople.length,
+    count: people.length,
     candidateCount: state.candidates.length,
     maxCandidates: MAX_CANDIDATES,
     generatorVersion: GENERATOR_VERSION,
@@ -476,7 +489,9 @@ module.exports = {
   createTutorialScoutFamousPerson,
   grantTutorialScoutFamousPerson,
   makeSkillName,
+  getSeekAvailabilityFromState,
   getClientState,
+  getClientStateFromNormalized,
   seekFamousPerson,
   acceptFamousPerson,
   dismissFamousPersonCandidate,

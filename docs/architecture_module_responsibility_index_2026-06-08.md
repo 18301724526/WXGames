@@ -2605,12 +2605,14 @@ Public API:
 - `WorldMapService.buildScoutRoute(origin, direction, actionPoints, options)`
 - `WorldMapService.recordScoutTrail(gameState, mission, tileIds, returned)`
 - `WorldMapService.getClientWorldMap(gameState, now)`
+- `WorldMapService.getClientWorldMapFromNormalized(worldMap)`
 
 Performance Constraints:
 
 - Facade stays under 500 lines and delegates terrain/water/tile/generation decisions to focused modules.
 - Normalization uses one `Map` for tile upsert and stable sorting, with no renderer/frontend dependencies.
 - Scout reveal branch rolls are deterministic O(route length * branch side count).
+- `getClientWorldMapFromNormalized()` is read-only projection from an already-normalized world map and must not call `ensureWorldMap()` or reveal helpers.
 
 Extension Path:
 
@@ -2659,6 +2661,39 @@ Extension Path:
 Regression:
 
 - `node --test backend/tests/FamousPersonArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/FamousPersonService.js`
+
+Status: candidate facade
+
+Owns:
+
+- Famous-person normalization, candidate seek/accept/dismiss mutation, tutorial scout grants, progression helpers, and famous-person client DTO projection.
+- `getClientState()` remains the compatibility API that ensures famous-person state before projection.
+- `getClientStateFromNormalized()` and `getSeekAvailabilityFromState()` are read-only projection helpers for already-normalized state.
+
+Public API:
+
+- `FamousPersonService.createInitialFamousPersonState()`
+- `FamousPersonService.normalizeFamousPeople(rawPeople)`
+- `FamousPersonService.normalizeFamousPersonState(rawState)`
+- `FamousPersonService.ensureFamousPersonState(gameState)`
+- `FamousPersonService.getClientState(gameState)`
+- `FamousPersonService.getClientStateFromNormalized(gameState)`
+- `FamousPersonService.getSeekAvailabilityFromState(gameState, state)`
+- `FamousPersonService.seekFamousPerson(gameState, payload, now, randomSource)`
+- `FamousPersonService.acceptFamousPerson(gameState, candidateId, now)`
+- `FamousPersonService.dismissFamousPersonCandidate(gameState, candidateId)`
+
+Extension Path:
+
+- New DTO fields go through `getClientStateFromNormalized()` and must not prune candidates, normalize people in place, or mutate seek counters.
+- Candidate creation and accept/dismiss writes remain in mutation APIs and keep random authority metadata through `FamousPersonRandomAuthority`.
+
+Regression:
+
+- `node --test backend/tests/FamousPersonArchitecture.test.js backend/tests/GameStateProjectionArchitecture.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/defenderLeader/DefenderLeaderRandomAuthority.js`
@@ -3064,6 +3099,62 @@ Regression:
 - `node --test backend/tests/ConfigRegistryContract.test.js backend/tests/GameRoutesTutorial.test.js`
 - `npm run test:architecture`
 
+### `backend/services/CityService.js`
+
+Status: candidate
+
+Owns:
+
+- City normalization, active/capital city lookup, city-derived stats, active-city legacy field sync, and city client DTO projection.
+- `getClientCityState()` remains the compatibility API that normalizes before projection.
+- `getClientCityStateFromNormalized()` is the read-only projection API for already-normalized game state.
+
+Public API:
+
+- `CityService.normalizeCities(gameState, now)`
+- `CityService.getActiveCity(gameState)`
+- `CityService.getCapitalCity(gameState)`
+- `CityService.getClientCityState(gameState)`
+- `CityService.getClientCityStateFromNormalized(gameState)`
+
+Extension Path:
+
+- New DTO-only city fields go through `getClientCityStateFromNormalized()` and must not trigger city normalization or derived-stat writes.
+- New city mutation or runtime refresh stays in `normalizeCities()`, `advanceAllCities()`, or focused city services.
+
+Regression:
+
+- `node --test backend/tests/GameStateProjectionArchitecture.test.js backend/tests/GameStateServiceSplit.test.js`
+- `npm run test:architecture`
+
+### `backend/services/TechTreeService.js`
+
+Status: candidate
+
+Owns:
+
+- Tech state normalization, era point grants, research mutation, unlock queries, and tech client DTO projection.
+- `getClientState()` remains the compatibility API that normalizes `gameState.techs` before projection.
+- `getClientStateFromNormalized()` is read-only projection from an already-normalized tech state.
+
+Public API:
+
+- `TechTreeService.normalizeTechState(raw)`
+- `TechTreeService.normalizeGameStateTechs(gameState)`
+- `TechTreeService.getClientState(gameState)`
+- `TechTreeService.getClientStateFromNormalized(gameState)`
+- `TechTreeService.research(gameState, techId)`
+
+Extension Path:
+
+- New tech DTO fields go through `getClientStateFromNormalized()` first.
+- Research mutation, point spending, and grant writes remain in service mutation APIs, not client projection.
+
+Regression:
+
+- `node --test backend/tests/GameStateProjectionArchitecture.test.js backend/tests/GameActionRegistry.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/TalentPolicyService.js`
 
 Status: candidate
@@ -3087,7 +3178,11 @@ Public API:
 - `TalentPolicyService.makeCustomPolicyName(basePolicyId)`
 - `TalentPolicyService.createCustomPolicyId(now, randomBytes)`
 - `TalentPolicyService.getClientState(gameState)`
+- `TalentPolicyService.getClientStateFromNormalized(gameState)`
 - `TalentPolicyService.buildAllocationPreview(gameState, policy)`
+- `TalentPolicyService.buildAllocationPreviewFromNormalized(gameState, policy, activeCity)`
+- `TalentPolicyService.getPolicyById(gameState, policyId)`
+- `TalentPolicyService.getPolicyByIdFromState(state, policyId)`
 - `TalentPolicyService.applyPolicy(gameState, payload)`
 - `TalentPolicyService.saveCustomPolicy(gameState, payload)`
 - `TalentPolicyService.deleteCustomPolicy(gameState, payload)`
@@ -3096,6 +3191,7 @@ Performance Constraints:
 
 - Policy allocation is bounded by role/tendency count and city population fields, not by world-map size.
 - Custom policy id entropy is O(1) backend crypto metadata; no gameplay state clone or frontend-provided randomness.
+- Normalized-only projection must not call `CityService.normalizeCities()` or mutate `talentPolicies`; it reads the already-normalized active city and policy state.
 
 Extension Path:
 
@@ -3160,23 +3256,91 @@ Regression:
 
 - 创建初始游戏状态 / initial game state factory
 - 在归一化前调用 `GameStateMigrationPipeline.migrateState()`
-- 补齐资源、人口、科技、教程、城市、领土、探索、名人、任务等派生兼容字段
-- 保留旧接口 `createInitialGameState()` / `normalizeState()`
+- 结构归一化 / structural normalization: 补齐资源、人口、科技、教程、城市、名人、任务、world map shell、explore mission shape 等兼容字段
+- 显式 runtime 推进 / explicit runtime advancement: `advanceRuntimeState()` 负责调用探索推进、AI reveal sync、领土 runtime normalization 和城市 runtime refresh
+- 保留旧接口 `createInitialGameState()` / `normalizeState()`，其中 `normalizeState()` 是结构归一化入口，不再推进世界时间线
 
 公开 API / Public API:
 
 - `GameStateNormalizer.createInitialGameState(playerId)`
 - `GameStateNormalizer.normalizeState(rawState)`
+- `GameStateNormalizer.normalizeStateStructure(rawState)`
+- `GameStateNormalizer.advanceRuntimeState(gameState, now)`
 
 扩展方式 / Extension Path:
 
 - 存档 schema 变更先进入 `GameStateMigrationPipeline`。
-- 新业务派生状态优先进入对应 domain/service normalizer，本文件只做 orchestration。
+- 新业务结构兼容优先进入对应 domain/service structural normalizer，本文件只做 orchestration。
+- 新的时间推进、AI、地图 reveal、任务 readiness、领土 bridging 不得塞回 `normalizeState()`；必须挂到显式 runtime advancement 入口或更下游的专责 runtime service。
+- DTO/projection、era progress、task center、reset response 不得调用会推进世界的入口。
 - 不要在这里加入 DB、route、renderer、网络调用。
 
 回归 / Regression:
 
-- `node --test backend/tests/GameStateServiceSplit.test.js`
+- `node --test backend/tests/GameStateServiceSplit.test.js backend/tests/GameStateProjectionArchitecture.test.js`
+- `npm run test:architecture`
+
+### `backend/services/GameStateService.js`
+
+状态 / Status: candidate facade
+
+负责 / Owns:
+
+- Game state facade over structural normalization, runtime advancement, projection, era progress, and offline income compatibility.
+- `normalizeState()` remains structural-only; `advanceRuntimeState()` is the explicit world/runtime advancement boundary.
+- Raw compatibility APIs remain for legacy callers, while normalized-only APIs protect route response assembly from repeated runtime advancement.
+
+公开 API / Public API:
+
+- `GameStateService.createInitialGameState(playerId)`
+- `GameStateService.normalizeState(rawState)`
+- `GameStateService.advanceRuntimeState(gameState, now)`
+- `GameStateService.getClientGameState(gameState)`
+- `GameStateService.getClientGameStateFromNormalized(gameState)`
+- `GameStateService.calculateEraProgress(gameState)`
+- `GameStateService.calculateEraProgressFromNormalized(gameState)`
+- `GameStateService.applyOnlineProgress(gameState, now)`
+- `GameStateService.calculateOfflineIncome(gameState, offlineSeconds)`
+
+扩展方式 / Extension Path:
+
+- New request paths that already loaded/advanced canonical state must use `getClientGameStateFromNormalized()` and `calculateEraProgressFromNormalized()`.
+- New world-time advancement belongs behind `advanceRuntimeState()` or a focused runtime service called by it.
+- Do not let DTO/projection helpers call world AI, territory runtime, map reveal, DB, or route code.
+
+回归 / Regression:
+
+- `node --test backend/tests/GameStateServiceSplit.test.js backend/tests/GameStateProjectionArchitecture.test.js`
+- `npm run test:architecture`
+
+### `backend/services/ClientGameStateAssembler.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- Client game-state DTO projection from an already-normalized game state.
+- Raw compatibility wrapper `getClientGameState()` for older callers.
+- Normalized-only projection `getClientGameStateFromNormalized()` for route responses and reset/action payloads.
+- Delegates to normalized-only downstream DTO helpers for city, talent policy, famous person, tech, territory, world-map, and world-explorer state.
+
+公开 API / Public API:
+
+- `getClientGameState(gameState)`
+- `getClientGameStateFromNormalized(gameState)`
+- `getBuildingCosts(buildings)`
+- `getBuildingDefinitions()`
+- `getBuildingCategories()`
+
+扩展方式 / Extension Path:
+
+- Add new client DTO fields here only as read-only projection from normalized canonical state.
+- Do not call runtime advancement, world AI, territory normalization, explorer progression, mission readiness, map reveal, DB, network, or route code from normalized-only projection.
+- If a downstream service still only exposes a mutating compatibility projection, add a normalized-only helper there first before wiring it into this assembler.
+
+回归 / Regression:
+
+- `node --test backend/tests/GameStateServiceSplit.test.js backend/tests/GameStateProjectionArchitecture.test.js`
 - `npm run test:architecture`
 
 ### `backend/repositories/GameStateRepository.js`
@@ -3293,9 +3457,9 @@ Regression:
 
 负责 / Owns:
 
-- world explorer client-state orchestration
-- 调用 `normalizeExploreState(gameState, now)` 推进/归一化任务
+- world explorer client-state projection from an already-advanced mission snapshot
 - 委托 `WorldExplorerDtoMapper` 输出 public DTO
+- Does not call `normalizeExploreState()`; progression belongs to `advanceRuntimeState()` / action modules.
 - 保留旧 API `getClientMission()` / `getClientState()`，避免 routes/assembler 改动
 
 公开 API / Public API:
@@ -3307,7 +3471,7 @@ Regression:
 
 - 新 response 字段加到 `WorldExplorerDtoMapper`。
 - 新 progression side effect 留在 `WorldExplorerProgression` 或 action modules。
-- 本文件只保留 orchestration，不增加 DTO 拼装细节。
+- 本文件只保留 read-only orchestration，不增加 DTO 拼装细节，不推进路线、不 reveal 地图、不 materialize site。
 
 回归 / Regression:
 
@@ -4799,7 +4963,7 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMarchGeometry` candidate module for pure tile screen projection, nearest-tile lookup, axial point inference, and march target UI-state normalization; `WorldMarchSystem` now delegates progress and geometry helpers and dropped to 53 lines as a candidate facade. |
 | 2026-06-08 | Added `WorldMapRenderSnapshot` candidate module as the single world-map renderer input contract and wired `WorldMapCanvasRenderer.renderWorldTileMap()` to expose `lastWorldTileMapContext.renderSnapshot`. |
 | 2026-06-08 | Added `WorldMapInputActionMap` candidate module for pure world-map input-to-action mapping and wired `WorldMapRuntime` to delegate hit-target filtering/background march target inference. |
-| 2026-06-08 | Added `WorldExplorerDtoMapper` candidate module as the backend world explorer API DTO boundary; `WorldExplorerClientState` now delegates response shape after progression. |
+| 2026-06-08 | Added `WorldExplorerDtoMapper` candidate module as the backend world explorer API DTO boundary; `WorldExplorerClientState` delegates response shape after explicit runtime advancement. |
 | 2026-06-08 | Added `WorldFogVisualSnapshot` and `WorldMapVisualPluginRegistry` candidate modules for P2-001 fog plugin rebuild; shell fog rendering now consumes registry output when `FOG_OF_WAR_ENABLED` is explicitly enabled. |
 | 2026-06-08 | Added `DebugOverlaySnapshot` and `DebugOverlayRegistry` candidate modules for P2-002 debug overlay registry; shell can create default-off debug snapshots when `DEBUG_OVERLAYS_ENABLED` is explicitly enabled. |
 | 2026-06-08 | Added `AssetKeyRegistry` candidate module for P2-003 asset key hardening and migrated `CanvasPreloadAssetManifest` base preload paths to stable keys while preserving legacy path output. |
@@ -4863,3 +5027,4 @@ Recommended first split sequence:
 | 2026-06-10 | Hardened the mature engine canvas layer contract: `CanvasLayerRegistry` now owns physical stack, logical render queue, and hit priority queue; `mainHud` is locked to the primary input canvas, while `worldMap` and optional `worldFog` remain non-input secondary layers. `H5CanvasRuntime.test.js` is now part of `npm run test:architecture`. |
 | 2026-06-10 | Moved map-home march HUD ownership back to the `mainHud` pass: `WorldMapTileMapRenderer` now publishes world HUD context and keeps only map/site/actor targets, while `HudOverlayCanvasRenderer` / `CanvasFrameRenderer` invoke `renderWorldMarchHud()` and prefer same-frame HUD context over stale runtime context. |
 | 2026-06-10 | Fixed world-map input/HUD command contracts: `WorldMapRuntime.getLayerPointFromHudPoint()` converts `mainHud` taps into padded world-layer coordinates while subtracting drag-layer transform, `WorldMarchHudCanvasRenderer` shows stop only for active actors, and return-home now accepts idle parked world-march missions. |
+| 2026-06-11 | Split backend game-state structural normalization, explicit runtime advancement, and read-only client projection. `GameStateProjectionArchitecture.test.js` now guards that action/reset responses use normalized-only DTOs, projection does not advance explorer/territory runtime state, and downstream City/Tech/Talent/Famous/WorldMap helpers expose read-only projection APIs for already-normalized snapshots. |

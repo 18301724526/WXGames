@@ -183,6 +183,13 @@ function getPolicyById(gameState, policyId) {
   const system = SYSTEM_POLICIES.find((policy) => policy.id === id);
   if (system) return { ...system, type: 'system', tiers: DEFAULT_TIERS };
   const state = ensureTalentPolicyState(gameState);
+  return getPolicyByIdFromState(state, id);
+}
+
+function getPolicyByIdFromState(state, policyId) {
+  const id = String(policyId || '');
+  const system = SYSTEM_POLICIES.find((policy) => policy.id === id);
+  if (system) return { ...system, type: 'system', tiers: DEFAULT_TIERS };
   if (id === 'draft' && state.activeDraft) {
     const base = getSystemPolicy(state.activeDraft.basePolicyId);
     return {
@@ -299,6 +306,13 @@ function buildAllocationPreview(gameState, policyInput = null) {
   CityService.normalizeCities(gameState);
   const city = CityService.getActiveCity(gameState);
   const policy = policyInput || resolvePolicy(gameState, {});
+  return buildAllocationPreviewFromNormalized(gameState, policy, city);
+}
+
+function buildAllocationPreviewFromNormalized(gameState, policyInput = null, activeCity = null) {
+  const state = gameState.talentPolicies || normalizeTalentPolicyState(null);
+  const city = activeCity || gameState.cities?.[gameState.activeCityId] || gameState.cities?.capital || {};
+  const policy = policyInput || getPolicyByIdFromState(state, state.activePolicyId || 'balanced') || getSystemPolicy('balanced');
   const weights = getEffectiveWeights(policy, gameState.currentEra);
   const allocation = allocateByWeights(city.population?.total || 0, weights, policy.priority || []);
   return {
@@ -440,8 +454,16 @@ function deleteCustomPolicy(gameState, payload = {}) {
 
 function getClientState(gameState) {
   const state = ensureTalentPolicyState(gameState);
+  return getClientStateFromNormalized({
+    ...gameState,
+    talentPolicies: state,
+  });
+}
+
+function getClientStateFromNormalized(gameState) {
+  const state = gameState.talentPolicies || normalizeTalentPolicyState(null);
   const currentEra = Number(gameState.currentEra) || 0;
-  const activePolicy = getPolicyById(gameState, state.activePolicyId) || getSystemPolicy('balanced');
+  const activePolicy = getPolicyByIdFromState(state, state.activePolicyId) || getSystemPolicy('balanced');
   return {
     activePolicyId: activePolicy.id,
     activePolicyLabel: activePolicy.label || activePolicy.displayName,
@@ -464,7 +486,7 @@ function getClientState(gameState) {
     activeDraft: state.activeDraft,
     tendencies: getAvailableTendencies(currentEra),
     defaultTiers: { ...DEFAULT_TIERS },
-    preview: buildAllocationPreview(gameState, activePolicy),
+    preview: buildAllocationPreviewFromNormalized(gameState, activePolicy),
     lastAppliedAt: state.lastAppliedAt,
   };
 }
@@ -480,7 +502,11 @@ module.exports = {
   makeCustomPolicyName,
   createCustomPolicyId,
   getClientState,
+  getClientStateFromNormalized,
   buildAllocationPreview,
+  buildAllocationPreviewFromNormalized,
+  getPolicyById,
+  getPolicyByIdFromState,
   applyPolicy,
   saveCustomPolicy,
   deleteCustomPolicy,

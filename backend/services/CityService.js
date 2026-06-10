@@ -342,10 +342,14 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
 
 function getClientCityState(gameState) {
   normalizeCities(gameState);
+  return getClientCityStateFromNormalized(gameState);
+}
+
+function getClientCityStateFromNormalized(gameState) {
   return {
     activeCityId: gameState.activeCityId || CAPITAL_CITY_ID,
     capitalCityId: CAPITAL_CITY_ID,
-    cities: Object.values(gameState.cities).map((city) => ({
+    cities: Object.values(gameState.cities || {}).map((city) => ({
       id: city.id,
       territoryId: city.territoryId,
       name: city.name,
@@ -381,4 +385,5 @@ module.exports = {
   advanceAllCities,
   calculateOfflineIncomeForAllCities,
   getClientCityState,
+  getClientCityStateFromNormalized,
 };

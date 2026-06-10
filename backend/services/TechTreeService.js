@@ -166,6 +166,14 @@ function buildClientTech(tech, techs, currentEra) {
 
 function getClientState(gameState = {}) {
   const techs = normalizeGameStateTechs(gameState);
+  return getClientStateFromNormalized({
+    ...gameState,
+    techs,
+  });
+}
+
+function getClientStateFromNormalized(gameState = {}) {
+  const techs = gameState?.techs || normalizeTechState({});
   const currentEra = Math.max(0, Math.floor(Number(gameState.currentEra) || 0));
   const eras = TECH_ERAS
     .map((eraConfig) => {
@@ -241,6 +249,7 @@ module.exports = {
   grantEraPoints,
   grantEarnedEraPoints,
   getClientState,
+  getClientStateFromNormalized,
   getResearchedIds,
   getUnlockedBuildings,
   research,

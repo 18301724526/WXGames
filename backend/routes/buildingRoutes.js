@@ -34,7 +34,9 @@ function registerBuildingRoutes(app, deps) {
   app.post('/api/buildings/build', authMiddleware, (req, res) => {
     const rawState = repository.findByPlayerId(req.playerId);
     if (!rawState) return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
-    const gameState = gameStateService.normalizeState(rawState);
+    const gameState = gameStateService.applyOnlineProgress
+      ? gameStateService.applyOnlineProgress(rawState)
+      : gameStateService.normalizeState(rawState);
     const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const { buildingType } = req.body || {};
     const result = BuildingActionService.build(gameState, tutorial, buildingType);
@@ -42,7 +44,9 @@ function registerBuildingRoutes(app, deps) {
     repository.save(gameState);
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      gameState: gameStateService.getClientGameState(gameState),
+      gameState: gameStateService.getClientGameStateFromNormalized
+        ? gameStateService.getClientGameStateFromNormalized(gameState)
+        : gameStateService.getClientGameState(gameState),
       tutorial: gameState.tutorial,
     });
   });

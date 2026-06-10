@@ -42,12 +42,18 @@ function registerPlayerRoutes(app, deps) {
       (playerId) => gameStateService.createInitialGameState(playerId),
       (gameState) => repository.save(gameState),
     );
-    const rawState = repository.findByPlayerId(req.playerId);
+    const gameState = result.gameState;
+    const clientState = gameStateService.getClientGameStateFromNormalized
+      ? gameStateService.getClientGameStateFromNormalized(gameState)
+      : gameStateService.getClientGameState(gameState);
+    const eraProgress = gameStateService.calculateEraProgressFromNormalized
+      ? gameStateService.calculateEraProgressFromNormalized(gameState)
+      : gameStateService.calculateEraProgress(gameState);
     return res.json({
       ...result,
-      gameState: rawState ? gameStateService.getClientGameState(rawState) : gameStateService.getClientGameState(result.gameState),
-      tutorial: rawState?.tutorial || result.gameState.tutorial,
-      eraProgress: gameStateService.calculateEraProgress(rawState || result.gameState),
+      gameState: clientState,
+      tutorial: gameState.tutorial,
+      eraProgress,
     });
   });
 

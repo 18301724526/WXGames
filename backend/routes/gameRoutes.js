@@ -5,8 +5,12 @@ const GameActionRegistry = require('../actions/GameActionRegistry');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 
 function buildGameView(gameState, tutorial, gameStateService) {
-  const clientState = gameStateService.getClientGameState(gameState);
-  const eraProgress = gameStateService.calculateEraProgress(gameState);
+  const clientState = gameStateService.getClientGameStateFromNormalized
+    ? gameStateService.getClientGameStateFromNormalized(gameState)
+    : gameStateService.getClientGameState(gameState);
+  const eraProgress = gameStateService.calculateEraProgressFromNormalized
+    ? gameStateService.calculateEraProgressFromNormalized(gameState)
+    : gameStateService.calculateEraProgress(gameState);
   const taskCenter = TaskCenterService.getTaskCenter(gameState);
   return {
     gameState: clientState,
@@ -20,7 +24,9 @@ function buildGameView(gameState, tutorial, gameStateService) {
 
 function syncEra2Tutorial(gameState, gameStateService) {
   const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
-  const eraProgress = gameStateService.calculateEraProgress(gameState);
+  const eraProgress = gameStateService.calculateEraProgressFromNormalized
+    ? gameStateService.calculateEraProgressFromNormalized(gameState)
+    : gameStateService.calculateEraProgress(gameState);
   const nextTutorial = TutorialService.maybeActivateEra2Tutorial(tutorial, gameState, eraProgress);
   gameState.tutorial = nextTutorial;
   return nextTutorial;

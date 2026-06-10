@@ -372,9 +372,13 @@ function recordScoutTrail(gameState, mission, tileIds, returned = false) {
 }
 
 function getClientWorldMap(gameState, now = new Date()) {
-  const worldMap = clone(ensureWorldMap(gameState, now));
-  worldMap.tiles = (worldMap.tiles || []).filter((tile) => tile.visibility !== 'hidden' && tile.visible !== false);
-  return worldMap;
+  return getClientWorldMapFromNormalized(ensureWorldMap(gameState, now));
+}
+
+function getClientWorldMapFromNormalized(worldMap) {
+  const clientWorldMap = clone(worldMap || {});
+  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => tile.visibility !== 'hidden' && tile.visible !== false);
+  return clientWorldMap;
 }
 
 module.exports = {
@@ -426,4 +430,5 @@ module.exports = {
   buildScoutRoute,
   recordScoutTrail,
   getClientWorldMap,
+  getClientWorldMapFromNormalized,
 };

@@ -16,8 +16,10 @@ function getMapBounds(territories) {
 }
 
 function getClientScoutAreas(gameState, deps = {}) {
-  gameState.scoutState = deps.normalizeScoutState(gameState.scoutState);
-  return (gameState.scoutState.areas || []).map((area) => ({
+  const scoutState = typeof deps.normalizeScoutState === 'function'
+    ? deps.normalizeScoutState(gameState.scoutState)
+    : (gameState.scoutState || {});
+  return (scoutState.areas || []).map((area) => ({
     id: area.id,
     missionId: area.missionId,
     direction: area.direction,
@@ -112,7 +114,6 @@ function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}) {
 }
 
 function getClientTerritoryState(gameState, now = new Date(), deps = {}) {
-  deps.updateMissionReadiness(gameState, now);
   const nowMs = now.getTime();
   const scoutOrigin = deps.getScoutOrigin(gameState);
   const missionsByTerritory = Object.fromEntries((gameState.warMissions || [])
@@ -128,7 +129,9 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}) {
   return {
     polity: gameState.polity || deps.createInitialPolity(),
     territories,
-    worldMap: WorldMapService.getClientWorldMap(gameState, now),
+    worldMap: typeof WorldMapService.getClientWorldMapFromNormalized === 'function'
+      ? WorldMapService.getClientWorldMapFromNormalized(gameState.worldMap)
+      : WorldMapService.getClientWorldMap(gameState, now),
     warMissions: gameState.warMissions || [],
     scoutMissions: scoutMissions.map((mission) => ({
       ...mission,

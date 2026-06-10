@@ -237,6 +237,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'ensureWorldMap',
     'getCanonicalTileId',
     'getClientWorldMap',
+    'getClientWorldMapFromNormalized',
     'getDistanceFromCapital',
     'getRevealArea',
     'getRiverMouthTemplateForNeighborOfOcean',

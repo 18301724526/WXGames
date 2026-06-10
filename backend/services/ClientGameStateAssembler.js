@@ -29,8 +29,7 @@ function getBuildingCategories() {
   return BuildingConfig.raw().categories || {};
 }
 
-function getClientGameState(gameState) {
-  const normalized = GameStateNormalizer.normalizeState(gameState);
+function getClientGameStateFromNormalized(normalized) {
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
   const totalBuildings = Object.values(normalized.buildings).reduce((sum, item) => sum + (item?.level || 0), 0);
   const activeCity = CityService.getActiveCity(normalized);
@@ -56,7 +55,9 @@ function getClientGameState(gameState) {
     buildingCategories: getBuildingCategories(),
     buildingEffects: normalized.buildingEffects,
     military: normalized.military,
-    cityState: CityService.getClientCityState(normalized),
+    cityState: CityService.getClientCityStateFromNormalized
+      ? CityService.getClientCityStateFromNormalized(normalized)
+      : CityService.getClientCityState(normalized),
     activeCityId: normalized.activeCityId,
     isCapitalCity: normalized.activeCityId === CityService.CAPITAL_CITY_ID,
     guidebook: {
@@ -76,9 +77,15 @@ function getClientGameState(gameState) {
       growthIntervalSeconds: GameConfig.population.growthIntervalSeconds,
       growthMultiplier,
     },
-    talentPolicies: TalentPolicyService.getClientState(normalized),
-    famousPersons: FamousPersonService.getClientState(normalized),
-    techs: TechTreeService.getClientState(normalized),
+    talentPolicies: TalentPolicyService.getClientStateFromNormalized
+      ? TalentPolicyService.getClientStateFromNormalized(normalized)
+      : TalentPolicyService.getClientState(normalized),
+    famousPersons: FamousPersonService.getClientStateFromNormalized
+      ? FamousPersonService.getClientStateFromNormalized(normalized)
+      : FamousPersonService.getClientState(normalized),
+    techs: TechTreeService.getClientStateFromNormalized
+      ? TechTreeService.getClientStateFromNormalized(normalized)
+      : TechTreeService.getClientState(normalized),
     techEffects: normalized.techEffects,
     happiness: normalized.happiness,
     gameDay: normalized.gameDay,
@@ -94,9 +101,14 @@ function getClientGameState(gameState) {
   };
 }
 
+function getClientGameState(gameState) {
+  return getClientGameStateFromNormalized(GameStateNormalizer.normalizeState(gameState));
+}
+
 module.exports = {
   getBuildingCosts,
   getBuildingDefinitions,
   getBuildingCategories,
   getClientGameState,
+  getClientGameStateFromNormalized,
 };

@@ -17,12 +17,20 @@ function normalizeState(rawState) {
   return GameStateNormalizer.normalizeState(rawState);
 }
 
+function advanceRuntimeState(gameState, now = new Date()) {
+  return GameStateNormalizer.advanceRuntimeState(gameState, now);
+}
+
 function getClientGameState(gameState) {
   return ClientGameStateAssembler.getClientGameState(gameState);
 }
 
+function getClientGameStateFromNormalized(gameState) {
+  return ClientGameStateAssembler.getClientGameStateFromNormalized(gameState);
+}
+
 function applyOnlineProgress(gameState, now = new Date()) {
-  const normalized = normalizeState(gameState);
+  const normalized = advanceRuntimeState(gameState, now);
   const lastUpdated = new Date(normalized.updatedAt || now);
   const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
   if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return normalized;
@@ -32,8 +40,7 @@ function applyOnlineProgress(gameState, now = new Date()) {
   return normalized;
 }
 
-function calculateEraProgress(gameState) {
-  const normalized = normalizeState(gameState);
+function calculateEraProgressFromNormalized(normalized) {
   const capital = CityService.getCapitalCity(normalized);
   const advanceConfig = getAdvanceConfig(normalized.currentEra);
   if (!advanceConfig) return { percentage: 100, canAdvance: false, conditions: [] };
@@ -65,6 +72,10 @@ function calculateEraProgress(gameState) {
   };
 }
 
+function calculateEraProgress(gameState) {
+  return calculateEraProgressFromNormalized(normalizeState(gameState));
+}
+
 function calculateOfflineIncome(gameState, offlineSeconds) {
   const normalized = normalizeState(gameState);
   const actualOffline = Math.min(Math.max(0, offlineSeconds), GameConfig.resources.maxOfflineHours * 3600);
@@ -79,8 +90,11 @@ function calculateOfflineIncome(gameState, offlineSeconds) {
 module.exports = {
   createInitialGameState,
   normalizeState,
+  advanceRuntimeState,
   getClientGameState,
+  getClientGameStateFromNormalized,
   calculateEraProgress,
+  calculateEraProgressFromNormalized,
   calculateOfflineIncome,
   applyOnlineProgress,
 };

@@ -61,7 +61,7 @@ function createInitialGameState(playerId) {
   };
 }
 
-function normalizeState(rawState) {
+function normalizeStateStructure(rawState) {
   const migrated = GameStateMigrationPipeline.migrateState(rawState || createInitialGameState('unknown'));
   const state = migrated.state;
   state.resources = {
@@ -105,11 +105,10 @@ function normalizeState(rawState) {
     : {};
   TutorialService.ensureHouseGuideResources(state);
   TutorialService.ensureScoutFamousPersonGrant(state);
-  const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldMapService.ensureWorldMap(state);
-  WorldExplorerService.normalizeExploreState(state);
-  WorldAiExplorerService.advanceAiExploration(state);
-  TerritoryService.normalizeTerritoryState(state, new Date(), { previousWorldMapVersion });
+  state.exploreMissions = Array.isArray(state.exploreMissions)
+    ? state.exploreMissions.map((mission) => WorldExplorerService.normalizeMission(mission)).filter(Boolean)
+    : [];
   CityService.normalizeCities(state);
   WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
@@ -121,7 +120,26 @@ function normalizeState(rawState) {
   return state;
 }
 
+function advanceRuntimeState(gameState, now = new Date()) {
+  const state = normalizeStateStructure(gameState);
+  const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
+  WorldExplorerService.normalizeExploreState(state, now);
+  WorldAiExplorerService.advanceAiExploration(state, now);
+  TerritoryService.normalizeTerritoryState(state, now, { previousWorldMapVersion });
+  CityService.normalizeCities(state, now);
+  WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
+  BuildingActionService.applyDerivedStats(state);
+  CityService.persistLegacyFieldsToActiveCity(state);
+  return state;
+}
+
+function normalizeState(rawState) {
+  return normalizeStateStructure(rawState);
+}
+
 module.exports = {
   createInitialGameState,
   normalizeState,
+  normalizeStateStructure,
+  advanceRuntimeState,
 };
