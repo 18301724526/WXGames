@@ -26,6 +26,7 @@ test('WorldMapService delegates terrain, water, and shared responsibilities to f
 
   assert.ok(lineCount(facadePath) < 500, 'WorldMapService should stay below 500 lines');
   assert.deepEqual(moduleFiles, [
+    'WorldMapBatch.js',
     'WorldMapConstants.js',
     'WorldMapGenerationAuthority.js',
     'WorldMapShared.js',
@@ -164,6 +165,31 @@ test('world map service uses canonical ids for wrapping merge without moving dis
   assert.equal(WorldMapService.chooseTerrain('wrap-merge-seed', -1, 0), WorldMapService.chooseTerrain('wrap-merge-seed', 1023, 0));
 });
 
+test('world map batch reveal preserves single-tile semantics with one indexed commit', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'batch-reveal-player',
+    worldMap: WorldMapService.createInitialWorldMap('batch-reveal-seed', now),
+  };
+
+  const revealed = WorldMapService.revealTiles(gameState, [
+    { q: -1, r: 0, overrides: { visibility: 'hidden', visible: false } },
+    { q: 1023, r: 0, overrides: { visibility: 'controlled', siteId: 'edge-site' } },
+    { q: 2, r: 1, overrides: { visibility: 'scouted' } },
+  ], now);
+  const matchingTiles = gameState.worldMap.tiles.filter((tile) => tile.canonicalId === 'tile_1023_0');
+  const edgeTile = matchingTiles[0];
+
+  assert.equal(revealed.length, 3);
+  assert.equal(matchingTiles.length, 1);
+  assert.equal(edgeTile.id, 'tile_-1_0');
+  assert.equal(edgeTile.q, -1);
+  assert.equal(edgeTile.r, 0);
+  assert.equal(edgeTile.siteId, 'edge-site');
+  assert.equal(edgeTile.visibility, 'controlled');
+  assert.ok(gameState.worldMap.tiles.some((tile) => tile.id === 'tile_2_1' && tile.visibility === 'scouted'));
+});
+
 test('legacy player-derived world seeds normalize to the shared server world', () => {
   const gameState = {
     playerId: 'seed-player',
@@ -205,6 +231,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'chooseTerrain',
     'createInitialWorldMap',
     'createTile',
+    'createWorldMapBatch',
     'createWorldMapGenerationMetadata',
     'createWorldTopologyMetadata',
     'ensureWorldMap',
@@ -227,6 +254,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'revealScoutArea',
     'revealTile',
     'revealTileArea',
+    'revealTiles',
   ];
   assert.deepEqual(Object.keys(WorldMapService).sort(), expectedApi.sort());
 

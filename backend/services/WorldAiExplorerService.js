@@ -102,9 +102,8 @@ function normalizeWorldAi(rawWorldAi = {}, now = new Date()) {
   };
 }
 
-function getTerrainPenalty(gameState, coord, now = new Date()) {
-  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  const terrain = WorldMapService.chooseTerrain(worldMap.seed, coord.q, coord.r);
+function getTerrainPenalty(seed, coord) {
+  const terrain = WorldMapService.chooseTerrain(seed, coord.q, coord.r);
   if (terrain === 'ocean') return 1000;
   if (terrain === 'mountain') return 8;
   if (terrain === 'river') return 3;
@@ -119,7 +118,7 @@ function getKnownCanonicalIds(worldAi = {}) {
 
 function pickNextStep(gameState, explorer, stepIndex = 0, now = new Date()) {
   const knownCanonicalIds = getKnownCanonicalIds(gameState.worldAi || {});
-  const seed = WorldMapService.ensureWorldMap(gameState, now).seed;
+  const seed = gameState.worldMap?.seed || WorldMapService.ensureWorldMap(gameState, now).seed;
   const base = explorer.position || createCoord(0, 0);
   const candidates = DIRECTION_SEQUENCE.map((direction) => {
     const vector = WorldMapService.DIRECTION_VECTORS[direction];
@@ -132,7 +131,7 @@ function pickNextStep(gameState, explorer, stepIndex = 0, now = new Date()) {
       q,
       r,
       canonicalId,
-      score: getTerrainPenalty(gameState, { q, r }, now) + novelty - roll,
+      score: getTerrainPenalty(seed, { q, r }) + novelty - roll,
     };
   });
   return candidates.sort((a, b) => a.score - b.score || a.q - b.q || a.r - b.r)[0] || {
@@ -146,13 +145,15 @@ function revealAiArea(gameState, explorer, q, r, now = new Date()) {
   const coords = DEFAULT_REVEAL_RADIUS > 0
     ? WorldMapService.getRevealArea(q, r, DEFAULT_REVEAL_RADIUS)
     : [{ q, r }];
-  const revealed = coords.map((coord) => WorldMapService.revealTile(gameState, coord.q, coord.r, now, {
+  const revealed = WorldMapService.revealTiles(gameState, coords, now, {
+    overrides: {
     visibility: 'hidden',
     discovered: true,
     visible: false,
     intel: { level: 0 },
     discoveredBy: explorer.factionId,
-  }));
+    },
+  });
   explorer.revealedTileIds = Array.from(new Set([
     ...(explorer.revealedTileIds || []),
     ...revealed.map((tile) => tile.id).filter(Boolean),
@@ -214,24 +215,28 @@ function syncAiRevealToPlayer(gameState, now = new Date(), options = {}) {
     const delta = WorldMapService.getWrappedDelta(nearestPlayerTile, aiTile);
     const displayQ = toInteger(nearestPlayerTile.q, 0) + delta.q;
     const displayR = toInteger(nearestPlayerTile.r, 0) + delta.r;
-    const tile = WorldMapService.revealTile(gameState, displayQ, displayR, now, {
-      terrain: aiTile.terrain,
-      riverPorts: aiTile.riverPorts,
-      oceanTemplates: aiTile.oceanTemplates,
-      transitionKey: aiTile.transitionKey,
-      generatedAt: aiTile.generatedAt,
-      visibility: 'scouted',
-      visible: true,
-      discovered: true,
-      intel: { level: 1, knownTerrain: true },
-      syncedFromFactionId: DEFAULT_AI_FACTION_ID,
+    synced.push({
+      q: displayQ,
+      r: displayR,
+      overrides: {
+        terrain: aiTile.terrain,
+        riverPorts: aiTile.riverPorts,
+        oceanTemplates: aiTile.oceanTemplates,
+        transitionKey: aiTile.transitionKey,
+        generatedAt: aiTile.generatedAt,
+        visibility: 'scouted',
+        visible: true,
+        discovered: true,
+        intel: { level: 1, knownTerrain: true },
+        syncedFromFactionId: DEFAULT_AI_FACTION_ID,
+      },
     });
-    synced.push(tile);
     syncedIds.add(canonicalId);
   }
+  const revealed = WorldMapService.revealTiles(gameState, synced, now);
   gameState.worldAi.playerSyncedCanonicalIds = Array.from(syncedIds);
-  if (synced.length) gameState.worldAi.updatedAt = now.toISOString();
-  return synced;
+  if (revealed.length) gameState.worldAi.updatedAt = now.toISOString();
+  return revealed;
 }
 
 function advanceAiExploration(gameState, now = new Date(), options = {}) {

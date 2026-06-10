@@ -109,6 +109,62 @@ test('WorldExplorerShared normalizes epoch-second mission timestamps', () => {
   assert.equal(Shared.toTimestamp(Math.floor(epochMs / 1000)), epochMs);
 });
 
+test('world explorer progression reveals a step through the world-map batch API', (t) => {
+  const originalRevealTiles = WorldMapService.revealTiles;
+  const originalRevealTile = WorldMapService.revealTile;
+  const calls = {
+    revealTile: 0,
+    revealTiles: [],
+  };
+  t.after(() => {
+    WorldMapService.revealTiles = originalRevealTiles;
+    WorldMapService.revealTile = originalRevealTile;
+  });
+  WorldMapService.revealTile = () => {
+    calls.revealTile += 1;
+    throw new Error('world explorer progression should batch reveal step coordinates');
+  };
+  WorldMapService.revealTiles = (_gameState, coords, _now, options = {}) => {
+    const batch = coords.map((coord) => ({
+      q: coord.q,
+      r: coord.r,
+      overrides: typeof options.overrides === 'function' ? options.overrides(coord) : options.overrides,
+    }));
+    calls.revealTiles.push(batch);
+    return batch.map((coord) => ({
+      id: WorldMapService.getTileId(coord.q, coord.r),
+      q: coord.q,
+      r: coord.r,
+      terrain: coord.overrides?.terrain || 'plains',
+      visibility: coord.overrides?.visibility || 'scouted',
+    }));
+  };
+  const gameState = { territories: [], tutorial: { completed: true } };
+  const mission = {
+    id: 'batch-step',
+    plannedTiles: [{ id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' }],
+    plannedSites: [],
+  };
+
+  const revealed = Progression.revealStep(gameState, mission, { q: 1, r: 0 }, new Date('2026-06-06T00:00:00.000Z'));
+
+  assert.equal(calls.revealTile, 0);
+  assert.equal(calls.revealTiles.length, 1);
+  assert.deepEqual(calls.revealTiles[0], [{
+    q: 1,
+    r: 0,
+    overrides: {
+      terrain: 'forest',
+      riverPorts: undefined,
+      oceanTemplates: undefined,
+      transitionKey: undefined,
+      generatedAt: undefined,
+      visibility: 'scouted',
+    },
+  }]);
+  assert.deepEqual(revealed.map((tile) => tile.terrain), ['forest']);
+});
+
 test('realtime authority contracts expose the P11 backend-authoritative baselines', () => {
   assert.equal(typeof Realtime.CommandAuthorityContract.accept, 'function');
   assert.equal(typeof Realtime.ServerTimelineSnapshot.createMissionSnapshot, 'function');

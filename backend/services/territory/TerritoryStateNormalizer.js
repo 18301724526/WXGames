@@ -325,14 +325,16 @@ function createTerritoryStateNormalizer(dependencies = {}) {
           }
         }
       }
+      const revealCoords = [];
       for (const key of bridgeKeys) {
         if (known.has(key)) continue;
         const [x, y] = key.split(',').map((value) => toInteger(value, 0));
-        WorldMapService.revealTile(gameState, x, y, now);
+        revealCoords.push({ q: x, r: y });
         known.set(key, { x, y });
         added += 1;
         changed = true;
       }
+      if (revealCoords.length) WorldMapService.revealTiles(gameState, revealCoords, now);
     }
     return added;
   }

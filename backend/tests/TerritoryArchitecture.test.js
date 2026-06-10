@@ -1113,6 +1113,71 @@ test('territory state normalizer owns territory, mission, and world sync contrac
   assert.equal(calls.limited, 1);
 });
 
+test('territory known-world bridging reveals gaps through the world-map batch API', () => {
+  const calls = {
+    ensureWorldMap: 0,
+    revealTile: 0,
+    revealTiles: [],
+  };
+  const Normalizer = createTerritoryStateNormalizer({
+    WorldMapService: {
+      ensureWorldMap: (gameState) => {
+        calls.ensureWorldMap += 1;
+        gameState.worldMap = gameState.worldMap || { seed: 'seed', tiles: [] };
+        return gameState.worldMap;
+      },
+      revealTile: () => {
+        calls.revealTile += 1;
+        throw new Error('known-world bridging should not reveal one tile at a time');
+      },
+      revealTiles: (gameState, coords) => {
+        const batch = coords.map((coord) => ({ q: coord.q, r: coord.r }));
+        calls.revealTiles.push(batch);
+        gameState.worldMap.tiles.push(...batch.map((coord) => ({
+          id: `tile_${coord.q}_${coord.r}`,
+          q: coord.q,
+          r: coord.r,
+          discovered: true,
+          visible: true,
+          visibility: 'scouted',
+        })));
+        return batch;
+      },
+    },
+    enforceScoutMissionLimit: () => {},
+    getMissionSoldierAllocations: () => [],
+    migrateTerritorySitesToCurrentWorldRules: () => false,
+    normalizeBattleTarget: (target) => target,
+    normalizeDirection: (direction) => direction,
+    normalizeGarrison: (raw) => raw || null,
+    normalizeScoutCoordinates: (coordinates) => coordinates || [],
+    normalizeScoutReport: (report) => report || null,
+    normalizeScoutReports: (reports) => reports || [],
+    normalizeScoutState: (state) => state || {},
+    updateMissionReadiness: () => {},
+    upsertScoutCoordinateRecord: () => {},
+  });
+  const gameState = {
+    worldMap: {
+      seed: 'seed',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, discovered: true, visible: true, visibility: 'controlled' },
+        { id: 'tile_3_0', q: 3, r: 0, discovered: true, visible: true, visibility: 'scouted' },
+      ],
+    },
+    territories: [],
+  };
+
+  const added = Normalizer.revealSolidKnownWorldTiles(gameState, '2026-06-06T00:00:00.000Z');
+
+  assert.equal(added, 2);
+  assert.equal(calls.revealTile, 0);
+  assert.deepEqual(calls.revealTiles, [[
+    { q: 1, r: 0 },
+    { q: 2, r: 0 },
+  ]]);
+});
+
 test('territory naming module owns city and polity naming contracts', () => {
   const Naming = createTerritoryNaming({
     getTerritory: (gameState, territoryId) => (

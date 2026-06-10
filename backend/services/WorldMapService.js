@@ -26,6 +26,11 @@ const {
 } = require('./worldMap/WorldMapShared');
 const WorldMapTopology = require('./worldMap/WorldMapTopology');
 const {
+  compareTiles,
+  createWorldMapBatch,
+  mergeTiles,
+} = require('./worldMap/WorldMapBatch');
+const {
   createWorldMapGenerationMetadata,
   roll01,
 } = require('./worldMap/WorldMapGenerationAuthority');
@@ -139,7 +144,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
       q: toInteger(rawWorldMap?.origin?.q, 0),
       r: toInteger(rawWorldMap?.origin?.r, 0),
     },
-    tiles: [...tileMap.values()].sort((a, b) => Math.max(Math.abs(a.q), Math.abs(a.r)) - Math.max(Math.abs(b.q), Math.abs(b.r)) || a.q - b.q || a.r - b.r),
+    tiles: [...tileMap.values()].sort(compareTiles),
     scoutTrails,
   };
 }
@@ -158,41 +163,12 @@ function getTile(worldMap, q, r) {
   )) || null;
 }
 
-function mergeTiles(existing, tile, seed = DEFAULT_WORLD_SEED, now = new Date()) {
-  if (!existing) return tile;
-  const visibilityRank = { unknown: 0, hidden: 0, hinted: 1, scouted: 2, controlled: 3 };
-  const existingVisibility = existing.visibility || 'unknown';
-  const tileVisibility = tile.visibility || 'unknown';
-  const visibility = (visibilityRank[tileVisibility] || 0) >= (visibilityRank[existingVisibility] || 0)
-    ? tileVisibility
-    : existingVisibility;
-  const preferIncomingDisplay = existing.visible === false && tile.visible !== false;
-  return normalizeTile({
-    ...existing,
-    ...tile,
-    id: preferIncomingDisplay ? tile.id || existing.id : existing.id || tile.id,
-    q: preferIncomingDisplay ? toInteger(tile.q, existing.q) : toInteger(existing.q, tile.q),
-    r: preferIncomingDisplay ? toInteger(tile.r, existing.r) : toInteger(existing.r, tile.r),
-    x: preferIncomingDisplay ? toInteger(tile.x ?? tile.q, existing.q) : toInteger(existing.x ?? existing.q, tile.q),
-    y: preferIncomingDisplay ? toInteger(tile.y ?? tile.r, existing.r) : toInteger(existing.y ?? existing.r, tile.r),
-    siteId: tile.siteId || existing.siteId || null,
-    terrain: tile.terrain || existing.terrain,
-    visibility,
-    discovered: existing.discovered !== false || tile.discovered !== false,
-    visible: existing.visible !== false || tile.visible !== false,
-    discoveredAt: existing.discoveredAt || tile.discoveredAt,
-    lastScoutedAt: tile.lastScoutedAt || existing.lastScoutedAt,
-    intel: tile.intel || existing.intel,
-    generatedAt: existing.generatedAt || tile.generatedAt,
-  }, seed, now);
-}
-
 function upsertTile(worldMap, tile) {
   const canonicalId = WorldMapTopology.getTileCanonicalKey(tile);
   const index = worldMap.tiles.findIndex((item) => WorldMapTopology.getTileCanonicalKey(item) === canonicalId);
   if (index >= 0) worldMap.tiles[index] = mergeTiles(worldMap.tiles[index], tile, worldMap.seed);
   else worldMap.tiles.push(tile);
-  worldMap.tiles.sort((a, b) => Math.max(Math.abs(a.q), Math.abs(a.r)) - Math.max(Math.abs(b.q), Math.abs(b.r)) || a.q - b.q || a.r - b.r);
+  worldMap.tiles.sort(compareTiles);
   return index >= 0 ? worldMap.tiles[index] : tile;
 }
 
@@ -222,6 +198,28 @@ function revealTile(gameState, q, r, now = new Date(), overrides = {}) {
   return upsertTile(worldMap, tile);
 }
 
+function revealTiles(gameState, coords = [], now = new Date(), options = {}) {
+  const worldMap = ensureWorldMap(gameState, now);
+  const batch = createWorldMapBatch(worldMap, now);
+  const revealed = [];
+  const getOverrides = typeof options.overrides === 'function'
+    ? options.overrides
+    : () => options.overrides || {};
+  for (const coord of Array.isArray(coords) ? coords : []) {
+    if (!coord || typeof coord !== 'object') continue;
+    const q = toInteger(coord.q ?? coord.x, 0);
+    const r = toInteger(coord.r ?? coord.y, 0);
+    const overrides = {
+      ...(coord.overrides && typeof coord.overrides === 'object' ? coord.overrides : {}),
+      ...(getOverrides(coord, revealed.length) || {}),
+    };
+    const tile = batch.revealTile(q, r, overrides);
+    if (tile) revealed.push(tile);
+  }
+  batch.commit();
+  return revealed;
+}
+
 function getRevealArea(q, r, radius = SCOUT_REVEAL_RADIUS) {
   const centerQ = toInteger(q, 0);
   const centerR = toInteger(r, 0);
@@ -242,7 +240,7 @@ function getRevealArea(q, r, radius = SCOUT_REVEAL_RADIUS) {
 
 function revealTileArea(gameState, q, r, now = new Date(), options = {}) {
   const radius = options.radius === undefined ? SCOUT_REVEAL_RADIUS : options.radius;
-  return getRevealArea(q, r, radius).map((coord) => revealTile(gameState, coord.q, coord.r, now));
+  return revealTiles(gameState, getRevealArea(q, r, radius), now);
 }
 
 function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
@@ -318,8 +316,7 @@ function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
 }
 
 function revealScoutArea(gameState, revealArea = [], now = new Date()) {
-  return (Array.isArray(revealArea) ? revealArea : [])
-    .map((coord) => revealTile(gameState, coord.q, coord.r, now));
+  return revealTiles(gameState, revealArea, now);
 }
 
 function canPlaceSiteOnTerrain(seed, q, r) {
@@ -419,10 +416,12 @@ module.exports = {
   revealScoutArea,
   canPlaceSiteOnTerrain,
   createTile,
+  createWorldMapBatch,
   createInitialWorldMap,
   normalizeWorldMap,
   ensureWorldMap,
   revealTile,
+  revealTiles,
   bindSiteToTile,
   buildScoutRoute,
   recordScoutTrail,

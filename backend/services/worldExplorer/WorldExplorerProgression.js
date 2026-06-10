@@ -127,7 +127,22 @@ function revealStep(gameState, mission, step, now = new Date()) {
   const coords = EXPLORE_REVEAL_RADIUS > 0
     ? WorldMapService.getRevealArea(step.q, step.r, EXPLORE_REVEAL_RADIUS)
     : [{ q: step.q, r: step.r }];
-  const revealedTiles = coords.map((coord) => revealCoordinate(gameState, mission, coord, now));
+  const plannedTiles = getPlannedTileById(mission);
+  const revealedTiles = WorldMapService.revealTiles(gameState, coords, now, {
+    overrides: (coord) => {
+      const planned = plannedTiles.get(WorldMapService.getTileId(coord.q, coord.r));
+      return planned
+        ? {
+          terrain: planned.terrain,
+          riverPorts: planned.riverPorts,
+          oceanTemplates: planned.oceanTemplates,
+          transitionKey: planned.transitionKey,
+          generatedAt: planned.generatedAt,
+          visibility: 'scouted',
+        }
+        : { visibility: 'scouted' };
+    },
+  });
   const materialized = materializePlannedSitesForStep(gameState, mission, step, now);
   WorldExplorerTrace.log('progression:revealStep', {
     missionId: mission.id || '',

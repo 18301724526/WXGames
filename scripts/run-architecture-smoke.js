@@ -178,6 +178,7 @@ const CHECK_FILES = Object.freeze([
   'backend/services/worldMap/WorldMapGenerationAuthority.js',
   'backend/services/worldMap/WorldMapTopology.js',
   'backend/services/worldMap/WorldMapShared.js',
+  'backend/services/worldMap/WorldMapBatch.js',
   'backend/services/worldMap/WorldMapWater.js',
   'backend/services/worldMap/WorldMapTiles.js',
   'backend/services/WorldMapService.js',
