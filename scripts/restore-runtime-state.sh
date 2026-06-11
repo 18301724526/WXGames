@@ -66,6 +66,10 @@ NODE
 }
 
 maybe_stop_pm2() {
+    if [ "${ALLOW_RESTORE_WITHOUT_PM2_STOP:-0}" = "1" ]; then
+        echo "[restore-runtime] PM2 stop skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1"
+        return
+    fi
     if command -v pm2 >/dev/null 2>&1; then
         if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
             pm2 stop "$PM2_APP_NAME"
@@ -74,14 +78,15 @@ maybe_stop_pm2() {
         echo "[restore-runtime] PM2 app not found, continuing: $PM2_APP_NAME"
         return
     fi
-    if [ "${ALLOW_RESTORE_WITHOUT_PM2_STOP:-0}" != "1" ]; then
-        echo "[restore-runtime] pm2 is missing. Set ALLOW_RESTORE_WITHOUT_PM2_STOP=1 only for an offline/non-production restore drill." >&2
-        exit 1
-    fi
-    echo "[restore-runtime] PM2 stop skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1"
+    echo "[restore-runtime] pm2 is missing. Set ALLOW_RESTORE_WITHOUT_PM2_STOP=1 only for an offline/non-production restore drill." >&2
+    exit 1
 }
 
 maybe_restart_pm2() {
+    if [ "${ALLOW_RESTORE_WITHOUT_PM2_STOP:-0}" = "1" ]; then
+        echo "[restore-runtime] PM2 restart skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1"
+        return
+    fi
     if ! command -v pm2 >/dev/null 2>&1; then
         echo "[restore-runtime] PM2 restart skipped because pm2 is unavailable."
         return

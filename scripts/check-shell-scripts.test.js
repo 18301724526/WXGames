@@ -75,6 +75,8 @@ test('runtime backup and restore scripts keep explicit safety contracts', () => 
   assert.match(restoreScript, /WXGAME_RESTORE_CONFIRM=restore-runtime-state/);
   assert.match(restoreScript, /SKIP_PRE_RESTORE_BACKUP/);
   assert.match(restoreScript, /ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
+  assert.match(restoreScript, /PM2 stop skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
+  assert.match(restoreScript, /PM2 restart skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
   assert.match(restoreScript, /RESTORE_DEPLOY_STATE=1/);
   assert.match(restoreScript, /rm -f "\$DB_PATH-wal" "\$DB_PATH-shm"/);
 
