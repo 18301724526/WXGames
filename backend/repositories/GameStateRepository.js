@@ -208,6 +208,36 @@ class GameStateRepository {
     return rows.map((row) => this.findByPlayerId(row.playerId)).filter(Boolean);
   }
 
+  getPlayerActivitySummary(options = {}) {
+    const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+    const windowsMinutes = Array.isArray(options.windowsMinutes) && options.windowsMinutes.length
+      ? options.windowsMinutes
+      : [2, 10, 60, 1440];
+    const recentLimit = Math.max(1, Math.min(100, Math.floor(Number(options.recentLimit) || 12)));
+    const total = this.db.prepare('SELECT COUNT(*) AS count FROM players').get()?.count || 0;
+    const windows = {};
+    for (const minutes of windowsMinutes) {
+      const normalizedMinutes = Math.max(1, Math.floor(Number(minutes) || 1));
+      const since = new Date(now.getTime() - normalizedMinutes * 60 * 1000).toISOString();
+      windows[`last${normalizedMinutes}m`] = this.db.prepare(
+        'SELECT COUNT(*) AS count FROM players WHERE lastActiveAt >= ?',
+      ).get(since)?.count || 0;
+    }
+    const recentPlayers = this.db.prepare(`
+      SELECT playerId, deviceId, createdAt, lastActiveAt
+      FROM players
+      ORDER BY lastActiveAt DESC
+      LIMIT ?
+    `).all(recentLimit);
+    return {
+      schema: 'player-activity-summary-v1',
+      generatedAt: now.toISOString(),
+      totalPlayers: total,
+      windows,
+      recentPlayers,
+    };
+  }
+
   createRevisionConflictError(playerId, expectedRevision, actualRevision) {
     const error = new Error('Game state revision conflict');
     error.code = 'GAME_STATE_REVISION_CONFLICT';

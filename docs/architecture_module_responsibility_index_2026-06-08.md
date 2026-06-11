@@ -2675,6 +2675,37 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/tools/config-release-console.test.js`
 - `npm run test:architecture`
 
+### `frontend/tools/ops-console.html`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- standalone P12-009 admin operations console
+- reading server, PM2, health, deploy, config runtime, observability, player activity, logs, and audit snapshots
+- toggling soft maintenance mode through admin ops APIs
+- triggering audited PM2 restart through admin ops APIs
+- documenting that true hard stop/start requires an external ops-agent/control plane
+- no main-game boot ownership and no auth token creation ownership
+
+公开 API / Public API:
+
+- Tool URL: `/tools/ops-console.html`
+- Query override: `?apiBase=/api`
+- Uses admin API routes under `/api/admin/ops/*`
+- Reads existing `cf_token` or `token` from local storage
+
+扩展方式 / Extension Path:
+
+- UI changes should stay a thin console over `OpsControlService` responses.
+- New destructive controls must be audited on the backend and documented with hard-stop/recovery semantics.
+- Keep this page out of the main H5 boot script chain.
+
+回归 / Regression:
+
+- `node --test frontend/tools/ops-console.test.js`
+- `npm run test:architecture`
+
 ### `scripts/validate-config-pipeline.js`
 
 状态 / Status: candidate
@@ -3604,6 +3635,7 @@ Regression:
 - `saveAtomic(gameState, options)`
 - `resetPlayerState(playerId, gameState)`
 - `touchPlayerActiveAt(playerId)`
+- `getPlayerActivitySummary(options)`
 
 扩展方式 / Extension Path:
 
@@ -3617,6 +3649,7 @@ Regression:
 回归 / Regression:
 
 - `node --test backend/tests/GameStateRepository.test.js`
+- `node --test backend/tests/OpsControlService.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/VersionService.js`
@@ -3690,6 +3723,45 @@ Regression:
 回归 / Regression:
 
 - `node --test backend/tests/ObservabilityService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/OpsControlService.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- P12-009 admin operations dashboard aggregation
+- maintenance state persistence under deploy-state ops data
+- ops audit log records for maintenance changes and PM2 restart requests
+- system, disk, process, PM2, deploy, health, config runtime, observability, player activity, and log snapshots
+- delayed PM2 restart command execution through an explicit audited service method
+- no login/admin authorization ownership, no gameplay state mutation, no hard process start ownership after backend shutdown
+
+公开 API / Public API:
+
+- `new OpsControlService(options)`
+- `getDashboard(options)`
+- `getMaintenanceState()`
+- `setMaintenanceState(input, options)`
+- `getAuditLog(options)`
+- `getSystemSummary()`
+- `getPm2Summary()`
+- `getDeploySummary()`
+- `getHealthSummary()`
+- `getConfigRuntimeSummary()`
+- `getLogSummary(options)`
+- `restartService(options)`
+
+扩展方式 / Extension Path:
+
+- New ops dashboard fields should be gathered here and exposed through thin route/UI layers.
+- Hard stop/start should be added through an external `ops-agent` or host control-plane adapter, not by making the stopped backend responsible for restarting itself.
+- Production path changes must keep ops state under backed-up deploy-state scope or update backup/restore/runbook docs in the same change.
+
+回归 / Regression:
+
+- `node --test backend/tests/OpsControlService.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/PerformanceCapacityBudget.js`
@@ -3775,6 +3847,37 @@ Regression:
 回归 / Regression:
 
 - `node --test backend/tests/MetricsRoutes.test.js`
+- `npm run test:architecture`
+
+### `backend/routes/opsRoutes.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- authenticated/admin `/api/admin/ops/*` route registration
+- dashboard query parsing for log inclusion and log line limits
+- maintenance mode read/write HTTP boundary
+- accepted-before-restart response shape for delayed PM2 restart
+- keeping ops HTTP response/status mapping outside `server.js`
+
+公开 API / Public API:
+
+- `registerOpsRoutes(app, { authMiddleware, adminMiddleware, opsControlService })`
+- `GET /api/admin/ops/dashboard`
+- `GET /api/admin/ops/maintenance`
+- `POST /api/admin/ops/maintenance`
+- `POST /api/admin/ops/restart`
+
+扩展方式 / Extension Path:
+
+- Route additions should remain thin wrappers over `OpsControlService` or a future ops-agent adapter.
+- Access control stays auth + admin; future RBAC should extend middleware/role services rather than per-route ad hoc checks.
+- Restart/hard-stop semantics must keep an audit record and avoid pretending the web backend can restart itself after a true hard stop.
+
+回归 / Regression:
+
+- `node --test backend/tests/OpsRoutes.test.js backend/tests/OpsControlService.test.js`
 - `npm run test:architecture`
 
 ### `backend/routes/versionRoutes.js`
@@ -5441,6 +5544,33 @@ Regression:
 - `node --test backend/tests/AdminRoutes.test.js`
 - `npm run test:architecture`
 
+### `backend/middleware/maintenanceMiddleware.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- soft maintenance mode request blocking after admin routes are registered
+- default blocked gameplay/player-write API path list
+- `503 MAINTENANCE_MODE` response shape and `Retry-After` header
+- preserving admin, health, version, metrics, and client-events reachability during soft stop
+- no maintenance-state persistence ownership and no hard process stop/start ownership
+
+公开 API / Public API:
+
+- `createMaintenanceMiddleware({ opsControlService, blockedPrefixes, blockedPaths })`
+
+扩展方式 / Extension Path:
+
+- New player-facing write APIs must be added to the blocked path/prefix list when they should respect maintenance mode.
+- Admin, health, version, and metrics reachability must stay covered so operators can reopen service during maintenance.
+- Hard stop/start belongs to an external ops-agent/control plane, not this middleware.
+
+回归 / Regression:
+
+- `node --test backend/tests/OpsRoutes.test.js`
+- `npm run test:architecture`
+
 ### `backend/config/SecurityConfig.js`
 
 状态 / Status: candidate
@@ -5484,6 +5614,9 @@ Regression:
 - config runtime loader syntax/test registration
 - gameplay config runtime facade syntax/test registration
 - config release admin console test registration
+- ops control service syntax/test registration
+- ops routes and maintenance middleware syntax/test registration
+- ops admin console test registration
 - config runtime drift health summary and startup gate syntax/test registration
 - architecture guard command sequencing
 
@@ -5504,6 +5637,7 @@ Regression:
 - Config runtime bundle loader changes must keep `backend/tests/ConfigRuntimeLoader.test.js` registered.
 - Gameplay config runtime facade changes must keep `backend/tests/GameplayConfigRuntime.test.js` registered.
 - Config release console changes must keep `frontend/tools/config-release-console.test.js` registered.
+- Ops console/backend operations changes must keep `backend/tests/OpsControlService.test.js`, `backend/tests/OpsRoutes.test.js`, and `frontend/tools/ops-console.test.js` registered.
 - Browser profiling commands that are too slow/flaky for every CI run should still be listed in `CHECK_FILES` for syntax validation and documented separately as evidence commands.
 
 回归 / Regression:
@@ -6126,3 +6260,4 @@ Recommended first split sequence:
 | 2026-06-11 | Added `frontend/tools/config-release-console.html` as the P12-007 standalone admin console for active release/history, runtime drift status, preview, audit-only publish, and rollback actions; it stays outside the main H5 boot chain and does not hot-load gameplay config. |
 | 2026-06-11 | Added `docs/6月11日重构与问题交接.md` as the official daily handoff for the production-engineering sequence through `08639bab`, replacing the prior temporary refactor/progress/issue handoff notes while recording local/server validation, dual-remote sync, server hook anomaly resolution, backup/restore drill evidence, config release publish/rollback evidence, and production `CONFIG_RELEASE_GATE=required` health. |
 | 2026-06-11 | Closed current host evidence for P12-004 and P12-007: installed runtime backup cron, verified real backup/restore drill, moved production config release state under `.wxgame/config-release`, verified post-required-gate backup contents, published config releases A/B, rolled back B -> A, restored active B, and restarted production healthy with `CONFIG_RELEASE_GATE=required` on `08639bab086d5d87ebb7445a043ffb72cc88754c`. |
+| 2026-06-11 | Continued P12-006/P12-009 operations hardening: production Node was upgraded to `20.20.2`, PM2 was reinstalled under Node 20, `better-sqlite3@12.10.0` was rebuilt, backend engines now require Node 20, and `OpsControlService` plus `/api/admin/ops/*`, maintenance middleware, and `/tools/ops-console.html` provide a protected admin operations console for status, soft maintenance, audited PM2 restart, and ops audit evidence. |

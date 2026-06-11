@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文明火种运维控制台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f6f8;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --surface-strong: #eef4f7;
+      --ink: #16212c;
+      --muted: #617082;
+      --line: #d9e2ea;
+      --line-soft: #e8eef4;
+      --accent: #0f766e;
+      --accent-blue: #2563eb;
+      --ok: #157347;
+      --warn: #a16207;
+      --danger: #b42318;
+      --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); }
+    button, input, textarea, select { font: inherit; }
+    button {
+      min-height: 34px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 0 12px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    button.secondary { background: #fff; color: #17475d; border-color: #c9d6e2; }
+    button.warning { background: #fff7ed; color: var(--warn); border-color: #f1c27d; }
+    button.danger { background: #fff; color: var(--danger); border-color: #e5a19b; }
+    button:disabled { opacity: 0.48; cursor: not-allowed; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #cfd9e3;
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+    textarea { min-height: 82px; resize: vertical; line-height: 1.5; }
+    input:focus, textarea:focus { border-color: #5aa6b0; box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12); }
+
+    .app { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: #101923;
+      color: #cbd5df;
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 8px 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .brand-mark { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: #123b43; color: #7dd3c7; font-weight: 900; }
+    .brand h1 { margin: 0; color: #fff; font-size: 16px; line-height: 1.2; letter-spacing: 0; }
+    .brand p { margin: 2px 0 0; font-size: 12px; color: #8ba0b3; }
+    .nav { display: grid; gap: 4px; }
+    .nav a { display: flex; align-items: center; gap: 9px; color: #cbd5df; text-decoration: none; padding: 10px 9px; border-radius: 6px; font-size: 13px; }
+    .nav a.active, .nav a:hover { background: rgba(125, 211, 199, 0.12); color: #fff; }
+    .nav svg { width: 16px; height: 16px; stroke-width: 2; }
+    .side-note { margin-top: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; color: #9fb0c0; font-size: 12px; line-height: 1.55; }
+
+    .main { min-width: 0; padding: 18px 22px 28px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 2px 0 16px; border-bottom: 1px solid var(--line); }
+    .title h2 { margin: 0; font-size: 20px; letter-spacing: 0; }
+    .title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .status-line { min-height: 36px; display: flex; align-items: center; gap: 8px; margin: 14px 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; }
+    .status-line.ok { color: var(--ok); background: #f0fdf7; border-color: #b9e3cc; }
+    .status-line.warn { color: var(--warn); background: #fffbeb; border-color: #ead099; }
+    .status-line.error { color: var(--danger); background: #fff5f5; border-color: #efb6b0; }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: currentColor; flex: 0 0 auto; }
+
+    .metrics { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 10px; }
+    .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-height: 88px; box-shadow: 0 1px 0 rgba(15,23,42,0.03); }
+    .metric span { display: block; color: var(--muted); font-size: 12px; line-height: 1.3; }
+    .metric strong { display: block; margin-top: 8px; font-size: 22px; line-height: 1.1; letter-spacing: 0; }
+    .metric small { display: block; margin-top: 6px; color: #76879a; font-size: 11px; overflow-wrap: anywhere; }
+    .metric.ok strong { color: var(--ok); }
+    .metric.warn strong { color: var(--warn); }
+    .metric.bad strong { color: var(--danger); }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.8fr); gap: 14px; margin-top: 14px; align-items: start; }
+    .stack { display: grid; gap: 14px; }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--line-soft); background: var(--surface-soft); }
+    .panel-head h3 { margin: 0; font-size: 14px; line-height: 1.2; }
+    .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .panel-body { padding: 14px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .meta-row { display: grid; grid-template-columns: 104px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+    .meta-row span { color: var(--muted); }
+    .meta-row strong { overflow-wrap: anywhere; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; border-radius: 999px; border: 1px solid #bfdcd7; background: #effaf8; color: #0f5f59; padding: 0 8px; font-size: 12px; font-weight: 700; }
+    .pill.warn { color: var(--warn); border-color: #e7c37f; background: #fff8e6; }
+    .pill.bad { color: var(--danger); border-color: #e7a5a0; background: #fff5f5; }
+    .pill.neutral { color: #536374; border-color: #d6dee6; background: #f8fafc; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: top; }
+    th { color: #526172; background: #f8fafc; font-weight: 800; }
+    td { color: #253241; overflow-wrap: anywhere; }
+    .log-box { display: grid; gap: 6px; max-height: 260px; overflow: auto; background: #0f1720; color: #cbd5df; padding: 12px; border-radius: 7px; font: 12px/1.45 Consolas, "SFMono-Regular", monospace; }
+    .log-line { white-space: pre-wrap; word-break: break-word; }
+    .empty { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid { display: grid; gap: 10px; }
+    label { display: grid; gap: 6px; color: #3a4858; font-size: 12px; font-weight: 800; }
+    .danger-zone { border: 1px solid #efc0bb; background: #fff8f7; border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
+    .danger-zone p { margin: 0; color: #7f1d1d; font-size: 12px; line-height: 1.55; }
+
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .main { padding: 14px; }
+      .topbar { align-items: stretch; flex-direction: column; }
+      .top-actions { justify-content: stretch; }
+      .top-actions button { flex: 1; }
+      .metrics, .meta-grid, .split, .nav { grid-template-columns: 1fr; }
+      .meta-row { grid-template-columns: 92px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">火</div>
+        <div>
+          <h1>文明火种</h1>
+          <p>生产运维控制台</p>
+        </div>
+      </div>
+      <nav class="nav" aria-label="运维导航">
+        <a class="active" href="#overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>总览</a>
+        <a href="#players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>在线玩家</a>
+        <a href="#deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/><path d="m14.5 4-5 16"/></svg>部署</a>
+        <a href="#config"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3"/><path d="M4.9 4.9 19.1 19.1"/><path d="M19.1 4.9 4.9 19.1"/></svg>配置发布</a>
+        <a href="#maintenance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>维护模式</a>
+        <a href="#logs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg>日志</a>
+      </nav>
+      <div class="side-note">
+        硬停服会让本网页失去后端连接。当前控制台提供维护模式、健康重启和状态观测；真正停开进程需要独立 ops agent。
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title">
+          <h2>生产环境总览</h2>
+          <p id="serverIdentity">读取服务器状态中...</p>
+        </div>
+        <div class="top-actions">
+          <button id="refreshButton" class="secondary" type="button">刷新</button>
+          <button id="loadLogsButton" class="secondary" type="button">读取日志</button>
+          <button id="restartButton" class="warning" type="button">重启服务</button>
+        </div>
+      </header>
+
+      <div id="statusLine" class="status-line"><span class="dot"></span><span>等待读取运维数据。</span></div>
+
+      <section id="overview" class="metrics" aria-label="关键指标">
+        <div class="metric" id="metricHealth"><span>健康状态</span><strong>-</strong><small>-</small></div>
+        <div class="metric" id="metricOnline"><span>2 分钟在线</span><strong>-</strong><small>-</small></div>
+        <div class="metric" id="metricLoad"><span>系统负载</span><strong>-</strong><small>-</small></div>
+        <div class="metric" id="metricMemory"><span>内存使用</span><strong>-</strong><small>-</small></div>
+        <div class="metric" id="metricDisk"><span>磁盘使用</span><strong>-</strong><small>-</small></div>
+        <div class="metric" id="metricLatency"><span>API P95</span><strong>-</strong><small>-</small></div>
+      </section>
+
+      <section class="grid">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <div><h3>服务器与进程</h3><p>系统、Node、PM2、部署身份</p></div>
+              <div id="pm2Pills" class="pill-row"></div>
+            </div>
+            <div class="panel-body">
+              <div id="serverMeta" class="meta-grid"></div>
+            </div>
+          </section>
+
+          <section id="players" class="panel">
+            <div class="panel-head">
+              <div><h3>在线玩家</h3><p>基于 players.lastActiveAt 的活跃窗口</p></div>
+            </div>
+            <div class="panel-body">
+              <div id="playerMeta" class="meta-grid"></div>
+              <table style="margin-top:12px">
+                <thead><tr><th>玩家</th><th>最后活跃</th><th>设备</th></tr></thead>
+                <tbody id="playersTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="deploy" class="panel">
+            <div class="panel-head">
+              <div><h3>部署证据</h3><p>current-deploy 与 deploy.log 摘要</p></div>
+            </div>
+            <div class="panel-body">
+              <div id="deployMeta" class="meta-grid"></div>
+              <div id="deployLog" class="log-box" style="margin-top:12px"></div>
+            </div>
+          </section>
+
+          <section id="logs" class="panel">
+            <div class="panel-head">
+              <div><h3>PM2 日志</h3><p>最近输出与错误日志</p></div>
+            </div>
+            <div class="panel-body split">
+              <div>
+                <div class="pill neutral">out.log</div>
+                <div id="outLog" class="log-box" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <div class="pill neutral">error.log</div>
+                <div id="errorLog" class="log-box" style="margin-top:8px"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="stack">
+          <section id="maintenance" class="panel">
+            <div class="panel-head">
+              <div><h3>维护模式</h3><p>软停服：拦截玩家登录/游戏 API，保留 admin 与 health</p></div>
+              <div id="maintenancePill" class="pill neutral">-</div>
+            </div>
+            <div class="panel-body form-grid">
+              <label>维护原因
+                <input id="maintenanceReason" value="deploy-window" autocomplete="off">
+              </label>
+              <label>玩家提示
+                <textarea id="maintenanceMessage">服务器正在维护，请稍后再试。</textarea>
+              </label>
+              <div class="split">
+                <button id="enableMaintenanceButton" class="warning" type="button">进入维护</button>
+                <button id="disableMaintenanceButton" type="button">开放服务</button>
+              </div>
+              <div class="danger-zone">
+                <p>硬停服会断开本控制台。第一版只提供受审计的 PM2 重启；完整硬停/开服应由常驻 ops-agent 或面板侧守护进程执行。</p>
+                <button id="restartButtonPanel" class="danger" type="button">重启 PM2 server</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="config" class="panel">
+            <div class="panel-head">
+              <div><h3>配置运行时</h3><p>release gate、loader、gameplay bundle</p></div>
+            </div>
+            <div class="panel-body">
+              <div id="configPills" class="pill-row"></div>
+              <div id="configMeta" class="meta-grid" style="margin-top:10px"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div><h3>观测告警</h3><p>API、前端事件、性能预算</p></div>
+            </div>
+            <div class="panel-body">
+              <div id="observabilityMeta" class="meta-grid"></div>
+              <table style="margin-top:12px">
+                <thead><tr><th>级别</th><th>告警</th></tr></thead>
+                <tbody id="alertsTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div><h3>操作审计</h3><p>维护和重启操作记录</p></div>
+            </div>
+            <div class="panel-body">
+              <table>
+                <thead><tr><th>时间</th><th>动作</th><th>操作人</th></tr></thead>
+                <tbody id="auditTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const apiBaseParam = new URLSearchParams(location.search).get('apiBase');
+    const API_BASE = (apiBaseParam || '/api').replace(/\/$/, '');
+    const token = localStorage.getItem('cf_token') || localStorage.getItem('token') || '';
+    let lastDashboard = null;
+
+    const $ = (id) => document.getElementById(id);
+    const statusLine = $('statusLine');
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[char]));
+    }
+
+    function setStatus(message, type = '') {
+      statusLine.className = `status-line ${type}`.trim();
+      statusLine.innerHTML = `<span class="dot"></span><span>${escapeHtml(message)}</span>`;
+    }
+
+    async function request(path, options = {}) {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
+          ...(options.headers || {}),
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.message || data.error || `HTTP ${response.status}`);
+        error.payload = data;
+        throw error;
+      }
+      return data;
+    }
+
+    function setMetric(id, value, detail, tone = '') {
+      const el = $(id);
+      el.className = `metric ${tone}`.trim();
+      el.querySelector('strong').textContent = value ?? '-';
+      el.querySelector('small').textContent = detail ?? '-';
+    }
+
+    function renderRows(target, rows) {
+      $(target).innerHTML = rows.map(([label, value]) => `
+        <div class="meta-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value ?? '-')}</strong></div>
+      `).join('');
+    }
+
+    function renderPills(target, pills) {
+      $(target).innerHTML = pills.map((pill) => `
+        <span class="pill ${pill.tone || ''}">${escapeHtml(pill.label)} ${escapeHtml(pill.value ?? '')}</span>
+      `).join('');
+    }
+
+    function renderLog(target, lines) {
+      $(target).innerHTML = (lines && lines.length)
+        ? lines.map((line) => `<div class="log-line">${escapeHtml(line)}</div>`).join('')
+        : '<div class="empty">暂无日志。</div>';
+    }
+
+    function formatDuration(seconds) {
+      const value = Math.max(0, Number(seconds) || 0);
+      const days = Math.floor(value / 86400);
+      const hours = Math.floor((value % 86400) / 3600);
+      const minutes = Math.floor((value % 3600) / 60);
+      if (days) return `${days}d ${hours}h`;
+      if (hours) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
+    }
+
+    function renderDashboard(data) {
+      lastDashboard = data;
+      const health = data.health || {};
+      const system = data.system || {};
+      const pm2 = data.pm2 || {};
+      const players = data.players || {};
+      const observability = data.observability || {};
+      const totals = observability.totals || {};
+      const memory = system.memory || {};
+      const disk = system.disk || {};
+      const configRuntime = data.configRuntime || {};
+      const runtimeStatus = configRuntime.runtimeStatus || {};
+      const loaderStatus = configRuntime.loaderStatus || {};
+      const activeRelease = health.health?.configRuntime?.activeRelease || runtimeStatus.activeRelease || {};
+      const deploy = data.deploy || {};
+      const currentDeploy = deploy.current || {};
+      const maintenance = data.maintenance || {};
+
+      $('serverIdentity').textContent = `${system.hostname || 'server'} · ${data.environment?.nodeEnv || '-'} · ${currentDeploy.deployedCommit || currentDeploy.commit || '-'}`;
+
+      setMetric('metricHealth', health.status || 'unknown', pm2.status ? `PM2 ${pm2.status}` : 'health probe', health.ok ? 'ok' : 'bad');
+      setMetric('metricOnline', players.windows?.last2m ?? 0, `10 分钟 ${players.windows?.last10m ?? 0} · 总 ${players.totalPlayers ?? 0}`, (players.windows?.last2m || 0) > 0 ? 'ok' : '');
+      setMetric('metricLoad', Array.isArray(system.loadAverage) ? system.loadAverage[0].toFixed(2) : '-', `${system.cpuCount || 0} CPU · ${formatDuration(system.uptimeSeconds)} uptime`);
+      setMetric('metricMemory', `${memory.usedPercent ?? 0}%`, `${memory.usedText || '-'} / ${memory.totalText || '-'}`, memory.usedPercent > 85 ? 'warn' : '');
+      setMetric('metricDisk', `${disk.usedPercent ?? 0}%`, `${disk.usedText || '-'} / ${disk.sizeText || '-'}`, disk.usedPercent > 85 ? 'warn' : '');
+      setMetric('metricLatency', `${totals.p95DurationMs ?? 0} ms`, `${totals.requestCount ?? 0} recent requests`, (totals.p95DurationMs || 0) > 1500 ? 'warn' : '');
+
+      renderPills('pm2Pills', [
+        { label: 'PM2', value: pm2.status || '-', tone: pm2.status === 'online' ? '' : 'bad' },
+        { label: 'Node', value: pm2.nodeVersion || system.process?.nodeVersion || '-' },
+        { label: 'Restarts', value: pm2.restarts ?? 0, tone: (pm2.restarts || 0) > 20 ? 'warn' : 'neutral' },
+      ]);
+      renderRows('serverMeta', [
+        ['主机', system.hostname],
+        ['平台', `${system.platform || '-'} ${system.release || ''}`],
+        ['进程 PID', pm2.pid || system.process?.pid],
+        ['PM2 App', pm2.name || data.environment?.pm2AppName],
+        ['端口健康', data.environment?.healthUrl],
+        ['Node', `${pm2.nodeVersion || '-'} / ${system.process?.nodeVersion || '-'}`],
+        ['脚本', pm2.scriptPath],
+        ['工作目录', pm2.cwd],
+      ]);
+
+      renderRows('playerMeta', [
+        ['2 分钟', players.windows?.last2m ?? 0],
+        ['10 分钟', players.windows?.last10m ?? 0],
+        ['60 分钟', players.windows?.last60m ?? 0],
+        ['24 小时', players.windows?.last1440m ?? 0],
+      ]);
+      $('playersTable').innerHTML = (players.recentPlayers || []).map((player) => `
+        <tr><td>${escapeHtml(player.playerId)}</td><td>${escapeHtml(player.lastActiveAt)}</td><td>${escapeHtml(player.deviceId || '-')}</td></tr>
+      `).join('') || '<tr><td colspan="3" class="empty">暂无玩家记录。</td></tr>';
+
+      renderRows('deployMeta', [
+        ['提交', currentDeploy.deployedCommit || currentDeploy.commit],
+        ['分支', currentDeploy.branch],
+        ['部署时间', currentDeploy.deployedAt],
+        ['版本文件', deploy.currentDeployPath],
+      ]);
+      renderLog('deployLog', deploy.recentLogLines || []);
+
+      $('maintenancePill').className = `pill ${maintenance.enabled ? 'warn' : ''}`.trim();
+      $('maintenancePill').textContent = maintenance.enabled ? '维护中' : '开放中';
+      $('maintenanceReason').value = maintenance.reason || $('maintenanceReason').value || '';
+      $('maintenanceMessage').value = maintenance.message || $('maintenanceMessage').value || '';
+
+      renderPills('configPills', [
+        { label: 'Gate', value: health.health?.configRuntime?.gatePolicy?.mode || '-', tone: health.health?.configRuntime?.gatePolicy?.required ? '' : 'warn' },
+        { label: 'Runtime', value: runtimeStatus.status || health.health?.configRuntime?.status || '-' },
+        { label: 'Loader', value: loaderStatus.status || health.health?.configRuntime?.loader?.status || '-', tone: (loaderStatus.ready || health.health?.configRuntime?.loader?.ready) ? '' : 'bad' },
+      ]);
+      renderRows('configMeta', [
+        ['Active', activeRelease.id],
+        ['Action', activeRelease.action],
+        ['Source', health.health?.configRuntime?.gameplay?.source],
+        ['Registry', activeRelease.registryCount || loaderStatus.registryCount],
+        ['Snapshot', activeRelease.snapshotHash],
+        ['Matches', runtimeStatus.matchesCurrent ?? health.health?.configRuntime?.matchesCurrent],
+      ]);
+
+      renderRows('observabilityMeta', [
+        ['状态', observability.status || 'ok'],
+        ['请求', totals.requestCount ?? 0],
+        ['5xx', totals.serverErrorCount ?? 0],
+        ['慢请求', totals.slowRequestCount ?? 0],
+        ['Action Fail', totals.actionFailureCount ?? 0],
+        ['前端失败', totals.frontendLoadFailureCount ?? 0],
+      ]);
+      $('alertsTable').innerHTML = (observability.alerts || []).map((alert) => `
+        <tr><td>${escapeHtml(alert.severity || '-')}</td><td>${escapeHtml(alert.code || '')}<br><span class="empty">${escapeHtml(alert.message || '')}</span></td></tr>
+      `).join('') || '<tr><td colspan="2" class="empty">暂无告警。</td></tr>';
+
+      $('auditTable').innerHTML = (data.audit || []).map((item) => `
+        <tr><td>${escapeHtml(item.at)}</td><td>${escapeHtml(item.action)}</td><td>${escapeHtml(item.operator)}</td></tr>
+      `).join('') || '<tr><td colspan="3" class="empty">暂无操作记录。</td></tr>';
+
+      if (data.logs) {
+        renderLog('outLog', data.logs.out?.lines || []);
+        renderLog('errorLog', data.logs.error?.lines || []);
+      }
+
+      setStatus(`已读取 ${data.generatedAt || new Date().toISOString()}`, health.ok ? 'ok' : 'warn');
+    }
+
+    async function refresh(includeLogs = false) {
+      if (!token) {
+        setStatus('未找到登录 token。请先用管理员账号登录游戏，再打开本控制台。', 'error');
+        return;
+      }
+      setStatus(includeLogs ? '正在读取运维数据与日志...' : '正在读取运维数据...');
+      const data = await request(`/admin/ops/dashboard?includeLogs=${includeLogs ? 'true' : 'false'}&logLines=80`);
+      renderDashboard(data);
+    }
+
+    async function setMaintenance(enabled) {
+      setStatus(enabled ? '正在进入维护模式...' : '正在开放服务...');
+      const result = await request('/admin/ops/maintenance', {
+        method: 'POST',
+        body: JSON.stringify({
+          enabled,
+          reason: $('maintenanceReason').value,
+          message: $('maintenanceMessage').value,
+        }),
+      });
+      setStatus(result.maintenance.enabled ? '维护模式已开启。' : '服务已开放。', result.maintenance.enabled ? 'warn' : 'ok');
+      await refresh(false);
+    }
+
+    async function restartService() {
+      const confirmed = window.confirm('确认重启 PM2 server？接口会短暂不可用。');
+      if (!confirmed) return;
+      setStatus('已发送重启请求，等待服务恢复...', 'warn');
+      await request('/admin/ops/restart', {
+        method: 'POST',
+        body: JSON.stringify({ delayMs: 900 }),
+      });
+      setTimeout(() => refresh(true).catch((error) => setStatus(error.message, 'error')), 4200);
+    }
+
+    $('refreshButton').addEventListener('click', () => refresh(false).catch((error) => setStatus(error.message, 'error')));
+    $('loadLogsButton').addEventListener('click', () => refresh(true).catch((error) => setStatus(error.message, 'error')));
+    $('enableMaintenanceButton').addEventListener('click', () => setMaintenance(true).catch((error) => setStatus(error.message, 'error')));
+    $('disableMaintenanceButton').addEventListener('click', () => setMaintenance(false).catch((error) => setStatus(error.message, 'error')));
+    $('restartButton').addEventListener('click', () => restartService().catch((error) => setStatus(error.message, 'error')));
+    $('restartButtonPanel').addEventListener('click', () => restartService().catch((error) => setStatus(error.message, 'error')));
+
+    renderLog('outLog', []);
+    renderLog('errorLog', []);
+    refresh(false).catch((error) => setStatus(error.message, 'error'));
+  </script>
+</body>
+</html>

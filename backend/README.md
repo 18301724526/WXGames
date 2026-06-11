@@ -66,6 +66,17 @@ backend/
 | POST | /api/admin/config-releases/publish | 校验并写入配置发布审计和 active 指针 |
 | POST | /api/admin/config-releases/rollback | 回滚 active 指针到历史 release |
 
+### 管理员运维控制台
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/admin/ops/dashboard | 生产运维总览，需登录且具备管理员权限 |
+| GET | /api/admin/ops/maintenance | 读取维护模式状态 |
+| POST | /api/admin/ops/maintenance | 开启/关闭软停服维护模式并写入审计 |
+| POST | /api/admin/ops/restart | 受审计的延迟 PM2 restart，用于健康重启 |
+
+`/api/admin/ops/*` 复用 `authMiddleware + adminMiddleware`。生产必须显式配置 `ADMIN_USERS`，否则 admin 权限不会默认开放。
+
 ## 操作类型
 
 ```javascript
@@ -150,6 +161,9 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 管理员工具页：
 
 - `/tools/config-release-console.html`：读取 active/history/runtime status，预览当前配置，写入发布审计记录，回滚 active 指针。
+- `/tools/ops-console.html`：读取服务器/PM2/health/deploy/config/metrics/在线玩家/日志/审计摘要，支持维护模式开关和受审计 PM2 restart。
+
+运维控制台当前提供“软停服”：开启维护模式后，`/api/game*`、`/api/buildings*`、`/api/player/login`、`/api/player/register`、`/api/player/reset` 返回 `503 MAINTENANCE_MODE`，但 `/api/health`、`/api/version`、`/api/metrics` 和 `/api/admin/*` 保持可用。真正硬停服/开服会切断本网页依赖的后端连接，后续应由常驻 `ops-agent`、systemd/PM2 外部守护或主机面板侧进程实现。
 
 性能/容量预算当前为观测和元数据边界：
 
@@ -159,7 +173,7 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 - `npm run profile:h5-phone-sim` 会用 CPU throttling、移动视口/DPR/touch、navigator 核心数/内存注入、V8 heap 上限和 SwiftShader/低端 GPU flag 近似 2026 手机 low/mid/flagship 档位；这是无真机时的本地保守模拟，不等同物理真机热/驱动/浏览器实测。
 - H5 启动期资源加载只等待图片可用；世界地图瓦片 metrics/mask/dry-template 预热由 `worldMapRenderer.scheduleWorldTileCachePrewarm()` 在 ready 周边按设备档位后台分片执行，并在 profile 中以 `assets:prewarm:deferred` 记录。低/中端移动档还会降低水面/探索刷新频率，避免 ready 后按桌面节奏重绘地图。2026-06-11 最新模拟报告为 `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`。
 
-生产依赖注意：服务器当前 Node 为 `18.20.8`，`better-sqlite3@12.10.0` 的 package engine 声明要求 Node 20+。当前可运行并通过门禁，但后续应升级 Node 或锁定兼容的 `better-sqlite3` 版本。
+生产依赖注意：2026-06-11 已将生产 Node 从 `18.20.8` 升级到 `20.20.2`，并在 Node 20 下重装 PM2、重建 `better-sqlite3@12.10.0` 原生模块；`backend/package.json` engines 同步为 `node >=20.0.0`。当前生产仍有 `npm audit` 残余 3 个依赖风险（2 moderate，1 high），需后续安全收敛。
 
 或手动部署：
 

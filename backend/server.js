@@ -9,10 +9,12 @@ const LogService = require('./services/logService');
 const GameStateRepository = require('./repositories/GameStateRepository');
 const createAuthMiddleware = require('./middleware/authMiddleware');
 const createAdminMiddleware = require('./middleware/adminMiddleware');
+const createMaintenanceMiddleware = require('./middleware/maintenanceMiddleware');
 const registerPlayerRoutes = require('./routes/playerRoutes');
 const registerGameRoutes = require('./routes/gameRoutes');
 const registerBuildingRoutes = require('./routes/buildingRoutes');
 const registerAdminRoutes = require('./routes/adminRoutes');
+const registerOpsRoutes = require('./routes/opsRoutes');
 const registerVersionRoutes = require('./routes/versionRoutes');
 const registerMetricsRoutes = require('./routes/metricsRoutes');
 const registerClientEventsRoutes = require('./routes/clientEventsRoutes');
@@ -21,6 +23,7 @@ const { BuildingConfig, initializeRuntimeConfig, getRuntimeConfigStatus } = requ
 const SecurityConfig = require('./config/SecurityConfig');
 const VersionService = require('./services/VersionService');
 const ObservabilityService = require('./services/ObservabilityService');
+const OpsControlService = require('./services/OpsControlService');
 const ConfigReleaseService = require('./services/config/ConfigReleaseService');
 const ConfigRuntimeLoader = require('./services/config/ConfigRuntimeLoader');
 const EventService = require('./services/EventService');
@@ -45,6 +48,13 @@ const versionService = new VersionService();
 const observabilityService = new ObservabilityService();
 const configReleaseService = ConfigReleaseService;
 const configRuntimeLoader = ConfigRuntimeLoader;
+const opsControlService = new OpsControlService({
+  repository,
+  observabilityService,
+  configReleaseService,
+  configRuntimeLoader,
+  versionService,
+});
 const SKIP_API_LOG_PATHS = new Set([
   '/api/health',
   '/api/client-events',
@@ -98,13 +108,17 @@ app.use((req, res, next) => {
   next();
 });
 
-registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService });
-registerGameRoutes(app, { authMiddleware, repository, gameStateService });
-registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
 registerAdminRoutes(app, { authMiddleware, adminMiddleware, configReleaseService, configRuntimeLoader });
 registerVersionRoutes(app, { versionService });
 registerClientEventsRoutes(app, { observabilityService });
 registerMetricsRoutes(app, { authMiddleware, adminMiddleware, observabilityService });
+registerOpsRoutes(app, { authMiddleware, adminMiddleware, opsControlService });
+
+app.use(createMaintenanceMiddleware({ opsControlService }));
+
+registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService });
+registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
 
 app.get('/api/health', (req, res) => {
   const configRuntimeStatus = configReleaseService.getRuntimeStatus();
