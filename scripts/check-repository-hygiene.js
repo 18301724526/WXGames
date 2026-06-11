@@ -6,6 +6,8 @@ const FORBIDDEN_PATTERNS = [
   /(^|\/)\.env(\.|$)/i,
   /\.(sqlite|sqlite3|db)(-|\.|$)/i,
   /\.(pem|key|p12|pfx)$/i,
+  /(^|\/)[^/]*(password|credential|secret)[^/]*\.txt$/i,
+  /(^|\/)[^/]*(密码|密钥|凭据|连接密码)[^/]*\.txt$/i,
 ];
 
 function runGitLsFiles() {
@@ -26,12 +28,23 @@ function isForbidden(file) {
   return FORBIDDEN_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
-const offenders = runGitLsFiles().filter(isForbidden).sort();
+function main() {
+  const offenders = runGitLsFiles().filter(isForbidden).sort();
 
-if (offenders.length > 0) {
-  console.error('[repository-hygiene] forbidden tracked files:');
-  offenders.forEach((file) => console.error(`- ${file}`));
-  process.exit(1);
+  if (offenders.length > 0) {
+    console.error('[repository-hygiene] forbidden tracked files:');
+    offenders.forEach((file) => console.error(`- ${file}`));
+    process.exit(1);
+  }
+
+  console.log('[repository-hygiene] passed');
 }
 
-console.log('[repository-hygiene] passed');
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  FORBIDDEN_PATTERNS,
+  isForbidden,
+};

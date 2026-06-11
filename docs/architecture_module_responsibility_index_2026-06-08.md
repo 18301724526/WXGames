@@ -5795,6 +5795,85 @@ Regression:
 
 - `node --test scripts/check-backend-security-audit.test.js`
 
+### `scripts/verify-production-security-config.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- P12-006 production security posture evidence
+- validating production secret strength without printing secret values
+- validating independent ops JWT secret, bcrypt ops password hash, and `OPS_SESSION_VERSION` rotation
+- validating explicit `ADMIN_USERS`, restricted `CORS_ORIGINS`, required config release gate, and named server/deploy credential owners
+- inspecting Git remotes for embedded plaintext passwords and reporting only redacted URLs
+- writing redacted JSON evidence with secret length and short SHA-256 fingerprints
+
+公开命令 / Public Command:
+
+- `npm run security:production`
+- `node scripts/verify-production-security-config.js --env-file <path> --evidence <path>`
+
+扩展方式 / Extension Path:
+
+- Keep production policy checks aligned with `backend/config/SecurityConfig.js`, `backend/services/OpsAuthService.js`, `ConfigReleaseService.resolveRuntimeGatePolicy()`, and `adminMiddleware.parseUserList()`.
+- New production security requirements should be added here with focused tests and a redacted evidence field.
+- Do not print secret values; evidence may include configured flags, lengths, and short one-way fingerprints only.
+
+回归 / Regression:
+
+- `node --test scripts/verify-production-security-config.test.js`
+- `npm run security:production -- --json`
+- `npm run test:architecture`
+
+### `scripts/verify-production-security-config.test.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- focused regression coverage for production security evidence checks
+- dotenv parsing, secret strength policy, Git remote redaction, passing evidence, failing rotation/shared-secret evidence, and warning-only dev-admin review
+
+公开命令 / Public Command:
+
+- `node --test scripts/verify-production-security-config.test.js`
+
+扩展方式 / Extension Path:
+
+- Add a focused case whenever production security evidence policy changes.
+- Use injected clean Git remote fixtures for passing tests so local development remotes do not hide real policy failures.
+
+回归 / Regression:
+
+- `node --test scripts/verify-production-security-config.test.js`
+- `npm run test:architecture`
+
+### `scripts/rotate-production-secrets.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- guarded host-side production secret rotation entry
+- updating the backend `.env` for `JWT_SECRET`, `OPS_JWT_SECRET`, `OPS_ADMIN_PASSWORD_HASH`, `OPS_SESSION_VERSION`, rotation id, and server/deploy credential owners
+- running `scripts/verify-production-security-config.js` after rotation and writing evidence under deploy state
+- optional PM2 restart through `RESTART_PM2=1`
+
+公开命令 / Public Command:
+
+- `ROTATION_CONFIRM=rotate-production-secrets bash scripts/rotate-production-secrets.sh`
+
+扩展方式 / Extension Path:
+
+- Keep the wrapper thin; policy belongs to `scripts/verify-production-security-config.js`.
+- Keep destructive behavior behind explicit confirmation and avoid printing secret values.
+- New host-side rotation steps must preserve evidence generation before restart is considered complete.
+
+回归 / Regression:
+
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
 扩展方式 / Extension Path:
 
 - Add focused cases whenever `scripts/check-backend-security-audit.js` changes residual policy or report parsing behavior.
@@ -6102,7 +6181,7 @@ Regression:
 负责 / Owns:
 
 - tracked-file hygiene guard
-- blocking tracked `.bak`, `.backup`, database, `.env`, and key/certificate files
+- blocking tracked `.bak`, `.backup`, database, `.env`, key/certificate files, and local secret text files such as password/credential/secret notes
 
 公开 API / Public API:
 
@@ -6115,6 +6194,7 @@ Regression:
 
 回归 / Regression:
 
+- `node --test scripts/check-repository-hygiene.test.js`
 - `node scripts/check-repository-hygiene.js`
 - `npm run test:architecture`
 
@@ -6421,3 +6501,4 @@ Recommended first split sequence:
 | 2026-06-11 | Closed current host evidence for P12-004 and P12-007: installed runtime backup cron, verified real backup/restore drill, moved production config release state under `.wxgame/config-release`, verified post-required-gate backup contents, published config releases A/B, rolled back B -> A, restored active B, and restarted production healthy with `CONFIG_RELEASE_GATE=required` on `08639bab086d5d87ebb7445a043ffb72cc88754c`. |
 | 2026-06-11 | Continued P12-006/P12-009 operations hardening: production Node was upgraded to `20.20.2`, PM2 was reinstalled under Node 20, `better-sqlite3@12.10.0` was rebuilt, backend engines now require Node 20, and `OpsControlService` plus `/api/admin/ops/*`, maintenance middleware, and `/tools/ops-console.html` provide a protected admin operations console for status, soft maintenance, audited PM2 restart, and ops audit evidence. |
 | 2026-06-12 | Fixed P12-009 ops dashboard health false negatives: `OpsControlService` now defaults dashboard health to a `local-process` summary assembled from version, observability, config runtime, loader, and gameplay runtime status; `OPS_HEALTH_URL` remains only an explicit external probe override, and regression asserts the default dashboard does not run `curl`. |
+| 2026-06-12 | Added P12-006 production security evidence and guarded rotation mechanisms: `scripts/verify-production-security-config.js`, `npm run security:production`, `scripts/rotate-production-secrets.sh`, and focused tests now validate redacted secret strength evidence, independent ops JWT, `OPS_SESSION_VERSION` rotation, explicit admin/CORS/config gate posture, server/deploy credential ownership, Git remote password hygiene, and repository blocking for local secret text files. |

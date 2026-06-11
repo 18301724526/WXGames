@@ -12,6 +12,7 @@ const SHELL_SCRIPTS = Object.freeze([
   'scripts/restore-runtime-state.sh',
   'scripts/install-runtime-backup-cron.sh',
   'scripts/verify-runtime-backup.sh',
+  'scripts/rotate-production-secrets.sh',
 ]);
 
 const FALLBACK_BASH_PATHS = Object.freeze([

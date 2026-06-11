@@ -82,9 +82,31 @@ OPS_ADMIN_USERNAME=<operator>
 OPS_ADMIN_PASSWORD_HASH=<bcrypt hash>
 OPS_JWT_SECRET=<independent long secret>
 OPS_SESSION_TTL=12h
+OPS_SESSION_VERSION=<rotation id>
+JWT_SECRET=<independent player long secret>
+CORS_ORIGINS=https://your-game-origin.example
+ADMIN_USERS=<operator player/admin ids>
+CONFIG_RELEASE_GATE=required
 ```
 
 生产不建议使用明文 `OPS_ADMIN_PASSWORD`；仅在临时抢修时可显式设置 `OPS_ALLOW_PLAINTEXT_PASSWORD=1`。
+
+生产安全配置和轮换证据入口：
+
+```bash
+REPO_GIT_DIR=/home/git/wxgame.git node scripts/verify-production-security-config.js --env-file /opt/wxgame-workspace/backend/.env --evidence /opt/wxgame-workspace/.wxgame/security/production-security-check.json --rotation-id <rotation-id> --server-access-owner <owner> --deploy-credential-owner <owner> --cwd /www/wwwroot/h5
+
+ROTATION_CONFIRM=rotate-production-secrets \
+WXGAME_SERVER_ACCESS_OWNER=<owner> \
+WXGAME_DEPLOY_CREDENTIAL_OWNER=<owner> \
+JWT_SECRET=<new-player-secret> \
+OPS_JWT_SECRET=<new-ops-secret> \
+OPS_ADMIN_PASSWORD_HASH=<bcrypt-hash> \
+RESTART_PM2=1 \
+bash scripts/rotate-production-secrets.sh
+```
+
+`OPS_SESSION_VERSION` 必须随 secret rotation bump，用于让旧 ops token 立即失效。证据 JSON 只写入长度、短 hash fingerprint 和配置状态，不写明文 secret。
 
 ## 操作类型
 
@@ -133,6 +155,7 @@ node scripts/check-shell-scripts.js
 ```bash
 bash scripts/verify-deploy-hook.sh
 bash scripts/rollback-deploy.sh <branch|tag|commit>
+bash scripts/rotate-production-secrets.sh --help
 ```
 
 运行时备份和恢复入口：
@@ -182,7 +205,7 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 - `npm run profile:h5-phone-sim` 会用 CPU throttling、移动视口/DPR/touch、navigator 核心数/内存注入、V8 heap 上限和 SwiftShader/低端 GPU flag 近似 2026 手机 low/mid/flagship 档位；这是无真机时的本地保守模拟，不等同物理真机热/驱动/浏览器实测。
 - H5 启动期资源加载只等待图片可用；世界地图瓦片 metrics/mask/dry-template 预热由 `worldMapRenderer.scheduleWorldTileCachePrewarm()` 在 ready 周边按设备档位后台分片执行，并在 profile 中以 `assets:prewarm:deferred` 记录。低/中端移动档还会降低水面/探索刷新频率，避免 ready 后按桌面节奏重绘地图。2026-06-11 最新模拟报告为 `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`。
 
-生产依赖注意：2026-06-11 已将生产 Node 从 `18.20.8` 升级到 `20.20.2`，并在 Node 20 下重装 PM2、重建 `better-sqlite3@12.10.0` 原生模块；`backend/package.json` engines 同步为 `node >=20.0.0`。当前生产仍有 `npm audit` 残余 3 个依赖风险（2 moderate，1 high），需后续安全收敛。
+生产依赖注意：2026-06-11 已将生产 Node 从 `18.20.8` 升级到 `20.20.2`，并在 Node 20 下重装 PM2、重建 `better-sqlite3@12.10.0` 原生模块；`backend/package.json` engines 同步为 `node >=20.0.0`。`npm run security:audit` 现在只允许 `xlsx` high、无 npm-audit fix 的残余风险，其补偿控制是 `TaskDefinitionImportParser` 的 XLSX 导入限制；其他 unexpected/fixable 漏洞会阻断 architecture gate。
 
 或手动部署：
 

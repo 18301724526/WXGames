@@ -10,6 +10,7 @@
     "test": "node scripts/run-node-tests.js",
     "test:architecture": "node scripts/run-architecture-smoke.js",
     "security:audit": "node scripts/check-backend-security-audit.js",
+    "security:production": "node scripts/verify-production-security-config.js",
     "config:validate": "node scripts/validate-config-pipeline.js",
     "playtest:online-tutorial": "node scripts/playtest-online-tutorial.js",
     "profile:h5-performance": "node scripts/profile-h5-performance.js",
