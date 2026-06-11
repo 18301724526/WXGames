@@ -2,6 +2,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 require('dotenv').config();
 
+const { openDatabase } = require('./services/DatabaseRuntime');
 const GameStateRepository = require('./repositories/GameStateRepository');
 const gameStateService = require('./services/GameStateService');
 const CityService = require('./services/CityService');
@@ -10,7 +11,7 @@ const EventService = require('./services/EventService');
 const WorldWorkerService = require('./services/realtime/WorldWorkerService');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
-const db = new Database(dbPath);
+const { db } = openDatabase(Database, dbPath);
 const repository = new GameStateRepository(db);
 repository.init();
 

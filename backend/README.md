@@ -41,6 +41,8 @@ backend/
 
 Runtime sync note: `GET /api/game/heartbeat` is the lightweight liveness endpoint. It records online presence through `PresenceService` and does not run world progression or write `players.lastActiveAt` on every request. The API gateway process must stay free of world runtime ticks; background world advancement runs in the separate PM2 process `wxgame-world-worker` through `backend/world-worker.js`.
 
+SQLite runtime note: all backend soft services that open `civilization.db` must use `DatabaseRuntime.openDatabase()`. The shared runtime config enables WAL, `synchronous=NORMAL`, and a bounded `busy_timeout` so the API gateway and `wxgame-world-worker` do not amplify SQLite lock contention during multiplayer heartbeat/login bursts.
+
 ### 事件
 
 | 方法 | 路径 | 说明 |

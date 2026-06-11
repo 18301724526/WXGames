@@ -3728,6 +3728,34 @@ Regression:
 - `node --test backend/tests/VersionService.test.js`
 - `npm run test:architecture`
 
+### `backend/services/DatabaseRuntime.js`
+
+Status: candidate
+
+Owns:
+
+- SQLite runtime opening/configuration for backend soft services
+- consistent `better-sqlite3` constructor timeout and `PRAGMA busy_timeout`
+- WAL journal mode and `synchronous=NORMAL` defaults for the single-host gateway plus world-worker topology
+- bounded env parsing for `SQLITE_BUSY_TIMEOUT_MS`, `SQLITE_JOURNAL_MODE`, and `SQLITE_SYNCHRONOUS`
+
+Public API:
+
+- `openDatabase(Database, dbPath, options)`
+- `configureDatabase(db, options)`
+- `resolveBusyTimeoutMs(env)`
+
+Extension Path:
+
+- Every backend process that opens `civilization.db` must use `openDatabase()`.
+- Future shard, region-worker, backup-reader, or ops-side DB readers should extend this boundary rather than calling `new Database(...)` directly.
+- If the runtime store moves away from SQLite, keep this module as the adapter boundary and update focused tests before touching gateway/worker code.
+
+Regression:
+
+- `node --test backend/tests/DatabaseRuntime.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/ObservabilityService.js`
 
 状态 / Status: candidate

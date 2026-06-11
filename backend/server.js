@@ -4,6 +4,7 @@ const cors = require('cors');
 const Database = require('better-sqlite3');
 require('dotenv').config();
 
+const { openDatabase } = require('./services/DatabaseRuntime');
 const AuthService = require('./services/authService');
 const LogService = require('./services/logService');
 const GameStateRepository = require('./repositories/GameStateRepository');
@@ -31,7 +32,7 @@ const ConfigRuntimeLoader = require('./services/config/ConfigRuntimeLoader');
 
 const app = express();
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
-const db = new Database(dbPath);
+const { db } = openDatabase(Database, dbPath);
 const jwtSecret = SecurityConfig.resolveJwtSecret(process.env);
 const corsOptions = SecurityConfig.resolveCorsOptions(process.env);
 

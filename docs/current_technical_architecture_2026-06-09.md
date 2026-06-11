@@ -85,6 +85,7 @@ mapBackground -> mapTile -> mapSite -> mapActor -> worldHud -> screenHud -> floa
 - `frontend/js/services/UpdateChecker.js`: deployment version polling boundary. It owns `/version` polling and failure backoff; it must not drive gameplay state changes.
 - `backend/server.js`: API gateway process only. It must not own world runtime background ticks or full active-player state sweeps.
 - `backend/world-worker.js`: separate PM2 soft service for world runtime advancement through `WorldWorkerService`; production deploy starts it as `wxgame-world-worker`.
+- `backend/services/DatabaseRuntime.js`: SQLite runtime opening/configuration boundary for every backend soft service; it applies WAL, `synchronous=NORMAL`, and bounded `busy_timeout` consistently across gateway and worker processes.
 - `backend/services/realtime/PresenceService.js`: in-memory online presence and heartbeat persistence throttling; it absorbs heartbeat bursts and prevents per-request `lastActiveAt` writes.
 
 Canvas-only 规则由文档、脚本和架构测试共同守护。`scripts/verify-refactor-plan-doc.js` 会扫描 Canvas 业务层是否引入 DOM UI API。
@@ -166,6 +167,8 @@ Stable 目标使用 diamond isometric square-tile 语言，而不是 hex/axial �
 ### 5.1 GameState Runtime Boundary
 
 Operational sync rule: `server.js` is now a gateway/API process, while `world-worker.js` is the local soft-service that owns periodic runtime advancement. `GameStateService.advanceRuntimeState()` may still be used by explicit command/action boundaries, but periodic active-player sweeps belong only to `WorldWorkerService`. Heartbeat is presence/liveness only: `PresenceService` records online state in memory and throttles `players.lastActiveAt` persistence; it does not run world simulation, load full game state, or save player state on every heartbeat.
+
+SQLite concurrency rule: every backend process that opens the runtime save DB must go through `DatabaseRuntime.openDatabase()`. The current single-host soft-service topology still shares SQLite, so WAL plus a bounded `busy_timeout` is required to prevent worker saves from surfacing as API/login/health tail latency spikes.
 
 当前后端状态边界按成熟服务端分成三类入口：
 
