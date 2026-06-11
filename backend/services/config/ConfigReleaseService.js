@@ -10,9 +10,15 @@ const ACTIVE_RELEASE_SCHEMA = 'config-active-release-v1';
 const RUNTIME_STATUS_SCHEMA = 'config-runtime-status-v1';
 const RUNTIME_GATE_POLICY_SCHEMA = 'config-runtime-gate-policy-v1';
 const RUNTIME_GATE_SCHEMA = 'config-runtime-gate-v1';
-const DEFAULT_DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
-const DEFAULT_HISTORY_PATH = path.join(DEFAULT_DATA_DIR, 'configReleases.json');
-const DEFAULT_ACTIVE_PATH = path.join(DEFAULT_DATA_DIR, 'configActiveRelease.json');
+const DEFAULT_RUNTIME_STATE_DIR = '/opt/wxgame-workspace/.wxgame';
+const REPO_ROOT = path.join(__dirname, '..', '..', '..');
+const LOCAL_DEFAULT_DATA_DIR = path.join(REPO_ROOT, 'data', 'config-release');
+
+function joinRuntimePath(basePath, ...parts) {
+  return String(basePath || '').startsWith('/')
+    ? path.posix.join(basePath, ...parts)
+    : path.join(basePath, ...parts);
+}
 
 function sanitizeText(value, fallback = '') {
   const text = String(value ?? '').trim();
@@ -73,12 +79,33 @@ function normalizeBooleanFlag(value) {
   return null;
 }
 
+function getDefaultReleaseDataDir(env = process.env) {
+  const configuredStateDir = sanitizeText(env.WXGAME_DEPLOY_STATE_DIR || env.DEPLOY_STATE_DIR);
+  if (configuredStateDir) return joinRuntimePath(configuredStateDir, 'config-release');
+  const nodeEnv = sanitizeText(env.NODE_ENV, 'development').toLowerCase();
+  if (nodeEnv === 'production') return joinRuntimePath(DEFAULT_RUNTIME_STATE_DIR, 'config-release');
+  return LOCAL_DEFAULT_DATA_DIR;
+}
+
+function getDefaultHistoryPath(env = process.env) {
+  return joinRuntimePath(getDefaultReleaseDataDir(env), 'configReleases.json');
+}
+
+function getDefaultActivePath(env = process.env) {
+  return joinRuntimePath(getDefaultReleaseDataDir(env), 'configActiveRelease.json');
+}
+
+const DEFAULT_HISTORY_PATH = getDefaultHistoryPath();
+const DEFAULT_ACTIVE_PATH = getDefaultActivePath();
+
 function getHistoryPath(options = {}) {
-  return options.historyPath || process.env.CONFIG_RELEASE_HISTORY_PATH || DEFAULT_HISTORY_PATH;
+  const env = options.env || process.env;
+  return options.historyPath || env.CONFIG_RELEASE_HISTORY_PATH || getDefaultHistoryPath(env);
 }
 
 function getActivePath(options = {}) {
-  return options.activePath || process.env.CONFIG_ACTIVE_RELEASE_PATH || DEFAULT_ACTIVE_PATH;
+  const env = options.env || process.env;
+  return options.activePath || env.CONFIG_ACTIVE_RELEASE_PATH || getDefaultActivePath(env);
 }
 
 function readJsonFile(filePath, fallback) {
@@ -604,6 +631,7 @@ module.exports = {
   ACTIVE_RELEASE_SCHEMA,
   DEFAULT_ACTIVE_PATH,
   DEFAULT_HISTORY_PATH,
+  DEFAULT_RUNTIME_STATE_DIR,
   RELEASE_HISTORY_SCHEMA,
   RELEASE_RECORD_SCHEMA,
   RUNTIME_GATE_POLICY_SCHEMA,
@@ -612,6 +640,9 @@ module.exports = {
   appendReleaseRecord,
   assertRuntimeReleaseReady,
   findReleaseRecord,
+  getDefaultActivePath,
+  getDefaultHistoryPath,
+  getDefaultReleaseDataDir,
   getActivePath,
   getActiveRelease,
   getHistoryPath,

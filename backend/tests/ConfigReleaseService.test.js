@@ -36,6 +36,28 @@ function createTempPaths() {
   };
 }
 
+test('ConfigReleaseService defaults production release state into deploy state backup scope', () => {
+  assert.equal(
+    ConfigReleaseService.getDefaultReleaseDataDir({ NODE_ENV: 'production' }),
+    '/opt/wxgame-workspace/.wxgame/config-release',
+  );
+  assert.equal(
+    ConfigReleaseService.getDefaultHistoryPath({ NODE_ENV: 'production' }),
+    '/opt/wxgame-workspace/.wxgame/config-release/configReleases.json',
+  );
+  assert.equal(
+    ConfigReleaseService.getDefaultActivePath({
+      NODE_ENV: 'production',
+      DEPLOY_STATE_DIR: '/tmp/wxgame-state',
+    }),
+    '/tmp/wxgame-state/config-release/configActiveRelease.json',
+  );
+  assert.equal(
+    ConfigReleaseService.getDefaultReleaseDataDir({ NODE_ENV: 'test' }),
+    path.join(__dirname, '..', '..', 'data', 'config-release'),
+  );
+});
+
 test('ConfigReleaseService previews a candidate release against active baseline', () => {
   const paths = createTempPaths();
   const first = createSnapshot();
