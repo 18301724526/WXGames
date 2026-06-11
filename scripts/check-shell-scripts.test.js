@@ -47,6 +47,18 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(verifyHookScript, /current deploy commit is reachable/);
 });
 
+test('pre-deploy gate auto-installs architecture dependencies for server hooks', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const gateScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'pre-deploy-gate.sh'), 'utf8');
+
+  assert.match(gateScript, /WXGAME_GATE_INSTALL="\$\{WXGAME_GATE_INSTALL:-auto\}"/);
+  assert.match(gateScript, /git --git-dir="\$REPO_GIT_DIR" --work-tree="\$REPO_ROOT"/);
+  assert.match(gateScript, /node_modules\/\.wxgame-lock-sha256/);
+  assert.match(gateScript, /backend\/node_modules\/\.wxgame-lock-sha256/);
+  assert.match(gateScript, /npm ci --prefix "\$work_dir" --no-audit --no-fund/);
+  assert.match(gateScript, /require\('xlsx'\); require\('better-sqlite3'\);/);
+});
+
 test('runtime backup and restore scripts keep explicit safety contracts', () => {
   const repoRoot = path.join(__dirname, '..');
   const backupScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'backup-runtime-state.sh'), 'utf8');
