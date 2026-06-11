@@ -2688,19 +2688,21 @@ P0 新增公开 API / Public API Added During P0:
 - reading server, PM2, health, deploy, config runtime, observability, player activity, logs, and audit snapshots
 - toggling soft maintenance mode through admin ops APIs
 - triggering audited PM2 restart through admin ops APIs
-- documenting that true hard stop/start requires an external ops-agent/control plane
+- connecting to a same-origin or explicitly configured ops-agent for hard stop/start after host installation
+- storing backend ops token and agent token separately as `cf_ops_token` and `cf_ops_agent_token`
 - no main-game boot ownership and no auth token creation ownership
 
 公开 API / Public API:
 
 - Tool URL: `/tools/ops-console.html`
-- Query override: `?apiBase=/api`
+- Query overrides: `?apiBase=/api` and `?agentBase=/ops-agent`
 - Uses independent ops-admin login through `/api/admin/ops/login`
-- Stores and sends only `cf_ops_token`; it must not read player `cf_token` or `token`
+- Uses ops-agent login through `/ops-agent/login` when the Agent panel is configured
+- Stores and sends only `cf_ops_token` and `cf_ops_agent_token`; it must not read player `cf_token` or `token`
 
 扩展方式 / Extension Path:
 
-- UI changes should stay a thin console over `OpsControlService` responses.
+- UI changes should stay a thin console over `OpsControlService` and ops-agent responses.
 - New destructive controls must be audited on the backend and documented with hard-stop/recovery semantics.
 - Keep this page out of the main H5 boot script chain.
 
@@ -3830,12 +3832,102 @@ Regression:
 
 - New ops dashboard fields should be gathered here and exposed through thin route/UI layers.
 - Dashboard health should stay local-process by default; do not reintroduce a synchronous self-curl to `/api/health`.
-- Hard stop/start should be added through an external `ops-agent` or host control-plane adapter, not by making the stopped backend responsible for restarting itself.
+- Hard stop/start belongs to `backend/ops-agent`, not to this stopped-backend dashboard service.
 - Production path changes must keep ops state under backed-up deploy-state scope or update backup/restore/runbook docs in the same change.
 
 回归 / Regression:
 
 - `node --test backend/tests/OpsControlService.test.js`
+- `npm run test:architecture`
+
+### `backend/ops-agent/OpsAgentService.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- independent P12-009 host control-plane service logic for hard stop/start/restart
+- fixed PM2 target app resolution through `OPS_AGENT_PM2_APP` / `PM2_APP_NAME`, defaulting to `server`
+- PM2 status snapshots, system summary, and agent audit log records
+- safe PM2 command construction for `start`, `stop`, and `restart` only
+- no arbitrary shell command ownership, no gameplay/backend route ownership, no player-token ownership
+
+公开 API / Public API:
+
+- `new OpsAgentService(options)`
+- `getHealth()`
+- `getStatus(options)`
+- `startService(options)`
+- `stopService(options)`
+- `restartService(options)`
+- `getAuditLog(options)`
+
+扩展方式 / Extension Path:
+
+- Add new host actions only as explicit allowlisted methods with fixed arguments and audit records.
+- Keep the target app pinned to one configured name; do not accept app names from HTTP request payloads.
+- Keep agent state under deploy-state backup scope or document backup/runbook changes in the same patch.
+
+回归 / Regression:
+
+- `node --test backend/tests/OpsAgentService.test.js`
+- `npm run test:architecture`
+
+### `backend/ops-agent/OpsAgentHttpServer.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- independent Node HTTP boundary for the ops-agent process
+- `/health`, `/login`, `/status`, `/pm2/start`, `/pm2/stop`, and `/pm2/restart`
+- Bearer-token enforcement through `OpsAuthService` on protected agent routes
+- route allowlist that rejects arbitrary PM2/control paths
+- optional `OPS_AGENT_CORS_ORIGINS` headers for non-same-origin diagnostics
+
+公开 API / Public API:
+
+- `createOpsAgentHttpServer(options)`
+- `createOpsAgentRequestHandler(options)`
+- `parsePort(value, fallback)`
+- `resolveBindHost(env)`
+- `resolveCorsOrigins(env)`
+
+扩展方式 / Extension Path:
+
+- Keep host control endpoints small wrappers over `OpsAgentService`.
+- New write endpoints must authenticate with ops-admin JWT and append audit evidence.
+- Default binding should remain localhost-only; public exposure should happen through an authenticated reverse proxy.
+
+回归 / Regression:
+
+- `node --test backend/tests/OpsAgentHttpServer.test.js backend/tests/OpsAgentService.test.js backend/tests/OpsAuthService.test.js`
+- `npm run test:architecture`
+
+### `backend/ops-agent/server.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- PM2 entrypoint for the independent ops-agent process
+- loading backend `.env` before constructing `OpsAuthService`
+- resolving `OPS_AGENT_BIND_HOST` and `OPS_AGENT_PORT`
+- logging agent listen target and auth configuration warning
+
+公开 API / Public API:
+
+- `node backend/ops-agent/server.js`
+- `startOpsAgent(env)`
+
+扩展方式 / Extension Path:
+
+- Keep runtime setup minimal and leave command logic in `OpsAgentService`.
+- Host install/update behavior belongs in `scripts/install-ops-agent-pm2.sh` and `deploy.sh`.
+
+回归 / Regression:
+
+- `node --check backend/ops-agent/server.js`
 - `npm run test:architecture`
 
 ### `backend/services/PerformanceCapacityBudget.js`
@@ -3946,7 +4038,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- Route additions should remain thin wrappers over `OpsControlService` or a future ops-agent adapter.
+- Route additions should remain thin wrappers over `OpsControlService`; hard stop/start stays in `backend/ops-agent`.
 - Access control stays behind `OpsAuthService`; future RBAC should extend ops auth/role services rather than per-route ad hoc checks.
 - Restart/hard-stop semantics must keep an audit record and avoid pretending the web backend can restart itself after a true hard stop.
 
@@ -5724,6 +5816,7 @@ Regression:
 - gameplay config runtime facade syntax/test registration
 - config release admin console test registration
 - ops control service syntax/test registration
+- ops-agent syntax/test registration
 - ops routes and maintenance middleware syntax/test registration
 - ops admin console test registration
 - config runtime drift health summary and startup gate syntax/test registration
@@ -5746,7 +5839,7 @@ Regression:
 - Config runtime bundle loader changes must keep `backend/tests/ConfigRuntimeLoader.test.js` registered.
 - Gameplay config runtime facade changes must keep `backend/tests/GameplayConfigRuntime.test.js` registered.
 - Config release console changes must keep `frontend/tools/config-release-console.test.js` registered.
-- Ops console/backend operations changes must keep `backend/tests/OpsControlService.test.js`, `backend/tests/OpsRoutes.test.js`, and `frontend/tools/ops-console.test.js` registered.
+- Ops console/backend operations changes must keep `backend/tests/OpsControlService.test.js`, `backend/tests/OpsRoutes.test.js`, `backend/tests/OpsAgentService.test.js`, `backend/tests/OpsAgentHttpServer.test.js`, and `frontend/tools/ops-console.test.js` registered.
 - Browser profiling commands that are too slow/flaky for every CI run should still be listed in `CHECK_FILES` for syntax validation and documented separately as evidence commands.
 
 回归 / Regression:
@@ -5891,7 +5984,7 @@ Regression:
 
 - project-owned shell script syntax guard
 - locating `bash` from PATH or Git for Windows fallback paths
-- running `bash -n` on `deploy.sh`, `scripts/pre-deploy-gate.sh`, `scripts/verify-deploy-hook.sh`, `scripts/rollback-deploy.sh`, `scripts/backup-runtime-state.sh`, `scripts/restore-runtime-state.sh`, `scripts/install-runtime-backup-cron.sh`, and `scripts/verify-runtime-backup.sh`
+- running `bash -n` on `deploy.sh`, `scripts/pre-deploy-gate.sh`, `scripts/verify-deploy-hook.sh`, `scripts/rollback-deploy.sh`, `scripts/backup-runtime-state.sh`, `scripts/restore-runtime-state.sh`, `scripts/install-runtime-backup-cron.sh`, `scripts/verify-runtime-backup.sh`, `scripts/rotate-production-secrets.sh`, and `scripts/install-ops-agent-pm2.sh`
 
 公开 API / Public API:
 
@@ -5903,6 +5996,35 @@ Regression:
 - Add new project-owned shell scripts to `SHELL_SCRIPTS` when they become deployment or CI entrypoints.
 - Keep third-party scripts in `node_modules` out of this guard.
 - If Windows tooling changes, update fallback paths with `check-shell-scripts.test.js` coverage.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/install-ops-agent-pm2.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- host-side PM2 installation/restart wrapper for `backend/ops-agent/server.js`
+- default localhost binding (`127.0.0.1:3101`) and fixed target PM2 app (`server`)
+- preserving agent environment variables for `OPS_AGENT_PM2_APP`, `OPS_AGENT_BIND_HOST`, `OPS_AGENT_PORT`, and deploy-state path
+- emitting the recommended same-origin `/ops-agent/` reverse-proxy snippet
+- no direct public exposure and no secret generation ownership
+
+公开 API / Public API:
+
+- `bash scripts/install-ops-agent-pm2.sh`
+- `START_PM2=0 bash scripts/install-ops-agent-pm2.sh`
+
+扩展方式 / Extension Path:
+
+- Keep the default bind host local; public access must remain a reverse-proxy/runbook decision.
+- Deployment auto-restart behavior belongs in `deploy.sh`; this script remains the reusable host entrypoint.
+- New required environment variables must be documented in `backend/README.md` and covered in `check-shell-scripts.test.js`.
 
 回归 / Regression:
 
@@ -6502,3 +6624,4 @@ Recommended first split sequence:
 | 2026-06-11 | Continued P12-006/P12-009 operations hardening: production Node was upgraded to `20.20.2`, PM2 was reinstalled under Node 20, `better-sqlite3@12.10.0` was rebuilt, backend engines now require Node 20, and `OpsControlService` plus `/api/admin/ops/*`, maintenance middleware, and `/tools/ops-console.html` provide a protected admin operations console for status, soft maintenance, audited PM2 restart, and ops audit evidence. |
 | 2026-06-12 | Fixed P12-009 ops dashboard health false negatives: `OpsControlService` now defaults dashboard health to a `local-process` summary assembled from version, observability, config runtime, loader, and gameplay runtime status; `OPS_HEALTH_URL` remains only an explicit external probe override, and regression asserts the default dashboard does not run `curl`. |
 | 2026-06-12 | Added P12-006 production security evidence and guarded rotation mechanisms: `scripts/verify-production-security-config.js`, `npm run security:production`, `scripts/rotate-production-secrets.sh`, and focused tests now validate redacted secret strength evidence, independent ops JWT, `OPS_SESSION_VERSION` rotation, explicit admin/CORS/config gate posture, server/deploy credential ownership, Git remote password hygiene, and repository blocking for local secret text files. |
+| 2026-06-12 | Added P12-009 minimum external ops-agent: `backend/ops-agent/*`, `scripts/install-ops-agent-pm2.sh`, deploy auto-restart for an existing `wxgame-ops-agent`, and `/tools/ops-console.html` Agent panel provide a localhost-bound, ops-authenticated, fixed-PM2-app hard stop/start/restart control plane with audit records. |

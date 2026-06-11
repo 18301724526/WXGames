@@ -70,6 +70,7 @@ backend/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| POST | /api/admin/ops/login | 独立运维管理员登录，签发 `cf_ops_token` |
 | GET | /api/admin/ops/dashboard | 生产运维总览，需登录且具备管理员权限 |
 | GET | /api/admin/ops/maintenance | 读取维护模式状态 |
 | POST | /api/admin/ops/maintenance | 开启/关闭软停服维护模式并写入审计 |
@@ -90,6 +91,34 @@ CONFIG_RELEASE_GATE=required
 ```
 
 生产不建议使用明文 `OPS_ADMIN_PASSWORD`；仅在临时抢修时可显式设置 `OPS_ALLOW_PLAINTEXT_PASSWORD=1`。
+
+### 常驻 Ops Agent
+
+硬停服/开服不由游戏后端自举。`backend/ops-agent/server.js` 是独立 Node HTTP 服务，默认只绑定 `127.0.0.1:3101`，复用 `OpsAuthService` 的独立运维账号/JWT，且只允许控制固定 PM2 app，不接受任意命令或任意 app 名称。
+
+主机侧安装或刷新：
+
+```bash
+OPS_AGENT_PM2_NAME=wxgame-ops-agent \
+OPS_AGENT_PM2_APP=server \
+OPS_AGENT_BIND_HOST=127.0.0.1 \
+OPS_AGENT_PORT=3101 \
+BACKEND_DIR=/opt/wxgame-workspace/backend \
+DEPLOY_STATE_DIR=/opt/wxgame-workspace/.wxgame \
+bash scripts/install-ops-agent-pm2.sh
+```
+
+生产建议通过 Nginx 反代到同源 `/ops-agent/`，不要把 agent 直接监听到公网：
+
+```nginx
+location /ops-agent/ {
+    proxy_pass http://127.0.0.1:3101/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+`/tools/ops-console.html` 的常驻 Agent 面板默认连接 `/ops-agent`，也可用 `?agentBase=http://127.0.0.1:3101` 指向临时地址。agent 端点为 `GET /health`、`POST /login`、`GET /status`、`POST /pm2/start`、`POST /pm2/stop`、`POST /pm2/restart`；审计默认写入 `/opt/wxgame-workspace/.wxgame/ops-agent/ops-agent-audit.log`。`deploy.sh` 会自动重启已存在的 `wxgame-ops-agent`；若尚未安装，普通部署不会擅自启用，需设置 `ENABLE_OPS_AGENT=1` 或先运行安装脚本。
 
 生产安全配置和轮换证据入口：
 
@@ -193,9 +222,9 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 管理员工具页：
 
 - `/tools/config-release-console.html`：读取 active/history/runtime status，预览当前配置，写入发布审计记录，回滚 active 指针。
-- `/tools/ops-console.html`：独立运维管理员登录后读取服务器/PM2/health/deploy/config/metrics/在线玩家/日志/审计摘要，支持维护模式开关和受审计 PM2 restart。
+- `/tools/ops-console.html`：独立运维管理员登录后读取服务器/PM2/health/deploy/config/metrics/在线玩家/日志/审计摘要，支持维护模式开关、受审计 PM2 restart，并在主机安装 `wxgame-ops-agent` 与 `/ops-agent/` 反代后执行硬停服、开服和硬重启。
 
-运维控制台当前提供“软停服”：开启维护模式后，`/api/game*`、`/api/buildings*`、`/api/player/login`、`/api/player/register`、`/api/player/reset` 返回 `503 MAINTENANCE_MODE`，但 `/api/health`、`/api/version`、`/api/metrics` 和 `/api/admin/*` 保持可用。运维面板健康卡片默认使用 `local-process` 进程内健康汇总，不再在 dashboard 请求里同步 curl 本机 `/api/health`；只有显式配置 `OPS_HEALTH_URL` 时才作为外部探测地址展示。真正硬停服/开服会切断本网页依赖的后端连接，后续应由常驻 `ops-agent`、systemd/PM2 外部守护或主机面板侧进程实现。
+运维控制台当前提供“软停服”：开启维护模式后，`/api/game*`、`/api/buildings*`、`/api/player/login`、`/api/player/register`、`/api/player/reset` 返回 `503 MAINTENANCE_MODE`，但 `/api/health`、`/api/version`、`/api/metrics` 和 `/api/admin/*` 保持可用。运维面板健康卡片默认使用 `local-process` 进程内健康汇总，不再在 dashboard 请求里同步 curl 本机 `/api/health`；只有显式配置 `OPS_HEALTH_URL` 时才作为外部探测地址展示。真正硬停服/开服由常驻 `ops-agent` 或同等主机控制面执行，因为游戏后端停止后不能负责重启自己。
 
 性能/容量预算当前为观测和元数据边界：
 

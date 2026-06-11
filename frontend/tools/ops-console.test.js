@@ -31,3 +31,19 @@ test('ops console documents soft maintenance and hard-stop boundary', () => {
   assert.doesNotMatch(html, /localStorage\.setItem\(['"]cf_token/);
   assert.doesNotMatch(html, /\u767b\u5f55\u6e38\u620f/);
 });
+
+test('ops console exposes independent ops-agent hard stop and start controls', () => {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  assert.match(html, /id="opsAgent"/);
+  assert.match(html, /cf_ops_agent_token/);
+  assert.match(html, /AGENT_TOKEN_STORAGE_KEY/);
+  assert.match(html, /agentBaseParam/);
+  assert.match(html, /\/ops-agent/);
+  assert.match(html, /requestAgent\('\/login'/);
+  assert.match(html, /requestAgent\('\/status'/);
+  assert.match(html, /requestAgent\(`\/pm2\/\$\{action\}`/);
+  assert.match(html, /controlAgent\('start'\)/);
+  assert.match(html, /controlAgent\('stop'\)/);
+  assert.match(html, /controlAgent\('restart'\)/);
+});

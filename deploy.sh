@@ -11,6 +11,7 @@ BACKEND_DIR="/opt/wxgame-workspace/backend"
 SHARED_LINK="/opt/wxgame-workspace/shared"
 BRANCH="${1:-main}"
 PM2_APP_NAME="server"
+OPS_AGENT_PM2_NAME="${OPS_AGENT_PM2_NAME:-wxgame-ops-agent}"
 API_PORT="${PORT:-3000}"
 ALLOWED_WORK_TREE="/www/wwwroot/h5"
 ALLOWED_FRONTEND_PUBLIC_DIR="/www/wwwroot/h5"
@@ -279,6 +280,31 @@ verify_pm2_listener() {
     exit 1
 }
 
+restart_ops_agent_if_configured() {
+    if pm2 describe "$OPS_AGENT_PM2_NAME" >/dev/null 2>&1; then
+        echo "[Deploy] Restarting existing ops-agent: $OPS_AGENT_PM2_NAME"
+        OPS_AGENT_PM2_NAME="$OPS_AGENT_PM2_NAME" \
+            OPS_AGENT_PM2_APP="$PM2_APP_NAME" \
+            BACKEND_DIR="$BACKEND_DIR" \
+            DEPLOY_STATE_DIR="$DEPLOY_STATE_DIR" \
+            START_PM2=1 \
+            bash "$WORK_TREE/scripts/install-ops-agent-pm2.sh"
+        return
+    fi
+
+    if [ "${ENABLE_OPS_AGENT:-0}" = "1" ]; then
+        echo "[Deploy] ENABLE_OPS_AGENT=1; installing ops-agent: $OPS_AGENT_PM2_NAME"
+        OPS_AGENT_PM2_NAME="$OPS_AGENT_PM2_NAME" \
+            OPS_AGENT_PM2_APP="$PM2_APP_NAME" \
+            BACKEND_DIR="$BACKEND_DIR" \
+            DEPLOY_STATE_DIR="$DEPLOY_STATE_DIR" \
+            START_PM2=1 \
+            bash "$WORK_TREE/scripts/install-ops-agent-pm2.sh"
+    else
+        echo "[Deploy] ops-agent PM2 app not installed; set ENABLE_OPS_AGENT=1 or run scripts/install-ops-agent-pm2.sh on the host."
+    fi
+}
+
 publish_frontend_assets() {
     local frontend_source="$WORK_TREE/frontend"
     local resolved_source
@@ -404,6 +430,7 @@ else
     pm2 start server.js --name "$PM2_APP_NAME" --update-env
 fi
 verify_pm2_listener
+restart_ops_agent_if_configured
 
 echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do

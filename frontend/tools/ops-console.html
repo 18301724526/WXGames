@@ -142,6 +142,11 @@
     label { display: grid; gap: 6px; color: #3a4858; font-size: 12px; font-weight: 800; }
     .danger-zone { border: 1px solid #efc0bb; background: #fff8f7; border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
     .danger-zone p { margin: 0; color: #7f1d1d; font-size: 12px; line-height: 1.55; }
+    .agent-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .agent-auth-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end; }
+    .agent-auth-form label:first-child, .agent-auth-form button { grid-column: 1 / -1; }
+    #agentMeta { grid-template-columns: 1fr; }
+    #agentMeta .meta-row { grid-template-columns: 88px minmax(0, 1fr); }
 
     @media (max-width: 1120px) {
       .app { grid-template-columns: 1fr; }
@@ -156,6 +161,7 @@
       .top-actions { justify-content: stretch; }
       .top-actions button { flex: 1; }
       .auth-card, .auth-form { grid-template-columns: 1fr; }
+      .agent-auth-form, .agent-actions { grid-template-columns: 1fr; }
       .metrics, .meta-grid, .split, .nav { grid-template-columns: 1fr; }
       .meta-row { grid-template-columns: 92px 1fr; }
     }
@@ -177,6 +183,7 @@
         <a href="#deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/><path d="m14.5 4-5 16"/></svg>部署</a>
         <a href="#config"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3"/><path d="M4.9 4.9 19.1 19.1"/><path d="M19.1 4.9 4.9 19.1"/></svg>配置发布</a>
         <a href="#maintenance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>维护模式</a>
+        <a href="#opsAgent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>常驻 Agent</a>
         <a href="#logs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg>日志</a>
       </nav>
       <div class="side-note">
@@ -298,9 +305,46 @@
                 <button id="disableMaintenanceButton" type="button">开放服务</button>
               </div>
               <div class="danger-zone">
-                <p>硬停服会断开本控制台。第一版只提供受审计的 PM2 重启；完整硬停/开服应由常驻 ops-agent 或面板侧守护进程执行。</p>
-                <button id="restartButtonPanel" class="danger" type="button">重启 PM2 server</button>
+                <p>当前后端重启由在线 API 受理；硬停服、开服和后端完全停止后的自举由常驻 ops-agent 面板执行。</p>
+                <button id="restartButtonPanel" class="danger" type="button">重启当前后端</button>
               </div>
+            </div>
+          </section>
+
+          <section id="opsAgent" class="panel">
+            <div class="panel-head">
+              <div><h3>常驻 Ops Agent</h3><p>独立进程控制硬停服、开服和 PM2 状态</p></div>
+              <div id="agentPill" class="pill neutral">未连接</div>
+            </div>
+            <div class="panel-body form-grid">
+              <form id="agentLoginForm" class="agent-auth-form">
+                <label>Agent 地址
+                  <input id="agentBaseUrl" autocomplete="off">
+                </label>
+                <label>账号
+                  <input id="agentUsername" autocomplete="username" required>
+                </label>
+                <label>密码
+                  <input id="agentPassword" type="password" autocomplete="current-password" required>
+                </label>
+                <button id="agentLoginButton" type="submit">连接</button>
+              </form>
+              <div id="agentStatusLine" class="status-line"><span class="dot"></span><span>等待连接 ops-agent。</span></div>
+              <div class="pill-row" id="agentPills"></div>
+              <div id="agentMeta" class="meta-grid"></div>
+              <div class="agent-actions">
+                <button id="agentStartButton" type="button">开服</button>
+                <button id="agentRestartButton" class="warning" type="button">硬重启</button>
+                <button id="agentStopButton" class="danger" type="button">硬停服</button>
+              </div>
+              <div class="split">
+                <button id="agentRefreshButton" class="secondary" type="button">刷新 Agent</button>
+                <button id="agentLogoutButton" class="secondary" type="button">断开 Agent</button>
+              </div>
+              <table>
+                <thead><tr><th>时间</th><th>动作</th><th>操作者</th></tr></thead>
+                <tbody id="agentAuditTable"></tbody>
+              </table>
             </div>
           </section>
 
@@ -345,11 +389,18 @@
 
   <script>
     const apiBaseParam = new URLSearchParams(location.search).get('apiBase');
+    const agentBaseParam = new URLSearchParams(location.search).get('agentBase');
     const API_BASE = (apiBaseParam || '/api').replace(/\/$/, '');
     const TOKEN_STORAGE_KEY = 'cf_ops_token';
     const USER_STORAGE_KEY = 'cf_ops_user';
+    const AGENT_TOKEN_STORAGE_KEY = 'cf_ops_agent_token';
+    const AGENT_USER_STORAGE_KEY = 'cf_ops_agent_user';
+    const AGENT_BASE_STORAGE_KEY = 'cf_ops_agent_base';
     let token = localStorage.getItem(TOKEN_STORAGE_KEY) || '';
     let opsUser = localStorage.getItem(USER_STORAGE_KEY) || '';
+    let agentToken = localStorage.getItem(AGENT_TOKEN_STORAGE_KEY) || '';
+    let agentUser = localStorage.getItem(AGENT_USER_STORAGE_KEY) || '';
+    let agentBase = normalizeBase(agentBaseParam || localStorage.getItem(AGENT_BASE_STORAGE_KEY) || '/ops-agent');
     let lastDashboard = null;
 
     const $ = (id) => document.getElementById(id);
@@ -362,6 +413,18 @@
       'disableMaintenanceButton',
       'restartButtonPanel',
     ];
+    const agentControls = [
+      'agentRefreshButton',
+      'agentStartButton',
+      'agentStopButton',
+      'agentRestartButton',
+      'agentLogoutButton',
+    ];
+
+    function normalizeBase(value) {
+      const raw = String(value || '').trim() || '/ops-agent';
+      return raw === '/' ? '' : raw.replace(/\/$/, '');
+    }
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -396,6 +459,28 @@
       return data;
     }
 
+    async function requestAgent(path, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      };
+      if (!options.skipAuth && agentToken) {
+        headers.Authorization = `Bearer ${agentToken}`;
+      }
+      const response = await fetch(`${agentBase}${path}`, {
+        ...options,
+        headers,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.message || data.error || `HTTP ${response.status}`);
+        error.payload = data;
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    }
+
     function setAuthenticated(nextToken, username) {
       token = nextToken || '';
       opsUser = username || '';
@@ -407,6 +492,19 @@
         localStorage.removeItem(USER_STORAGE_KEY);
       }
       renderAuthState();
+    }
+
+    function setAgentAuthenticated(nextToken, username) {
+      agentToken = nextToken || '';
+      agentUser = username || '';
+      if (agentToken) {
+        localStorage.setItem(AGENT_TOKEN_STORAGE_KEY, agentToken);
+        localStorage.setItem(AGENT_USER_STORAGE_KEY, agentUser);
+      } else {
+        localStorage.removeItem(AGENT_TOKEN_STORAGE_KEY);
+        localStorage.removeItem(AGENT_USER_STORAGE_KEY);
+      }
+      renderAgentAuthState();
     }
 
     function renderAuthState() {
@@ -421,6 +519,24 @@
       if (!authenticated) {
         $('serverIdentity').textContent = '请使用运维管理员账号登录。';
       }
+      if (opsUser && !$('agentUsername').value) {
+        $('agentUsername').value = opsUser;
+      }
+    }
+
+    function renderAgentAuthState() {
+      const authenticated = Boolean(agentToken);
+      $('agentBaseUrl').value = agentBase || '/';
+      if (agentUser && !$('agentUsername').value) {
+        $('agentUsername').value = agentUser;
+      }
+      $('agentLogoutButton').disabled = !authenticated;
+      agentControls.forEach((id) => {
+        const control = $(id);
+        if (control) control.disabled = !authenticated;
+      });
+      $('agentPill').className = `pill ${authenticated ? '' : 'neutral'}`.trim();
+      $('agentPill').textContent = authenticated ? `Agent ${agentUser || '-'}` : '未连接';
     }
 
     function handleError(error) {
@@ -428,6 +544,19 @@
         setAuthenticated('', '');
       }
       setStatus(error.message, 'error');
+    }
+
+    function setAgentStatus(message, type = '') {
+      const line = $('agentStatusLine');
+      line.className = `status-line ${type}`.trim();
+      line.innerHTML = `<span class="dot"></span><span>${escapeHtml(message)}</span>`;
+    }
+
+    function handleAgentError(error) {
+      if (error.status === 401) {
+        setAgentAuthenticated('', '');
+      }
+      setAgentStatus(error.message, 'error');
     }
 
     function setMetric(id, value, detail, tone = '') {
@@ -570,6 +699,37 @@
       setStatus(`已读取 ${data.generatedAt || new Date().toISOString()}`, health.ok ? 'ok' : 'warn');
     }
 
+    function renderAgentStatus(data) {
+      const pm2 = data.pm2 || {};
+      const config = data.config || {};
+      const system = data.system || {};
+      const processInfo = system.process || {};
+      const pm2Tone = pm2.status === 'online' ? '' : (pm2.found ? 'warn' : 'bad');
+
+      $('agentPill').className = `pill ${pm2Tone}`.trim();
+      $('agentPill').textContent = pm2.found ? `PM2 ${pm2.status || '-'}` : 'PM2 未找到';
+      renderPills('agentPills', [
+        { label: 'Agent', value: system.hostname || 'online' },
+        { label: 'Target', value: config.pm2AppName || '-' },
+        { label: 'PM2', value: pm2.status || (pm2.found ? '-' : 'not-found'), tone: pm2Tone },
+      ]);
+      renderRows('agentMeta', [
+        ['Agent 地址', agentBase || '/'],
+        ['目标 App', config.pm2AppName],
+        ['PM2 PID', pm2.pid || '-'],
+        ['Agent PID', processInfo.pid],
+        ['Node', processInfo.nodeVersion],
+        ['负载', Array.isArray(system.loadAverage) ? system.loadAverage[0].toFixed(2) : '-'],
+        ['内存', system.memory ? `${system.memory.usedPercent}% / ${system.memory.totalText}` : '-'],
+        ['脚本', pm2.scriptPath || config.backendScript],
+        ['工作目录', pm2.cwd || config.backendCwd],
+      ]);
+      $('agentAuditTable').innerHTML = (data.audit || []).map((item) => `
+        <tr><td>${escapeHtml(item.at)}</td><td>${escapeHtml(item.action)}</td><td>${escapeHtml(item.operator)}</td></tr>
+      `).join('') || '<tr><td colspan="3" class="empty">暂无 Agent 操作记录。</td></tr>';
+      setAgentStatus(`Agent 已读取 ${data.generatedAt || new Date().toISOString()}`, pm2.found && pm2.status === 'online' ? 'ok' : 'warn');
+    }
+
     async function refresh(includeLogs = false) {
       if (!token) {
         renderAuthState();
@@ -597,9 +757,32 @@
       await refresh(false);
     }
 
+    async function loginAgent(event) {
+      event.preventDefault();
+      agentBase = normalizeBase($('agentBaseUrl').value);
+      localStorage.setItem(AGENT_BASE_STORAGE_KEY, agentBase || '/');
+      const username = $('agentUsername').value.trim();
+      const password = $('agentPassword').value;
+      setAgentStatus('正在连接 ops-agent...');
+      const result = await requestAgent('/login', {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify({ username, password }),
+      });
+      $('agentPassword').value = '';
+      setAgentAuthenticated(result.token, result.operator?.username || username);
+      setAgentStatus('ops-agent 已连接。', 'ok');
+      await refreshAgentStatus();
+    }
+
     function logoutOps() {
       setAuthenticated('', '');
       setStatus('已退出运维控制台。', 'warn');
+    }
+
+    function logoutAgent() {
+      setAgentAuthenticated('', '');
+      setAgentStatus('已断开 ops-agent。', 'warn');
     }
 
     async function setMaintenance(enabled) {
@@ -627,22 +810,55 @@
       setTimeout(() => refresh(true).catch((error) => setStatus(error.message, 'error')), 4200);
     }
 
+    async function refreshAgentStatus() {
+      if (!agentToken) {
+        renderAgentAuthState();
+        setAgentStatus('请先连接 ops-agent。', 'warn');
+        return;
+      }
+      agentBase = normalizeBase($('agentBaseUrl').value);
+      localStorage.setItem(AGENT_BASE_STORAGE_KEY, agentBase || '/');
+      setAgentStatus('正在读取 ops-agent 状态...');
+      const data = await requestAgent('/status');
+      renderAgentStatus(data);
+    }
+
+    async function controlAgent(action) {
+      const labels = { start: '开服', stop: '硬停服', restart: '硬重启' };
+      const confirmed = window.confirm(`确认执行 ${labels[action] || action}？`);
+      if (!confirmed) return;
+      setAgentStatus(`正在执行 ${labels[action] || action}...`, 'warn');
+      const result = await requestAgent(`/pm2/${action}`, { method: 'POST' });
+      setAgentStatus(result.success ? `${labels[action] || action} 已执行。` : (result.message || 'Agent 操作失败'), result.success ? 'ok' : 'error');
+      await refreshAgentStatus();
+    }
+
     $('loginForm').addEventListener('submit', (event) => loginOps(event).catch(handleError));
+    $('agentLoginForm').addEventListener('submit', (event) => loginAgent(event).catch(handleAgentError));
     $('logoutButton').addEventListener('click', logoutOps);
+    $('agentLogoutButton').addEventListener('click', logoutAgent);
     $('refreshButton').addEventListener('click', () => refresh(false).catch(handleError));
     $('loadLogsButton').addEventListener('click', () => refresh(true).catch(handleError));
     $('enableMaintenanceButton').addEventListener('click', () => setMaintenance(true).catch(handleError));
     $('disableMaintenanceButton').addEventListener('click', () => setMaintenance(false).catch(handleError));
     $('restartButton').addEventListener('click', () => restartService().catch(handleError));
     $('restartButtonPanel').addEventListener('click', () => restartService().catch(handleError));
+    $('agentRefreshButton').addEventListener('click', () => refreshAgentStatus().catch(handleAgentError));
+    $('agentStartButton').addEventListener('click', () => controlAgent('start').catch(handleAgentError));
+    $('agentStopButton').addEventListener('click', () => controlAgent('stop').catch(handleAgentError));
+    $('agentRestartButton').addEventListener('click', () => controlAgent('restart').catch(handleAgentError));
 
     renderLog('outLog', []);
     renderLog('errorLog', []);
     renderAuthState();
+    renderAgentAuthState();
     if (token) {
       refresh(false).catch(handleError);
     } else {
       setStatus('控制台已打开，请使用运维管理员账号登录。', 'warn');
+    }
+    if (agentToken) {
+      refreshAgentStatus().catch(handleAgentError);
     }
   </script>
 </body>

@@ -22,6 +22,7 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
     'scripts/install-runtime-backup-cron.sh',
     'scripts/verify-runtime-backup.sh',
     'scripts/rotate-production-secrets.sh',
+    'scripts/install-ops-agent-pm2.sh',
   ]);
 });
 
@@ -45,6 +46,10 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /rev-parse --verify "\$BRANCH\^\{commit\}"/);
   assert.match(deployScript, /checkout -f "\$DEPLOY_COMMIT"/);
   assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$WORK_TREE\/scripts\/pre-deploy-gate\.sh" "\$WORK_TREE"/);
+  assert.match(deployScript, /OPS_AGENT_PM2_NAME="\$\{OPS_AGENT_PM2_NAME:-wxgame-ops-agent\}"/);
+  assert.match(deployScript, /restart_ops_agent_if_configured/);
+  assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);
+  assert.match(deployScript, /bash "\$WORK_TREE\/scripts\/install-ops-agent-pm2\.sh"/);
   assert.match(rollbackScript, /rev-parse --verify "\$TARGET_REF\^\{commit\}"/);
   assert.match(rollbackScript, /bash "\$DEPLOY_SCRIPT" "\$TARGET_COMMIT"/);
   assert.match(verifyHookScript, /bash -n "\$HOOK_PATH"/);
@@ -100,6 +105,17 @@ test('runtime backup and restore scripts keep explicit safety contracts', () => 
   assert.match(verifyScript, /sha256sum -c/);
   assert.match(verifyScript, /backup-manifest\.json/);
   assert.match(verifyScript, /backend-db\/civilization\.db/);
+});
+
+test('ops-agent PM2 installer keeps localhost bind and fixed target app contract', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const script = fs.readFileSync(path.join(repoRoot, 'scripts', 'install-ops-agent-pm2.sh'), 'utf8');
+
+  assert.match(script, /OPS_AGENT_BIND_HOST="\$\{OPS_AGENT_BIND_HOST:-127\.0\.0\.1\}"/);
+  assert.match(script, /OPS_AGENT_PORT="\$\{OPS_AGENT_PORT:-3101\}"/);
+  assert.match(script, /OPS_AGENT_PM2_APP="\$\{OPS_AGENT_PM2_APP:-server\}"/);
+  assert.match(script, /pm2 start "\$AGENT_SCRIPT" --name "\$OPS_AGENT_PM2_NAME" --cwd "\$BACKEND_DIR" --update-env/);
+  assert.match(script, /proxy_pass http:\/\/127\.0\.0\.1:\$\{OPS_AGENT_PORT\}\//);
 });
 
 test('runtime backup cron installer writes normal quoted paths', () => {
