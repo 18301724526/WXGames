@@ -71,6 +71,9 @@ Stable 晋升约定 / Stable Promotion Convention:
 
 - `stable` means the block is closed for feature iteration. Feature work must extend through the listed extension path instead of editing internals.
 - A `candidate` module can become `stable` only after its stable surface is checked against `docs/stable_block_promotion_matrix_2026-06-09.md`.
+- Stable promotion must be machine-checkable in `docs/stable_block_manifest_2026-06-09.json`: every stable block records `promotionEvidence.matrixReviewed`, observation notes, public contract, extension path, reopen exceptions, and node/npm regression commands.
+- Stable responsibility-index entries must document `Public Contract:` or `Public Command:`, `Extension Path:`, and `Regression:` with at least one node/npm command before the stable guard accepts them.
+- `candidatePromotionQueue` tracks likely next promotions and must contain existing files that still have `candidate` responsibility-index entries.
 - World-map stable contracts must use diamond isometric square-tile terminology; legacy `q/r` fields are compatibility aliases, not hex/axial public semantics.
 - Realtime/multiplayer stable contracts must stay backend-authoritative: frontend submits intent, server owns timeline/result, frontend interpolates confirmed state.
 - Large-map stable contracts must not assume a full world array in frontend memory. They must support chunk/window loading, persistent revealed terrain, and full-direction wrapping.
@@ -5058,11 +5061,14 @@ Regression:
 - machine-readable stable block file list
 - allowed reopen reason vocabulary
 - extension-path metadata for guarded stable blocks
-- candidate promotion queue for later hardening
+- promotion evidence shape for guarded stable blocks
+- candidate promotion queue consistency for later promotion hardening
 
 公开约定 / Public Contract:
 
 - `stableBlocks[].files` lists stable files guarded by `scripts/check-stable-blocks.js`.
+- `stableBlocks[].promotionEvidence` records matrix review, observation notes, public contract, extension path, reopen exceptions, and node/npm regression evidence for each stable block.
+- `candidatePromotionQueue` lists existing candidate files that have responsibility-index entries and must not already be listed as stable.
 - `reopenPolicy.allowedReasons` is the only accepted reason list for stable reopen work.
 - A module is not a sealed stable block until it is listed here and in its responsibility-index entry.
 
@@ -5073,6 +5079,7 @@ Regression:
 
 回归 / Regression:
 
+- `node --test scripts/check-stable-blocks.test.js`
 - `node scripts/check-stable-blocks.js`
 - `npm run test:architecture`
 
@@ -5083,7 +5090,10 @@ Regression:
 负责 / Owns:
 
 - stable block manifest validation
+- stable block promotion evidence validation
 - responsibility-index stable entry coverage checks
+- candidate promotion queue consistency checks
+- responsibility-index parsing through ASCII `Status:` anchors
 - stable file change detection
 - explicit stable reopen reason enforcement
 
@@ -5094,12 +5104,39 @@ Regression:
 扩展方式 / Extension Path:
 
 - New stable guard behavior extends this script with focused syntax/architecture checks.
+- Promotion-rule behavior must add or update `scripts/check-stable-blocks.test.js` in the same change.
 - Keep slow full-test behavior out of this script; it must remain part of the fast architecture gate.
 
 回归 / Regression:
 
 - `node --check scripts/check-stable-blocks.js`
+- `node --test scripts/check-stable-blocks.test.js`
 - `node scripts/check-stable-blocks.js`
+- `npm run test:architecture`
+
+### `scripts/check-stable-blocks.test.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- focused regression coverage for the stable block guard
+- ASCII `Status:` responsibility-index parsing coverage
+- promotion evidence validation coverage
+- stable responsibility-index entry validation coverage
+
+公开命令 / Public Command:
+
+- `node --test scripts/check-stable-blocks.test.js`
+
+扩展方式 / Extension Path:
+
+- Add or update cases here whenever `scripts/check-stable-blocks.js` changes promotion evidence, responsibility-index, reopen, or candidate queue rules.
+- Keep this test focused enough to remain part of `npm run test:architecture`.
+
+回归 / Regression:
+
+- `node --test scripts/check-stable-blocks.test.js`
 - `npm run test:architecture`
 
 ### `docs/current_product_design_2026-06-09.md`

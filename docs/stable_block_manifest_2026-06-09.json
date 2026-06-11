@@ -19,6 +19,20 @@
         "add new confirmed invariants to the matrix before promoting modules",
         "update affected module responsibility entries in the same task"
       ],
+      "promotionEvidence": {
+        "matrixReviewed": true,
+        "observationNotes": [
+          "Captures confirmed long-term product and architecture invariants rather than volatile tuning values.",
+          "Referenced by the responsibility index and production roadmap as the required stable promotion authority."
+        ],
+        "publicContract": "Defines the stable promotion criteria and invariant vocabulary used before any candidate module can become stable.",
+        "extensionPath": "Add new confirmed invariants here first, then update the affected responsibility-index entries and stable manifest blocks in the same change.",
+        "reopenExceptions": "May be reopened only for bug, performance, security, contract-hardening, or governance-update reasons.",
+        "regression": [
+          "node scripts/check-stable-blocks.js",
+          "npm run test:architecture"
+        ]
+      },
       "allowedReopenReasons": [
         "bug",
         "performance",
@@ -45,6 +59,21 @@
         "add newly promoted stable files to stableBlocks",
         "keep candidate modules out of this manifest until promotion is complete"
       ],
+      "promotionEvidence": {
+        "matrixReviewed": true,
+        "observationNotes": [
+          "Guards stable files against casual feature-work edits through the shared architecture gate.",
+          "Now requires manifest promotion evidence and responsibility-index public contract, extension path, and regression coverage for every stable block."
+        ],
+        "publicContract": "Defines the machine-readable stable block list, promotion evidence shape, candidate queue, and stable reopen policy consumed by scripts/check-stable-blocks.js.",
+        "extensionPath": "Promote a candidate by adding its files plus promotion evidence here, updating its responsibility-index status and regression commands, and keeping focused tests in the architecture baseline.",
+        "reopenExceptions": "May be reopened only for bug, performance, security, contract-hardening, or governance-update reasons.",
+        "regression": [
+          "node --test scripts/check-stable-blocks.test.js",
+          "node scripts/check-stable-blocks.js",
+          "npm run test:architecture"
+        ]
+      },
       "allowedReopenReasons": [
         "bug",
         "performance",
