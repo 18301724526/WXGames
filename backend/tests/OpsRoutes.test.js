@@ -199,11 +199,21 @@ test('ops login forwards explicit auth configuration failures', () => {
   assert.equal(res.payload.error, 'OpsAuthNotConfigured');
 });
 
-test('ops login does not write success audit for failed credentials', () => {
+test('ops login writes failed and rate-limit audit without success audit', () => {
   const { app, routes } = createAppHarness();
   const calls = [];
+  let attempt = 0;
   const opsAuthService = {
     login() {
+      attempt += 1;
+      if (attempt > 1) {
+        return {
+          success: false,
+          statusCode: 429,
+          error: 'OpsLoginRateLimited',
+          retryAfterSeconds: 60,
+        };
+      }
       return {
         success: false,
         statusCode: 401,
@@ -230,7 +240,17 @@ test('ops login does not write success audit for failed credentials', () => {
 
   assert.equal(res.statusCode, 401);
   assert.equal(res.payload.error, 'InvalidOpsCredentials');
-  assert.deepEqual(calls, []);
+  assert.deepEqual(calls, ['ops:login:failed']);
+
+  const limitedRes = createResponse();
+  invokeRoute(
+    routes.find((item) => item.method === 'POST' && item.path === '/api/admin/ops/login'),
+    { body: { username: 'opsroot', password: 'wrong' } },
+    limitedRes,
+  );
+  assert.equal(limitedRes.statusCode, 429);
+  assert.equal(limitedRes.headers['Retry-After'], '60');
+  assert.deepEqual(calls, ['ops:login:failed', 'ops:login:rate-limited']);
 });
 
 test('ops restart route accepts restart before delayed PM2 command with ops auth', () => {

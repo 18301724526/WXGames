@@ -3111,6 +3111,40 @@ Regression:
 - `node --test backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js backend/tests/ConfigRegistryContract.test.js`
 - `npm run test:architecture`
 
+### `backend/services/taskDefinitions/TaskDefinitionImportParser.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- task definition JSON import payload parsing
+- task definition XLSX row extraction
+- XLSX import safety limits for file size, worksheet count, row count, and column count
+- XLSX formula and dangerous header rejection for the residual SheetJS audit risk
+- sanitized row object creation before normalization
+
+公开 API / Public API:
+
+- `parseImportPayload(payload)`
+- `parseJsonPayload(payload)`
+- `rowsFromWorkbookBuffer(buffer)`
+- `MAX_XLSX_BYTES`
+- `MAX_XLSX_COLUMNS`
+- `MAX_XLSX_ROWS`
+
+扩展方式 / Extension Path:
+
+- New import formats extend this parser and focused tests before touching `TaskDefinitionService`.
+- Keep task field normalization in `TaskDefinitionNormalizer`.
+- Keep XLSX residual-risk mitigation here while `xlsx` has no npm-audit fix available.
+- Any relaxation of file size, row, column, formula, or dangerous-key limits must update security docs and tests in the same change.
+
+回归 / Regression:
+
+- `node --test backend/tests/TaskDefinitionArchitecture.test.js backend/tests/TaskDefinitionService.test.js`
+- `npm run security:audit`
+- `npm run test:architecture`
+
 ### `backend/config/BuildingConfig.js`
 
 状态 / Status: candidate
@@ -3737,7 +3771,10 @@ Regression:
 - independent ops-admin credential validation
 - `/api/admin/ops/login` session token issuance
 - ops JWT purpose validation so player tokens cannot cross into the ops boundary
-- production ops auth configuration status from `OPS_ADMIN_USERNAME`, `OPS_ADMIN_PASSWORD_HASH`, `OPS_JWT_SECRET`, and `OPS_SESSION_TTL`
+- ops session-version claim validation for token rotation through `OPS_SESSION_VERSION`
+- failed-login rate limiting through `OPS_LOGIN_MAX_ATTEMPTS` and `OPS_LOGIN_WINDOW_MS`
+- production weak secret/plaintext password rejection
+- production ops auth configuration status from `OPS_ADMIN_USERNAME`, `OPS_ADMIN_PASSWORD_HASH`, `OPS_JWT_SECRET`, `OPS_SESSION_TTL`, and `OPS_SESSION_VERSION`
 
 鍏紑 API / Public API:
 
@@ -3752,10 +3789,13 @@ Regression:
 - Future RBAC should extend this service or a sibling role service; do not reintroduce player login tokens for ops routes.
 - Production password storage should prefer bcrypt hashes and avoid plaintext environment values except explicit emergency overrides.
 - Token payloads must keep an explicit ops-only purpose claim.
+- Secret rotation should bump `OPS_SESSION_VERSION` so old ops tokens become invalid.
+- Login failure policy changes must keep `backend/tests/OpsAuthService.test.js` and `backend/tests/OpsRoutes.test.js` coverage.
 
 鍥炲綊 / Regression:
 
 - `node --test backend/tests/OpsAuthService.test.js`
+- `node --test backend/tests/OpsRoutes.test.js backend/tests/OpsAuthService.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/OpsControlService.js`
@@ -5712,6 +5752,56 @@ Regression:
 回归 / Regression:
 
 - `node --test scripts/run-architecture-smoke.test.js`
+- `npm run test:architecture`
+
+### `scripts/check-backend-security-audit.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- backend `npm audit --json` policy guard
+- blocking unexpected or newly fixable backend dependency vulnerabilities
+- documenting the only allowed residual audit risk: `xlsx` with no npm-audit fix
+- shared `npm run security:audit` command behavior
+
+公开命令 / Public Command:
+
+- `npm run security:audit`
+- `node scripts/check-backend-security-audit.js`
+
+扩展方式 / Extension Path:
+
+- New allowed residuals must include a specific reason and compensating control before being added.
+- If `xlsx` becomes fixable, this guard must fail until the dependency is upgraded/replaced or the residual policy is removed.
+- Keep this guard registered in `scripts/run-architecture-smoke.js` so CI/deploy run the same security baseline.
+
+回归 / Regression:
+
+- `node --test scripts/check-backend-security-audit.test.js`
+- `npm run security:audit`
+- `npm run test:architecture`
+
+### `scripts/check-backend-security-audit.test.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- focused regression coverage for backend npm-audit residual policy
+- coverage that unexpected vulnerabilities and fixable residuals fail the guard
+
+公开命令 / Public Command:
+
+- `node --test scripts/check-backend-security-audit.test.js`
+
+扩展方式 / Extension Path:
+
+- Add focused cases whenever `scripts/check-backend-security-audit.js` changes residual policy or report parsing behavior.
+
+回归 / Regression:
+
+- `node --test scripts/check-backend-security-audit.test.js`
 - `npm run test:architecture`
 
 ### `scripts/check-shell-scripts.js`

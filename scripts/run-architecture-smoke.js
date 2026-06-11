@@ -278,6 +278,8 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/GameStateProjectionArchitecture.test.js',
   'scripts/check-stable-blocks.js',
   'scripts/check-stable-blocks.test.js',
+  'scripts/check-backend-security-audit.js',
+  'scripts/check-backend-security-audit.test.js',
   'scripts/run-architecture-smoke.js',
   'scripts/run-architecture-smoke.test.js',
   'scripts/check-repository-hygiene.js',
@@ -409,6 +411,7 @@ const TEST_FILES = Object.freeze([
   'backend/tests/WorldExplorerArchitecture.test.js',
   'backend/tests/GameStateRepository.test.js',
   'scripts/check-stable-blocks.test.js',
+  'scripts/check-backend-security-audit.test.js',
   'scripts/run-architecture-smoke.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -481,6 +484,7 @@ function main() {
   run('focused node tests', process.execPath, ['--test', ...testFiles]);
   run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
+  run('backend security audit guard', process.execPath, ['scripts/check-backend-security-audit.js']);
   run('frontend script manifest guard', process.execPath, ['scripts/check-frontend-script-manifest.js']);
   run('shell script syntax guard', process.execPath, ['scripts/check-shell-scripts.js']);
   run('config pipeline validation guard', process.execPath, [

@@ -58,3 +58,43 @@ test('task definition import parser owns xlsx row extraction', () => {
   assert.equal(parsed.tasks[0].id, 'xlsx_arch_task');
   assert.equal(parsed.tasks[0].title, 'XLSX Arch Task');
 });
+
+test('task definition import parser rejects unsafe xlsx formulas', () => {
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['id', 'title', 'category', 'enabled'],
+    ['formula_task', 'bad', 'main', 1],
+  ]);
+  sheet.B2.f = 'HYPERLINK("https://example.test","bad")';
+  XLSX.utils.book_append_sheet(workbook, sheet, 'tasks');
+  const contentBase64 = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }).toString('base64');
+
+  assert.throws(
+    () => TaskDefinitionImportParser.parseImportPayload({ fileName: 'tasks.xlsx', contentBase64 }),
+    /xlsx formulas are not allowed/,
+  );
+});
+
+test('task definition import parser rejects dangerous xlsx header keys', () => {
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['id', '__proto__'],
+    ['bad_task', 'polluted'],
+  ]);
+  XLSX.utils.book_append_sheet(workbook, sheet, 'tasks');
+  const contentBase64 = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }).toString('base64');
+
+  assert.throws(
+    () => TaskDefinitionImportParser.parseImportPayload({ fileName: 'tasks.xlsx', contentBase64 }),
+    /xlsx column is not allowed/,
+  );
+});
+
+test('task definition import parser rejects oversized xlsx payloads', () => {
+  const contentBase64 = Buffer.alloc(TaskDefinitionImportParser.MAX_XLSX_BYTES + 1, 1).toString('base64');
+
+  assert.throws(
+    () => TaskDefinitionImportParser.parseImportPayload({ fileName: 'tasks.xlsx', contentBase64 }),
+    /xlsx file too large/,
+  );
+});

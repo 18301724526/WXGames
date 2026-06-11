@@ -28,13 +28,23 @@ function registerOpsRoutes(app, deps = {}) {
         message: 'Ops admin authentication is unavailable.',
       });
     }
-    const result = opsAuthService.login(req.body || {});
+    const result = opsAuthService.login({
+      ...(req.body || {}),
+      clientIp: req.ip || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
+    });
     if (result.success && typeof opsControlService.appendAudit === 'function') {
       opsControlService.appendAudit({
         action: 'ops:login',
         operator: result.operator?.username || 'ops-admin',
       });
     }
+    if (!result.success && typeof opsControlService.appendAudit === 'function') {
+      opsControlService.appendAudit({
+        action: result.error === 'OpsLoginRateLimited' ? 'ops:login:rate-limited' : 'ops:login:failed',
+        operator: req.body?.username || 'unknown',
+      });
+    }
+    if (result.retryAfterSeconds) res.set('Retry-After', String(result.retryAfterSeconds));
     return res.status(result.statusCode || (result.success ? 200 : 401)).json(result);
   });
 
