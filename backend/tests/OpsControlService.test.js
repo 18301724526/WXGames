@@ -78,16 +78,36 @@ function createService(options = {}) {
       getSnapshot() {
         return { status: 'ok', totals: { requestCount: 1 } };
       },
+      getHealthSummary() {
+        return { status: 'ok', recentRequestCount: 1, alerts: [] };
+      },
     },
     configReleaseService: {
       getRuntimeStatus() {
-        return { status: 'matched' };
+        return { schema: 'config-runtime-status-v1', status: 'matched', matchesCurrent: true, errors: [], warnings: [] };
+      },
+      resolveRuntimeGatePolicy() {
+        return { mode: 'required', required: true, source: 'test' };
       },
     },
     configRuntimeLoader: {
       getRuntimeLoaderStatus() {
-        return { status: 'ready', ready: true };
+        return { schema: 'config-runtime-loader-status-v1', status: 'ready', ready: true, errors: [], warnings: [] };
       },
+    },
+    versionService: {
+      getVersionInfo() {
+        return { version: '1.0.0', deployedCommit: 'test-commit' };
+      },
+    },
+    getGameplayConfigStatus() {
+      return { schema: 'gameplay-config-runtime-v1', source: 'active-release-bundle', bundleReady: true, errors: [], warnings: [] };
+    },
+    getBuildingConfigVersion() {
+      return 'test-building-config';
+    },
+    getBuildingConfigPath() {
+      return '/tmp/BuildingConfig.js';
     },
     ...options,
   });
@@ -123,10 +143,32 @@ test('OpsControlService builds dashboard from system, PM2, health, players, and 
   assert.equal(dashboard.pm2.status, 'online');
   assert.equal(dashboard.pm2.nodeVersion, '20.20.2');
   assert.equal(dashboard.health.status, 'ok');
+  assert.equal(dashboard.health.source, 'local-process');
+  assert.equal(dashboard.health.health.configRuntime.status, 'matched');
   assert.equal(dashboard.system.disk.usedPercent, 25);
   assert.equal(dashboard.system.disk.availableText, '750 KiB');
   assert.equal(dashboard.players.totalPlayers, 3);
   assert.equal(dashboard.configRuntime.loaderStatus.ready, true);
+});
+
+test('OpsControlService default dashboard health does not synchronously curl itself', () => {
+  const { service, commands } = createService();
+  const dashboard = service.getDashboard();
+
+  assert.equal(dashboard.health.status, 'ok');
+  assert.equal(dashboard.health.source, 'local-process');
+  assert.equal(dashboard.environment.healthUrl, '');
+  assert.equal(commands.some(([command]) => command === 'curl'), false);
+});
+
+test('OpsControlService uses external health probe only when explicitly configured', () => {
+  const { service, commands } = createService({ healthUrl: 'https://ops.example.test/health' });
+  const health = service.getHealthSummary();
+
+  assert.equal(health.status, 'ok');
+  assert.equal(health.source, 'external-url');
+  assert.equal(health.url, 'https://ops.example.test/health');
+  assert.equal(commands.some(([command, args]) => command === 'curl' && args.includes('https://ops.example.test/health')), true);
 });
 
 test('OpsControlService restarts PM2 app through explicit audited command', () => {

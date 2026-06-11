@@ -172,7 +172,7 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 - `/tools/config-release-console.html`：读取 active/history/runtime status，预览当前配置，写入发布审计记录，回滚 active 指针。
 - `/tools/ops-console.html`：独立运维管理员登录后读取服务器/PM2/health/deploy/config/metrics/在线玩家/日志/审计摘要，支持维护模式开关和受审计 PM2 restart。
 
-运维控制台当前提供“软停服”：开启维护模式后，`/api/game*`、`/api/buildings*`、`/api/player/login`、`/api/player/register`、`/api/player/reset` 返回 `503 MAINTENANCE_MODE`，但 `/api/health`、`/api/version`、`/api/metrics` 和 `/api/admin/*` 保持可用。真正硬停服/开服会切断本网页依赖的后端连接，后续应由常驻 `ops-agent`、systemd/PM2 外部守护或主机面板侧进程实现。
+运维控制台当前提供“软停服”：开启维护模式后，`/api/game*`、`/api/buildings*`、`/api/player/login`、`/api/player/register`、`/api/player/reset` 返回 `503 MAINTENANCE_MODE`，但 `/api/health`、`/api/version`、`/api/metrics` 和 `/api/admin/*` 保持可用。运维面板健康卡片默认使用 `local-process` 进程内健康汇总，不再在 dashboard 请求里同步 curl 本机 `/api/health`；只有显式配置 `OPS_HEALTH_URL` 时才作为外部探测地址展示。真正硬停服/开服会切断本网页依赖的后端连接，后续应由常驻 `ops-agent`、systemd/PM2 外部守护或主机面板侧进程实现。
 
 性能/容量预算当前为观测和元数据边界：
 

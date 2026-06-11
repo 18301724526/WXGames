@@ -7,7 +7,7 @@ const DEFAULT_RUNTIME_STATE_DIR = '/opt/wxgame-workspace/.wxgame';
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const LOCAL_DEFAULT_DATA_DIR = path.join(REPO_ROOT, 'data', 'ops');
 const DEFAULT_PM2_APP = 'server';
-const DEFAULT_HEALTH_URL = 'http://127.0.0.1:3000/api/health';
+const DEFAULT_HEALTH_SOURCE = 'local-process';
 const DEFAULT_LOG_LINES = 80;
 
 function sanitizeText(value, maxLength = 500) {
@@ -184,7 +184,10 @@ class OpsControlService {
     this.configRuntimeLoader = options.configRuntimeLoader || null;
     this.versionService = options.versionService || null;
     this.pm2AppName = options.pm2AppName || this.env.PM2_APP_NAME || DEFAULT_PM2_APP;
-    this.healthUrl = options.healthUrl || this.env.OPS_HEALTH_URL || DEFAULT_HEALTH_URL;
+    this.healthUrl = sanitizeText(options.healthUrl || this.env.OPS_HEALTH_URL || '', 2048);
+    this.getGameplayConfigStatus = options.getGameplayConfigStatus || null;
+    this.getBuildingConfigVersion = options.getBuildingConfigVersion || null;
+    this.getBuildingConfigPath = options.getBuildingConfigPath || null;
     this.backendDir = options.backendDir || this.env.BACKEND_DIR || path.join(__dirname, '..');
     this.deployStateDir = options.deployStateDir || this.env.WXGAME_DEPLOY_STATE_DIR || this.env.DEPLOY_STATE_DIR || DEFAULT_RUNTIME_STATE_DIR;
     this.maintenancePath = options.maintenancePath || this.env.OPS_MAINTENANCE_PATH || getDefaultMaintenancePath(this.env);
@@ -346,7 +349,7 @@ class OpsControlService {
     };
   }
 
-  getHealthSummary() {
+  getExternalHealthSummary() {
     const health = this.executeCommand('curl', ['-fsS', '--max-time', '3', this.healthUrl], {
       timeoutMs: 5000,
       maxOutput: 80000,
@@ -354,12 +357,99 @@ class OpsControlService {
     const parsed = parseJsonCommand(health, null);
     return {
       schema: 'ops-health-probe-v1',
+      source: 'external-url',
       url: this.healthUrl,
       ok: Boolean(health.ok && parsed),
       status: parsed?.status || 'unavailable',
       health: parsed,
       error: health.ok ? '' : (health.stderr || health.error || ''),
     };
+  }
+
+  getLocalHealthSummary() {
+    try {
+      const runtimeStatus = this.configReleaseService?.getRuntimeStatus
+        ? this.configReleaseService.getRuntimeStatus()
+        : null;
+      const runtimePolicy = this.configReleaseService?.resolveRuntimeGatePolicy
+        ? this.configReleaseService.resolveRuntimeGatePolicy(this.env)
+        : null;
+      const loaderStatus = this.configRuntimeLoader?.getRuntimeLoaderStatus
+        ? this.configRuntimeLoader.getRuntimeLoaderStatus()
+        : null;
+      const gameplayConfigStatus = this.getGameplayConfigStatus
+        ? this.getGameplayConfigStatus()
+        : null;
+      const observability = this.observabilityService?.getHealthSummary
+        ? this.observabilityService.getHealthSummary()
+        : null;
+      const appVersion = this.versionService?.getVersionInfo
+        ? this.versionService.getVersionInfo()
+        : null;
+      const configErrors = [
+        ...(runtimeStatus?.errors || []),
+        ...(loaderStatus?.errors || []),
+        ...(gameplayConfigStatus?.errors || []),
+      ].filter(Boolean);
+      const status = configErrors.length
+        ? 'degraded'
+        : (observability?.status || 'ok');
+      return {
+        schema: 'ops-health-summary-v1',
+        source: DEFAULT_HEALTH_SOURCE,
+        url: '',
+        ok: status !== 'degraded',
+        status,
+        health: {
+          status,
+          timestamp: nowIso(this.now()),
+          buildingConfigVersion: this.getBuildingConfigVersion ? this.getBuildingConfigVersion() : null,
+          buildingConfigPath: this.getBuildingConfigPath ? this.getBuildingConfigPath() : null,
+          appVersion,
+          observability,
+          configRuntime: {
+            schema: runtimeStatus?.schema || null,
+            mode: runtimeStatus?.mode || null,
+            status: runtimeStatus?.status || null,
+            matchesCurrent: runtimeStatus?.matchesCurrent ?? null,
+            gatePolicy: runtimePolicy ? {
+              mode: runtimePolicy.mode,
+              required: runtimePolicy.required,
+              source: runtimePolicy.source,
+            } : null,
+            activeRelease: runtimeStatus?.activeRelease || null,
+            drift: runtimeStatus?.drift || null,
+            errors: runtimeStatus?.errors || [],
+            warnings: runtimeStatus?.warnings || [],
+            loader: loaderStatus ? {
+              schema: loaderStatus.schema,
+              status: loaderStatus.status,
+              ready: loaderStatus.ready,
+              payloadIncluded: loaderStatus.payloadIncluded,
+              registryCount: loaderStatus.registryCount,
+              errors: loaderStatus.errors || [],
+              warnings: loaderStatus.warnings || [],
+            } : null,
+            gameplay: gameplayConfigStatus,
+          },
+        },
+        error: '',
+      };
+    } catch (error) {
+      return {
+        schema: 'ops-health-summary-v1',
+        source: DEFAULT_HEALTH_SOURCE,
+        url: '',
+        ok: false,
+        status: 'unavailable',
+        health: null,
+        error: error?.message || String(error || ''),
+      };
+    }
+  }
+
+  getHealthSummary() {
+    return this.healthUrl ? this.getExternalHealthSummary() : this.getLocalHealthSummary();
   }
 
   getConfigRuntimeSummary() {
@@ -391,6 +481,7 @@ class OpsControlService {
       environment: {
         nodeEnv: this.env.NODE_ENV || 'development',
         pm2AppName: this.pm2AppName,
+        healthSource: this.healthUrl ? 'external-url' : DEFAULT_HEALTH_SOURCE,
         healthUrl: this.healthUrl,
       },
       maintenance: this.getMaintenanceState(),

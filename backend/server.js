@@ -56,6 +56,9 @@ const opsControlService = new OpsControlService({
   configReleaseService,
   configRuntimeLoader,
   versionService,
+  getGameplayConfigStatus: getRuntimeConfigStatus,
+  getBuildingConfigVersion: () => BuildingConfig.getVersion(),
+  getBuildingConfigPath: () => BuildingConfig.getSourcePath(),
 });
 const SKIP_API_LOG_PATHS = new Set([
   '/api/health',

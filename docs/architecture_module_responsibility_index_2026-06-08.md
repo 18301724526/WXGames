@@ -3764,7 +3764,7 @@ Regression:
 - P12-009 admin operations dashboard aggregation
 - maintenance state persistence under deploy-state ops data
 - ops audit log records for maintenance changes and PM2 restart requests
-- system, disk, process, PM2, deploy, health, config runtime, observability, player activity, and log snapshots
+- system, disk, process, PM2, deploy, local-process health, optional `OPS_HEALTH_URL` external probe, config runtime, observability, player activity, and log snapshots
 - delayed PM2 restart command execution through an explicit audited service method
 - no login/admin authorization ownership, no gameplay state mutation, no hard process start ownership after backend shutdown
 
@@ -3786,6 +3786,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - New ops dashboard fields should be gathered here and exposed through thin route/UI layers.
+- Dashboard health should stay local-process by default; do not reintroduce a synchronous self-curl to `/api/health`.
 - Hard stop/start should be added through an external `ops-agent` or host control-plane adapter, not by making the stopped backend responsible for restarting itself.
 - Production path changes must keep ops state under backed-up deploy-state scope or update backup/restore/runbook docs in the same change.
 
@@ -6292,3 +6293,4 @@ Recommended first split sequence:
 | 2026-06-11 | Added `docs/6月11日重构与问题交接.md` as the official daily handoff for the production-engineering sequence through `08639bab`, replacing the prior temporary refactor/progress/issue handoff notes while recording local/server validation, dual-remote sync, server hook anomaly resolution, backup/restore drill evidence, config release publish/rollback evidence, and production `CONFIG_RELEASE_GATE=required` health. |
 | 2026-06-11 | Closed current host evidence for P12-004 and P12-007: installed runtime backup cron, verified real backup/restore drill, moved production config release state under `.wxgame/config-release`, verified post-required-gate backup contents, published config releases A/B, rolled back B -> A, restored active B, and restarted production healthy with `CONFIG_RELEASE_GATE=required` on `08639bab086d5d87ebb7445a043ffb72cc88754c`. |
 | 2026-06-11 | Continued P12-006/P12-009 operations hardening: production Node was upgraded to `20.20.2`, PM2 was reinstalled under Node 20, `better-sqlite3@12.10.0` was rebuilt, backend engines now require Node 20, and `OpsControlService` plus `/api/admin/ops/*`, maintenance middleware, and `/tools/ops-console.html` provide a protected admin operations console for status, soft maintenance, audited PM2 restart, and ops audit evidence. |
+| 2026-06-12 | Fixed P12-009 ops dashboard health false negatives: `OpsControlService` now defaults dashboard health to a `local-process` summary assembled from version, observability, config runtime, loader, and gameplay runtime status; `OPS_HEALTH_URL` remains only an explicit external probe override, and regression asserts the default dashboard does not run `curl`. |
