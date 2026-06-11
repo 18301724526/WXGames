@@ -1,11 +1,16 @@
 const TerritoryService = require('../TerritoryService');
-const { TUTORIAL_STEPS, createPhaseCompleted } = require('../../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const {
   TUTORIAL_FIRST_SITE_GRANT_KEY,
   toInteger,
 } = require('./WorldExplorerShared');
 
+function getTutorialSteps() {
+  return TutorialFlowConfig.TUTORIAL_STEPS;
+}
+
 function advanceTutorialStep(tutorial = {}, nextStep = 0) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   const step = Math.floor(Number(nextStep) || 0);
   const currentStep = Math.floor(Number(tutorial.currentStep) || 0);
   if (tutorial.completed || tutorial.disabled || step <= currentStep) return tutorial;
@@ -14,7 +19,7 @@ function advanceTutorialStep(tutorial = {}, nextStep = 0) {
     currentStep: step,
     phaseCompleted: {
       ...(tutorial.phaseCompleted || {}),
-      ...createPhaseCompleted(step),
+      ...TutorialFlowConfig.createPhaseCompleted(step),
     },
     completed: step >= TUTORIAL_STEPS.completed,
     updatedAt: new Date().toISOString(),
@@ -45,6 +50,7 @@ function getFormationSnapshot(gameState = {}, options = {}) {
 }
 
 function validateTutorialFormation(gameState = {}, options = {}) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   const tutorial = gameState.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return { success: true, formation: getFormationSnapshot(gameState, options) };
   const step = Math.floor(Number(tutorial.currentStep) || 0);
@@ -61,6 +67,7 @@ function validateTutorialFormation(gameState = {}, options = {}) {
 }
 
 function ensureTutorialFirstCityClaimSoldiers(gameState = {}) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   const tutorial = gameState.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return false;
   const step = Math.floor(Number(tutorial.currentStep) || 0);

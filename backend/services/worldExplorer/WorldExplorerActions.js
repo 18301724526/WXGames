@@ -1,5 +1,5 @@
 const WorldMapService = require('../WorldMapService');
-const { TUTORIAL_STEPS } = require('../../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const {
   EXPLORE_STEP_DURATION_MS,
   MAX_ACTIVE_EXPLORE_MISSIONS,
@@ -27,6 +27,10 @@ const {
 
 function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
+}
+
+function getTutorialSteps() {
+  return TutorialFlowConfig.TUTORIAL_STEPS;
 }
 
 function normalizeFormationSlot(value, fallback = 1) {
@@ -117,6 +121,7 @@ function traceWorldMarch(stage, options = {}, payload = {}) {
 }
 
 function startExplore(gameState, options = {}, now = new Date()) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   normalizeExploreState(gameState, now);
   const formationValidation = validateTutorialFormation(gameState, options);
   if (!formationValidation.success) return formationValidation;
@@ -182,6 +187,7 @@ function startExplore(gameState, options = {}, now = new Date()) {
 }
 
 function startWorldMarch(gameState, options = {}, now = new Date()) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   normalizeExploreState(gameState, now);
   traceWorldMarch('actions:startWorldMarch:begin', options, {
     target: {
@@ -435,6 +441,7 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
 }
 
 function claimExplore(gameState, missionId, now = new Date()) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   normalizeExploreState(gameState, now);
   const mission = (gameState.exploreMissions || []).find((item) => item.id === missionId);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };

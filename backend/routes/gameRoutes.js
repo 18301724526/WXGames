@@ -40,6 +40,14 @@ function loadProgressedGameState(repository, gameStateService, playerId) {
     : gameStateService.normalizeState(rawState);
 }
 
+function loadReadOnlyGameState(repository, gameStateService, playerId) {
+  const rawState = repository.findByPlayerId(playerId);
+  if (!rawState) return null;
+  return gameStateService.normalizeState
+    ? gameStateService.normalizeState(rawState)
+    : rawState;
+}
+
 function shouldTraceWorldMarch(body = {}) {
   return Boolean(body?.debugTrace || body?.worldMarchTrace);
 }
@@ -115,7 +123,7 @@ function registerGameRoutes(app, deps) {
   app.get('/api/game/state', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarchRequest(req);
     return WorldExplorerTrace.run(traceEnabled, () => {
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    const gameState = loadReadOnlyGameState(repository, gameStateService, req.playerId);
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
@@ -125,11 +133,7 @@ function registerGameRoutes(app, deps) {
         missions: (gameState.exploreMissions || []).map(summarizeMission),
       });
     }
-    const tutorial = syncEra2Tutorial(gameState, gameStateService);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    repository.touchPlayerActiveAt(req.playerId);
-    repository.save(gameState);
+    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const responsePayload = {
       ...buildGameView(gameState, tutorial, gameStateService),
       syncTime: new Date().toISOString(),
@@ -165,15 +169,10 @@ function registerGameRoutes(app, deps) {
   });
 
   app.get('/api/game/tasks', authMiddleware, (req, res) => {
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    const gameState = loadReadOnlyGameState(repository, gameStateService, req.playerId);
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    syncEra2Tutorial(gameState, gameStateService);
-    repository.touchPlayerActiveAt(req.playerId);
-    repository.save(gameState);
     return res.json({
       taskCenter: TaskCenterService.getTaskCenter(gameState, { activeTab: req.query?.tab }),
       syncTime: new Date().toISOString(),

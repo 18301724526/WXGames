@@ -294,7 +294,7 @@ test('WorldMapLayerCanvasRenderer collects map-home world targets without painti
   }, 96, { territoryUiState: uiState });
 
   assert.equal(collected, true);
-  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
   assert.deepEqual(host.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
   assert.equal(host.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
@@ -325,9 +325,8 @@ test('WorldMapLayerCanvasRenderer collects actor targets from runtime context', 
     worldMapRuntimeContext: runtimeContext,
   });
 
-  const actorCall = host.calls.find((call) => call[0] === 'addWorldActorHitTargets');
   assert.equal(collected, true);
-  assert.deepEqual(actorCall[1], runtimeContext.actors);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
   assert.deepEqual(host.lastMapHomeWorldHudContext.actors, runtimeContext.actors);
 });
 
@@ -359,11 +358,10 @@ test('WorldMapLayerCanvasRenderer derives actor targets from world explorer stat
     territoryUiState: { selectedWorldActorId: 'explore-active-1' },
   });
 
-  const actorCall = host.calls.find((call) => call[0] === 'addWorldActorHitTargets');
   assert.equal(collected, true);
-  assert.equal(actorCall[1].length, 1);
-  assert.equal(actorCall[1][0].missionId, 'explore-active-1');
-  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, actorCall[1]);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
+  assert.equal(host.lastMapHomeWorldHudContext.actors.length, 1);
+  assert.equal(host.lastMapHomeWorldHudContext.actors[0].missionId, 'explore-active-1');
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
@@ -529,7 +527,7 @@ test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawImage'), true);
 });
 
-test('WorldMapLayerCanvasRenderer paints dynamic actors and march HUD on a separate actor layer', () => {
+test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targets on the actor layer', () => {
   const actorContext = {
     actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -558,7 +556,8 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and march HUD on a separ
   assert.equal(host.calls.some((call) => call[0] === 'beginFrame'), true);
   assert.equal(host.calls.some((call) => call[0] === 'clearAll'), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), false);
   assert.equal(host.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);

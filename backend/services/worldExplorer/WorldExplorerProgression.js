@@ -13,7 +13,11 @@ const {
   ensureTutorialFirstCityClaimSoldiers,
 } = require('./WorldExplorerTutorial');
 const WorldExplorerTrace = require('./WorldExplorerTrace');
-const { TUTORIAL_STEPS } = require('../../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+
+function getTutorialSteps() {
+  return TutorialFlowConfig.TUTORIAL_STEPS;
+}
 
 function summarizeStep(step = {}) {
   if (!step || typeof step !== 'object') return null;
@@ -161,6 +165,7 @@ function revealStep(gameState, mission, step, now = new Date()) {
 }
 
 function advanceExploreMissions(gameState, now = new Date()) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
   const nowMs = now.getTime();
   const newlyRevealedTiles = [];

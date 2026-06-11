@@ -7,6 +7,12 @@
     sites: 1000,
     missions: 1000,
     serializableBytes: 512 * 1024,
+    frameEntries: 1200,
+    frameActors: 200,
+    frameHitTargets: 1500,
+    framePixels: 16000000,
+    chunkEntries: 1024,
+    activeChunks: 64,
   });
 
   function toInteger(value, fallback = 0) {
@@ -108,6 +114,36 @@
     return createReport(checks, { snapshot: 'render', signature: snapshot.signature || '' });
   }
 
+  function getFramePixelCount(frame = {}, pixelRatio = 1) {
+    const width = Math.max(0, Number(frame.width) || 0);
+    const height = Math.max(0, Number(frame.height) || 0);
+    const ratio = Math.max(1, Number(pixelRatio) || 1);
+    return Math.round(width * height * ratio * ratio);
+  }
+
+  function checkRendererFrameWork(frameWork = {}, budgets = DEFAULT_BUDGETS) {
+    const frame = frameWork.frame || frameWork.viewport || {};
+    const framePixels = Number.isFinite(Number(frameWork.framePixels))
+      ? toInteger(frameWork.framePixels)
+      : getFramePixelCount(frame, frameWork.pixelRatio);
+    const entryCount = readCount(frameWork, ['visibleEntries', 'entries', 'tiles']);
+    const actorCount = readCount(frameWork, ['actors']);
+    const hitTargetCount = readCount(frameWork, ['hitTargets', 'targets']);
+    const chunkCount = readCount(frameWork, ['activeChunks', 'chunks']);
+    const chunkEntries = Array.isArray(frameWork.chunks)
+      ? frameWork.chunks.reduce((max, chunk) => Math.max(max, readCount(chunk, ['entries', 'tiles'])), 0)
+      : toInteger(frameWork.chunkEntries);
+    const checks = [
+      createCheck('frame.entry-count', entryCount <= budgets.frameEntries, entryCount, budgets.frameEntries),
+      createCheck('frame.actor-count', actorCount <= budgets.frameActors, actorCount, budgets.frameActors),
+      createCheck('frame.hit-target-count', hitTargetCount <= budgets.frameHitTargets, hitTargetCount, budgets.frameHitTargets),
+      createCheck('frame.pixel-count', framePixels <= budgets.framePixels, framePixels, budgets.framePixels),
+      createCheck('frame.active-chunks', chunkCount <= budgets.activeChunks, chunkCount, budgets.activeChunks),
+      createCheck('frame.chunk-entry-count', chunkEntries <= budgets.chunkEntries, chunkEntries, budgets.chunkEntries),
+    ];
+    return createReport(checks, { snapshot: 'renderer-frame', signature: frameWork.signature || '' });
+  }
+
   function combineReports(reports = [], meta = {}) {
     const checks = [];
     (Array.isArray(reports) ? reports : []).forEach((report) => {
@@ -120,10 +156,12 @@
     DEFAULT_BUDGETS,
     assertReport,
     checkEntitySnapshot,
+    checkRendererFrameWork,
     checkRenderSnapshot,
     checkVisibilitySnapshot,
     combineReports,
     createReport,
+    getFramePixelCount,
     getSerializableSizeBytes,
   });
 

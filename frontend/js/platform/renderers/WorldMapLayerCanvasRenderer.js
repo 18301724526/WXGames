@@ -225,7 +225,6 @@
         : SharedWorldMarchSystem.buildActors(state.worldExplorerState || {}, {
           nowMs: options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs(),
         });
-      this.addWorldActorHitTargets?.(actors, viewport, geometry);
       this.lastMapHomeWorldHudContext = {
         actors,
         frame,
@@ -302,7 +301,7 @@
       } finally {
         if (didClip && this.ctx.restore) this.ctx.restore();
       }
-      this.renderWorldMarchHud?.(options.state || state, uiState, actors, viewport, geometry, frame);
+      this.addWorldActorHitTargets?.(actors, viewport, geometry);
       this.publishWorldMapActorLayerContext(context);
       this.endFrame({ ...options, showFpsOverlay: false });
       return true;

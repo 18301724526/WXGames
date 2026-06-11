@@ -1,4 +1,4 @@
-const BuildingConfig = require('../config/BuildingConfig');
+const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 
 function calculate(buildings) {

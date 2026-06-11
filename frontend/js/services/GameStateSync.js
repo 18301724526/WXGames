@@ -44,6 +44,9 @@
       this.failureCount = 0;
       this.reconnecting = false;
       this.reconnectThreshold = Number(scheduler.reconnectThreshold || scheduler.reconnectThresholdCount) || 3;
+      this.backoffBaseMs = Math.max(0, toNumber(scheduler.backoffBaseMs, 5000));
+      this.backoffMaxMs = Math.max(this.backoffBaseMs, toNumber(scheduler.backoffMaxMs, 60000));
+      this.nextAllowedAt = 0;
       this.stateRefreshLeadTimeMs = Math.max(0, toNumber(scheduler.stateRefreshLeadTimeMs, 250));
       this.stateRefreshMinIntervalMs = Math.max(0, toNumber(scheduler.stateRefreshMinIntervalMs, 1000));
       this.lastStateRefreshAt = 0;
@@ -105,8 +108,27 @@
       }
     }
 
+    getBackoffMs(failureCount = this.failureCount) {
+      if (this.backoffBaseMs <= 0) return 0;
+      const exponent = Math.max(0, Number(failureCount || 1) - 1);
+      const delayMs = this.backoffBaseMs * (2 ** exponent);
+      return Math.min(this.backoffMaxMs, delayMs);
+    }
+
+    updateBackoffWindow() {
+      const nowMs = toNumber(this.scheduler.now?.(), Date.now());
+      const delayMs = this.getBackoffMs();
+      this.nextAllowedAt = delayMs > 0 ? nowMs + delayMs : 0;
+      return this.nextAllowedAt;
+    }
+
+    canFetchNow(nowMs = toNumber(this.scheduler.now?.(), Date.now())) {
+      return !this.nextAllowedAt || nowMs >= this.nextAllowedAt;
+    }
+
     async fetchNow() {
       if (this.fetching) return;
+      if (!this.canFetchNow()) return null;
       this.fetching = true;
       try {
         if (typeof this.api?.heartbeat !== 'function') {
@@ -114,6 +136,7 @@
         }
         const data = await this.api.heartbeat();
         this.failureCount = 0;
+        this.nextAllowedAt = 0;
         if (this.reconnecting) {
           this.reconnecting = false;
           if (this.onConnectionState) this.onConnectionState({ status: 'online', failureCount: 0, data });
@@ -123,6 +146,7 @@
         return data;
       } catch (error) {
         this.failureCount += 1;
+        this.updateBackoffWindow();
         if (this.failureCount >= this.reconnectThreshold && !this.reconnecting) {
           this.reconnecting = true;
           if (this.onConnectionState) this.onConnectionState({ status: 'reconnecting', failureCount: this.failureCount, error });

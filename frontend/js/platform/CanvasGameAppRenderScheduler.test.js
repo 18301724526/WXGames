@@ -17,6 +17,27 @@ test('CanvasGameAppRenderScheduler resolves time and animation frame durations',
   assert.equal(CanvasGameAppRenderScheduler.getWorldTileWaterAnimationFrameMs(host), 100);
 });
 
+test('CanvasGameAppRenderScheduler applies low-end mobile water animation floor', () => {
+  const previousNavigator = global.navigator;
+  Object.defineProperty(global, 'navigator', {
+    configurable: true,
+    value: { hardwareConcurrency: 4, deviceMemory: 4, maxTouchPoints: 5 },
+  });
+  try {
+    const host = {
+      canvasShell: null,
+      renderer: { getWorldTileWaterAnimationFps: () => 8 },
+    };
+
+    assert.equal(CanvasGameAppRenderScheduler.getWorldTileWaterAnimationFrameMs(host), 900);
+  } finally {
+    Object.defineProperty(global, 'navigator', {
+      configurable: true,
+      value: previousNavigator,
+    });
+  }
+});
+
 test('CanvasGameAppRenderScheduler waits through injected scheduler', async () => {
   const calls = [];
   const host = {

@@ -118,7 +118,17 @@ function createHost(overrides = {}) {
 }
 
 test('CanvasAssetRenderer preserves preload progress, cached states, and request path versioning', async () => {
+  const timers = [];
   const host = createHost();
+  host.h5Runtime = {
+    runtime: {
+      setTimeout(callback, delayMs) {
+        timers.push({ callback, delayMs });
+        return { callback, delayMs };
+      },
+      clearTimeout() {},
+    },
+  };
   host.assetCache.set('cached-loaded.png', { status: 'loaded', image: { width: 1, height: 1 } });
   host.assetCache.set('cached-error.png', { status: 'error', image: null });
   const renderer = new CanvasAssetRenderer({ host });
@@ -139,6 +149,66 @@ test('CanvasAssetRenderer preserves preload progress, cached states, and request
   assert.equal(progress.at(-1).percentage, 100);
   assert.equal(host.worldTileStaticCache, null);
   assert.equal(host.worldTileViewCache, null);
+  assert.equal(timers.length, 0);
+});
+
+test('CanvasAssetRenderer schedules requested world tile prewarm and keeps sync option', async () => {
+  const timers = [];
+  const host = createHost();
+  host.h5Runtime = {
+    runtime: {
+      setTimeout(callback, delayMs) {
+        timers.push({ callback, delayMs });
+        return { callback, delayMs };
+      },
+      clearTimeout() {},
+      performance: { now: () => 1 },
+    },
+  };
+  const renderer = new CanvasAssetRenderer({ host });
+  const tilePath = 'assets/art/tile-map/tile-terrain-plains.png';
+  const promise = renderer.preloadAssets([tilePath], null, { prewarm: { initialDelayMs: 12 } });
+  const image = host.images.get(tilePath);
+  image.onload({ type: 'load' });
+
+  const result = await promise;
+
+  assert.deepEqual(result, { total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 });
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delayMs, 12);
+  assert.equal(host.assetMetricsCache.has(tilePath), false);
+
+  timers[0].callback();
+  assert.equal(host.assetMetricsCache.has(tilePath), true);
+
+  const syncHost = createHost();
+  const syncRenderer = new CanvasAssetRenderer({ host: syncHost });
+  const syncPromise = syncRenderer.preloadAssets([tilePath], null, { deferPrewarm: false });
+  syncHost.images.get(tilePath).onload({ type: 'load' });
+  await syncPromise;
+  assert.equal(syncHost.assetMetricsCache.has(tilePath), true);
+});
+
+test('CanvasAssetRenderer leaves world tile prewarm to shell unless requested', async () => {
+  const timers = [];
+  const host = createHost();
+  host.h5Runtime = {
+    runtime: {
+      setTimeout(callback, delayMs) {
+        timers.push({ callback, delayMs });
+        return { callback, delayMs };
+      },
+      clearTimeout() {},
+    },
+  };
+  const renderer = new CanvasAssetRenderer({ host });
+  const tilePath = 'assets/art/tile-map/tile-terrain-plains.png';
+  const promise = renderer.preloadAssets([tilePath]);
+  host.images.get(tilePath).onload({ type: 'load' });
+  await promise;
+
+  assert.equal(timers.length, 0);
+  assert.equal(host.assetMetricsCache.has(tilePath), false);
 });
 
 test('CanvasAssetRenderer preserves getAsset lazy loading and failure fallback', () => {

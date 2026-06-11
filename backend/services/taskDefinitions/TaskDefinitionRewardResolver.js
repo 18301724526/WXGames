@@ -1,5 +1,7 @@
-const BuildingConfig = require('../../config/BuildingConfig');
-const EraConfig = require('../../config/EraConfig');
+const {
+  BuildingConfig,
+  EraConfig,
+} = require('../config/GameplayConfigRuntime');
 const {
   RESOURCE_KEYS,
   addResources,

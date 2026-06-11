@@ -1,4 +1,4 @@
-const BuildingConfig = require('../config/BuildingConfig');
+const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
 
 function createInitialBuildingState() {
   return Object.keys(BuildingConfig.getAllBuildings()).reduce((acc, id) => {

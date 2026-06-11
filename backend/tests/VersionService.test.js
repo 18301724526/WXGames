@@ -48,3 +48,35 @@ test('version service ignores local sqlite runtime files when computing deployme
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
 });
+
+test('version service includes deploy manifest metadata and stable etag', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'version-service-deploy-'));
+  try {
+    fs.mkdirSync(path.join(repoRoot, 'backend'), { recursive: true });
+    fs.mkdirSync(path.join(repoRoot, 'frontend'), { recursive: true });
+    fs.mkdirSync(path.join(repoRoot, 'shared'), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot, 'backend', 'package.json'), JSON.stringify({ version: '9.9.9' }));
+    fs.writeFileSync(path.join(repoRoot, 'backend', 'server.js'), 'module.exports = {};\n');
+    const manifestPath = path.join(repoRoot, '.wxgame-deploy-version.json');
+    fs.writeFileSync(manifestPath, JSON.stringify({
+      branch: 'main',
+      commit: 'abc123',
+      deployedAt: '2026-06-11T00:00:00Z',
+      workTree: '/www/wwwroot/h5',
+      frontendPublicDir: '/www/wwwroot/h5',
+    }));
+
+    const service = new VersionService({ repoRoot, deployManifestPath: manifestPath, cacheMs: 0 });
+    const info = service.getVersionInfo();
+
+    assert.equal(info.deployedCommit, 'abc123');
+    assert.equal(info.deployedAt, '2026-06-11T00:00:00Z');
+    assert.equal(info.branch, 'main');
+    assert.match(info.etag, /^"wxgame-[0-9a-f]{24}"$/);
+    assert.equal(service.matchesEtag(info.etag, info), true);
+    assert.equal(service.matchesEtag('"other", ' + info.etag, info), true);
+    assert.equal(service.matchesEtag('"other"', info), false);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});

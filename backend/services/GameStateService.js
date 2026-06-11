@@ -1,6 +1,5 @@
-const BuildingState = require('../domain/BuildingState');
-const { getAdvanceConfig } = require('../config/EraConfig');
-const GameConfig = require('../config/GameConfig');
+﻿const BuildingState = require('../domain/BuildingState');
+const { EraConfig, GameConfig } = require('./config/GameplayConfigRuntime');
 const CityService = require('./CityService');
 const GameStateNormalizer = require('./GameStateNormalizer');
 const ClientGameStateAssembler = require('./ClientGameStateAssembler');
@@ -42,7 +41,7 @@ function applyOnlineProgress(gameState, now = new Date()) {
 
 function calculateEraProgressFromNormalized(normalized) {
   const capital = CityService.getCapitalCity(normalized);
-  const advanceConfig = getAdvanceConfig(normalized.currentEra);
+  const advanceConfig = EraConfig.getAdvanceConfig(normalized.currentEra);
   if (!advanceConfig) return { percentage: 100, canAdvance: false, conditions: [] };
   const conditions = advanceConfig.conditions.map((condition) => {
     const source = condition.source || 'resources';

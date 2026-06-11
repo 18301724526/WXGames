@@ -1,4 +1,9 @@
 (function (global) {
+  function toNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
   class UpdateChecker {
     constructor(options = {}) {
       this.api = options.api;
@@ -9,16 +14,39 @@
       this.scheduler = {
         setInterval: options.scheduler?.setInterval || (() => ({ disabled: true })),
         clearInterval: options.scheduler?.clearInterval || (() => {}),
+        now: options.scheduler?.now || (() => Date.now()),
       };
       this.timer = null;
       this.currentDeploymentId = null;
       this.currentVersion = '';
       this.prompting = false;
+      this.failureCount = 0;
+      this.backoffBaseMs = Math.max(0, toNumber(options.backoffBaseMs, this.intervalMs));
+      this.backoffMaxMs = Math.max(this.backoffBaseMs, toNumber(options.backoffMaxMs, Math.max(this.intervalMs, 60000)));
+      this.nextAllowedAt = 0;
     }
 
     async fetchVersion() {
       if (!this.api || typeof this.api.getVersion !== 'function') return null;
       return this.api.getVersion();
+    }
+
+    getBackoffMs(failureCount = this.failureCount) {
+      if (this.backoffBaseMs <= 0) return 0;
+      const exponent = Math.max(0, Number(failureCount || 1) - 1);
+      const delayMs = this.backoffBaseMs * (2 ** exponent);
+      return Math.min(this.backoffMaxMs, delayMs);
+    }
+
+    updateBackoffWindow() {
+      const nowMs = toNumber(this.scheduler.now?.(), Date.now());
+      const delayMs = this.getBackoffMs();
+      this.nextAllowedAt = delayMs > 0 ? nowMs + delayMs : 0;
+      return this.nextAllowedAt;
+    }
+
+    canCheckNow(nowMs = toNumber(this.scheduler.now?.(), Date.now())) {
+      return !this.nextAllowedAt || nowMs >= this.nextAllowedAt;
     }
 
     async start() {
@@ -39,11 +67,19 @@
     }
 
     async safeCheck(options = {}) {
+      if (!options.initialize && !this.canCheckNow()) return null;
       try {
-        return await this.check(options);
+        const result = await this.check(options);
+        this.failureCount = 0;
+        this.nextAllowedAt = 0;
+        return result;
       } catch (error) {
+        this.failureCount += 1;
+        this.updateBackoffWindow();
         global.H5LoadTrace?.phaseFail?.('version:check', error, {
           initialize: Boolean(options.initialize),
+          failureCount: this.failureCount,
+          nextAllowedAt: this.nextAllowedAt,
         });
         this.onError(error);
         return null;

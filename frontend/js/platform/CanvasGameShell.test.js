@@ -42,6 +42,44 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
   });
 });
 
+test('CanvasGameShell schedules world tile cache prewarm after asset preload', async () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    renderer: {
+      getPreloadAssetPaths() {
+        calls.push(['getPreloadAssetPaths']);
+        return ['assets/art/tile-map/tile-terrain-plains.png'];
+      },
+      preloadAssets(assetPaths, onProgress) {
+        calls.push(['preloadAssets', assetPaths]);
+        onProgress?.({ total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 });
+        return Promise.resolve({ total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 });
+      },
+    },
+    worldMapRenderer: {
+      scheduleWorldTileCachePrewarm(assetPaths, options) {
+        calls.push(['scheduleWorldTileCachePrewarm', assetPaths, options]);
+        return { total: 1, candidateTotal: 1, scheduled: true };
+      },
+      prewarmWorldTileCaches() {
+        calls.push(['prewarmWorldTileCaches']);
+        return {};
+      },
+    },
+  });
+  const progress = [];
+
+  const result = await shell.preloadAssets((event) => progress.push(event));
+
+  assert.deepEqual(result, { total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 });
+  assert.deepEqual(progress, [{ total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 }]);
+  assert.deepEqual(calls, [
+    ['preloadAssets', undefined],
+    ['getPreloadAssetPaths'],
+    ['scheduleWorldTileCachePrewarm', ['assets/art/tile-map/tile-terrain-plains.png'], { deferPrewarm: true }],
+  ]);
+});
+
 test('index.html loads CanvasGameShell modules before the facade', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const facadePosition = html.indexOf('CanvasGameShell.js');
@@ -59,6 +97,11 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
     html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
     true,
     'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameShellWorldMapRuntime.js',
+  );
+  assert.equal(
+    html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameAppRenderScheduler.js'),
+    true,
+    'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameAppRenderScheduler.js',
   );
   [
     'CanvasGameShellWorldMapLayerBridge.js',

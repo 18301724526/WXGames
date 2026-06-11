@@ -18,6 +18,19 @@ test('CanvasGameShellWorldMapRuntimePolicy resolves timing and padding values', 
   });
   assert.equal(Policy.getWaterAnimationFrameMs({ animationFrameMs: 80, fps: 20 }), 80);
   assert.equal(Policy.getWaterAnimationFrameMs({ animationFrameMs: 16, fps: 10 }), 100);
+  assert.equal(Policy.getWaterAnimationFrameMs({
+    animationFrameMs: 16,
+    fps: 8,
+    navigator: { hardwareConcurrency: 4, deviceMemory: 4, maxTouchPoints: 5 },
+  }), 900);
+  assert.equal(Policy.getWaterAnimationFrameMs({
+    animationFrameMs: 16,
+    fps: 8,
+    navigator: { hardwareConcurrency: 6, deviceMemory: 6, maxTouchPoints: 5 },
+  }), 450);
+  assert.equal(Policy.getWaterAnimationDeviceFloorMs({
+    navigator: { hardwareConcurrency: 12, deviceMemory: 16, maxTouchPoints: 0 },
+  }), 0);
   assert.equal(Policy.getLayerPadding({ dragCachePanRange: 260 }), 260);
   assert.equal(Policy.getLayerPadding({ dragCachePanRange: 120 }), 200);
 });

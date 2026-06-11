@@ -1,0 +1,183 @@
+const DEFAULT_BUDGETS = Object.freeze({
+  apiLatencyMs: 1500,
+  actionLatencyMs: 1000,
+  apiRequestBytes: 256 * 1024,
+  apiResponseBytes: 768 * 1024,
+  saveStateBytes: 2 * 1024 * 1024,
+  worldMapTiles: 5000,
+  worldMapWindowTiles: 1200,
+  worldMapChunkTiles: 1024,
+  activeWorldMapChunks: 64,
+  actors: 500,
+  missions: 1000,
+});
+
+function toNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function toInteger(value, fallback = 0) {
+  return Math.max(0, Math.floor(toNumber(value, fallback)));
+}
+
+function readCount(source = {}, keys = []) {
+  for (const key of keys) {
+    const value = source?.counts?.[key] ?? source?.[key]?.length ?? source?.[key];
+    if (Number.isFinite(Number(value))) return toInteger(value);
+  }
+  return 0;
+}
+
+function getSerializableSizeBytes(value) {
+  try {
+    return JSON.stringify(value || {}).length;
+  } catch (_) {
+    return Infinity;
+  }
+}
+
+function createCheck(key, ok, actual, budget, detail = '') {
+  return Object.freeze({
+    key,
+    ok: ok === true,
+    actual,
+    budget,
+    detail,
+  });
+}
+
+function createReport(checks = [], meta = {}) {
+  const failed = checks.filter((check) => !check.ok);
+  return Object.freeze({
+    ok: failed.length === 0,
+    failedKeys: Object.freeze(failed.map((check) => check.key)),
+    checks: Object.freeze(checks),
+    meta: Object.freeze({ ...(meta || {}) }),
+  });
+}
+
+function combineReports(reports = [], meta = {}) {
+  const checks = [];
+  (Array.isArray(reports) ? reports : []).forEach((report) => {
+    checks.push(...(report?.checks || []));
+  });
+  return createReport(checks, meta);
+}
+
+function assertReport(report, message = 'Performance capacity budget exceeded') {
+  if (report?.ok) return report;
+  const failed = (report?.checks || [])
+    .filter((check) => !check.ok)
+    .map((check) => `${check.key} actual=${check.actual} budget=${check.budget}`)
+    .join('; ');
+  throw new Error(`${message}: ${failed}`);
+}
+
+function normalizeBudgets(budgets = {}) {
+  return Object.freeze({
+    ...DEFAULT_BUDGETS,
+    ...(budgets || {}),
+  });
+}
+
+function isActionRequest(input = {}) {
+  const path = String(input.path || input.url || '');
+  return path === '/api/game/action'
+    || path === '/api/game/tasks/claim'
+    || Boolean(input.action || input.body?.action);
+}
+
+function checkApiRequest(input = {}, budgets = DEFAULT_BUDGETS) {
+  const resolvedBudgets = normalizeBudgets(budgets);
+  const durationMs = toInteger(input.durationMs ?? input.duration);
+  const requestBytes = Number.isFinite(Number(input.requestBytes))
+    ? toInteger(input.requestBytes)
+    : getSerializableSizeBytes(input.body || {});
+  const responseBytes = Number.isFinite(Number(input.responseBytes))
+    ? toInteger(input.responseBytes)
+    : getSerializableSizeBytes(input.response || {});
+  const actionRequest = isActionRequest(input);
+  const latencyBudget = actionRequest ? resolvedBudgets.actionLatencyMs : resolvedBudgets.apiLatencyMs;
+  const latencyKey = actionRequest ? 'api.action-latency' : 'api.latency';
+
+  return createReport([
+    createCheck(latencyKey, durationMs <= latencyBudget, durationMs, latencyBudget),
+    createCheck('api.request-bytes', requestBytes <= resolvedBudgets.apiRequestBytes, requestBytes, resolvedBudgets.apiRequestBytes),
+    createCheck('api.response-bytes', responseBytes <= resolvedBudgets.apiResponseBytes, responseBytes, resolvedBudgets.apiResponseBytes),
+  ], {
+    scope: 'api',
+    method: String(input.method || 'GET').toUpperCase(),
+    path: String(input.path || input.url || 'unknown'),
+    actionRequest,
+  });
+}
+
+function checkSaveState(state = {}, budgets = DEFAULT_BUDGETS) {
+  const resolvedBudgets = normalizeBudgets(budgets);
+  const worldMap = state?.worldMap || {};
+  const tileCount = readCount(worldMap, ['tiles']);
+  const missionCount = readCount(state, ['exploreMissions']) + readCount(state, ['warMissions']);
+  const saveBytes = getSerializableSizeBytes(state);
+
+  return createReport([
+    createCheck('save.serializable-size', saveBytes <= resolvedBudgets.saveStateBytes, saveBytes, resolvedBudgets.saveStateBytes),
+    createCheck('save.world-map-tiles', tileCount <= resolvedBudgets.worldMapTiles, tileCount, resolvedBudgets.worldMapTiles),
+    createCheck('save.mission-count', missionCount <= resolvedBudgets.missions, missionCount, resolvedBudgets.missions),
+  ], {
+    scope: 'save',
+    playerId: String(state?.playerId || ''),
+    revision: toInteger(state?.revision),
+  });
+}
+
+function getChunkTileCount(chunk = {}) {
+  return readCount(chunk, ['tiles', 'entries', 'visibleEntries'])
+    || toInteger(chunk.tileCount ?? chunk.entryCount ?? 0);
+}
+
+function checkWorldMapWindow(input = {}, budgets = DEFAULT_BUDGETS) {
+  const resolvedBudgets = normalizeBudgets(budgets);
+  const chunks = Array.isArray(input.chunks) ? input.chunks : [];
+  const windowTiles = readCount(input, ['visibleTiles', 'visibleEntries', 'tiles']);
+  const activeChunks = readCount(input, ['activeChunks', 'chunks']) || chunks.length;
+  const largestChunkTiles = chunks.reduce((max, chunk) => Math.max(max, getChunkTileCount(chunk)), 0);
+
+  return createReport([
+    createCheck('world-window.tile-count', windowTiles <= resolvedBudgets.worldMapWindowTiles, windowTiles, resolvedBudgets.worldMapWindowTiles),
+    createCheck('world-window.active-chunks', activeChunks <= resolvedBudgets.activeWorldMapChunks, activeChunks, resolvedBudgets.activeWorldMapChunks),
+    createCheck('world-window.chunk-tile-count', largestChunkTiles <= resolvedBudgets.worldMapChunkTiles, largestChunkTiles, resolvedBudgets.worldMapChunkTiles),
+  ], {
+    scope: 'world-window',
+    signature: String(input.signature || ''),
+  });
+}
+
+function summarizeReport(report = {}) {
+  const failedChecks = (report.checks || []).filter((check) => !check.ok);
+  return Object.freeze({
+    ok: report.ok === true,
+    failedKeys: Object.freeze([...(report.failedKeys || [])]),
+    failedChecks: Object.freeze(failedChecks.map((check) => Object.freeze({
+      key: check.key,
+      actual: check.actual,
+      budget: check.budget,
+    }))),
+    checkedAt: new Date().toISOString(),
+    meta: Object.freeze({ ...(report.meta || {}) }),
+  });
+}
+
+module.exports = {
+  DEFAULT_BUDGETS,
+  assertReport,
+  checkApiRequest,
+  checkSaveState,
+  checkWorldMapWindow,
+  combineReports,
+  createCheck,
+  createReport,
+  getSerializableSizeBytes,
+  normalizeBudgets,
+  summarizeReport,
+};

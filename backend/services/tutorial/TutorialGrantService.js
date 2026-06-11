@@ -1,7 +1,9 @@
-const BuildingConfig = require('../../config/BuildingConfig');
-const { getAdvanceConfig } = require('../../config/EraConfig');
+const {
+  BuildingConfig,
+  EraConfig,
+  TutorialFlowConfig,
+} = require('../config/GameplayConfigRuntime');
 const FamousPersonService = require('../FamousPersonService');
-const { TUTORIAL_STEPS } = require('../../config/TutorialFlowConfig');
 const { normalizeTutorialState, nowIso } = require('./TutorialState');
 const { manualAdvance } = require('./TutorialProgression');
 const {
@@ -11,7 +13,12 @@ const {
 
 const HOUSE_GUIDE_GRANT_KEY = 'houseGuideSupplies';
 
+function getTutorialSteps() {
+  return TutorialFlowConfig.TUTORIAL_STEPS;
+}
+
 function ensureScoutFamousPersonGrant(gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (!gameState || typeof gameState !== 'object') return false;
   let tutorial = normalizeTutorialState(gameState.tutorial);
   if (tutorial.completed || tutorial.disabled || tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]) return false;
@@ -36,7 +43,7 @@ function ensureScoutFamousPersonGrant(gameState) {
 function getHouseGuideMinimumResources() {
   const resources = {};
   const houseCost = BuildingConfig.getBuildCost('house');
-  const firstAdvanceCost = getAdvanceConfig(0)?.cost || {};
+  const firstAdvanceCost = EraConfig.getAdvanceConfig(0)?.cost || {};
   for (const cost of [houseCost, firstAdvanceCost]) {
     Object.entries(cost || {}).forEach(([key, value]) => {
       resources[key] = (resources[key] || 0) + (Number(value) || 0);

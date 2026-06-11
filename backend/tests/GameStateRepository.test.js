@@ -26,6 +26,37 @@ test('GameStateRepository persists task progress with the game state', () => {
   db.close();
 });
 
+test('GameStateRepository increments revision and rejects stale expected revisions', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('revision-repo-test');
+
+    repository.save(state);
+    assert.equal(state.revision, 1);
+
+    state.resources.food += 10;
+    repository.save(state);
+    assert.equal(state.revision, 2);
+
+    const staleState = { ...state, revision: 1, resources: { ...state.resources, food: 999 } };
+    assert.throws(
+      () => repository.save(staleState),
+      (error) => error.code === 'GAME_STATE_REVISION_CONFLICT'
+        && error.expectedRevision === 1
+        && error.actualRevision === 2,
+    );
+
+    const saved = repository.findByPlayerId('revision-repo-test');
+    assert.equal(saved.revision, 2);
+    assert.notEqual(saved.resources.food, 999);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository persists save metadata with the game state', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
@@ -48,7 +79,34 @@ test('GameStateRepository persists save metadata with the game state', () => {
   assert.equal(saved.saveMetadata.schema, GameStateMigrationPipeline.SAVE_SCHEMA_NAME);
   assert.equal(saved.saveMetadata.schemaVersion, GameStateMigrationPipeline.CURRENT_SCHEMA_VERSION);
   assert.equal(saved.saveMetadata.migrations[0].id, 'initialize-save-schema-v1');
+  assert.equal(saved.saveMetadata.performanceCapacity.ok, true);
+  assert.equal(saved.saveMetadata.performanceCapacity.meta.scope, 'save');
   db.close();
+});
+
+test('GameStateRepository records save performance capacity metadata', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('save-budget-repo-test');
+    state.worldMap.tiles = Array.from({ length: 12 }, (_, index) => ({
+      id: `tile_${index}`,
+      q: index,
+      r: -index,
+    }));
+
+    repository.save(state);
+    const saved = repository.findByPlayerId('save-budget-repo-test');
+
+    assert.equal(saved.saveMetadata.performanceCapacity.ok, true);
+    assert.deepEqual(saved.saveMetadata.performanceCapacity.failedKeys, []);
+    assert.equal(saved.saveMetadata.performanceCapacity.meta.playerId, 'save-budget-repo-test');
+    assert.equal(saved.saveMetadata.performanceCapacity.failedChecks.length, 0);
+  } finally {
+    db.close();
+  }
 });
 
 test('GameStateRepository persists world explorer missions with the game state', () => {
@@ -178,6 +236,79 @@ test('GameStateRepository removes stale shared world ownership for a player save
     repository.save(ownerState);
     const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
 
+    assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository rolls back shared world writes when atomic save fails', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const ownerState = GameStateNormalizer.createInitialGameState('shared-world-atomic-owner');
+    const sharedSite = {
+      id: 'site_atomic_1',
+      x: 7,
+      y: 0,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: ownerState.playerId,
+      status: 'occupied',
+    };
+    ownerState.territories = [...ownerState.territories, sharedSite];
+
+    repository.save(ownerState);
+    assert.equal(repository.getSharedWorldTerritories().some((site) => site.id === sharedSite.id), true);
+
+    ownerState.territories = ownerState.territories.map((site) => (
+      site.id === sharedSite.id ? { ...site, id: 'site_atomic_2' } : site
+    ));
+    const originalWriteGameStateRow = repository.writeGameStateRow.bind(repository);
+    repository.writeGameStateRow = (...args) => {
+      originalWriteGameStateRow(...args);
+      throw new Error('forced write failure');
+    };
+
+    assert.throws(() => repository.save(ownerState), /forced write failure/);
+    const sharedIds = repository.getSharedWorldTerritories().map((site) => site.id);
+    assert.deepEqual(sharedIds, ['site_atomic_1']);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository resetPlayerState clears previous shared world ownership atomically', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const playerId = 'shared-world-reset-owner';
+    const ownerState = GameStateNormalizer.createInitialGameState(playerId);
+    const spectatorState = GameStateNormalizer.createInitialGameState('shared-world-reset-spectator');
+    const sharedSite = {
+      id: 'site_reset_1',
+      x: 8,
+      y: 0,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: playerId,
+      status: 'occupied',
+    };
+    ownerState.territories = [...ownerState.territories, sharedSite];
+
+    repository.save(ownerState);
+    repository.save(spectatorState);
+    assert.equal(repository.findByPlayerId(spectatorState.playerId).territories.some((site) => site.id === sharedSite.id), true);
+
+    const freshState = GameStateNormalizer.createInitialGameState(playerId);
+    repository.resetPlayerState(playerId, freshState);
+    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
+
+    assert.equal(freshState.revision, 1);
     assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
   } finally {
     db.close();

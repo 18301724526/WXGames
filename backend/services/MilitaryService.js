@@ -1,12 +1,11 @@
-const BuildingConfig = require('../config/BuildingConfig');
+﻿const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
-const { TUTORIAL_STEPS, createPhaseCompleted } = require('../config/TutorialFlowConfig');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
 const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
-const FORMATION_NAMES = ['部队一', '部队二', '部队三'];
+const FORMATION_NAMES = ['Formation 1', 'Formation 2', 'Formation 3'];
 
 function advanceTutorialStep(tutorial = {}, nextStep = 0) {
   const step = Math.floor(Number(nextStep) || 0);
@@ -17,9 +16,9 @@ function advanceTutorialStep(tutorial = {}, nextStep = 0) {
     currentStep: step,
     phaseCompleted: {
       ...(tutorial.phaseCompleted || {}),
-      ...createPhaseCompleted(step),
+      ...TutorialFlowConfig.createPhaseCompleted(step),
     },
-    completed: step >= TUTORIAL_STEPS.completed,
+    completed: step >= TutorialFlowConfig.TUTORIAL_STEPS.completed,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -73,7 +72,7 @@ function getTutorialSettlementSoldierFloor(gameState = {}) {
   const tutorial = gameState?.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return 0;
   const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TUTORIAL_STEPS.scoutExploreClaimed || step > TUTORIAL_STEPS.firstCityConquestStarted) return 0;
+  if (step < TutorialFlowConfig.TUTORIAL_STEPS.scoutExploreClaimed || step > TutorialFlowConfig.TUTORIAL_STEPS.firstCityConquestStarted) return 0;
   const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
   if (!siteId) return 0;
   const target = (Array.isArray(gameState.territories) ? gameState.territories : [])
@@ -134,7 +133,7 @@ function normalizeFormationMemberIds(memberIds, validPersonIds = null) {
 function createEmptyFormations() {
   return Array.from({ length: MAX_FORMATION_SLOTS }, (_, index) => ({
     slot: index + 1,
-    name: FORMATION_NAMES[index] || `部队${index + 1}`,
+    name: FORMATION_NAMES[index] || `Formation ${index + 1}`,
     memberIds: [],
     maxMembers: MAX_FORMATION_MEMBERS,
   }));
@@ -151,7 +150,7 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
     if (!slot) return;
     bySlot.set(slot, {
       slot,
-      name: String(raw.name || FORMATION_NAMES[slot - 1] || `部队${slot}`).trim(),
+      name: String(raw.name || FORMATION_NAMES[slot - 1] || `Formation ${slot}`).trim(),
       memberIds: normalizeFormationMemberIds(raw.memberIds || raw.members, validPersonIds),
       maxMembers: MAX_FORMATION_MEMBERS,
     });
@@ -209,10 +208,10 @@ function setArmyFormation(gameState, payload = {}) {
   const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
   const slot = normalizeFormationSlot(payload.slot);
   if (!slot) {
-    return { success: false, error: 'FORMATION_SLOT_INVALID', message: '编队位置不存在' };
+    return { success: false, error: 'FORMATION_SLOT_INVALID', message: 'Formation slot invalid' };
   }
   if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
-    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
+    return { success: false, error: 'CITY_NOT_FOUND', message: 'City not found' };
   }
   gameState.military = normalizeMilitaryState(gameState.military, gameState);
   const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
@@ -226,7 +225,7 @@ function setArmyFormation(gameState, payload = {}) {
   formations[cityId][slot - 1] = {
     ...formations[cityId][slot - 1],
     slot,
-    name: FORMATION_NAMES[slot - 1] || `部队${slot}`,
+    name: FORMATION_NAMES[slot - 1] || `Formation ${slot}`,
     memberIds,
     maxMembers: MAX_FORMATION_MEMBERS,
   };
@@ -239,12 +238,12 @@ function setArmyFormation(gameState, payload = {}) {
   }
   const scoutPersonId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
-    ? advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutFormationSaved)
+    ? advanceTutorialStep(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
     : gameState.tutorial;
   gameState.tutorial = tutorial;
   return {
     success: true,
-    message: `${FORMATION_NAMES[slot - 1] || `部队${slot}`}编队已保存`,
+    message: `${FORMATION_NAMES[slot - 1] || `Formation ${slot}`} saved`,
     formation: gameState.military.formations?.[cityId]?.[slot - 1] || null,
     tutorial,
   };

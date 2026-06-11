@@ -45,10 +45,13 @@
       this.enabled = options.enabled !== undefined ? Boolean(options.enabled) : readRuntimeFlag(this.runtime);
       this.progressStep = Math.max(1, Number(options.progressStep) || DEFAULT_PROGRESS_STEP);
       this.slowApiMs = Math.max(0, Number(options.slowApiMs) || DEFAULT_SLOW_API_MS);
+      this.reportingEnabled = options.reportingEnabled !== undefined ? Boolean(options.reportingEnabled) : true;
+      this.reporter = typeof options.reporter === 'function' ? options.reporter : null;
       this.startedAt = this.now();
       this.readyAt = 0;
       this.phaseStarts = new Map();
       this.progressByPhase = new Map();
+      this.reportedFailureKeys = new Set();
       this.apiSeq = 0;
       this.loggedBoot = false;
     }
@@ -72,6 +75,38 @@
         at: formatDuration(elapsedMs),
         ...detail,
       };
+    }
+
+    setReporter(reporter) {
+      this.reporter = typeof reporter === 'function' ? reporter : null;
+      return this;
+    }
+
+    reportClientEvent(type, detail = {}, dedupeKey = '') {
+      if (!this.reportingEnabled || typeof this.reporter !== 'function') return null;
+      const key = dedupeKey || [
+        type,
+        detail.phase || '',
+        detail.assetPath || '',
+        detail.status || '',
+        detail.error || detail.message || '',
+      ].join('|');
+      if (key && this.reportedFailureKeys.has(key)) return null;
+      if (key) {
+        if (this.reportedFailureKeys.size > 100) this.reportedFailureKeys.clear();
+        this.reportedFailureKeys.add(key);
+      }
+      const payload = this.buildPayload({
+        type,
+        href: this.runtime.location?.href || '',
+        userAgent: this.runtime.navigator?.userAgent || '',
+        ...detail,
+      });
+      try {
+        const result = this.reporter(payload);
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      } catch (_) {}
+      return payload;
     }
 
     write(level, event, detail = {}) {
@@ -132,17 +167,18 @@
       const startedAt = this.phaseStarts.get(name);
       this.phaseStarts.delete(name);
       const durationMs = Number.isFinite(startedAt) ? Math.round(endedAt - startedAt) : 0;
-      return this.write('error', 'phase:fail', {
+      const payload = {
         phase: name,
         durationMs,
         duration: formatDuration(durationMs),
         error: error?.message || String(error || ''),
         ...detail,
-      });
+      };
+      this.reportClientEvent('frontend_load_failure', payload, `phase|${name}|${payload.error}`);
+      return this.write('error', 'phase:fail', payload);
     }
 
     progress(phase, progress = {}) {
-      if (!this.isEnabled()) return null;
       const percentage = clampPercentage(progress.percentage);
       const completed = Math.max(0, Number(progress.completed) || 0);
       const total = Math.max(0, Number(progress.total) || 0);
@@ -165,6 +201,14 @@
         status,
       };
       this.progressByPhase.set(phase, { percentage, completed });
+      if (status === 'error' || status === 'failed' || (percentage >= 100 && payload.failed > 0)) {
+        this.reportClientEvent(
+          'frontend_asset_failure',
+          payload,
+          `asset|${phase}|${payload.assetPath}|${status}|${payload.failed}`,
+        );
+      }
+      if (!this.isEnabled()) return null;
       const level = payload.failed > 0 || status === 'error' || status === 'failed' ? 'warn' : 'info';
       return this.write(level, 'progress', payload);
     }
@@ -208,7 +252,7 @@
     apiFail(span = {}, error, detail = {}) {
       const startedAt = Number.isFinite(Number(span.startedAt)) ? Number(span.startedAt) : this.now();
       const durationMs = Math.round(this.now() - startedAt);
-      return this.write('error', 'api:fail', {
+      const payload = {
         id: span.id,
         method: span.method,
         path: span.path,
@@ -217,7 +261,19 @@
         duration: formatDuration(durationMs),
         error: error?.message || String(error || ''),
         ...detail,
-      });
+      };
+      if (this.isBootActive() || detail.reportAsLoadFailure) {
+        this.reportClientEvent(
+          'frontend_load_failure',
+          {
+            source: 'api',
+            phase: `api:${span.path || ''}`,
+            ...payload,
+          },
+          `api|${span.id || span.path || ''}|${payload.error}`,
+        );
+      }
+      return this.write('error', 'api:fail', payload);
     }
 
     ready(detail = {}) {

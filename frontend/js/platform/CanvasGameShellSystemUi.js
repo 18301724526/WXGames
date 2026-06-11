@@ -213,7 +213,10 @@ preloadAssets(onProgress = null, assetPaths = null) {
         return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
       }
       return this.renderer.preloadAssets(assetPaths || undefined, onProgress).then((result) => {
-        this.worldMapRenderer?.prewarmWorldTileCaches?.(assetPaths || this.renderer.getPreloadAssetPaths?.());
+        this.worldMapRenderer?.scheduleWorldTileCachePrewarm?.(
+          assetPaths || this.renderer.getPreloadAssetPaths?.(),
+          { deferPrewarm: true },
+        );
         return result;
       });
     },

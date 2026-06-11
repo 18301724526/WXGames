@@ -1,6 +1,6 @@
 const WorldMapService = require('../WorldMapService');
 const TerritoryService = require('../TerritoryService');
-const { TUTORIAL_STEPS } = require('../../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const {
   DEFAULT_RANDOM_ROUTE_LENGTH,
   MAX_RANDOM_ROUTE_LENGTH,
@@ -21,6 +21,10 @@ const TUTORIAL_EMPTY_CITY_NAMES = [
   '\u9752\u6797\u57ce',
   '\u6cb3\u6e7e\u57ce',
 ];
+
+function getTutorialSteps() {
+  return TutorialFlowConfig.TUTORIAL_STEPS;
+}
 
 function getExploreOrigin(gameState) {
   const activeCityId = gameState?.activeCityId || 'capital';
@@ -161,6 +165,7 @@ function createPlannedTiles(gameState, route, now = new Date()) {
 }
 
 function shouldGuaranteeTutorialEmptyCity(gameState = {}) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   const tutorial = gameState.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return false;
   const step = Math.floor(Number(tutorial.currentStep) || 0);

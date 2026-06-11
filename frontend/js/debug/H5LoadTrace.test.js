@@ -103,6 +103,54 @@ test('H5LoadTrace records api success and failure with ids and durations', () =>
   assert.equal(apiFail.payload.error, 'HTTP 504');
 });
 
+test('H5LoadTrace reports frontend phase, API, and asset failures through reporter', () => {
+  const reports = [];
+  const { trace } = createTrace();
+  trace.setReporter((event) => {
+    reports.push(event);
+  });
+
+  trace.phaseStart('assets:preload');
+  trace.phaseFail('assets:preload', new Error('asset preload failed'));
+  const apiSpan = trace.apiStart('GET', '/version', '/api/version');
+  trace.apiFail(apiSpan, new Error('Gateway Timeout'), { status: 504 });
+  trace.progress('assets:preload', {
+    percentage: 50,
+    completed: 1,
+    total: 2,
+    failed: 1,
+    assetPath: 'assets/missing.png',
+    status: 'error',
+  });
+  trace.progress('assets:preload', {
+    percentage: 50,
+    completed: 1,
+    total: 2,
+    failed: 1,
+    assetPath: 'assets/missing.png',
+    status: 'error',
+  });
+
+  assert.equal(reports.length, 3);
+  assert.equal(reports[0].type, 'frontend_load_failure');
+  assert.equal(reports[0].phase, 'assets:preload');
+  assert.equal(reports[1].type, 'frontend_load_failure');
+  assert.equal(reports[1].phase, 'api:/version');
+  assert.equal(reports[2].type, 'frontend_asset_failure');
+  assert.equal(reports[2].assetPath, 'assets/missing.png');
+});
+
+test('H5LoadTrace swallows reporter failures', () => {
+  const { trace } = createTrace();
+  trace.setReporter(() => {
+    throw new Error('reporter failed');
+  });
+
+  assert.doesNotThrow(() => {
+    trace.phaseFail('state:first-sync', new Error('sync failed'));
+  });
+});
+
 test('H5LoadTrace ready only reports once', () => {
   const { trace, entries, advance } = createTrace();
 

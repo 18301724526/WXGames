@@ -72,6 +72,28 @@ test('WorldMapPerformanceBudget accepts compact large world map snapshots', () =
   assert.equal(WorldMapPerformanceBudget.assertReport(report), report);
 });
 
+test('WorldMapPerformanceBudget checks renderer frame work and chunk/window budgets', () => {
+  const report = WorldMapPerformanceBudget.checkRendererFrameWork({
+    signature: 'frame-work-v1',
+    frame: { width: 390, height: 520 },
+    pixelRatio: 2,
+    visibleEntries: Array.from({ length: 48 }, (_, index) => ({ id: `tile_${index}` })),
+    actors: [{ id: 'actor-1' }],
+    hitTargets: Array.from({ length: 12 }, (_, index) => ({ id: `target_${index}` })),
+    chunks: [
+      { entries: Array.from({ length: 16 }, (_, index) => ({ id: `chunk_a_${index}` })) },
+      { tiles: Array.from({ length: 24 }, (_, index) => ({ id: `chunk_b_${index}` })) },
+    ],
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.failedKeys.length, 0);
+  assert.equal(
+    WorldMapPerformanceBudget.getFramePixelCount({ width: 390, height: 520 }, 2),
+    811200,
+  );
+});
+
 test('WorldMapPerformanceBudget fails loudly when structural budgets are exceeded', () => {
   const oversizedVisibility = {
     tileIds: Array.from({ length: 5001 }, (_, index) => `tile_${index}`),
@@ -107,4 +129,33 @@ test('WorldMapPerformanceBudget checks render serializable payload size', () => 
 
   assert.equal(report.ok, false);
   assert.equal(report.failedKeys.includes('render.serializable-size'), true);
+});
+
+test('WorldMapPerformanceBudget fails renderer frame work that exceeds capacity budgets', () => {
+  const report = WorldMapPerformanceBudget.checkRendererFrameWork({
+    frame: { width: 200, height: 200 },
+    visibleEntries: Array.from({ length: 4 }, (_, index) => ({ id: `tile_${index}` })),
+    actors: [{ id: 'a' }, { id: 'b' }],
+    hitTargets: [{ id: 'target-1' }],
+    chunks: [
+      { entries: Array.from({ length: 3 }, (_, index) => ({ id: `chunk_a_${index}` })) },
+      { entries: Array.from({ length: 5 }, (_, index) => ({ id: `chunk_b_${index}` })) },
+    ],
+  }, {
+    ...WorldMapPerformanceBudget.DEFAULT_BUDGETS,
+    frameEntries: 3,
+    frameActors: 1,
+    frameHitTargets: 0,
+    framePixels: 10000,
+    activeChunks: 1,
+    chunkEntries: 4,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.failedKeys.includes('frame.entry-count'), true);
+  assert.equal(report.failedKeys.includes('frame.actor-count'), true);
+  assert.equal(report.failedKeys.includes('frame.hit-target-count'), true);
+  assert.equal(report.failedKeys.includes('frame.pixel-count'), true);
+  assert.equal(report.failedKeys.includes('frame.active-chunks'), true);
+  assert.equal(report.failedKeys.includes('frame.chunk-entry-count'), true);
 });

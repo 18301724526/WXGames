@@ -287,6 +287,115 @@ test('game action route advances canonical state once and uses read-only project
   assert.equal(calls.includes('calculateEraProgressFromNormalized'), true);
 });
 
+test('game state read route is a read-only projection without runtime advance or persistence', () => {
+  const { app, routes } = createAppHarness();
+  const state = createNormalizedRouteState('projection-state-readonly-test');
+  const calls = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      calls.push(`find:${playerId}`);
+      return state;
+    },
+    touchPlayerActiveAt() {
+      throw new Error('GET /api/game/state must not update active timestamps');
+    },
+    save() {
+      throw new Error('GET /api/game/state must not persist state');
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress() {
+      throw new Error('GET /api/game/state must not advance runtime state');
+    },
+    normalizeState(rawState) {
+      calls.push('normalizeState');
+      return rawState;
+    },
+    getClientGameState() {
+      throw new Error('route must not use raw client projection');
+    },
+    calculateEraProgress() {
+      throw new Error('route must not use raw era progress');
+    },
+    getClientGameStateFromNormalized(normalized) {
+      calls.push('getClientGameStateFromNormalized');
+      return { playerId: normalized.playerId, activeCityId: normalized.activeCityId };
+    },
+    calculateEraProgressFromNormalized() {
+      calls.push('calculateEraProgressFromNormalized');
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  registerGameRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    repository,
+    gameStateService,
+  });
+  const route = routes.find((item) => item.method === 'GET' && item.path === '/api/game/state');
+
+  const res = invokeRoute(route, {
+    playerId: 'projection-state-readonly-test',
+    body: {},
+    get() { return ''; },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.gameState.playerId, 'projection-state-readonly-test');
+  assert.deepEqual(calls, [
+    'find:projection-state-readonly-test',
+    'normalizeState',
+    'getClientGameStateFromNormalized',
+    'calculateEraProgressFromNormalized',
+  ]);
+});
+
+test('game task read route is a read-only projection without runtime advance or persistence', () => {
+  const { app, routes } = createAppHarness();
+  const state = createNormalizedRouteState('projection-task-readonly-test');
+  const calls = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      calls.push(`find:${playerId}`);
+      return state;
+    },
+    touchPlayerActiveAt() {
+      throw new Error('GET /api/game/tasks must not update active timestamps');
+    },
+    save() {
+      throw new Error('GET /api/game/tasks must not persist state');
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress() {
+      throw new Error('GET /api/game/tasks must not advance runtime state');
+    },
+    normalizeState(rawState) {
+      calls.push('normalizeState');
+      return rawState;
+    },
+  };
+  registerGameRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    repository,
+    gameStateService,
+  });
+  const route = routes.find((item) => item.method === 'GET' && item.path === '/api/game/tasks');
+
+  const res = invokeRoute(route, {
+    playerId: 'projection-task-readonly-test',
+    query: { tab: 'main' },
+    body: {},
+    get() { return ''; },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.taskCenter.activeTab, 'main');
+  assert.deepEqual(calls, [
+    'find:projection-task-readonly-test',
+    'normalizeState',
+  ]);
+});
+
 test('reset route returns the newly created state without reloading or re-normalizing destructive writes', () => {
   const { app, routes } = createAppHarness();
   const resetState = createNormalizedRouteState('projection-reset-test');

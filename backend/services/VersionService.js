@@ -30,6 +30,37 @@ function readJson(filePath) {
   }
 }
 
+function sanitizeDeployManifest(manifest) {
+  if (!manifest || typeof manifest !== 'object') return null;
+  return {
+    branch: manifest.branch ? String(manifest.branch) : null,
+    commit: manifest.commit ? String(manifest.commit) : null,
+    deployedCommit: manifest.deployedCommit ? String(manifest.deployedCommit) : (manifest.commit ? String(manifest.commit) : null),
+    deployedAt: manifest.deployedAt ? String(manifest.deployedAt) : null,
+    workTree: manifest.workTree ? String(manifest.workTree) : null,
+    frontendPublicDir: manifest.frontendPublicDir ? String(manifest.frontendPublicDir) : null,
+  };
+}
+
+function firstExistingPath(paths) {
+  return paths.find((candidate) => candidate && fs.existsSync(candidate)) || paths[0];
+}
+
+function buildEtag(info) {
+  return `"wxgame-${crypto
+    .createHash('sha256')
+    .update([
+      info.version || '',
+      info.deploymentId || '',
+      info.gitCommit || '',
+      info.sourceHash || '',
+      info.deployedCommit || '',
+      info.deployedAt || '',
+    ].join('|'))
+    .digest('hex')
+    .slice(0, 24)}"`;
+}
+
 function getPackedRef(gitDir, ref) {
   try {
     const packedRefsPath = path.join(gitDir, 'packed-refs');
@@ -105,9 +136,17 @@ function createSourceHash(repoRoot) {
 class VersionService {
   constructor(options = {}) {
     this.repoRoot = options.repoRoot || path.join(__dirname, '..', '..');
+    this.deployManifestPath = options.deployManifestPath || process.env.WXGAME_DEPLOY_MANIFEST_PATH || firstExistingPath([
+      path.join(this.repoRoot, '.wxgame', 'current-deploy.json'),
+      path.join(this.repoRoot, '.wxgame-deploy-version.json'),
+    ]);
     this.cacheMs = options.cacheMs ?? DEFAULT_CACHE_MS;
     this.cachedAt = 0;
     this.cachedInfo = null;
+  }
+
+  readDeployManifest() {
+    return sanitizeDeployManifest(readJson(this.deployManifestPath));
   }
 
   getVersionInfo() {
@@ -117,10 +156,11 @@ class VersionService {
     const packageJson = readJson(path.join(this.repoRoot, 'backend', 'package.json')) || {};
     const gitCommit = getGitCommit(this.repoRoot);
     const sourceHash = createSourceHash(this.repoRoot);
+    const deployManifest = this.readDeployManifest();
     const explicitVersion = process.env.APP_VERSION || process.env.GAME_VERSION || null;
     const versionParts = [
       explicitVersion || packageJson.version || '0.0.0',
-      gitCommit || 'nogit',
+      deployManifest?.deployedCommit || deployManifest?.commit || gitCommit || 'nogit',
       sourceHash,
     ];
     const deploymentId = crypto.createHash('sha256').update(versionParts.join('|')).digest('hex').slice(0, 16);
@@ -129,11 +169,23 @@ class VersionService {
       version: explicitVersion || packageJson.version || '0.0.0',
       deploymentId,
       gitCommit,
+      deployedCommit: deployManifest?.deployedCommit || deployManifest?.commit || null,
+      deployedAt: deployManifest?.deployedAt || null,
+      branch: deployManifest?.branch || null,
       sourceHash: sourceHash.slice(0, 16),
       checkedAt: new Date(now).toISOString(),
     };
+    this.cachedInfo.etag = buildEtag(this.cachedInfo);
     this.cachedAt = now;
     return this.cachedInfo;
+  }
+
+  matchesEtag(candidate, info = this.getVersionInfo()) {
+    if (!candidate) return false;
+    return String(candidate)
+      .split(',')
+      .map((value) => value.trim())
+      .includes(info.etag);
   }
 }
 

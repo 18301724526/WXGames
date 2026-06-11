@@ -1,12 +1,4 @@
-const {
-  TECH_POINT_GRANTS,
-  TECH_CHOICE_LIMITS,
-  TECH_ERAS,
-  TECHS,
-  TECH_BY_ID,
-  RESOURCE_LABELS,
-  BUILDING_LABELS,
-} = require('../config/TechTreeConfig');
+const { TechTreeConfig } = require('./config/GameplayConfigRuntime');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -27,7 +19,7 @@ function normalizeTechState(raw = {}) {
   };
   const eraChoices = raw?.eraChoices && typeof raw.eraChoices === 'object' ? { ...raw.eraChoices } : {};
   Object.keys(researched).forEach((techId) => {
-    const tech = TECH_BY_ID[techId];
+    const tech = TechTreeConfig.TECH_BY_ID[techId];
     if (!tech) return;
     const eraKey = String(tech.era);
     const existing = Array.isArray(eraChoices[eraKey])
@@ -51,7 +43,7 @@ function normalizeGameStateTechs(gameState) {
 }
 
 function getChoiceLimit(era) {
-  return Math.max(1, Number(TECH_CHOICE_LIMITS[era]) || 1);
+  return Math.max(1, Number(TechTreeConfig.TECH_CHOICE_LIMITS[era]) || 1);
 }
 
 function getEraChoices(techs, era) {
@@ -61,7 +53,7 @@ function getEraChoices(techs, era) {
 }
 
 function getGrantForEra(era) {
-  return Math.max(0, Number(TECH_POINT_GRANTS[era]) || 0);
+  return Math.max(0, Number(TechTreeConfig.TECH_POINT_GRANTS[era]) || 0);
 }
 
 function grantEraPoints(gameState, era) {
@@ -97,7 +89,7 @@ function getResearchedIds(gameStateOrTechs = {}) {
 
 function getUnlockedBuildings(gameStateOrTechs = {}) {
   return Array.from(new Set(getResearchedIds(gameStateOrTechs).flatMap((techId) => (
-    TECH_BY_ID[techId]?.effects?.unlockedBuildings || []
+    TechTreeConfig.TECH_BY_ID[techId]?.effects?.unlockedBuildings || []
   ))));
 }
 
@@ -116,11 +108,11 @@ function hasRequiredParent(tech, techs) {
 }
 
 function formatResourceEntrances(resources = []) {
-  return resources.map((key) => RESOURCE_LABELS[key] || key).join('、') || '无';
+  return resources.map((key) => TechTreeConfig.RESOURCE_LABELS[key] || key).join('、') || '无';
 }
 
 function formatBuildingUnlocks(buildings = []) {
-  return buildings.map((key) => BUILDING_LABELS[key] || key).join('、') || '';
+  return buildings.map((key) => TechTreeConfig.BUILDING_LABELS[key] || key).join('、') || '';
 }
 
 function getTechStatus(tech, techs, currentEra) {
@@ -133,7 +125,7 @@ function getTechStatus(tech, techs, currentEra) {
 }
 
 function buildClientTech(tech, techs, currentEra) {
-  const canonicalTech = TECH_BY_ID[tech.id] || tech;
+  const canonicalTech = TechTreeConfig.TECH_BY_ID[tech.id] || tech;
   const status = getTechStatus({ ...canonicalTech, era: tech.era }, techs, currentEra);
   const unlockedBuildings = canonicalTech.effects?.unlockedBuildings || tech.effects?.unlockedBuildings || [];
   const resourceEntrances = canonicalTech.effects?.resourceEntrances || tech.effects?.resourceEntrances || [];
@@ -151,8 +143,8 @@ function buildClientTech(tech, techs, currentEra) {
     tree: clone(canonicalTech.tree || { column: tech.era, lane: 0, parents }),
     parents: [...parents],
     missingParents,
-    parentNames: parents.map((parentId) => TECH_BY_ID[parentId]?.name || parentId),
-    missingParentNames: missingParents.map((parentId) => TECH_BY_ID[parentId]?.name || parentId),
+    parentNames: parents.map((parentId) => TechTreeConfig.TECH_BY_ID[parentId]?.name || parentId),
+    missingParentNames: missingParents.map((parentId) => TechTreeConfig.TECH_BY_ID[parentId]?.name || parentId),
     status,
     researched: status === 'researched',
     available: status === 'available',
@@ -175,7 +167,7 @@ function getClientState(gameState = {}) {
 function getClientStateFromNormalized(gameState = {}) {
   const techs = gameState?.techs || normalizeTechState({});
   const currentEra = Math.max(0, Math.floor(Number(gameState.currentEra) || 0));
-  const eras = TECH_ERAS
+  const eras = TechTreeConfig.TECH_ERAS
     .map((eraConfig) => {
       const choices = getEraChoices(techs, eraConfig.era);
       const limit = getChoiceLimit(eraConfig.era);
@@ -207,7 +199,7 @@ function getClientStateFromNormalized(gameState = {}) {
 }
 
 function research(gameState, techId) {
-  const tech = TECH_BY_ID[techId];
+  const tech = TechTreeConfig.TECH_BY_ID[techId];
   if (!tech) return { success: false, error: 'TECH_NOT_FOUND', message: '科技不存在' };
   const techs = normalizeGameStateTechs(gameState);
   const currentEra = Math.max(0, Math.floor(Number(gameState.currentEra) || 0));

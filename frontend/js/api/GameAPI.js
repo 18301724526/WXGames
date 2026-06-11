@@ -1,9 +1,55 @@
 (function (global) {
+  const DEFAULT_TIMEOUT_MS = 10000;
+  const DEFAULT_MAX_RETRIES = 1;
+  const DEFAULT_RETRY_BASE_DELAY_MS = 250;
+  const DEFAULT_RETRY_MAX_DELAY_MS = 2000;
+  const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+  function toNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function getNow(scheduler = {}) {
+    const now = scheduler.now?.();
+    return Number.isFinite(Number(now)) ? Number(now) : Date.now();
+  }
+
+  function delay(ms, scheduler = {}) {
+    const waitMs = Math.max(0, Number(ms) || 0);
+    if (waitMs <= 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      scheduler.setTimeout(resolve, waitMs);
+    });
+  }
+
+  function createApiError(message, detail = {}) {
+    const error = new Error(message || 'API request failed');
+    Object.assign(error, detail);
+    return error;
+  }
+
+  function isAbortError(error) {
+    return error?.name === 'AbortError' || error?.code === 'ABORT_ERR';
+  }
+
   class GameAPI {
     constructor(baseUrl, token, options = {}) {
       this.baseUrl = baseUrl;
       this.token = token || null;
       this.transport = options.transport || null;
+      this.timeoutMs = Math.max(0, toNumber(options.timeoutMs, DEFAULT_TIMEOUT_MS));
+      this.maxRetries = Math.max(0, Math.floor(toNumber(options.maxRetries, DEFAULT_MAX_RETRIES)));
+      this.retryBaseDelayMs = Math.max(0, toNumber(options.retryBaseDelayMs, DEFAULT_RETRY_BASE_DELAY_MS));
+      this.retryMaxDelayMs = Math.max(this.retryBaseDelayMs, toNumber(options.retryMaxDelayMs, DEFAULT_RETRY_MAX_DELAY_MS));
+      this.requestSeq = 0;
+      this.versionEtag = '';
+      this.cachedVersionInfo = null;
+      this.scheduler = {
+        setTimeout: options.scheduler?.setTimeout || global.setTimeout?.bind?.(global) || setTimeout,
+        clearTimeout: options.scheduler?.clearTimeout || global.clearTimeout?.bind?.(global) || clearTimeout,
+        now: options.scheduler?.now || (() => Date.now()),
+      };
       global.WorldMarchTrace?.log?.('api:boot', {
         baseUrl,
         hasToken: Boolean(this.token),
@@ -16,10 +62,7 @@
     }
 
     buildUrl(path) {
-      const baseUrl = `${this.baseUrl}${path}`;
-      if (path !== '/version') return baseUrl;
-      const separator = baseUrl.includes('?') ? '&' : '?';
-      return `${baseUrl}${separator}_=${Date.now()}`;
+      return `${this.baseUrl}${path}`;
     }
 
     async request(method, path, body) {
@@ -28,6 +71,11 @@
       const trace = global.WorldMarchTrace;
       if (trace?.enabled?.()) headers['X-World-March-Trace'] = '1';
       const actionBody = body && typeof body === 'object' ? body : {};
+      const requestId = `api-${++this.requestSeq}`;
+      headers['X-Client-Request-ID'] = requestId;
+      if (path === '/version' && this.versionEtag) {
+        headers['If-None-Match'] = this.versionEtag;
+      }
       const isWorldMarchAction = path === '/game/action'
         && ['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch', 'claimExplore', 'startExplore']
           .includes(actionBody.action);
@@ -40,11 +88,16 @@
         method,
         headers,
         body: method === 'GET' ? undefined : JSON.stringify(tracedBody || {}),
+        path,
+        requestId,
+        timeoutMs: this.timeoutMs,
       };
       const loadTrace = global.H5LoadTrace;
       const loadTraceSpan = loadTrace?.apiStart?.(method, path, requestPayload.url, {
+        requestId,
         hasToken: Boolean(this.token),
         bodyBytes: requestPayload.body ? requestPayload.body.length : 0,
+        timeoutMs: this.timeoutMs,
       });
       if (isWorldMarchAction) {
         trace?.log?.('api:request', {
@@ -57,23 +110,52 @@
       }
       let response = null;
       let data = {};
+      let attempts = 0;
+      const startedAt = getNow(this.scheduler);
       try {
-        response = this.transport && typeof this.transport.request === 'function'
-          ? await this.transport.request(requestPayload)
-          : await fetch(requestPayload.url, {
-            method: requestPayload.method,
-            headers: requestPayload.headers,
-            body: requestPayload.body,
-          });
-        data = await response.json().catch(() => ({}));
+        while (true) {
+          attempts += 1;
+          try {
+            response = await this.performRequest({
+              ...requestPayload,
+              attempt: attempts,
+              maxRetries: this.maxRetries,
+            });
+            data = response.status === 304 ? {} : await response.json().catch(() => ({}));
+            if (response.ok || !this.shouldRetry({ method, attempts, response })) break;
+            await delay(this.getRetryDelayMs(attempts), this.scheduler);
+          } catch (error) {
+            if (!this.shouldRetry({ method, attempts, error })) throw error;
+            await delay(this.getRetryDelayMs(attempts), this.scheduler);
+          }
+        }
       } catch (error) {
-        loadTrace?.apiFail?.(loadTraceSpan, error, {
+        const requestError = this.normalizeRequestError(error, {
+          method,
+          path,
+          requestId,
+          attempts,
+          response,
+          startedAt,
+          retryable: this.isRetryableError(error),
+        });
+        loadTrace?.apiFail?.(loadTraceSpan, requestError, {
           status: response?.status || 0,
           ok: false,
+          requestId,
+          attempts,
+          code: requestError.code || '',
+          retryable: Boolean(requestError.retryable),
         });
-        throw error;
+        throw requestError;
       }
       if (!response.ok) {
+        if (response.status === 304 && path === '/version' && this.cachedVersionInfo) {
+          data = {
+            ...this.cachedVersionInfo,
+            notModified: true,
+          };
+        } else {
         if (isWorldMarchAction) {
           trace?.error?.('api:error', {
             status: response.status,
@@ -94,19 +176,37 @@
             payload: trace.summarizeApiPayload?.(data) || data,
           });
         }
-        const error = new Error(data.message || data.error || `HTTP ${response.status}`);
-        error.payload = data;
-        error.status = response.status;
+        const error = createApiError(data.message || data.error || `HTTP ${response.status}`, {
+          code: 'GAME_API_HTTP_ERROR',
+          payload: data,
+          status: response.status,
+          method,
+          path,
+          requestId,
+          attempts,
+          durationMs: Math.max(0, Math.round(getNow(this.scheduler) - startedAt)),
+          retryable: this.isRetryableStatus(response.status) && this.isRetryableMethod(method),
+        });
         loadTrace?.apiFail?.(loadTraceSpan, error, {
           status: response.status,
           ok: false,
+          requestId,
+          attempts,
+          code: error.code,
+          retryable: Boolean(error.retryable),
           payload: loadTrace.summarizePayload?.(data) || null,
         });
         throw error;
+        }
+      }
+      if (path === '/version') {
+        this.captureVersionCache(response, data);
       }
       loadTrace?.apiEnd?.(loadTraceSpan, {
         status: response.status,
         ok: true,
+        requestId,
+        attempts,
         payload: loadTrace.summarizePayload?.(data) || null,
       });
       if (isWorldMarchAction) {
@@ -125,6 +225,154 @@
         });
       }
       return data;
+    }
+
+    captureVersionCache(response, data) {
+      const getHeader = response?.headers?.get?.bind?.(response.headers);
+      const etag = getHeader ? getHeader('etag') || getHeader('ETag') : '';
+      if (etag) this.versionEtag = etag;
+      if (data && data.deploymentId && !data.notModified) this.cachedVersionInfo = { ...data };
+    }
+
+    async performRequest(requestPayload) {
+      const abortController = typeof global.AbortController === 'function'
+        ? new global.AbortController()
+        : null;
+      let timeoutId = null;
+      let didTimeout = false;
+      const payload = {
+        ...requestPayload,
+        signal: abortController?.signal,
+      };
+      const requestPromise = this.transport && typeof this.transport.request === 'function'
+        ? this.transport.request(payload)
+        : fetch(payload.url, {
+          method: payload.method,
+          headers: payload.headers,
+          body: payload.body,
+          signal: payload.signal,
+        });
+      const timeoutPromise = this.timeoutMs > 0
+        ? new Promise((_, reject) => {
+          timeoutId = this.scheduler.setTimeout(() => {
+            didTimeout = true;
+            abortController?.abort?.();
+            reject(createApiError(`API request timed out after ${this.timeoutMs}ms`, {
+              name: 'AbortError',
+              code: 'GAME_API_TIMEOUT',
+              status: 0,
+              timeoutMs: this.timeoutMs,
+            }));
+          }, this.timeoutMs);
+        })
+        : null;
+      try {
+        return timeoutPromise
+          ? await Promise.race([requestPromise, timeoutPromise])
+          : await requestPromise;
+      } catch (error) {
+        if (didTimeout || isAbortError(error)) {
+          throw createApiError(`API request timed out after ${this.timeoutMs}ms`, {
+            name: 'AbortError',
+            code: 'GAME_API_TIMEOUT',
+            status: 0,
+            timeoutMs: this.timeoutMs,
+            cause: error,
+          });
+        }
+        throw error;
+      } finally {
+        if (timeoutId !== null) this.scheduler.clearTimeout(timeoutId);
+      }
+    }
+
+    isRetryableMethod(method) {
+      return method === 'GET' || method === 'HEAD';
+    }
+
+    isRetryableStatus(status) {
+      return RETRYABLE_STATUS_CODES.has(Number(status));
+    }
+
+    isRetryableError(error) {
+      if (!error) return false;
+      return error.code === 'GAME_API_TIMEOUT'
+        || isAbortError(error)
+        || error.name === 'TypeError'
+        || error.status === 0;
+    }
+
+    shouldRetry({ method, attempts, response, error }) {
+      if (!this.isRetryableMethod(method)) return false;
+      if (attempts > this.maxRetries) return false;
+      if (response) return this.isRetryableStatus(response.status);
+      return this.isRetryableError(error);
+    }
+
+    getRetryDelayMs(attempt) {
+      const delayMs = this.retryBaseDelayMs * (2 ** Math.max(0, attempt - 1));
+      return Math.min(this.retryMaxDelayMs, delayMs);
+    }
+
+    normalizeRequestError(error, detail = {}) {
+      if (error?.method && error?.path && error?.requestId) return error;
+      return createApiError(error?.message || 'API request failed', {
+        ...error,
+        code: error?.code || (isAbortError(error) ? 'GAME_API_ABORTED' : 'GAME_API_NETWORK_ERROR'),
+        status: Number(error?.status || detail.response?.status || 0),
+        method: detail.method,
+        path: detail.path,
+        requestId: detail.requestId,
+        attempts: detail.attempts,
+        durationMs: Math.max(0, Math.round(getNow(this.scheduler) - detail.startedAt)),
+        timeoutMs: error?.timeoutMs || this.timeoutMs,
+        retryable: Boolean(detail.retryable && this.isRetryableMethod(detail.method)),
+        cause: error,
+      });
+    }
+
+    async reportClientEvent(event = {}) {
+      const body = event && typeof event === 'object'
+        ? { ...event }
+        : { type: 'frontend_load_failure', message: String(event || '') };
+      const requestId = `client-event-${++this.requestSeq}`;
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Client-Request-ID': requestId,
+      };
+      if (this.token) headers.Authorization = `Bearer ${this.token}`;
+      try {
+        const response = await this.performRequest({
+          url: this.buildUrl('/client-events'),
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            type: body.type || 'frontend_load_failure',
+            ...body,
+            requestId,
+          }),
+          path: '/client-events',
+          requestId,
+          timeoutMs: this.timeoutMs,
+          attempt: 1,
+          maxRetries: 0,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return {
+            success: false,
+            status: response.status,
+            payload: data,
+          };
+        }
+        return data;
+      } catch (error) {
+        global.console?.warn?.('[GameAPI] client event report failed', error);
+        return {
+          success: false,
+          error: error?.message || String(error || ''),
+        };
+      }
     }
 
     getState() { return this.request('GET', '/game/state'); }

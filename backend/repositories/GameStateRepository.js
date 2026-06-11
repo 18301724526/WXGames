@@ -1,3 +1,5 @@
+const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
+
 class GameStateRepository {
   constructor(db) {
     this.db = db;
@@ -14,6 +16,7 @@ class GameStateRepository {
       );
       CREATE TABLE IF NOT EXISTS game_states (
         playerId TEXT PRIMARY KEY,
+        revision INTEGER DEFAULT 0,
         saveMetadata TEXT,
         resources TEXT,
         buildings TEXT,
@@ -64,6 +67,9 @@ class GameStateRepository {
     `);
 
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
+    if (!columns.some((column) => column.name === 'revision')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN revision INTEGER DEFAULT 0').run();
+    }
     if (!columns.some((column) => column.name === 'tutorial')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN tutorial TEXT').run();
     }
@@ -137,6 +143,7 @@ class GameStateRepository {
     if (!row) return null;
     const state = {
       playerId: row.playerId,
+      revision: Number.isFinite(Number(row.revision)) ? Number(row.revision) : 0,
       saveMetadata: row.saveMetadata ? JSON.parse(row.saveMetadata) : null,
       resources: JSON.parse(row.resources || '{}'),
       buildings: JSON.parse(row.buildings || '{}'),
@@ -201,19 +208,86 @@ class GameStateRepository {
     return rows.map((row) => this.findByPlayerId(row.playerId)).filter(Boolean);
   }
 
-  save(gameState) {
+  createRevisionConflictError(playerId, expectedRevision, actualRevision) {
+    const error = new Error('Game state revision conflict');
+    error.code = 'GAME_STATE_REVISION_CONFLICT';
+    error.playerId = playerId;
+    error.expectedRevision = expectedRevision;
+    error.actualRevision = actualRevision;
+    return error;
+  }
+
+  getExistingRevision(playerId) {
+    const row = this.db.prepare('SELECT revision FROM game_states WHERE playerId = ?').get(playerId);
+    if (!row) return null;
+    const revision = Number(row.revision);
+    return Number.isFinite(revision) ? revision : 0;
+  }
+
+  writeGameStateRow(gameState, revision, updatedAt) {
+    const saveMetadata = {
+      ...(gameState.saveMetadata || {}),
+      performanceCapacity: PerformanceCapacityBudget.summarizeReport(
+        PerformanceCapacityBudget.checkSaveState({
+          ...gameState,
+          revision,
+          updatedAt,
+        }),
+      ),
+    };
     this.db.prepare(`
-      INSERT OR REPLACE INTO game_states (
-        playerId, saveMetadata, resources, buildings, population, techs, techEffects, currentEra,
+      INSERT INTO game_states (
+        playerId, revision, saveMetadata, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldAi, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(playerId) DO UPDATE SET
+        revision = excluded.revision,
+        saveMetadata = excluded.saveMetadata,
+        resources = excluded.resources,
+        buildings = excluded.buildings,
+        population = excluded.population,
+        techs = excluded.techs,
+        techEffects = excluded.techEffects,
+        currentEra = excluded.currentEra,
+        eraHistory = excluded.eraHistory,
+        happiness = excluded.happiness,
+        gameDay = excluded.gameDay,
+        eventQueue = excluded.eventQueue,
+        eventHistory = excluded.eventHistory,
+        offlineSnapshot = excluded.offlineSnapshot,
+        offlineEventLog = excluded.offlineEventLog,
+        negativeStreak = excluded.negativeStreak,
+        lastEventAt = excluded.lastEventAt,
+        tutorial = excluded.tutorial,
+        softGuideState = excluded.softGuideState,
+        talentPolicies = excluded.talentPolicies,
+        famousPeople = excluded.famousPeople,
+        famousPersonState = excluded.famousPersonState,
+        taskProgress = excluded.taskProgress,
+        military = excluded.military,
+        regularEventState = excluded.regularEventState,
+        threatEventState = excluded.threatEventState,
+        activeBuffs = excluded.activeBuffs,
+        polity = excluded.polity,
+        territories = excluded.territories,
+        worldMap = excluded.worldMap,
+        activeCityId = excluded.activeCityId,
+        cities = excluded.cities,
+        scoutedCoordinates = excluded.scoutedCoordinates,
+        scoutState = excluded.scoutState,
+        exploreMissions = excluded.exploreMissions,
+        worldAi = excluded.worldAi,
+        warMissions = excluded.warMissions,
+        scoutReports = excluded.scoutReports,
+        updatedAt = excluded.updatedAt
     `).run(
       gameState.playerId,
-      JSON.stringify(gameState.saveMetadata || {}),
+      revision,
+      JSON.stringify(saveMetadata),
       JSON.stringify(gameState.resources || {}),
       JSON.stringify(gameState.buildings || {}),
       JSON.stringify(gameState.population || {}),
@@ -250,9 +324,58 @@ class GameStateRepository {
       JSON.stringify(gameState.worldAi || {}),
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
-      new Date().toISOString(),
+      updatedAt,
     );
-    this.saveSharedWorldTerritories(gameState);
+  }
+
+  saveWithinTransaction(gameState, options = {}) {
+    const playerId = gameState?.playerId || '';
+    if (!playerId) throw new Error('Game state playerId is required');
+    const existingRevision = this.getExistingRevision(playerId);
+    const expectedRevision = options.expectedRevision ?? gameState.revision;
+    const hasExpectedRevision = expectedRevision !== null
+      && expectedRevision !== undefined
+      && Number.isFinite(Number(expectedRevision));
+    if (existingRevision !== null && hasExpectedRevision && Number(expectedRevision) !== existingRevision) {
+      throw this.createRevisionConflictError(playerId, Number(expectedRevision), existingRevision);
+    }
+    const revision = existingRevision === null ? 1 : existingRevision + 1;
+    const updatedAt = new Date().toISOString();
+    this.writeGameStateRow(gameState, revision, updatedAt);
+    const savedState = {
+      ...gameState,
+      revision,
+      updatedAt,
+    };
+    this.saveSharedWorldTerritories(savedState);
+    return savedState;
+  }
+
+  saveAtomic(gameState, options = {}) {
+    const transaction = this.db.transaction((state, opts) => this.saveWithinTransaction(state, opts));
+    const savedState = transaction(gameState, options);
+    gameState.revision = savedState.revision;
+    gameState.updatedAt = savedState.updatedAt;
+    return savedState;
+  }
+
+  save(gameState, options = {}) {
+    return this.saveAtomic(gameState, options);
+  }
+
+  resetPlayerState(playerId, gameState) {
+    const transaction = this.db.transaction((id, state) => {
+      this.db.prepare('DELETE FROM game_states WHERE playerId = ?').run(id);
+      this.db.prepare('DELETE FROM shared_world_territories WHERE ownerPlayerId = ?').run(id);
+      return this.saveWithinTransaction({ ...(state || {}), playerId: id }, { expectedRevision: null });
+    });
+    const savedState = transaction(playerId, gameState);
+    if (gameState && typeof gameState === 'object') {
+      gameState.playerId = savedState.playerId;
+      gameState.revision = savedState.revision;
+      gameState.updatedAt = savedState.updatedAt;
+    }
+    return savedState;
   }
 
   getSharedWorldTerritories() {

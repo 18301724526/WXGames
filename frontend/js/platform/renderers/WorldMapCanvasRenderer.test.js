@@ -179,7 +179,7 @@ test('WorldMapCanvasRenderer renders world march formation picker through HUD fa
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeWorldMarchHud'), true);
 });
 
-test('WorldMapCanvasRenderer renders active explorer units as map-layer animation', () => {
+test('WorldMapCanvasRenderer renders active explorer units through actor facade', () => {
   const calls = [];
   const baseCtx = createHost().ctx;
   const host = createHost({
@@ -256,15 +256,10 @@ test('WorldMapCanvasRenderer computes world march actors from epoch time, not fr
   };
   const renderer = new WorldMapCanvasRenderer({
     host,
-    worldActorRenderer: {
-      addActorHitTargets(actors) {
-        capturedActors.push(...actors);
-        return true;
-      },
-    },
   });
 
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
+  capturedActors.push(...(host.lastWorldTileMapContext?.actors || []));
 
   assert.equal(capturedActors.length, 1);
   assert.equal(host.lastWorldTileMapContext.renderSnapshot.actors.length, 1);

@@ -51,10 +51,11 @@
       return sharedTileMapManifest || {};
     }
 
-    preloadAssets(assetPaths = this.getPreloadAssetPaths(), onProgress = null) {
+    preloadAssets(assetPaths = this.getPreloadAssetPaths(), onProgress = null, options = {}) {
       const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
       const total = paths.length;
       const report = typeof onProgress === 'function' ? onProgress : null;
+      const preloadOptions = options && typeof options === 'object' ? options : {};
       if (!total) {
         report?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
         return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
@@ -75,7 +76,11 @@
           else failed += 1;
           notify(assetPath, status);
           if (completed >= total) {
-            this.prewarmWorldTileCaches(paths);
+            if (preloadOptions.deferPrewarm === false) {
+              this.prewarmWorldTileCaches(paths);
+            } else if (preloadOptions.deferPrewarm === true || preloadOptions.prewarm) {
+              this.scheduleWorldTileCachePrewarm(paths, preloadOptions.prewarm || preloadOptions);
+            }
             resolve({ total, completed, loaded, failed, percentage: 100 });
           }
         };
@@ -123,6 +128,33 @@
       });
     }
 
+    getWorldTileCachePrewarmCandidatePaths(assetPaths = this.getPreloadAssetPaths()) {
+      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
+      return paths.filter((assetPath) => {
+        const cached = this.assetCache.get(assetPath);
+        if (cached?.status !== 'loaded') return false;
+        return this.isWorldTilePrewarmMetricAssetPath(assetPath)
+          || this.isWorldTileTemplateAssetPath(assetPath);
+      });
+    }
+
+    prewarmWorldTileCacheAsset(assetPath = '', result = { total: 0, metrics: 0, masks: 0, dryTemplates: 0 }) {
+      const cached = this.assetCache.get(assetPath);
+      if (cached?.status !== 'loaded') return result;
+      if (this.isWorldTilePrewarmMetricAssetPath(assetPath) && !this.assetMetricsCache.has(assetPath)) {
+        if (this.analyzeAssetAlphaBounds(assetPath)) result.metrics += 1;
+      }
+      if (!this.isWorldTileTemplateAssetPath(assetPath)) return result;
+      const hadMask = this.worldTileMaskCache.has(assetPath);
+      const mask = this.getWorldTileTemplateMask(assetPath);
+      if (mask && !hadMask) result.masks += 1;
+      if (!this.isWorldTileWaterTemplateAssetPath(assetPath)) return result;
+      const hadDryTemplate = this.worldTileDryCompositeCache.has(assetPath);
+      const dryTemplate = this.getWorldTileDryTemplateCanvas(assetPath);
+      if (dryTemplate && !hadDryTemplate) result.dryTemplates += 1;
+      return result;
+    }
+
     isWorldTilePrewarmMetricAssetPath(assetPath = '') {
       const path = String(assetPath || '');
       return path.startsWith('assets/art/tile-map/')
@@ -140,21 +172,134 @@
     prewarmWorldTileCaches(assetPaths = this.getPreloadAssetPaths()) {
       const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
       const result = { total: paths.length, metrics: 0, masks: 0, dryTemplates: 0 };
-      paths.forEach((assetPath) => {
-        const cached = this.assetCache.get(assetPath);
-        if (cached?.status !== 'loaded') return;
-        if (this.isWorldTilePrewarmMetricAssetPath(assetPath) && !this.assetMetricsCache.has(assetPath)) {
-          if (this.analyzeAssetAlphaBounds(assetPath)) result.metrics += 1;
-        }
-        if (!this.isWorldTileTemplateAssetPath(assetPath)) return;
-        const hadMask = this.worldTileMaskCache.has(assetPath);
-        const mask = this.getWorldTileTemplateMask(assetPath);
-        if (mask && !hadMask) result.masks += 1;
-        if (!this.isWorldTileWaterTemplateAssetPath(assetPath)) return;
-        const hadDryTemplate = this.worldTileDryCompositeCache.has(assetPath);
-        const dryTemplate = this.getWorldTileDryTemplateCanvas(assetPath);
-        if (dryTemplate && !hadDryTemplate) result.dryTemplates += 1;
+      this.getWorldTileCachePrewarmCandidatePaths(paths)
+        .forEach((assetPath) => this.prewarmWorldTileCacheAsset(assetPath, result));
+      return result;
+    }
+
+    getWorldTileCachePrewarmTimerHost() {
+      return this.h5Runtime?.runtime
+        || this.h5Runtime
+        || this.runtime?.runtime
+        || this.runtime
+        || global;
+    }
+
+    getWorldTileCachePrewarmNow() {
+      const host = this.getWorldTileCachePrewarmTimerHost();
+      const perfNow = host?.performance?.now?.();
+      if (Number.isFinite(perfNow)) return perfNow;
+      const runtimeNow = host?.now?.();
+      if (Number.isFinite(runtimeNow)) return runtimeNow;
+      return Date.now();
+    }
+
+    getWorldTileCachePrewarmChunkSize() {
+      const nav = global.navigator || {};
+      const cores = Number(nav.hardwareConcurrency) || 0;
+      const memory = Number(nav.deviceMemory) || 0;
+      if ((cores && cores <= 4) || (memory && memory <= 4)) return 1;
+      return 2;
+    }
+
+    getWorldTileCachePrewarmInitialDelayMs() {
+      const nav = global.navigator || {};
+      const cores = Number(nav.hardwareConcurrency) || 0;
+      const memory = Number(nav.deviceMemory) || 0;
+      if ((cores && cores <= 4) || (memory && memory <= 4)) return 8000;
+      if ((cores && cores <= 6) || (memory && memory <= 6)) return 5000;
+      return 3000;
+    }
+
+    getWorldTileCachePrewarmBetweenChunksMs() {
+      const nav = global.navigator || {};
+      const cores = Number(nav.hardwareConcurrency) || 0;
+      const memory = Number(nav.deviceMemory) || 0;
+      if ((cores && cores <= 4) || (memory && memory <= 4)) return 850;
+      if ((cores && cores <= 6) || (memory && memory <= 6)) return 450;
+      return 180;
+    }
+
+    cancelWorldTileCachePrewarmTask() {
+      const task = this.worldTileCachePrewarmTask;
+      if (!task) return false;
+      task.cancelled = true;
+      const host = task.host || this.getWorldTileCachePrewarmTimerHost();
+      if (task.timer && typeof host?.clearTimeout === 'function') {
+        host.clearTimeout(task.timer);
+      }
+      this.worldTileCachePrewarmTask = null;
+      return true;
+    }
+
+    scheduleWorldTileCachePrewarm(assetPaths = this.getPreloadAssetPaths(), options = {}) {
+      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
+      const candidates = this.getWorldTileCachePrewarmCandidatePaths(paths);
+      const result = {
+        total: paths.length,
+        candidateTotal: candidates.length,
+        scheduled: false,
+        metrics: 0,
+        masks: 0,
+        dryTemplates: 0,
+      };
+      if (!candidates.length) return result;
+
+      this.cancelWorldTileCachePrewarmTask();
+      const host = this.getWorldTileCachePrewarmTimerHost();
+      const setDelay = typeof host?.setTimeout === 'function' ? host.setTimeout : global.setTimeout;
+      if (typeof setDelay !== 'function') {
+        candidates.forEach((assetPath) => this.prewarmWorldTileCacheAsset(assetPath, result));
+        return result;
+      }
+
+      const initialDelayMs = Math.max(0, Number(options.initialDelayMs ?? options.delayMs ?? this.getWorldTileCachePrewarmInitialDelayMs()) || 0);
+      const betweenChunksMs = Math.max(0, Number(options.betweenChunksMs ?? this.getWorldTileCachePrewarmBetweenChunksMs()) || 0);
+      const chunkSize = Math.max(1, Math.floor(Number(options.chunkSize ?? this.getWorldTileCachePrewarmChunkSize()) || 1));
+      const task = {
+        cancelled: false,
+        host,
+        timer: null,
+      };
+      this.worldTileCachePrewarmTask = task;
+      result.scheduled = true;
+
+      const trace = global.H5LoadTrace;
+      trace?.phaseStart?.('assets:prewarm:deferred', {
+        total: result.total,
+        candidateTotal: result.candidateTotal,
+        chunkSize,
+        initialDelayMs,
+        betweenChunksMs,
       });
+
+      let index = 0;
+      const runChunk = () => {
+        if (task.cancelled) return;
+        const chunkStartedAt = this.getWorldTileCachePrewarmNow();
+        let processed = 0;
+        while (index < candidates.length && processed < chunkSize) {
+          this.prewarmWorldTileCacheAsset(candidates[index], result);
+          index += 1;
+          processed += 1;
+        }
+        if (index < candidates.length) {
+          task.timer = setDelay.call(host, runChunk, betweenChunksMs);
+          return;
+        }
+        this.worldTileCachePrewarmTask = null;
+        trace?.phaseEnd?.('assets:prewarm:deferred', {
+          total: result.total,
+          candidateTotal: result.candidateTotal,
+          metrics: result.metrics,
+          masks: result.masks,
+          dryTemplates: result.dryTemplates,
+          lastChunkMs: Math.max(0, Math.round(this.getWorldTileCachePrewarmNow() - chunkStartedAt)),
+          forceLog: true,
+        });
+      };
+
+      task.timer = setDelay.call(host, runChunk, initialDelayMs);
       return result;
     }
 

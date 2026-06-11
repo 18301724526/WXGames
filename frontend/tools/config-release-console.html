@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>配置发布控制台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --ink: #1e2933;
+      --muted: #65758b;
+      --line: #d8e0ea;
+      --accent: #126e75;
+      --accent-dark: #0d5156;
+      --danger: #b33a3a;
+      --warn: #966515;
+      --ok: #20744f;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); }
+    main { width: min(1240px, calc(100vw - 32px)); margin: 0 auto; padding: 26px 0 42px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: 0; }
+    button { min-height: 38px; border: 1px solid transparent; border-radius: 6px; padding: 0 14px; color: #fff; background: var(--accent); cursor: pointer; font-size: 14px; white-space: nowrap; }
+    button.secondary { background: #fff; color: var(--accent-dark); border-color: var(--accent); }
+    button.warning { background: #fff; color: var(--warn); border-color: #c99448; }
+    button.danger { background: #fff; color: var(--danger); border-color: #d28b8b; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+    .status { min-height: 42px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); line-height: 1.45; }
+    .status.ok { color: var(--ok); border-color: #b7d8ca; background: #f1faf6; }
+    .status.error { color: var(--danger); border-color: #e1b5b5; background: #fff4f4; }
+    .status.warn { color: var(--warn); border-color: #dfc287; background: #fff9ea; }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+    .stack { display: grid; gap: 16px; }
+    .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 16px; overflow: hidden; }
+    .meta { display: grid; gap: 9px; }
+    .meta-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding-bottom: 9px; border-bottom: 1px solid #edf1f5; font-size: 13px; color: var(--muted); }
+    .meta-row strong { color: var(--ink); overflow-wrap: anywhere; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .summary-item { border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); padding: 10px; }
+    .summary-item span { display: block; color: var(--muted); font-size: 12px; }
+    .summary-item strong { display: block; margin-top: 5px; font-size: 18px; color: var(--ink); }
+    .summary-item.bad strong { color: var(--danger); }
+    .summary-item.good strong { color: var(--ok); }
+    .history { display: grid; gap: 10px; max-height: 450px; overflow: auto; padding-right: 4px; }
+    .release-item { display: grid; gap: 8px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 7px; background: var(--surface-soft); }
+    .release-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .release-title { font-weight: 700; overflow-wrap: anywhere; }
+    .release-meta { color: var(--muted); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+    .pill { padding: 4px 8px; border-radius: 999px; border: 1px solid #cae2de; background: #f0fbf9; color: var(--accent-dark); font-size: 12px; }
+    .pill.bad { border-color: #e4b9b9; background: #fff4f4; color: var(--danger); }
+    .pill.warn { border-color: #e0c48d; background: #fff9ea; color: var(--warn); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid #e8eef4; text-align: left; vertical-align: top; }
+    th { color: #475569; background: #f8fafc; font-weight: 700; }
+    td { color: #273544; overflow-wrap: anywhere; }
+    .empty { color: var(--muted); line-height: 1.6; font-size: 13px; }
+    .list { margin: 0; padding-left: 18px; line-height: 1.65; }
+    .list.error { color: var(--danger); }
+    .list.warn { color: var(--warn); }
+
+    @media (max-width: 900px) {
+      header { display: block; }
+      .toolbar, .grid, .summary { display: grid; grid-template-columns: 1fr; }
+      .toolbar button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>配置发布控制台</h1>
+      <button id="refreshButton" class="secondary" type="button">刷新</button>
+    </header>
+
+    <section class="toolbar" aria-label="配置发布操作">
+      <button id="previewButton" type="button">预览当前配置</button>
+      <button id="publishButton" type="button" disabled>发布审计记录</button>
+      <button id="reloadButton" class="secondary" type="button">读取发布记录</button>
+    </section>
+
+    <div id="status" class="status">等待读取配置发布状态。</div>
+
+    <section class="grid">
+      <aside class="stack">
+        <section class="panel">
+          <h2>Active Release</h2>
+          <div id="activeMeta" class="meta"></div>
+        </section>
+        <section class="panel">
+          <h2>Runtime Status</h2>
+          <div id="runtimeMeta" class="meta"></div>
+        </section>
+        <section class="panel">
+          <h2>Runtime Loader</h2>
+          <div id="loaderMeta" class="meta"></div>
+        </section>
+        <section class="panel">
+          <h2>Release History</h2>
+          <div id="historyList" class="history"></div>
+        </section>
+      </aside>
+
+      <section class="panel">
+        <h2>Preview</h2>
+        <div id="previewPane" class="empty">暂无预览。</div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const apiBaseParam = new URLSearchParams(location.search).get('apiBase');
+    const API_BASE = (apiBaseParam || '/api').replace(/\/$/, '');
+    const token = localStorage.getItem('cf_token') || localStorage.getItem('token') || '';
+    const state = { preview: null };
+
+    const activeMetaEl = document.getElementById('activeMeta');
+    const runtimeMetaEl = document.getElementById('runtimeMeta');
+    const loaderMetaEl = document.getElementById('loaderMeta');
+    const historyListEl = document.getElementById('historyList');
+    const previewPaneEl = document.getElementById('previewPane');
+    const statusEl = document.getElementById('status');
+    const previewButton = document.getElementById('previewButton');
+    const publishButton = document.getElementById('publishButton');
+    const refreshButton = document.getElementById('refreshButton');
+    const reloadButton = document.getElementById('reloadButton');
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[char]));
+    }
+
+    function setStatus(message, type = '') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`.trim();
+    }
+
+    async function request(path, options = {}) {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
+          ...(options.headers || {}),
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.message || data.error || `HTTP ${response.status}`);
+        error.payload = data;
+        throw error;
+      }
+      return data;
+    }
+
+    function renderMeta(release) {
+      if (!release) {
+        activeMetaEl.innerHTML = '<div class="empty">暂无 active release。</div>';
+        return;
+      }
+      const rows = [
+        ['ID', release.id || '-'],
+        ['Action', release.action || '-'],
+        ['Operator', release.operator || '-'],
+        ['Created', release.createdAt || '-'],
+        ['Source', release.source || '-'],
+        ['Snapshot', release.snapshotHash || '-'],
+        ['Registries', release.registryCount ?? '-'],
+      ];
+      activeMetaEl.innerHTML = rows
+        .map(([label, value]) => `<div class="meta-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+        .join('');
+    }
+
+    function renderRuntimeStatus(runtimeStatus = {}) {
+      const rows = [
+        ['Status', runtimeStatus.status || '-'],
+        ['Mode', runtimeStatus.mode || '-'],
+        ['Matches', runtimeStatus.matchesCurrent ? 'yes' : 'no'],
+        ['Generated', runtimeStatus.generatedAt || '-'],
+        ['Changed', runtimeStatus.drift?.changedCount ?? '-'],
+        ['Added', runtimeStatus.drift?.addedCount ?? '-'],
+        ['Removed', runtimeStatus.drift?.removedCount ?? '-'],
+      ];
+      runtimeMetaEl.innerHTML = rows
+        .map(([label, value]) => `<div class="meta-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+        .join('');
+    }
+
+    function renderLoaderStatus(loaderStatus = {}) {
+      const rows = [
+        ['Status', loaderStatus.status || '-'],
+        ['Ready', loaderStatus.ready ? 'yes' : 'no'],
+        ['Payload', loaderStatus.payloadIncluded ? 'included' : 'not loaded'],
+        ['Registries', loaderStatus.registryCount ?? '-'],
+        ['Errors', Array.isArray(loaderStatus.errors) ? loaderStatus.errors.length : 0],
+        ['Warnings', Array.isArray(loaderStatus.warnings) ? loaderStatus.warnings.length : 0],
+      ];
+      loaderMetaEl.innerHTML = rows
+        .map(([label, value]) => `<div class="meta-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+        .join('');
+    }
+
+    function renderSummary(candidate = {}, report = {}) {
+      const comparison = candidate.comparison || report.comparison || {};
+      const validation = candidate.validation || {};
+      const changedCount = comparison.changedCount ?? comparison.changedRegistries?.length ?? 0;
+      const addedCount = comparison.addedCount ?? comparison.addedRegistryIds?.length ?? 0;
+      const removedCount = comparison.removedCount ?? comparison.removedRegistryIds?.length ?? 0;
+      return `
+        <div class="summary">
+          <div class="summary-item ${validation.success === false ? 'bad' : 'good'}"><span>Validation</span><strong>${validation.success === false ? 'Failed' : 'OK'}</strong></div>
+          <div class="summary-item"><span>Changed</span><strong>${escapeHtml(changedCount)}</strong></div>
+          <div class="summary-item"><span>Added</span><strong>${escapeHtml(addedCount)}</strong></div>
+          <div class="summary-item ${removedCount ? 'bad' : ''}"><span>Removed</span><strong>${escapeHtml(removedCount)}</strong></div>
+        </div>
+      `;
+    }
+
+    function renderMessages(report = {}) {
+      const errors = report.errors || [];
+      const warnings = report.warnings || [];
+      return [
+        errors.length ? `<ul class="list error">${errors.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '',
+        warnings.length ? `<ul class="list warn">${warnings.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '',
+      ].join('');
+    }
+
+    function renderRegistries(snapshot = {}) {
+      const registries = snapshot.registries || [];
+      if (!registries.length) return '<div class="empty">暂无 registry snapshot。</div>';
+      return `
+        <table>
+          <thead>
+            <tr><th>Registry</th><th>Version</th><th>Schema</th><th>Entries</th><th>Hash</th><th>Source</th></tr>
+          </thead>
+          <tbody>
+            ${registries.map((registry) => `
+              <tr>
+                <td>${escapeHtml(registry.id)}</td>
+                <td>${escapeHtml(registry.version)}</td>
+                <td>${escapeHtml(`${registry.schema}@${registry.schemaVersion}`)}</td>
+                <td>${escapeHtml(registry.entryCount)}</td>
+                <td>${escapeHtml(registry.contentHash)}</td>
+                <td>${escapeHtml(registry.source || '')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderPreview(result = {}) {
+      const candidate = result.candidate || result.release || {};
+      const report = result.report || {};
+      const comparison = candidate.comparison || {};
+      const changedIds = comparison.changedRegistryIds || [];
+      const addedIds = comparison.addedRegistryIds || [];
+      const removedIds = comparison.removedRegistryIds || [];
+      const pills = [
+        ...changedIds.map((id) => `<span class="pill">${escapeHtml(id)}</span>`),
+        ...addedIds.map((id) => `<span class="pill warn">+ ${escapeHtml(id)}</span>`),
+        ...removedIds.map((id) => `<span class="pill bad">- ${escapeHtml(id)}</span>`),
+      ].join('');
+      previewPaneEl.innerHTML = `
+        ${renderSummary(candidate, report)}
+        ${pills ? `<div class="pill-row">${pills}</div>` : '<div class="pill-row"><span class="pill">No registry diff</span></div>'}
+        ${renderMessages(report)}
+        ${renderRegistries(report.current || result.release?.snapshot || {})}
+      `;
+    }
+
+    function renderHistory(history = {}) {
+      const releases = history.releases || [];
+      if (!releases.length) {
+        historyListEl.innerHTML = '<div class="empty">暂无发布记录。</div>';
+        return;
+      }
+      historyListEl.innerHTML = releases.map((release) => {
+        const validationClass = release.validation?.success === false ? 'bad' : '';
+        return `
+          <div class="release-item">
+            <div class="release-head">
+              <div class="release-title">${escapeHtml(release.action || 'release')} · ${escapeHtml(release.snapshotHash || '-')}</div>
+              <button class="warning rollbackButton" type="button" data-id="${escapeHtml(release.id)}">回滚</button>
+            </div>
+            <div class="release-meta">${escapeHtml(release.id || '-')}</div>
+            <div class="release-meta">${escapeHtml(release.operator || '-')} · ${escapeHtml(release.createdAt || '-')}</div>
+            <div class="release-meta">source: ${escapeHtml(release.source || '-')}</div>
+            <div class="pill-row">
+              <span class="pill ${validationClass}">${release.validation?.success === false ? 'validation failed' : 'validation ok'}</span>
+              <span class="pill">registries ${escapeHtml(release.registryCount ?? '-')}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadReleases(message = '配置发布状态已刷新。') {
+      if (!token) {
+        setStatus('未检测到登录 token，请先登录管理员账号。', 'error');
+        return;
+      }
+      const [activeResult, historyResult, runtimeResult] = await Promise.all([
+        request('/admin/config-releases/active?includeSnapshot=true&includeReport=true'),
+        request('/admin/config-releases?limit=20&includeReport=true'),
+        request('/admin/config-releases/runtime-status'),
+      ]);
+      renderMeta(activeResult.activeRelease?.release);
+      renderHistory(historyResult.history || {});
+      renderRuntimeStatus(runtimeResult.runtimeStatus || {});
+      renderLoaderStatus(runtimeResult.loaderStatus || {});
+      setStatus(message, 'ok');
+    }
+
+    async function previewCurrent() {
+      if (!token) return setStatus('未检测到登录 token，请先登录管理员账号。', 'error');
+      const result = await request('/admin/config-releases/preview', {
+        method: 'POST',
+        body: JSON.stringify({ source: 'admin-console-current' }),
+      });
+      state.preview = result;
+      renderPreview(result);
+      publishButton.disabled = !result.success;
+      setStatus(result.success ? '当前配置预览通过。' : '当前配置预览未通过。', result.success ? 'ok' : 'error');
+    }
+
+    async function publishCurrent() {
+      if (!state.preview?.success) return setStatus('请先通过预览。', 'warn');
+      if (!confirm('确认写入配置发布审计记录并更新 active release 指针？')) return;
+      const result = await request('/admin/config-releases/publish', {
+        method: 'POST',
+        body: JSON.stringify({ source: 'admin-console-current' }),
+      });
+      renderPreview(result);
+      publishButton.disabled = true;
+      await loadReleases('配置发布审计记录已写入。');
+    }
+
+    async function rollbackRelease(releaseId) {
+      if (!confirm('确认回滚 active release 指针到该记录？')) return;
+      const result = await request('/admin/config-releases/rollback', {
+        method: 'POST',
+        body: JSON.stringify({ releaseId }),
+      });
+      renderPreview(result);
+      publishButton.disabled = true;
+      await loadReleases('active release 指针已回滚。');
+    }
+
+    previewButton.addEventListener('click', () => previewCurrent().catch((error) => {
+      renderPreview(error.payload || {});
+      setStatus(error.message, 'error');
+    }));
+    publishButton.addEventListener('click', () => publishCurrent().catch((error) => setStatus(error.message, 'error')));
+    refreshButton.addEventListener('click', () => loadReleases().catch((error) => setStatus(error.message, 'error')));
+    reloadButton.addEventListener('click', () => loadReleases().catch((error) => setStatus(error.message, 'error')));
+    historyListEl.addEventListener('click', (event) => {
+      const button = event.target.closest('.rollbackButton');
+      if (button?.dataset.id) rollbackRelease(button.dataset.id).catch((error) => setStatus(error.message, 'error'));
+    });
+
+    loadReleases().catch((error) => setStatus(error.message, 'error'));
+  </script>
+</body>
+</html>

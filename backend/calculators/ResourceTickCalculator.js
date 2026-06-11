@@ -1,4 +1,4 @@
-const GameConfig = require('../config/GameConfig');
+const { GameConfig } = require('../services/config/GameplayConfigRuntime');
 
 function calculateFoodConsumption(totalPopulation) {
   return (totalPopulation || 0) * GameConfig.resources.foodConsumptionPerPerson;

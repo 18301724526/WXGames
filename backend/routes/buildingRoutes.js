@@ -1,4 +1,4 @@
-const BuildingConfig = require('../config/BuildingConfig');
+const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const BuildingActionService = require('../services/BuildingActionService');
 const TutorialService = require('../services/TutorialService');

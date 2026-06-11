@@ -56,6 +56,13 @@
       return Promise.resolve({ total: paths.length, completed: paths.length, loaded: 0, failed: paths.length, percentage: 100 });
     },
 
+    scheduleWorldTileCachePrewarm(...args) {
+      const result = this.delegateAssetRenderer('scheduleWorldTileCachePrewarm', args);
+      return result === undefined
+        ? { total: 0, candidateTotal: 0, scheduled: false, metrics: 0, masks: 0, dryTemplates: 0 }
+        : result;
+    },
+
     isWorldTilePrewarmMetricAssetPath(...args) {
       const result = this.delegateAssetRenderer('isWorldTilePrewarmMetricAssetPath', args);
       return result === undefined ? false : result;

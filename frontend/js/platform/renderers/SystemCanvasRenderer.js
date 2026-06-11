@@ -119,7 +119,7 @@
           align: 'center',
         });
       }
-      this.drawText('\u8bb0\u4f4f\u5bc6\u7801', inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
+      this.drawText('\u8bb0\u4f4f\u8d26\u53f7', inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
         size: 13,
         color: '#cbbd96',
         baseline: 'middle',

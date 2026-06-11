@@ -1,6 +1,6 @@
-const TutorialService = require('../services/TutorialService');
+﻿const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
-const { getAdvanceConfig, getEraName } = require('../config/EraConfig');
+const { EraConfig } = require('../services/config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const CityService = require('../services/CityService');
 const TechTreeService = require('../services/TechTreeService');
@@ -58,15 +58,15 @@ function welcomeSettlementResident(gameState, nextEra) {
 function execute(gameState, tutorial) {
   CityService.normalizeCities(gameState);
   if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) {
-    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '只有主城可以推动文明进阶', tutorial };
+    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '鍙湁涓诲煄鍙互鎺ㄥ姩鏂囨槑杩涢樁', tutorial };
   }
   const capital = CityService.getCapitalCity(gameState);
-  const config = getAdvanceConfig(gameState.currentEra);
+  const config = EraConfig.getAdvanceConfig(gameState.currentEra);
   if (!config) {
-    return { success: false, error: 'ERA_MAX_REACHED', message: '已达到当前版本最高时代', tutorial };
+    return { success: false, error: 'ERA_MAX_REACHED', message: 'Max era reached', tutorial };
   }
   if (!hasEnoughResources(capital.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
-    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进阶', tutorial };
+    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: 'Insufficient resources', tutorial };
   }
 
   capital.resources = deductResources(capital.resources, config.cost);
@@ -92,7 +92,7 @@ function execute(gameState, tutorial) {
 
   return {
     success: true,
-    message: `已进入${getEraName(config.nextEra)}${techGrant.granted ? `，获得科技点 +${techGrant.granted}` : ''}`,
+    message: `Advanced to ${EraConfig.getEraName(config.nextEra)}${techGrant.granted ? `, tech points +${techGrant.granted}` : ''}`,
     currentEra: config.nextEra,
     techGrant,
     tutorial: nextTutorial,

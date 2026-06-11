@@ -186,7 +186,7 @@ Stable 晋升约定 / Stable Promotion Convention:
 负责 / Owns:
 
 - Mature engine canvas layer contract / 成熟引擎画布层契约
-- Shell-owned physical canvas stack: `worldMap`, `worldFog`, `mainHud`
+- Shell-owned physical canvas stack: `worldMap`, `worldFog`, `worldActor`, `mainHud`
 - Stable layer keys, default `zIndex`, default `contextType`, camera space, input-surface role, and feature gates
 - Logical render queue / 逻辑渲染队列
 - Hit priority queue / 命中优先级队列
@@ -212,7 +212,8 @@ Stable 晋升约定 / Stable Promotion Convention:
 
 - `worldMap`: key `worldMap`, `zIndex: 997`, `contextType: 2d`, `cameraSpace: world`, non-input world playfield
 - `worldFog`: key `worldFog`, `zIndex: 998`, `contextType: webgl`, `cameraSpace: world-overlay`, gated by `FOG_OF_WAR_ENABLED`
-- `mainHud`: key `mainHud`, `zIndex: 999`, `contextType: 2d`, `cameraSpace: screen`, the only input surface
+- `worldActor`: key `worldActor`, `zIndex: 999`, `contextType: 2d`, `cameraSpace: world-dynamic`, non-input actor layer
+- `mainHud`: key `mainHud`, `zIndex: 1000`, `contextType: 2d`, `cameraSpace: screen`, the only input surface
 
 扩展方式 / Extension Path:
 
@@ -221,10 +222,11 @@ Stable 晋升约定 / Stable Promotion Convention:
 - 新增 renderer bucket 或 hit-target priority 必须先更新 `RENDER_QUEUE` / `HIT_PRIORITY_QUEUE` 并补 focused tests。
 - 图层生命周期必须通过 `CanvasGameShell` helper，不允许 renderer 直接接管。
 - `mainHud` is registered here for the contract, but its lifecycle is the primary canvas created by `H5CanvasRuntime.ensureCanvas()`, not a secondary `ensureLayerCanvas()` layer.
+- `WorldMapLayerOwnershipContract.test.js` guards the current owner split: `worldMap` publishes context/static targets only, `worldActor` owns actor drawing/actor targets, and `mainHud` owns map-home march command HUD.
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/H5CanvasRuntime.test.js frontend/js/platform/CanvasGameShell.test.js`
+- `node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platform/H5CanvasRuntime.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameShell.js`
@@ -341,7 +343,7 @@ P0 新增公开 API / Public API Added During P0:
 负责 / Owns:
 
 - pure snapshot render option resolution for shell world-map refreshes
-- world-tile water animation frame timing and layer padding policy
+- world-tile water animation frame timing, mobile device refresh floors, and layer padding policy
 - world-map drag state, cooldown, transform limit, drag offset, and pan normalization
 - runtime world-map frame option derivation and snapshot-water refresh detection
 
@@ -349,6 +351,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - `CanvasGameShellWorldMapRuntimePolicy.hasNumber(value)`
 - `CanvasGameShellWorldMapRuntimePolicy.getSnapshotRenderOptions(waterTimeMs, fallbackWaterTimeMs)`
+- `CanvasGameShellWorldMapRuntimePolicy.getWaterAnimationDeviceFloorMs(options)`
 - `CanvasGameShellWorldMapRuntimePolicy.getWaterAnimationFrameMs(options)`
 - `CanvasGameShellWorldMapRuntimePolicy.getLayerPadding(options)`
 - `CanvasGameShellWorldMapRuntimePolicy.getDragCooldownMs(value)`
@@ -923,6 +926,7 @@ P0 新增公开 API / Public API Added During P0:
 - 世界地图大地图性能预算门禁 / large world-map performance budget gates
 - 检查 visibility/entity/render snapshot 的结构预算
 - 检查 compact arrays、O(1) index maps、serializable payload size
+- 检查 renderer frame work 的 visible entries、actors、hit targets、frame pixels、active chunks 和 per-chunk entries
 - 为后续 perf smoke 和 cache invalidation tests 提供统一报告格式
 
 公开 API / Public API:
@@ -931,9 +935,11 @@ P0 新增公开 API / Public API Added During P0:
 - `WorldMapPerformanceBudget.checkVisibilitySnapshot(snapshot, budgets)`
 - `WorldMapPerformanceBudget.checkEntitySnapshot(snapshot, budgets)`
 - `WorldMapPerformanceBudget.checkRenderSnapshot(snapshot, budgets)`
+- `WorldMapPerformanceBudget.checkRendererFrameWork(frameWork, budgets)`
 - `WorldMapPerformanceBudget.combineReports(reports, meta)`
 - `WorldMapPerformanceBudget.assertReport(report, message)`
 - `WorldMapPerformanceBudget.createReport(checks, meta)`
+- `WorldMapPerformanceBudget.getFramePixelCount(frame, pixelRatio)`
 - `WorldMapPerformanceBudget.getSerializableSizeBytes(value)`
 
 性能约束 / Performance Constraints:
@@ -941,6 +947,7 @@ P0 新增公开 API / Public API Added During P0:
 - 预算检查是纯同步函数，不依赖浏览器、canvas、DB、network。
 - 不使用易波动的绝对 FPS 阈值作为硬门槛。
 - 大地图结构退化时必须失败：nested entity maps、renderer tile payload copied into serializable output、parallel arrays 长度不一致。
+- Renderer frame work 检查只做结构/容量预算，不用不稳定的 FPS 硬阈值替代真实 profiling。
 
 扩展方式 / Extension Path:
 
@@ -2140,9 +2147,9 @@ P0 新增公开 API / Public API Added During P0:
 - world-map panel background and clip setup
 - world-map drag hit-target registration
 - snapshot-only cache redraw branch
-- hit-target-only pass for march tiles, sites, and actors
-- main layer render ordering: scout route, water, static entries, fog context, actors, and map hit targets
-- publishes `lastWorldTileMapContext` for the `mainHud` HUD pass; it does not paint map-home march HUD or register formation-picker HUD targets
+- hit-target-only pass for map-owned march tile and site targets
+- main layer render ordering: scout route, water, static entries, fog context, and map-owned hit targets
+- publishes `lastWorldTileMapContext` for `worldActor` and `mainHud` passes; it does not paint actors, register actor targets, paint map-home march HUD, or register formation-picker HUD targets
 - fast-drag state enable/restore around the frame
 - split implementation for `WorldMapCanvasRenderer.renderWorldTileMap()`
 
@@ -2158,8 +2165,8 @@ P0 新增公开 API / Public API Added During P0:
 - `addWorldMapDragHitTarget(x, y, width, height)`
 - `withWorldTileMapClip(x, y, width, height, callback)`
 - `renderWorldTileMapSnapshotOnly(tileMapView, viewport, frame, x, y, width, height)`
-- `renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors)`
-- `renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors)`
+- `renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState)`
+- `renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState)`
 - `renderWorldTileMap(tileMapView, x, y, width, height, uiState, options)`
 
 性能约束 / Performance Constraints:
@@ -2169,19 +2176,20 @@ P0 新增公开 API / Public API Added During P0:
 - Layer rendering delegates to existing cache-aware split renderers; this module does not repaint cache internals.
 - Snapshot-only redraw blits existing caches and skips visible-entry calculation.
 - `worldTileFastDragActive` is restored in `finally` even if a downstream renderer fails.
-- No gameplay mutation, no asset discovery, no fog visual rule ownership, no physical world-map HUD painting.
+- No gameplay mutation, no asset discovery, no fog visual rule ownership, no actor drawing/targets, no physical world-map HUD painting.
 - Extension note: new actor drawing details still extend `WorldActorCanvasRenderer`; map-home march HUD drawing belongs to the `mainHud` pass (`HudOverlayCanvasRenderer` / `CanvasFrameRenderer`) through the published world-map HUD context.
 
 扩展方式 / Extension Path:
 
 - 新 world tile-map frame sequencing rule 先扩展本模块并补 focused tests。
 - 新 tile/site/water/scout/cache drawing details 仍扩展对应 split renderer，不要写回本模块。
-- 新 actor/HUD rendering details 仍扩展 `WorldActorCanvasRenderer` / `WorldMarchHudCanvasRenderer` 或后续 actor/HUD boundary。
+- 新 actor drawing / actor hit-target details 仍扩展 `WorldActorCanvasRenderer` 或 `WorldMapLayerCanvasRenderer` actor pass。
+- 新 march command HUD details 仍扩展 `WorldMarchHudCanvasRenderer` 并由 `mainHud` pass 调用。
 - 新 fog visual rules 仍扩展 `WorldFogVisualSnapshot` / `WorldMapVisualPluginRegistry`。
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldMapActorHudRenderer.js`
@@ -2194,8 +2202,8 @@ P0 新增公开 API / Public API Added During P0:
 - epoch-now resolution for march actor calculation
 - actor render handoff to `WorldActorCanvasRenderer`
 - actor hit-target handoff to `WorldActorCanvasRenderer`
-- march HUD state publication to renderer/host/HUD renderer
-- compatibility march HUD render handoff to `WorldMarchHudCanvasRenderer` for the `mainHud` pass
+- march HUD state publication to renderer/host/HUD renderer for `mainHud` callers
+- compatibility march HUD render helper for `mainHud` callers; physical `worldActor` pass must not invoke command HUD
 - nearest world-tile lookup through `WorldMarchSystem`
 - split implementation for actor/HUD compatibility helpers on `WorldMapCanvasRenderer`
 
@@ -2217,19 +2225,19 @@ P0 新增公开 API / Public API Added During P0:
 - Mission actors are derived once per caller pass with epoch time, not frame time.
 - Actor rendering and hit-target registration remain delegated to `WorldActorCanvasRenderer`.
 - HUD state is published by reference; no deep clone of game state.
-- No tile layout/cache orchestration, no fog visual rule ownership, no gameplay mutation, no physical world-map HUD painting.
-- Extension note: new march HUD visual/detail still extends `WorldMarchHudCanvasRenderer`; map-home invocation happens from `HudOverlayCanvasRenderer` / `CanvasFrameRenderer`, never from the physical `worldMap` layer.
+- No tile layout/cache orchestration, no fog visual rule ownership, no gameplay mutation, no physical world-map or worldActor command HUD painting.
+- Extension note: new march HUD visual/detail still extends `WorldMarchHudCanvasRenderer`; map-home invocation happens from `HudOverlayCanvasRenderer` / `CanvasFrameRenderer`, never from the physical `worldMap` or `worldActor` layer.
 
 扩展方式 / Extension Path:
 
-- 新 actor/HUD handoff rule 先扩展本模块。
+- 新 actor handoff rule 先扩展本模块。
 - 新 actor pixel drawing 仍扩展 `WorldActorCanvasRenderer`。
 - 新 march HUD visual/detail 仍扩展 `WorldMarchHudCanvasRenderer`。
 - 新 march domain calculation 仍扩展 `WorldMarchSystem` / domain snapshots。
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/renderers/WorldMapActorHudRenderer.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/WorldMapActorHudRenderer.test.js frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldFogVisualSnapshot.js`
@@ -2490,6 +2498,229 @@ P0 新增公开 API / Public API Added During P0:
 回归 / Regression:
 
 - `node --test backend/tests/ConfigRegistryContract.test.js`
+- `npm run test:architecture`
+
+### `backend/services/config/ConfigPipeline.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- P12-007 local config pipeline orchestration
+- collecting registered config registry metadata/validation reports
+- generating `config-pipeline-snapshot-v1` snapshots
+- comparing current snapshots against a baseline
+- surfacing registry additions/removals, schema/content/version drift, entry diffs, and version bump recommendations
+- no gameplay rule ownership, no admin auth, no production publish side effects
+
+公开 API / Public API:
+
+- `ConfigPipeline.buildCurrentSnapshot(options)`
+- `ConfigPipeline.buildPipelineReport(options)`
+- `ConfigPipeline.collectRegistryReports(options)`
+- `ConfigPipeline.compareSnapshots(baseline, current, options)`
+- `ConfigPipeline.createSnapshot(registryReports, options)`
+- `ConfigPipeline.getDefaultRegistryLoaders()`
+- `ConfigPipeline.readSnapshot(filePath)`
+- `ConfigPipeline.writeSnapshot(filePath, snapshot)`
+
+扩展方式 / Extension Path:
+
+- New config domains must expose `getRegistryMetadata()` / `validateRegistry()` and register a loader here.
+- Preview/publish/rollback workflow should consume this module instead of reimplementing registry comparison in routes or UI code.
+- Production config bundle loading and audit persistence should remain outside this pure pipeline boundary.
+
+回归 / Regression:
+
+- `node --test backend/tests/ConfigPipeline.test.js`
+- `npm run config:validate`
+- `npm run test:architecture`
+
+### `backend/services/config/ConfigReleaseService.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- P12-007 audit-only config release workflow
+- config release preview built on `ConfigPipeline`
+- publish records with release history and active release pointer persistence
+- rollback records that restore the active release pointer to a previous audited snapshot
+- active-vs-current registry runtime drift status
+- startup release gate policy for active-vs-current registry matching
+- public record shaping that hides full snapshots unless explicitly requested
+- no gameplay runtime hot-loading, no admin authentication, no UI ownership
+
+公开 API / Public API:
+
+- `ConfigReleaseService.previewRelease(payload, options)`
+- `ConfigReleaseService.publishRelease(payload, options)`
+- `ConfigReleaseService.rollbackRelease(releaseId, options)`
+- `ConfigReleaseService.loadReleaseHistory(options)`
+- `ConfigReleaseService.getActiveRelease(options)`
+- `ConfigReleaseService.getRuntimeStatus(options)`
+- `ConfigReleaseService.resolveRuntimeGatePolicy(env, options)`
+- `ConfigReleaseService.assertRuntimeReleaseReady(options)`
+- `ConfigReleaseService.validateSnapshot(snapshot)`
+- `ConfigReleaseService.findReleaseRecord(releaseId, options)`
+
+扩展方式 / Extension Path:
+
+- Production gameplay config loading now goes through `GameplayConfigRuntime`; release service remains audit/pointer/gate ownership and must not gain gameplay hot-load side effects.
+- Durable storage can move behind a repository/DB adapter while preserving the public record shape.
+- Admin UI and CLI publish commands should call this service instead of duplicating release validation or active-pointer writes.
+
+回归 / Regression:
+
+- `node --test backend/tests/ConfigReleaseService.test.js backend/tests/AdminRoutes.test.js`
+- `npm run test:architecture`
+
+### `backend/services/config/ConfigRuntimeLoader.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- P12-007 read-only runtime config bundle boundary
+- requiring `ConfigReleaseService.assertRuntimeReleaseReady()` before payload loading
+- collecting current registered config payloads through `ConfigPipeline` loaders after release gate match
+- validating payload hashes against the active release snapshot
+- compact loader readiness status for health/admin surfaces
+- no gameplay module mutation, no hot reload side effects, no release history persistence
+
+公开 API / Public API:
+
+- `ConfigRuntimeLoader.buildRuntimeBundle(options)`
+- `ConfigRuntimeLoader.getRuntimeLoaderStatus(options)`
+- `ConfigRuntimeLoader.validatePayloadHashes(snapshot, registryReports)`
+- `ConfigRuntimeLoader.createStablePayloadHash(value, options)`
+
+扩展方式 / Extension Path:
+
+- Gameplay modules consume this bundle through `GameplayConfigRuntime`; keep loader output read-only and avoid adding gameplay-specific behavior here.
+- Bundle payload shape should follow registered config `raw()` outputs; new config domains must still register through `ConfigPipeline`.
+- Real rollback drills should verify the active release pointer, startup gate, bundle readiness, and gameplay consumption path together.
+
+回归 / Regression:
+
+- `node --test backend/tests/ConfigRuntimeLoader.test.js backend/tests/ConfigReleaseService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/config/GameplayConfigRuntime.js`
+
+鐘舵€?/ Status: candidate
+
+鑱岃矗 / Owns:
+
+- P12-007 gameplay-facing config runtime facade
+- initializing gameplay config consumption from `ConfigRuntimeLoader` after release gate match
+- required-mode startup failure when the active bundle is not ready or invalid
+- warn/off observe-mode fallback to module config for local development and diagnostics
+- dynamic proxies for `GameConfig`, `BuildingConfig`, `EraConfig`, `TutorialFlowConfig`, and `TechTreeConfig`
+- no admin publish ownership, no release history persistence, no hot reload side effects
+
+鍏紑 API / Public API:
+
+- `GameplayConfigRuntime.initializeRuntimeConfig(options)`
+- `GameplayConfigRuntime.getRuntimeConfigStatus()`
+- `GameplayConfigRuntime.configureRuntimeConfig(options)`
+- `GameplayConfigRuntime.resetRuntimeConfig()`
+- `GameplayConfigRuntime.GameConfig`
+- `GameplayConfigRuntime.BuildingConfig`
+- `GameplayConfigRuntime.EraConfig`
+- `GameplayConfigRuntime.TutorialFlowConfig`
+- `GameplayConfigRuntime.TechTreeConfig`
+
+鎵╁睍鏂瑰紡 / Extension Path:
+
+- New gameplay config domains should add registry coverage through `ConfigPipeline` first, then expose a dynamic facade here.
+- Gameplay services should import this facade instead of importing raw `backend/config/*` modules directly, except registry contract tests and this module's fallback boundary.
+- Rollback drills should verify active release pointer, startup gate, loader readiness, and representative gameplay reads through this facade.
+
+鍥炲綊 / Regression:
+
+- `node --test backend/tests/GameplayConfigRuntime.test.js backend/tests/ConfigRuntimeLoader.test.js backend/tests/ConfigReleaseService.test.js`
+- `npm run test:architecture`
+
+### `frontend/tools/config-release-console.html`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- standalone P12-007 admin console for config release audit workflow
+- reading active config release and release history
+- triggering current config preview and audit-only publish
+- showing active-vs-current registry runtime drift status
+- showing runtime bundle loader readiness
+- triggering active release pointer rollback from history
+- no main-game runtime ownership and no production config hot-loading
+
+公开 API / Public API:
+
+- Tool URL: `/tools/config-release-console.html`
+- Query override: `?apiBase=/api`
+- Uses admin API routes under `/api/admin/config-releases*`
+
+扩展方式 / Extension Path:
+
+- UI changes should stay a thin console over `ConfigReleaseService` / `ConfigRuntimeLoader` responses.
+- Any production runtime activation must be implemented in backend config loading modules, not by adding side effects to this tool.
+- Keep this page out of the main H5 boot script chain.
+
+回归 / Regression:
+
+- `node --test frontend/tools/config-release-console.test.js`
+- `npm run test:architecture`
+
+### `scripts/validate-config-pipeline.js`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- CLI entrypoint for P12-007 local config validation
+- default current registry validation output
+- `--write-baseline <path>` snapshot writing
+- `--baseline <path>` snapshot diff and version-bump enforcement
+- optional `--json` machine-readable report output
+
+公开 API / Public API:
+
+- `npm run config:validate`
+- `node scripts/validate-config-pipeline.js`
+- `node scripts/validate-config-pipeline.js --baseline docs/config_registry_snapshot_2026-06-11.json`
+- `node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_snapshot_2026-06-11.json`
+
+扩展方式 / Extension Path:
+
+- Keep this script as a thin CLI wrapper over `ConfigPipeline`.
+- Add publish/rollback commands as explicit future entrypoints rather than hiding side effects behind default validation.
+
+回归 / Regression:
+
+- `node --test scripts/validate-config-pipeline.test.js`
+- `npm run config:validate`
+- `npm run test:architecture`
+
+### `docs/config_registry_snapshot_2026-06-11.json`
+
+状态 / Status: candidate
+
+职责 / Owns:
+
+- current P12-007 baseline config registry snapshot
+- expected registry ids, schema versions, config versions, content hashes, entry counts, entry ids, and source paths
+- baseline diff input for `scripts/validate-config-pipeline.js --baseline`
+
+扩展方式 / Extension Path:
+
+- Update this file with `node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_snapshot_2026-06-11.json` only when a reviewed config release intentionally changes registry content and has the required version bump.
+- Do not edit hashes by hand; regenerate from the pipeline.
+
+回归 / Regression:
+
+- `node scripts/validate-config-pipeline.js --baseline docs/config_registry_snapshot_2026-06-11.json`
 - `npm run test:architecture`
 
 ### `backend/services/random/ServerRandomAuthorityContract.js`
@@ -3289,6 +3520,7 @@ Regression:
 - Game state facade over structural normalization, runtime advancement, projection, era progress, and offline income compatibility.
 - `normalizeState()` remains structural-only; `advanceRuntimeState()` is the explicit world/runtime advancement boundary.
 - Raw compatibility APIs remain for legacy callers, while normalized-only APIs protect route response assembly from repeated runtime advancement.
+-普通 query route 使用 `normalizeState()` + normalized-only projection；写入型 command/tick route 才使用 `applyOnlineProgress()` / `advanceRuntimeState()` 并保存。
 
 公开 API / Public API:
 
@@ -3307,6 +3539,7 @@ Regression:
 - New request paths that already loaded/advanced canonical state must use `getClientGameStateFromNormalized()` and `calculateEraProgressFromNormalized()`.
 - New world-time advancement belongs behind `advanceRuntimeState()` or a focused runtime service called by it.
 - Do not let DTO/projection helpers call world AI, territory runtime, map reveal, DB, or route code.
+- New GET/query routes must not call `applyOnlineProgress()`, generate events, touch player activity, or save state unless they are explicitly changed into command/sync endpoints.
 
 回归 / Regression:
 
@@ -3352,6 +3585,10 @@ Regression:
 - SQLite `game_states` 表结构初始化和向后兼容列补齐
 - 保存/读取游戏状态持久化字段
 - 持久化 `saveMetadata`，保证迁移幂等
+- 持久化最新存档性能容量预算摘要到 `saveMetadata.performanceCapacity`
+- 持久化 `revision` 乐观版本号，并在 `saveAtomic()` 中递增
+- 主状态行和 `shared_world_territories` 派生占有记录同事务提交
+- reset 时通过 `resetPlayerState()` 同事务清理玩家共享世界占有记录并写入新状态
 - 不执行业务 normalizer 和 gameplay 规则
 
 公开 API / Public API:
@@ -3362,12 +3599,17 @@ Regression:
 - `findAll()`
 - `findRecentlyActive(activeSinceIso, limit)`
 - `save(gameState)`
+- `saveAtomic(gameState, options)`
+- `resetPlayerState(playerId, gameState)`
 - `touchPlayerActiveAt(playerId)`
 
 扩展方式 / Extension Path:
 
 - 新持久化字段先增加列迁移、读写 JSON 解析、repository tests。
+- 需要写状态时优先调用 `save()` / `saveAtomic()`，不要绕过 repository 单独写 `game_states` 或 `shared_world_territories`。
+- destructive reset 必须走 `resetPlayerState()` 或等价 transaction，避免共享世界残留旧占有记录。
 - 存档 shape 迁移逻辑放在 `GameStateMigrationPipeline`，不要放进 repository。
+- 存档容量预算规则放在 `PerformanceCapacityBudget`，repository 只写入摘要，不承载容量规则。
 - repository 返回 raw persisted state，由 service/normalizer 决定如何升级和派生。
 
 回归 / Regression:
@@ -3382,15 +3624,17 @@ Status: candidate
 璐熻矗 / Owns:
 
 - backend deployment version DTO for `/api/version` and `/api/health`
-- package version, git commit, source hash, deployment id, and checked timestamp calculation
+- package version, git commit, source hash, deploy manifest metadata, deployment id, ETag, and checked timestamp calculation
 - source fingerprinting for `frontend`, `backend`, and `shared`
 - runtime-artifact filtering for `.git`, `.local-logs`, `node_modules`, logs, data folders, `.env`, database files, SQLite runtime files, backups, and logs
+- optional deployment manifest lookup from `WXGAME_DEPLOY_MANIFEST_PATH`, `.wxgame/current-deploy.json`, or `.wxgame-deploy-version.json`
 - cached version calculation so frequent update polling does not scan the workspace every request
 
 Public API:
 
 - `new VersionService(options)`
 - `VersionService.getVersionInfo()`
+- `VersionService.matchesEtag(candidate, info)`
 
 Performance Constraints:
 
@@ -3401,12 +3645,160 @@ Performance Constraints:
 Extension Path:
 
 - New runtime artifact patterns must be added to the ignore lists with `VersionService.test.js` coverage.
+- New deployment metadata fields must be derived from deploy manifest input here and covered by `VersionService.test.js`.
 - Deployment identity semantics stay here; config registry schema/version hardening belongs to P11-006 modules.
 - Do not make local database writes, screenshots, logs, or playtest evidence change `deploymentId`.
 
 Regression:
 
 - `node --test backend/tests/VersionService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/ObservabilityService.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- process-local backend observability snapshot for the current runtime
+- bounded recent API event window
+- bounded recent frontend client event window
+- total/recent request counts, status counts, per-path request/failure/action-failure stats
+- total/recent client event counts and event type counts
+- latency summary, including average, p95, max duration, and slow request counts
+- performance budget summaries and `PERFORMANCE_BUDGET_EXCEEDED` alert counts from `PerformanceCapacityBudget`
+- threshold alert codes for recent 5xx rate, slow requests, action failures, frontend load failures, last server error, and last frontend load failure
+- compact health summary consumed by `/api/health`
+
+公开 API / Public API:
+
+- `new ObservabilityService(options)`
+- `recordApiRequest(input)`
+- `recordClientEvent(input)`
+- `getSnapshot(options)`
+- `getHealthSummary()`
+
+扩展方式 / Extension Path:
+
+- New backend observability dimensions should be recorded here from route/middleware boundaries, not mixed into gameplay services.
+- Durable metrics, exporters, and real alert delivery should extend this service or a sibling adapter while keeping the current in-memory snapshot cheap and testable.
+- Frontend asset/load failure ingest enters through `backend/routes/clientEventsRoutes.js`; new client event types must be allowlisted at the route boundary and normalized before they enter snapshots.
+- Hot-path route sampling must be an explicit policy change with focused tests; current server wiring skips very hot/read-only routes from API log/metrics middleware.
+
+回归 / Regression:
+
+- `node --test backend/tests/ObservabilityService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/PerformanceCapacityBudget.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- backend runtime performance/capacity budget checks
+- API/action latency budget reports
+- request/response body size budget reports
+- save-state serializable size, world-map tile count, and mission count budget reports
+- world-map window/chunk capacity budget reports
+- compact report shape shared by observability and save metadata
+
+公开 API / Public API:
+
+- `PerformanceCapacityBudget.DEFAULT_BUDGETS`
+- `PerformanceCapacityBudget.checkApiRequest(input, budgets)`
+- `PerformanceCapacityBudget.checkSaveState(state, budgets)`
+- `PerformanceCapacityBudget.checkWorldMapWindow(input, budgets)`
+- `PerformanceCapacityBudget.combineReports(reports, meta)`
+- `PerformanceCapacityBudget.assertReport(report, message)`
+- `PerformanceCapacityBudget.summarizeReport(report)`
+- `PerformanceCapacityBudget.getSerializableSizeBytes(value)`
+
+扩展方式 / Extension Path:
+
+- New backend capacity dimensions should add a pure check here first, then connect to observability or repository metadata.
+- Keep this module side-effect free; deploy-blocking behavior should be an explicit caller policy, not hidden inside budget calculation.
+- Production threshold changes should be accompanied by sampled evidence or a capacity drill note in the P12 roadmap.
+
+回归 / Regression:
+
+- `node --test backend/tests/PerformanceCapacityBudget.test.js`
+- `npm run test:architecture`
+
+### `backend/routes/clientEventsRoutes.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- unauthenticated `POST /api/client-events` route registration for early-boot frontend telemetry
+- allowlisting frontend client event types before they enter observability
+- attaching request user-agent metadata when the client payload omits it
+- keeping client telemetry HTTP response shape outside `server.js`
+
+公开 API / Public API:
+
+- `registerClientEventsRoutes(app, { observabilityService })`
+
+扩展方式 / Extension Path:
+
+- New frontend telemetry kinds must be explicitly allowlisted and covered by `ClientEventsRoutes.test.js`.
+- This route accepts best-effort client telemetry only; gameplay state and auth decisions must not depend on it.
+- Persistent metrics/exporters should consume normalized `ObservabilityService` data or a sibling adapter, not add durable storage concerns here.
+
+回归 / Regression:
+
+- `node --test backend/tests/ClientEventsRoutes.test.js backend/tests/ObservabilityService.test.js`
+- `npm run test:architecture`
+
+### `backend/routes/metricsRoutes.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- authenticated/admin `/api/metrics` route registration
+- query parsing for snapshot limits
+- keeping metrics HTTP response shape outside `server.js`
+
+公开 API / Public API:
+
+- `registerMetricsRoutes(app, { authMiddleware, adminMiddleware, observabilityService })`
+
+扩展方式 / Extension Path:
+
+- New metrics response fields should come from `ObservabilityService` or a metrics adapter, while this route remains the HTTP boundary.
+- Access control stays auth + admin; future RBAC changes should extend `adminMiddleware` or a role service instead of weakening this route.
+
+回归 / Regression:
+
+- `node --test backend/tests/MetricsRoutes.test.js`
+- `npm run test:architecture`
+
+### `backend/routes/versionRoutes.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- `/api/version` route registration
+- version response cache headers
+- `ETag` emission and `If-None-Match` 304 handling
+- keeping HTTP cache semantics outside `server.js`
+
+公开 API / Public API:
+
+- `registerVersionRoutes(app, { versionService })`
+
+扩展方式 / Extension Path:
+
+- New version HTTP behavior, such as additional validators or response headers, should extend this route module.
+- Deployment identity calculation stays in `VersionService`; this route only handles HTTP response semantics.
+- Version route behavior must remain covered by `VersionRoutes.test.js`.
+
+回归 / Regression:
+
+- `node --test backend/tests/VersionRoutes.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/worldExplorer/WorldExplorerDtoMapper.js`
@@ -3758,6 +4150,48 @@ Regression:
 - `node --test frontend/js/platform/CanvasGameRendererCompositionFactory.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/platform/renderers/CanvasAssetRenderer.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- Canvas asset cache loading and request-path version handoff
+- preload progress events for H5 loading UI
+- lazy `getAsset()` loading and cache invalidation when assets change
+- asset alpha-bound analysis for tile/site metrics
+- world-tile template mask and dry-template prewarm helpers
+- deferred world-tile cache prewarm scheduling for H5 startup performance
+
+公开 API / Public API:
+
+- `CanvasAssetRenderer.preloadAssets(assetPaths, onProgress, options)`
+- `CanvasAssetRenderer.getAsset(assetPath)`
+- `CanvasAssetRenderer.prewarmWorldTileCaches(assetPaths)`
+- `CanvasAssetRenderer.scheduleWorldTileCachePrewarm(assetPaths, options)`
+- `CanvasAssetRenderer.cancelWorldTileCachePrewarmTask()`
+- `CanvasAssetRenderer.analyzeAssetAlphaBounds(assetPath)`
+- `CanvasAssetRenderer.getWorldTileTemplateMetrics(template)`
+
+性能约束 / Performance Constraints:
+
+- Default preload waits for image resource availability only; it does not synchronously prewarm all world-tile metrics/masks/dry templates.
+- H5 startup prewarm is scheduled explicitly by shell/world-map renderer through `scheduleWorldTileCachePrewarm()` and traced as `assets:prewarm:deferred`.
+- Low-memory/low-core devices use smaller chunks and longer delay/interval defaults so background prewarm does not block first ready.
+- Synchronous prewarm remains available only through explicit `deferPrewarm:false` or direct `prewarmWorldTileCaches()` calls.
+
+扩展方式 / Extension Path:
+
+- New asset categories should extend preload manifests or asset registries before adding renderer-specific paths.
+- New startup warmup work must remain optional/deferred unless sampled profiling proves it is required before first render.
+- Do not add API/state sync behavior here; this module only owns asset/cache preparation.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/renderers/CanvasAssetRenderer.test.js`
+- `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/platform/CanvasGameRendererCoreFacades.js`
 
 状态 / Status: candidate
@@ -3766,6 +4200,7 @@ Regression:
 
 - core `CanvasGameRenderer` compatibility method installation for surface, asset, world-tile-water, and famous helpers
 - delegate fallback behavior for historical renderer method names
+- delegated background world-tile cache prewarm scheduling facade for H5 startup paths
 - H5/minigame load-order contract before `CanvasGameRenderer`
 
 公开 API / Public API:
@@ -3778,6 +4213,7 @@ Regression:
 - 新 core surface/asset/world-tile-water/famous compatibility method 先扩展 `CORE_FACADE_METHODS` with a focused test。
 - New page/panel/HUD compatibility methods belong in `CanvasGameRendererPageFacades`.
 - Do not add these compatibility methods directly to `CanvasGameRenderer`.
+- Startup asset preload must not reintroduce synchronous world-tile cache prewarm unless an explicit caller opts into `deferPrewarm:false`.
 
 回归 / Regression:
 
@@ -3847,7 +4283,7 @@ Regression:
 
 - app render clock, wait, interval, and `requestAnimationFrame` adapter helpers
 - transition duration and animation frame defaults
-- world tile water animation frame duration
+- world tile water animation frame duration delegated to `CanvasGameShellWorldMapRuntimePolicy` when available
 - world-map drag cooldown default
 
 公开 API / Public API:
@@ -4747,6 +5183,615 @@ Regression:
 - `node --test frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapRendererCompositionFactory.test.js frontend/js/platform/renderers/WorldMapRendererHostBridge.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/debug/H5LoadTrace.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- H5 boot/load phase tracing for asset preload, first state sync, and API spans
+- console-facing boot diagnostics with elapsed time, durations, progress, request ids, and summarized payloads
+- frontend load/asset/API failure telemetry preparation during boot
+- best-effort reporter handoff without blocking user flow
+
+公开 API / Public API:
+
+- `new H5LoadTrace(options)`
+- `H5LoadTrace.boot(detail)`
+- `H5LoadTrace.mark(event, detail)`
+- `H5LoadTrace.phaseStart(name, detail)`
+- `H5LoadTrace.phaseEnd(name, detail)`
+- `H5LoadTrace.phaseFail(name, error, detail)`
+- `H5LoadTrace.progress(phase, progress)`
+- `H5LoadTrace.apiStart(method, path, url, detail)`
+- `H5LoadTrace.apiEnd(span, detail)`
+- `H5LoadTrace.apiFail(span, error, detail)`
+- `H5LoadTrace.ready(detail)`
+- `H5LoadTrace.setReporter(reporter)`
+- `H5LoadTrace.reportClientEvent(type, detail, dedupeKey)`
+
+扩展方式 / Extension Path:
+
+- New boot phases should use phase/progress/API span helpers so console trace and telemetry stay aligned.
+- Reporter callbacks must remain best-effort: failures are swallowed, duplicate load failures are deduped, and boot cannot depend on telemetry success.
+- New telemetry kinds must stay allowlisted by `backend/routes/clientEventsRoutes.js` before being emitted broadly.
+
+回归 / Regression:
+
+- `node --test frontend/js/debug/H5LoadTrace.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/api/GameAPI.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- frontend API transport boundary
+- request URL building and `/version` ETag cache reuse
+- auth header and trace headers
+- client request id, timeout, GET retry policy, and structured API errors
+- H5 load trace API spans
+- best-effort frontend client event reporting to `/client-events`
+
+公开 API / Public API:
+
+- `new GameAPI(baseUrl, token, options)`
+- `GameAPI.request(method, path, body)`
+- `GameAPI.getState()`
+- `GameAPI.heartbeat()`
+- `GameAPI.getVersion()`
+- `GameAPI.reportClientEvent(event)`
+- existing game action helper methods
+
+扩展方式 / Extension Path:
+
+- New transport behavior goes through constructor `options` so tests can inject deterministic schedulers/transports.
+- `/version` requests must reuse server `ETag` with `If-None-Match` and handle 304 by returning the cached version snapshot.
+- Only safe methods such as GET/HEAD may auto-retry transient failures. POST action helpers must not auto-retry without an idempotency contract.
+- New request metadata must remain structured on thrown errors and H5 load trace spans.
+- Client event reporting is best-effort telemetry. It may include auth headers when available, but it must swallow transport failures and return a failure object instead of blocking boot.
+
+回归 / Regression:
+
+- `node --test frontend/js/api/GameAPI.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/services/GameStateSync.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- lightweight heartbeat scheduling
+- reconnecting/failure-count state
+- heartbeat failure backoff window
+- authority state refresh when active world exploration is near a server-owned milestone
+
+公开 API / Public API:
+
+- `new GameStateSync(api, intervalMs, scheduler)`
+- `GameStateSync.fetchNow()`
+- `GameStateSync.start()`
+- `GameStateSync.stop()`
+- `GameStateSync.setIntervalMs(intervalMs)`
+- `GameStateSync.setStateProvider(getLocalState)`
+
+扩展方式 / Extension Path:
+
+- New polling behavior must preserve heartbeat as a lightweight liveness call.
+- Runtime state refresh must stay reasoned and throttled; gameplay authority remains backend-owned.
+- Failure handling should extend the backoff/reconnecting state here, not in renderers or presenters.
+
+回归 / Regression:
+
+- `node --test frontend/js/services/GameStateSync.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/services/UpdateChecker.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- deployment version polling
+- update prompt trigger when deployment id changes
+- version-check failure backoff window
+
+公开 API / Public API:
+
+- `new UpdateChecker(options)`
+- `UpdateChecker.start()`
+- `UpdateChecker.stop()`
+- `UpdateChecker.safeCheck(options)`
+- `UpdateChecker.check(options)`
+
+扩展方式 / Extension Path:
+
+- New `/version` caching, ETag, or deploy-manifest behavior should be added here or behind its injected API.
+- Version polling must not mutate gameplay state.
+- Failure backoff must remain observable through tests.
+
+回归 / Regression:
+
+- `node --test frontend/js/services/UpdateChecker.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/ui/H5AuthStorageAdapter.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- H5 auth token storage compatibility
+- remembered username state
+- tutorial/session local storage cleanup
+
+公开 API / Public API:
+
+- `H5AuthStorageAdapter.fromRuntime(runtime)`
+- `H5AuthStorageAdapter.fromStorage(storage)`
+- `getCredentialSnapshot()`
+- `persistRememberedCredentials(username, password, rememberPassword)`
+- `removeRememberedCredentials()`
+- `clearSession()`
+
+扩展方式 / Extension Path:
+
+- This adapter must not store or return plaintext password values.
+- Token storage hardening belongs here or a sibling auth storage adapter, not presenters/renderers.
+
+回归 / Regression:
+
+- `node --test frontend/js/ui/H5AuthStorageAdapter.test.js`
+- `npm run test:architecture`
+
+### `backend/middleware/adminMiddleware.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- admin authorization boundary after login authentication
+- parsing explicit admin username configuration
+- default local development admin fallback
+
+公开 API / Public API:
+
+- `createAdminMiddleware(options)`
+- `parseUserList(value)`
+
+扩展方式 / Extension Path:
+
+- Future role tables or RBAC should replace/extend this middleware without moving role checks into `adminRoutes`.
+- Production admin users must be explicit through environment/config.
+
+回归 / Regression:
+
+- `node --test backend/tests/AdminRoutes.test.js`
+- `npm run test:architecture`
+
+### `backend/routes/adminRoutes.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- authenticated/admin task-definition management HTTP routes
+- authenticated/admin config release HTTP routes
+- operator propagation from auth/admin middleware to admin services
+- keeping admin response/status mapping outside `server.js`
+
+公开 API / Public API:
+
+- `registerAdminRoutes(app, { authMiddleware, adminMiddleware, configReleaseService, configRuntimeLoader })`
+- `GET /api/admin/task-definitions`
+- `GET /api/admin/task-definitions/history`
+- `POST /api/admin/task-definitions/preview`
+- `POST /api/admin/task-definitions/import`
+- `POST /api/admin/task-definitions/rollback`
+- `GET /api/admin/task-definitions/template.xlsx`
+- `GET /api/admin/config-releases`
+- `GET /api/admin/config-releases/active`
+- `GET /api/admin/config-releases/runtime-status`
+- `POST /api/admin/config-releases/preview`
+- `POST /api/admin/config-releases/publish`
+- `POST /api/admin/config-releases/rollback`
+
+扩展方式 / Extension Path:
+
+- Admin route additions should remain thin HTTP boundaries over services; validation and persistence belong in service modules.
+- Access control stays behind `authMiddleware` + `adminMiddleware`; future RBAC should extend middleware/role services rather than per-route ad hoc checks.
+- Config release routes provide audit-only release records plus loader/gameplay-runtime readiness. Gameplay consumption stays behind `GameplayConfigRuntime` and documented drill evidence, not route side effects.
+
+回归 / Regression:
+
+- `node --test backend/tests/AdminRoutes.test.js`
+- `npm run test:architecture`
+
+### `backend/config/SecurityConfig.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- backend startup security defaults
+- production JWT secret requirement
+- production CORS origin requirement
+- development-only local fallback policy
+
+公开 API / Public API:
+
+- `resolveJwtSecret(env)`
+- `resolveCorsOptions(env)`
+- `parseAllowedOrigins(value)`
+
+扩展方式 / Extension Path:
+
+- New server security startup requirements should be centralized here instead of being embedded directly in `server.js`.
+- Production defaults should fail closed; development may remain locally runnable when safe.
+
+回归 / Regression:
+
+- `node --test backend/tests/SecurityConfig.test.js`
+- `npm run test:architecture`
+
+### `scripts/run-architecture-smoke.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- local architecture baseline command behind `npm run test:architecture`
+- registered syntax checks
+- focused candidate/stable test list
+- automatic discovery of `*Contract.test.js` and `*.contract.test.js`
+- shell script syntax guard invocation
+- config pipeline baseline diff guard invocation
+- config release service syntax/test registration
+- config runtime loader syntax/test registration
+- gameplay config runtime facade syntax/test registration
+- config release admin console test registration
+- config runtime drift health summary and startup gate syntax/test registration
+- architecture guard command sequencing
+
+公开 API / Public API:
+
+- `npm run test:architecture`
+- `node scripts/run-architecture-smoke.js`
+- exported helpers for tests: `discoverContractTests()`, `isContractTestFile()`, `uniqueFiles()`
+
+扩展方式 / Extension Path:
+
+- New focused architecture tests should usually be added to the explicit list.
+- New contract tests named `*Contract.test.js` or `*.contract.test.js` are auto-discovered, but important non-contract regression tests still need explicit registration.
+- New repo-wide guards should be invoked from this script so CI and deploy use the same baseline.
+- Project-owned shell scripts must remain covered through `scripts/check-shell-scripts.js`.
+- Config registry baseline changes must pass `scripts/validate-config-pipeline.js --baseline docs/config_registry_snapshot_2026-06-11.json`.
+- Config release workflow changes must keep `backend/tests/ConfigReleaseService.test.js` and `backend/tests/AdminRoutes.test.js` registered.
+- Config runtime bundle loader changes must keep `backend/tests/ConfigRuntimeLoader.test.js` registered.
+- Gameplay config runtime facade changes must keep `backend/tests/GameplayConfigRuntime.test.js` registered.
+- Config release console changes must keep `frontend/tools/config-release-console.test.js` registered.
+- Browser profiling commands that are too slow/flaky for every CI run should still be listed in `CHECK_FILES` for syntax validation and documented separately as evidence commands.
+
+回归 / Regression:
+
+- `node --test scripts/run-architecture-smoke.test.js`
+- `npm run test:architecture`
+
+### `scripts/check-shell-scripts.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- project-owned shell script syntax guard
+- locating `bash` from PATH or Git for Windows fallback paths
+- running `bash -n` on `deploy.sh`, `scripts/pre-deploy-gate.sh`, `scripts/verify-deploy-hook.sh`, `scripts/rollback-deploy.sh`, `scripts/backup-runtime-state.sh`, `scripts/restore-runtime-state.sh`, `scripts/install-runtime-backup-cron.sh`, and `scripts/verify-runtime-backup.sh`
+
+公开 API / Public API:
+
+- `node scripts/check-shell-scripts.js`
+- exported helpers for tests: `findBash()`, `checkScript()`
+
+扩展方式 / Extension Path:
+
+- Add new project-owned shell scripts to `SHELL_SCRIPTS` when they become deployment or CI entrypoints.
+- Keep third-party scripts in `node_modules` out of this guard.
+- If Windows tooling changes, update fallback paths with `check-shell-scripts.test.js` coverage.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/pre-deploy-gate.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- shared local/CI/server deploy gate entry
+- running `npm run test:architecture` before deploy
+- optional dependency installation when `WXGAME_GATE_INSTALL=1`
+
+公开 API / Public API:
+
+- `bash scripts/pre-deploy-gate.sh [repoRoot]`
+
+扩展方式 / Extension Path:
+
+- New deploy-blocking local checks should be added to `npm run test:architecture` or invoked here only when they are truly deploy-specific.
+- `deploy.sh` and GitHub Actions should keep using this same entrypoint.
+- Contract tests are auto-discovered by `scripts/run-architecture-smoke.js`; deploy gate should not maintain a separate test list.
+
+回归 / Regression:
+
+- `npm run test:architecture`
+- GitHub Actions workflow `.github/workflows/architecture-gate.yml`
+
+### `scripts/verify-deploy-hook.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- read-only production deploy hook verification
+- checking `/home/git/wxgame.git` is a bare repo with the expected branch
+- checking `hooks/post-receive` exists, is executable, is valid Bash, and points to the expected work tree/deploy script
+- checking current deploy manifest commit reachability when `/opt/wxgame-workspace/.wxgame/current-deploy.json` exists
+
+公开 API / Public API:
+
+- `bash scripts/verify-deploy-hook.sh`
+- environment overrides: `BARE_REPO_DIR`, `WORK_TREE`, `BRANCH`, `DEPLOY_STATE_DIR`, `HOOK_PATH`, `DEPLOY_SCRIPT`
+
+扩展方式 / Extension Path:
+
+- Keep this script read-only; deployment and rollback changes belong in `deploy.sh` or `rollback-deploy.sh`.
+- New host topology assumptions should be explicit environment overrides with focused documentation.
+
+回归 / Regression:
+
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/rollback-deploy.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- explicit deploy rollback entrypoint
+- resolving a rollback branch/tag/commit in the server Git repo
+- invoking `deploy.sh` with the resolved target commit
+- appending rollback evidence to `/opt/wxgame-workspace/.wxgame/deploy.log`
+
+公开 API / Public API:
+
+- `bash scripts/rollback-deploy.sh <branch|tag|commit>`
+- environment overrides: `REPO_GIT_DIR`, `WORK_TREE`, `DEPLOY_STATE_DIR`, `DEPLOY_SCRIPT`, `WXGAME_ROLLBACK_RUN_GATE`
+
+扩展方式 / Extension Path:
+
+- Rollback should keep reusing `deploy.sh` so PM2 restart, health checks, deploy manifest writing, and Cocos path protections stay single-sourced.
+- Production rollback drills should record the target ref/commit and health-check result in the deploy log or operations notes.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/backup-runtime-state.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- runtime backup entrypoint for save/config/deploy-state data
+- online SQLite backup of `civilization.db` through `better-sqlite3` or sqlite CLI fallback
+- copying shared config and deploy state into a staged backup directory
+- writing `backup-manifest.json`, archive `.tar.gz`, checksum, and retention pruning
+
+公开 API / Public API:
+
+- `bash scripts/backup-runtime-state.sh`
+- environment overrides: `BACKEND_DIR`, `SHARED_DIR`, `DEPLOY_STATE_DIR`, `BACKUP_ROOT`, `DB_PATH`, `RETENTION_DAYS`, `BACKUP_LABEL`
+
+扩展方式 / Extension Path:
+
+- New runtime data roots should be added to the manifest and staged copy with tests in `check-shell-scripts.test.js`.
+- Keep this script backup-only; restore behavior belongs in `restore-runtime-state.sh`.
+- Production scheduling belongs to host cron/systemd or a runbook, while this script stays the deterministic command.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/restore-runtime-state.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- explicit runtime restore entrypoint from a backup archive
+- refusing destructive restore unless `WXGAME_RESTORE_CONFIRM=restore-runtime-state`
+- pre-restore safety backup by default
+- checksum verification when `.sha256` exists
+- SQLite DB restore, WAL/SHM cleanup, shared config restore, optional deploy-state restore, and PM2 stop/restart boundary
+
+公开 API / Public API:
+
+- `WXGAME_RESTORE_CONFIRM=restore-runtime-state bash scripts/restore-runtime-state.sh <backup.tar.gz>`
+- environment overrides: `BACKEND_DIR`, `SHARED_DIR`, `DEPLOY_STATE_DIR`, `BACKUP_ROOT`, `DB_PATH`, `PM2_APP_NAME`, `RESTORE_DEPLOY_STATE`, `ALLOW_RESTORE_WITHOUT_PM2_STOP`, `SKIP_PRE_RESTORE_BACKUP`
+
+扩展方式 / Extension Path:
+
+- Restore drills should run on non-production targets first and record archive path, manifest, restored DB/config checks, and health/API verification.
+- Keep destructive directory cleanup scoped to explicit target directories and covered by script tests.
+- Deploy-state restore remains opt-in so data restore does not silently rewrite release evidence.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/install-runtime-backup-cron.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- runtime backup scheduling entrypoint
+- installing or replacing the marked `WXGAME_RUNTIME_BACKUP` crontab line
+- default backup schedule, backup root, retention, and backup log wiring
+- keeping host scheduling explicit and reviewable instead of relying on manual memory
+
+公开 API / Public API:
+
+- `bash scripts/install-runtime-backup-cron.sh`
+- environment overrides: `WORK_TREE`, `BACKUP_SCRIPT`, `BACKUP_ROOT`, `BACKUP_LOG`, `BACKUP_CRON_SCHEDULE`, `RETENTION_DAYS`, `CRON_MARKER`
+
+扩展方式 / Extension Path:
+
+- New scheduler implementations, such as systemd timers, should be separate scripts with the same marker/log/verify documentation.
+- Keep this script idempotent: reruns replace the marked line instead of appending duplicates.
+- Production installation should be followed by `bash scripts/verify-runtime-backup.sh` after the first scheduled or manual backup.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/verify-runtime-backup.sh`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- runtime backup health verification entrypoint
+- selecting the latest `wxgame-runtime-*.tar.gz` archive
+- checking max backup age, `.sha256`, required manifest/shared/deploy-state entries, and SQLite DB entry
+
+公开 API / Public API:
+
+- `bash scripts/verify-runtime-backup.sh`
+- environment overrides: `BACKUP_ROOT`, `MAX_BACKUP_AGE_HOURS`, `REQUIRE_BACKUP_DB`
+
+扩展方式 / Extension Path:
+
+- New required backup contents must be checked here and covered in `check-shell-scripts.test.js`.
+- If a non-production drill intentionally omits DB, set `REQUIRE_BACKUP_DB=0`; production verification should keep the default DB requirement.
+- Alerting or cron monitoring should call this script rather than duplicating archive/checksum logic.
+
+回归 / Regression:
+
+- `node --test scripts/check-shell-scripts.test.js`
+- `node scripts/check-shell-scripts.js`
+- `npm run test:architecture`
+
+### `scripts/profile-h5-performance.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- repeatable local H5 browser profiling evidence for P12-005
+- local static frontend server with stub `/api/game/state`, `/api/game/heartbeat`, `/api/version`, `/api/client-events`, and action/task endpoints
+- Playwright mobile/desktop viewport sampling over the real `frontend/index.html` entry
+- simulated 2026 phone low/mid/flagship profiling through CPU throttling, mobile viewport/DPR/touch, browser-visible CPU/memory injection, V8 heap caps, and SwiftShader/low-end GPU flags
+- navigation/resource timing, long task, RAF, canvas, screenshot pixel, console/page/request failure, API event, and client-event evidence
+- JSON reports under `.local-logs/h5-performance/<runId>/profile.json`
+
+公开 API / Public API:
+
+- `npm run profile:h5-performance`
+- `npm run profile:h5-phone-sim`
+- `node scripts/profile-h5-performance.js`
+- CLI flags: `--phone-sim`, `--viewports=<list>`, `--device-profiles=<list>`, `--sample-ms=<ms>`, `--wait-for-ready-ms=<ms>`
+- environment overrides: `PROFILE_VIEWPORTS`, `PROFILE_DEVICE_PROFILES`, `PROFILE_PHONE_SIM`, `PROFILE_HEADLESS`, `PROFILE_SAMPLE_MS`, `PROFILE_TILE_RADIUS`, `PROFILE_OUTPUT_DIR`, and `PROFILE_MAX_*` / `PROFILE_MIN_*` budget variables
+- exported helpers for tests or future contract checks: `createGameStatePayload()`, `createProfileServer()`, `collectBudgetFindings()`, `summarizeRaf()`, `parseViewports()`, `analyzePng()`
+
+性能约束 / Performance Constraints:
+
+- Hard failures cover broken boot/render paths: missing server state, API/script/style/asset/request/page/console failures, missing canvas, or blank/low-variance screenshots.
+- Volatile browser timing stays warning-oriented where appropriate: long-task count and RAF p95 warn by default instead of replacing structural budgets with brittle FPS gates.
+- Simulated-phone ready time above target can remain warning-only when server state and nonblank screenshots prove the app reached first render before the higher simulation cap.
+- Benign `/api/version` aborts caused by closing a page after successful state application are recorded as ignored request failures rather than hard API failures.
+- The 2026-06-11 simulated-phone pre-optimization baseline is `.local-logs/h5-performance/2026-06-11T08-40-57-526Z/profile.json`; it showed low-end `assets:preload` reached 100% at 12.60s but phase end was delayed to 27.44s by synchronous world-map cache prewarm.
+- The 2026-06-11 deferred-prewarm sample is `.local-logs/h5-performance/2026-06-11T09-05-30-021Z/profile.json`; it passed hard budgets with low-end ready 14949ms, mid ready 9006ms, and flagship ready 4352ms, while low-end RAF/long-task warnings remained follow-up evidence.
+- The 2026-06-11 current simulated-phone sample is `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`; after mobile water-refresh floors and H5 script-order coverage, it passed hard budgets with low-end ready 14790ms, navigation load 12495ms, RAF p95 250ms, and 82 long tasks; mid ready 8920ms with 19 long tasks; flagship ready 4175ms.
+- The script is syntax-checked by `npm run test:architecture`, but the browser run remains an explicit evidence command.
+
+扩展方式 / Extension Path:
+
+- Add new stub API routes only when the real H5 boot path starts requiring them, and keep them close to backend response shapes.
+- Add physical-device/online profiling as a separate command or option if a device becomes available; preserve this local deterministic simulation mode for regression comparison.
+- Promote warning budgets to hard deploy blockers only after sampled evidence and P12 roadmap notes justify the threshold.
+- Keep simulation limitations explicit: Chromium CPU throttling, SwiftShader GPU flags, navigator memory/core spoofing, and V8 heap caps are not equivalent to real phone thermals, drivers, OS memory pressure, or browser variance.
+
+回归 / Regression:
+
+- `node --check scripts/profile-h5-performance.js`
+- `npm run profile:h5-performance`
+- `npm run profile:h5-phone-sim`
+- `npm run test:architecture`
+
+### `scripts/check-frontend-script-manifest.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- short-term guard for the hand-written H5 `frontend/index.html` script entry
+- local script existence checks
+- duplicate script path checks
+- required `?v=` cache-busting checks
+- critical dependency order checks
+
+公开 API / Public API:
+
+- `node scripts/check-frontend-script-manifest.js`
+
+扩展方式 / Extension Path:
+
+- Add only critical dependency pairs here while the project remains script-tag based.
+- Long-term bundler/content-hash manifest should replace this short-term guard.
+
+回归 / Regression:
+
+- `node scripts/check-frontend-script-manifest.js`
+- `npm run test:architecture`
+
+### `scripts/check-repository-hygiene.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- tracked-file hygiene guard
+- blocking tracked `.bak`, `.backup`, database, `.env`, and key/certificate files
+
+公开 API / Public API:
+
+- `node scripts/check-repository-hygiene.js`
+
+扩展方式 / Extension Path:
+
+- Add new forbidden runtime artifact patterns here when deploy/playtest creates local files that must never enter Git.
+- Do not use this script for generated source allow/deny decisions; keep it focused on secrets, backups, and runtime artifacts.
+
+回归 / Regression:
+
+- `node scripts/check-repository-hygiene.js`
+- `npm run test:architecture`
+
 ## 3. 遗留或未完成模块 / Legacy Or Not Yet Completed Modules
 
 These files are not "bad"; they are high-risk because they own too many responsibilities. New feature work should avoid adding more responsibility to them.
@@ -5028,3 +6073,21 @@ Recommended first split sequence:
 | 2026-06-10 | Moved map-home march HUD ownership back to the `mainHud` pass: `WorldMapTileMapRenderer` now publishes world HUD context and keeps only map/site/actor targets, while `HudOverlayCanvasRenderer` / `CanvasFrameRenderer` invoke `renderWorldMarchHud()` and prefer same-frame HUD context over stale runtime context. |
 | 2026-06-10 | Fixed world-map input/HUD command contracts: `WorldMapRuntime.getLayerPointFromHudPoint()` converts `mainHud` taps into padded world-layer coordinates while subtracting drag-layer transform, `WorldMarchHudCanvasRenderer` shows stop only for active actors, and return-home now accepts idle parked world-march missions. |
 | 2026-06-11 | Split backend game-state structural normalization, explicit runtime advancement, and read-only client projection. `GameStateProjectionArchitecture.test.js` now guards that action/reset responses use normalized-only DTOs, projection does not advance explorer/territory runtime state, and downstream City/Tech/Talent/Famous/WorldMap helpers expose read-only projection APIs for already-normalized snapshots. |
+| 2026-06-11 | Closed world-map layer ownership P0-001: `worldMap` now publishes context and map-owned targets only, `worldActor` owns actor drawing and actor hit targets, `mainHud` owns march command HUD invocation, and `WorldMapLayerOwnershipContract.test.js` is registered in `npm run test:architecture`. |
+| 2026-06-11 | Closed backend query/persistence P0-002/P0-003 for current scope: `GET /api/game/state` and `GET /api/game/tasks` are read-only projections, `GameStateRepository.save()` is transaction-backed through `saveAtomic()`, `revision` detects stale writes, and `resetPlayerState()` clears shared-world ownership in the same transaction. |
+| 2026-06-11 | Closed frontend request/polling P1 current scope: `GameAPI` now owns timeout, request ids, structured errors, and safe-method retry; `GameStateSync` and `UpdateChecker` now own failure backoff windows; their focused tests are registered in `npm run test:architecture`. |
+| 2026-06-11 | Closed admin/security P1/P2 current scope: `adminMiddleware` separates admin authorization from auth, `SecurityConfig` enforces production JWT/CORS configuration, and `H5AuthStorageAdapter` no longer stores or returns plaintext remembered passwords. |
+| 2026-06-11 | Added production gates for CI/deploy and repo/frontend hygiene: `.github/workflows/architecture-gate.yml`, `scripts/pre-deploy-gate.sh`, `scripts/check-frontend-script-manifest.js`, and `scripts/check-repository-hygiene.js` are now documented and registered in the architecture baseline. |
+| 2026-06-11 | Continued P12/P1 deploy-version hardening: `/api/version` now has a route module with ETag/304 semantics, `VersionService` reads deploy manifest metadata, `GameAPI` reuses `/version` ETag cache, `deploy.sh` writes fixed deploy state/log files, and `run-architecture-smoke.js` auto-discovers contract tests. |
+| 2026-06-11 | Continued P12-003 observability current scope: added `ObservabilityService`, `metricsRoutes`, and `clientEventsRoutes` for in-memory backend/API/frontend metrics, `/api/health` observability summary, authenticated admin `/api/metrics`, `POST /api/client-events`, and alert threshold codes for 5xx rate, slow requests, action failures, and frontend load failures. |
+| 2026-06-11 | Continued P12-002 release/deploy governance: `deploy.sh` now accepts deployable branch/tag/commit refs, `scripts/verify-deploy-hook.sh` verifies server hook wiring read-only, `scripts/rollback-deploy.sh` provides an explicit rollback entry, and shell syntax guard covers all project-owned deploy scripts. |
+| 2026-06-11 | Continued P12-004 backup/restore current script scope: added `scripts/backup-runtime-state.sh` and `scripts/restore-runtime-state.sh` for runtime DB/shared/deploy-state archives, checksum/manifest/retention handling, strong restore confirmation, pre-restore safety backups, and shell syntax/test coverage. |
+| 2026-06-11 | Extended P12-004 backup operations: added `scripts/install-runtime-backup-cron.sh` and `scripts/verify-runtime-backup.sh` for marked cron installation, backup log/root/retention wiring, latest archive age/checksum/content verification, and shell syntax/test coverage. |
+| 2026-06-11 | Continued P12-005 performance/capacity current budget-contract scope: added backend `PerformanceCapacityBudget`, extended frontend `WorldMapPerformanceBudget` for renderer frame/window/chunk work, wired observability `PERFORMANCE_BUDGET_EXCEEDED`, persisted save budget summaries in `saveMetadata.performanceCapacity`, and registered focused tests in `npm run test:architecture`. |
+| 2026-06-11 | Extended P12-005 local profiling evidence: added `scripts/profile-h5-performance.js` and `npm run profile:h5-performance` to run real H5 boot/render through a stub API, collect mobile/desktop browser timing/canvas/screenshot/API evidence, and write `.local-logs/h5-performance/<runId>/profile.json`; the 2026-06-11 local sample passed hard budgets with a mobile long-task warning. |
+| 2026-06-11 | Extended P12-005 simulated phone profiling: added `npm run profile:h5-phone-sim` and 2026 phone low/mid/flagship profiles using Chromium CPU throttling, mobile viewport/DPR/touch, browser-visible CPU/memory injection, V8 heap caps, and SwiftShader/low-end GPU flags; `.local-logs/h5-performance/2026-06-11T08-40-57-526Z/profile.json` passed hard budgets with low-end long-task/RAF warnings. |
+| 2026-06-11 | Continued P12-005 simulated low-end attribution: moved world-map tile metrics/mask/dry-template cache prewarm out of H5 startup blocking preload and into `worldMapRenderer.scheduleWorldTileCachePrewarm()` background chunks, then added mobile water-refresh floors shared by `CanvasGameShellWorldMapRuntimePolicy` and `CanvasGameAppRenderScheduler`. `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json` passed hard budgets with low-end ready 14790ms, mid ready 8920ms, flagship ready 4175ms, and remaining warning-level RAF/long-task evidence. |
+| 2026-06-11 | Continued P12-007 config pipeline current local gate: added `ConfigPipeline`, `scripts/validate-config-pipeline.js`, `npm run config:validate`, and `docs/config_registry_snapshot_2026-06-11.json` baseline diff evidence for 7 config registries; `npm run test:architecture` now blocks registry schema/hash/entry/version drift without a satisfying version bump. |
+| 2026-06-11 | Continued P12-007 config release audit scope: added `ConfigReleaseService` plus admin `/api/admin/config-releases`, `/active`, `/runtime-status`, `/preview`, `/publish`, and `/rollback` routes for audit-only release history, active release pointer, active-vs-current registry drift status, rollback records, and startup release gate policy. |
+| 2026-06-11 | Continued P12-007 runtime bundle consumption: added `ConfigRuntimeLoader` to build a read-only payload bundle only after active release gate match, validate payload hashes against the active snapshot, and expose loader readiness through health/admin status; `GameplayConfigRuntime` now consumes game/building/era/tutorial/tech-tree payloads for core gameplay with module fallback only in observe modes. |
+| 2026-06-11 | Added `frontend/tools/config-release-console.html` as the P12-007 standalone admin console for active release/history, runtime drift status, preview, audit-only publish, and rollback actions; it stays outside the main H5 boot chain and does not hot-load gameplay config. |

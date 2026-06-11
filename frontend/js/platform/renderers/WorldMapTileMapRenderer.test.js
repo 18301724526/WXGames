@@ -153,27 +153,26 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
     'renderWorldTileWaterLayer',
     'renderWorldTileStaticLayer',
     'renderWorldTileFogMask',
-    'renderWorldActors',
     'addWorldMarchTileHitTargets',
     'addWorldTileSiteHitTargets',
-    'addWorldActorHitTargets',
   ]);
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
 });
 
-test('WorldMapTileMapRenderer passes continuous march actors into render layer', () => {
+test('WorldMapTileMapRenderer publishes continuous march actors without painting them on the map layer', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });
 
   renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
     epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
   });
-  const actorCall = host.calls.find((call) => call[0] === 'renderWorldActors');
-  const actor = actorCall?.[1]?.[0];
+  const actor = host.lastWorldTileMapContext.actors[0];
 
   assert.equal(Boolean(actor), true);
   assert.equal(actor.current.q > 0, true);
   assert.equal(actor.current.q < 1, true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
 });
 
 test('WorldMapTileMapRenderer derives continuous actors from world explorer state when activeScouts is empty', () => {
@@ -196,8 +195,7 @@ test('WorldMapTileMapRenderer derives continuous actors from world explorer stat
       },
     },
   });
-  const actorCall = host.calls.find((call) => call[0] === 'renderWorldActors');
-  const actor = actorCall?.[1]?.[0];
+  const actor = host.lastWorldTileMapContext.actors[0];
 
   assert.equal(Boolean(actor), true);
   assert.equal(actor.missionId, 'explore-active-1');
@@ -213,15 +211,14 @@ test('WorldMapTileMapRenderer keeps later epoch movement continuous', () => {
   renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
     epochNowMs: new Date('2026-06-06T00:00:09.000Z').getTime(),
   });
-  const actorCall = host.calls.find((call) => call[0] === 'renderWorldActors');
-  const actor = actorCall?.[1]?.[0];
+  const actor = host.lastWorldTileMapContext.actors[0];
 
   assert.equal(Boolean(actor), true);
   assert.equal(actor.current.q > 0.8, true);
   assert.equal(actor.current.q < 1, true);
 });
 
-test('WorldMapTileMapRenderer hit-target-only skips paint and registers map/actor targets only', () => {
+test('WorldMapTileMapRenderer hit-target-only skips paint and registers only map-owned targets', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });
 
@@ -230,7 +227,7 @@ test('WorldMapTileMapRenderer hit-target-only skips paint and registers map/acto
   assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), false);
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldMarchTileHitTargets'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 

@@ -1,8 +1,10 @@
-const { TUTORIAL_STEPS } = require('../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
 const TutorialProgressService = require('./TutorialProgressService');
 
 module.exports = {
-  TUTORIAL_STEPS,
+  get TUTORIAL_STEPS() {
+    return TutorialFlowConfig.TUTORIAL_STEPS;
+  },
   createInitialTutorialState: TutorialProgressService.createInitialTutorialState,
   normalizeTutorialState: TutorialProgressService.normalizeTutorialState,
   canAccessTab: TutorialProgressService.canAccessTab,

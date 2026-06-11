@@ -1,4 +1,9 @@
 (function (global) {
+  var WorldMapRuntimePolicy = global.CanvasGameShellWorldMapRuntimePolicy;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimePolicy) {
+    WorldMapRuntimePolicy = require('./CanvasGameShellWorldMapRuntimePolicy');
+  }
+
   function now(host = {}) {
     return host.runtime?.now?.() || Date.now();
   }
@@ -35,6 +40,12 @@
   function getWorldTileWaterAnimationFrameMs(host = {}) {
     if (host.canvasShell?.getWorldTileWaterAnimationFrameMs) return host.canvasShell.getWorldTileWaterAnimationFrameMs();
     const fps = Number(host.renderer?.getWorldTileWaterAnimationFps?.() || 8);
+    if (WorldMapRuntimePolicy?.getWaterAnimationFrameMs) {
+      return WorldMapRuntimePolicy.getWaterAnimationFrameMs({
+        animationFrameMs: getAnimationFrameMs(host),
+        fps,
+      });
+    }
     return Math.max(getAnimationFrameMs(host), Math.round(1000 / Math.max(1, fps)));
   }
 

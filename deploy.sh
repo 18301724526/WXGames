@@ -16,6 +16,7 @@ ALLOWED_WORK_TREE="/www/wwwroot/h5"
 ALLOWED_FRONTEND_PUBLIC_DIR="/www/wwwroot/h5"
 DEFAULT_REPO_GIT_DIR="/home/git/wxgame.git"
 COCOS_PROJECT_ROOT="/www/wwwroot/civilization-fire-next"
+DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-/opt/wxgame-workspace/.wxgame}"
 
 normalize_configured_path() {
     local input_path="$1"
@@ -29,6 +30,7 @@ WORK_TREE="$(normalize_configured_path "$WORK_TREE")"
 FRONTEND_PUBLIC_DIR="$(normalize_configured_path "$FRONTEND_PUBLIC_DIR")"
 BACKEND_DIR="$(normalize_configured_path "$BACKEND_DIR")"
 SHARED_LINK="$(normalize_configured_path "$SHARED_LINK")"
+DEPLOY_STATE_DIR="$(normalize_configured_path "$DEPLOY_STATE_DIR")"
 
 assert_not_under_path() {
     local label="$1"
@@ -49,6 +51,7 @@ assert_safe_deploy_paths() {
     assert_not_under_path "FRONTEND_PUBLIC_DIR" "$FRONTEND_PUBLIC_DIR" "$COCOS_PROJECT_ROOT"
     assert_not_under_path "BACKEND_DIR" "$BACKEND_DIR" "$COCOS_PROJECT_ROOT"
     assert_not_under_path "SHARED_LINK" "$SHARED_LINK" "$COCOS_PROJECT_ROOT"
+    assert_not_under_path "DEPLOY_STATE_DIR" "$DEPLOY_STATE_DIR" "$COCOS_PROJECT_ROOT"
 
     if [ "${ALLOW_WXGAME_DEPLOY_PATH_OVERRIDE:-0}" != "1" ]; then
         if [ "$WORK_TREE" != "$ALLOWED_WORK_TREE" ]; then
@@ -123,14 +126,33 @@ git_repo() {
     git --git-dir="$GIT_DIR_PATH" --work-tree="$WORK_TREE" "$@"
 }
 
+resolve_deploy_commit() {
+    git_repo rev-parse --verify "$BRANCH^{commit}"
+}
+
 write_deploy_version() {
     local deployed_commit
     local deployed_at
+    local deploy_manifest
+    local current_deploy_path
+    local deploy_log_path
 
-    deployed_commit="$(git_repo rev-parse "$BRANCH")"
+    deployed_commit="$(git_repo rev-parse HEAD)"
     deployed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    mkdir -p "$DEPLOY_STATE_DIR"
+    deploy_manifest="$(mktemp)"
     node -e "const fs=require('fs'); const data={branch:process.argv[1],commit:process.argv[2],deployedAt:process.argv[3],workTree:process.argv[4],frontendPublicDir:process.argv[5]}; fs.writeFileSync(process.argv[6], JSON.stringify(data, null, 2) + '\n');" \
-        "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$FRONTEND_PUBLIC_DIR/.wxgame-deploy-version.json"
+        "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$deploy_manifest"
+    cp "$deploy_manifest" "$FRONTEND_PUBLIC_DIR/.wxgame-deploy-version.json"
+    current_deploy_path="$DEPLOY_STATE_DIR/current-deploy.json"
+    deploy_log_path="$DEPLOY_STATE_DIR/deploy.log"
+    cp "$deploy_manifest" "$current_deploy_path"
+    rm -f "$deploy_manifest"
+    printf '%s branch=%s commit=%s workTree=%s frontendPublicDir=%s\n' \
+        "$deployed_at" "$BRANCH" "$deployed_commit" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" >> "$deploy_log_path"
+    export WXGAME_DEPLOY_MANIFEST_PATH="$current_deploy_path"
+    echo "[Deploy] 部署状态文件: $current_deploy_path"
+    echo "[Deploy] 部署日志: $deploy_log_path"
 }
 
 read_config_version() {
@@ -314,20 +336,36 @@ IS_BARE_REPO="$(git --git-dir="$GIT_DIR_PATH" rev-parse --is-bare-repository)"
 echo "[Deploy] 使用工作目录: $WORK_TREE"
 echo "[Deploy] 使用前端网站目录: $FRONTEND_PUBLIC_DIR"
 echo "[Deploy] 使用 Git 目录: $GIT_DIR_PATH"
+echo "[Deploy] 使用部署状态目录: $DEPLOY_STATE_DIR"
 
 if [ "$IS_BARE_REPO" = "true" ]; then
-    echo "[Deploy] 检测到 bare repo，直接检出分支 $BRANCH ..."
-    if ! git --git-dir="$GIT_DIR_PATH" show-ref --verify --quiet "refs/heads/$BRANCH"; then
-        echo "[Deploy] bare repo 中不存在分支 $BRANCH" >&2
+    echo "[Deploy] 检测到 bare repo，直接检出 ref $BRANCH ..."
+    if ! DEPLOY_COMMIT="$(resolve_deploy_commit 2>/dev/null)"; then
+        echo "[Deploy] bare repo 中不存在可部署 ref/commit: $BRANCH" >&2
         exit 1
     fi
-    git_repo checkout -f "$BRANCH"
+    git_repo checkout -f "$DEPLOY_COMMIT"
     git_repo clean -fd
 else
-    echo "[Deploy] 检测到普通仓库，强制对齐到 origin/$BRANCH ..."
-    git_repo fetch origin "$BRANCH"
-    git_repo reset --hard "origin/$BRANCH"
+    echo "[Deploy] 检测到普通仓库，强制对齐到 ref $BRANCH ..."
+    if git_repo fetch origin "$BRANCH" >/dev/null 2>&1 \
+        && DEPLOY_COMMIT="$(git_repo rev-parse --verify "origin/$BRANCH^{commit}" 2>/dev/null)"; then
+        git_repo reset --hard "$DEPLOY_COMMIT"
+    elif DEPLOY_COMMIT="$(resolve_deploy_commit 2>/dev/null)"; then
+        echo "[Deploy] 使用本地可解析 ref/commit: $BRANCH"
+        git_repo checkout -f "$DEPLOY_COMMIT"
+    else
+        echo "[Deploy] 无法解析可部署 ref/commit: $BRANCH" >&2
+        exit 1
+    fi
     git_repo clean -fd
+fi
+
+if [ "${SKIP_DEPLOY_GATE:-0}" != "1" ]; then
+    echo "[Deploy] Running pre-deploy architecture gate..."
+    bash "$WORK_TREE/scripts/pre-deploy-gate.sh" "$WORK_TREE"
+else
+    echo "[Deploy] SKIP_DEPLOY_GATE=1 set; skipping pre-deploy architecture gate."
 fi
 
 echo "[Deploy] 发布前端静态文件..."

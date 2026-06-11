@@ -1,4 +1,6 @@
 const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const CHECK_FILES = Object.freeze([
   'frontend/js/config/GameConfig.js',
@@ -10,6 +12,13 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/debug/H5LoadTrace.test.js',
   'frontend/js/api/GameAPI.js',
   'frontend/js/api/GameAPI.test.js',
+  'frontend/js/ui/H5AuthStorageAdapter.js',
+  'frontend/js/ui/H5AuthStorageAdapter.test.js',
+  'frontend/js/services/GameStateSync.js',
+  'frontend/js/services/GameStateSync.test.js',
+  'frontend/js/services/UpdateChecker.js',
+  'frontend/js/services/UpdateChecker.test.js',
+  'frontend/tools/config-release-console.test.js',
   'frontend/js/domain/TileCoord.js',
   'frontend/js/domain/TileCoord.test.js',
   'frontend/js/domain/WorldTopology.js',
@@ -108,6 +117,7 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/renderers/WorldMapFogMaskContextRenderer.test.js',
   'frontend/js/platform/renderers/WorldMapTileMapRenderer.js',
   'frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js',
+  'frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js',
   'frontend/js/platform/renderers/WorldMapActorHudRenderer.js',
   'frontend/js/platform/renderers/WorldMapActorHudRenderer.test.js',
   'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
@@ -193,6 +203,7 @@ const CHECK_FILES = Object.freeze([
   'backend/config/BuildingConfig.js',
   'backend/config/EraConfig.js',
   'backend/config/GameConfig.js',
+  'backend/config/SecurityConfig.js',
   'backend/config/TechTreeConfig.js',
   'backend/config/TutorialFlowConfig.js',
   'backend/services/SkillGeneratorService.js',
@@ -215,21 +226,41 @@ const CHECK_FILES = Object.freeze([
   'backend/services/CityService.js',
   'backend/services/TechTreeService.js',
   'backend/services/VersionService.js',
+  'backend/services/ObservabilityService.js',
+  'backend/services/PerformanceCapacityBudget.js',
   'backend/services/config/ConfigRegistryContract.js',
+  'backend/services/config/ConfigPipeline.js',
+  'backend/services/config/ConfigReleaseService.js',
+  'backend/services/config/ConfigRuntimeLoader.js',
+  'backend/services/config/GameplayConfigRuntime.js',
   'backend/services/GameStateMigrationPipeline.js',
   'backend/services/GameStateNormalizer.js',
   'backend/services/GameStateService.js',
   'backend/services/ClientGameStateAssembler.js',
+  'backend/middleware/adminMiddleware.js',
+  'backend/routes/adminRoutes.js',
   'backend/routes/gameRoutes.js',
   'backend/routes/playerRoutes.js',
+  'backend/routes/versionRoutes.js',
+  'backend/routes/metricsRoutes.js',
+  'backend/routes/clientEventsRoutes.js',
   'backend/repositories/GameStateRepository.js',
   'backend/tests/ConfigRegistryContract.test.js',
+  'backend/tests/ConfigReleaseService.test.js',
+  'backend/tests/ConfigRuntimeLoader.test.js',
+  'backend/tests/SecurityConfig.test.js',
   'backend/tests/ServerRandomAuthorityContract.test.js',
   'backend/tests/GameStateRepository.test.js',
   'backend/tests/WorldMapArchitecture.test.js',
   'backend/tests/SkillGeneratorArchitecture.test.js',
   'backend/tests/FamousPersonArchitecture.test.js',
   'backend/tests/TalentPolicyService.test.js',
+  'backend/tests/AdminRoutes.test.js',
+  'backend/tests/VersionRoutes.test.js',
+  'backend/tests/MetricsRoutes.test.js',
+  'backend/tests/ClientEventsRoutes.test.js',
+  'backend/tests/ObservabilityService.test.js',
+  'backend/tests/PerformanceCapacityBudget.test.js',
   'backend/tests/RealtimeAuthorityContract.test.js',
   'backend/tests/VersionService.test.js',
   'backend/tests/GameStateMigrationPipeline.test.js',
@@ -238,6 +269,15 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/GameStateServiceSplit.test.js',
   'backend/tests/GameStateProjectionArchitecture.test.js',
   'scripts/check-stable-blocks.js',
+  'scripts/run-architecture-smoke.js',
+  'scripts/run-architecture-smoke.test.js',
+  'scripts/check-repository-hygiene.js',
+  'scripts/check-frontend-script-manifest.js',
+  'scripts/check-shell-scripts.js',
+  'scripts/check-shell-scripts.test.js',
+  'scripts/profile-h5-performance.js',
+  'scripts/validate-config-pipeline.js',
+  'scripts/validate-config-pipeline.test.js',
   'scripts/verify-refactor-plan-doc.js',
 ]);
 
@@ -258,6 +298,10 @@ const TEST_FILES = Object.freeze([
   'frontend/js/config/AssetKeyRegistry.test.js',
   'frontend/js/debug/H5LoadTrace.test.js',
   'frontend/js/api/GameAPI.test.js',
+  'frontend/js/ui/H5AuthStorageAdapter.test.js',
+  'frontend/js/services/GameStateSync.test.js',
+  'frontend/js/services/UpdateChecker.test.js',
+  'frontend/tools/config-release-console.test.js',
   'frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js',
   'frontend/js/platform/CanvasGameShell.test.js',
   'frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js',
@@ -295,6 +339,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.test.js',
   'frontend/js/platform/renderers/WorldMapFogMaskContextRenderer.test.js',
   'frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js',
+  'frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js',
   'frontend/js/platform/renderers/WorldMapActorHudRenderer.test.js',
   'frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js',
   'frontend/js/platform/WorldMapVisualPluginRegistry.test.js',
@@ -328,18 +373,74 @@ const TEST_FILES = Object.freeze([
   'backend/tests/GameStateServiceSplit.test.js',
   'backend/tests/GameStateProjectionArchitecture.test.js',
   'backend/tests/ConfigRegistryContract.test.js',
+  'backend/tests/SecurityConfig.test.js',
   'backend/tests/ServerRandomAuthorityContract.test.js',
   'backend/tests/WorldMapArchitecture.test.js',
   'backend/tests/SkillGeneratorArchitecture.test.js',
   'backend/tests/TerritoryArchitecture.test.js',
   'backend/tests/FamousPersonArchitecture.test.js',
   'backend/tests/TalentPolicyService.test.js',
+  'backend/tests/AdminRoutes.test.js',
+  'backend/tests/VersionRoutes.test.js',
+  'backend/tests/MetricsRoutes.test.js',
+  'backend/tests/ClientEventsRoutes.test.js',
+  'backend/tests/ObservabilityService.test.js',
+  'backend/tests/PerformanceCapacityBudget.test.js',
+  'backend/tests/ConfigPipeline.test.js',
+  'backend/tests/ConfigReleaseService.test.js',
+  'backend/tests/ConfigRuntimeLoader.test.js',
+  'backend/tests/GameplayConfigRuntime.test.js',
   'backend/tests/RealtimeAuthorityContract.test.js',
   'backend/tests/VersionService.test.js',
   'backend/tests/WorldExplorerDtoMapper.test.js',
   'backend/tests/WorldExplorerArchitecture.test.js',
   'backend/tests/GameStateRepository.test.js',
+  'scripts/run-architecture-smoke.test.js',
+  'scripts/check-shell-scripts.test.js',
+  'scripts/validate-config-pipeline.test.js',
 ]);
+
+const CONTRACT_SEARCH_DIRS = Object.freeze([
+  'frontend',
+  'backend',
+  'scripts',
+]);
+
+function toPosixRelative(filePath, repoRoot = process.cwd()) {
+  return path.relative(repoRoot, filePath).replace(/\\/g, '/');
+}
+
+function isContractTestFile(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  const name = path.basename(normalized).toLowerCase();
+  return name.endsWith('.contract.test.js') || name.endsWith('contract.test.js');
+}
+
+function collectFiles(root, files = []) {
+  if (!fs.existsSync(root)) return files;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const entryPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      collectFiles(entryPath, files);
+    } else if (entry.isFile()) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+function discoverContractTests(repoRoot = process.cwd()) {
+  return CONTRACT_SEARCH_DIRS
+    .flatMap((dir) => collectFiles(path.join(repoRoot, dir), []))
+    .filter(isContractTestFile)
+    .map((filePath) => toPosixRelative(filePath, repoRoot))
+    .sort();
+}
+
+function uniqueFiles(files) {
+  return Array.from(new Set(files));
+}
 
 function run(label, command, args) {
   console.log(`[architecture-smoke] ${label}`);
@@ -353,13 +454,40 @@ function run(label, command, args) {
   }
 }
 
-CHECK_FILES.forEach((file) => {
-  run(`node --check ${file}`, process.execPath, ['--check', file]);
-});
+function main() {
+  CHECK_FILES.forEach((file) => {
+    run(`node --check ${file}`, process.execPath, ['--check', file]);
+  });
 
-run('focused node tests', process.execPath, ['--test', ...TEST_FILES]);
-run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
-run('official document guard', process.execPath, ['scripts/verify-refactor-plan-doc.js']);
-run('git diff --check', 'git', ['diff', '--check']);
+  const testFiles = uniqueFiles([
+    ...TEST_FILES,
+    ...discoverContractTests(),
+  ]);
 
-console.log('[architecture-smoke] passed');
+  run('focused node tests', process.execPath, ['--test', ...testFiles]);
+  run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
+  run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
+  run('frontend script manifest guard', process.execPath, ['scripts/check-frontend-script-manifest.js']);
+  run('shell script syntax guard', process.execPath, ['scripts/check-shell-scripts.js']);
+  run('config pipeline validation guard', process.execPath, [
+    'scripts/validate-config-pipeline.js',
+    '--baseline',
+    'docs/config_registry_snapshot_2026-06-11.json',
+  ]);
+  run('official document guard', process.execPath, ['scripts/verify-refactor-plan-doc.js']);
+  run('git diff --check', 'git', ['diff', '--check']);
+
+  console.log('[architecture-smoke] passed');
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  CHECK_FILES,
+  TEST_FILES,
+  discoverContractTests,
+  isContractTestFile,
+  uniqueFiles,
+};

@@ -115,3 +115,47 @@ test('GameStateSync throttles repeated authority refreshes while a mission remai
   assert.equal(calls.filter((call) => call[0] === 'heartbeat').length, 2);
   assert.equal(calls.filter((call) => call[0] === 'getState').length, 1);
 });
+
+test('GameStateSync backs off heartbeat attempts after failures and resets on success', async () => {
+  const calls = [];
+  let now = 1000;
+  let shouldFail = true;
+  const sync = new GameStateSync({
+    async heartbeat() {
+      calls.push(['heartbeat', now]);
+      if (shouldFail) throw new Error('Gateway Timeout');
+      return {
+        type: 'heartbeat',
+        serverTime: new Date(now).toISOString(),
+      };
+    },
+  }, 1000, {
+    now: () => now,
+    backoffBaseMs: 5000,
+    backoffMaxMs: 20000,
+  });
+
+  await assert.rejects(() => sync.fetchNow(), /Gateway Timeout/);
+  assert.equal(sync.failureCount, 1);
+  assert.equal(sync.nextAllowedAt, 6000);
+
+  await sync.fetchNow();
+  assert.deepEqual(calls, [['heartbeat', 1000]]);
+
+  now = 6000;
+  await assert.rejects(() => sync.fetchNow(), /Gateway Timeout/);
+  assert.equal(sync.failureCount, 2);
+  assert.equal(sync.nextAllowedAt, 16000);
+
+  now = 16000;
+  shouldFail = false;
+  const data = await sync.fetchNow();
+  assert.equal(data.type, 'heartbeat');
+  assert.equal(sync.failureCount, 0);
+  assert.equal(sync.nextAllowedAt, 0);
+  assert.deepEqual(calls, [
+    ['heartbeat', 1000],
+    ['heartbeat', 6000],
+    ['heartbeat', 16000],
+  ]);
+});

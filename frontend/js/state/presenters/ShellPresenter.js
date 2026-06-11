@@ -57,7 +57,7 @@
       return {
         rememberPasswordChecked,
         usernameValue: credentials.rememberedUsername || credentials.username || '',
-        passwordValue: rememberPasswordChecked ? (credentials.rememberedPassword || '') : '',
+        passwordValue: '',
       };
     }
 

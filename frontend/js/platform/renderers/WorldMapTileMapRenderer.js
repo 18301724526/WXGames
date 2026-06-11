@@ -177,14 +177,13 @@
       });
     }
 
-    renderWorldTileMapHitTargets(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}, renderSnapshot = null, actors = null) {
+    renderWorldTileMapHitTargets(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}) {
       this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      this.addWorldActorHitTargets(Array.isArray(actors) ? actors : this.getWorldTileMapActors(tileMapView, renderSnapshot, options), viewport, geometry);
       return true;
     }
 
-    renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}, renderSnapshot = null, actors = null) {
+    renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}) {
       if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
         this.renderWorldScoutRoutes(tileMapView, viewport);
       }
@@ -197,11 +196,8 @@
         });
       }
       this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
-      const resolvedActors = Array.isArray(actors) ? actors : this.getWorldTileMapActors(tileMapView, renderSnapshot, options);
-      this.renderWorldActors(resolvedActors, viewport, geometry);
       this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
-      this.addWorldActorHitTargets(resolvedActors, viewport, geometry);
       return true;
     }
 

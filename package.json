@@ -9,7 +9,10 @@
   "scripts": {
     "test": "node scripts/run-node-tests.js",
     "test:architecture": "node scripts/run-architecture-smoke.js",
-    "playtest:online-tutorial": "node scripts/playtest-online-tutorial.js"
+    "config:validate": "node scripts/validate-config-pipeline.js",
+    "playtest:online-tutorial": "node scripts/playtest-online-tutorial.js",
+    "profile:h5-performance": "node scripts/profile-h5-performance.js",
+    "profile:h5-phone-sim": "node scripts/profile-h5-performance.js --phone-sim"
   },
   "repository": {
     "type": "git",

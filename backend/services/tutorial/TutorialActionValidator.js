@@ -1,7 +1,4 @@
-const {
-  TUTORIAL_STEPS,
-  PASS_THROUGH_ACTIONS,
-} = require('../../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const { normalizeTutorialState } = require('./TutorialState');
 const {
   SCOUT_FAMOUS_GRANT_KEY,
@@ -16,7 +13,16 @@ function blocked(message, code = 'TUTORIAL_BLOCKED') {
   return { allowed: false, code, message };
 }
 
+function getTutorialSteps() {
+  return TutorialFlowConfig.TUTORIAL_STEPS;
+}
+
+function getPassThroughActions() {
+  return TutorialFlowConfig.PASS_THROUGH_ACTIONS;
+}
+
 function validateHouseGuideAction(step, action, payload, gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'advanceEra') {
     return blocked('请先建造第一处民居，再按照引导查看文明进阶。');
   }
@@ -34,6 +40,7 @@ function validateHouseGuideAction(step, action, payload, gameState) {
 }
 
 function validateFirstEraAction(step, action, payload, gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'advanceEra') {
     if (step < TUTORIAL_STEPS.civilizationTabOpened || gameState.currentEra !== 0) {
       return blocked('请先按照引导进入文明并执行时代进阶。');
@@ -56,6 +63,7 @@ function validateFirstEraAction(step, action, payload, gameState) {
 }
 
 function validateEra2Action(step, action, payload, gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill && !canAffordLumbermill(gameState)) {
     if (action === 'advanceEra') return blocked('请先完成聚落时代引导。');
     return { allowed: true };
@@ -95,6 +103,7 @@ function validateEra2Action(step, action, payload, gameState) {
 }
 
 function validateScoutFormationAction(step, action, payload, gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'advanceEra') {
     if (step !== TUTORIAL_STEPS.era3AdvanceReady || gameState.currentEra !== 2) {
       return blocked('请先按照引导完成名人编队准备。');
@@ -119,6 +128,7 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 }
 
 function validateScoutExploreAction(step, action, payload, gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'startExplore' || action === 'startWorldMarch') {
     if (step >= TUTORIAL_STEPS.scoutExploreClaimed) return { allowed: true };
     if (step < TUTORIAL_STEPS.scoutFormationSaved) {
@@ -141,6 +151,7 @@ function validateScoutExploreAction(step, action, payload, gameState) {
 }
 
 function validateFirstCityGuideAction(step, action, payload, gameState) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   const firstCityId = getTutorialFirstEmptyCityId(gameState.tutorial);
   const targetId = String(payload?.territoryId || payload?.cityId || '').trim();
   const target = getTerritoryById(gameState, targetId);
@@ -203,6 +214,7 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
 }
 
 function validatePostNamingSystemGuideAction(step, action, payload = {}) {
+  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'tutorialAdvance') {
     const requestedStep = Number(payload?.step);
     if (
@@ -233,6 +245,8 @@ function validatePostNamingSystemGuideAction(step, action, payload = {}) {
 }
 
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
+  const TUTORIAL_STEPS = getTutorialSteps();
+  const PASS_THROUGH_ACTIONS = getPassThroughActions();
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
   const step = tutorial.currentStep;

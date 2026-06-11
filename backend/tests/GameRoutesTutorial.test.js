@@ -58,7 +58,7 @@ test('game action route persists tutorial returned by action handlers', () => {
     },
   };
   const gameStateService = {
-    applyOnlineProgress(state) {
+    normalizeState(state) {
       return state;
     },
     getClientGameState(state) {
@@ -201,7 +201,7 @@ test('game tasks route returns task definitions from task center service', () =>
   route.handlers[0](req, res, () => route.handlers[1](req, res));
 
   assert.equal(res.statusCode, 200);
-  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates.length, 0);
   assert.equal(res.payload.taskCenter.activeTab, 'main');
   assert.equal(res.payload.taskCenter.summary.totalCount >= 3, true);
   assert.equal(res.payload.taskCenter.categories.main.tasks.some((task) => task.id === 'main_first_supplies'), true);

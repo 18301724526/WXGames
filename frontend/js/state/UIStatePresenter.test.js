@@ -35,6 +35,7 @@ test('UIStatePresenter delegates shell view state while preserving facade contra
     rememberedPassword: 'saved-password',
   };
   assert.deepEqual(UIStatePresenter.buildAuthCredentialViewState(credentials), ShellPresenter.buildAuthCredentialViewState(credentials));
+  assert.equal(UIStatePresenter.buildAuthCredentialViewState(credentials).passwordValue, '');
   assert.deepEqual(UIStatePresenter.buildAuthShellViewState({ authenticated: false, message: 'login required' }), ShellPresenter.buildAuthShellViewState({ authenticated: false, message: 'login required' }));
 
   const highlightRect = { top: 18, left: 40, width: 112, height: 48, bottom: 66 };

@@ -10,6 +10,26 @@
       && Number.isFinite(Number(value));
   }
 
+  function getNavigator(options = {}) {
+    return options.navigator || global.navigator || {};
+  }
+
+  function isMobileNavigator(nav = {}) {
+    const userAgent = String(nav.userAgent || '');
+    return Boolean(Number(nav.maxTouchPoints) > 0
+      || /Android|Mobile|iPhone|iPad|iPod/i.test(userAgent));
+  }
+
+  function getWaterAnimationDeviceFloorMs(options = {}) {
+    const nav = getNavigator(options);
+    const cores = toNumber(options.hardwareConcurrency ?? nav.hardwareConcurrency, 0);
+    const memory = toNumber(options.deviceMemoryGb ?? options.deviceMemory ?? nav.deviceMemory, 0);
+    const mobileLike = isMobileNavigator(nav);
+    if ((memory > 0 && memory <= 4) || (mobileLike && cores > 0 && cores <= 4)) return 900;
+    if ((memory > 0 && memory <= 6) || (mobileLike && cores > 0 && cores <= 6)) return 450;
+    return 0;
+  }
+
   function getSnapshotRenderOptions(waterTimeMs, fallbackWaterTimeMs = null) {
     return {
       force: true,
@@ -22,7 +42,7 @@
   function getWaterAnimationFrameMs(options = {}) {
     const animationFrameMs = Math.max(1, toNumber(options.animationFrameMs, 16));
     const fps = Math.max(1, toNumber(options.fps, 8));
-    return Math.max(animationFrameMs, Math.round(1000 / fps));
+    return Math.max(animationFrameMs, Math.round(1000 / fps), getWaterAnimationDeviceFloorMs(options));
   }
 
   function getLayerPadding(options = {}) {
@@ -87,6 +107,7 @@
   const CanvasGameShellWorldMapRuntimePolicy = Object.freeze({
     toNumber,
     hasNumber,
+    getWaterAnimationDeviceFloorMs,
     getSnapshotRenderOptions,
     getWaterAnimationFrameMs,
     getLayerPadding,

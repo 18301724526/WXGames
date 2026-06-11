@@ -41,6 +41,7 @@ function registerPlayerRoutes(app, deps) {
       req.playerId,
       (playerId) => gameStateService.createInitialGameState(playerId),
       (gameState) => repository.save(gameState),
+      (playerId, gameState) => repository.resetPlayerState(playerId, gameState),
     );
     const gameState = result.gameState;
     const clientState = gameStateService.getClientGameStateFromNormalized

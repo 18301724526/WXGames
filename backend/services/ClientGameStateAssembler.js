@@ -1,9 +1,11 @@
-const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
+﻿const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const BuildingUnlockService = require('./BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
-const { getEraName, getEraDescription } = require('../config/EraConfig');
-const BuildingConfig = require('../config/BuildingConfig');
-const GameConfig = require('../config/GameConfig');
+const {
+  BuildingConfig,
+  EraConfig,
+  GameConfig,
+} = require('./config/GameplayConfigRuntime');
 const TerritoryService = require('./TerritoryService');
 const WorldExplorerService = require('./WorldExplorerService');
 const CityService = require('./CityService');
@@ -65,8 +67,8 @@ function getClientGameStateFromNormalized(normalized) {
     },
     unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra, normalized),
     currentEra: normalized.currentEra,
-    currentEraName: getEraName(normalized.currentEra),
-    currentEraDescription: getEraDescription(normalized.currentEra),
+    currentEraName: EraConfig.getEraName(normalized.currentEra),
+    currentEraDescription: EraConfig.getEraDescription(normalized.currentEra),
     population: {
       ...normalized.population,
       max: normalized.population.max,

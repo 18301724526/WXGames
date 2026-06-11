@@ -50,7 +50,21 @@ backend/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | /api/health | 健康检查 |
+| GET | /api/health | 健康检查，包含版本和观测摘要 |
+| GET | /api/version | 部署版本信息，支持 ETag / 304 |
+| POST | /api/client-events | 前端加载/资源失败事件采集，写入进程内观测窗口 |
+| GET | /api/metrics | 管理员观测指标，含性能预算告警，需登录且具备管理员权限 |
+
+### 管理员配置发布
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/admin/config-releases | 配置发布历史，需登录且具备管理员权限 |
+| GET | /api/admin/config-releases/active | 当前 active 配置发布指针 |
+| GET | /api/admin/config-releases/runtime-status | active release 与当前 registry 的漂移状态 |
+| POST | /api/admin/config-releases/preview | 预览候选配置 snapshot 与 baseline/active 的 diff |
+| POST | /api/admin/config-releases/publish | 校验并写入配置发布审计和 active 指针 |
+| POST | /api/admin/config-releases/rollback | 回滚 active 指针到历史 release |
 
 ## 操作类型
 
@@ -87,6 +101,61 @@ npm run dev
 # 需要配置SSH密钥访问 47.116.32.216
 bash deploy.sh
 ```
+
+Windows 本地校验部署脚本时使用 Git Bash。可先运行：
+
+```powershell
+node scripts/check-shell-scripts.js
+```
+
+服务器上可核验部署 hook 和执行回滚：
+
+```bash
+bash scripts/verify-deploy-hook.sh
+bash scripts/rollback-deploy.sh <branch|tag|commit>
+```
+
+运行时备份和恢复入口：
+
+```bash
+bash scripts/backup-runtime-state.sh
+bash scripts/install-runtime-backup-cron.sh
+bash scripts/verify-runtime-backup.sh
+WXGAME_RESTORE_CONFIRM=restore-runtime-state bash scripts/restore-runtime-state.sh /opt/wxgame-workspace/backups/<backup>.tar.gz
+```
+
+恢复默认会先创建 pre-restore 备份；生产恢复前应先在非生产目录用 `ALLOW_RESTORE_WITHOUT_PM2_STOP=1` 完成演练。
+
+配置流水线当前本地入口：
+
+```powershell
+npm run config:validate
+node scripts/validate-config-pipeline.js --baseline docs/config_registry_snapshot_2026-06-11.json
+node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_snapshot_2026-06-11.json
+```
+
+默认校验会列出 game/era/tutorial/battle/tech/building/task-definitions registry 的 version、schema、entry count、content hash 和 source；架构门禁会用 baseline diff 拦截未按建议升级版本的配置内容变化。
+
+配置发布当前是审计、指针、漂移观测、启动门禁、只读 runtime bundle loader 和显式 gameplay runtime facade 边界，不会热加载 gameplay 运行时配置。`/api/health` 会输出 compact `configRuntime` 摘要并包含 gate policy、loader readiness 与 gameplay config runtime 状态。默认运行态文件：
+
+- `data/configReleases.json`：发布、回滚历史和快照审计。
+- `data/configActiveRelease.json`：当前 active release 指针和快照。
+
+启动门禁默认策略：`NODE_ENV=production` 时要求 active release 与当前 registry 匹配；开发/测试默认只告警。首次引导或诊断可显式设置 `CONFIG_RELEASE_GATE=warn`，禁用可用 `CONFIG_RELEASE_GATE=off`，正式生产应保持 `required`。
+
+`ConfigRuntimeLoader` 只在 active release 与当前 registry 匹配后构建只读配置 bundle，并校验 payload hash；`GameplayConfigRuntime` 是玩法侧读取入口，当前覆盖 game/building/era/tutorial/tech-tree 配置，生产 required 模式必须读取匹配的 active bundle，开发/测试 warn/off 模式可回退到模块配置用于本地引导和诊断。
+
+管理员工具页：
+
+- `/tools/config-release-console.html`：读取 active/history/runtime status，预览当前配置，写入发布审计记录，回滚 active 指针。
+
+性能/容量预算当前为观测和元数据边界：
+
+- `GET /api/metrics` 可查看 `PERFORMANCE_BUDGET_EXCEEDED`、API/action 延迟和请求/响应体大小预算结果。
+- `GameStateRepository.save()` 会把最近一次存档预算摘要写入 `saveMetadata.performanceCapacity`，用于检查存档体积、世界地图规模和 mission 数量。
+- `npm run profile:h5-performance` 可在本地用 stub API 驱动真实 H5 入口，生成 `.local-logs/h5-performance/<runId>/profile.json`，用于记录 navigation/resource timing、long task、RAF、canvas、截图像素和资源失败证据。
+- `npm run profile:h5-phone-sim` 会用 CPU throttling、移动视口/DPR/touch、navigator 核心数/内存注入、V8 heap 上限和 SwiftShader/低端 GPU flag 近似 2026 手机 low/mid/flagship 档位；这是无真机时的本地保守模拟，不等同物理真机热/驱动/浏览器实测。
+- H5 启动期资源加载只等待图片可用；世界地图瓦片 metrics/mask/dry-template 预热由 `worldMapRenderer.scheduleWorldTileCachePrewarm()` 在 ready 周边按设备档位后台分片执行，并在 profile 中以 `assets:prewarm:deferred` 记录。低/中端移动档还会降低水面/探索刷新频率，避免 ready 后按桌面节奏重绘地图。2026-06-11 最新模拟报告为 `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`。
 
 或手动部署：
 

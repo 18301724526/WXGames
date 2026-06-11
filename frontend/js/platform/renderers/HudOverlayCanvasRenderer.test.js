@@ -115,7 +115,7 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   assert.equal(names.at(-1), 'endFrame');
 });
 
-test('HudOverlayCanvasRenderer keeps dynamic world march HUD on the actor layer', () => {
+test('HudOverlayCanvasRenderer renders dynamic world march HUD on the screen layer', () => {
   const hudContext = {
     actors: [{ id: 'scout-1' }],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -137,11 +137,11 @@ test('HudOverlayCanvasRenderer keeps dynamic world march HUD on the actor layer'
     territoryUiState: uiState,
   });
 
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
   assert.equal(host.calls.some((call) => call[0] === 'collectMapHomeWorldSiteHitTargets'), true);
 });
 
-test('HudOverlayCanvasRenderer does not paint same-frame dynamic HUD context on the screen layer', () => {
+test('HudOverlayCanvasRenderer paints same-frame dynamic HUD context on the screen layer', () => {
   const staleContext = {
     actors: [{ id: 'stale-scout' }],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -171,10 +171,10 @@ test('HudOverlayCanvasRenderer does not paint same-frame dynamic HUD context on 
   });
 
   assert.equal(host.calls.some((call) => call[0] === 'collectMapHomeWorldSiteHitTargets'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
 });
 
-test('HudOverlayCanvasRenderer leaves selected actor HUD context to the actor layer', () => {
+test('HudOverlayCanvasRenderer renders selected actor HUD context on the screen layer', () => {
   const staleContext = {
     actors: [{ id: 'stale-scout' }],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -201,10 +201,10 @@ test('HudOverlayCanvasRenderer leaves selected actor HUD context to the actor la
   });
 
   assert.equal(host.calls.some((call) => call[0] === 'collectMapHomeWorldSiteHitTargets'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
 });
 
-test('HudOverlayCanvasRenderer does not derive actor commands on the screen HUD layer', () => {
+test('HudOverlayCanvasRenderer can derive actor commands on the screen HUD layer', () => {
   const emptyContext = {
     actors: [],
     frame: { x: 1, y: 96, width: 388, height: 684 },
@@ -239,7 +239,7 @@ test('HudOverlayCanvasRenderer does not derive actor commands on the screen HUD 
     territoryUiState: { selectedWorldActorId: 'explore-active-1' },
   });
 
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), true);
 });
 
 test('HudOverlayCanvasRenderer preserves runtime world-map site targets on skipped map layers', () => {

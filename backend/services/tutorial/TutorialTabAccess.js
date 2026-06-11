@@ -1,7 +1,8 @@
-const { TUTORIAL_STEPS } = require('../../config/TutorialFlowConfig');
+const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const { normalizeTutorialState } = require('./TutorialState');
 
 function canAccessTab(tutorialState, tabKey) {
+  const TUTORIAL_STEPS = TutorialFlowConfig.TUTORIAL_STEPS;
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return true;
   const step = tutorial.currentStep;

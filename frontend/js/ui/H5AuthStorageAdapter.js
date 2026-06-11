@@ -57,7 +57,7 @@
       return {
         rememberEnabled: this.get(KEYS.rememberEnabled) === 'true',
         rememberedUsername: this.get(KEYS.rememberUsername),
-        rememberedPassword: this.get(KEYS.rememberPassword),
+        rememberedPassword: '',
         username: this.get(KEYS.username),
       };
     }
@@ -70,7 +70,7 @@
       if (rememberPassword) {
         this.set(KEYS.rememberEnabled, 'true');
         this.set(KEYS.rememberUsername, username);
-        this.set(KEYS.rememberPassword, password);
+        this.remove(KEYS.rememberPassword);
         return;
       }
       this.removeRememberedCredentials();
