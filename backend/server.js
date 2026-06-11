@@ -24,6 +24,7 @@ const SecurityConfig = require('./config/SecurityConfig');
 const VersionService = require('./services/VersionService');
 const ObservabilityService = require('./services/ObservabilityService');
 const OpsControlService = require('./services/OpsControlService');
+const OpsAuthService = require('./services/OpsAuthService');
 const ConfigReleaseService = require('./services/config/ConfigReleaseService');
 const ConfigRuntimeLoader = require('./services/config/ConfigRuntimeLoader');
 const EventService = require('./services/EventService');
@@ -46,6 +47,7 @@ const authMiddleware = createAuthMiddleware(authService);
 const adminMiddleware = createAdminMiddleware();
 const versionService = new VersionService();
 const observabilityService = new ObservabilityService();
+const opsAuthService = new OpsAuthService();
 const configReleaseService = ConfigReleaseService;
 const configRuntimeLoader = ConfigRuntimeLoader;
 const opsControlService = new OpsControlService({
@@ -112,7 +114,7 @@ registerAdminRoutes(app, { authMiddleware, adminMiddleware, configReleaseService
 registerVersionRoutes(app, { versionService });
 registerClientEventsRoutes(app, { observabilityService });
 registerMetricsRoutes(app, { authMiddleware, adminMiddleware, observabilityService });
-registerOpsRoutes(app, { authMiddleware, adminMiddleware, opsControlService });
+registerOpsRoutes(app, { opsAuthService, opsControlService });
 
 app.use(createMaintenanceMiddleware({ opsControlService }));
 

@@ -75,7 +75,16 @@ backend/
 | POST | /api/admin/ops/maintenance | 开启/关闭软停服维护模式并写入审计 |
 | POST | /api/admin/ops/restart | 受审计的延迟 PM2 restart，用于健康重启 |
 
-`/api/admin/ops/*` 复用 `authMiddleware + adminMiddleware`。生产必须显式配置 `ADMIN_USERS`，否则 admin 权限不会默认开放。
+`/api/admin/ops/*` 使用独立运维管理员认证，不复用玩家登录 token。控制台入口 `/tools/ops-console.html` 会一直打开，并通过 `POST /api/admin/ops/login` 登录后把 ops token 存入 `cf_ops_token`。生产建议配置：
+
+```bash
+OPS_ADMIN_USERNAME=<operator>
+OPS_ADMIN_PASSWORD_HASH=<bcrypt hash>
+OPS_JWT_SECRET=<independent long secret>
+OPS_SESSION_TTL=12h
+```
+
+生产不建议使用明文 `OPS_ADMIN_PASSWORD`；仅在临时抢修时可显式设置 `OPS_ALLOW_PLAINTEXT_PASSWORD=1`。
 
 ## 操作类型
 
@@ -161,7 +170,7 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 管理员工具页：
 
 - `/tools/config-release-console.html`：读取 active/history/runtime status，预览当前配置，写入发布审计记录，回滚 active 指针。
-- `/tools/ops-console.html`：读取服务器/PM2/health/deploy/config/metrics/在线玩家/日志/审计摘要，支持维护模式开关和受审计 PM2 restart。
+- `/tools/ops-console.html`：独立运维管理员登录后读取服务器/PM2/health/deploy/config/metrics/在线玩家/日志/审计摘要，支持维护模式开关和受审计 PM2 restart。
 
 运维控制台当前提供“软停服”：开启维护模式后，`/api/game*`、`/api/buildings*`、`/api/player/login`、`/api/player/register`、`/api/player/reset` 返回 `503 MAINTENANCE_MODE`，但 `/api/health`、`/api/version`、`/api/metrics` 和 `/api/admin/*` 保持可用。真正硬停服/开服会切断本网页依赖的后端连接，后续应由常驻 `ops-agent`、systemd/PM2 外部守护或主机面板侧进程实现。
 

@@ -4,11 +4,39 @@ function parseBoolean(value) {
 
 function registerOpsRoutes(app, deps = {}) {
   if (!app) throw new Error('registerOpsRoutes requires app');
-  const { authMiddleware, adminMiddleware, opsControlService } = deps;
+  const {
+    authMiddleware,
+    adminMiddleware,
+    opsAuthService,
+    opsControlService,
+  } = deps;
   if (!opsControlService) throw new Error('registerOpsRoutes requires opsControlService');
 
-  const handlers = [authMiddleware, adminMiddleware].filter(Boolean);
-  const getOperator = (req) => req.adminUser || req.username || req.playerId || 'admin';
+  const opsAuthMiddleware = opsAuthService
+    ? (req, res, next) => opsAuthService.authMiddleware(req, res, next)
+    : null;
+  const handlers = opsAuthMiddleware
+    ? [opsAuthMiddleware]
+    : [authMiddleware, adminMiddleware].filter(Boolean);
+  const getOperator = (req) => req.opsAdminUser || req.adminUser || req.username || req.playerId || 'admin';
+
+  app.post('/api/admin/ops/login', (req, res) => {
+    if (!opsAuthService) {
+      return res.status(503).json({
+        success: false,
+        error: 'OpsAuthUnavailable',
+        message: 'Ops admin authentication is unavailable.',
+      });
+    }
+    const result = opsAuthService.login(req.body || {});
+    if (result.success && typeof opsControlService.appendAudit === 'function') {
+      opsControlService.appendAudit({
+        action: 'ops:login',
+        operator: result.operator?.username || 'ops-admin',
+      });
+    }
+    return res.status(result.statusCode || (result.success ? 200 : 401)).json(result);
+  });
 
   app.get('/api/admin/ops/dashboard', ...handlers, (req, res) => {
     const dashboard = opsControlService.getDashboard({

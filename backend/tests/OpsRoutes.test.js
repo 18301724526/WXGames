@@ -46,18 +46,23 @@ function invokeRoute(route, req, res) {
   return run(0);
 }
 
-test('ops routes expose dashboard and maintenance behind admin handlers', () => {
+test('ops routes expose login plus dashboard and maintenance behind ops auth', () => {
   const { app, routes } = createAppHarness();
   const calls = [];
-  const authMiddleware = (req, res, next) => {
-    calls.push('auth');
-    req.username = 'codexqa';
-    next();
-  };
-  const adminMiddleware = (req, res, next) => {
-    calls.push('admin');
-    req.adminUser = req.username;
-    next();
+  const opsAuthService = {
+    login(body) {
+      calls.push(['login', body.username]);
+      return {
+        success: true,
+        token: 'ops-token',
+        operator: { username: 'opsroot' },
+      };
+    },
+    authMiddleware(req, res, next) {
+      calls.push('ops-auth');
+      req.opsAdminUser = 'opsroot';
+      next();
+    },
   };
   const opsControlService = {
     getDashboard(options) {
@@ -77,7 +82,15 @@ test('ops routes expose dashboard and maintenance behind admin handlers', () => 
     },
   };
 
-  registerOpsRoutes(app, { authMiddleware, adminMiddleware, opsControlService });
+  registerOpsRoutes(app, { opsAuthService, opsControlService });
+
+  const loginRes = createResponse();
+  invokeRoute(
+    routes.find((item) => item.method === 'POST' && item.path === '/api/admin/ops/login'),
+    { body: { username: 'opsroot', password: 'secret' } },
+    loginRes,
+  );
+  assert.equal(loginRes.payload.token, 'ops-token');
 
   const dashboardRes = createResponse();
   invokeRoute(
@@ -95,17 +108,161 @@ test('ops routes expose dashboard and maintenance behind admin handlers', () => 
   );
   assert.equal(maintenanceRes.payload.maintenance.enabled, true);
 
-  assert.deepEqual(calls.slice(0, 6), [
-    'auth',
-    'admin',
+  assert.deepEqual(calls.slice(0, 5), [
+    ['login', 'opsroot'],
+    ['audit', 'ops:login', 'opsroot'],
+    'ops-auth',
     ['dashboard', true, '12'],
-    'auth',
-    'admin',
-    ['maintenance:set', true, 'deploy', 'codexqa'],
+    'ops-auth',
   ]);
+  assert.deepEqual(calls.at(-1), ['maintenance:set', true, 'deploy', 'opsroot']);
 });
 
-test('ops restart route accepts restart before delayed PM2 command', () => {
+test('ops routes keep legacy admin handlers only when ops auth is not supplied', () => {
+  const { app, routes } = createAppHarness();
+  const calls = [];
+  const authMiddleware = (req, res, next) => {
+    calls.push('auth');
+    req.username = 'codexqa';
+    next();
+  };
+  const adminMiddleware = (req, res, next) => {
+    calls.push('admin');
+    req.adminUser = req.username;
+    next();
+  };
+  const opsControlService = {
+    getMaintenanceState() {
+      calls.push(['maintenance:get']);
+      return { enabled: false };
+    },
+  };
+
+  registerOpsRoutes(app, { authMiddleware, adminMiddleware, opsControlService });
+  const res = createResponse();
+  invokeRoute(
+    routes.find((item) => item.method === 'GET' && item.path === '/api/admin/ops/maintenance'),
+    {},
+    res,
+  );
+
+  assert.equal(res.payload.maintenance.enabled, false);
+  assert.deepEqual(calls, ['auth', 'admin', ['maintenance:get']]);
+});
+
+test('ops login returns unavailable when independent ops auth is missing', () => {
+  const { app, routes } = createAppHarness();
+  const opsControlService = {
+    getMaintenanceState() {
+      return { enabled: false };
+    },
+  };
+
+  registerOpsRoutes(app, { opsControlService });
+  const res = createResponse();
+  invokeRoute(
+    routes.find((item) => item.method === 'POST' && item.path === '/api/admin/ops/login'),
+    { body: {} },
+    res,
+  );
+
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.payload.error, 'OpsAuthUnavailable');
+});
+
+test('ops login forwards explicit auth configuration failures', () => {
+  const { app, routes } = createAppHarness();
+  const opsAuthService = {
+    login() {
+      return {
+        success: false,
+        statusCode: 503,
+        error: 'OpsAuthNotConfigured',
+      };
+    },
+  };
+  const opsControlService = {
+    getMaintenanceState() {
+      return { enabled: false };
+    },
+  };
+
+  registerOpsRoutes(app, { opsAuthService, opsControlService });
+  const res = createResponse();
+  invokeRoute(
+    routes.find((item) => item.method === 'POST' && item.path === '/api/admin/ops/login'),
+    { body: {} },
+    res,
+  );
+
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.payload.error, 'OpsAuthNotConfigured');
+});
+
+test('ops login does not write success audit for failed credentials', () => {
+  const { app, routes } = createAppHarness();
+  const calls = [];
+  const opsAuthService = {
+    login() {
+      return {
+        success: false,
+        statusCode: 401,
+        error: 'InvalidOpsCredentials',
+      };
+    },
+  };
+  const opsControlService = {
+    appendAudit(entry) {
+      calls.push(entry.action);
+    },
+    getMaintenanceState() {
+      return { enabled: false };
+    },
+  };
+
+  registerOpsRoutes(app, { opsAuthService, opsControlService });
+  const res = createResponse();
+  invokeRoute(
+    routes.find((item) => item.method === 'POST' && item.path === '/api/admin/ops/login'),
+    { body: { username: 'opsroot', password: 'wrong' } },
+    res,
+  );
+
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.payload.error, 'InvalidOpsCredentials');
+  assert.deepEqual(calls, []);
+});
+
+test('ops restart route accepts restart before delayed PM2 command with ops auth', () => {
+  const { app, routes } = createAppHarness();
+  const calls = [];
+  const opsAuthService = {
+    authMiddleware(req, res, next) {
+      req.opsAdminUser = 'opsroot';
+      next();
+    },
+  };
+  const opsControlService = {
+    appendAudit(entry) {
+      calls.push(['audit', entry.action, entry.operator]);
+    },
+    restartService() {
+      calls.push(['restart']);
+    },
+  };
+
+  registerOpsRoutes(app, { opsAuthService, opsControlService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/admin/ops/restart');
+  const res = createResponse();
+  invokeRoute(route, { body: { delayMs: 5000 } }, res);
+
+  assert.equal(res.statusCode, 202);
+  assert.equal(res.payload.accepted, true);
+  assert.equal(res.payload.action, 'pm2:restart');
+  assert.deepEqual(calls, [['audit', 'pm2:restart:accepted', 'opsroot']]);
+});
+
+test('ops restart route accepts restart before delayed PM2 command with legacy admin handlers', () => {
   const { app, routes } = createAppHarness();
   const calls = [];
   const authMiddleware = (req, res, next) => {
@@ -143,7 +300,7 @@ test('maintenance middleware blocks gameplay APIs but leaves admin APIs reachabl
         return {
           enabled: true,
           reason: 'deploy',
-          message: '维护中',
+          message: 'maintenance',
           startedAt: '2026-06-11T16:00:00.000Z',
           updatedAt: '2026-06-11T16:00:00.000Z',
         };

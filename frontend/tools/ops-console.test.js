@@ -9,11 +9,14 @@ test('ops console exposes protected admin operations workflow', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(html, /\u6587\u660e\u706b\u79cd\u8fd0\u7ef4\u63a7\u5236\u53f0/);
+  assert.match(html, /\u8fd0\u7ef4\u7ba1\u7406\u5458\u767b\u5f55/);
+  assert.match(html, /\/admin\/ops\/login/);
   assert.match(html, /\/admin\/ops\/dashboard/);
   assert.match(html, /\/admin\/ops\/maintenance/);
   assert.match(html, /\/admin\/ops\/restart/);
-  assert.match(html, /cf_token/);
-  assert.match(html, /Authorization: token \? `Bearer \$\{token\}` : ''/);
+  assert.match(html, /cf_ops_token/);
+  assert.match(html, /TOKEN_STORAGE_KEY/);
+  assert.match(html, /headers\.Authorization = `Bearer \$\{token\}`/);
 });
 
 test('ops console documents soft maintenance and hard-stop boundary', () => {
@@ -24,5 +27,7 @@ test('ops console documents soft maintenance and hard-stop boundary', () => {
   assert.match(html, /ops-agent/);
   assert.match(html, /PM2 server/);
   assert.doesNotMatch(html, /\/api\/player\/login/);
+  assert.doesNotMatch(html, /cf_token/);
   assert.doesNotMatch(html, /localStorage\.setItem\(['"]cf_token/);
+  assert.doesNotMatch(html, /\u767b\u5f55\u6e38\u620f/);
 });

@@ -80,11 +80,29 @@
     .title h2 { margin: 0; font-size: 20px; letter-spacing: 0; }
     .title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
     .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .auth-identity { color: var(--muted); font-size: 12px; font-weight: 800; }
     .status-line { min-height: 36px; display: flex; align-items: center; gap: 8px; margin: 14px 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; }
     .status-line.ok { color: var(--ok); background: #f0fdf7; border-color: #b9e3cc; }
     .status-line.warn { color: var(--warn); background: #fffbeb; border-color: #ead099; }
     .status-line.error { color: var(--danger); background: #fff5f5; border-color: #efb6b0; }
     .dot { width: 8px; height: 8px; border-radius: 999px; background: currentColor; flex: 0 0 auto; }
+    .hidden { display: none !important; }
+
+    .auth-panel { margin: 14px 0; }
+    .auth-card {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.75fr) minmax(320px, 1fr);
+      gap: 18px;
+      align-items: end;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .auth-card h3 { margin: 0; font-size: 16px; line-height: 1.25; }
+    .auth-card p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .auth-form { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1fr) auto; gap: 10px; align-items: end; }
 
     .metrics { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 10px; }
     .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-height: 88px; box-shadow: 0 1px 0 rgba(15,23,42,0.03); }
@@ -137,6 +155,7 @@
       .topbar { align-items: stretch; flex-direction: column; }
       .top-actions { justify-content: stretch; }
       .top-actions button { flex: 1; }
+      .auth-card, .auth-form { grid-template-columns: 1fr; }
       .metrics, .meta-grid, .split, .nav { grid-template-columns: 1fr; }
       .meta-row { grid-template-columns: 92px 1fr; }
     }
@@ -172,13 +191,33 @@
           <p id="serverIdentity">读取服务器状态中...</p>
         </div>
         <div class="top-actions">
+          <span id="authIdentity" class="auth-identity">未登录</span>
           <button id="refreshButton" class="secondary" type="button">刷新</button>
           <button id="loadLogsButton" class="secondary" type="button">读取日志</button>
           <button id="restartButton" class="warning" type="button">重启服务</button>
+          <button id="logoutButton" class="secondary" type="button">退出</button>
         </div>
       </header>
 
       <div id="statusLine" class="status-line"><span class="dot"></span><span>等待读取运维数据。</span></div>
+
+      <section id="loginPanel" class="auth-panel" aria-label="运维管理员登录">
+        <div class="auth-card">
+          <div>
+            <h3>运维管理员登录</h3>
+            <p>使用独立运维账号登录控制台，不读取游戏账号或玩家登录状态。</p>
+          </div>
+          <form id="loginForm" class="auth-form">
+            <label>账号
+              <input id="opsUsername" name="username" autocomplete="username" required>
+            </label>
+            <label>密码
+              <input id="opsPassword" name="password" type="password" autocomplete="current-password" required>
+            </label>
+            <button id="loginButton" type="submit">登录</button>
+          </form>
+        </div>
+      </section>
 
       <section id="overview" class="metrics" aria-label="关键指标">
         <div class="metric" id="metricHealth"><span>健康状态</span><strong>-</strong><small>-</small></div>
@@ -307,11 +346,22 @@
   <script>
     const apiBaseParam = new URLSearchParams(location.search).get('apiBase');
     const API_BASE = (apiBaseParam || '/api').replace(/\/$/, '');
-    const token = localStorage.getItem('cf_token') || localStorage.getItem('token') || '';
+    const TOKEN_STORAGE_KEY = 'cf_ops_token';
+    const USER_STORAGE_KEY = 'cf_ops_user';
+    let token = localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    let opsUser = localStorage.getItem(USER_STORAGE_KEY) || '';
     let lastDashboard = null;
 
     const $ = (id) => document.getElementById(id);
     const statusLine = $('statusLine');
+    const protectedControls = [
+      'refreshButton',
+      'loadLogsButton',
+      'restartButton',
+      'enableMaintenanceButton',
+      'disableMaintenanceButton',
+      'restartButtonPanel',
+    ];
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -325,21 +375,59 @@
     }
 
     async function request(path, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      };
+      if (!options.skipAuth && token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const response = await fetch(`${API_BASE}${path}`, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
-          ...(options.headers || {}),
-        },
+        headers,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         const error = new Error(data.message || data.error || `HTTP ${response.status}`);
         error.payload = data;
+        error.status = response.status;
         throw error;
       }
       return data;
+    }
+
+    function setAuthenticated(nextToken, username) {
+      token = nextToken || '';
+      opsUser = username || '';
+      if (token) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        localStorage.setItem(USER_STORAGE_KEY, opsUser);
+      } else {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(USER_STORAGE_KEY);
+      }
+      renderAuthState();
+    }
+
+    function renderAuthState() {
+      const authenticated = Boolean(token);
+      $('loginPanel').classList.toggle('hidden', authenticated);
+      $('logoutButton').disabled = !authenticated;
+      $('authIdentity').textContent = authenticated ? `运维账号 ${opsUser || '-'}` : '未登录';
+      protectedControls.forEach((id) => {
+        const control = $(id);
+        if (control) control.disabled = !authenticated;
+      });
+      if (!authenticated) {
+        $('serverIdentity').textContent = '请使用运维管理员账号登录。';
+      }
+    }
+
+    function handleError(error) {
+      if (error.status === 401) {
+        setAuthenticated('', '');
+      }
+      setStatus(error.message, 'error');
     }
 
     function setMetric(id, value, detail, tone = '') {
@@ -483,12 +571,34 @@
 
     async function refresh(includeLogs = false) {
       if (!token) {
-        setStatus('未找到登录 token。请先用管理员账号登录游戏，再打开本控制台。', 'error');
+        renderAuthState();
+        setStatus('请先登录运维管理员账号。', 'warn');
         return;
       }
       setStatus(includeLogs ? '正在读取运维数据与日志...' : '正在读取运维数据...');
       const data = await request(`/admin/ops/dashboard?includeLogs=${includeLogs ? 'true' : 'false'}&logLines=80`);
       renderDashboard(data);
+    }
+
+    async function loginOps(event) {
+      event.preventDefault();
+      const username = $('opsUsername').value.trim();
+      const password = $('opsPassword').value;
+      setStatus('正在登录运维控制台...');
+      const result = await request('/admin/ops/login', {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify({ username, password }),
+      });
+      $('opsPassword').value = '';
+      setAuthenticated(result.token, result.operator?.username || username);
+      setStatus('运维控制台登录成功。', 'ok');
+      await refresh(false);
+    }
+
+    function logoutOps() {
+      setAuthenticated('', '');
+      setStatus('已退出运维控制台。', 'warn');
     }
 
     async function setMaintenance(enabled) {
@@ -516,16 +626,23 @@
       setTimeout(() => refresh(true).catch((error) => setStatus(error.message, 'error')), 4200);
     }
 
-    $('refreshButton').addEventListener('click', () => refresh(false).catch((error) => setStatus(error.message, 'error')));
-    $('loadLogsButton').addEventListener('click', () => refresh(true).catch((error) => setStatus(error.message, 'error')));
-    $('enableMaintenanceButton').addEventListener('click', () => setMaintenance(true).catch((error) => setStatus(error.message, 'error')));
-    $('disableMaintenanceButton').addEventListener('click', () => setMaintenance(false).catch((error) => setStatus(error.message, 'error')));
-    $('restartButton').addEventListener('click', () => restartService().catch((error) => setStatus(error.message, 'error')));
-    $('restartButtonPanel').addEventListener('click', () => restartService().catch((error) => setStatus(error.message, 'error')));
+    $('loginForm').addEventListener('submit', (event) => loginOps(event).catch(handleError));
+    $('logoutButton').addEventListener('click', logoutOps);
+    $('refreshButton').addEventListener('click', () => refresh(false).catch(handleError));
+    $('loadLogsButton').addEventListener('click', () => refresh(true).catch(handleError));
+    $('enableMaintenanceButton').addEventListener('click', () => setMaintenance(true).catch(handleError));
+    $('disableMaintenanceButton').addEventListener('click', () => setMaintenance(false).catch(handleError));
+    $('restartButton').addEventListener('click', () => restartService().catch(handleError));
+    $('restartButtonPanel').addEventListener('click', () => restartService().catch(handleError));
 
     renderLog('outLog', []);
     renderLog('errorLog', []);
-    refresh(false).catch((error) => setStatus(error.message, 'error'));
+    renderAuthState();
+    if (token) {
+      refresh(false).catch(handleError);
+    } else {
+      setStatus('控制台已打开，请使用运维管理员账号登录。', 'warn');
+    }
   </script>
 </body>
 </html>

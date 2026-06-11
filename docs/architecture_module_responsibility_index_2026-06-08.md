@@ -2692,8 +2692,8 @@ P0 新增公开 API / Public API Added During P0:
 
 - Tool URL: `/tools/ops-console.html`
 - Query override: `?apiBase=/api`
-- Uses admin API routes under `/api/admin/ops/*`
-- Reads existing `cf_token` or `token` from local storage
+- Uses independent ops-admin login through `/api/admin/ops/login`
+- Stores and sends only `cf_ops_token`; it must not read player `cf_token` or `token`
 
 扩展方式 / Extension Path:
 
@@ -3725,6 +3725,36 @@ Regression:
 - `node --test backend/tests/ObservabilityService.test.js`
 - `npm run test:architecture`
 
+### `backend/services/OpsAuthService.js`
+
+鐘舵€?/ Status: candidate
+
+鑱岃矗 / Owns:
+
+- independent ops-admin credential validation
+- `/api/admin/ops/login` session token issuance
+- ops JWT purpose validation so player tokens cannot cross into the ops boundary
+- production ops auth configuration status from `OPS_ADMIN_USERNAME`, `OPS_ADMIN_PASSWORD_HASH`, `OPS_JWT_SECRET`, and `OPS_SESSION_TTL`
+
+鍏紑 API / Public API:
+
+- `new OpsAuthService(options)`
+- `login(input)`
+- `authMiddleware(req, res, next)`
+- `getConfigStatus()`
+- `resolveOpsAuthConfig(env)`
+
+鎵╁睍鏂瑰紡 / Extension Path:
+
+- Future RBAC should extend this service or a sibling role service; do not reintroduce player login tokens for ops routes.
+- Production password storage should prefer bcrypt hashes and avoid plaintext environment values except explicit emergency overrides.
+- Token payloads must keep an explicit ops-only purpose claim.
+
+鍥炲綊 / Regression:
+
+- `node --test backend/tests/OpsAuthService.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/OpsControlService.js`
 
 状态 / Status: candidate
@@ -3855,7 +3885,7 @@ Regression:
 
 职责 / Owns:
 
-- authenticated/admin `/api/admin/ops/*` route registration
+- independent ops-admin `/api/admin/ops/*` route registration
 - dashboard query parsing for log inclusion and log line limits
 - maintenance mode read/write HTTP boundary
 - accepted-before-restart response shape for delayed PM2 restart
@@ -3863,7 +3893,8 @@ Regression:
 
 公开 API / Public API:
 
-- `registerOpsRoutes(app, { authMiddleware, adminMiddleware, opsControlService })`
+- `registerOpsRoutes(app, { opsAuthService, opsControlService })`
+- `POST /api/admin/ops/login`
 - `GET /api/admin/ops/dashboard`
 - `GET /api/admin/ops/maintenance`
 - `POST /api/admin/ops/maintenance`
@@ -3872,12 +3903,12 @@ Regression:
 扩展方式 / Extension Path:
 
 - Route additions should remain thin wrappers over `OpsControlService` or a future ops-agent adapter.
-- Access control stays auth + admin; future RBAC should extend middleware/role services rather than per-route ad hoc checks.
+- Access control stays behind `OpsAuthService`; future RBAC should extend ops auth/role services rather than per-route ad hoc checks.
 - Restart/hard-stop semantics must keep an audit record and avoid pretending the web backend can restart itself after a true hard stop.
 
 回归 / Regression:
 
-- `node --test backend/tests/OpsRoutes.test.js backend/tests/OpsControlService.test.js`
+- `node --test backend/tests/OpsRoutes.test.js backend/tests/OpsAuthService.test.js backend/tests/OpsControlService.test.js`
 - `npm run test:architecture`
 
 ### `backend/routes/versionRoutes.js`
