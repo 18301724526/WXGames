@@ -83,6 +83,9 @@ mapBackground -> mapTile -> mapSite -> mapActor -> worldHud -> screenHud -> floa
 - `frontend/js/api/GameAPI.js`: browser/API transport boundary. It owns request id, timeout, GET retry policy, structured request errors, H5 load trace API spans, `/version` ETag cache reuse, and best-effort frontend client event reporting.
 - `frontend/js/services/GameStateSync.js`: lightweight heartbeat/state authority refresh scheduler. It owns heartbeat failure counts, reconnecting state, and heartbeat backoff windows; it must not become gameplay authority.
 - `frontend/js/services/UpdateChecker.js`: deployment version polling boundary. It owns `/version` polling and failure backoff; it must not drive gameplay state changes.
+- `backend/server.js`: API gateway process only. It must not own world runtime background ticks or full active-player state sweeps.
+- `backend/world-worker.js`: separate PM2 soft service for world runtime advancement through `WorldWorkerService`; production deploy starts it as `wxgame-world-worker`.
+- `backend/services/realtime/PresenceService.js`: in-memory online presence and heartbeat persistence throttling; it absorbs heartbeat bursts and prevents per-request `lastActiveAt` writes.
 
 Canvas-only 规则由文档、脚本和架构测试共同守护。`scripts/verify-refactor-plan-doc.js` 会扫描 Canvas 业务层是否引入 DOM UI API。
 
@@ -161,6 +164,8 @@ Stable 目标使用 diamond isometric square-tile 语言，而不是 hex/axial �
 - AI 与玩家 reveal frontier 相遇后，服务端按有界上限同步 AI 已解锁地形给玩家；同步时保留 canonical identity，并将 display `q/r` 投影到玩家附近，避免环绕边缘 tile 在当前前端坐标系里跳到远处。
 
 ### 5.1 GameState Runtime Boundary
+
+Operational sync rule: `server.js` is now a gateway/API process, while `world-worker.js` is the local soft-service that owns periodic runtime advancement. `GameStateService.advanceRuntimeState()` may still be used by explicit command/action boundaries, but periodic active-player sweeps belong only to `WorldWorkerService`. Heartbeat is presence/liveness only: `PresenceService` records online state in memory and throttles `players.lastActiveAt` persistence; it does not run world simulation, load full game state, or save player state on every heartbeat.
 
 当前后端状态边界按成熟服务端分成三类入口：
 

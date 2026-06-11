@@ -118,7 +118,7 @@ function traceWorldMarch(stage, payload = {}) {
 }
 
 function registerGameRoutes(app, deps) {
-  const { authMiddleware, repository, gameStateService } = deps;
+  const { authMiddleware, repository, gameStateService, presenceService } = deps;
 
   app.get('/api/game/state', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarchRequest(req);
@@ -153,7 +153,7 @@ function registerGameRoutes(app, deps) {
 
   app.get('/api/game/heartbeat', authMiddleware, (req, res) => {
     const now = new Date();
-    repository.touchPlayerActiveAt(req.playerId);
+    presenceService?.recordHeartbeat?.(req.playerId);
     if (shouldTraceWorldMarchRequest(req)) {
       traceWorldMarch('route:heartbeat', {
         playerId: req.playerId,

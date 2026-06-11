@@ -6,11 +6,40 @@ const ACCOUNT_WHITELIST = Object.freeze({
   test3: '123456',
   codexqa: '123456',
 });
+const DEFAULT_BOT_ACCOUNT_COUNT = 0;
+const MAX_BOT_ACCOUNT_COUNT = 50000;
+const DEFAULT_AUTH_PLAYER_CACHE_TTL_MS = 60 * 1000;
+
+function parseBotAccountCount(value) {
+  const number = Math.floor(Number(value));
+  if (!Number.isFinite(number) || number <= 0) return DEFAULT_BOT_ACCOUNT_COUNT;
+  return Math.min(number, MAX_BOT_ACCOUNT_COUNT);
+}
+
+function isBotAccountsEnabled(env = process.env) {
+  return env.ENABLE_BOT_ACCOUNTS === '1' || env.ENABLE_LOAD_TEST_BOTS === '1';
+}
+
+function getBotAccountId(username) {
+  const match = String(username || '').match(/^bot(\d{5})$/);
+  return match ? Number(match[1]) : 0;
+}
 
 class AuthService {
-  constructor(db, jwtSecret) {
+  constructor(db, jwtSecret, options = {}) {
     this.db = db;
     this.JWT_SECRET = jwtSecret;
+    this.env = options.env || process.env;
+    this.botAccountCount = isBotAccountsEnabled(this.env)
+      ? parseBotAccountCount(this.env.BOT_ACCOUNT_COUNT || this.env.LOAD_TEST_BOT_COUNT)
+      : 0;
+    this.botAccountPassword = String(this.env.BOT_ACCOUNT_PASSWORD || '');
+    this.now = options.now || (() => new Date());
+    this.authPlayerCacheTtlMs = Math.max(
+      0,
+      Math.floor(Number(options.authPlayerCacheTtlMs ?? this.env.AUTH_PLAYER_CACHE_TTL_MS ?? DEFAULT_AUTH_PLAYER_CACHE_TTL_MS)) || 0,
+    );
+    this.authPlayerCache = new Map();
   }
 
   normalizeUsername(username) {
@@ -18,11 +47,51 @@ class AuthService {
   }
 
   isWhitelisted(username) {
-    return Object.prototype.hasOwnProperty.call(ACCOUNT_WHITELIST, username);
+    if (Object.prototype.hasOwnProperty.call(ACCOUNT_WHITELIST, username)) return true;
+    const botId = getBotAccountId(username);
+    return botId > 0 && botId <= this.botAccountCount;
   }
 
   isPasswordValid(username, password) {
-    return this.isWhitelisted(username) && ACCOUNT_WHITELIST[username] === String(password || '');
+    if (Object.prototype.hasOwnProperty.call(ACCOUNT_WHITELIST, username)) {
+      return ACCOUNT_WHITELIST[username] === String(password || '');
+    }
+    const botId = getBotAccountId(username);
+    return botId > 0
+      && botId <= this.botAccountCount
+      && Boolean(this.botAccountPassword)
+      && this.botAccountPassword === String(password || '');
+  }
+
+  getNowMs() {
+    const now = this.now();
+    const stamp = now instanceof Date ? now.getTime() : new Date(now).getTime();
+    return Number.isFinite(stamp) ? stamp : Date.now();
+  }
+
+  hasCachedPlayer(playerId, nowMs = this.getNowMs()) {
+    if (this.authPlayerCacheTtlMs <= 0) return false;
+    const cached = this.authPlayerCache.get(playerId);
+    return Boolean(cached && cached.expiresAtMs > nowMs);
+  }
+
+  cachePlayer(playerId, nowMs = this.getNowMs()) {
+    if (this.authPlayerCacheTtlMs <= 0) return;
+    this.authPlayerCache.set(playerId, { expiresAtMs: nowMs + this.authPlayerCacheTtlMs });
+  }
+
+  playerExists(playerId) {
+    const normalizedPlayerId = String(playerId || '');
+    if (!normalizedPlayerId) return false;
+    const nowMs = this.getNowMs();
+    if (this.hasCachedPlayer(normalizedPlayerId, nowMs)) return true;
+    const player = this.db.prepare('SELECT playerId FROM players WHERE playerId = ?').get(normalizedPlayerId);
+    if (!player) {
+      this.authPlayerCache.delete(normalizedPlayerId);
+      return false;
+    }
+    this.cachePlayer(normalizedPlayerId, nowMs);
+    return true;
   }
 
   authMiddleware(req, res, next) {
@@ -36,8 +105,7 @@ class AuthService {
         return res.status(401).json({ error: 'AccountNotAllowed', message: '该账号不在白名单中' });
       }
       // 校验token合法后，再确认玩家是否还存在
-      const player = this.db.prepare('SELECT playerId FROM players WHERE playerId = ?').get(decoded.playerId);
-      if (!player) {
+      if (!this.playerExists(decoded.playerId)) {
         return res.status(401).json({ error: 'AccountInvalid', message: '账号已失效，请重新登录' });
       }
       req.playerId = decoded.playerId;
@@ -77,6 +145,7 @@ class AuthService {
         saveGameState(getDefaultGameState(playerId));
       }
     }
+    this.cachePlayer(playerId);
     return player;
   }
 
@@ -120,7 +189,12 @@ class AuthService {
   }
 
   getAllowedUsernames() {
-    return Object.keys(ACCOUNT_WHITELIST);
+    const staticAccounts = Object.keys(ACCOUNT_WHITELIST);
+    if (!this.botAccountCount) return staticAccounts;
+    return [
+      ...staticAccounts,
+      `bot00001..bot${String(this.botAccountCount).padStart(5, '0')}`,
+    ];
   }
 }
 

@@ -5,8 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:world-worker": "node world-worker.js",
     "dev": "nodemon server.js",
     "pm2:start": "pm2 start server.js --name civilization-fire",
+    "pm2:start:world-worker": "pm2 start world-worker.js --name wxgame-world-worker",
     "pm2:stop": "pm2 stop civilization-fire",
     "pm2:restart": "pm2 restart civilization-fire",
     "pm2:logs": "pm2 logs civilization-fire",

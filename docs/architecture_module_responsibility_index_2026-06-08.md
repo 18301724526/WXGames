@@ -3930,6 +3930,32 @@ Regression:
 - `node --check backend/ops-agent/server.js`
 - `npm run test:architecture`
 
+### `backend/world-worker.js`
+
+Status: candidate
+
+Owns:
+
+- PM2 entrypoint for the local world runtime soft-service
+- construction of `WorldWorkerService` with production repository, game-state, city, territory, and event services
+- graceful stop and SQLite close on process signals
+- no HTTP route ownership and no gateway request handling
+
+Public API:
+
+- `node backend/world-worker.js`
+- PM2 app name: `wxgame-world-worker`
+
+Extension Path:
+
+- Deployments may run multiple future region workers, but the gateway must continue treating them as external worker processes.
+- Environment tuning belongs to `WORLD_WORKER_INTERVAL_MS`, `WORLD_WORKER_ACTIVE_WINDOW_MS`, `WORLD_WORKER_ACTIVE_LIMIT`, and `WORLD_WORKER_SLOW_TICK_MS`.
+
+Regression:
+
+- `node --check backend/world-worker.js`
+- `npm run test:architecture`
+
 ### `backend/services/PerformanceCapacityBudget.js`
 
 状态 / Status: candidate
@@ -4214,6 +4240,62 @@ Regression:
 回归 / Regression:
 
 - `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/WorldExplorerService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/realtime/PresenceService.js`
+
+Status: candidate
+
+Owns:
+
+- in-memory online presence for heartbeat-scale traffic
+- heartbeat persistence throttling before `players.lastActiveAt` writes
+- online summary windows for health, ops, and load-test guardrails
+- no gameplay simulation, no full game-state loading, no per-heartbeat SQLite write
+
+Public API:
+
+- `new PresenceService(options)`
+- `recordHeartbeat(playerId, options)`
+- `getOnlineSummary(options)`
+
+Extension Path:
+
+- Future Redis-backed presence should replace the storage adapter behind this service contract, not move presence writes back into route handlers.
+- Heartbeat must remain liveness/presence only; mission progression and AOI delivery belong to world services.
+
+Regression:
+
+- `node --test backend/tests/PresenceService.test.js`
+- `npm run test:architecture`
+
+### `backend/services/realtime/WorldWorkerService.js`
+
+Status: candidate
+
+Owns:
+
+- periodic world runtime advancement outside the API gateway process
+- active-player batch selection through repository abstractions
+- non-overlapping tick execution and slow/error tick summaries
+- calling `GameStateService.advanceRuntimeState()`, city runtime advancement, territory readiness, event cleanup/generation, and persistence for each worker-owned batch
+
+Public API:
+
+- `new WorldWorkerService(options)`
+- `tickOnce()`
+- `start()`
+- `stop()`
+- `getStatus()`
+
+Extension Path:
+
+- Future region workers, event queues, or distributed schedulers should shard or replace this service boundary rather than adding `setInterval` world sweeps back into `backend/server.js`.
+- Long-term partitioning should route by player/team/region/chunk while preserving the gateway/worker split.
+
+Regression:
+
+- `node --test backend/tests/WorldWorkerService.test.js backend/tests/ServerGatewayNoWorldTick.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/realtime/AoiSyncSnapshot.js`
@@ -6270,6 +6352,32 @@ Regression:
 - `npm run profile:h5-phone-sim`
 - `npm run test:architecture`
 
+### `scripts/loadtest-bot-heartbeat.js`
+
+Status: candidate
+
+Owns:
+
+- controlled multiplayer BOT login and heartbeat load testing
+- p50/p95/p99 heartbeat latency, timeout/error rate, and target-utilization summaries
+- default 80% utilization target for the configured BOT account set
+- no automatic production overload; thresholds fail the script when p95 or error rate exceeds limits
+
+Public API:
+
+- `node scripts/loadtest-bot-heartbeat.js --base-url <url> --bot-count <n> --concurrency <n> --rounds <n> --password <secret>`
+- environment defaults: `LOADTEST_BASE_URL`, `LOADTEST_BOT_COUNT`, `LOADTEST_CONCURRENCY`, `LOADTEST_ROUNDS`, `BOT_ACCOUNT_PASSWORD`, `LOADTEST_TIMEOUT_MS`, `LOADTEST_TARGET_UTILIZATION`, `LOADTEST_MAX_P95_MS`, `LOADTEST_MAX_ERROR_RATE`
+
+Extension Path:
+
+- Host CPU/load integration should consume ops dashboard or ops-agent status before increasing concurrency; do not remove latency/error guardrails.
+- BOT accounts must remain behind `ENABLE_BOT_ACCOUNTS=1`, `BOT_ACCOUNT_COUNT`, and `BOT_ACCOUNT_PASSWORD`.
+
+Regression:
+
+- `node --test scripts/loadtest-bot-heartbeat.test.js`
+- `npm run test:architecture`
+
 ### `scripts/check-frontend-script-manifest.js`
 
 状态 / Status: candidate
@@ -6625,3 +6733,4 @@ Recommended first split sequence:
 | 2026-06-12 | Fixed P12-009 ops dashboard health false negatives: `OpsControlService` now defaults dashboard health to a `local-process` summary assembled from version, observability, config runtime, loader, and gameplay runtime status; `OPS_HEALTH_URL` remains only an explicit external probe override, and regression asserts the default dashboard does not run `curl`. |
 | 2026-06-12 | Added P12-006 production security evidence and guarded rotation mechanisms: `scripts/verify-production-security-config.js`, `npm run security:production`, `scripts/rotate-production-secrets.sh`, and focused tests now validate redacted secret strength evidence, independent ops JWT, `OPS_SESSION_VERSION` rotation, explicit admin/CORS/config gate posture, server/deploy credential ownership, Git remote password hygiene, and repository blocking for local secret text files. |
 | 2026-06-12 | Added P12-009 minimum external ops-agent: `backend/ops-agent/*`, `scripts/install-ops-agent-pm2.sh`, deploy auto-restart for an existing `wxgame-ops-agent`, and `/tools/ops-console.html` Agent panel provide a localhost-bound, ops-authenticated, fixed-PM2-app hard stop/start/restart control plane with audit records. |
+| 2026-06-12 | Split multiplayer runtime sync into gateway plus local soft services: `server.js` no longer owns active-player world ticks, `backend/world-worker.js` runs `WorldWorkerService` as PM2 app `wxgame-world-worker`, `PresenceService` absorbs heartbeat-scale online state with persistence throttling, `AuthService` caches player-existence checks for heartbeat bursts, and `scripts/loadtest-bot-heartbeat.js` provides controlled BOT login/heartbeat load-test evidence with an 80% utilization target. |

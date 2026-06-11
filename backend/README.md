@@ -39,6 +39,8 @@ backend/
 | POST | /api/game/action | 玩家操作（建造/分配/研发/进阶/招募/事件选择） |
 | POST | /api/game/offline | 离线上报，记录快照 |
 
+Runtime sync note: `GET /api/game/heartbeat` is the lightweight liveness endpoint. It records online presence through `PresenceService` and does not run world progression or write `players.lastActiveAt` on every request. The API gateway process must stay free of world runtime ticks; background world advancement runs in the separate PM2 process `wxgame-world-worker` through `backend/world-worker.js`.
+
 ### 事件
 
 | 方法 | 路径 | 说明 |
@@ -233,6 +235,8 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 - `npm run profile:h5-performance` 可在本地用 stub API 驱动真实 H5 入口，生成 `.local-logs/h5-performance/<runId>/profile.json`，用于记录 navigation/resource timing、long task、RAF、canvas、截图像素和资源失败证据。
 - `npm run profile:h5-phone-sim` 会用 CPU throttling、移动视口/DPR/touch、navigator 核心数/内存注入、V8 heap 上限和 SwiftShader/低端 GPU flag 近似 2026 手机 low/mid/flagship 档位；这是无真机时的本地保守模拟，不等同物理真机热/驱动/浏览器实测。
 - H5 启动期资源加载只等待图片可用；世界地图瓦片 metrics/mask/dry-template 预热由 `worldMapRenderer.scheduleWorldTileCachePrewarm()` 在 ready 周边按设备档位后台分片执行，并在 profile 中以 `assets:prewarm:deferred` 记录。低/中端移动档还会降低水面/探索刷新频率，避免 ready 后按桌面节奏重绘地图。2026-06-11 最新模拟报告为 `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`。
+
+Multiplayer load-test note: `scripts/loadtest-bot-heartbeat.js` logs in `bot00001..botNNNNN` and measures heartbeat p50/p95/p99, timeout/error rate, and target utilization. Bot accounts are disabled by default and require `ENABLE_BOT_ACCOUNTS=1`, `BOT_ACCOUNT_COUNT=<n>`, and `BOT_ACCOUNT_PASSWORD=<secret>` on the backend. The default safety target is 80% of configured bot count, with API latency/error thresholds protecting production from uncontrolled overload.
 
 生产依赖注意：2026-06-11 已将生产 Node 从 `18.20.8` 升级到 `20.20.2`，并在 Node 20 下重装 PM2、重建 `better-sqlite3@12.10.0` 原生模块；`backend/package.json` engines 同步为 `node >=20.0.0`。`npm run security:audit` 现在只允许 `xlsx` high、无 npm-audit fix 的残余风险，其补偿控制是 `TaskDefinitionImportParser` 的 XLSX 导入限制；其他 unexpected/fixable 漏洞会阻断 architecture gate。
 

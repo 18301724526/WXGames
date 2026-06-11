@@ -7,6 +7,7 @@ const DEFAULT_RUNTIME_STATE_DIR = '/opt/wxgame-workspace/.wxgame';
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const LOCAL_DEFAULT_DATA_DIR = path.join(REPO_ROOT, 'data', 'ops');
 const DEFAULT_PM2_APP = 'server';
+const DEFAULT_WORLD_WORKER_PM2_APP = 'wxgame-world-worker';
 const DEFAULT_HEALTH_SOURCE = 'local-process';
 const DEFAULT_LOG_LINES = 80;
 
@@ -179,11 +180,15 @@ class OpsControlService {
   constructor(options = {}) {
     this.env = options.env || process.env;
     this.repository = options.repository || null;
+    this.presenceService = options.presenceService || null;
     this.observabilityService = options.observabilityService || null;
     this.configReleaseService = options.configReleaseService || null;
     this.configRuntimeLoader = options.configRuntimeLoader || null;
     this.versionService = options.versionService || null;
     this.pm2AppName = options.pm2AppName || this.env.PM2_APP_NAME || DEFAULT_PM2_APP;
+    this.worldWorkerPm2AppName = options.worldWorkerPm2AppName
+      || this.env.WORLD_WORKER_PM2_APP_NAME
+      || DEFAULT_WORLD_WORKER_PM2_APP;
     this.healthUrl = sanitizeText(options.healthUrl || this.env.OPS_HEALTH_URL || '', 2048);
     this.getGameplayConfigStatus = options.getGameplayConfigStatus || null;
     this.getBuildingConfigVersion = options.getBuildingConfigVersion || null;
@@ -284,22 +289,22 @@ class OpsControlService {
     };
   }
 
-  getPm2Summary() {
+  getPm2Summary(appName = this.pm2AppName) {
     const result = this.executeCommand('pm2', ['jlist'], { timeoutMs: 5000, maxOutput: 120000 });
     const list = parseJsonCommand(result, []);
     const processList = Array.isArray(list) ? list : [];
-    const match = processList.find((item) => item.name === this.pm2AppName) || null;
+    const match = processList.find((item) => item.name === appName) || null;
     if (!match) {
       return {
         schema: 'ops-pm2-summary-v1',
-        appName: this.pm2AppName,
+        appName,
         found: false,
         command: { ok: result.ok, error: result.stderr || result.error || '' },
       };
     }
     return {
       schema: 'ops-pm2-summary-v1',
-      appName: this.pm2AppName,
+      appName,
       found: true,
       pmId: match.pm_id,
       name: match.name,
@@ -319,6 +324,10 @@ class OpsControlService {
       outLogPath: match.pm2_env?.pm_out_log_path || '',
       errorLogPath: match.pm2_env?.pm_err_log_path || '',
     };
+  }
+
+  getWorldWorkerPm2Summary() {
+    return this.getPm2Summary(this.worldWorkerPm2AppName);
   }
 
   getDeploySummary() {
@@ -468,11 +477,15 @@ class OpsControlService {
 
   getDashboard(options = {}) {
     const pm2 = this.getPm2Summary();
+    const worldWorker = this.getWorldWorkerPm2Summary();
     const observability = this.observabilityService?.getSnapshot
       ? this.observabilityService.getSnapshot({ pathLimit: 10, eventLimit: 10 })
       : null;
     const players = this.repository?.getPlayerActivitySummary
       ? this.repository.getPlayerActivitySummary({ recentLimit: 12 })
+      : null;
+    const presence = this.presenceService?.getOnlineSummary
+      ? this.presenceService.getOnlineSummary({ recentLimit: 12 })
       : null;
     return {
       success: true,
@@ -481,16 +494,19 @@ class OpsControlService {
       environment: {
         nodeEnv: this.env.NODE_ENV || 'development',
         pm2AppName: this.pm2AppName,
+        worldWorkerPm2AppName: this.worldWorkerPm2AppName,
         healthSource: this.healthUrl ? 'external-url' : DEFAULT_HEALTH_SOURCE,
         healthUrl: this.healthUrl,
       },
       maintenance: this.getMaintenanceState(),
       system: this.getSystemSummary(),
       pm2,
+      worldWorker,
       deploy: this.getDeploySummary(),
       health: this.getHealthSummary(),
       observability,
       players,
+      presence,
       configRuntime: this.getConfigRuntimeSummary(),
       logs: options.includeLogs ? this.getLogSummary({ pm2, lines: options.logLines }) : undefined,
       audit: this.getAuditLog({ limit: 20 }),

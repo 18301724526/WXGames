@@ -19,6 +19,7 @@ const registerVersionRoutes = require('./routes/versionRoutes');
 const registerMetricsRoutes = require('./routes/metricsRoutes');
 const registerClientEventsRoutes = require('./routes/clientEventsRoutes');
 const gameStateService = require('./services/GameStateService');
+const PresenceService = require('./services/realtime/PresenceService');
 const { BuildingConfig, initializeRuntimeConfig, getRuntimeConfigStatus } = require('./services/config/GameplayConfigRuntime');
 const SecurityConfig = require('./config/SecurityConfig');
 const VersionService = require('./services/VersionService');
@@ -27,9 +28,6 @@ const OpsControlService = require('./services/OpsControlService');
 const OpsAuthService = require('./services/OpsAuthService');
 const ConfigReleaseService = require('./services/config/ConfigReleaseService');
 const ConfigRuntimeLoader = require('./services/config/ConfigRuntimeLoader');
-const EventService = require('./services/EventService');
-const TerritoryService = require('./services/TerritoryService');
-const CityService = require('./services/CityService');
 
 const app = express();
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
@@ -43,6 +41,12 @@ repository.init();
 const authService = new AuthService(db, jwtSecret);
 const logService = new LogService(db);
 logService.initLogTable();
+const presenceService = new PresenceService({
+  repository,
+  minPersistIntervalMs: process.env.PRESENCE_PERSIST_INTERVAL_MS,
+  onlineWindowMs: process.env.PRESENCE_ONLINE_WINDOW_MS,
+  maxEntries: process.env.PRESENCE_MAX_ENTRIES,
+});
 const authMiddleware = createAuthMiddleware(authService);
 const adminMiddleware = createAdminMiddleware();
 const versionService = new VersionService();
@@ -52,6 +56,7 @@ const configReleaseService = ConfigReleaseService;
 const configRuntimeLoader = ConfigRuntimeLoader;
 const opsControlService = new OpsControlService({
   repository,
+  presenceService,
   observabilityService,
   configReleaseService,
   configRuntimeLoader,
@@ -69,10 +74,6 @@ const SKIP_API_LOG_PATHS = new Set([
   '/api/game/state',
   '/api/player/logs',
 ]);
-const BACKGROUND_TICK_INTERVAL_MS = 5000;
-const BACKGROUND_ACTIVE_WINDOW_MS = 2 * 60 * 1000;
-const BACKGROUND_ACTIVE_LIMIT = 25;
-let backgroundTickRunning = false;
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '8mb' }));
@@ -122,7 +123,7 @@ registerOpsRoutes(app, { opsAuthService, opsControlService });
 app.use(createMaintenanceMiddleware({ opsControlService }));
 
 registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService });
-registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+registerGameRoutes(app, { authMiddleware, repository, gameStateService, presenceService });
 registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
 
 app.get('/api/health', (req, res) => {
@@ -136,6 +137,7 @@ app.get('/api/health', (req, res) => {
     buildingConfigVersion: BuildingConfig.getVersion(),
     buildingConfigPath: BuildingConfig.getSourcePath(),
     appVersion: versionService.getVersionInfo(),
+    presence: presenceService.getOnlineSummary({ recentLimit: 12 }),
     observability: observabilityService.getHealthSummary(),
     configRuntime: {
       schema: configRuntimeStatus.schema,
@@ -173,30 +175,6 @@ app.get('/api/health', (req, res) => {
     },
   });
 });
-
-setInterval(() => {
-  if (backgroundTickRunning) return;
-  backgroundTickRunning = true;
-  try {
-    const now = new Date();
-    const activeSince = new Date(now.getTime() - BACKGROUND_ACTIVE_WINDOW_MS).toISOString();
-    const gameStates = repository.findRecentlyActive(activeSince, BACKGROUND_ACTIVE_LIMIT);
-    for (const rawState of gameStates) {
-      const gameState = gameStateService.advanceRuntimeState(rawState, now);
-      CityService.advanceAllCities(gameState, Math.floor(BACKGROUND_TICK_INTERVAL_MS / 1000));
-      TerritoryService.updateMissionReadiness(gameState);
-      EventService.cleanupRuntimeState(gameState);
-      EventService.maybeGenerateRegularEvent(gameState);
-      EventService.maybeGenerateThreatEvent(gameState);
-      gameState.updatedAt = now.toISOString();
-      repository.save(gameState);
-    }
-  } catch (error) {
-    console.error('[backgroundTick] failed:', error.message);
-  } finally {
-    backgroundTickRunning = false;
-  }
-}, BACKGROUND_TICK_INTERVAL_MS);
 
 const port = process.env.PORT || 3000;
 const gameplayConfigRuntime = initializeRuntimeConfig();

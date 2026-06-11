@@ -11,6 +11,7 @@ BACKEND_DIR="/opt/wxgame-workspace/backend"
 SHARED_LINK="/opt/wxgame-workspace/shared"
 BRANCH="${1:-main}"
 PM2_APP_NAME="server"
+WORLD_WORKER_PM2_NAME="${WORLD_WORKER_PM2_NAME:-wxgame-world-worker}"
 OPS_AGENT_PM2_NAME="${OPS_AGENT_PM2_NAME:-wxgame-ops-agent}"
 API_PORT="${PORT:-3000}"
 ALLOWED_WORK_TREE="/www/wwwroot/h5"
@@ -236,7 +237,8 @@ verify_runtime_config() {
 }
 
 read_pm2_process() {
-    pm2 jlist | node -e "const name=process.argv[1]; let input=''; process.stdin.on('data', (chunk) => input += chunk); process.stdin.on('end', () => { const list = JSON.parse(input || '[]'); const proc = list.find((item) => item && item.name === name); if (!proc) process.exit(2); const env = proc.pm2_env || {}; process.stdout.write([env.status || '', proc.pid || 0, env.pm_cwd || '', env.pm_exec_path || ''].join('\t')); });" "$PM2_APP_NAME"
+    local app_name="$1"
+    pm2 jlist | node -e "const name=process.argv[1]; let input=''; process.stdin.on('data', (chunk) => input += chunk); process.stdin.on('end', () => { const list = JSON.parse(input || '[]'); const proc = list.find((item) => item && item.name === name); if (!proc) process.exit(2); const env = proc.pm2_env || {}; process.stdout.write([env.status || '', proc.pid || 0, env.pm_cwd || '', env.pm_exec_path || ''].join('\t')); });" "$app_name"
 }
 
 get_listener_pids() {
@@ -247,6 +249,8 @@ get_listener_pids() {
 }
 
 verify_pm2_listener() {
+    local app_name="${1:-$PM2_APP_NAME}"
+    local require_listener="${2:-1}"
     local attempt
     local snapshot
     local status
@@ -256,7 +260,7 @@ verify_pm2_listener() {
     local listener_pids
 
     for attempt in 1 2 3 4 5 6 7 8 9 10; do
-        snapshot="$(read_pm2_process 2>/dev/null || true)"
+        snapshot="$(read_pm2_process "$app_name" 2>/dev/null || true)"
         status="$(printf '%s' "$snapshot" | awk -F '\t' '{print $1}')"
         pm2_pid="$(printf '%s' "$snapshot" | awk -F '\t' '{print $2}')"
         pm2_cwd="$(printf '%s' "$snapshot" | awk -F '\t' '{print $3}')"
@@ -266,16 +270,20 @@ verify_pm2_listener() {
         if [ "$status" = "online" ] \
             && [ -n "$pm2_pid" ] \
             && [ "$pm2_pid" != "0" ] \
-            && printf '%s\n' "$listener_pids" | grep -qx "$pm2_pid"; then
-            echo "[Deploy] PM2 listener confirmed: app=$PM2_APP_NAME pid=$pm2_pid port=$API_PORT cwd=$pm2_cwd script=$pm2_exec"
+            && { [ "$require_listener" != "1" ] || printf '%s\n' "$listener_pids" | grep -qx "$pm2_pid"; }; then
+            if [ "$require_listener" = "1" ]; then
+                echo "[Deploy] PM2 listener confirmed: app=$app_name pid=$pm2_pid port=$API_PORT cwd=$pm2_cwd script=$pm2_exec"
+            else
+                echo "[Deploy] PM2 process confirmed: app=$app_name pid=$pm2_pid cwd=$pm2_cwd script=$pm2_exec"
+            fi
             return 0
         fi
         sleep 1
     done
 
-    echo "[Deploy] PM2 listener verification failed: app=$PM2_APP_NAME status=${status:-unknown} pm2_pid=${pm2_pid:-none} listener_pids=${listener_pids:-none}" >&2
+    echo "[Deploy] PM2 verification failed: app=$app_name status=${status:-unknown} pm2_pid=${pm2_pid:-none} listener_pids=${listener_pids:-none}" >&2
     echo "[Deploy] Another PM2 user or stale process may own port $API_PORT." >&2
-    pm2 show "$PM2_APP_NAME" >&2 || true
+    pm2 show "$app_name" >&2 || true
     ss -ltnp >&2 || true
     exit 1
 }
@@ -429,7 +437,13 @@ if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
 else
     pm2 start server.js --name "$PM2_APP_NAME" --update-env
 fi
-verify_pm2_listener
+if pm2 describe "$WORLD_WORKER_PM2_NAME" >/dev/null 2>&1; then
+    pm2 restart "$WORLD_WORKER_PM2_NAME" --update-env
+else
+    pm2 start world-worker.js --name "$WORLD_WORKER_PM2_NAME" --update-env
+fi
+verify_pm2_listener "$PM2_APP_NAME" 1
+verify_pm2_listener "$WORLD_WORKER_PM2_NAME" 0
 restart_ops_agent_if_configured
 
 echo "[Deploy] 校验健康接口..."
