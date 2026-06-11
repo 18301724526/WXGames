@@ -1,15 +1,23 @@
 const {
-  BuildingConfig,
-  EraConfig,
-} = require('../config/GameplayConfigRuntime');
-const {
   RESOURCE_KEYS,
   addResources,
   sanitizeText,
   toNumber,
 } = require('./TaskDefinitionShared');
 
-function resolveRewardFormula(formula) {
+function resolveConfigDeps(options = {}) {
+  if (options.rewardConfigDeps) return options.rewardConfigDeps;
+  if (options.BuildingConfig || options.EraConfig) {
+    return {
+      BuildingConfig: options.BuildingConfig,
+      EraConfig: options.EraConfig,
+    };
+  }
+  return require('../config/GameplayConfigRuntime');
+}
+
+function resolveRewardFormula(formula, options = {}) {
+  const { BuildingConfig, EraConfig } = resolveConfigDeps(options);
   const [rawKind, ...parts] = sanitizeText(formula).split(':').map((item) => item.trim());
   const kind = rawKind.toLowerCase();
   if (['buildcost', 'buildingcost'].includes(kind)) {
@@ -33,7 +41,7 @@ function resolveRewardFormula(formula) {
   return { error: `UNKNOWN_REWARD_FORMULA:${formula}` };
 }
 
-function resolveRewardResources(reward = {}) {
+function resolveRewardResources(reward = {}, options = {}) {
   const resources = {};
   const errors = [];
   addResources(resources, reward.resources || {});
@@ -42,7 +50,7 @@ function resolveRewardResources(reward = {}) {
       && Object.keys(resources).length > 0,
   );
   for (const formula of reward.formulas || []) {
-    const resolved = resolveRewardFormula(formula);
+    const resolved = resolveRewardFormula(formula, options);
     if (resolved.error) {
       errors.push(resolved.error);
     } else if (!formulaResourcesResolved) {

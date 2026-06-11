@@ -99,3 +99,22 @@ test('ConfigPipeline reports loader failures as validation errors', () => {
   assert.equal(snapshot.validation.success, false);
   assert.equal(snapshot.validation.errors[0], 'broken-config: broken loader');
 });
+
+test('ConfigPipeline task registry snapshot does not depend on runtime release gate', () => {
+  const previousGate = process.env.CONFIG_RELEASE_GATE;
+  const previousNodeEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = 'production';
+    process.env.CONFIG_RELEASE_GATE = 'required';
+    const snapshot = ConfigPipeline.buildCurrentSnapshot({ generatedAt: '2026-06-11T00:00:00.000Z' });
+    const taskRegistry = snapshot.registries.find((registry) => registry.id === 'task-definitions');
+
+    assert.equal(snapshot.validation.success, true);
+    assert.equal(taskRegistry.entryCount, 3);
+  } finally {
+    if (previousGate === undefined) delete process.env.CONFIG_RELEASE_GATE;
+    else process.env.CONFIG_RELEASE_GATE = previousGate;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
+});

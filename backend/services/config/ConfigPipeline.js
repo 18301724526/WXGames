@@ -37,10 +37,17 @@ function createTaskDefinitionsLoader() {
     id: 'task-definitions',
     load(options = {}) {
       const Normalizer = require('../taskDefinitions/TaskDefinitionNormalizer');
-      const TaskDefinitionService = require('../TaskDefinitionService');
-      const sourcePath = TaskDefinitionService.DEFAULT_DEFINITIONS_PATH;
+      const StaticBuildingConfig = require('../../config/BuildingConfig');
+      const StaticEraConfig = require('../../config/EraConfig');
+      const sourcePath = path.join(REPO_ROOT, 'backend', 'config', 'defaultTaskDefinitions.json');
       const raw = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-      const definitions = Normalizer.normalizeDefinitions(raw, { source: sourcePath });
+      const definitions = Normalizer.normalizeDefinitions(raw, {
+        source: sourcePath,
+        rewardConfigDeps: {
+          BuildingConfig: StaticBuildingConfig,
+          EraConfig: StaticEraConfig,
+        },
+      });
       return {
         metadata: definitions.registry,
         validation: definitions.registryValidation,

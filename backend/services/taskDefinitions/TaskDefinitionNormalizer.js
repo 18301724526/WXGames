@@ -147,7 +147,7 @@ function normalizeTask(rawTask, index = 0) {
   };
 }
 
-function validateTasks(tasks = []) {
+function validateTasks(tasks = [], options = {}) {
   const errors = [];
   const seen = new Set();
   tasks.forEach((task, index) => {
@@ -161,7 +161,7 @@ function validateTasks(tasks = []) {
     if (task.condition?.type === 'buildingLevel' && !task.condition.buildingId) {
       errors.push(`${label}: buildingLevel condition needs buildingId`);
     }
-    const reward = RewardResolver.resolveRewardResources(task.reward);
+    const reward = RewardResolver.resolveRewardResources(task.reward, options);
     reward.errors.forEach((error) => errors.push(`${label}: ${error}`));
   });
   return errors;
@@ -173,9 +173,9 @@ function normalizeDefinitions(raw = {}, options = {}) {
     .map((task, index) => normalizeTask(task, index))
     .filter((task) => task.enabled)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
-  const errors = validateTasks(tasks);
+  const errors = validateTasks(tasks, options);
   const normalizedTasks = tasks.map((task) => {
-    const resolvedReward = RewardResolver.resolveRewardResources(task.reward);
+    const resolvedReward = RewardResolver.resolveRewardResources(task.reward, options);
     const reward = { ...task.reward, resources: resolvedReward.resources };
     if ((task.reward.formulas || []).length > 0) reward.formulaResourcesResolved = true;
     return { ...task, reward, rewardText: RewardResolver.formatRewardText(resolvedReward.resources) };
