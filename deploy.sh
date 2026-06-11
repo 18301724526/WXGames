@@ -363,7 +363,7 @@ fi
 
 if [ "${SKIP_DEPLOY_GATE:-0}" != "1" ]; then
     echo "[Deploy] Running pre-deploy architecture gate..."
-    bash "$WORK_TREE/scripts/pre-deploy-gate.sh" "$WORK_TREE"
+    REPO_GIT_DIR="$GIT_DIR_PATH" bash "$WORK_TREE/scripts/pre-deploy-gate.sh" "$WORK_TREE"
 else
     echo "[Deploy] SKIP_DEPLOY_GATE=1 set; skipping pre-deploy architecture gate."
 fi

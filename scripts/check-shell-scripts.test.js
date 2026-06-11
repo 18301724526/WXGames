@@ -43,6 +43,7 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
 
   assert.match(deployScript, /rev-parse --verify "\$BRANCH\^\{commit\}"/);
   assert.match(deployScript, /checkout -f "\$DEPLOY_COMMIT"/);
+  assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$WORK_TREE\/scripts\/pre-deploy-gate\.sh" "\$WORK_TREE"/);
   assert.match(rollbackScript, /rev-parse --verify "\$TARGET_REF\^\{commit\}"/);
   assert.match(rollbackScript, /bash "\$DEPLOY_SCRIPT" "\$TARGET_COMMIT"/);
   assert.match(verifyHookScript, /bash -n "\$HOOK_PATH"/);
