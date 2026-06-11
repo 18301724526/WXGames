@@ -120,11 +120,13 @@ function normalizeStateStructure(rawState) {
   return state;
 }
 
-function advanceRuntimeState(gameState, now = new Date()) {
+function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   const state = normalizeStateStructure(gameState);
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldExplorerService.normalizeExploreState(state, now);
-  WorldAiExplorerService.advanceAiExploration(state, now);
+  if (options.advanceWorldAi === true) {
+    WorldAiExplorerService.advanceAiExploration(state, now);
+  }
   TerritoryService.normalizeTerritoryState(state, now, { previousWorldMapVersion });
   CityService.normalizeCities(state, now);
   WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);

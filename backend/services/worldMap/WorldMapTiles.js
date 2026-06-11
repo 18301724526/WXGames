@@ -8,6 +8,7 @@ const {
 const {
   getDistanceFromCapital,
   getSortedSideKey,
+  hashString,
   getTileId,
   normalizeTileIntel,
   normalizeTileVisibility,
@@ -64,8 +65,68 @@ function chooseTerrain(seed, q, r) {
   return chooseBaseTerrain(seed, generation.q, generation.r);
 }
 
+function normalizeGenerationContext(context = {}) {
+  if (!context || typeof context !== 'object') return null;
+  return {
+    source: typeof context.source === 'string' ? context.source : '',
+    mode: typeof context.mode === 'string' ? context.mode : '',
+    direction: typeof context.direction === 'string' ? context.direction : '',
+    eventEpoch: typeof context.eventEpoch === 'string' ? context.eventEpoch : String(context.eventEpoch || ''),
+    nearbyStateHash: typeof context.nearbyStateHash === 'string' ? context.nearbyStateHash : String(context.nearbyStateHash || ''),
+    origin: {
+      q: toInteger(context.origin?.q ?? context.origin?.x, 0),
+      r: toInteger(context.origin?.r ?? context.origin?.y, 0),
+    },
+    target: {
+      q: toInteger(context.target?.q ?? context.target?.x, 0),
+      r: toInteger(context.target?.r ?? context.target?.y, 0),
+    },
+    step: toInteger(context.step, 0),
+  };
+}
+
+function getGenerationContextSalt(context = {}) {
+  const normalized = normalizeGenerationContext(context);
+  if (!normalized) return '';
+  const meaningful = [
+    normalized.source,
+    normalized.mode,
+    normalized.direction,
+    normalized.eventEpoch,
+    normalized.nearbyStateHash,
+  ].some(Boolean);
+  if (!meaningful) return '';
+  return [
+    normalized.source,
+    normalized.mode,
+    normalized.direction,
+    normalized.eventEpoch,
+    normalized.nearbyStateHash,
+    normalized.origin.q,
+    normalized.origin.r,
+    normalized.target.q,
+    normalized.target.r,
+    normalized.step,
+  ].join('|');
+}
+
+function chooseMaterializedTerrain(seed, q, r, generationContext = null) {
+  const natural = chooseTerrain(seed, q, r);
+  if (['capital', 'ocean', 'river'].includes(natural)) return natural;
+  const salt = getGenerationContextSalt(generationContext);
+  if (!salt) return natural;
+  const generation = WorldMapTopology.getGenerationCoord({ q, r });
+  const terrainPool = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert'];
+  const baseIndex = Math.max(0, terrainPool.indexOf(natural));
+  const shift = 1 + (hashString(`${seed}|${generation.q}|${generation.r}|${salt}|terrain`) % (terrainPool.length - 1));
+  return terrainPool[(baseIndex + shift) % terrainPool.length];
+}
+
 function decorateTile(tile, seed) {
   const topology = WorldMapTopology.normalizeCoord(tile || {});
+  const generationContext = tile?.generationContext && typeof tile.generationContext === 'object'
+    ? { generationContext: { ...tile.generationContext } }
+    : {};
   if (tile?.id === CAPITAL_TILE_ID || (topology.worldQ === 0 && topology.worldR === 0)) {
     return {
       ...tile,
@@ -76,11 +137,15 @@ function decorateTile(tile, seed) {
       riverPorts: [],
       oceanTemplates: [],
       transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, 0, 0, 'capital'),
+      ...generationContext,
     };
   }
   const generation = WorldMapTopology.getGenerationCoord(tile);
+  const authoritativeTerrain = TERRAIN_TYPES.includes(tile?.terrain) || tile?.terrain === 'capital' || tile?.terrain === 'ocean'
+    ? tile.terrain
+    : '';
   if (isStartSafeLandCoord(generation.q, generation.r)) {
-    const terrain = chooseBaseTerrain(seed, generation.q, generation.r);
+    const terrain = authoritativeTerrain || chooseBaseTerrain(seed, generation.q, generation.r);
     return {
       ...tile,
       worldQ: topology.worldQ,
@@ -90,15 +155,16 @@ function decorateTile(tile, seed) {
       riverPorts: [],
       oceanTemplates: [],
       transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, generation.q, generation.r, terrain),
+      ...generationContext,
     };
   }
   const naturalOceanTemplates = chooseOceanTemplates(seed, generation.q, generation.r);
   const naturalRiverPorts = getRiverPorts(seed, generation.q, generation.r);
-  const terrain = naturalOceanTemplates.length
+  const terrain = authoritativeTerrain || (naturalOceanTemplates.length
     ? 'ocean'
     : naturalRiverPorts.length
       ? 'river'
-      : chooseBaseTerrain(seed, generation.q, generation.r);
+      : chooseBaseTerrain(seed, generation.q, generation.r));
   const oceanTemplates = terrain === 'ocean' ? naturalOceanTemplates : [];
   const riverPorts = terrain === 'river' ? naturalRiverPorts : [];
   return {
@@ -110,13 +176,14 @@ function decorateTile(tile, seed) {
     riverPorts,
     oceanTemplates,
     transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, generation.q, generation.r, terrain),
+    ...generationContext,
   };
 }
 
 function createTile(seed, q, r, now = new Date(), overrides = {}) {
   const isoNow = typeof now === 'string' ? now : now.toISOString();
   const topology = WorldMapTopology.normalizeCoord({ q, r });
-  const terrain = overrides.terrain || chooseTerrain(seed, q, r);
+  const terrain = overrides.terrain || chooseMaterializedTerrain(seed, q, r, overrides.generationContext);
   const discovered = overrides.discovered !== undefined ? Boolean(overrides.discovered) : true;
   const controlled = Boolean(overrides.controlled || overrides.visibility === 'controlled' || overrides.siteId === 'capital');
   const visibility = normalizeTileVisibility(overrides.visibility, { discovered, controlled });
@@ -143,6 +210,9 @@ function createTile(seed, q, r, now = new Date(), overrides = {}) {
     oceanTemplates: Array.isArray(overrides.oceanTemplates) ? [...overrides.oceanTemplates] : [],
     transitionKey: typeof overrides.transitionKey === 'string' ? overrides.transitionKey : '',
     siteId: typeof overrides.siteId === 'string' && overrides.siteId ? overrides.siteId : null,
+    ...(overrides.generationContext && typeof overrides.generationContext === 'object'
+      ? { generationContext: { ...overrides.generationContext } }
+      : {}),
   }, seed);
 }
 
@@ -170,11 +240,13 @@ function normalizeTile(rawTile, seed, now = new Date()) {
     oceanTemplates: rawTile.oceanTemplates,
     transitionKey: rawTile.transitionKey,
     siteId: rawTile.siteId,
+    generationContext: rawTile.generationContext,
   });
 }
 
 module.exports = {
   chooseBaseTerrain,
+  chooseMaterializedTerrain,
   chooseTerrain,
   createTile,
   decorateTile,

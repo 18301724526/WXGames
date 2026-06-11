@@ -116,6 +116,51 @@ test('world map tile module owns terrain and tile normalization contracts', () =
   assert.equal(Tiles.chooseTerrain('architecture-tile-seed', 0, 0), 'capital');
 });
 
+test('world map tile normalization preserves server-materialized terrain authority', () => {
+  const now = new Date('2026-06-12T00:00:00.000Z');
+  const materialized = Tiles.createTile('architecture-context-seed', 9, 2, now, {
+    terrain: 'forest',
+    visibility: 'scouted',
+    generationContext: {
+      direction: 'east',
+      eventEpoch: 'storm',
+      nearbyStateHash: 'frontier-context',
+    },
+  });
+  const normalized = Tiles.normalizeTile(materialized, 'architecture-context-seed', now);
+
+  assert.equal(materialized.terrain, 'forest');
+  assert.equal(normalized.terrain, 'forest');
+});
+
+test('world map terrain materialization can depend on first-explorer context', () => {
+  const now = new Date('2026-06-12T00:00:00.000Z');
+  const base = Tiles.createTile('architecture-context-seed', 12, 7, now, {
+    visibility: 'scouted',
+  });
+  const contextual = Tiles.createTile('architecture-context-seed', 12, 7, now, {
+    visibility: 'scouted',
+    generationContext: {
+      source: 'player-world-explore',
+      mode: 'manual',
+      direction: 'e',
+      eventEpoch: 'storm',
+      nearbyStateHash: 'frontier-context',
+      origin: { q: 11, r: 7 },
+      target: { q: 12, r: 7 },
+      step: 1,
+    },
+  });
+
+  assert.equal(contextual.terrain, Tiles.chooseMaterializedTerrain(
+    'architecture-context-seed',
+    12,
+    7,
+    contextual.generationContext,
+  ));
+  assert.notEqual(contextual.terrain, base.terrain);
+});
+
 test('world map topology owns full wrapping server coordinates', () => {
   assert.deepEqual(Topology.normalizeCoord({ q: -1, r: 1024 }), {
     q: -1,

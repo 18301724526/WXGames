@@ -49,7 +49,7 @@ class WorldWorkerService {
 
   advanceState(rawState, now) {
     const advanced = typeof this.gameStateService.advanceRuntimeState === 'function'
-      ? this.gameStateService.advanceRuntimeState(rawState, now)
+      ? this.gameStateService.advanceRuntimeState(rawState, now, { advanceWorldAi: false })
       : rawState;
     if (typeof this.cityService.advanceAllCities === 'function') {
       this.cityService.advanceAllCities(advanced, Math.floor(this.intervalMs / 1000));

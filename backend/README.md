@@ -39,9 +39,11 @@ backend/
 | POST | /api/game/action | 玩家操作（建造/分配/研发/进阶/招募/事件选择） |
 | POST | /api/game/offline | 离线上报，记录快照 |
 
-Runtime sync note: `GET /api/game/heartbeat` is the lightweight liveness endpoint. It records online presence through `PresenceService` and does not run world progression or write `players.lastActiveAt` on every request. The API gateway process must stay free of world runtime ticks; background world advancement runs in the separate PM2 process `wxgame-world-worker` through `backend/world-worker.js`.
+Runtime sync note: `GET /api/game/heartbeat` is the lightweight liveness endpoint. It records online presence through `PresenceService` and does not run world progression or write `players.lastActiveAt` on every request. The API gateway process must stay free of world runtime ticks; active-player runtime advancement runs in the separate PM2 process `wxgame-world-worker` through `backend/world-worker.js`, and world AI/global expansion requires an explicit `{ advanceWorldAi: true }` authority service path.
 
 SQLite runtime note: all backend soft services that open `civilization.db` must use `DatabaseRuntime.openDatabase()`. The shared runtime config enables WAL, `synchronous=NORMAL`, and a bounded `busy_timeout` so the API gateway and `wxgame-world-worker` do not amplify SQLite lock contention during multiplayer heartbeat/login bursts.
+
+World map authority note: `GameStateRepository` owns the authoritative world-map persistence boundary through `WorldMapAuthorityRepository`. `global_world_chunks` and `global_world_tiles` store first-explorer-wins materialized terrain; `player_world_visibility` stores what each player may see. Player saves no longer persist the world body: `game_states.worldMap.tiles` is sanitized to `[]`, then hydrated from authority tables on read. Legacy hidden/AI tiles from old per-player saves are dropped instead of promoted into the global world. Player exploration carries a `generationContext` so first materialization can depend on direction, event epoch, and nearby AOI state; once committed, all later players read the same global terrain.
 
 ### 事件
 
@@ -233,7 +235,7 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 性能/容量预算当前为观测和元数据边界：
 
 - `GET /api/metrics` 可查看 `PERFORMANCE_BUDGET_EXCEEDED`、API/action 延迟和请求/响应体大小预算结果。
-- `GameStateRepository.save()` 会把最近一次存档预算摘要写入 `saveMetadata.performanceCapacity`，用于检查存档体积、世界地图规模和 mission 数量。
+- `GameStateRepository.save()` 会把最近一次存档预算摘要写入 `saveMetadata.performanceCapacity`，用于检查存档体积、世界地图规模和 mission 数量；世界地图主体不再计入玩家存档体，改由全局 authority/visibility 表承载。
 - `npm run profile:h5-performance` 可在本地用 stub API 驱动真实 H5 入口，生成 `.local-logs/h5-performance/<runId>/profile.json`，用于记录 navigation/resource timing、long task、RAF、canvas、截图像素和资源失败证据。
 - `npm run profile:h5-phone-sim` 会用 CPU throttling、移动视口/DPR/touch、navigator 核心数/内存注入、V8 heap 上限和 SwiftShader/低端 GPU flag 近似 2026 手机 low/mid/flagship 档位；这是无真机时的本地保守模拟，不等同物理真机热/驱动/浏览器实测。
 - H5 启动期资源加载只等待图片可用；世界地图瓦片 metrics/mask/dry-template 预热由 `worldMapRenderer.scheduleWorldTileCachePrewarm()` 在 ready 周边按设备档位后台分片执行，并在 profile 中以 `assets:prewarm:deferred` 记录。低/中端移动档还会降低水面/探索刷新频率，避免 ready 后按桌面节奏重绘地图。2026-06-11 最新模拟报告为 `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`。

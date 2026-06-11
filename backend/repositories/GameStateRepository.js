@@ -1,8 +1,10 @@
 const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
+const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
 
 class GameStateRepository {
   constructor(db) {
     this.db = db;
+    this.worldMapAuthority = new WorldMapAuthorityRepository(db);
   }
 
   init() {
@@ -65,6 +67,7 @@ class GameStateRepository {
       CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
       CREATE INDEX IF NOT EXISTS idx_shared_world_territories_owner ON shared_world_territories(ownerPlayerId);
     `);
+    this.worldMapAuthority.init();
 
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
     if (!columns.some((column) => column.name === 'revision')) {
@@ -136,6 +139,7 @@ class GameStateRepository {
     if (!columns.some((column) => column.name === 'scoutReports')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutReports TEXT').run();
     }
+    this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
   }
 
   findByPlayerId(playerId) {
@@ -184,6 +188,10 @@ class GameStateRepository {
       updatedAt: row.updatedAt,
     };
     state.territories = this.mergeSharedWorldTerritories(state.territories);
+    state.worldMap = this.worldMapAuthority.hydrateWorldMapForPlayer(
+      state.playerId,
+      state.worldMap,
+    );
     return state;
   }
 
@@ -255,11 +263,13 @@ class GameStateRepository {
   }
 
   writeGameStateRow(gameState, revision, updatedAt) {
+    const worldMapForSave = this.worldMapAuthority.sanitizeWorldMapForSave(gameState.worldMap);
     const saveMetadata = {
       ...(gameState.saveMetadata || {}),
       performanceCapacity: PerformanceCapacityBudget.summarizeReport(
         PerformanceCapacityBudget.checkSaveState({
           ...gameState,
+          worldMap: worldMapForSave,
           revision,
           updatedAt,
         }),
@@ -345,7 +355,7 @@ class GameStateRepository {
       JSON.stringify(gameState.activeBuffs || []),
       JSON.stringify(gameState.polity || {}),
       JSON.stringify(gameState.territories || []),
-      JSON.stringify(gameState.worldMap || {}),
+      JSON.stringify(worldMapForSave || {}),
       gameState.activeCityId || 'capital',
       JSON.stringify(gameState.cities || {}),
       JSON.stringify(gameState.scoutedCoordinates || []),
@@ -371,6 +381,7 @@ class GameStateRepository {
     }
     const revision = existingRevision === null ? 1 : existingRevision + 1;
     const updatedAt = new Date().toISOString();
+    this.worldMapAuthority.commitWorldMapForPlayer(gameState, updatedAt);
     this.writeGameStateRow(gameState, revision, updatedAt);
     const savedState = {
       ...gameState,

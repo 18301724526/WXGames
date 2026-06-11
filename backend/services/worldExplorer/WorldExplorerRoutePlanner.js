@@ -157,11 +157,99 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
   return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
 }
 
-function createPlannedTiles(gameState, route, now = new Date()) {
+function getStepDirection(from = {}, to = {}) {
+  const delta = WorldMapService.getWrappedDelta(from, to);
+  const vector = {
+    q: Math.sign(toInteger(delta.q, 0)),
+    r: Math.sign(toInteger(delta.r, 0)),
+  };
+  return Object.entries(WorldMapService.DIRECTION_VECTORS)
+    .find(([, candidate]) => candidate.q === vector.q && candidate.r === vector.r)?.[0] || '';
+}
+
+function getEventEpoch(gameState = {}) {
+  if (gameState.worldEventEpoch || gameState.eventEpoch) return String(gameState.worldEventEpoch || gameState.eventEpoch);
+  return hashString(JSON.stringify({
+    gameDay: gameState.gameDay || 0,
+    regularEventState: gameState.regularEventState || null,
+    threatEventState: gameState.threatEventState || null,
+    activeBuffs: gameState.activeBuffs || [],
+  })).toString(16);
+}
+
+function getNearbyGenerationState(gameState = {}, center = {}, radius = 8) {
+  const centerQ = toInteger(center.q ?? center.x, 0);
+  const centerR = toInteger(center.r ?? center.y, 0);
+  const isNearby = (coord = {}) => (
+    getDistance(centerQ, centerR, coord.x ?? coord.q, coord.y ?? coord.r) <= radius
+  );
+  return {
+    currentEra: gameState.currentEra || 0,
+    gameDay: gameState.gameDay || 0,
+    territories: (gameState.territories || [])
+      .filter(isNearby)
+      .map((territory) => ({
+        id: territory.id || '',
+        x: territory.x ?? territory.q ?? 0,
+        y: territory.y ?? territory.r ?? 0,
+        owner: territory.owner || '',
+        ownerPlayerId: territory.ownerPlayerId || '',
+        status: territory.status || '',
+        type: territory.type || '',
+      }))
+      .sort((a, b) => a.x - b.x || a.y - b.y || a.id.localeCompare(b.id)),
+    worldAi: (gameState.worldAi?.explorers || [])
+      .filter((explorer) => isNearby(explorer.position || {}))
+      .map((explorer) => ({
+        id: explorer.id || '',
+        factionId: explorer.factionId || '',
+        q: explorer.position?.q ?? explorer.position?.x ?? 0,
+        r: explorer.position?.r ?? explorer.position?.y ?? 0,
+      }))
+      .sort((a, b) => a.q - b.q || a.r - b.r || a.id.localeCompare(b.id)),
+  };
+}
+
+function createGenerationContext(gameState = {}, step = {}, options = {}) {
+  const origin = options.origin || getExploreOrigin(gameState);
+  const target = options.target || step;
+  const previous = options.previous || origin;
+  const center = { q: toInteger(step.q, 0), r: toInteger(step.r, 0) };
+  return {
+    source: 'player-world-explore',
+    playerId: gameState.playerId || '',
+    mode: options.mode || 'unknown',
+    direction: options.direction || getStepDirection(previous, step),
+    origin: {
+      q: toInteger(origin.q ?? origin.x, 0),
+      r: toInteger(origin.r ?? origin.y, 0),
+      cityId: origin.cityId || 'capital',
+      territoryId: origin.territoryId || 'capital',
+    },
+    target: {
+      q: toInteger(target.q ?? target.x, toInteger(step.q, 0)),
+      r: toInteger(target.r ?? target.y, toInteger(step.r, 0)),
+    },
+    step: toInteger(step.step, 0),
+    eventEpoch: getEventEpoch(gameState),
+    nearbyStateHash: hashString(JSON.stringify(getNearbyGenerationState(gameState, center))).toString(16),
+  };
+}
+
+function createPlannedTiles(gameState, route, now = new Date(), options = {}) {
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  return route.map((step) => WorldMapService.createTile(worldMap.seed, step.q, step.r, now, {
-    visibility: 'scouted',
-  }));
+  let previous = options.origin || getExploreOrigin(gameState);
+  return route.map((step) => {
+    const tile = WorldMapService.createTile(worldMap.seed, step.q, step.r, now, {
+      visibility: 'scouted',
+      generationContext: createGenerationContext(gameState, step, {
+        ...options,
+        previous,
+      }),
+    });
+    previous = step;
+    return tile;
+  });
 }
 
 function shouldGuaranteeTutorialEmptyCity(gameState = {}) {
@@ -266,6 +354,10 @@ module.exports = {
   getRandomRouteCandidates,
   buildRandomRoute,
   buildManualRoute,
+  getEventEpoch,
+  getNearbyGenerationState,
+  getStepDirection,
+  createGenerationContext,
   createPlannedTiles,
   shouldGuaranteeTutorialEmptyCity,
   pickTutorialCityName,

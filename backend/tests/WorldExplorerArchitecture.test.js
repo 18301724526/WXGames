@@ -109,6 +109,40 @@ test('WorldExplorerShared normalizes epoch-second mission timestamps', () => {
   assert.equal(Shared.toTimestamp(Math.floor(epochMs / 1000)), epochMs);
 });
 
+test('world explorer generation context hashes nearby state instead of the full world', () => {
+  const baseState = {
+    playerId: 'generation-context-aoi-test',
+    currentEra: 2,
+    gameDay: 9,
+    activeCityId: 'capital',
+    cities: { capital: { id: 'capital', territoryId: 'capital' } },
+    worldMap: WorldMapService.createInitialWorldMap('generation-context-aoi-seed'),
+    territories: [
+      { id: 'capital', x: 0, y: 0, owner: 'player', status: 'occupied' },
+      { id: 'near-camp', x: 4, y: 0, owner: 'neutral', status: 'discovered' },
+    ],
+    worldAi: { explorers: [] },
+  };
+  const origin = { q: 0, r: 0, cityId: 'capital', territoryId: 'capital' };
+  const step = { q: 4, r: 0, step: 1 };
+  const distantState = {
+    ...baseState,
+    territories: [...baseState.territories, { id: 'distant-city', x: 200, y: 200, owner: 'ai', status: 'occupied' }],
+  };
+  const nearbyState = {
+    ...baseState,
+    territories: [...baseState.territories, { id: 'near-ai', x: 5, y: 0, owner: 'ai', status: 'occupied' }],
+  };
+
+  const baseContext = RoutePlanner.createGenerationContext(baseState, step, { mode: 'manual', origin });
+  const distantContext = RoutePlanner.createGenerationContext(distantState, step, { mode: 'manual', origin });
+  const nearbyContext = RoutePlanner.createGenerationContext(nearbyState, step, { mode: 'manual', origin });
+
+  assert.equal(baseContext.direction, 'e');
+  assert.equal(distantContext.nearbyStateHash, baseContext.nearbyStateHash);
+  assert.notEqual(nearbyContext.nearbyStateHash, baseContext.nearbyStateHash);
+});
+
 test('world explorer progression reveals a step through the world-map batch API', (t) => {
   const originalRevealTiles = WorldMapService.revealTiles;
   const originalRevealTile = WorldMapService.revealTile;
@@ -137,12 +171,19 @@ test('world explorer progression reveals a step through the world-map batch API'
       r: coord.r,
       terrain: coord.overrides?.terrain || 'plains',
       visibility: coord.overrides?.visibility || 'scouted',
+      generationContext: coord.overrides?.generationContext,
     }));
   };
   const gameState = { territories: [], tutorial: { completed: true } };
   const mission = {
     id: 'batch-step',
-    plannedTiles: [{ id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' }],
+    plannedTiles: [{
+      id: 'tile_1_0',
+      q: 1,
+      r: 0,
+      terrain: 'forest',
+      generationContext: { direction: 'e', eventEpoch: 'frontier' },
+    }],
     plannedSites: [],
   };
 
@@ -160,9 +201,11 @@ test('world explorer progression reveals a step through the world-map batch API'
       transitionKey: undefined,
       generatedAt: undefined,
       visibility: 'scouted',
+      generationContext: { direction: 'e', eventEpoch: 'frontier' },
     },
   }]);
   assert.deepEqual(revealed.map((tile) => tile.terrain), ['forest']);
+  assert.equal(revealed[0].generationContext.direction, 'e');
 });
 
 test('realtime authority contracts expose the P11 backend-authoritative baselines', () => {

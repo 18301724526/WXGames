@@ -2856,6 +2856,7 @@ Owns:
 - `generationAuthority` metadata attachment during initial world-map creation and normalization
 - delegation to focused world-map modules for terrain, water, tile normalization, IDs, and deterministic generation authority
 - scout reveal area branch materialization through `WorldMapGenerationAuthority.roll01()`
+- context-aware first materialization through `WorldMapTiles.chooseMaterializedTerrain(seed, q, r, generationContext)`; persisted global terrain authority is owned by `WorldMapAuthorityRepository`, not by this facade
 
 Public API:
 
@@ -2887,6 +2888,7 @@ Extension Path:
 
 - New deterministic world-generation behavior first extends `WorldMapGenerationAuthority`.
 - New terrain/tile fields first extend `WorldMapTiles`; new ocean/river behavior first extends `WorldMapWater`.
+- New global persistence/visibility behavior extends `WorldMapAuthorityRepository`; do not reintroduce full world bodies into player saves.
 - Do not put renderer visuals, frontend hit targets, or territory battle/conquest rules into this facade.
 
 Regression:
@@ -3660,6 +3662,7 @@ Regression:
 - 持久化最新存档性能容量预算摘要到 `saveMetadata.performanceCapacity`
 - 持久化 `revision` 乐观版本号，并在 `saveAtomic()` 中递增
 - 主状态行和 `shared_world_territories` 派生占有记录同事务提交
+- 委托 `WorldMapAuthorityRepository` 提交全局世界地图和玩家可见性，并在保存时清空 `game_states.worldMap.tiles`
 - reset 时通过 `resetPlayerState()` 同事务清理玩家共享世界占有记录并写入新状态
 - 不执行业务 normalizer 和 gameplay 规则
 
@@ -3680,6 +3683,7 @@ Regression:
 
 - 新持久化字段先增加列迁移、读写 JSON 解析、repository tests。
 - 需要写状态时优先调用 `save()` / `saveAtomic()`，不要绕过 repository 单独写 `game_states` 或 `shared_world_territories`。
+- 世界地图主体不得回到 `game_states.worldMap.tiles`；新增世界地图持久化语义必须在 `WorldMapAuthorityRepository` 增加 focused tests。
 - destructive reset 必须走 `resetPlayerState()` 或等价 transaction，避免共享世界残留旧占有记录。
 - 存档 shape 迁移逻辑放在 `GameStateMigrationPipeline`，不要放进 repository。
 - 存档容量预算规则放在 `PerformanceCapacityBudget`，repository 只写入摘要，不承载容量规则。
@@ -3689,6 +3693,47 @@ Regression:
 
 - `node --test backend/tests/GameStateRepository.test.js`
 - `node --test backend/tests/OpsControlService.test.js`
+- `npm run test:architecture`
+
+### `backend/repositories/WorldMapAuthorityRepository.js`
+
+Status: candidate
+
+Owns:
+
+- authoritative global world-map persistence for materialized terrain
+- `global_world_chunks` and `global_world_tiles` schema, indexed by canonical tile/chunk identity
+- `player_world_visibility` schema for per-player visibility, discovered/scouted timestamps, and intel
+- first-writer-wins terrain commits for real explored/revealed tiles
+- hydration of player-visible `worldMap.tiles` from global authority plus visibility rows
+- sanitizing player saves so `game_states.worldMap.tiles` stays empty on disk
+- one-time legacy migration from old per-player visible tiles into authority tables
+
+Public API:
+
+- `new WorldMapAuthorityRepository(db, options)`
+- `init()`
+- `commitWorldMapForPlayer(gameState, nowIso)`
+- `hydrateWorldMapForPlayer(playerId, worldMap)`
+- `sanitizeWorldMapForSave(worldMap)`
+- `migrateLegacyPlayerWorldMaps()`
+- helper exports: `getCanonicalId(tile)`, `isPlayerVisibleTile(tile)`, `createGlobalTilePayload(tile)`, `createPlayerTile(globalTile, visibilityRow)`
+
+Performance Constraints:
+
+- Player save payload must not scale with hidden/global world size.
+- Hidden or unknown legacy per-player tiles are discarded from player visibility and are not promoted to global authority.
+- Hydration is bounded by `player_world_visibility` rows for one player, not by scanning all global tiles.
+
+Extension Path:
+
+- New world persistence semantics extend this repository with focused repository tests.
+- Future distributed/chunk services may replace these tables behind the same authority/visibility contract.
+- Do not put terrain generation rules here; generation belongs in `WorldMapTiles` / `WorldMapGenerationAuthority` and the first-explorer context comes from explorer services.
+
+Regression:
+
+- `node --test backend/tests/GameStateRepository.test.js backend/tests/WorldMapArchitecture.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/VersionService.js`

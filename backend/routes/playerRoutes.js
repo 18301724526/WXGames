@@ -24,14 +24,22 @@ function registerPlayerRoutes(app, deps) {
     if (result.error) {
       return res.status(403).json({ error: result.error, message: result.message || result.error });
     }
-    const gameState = gameStateService.getClientGameState(result.gameState);
+    const normalized = gameStateService.normalizeState
+      ? gameStateService.normalizeState(result.gameState)
+      : result.gameState;
+    const gameState = gameStateService.getClientGameStateFromNormalized
+      ? gameStateService.getClientGameStateFromNormalized(normalized)
+      : gameStateService.getClientGameState(normalized);
+    const eraProgress = gameStateService.calculateEraProgressFromNormalized
+      ? gameStateService.calculateEraProgressFromNormalized(normalized)
+      : gameStateService.calculateEraProgress(normalized);
     return res.json({
       playerId: result.playerId,
       username: result.username,
       token: result.token,
       gameState,
-      tutorial: result.gameState.tutorial,
-      eraProgress: gameStateService.calculateEraProgress(result.gameState),
+      tutorial: normalized.tutorial,
+      eraProgress,
       offlineIncome: result.offlineIncome,
     });
   });

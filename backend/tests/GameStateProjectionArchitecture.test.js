@@ -192,7 +192,7 @@ test('client projection is a read-only DTO boundary for explorer and territory r
   assert.deepEqual(normalized, before);
 });
 
-test('state normalization is structural only and runtime world advancement is explicit', () => {
+test('state normalization is structural only and world AI advancement requires explicit opt-in', () => {
   assert.equal(typeof GameStateService.advanceRuntimeState, 'function');
 
   const rawState = GameStateNormalizer.createInitialGameState('runtime-boundary-test');
@@ -224,8 +224,15 @@ test('state normalization is structural only and runtime world advancement is ex
     phase = 'runtime';
     GameStateService.advanceRuntimeState(normalized, new Date('2026-06-10T00:00:05.000Z'));
 
-    assert.equal(aiAdvanceCalls, 1);
+    assert.equal(aiAdvanceCalls, 0);
     assert.equal(territoryAdvanceCalls, 1);
+
+    GameStateService.advanceRuntimeState(normalized, new Date('2026-06-10T00:00:06.000Z'), {
+      advanceWorldAi: true,
+    });
+
+    assert.equal(aiAdvanceCalls, 1);
+    assert.equal(territoryAdvanceCalls, 2);
   } finally {
     WorldAiExplorerService.advanceAiExploration = originalAdvanceAi;
     TerritoryService.normalizeTerritoryState = originalNormalizeTerritory;
@@ -457,6 +464,88 @@ test('reset route returns the newly created state without reloading or re-normal
     'reset:projection-reset-test',
     'createInitialGameState:projection-reset-test',
     'save:projection-reset-test',
+    'getClientGameStateFromNormalized',
+    'calculateEraProgressFromNormalized',
+  ]);
+});
+
+test('login route normalizes once and assembles the response from normalized-only projections', () => {
+  const { app, routes } = createAppHarness();
+  const rawState = createNormalizedRouteState('projection-login-test');
+  const normalizedState = { ...rawState, normalized: true };
+  const calls = [];
+  const authService = {
+    loginPlayer(username, password, getGameState, _calculateOfflineIncome, saveGameState) {
+      calls.push(`login:${username}:${password}`);
+      const loaded = getGameState(username);
+      saveGameState(loaded);
+      return {
+        playerId: username,
+        username,
+        token: 'login-token',
+        gameState: loaded,
+        offlineIncome: null,
+      };
+    },
+  };
+  const repository = {
+    findByPlayerId(playerId) {
+      calls.push(`find:${playerId}`);
+      return rawState;
+    },
+    save(gameState) {
+      calls.push(`save:${gameState.playerId}`);
+    },
+  };
+  const gameStateService = {
+    createInitialGameState() {
+      throw new Error('existing login must not create a new state');
+    },
+    calculateOfflineIncome() {
+      throw new Error('offline income should not be needed in this test');
+    },
+    normalizeState(gameState) {
+      calls.push('normalizeState');
+      assert.equal(gameState, rawState);
+      return normalizedState;
+    },
+    getClientGameState() {
+      throw new Error('login route must not use raw client projection');
+    },
+    calculateEraProgress() {
+      throw new Error('login route must not use raw era progress');
+    },
+    getClientGameStateFromNormalized(gameState) {
+      calls.push('getClientGameStateFromNormalized');
+      assert.equal(gameState, normalizedState);
+      return { playerId: gameState.playerId };
+    },
+    calculateEraProgressFromNormalized(gameState) {
+      calls.push('calculateEraProgressFromNormalized');
+      assert.equal(gameState, normalizedState);
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  registerPlayerRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    authService,
+    repository,
+    gameStateService,
+    logService: { getPlayerLogs: () => [] },
+  });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/player/login');
+
+  const res = invokeRoute(route, {
+    body: { username: 'projection-login-test', password: '123456' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.gameState.playerId, 'projection-login-test');
+  assert.deepEqual(calls, [
+    'login:projection-login-test:123456',
+    'find:projection-login-test',
+    'save:projection-login-test',
+    'normalizeState',
     'getClientGameStateFromNormalized',
     'calculateEraProgressFromNormalized',
   ]);

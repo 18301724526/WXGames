@@ -16,8 +16,8 @@ function normalizeState(rawState) {
   return GameStateNormalizer.normalizeState(rawState);
 }
 
-function advanceRuntimeState(gameState, now = new Date()) {
-  return GameStateNormalizer.advanceRuntimeState(gameState, now);
+function advanceRuntimeState(gameState, now = new Date(), options = {}) {
+  return GameStateNormalizer.advanceRuntimeState(gameState, now, options);
 }
 
 function getClientGameState(gameState) {
@@ -28,8 +28,8 @@ function getClientGameStateFromNormalized(gameState) {
   return ClientGameStateAssembler.getClientGameStateFromNormalized(gameState);
 }
 
-function applyOnlineProgress(gameState, now = new Date()) {
-  const normalized = advanceRuntimeState(gameState, now);
+function applyOnlineProgress(gameState, now = new Date(), options = {}) {
+  const normalized = advanceRuntimeState(gameState, now, options);
   const lastUpdated = new Date(normalized.updatedAt || now);
   const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
   if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return normalized;

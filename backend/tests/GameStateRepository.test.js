@@ -170,6 +170,214 @@ test('GameStateRepository persists world AI exploration state with the game stat
   }
 });
 
+test('GameStateRepository commits first explored terrain globally and later explorers read the same tile', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const first = GameStateNormalizer.createInitialGameState('world-first-explorer');
+    const second = GameStateNormalizer.createInitialGameState('world-second-explorer');
+
+    const firstTile = WorldMapService.revealTile(first, 9, 2, now, {
+      terrain: 'forest',
+      visibility: 'scouted',
+      generationContext: {
+        source: 'player-scout',
+        playerId: first.playerId,
+        direction: 'east',
+        eventEpoch: 'calm',
+        nearbyStateHash: 'frontier-a',
+      },
+    });
+    const secondTile = WorldMapService.revealTile(second, 9, 2, now, {
+      terrain: 'desert',
+      visibility: 'scouted',
+      generationContext: {
+        source: 'player-scout',
+        playerId: second.playerId,
+        direction: 'west',
+        eventEpoch: 'storm',
+        nearbyStateHash: 'frontier-b',
+      },
+    });
+
+    repository.save(first);
+    repository.save(second);
+
+    const firstReloaded = repository.findByPlayerId(first.playerId);
+    const secondReloaded = repository.findByPlayerId(second.playerId);
+    const canonicalId = firstTile.canonicalId || secondTile.canonicalId;
+    const firstReloadedTile = firstReloaded.worldMap.tiles.find((tile) => tile.canonicalId === canonicalId);
+    const secondReloadedTile = secondReloaded.worldMap.tiles.find((tile) => tile.canonicalId === canonicalId);
+    const globalRows = db.prepare('SELECT canonicalId, tile, generationContext FROM global_world_tiles WHERE canonicalId = ?').all(canonicalId);
+
+    assert.equal(globalRows.length, 1);
+    assert.equal(JSON.parse(globalRows[0].tile).terrain, 'forest');
+    assert.equal(JSON.parse(globalRows[0].generationContext).direction, 'east');
+    assert.equal(firstReloadedTile.terrain, 'forest');
+    assert.equal(secondReloadedTile.terrain, 'forest');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository keeps global terrain hidden until a player gains visibility', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const first = GameStateNormalizer.createInitialGameState('world-visible-owner');
+    const spectator = GameStateNormalizer.createInitialGameState('world-hidden-spectator');
+    const tile = WorldMapService.revealTile(first, 13, -4, now, {
+      terrain: 'hills',
+      visibility: 'scouted',
+    });
+
+    repository.save(first);
+    repository.save(spectator);
+
+    const spectatorReloaded = repository.findByPlayerId(spectator.playerId);
+
+    assert.equal(
+      spectatorReloaded.worldMap.tiles.some((item) => item.canonicalId === tile.canonicalId),
+      false,
+    );
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM global_world_tiles WHERE canonicalId = ?').get(tile.canonicalId).count, 1);
+    assert.equal(
+      db.prepare('SELECT COUNT(*) AS count FROM player_world_visibility WHERE playerId = ? AND canonicalId = ?')
+        .get(spectator.playerId, tile.canonicalId).count,
+      0,
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository strips legacy hidden terrain instead of promoting it into global authority', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState('hidden-ai-prune-test');
+    for (let index = 0; index < 120; index += 1) {
+      WorldMapService.revealTile(state, 80 + index, 40, now, {
+        terrain: index % 2 === 0 ? 'plains' : 'forest',
+        visibility: 'hidden',
+        visible: false,
+        discoveredBy: 'ai-frontier',
+      });
+    }
+
+    repository.save(state);
+    const reloaded = repository.findByPlayerId(state.playerId);
+    const storedWorldMap = JSON.parse(db.prepare('SELECT worldMap FROM game_states WHERE playerId = ?').get(state.playerId).worldMap);
+
+    assert.equal(storedWorldMap.tiles.some((tile) => tile.visibility === 'hidden' || tile.visible === false), false);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.visibility === 'hidden' || tile.visible === false), false);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM global_world_tiles WHERE firstDiscoveredBy = ?').get(state.playerId).count, 25);
+    assert.equal(
+      db.prepare('SELECT COUNT(*) AS count FROM player_world_visibility WHERE playerId = ? AND visibility = ?')
+        .get(state.playerId, 'hidden').count,
+      0,
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository keeps test1-scale AI hidden exploration out of the player save budget', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState('test1-scale-hidden-ai');
+    state.worldMap.tiles = [
+      ...state.worldMap.tiles,
+      ...Array.from({ length: 2100 }, (_, index) => WorldMapService.createTile(
+        state.worldMap.seed,
+        100 + (index % 70),
+        75 + Math.floor(index / 70),
+        now,
+        {
+        terrain: index % 3 === 0 ? 'forest' : 'plains',
+        visibility: 'hidden',
+        visible: false,
+        discoveredBy: 'ai-frontier',
+        },
+      )),
+      WorldMapService.createTile(state.worldMap.seed, 9, 2, now, {
+        terrain: 'hills',
+        visibility: 'scouted',
+      }),
+    ];
+
+    repository.save(state);
+    const row = db.prepare('SELECT worldMap FROM game_states WHERE playerId = ?').get(state.playerId);
+    const storedMap = JSON.parse(row.worldMap);
+    const reloaded = repository.findByPlayerId(state.playerId);
+
+    assert.equal(storedMap.tiles.length, 0);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.visibility === 'hidden' || tile.visible === false), false);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.canonicalId === 'tile_9_2'), true);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM global_world_tiles').get().count, 26);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM player_world_visibility WHERE playerId = ?').get(state.playerId).count < 40, true);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository migrates legacy player worldMap tiles into global authority tables on init', () => {
+  const db = new Database(':memory:');
+  let repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState('legacy-world-map-migration');
+    WorldMapService.revealTile(state, 15, 2, now, { terrain: 'forest', visibility: 'scouted' });
+    repository.save(state);
+
+    const legacyMap = {
+      ...state.worldMap,
+      tiles: [
+        ...state.worldMap.tiles,
+        WorldMapService.createTile(state.worldMap.seed, 16, 2, now, {
+          terrain: 'hills',
+          visibility: 'scouted',
+        }),
+        WorldMapService.createTile(state.worldMap.seed, 60, 60, now, {
+          terrain: 'forest',
+          visibility: 'hidden',
+          visible: false,
+        }),
+      ],
+    };
+    db.prepare('UPDATE game_states SET worldMap = ? WHERE playerId = ?')
+      .run(JSON.stringify(legacyMap), state.playerId);
+
+    repository = new GameStateRepository(db);
+    repository.init();
+    const migratedRow = db.prepare('SELECT worldMap FROM game_states WHERE playerId = ?').get(state.playerId);
+    const migratedMap = JSON.parse(migratedRow.worldMap);
+    const reloaded = repository.findByPlayerId(state.playerId);
+
+    assert.equal(migratedMap.tiles.length, 0);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.canonicalId === 'tile_16_2' && tile.terrain === 'hills'), true);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.canonicalId === 'tile_60_60'), false);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM global_world_tiles WHERE canonicalId = ?').get('tile_60_60').count, 0);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository exposes shared world ownership across player saves', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);

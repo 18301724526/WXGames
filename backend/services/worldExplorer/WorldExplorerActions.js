@@ -157,7 +157,11 @@ function startExplore(gameState, options = {}, now = new Date()) {
   if (!route.length) {
     return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: 'No explorer route could be generated.' };
   }
-  const plannedTiles = createPlannedTiles(gameState, route, now);
+  const plannedTiles = createPlannedTiles(gameState, route, now, {
+    mode,
+    origin,
+    target: routeResult.target || route.at(-1),
+  });
   const plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now);
   const mission = normalizeMission({
     id: `explore_${mode}_${now.getTime()}`,
@@ -255,7 +259,11 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: 'No explorer route could be generated.' };
   }
-  const plannedTiles = createPlannedTiles(gameState, route, now);
+  const plannedTiles = createPlannedTiles(gameState, route, now, {
+    mode: 'manual',
+    origin: marchOrigin,
+    target: routeResult.target || route.at(-1),
+  });
   const plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now);
   traceWorldMarch('actions:startWorldMarch:planned', options, {
     plannedTileCount: plannedTiles.length,

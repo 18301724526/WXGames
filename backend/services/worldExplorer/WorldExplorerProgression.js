@@ -102,6 +102,7 @@ function revealCoordinate(gameState, mission, coord, now = new Date()) {
       transitionKey: planned.transitionKey,
       generatedAt: planned.generatedAt,
       visibility: 'scouted',
+      generationContext: planned.generationContext,
     }
     : { visibility: 'scouted' };
   const tile = WorldMapService.revealTile(gameState, coord.q, coord.r, now, overrides);
@@ -143,6 +144,7 @@ function revealStep(gameState, mission, step, now = new Date()) {
           transitionKey: planned.transitionKey,
           generatedAt: planned.generatedAt,
           visibility: 'scouted',
+          generationContext: planned.generationContext,
         }
         : { visibility: 'scouted' };
     },
