@@ -16,8 +16,8 @@ require_command() {
     fi
 }
 
-escape_sed_replacement() {
-    printf '%s' "$1" | sed 's/[\/&]/\\&/g'
+shell_quote() {
+    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
 }
 
 require_command crontab
@@ -30,11 +30,7 @@ fi
 
 mkdir -p "$(dirname "$BACKUP_LOG")" "$BACKUP_ROOT"
 
-escaped_backup_root="$(escape_sed_replacement "$BACKUP_ROOT")"
-escaped_retention_days="$(escape_sed_replacement "$RETENTION_DAYS")"
-escaped_backup_log="$(escape_sed_replacement "$BACKUP_LOG")"
-escaped_backup_script="$(escape_sed_replacement "$BACKUP_SCRIPT")"
-cron_command="BACKUP_ROOT=$escaped_backup_root RETENTION_DAYS=$escaped_retention_days bash $escaped_backup_script >> $escaped_backup_log 2>&1"
+cron_command="BACKUP_ROOT=$(shell_quote "$BACKUP_ROOT") RETENTION_DAYS=$(shell_quote "$RETENTION_DAYS") bash $(shell_quote "$BACKUP_SCRIPT") >> $(shell_quote "$BACKUP_LOG") 2>&1"
 cron_line="$BACKUP_CRON_SCHEDULE $cron_command # $CRON_MARKER"
 
 current_cron="$(mktemp)"

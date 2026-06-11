@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const {
   FALLBACK_BASH_PATHS,
@@ -82,12 +84,78 @@ test('runtime backup and restore scripts keep explicit safety contracts', () => 
 
   assert.match(cronScript, /BACKUP_CRON_SCHEDULE="\$\{BACKUP_CRON_SCHEDULE:-17 3 \* \* \*\}"/);
   assert.match(cronScript, /CRON_MARKER="\$\{CRON_MARKER:-WXGAME_RUNTIME_BACKUP\}"/);
+  assert.match(cronScript, /shell_quote\(\)/);
+  assert.match(cronScript, /BACKUP_ROOT=\$\(shell_quote "\$BACKUP_ROOT"\)/);
+  assert.match(cronScript, /bash \$\(shell_quote "\$BACKUP_SCRIPT"\)/);
+  assert.match(cronScript, />> \$\(shell_quote "\$BACKUP_LOG"\) 2>&1/);
   assert.match(cronScript, /crontab "\$next_cron"/);
   assert.match(cronScript, /# \$CRON_MARKER/);
+  assert.doesNotMatch(cronScript, /escape_sed_replacement/);
+  assert.doesNotMatch(cronScript, /BACKUP_ROOT=\$escaped_backup_root/);
 
   assert.match(verifyScript, /MAX_BACKUP_AGE_HOURS="\$\{MAX_BACKUP_AGE_HOURS:-26\}"/);
   assert.match(verifyScript, /REQUIRE_BACKUP_DB="\$\{REQUIRE_BACKUP_DB:-1\}"/);
   assert.match(verifyScript, /sha256sum -c/);
   assert.match(verifyScript, /backup-manifest\.json/);
   assert.match(verifyScript, /backend-db\/civilization\.db/);
+});
+
+test('runtime backup cron installer writes normal quoted paths', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const bashPath = findBash();
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wxgame-cron-test-'));
+  const toShellPath = (value) => value.replace(/\\/g, '/');
+
+  try {
+    const fakeBin = path.join(tempRoot, 'bin');
+    const workTree = path.join(tempRoot, 'work tree');
+    const backupScript = path.join(workTree, 'scripts', 'backup-runtime-state.sh');
+    const backupRoot = path.join(tempRoot, 'backup root');
+    const backupLog = path.join(tempRoot, 'state dir', 'backup log.txt');
+    const crontabStore = path.join(tempRoot, 'crontab.txt');
+    const fakeCrontab = path.join(fakeBin, 'crontab');
+
+    fs.mkdirSync(path.dirname(backupScript), { recursive: true });
+    fs.mkdirSync(fakeBin, { recursive: true });
+    fs.writeFileSync(backupScript, '#!/usr/bin/env bash\necho backup\n', 'utf8');
+    fs.chmodSync(backupScript, 0o755);
+    fs.writeFileSync(fakeCrontab, [
+      '#!/usr/bin/env bash',
+      'set -euo pipefail',
+      'if [ "${1:-}" = "-l" ]; then',
+      '  if [ -f "$FAKE_CRONTAB_STORE" ]; then cat "$FAKE_CRONTAB_STORE"; else exit 1; fi',
+      'else',
+      '  cp "$1" "$FAKE_CRONTAB_STORE"',
+      'fi',
+      '',
+    ].join('\n'), 'utf8');
+    fs.chmodSync(fakeCrontab, 0o755);
+
+    const env = {
+      ...process.env,
+      PATH: `${toShellPath(fakeBin)}${path.delimiter}${process.env.PATH || ''}`,
+      FAKE_CRONTAB_STORE: toShellPath(crontabStore),
+      WORK_TREE: toShellPath(workTree),
+      BACKUP_ROOT: toShellPath(backupRoot),
+      BACKUP_LOG: toShellPath(backupLog),
+      BACKUP_CRON_SCHEDULE: '1 2 * * *',
+    };
+    const result = spawnSync(bashPath, [path.join(repoRoot, 'scripts', 'install-runtime-backup-cron.sh')], {
+      cwd: repoRoot,
+      env,
+      encoding: 'utf8',
+      shell: false,
+    });
+
+    assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+    const cron = fs.readFileSync(crontabStore, 'utf8');
+    assert.equal(cron.includes('\\/'), false);
+    assert.match(cron, /^1 2 \* \* \* /);
+    assert.match(cron, /# WXGAME_RUNTIME_BACKUP$/m);
+    assert.equal(cron.includes(`BACKUP_ROOT='${toShellPath(backupRoot)}'`), true);
+    assert.equal(cron.includes(`bash '${toShellPath(backupScript)}'`), true);
+    assert.equal(cron.includes(`>> '${toShellPath(backupLog)}' 2>&1`), true);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
