@@ -256,6 +256,7 @@ Stable 目标使用 diamond isometric square-tile 语言，而不是 hex/axial �
 - `docs/long_term_architecture_refactor_plan_2026-06-08.md`
 - `docs/architecture_module_responsibility_index_2026-06-08.md`
 - `docs/production_engineering_roadmap_2026-06-09.md`
+- `docs/6月11日重构与问题交接.md`
 - `docs/stable_block_promotion_matrix_2026-06-09.md`
 - `docs/stable_block_manifest_2026-06-09.json`
 

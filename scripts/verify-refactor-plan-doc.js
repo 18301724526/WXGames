@@ -13,6 +13,7 @@ const officialDocPaths = [
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
+  'docs/6月11日重构与问题交接.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
 ];
@@ -79,6 +80,12 @@ const requiredText = {
     'Anti-Mud Rules',
     'P12 - 生产工程化 / Production Engineering',
     'Large-Studio Parity Definition',
+  ],
+  'docs/6月11日重构与问题交接.md': [
+    'P12-007',
+    'GameplayConfigRuntime',
+    'server hook anomaly',
+    '08725064e201d3f1611962260b05a06d4871851c',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

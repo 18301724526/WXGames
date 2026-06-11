@@ -5068,6 +5068,35 @@ Regression:
 - `node scripts/verify-refactor-plan-doc.js`
 - `npm run test:architecture`
 
+### `docs/6月11日重构与问题交接.md`
+
+Status: authoritative daily handoff
+
+Owns:
+
+- 2026-06-11 production-engineering implementation handoff
+- summary of committed result `08725064`
+- deleted-stage-doc replacement record
+- local validation result record
+- dual-remote push result record
+- server hook anomaly follow-up note
+
+Public Contract:
+
+- This document replaces the prior temporary refactor, issue, and handoff notes for 2026-06-11.
+- It is not a product/gameplay/architecture source of truth; use it to resume operational follow-up and trace what changed today.
+- Future daily handoff notes must be registered in `scripts/verify-refactor-plan-doc.js` before they are considered official.
+
+Extension Path:
+
+- Update this file only for corrections to the 2026-06-11 handoff facts.
+- New-day handoff documents should not revive obsolete `handoff` filenames; use a dated Chinese title and register it in the guard.
+
+Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
+- `npm run test:architecture`
+
 ### `frontend/js/platform/renderers/WorldMapCanvasRenderer.js` - 718 lines
 
 状态 / Status: candidate facade
@@ -6091,3 +6120,4 @@ Recommended first split sequence:
 | 2026-06-11 | Continued P12-007 config release audit scope: added `ConfigReleaseService` plus admin `/api/admin/config-releases`, `/active`, `/runtime-status`, `/preview`, `/publish`, and `/rollback` routes for audit-only release history, active release pointer, active-vs-current registry drift status, rollback records, and startup release gate policy. |
 | 2026-06-11 | Continued P12-007 runtime bundle consumption: added `ConfigRuntimeLoader` to build a read-only payload bundle only after active release gate match, validate payload hashes against the active snapshot, and expose loader readiness through health/admin status; `GameplayConfigRuntime` now consumes game/building/era/tutorial/tech-tree payloads for core gameplay with module fallback only in observe modes. |
 | 2026-06-11 | Added `frontend/tools/config-release-console.html` as the P12-007 standalone admin console for active release/history, runtime drift status, preview, audit-only publish, and rollback actions; it stays outside the main H5 boot chain and does not hot-load gameplay config. |
+| 2026-06-11 | Added `docs/6月11日重构与问题交接.md` as the official daily handoff for commit `08725064`, replacing the prior temporary refactor/progress/issue handoff notes while recording local validation, dual-remote push status, and the server hook anomaly follow-up. |
