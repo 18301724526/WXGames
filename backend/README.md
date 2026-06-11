@@ -138,12 +138,14 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 
 配置发布当前是审计、指针、漂移观测、启动门禁、只读 runtime bundle loader 和显式 gameplay runtime facade 边界，不会热加载 gameplay 运行时配置。`/api/health` 会输出 compact `configRuntime` 摘要并包含 gate policy、loader readiness 与 gameplay config runtime 状态。默认运行态文件：
 
-- `data/configReleases.json`：发布、回滚历史和快照审计。
-- `data/configActiveRelease.json`：当前 active release 指针和快照。
+- 生产：`/opt/wxgame-workspace/.wxgame/config-release/configReleases.json` 和 `/opt/wxgame-workspace/.wxgame/config-release/configActiveRelease.json`。该目录在 deploy state 下，运行时备份会一起带走 release history 和 active pointer。
+- 本地/测试：`data/config-release/configReleases.json` 和 `data/config-release/configActiveRelease.json`。
 
 启动门禁默认策略：`NODE_ENV=production` 时要求 active release 与当前 registry 匹配；开发/测试默认只告警。首次引导或诊断可显式设置 `CONFIG_RELEASE_GATE=warn`，禁用可用 `CONFIG_RELEASE_GATE=off`，正式生产应保持 `required`。
 
 `ConfigRuntimeLoader` 只在 active release 与当前 registry 匹配后构建只读配置 bundle，并校验 payload hash；`GameplayConfigRuntime` 是玩法侧读取入口，当前覆盖 game/building/era/tutorial/tech-tree 配置，生产 required 模式必须读取匹配的 active bundle，开发/测试 warn/off 模式可回退到模块配置用于本地引导和诊断。
+
+2026-06-11 线上演练已确认：管理员 API publish/rollback 后，生产 `CONFIG_RELEASE_GATE=required` 重启健康，`/api/health.configRuntime` 为 `matched`，loader ready，gameplay source 为 `active-release-bundle`；post-required-gate 备份包包含 `deploy-state/config-release/configReleases.json` 和 `deploy-state/config-release/configActiveRelease.json`。
 
 管理员工具页：
 
@@ -156,6 +158,8 @@ node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_s
 - `npm run profile:h5-performance` 可在本地用 stub API 驱动真实 H5 入口，生成 `.local-logs/h5-performance/<runId>/profile.json`，用于记录 navigation/resource timing、long task、RAF、canvas、截图像素和资源失败证据。
 - `npm run profile:h5-phone-sim` 会用 CPU throttling、移动视口/DPR/touch、navigator 核心数/内存注入、V8 heap 上限和 SwiftShader/低端 GPU flag 近似 2026 手机 low/mid/flagship 档位；这是无真机时的本地保守模拟，不等同物理真机热/驱动/浏览器实测。
 - H5 启动期资源加载只等待图片可用；世界地图瓦片 metrics/mask/dry-template 预热由 `worldMapRenderer.scheduleWorldTileCachePrewarm()` 在 ready 周边按设备档位后台分片执行，并在 profile 中以 `assets:prewarm:deferred` 记录。低/中端移动档还会降低水面/探索刷新频率，避免 ready 后按桌面节奏重绘地图。2026-06-11 最新模拟报告为 `.local-logs/h5-performance/2026-06-11T09-23-29-025Z/profile.json`。
+
+生产依赖注意：服务器当前 Node 为 `18.20.8`，`better-sqlite3@12.10.0` 的 package engine 声明要求 Node 20+。当前可运行并通过门禁，但后续应升级 Node 或锁定兼容的 `better-sqlite3` 版本。
 
 或手动部署：
 

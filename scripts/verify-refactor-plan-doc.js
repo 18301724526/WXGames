@@ -85,7 +85,9 @@ const requiredText = {
     'P12-007',
     'GameplayConfigRuntime',
     'server hook anomaly',
-    '08725064e201d3f1611962260b05a06d4871851c',
+    'CONFIG_RELEASE_GATE=required',
+    '08639bab086d5d87ebb7445a043ffb72cc88754c',
+    '613/613',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

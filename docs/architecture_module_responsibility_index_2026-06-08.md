@@ -2548,6 +2548,7 @@ P0 新增公开 API / Public API Added During P0:
 - rollback records that restore the active release pointer to a previous audited snapshot
 - active-vs-current registry runtime drift status
 - startup release gate policy for active-vs-current registry matching
+- default production release state under `/opt/wxgame-workspace/.wxgame/config-release/` so backups include release history and the active pointer
 - public record shaping that hides full snapshots unless explicitly requested
 - no gameplay runtime hot-loading, no admin authentication, no UI ownership
 
@@ -2569,6 +2570,7 @@ P0 新增公开 API / Public API Added During P0:
 - Production gameplay config loading now goes through `GameplayConfigRuntime`; release service remains audit/pointer/gate ownership and must not gain gameplay hot-load side effects.
 - Durable storage can move behind a repository/DB adapter while preserving the public record shape.
 - Admin UI and CLI publish commands should call this service instead of duplicating release validation or active-pointer writes.
+- Production path changes must keep config release state inside a backed-up deploy-state scope or update `scripts/backup-runtime-state.sh`, `scripts/verify-runtime-backup.sh`, and this index together.
 
 回归 / Regression:
 
@@ -2608,9 +2610,9 @@ P0 新增公开 API / Public API Added During P0:
 
 ### `backend/services/config/GameplayConfigRuntime.js`
 
-鐘舵€?/ Status: candidate
+状态 / Status: candidate
 
-鑱岃矗 / Owns:
+职责 / Owns:
 
 - P12-007 gameplay-facing config runtime facade
 - initializing gameplay config consumption from `ConfigRuntimeLoader` after release gate match
@@ -2619,7 +2621,7 @@ P0 新增公开 API / Public API Added During P0:
 - dynamic proxies for `GameConfig`, `BuildingConfig`, `EraConfig`, `TutorialFlowConfig`, and `TechTreeConfig`
 - no admin publish ownership, no release history persistence, no hot reload side effects
 
-鍏紑 API / Public API:
+公开 API / Public API:
 
 - `GameplayConfigRuntime.initializeRuntimeConfig(options)`
 - `GameplayConfigRuntime.getRuntimeConfigStatus()`
@@ -2631,13 +2633,13 @@ P0 新增公开 API / Public API Added During P0:
 - `GameplayConfigRuntime.TutorialFlowConfig`
 - `GameplayConfigRuntime.TechTreeConfig`
 
-鎵╁睍鏂瑰紡 / Extension Path:
+扩展方式 / Extension Path:
 
 - New gameplay config domains should add registry coverage through `ConfigPipeline` first, then expose a dynamic facade here.
 - Gameplay services should import this facade instead of importing raw `backend/config/*` modules directly, except registry contract tests and this module's fallback boundary.
 - Rollback drills should verify active release pointer, startup gate, loader readiness, and representative gameplay reads through this facade.
 
-鍥炲綊 / Regression:
+回归 / Regression:
 
 - `node --test backend/tests/GameplayConfigRuntime.test.js backend/tests/ConfigRuntimeLoader.test.js backend/tests/ConfigReleaseService.test.js`
 - `npm run test:architecture`
@@ -5075,11 +5077,12 @@ Status: authoritative daily handoff
 Owns:
 
 - 2026-06-11 production-engineering implementation handoff
-- summary of committed result `08725064`
+- summary of committed production-engineering and follow-up result through `08639bab`
 - deleted-stage-doc replacement record
 - local validation result record
 - dual-remote push result record
 - server hook anomaly follow-up note
+- host backup/restore and config release required-gate evidence
 
 Public Contract:
 
@@ -5621,7 +5624,7 @@ Regression:
 
 - runtime backup entrypoint for save/config/deploy-state data
 - online SQLite backup of `civilization.db` through `better-sqlite3` or sqlite CLI fallback
-- copying shared config and deploy state into a staged backup directory
+- copying shared config and deploy state into a staged backup directory, including production config release history and active pointer when they live under `deploy-state/config-release/`
 - writing `backup-manifest.json`, archive `.tar.gz`, checksum, and retention pruning
 
 公开 API / Public API:
@@ -5632,6 +5635,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - New runtime data roots should be added to the manifest and staged copy with tests in `check-shell-scripts.test.js`.
+- If config release state ever moves outside deploy state, update backup, verify, restore, and P12 docs in the same change.
 - Keep this script backup-only; restore behavior belongs in `restore-runtime-state.sh`.
 - Production scheduling belongs to host cron/systemd or a runbook, while this script stays the deterministic command.
 
@@ -5660,7 +5664,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- Restore drills should run on non-production targets first and record archive path, manifest, restored DB/config checks, and health/API verification.
+- Restore drills should run on non-production targets first and record archive path, manifest, restored DB/config checks, config release state checks when present, and health/API verification.
 - Keep destructive directory cleanup scoped to explicit target directories and covered by script tests.
 - Deploy-state restore remains opt-in so data restore does not silently rewrite release evidence.
 
@@ -5706,7 +5710,7 @@ Regression:
 
 - runtime backup health verification entrypoint
 - selecting the latest `wxgame-runtime-*.tar.gz` archive
-- checking max backup age, `.sha256`, required manifest/shared/deploy-state entries, and SQLite DB entry
+- checking max backup age, `.sha256`, required manifest/shared/deploy-state entries, config-release entries when deploy state includes them, and SQLite DB entry
 
 公开 API / Public API:
 
@@ -6120,4 +6124,5 @@ Recommended first split sequence:
 | 2026-06-11 | Continued P12-007 config release audit scope: added `ConfigReleaseService` plus admin `/api/admin/config-releases`, `/active`, `/runtime-status`, `/preview`, `/publish`, and `/rollback` routes for audit-only release history, active release pointer, active-vs-current registry drift status, rollback records, and startup release gate policy. |
 | 2026-06-11 | Continued P12-007 runtime bundle consumption: added `ConfigRuntimeLoader` to build a read-only payload bundle only after active release gate match, validate payload hashes against the active snapshot, and expose loader readiness through health/admin status; `GameplayConfigRuntime` now consumes game/building/era/tutorial/tech-tree payloads for core gameplay with module fallback only in observe modes. |
 | 2026-06-11 | Added `frontend/tools/config-release-console.html` as the P12-007 standalone admin console for active release/history, runtime drift status, preview, audit-only publish, and rollback actions; it stays outside the main H5 boot chain and does not hot-load gameplay config. |
-| 2026-06-11 | Added `docs/6月11日重构与问题交接.md` as the official daily handoff for commit `08725064`, replacing the prior temporary refactor/progress/issue handoff notes while recording local validation, dual-remote push status, and the server hook anomaly follow-up. |
+| 2026-06-11 | Added `docs/6月11日重构与问题交接.md` as the official daily handoff for the production-engineering sequence through `08639bab`, replacing the prior temporary refactor/progress/issue handoff notes while recording local/server validation, dual-remote sync, server hook anomaly resolution, backup/restore drill evidence, config release publish/rollback evidence, and production `CONFIG_RELEASE_GATE=required` health. |
+| 2026-06-11 | Closed current host evidence for P12-004 and P12-007: installed runtime backup cron, verified real backup/restore drill, moved production config release state under `.wxgame/config-release`, verified post-required-gate backup contents, published config releases A/B, rolled back B -> A, restored active B, and restarted production healthy with `CONFIG_RELEASE_GATE=required` on `08639bab086d5d87ebb7445a043ffb72cc88754c`. |
