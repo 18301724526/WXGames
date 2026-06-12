@@ -3,6 +3,23 @@ const assert = require('node:assert/strict');
 
 const TutorialIntroOverlay = require('./TutorialIntroOverlay');
 
+function createOverlayGame(state = {}) {
+  return {
+    hasServerState: true,
+    state: {
+      gameDay: 1,
+      totalBuildings: 0,
+      tutorial: { completed: false, currentStep: 0 },
+      cityState: { capitalCityId: 'capital' },
+      territoryState: { territories: [{ id: 'capital' }] },
+      ...state,
+    },
+    canvasShell: {
+      renderActive() {},
+    },
+  };
+}
+
 test('TutorialIntroOverlay delays enter-city completion until the fade transition ends', async () => {
   let currentTime = 1000;
   const timers = [];
@@ -57,4 +74,52 @@ test('TutorialIntroOverlay delays enter-city completion until the fade transitio
   assert.equal(overlay.running, false);
   assert.equal(completed, 1);
   assert.ok(renders.length > 0);
+});
+
+test('TutorialIntroOverlay does not start over later server tutorial guides', () => {
+  const game = createOverlayGame({
+    tutorial: {
+      completed: false,
+      currentStep: 25,
+      phaseCompleted: { newbie: true, era2: true, scoutFormation: true },
+      grants: {
+        firstExploreEmptyCity: { siteId: 'site_2_2' },
+      },
+    },
+    territoryState: {
+      territories: [{ id: 'capital' }, { id: 'site_2_2', naturalName: 'Empty City' }],
+      namingPrompt: {
+        type: 'polity',
+        title: 'Name polity',
+        message: 'Name the polity after the first expansion.',
+      },
+    },
+  });
+  const overlay = new TutorialIntroOverlay({
+    runtime: {},
+    storage: {
+      getItem() { return null; },
+      setItem() {},
+      removeItem() {},
+    },
+    game,
+  });
+
+  assert.equal(overlay.shouldStart(), false);
+  assert.equal(overlay.start(), false);
+  assert.equal(game.tutorialIntro, undefined);
+});
+
+test('TutorialIntroOverlay allows initial server tutorial steps only', () => {
+  const overlay = new TutorialIntroOverlay({
+    runtime: {},
+    storage: {
+      getItem() { return null; },
+      setItem() {},
+      removeItem() {},
+    },
+    game: createOverlayGame({ tutorial: { completed: false, currentStep: 1 } }),
+  });
+
+  assert.equal(overlay.shouldStart(), true);
 });

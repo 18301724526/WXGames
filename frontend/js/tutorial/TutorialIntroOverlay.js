@@ -12,6 +12,7 @@
     entering: 'entering',
     done: 'done',
   };
+  const MAX_INTRO_TUTORIAL_STEP = 1;
 
   class TutorialIntroOverlay {
     constructor(options = {}) {
@@ -75,10 +76,19 @@
       if (!this.game?.hasServerState) return false;
       if (!this.hasCapitalSite(state)) return false;
       if (this.getQueryMode() === 'force') return true;
+      if (!this.isIntroTutorialStep(state)) return false;
       const gameDay = Number(state.gameDay);
       const totalBuildings = Number(state.totalBuildings);
       return (!Number.isFinite(gameDay) || gameDay <= 1)
         && (!Number.isFinite(totalBuildings) || totalBuildings <= 0);
+    }
+
+    isIntroTutorialStep(state = this.game?.state) {
+      const tutorial = state?.tutorial || this.game?.tutorial || null;
+      if (!tutorial || typeof tutorial !== 'object') return true;
+      if (tutorial.completed || tutorial.disabled) return false;
+      const step = Number(tutorial.currentStep);
+      return Number.isFinite(step) ? step <= MAX_INTRO_TUTORIAL_STEP : true;
     }
 
     now() {
