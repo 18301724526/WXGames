@@ -58,11 +58,10 @@ test('WorldMarchSystem accepts epoch seconds from legacy mission timestamps', ()
   assert.equal(actor.remainingSeconds, 14);
 });
 
-test('WorldMarchSystem does not render returned ready missions as map actors', () => {
+test('WorldMarchSystem ignores retired ready missions from stale state', () => {
   const nowMs = new Date('2026-06-06T00:00:30.000Z').getTime();
   const actors = WorldMarchSystem.buildActors({
     missions: [createMission({ status: 'ready' })],
-    readyMissions: [createMission({ id: 'ready-slot', status: 'ready' })],
   }, { nowMs });
 
   assert.deepEqual(actors, []);
@@ -102,14 +101,15 @@ test('WorldMarchSystem derives expired manual marches as idle at the target', ()
   assert.equal(actor.remainingSeconds, 0);
 });
 
-test('WorldMarchSystem derives expired random explores as ready', () => {
+test('WorldMarchSystem derives expired random explores as idle at the target', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const derived = WorldMarchSystem.deriveMissionForTime(createMission({
     mode: 'random',
   }), { nowMs });
 
-  assert.equal(derived.status, 'ready');
+  assert.equal(derived.status, 'idle');
   assert.equal(derived.route.every((step) => step.revealed), true);
+  assert.equal(derived.position.tileId, 'tile_2_0');
 });
 
 test('WorldMarchSystem chooses previous tile before halfway through a segment', () => {

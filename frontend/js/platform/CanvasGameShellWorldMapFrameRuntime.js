@@ -20,7 +20,6 @@
     const missions = [
       explorer.activeMission,
       ...(Array.isArray(explorer.missions) ? explorer.missions : []),
-      ...(Array.isArray(explorer.readyMissions) ? explorer.readyMissions : []),
       ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
     ].filter(Boolean);
     return missions.some((mission) => mission.status === 'active');

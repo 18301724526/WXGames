@@ -47,7 +47,7 @@ const STEP_NAMES = {
   22: 'scoutFormationSaved',
   23: 'scoutWorldPanelOpened',
   24: 'scoutExploreStarted',
-  25: 'scoutExploreClaimed',
+  25: 'firstCityDiscovered',
   26: 'firstCityConquestStarted',
   27: 'firstCityOccupied',
   28: 'firstCityNamed',
@@ -266,7 +266,6 @@ function isApiAction(actionType = '') {
     'claimEvent',
     'saveArmyFormation',
     'startWorldMarch',
-    'claimExplore',
     'conquer',
     'claimConquest',
     'submitNaming',
@@ -281,7 +280,6 @@ function expectedApiBodyAction(action = {}) {
   if (action.type === 'claimEvent') return 'claimEvent';
   if (action.type === 'saveArmyFormation') return 'setArmyFormation';
   if (action.type === 'startWorldMarch') return 'startWorldMarch';
-  if (action.type === 'claimExplore') return 'claimExplore';
   if (action.type === 'conquer') return 'startConquest';
   if (action.type === 'claimConquest') return 'claimConquest';
   if (action.type === 'submitNaming') return action.promptType === 'polity' ? 'renamePolity' : 'renameCity';
@@ -347,7 +345,7 @@ function getFirstCitySiteId(state = {}) {
   const grantSiteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId;
   if (grantSiteId) return grantSiteId;
   const explorer = state.stateSummary?.worldExplorerState || {};
-  for (const bucket of ['readyMissions', 'idleMissions', 'missions']) {
+  for (const bucket of ['idleMissions', 'missions']) {
     const missions = Array.isArray(explorer[bucket]) ? explorer[bucket] : [];
     for (const mission of missions) {
       const sites = Array.isArray(mission?.plannedSites) ? mission.plannedSites : [];
@@ -848,7 +846,7 @@ function apiCallMatchesAction(call = {}, action = {}) {
   if (action.type === 'startWorldMarch' && action.formationSlot !== undefined) {
     return Number(body.formationSlot ?? body.slot) === Number(action.formationSlot);
   }
-  if (['claimExplore', 'claimConquest', 'conquer'].includes(action.type)) {
+  if (['claimConquest', 'conquer'].includes(action.type)) {
     const expectedId = getActionTargetId(action);
     const bodyId = body.missionId || body.territoryId || body.cityId || '';
     return !expectedId || !bodyId || expectedId === bodyId;
@@ -884,7 +882,6 @@ function missionCounts(state = {}) {
   const explorer = state.stateSummary?.worldExplorerState || {};
   return {
     active: Array.isArray(explorer.activeMissions) ? explorer.activeMissions.length : (explorer.activeMission ? 1 : 0),
-    ready: Array.isArray(explorer.readyMissions) ? explorer.readyMissions.length : 0,
     idle: Array.isArray(explorer.idleMissions) ? explorer.idleMissions.length : 0,
     missions: Array.isArray(explorer.missions) ? explorer.missions.length : 0,
   };
@@ -926,7 +923,7 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       }
       if (actionType === 'waitExplore') {
         const counts = missionCounts(after);
-        if (counts.active > 0 || counts.ready > 0) {
+        if (counts.active > 0 || counts.idle > 0) {
           return pass('explore wait state remains visible and valid', { missionCounts: counts });
         }
       }
@@ -1019,12 +1016,10 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
     case 'startWorldMarch': {
       const beforeCounts = missionCounts(before);
       const afterCounts = missionCounts(after);
-      return stepAdvanced || afterCounts.active > beforeCounts.active || afterCounts.ready > beforeCounts.ready || apiOk
+      return stepAdvanced || afterCounts.active > beforeCounts.active || afterCounts.idle > beforeCounts.idle || apiOk
         ? pass('world march started')
         : fail('world march did not start');
     }
-    case 'claimExplore':
-      return stepAdvanced || apiOk ? pass('explore claimed') : fail('explore claim did not change state');
     case 'conquer':
       return stepAdvanced || apiOk ? pass('conquest started') : fail('conquest did not start');
     case 'claimConquest':
@@ -1359,12 +1354,6 @@ async function chooseNextAction(page, iteration) {
     ));
   }
   if (step === 24) {
-    const readyMission = state.stateSummary?.worldExplorerState?.readyMissions?.[0] || null;
-    if (readyMission) {
-      return clickByPredicate(page, `claim-explore-${iteration}`, (action) => (
-        action.type === 'claimExplore' && (!action.missionId || action.missionId === readyMission.id) && !action.disabled
-      ));
-    }
     return recordWaitAction(page, `wait-explore-${iteration}`, state, { type: 'waitExplore' }, 2000, 3600);
   }
   if (step === 25) {

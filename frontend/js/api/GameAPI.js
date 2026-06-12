@@ -77,7 +77,7 @@
         headers['If-None-Match'] = this.versionEtag;
       }
       const isWorldMarchAction = path === '/game/action'
-        && ['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch', 'claimExplore', 'startExplore']
+        && ['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch']
           .includes(actionBody.action);
       const isWorldMarchSync = trace?.enabled?.() && ['/game/state', '/game/heartbeat'].includes(path);
       const tracedBody = isWorldMarchAction && trace?.enabled?.()
@@ -396,11 +396,9 @@
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
     claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }
-    startExplore(options = {}) { return this.request('POST', '/game/action', { action: 'startExplore', ...options }); }
     startWorldMarch(options = {}) { return this.request('POST', '/game/action', { action: 'startWorldMarch', ...options }); }
     returnWorldMarch(missionId) { return this.request('POST', '/game/action', { action: 'returnWorldMarch', missionId }); }
     stopWorldMarch(missionId) { return this.request('POST', '/game/action', { action: 'stopWorldMarch', missionId }); }
-    claimExplore(missionId) { return this.request('POST', '/game/action', { action: 'claimExplore', missionId }); }
     startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
     renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }

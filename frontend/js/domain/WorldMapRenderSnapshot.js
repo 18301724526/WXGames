@@ -125,7 +125,7 @@
         actors: [],
         arrivals: [],
         indexById: { missions: Object.create(null), actors: Object.create(null), arrivals: Object.create(null) },
-        counts: { missions: missions.length, actors: 0, arrivals: 0, active: 0, ready: 0, idle: 0 },
+        counts: { missions: missions.length, actors: 0, arrivals: 0, active: 0, idle: 0 },
         signature: `fallback:${missions.length}`,
       };
     }

@@ -379,22 +379,6 @@
               : false;
           },
 
-      async startExplore(options = {}) {
-            try {
-              const result = await this.getGameApi().startExplore(options);
-              this.applyApiState(result);
-              this.tutorialController?.sync?.(this.tutorial);
-              this.tutorialController?.onExploreStarted?.(result);
-              this.showFloatingText(result.message || 'Explorer started');
-              this.log(result.message || 'Explorer started');
-              return true;
-            } catch (error) {
-              this.log(`Explore failed: ${error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
-              return false;
-            }
-          },
-
       async startWorldMarch(options = {}) {
             try {
               const trace = global.WorldMarchTrace;
@@ -408,9 +392,7 @@
                 before: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
               const api = this.getGameApi();
-              const result = api.startWorldMarch
-                ? await api.startWorldMarch({ ...options, mode: 'manual' })
-                : await api.startExplore({ ...options, mode: 'manual' });
+              const result = await api.startWorldMarch({ ...options, mode: 'manual' });
               trace?.log?.('app:startWorldMarch:apiResult', {
                 result: trace.summarizeApiPayload?.(result) || result,
               });
@@ -496,23 +478,6 @@
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
               this.log(`Stop failed: ${error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
-              return false;
-            }
-          },
-
-      async claimExplore(missionId) {
-            if (!missionId) return false;
-            try {
-              const result = await this.getGameApi().claimExplore(missionId);
-              this.applyApiState(result);
-              this.tutorialController?.sync?.(this.tutorial);
-              this.tutorialController?.onExploreClaimed?.(result);
-              this.showFloatingText(result.message || 'Explorer returned');
-              this.log(result.message || 'Explorer returned');
-              return true;
-            } catch (error) {
-              this.log(`Explore claim failed: ${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }

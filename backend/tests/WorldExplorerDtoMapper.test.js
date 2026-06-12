@@ -49,18 +49,19 @@ test('WorldExplorerDtoMapper maps a mission into the public API shape', () => {
   assert.equal(dto.plannedSites[0].site.id, 'site_2_0');
 });
 
-test('WorldExplorerDtoMapper groups active, ready, idle, and busy formation DTOs', () => {
+test('WorldExplorerDtoMapper groups active and idle DTOs without retired ready reports', () => {
   const state = DtoMapper.getClientStateDto([
     createMission({ id: 'active-1', status: 'active' }),
     createMission({ id: 'ready-1', status: 'ready' }),
     createMission({ id: 'idle-1', status: 'idle' }),
   ], { now: new Date('2026-06-06T00:00:12.000Z') });
 
-  assert.equal(state.missions.length, 3);
+  assert.equal(state.missions.length, 2);
   assert.equal(state.activeMission.id, 'active-1');
-  assert.deepEqual(state.readyMissions.map((mission) => mission.id), ['ready-1']);
+  assert.equal(Object.prototype.hasOwnProperty.call(state, 'readyMissions'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(state, 'randomRouteLength'), false);
   assert.deepEqual(state.idleMissions.map((mission) => mission.id), ['idle-1']);
-  assert.deepEqual(state.busyFormations.map((item) => `${item.missionId}:${item.status}`), ['active-1:active', 'ready-1:ready']);
+  assert.deepEqual(state.busyFormations.map((item) => `${item.missionId}:${item.status}`), ['active-1:active']);
   assert.equal(state.stepDurationSeconds, 10);
 });
 

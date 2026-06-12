@@ -997,7 +997,7 @@ P0 新增公开 API / Public API Added During P0:
 - `WorldMarchProgressSnapshot.getRemainingSeconds(mission, nowMs)`
 - `WorldMarchProgressSnapshot.getTravelRemainingSeconds(mission, nowMs)`
 - `WorldMarchProgressSnapshot.toSerializable(snapshot)`
-- constants: `STATUS_ACTIVE`, `STATUS_READY`, `STATUS_IDLE`, `ARRIVAL_NONE`, `ARRIVAL_READY`, `ARRIVAL_IDLE`
+- constants: `STATUS_ACTIVE`, `STATUS_IDLE`, `ARRIVAL_NONE`, `ARRIVAL_IDLE`
 
 性能约束 / Performance Constraints:
 
@@ -4234,8 +4234,8 @@ Regression:
 
 - 后端 world explorer API DTO 输出形状 / API response DTO shape
 - 将 normalized mission 转成 public mission DTO
-- 将 mission DTO 分组为 `activeMission`、`readyMissions`、`idleMissions`、`busyFormations`
-- 保留世界探索客户端常量字段：`maxActiveMissions`、`randomRouteLength`、`maxManualRouteLength`、`stepDurationSeconds`
+- Groups mission DTOs as `activeMission`, `idleMissions`, and `busyFormations`; the old ready-report bucket is not emitted.
+- Keeps current world-march client fields: `maxActiveMissions`, `maxManualRouteLength`, and `stepDurationSeconds`; retired random-route fields are not emitted.
 - 不推进任务、不写存档、不依赖 routes
 
 公开 API / Public API:

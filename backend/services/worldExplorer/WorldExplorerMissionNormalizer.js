@@ -62,9 +62,10 @@ function normalizeMission(rawMission) {
     .filter(Boolean)
     .sort((a, b) => a.step - b.step);
   const mode = rawMission.mode === 'manual' ? 'manual' : 'random';
-  const status = ['active', 'ready', 'idle', 'cancelled'].includes(rawMission.status)
+  const status = ['active', 'idle', 'cancelled'].includes(rawMission.status)
     ? rawMission.status
-    : 'active';
+    : null;
+  if (!status) return null;
   if (!route.length && status !== 'idle') return null;
   const origin = rawMission.origin && typeof rawMission.origin === 'object'
     ? rawMission.origin

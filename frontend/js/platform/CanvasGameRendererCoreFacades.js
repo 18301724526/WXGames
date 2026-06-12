@@ -453,7 +453,6 @@
       const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const explorerMissions = [
         worldExplorerState.activeMission,
-        ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
         ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
         ...(Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : []),
       ].filter(Boolean);

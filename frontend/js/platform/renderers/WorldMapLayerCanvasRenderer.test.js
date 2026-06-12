@@ -165,7 +165,6 @@ test('WorldMapLayerCanvasRenderer preserves map-home tile rendering without HUD 
 
   const rendered = renderer.renderMapHomeWorldView({
     territoryState: { worldMap: createTileMapView() },
-    worldExplorerState: { randomRouteLength: 6 },
   }, 96, { territoryUiState: uiState, reuseCachedWorldTileView: true });
 
   const worldTileCall = host.calls.find((call) => call[0] === 'renderWorldTileMap');
@@ -209,7 +208,6 @@ test('WorldMapLayerCanvasRenderer preserves empty and legacy world fallbacks', (
   const legacyRenderer = new WorldMapLayerCanvasRenderer({ host: legacyHost });
   assert.equal(legacyRenderer.renderMapHomeWorldView({
     territoryState: { territories: [{ id: 'old' }] },
-    worldExplorerState: { randomRouteLength: 7 },
   }, 96, {}), true);
   assert.equal(legacyHost.calls.some((call) => call[0] === 'renderMilitaryWorldView'), true);
   assert.equal(legacyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
@@ -255,7 +253,6 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
 
   const collected = renderer.collectMapHomeWorldSiteHitTargets({
     territoryState: { worldMap: createTileMapView() },
-    worldExplorerState: { randomRouteLength: 6 },
   }, 96, { territoryUiState: uiState });
 
   assert.equal(collected, true);
@@ -271,7 +268,6 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
   const emptyRenderer = new WorldMapLayerCanvasRenderer({ host: emptyHost });
   assert.equal(emptyRenderer.collectMapHomeWorldSiteHitTargets({
     territoryState: {},
-    worldExplorerState: { randomRouteLength: 5 },
   }, 96, { territoryUiState: {} }), true);
   assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
 });
@@ -290,7 +286,6 @@ test('WorldMapLayerCanvasRenderer collects map-home world targets without painti
   const collected = renderer.collectMapHomeWorldSiteHitTargets({
     activeCityId: 'capital',
     territoryState: { worldMap: createTileMapView() },
-    worldExplorerState: { randomRouteLength: 6 },
   }, 96, { territoryUiState: uiState });
 
   assert.equal(collected, true);
@@ -319,7 +314,6 @@ test('WorldMapLayerCanvasRenderer collects actor targets from runtime context', 
   const collected = renderer.collectMapHomeWorldSiteHitTargets({
     activeCityId: 'capital',
     territoryState: { worldMap: createTileMapView() },
-    worldExplorerState: { randomRouteLength: 6 },
   }, 96, {
     territoryUiState: { selectedWorldActorId: 'explore-active-1' },
     worldMapRuntimeContext: runtimeContext,
@@ -382,7 +376,6 @@ test('CanvasGameRenderer exposes map-home world march targets through world-map 
   const collected = renderer.collectMapHomeWorldSiteHitTargets({
     militaryView: 'world',
     territoryState: { worldMap: createTileMapView() },
-    worldExplorerState: { randomRouteLength: 6 },
   }, 96, { territoryUiState: {} });
 
   assert.equal(collected, true);
@@ -438,7 +431,6 @@ test('CanvasGameRenderer keeps map-home HUD picker out of world-map hit-target c
     activeCityId: 'capital',
     militaryView: 'world',
     territoryState: { worldMap: createTileMapView() },
-    worldExplorerState: { randomRouteLength: 6 },
   }, 96, { territoryUiState: uiState });
 
   assert.equal(collected, true);

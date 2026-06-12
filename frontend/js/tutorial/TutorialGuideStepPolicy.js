@@ -25,7 +25,7 @@
     scoutFormationSaved: 22,
     scoutWorldPanelOpened: 23,
     scoutExploreStarted: 24,
-    scoutExploreClaimed: 25,
+    firstCityDiscovered: 25,
     firstCityConquestStarted: 26,
     firstCityOccupied: 27,
     firstCityNamed: 28,
@@ -64,10 +64,10 @@
     if (step < TUTORIAL_STEPS.lumbermillBuilt) return ['events', 'buildings'].includes(tabId);
     if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
     if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
-    if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutExploreClaimed) {
+    if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.firstCityDiscovered) {
       return ['civilization', 'resources', 'military'].includes(tabId);
     }
-    if (step >= TUTORIAL_STEPS.scoutExploreClaimed && step < TUTORIAL_STEPS.polityNamed) {
+    if (step >= TUTORIAL_STEPS.firstCityDiscovered && step < TUTORIAL_STEPS.polityNamed) {
       return ['resources', 'military'].includes(tabId);
     }
     if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
@@ -103,11 +103,11 @@
   }
 
   function isScoutExploreGuideActive(step, completed) {
-    return isGuideRangeActive(step, completed, TUTORIAL_STEPS.scoutFormationSaved, TUTORIAL_STEPS.scoutExploreClaimed);
+    return isGuideRangeActive(step, completed, TUTORIAL_STEPS.scoutFormationSaved, TUTORIAL_STEPS.firstCityDiscovered);
   }
 
   function isFirstCityGuideActive(step, completed) {
-    return isGuideRangeActive(step, completed, TUTORIAL_STEPS.scoutExploreClaimed, TUTORIAL_STEPS.polityNamed);
+    return isGuideRangeActive(step, completed, TUTORIAL_STEPS.firstCityDiscovered, TUTORIAL_STEPS.polityNamed);
   }
 
   function isFinalTechGuideActive(step, completed) {

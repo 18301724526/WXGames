@@ -24,7 +24,7 @@ const TUTORIAL_STEPS = Object.freeze({
   scoutFormationSaved: 22,
   scoutWorldPanelOpened: 23,
   scoutExploreStarted: 24,
-  scoutExploreClaimed: 25,
+  firstCityDiscovered: 25,
   firstCityConquestStarted: 26,
   firstCityOccupied: 27,
   firstCityNamed: 28,
@@ -62,7 +62,7 @@ const TUTORIAL_EVENT_STEPS = Object.freeze({
   scoutFormationSaved: TUTORIAL_STEPS.scoutFormationSaved,
   scoutWorldPanelOpened: TUTORIAL_STEPS.scoutWorldPanelOpened,
   scoutExploreStarted: TUTORIAL_STEPS.scoutExploreStarted,
-  scoutExploreClaimed: TUTORIAL_STEPS.scoutExploreClaimed,
+  firstCityDiscovered: TUTORIAL_STEPS.firstCityDiscovered,
   firstCityConquestStarted: TUTORIAL_STEPS.firstCityConquestStarted,
   firstCityOccupied: TUTORIAL_STEPS.firstCityOccupied,
   firstCityNamed: TUTORIAL_STEPS.firstCityNamed,
@@ -107,7 +107,7 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
 
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
 
-const CONFIG_VERSION = '1.0.0';
+const CONFIG_VERSION = '1.1.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 

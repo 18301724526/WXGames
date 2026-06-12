@@ -12,10 +12,8 @@
   })();
 
   const STATUS_ACTIVE = 'active';
-  const STATUS_READY = 'ready';
   const STATUS_IDLE = 'idle';
   const ARRIVAL_NONE = 'none';
-  const ARRIVAL_READY = 'ready';
   const ARRIVAL_IDLE = 'idle';
 
   function toNumber(value, fallback = 0) {
@@ -94,7 +92,7 @@
     if (!route.length) {
       return { progress: 0, segmentIndex: 0, segmentProgress: 0, elapsedMs: 0, durationMs: 0 };
     }
-    if (mission.status === STATUS_READY || mission.status === STATUS_IDLE) {
+    if (mission.status === STATUS_IDLE) {
       const durationMs = getMissionDurationMs(mission);
       return {
         progress: 1,
@@ -121,12 +119,11 @@
   }
 
   function getEffectiveMissionStatus(mission = {}, nowMs = Date.now()) {
-    if (isExpiredActiveMission(mission, nowMs)) return mission.mode === 'random' ? STATUS_READY : STATUS_IDLE;
+    if (isExpiredActiveMission(mission, nowMs)) return STATUS_IDLE;
     return mission.status || '';
   }
 
   function getArrivalKind(status = '') {
-    if (status === STATUS_READY) return ARRIVAL_READY;
     if (status === STATUS_IDLE) return ARRIVAL_IDLE;
     return ARRIVAL_NONE;
   }
@@ -154,7 +151,7 @@
     const revealedSet = revealedTileIds || createRevealedTileSet(mission);
     if (revealedSet.has(id)) return true;
     const status = getEffectiveMissionStatus(mission, nowMs);
-    if ([STATUS_READY, STATUS_IDLE].includes(status)) return true;
+    if (status === STATUS_IDLE) return true;
     if (mission.status !== STATUS_ACTIVE) return false;
     return isRouteStepTimeRevealed(mission, step, nowMs);
   }
@@ -259,7 +256,7 @@
   }
 
   function getRemainingSeconds(mission = {}, nowMs = Date.now()) {
-    if (!mission || mission.status === STATUS_READY || mission.status === STATUS_IDLE) return 0;
+    if (!mission || mission.status === STATUS_IDLE) return 0;
     if (WorldTime?.getRemainingSeconds) {
       return WorldTime.getRemainingSeconds(mission, nowMs);
     }
@@ -270,7 +267,7 @@
   }
 
   function getTravelRemainingSeconds(mission = {}, nowMs = Date.now()) {
-    if (!mission || mission.status === STATUS_READY || mission.status === STATUS_IDLE) return 0;
+    if (!mission || mission.status === STATUS_IDLE) return 0;
     const progress = getMissionProgress(mission, nowMs);
     return Math.max(0, Math.ceil((progress.durationMs - progress.elapsedMs) / 1000));
   }
@@ -337,7 +334,6 @@
     (Array.isArray(extraMissions) ? extraMissions : []).forEach(append);
     (Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : []).forEach(append);
     append(worldExplorerState.activeMission);
-    (Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []).forEach(append);
     (Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []).forEach(append);
     return result;
   }
@@ -440,7 +436,7 @@
       travelRemainingSeconds: 0,
       completedAt: row.completedAt || null,
       completedAtMs: row.completedAtMs,
-      claimable: row.arrivalKind === ARRIVAL_READY,
+      claimable: false,
       parked: row.arrivalKind === ARRIVAL_IDLE,
     };
   }
@@ -472,13 +468,12 @@
     const missions = new Array(missionsRaw.length);
     const actors = [];
     const arrivals = [];
-    const counts = { missions: missionsRaw.length, actors: 0, arrivals: 0, active: 0, ready: 0, idle: 0 };
+    const counts = { missions: missionsRaw.length, actors: 0, arrivals: 0, active: 0, idle: 0 };
     let hash = 2166136261;
     for (let i = 0; i < missionsRaw.length; i += 1) {
       const mission = normalizeMissionProgress(missionsRaw[i], { ...options, nowMs, index: i });
       missions[i] = mission;
       if (mission.status === STATUS_ACTIVE) counts.active += 1;
-      if (mission.status === STATUS_READY) counts.ready += 1;
       if (mission.status === STATUS_IDLE) counts.idle += 1;
       const actor = buildActorFromProgress(mission);
       if (actor) actors.push(actor);
@@ -543,17 +538,15 @@
       missions: Array.isArray(snapshot.missions) ? snapshot.missions : [],
       actors: Array.isArray(snapshot.actors) ? snapshot.actors : [],
       arrivals: Array.isArray(snapshot.arrivals) ? snapshot.arrivals : [],
-      counts: snapshot.counts || { missions: 0, actors: 0, arrivals: 0, active: 0, ready: 0, idle: 0 },
+      counts: snapshot.counts || { missions: 0, actors: 0, arrivals: 0, active: 0, idle: 0 },
       signature: snapshot.signature || '',
     };
   }
 
   const api = {
     STATUS_ACTIVE,
-    STATUS_READY,
     STATUS_IDLE,
     ARRIVAL_NONE,
-    ARRIVAL_READY,
     ARRIVAL_IDLE,
     toNumber,
     toInteger,

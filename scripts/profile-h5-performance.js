@@ -444,7 +444,6 @@ function createWorldExplorerState(now = new Date()) {
   return {
     missions: [mission],
     activeMission: mission,
-    readyMissions: [],
     idleMissions: [],
     maxActiveMissions: 1,
   };

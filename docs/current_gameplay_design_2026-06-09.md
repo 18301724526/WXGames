@@ -114,9 +114,9 @@
 
 当前代码事实：
 
-- `GameActionRegistry` 已统一注册 `startExplore`、`startWorldMarch`、`stopWorldMarch`、`returnWorldMarch`、`claimExplore`、`startConquest`、`claimConquest` 等动作。
-- `WorldExplorerService` 和 split modules 负责探索任务、路线、进度和 DTO。
-- 前端 `WorldMarchProgressSnapshot`、`WorldActorProjection`、`WorldMarchGeometry`、`WorldMarchSystem` 负责进度事实、可见 actor 投影、几何和表现兼容。
+- `GameActionRegistry` currently registers world exploration through `startWorldMarch`, `returnWorldMarch`, `stopWorldMarch`, `startConquest`, and `claimConquest`; retired scout-report actions are not registered.
+- `WorldExplorerService` and split modules own world-march mission planning, route progress, discovery, and DTO mapping.
+- 前端 `WorldMarchProgressSnapshot`, `WorldActorProjection`, `WorldMarchGeometry`, and `WorldMarchSystem` own progress facts, visible actor projection, geometry, and rendering-facing march state.
 
 稳定规则：
 

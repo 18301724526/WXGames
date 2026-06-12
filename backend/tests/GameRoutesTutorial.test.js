@@ -461,7 +461,7 @@ test('game action route grants scout famous person and persists tutorial formati
   assert.deepEqual(savedStates.at(-1).cities.capital.military.formations.capital[0].memberIds, [personId]);
 });
 
-test('game action route starts guided exploration with planned tiles in client state', () => {
+test('game action route starts guided world march with planned tiles in client state', () => {
   const { app, routes } = createAppHarness();
   const playerId = 'route-guided-world-explorer-test';
   const gameState = GameStateService.createInitialGameState(playerId);
@@ -528,7 +528,7 @@ test('game action route starts guided exploration with planned tiles in client s
   const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
   const req = {
     playerId,
-    body: { action: 'startExplore', mode: 'random', routeLength: 4, cityId: 'capital', formationSlot: 1 },
+    body: { action: 'startWorldMarch', targetQ: 2, targetR: 0, cityId: 'capital', formationSlot: 1 },
   };
   const res = createResponse();
 
@@ -537,10 +537,46 @@ test('game action route starts guided exploration with planned tiles in client s
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.success, true);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
-  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedTiles.length, 4);
+  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedTiles.length, 2);
   assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedSites.length, 1);
-  assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 4);
+  assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 2);
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
+});
+
+test('game action route rejects unknown world exploration report actions without saving', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-retired-world-explorer-test';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return GameStateService.normalizeState(state);
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  for (const action of ['startExplore', 'claimExplore']) {
+    const req = { playerId, body: { action, missionId: 'explore-old' } };
+    const res = createResponse();
+    route.handlers[0](req, res, () => route.handlers[1](req, res));
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.payload.error, 'UNKNOWN_ACTION');
+  }
+
+  assert.equal(savedStates.length, 0);
 });
 
 test('game action route returns stopped world march as an idle client mission', () => {
@@ -645,7 +681,7 @@ test('game action route enforces guided first empty city occupation target', () 
     tutorial: {
       ...TutorialService.manualAdvance(
         TutorialService.createInitialTutorialState(),
-        TutorialService.TUTORIAL_STEPS.scoutExploreClaimed,
+        TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
       ),
       grants: {
         [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: { siteId },

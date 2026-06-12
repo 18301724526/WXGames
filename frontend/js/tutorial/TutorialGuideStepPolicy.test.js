@@ -56,7 +56,7 @@ test('TutorialGuideStepPolicy owns guide active ranges', () => {
   assert.equal(TutorialGuideStepPolicy.isEra2GuideActive(TUTORIAL_STEPS.lumbermillBuilt, false), true);
   assert.equal(TutorialGuideStepPolicy.isScoutFormationGuideActive(TUTORIAL_STEPS.era3AdvanceReady, false), true);
   assert.equal(TutorialGuideStepPolicy.isScoutExploreGuideActive(TUTORIAL_STEPS.scoutFormationSaved, false), true);
-  assert.equal(TutorialGuideStepPolicy.isFirstCityGuideActive(TUTORIAL_STEPS.scoutExploreClaimed, false), true);
+  assert.equal(TutorialGuideStepPolicy.isFirstCityGuideActive(TUTORIAL_STEPS.firstCityDiscovered, false), true);
   assert.equal(TutorialGuideStepPolicy.isPostNamingSystemGuideActive(TUTORIAL_STEPS.polityNamed, false), true);
   assert.equal(TutorialGuideStepPolicy.isFinalTechGuideActive(TUTORIAL_STEPS.famousSeekCompleted, false), true);
   assert.equal(TutorialGuideStepPolicy.isFinalTechGuideActive(TUTORIAL_STEPS.famousSeekCompleted, true), false);

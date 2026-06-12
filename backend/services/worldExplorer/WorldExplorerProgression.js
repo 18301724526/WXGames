@@ -200,11 +200,11 @@ function advanceExploreMissions(gameState, now = new Date()) {
     }
     mission.nextStepAt = new Date(nextStepAtMs).toISOString();
     if (mission.route.every((step) => step.revealed)) {
-      mission.status = mission.mode === 'manual' ? 'idle' : 'ready';
+      mission.status = 'idle';
       mission.completedAt = mission.completedAt || now.toISOString();
       mission.nextStepAt = null;
       if (mission.status === 'idle' && gameState.tutorial?.currentStep === TUTORIAL_STEPS.scoutExploreStarted) {
-        gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreClaimed);
+        gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
         ensureTutorialFirstCityClaimSoldiers(gameState);
       }
     }

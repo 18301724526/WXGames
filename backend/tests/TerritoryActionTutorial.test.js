@@ -12,7 +12,7 @@ function createGuidedFirstCityState() {
   const tutorial = {
     ...TutorialService.manualAdvance(
       TutorialService.createInitialTutorialState(),
-      TutorialService.TUTORIAL_STEPS.scoutExploreClaimed,
+      TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
     ),
     grants: {
       [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: {

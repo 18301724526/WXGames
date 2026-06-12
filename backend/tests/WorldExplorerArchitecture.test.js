@@ -10,8 +10,8 @@ const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanne
 const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissionNormalizer');
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
 const ClientState = require('../services/worldExplorer/WorldExplorerClientState');
-const Actions = require('../services/worldExplorer/WorldExplorerActions');
   const Shared = require('../services/worldExplorer/WorldExplorerShared');
+const Actions = require('../services/worldExplorer/WorldExplorerActions');
 const Realtime = require('../services/realtime');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
@@ -51,6 +51,7 @@ test('world explorer modules preserve the public exploration contract', () => {
   const mission = MissionNormalizer.normalizeMission({
     id: 'arch-explore',
     mode: 'manual',
+    status: 'active',
     origin,
     target: manual.target,
     route: manual.route,
@@ -73,31 +74,30 @@ test('world explorer modules preserve the public exploration contract', () => {
   assert.equal(ClientState.getClientState(state, now).idleMissions.length, 1);
 });
 
-test('WorldExplorerService facade preserves the legacy API', () => {
+test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
-    'DEFAULT_RANDOM_ROUTE_LENGTH',
     'EXPLORE_REVEAL_RADIUS',
     'EXPLORE_STEP_DURATION_MS',
     'MAX_ACTIVE_EXPLORE_MISSIONS',
     'MAX_MANUAL_ROUTE_LENGTH',
-    'MAX_RANDOM_ROUTE_LENGTH',
     'TUTORIAL_FIRST_SITE_GRANT_KEY',
     'advanceExploreMissions',
     'buildManualRoute',
-    'buildRandomRoute',
-    'claimExplore',
     'ensureTutorialFirstCityClaimSoldiers',
     'getClientState',
     'normalizeExploreState',
     'normalizeMission',
     'returnWorldMarch',
     'stopWorldMarch',
-    'startExplore',
     'startWorldMarch',
   ];
 
   assert.deepEqual(Object.keys(WorldExplorerService).sort(), expectedApi.sort());
-  assert.equal(typeof Actions.startExplore, 'function');
+  assert.equal(Object.prototype.hasOwnProperty.call(WorldExplorerService, 'startExplore'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(WorldExplorerService, 'claimExplore'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(WorldExplorerService, 'buildRandomRoute'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(Actions, 'startExplore'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(Actions, 'claimExplore'), false);
   assert.equal(typeof Actions.startWorldMarch, 'function');
 });
 

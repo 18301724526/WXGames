@@ -1,14 +1,10 @@
 const WorldMapService = require('../WorldMapService');
 
 const EXPLORE_STEP_DURATION_MS = 10 * 1000;
-const DEFAULT_RANDOM_ROUTE_LENGTH = 8;
-const MAX_RANDOM_ROUTE_LENGTH = 16;
 const MAX_MANUAL_ROUTE_LENGTH = 16;
 const MAX_ACTIVE_EXPLORE_MISSIONS = 1;
 const EXPLORE_REVEAL_RADIUS = 0;
-const MAX_ROUTE_DISTANCE_FROM_ORIGIN = 32;
 const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
-const NEIGHBOR_OFFSETS = Object.values(WorldMapService.DIRECTION_VECTORS);
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -44,10 +40,6 @@ function hashString(input) {
   return hash >>> 0;
 }
 
-function random01(seed, q, r, salt) {
-  return hashString(`${seed || 'world-explorer'}|${q}|${r}|${salt}`) / 4294967295;
-}
-
 function getCoordinateKey(q, r) {
   return `${toInteger(q, 0)},${toInteger(r, 0)}`;
 }
@@ -61,19 +53,14 @@ function getDistance(fromQ, fromR, toQ, toR) {
 
 module.exports = {
   EXPLORE_STEP_DURATION_MS,
-  DEFAULT_RANDOM_ROUTE_LENGTH,
-  MAX_RANDOM_ROUTE_LENGTH,
   MAX_MANUAL_ROUTE_LENGTH,
   MAX_ACTIVE_EXPLORE_MISSIONS,
   EXPLORE_REVEAL_RADIUS,
-  MAX_ROUTE_DISTANCE_FROM_ORIGIN,
   TUTORIAL_FIRST_SITE_GRANT_KEY,
-  NEIGHBOR_OFFSETS,
   clone,
   toInteger,
   toTimestamp,
   hashString,
-  random01,
   getCoordinateKey,
   getDistance,
 };

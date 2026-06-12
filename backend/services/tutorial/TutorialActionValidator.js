@@ -129,20 +129,19 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 
 function validateScoutExploreAction(step, action, payload, gameState) {
   const TUTORIAL_STEPS = getTutorialSteps();
-  if (action === 'startExplore' || action === 'startWorldMarch') {
-    if (step >= TUTORIAL_STEPS.scoutExploreClaimed) return { allowed: true };
+  if (action === 'returnWorldMarch' || action === 'stopWorldMarch') {
+    if (step < TUTORIAL_STEPS.firstCityDiscovered) {
+      return blocked('Please finish the guided exploration first.');
+    }
+    return { allowed: true };
+  }
+  if (action === 'startWorldMarch') {
+    if (step >= TUTORIAL_STEPS.firstCityDiscovered) return { allowed: true };
     if (step < TUTORIAL_STEPS.scoutFormationSaved) {
       return blocked('Please finish the scout formation guide before exploring.');
     }
     if (!hasTutorialScoutFormation(gameState, payload)) {
       return blocked('Please keep the tutorial scout famous person in formation 1 before exploring.');
-    }
-    return { allowed: true };
-  }
-
-  if (action === 'claimExplore') {
-    if (step < TUTORIAL_STEPS.scoutExploreStarted) {
-      return blocked('Please start the guided exploration first.');
     }
     return { allowed: true };
   }
@@ -158,7 +157,7 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
   const isFirstCity = firstCityId && targetId === firstCityId;
 
   if (action === 'startConquest') {
-    if (step !== TUTORIAL_STEPS.scoutExploreClaimed) {
+    if (step !== TUTORIAL_STEPS.firstCityDiscovered) {
       return blocked('Please finish the current guided city step first.');
     }
     if (!isFirstCity || !target || target.status !== 'discovered' || target.owner !== 'neutral') {
@@ -203,9 +202,9 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
     'dismissFamousPersonCandidate',
     'assignFamousAttributePoint',
     'setArmyFormation',
-    'startExplore',
     'startWorldMarch',
-    'claimExplore',
+    'returnWorldMarch',
+    'stopWorldMarch',
   ].includes(action)) {
     return blocked('Please finish claiming and naming the new city first.');
   }
@@ -252,7 +251,7 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
   const step = tutorial.currentStep;
 
   if (
-    step >= TUTORIAL_STEPS.scoutExploreClaimed
+    step >= TUTORIAL_STEPS.firstCityDiscovered
     && step < TUTORIAL_STEPS.polityNamed
   ) {
     return validateFirstCityGuideAction(step, action, payload, gameState);
@@ -264,8 +263,7 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
 
   if (PASS_THROUGH_ACTIONS.includes(action)) return { allowed: true };
 
-  if (['startExplore', 'startWorldMarch', 'claimExplore', 'returnWorldMarch', 'stopWorldMarch'].includes(action)) {
-    if (action === 'returnWorldMarch' || action === 'stopWorldMarch') return { allowed: true };
+  if (['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch'].includes(action)) {
     return validateScoutExploreAction(step, action, payload, gameState);
   }
 

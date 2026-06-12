@@ -1,7 +1,6 @@
 const WorldMapService = require('../WorldMapService');
 const {
   EXPLORE_STEP_DURATION_MS,
-  DEFAULT_RANDOM_ROUTE_LENGTH,
   MAX_MANUAL_ROUTE_LENGTH,
   MAX_ACTIVE_EXPLORE_MISSIONS,
   clone,
@@ -100,18 +99,18 @@ function getBusyFormationDto(mission = {}) {
 
 function getClientStateDto(missions = [], options = {}) {
   const now = options.now || new Date();
-  const missionDtos = (Array.isArray(missions) ? missions : []).map((mission) => getMissionDto(mission, now));
+  const missionDtos = (Array.isArray(missions) ? missions : [])
+    .map((mission) => getMissionDto(mission, now))
+    .filter((mission) => mission.status !== 'ready');
   const busyFormations = missionDtos
-    .filter((mission) => ['active', 'ready'].includes(mission.status))
+    .filter((mission) => mission.status === 'active')
     .map(getBusyFormationDto);
   return {
     missions: missionDtos,
     activeMission: missionDtos.find((mission) => mission.status === 'active') || null,
-    readyMissions: missionDtos.filter((mission) => mission.status === 'ready'),
     idleMissions: missionDtos.filter((mission) => mission.status === 'idle'),
     busyFormations,
     maxActiveMissions: MAX_ACTIVE_EXPLORE_MISSIONS,
-    randomRouteLength: DEFAULT_RANDOM_ROUTE_LENGTH,
     maxManualRouteLength: MAX_MANUAL_ROUTE_LENGTH,
     stepDurationSeconds: Math.floor(EXPLORE_STEP_DURATION_MS / 1000),
   };

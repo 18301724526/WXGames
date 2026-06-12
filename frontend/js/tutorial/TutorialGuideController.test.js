@@ -579,7 +579,7 @@ test('TutorialGuideController guides scout formation into map march and claim', 
         selectWorldMarchTarget: { type: 'selectWorldMarchTarget', targetQ: 2, targetR: -1 },
         openWorldMarchFormationPicker: { type: 'openWorldMarchFormationPicker', targetQ: 2, targetR: -1 },
         startWorldMarch: { type: 'startWorldMarch', formationSlot: 1, targetQ: 2, targetR: -1 },
-        claimExplore: { type: 'claimExplore', missionId: 'explore-1' },
+        openWorldSite: { type: 'openWorldSite', siteId: 'site-1' },
       };
       const action = targets[type];
       if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
@@ -648,22 +648,20 @@ test('TutorialGuideController guides scout formation into map march and claim', 
   });
   game.state.worldExplorerState = {
     activeMission: { id: 'explore-1', status: 'active', route: [{ revealed: false }] },
-    readyMissions: [],
   };
   assert.equal(controller.refreshCurrentHighlight(), false);
   assert.equal(calls.some((call) => call.hideHighlight), true);
 
-  game.state.worldExplorerState = {
-    activeMission: null,
-    readyMissions: [{ id: 'explore-1', status: 'ready', route: [{ revealed: true }] }],
-  };
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'claimExplore', missionId: 'explore-1' });
-
-  controller.onExploreClaimed({
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed },
+  controller.onExploreStarted({
+    tutorial: {
+      completed: false,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityDiscovered,
+      grants: { firstExploreEmptyCity: { siteId: 'site-1' } },
+    },
   });
-  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed);
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.firstCityDiscovered);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldSite', siteId: 'site-1' });
 });
 
 test('TutorialGuideController guides first empty city occupation and naming', () => {
@@ -696,7 +694,7 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
   const game = {
     tutorial: {
       completed: false,
-      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityDiscovered,
       grants: { firstExploreEmptyCity: { siteId } },
     },
     state: {
@@ -776,7 +774,7 @@ test('TutorialGuideController focuses guided first city when it is offscreen', (
   const game = {
     tutorial: {
       completed: false,
-      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityDiscovered,
       grants: { firstExploreEmptyCity: { siteId } },
     },
     state: {
@@ -834,7 +832,7 @@ test('TutorialGuideController highlights guided first city immediately after foc
   const game = {
     tutorial: {
       completed: false,
-      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutExploreClaimed,
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityDiscovered,
       grants: { firstExploreEmptyCity: { siteId } },
     },
     state: {

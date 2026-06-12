@@ -111,7 +111,6 @@
     (Array.isArray(extraMissions) ? extraMissions : []).forEach(append);
     (Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : []).forEach(append);
     append(worldExplorerState.activeMission);
-    (Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []).forEach(append);
     (Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []).forEach(append);
     return result;
   }

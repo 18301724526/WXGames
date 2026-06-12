@@ -63,9 +63,6 @@ function execute(action, gameState, payload = {}) {
       payload,
     );
   }
-  if (action === 'startExplore') {
-    return WorldExplorerService.startExplore(gameState, payload);
-  }
   if (action === 'startWorldMarch') {
     return WorldExplorerService.startWorldMarch(gameState, payload);
   }
@@ -74,9 +71,6 @@ function execute(action, gameState, payload = {}) {
   }
   if (action === 'stopWorldMarch') {
     return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, payload);
-  }
-  if (action === 'claimExplore') {
-    return WorldExplorerService.claimExplore(gameState, payload.missionId);
   }
   if (action === 'claimScout') {
     return attachTerritoryAuthority(TerritoryService.claimScout(gameState, payload.missionId), gameState, action, payload);

@@ -57,7 +57,7 @@ function validateTutorialFormation(gameState = {}, options = {}) {
   if (step < TUTORIAL_STEPS.scoutFormationSaved) {
     return { success: false, error: 'EXPLORE_TUTORIAL_LOCKED', message: 'Please finish the scout formation guide before exploring.' };
   }
-  if (step >= TUTORIAL_STEPS.scoutExploreClaimed) return { success: true, formation: getFormationSnapshot(gameState, options) };
+  if (step >= TUTORIAL_STEPS.firstCityDiscovered) return { success: true, formation: getFormationSnapshot(gameState, options) };
   const scoutPersonId = getTutorialScoutPersonId(gameState);
   const formation = getFormationSnapshot(gameState, options);
   if (!scoutPersonId || !formation.memberIds.includes(scoutPersonId)) {
@@ -71,7 +71,7 @@ function ensureTutorialFirstCityClaimSoldiers(gameState = {}) {
   const tutorial = gameState.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return false;
   const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TUTORIAL_STEPS.scoutExploreClaimed || step >= TUTORIAL_STEPS.firstCityConquestStarted) return false;
+  if (step < TUTORIAL_STEPS.firstCityDiscovered || step >= TUTORIAL_STEPS.firstCityConquestStarted) return false;
   const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
   if (!siteId) return false;
   const target = (gameState.territories || []).find((territory) => territory?.id === siteId);

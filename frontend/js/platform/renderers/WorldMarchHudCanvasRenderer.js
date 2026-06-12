@@ -164,7 +164,6 @@
         ? explorer.missions
         : [
           explorer.activeMission,
-          ...(Array.isArray(explorer.readyMissions) ? explorer.readyMissions : []),
           ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
         ].filter(Boolean);
       const missionById = new Map(missions.map((mission) => [mission?.id, mission]).filter(([id]) => id));
@@ -286,7 +285,7 @@
           color: disabled ? '#8e918a' : '#74d3a0',
           align: 'center',
         });
-        const statusText = empty ? '未编队' : (busy?.status === 'ready' ? '待归队' : busy ? '行军中' : '出征');
+        const statusText = empty ? '未编队' : (busy ? '行军中' : '出征');
         this.drawText(statusText, cardX + cardW / 2, cardY + 65, {
           size: 10,
           color: disabled ? '#8e918a' : '#f0b45b',

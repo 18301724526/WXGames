@@ -55,7 +55,6 @@
       this.state.worldExplorerState = {
         missions: [],
         activeMission: null,
-        readyMissions: [],
         maxActiveMissions: 1,
         ...(this.state.worldExplorerState || {}),
       };

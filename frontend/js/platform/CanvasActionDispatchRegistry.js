@@ -9,11 +9,9 @@
     toggleArmyFormationMember: { method: 'toggleArmyFormationMember' },
     changeArmyFormationPage: { method: 'changeArmyFormationPage' },
     saveArmyFormation: { method: 'saveArmyFormation' },
-    startExplore: { method: 'startExplore', coerceBoolean: true },
     startWorldMarch: { method: 'startWorldMarch', coerceBoolean: true },
     returnWorldMarch: { method: 'returnWorldMarch', args: (action) => [action.missionId || action.actorId || ''], coerceBoolean: true },
     stopWorldMarch: { method: 'stopWorldMarch', args: (action) => [action.missionId || action.actorId || ''], coerceBoolean: true },
-    claimExplore: { method: 'claimExplore', args: (action) => [action.missionId || action.value || ''], coerceBoolean: true },
   };
 
   const RENDER_ACTIONS = {
@@ -97,7 +95,6 @@
     'jumpToSubcity',
     'resetWorldPan',
     'worldMapDrag',
-    'startExplore',
     'selectWorldMarchTarget',
     'openWorldMarchFormationPicker',
     'closeWorldMarchHud',
@@ -105,7 +102,6 @@
     'selectWorldActor',
     'returnWorldMarch',
     'stopWorldMarch',
-    'claimExplore',
     'changeExpeditionSoldiers',
     'changeExpeditionLeader',
     'enterBattleScene',

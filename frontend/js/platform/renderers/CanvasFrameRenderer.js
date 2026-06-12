@@ -268,10 +268,8 @@
         ? SharedWorldMarchSystem.deriveMissionForTime(explorer.activeMission, { nowMs })
         : explorer.activeMission || null;
       const active = activeMission?.status === 'active' ? activeMission : null;
-      const derivedReady = activeMission?.status === 'ready' ? activeMission : null;
-      const ready = derivedReady || (Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null);
       const panelWidth = Math.min(184, Math.max(132, map.width - 24));
-      const panelHeight = active || ready ? 48 : 34;
+      const panelHeight = active ? 48 : 34;
       const x = Math.max(8, map.x + 12);
       const y = Math.max(map.y + 10, topBarBottom + 10);
       this.drawPanel(x, y, panelWidth, panelHeight, {
@@ -280,15 +278,8 @@
         radius: 8,
         inset: 'rgba(255, 231, 184, 0.06)',
       });
-      if (ready) {
-        this.drawText('探索队已返回', x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
-        const buttonW = 58;
-        const buttonH = 24;
-        const buttonX = x + panelWidth - buttonW - 8;
-        const buttonY = y + 12;
-        this.drawButton(buttonX, buttonY, buttonW, buttonH, '归队', { size: 11, radius: 7 });
-        this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, { type: 'claimExplore', missionId: ready.id });
-      } else if (active) {
+      if (active) {
+
         const route = Array.isArray(active.route) ? active.route : [];
         const done = route.filter((step) => step.revealed).length;
         const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);

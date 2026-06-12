@@ -2,15 +2,10 @@ const WorldMapService = require('../WorldMapService');
 const TerritoryService = require('../TerritoryService');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const {
-  DEFAULT_RANDOM_ROUTE_LENGTH,
-  MAX_RANDOM_ROUTE_LENGTH,
   MAX_MANUAL_ROUTE_LENGTH,
-  MAX_ROUTE_DISTANCE_FROM_ORIGIN,
   TUTORIAL_FIRST_SITE_GRANT_KEY,
-  NEIGHBOR_OFFSETS,
   toInteger,
   hashString,
-  random01,
   getCoordinateKey,
   getDistance,
 } = require('./WorldExplorerShared');
@@ -40,82 +35,6 @@ function getExploreOrigin(gameState) {
     territoryId: territory.id || 'capital',
     name: city?.name || territory.cityName || territory.naturalName || 'capital',
   };
-}
-
-function getKnownTileIds(gameState) {
-  const worldMap = WorldMapService.ensureWorldMap(gameState);
-  return new Set((worldMap.tiles || [])
-    .filter((tile) => tile && tile.discovered !== false && tile.visible !== false && tile.visibility !== 'hidden')
-    .map((tile) => tile.id || WorldMapService.getTileId(tile.q, tile.r)));
-}
-
-function countUnknownNeighbors(seed, knownTileIds, visitedKeys, q, r) {
-  return NEIGHBOR_OFFSETS.reduce((sum, offset) => {
-    const nextQ = q + offset.q;
-    const nextR = r + offset.r;
-    const key = getCoordinateKey(nextQ, nextR);
-    if (visitedKeys.has(key)) return sum;
-    if (WorldMapService.chooseTerrain(seed, nextQ, nextR) === 'ocean') return sum;
-    const tileId = WorldMapService.getTileId(nextQ, nextR);
-    return sum + (knownTileIds.has(tileId) ? 0 : 1);
-  }, 0);
-}
-
-function getRandomRouteCandidates(seed, knownTileIds, visitedKeys, current, origin, routeSeed, step) {
-  const candidates = [];
-  for (const offset of NEIGHBOR_OFFSETS) {
-    const q = current.q + offset.q;
-    const r = current.r + offset.r;
-    const key = getCoordinateKey(q, r);
-    if (visitedKeys.has(key)) continue;
-    if (getDistance(origin.q, origin.r, q, r) > MAX_ROUTE_DISTANCE_FROM_ORIGIN) continue;
-    if (WorldMapService.chooseTerrain(seed, q, r) === 'ocean') continue;
-    const tileId = WorldMapService.getTileId(q, r);
-    const known = knownTileIds.has(tileId);
-    const frontier = countUnknownNeighbors(seed, knownTileIds, visitedKeys, q, r);
-    candidates.push({
-      q,
-      r,
-      tileId,
-      known,
-      frontier,
-      roll: random01(routeSeed, q, r, `step-${step}`),
-    });
-  }
-  return candidates.sort((a, b) => (
-    Number(a.known) - Number(b.known)
-    || b.frontier - a.frontier
-    || b.roll - a.roll
-    || a.q - b.q
-    || a.r - b.r
-  ));
-}
-
-function buildRandomRoute(gameState, origin, routeLength = DEFAULT_RANDOM_ROUTE_LENGTH, now = new Date()) {
-  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  const length = Math.max(1, Math.min(MAX_RANDOM_ROUTE_LENGTH, toInteger(routeLength, DEFAULT_RANDOM_ROUTE_LENGTH)));
-  const knownTileIds = getKnownTileIds(gameState);
-  const visitedKeys = new Set([getCoordinateKey(origin.q, origin.r)]);
-  const routeSeed = `${worldMap.seed}|${origin.q}|${origin.r}|${now.getTime()}`;
-  const route = [];
-  let current = { q: origin.q, r: origin.r };
-  for (let step = 1; step <= length; step += 1) {
-    const candidates = getRandomRouteCandidates(worldMap.seed, knownTileIds, visitedKeys, current, origin, routeSeed, step);
-    const chosen = candidates[0];
-    if (!chosen) break;
-    route.push({
-      q: chosen.q,
-      r: chosen.r,
-      step,
-      tileId: chosen.tileId,
-      revealed: false,
-      revealedAt: null,
-    });
-    visitedKeys.add(getCoordinateKey(chosen.q, chosen.r));
-    knownTileIds.add(chosen.tileId);
-    current = { q: chosen.q, r: chosen.r };
-  }
-  return route;
 }
 
 function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED) {
@@ -257,7 +176,7 @@ function shouldGuaranteeTutorialEmptyCity(gameState = {}) {
   const tutorial = gameState.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return false;
   const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TUTORIAL_STEPS.scoutFormationSaved || step >= TUTORIAL_STEPS.scoutExploreClaimed) return false;
+  if (step < TUTORIAL_STEPS.scoutFormationSaved || step >= TUTORIAL_STEPS.firstCityDiscovered) return false;
   return !tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY];
 }
 
@@ -349,10 +268,6 @@ function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], no
 
 module.exports = {
   getExploreOrigin,
-  getKnownTileIds,
-  countUnknownNeighbors,
-  getRandomRouteCandidates,
-  buildRandomRoute,
   buildManualRoute,
   getEventEpoch,
   getNearbyGenerationState,

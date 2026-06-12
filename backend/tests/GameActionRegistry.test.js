@@ -124,40 +124,17 @@ test('blocks tutorialAdvance for business-only tutorial steps', () => {
   assert.equal(result.error, 'TUTORIAL_STEP_LOCKED');
 });
 
-test('dispatches territory actions through the territory action handler', () => {
+test('retired world explorer report actions are not registered', () => {
   const { calls, registry } = createRegistryWithCalls();
 
-  const result = registry.execute({
-    action: 'startExplore',
-    body: { mode: 'manual', targetQ: 2, targetR: -1, routeLength: 4 },
-    gameState: {},
-    tutorial: {},
-  });
+  const start = registry.execute({ action: 'startExplore', body: { action: 'startExplore' }, gameState: {}, tutorial: {} });
+  const claim = registry.execute({ action: 'claimExplore', body: { action: 'claimExplore' }, gameState: {}, tutorial: {} });
 
-  assert.equal(result.success, true);
-  assert.equal(calls[0].type, 'territory');
-  assert.equal(calls[0].action, 'startExplore');
-  assert.deepEqual(calls[0].payload, {
-    territoryId: undefined,
-    cityId: undefined,
-    soldiers: undefined,
-    name: undefined,
-    direction: undefined,
-    missionId: undefined,
-    mode: 'manual',
-    targetQ: 2,
-    targetR: -1,
-    routeLength: 4,
-    stopQ: undefined,
-    stopR: undefined,
-    formationSlot: undefined,
-    slot: undefined,
-    q: undefined,
-    r: undefined,
-    x: undefined,
-    y: undefined,
-    expedition: undefined,
-  });
+  assert.equal(start.success, false);
+  assert.equal(start.error, 'UNKNOWN_ACTION');
+  assert.equal(claim.success, false);
+  assert.equal(claim.error, 'UNKNOWN_ACTION');
+  assert.equal(calls.length, 0);
 });
 
 test('dispatches world march actions through the territory action handler', () => {

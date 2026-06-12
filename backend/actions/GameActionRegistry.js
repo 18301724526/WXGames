@@ -17,11 +17,9 @@ const TERRITORY_ACTIONS = new Set([
   'renameCity',
   'renamePolity',
   'switchCity',
-  'startExplore',
   'startWorldMarch',
   'returnWorldMarch',
   'stopWorldMarch',
-  'claimExplore',
 ]);
 
 const defaultDeps = {
@@ -51,7 +49,6 @@ function buildTerritoryPayload(body = {}, actionOverride = '') {
     targetR: body.targetR,
     stopQ: body.stopQ,
     stopR: body.stopR,
-    routeLength: body.routeLength,
     formationSlot: body.formationSlot,
     slot: body.slot,
     q: body.q,
@@ -180,9 +177,14 @@ function execute(context = {}) {
   return defaultRegistry.execute(context);
 }
 
+function has(action) {
+  return defaultRegistry.has(action);
+}
+
 module.exports = {
   TERRITORY_ACTIONS,
   buildTerritoryPayload,
   createGameActionRegistry,
   execute,
+  has,
 };

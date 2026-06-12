@@ -121,7 +121,7 @@ test('WorldMarchProgressSnapshot renders stopped idle missions without a route a
   assert.equal(actor.animationId, 'idle');
 });
 
-test('WorldMarchProgressSnapshot exposes random arrival as ready result without map actor', () => {
+test('WorldMarchProgressSnapshot exposes expired random arrival as idle parked actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({
     missions: [createMission({ mode: 'random' })],
@@ -129,11 +129,11 @@ test('WorldMarchProgressSnapshot exposes random arrival as ready result without 
   const mission = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
   const arrival = WorldMarchProgressSnapshot.getArrival(snapshot, 'explore-1');
 
-  assert.equal(mission.status, WorldMarchProgressSnapshot.STATUS_READY);
-  assert.equal(mission.arrivalKind, WorldMarchProgressSnapshot.ARRIVAL_READY);
-  assert.equal(snapshot.actors.length, 0);
-  assert.equal(arrival.claimable, true);
-  assert.equal(arrival.parked, false);
+  assert.equal(mission.status, WorldMarchProgressSnapshot.STATUS_IDLE);
+  assert.equal(mission.arrivalKind, WorldMarchProgressSnapshot.ARRIVAL_IDLE);
+  assert.equal(snapshot.actors.length, 1);
+  assert.equal(arrival.claimable, false);
+  assert.equal(arrival.parked, true);
 });
 
 test('WorldMarchProgressSnapshot keeps signatures stable and avoids nested entity maps', () => {
@@ -174,7 +174,7 @@ test('WorldMarchSystem delegates actor collections through the projection bounda
     ],
   }, { nowMs });
 
-  assert.equal(derived.status, 'ready');
+  assert.equal(derived.status, 'idle');
   assert.equal(derived.route.every((step) => step.revealed), true);
   assert.deepEqual(actors.map((actor) => actor.id), ['manual-away']);
   assert.equal(actors[0].projection.kind, 'parkedAwayFromHome');

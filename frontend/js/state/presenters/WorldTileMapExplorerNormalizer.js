@@ -94,7 +94,6 @@
     const fromList = Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : [];
     const fromSlots = [
       worldExplorerState.activeMission,
-      ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
       ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
     ].filter(Boolean);
     const byId = new Map();

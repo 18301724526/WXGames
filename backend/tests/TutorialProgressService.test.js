@@ -340,7 +340,7 @@ test('tutorial blocks scout formation save without the granted scout', () => {
   );
 });
 
-test('tutorial blocks guided exploration until the granted scout formation is saved', () => {
+test('tutorial blocks guided world march until the granted scout formation is saved', () => {
   const scoutPersonId = 'fp-required-scout';
   const tutorial = {
     ...TutorialService.manualAdvance(
@@ -361,16 +361,14 @@ test('tutorial blocks guided exploration until the granted scout formation is sa
     },
   };
 
-  assert.equal(TutorialService.validateAction(tutorial, 'startExplore', { formationSlot: 1 }, gameState).allowed, false);
+  assert.equal(TutorialService.validateAction(tutorial, 'startWorldMarch', { formationSlot: 1 }, gameState).allowed, false);
 
   gameState.military.formations.capital[0].memberIds = [scoutPersonId];
-  assert.equal(TutorialService.validateAction(tutorial, 'startExplore', { formationSlot: 1 }, gameState).allowed, true);
-
-  const beforeStarted = TutorialService.validateAction(tutorial, 'claimExplore', { missionId: 'explore-1' }, gameState);
-  assert.equal(beforeStarted.allowed, false);
+  assert.equal(TutorialService.validateAction(tutorial, 'startWorldMarch', { formationSlot: 1 }, gameState).allowed, true);
 
   const started = TutorialService.manualAdvance(tutorial, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
-  assert.equal(TutorialService.validateAction(started, 'claimExplore', { missionId: 'explore-1' }, gameState).allowed, true);
+  assert.equal(TutorialService.validateAction(started, 'returnWorldMarch', { missionId: 'explore-1' }, gameState).allowed, false);
+  assert.equal(TutorialService.validateAction(started, 'stopWorldMarch', { missionId: 'explore-1' }, gameState).allowed, false);
 });
 
 test('tutorial guides first discovered empty city claim and naming in order', () => {
@@ -378,7 +376,7 @@ test('tutorial guides first discovered empty city claim and naming in order', ()
   const tutorial = {
     ...TutorialService.manualAdvance(
       TutorialService.createInitialTutorialState(),
-      TutorialService.TUTORIAL_STEPS.scoutExploreClaimed,
+      TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
     ),
     grants: {
       firstExploreEmptyCity: { siteId },

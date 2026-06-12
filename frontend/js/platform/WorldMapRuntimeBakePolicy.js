@@ -45,7 +45,6 @@
       })),
       explorerMissions: [
         worldExplorerState.activeMission,
-        ...(Array.isArray(worldExplorerState.readyMissions) ? worldExplorerState.readyMissions : []),
         ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
       ].filter(Boolean).map((mission) => ({
         id: mission.id,

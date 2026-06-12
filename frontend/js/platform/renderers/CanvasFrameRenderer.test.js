@@ -318,15 +318,7 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   assert.equal(names.includes('renderNamingModal'), true);
 });
 
-test('CanvasFrameRenderer renders explorer countdown and claim controls on the UI frame', () => {
-  const readyHost = createHost();
-  const renderer = new CanvasFrameRenderer({ host: readyHost });
-  renderer.renderMapHomeExplorerHud({
-    worldExplorerState: { readyMissions: [{ id: 'mission-1' }] },
-  }, 96, {});
-
-  assert.equal(readyHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'claimExplore' && call[1][1].missionId === 'mission-1'), true);
-
+test('CanvasFrameRenderer renders explorer countdown without scout report controls', () => {
   const activeHost = createHost({
     getNow() {
       return new Date('2026-06-06T00:00:04.250Z').getTime();
@@ -351,6 +343,7 @@ test('CanvasFrameRenderer renders explorer countdown and claim controls on the U
 
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), true);
   assert.equal(activeHost.calls.some((call) => call[0] === 'fillRect'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'claimExplore'), false);
 });
 
 test('CanvasFrameRenderer keeps explorer countdown on epoch time, not animation frame time', () => {

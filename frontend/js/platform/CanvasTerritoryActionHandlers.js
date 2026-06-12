@@ -174,30 +174,6 @@
         return this.finalize(this.runAction(() => this.host.api.claimScout(action.value || action.missionId)));
       },
 
-      handle_startExplore(action) {
-        const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
-        const game = this.getGameHost();
-        if (typeof game?.startExplore === 'function') {
-          return this.finalize(game.startExplore({
-            mode: action.mode || 'random',
-            routeLength: action.routeLength,
-            targetQ: action.targetQ,
-            targetR: action.targetR,
-            formationSlot: action.formationSlot || action.slot || 1,
-            cityId: action.cityId || game?.state?.activeCityId || 'capital',
-          }));
-        }
-        return this.finalize(this.runAction(() => this.host.api.startExplore({
-          mode: action.mode || 'random',
-          routeLength: action.routeLength,
-          targetQ: action.targetQ,
-          targetR: action.targetR,
-          formationSlot: action.formationSlot || action.slot || 1,
-          cityId: action.cityId || game?.state?.activeCityId || 'capital',
-        })));
-      },
-
       handle_selectWorldMarchTarget(action) {
         const q = Math.floor(Number(action.targetQ ?? action.q));
         const r = Math.floor(Number(action.targetR ?? action.r));
@@ -286,8 +262,7 @@
             cityId: action.cityId || game?.state?.activeCityId || 'capital',
           };
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
-          if (typeof game?.startExplore === 'function') return game.startExplore(options);
-          return this.runAction(() => this.host.api.startExplore(options));
+          return this.runAction(() => this.host.api.startWorldMarch(options));
         };
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {
@@ -335,14 +310,6 @@
           }
           return result !== false;
         }));
-      },
-
-      handle_claimExplore(action) {
-        const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
-        const game = this.getGameHost();
-        if (typeof game?.claimExplore === 'function') return this.finalize(game.claimExplore(action.missionId || action.value));
-        return this.finalize(this.runAction(() => this.host.api.claimExplore(action.missionId || action.value)));
       },
 
       handle_switchMilitaryView(action) {

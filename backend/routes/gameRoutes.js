@@ -106,7 +106,6 @@ function summarizeWorldExplorerState(worldExplorerState = {}) {
     missionCount: missions.length,
     activeMission: summarizeMission(worldExplorerState?.activeMission),
     missionIds: missions.slice(0, 8).map((mission) => `${mission.id}:${mission.status}`),
-    readyCount: Array.isArray(worldExplorerState?.readyMissions) ? worldExplorerState.readyMissions.length : 0,
     idleCount: Array.isArray(worldExplorerState?.idleMissions) ? worldExplorerState.idleMissions.length : 0,
     busyFormations: Array.isArray(worldExplorerState?.busyFormations) ? worldExplorerState.busyFormations.slice(0, 8) : [],
   };
@@ -252,6 +251,9 @@ function registerGameRoutes(app, deps) {
 
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
+    if (!GameActionRegistry.has(action)) {
+      return res.status(400).json(result);
+    }
     const tutorialCheck = TutorialService.validateAction(tutorial, action, {
       target,
       count,

@@ -25,7 +25,6 @@ function createState(explorerStatus = 'active') {
         plannedSites: [{ siteId: 'site_1_0', tileId: 'tile_1_0', materialized: explorerStatus === 'ready' }],
         revealedTileIds: explorerStatus === 'ready' ? ['tile_1_0'] : [],
       } : null,
-      readyMissions: [],
     },
   };
 }

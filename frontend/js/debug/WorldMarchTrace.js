@@ -151,13 +151,11 @@
   function summarizeWorldExplorerState(worldExplorerState = null) {
     const state = worldExplorerState && typeof worldExplorerState === 'object' ? worldExplorerState : {};
     const missions = Array.isArray(state.missions) ? state.missions : [];
-    const readyMissions = Array.isArray(state.readyMissions) ? state.readyMissions : [];
     const idleMissions = Array.isArray(state.idleMissions) ? state.idleMissions : [];
     return {
       missionCount: missions.length,
       activeMission: summarizeMission(state.activeMission),
       missionIds: compactArray(missions, (mission) => `${mission?.id}:${mission?.status}`),
-      readyIds: compactArray(readyMissions, (mission) => mission?.id || ''),
       idleIds: compactArray(idleMissions, (mission) => mission?.id || ''),
       busyFormations: compactArray(state.busyFormations, (item) => `${item?.cityId || 'capital'}:${item?.slot}:${item?.status}`),
       stepDurationSeconds: Number(state.stepDurationSeconds || 0),

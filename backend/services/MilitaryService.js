@@ -72,7 +72,7 @@ function getTutorialSettlementSoldierFloor(gameState = {}) {
   const tutorial = gameState?.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return 0;
   const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TutorialFlowConfig.TUTORIAL_STEPS.scoutExploreClaimed || step > TutorialFlowConfig.TUTORIAL_STEPS.firstCityConquestStarted) return 0;
+  if (step < TutorialFlowConfig.TUTORIAL_STEPS.firstCityDiscovered || step > TutorialFlowConfig.TUTORIAL_STEPS.firstCityConquestStarted) return 0;
   const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
   if (!siteId) return 0;
   const target = (Array.isArray(gameState.territories) ? gameState.territories : [])

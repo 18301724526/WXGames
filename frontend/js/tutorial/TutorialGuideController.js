@@ -486,12 +486,6 @@
       return this.state;
     }
 
-    onExploreClaimed(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
-    }
-
     async onAdvisorClosed() {
       const game = this.game || {};
       game.showAdvisor = false;

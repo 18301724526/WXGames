@@ -74,23 +74,22 @@ test('CanvasActionDispatcher preserves async finish handling and error logging',
   assert.deepEqual(errors, ['network down']);
 });
 
-test('CanvasActionDispatcher preserves legacy boolean coercion for explore actions', () => {
+test('CanvasActionDispatcher rejects retired scout report actions', () => {
   const calls = [];
   const dispatcher = new CanvasActionDispatcher();
-  const pending = Promise.resolve(false);
 
   assert.equal(dispatcher.handle({ type: 'startExplore' }, {
-    startExplore() {
-      calls.push(['startExplore']);
-      return pending;
-    },
+    startExplore() { calls.push(['startExplore']); },
     render(value) { calls.push(['render', value.type]); },
-  }), true);
+  }), false);
+  assert.equal(dispatcher.handle({ type: 'claimExplore', value: 'march-3' }, {
+    claimExplore(missionId) { calls.push(['claimExplore', missionId]); },
+  }), false);
 
-  assert.deepEqual(calls, [['startExplore'], ['render', 'startExplore']]);
+  assert.deepEqual(calls, []);
 });
 
-test('CanvasActionDispatcher passes world march mission identifiers to legacy finish handlers', () => {
+test('CanvasActionDispatcher passes world march mission identifiers to finish handlers', () => {
   const calls = [];
   const dispatcher = new CanvasActionDispatcher();
 
@@ -100,14 +99,10 @@ test('CanvasActionDispatcher passes world march mission identifiers to legacy fi
   assert.equal(dispatcher.handle({ type: 'stopWorldMarch', actorId: 'march-2' }, {
     stopWorldMarch(missionId) { calls.push(['stopWorldMarch', missionId]); },
   }), true);
-  assert.equal(dispatcher.handle({ type: 'claimExplore', value: 'march-3' }, {
-    claimExplore(missionId) { calls.push(['claimExplore', missionId]); },
-  }), true);
 
   assert.deepEqual(calls, [
     ['returnWorldMarch', 'march-1'],
     ['stopWorldMarch', 'march-2'],
-    ['claimExplore', 'march-3'],
   ]);
 });
 

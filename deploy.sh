@@ -430,6 +430,8 @@ rsync -a --delete \
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
 npm install --omit=dev --no-audit --no-fund
+echo "[Deploy] Cleaning retired world-explorer ready state..."
+DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
 
 echo "[Deploy] 重启 PM2 服务..."
 if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then

@@ -224,7 +224,6 @@
       const step = this.getCurrentStep();
       const explorer = this.game?.state?.worldExplorerState || {};
       const activeMission = explorer.activeMission || null;
-      const readyMission = Array.isArray(explorer.readyMissions) ? explorer.readyMissions[0] : null;
       if (step === TUTORIAL_STEPS.scoutFormationSaved) {
         this.ensureMapHomeGuideVisible({ clearWorldMarchTarget: true });
         return this.showHighlight(
@@ -251,14 +250,6 @@
           { type: 'startWorldMarch', formationSlot: 1 },
         );
       }
-      if (step === TUTORIAL_STEPS.scoutExploreStarted && readyMission) {
-        return this.showHighlight(
-          'claimExplore',
-          (action) => !action.disabled && (!readyMission.id || action.missionId === readyMission.id),
-          '\u4fa6\u5bdf\u961f\u5df2\u8fd4\u56de\uff0c\u70b9\u51fb\u5f52\u961f\uff0c\u67e5\u770b\u65b0\u53d1\u73b0\u7684\u7a7a\u57ce\u3002',
-          { type: 'claimExplore', missionId: readyMission.id },
-        );
-      }
       if (step === TUTORIAL_STEPS.scoutExploreStarted && activeMission) {
         this.game?.canvasShell?.hideTutorialHighlight?.();
         return false;
@@ -268,7 +259,7 @@
       const step = this.getCurrentStep();
       const siteId = this.getFirstExploreCityId();
       const site = this.getFirstExploreCity() || {};
-      if (step === TUTORIAL_STEPS.scoutExploreClaimed) {
+      if (step === TUTORIAL_STEPS.firstCityDiscovered) {
         if (!this.isWorldSiteSelected(siteId)) {
           const highlighted = this.showFirstCitySiteOpenHighlight(siteId);
           if (highlighted) return true;
