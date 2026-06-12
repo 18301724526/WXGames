@@ -46,6 +46,9 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /rev-parse --verify "\$BRANCH\^\{commit\}"/);
   assert.match(deployScript, /checkout -f "\$DEPLOY_COMMIT"/);
   assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$WORK_TREE\/scripts\/pre-deploy-gate\.sh" "\$WORK_TREE"/);
+  assert.match(deployScript, /publish_runtime_config_release\(\)/);
+  assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
+  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+publish_runtime_config_release\s+echo "\[Deploy\]/s);
   assert.match(deployScript, /OPS_AGENT_PM2_NAME="\$\{OPS_AGENT_PM2_NAME:-wxgame-ops-agent\}"/);
   assert.match(deployScript, /restart_ops_agent_if_configured/);
   assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);

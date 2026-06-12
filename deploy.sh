@@ -236,6 +236,88 @@ verify_runtime_config() {
     echo "[Deploy] 运行时配置版本已确认: $runtime_version"
 }
 
+publish_runtime_config_release() {
+    local release_source
+
+    release_source="deploy:${DEPLOY_COMMIT:-$(git_repo rev-parse HEAD)}"
+    echo "[Deploy] Publishing runtime config release: $release_source"
+    WXGAME_CONFIG_RELEASE_SOURCE="$release_source" node <<'NODE'
+process.env.DOTENV_CONFIG_QUIET = 'true';
+require('dotenv').config({ quiet: true });
+const ConfigReleaseService = require('./services/config/ConfigReleaseService');
+
+const source = process.env.WXGAME_CONFIG_RELEASE_SOURCE || 'deploy';
+const before = ConfigReleaseService.getRuntimeStatus({ env: process.env });
+if (before.status === 'matched') {
+  console.log(JSON.stringify({
+    schema: 'deploy-config-release-v1',
+    action: 'skip',
+    status: before.status,
+    activeRelease: before.activeRelease,
+  }));
+  process.exit(0);
+}
+
+const result = ConfigReleaseService.publishRelease(
+  { source },
+  { operator: process.env.DEPLOY_OPERATOR || 'deploy-hook', env: process.env },
+);
+if (!result.success) {
+  console.error(JSON.stringify({
+    schema: 'deploy-config-release-v1',
+    action: 'publish',
+    success: false,
+    before: {
+      status: before.status,
+      activeRelease: before.activeRelease,
+      drift: before.drift,
+      errors: before.errors,
+      warnings: before.warnings,
+    },
+    errors: result.errors || [],
+    warnings: result.warnings || [],
+  }, null, 2));
+  process.exit(1);
+}
+
+const after = ConfigReleaseService.getRuntimeStatus({ env: process.env });
+if (after.status !== 'matched') {
+  console.error(JSON.stringify({
+    schema: 'deploy-config-release-v1',
+    action: 'publish',
+    success: false,
+    release: result.release && {
+      id: result.release.id,
+      source: result.release.source,
+      snapshotHash: result.release.snapshotHash,
+      registryCount: result.release.registryCount,
+    },
+    after: {
+      status: after.status,
+      activeRelease: after.activeRelease,
+      drift: after.drift,
+      errors: after.errors,
+      warnings: after.warnings,
+    },
+  }, null, 2));
+  process.exit(1);
+}
+
+console.log(JSON.stringify({
+  schema: 'deploy-config-release-v1',
+  action: 'publish',
+  success: true,
+  release: {
+    id: result.release.id,
+    source: result.release.source,
+    snapshotHash: result.release.snapshotHash,
+    registryCount: result.release.registryCount,
+  },
+  activeRelease: after.activeRelease,
+}, null, 2));
+NODE
+}
+
 read_pm2_process() {
     local app_name="$1"
     pm2 jlist | node -e "const name=process.argv[1]; let input=''; process.stdin.on('data', (chunk) => input += chunk); process.stdin.on('end', () => { const list = JSON.parse(input || '[]'); const proc = list.find((item) => item && item.name === name); if (!proc) process.exit(2); const env = proc.pm2_env || {}; process.stdout.write([env.status || '', proc.pid || 0, env.pm_cwd || '', env.pm_exec_path || ''].join('\t')); });" "$app_name"
@@ -432,6 +514,7 @@ cd "$BACKEND_DIR"
 npm install --omit=dev --no-audit --no-fund
 echo "[Deploy] Cleaning retired world-explorer ready state..."
 DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
+publish_runtime_config_release
 
 echo "[Deploy] 重启 PM2 服务..."
 if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
