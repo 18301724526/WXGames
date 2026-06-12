@@ -527,6 +527,34 @@ test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawImage'), true);
 });
 
+test('WorldMapLayerCanvasRenderer publishes current snapshot context for split actor layer', () => {
+  const host = createHost({
+    resolveWorldTileMapView(territoryState = {}, uiState = {}) {
+      host.calls.push(['resolveWorldTileMapView', territoryState, uiState]);
+      return {
+        ...territoryState.worldMap,
+        pan: {
+          x: Number(uiState.worldPanX) || 0,
+          y: Number(uiState.worldPanY) || 0,
+        },
+      };
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapSnapshotLayer({ territoryState: { worldMap: createTileMapView() } }, {
+    preserveOnMiss: false,
+    topBarBottom: 96,
+    territoryUiState: { worldPanX: 40, worldPanY: -24 },
+  });
+
+  assert.equal(rendered, true);
+  assert.equal(host.lastWorldTileMapContext.tileMapView.pan.x, 40);
+  assert.equal(host.lastWorldTileMapContext.tileMapView.pan.y, -24);
+  assert.equal(host.lastWorldTileMapContext.viewport.panX, 40);
+  assert.equal(host.lastWorldTileMapContext.viewport.panY, -24);
+});
+
 test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targets on the actor layer', () => {
   const actorContext = {
     actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],

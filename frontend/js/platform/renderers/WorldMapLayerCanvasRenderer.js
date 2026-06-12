@@ -1,4 +1,16 @@
 (function (global) {
+  const SharedWorldMapRenderSnapshot = (() => {
+    if (global.WorldMapRenderSnapshot) return global.WorldMapRenderSnapshot;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMapRenderSnapshot');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedWorldTime = (() => {
     if (global.WorldTime) return global.WorldTime;
     if (typeof module !== 'undefined' && module.exports) {
@@ -276,6 +288,18 @@
       return context;
     }
 
+    publishWorldMapSnapshotLayerContext(context = null) {
+      this.lastWorldTileMapContext = context;
+      if (this.host && this.host !== this) {
+        this.host.lastWorldTileMapContext = context;
+        const externalHost = this.host.host || null;
+        if (externalHost && externalHost !== this.host && externalHost !== this) {
+          externalHost.lastWorldTileMapContext = context;
+        }
+      }
+      return context;
+    }
+
     renderWorldMapActorLayer(state = {}, options = {}) {
       if (!this.ctx) return false;
       const context = this.getWorldMapActorLayerContext(state, options);
@@ -490,6 +514,32 @@
         geometry,
       };
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
+      const renderSnapshot = SharedWorldMapRenderSnapshot?.createSnapshot
+        ? SharedWorldMapRenderSnapshot.createSnapshot({
+          tileMapView,
+          x,
+          y,
+          width,
+          height,
+          uiState,
+        }, {
+          ...options,
+          frame,
+          geometry,
+          viewport,
+          nowMs: options.nowMs ?? options.epochNowMs ?? options.serverNowMs,
+        })
+        : null;
+      const context = {
+        actors: Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [],
+        frame,
+        geometry,
+        renderSnapshot,
+        tileMapView,
+        uiState,
+        viewport,
+      };
+      this.publishWorldMapSnapshotLayerContext(context);
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
       if (typeof this.renderWorldTileFogMask === 'function') {
         this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);

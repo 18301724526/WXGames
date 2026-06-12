@@ -250,7 +250,7 @@ test('CanvasGameShell refreshes tutorial highlight after naming input is filled'
   ]);
 });
 
-test('CanvasGameShell preserves world map layer when drag snapshot refresh misses', () => {
+test('CanvasGameShell falls back to layer transform when drag snapshot refresh misses', () => {
   const calls = [];
   const shell = new CanvasGameShell({
     previewEnabled: true,
@@ -276,8 +276,8 @@ test('CanvasGameShell preserves world map layer when drag snapshot refresh misse
   const offset = shell.updateWorldMapDragCompositor();
 
   const refresh = calls.find((call) => call[0] === 'refreshWorldMapLayerFromSnapshot');
-  assert.equal(refresh[1].commitCamera, false);
-  assert.equal(refresh[1].clearTransform, false);
+  assert.equal(refresh[1].commitCamera, true);
+  assert.equal(refresh[1].clearTransform, true);
   assert.equal(refresh[1].preserveOnMiss, true);
   assert.deepEqual(offset, { x: 32, y: -18 });
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldMap', 32, -18])), true);

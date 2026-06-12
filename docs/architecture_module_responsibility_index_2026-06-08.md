@@ -422,7 +422,7 @@ P0 新增公开 API / Public API Added During P0:
 - shell world-map snapshot water-time lifecycle
 - drag cooldown and drag state checks
 - drag offset/transform-limit helpers through `CanvasGameShellWorldMapRuntimePolicy`
-- drag compositor snapshot refresh, transform clearing, and layer translate fallback
+- drag compositor snapshot refresh, successful baked-camera commit, transform clearing, and layer translate fallback
 
 公开 API / Public API:
 
@@ -448,6 +448,7 @@ P0 新增公开 API / Public API Added During P0:
 扩展方式 / Extension Path:
 
 - New shell drag/compositor side effects extend this runtime with focused tests.
+- Successful drag snapshot refreshes must commit the runtime baked camera; snapshot misses fall back to translating `worldMap`, `worldFog`, and `worldActor` together.
 - Pure drag math and option derivation stay in `CanvasGameShellWorldMapRuntimePolicy`.
 - Render frame scheduling stays in `CanvasGameShellWorldMapFrameRuntime`.
 
@@ -2147,6 +2148,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - one-frame world tile-map render orchestration
 - `WorldMapRenderSnapshot` context creation and `lastWorldTileMapContext` publication
+- snapshot-layer refresh also publishes the current `lastWorldTileMapContext` so split fog and actor layers consume the same viewport/camera frame
 - world-map panel background and clip setup
 - world-map drag hit-target registration
 - snapshot-only cache redraw branch
@@ -2192,7 +2194,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldMapActorHudRenderer.js`
@@ -6726,6 +6728,7 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMarchProgressSnapshot` candidate module for pure march progress, actor rows, and arrival result rows; `WorldMarchSystem` now acts as a compatibility facade for march calculations. |
 | 2026-06-08 | Added `WorldMarchGeometry` candidate module for pure tile screen projection, nearest-tile lookup, axial point inference, and march target UI-state normalization; `WorldMarchSystem` now delegates progress and geometry helpers and dropped to 53 lines as a candidate facade. |
 | 2026-06-08 | Added `WorldMapRenderSnapshot` candidate module as the single world-map renderer input contract and wired `WorldMapCanvasRenderer.renderWorldTileMap()` to expose `lastWorldTileMapContext.renderSnapshot`. |
+| 2026-06-12 | Drag snapshot refresh now commits the baked camera on success and snapshot-only layer refresh publishes the current `lastWorldTileMapContext`, keeping `worldMap`, `worldFog`, and `worldActor` on one camera frame. |
 | 2026-06-08 | Added `WorldMapInputActionMap` candidate module for pure world-map input-to-action mapping and wired `WorldMapRuntime` to delegate hit-target filtering/background march target inference. |
 | 2026-06-08 | Added `WorldExplorerDtoMapper` candidate module as the backend world explorer API DTO boundary; `WorldExplorerClientState` delegates response shape after explicit runtime advancement. |
 | 2026-06-08 | Added `WorldFogVisualSnapshot` and `WorldMapVisualPluginRegistry` candidate modules for P2-001 fog plugin rebuild; shell fog rendering now consumes registry output when `FOG_OF_WAR_ENABLED` is explicitly enabled. |

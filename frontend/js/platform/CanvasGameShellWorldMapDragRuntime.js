@@ -89,13 +89,10 @@
         }
         if (this.refreshWorldMapLayerFromSnapshot({
           waterTimeMs: this.now(),
-          commitCamera: false,
-          clearTransform: false,
+          commitCamera: true,
+          clearTransform: true,
           preserveOnMiss: true,
-        })) {
-          this.clearWorldMapLayerTransform();
-          return offset;
-        }
+        })) return offset;
         if (
           typeof this.runtime?.ensureLayerCanvas === 'function'
           && !this.getCanvasLayerCanvas?.('worldMap')

@@ -89,3 +89,34 @@ test('CanvasGameShellWorldMapDragRuntime translates layers after snapshot miss',
   assert.equal(calls.some((call) => call[0] === 'translate' && call[1] === 'worldMap' && call[2] === 12), true);
   assert.equal(calls.some((call) => call[0] === 'translate' && call[1] === 'worldActor' && call[2] === 12), true);
 });
+
+test('CanvasGameShellWorldMapDragRuntime commits successful drag snapshots as the baked camera frame', () => {
+  const calls = [];
+  const shell = createShell({
+    isWorldMapDragTransformNearLimit() {
+      return false;
+    },
+    refreshWorldMapLayerFromSnapshot(options) {
+      calls.push(['refreshSnapshot', options.commitCamera, options.clearTransform, options.preserveOnMiss]);
+      return true;
+    },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
+    setCanvasLayerTranslate(name, x, y) {
+      calls.push(['translate', name, x, y]);
+      return true;
+    },
+    worldMapRuntime: {
+      getCameraOffsetFromBaked() {
+        return { x: 32, y: -18 };
+      },
+    },
+  });
+
+  assert.deepEqual(shell.updateWorldMapDragCompositor(), { x: 32, y: -18 });
+  assert.deepEqual(calls, [
+    ['refreshSnapshot', true, true, true],
+  ]);
+});
