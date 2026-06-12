@@ -356,6 +356,7 @@
     const effectiveMission = status === source.status ? source : { ...source, status };
     const route = normalizeRoute(source.route);
     const origin = normalizeCoord(source.origin || {});
+    const homeOrigin = normalizeCoord(source.homeOrigin || source.origin || {}, origin);
     const routeTarget = route.length ? route[route.length - 1] : null;
     const target = normalizeCoord(source.target || routeTarget || source.position || origin, routeTarget || source.position || origin);
     const isRouteBackedIdle = status === STATUS_IDLE && route.length > 0;
@@ -376,6 +377,7 @@
       rawStatus: source.status || '',
       unitKey: source.unitKey || 'scout_squad_default',
       origin,
+      homeOrigin,
       target,
       position,
       current,

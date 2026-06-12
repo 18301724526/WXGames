@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const ActorProjection = (() => {
+    if (global.WorldActorProjection) return global.WorldActorProjection;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldActorProjection');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -141,6 +153,9 @@
     const activeScouts = Array.isArray(tileMapView.activeScouts) ? tileMapView.activeScouts : [];
     const scoutAreas = Array.isArray(tileMapView.scoutAreas) ? tileMapView.scoutAreas : [];
     const march = buildMarchSnapshot(tileMapView, options);
+    const actors = ActorProjection?.projectWorldActors
+      ? ActorProjection.projectWorldActors(march, options)
+      : (Array.isArray(march.actors) ? march.actors : []);
     const flags = normalizeFlags(options);
     const ui = normalizeUiState(uiState);
     let hash = 2166136261;
@@ -170,14 +185,14 @@
       ui,
       flags,
       march,
-      actors: Array.isArray(march.actors) ? march.actors : [],
+      actors,
       arrivals: Array.isArray(march.arrivals) ? march.arrivals : [],
       counts: {
         tiles: tiles.length,
         sites: sites.length,
         activeScouts: activeScouts.length,
         scoutAreas: scoutAreas.length,
-        actors: Array.isArray(march.actors) ? march.actors.length : 0,
+        actors: actors.length,
         arrivals: Array.isArray(march.arrivals) ? march.arrivals.length : 0,
       },
       signature: `${tileMapView.version || 0}:${tiles.length}:${sites.length}:${activeScouts.length}:${(hash >>> 0).toString(16)}`,

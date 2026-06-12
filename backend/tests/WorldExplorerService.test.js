@@ -4,6 +4,9 @@ const assert = require('node:assert/strict');
 const TutorialService = require('../services/TutorialService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldMapService = require('../services/WorldMapService');
+require('../../frontend/js/domain/WorldTime');
+require('../../frontend/js/domain/WorldMarchProgressSnapshot');
+const WorldActorProjection = require('../../frontend/js/domain/WorldActorProjection');
 
 function createTutorialExploreState() {
   const scoutPersonId = 'fp-tutorial-scout';
@@ -273,6 +276,32 @@ test('idle world march can return home from its parked tile', () => {
   assert.equal(returned.mission.target.q, 0);
   assert.equal(returned.mission.target.r, 0);
   assert.equal(returned.authority.command.type, 'returnWorldMarch');
+});
+
+test('returned-home idle world march stays in explorer state but leaves the world actor projection', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+  const reachedTargetAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, reachedTargetAt);
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    new Date(reachedTargetAt.getTime() + 1),
+  );
+  const returnedAt = new Date(new Date(returned.mission.completesAt).getTime() + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, returnedAt);
+
+  const clientState = WorldExplorerService.getClientState(gameState, returnedAt);
+  const actors = WorldActorProjection.projectWorldActors(clientState, { nowMs: returnedAt.getTime() });
+
+  assert.equal(clientState.idleMissions.length, 1);
+  assert.equal(clientState.idleMissions[0].position.tileId, 'tile_0_0');
+  assert.deepEqual(actors, []);
 });
 
 test('random exploration still finishes as claimable ready report', () => {

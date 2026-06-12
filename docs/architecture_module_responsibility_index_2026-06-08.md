@@ -972,9 +972,9 @@ P0 新增公开 API / Public API Added During P0:
 负责 / Owns:
 
 - 世界地图行军 progress/arrival 的纯 domain snapshot
-- 将 raw mission 归一化成 `missions`、`actors`、`arrivals` 三类扁平行
+- 将 raw mission 归一化成 `missions`、兼容 `actors`、`arrivals` 三类扁平行；`actors` 只保留历史 facade 输出，不代表最终大地图可见 actor 合同
 - 统一手动行军抵达 `idle` 和随机探索抵达 `ready` 的结果语义
-- 为 renderer、HUD、action adapter、debug overlay 提供可测试、可序列化的行军输入
+- 为 `WorldActorProjection`、HUD、action adapter、debug overlay 提供可测试、可序列化的行军输入
 - 保留 `remainingSeconds` 与 `travelRemainingSeconds` 的区别：前者兼容下一步/旧 HUD 倒计时，后者表示到终点的剩余总行程
 
 公开 API / Public API:
@@ -1005,18 +1005,56 @@ P0 新增公开 API / Public API Added During P0:
 - Lookup uses `indexById.{missions,actors,arrivals}` for O(1) access.
 - Signature uses incremental FNV-style hashing over compact progress/status fields.
 - Large-mission regression covers 2000 missions without nested `missionsById` or `entitiesById` maps.
+- Renderable world actor collections are projected by `WorldActorProjection`; this snapshot preserves progress facts and compatibility rows.
 - No renderer objects, DOM objects, canvas contexts, WebGL resources, or backend service imports.
 
 扩展方式 / Extension Path:
 
 - 新的行军结果类型先扩展 `arrivalKind` / constants，再通过 `buildArrivalFromProgress()` 输出新行。
-- 新 UI/HUD 不要从 raw mission 自己推导抵达状态；消费 `createSnapshot()` 的 `missions`、`actors`、`arrivals`。
+- 新 UI/HUD 不要从 raw mission 自己推导抵达状态；消费 `createSnapshot()` 的 `missions` 与 `arrivals`。新的地图 actor 集合必须通过 `WorldActorProjection` 投影。
 - 新功能需要额外展示字段时，优先在 `normalizeMissionProgress()` 增加稳定 row 字段，并同步测试和本索引。
-- 旧 `WorldMarchSystem` 继续作为兼容 facade；不要把新的 gameplay march rule 加回旧文件。
+- 旧 `WorldMarchSystem` 继续作为兼容 facade；集合级 `buildActors()` 走 `WorldActorProjection`，不要把新的 gameplay/projection rule 加回旧文件。
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/domain/WorldActorProjection.js` - 81 lines
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- Client-side projection boundary from march progress rows or raw world explorer state into renderable world actor DTOs.
+- Applies world actor visibility semantics outside progress facts and outside renderers.
+- Classifies progress rows as `worldRoute`, `parkedAwayFromHome`, or `garrisonedAtHome`.
+- Keeps returned-home idle missions in explorer/progress state while excluding them from visible world actors.
+
+公开 API / Public API:
+
+- `WorldActorProjection.projectWorldActors(input, options)`
+- `WorldActorProjection.projectActorFromProgress(row)`
+- `WorldActorProjection.getProjectionKind(row)`
+- `WorldActorProjection.shouldRenderWorldActor(row)`
+- `WorldActorProjection.isSameCoord(a, b)`
+- `WorldActorProjection.coordKey(coord)`
+
+性能约束 / Performance Constraints:
+
+- Reuses `WorldMarchProgressSnapshot` rows and keeps projection linear over missions.
+- Does not mutate explorer state, progress snapshots, renderer state, DOM, canvas, or WebGL objects.
+- Projection metadata is compact: `{ kind, source }` on rendered actor DTOs.
+
+扩展方式 / Extension Path:
+
+- New world actor visibility/projection semantics start here with red tests before renderer changes.
+- `WorldMarchProgressSnapshot` should preserve source facts such as `homeOrigin`; this module decides which facts become visible map actors.
+- Renderers consume projected actors only and must not infer mission home/away business semantics.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMarchGeometry.js`
@@ -1051,14 +1089,15 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMarchSystem.js` - 53 lines
+### `frontend/js/domain/WorldMarchSystem.js` - 64 lines
 
 状态 / Status: candidate facade
 
 负责 / Owns:
 
 - 保留旧世界行军 public API，避免一次性改动 renderer/HUD/presenter 调用
-- 行军进度、抵达状态、actor 生成等 gameplay calculation 已委托 `WorldMarchProgressSnapshot`
+- 行军进度、抵达状态、单 mission 兼容 actor 生成等 gameplay calculation 已委托 `WorldMarchProgressSnapshot`
+- 集合级 world actor projection 已委托 `WorldActorProjection`
 - tile screen geometry、screen point to axial tile、march target UI state 等旧 helper 已委托 `WorldMarchGeometry`
 
 公开 API / Public API:
@@ -1078,13 +1117,14 @@ P0 新增公开 API / Public API Added During P0:
 
 扩展方式 / Extension Path:
 
-- 新行军玩法规则加到 `WorldMarchProgressSnapshot` 或后续 `systems` 模块，不加到本文件。
+- 新行军玩法事实加到 `WorldMarchProgressSnapshot` 或后续 `systems` 模块，不加到本文件。
+- 新 world actor 可见性/投影规则加到 `WorldActorProjection`。
 - 新 screen/input geometry 应进入 `WorldMarchGeometry`；action mapping 进入 input/action adapter。
-- Renderer/HUD can continue using this compatibility facade, but new callers should prefer `WorldMarchProgressSnapshot` or `WorldMarchGeometry` directly.
+- Renderer/HUD can continue using this compatibility facade, but new callers should prefer `WorldMarchProgressSnapshot`, `WorldActorProjection`, or `WorldMarchGeometry` directly.
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js`
+- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapRenderSnapshot.js`
@@ -1119,7 +1159,7 @@ P0 新增公开 API / Public API Added During P0:
 - `counts` stores compact metrics for tiles/sites/scouts/actors/arrivals.
 - Signature uses incremental FNV-style hashing over compact identity/layout fields.
 - Serializable output excludes renderer payloads such as raw `tileMapView`, canvas contexts, DOM nodes, and cache objects.
-- March actors come from `WorldMarchProgressSnapshot`, keeping gameplay status derivation outside renderers.
+- March actors come from `WorldActorProjection` over `WorldMarchProgressSnapshot` facts, keeping gameplay status and visibility projection outside renderers.
 
 扩展方式 / Extension Path:
 

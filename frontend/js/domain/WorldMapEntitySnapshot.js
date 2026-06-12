@@ -11,11 +11,11 @@
     return null;
   })();
 
-  const WorldMarchSystem = (() => {
-    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+  const WorldActorProjection = (() => {
+    if (global.WorldActorProjection) return global.WorldActorProjection;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('./WorldMarchSystem');
+        return require('./WorldActorProjection');
       } catch (error) {
         return null;
       }
@@ -153,7 +153,7 @@
 
   function buildActors(worldExplorerState = {}, options = {}) {
     if (Array.isArray(options.actors)) return options.actors.map(normalizeActor);
-    if (WorldMarchSystem?.buildActors) return WorldMarchSystem.buildActors(worldExplorerState, options).map(normalizeActor);
+    if (WorldActorProjection?.projectWorldActors) return WorldActorProjection.projectWorldActors(worldExplorerState, options).map(normalizeActor);
     return [];
   }
 

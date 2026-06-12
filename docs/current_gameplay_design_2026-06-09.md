@@ -116,7 +116,7 @@
 
 - `GameActionRegistry` 已统一注册 `startExplore`、`startWorldMarch`、`stopWorldMarch`、`returnWorldMarch`、`claimExplore`、`startConquest`、`claimConquest` 等动作。
 - `WorldExplorerService` 和 split modules 负责探索任务、路线、进度和 DTO。
-- 前端 `WorldMarchProgressSnapshot`、`WorldMarchGeometry`、`WorldMarchSystem` 负责进度和表现兼容。
+- 前端 `WorldMarchProgressSnapshot`、`WorldActorProjection`、`WorldMarchGeometry`、`WorldMarchSystem` 负责进度事实、可见 actor 投影、几何和表现兼容。
 
 稳定规则：
 

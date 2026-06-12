@@ -9,6 +9,7 @@ require('../js/domain/WorldRevealStore');
 require('../js/domain/TileMapGeometry');
 require('../js/domain/WorldTime');
 require('../js/domain/WorldMarchProgressSnapshot');
+require('../js/domain/WorldActorProjection');
 require('../js/domain/WorldMarchGeometry');
 require('../js/domain/WorldMarchSystem');
 require('../js/domain/WorldMapVisibilityModel');

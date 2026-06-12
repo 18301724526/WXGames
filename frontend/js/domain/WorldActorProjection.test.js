@@ -1,0 +1,86 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const WorldMarchProgressSnapshot = require('./WorldMarchProgressSnapshot');
+const WorldActorProjection = require('./WorldActorProjection');
+
+function createMission(overrides = {}) {
+  return {
+    id: 'explore-1',
+    kind: 'worldExplore',
+    mode: 'manual',
+    status: 'idle',
+    origin: { q: 2, r: 0, tileId: 'tile_2_0' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+    target: { q: 0, r: 0, tileId: 'tile_0_0' },
+    position: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+      { q: 0, r: 0, tileId: 'tile_0_0', step: 2, revealed: true },
+    ],
+    formation: { cityId: 'capital', slot: 1, memberIds: ['fp-1'] },
+    stepDurationSeconds: 10,
+    startedAt: '2026-06-06T00:00:20.000Z',
+    nextStepAt: null,
+    completesAt: '2026-06-06T00:00:40.000Z',
+    completedAt: '2026-06-06T00:00:41.000Z',
+    ...overrides,
+  };
+}
+
+test('WorldActorProjection keeps returned-home idle missions out of world actors', () => {
+  const nowMs = new Date('2026-06-06T00:00:45.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    idleMissions: [createMission()],
+  }, { nowMs });
+
+  const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
+
+  assert.equal(snapshot.counts.missions, 1);
+  assert.equal(snapshot.counts.idle, 1);
+  assert.equal(WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1').position.tileId, 'tile_0_0');
+  assert.deepEqual(actors, []);
+});
+
+test('WorldActorProjection keeps away-from-home idle missions as parked world actors', () => {
+  const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    idleMissions: [createMission({
+      origin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
+      position: { q: 2, r: 0, tileId: 'tile_2_0' },
+      route: [
+        { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+        { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: true },
+      ],
+    })],
+  }, { nowMs });
+
+  const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
+
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].id, 'explore-1');
+  assert.equal(actors[0].status, 'idle');
+  assert.equal(actors[0].current.tileId, 'tile_2_0');
+  assert.equal(actors[0].projection.kind, 'parkedAwayFromHome');
+});
+
+test('WorldActorProjection renders active returning missions until they arrive home', () => {
+  const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    missions: [createMission({
+      status: 'active',
+      position: { q: 2, r: 0, tileId: 'tile_2_0' },
+      startedAt: '2026-06-06T00:00:20.000Z',
+      nextStepAt: '2026-06-06T00:00:30.000Z',
+      completesAt: '2026-06-06T00:00:40.000Z',
+      completedAt: null,
+    })],
+  }, { nowMs });
+
+  const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
+
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].status, 'active');
+  assert.equal(actors[0].projection.kind, 'worldRoute');
+});

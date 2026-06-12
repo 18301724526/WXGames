@@ -11,6 +11,12 @@
     return null;
   })();
 
+  const WorldActorProjection = (() => {
+    if (global.WorldActorProjection) return global.WorldActorProjection;
+    if (typeof module !== 'undefined' && module.exports) return require('./WorldActorProjection');
+    return null;
+  })();
+
   function delegate(moduleRef, methodName, fallbackValue) {
     return (...args) => {
       const method = moduleRef?.[methodName];
@@ -45,7 +51,7 @@
     chooseStopTile: delegate(WorldMarchProgressSnapshot, 'chooseStopTile', null),
     getRemainingSeconds: delegate(WorldMarchProgressSnapshot, 'getRemainingSeconds', 0),
     buildActorFromMission: delegate(WorldMarchProgressSnapshot, 'buildActorFromMission', null),
-    buildActors: delegate(WorldMarchProgressSnapshot, 'buildActors', []),
+    buildActors: delegate(WorldActorProjection, 'projectWorldActors', delegate(WorldMarchProgressSnapshot, 'buildActors', [])),
     hasActiveMission: delegate(WorldMarchProgressSnapshot, 'hasActiveMission', false),
     getTileScreenCenter: delegate(WorldMarchGeometry, 'getTileScreenCenter', { x: 0, y: 0 }),
     screenPointToNearestTile: delegate(WorldMarchGeometry, 'screenPointToNearestTile', null),

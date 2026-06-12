@@ -159,15 +159,23 @@ test('WorldMarchProgressSnapshot keeps signatures stable and avoids nested entit
   assert.equal(Object.prototype.hasOwnProperty.call(first, 'entitiesById'), false);
 });
 
-test('WorldMarchSystem delegates march progress facade behavior to snapshot boundary', () => {
+test('WorldMarchSystem delegates actor collections through the projection boundary', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const derived = WorldMarchSystem.deriveMissionForTime(createMission({ mode: 'random' }), { nowMs });
   const actors = WorldMarchSystem.buildActors({
     missions: [createMission({ mode: 'random' })],
-    idleMissions: [createMission({ id: 'manual-idle', status: 'idle' })],
+    idleMissions: [
+      createMission({ id: 'manual-home', status: 'idle', position: { q: 0, r: 0, tileId: 'tile_0_0' } }),
+      createMission({
+        id: 'manual-away',
+        status: 'idle',
+        position: { q: 2, r: 0, tileId: 'tile_2_0' },
+      }),
+    ],
   }, { nowMs });
 
   assert.equal(derived.status, 'ready');
   assert.equal(derived.route.every((step) => step.revealed), true);
-  assert.deepEqual(actors.map((actor) => actor.id), ['manual-idle']);
+  assert.deepEqual(actors.map((actor) => actor.id), ['manual-away']);
+  assert.equal(actors[0].projection.kind, 'parkedAwayFromHome');
 });
