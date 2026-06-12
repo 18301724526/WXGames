@@ -408,6 +408,7 @@ class GameStateRepository {
     const transaction = this.db.transaction((id, state) => {
       this.db.prepare('DELETE FROM game_states WHERE playerId = ?').run(id);
       this.db.prepare('DELETE FROM shared_world_territories WHERE ownerPlayerId = ?').run(id);
+      this.worldMapAuthority.clearPlayerVisibility(id);
       return this.saveWithinTransaction({ ...(state || {}), playerId: id }, { expectedRevision: null });
     });
     const savedState = transaction(playerId, gameState);

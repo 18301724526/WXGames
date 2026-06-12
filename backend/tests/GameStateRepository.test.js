@@ -522,3 +522,46 @@ test('GameStateRepository resetPlayerState clears previous shared world ownershi
     db.close();
   }
 });
+
+test('GameStateRepository resetPlayerState clears previous player world visibility', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const playerId = 'world-visibility-reset-owner';
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState(playerId);
+    const exploredTile = WorldMapService.revealTile(state, 19, 3, now, {
+      terrain: 'forest',
+      visibility: 'scouted',
+    });
+
+    repository.save(state);
+    assert.equal(
+      db.prepare('SELECT COUNT(*) AS count FROM player_world_visibility WHERE playerId = ? AND canonicalId = ?')
+        .get(playerId, exploredTile.canonicalId).count,
+      1,
+    );
+
+    const freshState = GameStateNormalizer.createInitialGameState(playerId);
+    repository.resetPlayerState(playerId, freshState);
+    const reloaded = repository.findByPlayerId(playerId);
+
+    assert.equal(
+      db.prepare('SELECT COUNT(*) AS count FROM player_world_visibility WHERE playerId = ? AND canonicalId = ?')
+        .get(playerId, exploredTile.canonicalId).count,
+      0,
+    );
+    assert.equal(
+      reloaded.worldMap.tiles.some((tile) => tile.canonicalId === exploredTile.canonicalId),
+      false,
+    );
+    assert.equal(
+      reloaded.worldMap.tiles.some((tile) => tile.canonicalId === 'tile_0_0' && tile.visibility === 'controlled'),
+      true,
+    );
+  } finally {
+    db.close();
+  }
+});

@@ -273,6 +273,10 @@ class WorldMapAuthorityRepository {
     };
   }
 
+  clearPlayerVisibility(playerId) {
+    this.db.prepare('DELETE FROM player_world_visibility WHERE playerId = ?').run(playerId);
+  }
+
   migrateLegacyPlayerWorldMaps() {
     const rows = this.db.prepare('SELECT playerId, worldMap, updatedAt FROM game_states').all();
     const migrate = this.db.transaction((items) => {

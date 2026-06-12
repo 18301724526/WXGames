@@ -217,6 +217,7 @@ window.mountAuthMethods = function(game, deps = {}) {
       this.resetLocalViewToResources?.({ skipRender: true });
       this.canvasShell?.resetLocalViewToResources?.({ skipGame: true, skipRender: true });
       this.applyApiState(result);
+      this.canvasShell?.closeConfirmDialog?.();
       this.maybeStartTutorialIntro?.();
       this.showFloatingText && this.showFloatingText(result.message || '进度已重置');
       this.log && this.log(`✅ ${result.message || '进度已重置'}`);
