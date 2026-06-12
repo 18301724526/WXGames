@@ -174,6 +174,8 @@ Operational sync rule: `server.js` is now a gateway/API process, while `world-wo
 
 SQLite concurrency rule: every backend process that opens the runtime save DB must go through `DatabaseRuntime.openDatabase()`. The current single-host soft-service topology still shares SQLite, so WAL plus a bounded `busy_timeout` is required to prevent worker saves from surfacing as API/login/health tail latency spikes.
 
+Canonical/projection ownership rule: `GameStateRepository.findByPlayerId()` returns canonical persisted state only. It must not attach client/read projection fields such as `sharedWorldTerritories`. Shared-world ownership for client DTOs is exposed through `GameStateRepository.getClientProjectionForPlayer(playerId)` and composed explicitly by routes before calling `getClientGameStateFromNormalized(gameState, projection)`. `ClientGameStateAssembler` and `TerritoryClientAssembler` may include shared-world visibility only from `projection.sharedWorldTerritories`; they must never read it from the canonical state shape.
+
 当前后端状态边界按成熟服务端分成三类入口：
 
 - `GameStateNormalizer.normalizeState()` / `normalizeStateStructure()` 只做结构归一化：schema migration、默认字段补齐、legacy 字段兼容、城市/资源/教程等形状修正。它不得推进 AI、探索路线、地图 reveal、领土 bridging、计时任务或任何会改变世界时间线的 runtime 行为。
@@ -189,8 +191,10 @@ SQLite concurrency rule: every backend process that opens the runtime save DB mu
 - 玩家 API、heartbeat、read-only projection 和 `WorldWorkerService` active-player sweep 默认不得推进世界 AI；如需世界 AI 扩张，必须走独立 world-authority service 并显式 opt-in。
 - 读 projection 不能触发 `applyOnlineProgress()`、`WorldAiExplorerService.advanceAiExploration()`、`TerritoryService.normalizeTerritoryState()`、`WorldExplorerService.normalizeExploreState()`、`TerritoryService.updateMissionReadiness()`、event generation、world-map reveal、`touchPlayerActiveAt()` 或 `repository.save()`。
 - `reset` 等破坏性写操作提交后使用本次提交得到的 state 组装响应，不为了响应再次读库/再次归一化。
+- Projection-only data must stay out of canonical saves. `GameStateRepository.save()` strips fields such as `sharedWorldTerritories`, and route/read DTO code must pass projection context as an explicit second argument instead of mutating `gameState`.
 - 主存档、共享世界写入和全局世界地图提交必须通过 repository transaction；直接扩展保存字段时必须补 `GameStateRepository.test.js` 覆盖 revision、atomic rollback、reset 清理或世界权威可见性边界。
 - 这些边界由 `backend/tests/GameStateProjectionArchitecture.test.js`、`backend/tests/GameStateRepository.test.js` 和 `npm run test:architecture` 守护。
+- Shared-world projection regressions are guarded by `backend/tests/GameStateRepository.test.js`, `backend/tests/GameStateProjectionArchitecture.test.js`, and `backend/tests/TerritoryClientAssembler.test.js`.
 
 待硬化：
 

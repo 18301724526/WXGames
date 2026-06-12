@@ -4,10 +4,10 @@ const EventService = require('../services/EventService');
 const GameActionRegistry = require('../actions/GameActionRegistry');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 
-function buildGameView(gameState, tutorial, gameStateService) {
+function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
   const clientState = gameStateService.getClientGameStateFromNormalized
-    ? gameStateService.getClientGameStateFromNormalized(gameState)
-    : gameStateService.getClientGameState(gameState);
+    ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
+    : gameStateService.getClientGameState(gameState, projection);
   const eraProgress = gameStateService.calculateEraProgressFromNormalized
     ? gameStateService.calculateEraProgressFromNormalized(gameState)
     : gameStateService.calculateEraProgress(gameState);
@@ -38,6 +38,10 @@ function loadProgressedGameState(repository, gameStateService, playerId) {
   return gameStateService.applyOnlineProgress
     ? gameStateService.applyOnlineProgress(rawState)
     : gameStateService.normalizeState(rawState);
+}
+
+function loadProjection(repository, playerId) {
+  return repository.getClientProjectionForPlayer?.(playerId) || {};
 }
 
 function loadReadOnlyGameState(repository, gameStateService, playerId) {
@@ -127,6 +131,7 @@ function registerGameRoutes(app, deps) {
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
+    const projection = loadProjection(repository, req.playerId);
     if (traceEnabled) {
       traceWorldMarch('route:state:loaded', {
         playerId: req.playerId,
@@ -135,7 +140,7 @@ function registerGameRoutes(app, deps) {
     }
     const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const responsePayload = {
-      ...buildGameView(gameState, tutorial, gameStateService),
+      ...buildGameView(gameState, tutorial, gameStateService, projection),
       syncTime: new Date().toISOString(),
     };
     if (traceEnabled) {
@@ -199,10 +204,11 @@ function registerGameRoutes(app, deps) {
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
+    const projection = loadProjection(repository, req.playerId);
 
     return res.status(result.success ? 200 : 400).json({
       ...result,
-      ...buildGameView(gameState, syncedTutorial, gameStateService),
+      ...buildGameView(gameState, syncedTutorial, gameStateService, projection),
     });
   });
 
@@ -316,9 +322,10 @@ function registerGameRoutes(app, deps) {
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
+    const projection = loadProjection(repository, req.playerId);
     const responsePayload = {
       ...result,
-      ...buildGameView(gameState, syncedTutorial, gameStateService),
+      ...buildGameView(gameState, syncedTutorial, gameStateService, projection),
     };
     if (traceEnabled) {
       traceWorldMarch('route:response', {

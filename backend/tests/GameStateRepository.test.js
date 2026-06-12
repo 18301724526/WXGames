@@ -404,7 +404,8 @@ test('GameStateRepository exposes shared world ownership across player saves', (
     repository.save(ownerState);
     repository.save(spectatorState);
     const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
-    const visibleSharedSite = (spectatorReloaded.sharedWorldTerritories || []).find((site) => (
+    const projection = repository.getClientProjectionForPlayer(spectatorState.playerId);
+    const visibleSharedSite = (projection.sharedWorldTerritories || []).find((site) => (
       site.id === sharedSite.id || (site.x === sharedSite.x && site.y === sharedSite.y)
     ));
 
@@ -412,6 +413,41 @@ test('GameStateRepository exposes shared world ownership across player saves', (
     assert.equal(visibleSharedSite.ownerPlayerId, ownerState.playerId);
     assert.equal(visibleSharedSite.status, 'occupied');
     assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository canonical reads do not carry shared world projection fields', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const ownerState = GameStateNormalizer.createInitialGameState('shared-world-owner-canonical-read');
+    const spectatorState = GameStateNormalizer.createInitialGameState('shared-world-spectator-canonical-read');
+    const sharedSite = {
+      id: 'site_canonical_read_1',
+      x: 11,
+      y: 0,
+      naturalName: 'Canonical Boundary',
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: ownerState.playerId,
+      status: 'occupied',
+    };
+
+    ownerState.territories = [...ownerState.territories, sharedSite];
+    repository.save(ownerState);
+    repository.save(spectatorState);
+
+    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
+
+    assert.equal(Object.prototype.hasOwnProperty.call(spectatorReloaded, 'sharedWorldTerritories'), false);
+    assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
+
+    const projection = repository.getClientProjectionForPlayer(spectatorState.playerId);
+    assert.equal(projection.sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
   } finally {
     db.close();
   }
@@ -439,13 +475,40 @@ test('GameStateRepository removes stale shared world ownership for a player save
     ownerState.territories = [...ownerState.territories, sharedSite];
     repository.save(ownerState);
     repository.save(spectatorState);
-    assert.ok(repository.findByPlayerId(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id));
+    assert.ok(repository.getClientProjectionForPlayer(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id));
 
     ownerState.territories = ownerState.territories.filter((site) => site.id !== sharedSite.id);
     repository.save(ownerState);
-    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
+    const projection = repository.getClientProjectionForPlayer(spectatorState.playerId);
 
-    assert.equal(spectatorReloaded.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
+    assert.equal(projection.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository strips projection-only fields during canonical save', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('projection-field-save-strip');
+    state.sharedWorldTerritories = [{
+      id: 'site_projection_only_1',
+      x: 12,
+      y: 0,
+      owner: 'player',
+      ownerPlayerId: 'other-player',
+      status: 'occupied',
+    }];
+
+    const saved = repository.save(state);
+    const reloaded = repository.findByPlayerId(state.playerId);
+
+    assert.equal(Object.prototype.hasOwnProperty.call(state, 'sharedWorldTerritories'), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(saved, 'sharedWorldTerritories'), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(reloaded, 'sharedWorldTerritories'), false);
   } finally {
     db.close();
   }
@@ -511,14 +574,14 @@ test('GameStateRepository resetPlayerState clears previous shared world ownershi
 
     repository.save(ownerState);
     repository.save(spectatorState);
-    assert.equal(repository.findByPlayerId(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
+    assert.equal(repository.getClientProjectionForPlayer(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
 
     const freshState = GameStateNormalizer.createInitialGameState(playerId);
     repository.resetPlayerState(playerId, freshState);
-    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
+    const projection = repository.getClientProjectionForPlayer(spectatorState.playerId);
 
     assert.equal(freshState.revision, 1);
-    assert.equal(spectatorReloaded.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
+    assert.equal(projection.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
   } finally {
     db.close();
   }
@@ -550,7 +613,7 @@ test('GameStateRepository keeps shared world territories out of player canonical
 
     const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
     assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
-    assert.equal(spectatorReloaded.sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
+    assert.equal(repository.getClientProjectionForPlayer(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
 
     spectatorReloaded.resources.food += 1;
     repository.save(spectatorReloaded);

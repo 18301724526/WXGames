@@ -31,7 +31,7 @@ function getBuildingCategories() {
   return BuildingConfig.raw().categories || {};
 }
 
-function getClientGameStateFromNormalized(normalized) {
+function getClientGameStateFromNormalized(normalized, projection = {}) {
   const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
   const totalBuildings = Object.values(normalized.buildings).reduce((sum, item) => sum + (item?.level || 0), 0);
   const activeCity = CityService.getActiveCity(normalized);
@@ -97,14 +97,14 @@ function getClientGameStateFromNormalized(normalized) {
     regularEventState: normalized.regularEventState,
     threatEventState: normalized.threatEventState,
     activeBuffs: normalized.activeBuffs,
-    territoryState: TerritoryService.getClientTerritoryState(normalized),
+    territoryState: TerritoryService.getClientTerritoryState(normalized, new Date(), projection),
     worldExplorerState: WorldExplorerService.getClientState(normalized),
     totalBuildings,
   };
 }
 
-function getClientGameState(gameState) {
-  return getClientGameStateFromNormalized(GameStateNormalizer.normalizeState(gameState));
+function getClientGameState(gameState, projection = {}) {
+  return getClientGameStateFromNormalized(GameStateNormalizer.normalizeState(gameState), projection);
 }
 
 module.exports = {

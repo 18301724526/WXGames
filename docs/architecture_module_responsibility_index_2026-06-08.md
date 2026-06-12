@@ -3595,14 +3595,15 @@ Regression:
 - `normalizeState()` remains structural-only; `advanceRuntimeState()` is the explicit world/runtime advancement boundary.
 - Raw compatibility APIs remain for legacy callers, while normalized-only APIs protect route response assembly from repeated runtime advancement.
 -普通 query route 使用 `normalizeState()` + normalized-only projection；写入型 command/tick route 才使用 `applyOnlineProgress()` / `advanceRuntimeState()` 并保存。
+- Projection context is explicit. Route code that needs shared-world read visibility must call `GameStateRepository.getClientProjectionForPlayer(playerId)` and pass the returned context into client DTO assembly; it must not mutate canonical state.
 
 公开 API / Public API:
 
 - `GameStateService.createInitialGameState(playerId)`
 - `GameStateService.normalizeState(rawState)`
 - `GameStateService.advanceRuntimeState(gameState, now)`
-- `GameStateService.getClientGameState(gameState)`
-- `GameStateService.getClientGameStateFromNormalized(gameState)`
+- `GameStateService.getClientGameState(gameState, projection = {})`
+- `GameStateService.getClientGameStateFromNormalized(gameState, projection = {})`
 - `GameStateService.calculateEraProgress(gameState)`
 - `GameStateService.calculateEraProgressFromNormalized(gameState)`
 - `GameStateService.applyOnlineProgress(gameState, now)`
@@ -3611,6 +3612,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - New request paths that already loaded/advanced canonical state must use `getClientGameStateFromNormalized()` and `calculateEraProgressFromNormalized()`.
+- New request paths that need derived read visibility must pass projection context as the second argument to `getClientGameStateFromNormalized()`.
 - New world-time advancement belongs behind `advanceRuntimeState()` or a focused runtime service called by it.
 - Do not let DTO/projection helpers call world AI, territory runtime, map reveal, DB, or route code.
 - New GET/query routes must not call `applyOnlineProgress()`, generate events, touch player activity, or save state unless they are explicitly changed into command/sync endpoints.
@@ -3629,12 +3631,13 @@ Regression:
 - Client game-state DTO projection from an already-normalized game state.
 - Raw compatibility wrapper `getClientGameState()` for older callers.
 - Normalized-only projection `getClientGameStateFromNormalized()` for route responses and reset/action payloads.
+- Explicit projection context for derived read models such as shared-world territory visibility.
 - Delegates to normalized-only downstream DTO helpers for city, talent policy, famous person, tech, territory, world-map, and world-explorer state.
 
 公开 API / Public API:
 
-- `getClientGameState(gameState)`
-- `getClientGameStateFromNormalized(gameState)`
+- `getClientGameState(gameState, projection = {})`
+- `getClientGameStateFromNormalized(gameState, projection = {})`
 - `getBuildingCosts(buildings)`
 - `getBuildingDefinitions()`
 - `getBuildingCategories()`
@@ -3642,6 +3645,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - Add new client DTO fields here only as read-only projection from normalized canonical state.
+- Projection-only fields must come from the explicit `projection` argument, not from ad hoc fields attached to `gameState`.
 - Do not call runtime advancement, world AI, territory normalization, explorer progression, mission readiness, map reveal, DB, network, or route code from normalized-only projection.
 - If a downstream service still only exposes a mutating compatibility projection, add a normalized-only helper there first before wiring it into this assembler.
 
@@ -3662,6 +3666,9 @@ Regression:
 - 持久化最新存档性能容量预算摘要到 `saveMetadata.performanceCapacity`
 - 持久化 `revision` 乐观版本号，并在 `saveAtomic()` 中递增
 - 主状态行和 `shared_world_territories` 派生占有记录同事务提交
+- `findByPlayerId()` returns canonical persisted state only and must not carry client/read projection fields such as `sharedWorldTerritories`
+- `getClientProjectionForPlayer(playerId)` exposes derived read visibility such as shared-world territories for route DTO assembly
+- `save()` / `saveAtomic()` strip projection-only fields before writing canonical state
 - 委托 `WorldMapAuthorityRepository` 提交全局世界地图和玩家可见性，并在保存时清空 `game_states.worldMap.tiles`
 - reset 时通过 `resetPlayerState()` 同事务清理玩家共享世界占有记录并写入新状态
 - 不执行业务 normalizer 和 gameplay 规则
@@ -3671,6 +3678,7 @@ Regression:
 - `new GameStateRepository(db)`
 - `init()`
 - `findByPlayerId(playerId)`
+- `getClientProjectionForPlayer(playerId)`
 - `findAll()`
 - `findRecentlyActive(activeSinceIso, limit)`
 - `save(gameState)`
@@ -3683,6 +3691,7 @@ Regression:
 
 - 新持久化字段先增加列迁移、读写 JSON 解析、repository tests。
 - 需要写状态时优先调用 `save()` / `saveAtomic()`，不要绕过 repository 单独写 `game_states` 或 `shared_world_territories`。
+- Do not reintroduce DTO/read projection fields into canonical repository reads. Add a dedicated projection method and route-level composition instead.
 - 世界地图主体不得回到 `game_states.worldMap.tiles`；新增世界地图持久化语义必须在 `WorldMapAuthorityRepository` 增加 focused tests。
 - destructive reset 必须走 `resetPlayerState()` 或等价 transaction，避免共享世界残留旧占有记录。
 - 存档 shape 迁移逻辑放在 `GameStateMigrationPipeline`，不要放进 repository。
@@ -3692,6 +3701,7 @@ Regression:
 回归 / Regression:
 
 - `node --test backend/tests/GameStateRepository.test.js`
+- `node --test backend/tests/GameStateProjectionArchitecture.test.js backend/tests/TerritoryClientAssembler.test.js`
 - `node --test backend/tests/OpsControlService.test.js`
 - `npm run test:architecture`
 

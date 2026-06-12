@@ -466,7 +466,7 @@ function renamePolity(gameState, polityName) {
   normalizeTerritoryState(gameState);
   return applyPolityName(gameState, polityName);
 }
-function getClientTerritoryState(gameState, now = new Date()) {
+function getClientTerritoryState(gameState, now = new Date(), projection = {}) {
   return TerritoryClientAssembler.getClientTerritoryState(gameState, now, {
     CONQUEST_DURATION_MS,
     DIRECTIONS,
@@ -487,7 +487,7 @@ function getClientTerritoryState(gameState, now = new Date()) {
     normalizeScoutState,
     toInteger,
     updateMissionReadiness,
-  });
+  }, projection);
 }
 
 module.exports = {

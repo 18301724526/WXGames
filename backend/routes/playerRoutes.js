@@ -1,6 +1,10 @@
 function registerPlayerRoutes(app, deps) {
   const { authMiddleware, authService, repository, gameStateService, logService } = deps;
 
+  function loadProjection(playerId) {
+    return repository.getClientProjectionForPlayer?.(playerId) || {};
+  }
+
   app.post('/api/player/register', (req, res) => {
     return res.status(403).json({
       error: 'REGISTER_DISABLED',
@@ -27,9 +31,10 @@ function registerPlayerRoutes(app, deps) {
     const normalized = gameStateService.normalizeState
       ? gameStateService.normalizeState(result.gameState)
       : result.gameState;
+    const projection = loadProjection(result.playerId);
     const gameState = gameStateService.getClientGameStateFromNormalized
-      ? gameStateService.getClientGameStateFromNormalized(normalized)
-      : gameStateService.getClientGameState(normalized);
+      ? gameStateService.getClientGameStateFromNormalized(normalized, projection)
+      : gameStateService.getClientGameState(normalized, projection);
     const eraProgress = gameStateService.calculateEraProgressFromNormalized
       ? gameStateService.calculateEraProgressFromNormalized(normalized)
       : gameStateService.calculateEraProgress(normalized);
@@ -52,9 +57,10 @@ function registerPlayerRoutes(app, deps) {
       (playerId, gameState) => repository.resetPlayerState(playerId, gameState),
     );
     const gameState = result.gameState;
+    const projection = loadProjection(req.playerId);
     const clientState = gameStateService.getClientGameStateFromNormalized
-      ? gameStateService.getClientGameStateFromNormalized(gameState)
-      : gameStateService.getClientGameState(gameState);
+      ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
+      : gameStateService.getClientGameState(gameState, projection);
     const eraProgress = gameStateService.calculateEraProgressFromNormalized
       ? gameStateService.calculateEraProgressFromNormalized(gameState)
       : gameStateService.calculateEraProgress(gameState);

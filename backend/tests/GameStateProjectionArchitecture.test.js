@@ -8,6 +8,7 @@ const GameStateNormalizer = require('../services/GameStateNormalizer');
 const TerritoryService = require('../services/TerritoryService');
 const WorldAiExplorerService = require('../services/WorldAiExplorerService');
 const WorldMapService = require('../services/WorldMapService');
+const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -184,12 +185,53 @@ test('client projection is a read-only DTO boundary for explorer and territory r
   };
   const before = clone(normalized);
 
-  const clientState = GameStateService.getClientGameStateFromNormalized(normalized, now);
+  const clientState = GameStateService.getClientGameStateFromNormalized(normalized);
 
   assert.equal(clientState.worldExplorerState.activeMission.id, 'world-mission-readonly');
   assert.equal(clientState.worldExplorerState.activeMission.route[0].revealed, false);
   assert.equal(clientState.territoryState.scoutMissions[0].status, 'active');
   assert.deepEqual(normalized, before);
+});
+
+test('client projection receives shared world visibility through explicit projection context', () => {
+  const normalized = GameStateService.normalizeState(GameStateNormalizer.createInitialGameState('projection-context-test'));
+  const sharedSite = {
+    id: 'site_projection_context_1',
+    x: 6,
+    y: 0,
+    naturalName: 'Projection Context',
+    type: 'town',
+    owner: 'player',
+    ownerPlayerId: 'other-player',
+    status: 'occupied',
+  };
+
+  const clientState = GameStateService.getClientGameStateFromNormalized(normalized, {
+    sharedWorldTerritories: [sharedSite],
+  });
+
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, 'sharedWorldTerritories'), false);
+  assert.equal(clientState.territoryState.territories.some((site) => site.id === sharedSite.id), true);
+  assert.equal(clientState.territoryState.occupiedCount, 1);
+  assert.equal(clientState.territoryState.namingPrompt, null);
+});
+
+test('client projection does not read shared world visibility from canonical state shape', () => {
+  const normalized = GameStateService.normalizeState(GameStateNormalizer.createInitialGameState('projection-context-only-test'));
+  const sharedSite = {
+    id: 'site_projection_leak_1',
+    x: 7,
+    y: 0,
+    type: 'town',
+    owner: 'player',
+    ownerPlayerId: 'other-player',
+    status: 'occupied',
+  };
+  normalized.sharedWorldTerritories = [sharedSite];
+
+  const clientState = ClientGameStateAssembler.getClientGameStateFromNormalized(normalized);
+
+  assert.equal(clientState.territoryState.territories.some((site) => site.id === sharedSite.id), false);
 });
 
 test('state normalization is structural only and world AI advancement requires explicit opt-in', () => {
@@ -251,6 +293,10 @@ test('game action route advances canonical state once and uses read-only project
     save(savedState) {
       calls.push(`save:${savedState.playerId}`);
     },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [{ id: 'route-shared-site' }] };
+    },
   };
   const gameStateService = {
     applyOnlineProgress(rawState) {
@@ -266,8 +312,9 @@ test('game action route advances canonical state once and uses read-only project
     calculateEraProgress() {
       throw new Error('route must not use raw era progress');
     },
-    getClientGameStateFromNormalized(normalized) {
+    getClientGameStateFromNormalized(normalized, projection) {
       calls.push('getClientGameStateFromNormalized');
+      assert.equal(projection.sharedWorldTerritories[0].id, 'route-shared-site');
       return { playerId: normalized.playerId, activeCityId: normalized.activeCityId };
     },
     calculateEraProgressFromNormalized() {
@@ -290,6 +337,7 @@ test('game action route advances canonical state once and uses read-only project
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.success, true);
   assert.deepEqual(calls.filter((item) => item === 'applyOnlineProgress'), ['applyOnlineProgress']);
+  assert.equal(calls.includes('projection:projection-action-test'), true);
   assert.equal(calls.includes('getClientGameStateFromNormalized'), true);
   assert.equal(calls.includes('calculateEraProgressFromNormalized'), true);
 });
@@ -309,6 +357,10 @@ test('game state read route is a read-only projection without runtime advance or
     save() {
       throw new Error('GET /api/game/state must not persist state');
     },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [{ id: 'route-state-shared-site' }] };
+    },
   };
   const gameStateService = {
     applyOnlineProgress() {
@@ -324,8 +376,9 @@ test('game state read route is a read-only projection without runtime advance or
     calculateEraProgress() {
       throw new Error('route must not use raw era progress');
     },
-    getClientGameStateFromNormalized(normalized) {
+    getClientGameStateFromNormalized(normalized, projection) {
       calls.push('getClientGameStateFromNormalized');
+      assert.equal(projection.sharedWorldTerritories[0].id, 'route-state-shared-site');
       return { playerId: normalized.playerId, activeCityId: normalized.activeCityId };
     },
     calculateEraProgressFromNormalized() {
@@ -351,6 +404,7 @@ test('game state read route is a read-only projection without runtime advance or
   assert.deepEqual(calls, [
     'find:projection-state-readonly-test',
     'normalizeState',
+    'projection:projection-state-readonly-test',
     'getClientGameStateFromNormalized',
     'calculateEraProgressFromNormalized',
   ]);
@@ -422,6 +476,10 @@ test('reset route returns the newly created state without reloading or re-normal
     save(gameState) {
       calls.push(`save:${gameState.playerId}`);
     },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [] };
+    },
   };
   const gameStateService = {
     createInitialGameState(playerId) {
@@ -434,8 +492,9 @@ test('reset route returns the newly created state without reloading or re-normal
     calculateEraProgress() {
       throw new Error('reset route must not use raw era progress');
     },
-    getClientGameStateFromNormalized(gameState) {
+    getClientGameStateFromNormalized(gameState, projection) {
       calls.push('getClientGameStateFromNormalized');
+      assert.deepEqual(projection.sharedWorldTerritories, []);
       return { playerId: gameState.playerId, activeCityId: gameState.activeCityId };
     },
     calculateEraProgressFromNormalized() {
@@ -464,6 +523,7 @@ test('reset route returns the newly created state without reloading or re-normal
     'reset:projection-reset-test',
     'createInitialGameState:projection-reset-test',
     'save:projection-reset-test',
+    'projection:projection-reset-test',
     'getClientGameStateFromNormalized',
     'calculateEraProgressFromNormalized',
   ]);
@@ -496,6 +556,10 @@ test('login route normalizes once and assembles the response from normalized-onl
     save(gameState) {
       calls.push(`save:${gameState.playerId}`);
     },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [{ id: 'login-shared-site' }] };
+    },
   };
   const gameStateService = {
     createInitialGameState() {
@@ -515,9 +579,10 @@ test('login route normalizes once and assembles the response from normalized-onl
     calculateEraProgress() {
       throw new Error('login route must not use raw era progress');
     },
-    getClientGameStateFromNormalized(gameState) {
+    getClientGameStateFromNormalized(gameState, projection) {
       calls.push('getClientGameStateFromNormalized');
       assert.equal(gameState, normalizedState);
+      assert.equal(projection.sharedWorldTerritories[0].id, 'login-shared-site');
       return { playerId: gameState.playerId };
     },
     calculateEraProgressFromNormalized(gameState) {
@@ -546,6 +611,7 @@ test('login route normalizes once and assembles the response from normalized-onl
     'find:projection-login-test',
     'save:projection-login-test',
     'normalizeState',
+    'projection:projection-login-test',
     'getClientGameStateFromNormalized',
     'calculateEraProgressFromNormalized',
   ]);

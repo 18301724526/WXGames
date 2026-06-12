@@ -7,6 +7,12 @@ class GameStateRepository {
     this.worldMapAuthority = new WorldMapAuthorityRepository(db);
   }
 
+  stripProjectionFields(gameState) {
+    if (!gameState || typeof gameState !== 'object') return gameState;
+    delete gameState.sharedWorldTerritories;
+    return gameState;
+  }
+
   init() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS players (
@@ -187,14 +193,19 @@ class GameStateRepository {
       scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
       updatedAt: row.updatedAt,
     };
-    state.sharedWorldTerritories = this.getSharedWorldTerritories({
-      excludePlayerId: state.playerId,
-    });
     state.worldMap = this.worldMapAuthority.hydrateWorldMapForPlayer(
       state.playerId,
       state.worldMap,
     );
     return state;
+  }
+
+  getClientProjectionForPlayer(playerId) {
+    return {
+      sharedWorldTerritories: this.getSharedWorldTerritories({
+        excludePlayerId: playerId,
+      }),
+    };
   }
 
   findAll() {
@@ -371,6 +382,7 @@ class GameStateRepository {
   }
 
   saveWithinTransaction(gameState, options = {}) {
+    this.stripProjectionFields(gameState);
     const playerId = gameState?.playerId || '';
     if (!playerId) throw new Error('Game state playerId is required');
     const existingRevision = this.getExistingRevision(playerId);

@@ -113,7 +113,7 @@ function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}) {
   };
 }
 
-function getClientTerritoryState(gameState, now = new Date(), deps = {}) {
+function getClientTerritoryState(gameState, now = new Date(), deps = {}, projection = {}) {
   const nowMs = now.getTime();
   const scoutOrigin = deps.getScoutOrigin(gameState);
   const missionsByTerritory = Object.fromEntries((gameState.warMissions || [])
@@ -124,7 +124,7 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}) {
       durationSeconds: Math.floor(deps.CONQUEST_DURATION_MS / 1000),
     }]));
   const ownTerritories = Array.isArray(gameState.territories) ? gameState.territories : [];
-  const sharedTerritories = Array.isArray(gameState.sharedWorldTerritories) ? gameState.sharedWorldTerritories : [];
+  const sharedTerritories = Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [];
   const territories = [...ownTerritories, ...sharedTerritories]
     .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => deps.getMissionKind(mission) === 'scout');

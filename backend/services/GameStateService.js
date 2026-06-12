@@ -20,12 +20,12 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   return GameStateNormalizer.advanceRuntimeState(gameState, now, options);
 }
 
-function getClientGameState(gameState) {
-  return ClientGameStateAssembler.getClientGameState(gameState);
+function getClientGameState(gameState, projection = {}) {
+  return ClientGameStateAssembler.getClientGameState(gameState, projection);
 }
 
-function getClientGameStateFromNormalized(gameState) {
-  return ClientGameStateAssembler.getClientGameStateFromNormalized(gameState);
+function getClientGameStateFromNormalized(gameState, projection = {}) {
+  return ClientGameStateAssembler.getClientGameStateFromNormalized(gameState, projection);
 }
 
 function applyOnlineProgress(gameState, now = new Date(), options = {}) {

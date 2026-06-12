@@ -64,7 +64,8 @@ test('redacts garrison leader skills according to territory intel', () => {
 test('client territory projection includes shared sites without using them for local naming progress', () => {
   const state = GameStateNormalizer.createInitialGameState('territory-client-shared-sites');
   const now = new Date('2026-06-12T00:00:00.000Z');
-  state.sharedWorldTerritories = [{
+  const projection = {
+    sharedWorldTerritories: [{
     id: 'site_shared_1',
     x: 5,
     y: 0,
@@ -74,10 +75,11 @@ test('client territory projection includes shared sites without using them for l
     owner: 'player',
     ownerPlayerId: 'other-player',
     status: 'occupied',
-  }];
+    }],
+  };
   TerritoryService.normalizeTerritoryState(state, now);
 
-  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, projection);
 
   assert.equal(clientState.territories.some((site) => site.id === 'site_shared_1'), true);
   assert.equal(clientState.occupiedCount, 1);

@@ -42,11 +42,12 @@ function registerBuildingRoutes(app, deps) {
     const result = BuildingActionService.build(gameState, tutorial, buildingType);
     gameState.tutorial = result.tutorial || tutorial;
     repository.save(gameState);
+    const projection = repository.getClientProjectionForPlayer?.(req.playerId) || {};
     return res.status(result.success ? 200 : 400).json({
       ...result,
       gameState: gameStateService.getClientGameStateFromNormalized
-        ? gameStateService.getClientGameStateFromNormalized(gameState)
-        : gameStateService.getClientGameState(gameState),
+        ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
+        : gameStateService.getClientGameState(gameState, projection),
       tutorial: gameState.tutorial,
     });
   });
