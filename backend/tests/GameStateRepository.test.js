@@ -404,13 +404,14 @@ test('GameStateRepository exposes shared world ownership across player saves', (
     repository.save(ownerState);
     repository.save(spectatorState);
     const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
-    const visibleSharedSite = (spectatorReloaded.territories || []).find((site) => (
+    const visibleSharedSite = (spectatorReloaded.sharedWorldTerritories || []).find((site) => (
       site.id === sharedSite.id || (site.x === sharedSite.x && site.y === sharedSite.y)
     ));
 
     assert.ok(visibleSharedSite, 'Shared world ownership must not be trapped inside one player save.');
     assert.equal(visibleSharedSite.ownerPlayerId, ownerState.playerId);
     assert.equal(visibleSharedSite.status, 'occupied');
+    assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
   } finally {
     db.close();
   }
@@ -438,13 +439,13 @@ test('GameStateRepository removes stale shared world ownership for a player save
     ownerState.territories = [...ownerState.territories, sharedSite];
     repository.save(ownerState);
     repository.save(spectatorState);
-    assert.ok(repository.findByPlayerId(spectatorState.playerId).territories.some((site) => site.id === sharedSite.id));
+    assert.ok(repository.findByPlayerId(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id));
 
     ownerState.territories = ownerState.territories.filter((site) => site.id !== sharedSite.id);
     repository.save(ownerState);
     const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
 
-    assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
+    assert.equal(spectatorReloaded.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
   } finally {
     db.close();
   }
@@ -510,14 +511,53 @@ test('GameStateRepository resetPlayerState clears previous shared world ownershi
 
     repository.save(ownerState);
     repository.save(spectatorState);
-    assert.equal(repository.findByPlayerId(spectatorState.playerId).territories.some((site) => site.id === sharedSite.id), true);
+    assert.equal(repository.findByPlayerId(spectatorState.playerId).sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
 
     const freshState = GameStateNormalizer.createInitialGameState(playerId);
     repository.resetPlayerState(playerId, freshState);
     const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
 
     assert.equal(freshState.revision, 1);
+    assert.equal(spectatorReloaded.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository keeps shared world territories out of player canonical saves', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const ownerState = GameStateNormalizer.createInitialGameState('shared-world-owner-isolated');
+    const spectatorState = GameStateNormalizer.createInitialGameState('shared-world-spectator-isolated');
+    const sharedSite = {
+      id: 'site_isolated_1',
+      x: 10,
+      y: 0,
+      naturalName: 'Isolated Frontier',
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: ownerState.playerId,
+      status: 'occupied',
+      cityName: 'Frontier City',
+    };
+
+    ownerState.territories = [...ownerState.territories, sharedSite];
+    repository.save(ownerState);
+    repository.save(spectatorState);
+
+    const spectatorReloaded = repository.findByPlayerId(spectatorState.playerId);
     assert.equal(spectatorReloaded.territories.some((site) => site.id === sharedSite.id), false);
+    assert.equal(spectatorReloaded.sharedWorldTerritories.some((site) => site.id === sharedSite.id), true);
+
+    spectatorReloaded.resources.food += 1;
+    repository.save(spectatorReloaded);
+
+    const canonical = JSON.parse(db.prepare('SELECT territories FROM game_states WHERE playerId = ?').get(spectatorState.playerId).territories);
+    assert.equal(canonical.some((site) => site.id === sharedSite.id), false);
+    assert.equal(repository.findByPlayerId(spectatorState.playerId).territories.some((site) => site.id === sharedSite.id), false);
   } finally {
     db.close();
   }

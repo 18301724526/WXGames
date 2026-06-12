@@ -187,7 +187,9 @@ class GameStateRepository {
       scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
       updatedAt: row.updatedAt,
     };
-    state.territories = this.mergeSharedWorldTerritories(state.territories);
+    state.sharedWorldTerritories = this.getSharedWorldTerritories({
+      excludePlayerId: state.playerId,
+    });
     state.worldMap = this.worldMapAuthority.hydrateWorldMapForPlayer(
       state.playerId,
       state.worldMap,
@@ -420,28 +422,26 @@ class GameStateRepository {
     return savedState;
   }
 
-  getSharedWorldTerritories() {
-    return this.db.prepare('SELECT territory FROM shared_world_territories ORDER BY id ASC').all()
+  getSharedWorldTerritories(options = {}) {
+    const excludePlayerId = String(options.excludePlayerId || '');
+    return this.db.prepare('SELECT territory, ownerPlayerId FROM shared_world_territories ORDER BY id ASC').all()
       .map((row) => {
         try {
-          return JSON.parse(row.territory || 'null');
+          const territory = JSON.parse(row.territory || 'null');
+          if (!territory || typeof territory !== 'object') return null;
+          return {
+            ...territory,
+            ownerPlayerId: territory.ownerPlayerId || row.ownerPlayerId || '',
+          };
         } catch (_) {
           return null;
         }
       })
-      .filter((territory) => territory && typeof territory === 'object');
-  }
-
-  mergeSharedWorldTerritories(territories) {
-    const byId = new Map();
-    const add = (territory) => {
-      if (!territory || typeof territory !== 'object') return;
-      const id = territory.id || `site_${territory.x ?? territory.q}_${territory.y ?? territory.r}`;
-      byId.set(id, { ...(byId.get(id) || {}), ...territory, id });
-    };
-    (Array.isArray(territories) ? territories : []).forEach(add);
-    this.getSharedWorldTerritories().forEach(add);
-    return [...byId.values()];
+      .filter((territory) => (
+        territory
+        && typeof territory === 'object'
+        && (!excludePlayerId || territory.ownerPlayerId !== excludePlayerId)
+      ));
   }
 
   getSharedTerritoryOwner(gameState, territory) {

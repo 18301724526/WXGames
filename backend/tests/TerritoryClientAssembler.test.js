@@ -60,3 +60,26 @@ test('redacts garrison leader skills according to territory intel', () => {
   assert.deepEqual(full.leader.skills, [{ id: 'legacy-skill' }]);
   assert.equal(hidden, null);
 });
+
+test('client territory projection includes shared sites without using them for local naming progress', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-shared-sites');
+  const now = new Date('2026-06-12T00:00:00.000Z');
+  state.sharedWorldTerritories = [{
+    id: 'site_shared_1',
+    x: 5,
+    y: 0,
+    naturalName: 'Shared Frontier',
+    cityName: 'Shared City',
+    type: 'town',
+    owner: 'player',
+    ownerPlayerId: 'other-player',
+    status: 'occupied',
+  }];
+  TerritoryService.normalizeTerritoryState(state, now);
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+
+  assert.equal(clientState.territories.some((site) => site.id === 'site_shared_1'), true);
+  assert.equal(clientState.occupiedCount, 1);
+  assert.equal(clientState.namingPrompt, null);
+});
