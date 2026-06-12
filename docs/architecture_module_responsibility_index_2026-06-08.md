@@ -389,6 +389,7 @@ P0 新增公开 API / Public API Added During P0:
 - fog render dispatch through `WorldMapVisualPluginRegistry`
 - world map/fog layer transform and visibility helpers
 - world-map snapshot layer refresh and baked-camera commit
+- freshly rendered snapshot `lastWorldTileMapContext` handoff to fog, actor, and runtime state before clearing transforms
 
 公开 API / Public API:
 
@@ -2149,6 +2150,7 @@ P0 新增公开 API / Public API Added During P0:
 - one-frame world tile-map render orchestration
 - `WorldMapRenderSnapshot` context creation and `lastWorldTileMapContext` publication
 - snapshot-layer refresh also publishes the current `lastWorldTileMapContext` so split fog and actor layers consume the same viewport/camera frame
+- the freshly published layer context is the authoritative per-frame coordinate source; stale runtime contexts are fallback only and must not override it
 - world-map panel background and clip setup
 - world-map drag hit-target registration
 - snapshot-only cache redraw branch
@@ -4782,6 +4784,7 @@ Regression:
 - 新 world-map runtime bridge behavior 先扩展 `WORLD_MAP_RUNTIME_METHODS` with focused tests。
 - World-map gameplay rules stay in world-map domain/systems/services.
 - Renderer-layer drawing stays in world-map renderer modules.
+- Snapshot drag and refresh frames must pass the renderer's freshly published `lastWorldTileMapContext` into actor rendering before falling back to runtime cache.
 - Do not add world-map runtime compatibility methods back into `CanvasGameAppRenderingRuntime`.
 
 回归 / Regression:
@@ -5000,6 +5003,7 @@ Regression:
 - render-state publication onto split renderer instances
 - cannot-render trace dispatch and runtime bake/input state reset
 - snapshot-layer render branch and full-layer render branch
+- promotion of the freshly rendered `lastWorldTileMapContext` before actor-layer rendering so world actors share the same anchor/viewport as the map frame
 - runtime render trace dispatch while delegating pure trace payloads to `WorldMapRuntimeRenderPolicy`
 
 公开 API / Public API:
@@ -6728,7 +6732,7 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMarchProgressSnapshot` candidate module for pure march progress, actor rows, and arrival result rows; `WorldMarchSystem` now acts as a compatibility facade for march calculations. |
 | 2026-06-08 | Added `WorldMarchGeometry` candidate module for pure tile screen projection, nearest-tile lookup, axial point inference, and march target UI-state normalization; `WorldMarchSystem` now delegates progress and geometry helpers and dropped to 53 lines as a candidate facade. |
 | 2026-06-08 | Added `WorldMapRenderSnapshot` candidate module as the single world-map renderer input contract and wired `WorldMapCanvasRenderer.renderWorldTileMap()` to expose `lastWorldTileMapContext.renderSnapshot`. |
-| 2026-06-12 | Drag snapshot refresh now commits the baked camera on success and snapshot-only layer refresh publishes the current `lastWorldTileMapContext`, keeping `worldMap`, `worldFog`, and `worldActor` on one camera frame. |
+| 2026-06-12 | Drag snapshot refresh now commits the baked camera on success and snapshot-only layer refresh publishes the current `lastWorldTileMapContext`, keeping `worldMap`, `worldFog`, and `worldActor` on one camera frame. Actor-layer handoff now promotes the freshly rendered layer context over stale runtime caches, with anchor-coordinate regressions for shell, app bridge, facade, and runtime pipeline paths. |
 | 2026-06-08 | Added `WorldMapInputActionMap` candidate module for pure world-map input-to-action mapping and wired `WorldMapRuntime` to delegate hit-target filtering/background march target inference. |
 | 2026-06-08 | Added `WorldExplorerDtoMapper` candidate module as the backend world explorer API DTO boundary; `WorldExplorerClientState` delegates response shape after explicit runtime advancement. |
 | 2026-06-08 | Added `WorldFogVisualSnapshot` and `WorldMapVisualPluginRegistry` candidate modules for P2-001 fog plugin rebuild; shell fog rendering now consumes registry output when `FOG_OF_WAR_ENABLED` is explicitly enabled. |

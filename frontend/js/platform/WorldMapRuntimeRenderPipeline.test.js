@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const RenderPipeline = require('./WorldMapRuntimeRenderPipeline');
+const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
 
 function createState() {
   return {
@@ -150,6 +151,58 @@ test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is
   assert.deepEqual(host.lastLayout, { map: { x: 0, y: 0, width: 100, height: 100 } });
 });
 
+test('WorldMapRuntimeRenderPipeline keeps actor anchor on the snapshot frame context', () => {
+  const oldContext = {
+    frame: { x: 0, y: 0, width: 300, height: 200 },
+    geometry: { stepX: 96, stepY: 48 },
+    tileMapView: { pan: { x: 0, y: 0 } },
+    viewport: { originX: 150, originY: 100, panX: 0, panY: 0, scale: 1 },
+  };
+  const snapshotContext = {
+    frame: oldContext.frame,
+    geometry: oldContext.geometry,
+    tileMapView: { pan: { x: 48, y: -24 } },
+    viewport: { ...oldContext.viewport, panX: 48, panY: -24 },
+  };
+  const actorAnchors = [];
+  const host = createHost({
+    hasBakedMapLayer: true,
+    lastTileMapContext: oldContext,
+    mapBakeDirty: false,
+    getLastTileMapContext() {
+      return this.lastTileMapContext;
+    },
+    isMapBakeDirty() {
+      return false;
+    },
+    renderer: {
+      lastWorldTileMapContext: oldContext,
+      renderWorldMapLayer() {
+        throw new Error('full render should not run');
+      },
+      renderWorldMapSnapshotLayer() {
+        this.lastWorldTileMapContext = snapshotContext;
+        return true;
+      },
+      renderWorldMapActorLayer(state, options) {
+        const context = options.worldMapRuntimeContext;
+        actorAnchors.push(WorldMarchGeometry.getTileScreenCenter(
+          { q: 0, r: 0 },
+          context.viewport,
+          context.geometry,
+        ));
+        return true;
+      },
+    },
+  });
+
+  assert.equal(RenderPipeline.render(host, { snapshotOnly: true, epochNowMs: 1234 }), true);
+  assert.equal(host.lastTileMapContext, snapshotContext);
+  assert.deepEqual(actorAnchors, [
+    WorldMarchGeometry.getTileScreenCenter({ q: 0, r: 0 }, snapshotContext.viewport, snapshotContext.geometry),
+  ]);
+});
+
 test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state', () => {
   const fullOptions = [];
   const actorOptions = [];
@@ -180,4 +233,48 @@ test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state'
   assert.equal(host.hitTargets[0].action.type, 'resetWorldPan');
   assert.equal(actorOptions[0].worldMapRuntimeContext.tileMapView instanceof Object, true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldMapRuntimeRenderPipeline keeps actor anchor on the full frame context', () => {
+  const oldContext = {
+    frame: { x: 0, y: 0, width: 300, height: 200 },
+    geometry: { stepX: 96, stepY: 48 },
+    tileMapView: { pan: { x: 0, y: 0 } },
+    viewport: { originX: 150, originY: 100, panX: 0, panY: 0, scale: 1 },
+  };
+  const fullContext = {
+    frame: oldContext.frame,
+    geometry: oldContext.geometry,
+    tileMapView: { pan: { x: 36, y: -18 } },
+    viewport: { ...oldContext.viewport, panX: 36, panY: -18 },
+  };
+  const actorAnchors = [];
+  const host = createHost({
+    lastTileMapContext: oldContext,
+    getLastTileMapContext() {
+      return this.lastTileMapContext;
+    },
+    renderer: {
+      lastWorldTileMapContext: oldContext,
+      renderWorldMapLayer() {
+        this.lastWorldTileMapContext = fullContext;
+        return true;
+      },
+      renderWorldMapActorLayer(state, options) {
+        const context = options.worldMapRuntimeContext;
+        actorAnchors.push(WorldMarchGeometry.getTileScreenCenter(
+          { q: 0, r: 0 },
+          context.viewport,
+          context.geometry,
+        ));
+        return true;
+      },
+    },
+  });
+
+  assert.equal(RenderPipeline.render(host, { epochNowMs: 4321 }), true);
+  assert.equal(host.lastTileMapContext, fullContext);
+  assert.deepEqual(actorAnchors, [
+    WorldMarchGeometry.getTileScreenCenter({ q: 0, r: 0 }, fullContext.viewport, fullContext.geometry),
+  ]);
 });

@@ -57,14 +57,13 @@
         showFpsOverlay: false,
       });
       if (!rendered) return false;
+      const frameContext = this.renderer.lastWorldTileMapContext || null;
+      if (frameContext) runtime.lastTileMapContext = frameContext;
       this.renderer.renderWorldMapActorLayer?.(this.state, {
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,
-        worldMapRuntimeContext: runtime.getLastTileMapContext?.()
-          || runtime.lastTileMapContext
-          || this.renderer?.lastWorldTileMapContext
-          || null,
+        worldMapRuntimeContext: frameContext,
         preserveCanvas: true,
         showFpsOverlay: false,
       });
@@ -200,14 +199,13 @@
         showFpsOverlay: false,
       });
       if (!rendered) return false;
+      const frameContext = this.renderer.lastWorldTileMapContext || null;
+      if (frameContext) runtime.lastTileMapContext = frameContext;
       this.renderer.renderWorldMapActorLayer?.(this.state, {
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,
-        worldMapRuntimeContext: runtime.getLastTileMapContext?.()
-          || runtime.lastTileMapContext
-          || this.renderer?.lastWorldTileMapContext
-          || null,
+        worldMapRuntimeContext: frameContext,
         preserveCanvas: true,
         showFpsOverlay: false,
       });

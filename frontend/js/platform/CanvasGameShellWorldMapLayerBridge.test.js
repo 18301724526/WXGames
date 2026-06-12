@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const LayerBridge = require('./CanvasGameShellWorldMapLayerBridge');
+const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
 
 function createShell(overrides = {}) {
   class Shell {}
@@ -173,5 +174,76 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     ['renderActor', 'state-1', 1],
     ['markBakedCamera', runtime.camera],
     ['clearTransform'],
+  ]);
+});
+
+test('CanvasGameShellWorldMapLayerBridge keeps actor anchor on the dragged map snapshot frame', () => {
+  const calls = [];
+  const oldContext = {
+    frame: { x: 0, y: 0, width: 300, height: 200 },
+    geometry: { stepX: 96, stepY: 48 },
+    tileMapView: { pan: { x: 0, y: 0 } },
+    viewport: { originX: 150, originY: 100, panX: 0, panY: 0, scale: 1 },
+  };
+  const snapshotContext = {
+    frame: oldContext.frame,
+    geometry: oldContext.geometry,
+    tileMapView: { pan: { x: 48, y: -24 } },
+    viewport: { ...oldContext.viewport, panX: 48, panY: -24 },
+  };
+  const runtime = {
+    camera: { x: 48, y: -24 },
+    lastTileMapContext: oldContext,
+    getCameraUiState() {
+      return { worldPanX: 48, worldPanY: -24 };
+    },
+    getLastTileMapContext() {
+      return this.lastTileMapContext;
+    },
+    markBakedCamera() {},
+  };
+  const shell = createShell({
+    clearWorldMapLayerTransform() {
+      return true;
+    },
+    renderWorldFogLayer() {
+      return true;
+    },
+    syncWorldMapRendererLayerMetrics() {
+      return true;
+    },
+    worldMapRuntimeCoordinator: {
+      getMapRuntime() {
+        return runtime;
+      },
+    },
+    worldMapRenderer: {
+      lastWorldTileMapContext: oldContext,
+      renderWorldMapSnapshotLayer() {
+        this.lastWorldTileMapContext = snapshotContext;
+        return true;
+      },
+      renderWorldMapActorLayer(state, options) {
+        const context = options.worldMapRuntimeContext;
+        calls.push(['actorContextPan', context.viewport.panX, context.viewport.panY]);
+        calls.push([
+          'anchor',
+          WorldMarchGeometry.getTileScreenCenter({ q: 0, r: 0 }, context.viewport, context.geometry),
+        ]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.refreshWorldMapLayerFromSnapshot(), true);
+
+  const expectedAnchor = WorldMarchGeometry.getTileScreenCenter(
+    { q: 0, r: 0 },
+    snapshotContext.viewport,
+    snapshotContext.geometry,
+  );
+  assert.deepEqual(calls, [
+    ['actorContextPan', 48, -24],
+    ['anchor', expectedAnchor],
   ]);
 });

@@ -47,6 +47,30 @@ test('CanvasGameRenderer uses installed page facades for child renderer delegati
   assert.equal(renderer.render({}, {}), 'frame-rendered');
 });
 
+test('CanvasGameRendererPageFacades promotes freshly rendered layer context over stale child map context', () => {
+  class Renderer {}
+  CanvasGameRendererPageFacades.installPageFacades(Renderer);
+
+  const staleContext = {
+    viewport: { originX: 150, originY: 100, panX: 0, panY: 0, scale: 1 },
+  };
+  const freshContext = {
+    viewport: { originX: 150, originY: 100, panX: 48, panY: -24, scale: 1 },
+  };
+  const renderer = new Renderer();
+  renderer.worldMapRenderer = { lastWorldTileMapContext: staleContext };
+  renderer.worldMapLayerRenderer = {
+    lastWorldTileMapContext: null,
+    renderWorldMapSnapshotLayer() {
+      this.lastWorldTileMapContext = freshContext;
+      return true;
+    },
+  };
+
+  assert.equal(renderer.renderWorldMapSnapshotLayer({ id: 'state-1' }, { isMapHome: true }), true);
+  assert.equal(renderer.lastWorldTileMapContext, freshContext);
+});
+
 test('CanvasGameRendererPageFacades loads before CanvasGameRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../..', 'minigame/game.js'), 'utf8');

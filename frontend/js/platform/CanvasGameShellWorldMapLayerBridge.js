@@ -155,11 +155,14 @@
           showFpsOverlay: false,
         });
         if (!rendered) return false;
-        this.renderWorldFogLayer();
+        const frameContext = this.worldMapRenderer.lastWorldTileMapContext || null;
+        if (frameContext && runtime) runtime.lastTileMapContext = frameContext;
+        this.renderWorldFogLayer(frameContext);
         this.renderWorldActorLayer({
           ...options,
           state,
           territoryUiState,
+          worldMapRuntimeContext: frameContext || options.worldMapRuntimeContext || null,
         });
         if (options.commitCamera !== false) runtime?.markBakedCamera?.(runtime.camera);
         if (options.clearTransform !== false) this.clearWorldMapLayerTransform();
