@@ -35,7 +35,7 @@ test('UIStatePresenterDelegates installs direct presenter static delegates', () 
   ]);
 });
 
-test('UIStatePresenterDelegates keeps custom guidebook and home facade callbacks', () => {
+test('UIStatePresenterDelegates keeps custom guidebook facade callbacks', () => {
   class Facade {}
   UIStatePresenterDelegates.install(Facade, {
     TaskGuidePresenter: {
@@ -50,26 +50,16 @@ test('UIStatePresenterDelegates keeps custom guidebook and home facade callbacks
       buildCityPlanningViewState(state) {
         return { source: 'home', id: state.id };
       },
-      buildHomeFeatureViewState(state, options) {
-        return {
-          stateId: state.id,
-          tasks: options.buildTaskCenterViewState({ id: 'task-state' }),
-        };
-      },
     },
   });
 
   Facade.buildCityPlanningViewState = (state) => ({ source: 'facade', id: state.id });
-  Facade.buildTaskCenterViewState = (state) => ({ source: 'facade-task', id: state.id });
 
   assert.deepEqual(Facade.buildGuidebookViewState({ id: 'guide' }), {
     stateId: 'guide',
     planning: { source: 'facade', id: 'plan-state' },
   });
-  assert.deepEqual(Facade.buildHomeFeatureViewState({ id: 'home' }), {
-    stateId: 'home',
-    tasks: { source: 'facade-task', id: 'task-state' },
-  });
+  assert.equal(typeof Facade.buildHomeFeatureViewState, 'undefined');
 });
 
 test('UIStatePresenterDelegates preserves tech fallback contract', () => {

@@ -689,7 +689,7 @@ test('UIStatePresenter delegates home resource and planning view state while pre
   assert.equal(HomePresenter.formatNegativeRate(0.5), '-0.5/s');
   assert.equal(UIStatePresenter.buildCityPlanningViewState(state).text.populationGrowthStatus, '人口成长良好');
   assert.equal(UIStatePresenter.buildPopulationViewState(state).jobs.find((job) => job.id === 'craftsman').visible, true);
-  assert.equal(UIStatePresenter.buildHomeFeatureViewState(state).entries[0].badge, 2);
+  assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'undefined');
   assert.equal(UIStatePresenter.calculatePopulationGrowthMultiplier(16), 1.16);
 });
 
@@ -1097,7 +1097,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
 test('UIStatePresenter facade is installed by delegate registry', () => {
   assert.equal(typeof UIStatePresenter.toNumber, 'function');
   assert.equal(typeof UIStatePresenter.buildGuidebookViewState, 'function');
-  assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'function');
+  assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'undefined');
   assert.equal(typeof UIStatePresenter.buildTechViewState, 'function');
   assert.equal(UIStatePresenter.POPULATION_PER_OFFICIAL, 100);
   assert.equal(UIStatePresenter.MIN_EXPEDITION_SOLDIERS, 100);

@@ -4559,12 +4559,12 @@ Public API:
 Extension Path:
 
 - New talent allocation UI extends this renderer and city-management people-tab flow.
-- Do not add people/talent/policy rendering back to `HomeCanvasRenderer`, the resources page, or map command panels.
+- Do not add people/talent/policy rendering back to the resources page, `ResourceTopBarCanvasRenderer`, or map command panels. The obsolete `HomeCanvasRenderer` owner was deleted.
 - Backend/API talent-policy apply/save/delete services may remain service actions, but the old frontend `openTalentPolicy` shortcut handler is deleted.
 
 Regression:
 
-- `node --test frontend/js/platform/renderers/CityPeopleCanvasRenderer.test.js frontend/js/platform/renderers/HomeCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js`
+- `node --test frontend/js/platform/renderers/CityPeopleCanvasRenderer.test.js frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasShellActionHandlers.js`
@@ -5072,7 +5072,7 @@ Regression:
 
 - dependency resolution for the `UIStatePresenter` compatibility facade
 - direct static delegate method registration from focused presenter modules
-- custom facade delegates for guidebook, home feature, and tech fallback composition
+- custom facade delegates for guidebook and tech fallback composition
 - load-order contract before `UIStatePresenter`
 
 公开 API / Public API:

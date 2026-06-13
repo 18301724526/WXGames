@@ -56,7 +56,6 @@ function createHost(overrides = {}) {
     renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
     renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
-    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return 260; },
     renderHudOverlay(...args) { calls.push(['renderHudOverlay', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
@@ -304,9 +303,8 @@ test('CanvasFrameRenderer keeps resources page out of city people ownership', ()
 
   const names = callNames(host);
   assert.equal(names.includes('renderPopulation'), false);
-  assert.equal(names.includes('renderHomeFeatureGrid'), true);
-  const homeFeatureCall = host.calls.find((call) => call[0] === 'renderHomeFeatureGrid');
-  assert.equal(homeFeatureCall[1][1], 96);
+  assert.equal(names.includes('renderHomeFeatureGrid'), false);
+  assert.equal(names.includes('renderMainPanel'), false);
 });
 
 test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facade target', () => {

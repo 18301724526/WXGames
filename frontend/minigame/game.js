@@ -87,7 +87,7 @@ require('../js/platform/renderers/CivilizationCanvasRenderer');
 require('../js/platform/renderers/MilitaryCanvasRenderer');
 require('../js/platform/renderers/ArmyFormationEditorCanvasRenderer');
 require('../js/platform/renderers/GuideTaskCanvasRenderer');
-require('../js/platform/renderers/HomeCanvasRenderer');
+require('../js/platform/renderers/ResourceTopBarCanvasRenderer');
 require('../js/platform/renderers/CityPeopleCanvasRenderer');
 require('../js/platform/renderers/SystemCanvasRenderer');
 require('../js/platform/renderers/CityCanvasRenderer');

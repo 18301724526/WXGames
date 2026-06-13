@@ -30,7 +30,6 @@ function createHost(overrides = {}) {
       return { x: 370 - size, y: 700 - slot * 58, size };
     },
     getTopBarBottom() { return 72; },
-    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return true; },
     renderMainPanel(...args) { calls.push(['renderMainPanel', args]); return true; },
     renderPopulation(...args) { calls.push(['renderPopulation', args]); return 360; },
     truncateText(text) { return String(text || ''); },

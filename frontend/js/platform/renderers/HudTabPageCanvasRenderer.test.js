@@ -19,7 +19,6 @@ function createHost(overrides = {}) {
     renderBuildings(...args) { calls.push(['renderBuildings', args]); },
     renderCivilization(...args) { calls.push(['renderCivilization', args]); },
     renderEvents(...args) { calls.push(['renderEvents', args]); },
-    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return 320; },
     renderMapHomeWorldView(...args) { calls.push(['renderMapHomeWorldView', args]); return true; },
     renderMilitary(...args) { calls.push(['renderMilitary', args]); },
     renderPopulation(...args) { calls.push(['renderPopulation', args]); return 220; },
@@ -71,12 +70,11 @@ test('HudTabPageCanvasRenderer preserves resource and content tab layouts', () =
   renderer.renderHudTabPage({}, 'civilization', 96, { tutorial: { step: 4 } });
   renderer.renderHudTabPage({}, 'military', 96, {});
 
-  assert.deepEqual(callNames(host), ['renderHomeFeatureGrid', 'renderBuildings', 'renderCivilization', 'renderMilitary']);
-  assert.equal(host.calls[0][1][2].maxBottom, 764);
-  assert.equal(host.calls[1][1][0].tutorial.step, 3);
+  assert.deepEqual(callNames(host), ['renderBuildings', 'renderCivilization', 'renderMilitary']);
+  assert.equal(host.calls[0][1][0].tutorial.step, 3);
+  assert.equal(host.calls[0][1][2], 664);
   assert.equal(host.calls[1][1][2], 664);
   assert.equal(host.calls[2][1][2], 664);
-  assert.equal(host.calls[3][1][2], 664);
 });
 
 test('HudTabPageCanvasRenderer preserves map-home military behavior', () => {

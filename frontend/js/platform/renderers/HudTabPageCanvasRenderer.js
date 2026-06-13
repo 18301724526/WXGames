@@ -45,9 +45,7 @@
         if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
         return;
       }
-      if (activeTab === 'resources') {
-        this.renderHomeFeatureGrid(state, topBarBottom, { maxBottom: tabsTop - 8 });
-      } else if (activeTab === 'buildings') {
+      if (activeTab === 'buildings') {
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderBuildings(
           { ...state, tutorial: options.tutorial || state.tutorial || {} },

@@ -1,5 +1,5 @@
 (function (global) {
-  class HomeCanvasRenderer {
+  class ResourceTopBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
       return new Proxy(this, {
@@ -268,96 +268,8 @@
       return 72;
     }
 
-    renderHomeFeatureGrid(state = {}, startY = 400, options = {}) {
-      if (!this.presenter || typeof this.presenter.buildHomeFeatureViewState !== 'function') return startY;
-      const view = this.presenter.buildHomeFeatureViewState(state);
-      const entries = Array.isArray(view.entries) ? view.entries : [];
-      if (!entries.length) return startY;
-      const layout = this.getLayout();
-      const x = layout.contentX;
-      const width = layout.contentWidth;
-      const tabsTop = this.height - 60 - this.bottomSafeArea;
-      const maxBottom = Number(options.maxBottom) || tabsTop - 8;
-      const y = startY;
-      const panelHeight = Math.min(146, Math.max(106, maxBottom - y));
-      if (panelHeight < 86) return startY;
-      this.drawPanel(x, y, width, panelHeight, {
-        fill: this.createGradient(
-          x, y, x + width, y + panelHeight,
-          [
-            [0, 'rgba(44, 35, 25, 0.9)'],
-            [1, 'rgba(20, 18, 14, 0.9)'],
-          ],
-          'rgba(32, 26, 20, 0.9)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.07)',
-      });
-      this.drawText(view.title || '功能', x + 16, y + 12, { size: 14, bold: true, color: '#ffe6b5' });
-      this.drawText(this.truncateText(view.subtitle || '', width - 92, { size: 10 }), x + 16, y + 32, {
-        size: 10,
-        color: 'rgba(234, 234, 234, 0.58)',
-      });
-
-      const top = y + 52;
-      const availableHeight = Math.max(42, y + panelHeight - top - 12);
-      const visibleEntries = entries.slice(0, 4);
-      const gap = 8;
-      const itemWidth = Math.floor((width - 28 - gap * (visibleEntries.length - 1)) / Math.max(1, visibleEntries.length));
-      const itemHeight = Math.min(76, availableHeight);
-      visibleEntries.forEach((entry, index) => {
-        const itemX = x + 14 + index * (itemWidth + gap);
-        const itemY = top;
-        const disabled = Boolean(entry.disabled || entry.action?.disabled);
-        const active = Boolean(entry.badge);
-        this.drawPanel(itemX, itemY, itemWidth, itemHeight, {
-          fill: active ? 'rgba(76, 50, 30, 0.86)' : 'rgba(27, 23, 18, 0.72)',
-          stroke: active ? 'rgba(240, 180, 91, 0.48)' : 'rgba(255, 226, 177, 0.12)',
-          radius: 8,
-          inset: active ? 'rgba(255, 231, 184, 0.1)' : 'rgba(255, 231, 184, 0.04)',
-        });
-        const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = disabled ? 0.45 : previousAlpha;
-        const iconSize = 34;
-        this.drawAsset(entry.icon, itemX + itemWidth / 2 - iconSize / 2, itemY + 7, iconSize, iconSize);
-        if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-        this.drawText(this.truncateText(entry.label || '', itemWidth - 12, { size: 12, bold: true }), itemX + itemWidth / 2, itemY + 44, {
-          size: 12,
-          bold: true,
-          color: disabled ? '#777' : '#fff1cf',
-          align: 'center',
-        });
-        this.drawText(this.truncateText(entry.statusText || '', itemWidth - 10, { size: 9 }), itemX + itemWidth / 2, itemY + 61, {
-          size: 9,
-          color: disabled ? '#666' : '#aeb0b8',
-          align: 'center',
-        });
-        if (entry.badge > 0) {
-          const badgeText = entry.badge > 9 ? '9+' : String(entry.badge);
-          this.drawPanel(itemX + itemWidth - 23, itemY + 4, 22, 18, {
-            fill: '#e94560',
-            stroke: 'rgba(255, 255, 255, 0.16)',
-            radius: 9,
-          });
-          this.drawText(badgeText, itemX + itemWidth - 12, itemY + 13, {
-            size: 9,
-            bold: true,
-            color: '#fff',
-            baseline: 'middle',
-            align: 'center',
-          });
-        }
-        this.addHitTarget(
-          { x: itemX, y: itemY, width: itemWidth, height: itemHeight },
-          { ...(entry.action || { type: 'blockCanvasModal' }), disabled },
-        );
-      });
-      return y + panelHeight + 12;
-    }
-
   }
 
-  global.HomeCanvasRenderer = HomeCanvasRenderer;
-  if (typeof module !== 'undefined' && module.exports) module.exports = HomeCanvasRenderer;
+  global.ResourceTopBarCanvasRenderer = ResourceTopBarCanvasRenderer;
+  if (typeof module !== 'undefined' && module.exports) module.exports = ResourceTopBarCanvasRenderer;
 })(typeof window !== 'undefined' ? window : globalThis);

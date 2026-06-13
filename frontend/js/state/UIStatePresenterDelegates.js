@@ -251,17 +251,11 @@
   }
 
   function installCustomDelegates(UIStatePresenter, dependencies) {
-    const { HomePresenter, TaskGuidePresenter, TechPresenter } = dependencies;
+    const { TaskGuidePresenter, TechPresenter } = dependencies;
     defineStaticMethod(UIStatePresenter, 'buildGuidebookViewState', function buildGuidebookViewState(state = {}, options = {}) {
       return TaskGuidePresenter.buildGuidebookViewState(state, {
         ...options,
         buildCityPlanningViewState: (sourceState) => UIStatePresenter.buildCityPlanningViewState(sourceState),
-      });
-    });
-    defineStaticMethod(UIStatePresenter, 'buildHomeFeatureViewState', function buildHomeFeatureViewState(state = {}, options = {}) {
-      return HomePresenter.buildHomeFeatureViewState(state, {
-        ...options,
-        buildTaskCenterViewState: (sourceState) => UIStatePresenter.buildTaskCenterViewState(sourceState),
       });
     });
     defineStaticMethod(UIStatePresenter, 'buildTechViewState', function buildTechViewState(state = {}) {
