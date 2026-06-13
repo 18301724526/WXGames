@@ -124,7 +124,11 @@
             || null,
           showFpsOverlay: false,
         });
-        if (rendered && runtime?.syncHitTargetsFromRenderer) runtime.syncHitTargetsFromRenderer();
+        if (rendered && runtime?.syncHitTargetsFromRenderer) {
+          runtime.syncHitTargetsFromRenderer({
+            preserveOnEmpty: options.preserveRuntimeHitTargetsOnEmpty === true,
+          });
+        }
         return rendered;
       },
 
@@ -162,6 +166,7 @@
           ...options,
           state,
           territoryUiState,
+          preserveRuntimeHitTargetsOnEmpty: true,
           worldMapRuntimeContext: frameContext || options.worldMapRuntimeContext || null,
         });
         if (options.commitCamera !== false) runtime?.markBakedCamera?.(runtime.camera);

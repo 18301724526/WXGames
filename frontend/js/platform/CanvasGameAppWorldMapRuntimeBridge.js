@@ -67,7 +67,7 @@
         preserveCanvas: true,
         showFpsOverlay: false,
       });
-      runtime.syncHitTargetsFromRenderer?.();
+      runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
       this.renderer.render(this.state, {
         activeTab: 'military',
         isMapHome: true,
@@ -209,7 +209,7 @@
         preserveCanvas: true,
         showFpsOverlay: false,
       });
-      runtime.syncHitTargetsFromRenderer?.();
+      runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
       if (options.commitCamera !== false) runtime.markBakedCamera?.(runtime.camera);
       return true;
     },

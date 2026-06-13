@@ -83,7 +83,7 @@
         uiState: context.uiState,
         worldMapRuntimeContext: frameContext,
       }));
-      host.syncHitTargetsFromRenderer?.();
+      host.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
     }
     host.syncWaterAnimationFlag(context.uiState);
     host.lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });

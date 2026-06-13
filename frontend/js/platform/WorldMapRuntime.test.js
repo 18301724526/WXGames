@@ -312,6 +312,50 @@ test('WorldMapRuntime camera helpers preserve render and hit target side effects
   ]);
 });
 
+test('WorldMapRuntime preserves stable map hit targets while refreshing actor targets during snapshot sync', () => {
+  const mapTarget = {
+    x: 10,
+    y: 20,
+    width: 80,
+    height: 60,
+    action: { type: 'openWorldSite', siteId: 'capital' },
+  };
+  const oldActorTarget = {
+    x: 30,
+    y: 40,
+    width: 42,
+    height: 42,
+    action: { type: 'selectWorldActor', actorId: 'old' },
+  };
+  const nextActorTarget = {
+    x: 50,
+    y: 60,
+    width: 42,
+    height: 42,
+    action: { type: 'selectWorldActor', actorId: 'next' },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      hitTargets: [],
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      worldActorLayerRenderer: {
+        hitTargets: [nextActorTarget],
+      },
+      renderWorldMapLayer() {},
+    },
+    presenter: {},
+  });
+  runtime.baseHitTargets = [mapTarget, oldActorTarget];
+
+  runtime.syncHitTargetsFromRenderer({ preserveOnEmpty: true });
+
+  assert.deepEqual(runtime.baseHitTargets, [mapTarget, nextActorTarget]);
+  assert.equal(runtime.hitTargets.some((target) => target.action.type === 'openWorldSite'), true);
+  assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'old'), false);
+  assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'next'), true);
+});
+
 test('WorldMapRuntime drag helpers delegate camera math but keep map guards', () => {
   const calls = [];
   const runtime = new WorldMapRuntime({
@@ -382,6 +426,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     'WorldMapRuntimeBakePolicy.js',
     'WorldMapRuntimeCameraPolicy.js',
     'WorldMapRuntimeInputPolicy.js',
+    'WorldMapRuntimeHitTargetPolicy.js',
     'WorldMapRuntimeRenderPolicy.js',
     'WorldMapRuntimeRenderPipeline.js',
   ].forEach((scriptName) => {
@@ -398,6 +443,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     "require('../js/platform/WorldMapRuntimeBakePolicy')",
     "require('../js/platform/WorldMapRuntimeCameraPolicy')",
     "require('../js/platform/WorldMapRuntimeInputPolicy')",
+    "require('../js/platform/WorldMapRuntimeHitTargetPolicy')",
     "require('../js/platform/WorldMapRuntimeRenderPolicy')",
     "require('../js/platform/WorldMapRuntimeRenderPipeline')",
   ].forEach((requireText) => {

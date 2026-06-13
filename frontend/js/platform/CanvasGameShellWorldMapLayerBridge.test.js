@@ -135,6 +135,9 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     markBakedCamera(camera) {
       calls.push(['markBakedCamera', camera]);
     },
+    syncHitTargetsFromRenderer(options) {
+      calls.push(['syncHitTargetsFromRenderer', options]);
+    },
   };
   const shell = createShell({
     clearWorldMapLayerTransform() {
@@ -147,6 +150,11 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     },
     renderWorldActorLayer(options) {
       calls.push(['renderActor', options.state.id, options.territoryUiState.worldPanX]);
+      if (this.worldMapRuntimeCoordinator?.getMapRuntime) {
+        this.worldMapRuntimeCoordinator.getMapRuntime().syncHitTargetsFromRenderer?.({
+          preserveOnEmpty: options.preserveRuntimeHitTargetsOnEmpty === true,
+        });
+      }
       return true;
     },
     syncWorldMapRendererLayerMetrics() {
@@ -172,8 +180,49 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     ['renderSnapshot', 'state-1', 91, 123],
     ['renderFog'],
     ['renderActor', 'state-1', 1],
+    ['syncHitTargetsFromRenderer', { preserveOnEmpty: true }],
     ['markBakedCamera', runtime.camera],
     ['clearTransform'],
+  ]);
+});
+
+test('CanvasGameShellWorldMapLayerBridge preserves runtime targets on empty actor refresh', () => {
+  const calls = [];
+  const runtime = {
+    getCameraUiState() {
+      return { worldPanX: 3, worldPanY: 4 };
+    },
+    syncHitTargetsFromRenderer(options) {
+      calls.push(['syncHitTargetsFromRenderer', options]);
+    },
+  };
+  const shell = createShell({
+    buildRenderOptions() {
+      return { built: true };
+    },
+    syncWorldMapRendererLayerMetrics() {
+      calls.push(['syncMetrics']);
+      return true;
+    },
+    worldMapRuntimeCoordinator: {
+      getMapRuntime() {
+        return runtime;
+      },
+    },
+    worldMapRenderer: {
+      lastWorldTileMapContext: { frame: {} },
+      renderWorldMapActorLayer(state, options) {
+        calls.push(['renderActor', state.id, options.territoryUiState.worldPanX]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.renderWorldActorLayer({ preserveRuntimeHitTargetsOnEmpty: true }), true);
+  assert.deepEqual(calls, [
+    ['syncMetrics'],
+    ['renderActor', 'state-1', 3],
+    ['syncHitTargetsFromRenderer', { preserveOnEmpty: true }],
   ]);
 });
 

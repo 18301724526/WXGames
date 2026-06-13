@@ -151,6 +151,64 @@ test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is
   assert.deepEqual(host.lastLayout, { map: { x: 0, y: 0, width: 100, height: 100 } });
 });
 
+test('WorldMapRuntimeRenderPipeline preserves runtime hit targets during drag snapshot frames', () => {
+  const stableTarget = { x: 20, y: 30, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'capital' } };
+  const host = createHost({
+    baseHitTargets: [stableTarget],
+    dragLayerOffset: { x: 12, y: -8 },
+    hasBakedMapLayer: true,
+    hitTargets: [{ ...stableTarget, x: 32, y: 22 }],
+    mapBakeDirty: false,
+    getOffsetHitTargets() {
+      return this.baseHitTargets.map((target) => ({
+        ...target,
+        x: target.x + this.dragLayerOffset.x,
+        y: target.y + this.dragLayerOffset.y,
+      }));
+    },
+    isDragging() {
+      return true;
+    },
+    isMapBakeDirty() {
+      return false;
+    },
+    renderer: {
+      hitTargets: [],
+      worldActorLayerRenderer: {
+        hitTargets: [],
+      },
+      renderWorldMapLayer() {
+        throw new Error('full render should not run during drag snapshot');
+      },
+      renderWorldMapSnapshotLayer() {
+        this.hitTargets = [];
+        return true;
+      },
+      renderWorldMapActorLayer() {
+        this.worldActorLayerRenderer.hitTargets = [];
+        return true;
+      },
+    },
+    syncHitTargetsFromRenderer(options = {}) {
+      const nextTargets = [
+        ...(Array.isArray(this.renderer.hitTargets) ? this.renderer.hitTargets : []),
+        ...(Array.isArray(this.renderer.worldActorLayerRenderer?.hitTargets) ? this.renderer.worldActorLayerRenderer.hitTargets : []),
+      ];
+      if (!nextTargets.length && options.preserveOnEmpty === true) {
+        this.hitTargets = this.getOffsetHitTargets();
+        return this.hitTargets;
+      }
+      this.baseHitTargets = nextTargets;
+      this.hitTargets = this.getOffsetHitTargets();
+      return this.hitTargets;
+    },
+  });
+
+  assert.equal(RenderPipeline.render(host, { snapshotOnly: true, reuseCachedWorldTileView: true }), true);
+  assert.deepEqual(host.baseHitTargets, [stableTarget]);
+  assert.deepEqual(host.hitTargets, [{ ...stableTarget, x: 32, y: 22 }]);
+});
+
 test('WorldMapRuntimeRenderPipeline keeps actor anchor on the snapshot frame context', () => {
   const oldContext = {
     frame: { x: 0, y: 0, width: 300, height: 200 },

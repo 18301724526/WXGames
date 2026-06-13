@@ -101,8 +101,8 @@ test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits ca
     markBakedCamera(camera) {
       calls.push(['markBakedCamera', camera]);
     },
-    syncHitTargetsFromRenderer() {
-      calls.push(['syncHitTargetsFromRenderer']);
+    syncHitTargetsFromRenderer(options) {
+      calls.push(['syncHitTargetsFromRenderer', options]);
     },
   };
   const app = new App();
@@ -127,7 +127,7 @@ test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits ca
   assert.deepEqual(calls, [
     ['renderWorldMapSnapshotLayer', 'state-2', 91, 345],
     ['renderWorldMapActorLayer', 'state-2', 2],
-    ['syncHitTargetsFromRenderer'],
+    ['syncHitTargetsFromRenderer', { preserveOnEmpty: true }],
     ['markBakedCamera', runtime.camera],
   ]);
 });

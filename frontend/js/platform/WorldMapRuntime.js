@@ -54,6 +54,17 @@
     }
     return null;
   })();
+  const WorldMapRuntimeHitTargetPolicy = (() => {
+    if (global.WorldMapRuntimeHitTargetPolicy) return global.WorldMapRuntimeHitTargetPolicy;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapRuntimeHitTargetPolicy');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const WorldMapRuntimeRenderPipeline = (() => {
     if (global.WorldMapRuntimeRenderPipeline) return global.WorldMapRuntimeRenderPipeline;
     if (typeof module !== 'undefined' && module.exports) {
@@ -416,25 +427,47 @@
       return WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(this.baseHitTargets, this.dragLayerOffset);
     }
 
-    syncHitTargetsFromRenderer() {
+    syncHitTargetsFromRenderer(options = {}) {
       const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
       const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
-      const actorTargets = this.renderer?.worldActorLayerRenderer?.hitTargets || [];
-      const sourceTargets = [
-        ...(Array.isArray(this.renderer?.hitTargets) ? this.renderer.hitTargets : []),
-        ...(Array.isArray(actorTargets) ? actorTargets : []),
-      ];
-      this.baseHitTargets = WorldMapInputActionMap?.normalizeHitTargets
-        ? WorldMapInputActionMap.normalizeHitTargets(sourceTargets, {
+      const rendererTargetGroups = WorldMapRuntimeHitTargetPolicy?.collectRendererHitTargetGroups
+        ? WorldMapRuntimeHitTargetPolicy.collectRendererHitTargetGroups(this.renderer)
+        : {
+          mapTargets: Array.isArray(this.renderer?.hitTargets) ? this.renderer.hitTargets : [],
+          actorTargets: Array.isArray(this.renderer?.worldActorLayerRenderer?.hitTargets)
+            ? this.renderer.worldActorLayerRenderer.hitTargets
+            : [],
+        };
+      const normalizeTargets = (targets) => (WorldMapInputActionMap?.normalizeHitTargets
+        ? WorldMapInputActionMap.normalizeHitTargets(targets, {
           offsetX: -viewportOffsetX,
           offsetY: -viewportOffsetY,
         })
-        : [];
+        : []);
+      const mapTargets = normalizeTargets(rendererTargetGroups.mapTargets);
+      const actorTargets = normalizeTargets(rendererTargetGroups.actorTargets);
+      const sourceTargets = [
+        ...mapTargets,
+        ...actorTargets,
+      ];
+      const resolvedTargets = WorldMapRuntimeHitTargetPolicy?.resolveBaseHitTargets
+        ? WorldMapRuntimeHitTargetPolicy.resolveBaseHitTargets({
+          preserveOnEmpty: options.preserveOnEmpty,
+          actorTargets,
+          mapTargets,
+          previousBaseHitTargets: this.baseHitTargets,
+          sourceTargets,
+        })
+        : { preserved: false, targets: sourceTargets };
+      this.baseHitTargets = resolvedTargets.targets;
       this.hitTargets = this.getOffsetHitTargets();
       global.ClientOperationLog?.recordSampled?.('worldMap:hitTargetsSynced', 'hitTargets', {
         baseHitTargetCount: this.baseHitTargets.length,
         hitTargetCount: this.hitTargets.length,
-        actorTargetCount: Array.isArray(actorTargets) ? actorTargets.length : 0,
+        sourceHitTargetCount: sourceTargets.length,
+        mapTargetCount: mapTargets.length,
+        preserved: Boolean(resolvedTargets.preserved),
+        actorTargetCount: actorTargets.length,
         viewportOffsetX,
         viewportOffsetY,
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),

@@ -37,6 +37,7 @@ require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/WorldMapRuntimeBakePolicy');
 require('../js/platform/WorldMapRuntimeCameraPolicy');
 require('../js/platform/WorldMapRuntimeInputPolicy');
+require('../js/platform/WorldMapRuntimeHitTargetPolicy');
 require('../js/platform/WorldMapRuntimeRenderPolicy');
 require('../js/platform/WorldMapRuntimeRenderPipeline');
 require('../js/platform/WorldMapRuntime');

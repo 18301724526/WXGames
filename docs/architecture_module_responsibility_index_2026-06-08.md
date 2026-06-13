@@ -6668,6 +6668,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - bake policy delegation through `WorldMapRuntimeBakePolicy`
 - camera policy delegation through `WorldMapRuntimeCameraPolicy`
 - input geometry delegation through `WorldMapRuntimeInputPolicy`
+- hit target collection and snapshot replacement policy delegation through `WorldMapRuntimeHitTargetPolicy`
 - render pipeline delegation through `WorldMapRuntimeRenderPipeline`
 
 重要公开方法 / Important Public Methods:
@@ -6691,7 +6692,8 @@ These files are not "bad"; they are high-risk because they own too many responsi
 2. Done: P9-001 moved map signature generation, signature sync result derivation, and pure bake-dirty checks into `WorldMapRuntimeBakePolicy`.
 3. Done: P9-002 moved initial camera normalization, camera UI-state composition, UI camera sync, camera change resolution, drag math, baked-camera offset, and drag-layer hit-target offsets into `WorldMapRuntimeCameraPolicy`.
 4. Done: P9-003 moved input-layout availability, map input rectangle fallback resolution, and point-in-map bounds checks into `WorldMapRuntimeInputPolicy`.
-5. Done: P9-004 moved pure render decisions into `WorldMapRuntimeRenderPolicy` and render-flow orchestration into `WorldMapRuntimeRenderPipeline`.
+5. Done: P9-003b moved renderer hit-target collection and empty snapshot preservation decisions into `WorldMapRuntimeHitTargetPolicy`.
+6. Done: P9-004 moved pure render decisions into `WorldMapRuntimeRenderPolicy` and render-flow orchestration into `WorldMapRuntimeRenderPipeline`.
 
 当前扩展方式 / Extension Path Now:
 
@@ -6699,6 +6701,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Add render-flow side effects through `WorldMapRuntimeRenderPipeline`.
 - Add new world-map input mapping through `WorldMapInputActionMap`.
 - Add pure world-map input geometry through `WorldMapRuntimeInputPolicy`.
+- Add pure hit-target collection and snapshot replacement rules through `WorldMapRuntimeHitTargetPolicy`.
 - Add map-bake signature or dirty-check changes through `WorldMapRuntimeBakePolicy`.
 - Add pure render context, throttle, renderer option, and trace payload changes through `WorldMapRuntimeRenderPolicy`.
 - Do not add gameplay simulation or rendering details.
