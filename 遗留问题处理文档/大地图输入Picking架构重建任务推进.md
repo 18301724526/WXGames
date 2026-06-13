@@ -39,15 +39,17 @@
 
 ### 第二阶段：建立正确边界
 
-- 新增或收敛 `WorldMapInputActionMap` 的 world picking API，让背景 tile 推导成为独立输入模型能力。
-- `WorldMapRuntime.handleTap()` 先处理稳定前景目标，再使用独立背景 picking 推导 tile，不能因为 runtime hitTargets 缺少 `worldMapDrag` 就直接失败。
+- 新增 `WorldMapPickingModel`，由 `lastWorldTileMapContext` 的 frame / viewport / geometry / sites / actors 生成 `world-map-picking-snapshot-v1`，世界城池与部队命中不再依赖 renderer hitTargets。
+- `WorldMapRuntime` 增加 picking snapshot 缓存和 `inputEpoch`：同一份 context 重复读取不推进 epoch，camera/view/entity context 变化时推进 epoch 并重建 picking snapshot。
+- `WorldMapInputActionMap.resolveTapAction()` 先处理显式非 world UI/HUD hit target，再处理稳定 picking snapshot，最后才用 context 推导背景 tile；renderer 产出的 world-surface hitTargets 不再压过稳定 picking。
+- `WorldMapRuntime.handleTap()` 使用稳定 picking 与独立背景 picking 推导 action，不能因为 runtime hitTargets 缺少 `worldMapDrag` 就直接失败。
 - `WorldMapRuntimeHitTargetPolicy` 在 snapshot / preserve 模式中识别 partial map target，同步时保留旧地图目标，只替换 actor layer 目标。
 
 ### 第三阶段：移除旧依赖
 
 - renderer snapshot frame 不再作为完整输入索引来源。
-- `WorldMapRuntime` 不再把 renderer hitTargets 视为背景 tile picking 的权威。
-- 更新 `frontend/index.html` cache key，避免浏览器继续加载旧 runtime。
+- `WorldMapRuntime` 不再把 renderer hitTargets 视为背景 tile picking 或世界实体 picking 的权威。
+- 更新 `frontend/index.html` cache key 并加入 `WorldMapPickingModel.js`，避免浏览器继续加载旧 runtime / action map。
 
 ### 第四阶段：门禁
 

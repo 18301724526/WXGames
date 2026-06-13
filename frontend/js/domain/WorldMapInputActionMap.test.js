@@ -6,6 +6,7 @@ require('./WorldTime');
 require('./WorldMarchProgressSnapshot');
 require('./WorldMarchSystem');
 const WorldMapInputActionMap = require('./WorldMapInputActionMap');
+const WorldMapPickingModel = require('./WorldMapPickingModel');
 
 function createContext() {
   return {
@@ -79,6 +80,26 @@ test('WorldMapInputActionMap resolves background tiles from context without rend
   assert.equal(action.type, 'selectWorldMarchTarget');
   assert.equal(action.targetQ, 1);
   assert.equal(action.targetR, 0);
+});
+
+test('WorldMapInputActionMap resolves world entities from picking snapshot before renderer world targets', () => {
+  const context = createContext();
+  const pickingSnapshot = WorldMapPickingModel.createSnapshot({
+    ...context,
+    frame: { x: 0, y: 0, width: 300, height: 300 },
+    actors: [{ id: 'actor-1', missionId: 'mission-1', current: { q: 1, r: 0 } }],
+  });
+  const action = WorldMapInputActionMap.resolveTapAction({ x: 148, y: 124 }, {
+    hitTargets: [
+      { x: 120, y: 100, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'stale-renderer-site' } },
+    ],
+    backgroundPoint: { x: 148, y: 124 },
+    context,
+    pickingSnapshot,
+  });
+
+  assert.equal(action.type, 'selectWorldActor');
+  assert.equal(action.actorId, 'actor-1');
 });
 
 test('WorldMapInputActionMap normalizes allowed hit targets with offsets', () => {

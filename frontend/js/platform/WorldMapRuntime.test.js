@@ -166,6 +166,79 @@ test('WorldMapRuntime infers background tile targets when snapshot hit targets a
   assert.equal(calls[0].targetR, 0);
 });
 
+test('WorldMapRuntime resolves world site and actor picks from stable context instead of renderer hit targets', () => {
+  const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const context = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: {
+      originX: 180,
+      originY: 220,
+      panX: 0,
+      panY: 0,
+      scale: 1,
+    },
+    tileMapView: {
+      version: 2,
+      seed: 'seed',
+      geometry,
+      sites: [{ id: 'capital', type: 'city', owner: 'player' }],
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', site: { id: 'capital', type: 'city', owner: 'player' } },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
+      ],
+    },
+    actors: [{ id: 'actor-1', missionId: 'mission-1', current: { q: 1, r: 0, tileId: 'tile_1_0' } }],
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      renderWorldMapLayer() {},
+      lastWorldTileMapContext: context,
+    },
+    presenter: {},
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  runtime.lastTileMapContext = context;
+  runtime.hitTargets = [
+    { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true } },
+  ];
+
+  assert.equal(runtime.handleTap({ x: 180, y: 196 }), true);
+  assert.equal(calls[0].type, 'openWorldSite');
+  assert.equal(calls[0].siteId, 'capital');
+  assert.equal(runtime.handleTap({ x: 276, y: 252 }), true);
+  assert.equal(calls[1].type, 'selectWorldActor');
+  assert.equal(calls[1].actorId, 'actor-1');
+});
+
+test('WorldMapRuntime advances input epoch only when picking context changes', () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const context = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: { originX: 180, originY: 220, panX: 0, panY: 0, scale: 1 },
+    tileMapView: { version: 1, seed: 'seed', geometry, tiles: [{ id: 'tile_0_0', q: 0, r: 0 }] },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: { renderWorldMapLayer() {}, lastWorldTileMapContext: context },
+    presenter: {},
+  });
+  runtime.lastTileMapContext = context;
+
+  const first = runtime.getPickingSnapshot();
+  const second = runtime.getPickingSnapshot();
+  context.viewport.panX = 12;
+  const third = runtime.getPickingSnapshot();
+
+  assert.equal(first.inputEpoch, 1);
+  assert.equal(second.inputEpoch, 1);
+  assert.equal(third.inputEpoch, 2);
+});
+
 test('WorldMapRuntime converts HUD taps into padded world-layer coordinates before inferring fog march targets', () => {
   const calls = [];
   const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
@@ -480,6 +553,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
   const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
 
   [
+    'WorldMapPickingModel.js',
     'WorldMapRuntimeBakePolicy.js',
     'WorldMapRuntimeCameraPolicy.js',
     'WorldMapRuntimeInputPolicy.js',
@@ -497,6 +571,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     );
   });
   [
+    "require('../js/domain/WorldMapPickingModel')",
     "require('../js/platform/WorldMapRuntimeBakePolicy')",
     "require('../js/platform/WorldMapRuntimeCameraPolicy')",
     "require('../js/platform/WorldMapRuntimeInputPolicy')",

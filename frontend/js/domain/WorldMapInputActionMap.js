@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const WorldMapPickingModel = (() => {
+    if (global.WorldMapPickingModel) return global.WorldMapPickingModel;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapPickingModel');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const DEFAULT_ALLOWED_ACTIONS = Object.freeze([
     'openWorldSite',
@@ -76,6 +87,14 @@
 
   function isWorldSiteAction(action = {}) {
     return action?.type === 'openWorldSite' || action?.type === 'enterCity';
+  }
+
+  function isRendererWorldSurfaceAction(action = {}) {
+    if (!action?.type) return false;
+    return action.type === 'worldMapDrag'
+      || action.type === 'openWorldSite'
+      || action.type === 'selectWorldActor'
+      || (action.type === 'selectWorldMarchTarget' && action.background);
   }
 
   function getTopmostForegroundAction(point = {}, targets = [], predicate = null) {
@@ -175,16 +194,25 @@
     return tile ? buildSelectWorldMarchTargetAction(tile, { background: true }) : null;
   }
 
+  function getPickingSnapshotAction(point = {}, input = {}, options = {}) {
+    const pickingSnapshot = input.pickingSnapshot || options.pickingSnapshot || null;
+    if (!pickingSnapshot || !WorldMapPickingModel?.resolveAction) return null;
+    return WorldMapPickingModel.resolveAction(point, pickingSnapshot);
+  }
+
   function resolveTapAction(point = {}, input = {}, options = {}) {
     const action = getHitTarget(point, input.hitTargets || input.targets || []);
     const context = input.context || input.tileMapContext || {};
     const backgroundPoint = input.backgroundPoint || options.backgroundPoint || point;
+    if (action?.disabled) return null;
+    if (action && !isRendererWorldSurfaceAction(action)) return action;
+    const pickingAction = getPickingSnapshotAction(backgroundPoint, input, options);
+    if (pickingAction) return pickingAction.disabled ? null : pickingAction;
     if (!action) {
       if (options.allowContextBackground === false) return null;
       if (!isPointInContextFrame(backgroundPoint, context)) return null;
       return getBackgroundMarchTargetAction(backgroundPoint, context, options);
     }
-    if (action.disabled) return null;
     if (action.type === 'worldMapDrag') {
       return getBackgroundMarchTargetAction(backgroundPoint, context, options);
     }
@@ -207,6 +235,7 @@
     isAllowedAction,
     isPointInContextFrame,
     isKnownTile,
+    isRendererWorldSurfaceAction,
     isWorldSiteAction,
     normalizeHitTarget,
     normalizeHitTargets,

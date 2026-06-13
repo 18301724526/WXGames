@@ -18,6 +18,7 @@ require('../js/domain/WorldMapEntitySnapshot');
 require('../js/domain/WorldMapRenderSnapshot');
 require('../js/domain/WorldMapPerformanceBudget');
 require('../js/domain/WorldFogVisualSnapshot');
+require('../js/domain/WorldMapPickingModel');
 require('../js/domain/WorldMapInputActionMap');
 require('../js/domain/DebugOverlaySnapshot');
 require('../js/config/AssetKeyRegistry');

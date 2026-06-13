@@ -21,6 +21,17 @@
     }
     return null;
   })();
+  const WorldMapPickingModel = (() => {
+    if (global.WorldMapPickingModel) return global.WorldMapPickingModel;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMapPickingModel');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const WorldMapRuntimeBakePolicy = (() => {
     if (global.WorldMapRuntimeBakePolicy) return global.WorldMapRuntimeBakePolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -112,6 +123,9 @@
       this.mapBakeDirty = true;
       this.lastMapDataSignature = '';
       this.lastTileMapContext = null;
+      this.inputEpoch = 0;
+      this.lastPickingSignature = '';
+      this.pickingSnapshot = null;
     }
 
     setRenderer(renderer) {
@@ -424,10 +438,29 @@
           hitTargets: this.hitTargets,
           backgroundPoint: normalizedPoint,
           context,
+          pickingSnapshot: this.getPickingSnapshot(),
         });
         if (action) return action;
       }
       return this.getHitTarget(point);
+    }
+
+    getPickingSnapshot() {
+      const context = this.getLastTileMapContext();
+      if (!context || !WorldMapPickingModel?.buildSignature || !WorldMapPickingModel?.createSnapshot) {
+        this.lastPickingSignature = '';
+        this.pickingSnapshot = null;
+        return null;
+      }
+      const signature = WorldMapPickingModel.buildSignature(context);
+      if (this.pickingSnapshot && signature === this.lastPickingSignature) return this.pickingSnapshot;
+      this.inputEpoch += 1;
+      this.lastPickingSignature = signature;
+      this.pickingSnapshot = WorldMapPickingModel.createSnapshot(context, {
+        inputEpoch: this.inputEpoch,
+        signature,
+      });
+      return this.pickingSnapshot;
     }
 
     syncHitTargetsFromRenderer(options = {}) {
