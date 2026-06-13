@@ -104,7 +104,7 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
 
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
 
-const CONFIG_VERSION = '2.0.0';
+const CONFIG_VERSION = '3.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 
