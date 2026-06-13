@@ -29,6 +29,81 @@
     return error;
   }
 
+  function round(value, digits = 3) {
+    const factor = 10 ** digits;
+    return Math.round(toNumber(value, 0) * factor) / factor;
+  }
+
+  function summarizePoint(point = {}) {
+    if (!point || typeof point !== 'object') return null;
+    const summary = {
+      x: round(point.x ?? point.clientX),
+      y: round(point.y ?? point.clientY),
+    };
+    if (point.pointerId !== undefined) summary.pointerId = point.pointerId;
+    return summary;
+  }
+
+  function summarizeAction(action = null) {
+    if (!action || typeof action !== 'object') return null;
+    const summary = { type: String(action.type || '').slice(0, 80) };
+    ['siteId', 'territoryId', 'cityId', 'tileId', 'actorId', 'missionId', 'source'].forEach((key) => {
+      if (action[key] !== undefined && action[key] !== '') summary[key] = String(action[key]).slice(0, 96);
+    });
+    if (action.targetQ !== undefined || action.q !== undefined) summary.targetQ = Math.floor(toNumber(action.targetQ ?? action.q));
+    if (action.targetR !== undefined || action.r !== undefined) summary.targetR = Math.floor(toNumber(action.targetR ?? action.r));
+    if (action.background !== undefined) summary.background = Boolean(action.background);
+    if (action.known !== undefined) summary.known = Boolean(action.known);
+    return summary;
+  }
+
+  function summarizeClientInputIntent(intent = null) {
+    if (!intent || typeof intent !== 'object') return null;
+    const points = intent.points && typeof intent.points === 'object' ? intent.points : {};
+    const target = intent.target && typeof intent.target === 'object' ? intent.target : {};
+    const picking = intent.picking && typeof intent.picking === 'object' ? intent.picking : {};
+    const view = intent.view && typeof intent.view === 'object' ? intent.view : {};
+    const camera = view.camera && typeof view.camera === 'object' ? view.camera : {};
+    const viewport = view.viewport && typeof view.viewport === 'object' ? view.viewport : {};
+    return {
+      schema: String(intent.schema || '').slice(0, 80),
+      kind: String(intent.kind || '').slice(0, 32),
+      source: String(intent.source || '').slice(0, 80),
+      points: {
+        physical: summarizePoint(points.physical),
+        layer: summarizePoint(points.layer),
+      },
+      action: summarizeAction(intent.action),
+      target: {
+        kind: String(target.kind || '').slice(0, 32),
+        tileId: target.tileId ? String(target.tileId).slice(0, 96) : undefined,
+        siteId: target.siteId ? String(target.siteId).slice(0, 96) : undefined,
+        actorId: target.actorId ? String(target.actorId).slice(0, 96) : undefined,
+        missionId: target.missionId ? String(target.missionId).slice(0, 96) : undefined,
+        targetQ: target.targetQ !== undefined ? Math.floor(toNumber(target.targetQ)) : undefined,
+        targetR: target.targetR !== undefined ? Math.floor(toNumber(target.targetR)) : undefined,
+      },
+      picking: {
+        inputEpoch: Math.max(0, Math.floor(toNumber(picking.inputEpoch, 0))),
+        signature: String(picking.signature || '').slice(0, 160),
+        counts: picking.counts && typeof picking.counts === 'object' ? {
+          sites: Math.max(0, Math.floor(toNumber(picking.counts.sites, 0))),
+          actors: Math.max(0, Math.floor(toNumber(picking.counts.actors, 0))),
+          targets: Math.max(0, Math.floor(toNumber(picking.counts.targets, 0))),
+        } : undefined,
+      },
+      view: {
+        camera: {
+          x: round(camera.x),
+          y: round(camera.y),
+        },
+        viewport: {
+          scale: round(viewport.scale, 4),
+        },
+      },
+    };
+  }
+
   function isAbortError(error) {
     return error?.name === 'AbortError' || error?.code === 'ABORT_ERR';
   }
@@ -480,9 +555,30 @@
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
     scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
     claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }
-    startWorldMarch(options = {}) { return this.request('POST', '/game/action', { action: 'startWorldMarch', ...options }); }
-    returnWorldMarch(missionId) { return this.request('POST', '/game/action', { action: 'returnWorldMarch', missionId }); }
-    stopWorldMarch(missionId) { return this.request('POST', '/game/action', { action: 'stopWorldMarch', missionId }); }
+    startWorldMarch(options = {}) {
+      const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
+      return this.request('POST', '/game/action', {
+        action: 'startWorldMarch',
+        ...options,
+        ...(clientInputIntent ? { clientInputIntent } : {}),
+      });
+    }
+    returnWorldMarch(missionId, options = {}) {
+      const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
+      return this.request('POST', '/game/action', {
+        action: 'returnWorldMarch',
+        missionId,
+        ...(clientInputIntent ? { clientInputIntent } : {}),
+      });
+    }
+    stopWorldMarch(missionId, options = {}) {
+      const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
+      return this.request('POST', '/game/action', {
+        action: 'stopWorldMarch',
+        missionId,
+        ...(clientInputIntent ? { clientInputIntent } : {}),
+      });
+    }
     startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
     renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }
@@ -492,5 +588,6 @@
   }
 
   global.GameAPI = GameAPI;
+  GameAPI.summarizeClientInputIntent = summarizeClientInputIntent;
   if (typeof module !== 'undefined' && module.exports) module.exports = GameAPI;
 })(typeof window !== 'undefined' ? window : globalThis);

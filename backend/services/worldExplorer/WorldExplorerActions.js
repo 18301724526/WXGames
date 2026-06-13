@@ -240,6 +240,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   });
   return attachMarchAuthority(result, gameState, mission, 'startWorldMarch', now, {
     clientSequence: options.clientSequence,
+    clientInputIntent: options.clientInputIntent,
     aoiRadius: options.aoiRadius,
   });
 }
@@ -323,6 +324,7 @@ function attachMarchAuthority(result = {}, gameState = {}, mission = null, actio
     missionId: mission.id,
     playerId: gameState.playerId || '',
     clientSequence: options.clientSequence || null,
+    clientInputIntent: options.clientInputIntent || null,
     serverTime: now.toISOString(),
   }, {
     serverTime: now.toISOString(),
@@ -331,25 +333,35 @@ function attachMarchAuthority(result = {}, gameState = {}, mission = null, actio
   });
 }
 
-function returnWorldMarch(gameState, missionId, now = new Date()) {
-  const mission = findReturnableMission(gameState, missionId, now);
+function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) {
+  let resolvedOptions = options || {};
+  let resolvedNow = now;
+  if (options instanceof Date || typeof options?.toISOString === 'function') {
+    resolvedNow = options;
+    resolvedOptions = {};
+  }
+  const mission = findReturnableMission(gameState, missionId, resolvedNow);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
   const current = getReturnRouteOrigin(mission);
   const origin = mission.homeOrigin || mission.origin || { q: 0, r: 0 };
-  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const worldMap = WorldMapService.ensureWorldMap(gameState, resolvedNow);
   const routeResult = buildManualRoute(current, { q: origin.q, r: origin.r }, worldMap.seed);
   if (!routeResult.success) {
-    rebaseMissionRoute(mission, [], now, { origin: current });
+    rebaseMissionRoute(mission, [], resolvedNow, { origin: current });
   } else {
-    rebaseMissionRoute(mission, routeResult.route, now, { origin: current });
+    rebaseMissionRoute(mission, routeResult.route, resolvedNow, { origin: current });
   }
   const result = {
     success: true,
     message: 'Explorer returning.',
-    mission: getClientMission(mission, now),
+    mission: getClientMission(mission, resolvedNow),
     tutorial: gameState.tutorial,
   };
-  return attachMarchAuthority(result, gameState, mission, 'returnWorldMarch', now);
+  return attachMarchAuthority(result, gameState, mission, 'returnWorldMarch', resolvedNow, {
+    clientSequence: resolvedOptions.clientSequence,
+    clientInputIntent: resolvedOptions.clientInputIntent,
+    aoiRadius: resolvedOptions.aoiRadius,
+  });
 }
 
 function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
@@ -373,6 +385,7 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   };
   return attachMarchAuthority(result, gameState, mission, 'stopWorldMarch', now, {
     clientSequence: options.clientSequence,
+    clientInputIntent: options.clientInputIntent,
     aoiRadius: options.aoiRadius,
   });
 }

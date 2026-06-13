@@ -1,3 +1,8 @@
+let CommandAuthorityContract = null;
+try {
+  ({ CommandAuthorityContract } = require('./realtime'));
+} catch (_) {}
+
 class LogService {
   constructor(db) { this.db = db; }
 
@@ -86,6 +91,7 @@ class LogService {
       targetQ: payload.targetQ ?? payload.q ?? payload.x ?? null,
       targetR: payload.targetR ?? payload.r ?? payload.y ?? null,
       formationSlot: payload.formationSlot ?? payload.slot ?? null,
+      clientInput: CommandAuthorityContract?.summarizeClientInput?.(payload.clientInputIntent) || null,
       success: result.success,
       error: result.error || '',
     };

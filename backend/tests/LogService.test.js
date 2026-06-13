@@ -80,6 +80,42 @@ test('LogService stores server operation metadata inside local api logs', () => 
   assert.equal(body.operationLog.success, true);
 });
 
+test('LogService stores compact client input evidence in server operation metadata', () => {
+  const { calls, db } = createDbHarness();
+  const service = new LogService(db);
+
+  service.logApi(
+    'player-1',
+    'device-1',
+    'POST',
+    '/api/game/action',
+    {
+      action: 'startWorldMarch',
+      clientRequestId: 'api-8',
+      targetQ: 2,
+      targetR: -1,
+      clientInputIntent: {
+        schema: 'world-map-input-intent-v1',
+        target: { kind: 'tile', tileId: 'tile_999_999', targetQ: 999, targetR: 999 },
+        picking: { inputEpoch: 8, signature: 'sig-8' },
+        tileMapView: { tiles: [{ id: 'must-not-log' }] },
+      },
+    },
+    200,
+    { success: true, mission: { id: 'march-1' } },
+    42,
+  );
+
+  const runCall = calls.find((call) => call[0] === 'run');
+  const body = JSON.parse(runCall[1][4]);
+  const text = JSON.stringify(body.operationLog.clientInput);
+
+  assert.equal(body.operationLog.clientInput.schema, 'world-map-input-intent-v1');
+  assert.equal(body.operationLog.clientInput.target.targetQ, 999);
+  assert.equal(text.includes('tileMapView'), false);
+  assert.equal(text.includes('must-not-log'), false);
+});
+
 test('LogService stores and queries explicit client operation log snapshots', () => {
   const { db } = createDbHarness();
   const service = new LogService(db);

@@ -138,3 +138,39 @@ test('CommandAuthorityContract wraps accepted and rejected commands consistently
   assert.equal(rejected.authority.status, 'rejected');
   assert.equal(rejected.authority.rejection.error, 'MISSION_NOT_FOUND');
 });
+
+test('CommandAuthorityContract preserves only compact client input evidence', () => {
+  const accepted = CommandAuthorityContract.accept({
+    type: 'startWorldMarch',
+    actorId: 'explore-1',
+    playerId: 'player-1',
+    serverTime: '2026-06-06T00:00:06.000Z',
+    clientInputIntent: {
+      schema: 'world-map-input-intent-v1',
+      kind: 'tap',
+      points: {
+        physical: { x: 12, y: 34 },
+        layer: { x: 112, y: 234 },
+      },
+      action: {
+        type: 'startWorldMarch',
+        tileId: 'tile_4_-2',
+        targetQ: 4,
+        targetR: -2,
+        rendererPayload: 'x'.repeat(3000),
+      },
+      target: { kind: 'tile', tileId: 'tile_4_-2', targetQ: 4, targetR: -2 },
+      picking: { inputEpoch: 7, signature: 'sig-7', counts: { targets: 5 } },
+      view: { camera: { x: 1, y: 2 }, viewport: { scale: 1.25 } },
+      tileMapView: { tiles: Array.from({ length: 100 }, (_, index) => ({ id: `tile_${index}` })) },
+    },
+  });
+  const evidenceText = JSON.stringify(accepted.command.clientInput);
+
+  assert.equal(accepted.command.clientInput.schema, 'world-map-input-intent-v1');
+  assert.equal(accepted.command.clientInput.target.tileId, 'tile_4_-2');
+  assert.equal(accepted.command.clientInput.picking.inputEpoch, 7);
+  assert.equal(evidenceText.includes('tileMapView'), false);
+  assert.equal(evidenceText.includes('rendererPayload'), false);
+  assert.ok(evidenceText.length < 1600);
+});

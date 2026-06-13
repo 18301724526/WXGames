@@ -141,6 +141,50 @@ test('world march starts a manual route and stops only at the server timeline ti
   assert.equal(stopped.authority.timeline.stopTile.tileId, 'tile_0_0');
 });
 
+test('world march treats client input intent as evidence, not coordinate authority', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+    clientInputIntent: {
+      schema: 'world-map-input-intent-v1',
+      target: { kind: 'tile', tileId: 'tile_999_999', targetQ: 999, targetR: 999 },
+      picking: { inputEpoch: 9, signature: 'client-sig' },
+      view: { camera: { x: 12, y: -4 } },
+    },
+  }, now);
+
+  assert.equal(started.success, true);
+  assert.equal(started.mission.target.q, 2);
+  assert.equal(started.mission.target.r, 0);
+  assert.equal(started.authority.command.clientInput.target.targetQ, 999);
+  assert.equal(started.authority.timeline.stopTile.tileId, 'tile_0_0');
+});
+
+test('return world march carries client input evidence into authority envelope', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    { clientInputIntent: { schema: 'world-map-input-intent-v1', target: { kind: 'actor', actorId: started.mission.id } } },
+    new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS + 1),
+  );
+
+  assert.equal(returned.success, true);
+  assert.equal(returned.authority.command.type, 'returnWorldMarch');
+  assert.equal(returned.authority.command.clientInput.target.actorId, started.mission.id);
+});
+
 test('stopped world march remains a client-visible idle mission after normalization', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();

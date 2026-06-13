@@ -425,7 +425,7 @@
             }
           },
 
-      async returnWorldMarch(missionId) {
+      async returnWorldMarch(missionId, options = {}) {
             if (!missionId) return false;
             try {
               global.WorldMarchTrace?.log?.('app:returnWorldMarch:begin', {
@@ -433,7 +433,7 @@
                 before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
               const api = this.getGameApi();
-              const result = await api.returnWorldMarch(missionId);
+              const result = await api.returnWorldMarch(missionId, options);
               this.applyApiState(result);
               global.WorldMarchTrace?.log?.('app:returnWorldMarch:afterApply', {
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
@@ -454,7 +454,7 @@
             }
           },
 
-      async stopWorldMarch(missionId) {
+      async stopWorldMarch(missionId, options = {}) {
             if (!missionId) return false;
             try {
               global.WorldMarchTrace?.log?.('app:stopWorldMarch:begin', {
@@ -462,7 +462,7 @@
                 before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
               const api = this.getGameApi();
-              const result = await api.stopWorldMarch(missionId);
+              const result = await api.stopWorldMarch(missionId, options);
               this.applyApiState(result);
               global.WorldMarchTrace?.log?.('app:stopWorldMarch:afterApply', {
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,

@@ -248,7 +248,7 @@
         return handled;
       },
 
-      handle_startWorldMarch(action) {
+      handle_startWorldMarch(action, meta = {}) {
         const q = Math.floor(Number(action.targetQ ?? action.q));
         const r = Math.floor(Number(action.targetR ?? action.r));
         if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
@@ -261,6 +261,7 @@
             formationSlot: action.formationSlot || action.slot || 1,
             cityId: action.cityId || game?.state?.activeCityId || 'capital',
           };
+          if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
           return this.runAction(() => this.host.api.startWorldMarch(options));
         };
@@ -276,13 +277,14 @@
         }));
       },
 
-      handle_returnWorldMarch(action) {
+      handle_returnWorldMarch(action, meta = {}) {
         const missionId = action.missionId || action.actorId || '';
         if (!missionId) return false;
         const game = this.getGameHost();
+        const options = meta.inputIntent ? { clientInputIntent: meta.inputIntent } : {};
         const run = () => {
-          if (typeof game?.returnWorldMarch === 'function') return game.returnWorldMarch(missionId);
-          return this.runAction(() => this.host.api.returnWorldMarch(missionId));
+          if (typeof game?.returnWorldMarch === 'function') return game.returnWorldMarch(missionId, options);
+          return this.runAction(() => this.host.api.returnWorldMarch(missionId, options));
         };
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {
@@ -294,13 +296,14 @@
         }));
       },
 
-      handle_stopWorldMarch(action) {
+      handle_stopWorldMarch(action, meta = {}) {
         const missionId = action.missionId || action.actorId || '';
         if (!missionId) return false;
         const game = this.getGameHost();
+        const options = meta.inputIntent ? { clientInputIntent: meta.inputIntent } : {};
         const run = () => {
-          if (typeof game?.stopWorldMarch === 'function') return game.stopWorldMarch(missionId);
-          return this.runAction(() => this.host.api.stopWorldMarch(missionId));
+          if (typeof game?.stopWorldMarch === 'function') return game.stopWorldMarch(missionId, options);
+          return this.runAction(() => this.host.api.stopWorldMarch(missionId, options));
         };
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {

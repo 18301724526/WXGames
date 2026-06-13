@@ -120,6 +120,45 @@ test('GameAPI records local operation logs without extra client-event requests',
   assert.equal(operationEvents[1][3], 200);
 });
 
+test('GameAPI sends compact client input intent evidence for world march commands', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request(request) {
+        calls.push(JSON.parse(request.body));
+        return createResponse(200, { success: true, gameState: { playerId: 'player-1' } });
+      },
+    },
+  });
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    points: { physical: { x: 1, y: 2 }, layer: { x: 101, y: 202 } },
+    action: { type: 'startWorldMarch', targetQ: 3, targetR: -2, rendererPayload: 'x'.repeat(2000) },
+    target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
+    picking: { inputEpoch: 9, signature: 'sig-9', counts: { targets: 7 } },
+    view: { camera: { x: 4, y: 5 }, viewport: { scale: 1.25 } },
+    tileMapView: { tiles: Array.from({ length: 50 }, (_, index) => ({ id: `tile_${index}` })) },
+  };
+
+  await api.startWorldMarch({
+    targetQ: 3,
+    targetR: -2,
+    formationSlot: 1,
+    clientInputIntent: inputIntent,
+  });
+  await api.returnWorldMarch('mission-1', { clientInputIntent: inputIntent });
+
+  assert.equal(calls[0].action, 'startWorldMarch');
+  assert.equal(calls[0].clientInputIntent.schema, 'world-map-input-intent-v1');
+  assert.equal(calls[0].clientInputIntent.target.tileId, 'tile_3_-2');
+  assert.equal(calls[0].clientInputIntent.picking.inputEpoch, 9);
+  assert.equal(JSON.stringify(calls[0].clientInputIntent).includes('tileMapView'), false);
+  assert.equal(JSON.stringify(calls[0].clientInputIntent).includes('rendererPayload'), false);
+  assert.equal(calls[1].action, 'returnWorldMarch');
+  assert.equal(calls[1].clientInputIntent.target.tileId, 'tile_3_-2');
+});
+
 test('GameAPI reports H5 load trace failures for 504 version checks', async () => {
   const calls = [];
   const api = new GameAPI('/api', null, {

@@ -67,7 +67,7 @@ function execute(action, gameState, payload = {}) {
     return WorldExplorerService.startWorldMarch(gameState, payload);
   }
   if (action === 'returnWorldMarch') {
-    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId);
+    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId, payload);
   }
   if (action === 'stopWorldMarch') {
     return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, payload);

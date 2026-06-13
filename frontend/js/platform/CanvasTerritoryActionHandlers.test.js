@@ -263,6 +263,58 @@ test('CanvasTerritoryActionHandlers resets runtime world camera for return-home 
   ]);
 });
 
+test('CanvasTerritoryActionHandlers forwards runtime input intent evidence to world march commands', async () => {
+  const calls = [];
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    target: { kind: 'tile', tileId: 'tile_4_-2', targetQ: 4, targetR: -2 },
+    picking: { inputEpoch: 3, signature: 'pick-3' },
+  };
+  const game = {
+    territoryUiState: {},
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+    returnWorldMarch(missionId, options) {
+      calls.push(['returnWorldMarch', missionId, options]);
+      return Promise.resolve(true);
+    },
+    stopWorldMarch(missionId, options) {
+      calls.push(['stopWorldMarch', missionId, options]);
+      return Promise.resolve(true);
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: -2,
+    formationSlot: 2,
+  }, { inputIntent }), true);
+  assert.equal(await controller.handle_returnWorldMarch({
+    type: 'returnWorldMarch',
+    missionId: 'march-1',
+  }, { inputIntent }), true);
+  assert.equal(await controller.handle_stopWorldMarch({
+    type: 'stopWorldMarch',
+    missionId: 'march-1',
+  }, { inputIntent }), true);
+
+  assert.equal(calls[0][1].clientInputIntent, inputIntent);
+  assert.equal(calls[1][2].clientInputIntent, inputIntent);
+  assert.equal(calls[2][2].clientInputIntent, inputIntent);
+});
+
 test('CanvasTerritoryActionHandlers resets local shell camera after forwarded return-home action', () => {
   const calls = [];
   const runtime = {

@@ -173,6 +173,32 @@ test('dispatches world march actions through the territory action handler', () =
   assert.equal(calls[1].payload.r, undefined);
 });
 
+test('dispatches compact client input evidence with world march payloads', () => {
+  const { calls, registry } = createRegistryWithCalls();
+  const clientInputIntent = {
+    schema: 'world-map-input-intent-v1',
+    target: { kind: 'tile', tileId: 'tile_2_-1', targetQ: 2, targetR: -1 },
+    picking: { inputEpoch: 4, signature: 'sig-4' },
+    tileMapView: { tiles: [{ id: 'must-not-authorize' }] },
+  };
+
+  registry.execute({
+    action: 'startWorldMarch',
+    body: {
+      action: 'startWorldMarch',
+      mode: 'manual',
+      targetQ: 2,
+      targetR: -1,
+      formationSlot: 1,
+      clientInputIntent,
+    },
+    gameState: {},
+    tutorial: {},
+  });
+
+  assert.equal(calls[0].payload.clientInputIntent, clientInputIntent);
+});
+
 test('returns a stable result for unknown actions', () => {
   const { registry } = createRegistryWithCalls();
 

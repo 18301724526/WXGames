@@ -68,6 +68,7 @@ function buildTerritoryPayload(body = {}, actionOverride = '') {
     delete payload.y;
   }
   if (body.clientSequence !== undefined) payload.clientSequence = body.clientSequence;
+  if (body.clientInputIntent !== undefined) payload.clientInputIntent = body.clientInputIntent;
   if (body.aoiRadius !== undefined) payload.aoiRadius = body.aoiRadius;
   if (body.debugTrace !== undefined) payload.debugTrace = body.debugTrace;
   if (body.worldMarchTrace !== undefined) payload.worldMarchTrace = body.worldMarchTrace;
