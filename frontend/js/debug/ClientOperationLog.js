@@ -29,6 +29,19 @@
     }
   }
 
+  function formatFileTimestamp(timestampMs) {
+    return safeIso(timestampMs)
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}Z$/, 'Z')
+      .replace('T', '-');
+  }
+
+  function sanitizeFilenamePart(value, fallback = 'anonymous') {
+    const text = String(value || '').trim();
+    const sanitized = text.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
+    return sanitized || fallback;
+  }
+
   function readUrlFlag(runtime = global) {
     try {
       const search = runtime?.location?.search || '';
@@ -312,6 +325,57 @@
         };
       }
       return uploader(this.buildSnapshot(options));
+    }
+
+    buildFileName(options = {}) {
+      let playerLabel = options.playerId || options.username || '';
+      if (!playerLabel) {
+        try {
+          playerLabel = this.runtime?.localStorage?.getItem?.('cf_username') || '';
+        } catch (_) {}
+      }
+      return `wxgame-oplog-${sanitizeFilenamePart(playerLabel)}-${formatFileTimestamp(this.wallNowMs())}.json`;
+    }
+
+    download(options = {}) {
+      const fileName = options.fileName || this.buildFileName(options);
+      const text = JSON.stringify(this.buildSnapshot({
+        ...options,
+        reason: options.reason || 'local-download',
+      }), null, 2);
+      const runtime = this.runtime || global;
+      const doc = runtime?.document || null;
+      const BlobCtor = runtime?.Blob || global?.Blob;
+      const urlApi = runtime?.URL || global?.URL;
+      if (!doc?.createElement || typeof BlobCtor !== 'function' || !urlApi?.createObjectURL) {
+        return {
+          success: false,
+          error: 'CLIENT_OPERATION_LOG_DOWNLOAD_UNSUPPORTED',
+          fileName,
+          text,
+        };
+      }
+      const blob = new BlobCtor([text], { type: 'application/json;charset=utf-8' });
+      const url = urlApi.createObjectURL(blob);
+      try {
+        const link = doc.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.rel = 'noopener';
+        const parent = doc.body || doc.documentElement;
+        parent?.appendChild?.(link);
+        link.click?.();
+        link.remove?.();
+        return {
+          success: true,
+          fileName,
+          entryCount: this.getRecent(options.limit === undefined ? this.maxEntries : options.limit).length,
+        };
+      } finally {
+        const revoke = () => urlApi.revokeObjectURL?.(url);
+        if (typeof runtime?.setTimeout === 'function') runtime.setTimeout(revoke, 0);
+        else revoke();
+      }
     }
 
     exportText(limit = this.maxEntries) {

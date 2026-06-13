@@ -88,6 +88,77 @@ test('ClientOperationLog uploads an explicit diagnostic snapshot through a confi
   assert.deepEqual(uploaded[0].entries.map((entry) => entry.type), ['input:tap', 'action:begin']);
 });
 
+test('ClientOperationLog downloads a local JSON file without network transport', () => {
+  const storage = createStorage();
+  const calls = [];
+  const clicked = [];
+  const urls = [];
+  const logger = new ClientOperationLog({
+    runtime: {
+      location: { pathname: '/wxgame/', hash: '' },
+      localStorage: { getItem: () => 'test1' },
+      sessionStorage: storage,
+      navigator: { userAgent: 'node-test-agent' },
+      performance: { now: () => 10 },
+      Date: { now: () => Date.parse('2026-06-14T00:00:00.000Z') },
+      Blob: class {
+        constructor(parts, options) {
+          calls.push(['blob', parts.join(''), options.type]);
+        }
+      },
+      URL: {
+        createObjectURL() {
+          urls.push('blob:oplog');
+          return 'blob:oplog';
+        },
+        revokeObjectURL(url) {
+          calls.push(['revoke', url]);
+        },
+      },
+      document: {
+        body: {
+          appendChild(link) {
+            calls.push(['append', link.download]);
+          },
+        },
+        createElement(tag) {
+          assert.equal(tag, 'a');
+          return {
+            set href(value) { this._href = value; },
+            get href() { return this._href; },
+            set download(value) { this._download = value; },
+            get download() { return this._download; },
+            click() { clicked.push([this.href, this.download]); },
+            remove() { calls.push(['remove']); },
+          };
+        },
+      },
+      setTimeout(callback) {
+        callback();
+      },
+      fetch() {
+        calls.push(['fetch']);
+      },
+    },
+    storage,
+    maxEntries: 10,
+    persistLimit: 0,
+  });
+
+  logger.record('input:tap', { point: { x: 1, y: 2 } });
+  const result = logger.download({ reason: 'settings-download' });
+
+  assert.equal(result.success, true);
+  assert.equal(result.fileName, 'wxgame-oplog-test1-20260614-000000Z.json');
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(clicked, [['blob:oplog', 'wxgame-oplog-test1-20260614-000000Z.json']]);
+  assert.equal(calls.some((call) => call[0] === 'fetch'), false);
+  const blobCall = calls.find((call) => call[0] === 'blob');
+  const payload = JSON.parse(blobCall[1]);
+  assert.equal(payload.reason, 'settings-download');
+  assert.equal(payload.entries[0].type, 'input:tap');
+});
+
 test('ClientOperationLog keeps a bounded local window and samples noisy events', () => {
   let now = 0;
   const logger = new ClientOperationLog({

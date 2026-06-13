@@ -167,3 +167,37 @@ test('client operation log routes persist and return authenticated player snapsh
   assert.equal(listRes.payload.logs.length, 1);
   assert.equal(listRes.payload.logs[0].payload.entries[0].type, 'input:tapMiss');
 });
+
+test('client operation log query reports parse errors instead of pretending the log is empty', async () => {
+  const { app, routes } = createAppHarness();
+  const authMiddleware = (req, res, next) => {
+    req.playerId = 'player-1';
+    next();
+  };
+  registerClientEventsRoutes(app, {
+    authMiddleware,
+    logService: {
+      getPlayerClientOperationLogs() {
+        return [{
+          id: 4,
+          reason: 'truncated-log',
+          entryCount: 687,
+          timestamp: '2026-06-14T00:00:00.000Z',
+          payload: '{"schema":"client-operation-log-v1","entries":[',
+        }];
+      },
+      logClientOperationSnapshot() {},
+    },
+    observabilityService: { recordClientEvent() {} },
+  });
+
+  const route = routes.find((item) => item.method === 'GET' && item.path === '/api/client-operation-logs');
+  const res = createResponse();
+  await invokeRoute(route, { query: { limit: '1' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.logs[0].entryCount, 687);
+  assert.match(res.payload.logs[0].payload.parseError, /JSON/);
+  assert.equal(res.payload.logs[0].payload.rawLength > 0, true);
+  assert.deepEqual(res.payload.logs[0].payload.entries, []);
+});

@@ -275,7 +275,7 @@
     renderSettingsPanel() {
       const layout = this.getLayout();
       const panelWidth = 200;
-      const panelHeight = 120;
+      const panelHeight = 164;
       const x = layout.contentRight - panelWidth - 8;
       const y = 62;
 
@@ -311,12 +311,20 @@
       this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'requestResetGame' });
 
       const btnY2 = btnY1 + btnHeight + 8;
-      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, '退出登录', {
+      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, '\u5bfc\u51fa\u64cd\u4f5c\u65e5\u5fd7', {
         size: 12,
         radius: 8,
         active: false,
       });
-      this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'logout' });
+      this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'downloadClientOperationLog' });
+
+      const btnY3 = btnY2 + btnHeight + 8;
+      this.drawButton(x + 10, btnY3, panelWidth - 20, btnHeight, '退出登录', {
+        size: 12,
+        radius: 8,
+        active: false,
+      });
+      this.addHitTarget({ x: x + 10, y: btnY3, width: panelWidth - 20, height: btnHeight }, { type: 'logout' });
 
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
     }

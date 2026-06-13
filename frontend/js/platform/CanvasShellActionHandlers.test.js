@@ -251,6 +251,67 @@ test('reset request uses canvas shell when the action host is the game app', asy
   ]);
 });
 
+test('downloadClientOperationLog saves local client operation log through runtime logger', () => {
+  const calls = [];
+  const game = {
+    playerId: 'test1',
+    authStorage: { getUsername: () => 'test1' },
+  };
+  const host = {
+    lastGame: game,
+    runtime: {
+      ClientOperationLog: {
+        download(options) {
+          calls.push(['download', options.reason, options.playerId, options.username]);
+          return { success: true, fileName: 'wxgame-oplog-test1.json' };
+        },
+      },
+    },
+    showFloatingText(message) {
+      calls.push(['float', message]);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
+  assert.deepEqual(calls, [
+    ['download', 'settings-download', 'test1', 'test1'],
+    ['float', '操作日志已保存：wxgame-oplog-test1.json'],
+    ['render', 'downloadClientOperationLog'],
+  ]);
+});
+
+test('downloadClientOperationLog reports unsupported local save', () => {
+  const calls = [];
+  const host = {
+    runtime: {
+      ClientOperationLog: {
+        download() {
+          calls.push(['download']);
+          return { success: false };
+        },
+      },
+    },
+    showFloatingText(message, options) {
+      calls.push(['float', message, options.color]);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
+  assert.deepEqual(calls, [
+    ['download'],
+    ['float', '当前浏览器不支持本地保存操作日志', '#ffb86b'],
+    ['render', 'downloadClientOperationLog'],
+  ]);
+});
+
 test('confirm reset executes reset after canvas confirmation', async () => {
   const calls = [];
   const game = {

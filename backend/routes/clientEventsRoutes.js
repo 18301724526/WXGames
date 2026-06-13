@@ -11,8 +11,13 @@ function readHeader(req, name) {
 function parsePayload(row = {}) {
   try {
     return JSON.parse(row.payload || '{}');
-  } catch (_) {
-    return { schema: 'client-operation-log-v1', entries: [] };
+  } catch (error) {
+    return {
+      schema: 'client-operation-log-v1',
+      parseError: error.message,
+      rawLength: String(row.payload || '').length,
+      entries: [],
+    };
   }
 }
 

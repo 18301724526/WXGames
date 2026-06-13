@@ -80,6 +80,7 @@ test('SystemCanvasRenderer preserves settings and logs actions', () => {
   renderer.renderSettingsPanel();
   assert.equal(host.hitTargets.some((target) => target.action.type === 'requestResetGame'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'resetGame'), false);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'downloadClientOperationLog'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'logout'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeSettings' && target.action.background === true), true);
 

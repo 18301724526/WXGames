@@ -205,6 +205,22 @@
         return opened ? true : this.afterHandled(action);
       },
 
+      handle_downloadClientOperationLog(action) {
+        const game = this.getGameHost();
+        const runtime = this.host?.runtime || game?.runtime || global;
+        const result = runtime?.ClientOperationLog?.download?.({
+          reason: action.reason || 'settings-download',
+          playerId: game?.playerId || '',
+          username: game?.authStorage?.getUsername?.() || '',
+        });
+        if (result?.success) {
+          this.host?.showFloatingText?.(`操作日志已保存：${result.fileName}`);
+        } else {
+          this.host?.showFloatingText?.('当前浏览器不支持本地保存操作日志', { color: '#ffb86b' });
+        }
+        return this.afterHandled(action);
+      },
+
       handle_closeConfirmDialog(action) {
         const closed = this.getSystemUiHost()?.closeConfirmDialog?.();
         return closed !== false;
