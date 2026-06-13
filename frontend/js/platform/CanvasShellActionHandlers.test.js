@@ -284,14 +284,45 @@ test('downloadClientOperationLog saves local client operation log through runtim
   ]);
 });
 
-test('downloadClientOperationLog reports unsupported local save', () => {
+test('downloadClientOperationLog falls back to global ClientOperationLog', () => {
+  const calls = [];
+  const previous = globalThis.ClientOperationLog;
+  globalThis.ClientOperationLog = {
+    download(options) {
+      calls.push(['download', options.reason]);
+      return { success: true, fileName: 'wxgame-oplog-global.json' };
+    },
+  };
+  const host = {
+    showFloatingText(message) {
+      calls.push(['float', message]);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  try {
+    assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
+    assert.deepEqual(calls, [
+      ['download', 'settings-download'],
+      ['float', '操作日志已保存：wxgame-oplog-global.json'],
+      ['render', 'downloadClientOperationLog'],
+    ]);
+  } finally {
+    globalThis.ClientOperationLog = previous;
+  }
+});
+
+test('downloadClientOperationLog reports concrete local save failure', () => {
   const calls = [];
   const host = {
     runtime: {
       ClientOperationLog: {
         download() {
           calls.push(['download']);
-          return { success: false };
+          return { success: false, error: 'CLIENT_OPERATION_LOG_DOWNLOAD_UNSUPPORTED' };
         },
       },
     },
@@ -307,7 +338,7 @@ test('downloadClientOperationLog reports unsupported local save', () => {
   assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
   assert.deepEqual(calls, [
     ['download'],
-    ['float', '当前浏览器不支持本地保存操作日志', '#ffb86b'],
+    ['float', 'CLIENT_OPERATION_LOG_DOWNLOAD_UNSUPPORTED', '#ffb86b'],
     ['render', 'downloadClientOperationLog'],
   ]);
 });

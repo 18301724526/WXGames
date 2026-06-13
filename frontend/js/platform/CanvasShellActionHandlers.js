@@ -198,6 +198,15 @@
         return game?.canvasShell || this.host?.canvasShell || this.host;
       },
 
+      resolveClientOperationLog() {
+        const game = this.getGameHost();
+        return this.host?.runtime?.ClientOperationLog
+          || game?.runtime?.ClientOperationLog
+          || global?.ClientOperationLog
+          || globalThis?.ClientOperationLog
+          || null;
+      },
+
       handle_requestResetGame(action) {
         const uiHost = this.getSystemUiHost();
         if (typeof uiHost?.openResetConfirm !== 'function') return false;
@@ -207,8 +216,8 @@
 
       handle_downloadClientOperationLog(action) {
         const game = this.getGameHost();
-        const runtime = this.host?.runtime || game?.runtime || global;
-        const result = runtime?.ClientOperationLog?.download?.({
+        const logger = this.resolveClientOperationLog();
+        const result = logger?.download?.({
           reason: action.reason || 'settings-download',
           playerId: game?.playerId || '',
           username: game?.authStorage?.getUsername?.() || '',
@@ -216,7 +225,7 @@
         if (result?.success) {
           this.host?.showFloatingText?.(`操作日志已保存：${result.fileName}`);
         } else {
-          this.host?.showFloatingText?.('当前浏览器不支持本地保存操作日志', { color: '#ffb86b' });
+          this.host?.showFloatingText?.(result?.message || result?.error || '操作日志导出失败', { color: '#ffb86b' });
         }
         return this.afterHandled(action);
       },
