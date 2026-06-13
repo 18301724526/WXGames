@@ -56,6 +56,38 @@ test('ClientOperationLog records local entries without any network transport', (
   assert.deepEqual(persisted.entries.map((entry) => entry.type), ['action:begin', 'api:request']);
 });
 
+test('ClientOperationLog uploads an explicit diagnostic snapshot through a configured uploader', async () => {
+  const uploaded = [];
+  const logger = new ClientOperationLog({
+    runtime: {
+      location: { search: '' },
+      localStorage: { getItem: () => null },
+      sessionStorage: createStorage(),
+      performance: { now: () => 10 },
+      Date: { now: () => Date.parse('2026-06-14T00:00:00.000Z') },
+    },
+    maxEntries: 10,
+    persistLimit: 0,
+  });
+
+  logger.record('input:tap', { point: { x: 1, y: 2 } });
+  logger.record('action:begin', { action: { type: 'openWorldSite', siteId: 'capital' } });
+  logger.setUploader(async (snapshot) => {
+    uploaded.push(snapshot);
+    return { success: true, logId: 7 };
+  });
+
+  const result = await logger.upload({ reason: 'city-click-repro', limit: 5 });
+
+  assert.equal(result.success, true);
+  assert.equal(result.logId, 7);
+  assert.equal(uploaded.length, 1);
+  assert.equal(uploaded[0].schema, 'client-operation-log-v1');
+  assert.equal(uploaded[0].reason, 'city-click-repro');
+  assert.equal(uploaded[0].entryCount, 2);
+  assert.deepEqual(uploaded[0].entries.map((entry) => entry.type), ['input:tap', 'action:begin']);
+});
+
 test('ClientOperationLog keeps a bounded local window and samples noisy events', () => {
   let now = 0;
   const logger = new ClientOperationLog({

@@ -61,6 +61,7 @@ class H5GameHost extends CanvasGameAppBase {
     const constructors = this.runtimeConstructors || {};
     this.gameAPI = new constructors.GameAPI(this.apiBase, this.token);
     window.H5LoadTrace?.setReporter?.((event) => this.gameAPI.reportClientEvent(event));
+    window.ClientOperationLog?.setUploader?.((snapshot) => this.gameAPI.uploadClientOperationLog(snapshot));
     this.api = this.gameAPI;
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
     this.syncService = new constructors.GameStateSync(this.gameAPI, this.config?.HEARTBEAT_INTERVAL_MS || 1000, this.scheduler);

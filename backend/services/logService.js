@@ -8,7 +8,20 @@ class LogService {
       body TEXT, statusCode INTEGER, response TEXT,
       duration INTEGER, timestamp TEXT);
       CREATE INDEX IF NOT EXISTS idx_api_logs_player_timestamp ON api_logs(playerId, timestamp DESC);
-      CREATE INDEX IF NOT EXISTS idx_api_logs_timestamp ON api_logs(timestamp)`);
+      CREATE INDEX IF NOT EXISTS idx_api_logs_timestamp ON api_logs(timestamp);
+      CREATE TABLE IF NOT EXISTS client_operation_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playerId TEXT NOT NULL,
+        deviceId TEXT,
+        reason TEXT,
+        entryCount INTEGER,
+        payload TEXT,
+        timestamp TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_client_operation_logs_player_timestamp
+        ON client_operation_logs(playerId, timestamp DESC);
+      CREATE INDEX IF NOT EXISTS idx_client_operation_logs_timestamp
+        ON client_operation_logs(timestamp)`);
   }
 
   logApiRequest(req, res, startTime) {
@@ -111,6 +124,61 @@ class LogService {
     } catch (error) {
       return JSON.stringify({ error: 'LOG_STRINGIFY_FAILED', message: error.message }).slice(0, maxLength);
     }
+  }
+
+  normalizeClientOperationSnapshot(snapshot = {}) {
+    const payload = snapshot && typeof snapshot === 'object' ? snapshot : {};
+    const entries = Array.isArray(payload.entries) ? payload.entries.slice(-800) : [];
+    const reason = String(payload.reason || 'manual-debug').slice(0, 120);
+    return {
+      schema: 'client-operation-log-v1',
+      exportedAt: payload.exportedAt || new Date().toISOString(),
+      receivedAt: new Date().toISOString(),
+      reason,
+      requestId: payload.requestId || '',
+      page: payload.page && typeof payload.page === 'object' ? payload.page : {},
+      entryCount: entries.length,
+      entries,
+    };
+  }
+
+  logClientOperationSnapshot(playerId, deviceId, snapshot = {}) {
+    const normalized = this.normalizeClientOperationSnapshot(snapshot);
+    const timestamp = new Date().toISOString();
+    const result = this.db.prepare(
+      `INSERT INTO client_operation_logs (
+        playerId,
+        deviceId,
+        reason,
+        entryCount,
+        payload,
+        timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(
+      playerId || '',
+      deviceId || null,
+      normalized.reason,
+      normalized.entryCount,
+      this.stringifyForLog(normalized, 240000),
+      timestamp,
+    );
+    return {
+      id: Number(result.lastInsertRowid || 0),
+      reason: normalized.reason,
+      entryCount: normalized.entryCount,
+      timestamp,
+    };
+  }
+
+  getPlayerClientOperationLogs(playerId, limit = 5) {
+    const safeLimit = Math.max(1, Math.min(20, Math.floor(Number(limit) || 5)));
+    return this.db.prepare(
+      `SELECT id, reason, entryCount, payload, timestamp
+       FROM client_operation_logs
+       WHERE playerId = ?
+       ORDER BY timestamp DESC
+       LIMIT ?`,
+    ).all(playerId, safeLimit);
   }
 
   getPlayerLogs(playerId, limit=20) {

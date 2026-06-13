@@ -350,3 +350,40 @@ test('GameAPI reportClientEvent returns failure payload instead of throwing', as
   assert.equal(result.status, 400);
   assert.equal(result.payload.error, 'CLIENT_EVENT_TYPE_UNSUPPORTED');
 });
+
+test('GameAPI uploads explicit client operation logs with auth and request id', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', 'token-a', {
+    timeoutMs: 0,
+    transport: {
+      async request(request) {
+        calls.push([
+          request.method,
+          request.path,
+          request.url,
+          request.headers.Authorization,
+          request.headers['X-Client-Request-ID'],
+          JSON.parse(request.body),
+        ]);
+        return createResponse(202, { success: true, accepted: true, logId: 9 });
+      },
+    },
+  });
+
+  const result = await api.uploadClientOperationLog({
+    schema: 'client-operation-log-v1',
+    reason: 'city-click-repro',
+    entries: [{ seq: 1, type: 'input:tapMiss' }],
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.logId, 9);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], 'POST');
+  assert.equal(calls[0][1], '/client-operation-logs');
+  assert.equal(calls[0][2], '/api/client-operation-logs');
+  assert.equal(calls[0][3], 'Bearer token-a');
+  assert.match(calls[0][4], /^client-oplog-/);
+  assert.equal(calls[0][5].reason, 'city-click-repro');
+  assert.equal(calls[0][5].requestId, calls[0][4]);
+});

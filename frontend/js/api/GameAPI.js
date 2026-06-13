@@ -418,6 +418,47 @@
       }
     }
 
+    async uploadClientOperationLog(snapshot = {}) {
+      const body = snapshot && typeof snapshot === 'object' ? { ...snapshot } : {};
+      const requestId = `client-oplog-${++this.requestSeq}`;
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Client-Request-ID': requestId,
+      };
+      if (this.token) headers.Authorization = `Bearer ${this.token}`;
+      try {
+        const response = await this.performRequest({
+          url: this.buildUrl('/client-operation-logs'),
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            ...body,
+            requestId,
+          }),
+          path: '/client-operation-logs',
+          requestId,
+          timeoutMs: this.timeoutMs,
+          attempt: 1,
+          maxRetries: 0,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return {
+            success: false,
+            status: response.status,
+            payload: data,
+          };
+        }
+        return data;
+      } catch (error) {
+        global.console?.warn?.('[GameAPI] client operation log upload failed', error);
+        return {
+          success: false,
+          error: error?.message || String(error || ''),
+        };
+      }
+    }
+
     getState() { return this.request('GET', '/game/state'); }
     heartbeat() { return this.request('GET', '/game/heartbeat'); }
     getTasks() { return this.request('GET', '/game/tasks'); }

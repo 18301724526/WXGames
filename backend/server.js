@@ -69,6 +69,7 @@ const opsControlService = new OpsControlService({
 const SKIP_API_LOG_PATHS = new Set([
   '/api/health',
   '/api/client-events',
+  '/api/client-operation-logs',
   '/api/metrics',
   '/api/version',
   '/api/game/heartbeat',
@@ -122,7 +123,7 @@ app.use((req, res, next) => {
 
 registerAdminRoutes(app, { authMiddleware, adminMiddleware, configReleaseService, configRuntimeLoader });
 registerVersionRoutes(app, { versionService });
-registerClientEventsRoutes(app, { observabilityService });
+registerClientEventsRoutes(app, { authMiddleware, logService, observabilityService });
 registerMetricsRoutes(app, { authMiddleware, adminMiddleware, observabilityService });
 registerOpsRoutes(app, { opsAuthService, opsControlService });
 

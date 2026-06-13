@@ -9,6 +9,7 @@
   const MAX_ARRAY_LENGTH = 12;
   const MAX_OBJECT_KEYS = 24;
   const MAX_DEPTH = 4;
+  const DEFAULT_UPLOAD_REASON = 'manual-debug';
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -174,6 +175,7 @@
       this.seq = 0;
       this.lastFlushAt = 0;
       this.sampledAt = new Map();
+      this.uploader = typeof options.uploader === 'function' ? options.uploader : null;
       this.loadPersisted();
     }
 
@@ -277,12 +279,43 @@
       return true;
     }
 
-    exportText(limit = this.maxEntries) {
-      return JSON.stringify({
+    setUploader(uploader) {
+      this.uploader = typeof uploader === 'function' ? uploader : null;
+      return Boolean(this.uploader);
+    }
+
+    buildSnapshot(options = {}) {
+      const limit = options.limit === undefined ? this.maxEntries : options.limit;
+      const entries = this.getRecent(limit);
+      const location = this.runtime?.location || {};
+      return {
         schema: 'client-operation-log-v1',
         exportedAt: safeIso(this.wallNowMs()),
-        entries: this.getRecent(limit),
-      }, null, 2);
+        reason: String(options.reason || DEFAULT_UPLOAD_REASON).slice(0, 120),
+        entryCount: entries.length,
+        page: sanitize({
+          pathname: location.pathname || '',
+          hash: location.hash || '',
+          userAgent: this.runtime?.navigator?.userAgent || '',
+        }),
+        entries,
+      };
+    }
+
+    async upload(options = {}) {
+      const uploader = options.uploader || this.uploader;
+      if (typeof uploader !== 'function') {
+        return {
+          success: false,
+          error: 'CLIENT_OPERATION_LOG_UPLOADER_MISSING',
+          message: 'Client operation log uploader is not configured',
+        };
+      }
+      return uploader(this.buildSnapshot(options));
+    }
+
+    exportText(limit = this.maxEntries) {
+      return JSON.stringify(this.buildSnapshot({ limit, reason: 'manual-export' }), null, 2);
     }
   }
 
