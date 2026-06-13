@@ -44,6 +44,21 @@ function cleanNumber(value) {
   return Math.max(0, Math.round(toNumber(value, 0)));
 }
 
+function summarizeOperationTarget(body = {}) {
+  if (!body || typeof body !== 'object') return {};
+  const target = {
+    requestId: cleanText(body.clientRequestId || body.requestId, 120),
+    target: cleanText(body.target || body.territoryId || body.cityId || body.missionId, 120),
+    targetQ: body.targetQ ?? body.q ?? body.x ?? undefined,
+    targetR: body.targetR ?? body.r ?? body.y ?? undefined,
+    formationSlot: body.formationSlot ?? body.slot ?? undefined,
+  };
+  Object.keys(target).forEach((key) => {
+    if (target[key] === '' || target[key] === undefined || target[key] === null) delete target[key];
+  });
+  return target;
+}
+
 class ObservabilityService {
   constructor(options = {}) {
     this.startedAt = new Date().toISOString();
@@ -91,6 +106,7 @@ class ObservabilityService {
     );
     const event = {
       at: input.timestamp || new Date().toISOString(),
+      requestId: cleanText(input.requestId || body.clientRequestId || body.requestId, 120) || undefined,
       method,
       path,
       statusCode,
@@ -99,6 +115,7 @@ class ObservabilityService {
       httpFailure: statusCode >= 400,
       serverError: statusCode >= 500,
       action: action || undefined,
+      actionTarget: summarizeOperationTarget(body),
       actionFailure,
       code: responseCode(response) || undefined,
       performanceBudget,

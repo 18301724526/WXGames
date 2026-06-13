@@ -43,6 +43,16 @@ function withLoadTrace(trace, callback) {
     });
 }
 
+function withOperationLog(logger, callback) {
+  const previous = globalThis.ClientOperationLog;
+  globalThis.ClientOperationLog = logger;
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      globalThis.ClientOperationLog = previous;
+    });
+}
+
 test('GameAPI sends H5 load trace spans for successful requests', async () => {
   const calls = [];
   const api = new GameAPI('/api', 'token-a', {
@@ -83,6 +93,31 @@ test('GameAPI sends H5 load trace spans for successful requests', async () => {
     ['transport', '/api/game/state', 'Bearer token-a'],
     ['end', 1, 200, true, 1],
   ]);
+});
+
+test('GameAPI records local operation logs without extra client-event requests', async () => {
+  const requests = [];
+  const operationEvents = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request(request) {
+        requests.push([request.method, request.path, request.headers['X-Client-Request-ID']]);
+        return createResponse(200, { success: true, gameState: { playerId: 'player-1' } });
+      },
+    },
+  });
+  const logger = {
+    record(type, detail) {
+      operationEvents.push([type, detail.requestId || '', detail.path || '', detail.status || 0]);
+    },
+  };
+
+  await withOperationLog(logger, () => api.startWorldMarch({ targetQ: 1, targetR: 0, formationSlot: 1 }));
+
+  assert.deepEqual(requests, [['POST', '/game/action', 'api-1']]);
+  assert.deepEqual(operationEvents.map((event) => event[0]), ['api:request', 'api:response']);
+  assert.equal(operationEvents[0][1], 'api-1');
+  assert.equal(operationEvents[1][3], 200);
 });
 
 test('GameAPI reports H5 load trace failures for 504 version checks', async () => {

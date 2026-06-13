@@ -50,6 +50,37 @@ test('observability service records API latency, server errors, and action failu
   assert.equal(snapshot.paths.some((item) => item.path === '/api/game/action' && item.actionFailures === 1), true);
 });
 
+test('observability service keeps request ids for frontend/backend log comparison', () => {
+  const service = new ObservabilityService({ maxEvents: 10 });
+
+  service.recordApiRequest({
+    method: 'POST',
+    path: '/api/game/action',
+    requestId: 'api-42',
+    body: {
+      action: 'startWorldMarch',
+      clientRequestId: 'api-42',
+      targetQ: 3,
+      targetR: -2,
+      formationSlot: 1,
+    },
+    response: { success: true },
+    statusCode: 200,
+    durationMs: 35,
+  });
+
+  const event = service.getSnapshot({ eventLimit: 1 }).recentEvents[0];
+
+  assert.equal(event.requestId, 'api-42');
+  assert.equal(event.action, 'startWorldMarch');
+  assert.deepEqual(event.actionTarget, {
+    requestId: 'api-42',
+    targetQ: 3,
+    targetR: -2,
+    formationSlot: 1,
+  });
+});
+
 test('observability service records performance capacity budget violations', () => {
   const service = new ObservabilityService({ maxEvents: 10 });
 

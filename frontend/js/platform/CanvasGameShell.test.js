@@ -1505,6 +1505,51 @@ test('CanvasGameShell routes a city tap to openWorldSite when an actor overlaps 
   assert.equal(shell.territoryUiState.selectedSiteId, 'capital');
 });
 
+test('CanvasGameShell records tap hit and action result into local operation log', () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, siteId: action.siteId || '' } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    summarizeUiState(uiState) {
+      return { selectedSiteId: uiState.selectedSiteId || '' };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+    recordSampled(type, key, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'openWorldSite', siteId: 'capital' };
+      },
+    },
+    actionController: null,
+  });
+  shell.actionController = new global.CanvasActionController({ host: shell });
+  shell.territoryUiState = { selectedSiteId: '' };
+  shell.renderActive = () => true;
+
+  try {
+    assert.equal(shell.handleTap({ x: 60, y: 60 }, {}), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  assert.equal(events.some((event) => event[0] === 'input:tapHit'), true);
+  assert.equal(events.some((event) => event[0] === 'action:begin'), true);
+  assert.equal(events.some((event) => event[0] === 'action:end'), true);
+});
+
 test('CanvasGameShell keeps map-home HUD rendering after an open world site action', () => {
   const renders = [];
   const state = {

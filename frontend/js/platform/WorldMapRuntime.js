@@ -66,6 +66,13 @@
     return null;
   })();
 
+  function sanitizeDragOffset(offset = {}) {
+    return {
+      x: Number(offset.x) || 0,
+      y: Number(offset.y) || 0,
+    };
+  }
+
   class WorldMapRuntime {
     constructor(options = {}) {
       this.runtime = options.runtime || null;
@@ -251,6 +258,13 @@
       const next = WorldMapRuntimeCameraPolicy.resolveCameraChange(this.camera, x, y);
       if (!next.changed) return false;
       this.camera = next.camera;
+      if (options.source === 'drag' || options.source === 'pinchPan' || options.source === 'resetWorldPan') {
+        global.ClientOperationLog?.recordSampled?.('worldMap:camera', options.source || 'camera', {
+          camera: global.ClientOperationLog?.summarizeCamera?.(this.camera),
+          bakedCamera: global.ClientOperationLog?.summarizeCamera?.(this.bakedCamera),
+          render: options.render !== false,
+        }, options.source === 'drag' ? 180 : 0);
+      }
       this.onCameraChanged?.({ ...this.camera }, options);
       const isDragLike = options.source === 'drag' || options.source === 'pinchPan';
       if (isDragLike && options.render === false) {
@@ -272,6 +286,11 @@
       if (!this.canRender()) return false;
       if (!this.isPointInMap(point)) return false;
       this.drag = WorldMapRuntimeCameraPolicy.createDragState(point, this.camera);
+      global.ClientOperationLog?.record?.('worldMap:dragStart', {
+        point: global.ClientOperationLog?.summarizePoint?.(point),
+        camera: global.ClientOperationLog?.summarizeCamera?.(this.camera),
+        hitTargetCount: this.hitTargets.length,
+      });
       return true;
     }
 
@@ -284,6 +303,13 @@
     endDrag(point = {}) {
       if (!WorldMapRuntimeCameraPolicy.canEndDrag(this.drag, point)) return false;
       this.drag = null;
+      global.ClientOperationLog?.record?.('worldMap:dragEnd', {
+        point: global.ClientOperationLog?.summarizePoint?.(point),
+        camera: global.ClientOperationLog?.summarizeCamera?.(this.camera),
+        bakedCamera: global.ClientOperationLog?.summarizeCamera?.(this.bakedCamera),
+        dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
+        hitTargetCount: this.hitTargets.length,
+      }, { flush: true });
       return true;
     }
 
@@ -307,15 +333,30 @@
 
     handleTap(point = {}, event = null) {
       const action = this.getHitTarget(point);
+      global.ClientOperationLog?.record?.('worldMap:tapHit', {
+        point: global.ClientOperationLog?.summarizePoint?.(point),
+        action: global.ClientOperationLog?.summarizeAction?.(action),
+        hitTargetCount: this.hitTargets.length,
+        dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
+      });
       if (!action || action.disabled) return false;
       if (action.type === 'worldMapDrag') {
         const inferredAction = this.getBackgroundMarchTargetAction(point);
+        global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          action: global.ClientOperationLog?.summarizeAction?.(inferredAction),
+        }, { flush: true });
         if (!inferredAction) return false;
         if (this.onAction) return this.onAction(inferredAction, event) !== false;
         return false;
       }
       if (action.type === 'selectWorldMarchTarget' && action.background) {
         const inferredAction = this.getBackgroundMarchTargetAction(point) || action;
+        global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          sourceAction: global.ClientOperationLog?.summarizeAction?.(action),
+          action: global.ClientOperationLog?.summarizeAction?.(inferredAction),
+        }, { flush: true });
         if (this.onAction) return this.onAction(inferredAction, event) !== false;
         return false;
       }
@@ -390,6 +431,14 @@
         })
         : [];
       this.hitTargets = this.getOffsetHitTargets();
+      global.ClientOperationLog?.recordSampled?.('worldMap:hitTargetsSynced', 'hitTargets', {
+        baseHitTargetCount: this.baseHitTargets.length,
+        hitTargetCount: this.hitTargets.length,
+        actorTargetCount: Array.isArray(actorTargets) ? actorTargets.length : 0,
+        viewportOffsetX,
+        viewportOffsetY,
+        dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
+      }, 500);
       return this.hitTargets;
     }
 

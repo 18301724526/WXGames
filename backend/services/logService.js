@@ -30,8 +30,12 @@ class LogService {
   }
 
   logApi(playerId, deviceId, method, path, body, statusCode, response, duration) {
-    const bodyStr = this.stringifyForLog(body, 1200);
     const responseStr = this.stringifyForLog(this.summarizeResponse(response), 600);
+    const actionMeta = this.summarizeOperation(body, response);
+    const actionBody = {
+      ...body,
+      operationLog: actionMeta,
+    };
     this.db.prepare(
       `INSERT INTO api_logs (
         playerId,
@@ -49,12 +53,29 @@ class LogService {
       deviceId || null,
       method,
       path,
-      bodyStr,
+      this.stringifyForLog(actionBody, 1600),
       statusCode,
       responseStr,
       duration,
       new Date().toISOString(),
     );
+  }
+
+  summarizeOperation(body = {}, response = {}) {
+    const payload = body && typeof body === 'object' ? body : {};
+    const result = response && typeof response === 'object' ? response : {};
+    return {
+      schema: 'server-operation-log-v1',
+      at: new Date().toISOString(),
+      requestId: payload.requestId || payload.clientRequestId || '',
+      action: payload.action || '',
+      target: payload.target || payload.territoryId || payload.cityId || payload.missionId || '',
+      targetQ: payload.targetQ ?? payload.q ?? payload.x ?? null,
+      targetR: payload.targetR ?? payload.r ?? payload.y ?? null,
+      formationSlot: payload.formationSlot ?? payload.slot ?? null,
+      success: result.success,
+      error: result.error || '',
+    };
   }
 
   summarizeResponse(response) {

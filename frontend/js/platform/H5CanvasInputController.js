@@ -81,6 +81,21 @@
       return false;
     }
 
+    recordInput(type, detail = {}, options = {}) {
+      return global.ClientOperationLog?.record?.(`input:${type}`, detail, options);
+    }
+
+    recordSampledInput(type, key, detail = {}, intervalMs = 120) {
+      return global.ClientOperationLog?.recordSampled?.(`input:${type}`, key, detail, intervalMs);
+    }
+
+    summarizePoint(point = {}) {
+      return global.ClientOperationLog?.summarizePoint?.(point) || {
+        x: Number(point.x ?? point.clientX ?? 0) || 0,
+        y: Number(point.y ?? point.clientY ?? 0) || 0,
+      };
+    }
+
     handlePointerDown(event) {
       const owner = this.owner;
       if (event?.touches?.length >= 2 || this.activePinch) return false;
@@ -96,6 +111,11 @@
       let handled = false;
       owner.dragHandlers.forEach((handler) => {
         if (handler('start', { ...point, pointerId }, event)) handled = true;
+      });
+      this.recordInput('pointerDown', {
+        point: this.summarizePoint({ ...point, pointerId }),
+        pointerType: event?.pointerType || '',
+        dragActive: handled,
       });
       if (handled) {
         this.dragActive = true;
@@ -118,6 +138,14 @@
       owner.dragHandlers.forEach((handler) => {
         if (handler('move', { ...point, pointerId }, event)) handled = true;
       });
+      if (this.dragMoved || handled) {
+        this.recordSampledInput('dragMove', pointerId, {
+          point: this.summarizePoint({ ...point, pointerId }),
+          start: this.summarizePoint(this.pointerDown),
+          handled,
+          dragMoved: this.dragMoved,
+        });
+      }
       if (handled) {
         if (event?.cancelable !== false) event.preventDefault?.();
         event.stopPropagation?.();
@@ -136,6 +164,13 @@
         owner.dragHandlers.forEach((handler) => handler('end', { ...point, pointerId }, event));
       }
       const skipTap = this.dragMoved || this.getEventTime(event) < this.suppressTapUntil;
+      this.recordInput('pointerUp', {
+        point: this.summarizePoint({ ...point, pointerId }),
+        dragActive: this.dragActive,
+        dragMoved: this.dragMoved,
+        skipTap,
+        suppressed: this.getEventTime(event) < this.suppressTapUntil,
+      }, { flush: true });
       this.pointerDown = null;
       this.dragActive = false;
       this.dragMoved = false;
@@ -149,6 +184,10 @@
       owner.tapHandlers.forEach((handler) => {
         if (handler(point, event)) handled = true;
       });
+      this.recordInput('tap', {
+        point: this.summarizePoint(point),
+        handled,
+      }, { flush: true });
       if (handled && event?.cancelable !== false) event.preventDefault?.();
       if (handled) event.stopPropagation?.();
       return handled;

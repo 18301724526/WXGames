@@ -90,12 +90,16 @@ app.use((req, res, next) => {
   };
   res.on('finish', () => {
     try {
+      const clientRequestId = req.get?.('X-Client-Request-ID') || req.headers?.['x-client-request-id'] || '';
+      const logBody = req.body && typeof req.body === 'object'
+        ? { ...req.body, clientRequestId }
+        : { clientRequestId };
       logService.logApi(
         req.playerId || null,
         req.deviceId || null,
         req.method,
         req.path,
-        req.body || {},
+        logBody,
         res.statusCode,
         responsePayload || {},
         Date.now() - startedAt,
@@ -103,10 +107,11 @@ app.use((req, res, next) => {
       observabilityService.recordApiRequest({
         method: req.method,
         path: req.path,
-        body: req.body || {},
+        body: logBody,
         statusCode: res.statusCode,
         response: responsePayload || {},
         durationMs: Date.now() - startedAt,
+        requestId: clientRequestId,
       });
     } catch (error) {
       console.error('[logApi] failed:', error.message);

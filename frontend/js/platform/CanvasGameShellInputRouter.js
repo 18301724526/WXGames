@@ -200,7 +200,10 @@ shouldBlockTutorialInput(point = {}) {
       return !this.isTutorialActionAllowed(this.getTutorialControlAction(point));
     },
 
-blockTutorialCanvasInput(event) {
+    blockTutorialCanvasInput(event) {
+      global.ClientOperationLog?.record?.('input:tutorialBlocked', {
+        dragAction: global.ClientOperationLog?.summarizeAction?.(this.dragAction),
+      }, { flush: true });
       this.dragAction = null;
       this.worldMapPinchDragging = false;
       if (this.isWorldMapDragging()) this.finishWorldMapSnapshotDrag();
@@ -208,7 +211,7 @@ blockTutorialCanvasInput(event) {
       return true;
     },
 
-handleDrag(phase, point, event) {
+    handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
       if (this.isTutorialInputActive()) {
         if (phase === 'start') {
@@ -219,6 +222,14 @@ handleDrag(phase, point, event) {
       }
       if (phase === 'start' && typeof this.renderer.getHitTarget === 'function') {
         const action = this.getTechTreeHitAction(point) || this.renderer.getHitTarget(point);
+        global.ClientOperationLog?.record?.('input:dragHit', {
+          phase,
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          action: global.ClientOperationLog?.summarizeAction?.(action),
+          mapHomeActive: Boolean(this.lastGame?.mapHomeActive),
+          currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
+          militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
+        });
         if (this.canRouteTechTreeInteraction(action)) {
           this.dragAction = { type: 'techTreeDrag' };
         } else if (this.isWorldMapHudAction(action)) {
@@ -255,6 +266,21 @@ handleDrag(phase, point, event) {
         this.startWorldMapSnapshotDrag();
       }
       const handled = this.actionController?.handle?.({ type: dragType, phase, pointer: point }, { event }) || false;
+      if (phase === 'start' || phase === 'end' || phase === 'cancel') {
+        global.ClientOperationLog?.record?.('input:dragRouted', {
+          phase,
+          dragType,
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          handled,
+        }, { flush: phase !== 'start' });
+      } else if (dragType === 'worldMapDrag') {
+        global.ClientOperationLog?.recordSampled?.('input:dragRouted', dragType, {
+          phase,
+          dragType,
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          handled,
+        });
+      }
       if (dragType === 'worldMapDrag' && (phase === 'end' || phase === 'cancel')) {
         this.finishWorldMapSnapshotDrag();
       }
@@ -329,6 +355,15 @@ handleWorldMapGesture(gesture = {}, event) {
 handleTap(point, event) {
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
       const action = this.renderer.getHitTarget(point);
+      global.ClientOperationLog?.record?.('input:tapHit', {
+        point: global.ClientOperationLog?.summarizePoint?.(point),
+        action: global.ClientOperationLog?.summarizeAction?.(action),
+        tutorialActive: this.isTutorialInputActive(),
+        blockingOverlay: this.hasBlockingOverlayOpen?.(),
+        mapHomeActive: Boolean(this.lastGame?.mapHomeActive),
+        currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
+        militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
+      });
       if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(action)) {
         return this.blockTutorialCanvasInput(event);
       }
@@ -340,6 +375,11 @@ handleTap(point, event) {
       if (action?.type === 'worldMapDrag') {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        global.ClientOperationLog?.record?.('input:tapRuntime', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          actionType: action.type,
+          runtimeHandled,
+        }, { flush: true });
         if (runtimeHandled) return runtimeHandled;
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
@@ -352,9 +392,18 @@ handleTap(point, event) {
       if (action?.type === 'selectWorldMarchTarget' && action.background) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        global.ClientOperationLog?.record?.('input:tapRuntime', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          action: global.ClientOperationLog?.summarizeAction?.(action),
+          runtimeHandled,
+        }, { flush: true });
         if (runtimeHandled) return runtimeHandled;
       }
       if (action?.disabled) {
+        global.ClientOperationLog?.record?.('input:tapDisabled', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          action: global.ClientOperationLog?.summarizeAction?.(action),
+        }, { flush: true });
         if (event?.preventDefault) event.preventDefault();
         if (event?.stopPropagation) event.stopPropagation();
         return true;
@@ -362,6 +411,10 @@ handleTap(point, event) {
       if (!action) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        global.ClientOperationLog?.record?.('input:tapMiss', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          runtimeHandled,
+        }, { flush: true });
         if (runtimeHandled) return runtimeHandled;
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
@@ -402,6 +455,10 @@ handleTap(point, event) {
         return handled;
       }
       const handled = this.handleAction(action, event);
+      global.ClientOperationLog?.record?.('input:tapAction', {
+        action: global.ClientOperationLog?.summarizeAction?.(action),
+        handled: handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled),
+      }, { flush: true });
       this.advanceTutorialIntroAfterHandled(handled, action);
       if (handled && event?.preventDefault) event.preventDefault();
       if (handled && event?.stopPropagation) event.stopPropagation();

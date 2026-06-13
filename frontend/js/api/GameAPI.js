@@ -92,6 +92,15 @@
         requestId,
         timeoutMs: this.timeoutMs,
       };
+      global.ClientOperationLog?.record?.('api:request', {
+        requestId,
+        method,
+        path,
+        action: actionBody.action || '',
+        body: global.WorldMarchTrace?.summarizeActionBody?.(actionBody) || {
+          action: actionBody.action || '',
+        },
+      });
       const loadTrace = global.H5LoadTrace;
       const loadTraceSpan = loadTrace?.apiStart?.(method, path, requestPayload.url, {
         requestId,
@@ -139,6 +148,16 @@
           startedAt,
           retryable: this.isRetryableError(error),
         });
+        global.ClientOperationLog?.record?.('api:error', {
+          requestId,
+          method,
+          path,
+          action: actionBody.action || '',
+          message: requestError.message,
+          status: requestError.status || 0,
+          attempts,
+          durationMs: requestError.durationMs || 0,
+        }, { flush: true });
         loadTrace?.apiFail?.(loadTraceSpan, requestError, {
           status: response?.status || 0,
           ok: false,
@@ -187,6 +206,17 @@
           durationMs: Math.max(0, Math.round(getNow(this.scheduler) - startedAt)),
           retryable: this.isRetryableStatus(response.status) && this.isRetryableMethod(method),
         });
+        global.ClientOperationLog?.record?.('api:error', {
+          requestId,
+          method,
+          path,
+          action: actionBody.action || '',
+          status: response.status,
+          error: data.error || '',
+          message: data.message || '',
+          attempts,
+          durationMs: Math.max(0, Math.round(getNow(this.scheduler) - startedAt)),
+        }, { flush: true });
         loadTrace?.apiFail?.(loadTraceSpan, error, {
           status: response.status,
           ok: false,
@@ -224,6 +254,19 @@
             : (trace.summarizeApiPayload?.(data) || data),
         });
       }
+      global.ClientOperationLog?.record?.('api:response', {
+        requestId,
+        method,
+        path,
+        action: actionBody.action || '',
+        status: response.status,
+        attempts,
+        durationMs: Math.max(0, Math.round(getNow(this.scheduler) - startedAt)),
+        payload: global.WorldMarchTrace?.summarizeApiPayload?.(data) || {
+          success: data?.success,
+          error: data?.error || '',
+        },
+      }, { flush: true });
       return data;
     }
 

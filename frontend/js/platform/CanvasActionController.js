@@ -207,10 +207,60 @@
       return callback();
     }
 
+    getOperationLogUiState() {
+      try {
+        if (!this.host) return {};
+        return this.getSharedTerritoryUiState?.() || {};
+      } catch (_) {
+        return {};
+      }
+    }
+
     handle(action, meta = {}) {
-      if (!action || action.disabled) return Boolean(action?.disabled);
+      if (!action || action.disabled) {
+        global.ClientOperationLog?.record?.('action:skipped', {
+          action: global.ClientOperationLog?.summarizeAction?.(action),
+          reason: action?.disabled ? 'disabled' : 'missing',
+        }, { flush: true });
+        return Boolean(action?.disabled);
+      }
       const handler = this[`handle_${action.type}`] || this.handleUnknown;
-      return handler.call(this, action, meta);
+      global.ClientOperationLog?.record?.('action:begin', {
+        action: global.ClientOperationLog?.summarizeAction?.(action),
+        uiState: global.ClientOperationLog?.summarizeUiState?.(this.getOperationLogUiState()),
+      });
+      try {
+        const result = handler.call(this, action, meta);
+        if (result && typeof result.then === 'function') {
+          result.then((value) => {
+            global.ClientOperationLog?.record?.('action:end', {
+              action: global.ClientOperationLog?.summarizeAction?.(action),
+              result: value !== false,
+              async: true,
+              uiState: global.ClientOperationLog?.summarizeUiState?.(this.getOperationLogUiState()),
+            }, { flush: true });
+          }).catch((error) => {
+            global.ClientOperationLog?.record?.('action:error', {
+              action: global.ClientOperationLog?.summarizeAction?.(action),
+              message: error?.message || String(error || ''),
+            }, { flush: true });
+          });
+        } else {
+          global.ClientOperationLog?.record?.('action:end', {
+            action: global.ClientOperationLog?.summarizeAction?.(action),
+            result: result !== false,
+            async: false,
+            uiState: global.ClientOperationLog?.summarizeUiState?.(this.getOperationLogUiState()),
+          }, { flush: true });
+        }
+        return result;
+      } catch (error) {
+        global.ClientOperationLog?.record?.('action:error', {
+          action: global.ClientOperationLog?.summarizeAction?.(action),
+          message: error?.message || String(error || ''),
+        }, { flush: true });
+        throw error;
+      }
     }
 
     handleUnknown(action, meta = {}) {
