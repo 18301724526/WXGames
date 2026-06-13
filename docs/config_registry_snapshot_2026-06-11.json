@@ -1,6 +1,6 @@
 {
   "schema": "config-pipeline-snapshot-v1",
-  "generatedAt": "2026-06-13T10:54:07.179Z",
+  "generatedAt": "2026-06-13T07:49:21.069Z",
   "registryCount": 7,
   "validation": {
     "success": true,
@@ -136,7 +136,7 @@
       "id": "tutorial-flow-config",
       "schema": "tutorial-flow-config-registry",
       "schemaVersion": 1,
-      "version": "3.0.0",
+      "version": "2.0.0",
       "contentHash": "6f5d4391aaf4",
       "entryCount": 92,
       "entryIds": [
