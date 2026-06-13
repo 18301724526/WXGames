@@ -76,13 +76,19 @@
 - `LogService` 的 `operationLog.authority` 只保存 compact commandId/status/command/clientInput/rejection，不保存 timeline/AOI/完整 response，避免日志膨胀和泄露 renderer payload。
 - 该阶段用于复盘一次 world-map tap -> action -> API request -> server authority result 的证据链；服务端路线、停止点、timeline、AOI 和接受/拒绝仍只由服务器当前状态计算。
 
-### 第七阶段：门禁
+### 第七阶段：输入/回放证据性能预算
+
+- `WorldMapPerformanceBudget.checkInputIntent()` 将 `WorldMapInputIntent` 证据限制在 2KB，并递归拒绝 renderer/event/context、完整 tiles、hitTargets、visibleEntries、`picking.targets` 等重 payload；`picking.counts.targets` 这种计数字段允许存在。
+- `PerformanceCapacityBudget.checkCommandEvidence()` 将服务端 `clientInput` 限制在 2KB、`CommandReplayCorrelation` summary 限制在 4KB，并递归拒绝 timeline/AOI/response/gameState/worldMap/route/tiles 等重权威或运行时 payload 进入诊断证据。
+- `WorldMapInputIntent.test` 与 `CommandReplayCorrelation.test` 已接入预算检查，预算不是孤立工具，而是 input -> API -> server authority -> replay 链路门禁的一部分。
+
+### 第八阶段：门禁
 
 必须通过：
 
-- `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
+- `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapPerformanceBudget.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
 - `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js`
-- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/GameActionRegistry.test.js backend/tests/WorldExplorerService.test.js backend/tests/LogService.test.js backend/tests/CommandReplayCorrelation.test.js`
+- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/GameActionRegistry.test.js backend/tests/WorldExplorerService.test.js backend/tests/LogService.test.js backend/tests/CommandReplayCorrelation.test.js backend/tests/PerformanceCapacityBudget.test.js`
 - `node scripts/check-frontend-script-manifest.js`
 - `node scripts/run-architecture-smoke.js`
 - `git diff --check`

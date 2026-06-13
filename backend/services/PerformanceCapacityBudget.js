@@ -10,6 +10,8 @@ const DEFAULT_BUDGETS = Object.freeze({
   activeWorldMapChunks: 64,
   actors: 500,
   missions: 1000,
+  commandClientInputBytes: 2048,
+  commandReplaySummaryBytes: 4096,
 });
 
 function toNumber(value, fallback = 0) {
@@ -153,6 +155,60 @@ function checkWorldMapWindow(input = {}, budgets = DEFAULT_BUDGETS) {
   });
 }
 
+function hasForbiddenKeyDeep(value = {}, keys = [], allowedPaths = new Set(), path = []) {
+  if (!value || typeof value !== 'object') return false;
+  return Object.entries(value).some(([key, item]) => {
+    const nextPath = [...path, key];
+    const pathText = nextPath.join('.');
+    if (keys.includes(key) && !allowedPaths.has(pathText)) return true;
+    return hasForbiddenKeyDeep(item, keys, allowedPaths, nextPath);
+  });
+}
+
+function checkCommandEvidence(input = {}, budgets = DEFAULT_BUDGETS) {
+  const resolvedBudgets = normalizeBudgets(budgets);
+  const clientInput = input.clientInput || input.clientInputIntent || {};
+  const replaySummary = input.replaySummary || input.summary || {};
+  const clientInputBytes = getSerializableSizeBytes(clientInput);
+  const replaySummaryBytes = getSerializableSizeBytes(replaySummary);
+  const rendererKeys = ['renderer', 'rendererCache', 'rendererPayload', 'context', 'event', 'nativeEvent'];
+  const heavyClientKeys = ['tiles', 'tileMapView', 'targets', 'hitTargets', 'visibleEntries'];
+  const heavyReplayKeys = ['timeline', 'aoi', 'response', 'gameState', 'worldMap', 'tiles', 'route'];
+  const allowedClientHeavyPaths = new Set(['picking.counts.targets']);
+
+  return createReport([
+    createCheck(
+      'command-evidence.client-input-bytes',
+      clientInputBytes <= resolvedBudgets.commandClientInputBytes,
+      clientInputBytes,
+      resolvedBudgets.commandClientInputBytes,
+    ),
+    createCheck(
+      'command-evidence.replay-summary-bytes',
+      replaySummaryBytes <= resolvedBudgets.commandReplaySummaryBytes,
+      replaySummaryBytes,
+      resolvedBudgets.commandReplaySummaryBytes,
+    ),
+    createCheck(
+      'command-evidence.no-renderer-payload',
+      !hasForbiddenKeyDeep(clientInput, rendererKeys)
+        && !hasForbiddenKeyDeep(clientInput, heavyClientKeys, allowedClientHeavyPaths),
+      0,
+      0,
+    ),
+    createCheck(
+      'command-evidence.no-heavy-authority-payload',
+      !hasForbiddenKeyDeep(replaySummary, heavyReplayKeys),
+      0,
+      0,
+    ),
+  ], {
+    scope: 'command-evidence',
+    requestId: String(input.requestId || replaySummary.requestId || ''),
+    action: String(input.action || replaySummary.action || ''),
+  });
+}
+
 function summarizeReport(report = {}) {
   const failedChecks = (report.checks || []).filter((check) => !check.ok);
   return Object.freeze({
@@ -172,6 +228,7 @@ module.exports = {
   DEFAULT_BUDGETS,
   assertReport,
   checkApiRequest,
+  checkCommandEvidence,
   checkSaveState,
   checkWorldMapWindow,
   combineReports,

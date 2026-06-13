@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const WorldMapInputIntent = require('./WorldMapInputIntent');
+const WorldMapPerformanceBudget = require('./WorldMapPerformanceBudget');
 
 test('WorldMapInputIntent creates compact serializable tap intents', () => {
   const intent = WorldMapInputIntent.createTapIntent({
@@ -84,6 +85,7 @@ test('WorldMapInputIntent creates compact serializable tap intents', () => {
   assert.equal(json.includes('large-map-data'), false);
   assert.equal(json.includes('must-not-leak'), false);
   assert.ok(WorldMapInputIntent.getSerializableSizeBytes(serializable) < 2048);
+  assert.equal(WorldMapPerformanceBudget.checkInputIntent(serializable).ok, true);
 });
 
 test('WorldMapInputIntent represents tap misses without renderer objects', () => {

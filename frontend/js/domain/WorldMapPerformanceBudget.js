@@ -13,6 +13,7 @@
     framePixels: 16000000,
     chunkEntries: 1024,
     activeChunks: 64,
+    inputIntentBytes: 2048,
   });
 
   function toInteger(value, fallback = 0) {
@@ -144,6 +145,48 @@
     return createReport(checks, { snapshot: 'renderer-frame', signature: frameWork.signature || '' });
   }
 
+  function hasForbiddenKeyDeep(value = {}, keys = [], allowedPaths = new Set(), path = []) {
+    if (!value || typeof value !== 'object') return false;
+    return Object.entries(value).some(([key, item]) => {
+      const nextPath = [...path, key];
+      const pathText = nextPath.join('.');
+      if (keys.includes(key) && !allowedPaths.has(pathText)) return true;
+      return hasForbiddenKeyDeep(item, keys, allowedPaths, nextPath);
+    });
+  }
+
+  function checkInputIntent(intent = {}, budgets = DEFAULT_BUDGETS) {
+    const sizeBytes = getSerializableSizeBytes(intent);
+    const heavyTileKeys = ['tiles', 'tileMapView', 'targets', 'hitTargets', 'visibleEntries'];
+    const rendererKeys = ['renderer', 'rendererCache', 'rendererPayload', 'context', 'event', 'nativeEvent'];
+    const allowedHeavyPaths = new Set(['picking.counts.targets']);
+    const checks = [
+      createCheck(
+        'input-intent.serializable-size',
+        sizeBytes <= budgets.inputIntentBytes,
+        sizeBytes,
+        budgets.inputIntentBytes,
+      ),
+      createCheck(
+        'input-intent.no-renderer-payload',
+        !hasForbiddenKeyDeep(intent, rendererKeys),
+        0,
+        0,
+      ),
+      createCheck(
+        'input-intent.no-tile-copy',
+        !hasForbiddenKeyDeep(intent, heavyTileKeys, allowedHeavyPaths),
+        0,
+        0,
+      ),
+    ];
+    return createReport(checks, {
+      snapshot: 'input-intent',
+      schema: String(intent?.schema || ''),
+      kind: String(intent?.kind || ''),
+    });
+  }
+
   function combineReports(reports = [], meta = {}) {
     const checks = [];
     (Array.isArray(reports) ? reports : []).forEach((report) => {
@@ -156,6 +199,7 @@
     DEFAULT_BUDGETS,
     assertReport,
     checkEntitySnapshot,
+    checkInputIntent,
     checkRendererFrameWork,
     checkRenderSnapshot,
     checkVisibilitySnapshot,

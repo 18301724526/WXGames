@@ -95,6 +95,63 @@ test('PerformanceCapacityBudget checks world-map window and chunk budgets', () =
   assert.equal(report.failedKeys.includes('world-window.chunk-tile-count'), true);
 });
 
+test('PerformanceCapacityBudget checks command evidence and replay summary budgets', () => {
+  const compactReport = PerformanceCapacityBudget.checkCommandEvidence({
+    clientInput: {
+      schema: 'world-map-input-intent-v1',
+      target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
+      picking: { inputEpoch: 9, signature: 'sig-9' },
+    },
+    replaySummary: {
+      schema: 'command-replay-correlation-v1',
+      requestId: 'api-9',
+      action: 'startWorldMarch',
+      clientInput: {
+        schema: 'world-map-input-intent-v1',
+        target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
+      },
+      authority: {
+        commandId: 'cmd_123',
+        status: 'accepted',
+        command: { type: 'startWorldMarch', actorId: 'explore-1' },
+      },
+      matches: { requestId: true, clientInput: true, authorityCommand: true },
+    },
+  });
+
+  assert.equal(compactReport.ok, true);
+  assert.equal(compactReport.failedKeys.length, 0);
+
+  const oversizedReport = PerformanceCapacityBudget.checkCommandEvidence({
+    clientInput: {
+      schema: 'world-map-input-intent-v1',
+      action: { type: 'startWorldMarch', rendererPayload: 'must-not-pass' },
+      picking: {
+        counts: { targets: 20 },
+        targets: Array.from({ length: 20 }, (_, index) => ({ index })),
+      },
+      huge: 'x'.repeat(4096),
+    },
+    replaySummary: {
+      schema: 'command-replay-correlation-v1',
+      authority: {
+        commandId: 'cmd_oversized',
+        timeline: { route: Array.from({ length: 100 }, (_, index) => ({ index })) },
+      },
+      debug: {
+        response: { gameState: { worldMap: { tiles: Array.from({ length: 100 }, (_, index) => ({ id: `tile_${index}` })) } } },
+      },
+      huge: 'x'.repeat(4096),
+    },
+  });
+
+  assert.equal(oversizedReport.ok, false);
+  assert.equal(oversizedReport.failedKeys.includes('command-evidence.client-input-bytes'), true);
+  assert.equal(oversizedReport.failedKeys.includes('command-evidence.replay-summary-bytes'), true);
+  assert.equal(oversizedReport.failedKeys.includes('command-evidence.no-renderer-payload'), true);
+  assert.equal(oversizedReport.failedKeys.includes('command-evidence.no-heavy-authority-payload'), true);
+});
+
 test('PerformanceCapacityBudget summarizes failed checks for observability snapshots', () => {
   const report = PerformanceCapacityBudget.checkApiRequest({
     path: '/api/game/action',

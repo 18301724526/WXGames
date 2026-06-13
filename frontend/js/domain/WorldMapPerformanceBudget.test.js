@@ -131,6 +131,40 @@ test('WorldMapPerformanceBudget checks render serializable payload size', () => 
   assert.equal(report.failedKeys.includes('render.serializable-size'), true);
 });
 
+test('WorldMapPerformanceBudget checks world-map input intent evidence budgets', () => {
+  const compactReport = WorldMapPerformanceBudget.checkInputIntent({
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    source: 'worldMapRuntime',
+    points: { physical: { x: 1, y: 2 }, layer: { x: 101, y: 202 } },
+    action: { type: 'selectWorldMarchTarget', targetQ: 3, targetR: -2 },
+    target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
+    picking: { inputEpoch: 5, signature: 'sig-5', counts: { targets: 8 } },
+    view: { frame: { width: 390, height: 520 }, viewport: { scale: 1 }, camera: { x: 0, y: 0 } },
+    diagnostics: { hitTargetCount: 8 },
+  });
+
+  assert.equal(compactReport.ok, true);
+  assert.equal(compactReport.failedKeys.length, 0);
+
+  const oversizedReport = WorldMapPerformanceBudget.checkInputIntent({
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    action: { type: 'selectWorldMarchTarget', rendererPayload: 'must-not-pass' },
+    target: { kind: 'tile', tileId: 'tile_3_-2' },
+    picking: {
+      counts: { targets: 64 },
+      targets: Array.from({ length: 64 }, (_, index) => ({ index })),
+    },
+    debugPayload: 'x'.repeat(4096),
+  });
+
+  assert.equal(oversizedReport.ok, false);
+  assert.equal(oversizedReport.failedKeys.includes('input-intent.serializable-size'), true);
+  assert.equal(oversizedReport.failedKeys.includes('input-intent.no-renderer-payload'), true);
+  assert.equal(oversizedReport.failedKeys.includes('input-intent.no-tile-copy'), true);
+});
+
 test('WorldMapPerformanceBudget fails renderer frame work that exceeds capacity budgets', () => {
   const report = WorldMapPerformanceBudget.checkRendererFrameWork({
     frame: { width: 200, height: 200 },

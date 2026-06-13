@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const CommandReplayCorrelation = require('../services/realtime/CommandReplayCorrelation');
+const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
 const { CommandAuthorityContract } = require('../services/realtime');
 
 function createClientInputIntent() {
@@ -111,4 +112,8 @@ test('CommandReplayCorrelation reconstructs a world-map command evidence chain',
   assert.equal(summary.matches.authorityCommand, true);
   assert.equal(JSON.stringify(summary).includes('rendererCache'), false);
   assert.ok(JSON.stringify(summary).length < 4000);
+  assert.equal(PerformanceCapacityBudget.checkCommandEvidence({
+    clientInput: summary.clientInput,
+    replaySummary: summary,
+  }).ok, true);
 });
