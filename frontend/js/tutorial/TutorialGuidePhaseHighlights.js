@@ -331,26 +331,15 @@
     if (this.isPostNamingSystemGuideActive()) {
       const step = this.getCurrentStep();
       if (step === TUTORIAL_STEPS.polityNamed) {
-        this.ensureResourcesGuideVisible();
-        return this.showHighlight(
-          'openCityManagement',
-          (action) => !action.disabled && (action.tab || 'people') === 'people',
-          '打开城池人才页，之后人才分配都在入城后的城池面板里完成。',
-          { type: 'openCityManagement', tab: 'people' },
-          this.getResourcesGuideHighlightOptions(),
-        );
+        this.ensureCityPeopleGuideVisible();
+        this.onTalentPolicyOpened?.()
+          ?.then?.(() => this.refreshCurrentHighlight())
+          ?.catch?.(() => {});
+        this.game?.canvasShell?.hideTutorialHighlight?.();
+        return false;
       }
       if (step === TUTORIAL_STEPS.talentPolicyOpened) {
-        if (!this.isCityManagementOpen()) {
-          this.ensureResourcesGuideVisible();
-          return this.showHighlight(
-            'openCityManagement',
-            (action) => !action.disabled && (action.tab || 'people') === 'people',
-            '打开城池人才页，进入人才标签后就可以手动调整岗位。',
-            { type: 'openCityManagement', tab: 'people' },
-            this.getResourcesGuideHighlightOptions(),
-          );
-        }
+        this.ensureCityPeopleGuideVisible();
         if (!this.isCityManagementTabOpen('people')) {
           return this.showHighlight(
             'switchCityManagementTab',

@@ -111,7 +111,7 @@ test('CityCanvasRenderer preserves city switcher and subcity hit target contract
   assert.equal(host.hitTargets.some((target) => target.action.type === 'jumpToSubcity' && target.action.cityId === 'city-2'), true);
 });
 
-test('CityCanvasRenderer preserves management tabs and delegates tab content renderers', () => {
+test('CityCanvasRenderer preserves management tabs and delegates people tab to city people facade', () => {
   const host = createHost();
   const renderer = new CityCanvasRenderer({ host });
 

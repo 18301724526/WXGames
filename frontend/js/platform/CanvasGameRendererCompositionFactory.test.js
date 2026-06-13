@@ -23,6 +23,7 @@ test('CanvasGameRendererCompositionFactory creates child renderers with the game
     canvasSurfaceRenderer: createClass('surface', calls),
     canvasAssetRenderer: createClass('asset', calls),
     worldMapCanvasRenderer: createClass('world-map', calls),
+    cityPeopleCanvasRenderer: createClass('city-people', calls),
     canvasFrameRenderer: createClass('frame', calls),
   };
 
@@ -31,11 +32,12 @@ test('CanvasGameRendererCompositionFactory creates child renderers with the game
   assert.equal(composition.rendererMap.surfaceRenderer.name, 'surface');
   assert.equal(composition.rendererMap.assetRenderer.name, 'asset');
   assert.equal(composition.rendererMap.worldMapRenderer.name, 'world-map');
+  assert.equal(composition.rendererMap.cityPeopleRenderer.name, 'city-people');
   assert.equal(composition.rendererMap.frameRenderer.name, 'frame');
   assert.equal(calls.every((call) => call.options.host === host), true);
   assert.deepEqual(
     composition.renderers.map((renderer) => renderer.name),
-    ['surface', 'asset', 'world-map', 'frame'],
+    ['surface', 'asset', 'world-map', 'city-people', 'frame'],
   );
 });
 

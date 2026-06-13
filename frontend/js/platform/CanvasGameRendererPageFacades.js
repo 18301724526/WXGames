@@ -157,7 +157,10 @@
     },
 
     renderPopulation(...args) {
-      const result = this.delegateHomeRenderer('renderPopulation', args);
+      const renderer = this.cityPeopleRenderer;
+      const result = renderer && typeof renderer.renderPopulation === 'function'
+        ? renderer.renderPopulation(...args)
+        : undefined;
       return result === undefined ? (Number(args[1]) || 84) + 180 : result;
     },
 

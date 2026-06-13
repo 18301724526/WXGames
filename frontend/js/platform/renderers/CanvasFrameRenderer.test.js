@@ -296,6 +296,19 @@ test('CanvasFrameRenderer preserves standard tab transition and modal overlays',
   assert.equal(names.at(-1), 'endFrame');
 });
 
+test('CanvasFrameRenderer keeps resources page out of city people ownership', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+
+  renderer.render({ resources: {} }, { activeTab: 'resources' });
+
+  const names = callNames(host);
+  assert.equal(names.includes('renderPopulation'), false);
+  assert.equal(names.includes('renderHomeFeatureGrid'), true);
+  const homeFeatureCall = host.calls.find((call) => call[0] === 'renderHomeFeatureGrid');
+  assert.equal(homeFeatureCall[1][1], 96);
+});
+
 test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facade target', () => {
   const host = createHost();
   const renderer = new CanvasFrameRenderer({ host });

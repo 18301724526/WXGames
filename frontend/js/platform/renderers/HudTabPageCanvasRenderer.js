@@ -46,8 +46,7 @@
         return;
       }
       if (activeTab === 'resources') {
-        const populationBottom = this.renderPopulation(state, topBarBottom);
-        this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 });
+        this.renderHomeFeatureGrid(state, topBarBottom, { maxBottom: tabsTop - 8 });
       } else if (activeTab === 'buildings') {
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderBuildings(

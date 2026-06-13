@@ -29,6 +29,14 @@ test('CanvasGameRenderer uses installed page facades for child renderer delegati
       renderTopBar() {
         return 121;
       },
+      renderPopulation() {
+        throw new Error('home renderer must not own population rendering');
+      },
+    },
+    cityPeopleRenderer: {
+      renderPopulation(...args) {
+        return { owner: 'city-people', args };
+      },
     },
     buildingRenderer: {
       resourceIconPath(resource) {
@@ -43,6 +51,10 @@ test('CanvasGameRenderer uses installed page facades for child renderer delegati
   });
 
   assert.equal(renderer.renderTopBar({}, {}), 121);
+  assert.deepEqual(renderer.renderPopulation({ id: 'state' }, 200), {
+    owner: 'city-people',
+    args: [{ id: 'state' }, 200],
+  });
   assert.equal(renderer.resourceIconPath('wood'), 'icon:wood');
   assert.equal(renderer.render({}, {}), 'frame-rendered');
 });

@@ -71,12 +71,12 @@ test('HudTabPageCanvasRenderer preserves resource and content tab layouts', () =
   renderer.renderHudTabPage({}, 'civilization', 96, { tutorial: { step: 4 } });
   renderer.renderHudTabPage({}, 'military', 96, {});
 
-  assert.deepEqual(callNames(host), ['renderPopulation', 'renderHomeFeatureGrid', 'renderBuildings', 'renderCivilization', 'renderMilitary']);
-  assert.equal(host.calls[1][1][2].maxBottom, 764);
-  assert.equal(host.calls[2][1][0].tutorial.step, 3);
+  assert.deepEqual(callNames(host), ['renderHomeFeatureGrid', 'renderBuildings', 'renderCivilization', 'renderMilitary']);
+  assert.equal(host.calls[0][1][2].maxBottom, 764);
+  assert.equal(host.calls[1][1][0].tutorial.step, 3);
+  assert.equal(host.calls[1][1][2], 664);
   assert.equal(host.calls[2][1][2], 664);
   assert.equal(host.calls[3][1][2], 664);
-  assert.equal(host.calls[4][1][2], 664);
 });
 
 test('HudTabPageCanvasRenderer preserves map-home military behavior', () => {

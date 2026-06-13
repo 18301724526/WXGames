@@ -65,17 +65,16 @@ test('MapCommandCanvasRenderer preserves floating map button contracts', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'events'), true);
 });
 
-test('MapCommandCanvasRenderer preserves command panel shell and delegates capital content', () => {
+test('MapCommandCanvasRenderer ignores legacy capital command panel state', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });
 
   renderer.renderMapCommandPanel({ cityState: {} }, { activeCommandPanel: 'capital' });
 
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeCommandPanel' && target.action.background === true), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeCommandPanel' && !target.action.background), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderPopulation'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderHomeFeatureGrid'), true);
+  assert.equal(host.hitTargets.length, 0);
+  assert.equal(host.calls.some((call) => call[0] === 'renderPopulation'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderHomeFeatureGrid'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderMainPanel'), false);
 });
 
 test('MapCommandCanvasRenderer preserves command panel main-panel delegation', () => {

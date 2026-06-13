@@ -1087,7 +1087,7 @@ test('CanvasGameShell re-renders highlighted resource guides outside map home', 
     { x: 24, y: 96, width: 80, height: 32 },
     'open policy',
     {
-      allowedAction: { type: 'openTalentPolicy' },
+      allowedAction: { type: 'assignJob' },
       renderActiveTab: 'resources',
       renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
     },
@@ -1287,7 +1287,7 @@ test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () =
   shell.showTutorialHighlight(
     { x: 100, y: 100, width: 100, height: 80 },
     'locked guide',
-    { allowedAction: { type: 'openTalentPolicy' } },
+    { allowedAction: { type: 'assignJob' } },
   );
 
   assert.equal(shell.handleTap({ x: 380, y: 690 }, event), true);

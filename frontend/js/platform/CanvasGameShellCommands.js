@@ -372,15 +372,6 @@ syncForwardedLocalAction(action = {}) {
         this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
         return true;
       }
-      if (action.type === 'openTalentPolicy') {
-        this.showCityManagement = true;
-        this.activeCityManagementTab = 'people';
-        if (this.lastGame && typeof this.lastGame === 'object') {
-          this.lastGame.showCityManagement = true;
-          this.lastGame.activeCityManagementTab = 'people';
-        }
-        return true;
-      }
       return false;
     },
 

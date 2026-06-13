@@ -3,6 +3,12 @@ const assert = require('node:assert/strict');
 
 const TutorialGuideController = require('./TutorialGuideController');
 
+async function flushTutorialPromises(ticks = 12) {
+  for (let index = 0; index < ticks; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 test('TutorialGuideController advances city entry directly into the house guide', async () => {
   const calls = [];
   const game = {
@@ -924,16 +930,15 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
 
   assert.equal(controller.canOpenTab('resources'), true);
   assert.equal(controller.canOpenTab('tech'), false);
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCityManagement', tab: 'people' });
+  assert.equal(controller.refreshCurrentHighlight(), false);
+  await flushTutorialPromises();
 
-  game.showCityManagement = true;
-  shell.showCityManagement = true;
-  game.activeCityManagementTab = 'people';
-  shell.activeCityManagementTab = 'people';
-  await controller.onTalentPolicyOpened();
+  assert.equal(game.showCityManagement, true);
+  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.activeCityManagementTab, 'people');
+  assert.equal(shell.activeCityManagementTab, 'people');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
-  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.equal(calls.some((call) => call.options?.allowedAction?.type === 'openCityManagement'), false);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
 
   controller.onManualTalentAssigned({
@@ -957,7 +962,7 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.canOpenTab('resources'), false);
 });
 
-test('TutorialGuideController exits map home before guiding people tab', () => {
+test('TutorialGuideController exits map home and opens city people guide directly', async () => {
   const calls = [];
   const shell = {
     mapHomeActive: true,
@@ -998,18 +1003,23 @@ test('TutorialGuideController exits map home before guiding people tab', () => {
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
-  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.equal(controller.refreshCurrentHighlight(), false);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 
   assert.equal(game.mapHomeActive, false);
   assert.equal(shell.mapHomeActive, false);
+  assert.equal(game.showCityManagement, true);
+  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.activeCityManagementTab, 'people');
+  assert.equal(shell.activeCityManagementTab, 'people');
   assert.equal(game.state.currentTab, 'resources');
   assert.deepEqual(
     calls.find((call) => call[0] === 'renderReadOnly'),
     ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
   );
-  const highlightCall = calls.find((call) => call[0] === 'highlight');
-  assert.deepEqual(highlightCall[1], { type: 'openCityManagement', tab: 'people' });
-  assert.deepEqual(highlightCall[2].renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
+  assert.equal(calls.some((call) => call[0] === 'highlight' && call[1]?.type === 'openCityManagement'), false);
 });
 
 test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {

@@ -148,12 +148,9 @@
 
     renderStandardFrame(state = {}, topBarBottom = 84, activeTab = 'resources', options = {}) {
       const tabsTop = this.height - 60 - this.bottomSafeArea;
-      const populationBottom = activeTab === 'resources'
-        ? this.renderPopulation(state, topBarBottom)
-        : topBarBottom;
       const homeFeatureBottom = activeTab === 'resources'
-        ? this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 })
-        : populationBottom;
+        ? this.renderHomeFeatureGrid(state, topBarBottom, { maxBottom: tabsTop - 8 })
+        : topBarBottom;
       const panelTop = activeTab === 'resources' ? homeFeatureBottom : topBarBottom;
       const advisorOffset = this.getAdvisorFrameOffset(state);
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);

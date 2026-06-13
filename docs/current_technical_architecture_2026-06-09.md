@@ -102,6 +102,8 @@ Canvas-only 规则由文档、脚本和架构测试共同守护。`scripts/verif
 - Frontend password persistence is not allowed. `H5AuthStorageAdapter` may remember username state but must not store or return plaintext password values.
 - `frontend/index.html` remains a hand-written script entry for now; `scripts/check-frontend-script-manifest.js` guards local script existence, duplicate paths, required `?v=` cache-busting, and critical dependency order until a bundler/content-hash manifest replaces it.
 
+
+Frontend city-people ownership rule: talent allocation and policy UI is owned by `CityPeopleCanvasRenderer` inside city management. `HomeCanvasRenderer`, the resources page, and map command panels must not render people allocation or policy shortcuts; the old frontend `openTalentPolicy` shortcut handler is deleted.
 ## 4. 世界地图技术边界 / World Map Technical Boundary
 
 Stable 目标使用 diamond isometric square-tile 语言，而不是 hex/axial 语言。

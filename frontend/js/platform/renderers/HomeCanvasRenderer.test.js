@@ -141,20 +141,12 @@ test('HomeCanvasRenderer falls back when presenter resource view is unavailable'
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '1200'), true);
 });
 
-test('HomeCanvasRenderer preserves population assignment hit targets', () => {
+test('HomeCanvasRenderer does not own city people or policy rendering', () => {
   const host = createHost();
   const renderer = new HomeCanvasRenderer({ host });
 
-  const bottom = renderer.renderPopulation({}, 100);
-
-  assert.equal(bottom, 416);
-  assert.equal(host.hitTargets.some((target) => (
-    target.action.type === 'openCityManagement'
-    && target.action.tab === 'people'
-    && target.action.source === 'talentPolicyShortcut'
-  )), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'assignJob' && target.action.job === 'farmer' && target.action.delta === -1), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'assignJob' && target.action.job === 'craftsman' && target.action.disabled === true), true);
+  assert.equal(typeof renderer.renderPopulation, 'undefined');
+  assert.equal(host.hitTargets.some((target) => target.action?.source === 'talentPolicyShortcut'), false);
 });
 
 test('HomeCanvasRenderer preserves home feature grid hit target contract', () => {

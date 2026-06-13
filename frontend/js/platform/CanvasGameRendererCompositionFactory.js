@@ -16,6 +16,7 @@
     { property: 'armyFormationEditorRenderer', classOption: 'armyFormationEditorRendererClass', dependencyKey: 'armyFormationEditorCanvasRenderer', globalName: 'ArmyFormationEditorCanvasRenderer', requirePath: './renderers/ArmyFormationEditorCanvasRenderer' },
     { property: 'guideTaskRenderer', classOption: 'guideTaskRendererClass', dependencyKey: 'guideTaskCanvasRenderer', globalName: 'GuideTaskCanvasRenderer', requirePath: './renderers/GuideTaskCanvasRenderer' },
     { property: 'homeRenderer', classOption: 'homeRendererClass', dependencyKey: 'homeCanvasRenderer', globalName: 'HomeCanvasRenderer', requirePath: './renderers/HomeCanvasRenderer' },
+    { property: 'cityPeopleRenderer', classOption: 'cityPeopleRendererClass', dependencyKey: 'cityPeopleCanvasRenderer', globalName: 'CityPeopleCanvasRenderer', requirePath: './renderers/CityPeopleCanvasRenderer' },
     { property: 'systemRenderer', classOption: 'systemRendererClass', dependencyKey: 'systemCanvasRenderer', globalName: 'SystemCanvasRenderer', requirePath: './renderers/SystemCanvasRenderer' },
     { property: 'cityRenderer', classOption: 'cityRendererClass', dependencyKey: 'cityCanvasRenderer', globalName: 'CityCanvasRenderer', requirePath: './renderers/CityCanvasRenderer' },
     { property: 'overlayRenderer', classOption: 'overlayRendererClass', dependencyKey: 'overlayCanvasRenderer', globalName: 'OverlayCanvasRenderer', requirePath: './renderers/OverlayCanvasRenderer' },

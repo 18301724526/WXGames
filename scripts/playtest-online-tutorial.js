@@ -1026,10 +1026,6 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       return stepAdvanced || apiOk ? pass('conquest claimed') : fail('conquest claim did not change state');
     case 'renameCity':
       return after.naming?.visible ? pass('city naming modal opened') : fail('city naming modal did not open');
-    case 'openTalentPolicy':
-      return after.cityPeopleOpen || stepAdvanced
-        ? pass('legacy talent shortcut routed to city people tab')
-        : fail('legacy talent shortcut did not route to city people tab');
     case 'assignJob':
       return stepAdvanced || apiOk || hasChanged(before.stateSummary?.resources, after.stateSummary?.resources)
         ? pass('manual talent assignment changed state')
