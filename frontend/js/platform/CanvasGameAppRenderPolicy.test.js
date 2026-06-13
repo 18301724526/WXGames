@@ -3,13 +3,13 @@ const assert = require('node:assert/strict');
 
 const CanvasGameAppRenderPolicy = require('./CanvasGameAppRenderPolicy');
 
-test('CanvasGameAppRenderPolicy resolves military world and territory into map home', () => {
+test('CanvasGameAppRenderPolicy resolves resources and territory into map home', () => {
   assert.deepEqual(CanvasGameAppRenderPolicy.resolveMapHomeViewState({
-    currentTab: 'military',
-    militaryView: 'world',
+    currentTab: 'resources',
+    militaryView: 'army',
   }), {
     activeTab: 'military',
-    requestedTab: 'military',
+    requestedTab: 'resources',
     militaryView: 'world',
     isMapHome: true,
     canUseMapHome: true,
@@ -28,29 +28,15 @@ test('CanvasGameAppRenderPolicy resolves military world and territory into map h
 
 test('CanvasGameAppRenderPolicy honors allowDefaultMapHome false', () => {
   assert.deepEqual(CanvasGameAppRenderPolicy.resolveMapHomeViewState({
-    currentTab: 'military',
-    militaryView: 'world',
+    currentTab: 'resources',
+    militaryView: 'army',
   }, {
     allowDefaultMapHome: false,
   }), {
-    activeTab: 'military',
-    requestedTab: 'military',
-    militaryView: 'world',
-    isMapHome: true,
-    canUseMapHome: true,
-  });
-});
-
-test('CanvasGameAppRenderPolicy normalizes removed or unknown page tabs to map home', () => {
-  assert.deepEqual(CanvasGameAppRenderPolicy.getTabOrder(), ['military', 'buildings', 'tech', 'events', 'civilization']);
-  assert.deepEqual(CanvasGameAppRenderPolicy.resolveMapHomeViewState({}, {
-    requestedTab: 'deleted-home-page',
-    allowDefaultMapHome: false,
-  }), {
-    activeTab: 'military',
-    requestedTab: 'military',
-    militaryView: 'world',
-    isMapHome: true,
+    activeTab: 'resources',
+    requestedTab: 'resources',
+    militaryView: 'army',
+    isMapHome: false,
     canUseMapHome: true,
   });
 });
@@ -76,5 +62,5 @@ test('CanvasGameAppRenderPolicy resolves preferred military view from guide stat
 test('CanvasGameAppRenderPolicy returns a defensive tab order copy', () => {
   const tabs = CanvasGameAppRenderPolicy.getTabOrder();
   tabs.push('debug');
-  assert.deepEqual(CanvasGameAppRenderPolicy.getTabOrder(), ['military', 'buildings', 'tech', 'events', 'civilization']);
+  assert.deepEqual(CanvasGameAppRenderPolicy.getTabOrder(), ['resources', 'buildings', 'tech', 'events', 'civilization', 'military']);
 });

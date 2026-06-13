@@ -9,11 +9,10 @@ const WorldMapService = require('./WorldMapService');
 const WorldExplorerService = require('./WorldExplorerService');
 const WorldAiExplorerService = require('./WorldAiExplorerService');
 const CityService = require('./CityService');
+const TalentPolicyService = require('./TalentPolicyService');
 const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
-
-const REMOVED_POLICY_ALLOCATION_FIELD = ['talent', 'Policies'].join('');
 
 function createInitialGameState(playerId) {
   const buildings = BuildingState.createInitialBuildingState();
@@ -48,6 +47,7 @@ function createInitialGameState(playerId) {
     worldMap: WorldMapService.createInitialWorldMap(WorldMapService.DEFAULT_WORLD_SEED),
     activeCityId: CityService.CAPITAL_CITY_ID,
     cities: {},
+    talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
     famousPeople: [],
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
     taskProgress: { claimed: {} },
@@ -95,7 +95,7 @@ function normalizeStateStructure(rawState) {
   state.softGuideState = state.softGuideState && typeof state.softGuideState === 'object' ? state.softGuideState : {};
   state.military = MilitaryService.normalizeMilitaryState(state.military, state);
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
-  delete state[REMOVED_POLICY_ALLOCATION_FIELD];
+  state.talentPolicies = TalentPolicyService.normalizeTalentPolicyState(state.talentPolicies);
   state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
   state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
   FamousPersonService.ensureFamousPersonState(state);

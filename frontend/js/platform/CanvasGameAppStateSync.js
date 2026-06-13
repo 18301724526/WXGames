@@ -22,11 +22,11 @@
             const nextState = payload.gameState || payload.state || this.state;
             const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
             const localTab = this.getActiveTab();
-            const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'world';
+            const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'army';
             const homeView = this.resolveMapHomeViewState(nextState, {
               requestedTab: localTab,
               militaryView: localMilitaryView,
-              forceMapHome: this.mapHomeActive && localTab === 'military',
+              forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
             });
             this.state = {
               ...nextState,
@@ -95,11 +95,11 @@
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
             const localTab = this.getActiveTab();
-            const localMilitaryView = this.state?.militaryView || this.militaryView || 'world';
+            const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
             const homeView = this.resolveMapHomeViewState(serverState, {
               requestedTab: localTab,
               militaryView: localMilitaryView,
-              forceMapHome: this.mapHomeActive && localTab === 'military',
+              forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
             });
             if (this.stateManager && typeof this.stateManager === 'object') {
               this.stateManager.state = {

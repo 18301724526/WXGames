@@ -78,7 +78,7 @@ test('completed tutorial states continue to allow every action', () => {
   assert.equal(TutorialService.validateAction(tutorial, 'upgrade', {}, {}).allowed, true);
 });
 
-test('post-naming tutorial guides city people, manual talent, famous seek, and final tech before completion', () => {
+test('post-naming tutorial guides policy, manual talent, famous seek, and final tech before completion', () => {
   const cityNamed = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
     TutorialService.TUTORIAL_STEPS.firstCityNamed,
@@ -98,18 +98,17 @@ test('post-naming tutorial guides city people, manual talent, famous seek, and f
     false,
   );
 
-  const cityPeopleOpened = TutorialService.advanceClientStep(polityNamed, TutorialService.TUTORIAL_STEPS.cityPeopleOpened);
-  assert.equal(cityPeopleOpened.success, true);
-  const deletedPolicyAction = ['apply', 'Talent', 'Policy'].join('');
-  assert.equal(TutorialService.validateAction(cityPeopleOpened.tutorial, deletedPolicyAction, { policyId: 'balanced' }, {}).allowed, false);
-  assert.equal(TutorialService.validateAction(cityPeopleOpened.tutorial, 'assign', { target: 'farmer', count: 1 }, {}).allowed, false);
+  const policyOpened = TutorialService.advanceClientStep(polityNamed, TutorialService.TUTORIAL_STEPS.talentPolicyOpened);
+  assert.equal(policyOpened.success, true);
+  assert.equal(TutorialService.validateAction(policyOpened.tutorial, 'applyTalentPolicy', { policyId: 'balanced' }, {}).allowed, true);
+  assert.equal(TutorialService.validateAction(policyOpened.tutorial, 'assign', { target: 'farmer', count: 1 }, {}).allowed, false);
 
-  const manualTalentReady = TutorialService.advanceTutorial(cityPeopleOpened.tutorial, 'manualTalentReady');
-  assert.equal(manualTalentReady.currentStep, TutorialService.TUTORIAL_STEPS.manualTalentReady);
-  assert.equal(TutorialService.validateAction(manualTalentReady, 'assign', { target: 'farmer', count: 1 }, {}).allowed, true);
-  assert.equal(TutorialService.validateAction(manualTalentReady, 'seekFamousPerson', { source: 'seek' }, {}).allowed, false);
+  const policyApplied = TutorialService.advanceTutorial(policyOpened.tutorial, 'talentPolicyApplied');
+  assert.equal(policyApplied.currentStep, TutorialService.TUTORIAL_STEPS.talentPolicyApplied);
+  assert.equal(TutorialService.validateAction(policyApplied, 'assign', { target: 'farmer', count: 1 }, {}).allowed, true);
+  assert.equal(TutorialService.validateAction(policyApplied, 'seekFamousPerson', { source: 'seek' }, {}).allowed, false);
 
-  const manualAssigned = TutorialService.advanceTutorial(manualTalentReady, 'manualTalentAssigned');
+  const manualAssigned = TutorialService.advanceTutorial(policyApplied, 'manualTalentAssigned');
   assert.equal(TutorialService.canAccessTab(manualAssigned, 'famousPersons'), true);
   assert.equal(TutorialService.advanceClientStep(manualAssigned, TutorialService.TUTORIAL_STEPS.famousSeekOpened).success, true);
 

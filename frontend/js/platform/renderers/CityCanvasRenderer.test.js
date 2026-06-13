@@ -18,9 +18,6 @@ function createHost(overrides = {}) {
       buildMilitaryViewState() {
         return createMilitaryView();
       },
-      buildPopulationViewState() {
-        return createPopulationView();
-      },
     },
     hitTargets,
     calls,
@@ -28,14 +25,13 @@ function createHost(overrides = {}) {
     createGradient() { return '#123'; },
     drawAsset(assetPath) { calls.push(['drawAsset', assetPath]); return false; },
     drawButton(x, y, width, height, label, options = {}) { calls.push(['drawButton', label, options]); },
-    drawIconCard(...args) { calls.push(['drawIconCard', args]); },
-    drawLine(...args) { calls.push(['drawLine', args]); },
     drawPanel() { calls.push(['drawPanel']); },
     drawText(text) { calls.push(['drawText', text]); },
     getLayout() { return { contentX: 10, contentWidth: 360, contentRight: 370 }; },
     getTopBarBottom() { return 72; },
     renderArmyFormationStrip(...args) { calls.push(['renderArmyFormationStrip', args]); return true; },
     renderBuildings(...args) { calls.push(['renderBuildings', args]); return true; },
+    renderPopulation(...args) { calls.push(['renderPopulation', args]); return 360; },
     truncateText(text) { return String(text || ''); },
     ...overrides,
   };
@@ -58,29 +54,6 @@ function createMilitaryView() {
     formations: [
       { cityId: 'city-2', slot: 1, name: 'Guard', maxMembers: 5, members: [{ id: 'hero-1' }] },
       { cityId: 'city-2', slot: 2, name: 'Reserve', maxMembers: 5, members: [] },
-    ],
-  };
-}
-
-function createPopulationView() {
-  return {
-    text: {
-      title: 'People',
-      subtitle: 'Jobs',
-      total: 5,
-      unassigned: 1,
-    },
-    planning: {
-      terrainLabel: 'Coast',
-      text: {
-        habitabilityStatus: 'Stable',
-        populationGrowthStatus: 'Growing',
-        note: 'Keep balance',
-      },
-    },
-    jobs: [
-      { id: 'farmer', count: 2, visible: true, canIncrease: true, canDecrease: true },
-      { id: 'scholar', count: 2, visible: true, canIncrease: true, canDecrease: true },
     ],
   };
 }
@@ -149,8 +122,7 @@ test('CityCanvasRenderer preserves management tabs and delegates tab content ren
 
   host.calls.length = 0;
   renderer.renderCityManagementPanel(createState(), { activeCityManagementTab: 'people' });
-  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'People'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'assignJob' && target.action.job === 'farmer'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderPopulation'), true);
 });
 
 test('CityCanvasRenderer preserves military formation entry contracts', () => {

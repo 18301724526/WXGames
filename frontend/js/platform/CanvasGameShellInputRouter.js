@@ -35,6 +35,7 @@ hasBlockingOverlayOpen() {
         || this.tutorialAdvisorDialogue
         || this.lastGame?.tutorialAdvisorDialogue
         || this.showTaskCenter
+        || this.showGuidebook
         || this.armyFormationEditor?.open
         || this.confirmDialog?.visible
         || this.activeCommandPanel
@@ -96,6 +97,7 @@ hasBlockingOverlayExceptTechTree() {
         || this.tutorialAdvisorDialogue
         || this.lastGame?.tutorialAdvisorDialogue
         || this.showTaskCenter
+        || this.showGuidebook
         || this.armyFormationEditor?.open
         || this.confirmDialog?.visible
         || (this.activeCommandPanel && this.activeCommandPanel !== 'tech')

@@ -3,6 +3,7 @@ const AssignPopulationAction = require('./AssignPopulationAction');
 const BuildBuildingAction = require('./BuildBuildingAction');
 const ClaimEventAction = require('./ClaimEventAction');
 const TerritoryAction = require('./TerritoryAction');
+const TalentPolicyService = require('../services/TalentPolicyService');
 const TechTreeService = require('../services/TechTreeService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
@@ -27,6 +28,7 @@ const defaultDeps = {
   BuildBuildingAction,
   ClaimEventAction,
   TerritoryAction,
+  TalentPolicyService,
   TechTreeService,
   FamousPersonService,
   MilitaryService,
@@ -98,6 +100,25 @@ function createGameActionRegistry(overrides = {}) {
   register('tutorialAdvance', ({ tutorial, body }) => ({
     ...deps.TutorialService.advanceClientStep(tutorial, body.step),
   }));
+  register('applyTalentPolicy', ({ gameState, tutorial, body }) => (
+    deps.TalentPolicyService.applyPolicy(gameState, tutorial, {
+      policyId: body.policyId,
+      basePolicyId: body.basePolicyId,
+      tiers: body.tiers,
+      policy: body.policy,
+    })
+  ));
+  register('saveTalentPolicy', ({ gameState, body }) => (
+    deps.TalentPolicyService.saveCustomPolicy(gameState, {
+      policyId: body.policyId,
+      basePolicyId: body.basePolicyId,
+      tiers: body.tiers,
+      policy: body.policy,
+    })
+  ));
+  register('deleteTalentPolicy', ({ gameState, body }) => (
+    deps.TalentPolicyService.deleteCustomPolicy(gameState, { policyId: body.policyId })
+  ));
   register('setArmyFormation', ({ gameState, body }) => (
     deps.MilitaryService.setArmyFormation(gameState, {
       cityId: body.cityId,

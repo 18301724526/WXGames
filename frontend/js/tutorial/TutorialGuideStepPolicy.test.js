@@ -21,14 +21,10 @@ test('TutorialGuideStepPolicy gates tab access by current tutorial step', () => 
     step: TUTORIAL_STEPS.houseBuilt,
     completed: false,
   }), true);
-  assert.equal(TutorialGuideStepPolicy.canOpenTab('military', {
+  assert.equal(TutorialGuideStepPolicy.canOpenTab('resources', {
     step: TUTORIAL_STEPS.polityNamed,
     completed: false,
   }), true);
-  assert.equal(TutorialGuideStepPolicy.canOpenTab('deleted-home-page', {
-    step: TUTORIAL_STEPS.polityNamed,
-    completed: false,
-  }), false);
   assert.equal(TutorialGuideStepPolicy.canOpenTab('tech', {
     step: TUTORIAL_STEPS.polityNamed,
     completed: false,

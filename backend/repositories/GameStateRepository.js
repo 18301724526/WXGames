@@ -1,8 +1,6 @@
 const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
 
-const REMOVED_POLICY_ALLOCATION_COLUMN = ['talent', 'Policies'].join('');
-
 class GameStateRepository {
   constructor(db) {
     this.db = db;
@@ -48,6 +46,7 @@ class GameStateRepository {
         lastEventAt TEXT,
         tutorial TEXT,
         softGuideState TEXT,
+        talentPolicies TEXT,
         famousPeople TEXT,
         famousPersonState TEXT,
         taskProgress TEXT,
@@ -89,8 +88,8 @@ class GameStateRepository {
     if (!columns.some((column) => column.name === 'softGuideState')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN softGuideState TEXT').run();
     }
-    if (columns.some((column) => column.name === REMOVED_POLICY_ALLOCATION_COLUMN)) {
-      this.db.prepare(`ALTER TABLE game_states DROP COLUMN ${REMOVED_POLICY_ALLOCATION_COLUMN}`).run();
+    if (!columns.some((column) => column.name === 'talentPolicies')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN talentPolicies TEXT').run();
     }
     if (!columns.some((column) => column.name === 'famousPeople')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN famousPeople TEXT').run();
@@ -176,6 +175,7 @@ class GameStateRepository {
       lastEventAt: row.lastEventAt ? Number(row.lastEventAt) || 0 : 0,
       tutorial: row.tutorial ? JSON.parse(row.tutorial) : null,
       softGuideState: row.softGuideState ? JSON.parse(row.softGuideState) : null,
+      talentPolicies: row.talentPolicies ? JSON.parse(row.talentPolicies) : null,
       famousPeople: row.famousPeople ? JSON.parse(row.famousPeople) : null,
       famousPersonState: row.famousPersonState ? JSON.parse(row.famousPersonState) : null,
       taskProgress: row.taskProgress ? JSON.parse(row.taskProgress) : null,
@@ -292,11 +292,11 @@ class GameStateRepository {
       INSERT INTO game_states (
         playerId, revision, saveMetadata, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
-        offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState,
+        offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldAi, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(playerId) DO UPDATE SET
         revision = excluded.revision,
         saveMetadata = excluded.saveMetadata,
@@ -317,6 +317,7 @@ class GameStateRepository {
         lastEventAt = excluded.lastEventAt,
         tutorial = excluded.tutorial,
         softGuideState = excluded.softGuideState,
+        talentPolicies = excluded.talentPolicies,
         famousPeople = excluded.famousPeople,
         famousPersonState = excluded.famousPersonState,
         taskProgress = excluded.taskProgress,
@@ -357,6 +358,7 @@ class GameStateRepository {
       gameState.lastEventAt || 0,
       JSON.stringify(gameState.tutorial || {}),
       JSON.stringify(gameState.softGuideState || {}),
+      JSON.stringify(gameState.talentPolicies || {}),
       JSON.stringify(gameState.famousPeople || []),
       JSON.stringify(gameState.famousPersonState || {}),
       JSON.stringify(gameState.taskProgress || {}),

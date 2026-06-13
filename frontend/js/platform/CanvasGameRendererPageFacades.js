@@ -111,19 +111,19 @@
       return 12 + (cityView.hidden ? 128 : 166) + 12;
     },
 
-    delegateResourceTopBarRenderer(method, args = []) {
-      const renderer = this.resourceTopBarRenderer;
+    delegateHomeRenderer(method, args = []) {
+      const renderer = this.homeRenderer;
       if (!renderer || typeof renderer[method] !== 'function') return undefined;
       return renderer[method](...args);
     },
 
     renderTopBar(...args) {
-      const result = this.delegateResourceTopBarRenderer('renderTopBar', args);
+      const result = this.delegateHomeRenderer('renderTopBar', args);
       return result === undefined ? 84 : result;
     },
 
     renderMapHomeTopBar(...args) {
-      const result = this.delegateResourceTopBarRenderer('renderMapHomeTopBar', args);
+      const result = this.delegateHomeRenderer('renderMapHomeTopBar', args);
       return result === undefined ? 72 : result;
     },
 
@@ -142,9 +142,28 @@
       return this.delegateGuideTaskRenderer('renderTaskCenterButton', args);
     },
 
+    renderGuidebookButton(...args) {
+      return this.delegateGuideTaskRenderer('renderGuidebookButton', args);
+    },
+
+    renderGuidebookPanel(...args) {
+      const result = this.delegateGuideTaskRenderer('renderGuidebookPanel', args);
+      return result === undefined ? false : result;
+    },
+
     renderTaskCenterPanel(...args) {
       const result = this.delegateGuideTaskRenderer('renderTaskCenterPanel', args);
       return result === undefined ? false : result;
+    },
+
+    renderPopulation(...args) {
+      const result = this.delegateHomeRenderer('renderPopulation', args);
+      return result === undefined ? (Number(args[1]) || 84) + 180 : result;
+    },
+
+    renderHomeFeatureGrid(...args) {
+      const result = this.delegateHomeRenderer('renderHomeFeatureGrid', args);
+      return result === undefined ? (Number(args[1]) || 400) : result;
     },
 
     delegateSystemRenderer(method, args = []) {
@@ -820,7 +839,7 @@
       this.setHitTargets([]);
       this.clear();
       this.renderTopBar(state, options);
-      this.renderTabs(options.activeTab || 'military', state, options);
+      this.renderTabs(options.activeTab || 'resources', state, options);
       this.endFrame(options);
       return undefined;
     },

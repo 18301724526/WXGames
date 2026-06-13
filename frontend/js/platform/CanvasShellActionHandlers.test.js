@@ -75,7 +75,7 @@ test('switch tab preserves page transition contract after delegated tab selectio
   };
   const host = {
     buildingOffset: 4,
-    state: { currentTab: 'military' },
+    state: { currentTab: 'resources' },
     lastGame: game,
     resolveMapHomeViewState(state, options) {
       calls.push(['resolve', state.currentTab, options.requestedTab]);
@@ -93,7 +93,7 @@ test('switch tab preserves page transition contract after delegated tab selectio
   assert.equal(await controller.handle_switchTab({ type: 'switchTab', tab: 'tech' }), true);
   assert.deepEqual(calls, [
     ['select', 'tech'],
-    ['resolve', 'military', 'tech'],
+    ['resolve', 'resources', 'tech'],
   ]);
 });
 
@@ -258,7 +258,7 @@ test('confirm reset executes reset after canvas confirmation', async () => {
       calls.push(['resetGame', options]);
       return Promise.resolve(true);
     },
-    resetLocalViewToWorldMap(options) {
+    resetLocalViewToResources(options) {
       calls.push(['gameResetView', options]);
     },
   };
@@ -274,7 +274,7 @@ test('confirm reset executes reset after canvas confirmation', async () => {
       this.confirmDialog = null;
       return true;
     },
-    resetLocalViewToWorldMap(options) {
+    resetLocalViewToResources(options) {
       calls.push(['hostResetView', options]);
     },
     renderCanvasAction(action) {

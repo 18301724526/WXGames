@@ -79,6 +79,7 @@ openFamousPersons() {
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.showTaskCenter = false;
+      this.showGuidebook = false;
       this.activeCommandPanel = '';
       return true;
     },
@@ -284,6 +285,7 @@ resetForCanvasTabSwitch() {
       this.techTreeDragStart = null;
       this.buildingTransition = null;
       this.activeEventId = null;
+      this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showCityManagement = false;
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
@@ -293,12 +295,8 @@ resetForCanvasTabSwitch() {
       this.renderer?.clearFamousSkillTooltip?.();
     },
 
-resetLocalViewToWorldMap(options = {}) {
-      const homeView = this.resolveMapHomeViewState(this.lastGame?.state || {}, {
-        requestedTab: 'military',
-        militaryView: 'world',
-        forceMapHome: true,
-      });
+resetLocalViewToResources(options = {}) {
+      const homeView = this.resolveMapHomeViewState(this.lastGame?.state || {}, { requestedTab: 'resources', forceMapHome: true });
       this.buildingOffset = 0;
       this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
@@ -325,6 +323,7 @@ resetLocalViewToWorldMap(options = {}) {
       this.showCityManagement = false;
       this.showAdvisor = false;
       this.showTaskCenter = false;
+      this.showGuidebook = false;
       this.showFamousPersons = false;
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
       this.activeCommandPanel = '';
@@ -332,6 +331,7 @@ resetLocalViewToWorldMap(options = {}) {
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
+      this.activeGuidebookTab = 'planning';
       const game = this.lastGame;
       if (game?.state && typeof game.state === 'object') {
         game.state = {
@@ -343,8 +343,8 @@ resetLocalViewToWorldMap(options = {}) {
       if (game && 'activeTab' in game) game.activeTab = homeView.activeTab;
       if (game && 'militaryView' in game) game.militaryView = homeView.militaryView;
       if (game && 'mapHomeActive' in game) game.mapHomeActive = homeView.isMapHome;
-      if (!options.skipGame && game?.resetLocalViewToWorldMap) {
-        game.resetLocalViewToWorldMap({ skipShell: true, skipRender: true });
+      if (!options.skipGame && game?.resetLocalViewToResources) {
+        game.resetLocalViewToResources({ skipShell: true, skipRender: true });
       }
       if (!options.skipRender) this.renderReadOnly(game?.state, homeView.activeTab);
       return true;
@@ -370,6 +370,15 @@ syncForwardedLocalAction(action = {}) {
           this.lastGame.territoryUiState.selectedSiteId = siteId;
         }
         this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
+        return true;
+      }
+      if (action.type === 'openTalentPolicy') {
+        this.showCityManagement = true;
+        this.activeCityManagementTab = 'people';
+        if (this.lastGame && typeof this.lastGame === 'object') {
+          this.lastGame.showCityManagement = true;
+          this.lastGame.activeCityManagementTab = 'people';
+        }
         return true;
       }
       return false;

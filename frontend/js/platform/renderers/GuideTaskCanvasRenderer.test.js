@@ -16,6 +16,9 @@ function createHost(overrides = {}) {
       globalAlpha: 1,
     },
     presenter: {
+      buildGuidebookViewState() {
+        return createGuidebookView();
+      },
       buildTaskCenterViewState() {
         return createTaskCenterView();
       },
@@ -34,6 +37,30 @@ function createHost(overrides = {}) {
     ...overrides,
   };
   return host;
+}
+
+function createGuidebookView() {
+  return {
+    title: 'Guide',
+    subtitle: 'Plan better',
+    categories: [
+      { id: 'planning', label: 'Plan', isActive: true },
+      { id: 'military', label: 'War', isActive: false },
+    ],
+    activeCategory: {
+      id: 'planning',
+      title: 'City Planning',
+      lines: ['Place farms near rivers.', 'Balance housing and food.'],
+    },
+    planning: {
+      terrainLabel: 'Plains',
+      text: {
+        habitabilityStatus: 'Good',
+        populationGrowthStatus: 'Growing',
+        note: 'Keep enough homes.',
+      },
+    },
+  };
 }
 
 function createTaskCenterView() {
@@ -68,6 +95,18 @@ function createTaskCenterView() {
   };
 }
 
+test('GuideTaskCanvasRenderer preserves guidebook modal hit targets', () => {
+  const host = createHost();
+  const renderer = new GuideTaskCanvasRenderer({ host });
+
+  renderer.renderGuidebookPanel({}, { activeGuidebookTab: 'planning' });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeGuidebook'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'switchGuidebookTab' && target.action.tab === 'military'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Guide'), true);
+});
+
 test('GuideTaskCanvasRenderer preserves task center claim and navigation targets', () => {
   const host = createHost();
   const renderer = new GuideTaskCanvasRenderer({ host });
@@ -92,6 +131,7 @@ test('GuideTaskCanvasRenderer preserves disabled quick entry contracts', () => {
 
   assert.equal(renderer.renderGuideTasks(state, 188), 188);
   assert.equal(renderer.renderTaskCenterButton(state), undefined);
+  assert.equal(renderer.renderGuidebookButton(state), undefined);
   assert.equal(host.hitTargets.length, 0);
   assert.equal(host.calls.length, 0);
 });
@@ -110,6 +150,10 @@ test('CanvasGameRenderer exposes guide task rendering through facade', () => {
       return { method: 'renderTaskCenterButton', host: this.host, args };
     }
 
+    renderGuidebookButton(...args) {
+      return { method: 'renderGuidebookButton', host: this.host, args };
+    }
+
     renderTaskCenterPanel(...args) {
       return { method: 'renderTaskCenterPanel', host: this.host, args };
     }
@@ -125,12 +169,14 @@ test('CanvasGameRenderer exposes guide task rendering through facade', () => {
 
   const guideTasksResult = renderer.renderGuideTasks(state, 222);
   const taskButtonResult = renderer.renderTaskCenterButton(state);
+  const guideButtonResult = renderer.renderGuidebookButton(state);
   const panelResult = renderer.renderTaskCenterPanel(state, options);
 
   assert.equal(guideTasksResult.host, renderer);
   assert.equal(guideTasksResult.method, 'renderGuideTasks');
   assert.deepEqual(guideTasksResult.args, [state, 222]);
   assert.equal(taskButtonResult.method, 'renderTaskCenterButton');
+  assert.equal(guideButtonResult.method, 'renderGuidebookButton');
   assert.equal(panelResult.host, renderer);
   assert.deepEqual(panelResult.args, [state, options]);
 });

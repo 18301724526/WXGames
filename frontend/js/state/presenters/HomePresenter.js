@@ -1,5 +1,5 @@
 (function (global) {
-  class CityResourcePresenter {
+  class HomePresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
     static toNumber(value, fallback = 0) {
@@ -264,8 +264,37 @@
       };
     }
 
+    static buildHomeFeatureViewState(state = {}, options = {}) {
+      const tasks = options.taskCenterViewState
+        || (typeof options.buildTaskCenterViewState === 'function'
+          ? options.buildTaskCenterViewState(state)
+          : { summary: { claimableCount: 0 } });
+      const entries = [
+        {
+          id: 'tasks',
+          label: '任务',
+          icon: 'assets/art/icon-event-cutout.webp',
+          statusText: tasks.summary?.claimableCount > 0 ? '可领取' : '进行中',
+          badge: this.toInteger(tasks.summary?.claimableCount),
+          action: { type: 'openTaskCenter', source: 'taskIcon', tab: 'main' },
+        },
+        {
+          id: 'guidebook',
+          label: '攻略',
+          icon: 'assets/art/icon-knowledge-cutout.webp',
+          statusText: '城市规划',
+          badge: 0,
+          action: { type: 'openGuidebook', source: 'homeFeature' },
+        },
+      ];
+      return {
+        title: '功能',
+        subtitle: '从这里进入文明的更多系统',
+        entries,
+      };
+    }
   }
 
-  global.CityResourcePresenter = CityResourcePresenter;
-  if (typeof module !== 'undefined' && module.exports) module.exports = CityResourcePresenter;
+  global.HomePresenter = HomePresenter;
+  if (typeof module !== 'undefined' && module.exports) module.exports = HomePresenter;
 })(typeof window !== 'undefined' ? window : globalThis);

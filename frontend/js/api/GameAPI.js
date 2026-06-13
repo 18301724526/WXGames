@@ -382,6 +382,9 @@
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     assignJob(job, count) { return this.request('POST', '/game/action', { action: 'assign', target: job, count }); }
+    applyTalentPolicy(policyId, policy = null) { return this.request('POST', '/game/action', { action: 'applyTalentPolicy', policyId, policy }); }
+    saveTalentPolicy(policy) { return this.request('POST', '/game/action', { action: 'saveTalentPolicy', policy }); }
+    deleteTalentPolicy(policyId) { return this.request('POST', '/game/action', { action: 'deleteTalentPolicy', policyId }); }
     research(techId) { return this.request('POST', '/game/action', { action: 'research', techId }); }
     seekFamousPerson(source = 'seek') { return this.request('POST', '/game/action', { action: 'seekFamousPerson', source }); }
     acceptFamousPerson(candidateId) { return this.request('POST', '/game/action', { action: 'acceptFamousPerson', candidateId }); }

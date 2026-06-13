@@ -116,7 +116,7 @@
         getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
           ? this.renderer.getTopBarBottom(state, { isMapHome: true })
           : 84),
-        getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'military',
+        getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
         getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
         getForceMapHome: () => this.mapHomeActive,
         canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
@@ -150,7 +150,7 @@
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       if (coordinator) return coordinator.isMapHomeActive(this.state);
       const homeView = this.resolveMapHomeViewState(this.state, {
-        requestedTab: this.state?.currentTab || this.activeTab || 'military',
+        requestedTab: this.state?.currentTab || this.activeTab || 'resources',
         militaryView: this.state?.militaryView || this.militaryView,
         forceMapHome: this.mapHomeActive,
       });

@@ -749,7 +749,7 @@ test('CanvasGameShell routes world map HUD taps before closing existing map HUD 
   ]);
 });
 
-test('CanvasGameShell coerces removed page render requests to map home', () => {
+test('CanvasGameShell can render resources without default map-home coercion', () => {
   const calls = [];
   const state = {
     currentTab: 'military',
@@ -771,14 +771,13 @@ test('CanvasGameShell coerces removed page render requests to map home', () => {
   };
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = () => false;
-  const removedPageTab = 'deleted-home-page';
 
-  assert.equal(shell.renderReadOnly(state, removedPageTab, { forceMapHome: false, allowDefaultMapHome: false }), true);
+  assert.equal(shell.renderReadOnly(state, 'resources', { forceMapHome: false, allowDefaultMapHome: false }), true);
 
-  assert.deepEqual(calls.at(-1), ['render', 'military', 'military', true]);
-  assert.equal(state.currentTab, 'military');
-  assert.equal(state.militaryView, 'world');
-  assert.equal(shell.mapHomeActive, true);
+  assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
+  assert.equal(state.currentTab, 'resources');
+  assert.equal(state.militaryView, 'army');
+  assert.equal(shell.mapHomeActive, false);
 });
 
 test('CanvasGameShell renders HUD with the latest shared world actor selection', () => {
@@ -827,7 +826,7 @@ test('CanvasGameShell renders HUD with the latest shared world actor selection',
   assert.equal(renderedUiState.worldPanY, -4);
 });
 
-test('CanvasGameShell coerces guided removed page render targets during active refreshes', () => {
+test('CanvasGameShell keeps guided resource render target during active refreshes', () => {
   const calls = [];
   const state = {
     currentTab: 'military',
@@ -852,16 +851,16 @@ test('CanvasGameShell coerces guided removed page render targets during active r
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = () => false;
   shell.tutorialHighlight = {
-    renderActiveTab: 'deleted-home-page',
+    renderActiveTab: 'resources',
     renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
   };
 
   assert.equal(shell.renderActive(), true);
 
-  assert.deepEqual(calls.at(-1), ['render', 'military', 'military', true]);
-  assert.equal(state.currentTab, 'military');
-  assert.equal(state.militaryView, 'world');
-  assert.equal(shell.mapHomeActive, true);
+  assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
+  assert.equal(state.currentTab, 'resources');
+  assert.equal(state.militaryView, 'army');
+  assert.equal(shell.mapHomeActive, false);
 });
 
 test('CanvasGameShell routes map command tech tree drag through command panel hit target', () => {
@@ -1088,21 +1087,21 @@ test('CanvasGameShell re-renders highlighted resource guides outside map home', 
     { x: 24, y: 96, width: 80, height: 32 },
     'open policy',
     {
-      allowedAction: { type: 'enterCity', cityId: 'capital', tab: 'people' },
-      renderActiveTab: 'military',
-      renderOptions: { forceMapHome: true },
+      allowedAction: { type: 'openTalentPolicy' },
+      renderActiveTab: 'resources',
+      renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
     },
   ), true);
 
   assert.deepEqual(calls, [
-    ['renderReadOnly', 'military', { forceMapHome: true }],
+    ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
   ]);
-  assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: true });
-  assert.equal(shell.lastGame.state.currentTab, 'military');
-  assert.equal(shell.lastGame.state.militaryView, 'world');
-  assert.equal(shell.lastGame.activeTab, 'military');
-  assert.equal(shell.lastGame.militaryView, 'world');
-  assert.equal(shell.lastGame.mapHomeActive, true);
+  assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
+  assert.equal(shell.lastGame.state.currentTab, 'resources');
+  assert.equal(shell.lastGame.state.militaryView, 'army');
+  assert.equal(shell.lastGame.activeTab, 'resources');
+  assert.equal(shell.lastGame.militaryView, 'army');
+  assert.equal(shell.lastGame.mapHomeActive, false);
 });
 
 test('CanvasGameShell stores original guide target action for highlight hit forwarding', () => {
@@ -1288,7 +1287,7 @@ test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () =
   shell.showTutorialHighlight(
     { x: 100, y: 100, width: 100, height: 80 },
     'locked guide',
-    { allowedAction: { type: 'enterCity', cityId: 'capital', tab: 'people' } },
+    { allowedAction: { type: 'openTalentPolicy' } },
   );
 
   assert.equal(shell.handleTap({ x: 380, y: 690 }, event), true);

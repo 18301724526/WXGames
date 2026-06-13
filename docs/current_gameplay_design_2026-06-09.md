@@ -71,14 +71,14 @@
 
 当前代码事实：
 
-- famous person、skill generator、city people assignment、military formation 已拆到后端服务和前端 presenter/action handler。
+- famous person、skill generator、talent policy、military formation 已拆到后端服务和前端 presenter/action handler。
 - 军队编队是世界地图移动的长期单位。
 
 稳定边界：
 
 - 世界地图上的最小移动单位是军队、编队或队伍。
 - 千人级士兵碰撞不作为世界地图常驻粒度，应放入战场副本。
-- 名人属性、成长、技能、岗位分配和派遣规则仍按配置与策略扩展。
+- 名人属性、成长、技能、岗位、方针和派遣规则仍按配置与策略扩展。
 
 ## 6. 世界地图 / World Map
 

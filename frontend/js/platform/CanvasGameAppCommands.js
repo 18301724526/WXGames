@@ -336,6 +336,21 @@
             }
           },
 
+      async applyTalentPolicy(policyId) {
+            if (!policyId) return false;
+            try {
+              const result = await this.getGameApi().applyTalentPolicy(policyId);
+              this.applyApiState(result);
+              this.showFloatingText(result.message || 'Policy applied');
+              this.log(result.message || 'Policy applied');
+              return true;
+            } catch (error) {
+              this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
+              this.renderCanvasSurface(this.state?.currentTab);
+              return false;
+            }
+          },
+
       async advanceEra() {
             if (!this.canAdvanceEraNow()) {
               this.log(this.state?.isCapitalCity === false ? 'Capital only' : this.canAdvanceEraByTutorial() ? 'Requirements not met' : 'Action locked');
@@ -543,11 +558,7 @@
                   selectedWorldActorId: '',
                 };
               }
-              const homeView = this.resolveMapHomeViewState(this.state, {
-                requestedTab: 'military',
-                militaryView: 'world',
-                forceMapHome: true,
-              });
+              const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
               this.activeTab = homeView.activeTab;
               this.militaryView = homeView.militaryView;
               this.mapHomeActive = homeView.isMapHome;

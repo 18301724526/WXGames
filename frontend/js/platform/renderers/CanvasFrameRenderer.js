@@ -54,7 +54,7 @@
         this.renderHudOverlay(state, options);
         return undefined;
       }
-      const activeTab = options.activeTab || 'military';
+      const activeTab = options.activeTab || 'resources';
       this.beginFrame(options);
       this.setHitTargets([]);
       this.clear();
@@ -134,7 +134,7 @@
     }
 
     renderMapHomeWorldMarchHud(state = {}, options = {}) {
-      if (options.isMapHome !== true || (options.activeTab || 'military') !== 'military') return false;
+      if (options.isMapHome !== true || (options.activeTab || 'resources') !== 'military') return false;
       if (typeof this.renderWorldMarchHud !== 'function') return false;
       const context = this.getMapHomeWorldHudContext({ ...options, state: options.state || state });
       const renderSnapshot = context?.renderSnapshot || null;
@@ -146,9 +146,15 @@
       return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame);
     }
 
-    renderStandardFrame(state = {}, topBarBottom = 84, activeTab = 'military', options = {}) {
+    renderStandardFrame(state = {}, topBarBottom = 84, activeTab = 'resources', options = {}) {
       const tabsTop = this.height - 60 - this.bottomSafeArea;
-      const panelTop = topBarBottom;
+      const populationBottom = activeTab === 'resources'
+        ? this.renderPopulation(state, topBarBottom)
+        : topBarBottom;
+      const homeFeatureBottom = activeTab === 'resources'
+        ? this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 })
+        : populationBottom;
+      const panelTop = activeTab === 'resources' ? homeFeatureBottom : topBarBottom;
       const advisorOffset = this.getAdvisorFrameOffset(state);
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
       this.renderFrameMainPanel(state, activeTab, panelTop, availableHeight, tabsTop, options);
@@ -166,11 +172,11 @@
       return view?.hidden ? 0 : 52;
     }
 
-    renderFrameMainPanel(state = {}, activeTab = 'military', panelTop = 84, availableHeight = 120, tabsTop = 0, options = {}) {
+    renderFrameMainPanel(state = {}, activeTab = 'resources', panelTop = 84, availableHeight = 120, tabsTop = 0, options = {}) {
       const transition = this.getTransitionFrame(options.pageTransition);
       const fromTab = options.pageTransition?.fromTab;
       const toTab = options.pageTransition?.toTab || activeTab;
-      if (transition && fromTab && fromTab !== activeTab && toTab === activeTab) {
+      if (transition && fromTab && fromTab !== activeTab && toTab === activeTab && activeTab !== 'resources') {
         const travel = this.width + 24;
         this.withSlideClip(0, panelTop, this.width, Math.max(120, tabsTop - panelTop), -transition.direction * travel * transition.eased, () => {
           this.withSuppressedHitTargets(() => this.renderMainPanel(state, fromTab, panelTop, availableHeight, {
@@ -182,15 +188,16 @@
         this.withSlideClip(0, panelTop, this.width, Math.max(120, tabsTop - panelTop), transition.direction * travel * (1 - transition.eased), () => {
           this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
         });
-      } else {
+      } else if (activeTab !== 'resources') {
         this.renderMainPanel(state, activeTab, panelTop, availableHeight, options);
       }
     }
 
-    renderStandardOverlays(state = {}, activeTab = 'military', options = {}) {
+    renderStandardOverlays(state = {}, activeTab = 'resources', options = {}) {
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
+      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
@@ -199,7 +206,7 @@
       if (options.naming) this.renderNamingModal(options.naming);
     }
 
-    renderTechDetailIfNeeded(state = {}, activeTab = 'military', options = {}) {
+    renderTechDetailIfNeeded(state = {}, activeTab = 'resources', options = {}) {
       if (activeTab !== 'tech' || (!options.techDetailOpen && !state.techUiState?.detailOpen)) return;
       const view = this.presenter?.buildTechViewState?.({
         ...state,
@@ -244,6 +251,7 @@
       );
       else if (options.showAdvisor) this.renderAdvisorPanel(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
+      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);

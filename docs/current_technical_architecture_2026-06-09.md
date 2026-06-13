@@ -182,7 +182,7 @@ Canonical/projection ownership rule: `GameStateRepository.findByPlayerId()` retu
 
 - `GameStateNormalizer.normalizeState()` / `normalizeStateStructure()` 只做结构归一化：schema migration、默认字段补齐、legacy 字段兼容、城市/资源/教程等形状修正。它不得推进 AI、探索路线、地图 reveal、领土 bridging、计时任务或任何会改变世界时间线的 runtime 行为。
 - `GameStateService.advanceRuntimeState(gameState, now, options)` 是显式 runtime 推进入口。只有 action route、state sync、后台 tick 等写入型或同步型路径能调用它；默认只推进玩家 runtime（探索任务、领土 runtime、任务 readiness 等）。世界 AI/global world expansion 必须由专属世界服务显式传入 `{ advanceWorldAi: true }`，不能在普通玩家请求或 active-player worker tick 中隐式发生。
-- `getClientGameStateFromNormalized()` 和 `calculateEraProgressFromNormalized()` 是只读 projection。DTO 组装、教程同步、任务中心、重置响应等不能为了响应再次调用 raw `normalizeState()` 或推进世界。下游 DTO helper 同步提供 normalized-only 入口，例如 `CityService.getClientCityStateFromNormalized()`、`TechTreeService.getClientStateFromNormalized()`、、`FamousPersonService.getClientStateFromNormalized()`、`WorldMapService.getClientWorldMapFromNormalized()`；`WorldExplorerClientState` 和 `TerritoryClientAssembler` 只读取已经推进过的任务快照。
+- `getClientGameStateFromNormalized()` 和 `calculateEraProgressFromNormalized()` 是只读 projection。DTO 组装、教程同步、任务中心、重置响应等不能为了响应再次调用 raw `normalizeState()` 或推进世界。下游 DTO helper 同步提供 normalized-only 入口，例如 `CityService.getClientCityStateFromNormalized()`、`TechTreeService.getClientStateFromNormalized()`、`TalentPolicyService.getClientStateFromNormalized()`、`FamousPersonService.getClientStateFromNormalized()`、`WorldMapService.getClientWorldMapFromNormalized()`；`WorldExplorerClientState` 和 `TerritoryClientAssembler` 只读取已经推进过的任务快照。
 - `GET /api/game/state` 和 `GET /api/game/tasks` 是普通 query/projection 路径：只加载并结构归一化状态，然后组装 DTO；它们不得调用 `applyOnlineProgress()`、生成事件、`touchPlayerActiveAt()` 或 `repository.save()`。
 - `GameStateRepository.save()` delegates to `saveAtomic()`。主 `game_states` 行、`shared_world_territories` 派生占有记录、`revision` 和 `updatedAt` 在同一个 SQLite transaction 中提交；传入 stale `revision` 会抛出 `GAME_STATE_REVISION_CONFLICT`。
 - `GameStateRepository.resetPlayerState(playerId, gameState)` 同事务删除该玩家主状态和共享世界派生占有记录，再写入新初始状态；reset 响应使用本次提交对象组装。
@@ -234,7 +234,7 @@ Canonical/projection ownership rule: `GameStateRepository.findByPlayerId()` retu
 - `DefenderLeaderRandomAuthority` 已作为 P11-006 phase 4 candidate：守军首领生成默认消费后端权威 random source，并在首领 `source.randomAuthority` 写入紧凑审计 metadata。
 - `WorldMapGenerationAuthority` 已作为 P11-006 phase 5 candidate：世界地图地形、水域、河流和侦察揭示分支走 server-owned deterministic seeded-hash authority，`WorldMapService` 写入紧凑 `generationAuthority` metadata。
 - `SkillGeneratorRandomAuthority` 已作为 P11-006 phase 6 candidate：技能/ability-kit 生成默认消费后端权威 random source，并在默认生成结果写入紧凑 `randomAuthority` metadata。
-- The old talent-policy service/actions/presenter and saved-state column are deleted; city people assignment is the only remaining talent-allocation surface. Business-code `Math.random` scan is clean.
+- `TalentPolicyService.createCustomPolicyId()` 已从业务 `Math.random` 迁移到 backend `crypto.randomBytes()`；业务代码 `Math.random` 扫描当前为 clean。
 - 战斗经验/奖励当前是 `BattleReports.createExperienceSummary()` 中的确定性公式逻辑，不是随机权威迁移对象；未来引入掉落/概率奖励时再接入 random authority。
 
 待硬化：

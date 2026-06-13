@@ -24,8 +24,8 @@ test('resetGame closes the reset confirmation before showing success feedback', 
         closeConfirmDialog() {
           calls.push('closeConfirmDialog');
         },
-        resetLocalViewToWorldMap() {
-          calls.push('shellResetLocalViewToWorldMap');
+        resetLocalViewToResources() {
+          calls.push('shellResetLocalViewToResources');
         },
       },
       apiPost(pathname) {
@@ -38,8 +38,8 @@ test('resetGame closes the reset confirmation before showing success feedback', 
       maybeStartTutorialIntro() {
         calls.push('maybeStartTutorialIntro');
       },
-      resetLocalViewToWorldMap() {
-        calls.push('gameResetLocalViewToWorldMap');
+      resetLocalViewToResources() {
+        calls.push('gameResetLocalViewToResources');
       },
       showFloatingText(message) {
         calls.push(`showFloatingText:${message}`);

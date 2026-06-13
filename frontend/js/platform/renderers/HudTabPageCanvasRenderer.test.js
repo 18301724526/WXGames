@@ -19,8 +19,10 @@ function createHost(overrides = {}) {
     renderBuildings(...args) { calls.push(['renderBuildings', args]); },
     renderCivilization(...args) { calls.push(['renderCivilization', args]); },
     renderEvents(...args) { calls.push(['renderEvents', args]); },
+    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return 320; },
     renderMapHomeWorldView(...args) { calls.push(['renderMapHomeWorldView', args]); return true; },
     renderMilitary(...args) { calls.push(['renderMilitary', args]); },
+    renderPopulation(...args) { calls.push(['renderPopulation', args]); return 220; },
     renderTech(...args) { calls.push(['renderTech', args]); },
     withSlideClip(...args) {
       const callback = args.at(-1);
@@ -60,19 +62,21 @@ test('HudTabPageCanvasRenderer preserves main panel tab dispatch', () => {
   assert.equal(host.calls[0][1][3].activeBuildingCategory, 'housing');
 });
 
-test('HudTabPageCanvasRenderer preserves content tab layouts', () => {
+test('HudTabPageCanvasRenderer preserves resource and content tab layouts', () => {
   const host = createHost({ height: 844, bottomSafeArea: 12 });
   const renderer = new HudTabPageCanvasRenderer({ host });
 
+  renderer.renderHudTabPage({ tutorial: { step: 1 } }, 'resources', 96, {});
   renderer.renderHudTabPage({ tutorial: { step: 2 } }, 'buildings', 96, { tutorial: { step: 3 }, buildingOffset: 8 });
   renderer.renderHudTabPage({}, 'civilization', 96, { tutorial: { step: 4 } });
   renderer.renderHudTabPage({}, 'military', 96, {});
 
-  assert.deepEqual(callNames(host), ['renderBuildings', 'renderCivilization', 'renderMilitary']);
-  assert.equal(host.calls[0][1][0].tutorial.step, 3);
-  assert.equal(host.calls[0][1][2], 664);
-  assert.equal(host.calls[1][1][2], 664);
+  assert.deepEqual(callNames(host), ['renderPopulation', 'renderHomeFeatureGrid', 'renderBuildings', 'renderCivilization', 'renderMilitary']);
+  assert.equal(host.calls[1][1][2].maxBottom, 764);
+  assert.equal(host.calls[2][1][0].tutorial.step, 3);
   assert.equal(host.calls[2][1][2], 664);
+  assert.equal(host.calls[3][1][2], 664);
+  assert.equal(host.calls[4][1][2], 664);
 });
 
 test('HudTabPageCanvasRenderer preserves map-home military behavior', () => {

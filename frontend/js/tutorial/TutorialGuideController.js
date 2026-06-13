@@ -378,18 +378,18 @@
       return this.state;
     }
 
-    async onCityPeopleOpened() {
+    async onTalentPolicyOpened() {
       const step = this.getCurrentStep();
       if (step === TUTORIAL_STEPS.polityNamed) {
-        await this.advanceTo(TUTORIAL_STEPS.cityPeopleOpened);
+        await this.advanceTo(TUTORIAL_STEPS.talentPolicyOpened);
       }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.cityPeopleOpened) {
-        return this.advanceTo(TUTORIAL_STEPS.manualTalentReady);
+      if (this.getCurrentStep() === TUTORIAL_STEPS.talentPolicyOpened) {
+        return this.advanceTo(TUTORIAL_STEPS.talentPolicyApplied);
       }
       return this.state;
     }
 
-    onCityPeopleReady(result = {}) {
+    onTalentPolicyApplied(result = {}) {
       this.sync(result.tutorial || this.game?.tutorial || this.state);
       this.refreshCurrentHighlight();
       return this.state;
@@ -463,7 +463,7 @@
 
     onCityManagementOpened(tab = '') {
       if (tab === 'people') {
-        return this.onCityPeopleOpened();
+        return this.onTalentPolicyOpened();
       }
       if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed && tab === 'military') {
         this.refreshCurrentHighlight();
@@ -645,7 +645,7 @@
 
 
 
-    isCityPeopleOpen() {
+    isTalentPolicyOpen() {
       return Boolean(this.isCityManagementOpen() && this.isCityManagementTabOpen('people'));
     }
 

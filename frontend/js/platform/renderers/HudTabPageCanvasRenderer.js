@@ -25,7 +25,7 @@
       });
     }
 
-    renderMainPanel(state = {}, activeTab = 'military', startY = 210, availableHeight = 310, options = {}) {
+    renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
       if (activeTab === 'buildings') this.renderBuildings(state, startY, availableHeight, {
         offset: options.buildingOffset,
         buildingTransition: options.buildingTransition,
@@ -37,7 +37,7 @@
       else if (activeTab === 'military') this.renderMilitary(state, startY, availableHeight, options);
     }
 
-    renderHudTabPage(state = {}, activeTab = 'military', topBarBottom = 84, options = {}) {
+    renderHudTabPage(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
       const offsetY = Number(this.viewportOffsetY) || 0;
       const viewportBottom = this.height - Math.max(0, offsetY);
       const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
@@ -45,7 +45,10 @@
         if (!options.skipWorldMapLayer) this.renderMapHomeWorldView(state, topBarBottom, options);
         return;
       }
-      if (activeTab === 'buildings') {
+      if (activeTab === 'resources') {
+        const populationBottom = this.renderPopulation(state, topBarBottom);
+        this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: tabsTop - 8 });
+      } else if (activeTab === 'buildings') {
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderBuildings(
           { ...state, tutorial: options.tutorial || state.tutorial || {} },
@@ -77,7 +80,7 @@
       }
     }
 
-    renderHudTabPageWithTransition(state = {}, activeTab = 'military', topBarBottom = 84, options = {}) {
+    renderHudTabPageWithTransition(state = {}, activeTab = 'resources', topBarBottom = 84, options = {}) {
       const pageTransition = options.pageTransition || null;
       const transition = this.getTransitionFrame(pageTransition);
       const fromTab = pageTransition?.fromTab;

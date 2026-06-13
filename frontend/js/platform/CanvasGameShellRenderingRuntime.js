@@ -21,30 +21,6 @@
     return missions.some((mission) => mission.status === 'active');
   }
 
-  const PAGE_TAB_IDS = new Set(['military', 'buildings', 'tech', 'events', 'civilization']);
-
-  function normalizePageTab(tab) {
-    const rawTab = String(tab || '').trim();
-    if (rawTab === 'territory') return 'territory';
-    return PAGE_TAB_IDS.has(rawTab) ? rawTab : 'military';
-  }
-
-  function sanitizeMapHomeView(view = {}, rawRequestedTab = 'military') {
-    const source = view && typeof view === 'object' ? view : {};
-    const requestedTab = normalizePageTab(source.requestedTab || rawRequestedTab);
-    const normalizedToHome = (source.requestedTab || rawRequestedTab) !== requestedTab;
-    const shouldUseMapHome = Boolean(source.isMapHome || normalizedToHome || requestedTab === 'territory');
-    const activeTab = shouldUseMapHome ? 'military' : normalizePageTab(source.activeTab || requestedTab);
-    return {
-      ...source,
-      activeTab,
-      requestedTab,
-      militaryView: activeTab === 'military' && (shouldUseMapHome || source.militaryView === 'world') ? 'world' : (source.militaryView || 'army'),
-      isMapHome: activeTab === 'military' && shouldUseMapHome,
-      canUseMapHome: source.canUseMapHome !== false,
-    };
-  }
-
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -53,7 +29,7 @@ now() {
     },
 
 getTabOrder() {
-      return ['military', 'buildings', 'tech', 'events', 'civilization'];
+      return ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
     },
 
 getTransitionDurationMs() {
@@ -176,11 +152,12 @@ getActiveTab() {
       const requestedTab = this.lastGame?.getActiveTab?.()
         || this.lastGame?.activeTab
         || state.currentTab
-        || 'military';
+        || 'resources';
       const view = this.resolveMapHomeViewState(state, {
         requestedTab,
         militaryView: state.militaryView || this.lastGame?.militaryView,
         forceMapHome: Boolean(this.lastGame?.mapHomeActive)
+          || requestedTab === 'resources'
           || requestedTab === 'territory',
       });
       this.mapHomeActive = view.isMapHome;
@@ -193,22 +170,21 @@ getActiveTab() {
     },
 
 resolveMapHomeViewState(state = this.lastGame?.state || {}, options = {}) {
-      const rawRequestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'military';
       if (this.presenter?.resolveMapHomeViewState) {
-        return sanitizeMapHomeView(this.presenter.resolveMapHomeViewState(state || {}, options), rawRequestedTab);
+        return this.presenter.resolveMapHomeViewState(state || {}, options);
       }
       if (this.lastGame?.resolveMapHomeViewState) {
-        return sanitizeMapHomeView(this.lastGame.resolveMapHomeViewState(state || {}, options), rawRequestedTab);
+        return this.lastGame.resolveMapHomeViewState(state || {}, options);
       }
-      const requestedTab = normalizePageTab(rawRequestedTab);
-      const normalizedToHome = rawRequestedTab !== requestedTab;
+      const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
+      const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
       const canUseMapHome = true;
-      const requestedMilitaryView = options.militaryView || state?.militaryView || 'world';
-      const forceMapHome = Boolean(options.forceMapHome || options.isMapHome || normalizedToHome);
+      const requestedMilitaryView = options.militaryView || state?.militaryView || 'army';
       const militaryMapRequested = requestedTab === 'military'
-        && (forceMapHome || requestedMilitaryView === 'world');
+        && (options.forceMapHome || options.isMapHome || requestedMilitaryView === 'world');
       const shouldUseMapHome = canUseMapHome
-        && (forceMapHome || requestedTab === 'territory' || militaryMapRequested);
+        && options.allowDefaultMapHome !== false
+        && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory' || militaryMapRequested);
       return {
         activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
         requestedTab,
@@ -270,9 +246,10 @@ resolveTerritoryUiState(overrideUiState = null) {
       return resolved;
     },
 
-buildRenderOptions(activeTab = 'military', territoryUiState = null, options = {}) {
+buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {}) {
       const state = this.lastGame?.state || {};
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
+        || activeTab === 'resources'
         || activeTab === 'territory';
       const hasForceOverride = Object.prototype.hasOwnProperty.call(options, 'forceMapHome');
       const homeView = this.resolveMapHomeViewState(state, {
@@ -299,6 +276,8 @@ buildRenderOptions(activeTab = 'military', territoryUiState = null, options = {}
         showAdvisor: this.showAdvisor,
         showTaskCenter: this.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
+        showGuidebook: this.showGuidebook,
+        activeGuidebookTab: this.activeGuidebookTab,
         showFamousPersons: this.showFamousPersons,
         famousPersonsPage: this.famousPersonsPage,
         selectedFamousPersonId: this.selectedFamousPersonId,
@@ -361,11 +340,12 @@ renderActive(options = {}) {
       return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
     },
 
-renderReadOnly(state, activeTab = 'military', options = {}) {
+renderReadOnly(state, activeTab = 'resources', options = {}) {
       if (!this.previewEnabled || !this.renderer || !state) return false;
       this.syncWorldMapRendererLayerMetrics();
       const territoryUiState = this.resolveTerritoryUiState(options.territoryUiState);
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
+        || activeTab === 'resources'
         || activeTab === 'territory';
       const hasForceOverride = Object.prototype.hasOwnProperty.call(options, 'forceMapHome');
       const homeView = this.resolveMapHomeViewState(state, {
@@ -428,7 +408,7 @@ renderReadOnly(state, activeTab = 'military', options = {}) {
     },
 
 getTabLocks(state = {}) {
-      const tabIds = ['military', 'buildings', 'tech', 'events', 'civilization'];
+      const tabIds = ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
       const canOpenTab = this.lastGame?.tutorialController?.canOpenTab;
       if (typeof canOpenTab !== 'function') {
         return tabIds.map((id) => ({ id, disabled: false, isLocked: false }));

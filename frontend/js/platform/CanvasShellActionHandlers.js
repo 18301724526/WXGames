@@ -19,7 +19,7 @@
       },
 
       handle_switchTab(action, meta = {}) {
-        const previousTab = this.host?.getActiveTab?.() || this.getGameHost()?.getActiveTab?.() || this.getState()?.currentTab || 'military';
+        const previousTab = this.host?.getActiveTab?.() || this.getGameHost()?.getActiveTab?.() || this.getState()?.currentTab || 'resources';
         const previousBuildingOffset = Math.max(0, Number(this.host?.buildingOffset) || 0);
         this.host?.resetForCanvasTabSwitch?.(action);
         const game = this.getGameHost();
@@ -38,10 +38,10 @@
         return this.finalize(Promise.resolve(result).then((allowed) => {
           if (allowed !== false) {
             const resolvedTab = this.host?.getActiveTab?.() || game?.getActiveTab?.() || '';
-            const requestedNextTab = action.tab || resolvedTab || 'military';
+            const requestedNextTab = action.tab || resolvedTab || 'resources';
             const nextView = this.host?.resolveMapHomeViewState?.(this.getState(), {
               requestedTab: requestedNextTab,
-              forceMapHome: requestedNextTab === 'territory',
+              forceMapHome: requestedNextTab === 'resources' || requestedNextTab === 'territory',
             });
             const nextTab = resolvedTab && resolvedTab !== previousTab
               ? resolvedTab
@@ -220,9 +220,9 @@
           uiHost?.setConfirmDialogSubmitting?.(false);
           if (success === false) return false;
           uiHost?.closeConfirmDialog?.();
-          uiHost?.resetLocalViewToWorldMap?.({ skipRender: true });
+          uiHost?.resetLocalViewToResources?.({ skipRender: true });
           const game = this.getGameHost();
-          if (game && game !== uiHost) game.resetLocalViewToWorldMap?.({ skipShell: true, skipRender: true });
+          if (game && game !== uiHost) game.resetLocalViewToResources?.({ skipShell: true, skipRender: true });
           this.render({ ...action, tab: 'military', militaryView: 'world', isMapHome: true });
           return true;
         };
@@ -295,6 +295,23 @@
 
       handle_goToGuideTaskTarget(action) {
         return false;
+      },
+
+      handle_openGuidebook(action) {
+        this.host.showGuidebook = true;
+        this.host.activeGuidebookTab = action.tab || this.host.activeGuidebookTab || 'planning';
+        this.closePanels(['showGuidebook']);
+        return this.afterHandled(action);
+      },
+
+      handle_closeGuidebook(action) {
+        this.host.showGuidebook = false;
+        return this.afterHandled(action);
+      },
+
+      handle_switchGuidebookTab(action) {
+        this.host.activeGuidebookTab = action.tab || 'planning';
+        return this.afterHandled(action);
       },
 
       handle_requestLoginUsername() {

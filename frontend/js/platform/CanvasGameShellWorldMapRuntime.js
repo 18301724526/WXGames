@@ -33,7 +33,7 @@
           getRequestedTab: (state = this.lastGame?.state || {}) => this.lastGame?.getActiveTab?.()
             || this.lastGame?.activeTab
             || state.currentTab
-            || 'military',
+            || 'resources',
           getMilitaryView: (state = this.lastGame?.state || {}) => state.militaryView || this.lastGame?.militaryView,
           getForceMapHome: () => Boolean(this.lastGame?.mapHomeActive),
           canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
@@ -77,7 +77,7 @@
           requestedTab: this.lastGame?.getActiveTab?.()
             || this.lastGame?.activeTab
             || state.currentTab
-            || 'military',
+            || 'resources',
           militaryView: state.militaryView || this.lastGame?.militaryView,
           forceMapHome: Boolean(this.lastGame?.mapHomeActive),
         });
