@@ -159,6 +159,45 @@ test('ClientOperationLog downloads a local JSON file without network transport',
   assert.equal(payload.entries[0].type, 'input:tap');
 });
 
+test('ClientOperationLog starts a fresh run and does not export persisted entries from older runs', () => {
+  const storage = createStorage();
+  storage.setItem('clientOperationLog', JSON.stringify({
+    schema: 'client-operation-log-v1',
+    runId: 'old-run',
+    savedAt: '2026-06-13T00:00:00.000Z',
+    entries: [
+      { seq: 10, runId: 'old-run', type: 'api:request', detail: { path: '/old' } },
+      { seq: 11, type: 'api:response', detail: { path: '/legacy-without-run' } },
+    ],
+  }));
+
+  const logger = new ClientOperationLog({
+    runtime: {
+      location: { pathname: '/wxgame/', hash: '' },
+      localStorage: { getItem: () => null },
+      sessionStorage: storage,
+      performance: { now: () => 20 },
+      Date: { now: () => Date.parse('2026-06-14T00:00:00.000Z') },
+    },
+    storage,
+    maxEntries: 10,
+    persistLimit: 10,
+    flushIntervalMs: 0,
+    runId: 'new-run',
+  });
+
+  assert.deepEqual(logger.getEntries(), []);
+  logger.record('input:tap', { point: { x: 1, y: 2 } });
+
+  const snapshot = logger.buildSnapshot({ reason: 'settings-download' });
+  assert.equal(snapshot.runId, 'new-run');
+  assert.deepEqual(snapshot.entries.map((entry) => entry.type), ['input:tap']);
+  assert.equal(snapshot.entries[0].runId, 'new-run');
+  const persisted = JSON.parse(storage.dump().clientOperationLog);
+  assert.equal(persisted.runId, 'new-run');
+  assert.deepEqual(persisted.entries.map((entry) => entry.type), ['input:tap']);
+});
+
 test('ClientOperationLog keeps a bounded local window and samples noisy events', () => {
   let now = 0;
   const logger = new ClientOperationLog({

@@ -42,6 +42,21 @@
     return sanitized || fallback;
   }
 
+  function createRunId(runtime = global) {
+    const seed = [
+      runtime?.location?.pathname || '',
+      runtime?.location?.search || '',
+      runtime?.Date?.now?.() || Date.now(),
+      Math.random().toString(36).slice(2),
+    ].join('|');
+    let hash = 2166136261;
+    for (let index = 0; index < seed.length; index += 1) {
+      hash ^= seed.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `run-${(hash >>> 0).toString(36)}`;
+  }
+
   function readUrlFlag(runtime = global) {
     try {
       const search = runtime?.location?.search || '';
@@ -186,6 +201,7 @@
       this.defaultSampleIntervalMs = Math.max(0, toNumber(options.defaultSampleIntervalMs, DEFAULT_SAMPLE_INTERVAL_MS));
       this.entries = [];
       this.seq = 0;
+      this.runId = String(options.runId || createRunId(this.runtime));
       this.lastFlushAt = 0;
       this.sampledAt = new Map();
       this.uploader = typeof options.uploader === 'function' ? options.uploader : null;
@@ -216,8 +232,12 @@
         const raw = this.storage.getItem(STORAGE_KEY);
         if (!raw) return false;
         const parsed = JSON.parse(raw);
+        if (parsed?.runId !== this.runId) {
+          this.storage.removeItem?.(STORAGE_KEY);
+          return false;
+        }
         const entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
-        this.entries = entries.slice(-this.maxEntries);
+        this.entries = entries.filter((entry) => entry?.runId === this.runId).slice(-this.maxEntries);
         this.seq = this.entries.reduce((max, entry) => Math.max(max, Number(entry.seq) || 0), 0);
         return true;
       } catch (_) {
@@ -233,6 +253,7 @@
       try {
         this.storage.setItem(STORAGE_KEY, JSON.stringify({
           schema: 'client-operation-log-v1',
+          runId: this.runId,
           savedAt: safeIso(this.wallNowMs()),
           entries: this.entries.slice(-this.persistLimit),
         }));
@@ -248,6 +269,7 @@
       if (!eventType) return null;
       const entry = {
         seq: ++this.seq,
+        runId: this.runId,
         at: safeIso(this.wallNowMs()),
         atMs: round(this.nowMs()),
         type: eventType,
@@ -303,6 +325,7 @@
       const location = this.runtime?.location || {};
       return {
         schema: 'client-operation-log-v1',
+        runId: this.runId,
         exportedAt: safeIso(this.wallNowMs()),
         reason: String(options.reason || DEFAULT_UPLOAD_REASON).slice(0, 120),
         entryCount: entries.length,
