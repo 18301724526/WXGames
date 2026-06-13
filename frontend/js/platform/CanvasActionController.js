@@ -227,6 +227,7 @@
       const handler = this[`handle_${action.type}`] || this.handleUnknown;
       global.ClientOperationLog?.record?.('action:begin', {
         action: global.ClientOperationLog?.summarizeAction?.(action),
+        inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),
         uiState: global.ClientOperationLog?.summarizeUiState?.(this.getOperationLogUiState()),
       });
       try {
@@ -235,6 +236,7 @@
           result.then((value) => {
             global.ClientOperationLog?.record?.('action:end', {
               action: global.ClientOperationLog?.summarizeAction?.(action),
+              inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),
               result: value !== false,
               async: true,
               uiState: global.ClientOperationLog?.summarizeUiState?.(this.getOperationLogUiState()),
@@ -248,6 +250,7 @@
         } else {
           global.ClientOperationLog?.record?.('action:end', {
             action: global.ClientOperationLog?.summarizeAction?.(action),
+            inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),
             result: result !== false,
             async: false,
             uiState: global.ClientOperationLog?.summarizeUiState?.(this.getOperationLogUiState()),

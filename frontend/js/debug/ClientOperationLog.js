@@ -190,6 +190,21 @@
     };
   }
 
+  function summarizeInputIntent(intent = null) {
+    if (!intent || typeof intent !== 'object') return null;
+    return sanitize({
+      schema: intent.schema || '',
+      kind: intent.kind || '',
+      source: intent.source || '',
+      points: intent.points || {},
+      action: summarizeAction(intent.action),
+      target: intent.target || {},
+      picking: intent.picking || null,
+      view: intent.view || {},
+      diagnostics: intent.diagnostics || {},
+    });
+  }
+
   class ClientOperationLog {
     constructor(options = {}) {
       this.runtime = options.runtime || global;
@@ -413,6 +428,7 @@
 
   logger.summarizeAction = summarizeAction;
   logger.summarizeCamera = summarizeCamera;
+  logger.summarizeInputIntent = summarizeInputIntent;
   logger.summarizePoint = summarizePoint;
   logger.summarizeUiState = summarizeUiState;
   logger.sanitize = sanitize;

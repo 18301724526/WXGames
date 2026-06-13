@@ -465,8 +465,8 @@ handleTap(point, event) {
       return handled;
     },
 
-handleAction(action, event) {
-      const handled = this.actionController?.handle?.(action, { event }) || false;
+handleAction(action, event, meta = {}) {
+      const handled = this.actionController?.handle?.(action, { ...(meta || {}), event }) || false;
       if (action?.type === 'openWorldSite') {
         if (handled && typeof handled.then === 'function') {
           handled.then((value) => {

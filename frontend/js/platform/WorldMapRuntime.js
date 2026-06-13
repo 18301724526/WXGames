@@ -32,6 +32,17 @@
     }
     return null;
   })();
+  const WorldMapInputIntent = (() => {
+    if (global.WorldMapInputIntent) return global.WorldMapInputIntent;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMapInputIntent');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const WorldMapRuntimeBakePolicy = (() => {
     if (global.WorldMapRuntimeBakePolicy) return global.WorldMapRuntimeBakePolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -126,6 +137,7 @@
       this.inputEpoch = 0;
       this.lastPickingSignature = '';
       this.pickingSnapshot = null;
+      this.lastInputIntent = null;
     }
 
     setRenderer(renderer) {
@@ -357,10 +369,26 @@
     }
 
     handleTap(point = {}, event = null) {
-      const action = this.resolveTapAction(point);
+      const context = this.getLastTileMapContext();
+      const layerPoint = this.getLayerPointFromHudPoint(point);
+      const pickingSnapshot = this.getPickingSnapshot();
+      const action = this.resolveTapAction(point, {
+        context,
+        layerPoint,
+        pickingSnapshot,
+      });
+      const inputIntent = this.createTapIntent(point, action, {
+        context,
+        layerPoint,
+        pickingSnapshot,
+      });
+      this.lastInputIntent = inputIntent;
+      const actionMeta = { inputIntent };
       global.ClientOperationLog?.record?.('worldMap:tapHit', {
         point: global.ClientOperationLog?.summarizePoint?.(point),
+        layerPoint: global.ClientOperationLog?.summarizePoint?.(layerPoint),
         action: global.ClientOperationLog?.summarizeAction?.(action),
+        inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(inputIntent) || inputIntent,
         hitTargetCount: this.hitTargets.length,
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
       });
@@ -370,14 +398,15 @@
         global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
           action: global.ClientOperationLog?.summarizeAction?.(action),
+          inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(inputIntent) || inputIntent,
         }, { flush: true });
-        if (this.onAction) return this.onAction(action, event) !== false;
+        if (this.onAction) return this.onAction(action, event, actionMeta) !== false;
         return false;
       }
       if (action.type === 'resetWorldPan') {
         this.resetCamera({ source: 'resetWorldPan', render: !this.onAction });
       }
-      if (this.onAction) return this.onAction(action, event) !== false;
+      if (this.onAction) return this.onAction(action, event, actionMeta) !== false;
       return false;
     }
 
@@ -430,19 +459,36 @@
       return WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(this.baseHitTargets, this.dragLayerOffset);
     }
 
-    resolveTapAction(point = {}) {
-      const context = this.getLastTileMapContext();
-      const normalizedPoint = this.getLayerPointFromHudPoint(point);
+    resolveTapAction(point = {}, options = {}) {
+      const context = options.context || this.getLastTileMapContext();
+      const normalizedPoint = options.layerPoint || this.getLayerPointFromHudPoint(point);
       if (WorldMapInputActionMap?.resolveTapAction) {
         const action = WorldMapInputActionMap.resolveTapAction(point, {
           hitTargets: this.hitTargets,
           backgroundPoint: normalizedPoint,
           context,
-          pickingSnapshot: this.getPickingSnapshot(),
+          pickingSnapshot: options.pickingSnapshot || this.getPickingSnapshot(),
         });
         if (action) return action;
       }
       return this.getHitTarget(point);
+    }
+
+    createTapIntent(point = {}, action = null, options = {}) {
+      if (!WorldMapInputIntent?.createTapIntent) return null;
+      return WorldMapInputIntent.createTapIntent({
+        source: 'worldMapRuntime',
+        physicalPoint: point,
+        layerPoint: options.layerPoint || this.getLayerPointFromHudPoint(point),
+        action,
+        pickingSnapshot: options.pickingSnapshot || this.getPickingSnapshot(),
+        context: options.context || this.getLastTileMapContext(),
+        camera: this.camera,
+        diagnostics: {
+          hitTargetCount: this.hitTargets.length,
+          dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
+        },
+      });
     }
 
     getPickingSnapshot() {

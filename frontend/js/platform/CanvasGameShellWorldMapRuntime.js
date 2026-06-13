@@ -37,8 +37,8 @@
           getMilitaryView: (state = this.lastGame?.state || {}) => state.militaryView || this.lastGame?.militaryView,
           getForceMapHome: () => Boolean(this.lastGame?.mapHomeActive),
           canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
-          onAction: (action, event) => {
-            const handled = this.handleAction(action, event);
+          onAction: (action, event, meta) => {
+            const handled = this.handleAction(action, event, meta);
             this.advanceTutorialIntroAfterHandled(handled, action);
             return handled;
           },

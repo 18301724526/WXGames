@@ -55,7 +55,7 @@
         };
       });
       this.isBlocked = options.isBlocked || (() => Boolean(this.host?.hasBlockingOverlayOpen?.()));
-      this.onAction = options.onAction || ((action, event) => this.host?.actionController?.handle?.(action, { event }));
+      this.onAction = options.onAction || ((action, event, meta = {}) => this.host?.actionController?.handle?.(action, { ...(meta || {}), event }));
       this.onBeforeRender = options.onBeforeRender || null;
       this.onBeforeDrag = options.onBeforeDrag || null;
       this.onAfterDrag = options.onAfterDrag || null;
@@ -93,7 +93,7 @@
           getState: () => this.getState() || {},
           getBaseUiState: () => this.getBaseUiState() || {},
           getTopBarBottom: (state) => this.getTopBarBottom(state),
-          onAction: (action, event) => this.onAction?.(action, event),
+          onAction: (action, event, meta) => this.onAction?.(action, event, meta),
           renderOnDrag: this.renderOnDrag,
           onCameraChanged: (camera, options) => this.syncCamera(camera, options),
         });

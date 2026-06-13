@@ -51,11 +51,20 @@
 - `WorldMapRuntime` 不再把 renderer hitTargets 视为背景 tile picking 或世界实体 picking 的权威。
 - 更新 `frontend/index.html` cache key 并加入 `WorldMapPickingModel.js`，避免浏览器继续加载旧 runtime / action map。
 
-### 第四阶段：门禁
+### 第四阶段：输入意图契约
+
+- 新增纯 domain 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
+- 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录 HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
+- input intent 只允许保存可序列化小对象；不得包含 renderer/context 原对象、浏览器 event、完整 tiles、完整 targets 或大 payload。
+- `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`。
+- `ClientOperationLog` 在 `worldMap:tapHit`、`worldMap:backgroundTarget`、`action:begin`、`action:end` 记录 input intent 摘要，用于本地导出日志与后端请求日志对账。
+- 当前阶段仍不把 input intent 直接发给服务器；它是后续多人同步、服务端权威校验、回放诊断和反作弊审计的输入事实边界。
+
+### 第五阶段：门禁
 
 必须通过：
 
-- `node --test frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
+- `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
 - `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js`
 - `node scripts/check-frontend-script-manifest.js`
 - `node scripts/run-architecture-smoke.js`
@@ -66,4 +75,5 @@
 - 拖拽快照后，即使 renderer 产出 partial hit targets，runtime 仍保留稳定地图输入能力。
 - 背景点击行军目标由 camera/view/tile geometry 推导，不依赖 renderer 是否仍保留完整 `worldMapDrag` hit target。
 - 城池/部队/HUD 前景点击优先级不倒退。
+- 每次大地图 tap 都有可导出、可 JSON 序列化、体积受控的 `WorldMapInputIntent`，并能从日志对齐输入事实与 action 执行。
 - 文档与代码事实一致，旧实现不留在当前项目目录中。

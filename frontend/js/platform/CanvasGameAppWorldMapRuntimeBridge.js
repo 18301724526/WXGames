@@ -120,8 +120,8 @@
         getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
         getForceMapHome: () => this.mapHomeActive,
         canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
-        onAction: (action) => {
-          const handled = this.actionController?.handle?.(action);
+        onAction: (action, event, meta = {}) => {
+          const handled = this.actionController?.handle?.(action, { ...(meta || {}), event });
           this.advanceTutorialIntroAfterHandled(handled, action);
           return handled;
         },

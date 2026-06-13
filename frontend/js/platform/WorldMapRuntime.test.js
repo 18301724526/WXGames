@@ -215,6 +215,89 @@ test('WorldMapRuntime resolves world site and actor picks from stable context in
   assert.equal(calls[1].actorId, 'actor-1');
 });
 
+test('WorldMapRuntime emits a serializable input intent for routed taps', () => {
+  const previousLog = global.ClientOperationLog;
+  const logEntries = [];
+  global.ClientOperationLog = {
+    record(type, detail) {
+      logEntries.push({ type, detail });
+      return { type, detail };
+    },
+    summarizePoint(point = {}) {
+      return { x: Number(point.x), y: Number(point.y) };
+    },
+    summarizeAction(action = null) {
+      return action ? { type: action.type, siteId: action.siteId || '', tileId: action.tileId || '' } : null;
+    },
+    sanitize(value) {
+      return value;
+    },
+  };
+
+  try {
+    const calls = [];
+    const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+    const context = {
+      frame: { x: 0, y: 84, width: 390, height: 640 },
+      geometry,
+      viewport: {
+        originX: 180,
+        originY: 220,
+        panX: 0,
+        panY: 0,
+        scale: 1,
+      },
+      tileMapView: {
+        version: 2,
+        seed: 'seed',
+        geometry,
+        sites: [{ id: 'capital', type: 'city', owner: 'player' }],
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', site: { id: 'capital', type: 'city', owner: 'player' } },
+        ],
+      },
+    };
+    const runtime = new WorldMapRuntime({
+      renderer: {
+        viewportOffsetX: 10,
+        viewportOffsetY: 20,
+        renderWorldMapLayer() {},
+        lastWorldTileMapContext: context,
+      },
+      presenter: {},
+      onAction(action, event, meta) {
+        calls.push({ action, event, meta });
+        return true;
+      },
+    });
+    runtime.lastTileMapContext = context;
+    runtime.hitTargets = [
+      { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true } },
+    ];
+
+    assert.equal(runtime.handleTap({ x: 170, y: 160 }, { type: 'tap' }), true);
+
+    const intent = calls[0].meta.inputIntent;
+    assert.equal(calls[0].action.type, 'openWorldSite');
+    assert.equal(intent.schema, 'world-map-input-intent-v1');
+    assert.equal(intent.kind, 'tap');
+    assert.deepEqual(intent.points.physical, { x: 170, y: 160 });
+    assert.deepEqual(intent.points.layer, { x: 180, y: 180 });
+    assert.equal(intent.action.type, 'openWorldSite');
+    assert.equal(intent.action.siteId, 'capital');
+    assert.equal(intent.picking.inputEpoch, 1);
+    assert.equal(intent.picking.signature, runtime.lastPickingSignature);
+    assert.equal(intent.view.frame.y, 84);
+    assert.deepEqual(runtime.lastInputIntent, intent);
+    assert.equal(JSON.stringify(intent).includes('"tiles"'), false);
+
+    const tapLog = logEntries.find((entry) => entry.type === 'worldMap:tapHit');
+    assert.deepEqual(tapLog.detail.inputIntent, intent);
+  } finally {
+    global.ClientOperationLog = previousLog;
+  }
+});
+
 test('WorldMapRuntime advances input epoch only when picking context changes', () => {
   const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
   const context = {
@@ -554,6 +637,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
 
   [
     'WorldMapPickingModel.js',
+    'WorldMapInputIntent.js',
     'WorldMapRuntimeBakePolicy.js',
     'WorldMapRuntimeCameraPolicy.js',
     'WorldMapRuntimeInputPolicy.js',
@@ -572,6 +656,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
   });
   [
     "require('../js/domain/WorldMapPickingModel')",
+    "require('../js/domain/WorldMapInputIntent')",
     "require('../js/platform/WorldMapRuntimeBakePolicy')",
     "require('../js/platform/WorldMapRuntimeCameraPolicy')",
     "require('../js/platform/WorldMapRuntimeInputPolicy')",
