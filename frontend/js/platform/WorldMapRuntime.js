@@ -343,7 +343,7 @@
     }
 
     handleTap(point = {}, event = null) {
-      const action = this.getHitTarget(point);
+      const action = this.resolveTapAction(point);
       global.ClientOperationLog?.record?.('worldMap:tapHit', {
         point: global.ClientOperationLog?.summarizePoint?.(point),
         action: global.ClientOperationLog?.summarizeAction?.(action),
@@ -351,24 +351,13 @@
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
       });
       if (!action || action.disabled) return false;
-      if (action.type === 'worldMapDrag') {
-        const inferredAction = this.getBackgroundMarchTargetAction(point);
-        global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
-          point: global.ClientOperationLog?.summarizePoint?.(point),
-          action: global.ClientOperationLog?.summarizeAction?.(inferredAction),
-        }, { flush: true });
-        if (!inferredAction) return false;
-        if (this.onAction) return this.onAction(inferredAction, event) !== false;
-        return false;
-      }
+      if (action.type === 'worldMapDrag') return false;
       if (action.type === 'selectWorldMarchTarget' && action.background) {
-        const inferredAction = this.getBackgroundMarchTargetAction(point) || action;
         global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
-          sourceAction: global.ClientOperationLog?.summarizeAction?.(action),
-          action: global.ClientOperationLog?.summarizeAction?.(inferredAction),
+          action: global.ClientOperationLog?.summarizeAction?.(action),
         }, { flush: true });
-        if (this.onAction) return this.onAction(inferredAction, event) !== false;
+        if (this.onAction) return this.onAction(action, event) !== false;
         return false;
       }
       if (action.type === 'resetWorldPan') {
@@ -425,6 +414,20 @@
 
     getOffsetHitTargets() {
       return WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(this.baseHitTargets, this.dragLayerOffset);
+    }
+
+    resolveTapAction(point = {}) {
+      const context = this.getLastTileMapContext();
+      const normalizedPoint = this.getLayerPointFromHudPoint(point);
+      if (WorldMapInputActionMap?.resolveTapAction) {
+        const action = WorldMapInputActionMap.resolveTapAction(point, {
+          hitTargets: this.hitTargets,
+          backgroundPoint: normalizedPoint,
+          context,
+        });
+        if (action) return action;
+      }
+      return this.getHitTarget(point);
     }
 
     syncHitTargetsFromRenderer(options = {}) {

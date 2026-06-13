@@ -67,6 +67,20 @@ test('WorldMapInputActionMap infers known and unknown march target actions from 
   assert.equal(unknownAction.known, false);
 });
 
+test('WorldMapInputActionMap resolves background tiles from context without renderer background targets', () => {
+  const action = WorldMapInputActionMap.resolveTapAction({ x: 148, y: 124 }, {
+    hitTargets: [],
+    context: {
+      ...createContext(),
+      frame: { x: 0, y: 0, width: 300, height: 300 },
+    },
+  });
+
+  assert.equal(action.type, 'selectWorldMarchTarget');
+  assert.equal(action.targetQ, 1);
+  assert.equal(action.targetR, 0);
+});
+
 test('WorldMapInputActionMap normalizes allowed hit targets with offsets', () => {
   const targets = WorldMapInputActionMap.normalizeHitTargets([
     { x: 10, y: 20, width: 30, height: 40, action: { type: 'worldMapDrag', background: true } },

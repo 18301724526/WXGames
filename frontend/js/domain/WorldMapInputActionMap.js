@@ -106,6 +106,19 @@
     return backgroundAction;
   }
 
+  function getContextFrame(context = {}) {
+    return context?.frame
+      || context?.renderSnapshot?.frame
+      || context?.viewport?.frame
+      || null;
+  }
+
+  function isPointInContextFrame(point = {}, context = {}) {
+    const frame = getContextFrame(context);
+    if (!frame) return false;
+    return containsPoint(frame, point);
+  }
+
   function findKnownTile(tileMapView = {}, inferred = {}) {
     if (!Number.isFinite(Number(inferred?.q)) || !Number.isFinite(Number(inferred?.r))) return null;
     return (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find((tile) => (
@@ -164,9 +177,19 @@
 
   function resolveTapAction(point = {}, input = {}, options = {}) {
     const action = getHitTarget(point, input.hitTargets || input.targets || []);
-    if (!action || action.disabled) return null;
+    const context = input.context || input.tileMapContext || {};
+    const backgroundPoint = input.backgroundPoint || options.backgroundPoint || point;
+    if (!action) {
+      if (options.allowContextBackground === false) return null;
+      if (!isPointInContextFrame(backgroundPoint, context)) return null;
+      return getBackgroundMarchTargetAction(backgroundPoint, context, options);
+    }
+    if (action.disabled) return null;
     if (action.type === 'worldMapDrag') {
-      return getBackgroundMarchTargetAction(point, input.context || input.tileMapContext || {}, options);
+      return getBackgroundMarchTargetAction(backgroundPoint, context, options);
+    }
+    if (action.type === 'selectWorldMarchTarget' && action.background) {
+      return getBackgroundMarchTargetAction(backgroundPoint, context, options) || action;
     }
     return action;
   }
@@ -177,10 +200,12 @@
     containsPoint,
     findKnownTile,
     getBackgroundMarchTargetAction,
+    getContextFrame,
     getHitTarget,
     getTopmostForegroundAction,
     inferTileFromPoint,
     isAllowedAction,
+    isPointInContextFrame,
     isKnownTile,
     isWorldSiteAction,
     normalizeHitTarget,

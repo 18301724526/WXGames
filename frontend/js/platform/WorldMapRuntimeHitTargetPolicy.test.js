@@ -45,6 +45,25 @@ test('WorldMapRuntimeHitTargetPolicy preserves map targets while replacing actor
   });
 });
 
+test('WorldMapRuntimeHitTargetPolicy rejects partial snapshot map targets while preserving stable map targets', () => {
+  const stableBackground = { x: 0, y: 80, width: 360, height: 520, action: { type: 'worldMapDrag', background: true } };
+  const stableSite = { x: 100, y: 150, width: 60, height: 50, action: { type: 'openWorldSite', siteId: 'capital' } };
+  const oldActorTarget = { x: 150, y: 180, width: 42, height: 42, action: { type: 'selectWorldActor', actorId: 'old' } };
+  const partialSnapshotTarget = { x: 8, y: 8, width: 40, height: 40, action: { type: 'resetWorldPan' } };
+  const nextActorTarget = { x: 180, y: 220, width: 42, height: 42, action: { type: 'selectWorldActor', actorId: 'next' } };
+
+  assert.deepEqual(Policy.resolveBaseHitTargets({
+    preserveOnEmpty: true,
+    previousBaseHitTargets: [stableBackground, stableSite, oldActorTarget],
+    mapTargets: [partialSnapshotTarget],
+    actorTargets: [nextActorTarget],
+    sourceTargets: [partialSnapshotTarget, nextActorTarget],
+  }), {
+    preserved: true,
+    targets: [stableBackground, stableSite, nextActorTarget],
+  });
+});
+
 test('WorldMapRuntimeHitTargetPolicy allows full renders to commit an empty target set', () => {
   assert.deepEqual(Policy.resolveBaseHitTargets({
     preserveOnEmpty: false,

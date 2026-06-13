@@ -44,10 +44,23 @@
     return types;
   }
 
+  function isStableMapLayerTarget(target = {}) {
+    const type = target?.action?.type;
+    if (!type) return false;
+    return type === 'worldMapDrag'
+      || type === 'selectWorldMarchTarget'
+      || type === 'openWorldSite'
+      || type === 'enterCity';
+  }
+
   function withoutPreviousActorLayerTargets(previousBaseHitTargets = [], actorTargets = []) {
     const actorActionTypes = getActorActionTypes(actorTargets);
     return toArray(previousBaseHitTargets)
       .filter((target) => !isActorLayerTarget(target, actorActionTypes));
+  }
+
+  function hasStableMapLayerTarget(targets = []) {
+    return toArray(targets).some(isStableMapLayerTarget);
   }
 
   function resolveBaseHitTargets(options = {}) {
@@ -56,6 +69,22 @@
     const mapTargets = toArray(options.mapTargets);
     const actorTargets = toArray(options.actorTargets);
     if (hasLayerGroups && options.preserveOnEmpty && mapTargets.length === 0 && previousBaseHitTargets.length > 0) {
+      return {
+        preserved: true,
+        targets: [
+          ...withoutPreviousActorLayerTargets(previousBaseHitTargets, actorTargets),
+          ...actorTargets,
+        ],
+      };
+    }
+    if (
+      hasLayerGroups
+      && options.preserveOnEmpty
+      && mapTargets.length > 0
+      && previousBaseHitTargets.length > 0
+      && hasStableMapLayerTarget(previousBaseHitTargets)
+      && !hasStableMapLayerTarget(mapTargets)
+    ) {
       return {
         preserved: true,
         targets: [
@@ -75,7 +104,9 @@
     collectRendererHitTargetGroups,
     collectRendererHitTargets,
     getActorActionTypes,
+    hasStableMapLayerTarget,
     isActorLayerTarget,
+    isStableMapLayerTarget,
     resolveBaseHitTargets,
     shouldPreserveOnEmpty,
     withoutPreviousActorLayerTargets,

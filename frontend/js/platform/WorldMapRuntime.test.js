@@ -109,6 +109,63 @@ test('WorldMapRuntime converts map background taps into fog march targets', () =
   assert.equal(calls[0].terrainLabel, '未知');
 });
 
+test('WorldMapRuntime infers background tile targets when snapshot hit targets are partial', () => {
+  const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const renderer = {
+    viewportWidth: 390,
+    viewportHeight: 844,
+    bottomSafeArea: 0,
+    renderWorldMapLayer() {},
+    getWorldMapLayerLayout() {
+      return { map: { x: 0, y: 84, width: 390, height: 640 } };
+    },
+    lastWorldTileMapContext: {
+      frame: { x: 0, y: 84, width: 390, height: 640 },
+      tileMapView: {
+        geometry,
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', terrainLabel: 'Plains', visibility: 'scouted' },
+          { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', terrainLabel: 'Forest', visibility: 'unknown', discovered: false },
+        ],
+      },
+      viewport: {
+        originX: 160,
+        originY: 180,
+        panX: 0,
+        panY: 0,
+        scale: 1,
+      },
+      geometry,
+    },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer,
+    runtime: {
+      getSystemInfo() {
+        return { windowWidth: 390, windowHeight: 844 };
+      },
+    },
+    presenter: {},
+    getState: () => createState(),
+    getTopBarBottom: () => 84,
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
+  runtime.hitTargets = [
+    { x: 8, y: 8, width: 40, height: 40, action: { type: 'resetWorldPan' } },
+    { x: 340, y: 760, width: 42, height: 42, action: { type: 'openSettings' } },
+  ];
+
+  assert.equal(runtime.handleTap({ x: 256, y: 228 }), true);
+  assert.equal(calls[0].type, 'selectWorldMarchTarget');
+  assert.equal(calls[0].targetQ, 1);
+  assert.equal(calls[0].targetR, 0);
+});
+
 test('WorldMapRuntime converts HUD taps into padded world-layer coordinates before inferring fog march targets', () => {
   const calls = [];
   const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
