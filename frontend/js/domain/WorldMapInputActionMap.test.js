@@ -36,6 +36,16 @@ test('WorldMapInputActionMap resolves topmost foreground target before backgroun
   assert.deepEqual(action, { type: 'openWorldSite', siteId: 'capital' });
 });
 
+test('WorldMapInputActionMap keeps a city click as openWorldSite when an actor stands on the city', () => {
+  const action = WorldMapInputActionMap.getHitTarget({ x: 60, y: 60 }, [
+    { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+    { x: 40, y: 40, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'capital' } },
+    { x: 50, y: 50, width: 42, height: 42, action: { type: 'selectWorldActor', missionId: 'march-1' } },
+  ]);
+
+  assert.deepEqual(action, { type: 'openWorldSite', siteId: 'capital' });
+});
+
 test('WorldMapInputActionMap preserves topmost background target over older background', () => {
   const action = WorldMapInputActionMap.getHitTarget({ x: 60, y: 60 }, [
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },

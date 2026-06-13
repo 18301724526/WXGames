@@ -74,6 +74,20 @@
       .filter(Boolean);
   }
 
+  function isWorldSiteAction(action = {}) {
+    return action?.type === 'openWorldSite' || action?.type === 'enterCity';
+  }
+
+  function getTopmostForegroundAction(point = {}, targets = [], predicate = null) {
+    for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
+      const target = targets[index];
+      const action = target?.action;
+      if (!action || action.background || !containsPoint(target, point)) continue;
+      if (!predicate || predicate(action, target)) return action;
+    }
+    return null;
+  }
+
   function getHitTarget(point = {}, targets = []) {
     let backgroundAction = null;
     for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
@@ -82,6 +96,10 @@
       if (target.action?.background) {
         if (!backgroundAction) backgroundAction = target.action;
       } else {
+        if (target.action?.type === 'selectWorldActor') {
+          const siteAction = getTopmostForegroundAction(point, targets, isWorldSiteAction);
+          if (siteAction) return siteAction;
+        }
         return target.action;
       }
     }
@@ -160,9 +178,11 @@
     findKnownTile,
     getBackgroundMarchTargetAction,
     getHitTarget,
+    getTopmostForegroundAction,
     inferTileFromPoint,
     isAllowedAction,
     isKnownTile,
+    isWorldSiteAction,
     normalizeHitTarget,
     normalizeHitTargets,
     resolveTapAction,

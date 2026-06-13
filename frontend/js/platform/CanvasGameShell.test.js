@@ -7,6 +7,7 @@ require('../domain/WorldTime');
 require('../domain/WorldMarchProgressSnapshot');
 const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
 
 const SHELL_MODULES = [
   'CanvasGameShellMounting',
@@ -1468,6 +1469,109 @@ test('CanvasGameShell syncs local world site selection after handled open action
 
   assert.equal(shell.territoryUiState.selectedSiteId, 'site_3_-9');
   assert.deepEqual(calls, [['handle', 'openWorldSite', 'site_3_-9']]);
+});
+
+test('CanvasGameShell routes a city tap to openWorldSite when an actor overlaps the city', () => {
+  const calls = [];
+  const hitTargets = [
+    CanvasSurfaceHitTargets.normalizeHitTarget(
+      { x: 50, y: 50, width: 42, height: 42 },
+      { type: 'selectWorldActor', missionId: 'march-1' },
+    ),
+    CanvasSurfaceHitTargets.normalizeHitTarget(
+      { x: 40, y: 40, width: 80, height: 60 },
+      { type: 'openWorldSite', siteId: 'capital' },
+    ),
+  ];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        return CanvasSurfaceHitTargets.resolveHitTarget(hitTargets, point);
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.siteId || action.missionId || '']);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 60, y: 60 }, {}), true);
+
+  assert.deepEqual(calls, [['handle', 'openWorldSite', 'capital']]);
+  assert.equal(shell.territoryUiState.selectedSiteId, 'capital');
+});
+
+test('CanvasGameShell keeps map-home HUD rendering after an open world site action', () => {
+  const renders = [];
+  const state = {
+    currentTab: 'resources',
+    militaryView: 'army',
+    territoryState: {
+      territories: [
+        { id: 'site_2_-8', status: 'occupied', owner: 'player', cityName: 'Forward City', x: 2, y: -8 },
+      ],
+      worldMap: {
+        tiles: [
+          { id: 'tile_2_-8', q: 2, r: -8, siteId: 'site_2_-8' },
+        ],
+      },
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getTopBarBottom() {
+        return 72;
+      },
+      getHitTarget() {
+        return { type: 'openWorldSite', siteId: 'site_2_-8' };
+      },
+      render(renderState, options) {
+        renders.push({
+          activeTab: options.activeTab,
+          currentTab: renderState.currentTab,
+          isMapHome: options.isMapHome,
+          militaryView: renderState.militaryView,
+          selectedSiteId: options.territoryUiState?.selectedSiteId || '',
+        });
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    territoryUiState: { selectedSiteId: '' },
+    territoryController: {
+      uiState: { selectedSiteId: '' },
+      getUiState() {
+        return { ...this.uiState };
+      },
+      openSiteDialog(siteId) {
+        this.uiState.selectedSiteId = siteId;
+        shell.renderReadOnly(state, 'territory');
+      },
+    },
+    tutorial: {},
+    tutorialController: { refreshCurrentHighlight() {} },
+  };
+  shell.territoryUiState = shell.lastGame.territoryUiState;
+  shell.setWorldMapLayerVisible = () => {};
+
+  assert.equal(shell.handleTap({ x: 1, y: 1 }, {}), true);
+
+  assert.equal(renders.length > 0, true);
+  assert.deepEqual(renders.at(-1), {
+    activeTab: 'military',
+    currentTab: 'military',
+    isMapHome: true,
+    militaryView: 'world',
+    selectedSiteId: 'site_2_-8',
+  });
 });
 
 test('CanvasGameShell blocks all drags while a guided highlight is active', () => {

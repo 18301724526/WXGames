@@ -58,6 +58,20 @@
     'selectWorldActor',
   ]);
 
+  function isWorldSiteAction(action = {}) {
+    return action?.type === 'openWorldSite' || action?.type === 'enterCity';
+  }
+
+  function getTopmostForegroundAction(targets = [], point = {}, predicate = null) {
+    for (let index = targets.length - 1; index >= 0; index -= 1) {
+      const target = targets[index];
+      const action = target?.action;
+      if (!action || action.background || !containsPoint(target, point)) continue;
+      if (!predicate || predicate(action, target)) return action;
+    }
+    return null;
+  }
+
   function getPriorityHitTarget(targets = [], point = {}, options = {}) {
     const priorities = Array.isArray(options.priorities) ? options.priorities : DEFAULT_PRIORITY_ACTIONS;
     for (const type of priorities) {
@@ -75,7 +89,13 @@
     let tutorialShieldAction = null;
     const tutorialAllowedActions = [];
     const priorityAction = getPriorityHitTarget(hitTargets, point);
-    if (priorityAction) return priorityAction;
+    if (priorityAction) {
+      if (priorityAction.type === 'selectWorldActor') {
+        const siteAction = getTopmostForegroundAction(hitTargets, point, isWorldSiteAction);
+        if (siteAction) return siteAction;
+      }
+      return priorityAction;
+    }
     for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
       const target = hitTargets[index];
       if (!containsPoint(target, point)) continue;
@@ -101,8 +121,10 @@
   const api = {
     containsPoint,
     DEFAULT_PRIORITY_ACTIONS,
+    getTopmostForegroundAction,
     getPriorityHitTarget,
     isAllowedUnderTutorialShield,
+    isWorldSiteAction,
     matchesCurrentTutorialIntroAction,
     matchesTutorialShieldAllowedAction,
     normalizeHitTarget,
