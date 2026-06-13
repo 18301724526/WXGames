@@ -211,7 +211,7 @@
       changed = true;
     };
     const patch = {
-      mapHomeActive: false,
+      mapHomeActive: true,
       showCityManagement: true,
       activeCityManagementTab: 'people',
       showTaskCenter: false,
@@ -221,9 +221,11 @@
       activeEventId: null,
     };
     if (game.state) {
-      setIfChanged(game.state, 'currentTab', 'resources');
-      setIfChanged(game.state, 'militaryView', 'army');
+      setIfChanged(game.state, 'currentTab', 'military');
+      setIfChanged(game.state, 'militaryView', 'world');
     }
+    setIfChanged(game, 'activeTab', 'military');
+    setIfChanged(game, 'militaryView', 'world');
     Object.entries(patch).forEach(([key, value]) => setIfChanged(game, key, value));
     if (shell) Object.entries(patch).forEach(([key, value]) => setIfChanged(shell, key, value));
     if (game.territoryUiState) {
@@ -240,22 +242,22 @@
     shell?.closeWorldSiteHud?.({ render: false });
     shell?.hideTutorialHighlight?.();
     if (typeof shell?.renderReadOnly === 'function') {
-      shell.renderReadOnly(game.state, 'resources', {
-        forceMapHome: false,
-        allowDefaultMapHome: false,
+      shell.renderReadOnly(game.state, 'military', {
+        forceMapHome: true,
+        isMapHome: true,
       });
     } else if (changed || options.forceRender !== false) {
-      game.renderCanvasSurface?.('resources');
+      game.renderCanvasSurface?.('military');
     }
     return true;
   },
 
   getCityPeopleGuideHighlightOptions() {
     return {
-      renderActiveTab: 'resources',
+      renderActiveTab: 'military',
       renderOptions: {
-        forceMapHome: false,
-        allowDefaultMapHome: false,
+        forceMapHome: true,
+        isMapHome: true,
       },
     };
   },

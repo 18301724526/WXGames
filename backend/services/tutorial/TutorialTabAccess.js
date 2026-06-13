@@ -21,7 +21,7 @@ function canAccessTab(tutorialState, tabKey) {
     return ['resources', 'military', 'civilization'].includes(tabKey);
   }
   if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
-    return tabKey === 'resources';
+    return tabKey === 'military';
   }
   if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
     return ['resources', 'famousPersons'].includes(tabKey);

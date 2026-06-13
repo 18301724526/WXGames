@@ -90,7 +90,8 @@ test('post-naming tutorial guides policy, manual talent, famous seek, and final 
   assert.equal(early.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityNamed);
 
   const polityNamed = TutorialService.manualAdvance(cityNamed, TutorialService.TUTORIAL_STEPS.polityNamed);
-  assert.equal(TutorialService.canAccessTab(polityNamed, 'resources'), true);
+  assert.equal(TutorialService.canAccessTab(polityNamed, 'military'), true);
+  assert.equal(TutorialService.canAccessTab(polityNamed, 'resources'), false);
   assert.equal(TutorialService.canAccessTab(polityNamed, 'tech'), false);
   assert.equal(TutorialService.validateAction(polityNamed, 'research', { techId: 'writing' }, {}).allowed, false);
   assert.equal(

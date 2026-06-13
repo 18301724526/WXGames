@@ -928,7 +928,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   const controller = new TutorialGuideController({ game, api });
   controller.sync(game.tutorial);
 
-  assert.equal(controller.canOpenTab('resources'), true);
+  assert.equal(controller.canOpenTab('military'), true);
+  assert.equal(controller.canOpenTab('resources'), false);
   assert.equal(controller.canOpenTab('tech'), false);
   assert.equal(controller.refreshCurrentHighlight(), false);
   await flushTutorialPromises();
@@ -962,7 +963,7 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.canOpenTab('resources'), false);
 });
 
-test('TutorialGuideController exits map home and opens city people guide directly', async () => {
+test('TutorialGuideController keeps map home while opening city people guide directly', async () => {
   const calls = [];
   const shell = {
     mapHomeActive: true,
@@ -971,7 +972,7 @@ test('TutorialGuideController exits map home and opens city people guide directl
       calls.push(['renderReadOnly', tab, options]);
       this.mapHomeActive = Boolean(options?.forceMapHome);
       this.hitTargets = [
-        { x: 300, y: 116, width: 58, height: 28, action: { type: 'openCityManagement', tab: 'people' } },
+        { x: 300, y: 116, width: 58, height: 28, action: { type: 'assignJob', job: 'scholar', delta: 1 } },
       ];
       return true;
     },
@@ -997,7 +998,7 @@ test('TutorialGuideController exits map home and opens city people guide directl
     canvasShell: shell,
     resolveMapHomeViewState(state, options) {
       calls.push(['resolveMapHomeViewState', options]);
-      return { activeTab: 'resources', requestedTab: 'resources', militaryView: 'army', isMapHome: false };
+      return { activeTab: 'military', requestedTab: 'military', militaryView: 'world', isMapHome: true };
     },
   };
   const controller = new TutorialGuideController({ game });
@@ -1008,16 +1009,17 @@ test('TutorialGuideController exits map home and opens city people guide directl
   await Promise.resolve();
   await Promise.resolve();
 
-  assert.equal(game.mapHomeActive, false);
-  assert.equal(shell.mapHomeActive, false);
+  assert.equal(game.mapHomeActive, true);
+  assert.equal(shell.mapHomeActive, true);
   assert.equal(game.showCityManagement, true);
   assert.equal(shell.showCityManagement, true);
   assert.equal(game.activeCityManagementTab, 'people');
   assert.equal(shell.activeCityManagementTab, 'people');
-  assert.equal(game.state.currentTab, 'resources');
+  assert.equal(game.state.currentTab, 'military');
+  assert.equal(game.state.militaryView, 'world');
   assert.deepEqual(
     calls.find((call) => call[0] === 'renderReadOnly'),
-    ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
+    ['renderReadOnly', 'military', { forceMapHome: true, isMapHome: true }],
   );
   assert.equal(calls.some((call) => call[0] === 'highlight' && call[1]?.type === 'openCityManagement'), false);
 });

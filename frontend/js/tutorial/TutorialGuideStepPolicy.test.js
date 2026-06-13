@@ -21,7 +21,7 @@ test('TutorialGuideStepPolicy gates tab access by current tutorial step', () => 
     step: TUTORIAL_STEPS.houseBuilt,
     completed: false,
   }), true);
-  assert.equal(TutorialGuideStepPolicy.canOpenTab('resources', {
+  assert.equal(TutorialGuideStepPolicy.canOpenTab('military', {
     step: TUTORIAL_STEPS.polityNamed,
     completed: false,
   }), true);

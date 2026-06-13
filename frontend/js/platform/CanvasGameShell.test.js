@@ -1060,7 +1060,7 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
   ]);
 });
 
-test('CanvasGameShell re-renders highlighted resource guides outside map home', () => {
+test('CanvasGameShell keeps highlighted city people guides on map home', () => {
   const calls = [];
   const shell = new CanvasGameShell({
     previewEnabled: true,
@@ -1089,20 +1089,20 @@ test('CanvasGameShell re-renders highlighted resource guides outside map home', 
     'open policy',
     {
       allowedAction: { type: 'assignJob' },
-      renderActiveTab: 'resources',
-      renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
+      renderActiveTab: 'military',
+      renderOptions: { forceMapHome: true, isMapHome: true },
     },
   ), true);
 
   assert.deepEqual(calls, [
-    ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
+    ['renderReadOnly', 'military', { forceMapHome: true, isMapHome: true }],
   ]);
-  assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
-  assert.equal(shell.lastGame.state.currentTab, 'resources');
-  assert.equal(shell.lastGame.state.militaryView, 'army');
-  assert.equal(shell.lastGame.activeTab, 'resources');
-  assert.equal(shell.lastGame.militaryView, 'army');
-  assert.equal(shell.lastGame.mapHomeActive, false);
+  assert.deepEqual(shell.tutorialHighlight.renderOptions, { forceMapHome: true, isMapHome: true });
+  assert.equal(shell.lastGame.state.currentTab, 'military');
+  assert.equal(shell.lastGame.state.militaryView, 'world');
+  assert.equal(shell.lastGame.activeTab, 'military');
+  assert.equal(shell.lastGame.militaryView, 'world');
+  assert.equal(shell.lastGame.mapHomeActive, true);
 });
 
 test('CanvasGameShell stores original guide target action for highlight hit forwarding', () => {

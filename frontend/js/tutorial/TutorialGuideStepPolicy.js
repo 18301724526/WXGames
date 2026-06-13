@@ -71,7 +71,7 @@
       return ['resources', 'military'].includes(tabId);
     }
     if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
-      return tabId === 'resources';
+      return tabId === 'military';
     }
     if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
       return ['resources', 'famousPersons'].includes(tabId);
