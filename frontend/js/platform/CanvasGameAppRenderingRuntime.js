@@ -746,7 +746,22 @@
           },
 
       renderTerritory() {
-            this.renderCanvasSurface(this.state?.currentTab);
+            const homeView = this.resolveMapHomeViewState(this.state, {
+              requestedTab: 'territory',
+              militaryView: 'world',
+              forceMapHome: true,
+            });
+            this.activeTab = homeView.activeTab;
+            this.militaryView = homeView.militaryView;
+            this.mapHomeActive = homeView.isMapHome;
+            if (this.state && typeof this.state === 'object') {
+              this.state = {
+                ...this.state,
+                currentTab: homeView.activeTab,
+                militaryView: homeView.militaryView,
+              };
+            }
+            this.renderCanvasSurface(homeView.activeTab);
           },
     });
     CanvasGameAppWorldMapRuntimeBridge?.install?.(CanvasGameApp);

@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const CanvasGameApp = require('./CanvasGameApp');
 const CanvasGameAppCommands = require('./CanvasGameAppCommands');
+const CanvasGameShell = require('./CanvasGameShell');
 
 const APP_MODULES = [
   'CanvasGameAppStateSync',
@@ -159,4 +160,56 @@ test('CanvasGameApp wires authority state refreshes from the sync service', () =
     ['setStateProvider'],
     ['applyApiState', 'explore-1'],
   ]);
+});
+
+test('CanvasGameApp renders territory site selection through map-home city HUD', () => {
+  const calls = [];
+  const renderer = {
+    render(renderState, options) {
+      calls.push([
+        'render',
+        renderState.currentTab,
+        renderState.militaryView,
+        options.activeTab,
+        options.isMapHome,
+        options.territoryUiState?.selectedSiteId,
+      ]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer,
+  });
+  shell.syncWorldMapRendererLayerMetrics = () => {};
+  shell.ensureWorldMapRuntimeCoordinator = () => ({ canRender: () => false });
+  shell.renderWorldMapLayer = () => false;
+  shell.setWorldMapLayerVisible = () => {};
+
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    canvasShell: shell,
+    initialState: {
+      currentTab: 'buildings',
+      militaryView: 'army',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_capital', q: 0, r: 0, siteId: 'capital' }] },
+        territories: [{ id: 'capital', status: 'occupied', owner: 'player' }],
+      },
+    },
+  });
+  app.territoryController = {
+    uiState: { selectedSiteId: 'capital' },
+    getUiState() {
+      return { selectedSiteId: 'capital' };
+    },
+  };
+  shell.lastGame = app;
+
+  app.renderTerritory();
+
+  assert.deepEqual(calls.at(-1), ['render', 'military', 'world', 'military', true, 'capital']);
+  assert.equal(app.mapHomeActive, true);
+  assert.equal(shell.mapHomeActive, true);
 });
