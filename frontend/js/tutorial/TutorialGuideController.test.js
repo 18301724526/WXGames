@@ -46,7 +46,7 @@ test('TutorialGuideController deduplicates concurrent advance requests for the s
   const calls = [];
   let resolveAdvance;
   const game = {
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.talentPolicyOpened },
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.cityPeopleOpened },
     applyApiState(result) {
       this.tutorial = result.tutorial;
       calls.push(['applyApiState', result.tutorial.currentStep]);
@@ -65,8 +65,8 @@ test('TutorialGuideController deduplicates concurrent advance requests for the s
   const controller = new TutorialGuideController({ game, api });
   controller.sync(game.tutorial);
 
-  const first = controller.advanceTo(TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
-  const second = controller.advanceTo(TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
+  const first = controller.advanceTo(TutorialGuideController.TUTORIAL_STEPS.manualTalentReady);
+  const second = controller.advanceTo(TutorialGuideController.TUTORIAL_STEPS.manualTalentReady);
   assert.equal(calls.filter(([name]) => name === 'advanceTutorial').length, 1);
 
   resolveAdvance();
@@ -74,8 +74,8 @@ test('TutorialGuideController deduplicates concurrent advance requests for the s
 
   assert.equal(results[0], results[1]);
   assert.deepEqual(calls, [
-    ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied],
-    ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied],
+    ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.manualTalentReady],
+    ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.manualTalentReady],
   ]);
 });
 
@@ -144,7 +144,7 @@ test('TutorialGuideController guides first era advancement and task reward claim
   };
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt },
-    state: { currentTab: 'resources' },
+    state: { currentTab: 'military', militaryView: 'world' },
     canvasShell: shell,
     renderCanvasSurface() {
       calls.push({ render: true });
@@ -548,7 +548,7 @@ test('TutorialGuideController clears stale highlight when the next target is una
     },
   };
   const game = {
-    state: { currentTab: 'resources' },
+    state: { currentTab: 'military', militaryView: 'world' },
     canvasShell: shell,
     renderCanvasSurface(tab) {
       calls.push(['renderCanvasSurface', tab]);
@@ -563,7 +563,7 @@ test('TutorialGuideController clears stale highlight when the next target is una
     { type: 'openCommandPanel', panel: 'military' },
   ), false);
   assert.deepEqual(calls, [
-    ['renderCanvasSurface', 'resources'],
+    ['renderCanvasSurface', 'military'],
     ['hideTutorialHighlight'],
   ]);
 });
@@ -601,13 +601,13 @@ test('TutorialGuideController guides scout formation into map march and claim', 
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFormationSaved },
     state: {
-      currentTab: 'resources',
+      currentTab: 'military',
       militaryView: 'world',
       worldExplorerState: {},
     },
     activeCommandPanel: '',
     territoryUiState,
-    activeTab: 'resources',
+    activeTab: 'military',
     militaryView: 'world',
     mapHomeActive: false,
     canvasShell: shell,
@@ -863,8 +863,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
     showCityManagement: false,
     activeCityManagementTab: '',
     showFamousPersons: false,
-    resetLocalViewToResources() {
-      calls.push({ resetResources: true });
+    resetLocalViewToWorldMap() {
+      calls.push({ resetWorldMap: true });
       this.activeCommandPanel = '';
     },
     getCanvasTarget(type, predicate) {
@@ -922,7 +922,7 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   const controller = new TutorialGuideController({ game, api });
   controller.sync(game.tutorial);
 
-  assert.equal(controller.canOpenTab('resources'), true);
+  assert.equal(controller.canOpenTab('military'), true);
   assert.equal(controller.canOpenTab('tech'), false);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCityManagement', tab: 'people' });
@@ -931,8 +931,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   shell.showCityManagement = true;
   game.activeCityManagementTab = 'people';
   shell.activeCityManagementTab = 'people';
-  await controller.onTalentPolicyOpened();
-  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
+  await controller.onCityPeopleOpened();
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.manualTalentReady);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
 
@@ -954,10 +954,10 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted },
   });
   assert.equal(controller.canOpenTab('tech'), true);
-  assert.equal(controller.canOpenTab('resources'), false);
+  assert.equal(controller.canOpenTab('military'), false);
 });
 
-test('TutorialGuideController exits map home before guiding people tab', () => {
+test('TutorialGuideController keeps map home while guiding people tab', () => {
   const calls = [];
   const shell = {
     mapHomeActive: true,
@@ -992,7 +992,7 @@ test('TutorialGuideController exits map home before guiding people tab', () => {
     canvasShell: shell,
     resolveMapHomeViewState(state, options) {
       calls.push(['resolveMapHomeViewState', options]);
-      return { activeTab: 'resources', requestedTab: 'resources', militaryView: 'army', isMapHome: false };
+      return { activeTab: 'military', requestedTab: 'military', militaryView: 'world', isMapHome: true };
     },
   };
   const controller = new TutorialGuideController({ game });
@@ -1000,16 +1000,16 @@ test('TutorialGuideController exits map home before guiding people tab', () => {
 
   assert.equal(controller.refreshCurrentHighlight(), true);
 
-  assert.equal(game.mapHomeActive, false);
-  assert.equal(shell.mapHomeActive, false);
-  assert.equal(game.state.currentTab, 'resources');
+  assert.equal(game.mapHomeActive, true);
+  assert.equal(shell.mapHomeActive, true);
+  assert.equal(game.state.currentTab, 'military');
   assert.deepEqual(
     calls.find((call) => call[0] === 'renderReadOnly'),
-    ['renderReadOnly', 'resources', { forceMapHome: false, allowDefaultMapHome: false }],
+    ['renderReadOnly', 'military', { forceMapHome: true, isMapHome: true }],
   );
   const highlightCall = calls.find((call) => call[0] === 'highlight');
   assert.deepEqual(highlightCall[1], { type: 'openCityManagement', tab: 'people' });
-  assert.deepEqual(highlightCall[2].renderOptions, { forceMapHome: false, allowDefaultMapHome: false });
+  assert.deepEqual(highlightCall[2].renderOptions, { forceMapHome: true, isMapHome: true });
 });
 
 test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {

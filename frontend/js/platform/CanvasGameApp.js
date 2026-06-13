@@ -75,14 +75,15 @@
             currentEra: 0,
             softGuide: null,
           };
-          this.mapHomeActive = false;
+          this.mapHomeActive = true;
           const initialHome = this.resolveMapHomeViewState({
             ...this.state,
-            currentTab: options.activeTab || this.state.currentTab || 'resources',
-            militaryView: options.militaryView || this.state.militaryView || 'army',
+            currentTab: options.activeTab || this.state.currentTab || 'military',
+            militaryView: options.militaryView || this.state.militaryView || 'world',
           }, {
-            requestedTab: options.activeTab || this.state.currentTab || 'resources',
-            militaryView: options.militaryView || this.state.militaryView || 'army',
+            requestedTab: options.activeTab || this.state.currentTab || 'military',
+            militaryView: options.militaryView || this.state.militaryView || 'world',
+            forceMapHome: options.forceMapHome !== false,
           });
           this.activeTab = initialHome.activeTab;
           this.militaryView = initialHome.militaryView;
@@ -99,8 +100,6 @@
           this.activeCityManagementTab = 'buildings';
           this.showTaskCenter = false;
           this.activeTaskCenterTab = 'main';
-          this.showGuidebook = false;
-          this.activeGuidebookTab = 'planning';
           this.showFamousPersons = false;
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';

@@ -331,24 +331,24 @@
     if (this.isPostNamingSystemGuideActive()) {
       const step = this.getCurrentStep();
       if (step === TUTORIAL_STEPS.polityNamed) {
-        this.ensureResourcesGuideVisible();
+        this.ensureMapHomeGuideVisible();
         return this.showHighlight(
           'openCityManagement',
           (action) => !action.disabled && (action.tab || 'people') === 'people',
           '打开城池人才页，之后人才分配都在入城后的城池面板里完成。',
           { type: 'openCityManagement', tab: 'people' },
-          this.getResourcesGuideHighlightOptions(),
+          { renderActiveTab: 'military', renderOptions: { forceMapHome: true, isMapHome: true } },
         );
       }
-      if (step === TUTORIAL_STEPS.talentPolicyOpened) {
+      if (step === TUTORIAL_STEPS.cityPeopleOpened) {
         if (!this.isCityManagementOpen()) {
-          this.ensureResourcesGuideVisible();
+          this.ensureMapHomeGuideVisible();
           return this.showHighlight(
             'openCityManagement',
             (action) => !action.disabled && (action.tab || 'people') === 'people',
             '打开城池人才页，进入人才标签后就可以手动调整岗位。',
             { type: 'openCityManagement', tab: 'people' },
-            this.getResourcesGuideHighlightOptions(),
+            { renderActiveTab: 'military', renderOptions: { forceMapHome: true, isMapHome: true } },
           );
         }
         if (!this.isCityManagementTabOpen('people')) {
@@ -359,13 +359,13 @@
             { type: 'switchCityManagementTab', tab: 'people' },
           );
         }
-        this.advanceTo(TUTORIAL_STEPS.talentPolicyApplied)
+        this.advanceTo(TUTORIAL_STEPS.manualTalentReady)
           .then(() => this.refreshCurrentHighlight())
           .catch(() => {});
         this.game?.canvasShell?.hideTutorialHighlight?.();
         return false;
       }
-      if (step === TUTORIAL_STEPS.talentPolicyApplied) {
+      if (step === TUTORIAL_STEPS.manualTalentReady) {
         this.ensureCityPeopleGuideVisible();
         if (!this.isCityManagementTabOpen('people')) {
           return this.showHighlight(

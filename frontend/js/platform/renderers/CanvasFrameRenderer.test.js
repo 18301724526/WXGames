@@ -55,8 +55,6 @@ function createHost(overrides = {}) {
     renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
     renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
-    renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
-    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return 260; },
     renderHudOverlay(...args) { calls.push(['renderHudOverlay', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
@@ -65,7 +63,6 @@ function createHost(overrides = {}) {
     renderMapHomeWorldView(...args) { calls.push(['renderMapHomeWorldView', args]); },
     renderNamingModal(...args) { calls.push(['renderNamingModal', args]); },
     renderNetworkOverlay(...args) { calls.push(['renderNetworkOverlay', args]); },
-    renderPopulation(...args) { calls.push(['renderPopulation', args]); return 180; },
     renderResourceDetailsPanel(...args) { calls.push(['renderResourceDetailsPanel', args]); },
     renderRewardReveal(...args) { calls.push(['renderRewardReveal', args]); },
     renderSettingsPanel(...args) { calls.push(['renderSettingsPanel', args]); },
@@ -128,7 +125,7 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
     worldMapRuntimeHitTargets: [
       { x: 10, y: 20, width: 30, height: 40, action: { type: 'openWorldSite', siteId: 'site_2_2' } },
     ],
-    activeCommandPanel: 'capital',
+    activeCommandPanel: 'events',
     showSubcityList: true,
     showSettings: true,
     territoryUiState: {
@@ -276,7 +273,6 @@ test('CanvasFrameRenderer preserves standard tab transition and modal overlays',
     showResourceDetails: true,
     showCitySwitcher: true,
     showTaskCenter: true,
-    showGuidebook: true,
     showFamousPersons: true,
     armyFormationEditor: { open: true },
     activeEventId: 'event-1',
@@ -301,7 +297,7 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   const renderer = new CanvasFrameRenderer({ host });
 
   renderer.renderMapHomeOverlays({}, {
-    activeCommandPanel: 'capital',
+    activeCommandPanel: 'events',
     showCityManagement: true,
     showAdvisor: true,
     activeEventId: 'event-1',
@@ -410,7 +406,7 @@ test('CanvasFrameRenderer renders debug reset as canvas hit target above tutoria
   const renderer = new CanvasFrameRenderer({ host });
 
   renderer.render({ resources: {} }, {
-    activeTab: 'resources',
+    activeTab: 'military',
     tutorialHighlight: {
       rect: { left: 12, top: 160, width: 80, height: 40 },
       message: 'guide',
@@ -434,7 +430,7 @@ test('CanvasFrameRenderer prioritizes tutorial spine advisor over generic adviso
   };
 
   renderer.render({ resources: {}, softGuide: { message: 'generic' } }, {
-    activeTab: 'resources',
+    activeTab: 'military',
     showAdvisor: true,
     tutorialAdvisorDialogue,
   });
@@ -478,7 +474,7 @@ test('CanvasGameRenderer exposes root frame rendering through facade', () => {
     frameRendererClass: StubFrameRenderer,
   });
   const state = { resources: {} };
-  const options = { activeTab: 'resources' };
+  const options = { activeTab: 'military' };
 
   const frame = renderer.render(state, options);
   const overlays = renderer.renderMapHomeOverlays(state, options);

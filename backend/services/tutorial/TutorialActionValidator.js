@@ -217,8 +217,8 @@ function validatePostNamingSystemGuideAction(step, action, payload = {}) {
   if (action === 'tutorialAdvance') {
     const requestedStep = Number(payload?.step);
     if (
-      (step === TUTORIAL_STEPS.polityNamed && requestedStep === TUTORIAL_STEPS.talentPolicyOpened)
-      || (step === TUTORIAL_STEPS.talentPolicyOpened && requestedStep === TUTORIAL_STEPS.talentPolicyApplied)
+      (step === TUTORIAL_STEPS.polityNamed && requestedStep === TUTORIAL_STEPS.cityPeopleOpened)
+      || (step === TUTORIAL_STEPS.cityPeopleOpened && requestedStep === TUTORIAL_STEPS.manualTalentReady)
       || (step === TUTORIAL_STEPS.manualTalentAssigned && requestedStep === TUTORIAL_STEPS.famousSeekOpened)
       || (step === TUTORIAL_STEPS.famousSeekCompleted && requestedStep === TUTORIAL_STEPS.finalTechOpened)
       || (step === TUTORIAL_STEPS.finalTechOpened && requestedStep === TUTORIAL_STEPS.completed)
@@ -228,10 +228,7 @@ function validatePostNamingSystemGuideAction(step, action, payload = {}) {
     return blocked('Please follow the current guided system step.');
   }
 
-  if (step === TUTORIAL_STEPS.talentPolicyOpened && action === 'applyTalentPolicy') {
-    return { allowed: true };
-  }
-  if (step === TUTORIAL_STEPS.talentPolicyApplied && action === 'assign') {
+  if (step === TUTORIAL_STEPS.manualTalentReady && action === 'assign') {
     const amount = Number(payload?.count) || 0;
     if (!payload?.target || amount === 0) return blocked('Please manually adjust one talent assignment.');
     return { allowed: true };

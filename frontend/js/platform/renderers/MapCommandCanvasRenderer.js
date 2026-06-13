@@ -138,12 +138,11 @@
       const dockTop = this.height - 64;
       const top = Math.max(82, this.getTopBarBottom(state, { isMapHome: true }) + 8);
       const height = Math.max(220, dockTop - top - 12);
-      const panelHeight = Math.min(height, panel === 'capital' ? 392 : 470);
+      const panelHeight = Math.min(height, 470);
       const y = dockTop - panelHeight - 10;
       const x = layout.contentX;
       const width = layout.contentWidth;
       const titleByPanel = {
-        capital: '首都',
         buildings: '建设',
         military: '军事',
         tech: '科技',
@@ -174,21 +173,16 @@
 
       const contentTop = y + 50;
       const contentHeight = Math.max(120, panelHeight - 62);
-      if (panel === 'capital') {
-        const populationBottom = this.renderPopulation(state, contentTop);
-        this.renderHomeFeatureGrid(state, populationBottom, { maxBottom: y + panelHeight - 10 });
-      } else {
-        const panelTab = panel === 'military' ? 'military' : panel;
-        const renderState = panelTab === 'military'
-          ? { ...state, militaryView: state.militaryView === 'world' ? 'army' : (state.militaryView || 'army') }
-          : state;
-        this.renderMainPanel(renderState, panelTab, contentTop, contentHeight, {
-          ...options,
-          activeBuildingCategory: options.activeBuildingCategory,
-          buildingOffset: options.buildingOffset,
-          buildingTransition: options.buildingTransition,
-        });
-      }
+      const panelTab = panel === 'military' ? 'military' : panel;
+      const renderState = panelTab === 'military'
+        ? { ...state, militaryView: state.militaryView === 'world' ? 'army' : (state.militaryView || 'army') }
+        : state;
+      this.renderMainPanel(renderState, panelTab, contentTop, contentHeight, {
+        ...options,
+        activeBuildingCategory: options.activeBuildingCategory,
+        buildingOffset: options.buildingOffset,
+        buildingTransition: options.buildingTransition,
+      });
     }
   }
 

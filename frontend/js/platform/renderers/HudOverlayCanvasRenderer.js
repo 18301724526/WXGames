@@ -71,7 +71,7 @@
     }
 
     renderMapHomeWorldMarchHud(state = {}, options = {}) {
-      if (options.isMapHome !== true || (options.activeTab || 'resources') !== 'military') return false;
+      if (options.isMapHome !== true || (options.activeTab || 'military') !== 'military') return false;
       if (typeof this.renderWorldMarchHud !== 'function') return false;
       const context = this.getMapHomeWorldHudContext({ ...options, state: options.state || state });
       const renderSnapshot = context?.renderSnapshot || null;
@@ -84,7 +84,7 @@
     }
 
     renderHudOverlay(state = {}, options = {}) {
-      const activeTab = options.activeTab || 'resources';
+      const activeTab = options.activeTab || 'military';
       this.beginFrame(options);
       this.setHitTargets([]);
       if (!options.preserveCanvas) this.clear();
@@ -152,9 +152,6 @@
       }
       if (options.showTaskCenter) {
         this.renderTaskCenterPanel(state, options);
-      }
-      if (options.showGuidebook) {
-        this.renderGuidebookPanel(state, options);
       }
       if (options.showFamousPersons) {
         this.renderFamousPersonsPanel(state, options);

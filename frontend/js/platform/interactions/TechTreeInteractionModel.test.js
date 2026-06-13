@@ -354,7 +354,7 @@ test('CanvasActionController opens task center above city management after lumbe
     showTaskCenter: false,
     showCityManagement: true,
     showSubcityList: true,
-    activeCommandPanel: 'capital',
+    activeCommandPanel: 'events',
     activeEventId: 'event-1',
     activeTaskCenterTab: '',
     getCanvasGameHost() {
@@ -369,7 +369,7 @@ test('CanvasActionController opens task center above city management after lumbe
     showTaskCenter: false,
     showCityManagement: true,
     showSubcityList: true,
-    activeCommandPanel: 'capital',
+    activeCommandPanel: 'events',
     activeEventId: 'event-1',
     activeTaskCenterTab: '',
     canvasShell: shell,
@@ -396,67 +396,6 @@ test('CanvasActionController opens task center above city management after lumbe
   assert.equal(shell.activeTaskCenterTab, 'main');
   assert.equal(game.activeTaskCenterTab, 'main');
   assert.deepEqual(calls, [['render'], ['refreshCurrentHighlight']]);
-});
-
-test('CanvasActionController routes talent policy shortcut to city people tab after tutorial advance', async () => {
-  const calls = [];
-  let resolveAdvance = null;
-  const shell = {
-    showCityManagement: false,
-    activeCityManagementTab: '',
-    showTaskCenter: true,
-    getCanvasGameHost() {
-      return game;
-    },
-    runtime: {
-      setTimeout(callback) {
-        calls.push(['timeout']);
-        callback();
-      },
-    },
-    render() {
-      calls.push(['render', this.activeCityManagementTab]);
-      return true;
-    },
-  };
-  const game = {
-    showCityManagement: false,
-    activeCityManagementTab: '',
-    canvasShell: shell,
-    tutorialController: {
-      onTalentPolicyOpened() {
-        calls.push(['onTalentPolicyOpened']);
-        return new Promise((resolve) => {
-          resolveAdvance = resolve;
-        });
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
-  };
-  const controller = new CanvasActionController({ host: shell });
-
-  assert.equal(controller.handle_openTalentPolicy({ type: 'openTalentPolicy' }), true);
-
-  assert.equal(shell.showCityManagement, true);
-  assert.equal(game.showCityManagement, true);
-  assert.equal(game.canvasShell.showCityManagement, true);
-  assert.equal(shell.activeCityManagementTab, 'people');
-  assert.equal(game.activeCityManagementTab, 'people');
-  assert.equal(game.canvasShell.activeCityManagementTab, 'people');
-  assert.equal(shell.showTaskCenter, false);
-  assert.equal(calls.some((call) => call[0] === 'onTalentPolicyOpened'), true);
-  assert.equal(calls.some((call) => call[0] === 'refreshCurrentHighlight'), false);
-
-  resolveAdvance({ currentStep: 30 });
-  await Promise.resolve();
-
-  assert.equal(shell.showCityManagement, true);
-  assert.equal(game.showCityManagement, true);
-  assert.equal(game.canvasShell.showCityManagement, true);
-  assert.deepEqual(calls.filter((call) => call[0] === 'render'), [['render', 'people'], ['render', 'people']]);
-  assert.equal(calls.filter((call) => call[0] === 'refreshCurrentHighlight').length, 1);
 });
 
 test('CanvasActionController closes command panel after switching military view', () => {

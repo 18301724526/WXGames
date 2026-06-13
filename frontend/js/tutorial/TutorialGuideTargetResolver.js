@@ -14,7 +14,7 @@
 
     getActiveRenderTab() {
       const game = this.getGame();
-      return game?.state?.currentTab || game?.activeTab || 'resources';
+      return game?.state?.currentTab || game?.activeTab || 'military';
     }
 
     getCanvasTarget(type, predicate = null) {

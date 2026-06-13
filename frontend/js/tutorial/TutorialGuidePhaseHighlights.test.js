@@ -28,7 +28,7 @@ test('TutorialGuidePhaseHighlights preserves first-era highlight behavior', () =
     isRewardRevealOpen() { return false; }
     isFirstEraGuideActive() { return true; }
     getCurrentStep() { return steps.houseBuilt; }
-    isOnTab(tab) { return tab === 'resources'; }
+    isOnTab(tab) { return tab === 'military'; }
     prepareCommandPanelGuide(panel) { this.calls.push(['prepareCommandPanelGuide', panel]); }
     showHighlight(type, predicate, message, allowedAction) {
       this.calls.push(['showHighlight', type, message, allowedAction]);

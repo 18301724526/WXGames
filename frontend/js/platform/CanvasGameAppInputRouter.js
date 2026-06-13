@@ -27,7 +27,6 @@
               || this.tutorialAdvisorDialogue
               || this.canvasShell?.tutorialAdvisorDialogue
               || this.showTaskCenter
-              || this.showGuidebook
               || this.showFamousPersons
               || this.armyFormationEditor?.open
               || this.confirmDialog?.visible

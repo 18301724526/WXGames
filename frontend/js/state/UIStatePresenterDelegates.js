@@ -2,9 +2,8 @@
   const DEPENDENCY_DEFINITIONS = Object.freeze({
     TechPresenter: './presenters/TechPresenter',
     FamousPersonPresenter: './presenters/FamousPersonPresenter',
-    TalentPolicyPresenter: './presenters/TalentPolicyPresenter',
     BuildingPresenter: './presenters/BuildingPresenter',
-    HomePresenter: './presenters/HomePresenter',
+    CityResourcePresenter: './presenters/CityResourcePresenter',
     EventPresenter: './presenters/EventPresenter',
     TaskGuidePresenter: './presenters/TaskGuidePresenter',
     CivilizationPresenter: './presenters/CivilizationPresenter',
@@ -41,7 +40,7 @@
       'buildRequestLogViewState',
       'buildTerritorySummaryViewState',
     ]),
-    HomePresenter: Object.freeze([
+    CityResourcePresenter: Object.freeze([
       'calculatePopulationGrowthMultiplier',
       'formatPopulationGrowthStatus',
       'buildResourceViewState',
@@ -74,15 +73,6 @@
       'formatFamousAutoGrowthText',
       'buildFamousPersonCard',
       'buildFamousPersonViewState',
-    ]),
-    TalentPolicyPresenter: Object.freeze([
-      'getDefaultTalentPolicyDraft',
-      'makeTalentPolicyName',
-      'getTalentPolicyAvailableRoles',
-      'applyTalentPolicyTierModifiers',
-      'allocateTalentByWeights',
-      'buildTalentPolicyDraftPreview',
-      'buildTalentPolicyViewState',
     ]),
     CivilizationPresenter: Object.freeze([
       'canAdvanceEraByTutorial',
@@ -251,19 +241,7 @@
   }
 
   function installCustomDelegates(UIStatePresenter, dependencies) {
-    const { HomePresenter, TaskGuidePresenter, TechPresenter } = dependencies;
-    defineStaticMethod(UIStatePresenter, 'buildGuidebookViewState', function buildGuidebookViewState(state = {}, options = {}) {
-      return TaskGuidePresenter.buildGuidebookViewState(state, {
-        ...options,
-        buildCityPlanningViewState: (sourceState) => UIStatePresenter.buildCityPlanningViewState(sourceState),
-      });
-    });
-    defineStaticMethod(UIStatePresenter, 'buildHomeFeatureViewState', function buildHomeFeatureViewState(state = {}, options = {}) {
-      return HomePresenter.buildHomeFeatureViewState(state, {
-        ...options,
-        buildTaskCenterViewState: (sourceState) => UIStatePresenter.buildTaskCenterViewState(sourceState),
-      });
-    });
+    const { TechPresenter } = dependencies;
     defineStaticMethod(UIStatePresenter, 'buildTechViewState', function buildTechViewState(state = {}) {
       if (TechPresenter && typeof TechPresenter.buildTechViewState === 'function') {
         return TechPresenter.buildTechViewState(state);

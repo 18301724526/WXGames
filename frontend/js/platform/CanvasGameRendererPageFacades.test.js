@@ -14,18 +14,18 @@ test('CanvasGameRendererPageFacades installs page rendering facade methods', () 
   renderer.currentFps = 61;
   renderer.frameNow = 1234;
   renderer.delegateSurfaceRenderer = (method) => (method === 'getNow' ? 9876 : undefined);
-  renderer.delegateHomeRenderer = () => undefined;
+  renderer.delegateResourceTopBarRenderer = () => undefined;
   renderer.delegateTabBarRenderer = () => 'tabs';
 
   assert.equal(renderer.getNow(), 9876);
   assert.equal(renderer.renderTopBar({}, {}), 84);
-  assert.equal(renderer.renderTabs('resources', {}, {}), 'tabs');
+  assert.equal(renderer.renderTabs('military', {}, {}), 'tabs');
   assert.deepEqual(renderer.getWorldMapLayerLayout(), null);
 });
 
 test('CanvasGameRenderer uses installed page facades for child renderer delegation', () => {
   const renderer = new CanvasGameRenderer({
-    homeRenderer: {
+    resourceTopBarRenderer: {
       renderTopBar() {
         return 121;
       },

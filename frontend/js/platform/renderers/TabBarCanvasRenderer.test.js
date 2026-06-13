@@ -47,7 +47,7 @@ test('TabBarCanvasRenderer preserves standard tab hit targets', () => {
   );
   assert.deepEqual(
     host.hitTargets.filter((target) => target.action.type === 'switchTab').map((target) => target.action.tab),
-    ['resources', 'tech', 'events', 'civilization'],
+    ['military', 'tech', 'events', 'civilization'],
   );
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openFamousPersons'), true);
 });
@@ -56,7 +56,7 @@ test('TabBarCanvasRenderer preserves locked tab disabled state', () => {
   const host = createHost();
   const renderer = new TabBarCanvasRenderer({ host });
 
-  renderer.renderTabs('resources', {}, { tabLocks: [{ id: 'tech', disabled: true }, { id: 'famousPersons', isLocked: true }] });
+  renderer.renderTabs('military', {}, { tabLocks: [{ id: 'tech', disabled: true }, { id: 'famousPersons', isLocked: true }] });
 
   const techTarget = host.hitTargets.find((target) => target.action.tab === 'tech');
   const famousTarget = host.hitTargets.find((target) => target.action.type === 'openFamousPersons');
@@ -89,7 +89,7 @@ test('TabBarCanvasRenderer delegates map-home tabs to command dock', () => {
   const state = { cityState: {} };
   const options = { isMapHome: true, activeCommandPanel: 'tech' };
 
-  renderer.renderTabs('resources', state, options);
+  renderer.renderTabs('military', state, options);
 
   assert.deepEqual(host.calls, [['renderMapCommandDock', [state, options]]]);
   assert.deepEqual(host.hitTargets, []);

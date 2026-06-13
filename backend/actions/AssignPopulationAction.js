@@ -14,7 +14,7 @@ function execute(gameState, tutorial, payload) {
   CityService.syncActiveCityToLegacyFields(gameState);
   const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
   const amount = Number.parseInt(payload.count, 10) || 0;
-  const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.talentPolicyApplied && amount !== 0
+  const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.manualTalentReady && amount !== 0
     ? TutorialService.advanceTutorial(normalizedTutorial, 'manualTalentAssigned')
     : payload.target === 'craftsman' && amount > 0
       ? TutorialService.advanceTutorial(normalizedTutorial, 'craftsmanAssigned')

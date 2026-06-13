@@ -30,9 +30,7 @@ function createHost(overrides = {}) {
       return { x: 370 - size, y: 700 - slot * 58, size };
     },
     getTopBarBottom() { return 72; },
-    renderHomeFeatureGrid(...args) { calls.push(['renderHomeFeatureGrid', args]); return true; },
     renderMainPanel(...args) { calls.push(['renderMainPanel', args]); return true; },
-    renderPopulation(...args) { calls.push(['renderPopulation', args]); return 360; },
     truncateText(text) { return String(text || ''); },
     ...overrides,
   };
@@ -65,17 +63,16 @@ test('MapCommandCanvasRenderer preserves floating map button contracts', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'events'), true);
 });
 
-test('MapCommandCanvasRenderer preserves command panel shell and delegates capital content', () => {
+test('MapCommandCanvasRenderer renders command panel shell without old capital content delegation', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });
 
-  renderer.renderMapCommandPanel({ cityState: {} }, { activeCommandPanel: 'capital' });
+  renderer.renderMapCommandPanel({ cityState: {} }, { activeCommandPanel: 'unknown' });
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeCommandPanel' && target.action.background === true), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeCommandPanel' && !target.action.background), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderPopulation'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'renderHomeFeatureGrid'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderMainPanel'), true);
 });
 
 test('MapCommandCanvasRenderer preserves command panel main-panel delegation', () => {

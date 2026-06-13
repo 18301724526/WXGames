@@ -33,7 +33,6 @@ function createHost(overrides = {}) {
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
-    renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
     renderHudTabPageWithTransition(...args) { calls.push(['renderHudTabPageWithTransition', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
@@ -272,7 +271,6 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
     showCitySwitcher: true,
     showAdvisor: true,
     showTaskCenter: true,
-    showGuidebook: true,
     showFamousPersons: true,
     armyFormationEditor: { open: true },
     activeEventId: 'event-1',
@@ -328,7 +326,7 @@ test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic a
   const host = createHost();
   const renderer = new HudOverlayCanvasRenderer({ host });
   const options = {
-    activeTab: 'resources',
+    activeTab: 'military',
     showAdvisor: true,
     tutorialAdvisorDialogue: {
       message: '民居已经建立起来了。',

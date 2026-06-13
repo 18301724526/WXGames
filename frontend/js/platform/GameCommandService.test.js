@@ -10,7 +10,7 @@ function createCommandHost(api) {
   const calls = [];
   const host = {
     api,
-    state: { activeCityId: 'capital', currentTab: 'resources', techUiState: { detailOpen: true } },
+    state: { activeCityId: 'capital', currentTab: 'military', militaryView: 'world', techUiState: { detailOpen: true } },
     canvasShell: {},
     pendingBuildingAction: null,
     closeCitySwitcher(options) {
@@ -116,7 +116,7 @@ test('GameCommandService switchCity closes picker, calls API, and applies state'
   const api = {
     async switchCity(cityId) {
       apiCalls.push(cityId);
-      return { message: `switched ${cityId}`, gameState: { activeCityId: cityId, currentTab: 'resources' } };
+      return { message: `switched ${cityId}`, gameState: { activeCityId: cityId, currentTab: 'military', militaryView: 'world' } };
     },
   };
   const { host, calls } = createCommandHost(api);
@@ -127,7 +127,7 @@ test('GameCommandService switchCity closes picker, calls API, and applies state'
   assert.deepEqual(calls[0], ['closeCitySwitcher', { skipRender: true }]);
   assert.deepEqual(calls.find(([name]) => name === 'applyApiState'), [
     'applyApiState',
-    { message: 'switched harbor', gameState: { activeCityId: 'harbor', currentTab: 'resources' } },
+    { message: 'switched harbor', gameState: { activeCityId: 'harbor', currentTab: 'military', militaryView: 'world' } },
   ]);
 });
 
@@ -298,7 +298,7 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
     runtimeRequired: false,
     apiRequired: false,
     rendererRequired: false,
-    initialState: { currentTab: 'resources', softGuide: null },
+    initialState: { currentTab: 'military', militaryView: 'world', softGuide: null },
     actionController: {
       handle_openTaskCenter(action) {
         calls.push(['handle_openTaskCenter', action]);
@@ -358,12 +358,12 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
   app.tutorialController = new TutorialGuideController({ game: app });
   app.showCityManagement = true;
   app.showSubcityList = true;
-  app.activeCommandPanel = 'capital';
+  app.activeCommandPanel = 'events';
   app.activeEventId = 'event-1';
   app.canvasShell = {
     showCityManagement: true,
     showSubcityList: true,
-    activeCommandPanel: 'capital',
+    activeCommandPanel: 'events',
     activeEventId: 'event-1',
   };
   app.renderCanvasSurface = (tab) => calls.push(['renderCanvasSurface', tab]);
@@ -384,7 +384,7 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
   assert.equal(app.canvasShell.activeCommandPanel, '');
   assert.equal(app.canvasShell.activeEventId, null);
   assert.equal(app.state.softGuide.target, 'tab-civilization');
-  assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
+  assert.deepEqual(calls, [['renderCanvasSurface', 'military']]);
 });
 
 test('CanvasGameApp waits for house-built advisor before refreshing civilization highlight', async () => {
@@ -430,11 +430,11 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
     return true;
   };
   app.showCityManagement = true;
-  app.activeCommandPanel = 'capital';
+  app.activeCommandPanel = 'events';
   app.activeEventId = 'event-1';
   app.canvasShell = {
     showCityManagement: true,
-    activeCommandPanel: 'capital',
+    activeCommandPanel: 'events',
     activeEventId: 'event-1',
     renderReadOnly() {
       calls.push(['renderReadOnly', Boolean(app.pendingTutorialAdvisorDialogue)]);

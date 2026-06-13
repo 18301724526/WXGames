@@ -1,15 +1,24 @@
 (function (global) {
-  const TAB_ORDER = Object.freeze(['resources', 'buildings', 'tech', 'events', 'civilization', 'military']);
+  const TAB_ORDER = Object.freeze(['military', 'buildings', 'tech', 'events', 'civilization']);
+  const PAGE_TAB_IDS = new Set(TAB_ORDER);
+
+  function normalizePageTab(tab) {
+    const rawTab = String(tab || '').trim();
+    if (rawTab === 'territory') return 'territory';
+    return PAGE_TAB_IDS.has(rawTab) ? rawTab : 'military';
+  }
 
   function resolveMapHomeViewState(state = {}, options = {}) {
-    const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
+    const rawRequestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'military';
+    const requestedTab = normalizePageTab(rawRequestedTab);
+    const normalizedToHome = rawRequestedTab !== requestedTab;
     const canUseMapHome = true;
-    const requestedMilitaryView = options.militaryView || state?.militaryView || 'army';
+    const requestedMilitaryView = options.militaryView || state?.militaryView || 'world';
+    const forceMapHome = Boolean(options.forceMapHome || options.isMapHome || normalizedToHome);
     const militaryMapRequested = requestedTab === 'military'
-      && (options.forceMapHome || options.isMapHome || requestedMilitaryView === 'world');
+      && (forceMapHome || requestedMilitaryView === 'world');
     const shouldUseMapHome = canUseMapHome
-      && options.allowDefaultMapHome !== false
-      && (options.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory' || militaryMapRequested);
+      && (forceMapHome || requestedTab === 'territory' || militaryMapRequested);
     return {
       activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
       requestedTab,
@@ -41,6 +50,7 @@
     resolveMapHomeViewState,
     getTabOrder,
     getPreferredMilitaryView,
+    normalizePageTab,
   });
 
   global.CanvasGameAppRenderPolicy = CanvasGameAppRenderPolicy;

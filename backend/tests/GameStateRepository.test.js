@@ -109,6 +109,45 @@ test('GameStateRepository records save performance capacity metadata', () => {
   }
 });
 
+test('GameStateRepository removes deleted policy allocation column from saved state schema', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const removedColumn = ['talent', 'Policies'].join('');
+    const columns = db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name);
+    assert.equal(columns.includes(removedColumn), false);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository drops deleted policy allocation column during schema init', () => {
+  const db = new Database(':memory:');
+  const removedColumn = ['talent', 'Policies'].join('');
+  db.exec(`
+    CREATE TABLE game_states (
+      playerId TEXT PRIMARY KEY,
+      resources TEXT,
+      ${removedColumn} TEXT,
+      updatedAt TEXT
+    );
+    INSERT INTO game_states (playerId, resources, ${removedColumn}, updatedAt)
+    VALUES ('legacy-policy-state', '{}', '{"activePolicyId":"balanced"}', '2026-06-13T00:00:00.000Z');
+  `);
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const columns = db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name);
+    assert.equal(columns.includes(removedColumn), false);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM game_states').get().count, 1);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository persists world explorer missions with the game state', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);

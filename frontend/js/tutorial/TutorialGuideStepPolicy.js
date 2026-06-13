@@ -30,8 +30,8 @@
     firstCityOccupied: 27,
     firstCityNamed: 28,
     polityNamed: 29,
-    talentPolicyOpened: 30,
-    talentPolicyApplied: 31,
+    cityPeopleOpened: 30,
+    manualTalentReady: 31,
     manualTalentAssigned: 32,
     famousSeekOpened: 33,
     famousSeekCompleted: 34,
@@ -56,8 +56,8 @@
   function canOpenTab(tabId, context = {}) {
     if (context.completed) return true;
     const step = normalizeStep(context.step);
-    if (step < TUTORIAL_STEPS.houseBuilt) return ['resources', 'military', 'buildings'].includes(tabId);
-    if (step < TUTORIAL_STEPS.eraAdvancedTo1) return ['resources', 'military', 'buildings', 'civilization'].includes(tabId);
+    if (step < TUTORIAL_STEPS.houseBuilt) return ['military', 'buildings'].includes(tabId);
+    if (step < TUTORIAL_STEPS.eraAdvancedTo1) return ['military', 'buildings', 'civilization'].includes(tabId);
     if (step <= TUTORIAL_STEPS.farmBuilt) return ['buildings', 'civilization', 'tasks'].includes(tabId);
     if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabId === 'civilization';
     if (step < TUTORIAL_STEPS.specialEventClaimed) return ['civilization', 'events'].includes(tabId);
@@ -65,16 +65,16 @@
     if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
     if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
     if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.firstCityDiscovered) {
-      return ['civilization', 'resources', 'military'].includes(tabId);
+      return ['civilization', 'military'].includes(tabId);
     }
     if (step >= TUTORIAL_STEPS.firstCityDiscovered && step < TUTORIAL_STEPS.polityNamed) {
-      return ['resources', 'military'].includes(tabId);
+      return tabId === 'military';
     }
-    if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
-      return tabId === 'resources';
+    if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.manualTalentReady) {
+      return tabId === 'military';
     }
     if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
-      return ['resources', 'famousPersons'].includes(tabId);
+      return ['military', 'famousPersons'].includes(tabId);
     }
     if (step >= TUTORIAL_STEPS.famousSeekCompleted && step < TUTORIAL_STEPS.completed) {
       return tabId === 'tech';

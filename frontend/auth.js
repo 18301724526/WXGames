@@ -214,8 +214,8 @@ window.mountAuthMethods = function(game, deps = {}) {
       this.tutorialIntroOverlay?.finish?.({ markSeen: false, completed: false });
       this.tutorialIntro = null;
       if (this.canvasShell) this.canvasShell.tutorialIntro = null;
-      this.resetLocalViewToResources?.({ skipRender: true });
-      this.canvasShell?.resetLocalViewToResources?.({ skipGame: true, skipRender: true });
+      this.resetLocalViewToWorldMap?.({ skipRender: true });
+      this.canvasShell?.resetLocalViewToWorldMap?.({ skipGame: true, skipRender: true });
       this.applyApiState(result);
       this.canvasShell?.closeConfirmDialog?.();
       this.showFloatingText && this.showFloatingText(result.message || '进度已重置');

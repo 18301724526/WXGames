@@ -3504,55 +3504,6 @@ Regression:
 - `node --test backend/tests/GameStateProjectionArchitecture.test.js backend/tests/GameActionRegistry.test.js`
 - `npm run test:architecture`
 
-### `backend/services/TalentPolicyService.js`
-
-Status: candidate
-
-Owns:
-
-- backend talent-policy state normalization, draft policy creation, preview allocation, apply/save/delete behavior
-- system policy and custom policy compatibility payloads
-- custom policy id creation through backend crypto-backed entropy
-- tutorial completion side effects for talent-policy milestones
-
-Public API:
-
-- `TalentPolicyService.DEFAULT_TIERS`
-- `TalentPolicyService.ROLE_DEFINITIONS`
-- `TalentPolicyService.TENDENCY_DEFINITIONS`
-- `TalentPolicyService.SYSTEM_POLICIES`
-- `TalentPolicyService.createInitialTalentPolicyState()`
-- `TalentPolicyService.normalizeTalentPolicyState(raw)`
-- `TalentPolicyService.normalizeTiers(raw)`
-- `TalentPolicyService.makeCustomPolicyName(basePolicyId)`
-- `TalentPolicyService.createCustomPolicyId(now, randomBytes)`
-- `TalentPolicyService.getClientState(gameState)`
-- `TalentPolicyService.getClientStateFromNormalized(gameState)`
-- `TalentPolicyService.buildAllocationPreview(gameState, policy)`
-- `TalentPolicyService.buildAllocationPreviewFromNormalized(gameState, policy, activeCity)`
-- `TalentPolicyService.getPolicyById(gameState, policyId)`
-- `TalentPolicyService.getPolicyByIdFromState(state, policyId)`
-- `TalentPolicyService.applyPolicy(gameState, payload)`
-- `TalentPolicyService.saveCustomPolicy(gameState, payload)`
-- `TalentPolicyService.deleteCustomPolicy(gameState, payload)`
-
-Performance Constraints:
-
-- Policy allocation is bounded by role/tendency count and city population fields, not by world-map size.
-- Custom policy id entropy is O(1) backend crypto metadata; no gameplay state clone or frontend-provided randomness.
-- Normalized-only projection must not call `CityService.normalizeCities()` or mutate `talentPolicies`; it reads the already-normalized active city and policy state.
-
-Extension Path:
-
-- New policy formulas extend policy definitions and focused service tests.
-- New probability-based policy outcomes must first declare a random authority adapter through `ServerRandomAuthorityContract`.
-- Do not reintroduce `Math.random`, renderer logic, route handling, or database writes here.
-
-Regression:
-
-- `node --test backend/tests/TalentPolicyService.test.js`
-- `npm run test:architecture`
-
 ### `backend/services/GameStateMigrationPipeline.js`
 
 状态 / Status: candidate
@@ -3676,7 +3627,7 @@ Regression:
 - Raw compatibility wrapper `getClientGameState()` for older callers.
 - Normalized-only projection `getClientGameStateFromNormalized()` for route responses and reset/action payloads.
 - Explicit projection context for derived read models such as shared-world territory visibility.
-- Delegates to normalized-only downstream DTO helpers for city, talent policy, famous person, tech, territory, world-map, and world-explorer state.
+- Delegates to normalized-only downstream DTO helpers for city, famous person, tech, territory, world-map, and world-explorer state.
 
 公开 API / Public API:
 
@@ -4482,7 +4433,7 @@ Regression:
 
 - 新 territory/world-site/world-march action 先扩展本模块，再让 `CanvasActionController` 只保留 facade/dispatch 行为。
 - 新 gameplay simulation 不进入本模块；本模块只负责 action-to-controller/API/UI-state orchestration。
-- 如果 action 属于 building/event/tech/famous/talent policy/shell domain，扩展对应 domain handler module。
+- 如果 action 属于 building/event/tech/famous/city people/shell domain，扩展对应 domain handler module。
 
 回归 / Regression:
 
@@ -4541,31 +4492,26 @@ Regression:
 - `node --test frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/platform/CanvasTalentPolicyActionHandlers.js`
+### Deleted: legacy talent-policy shortcut handler
 
-状态 / Status: candidate
+Status: deleted
 
-负责 / Owns:
+Fact:
 
-- legacy `openTalentPolicy` compatibility route into city management people tab
-- direct `applyTalentPolicy` finalization helper behavior previously embedded in `CanvasActionController`
-- tutorial refresh/finalization hooks for talent-policy apply and city people-tab guidance
-- installed legacy `handle_*` method names for the talent-policy action domain
+- The standalone talent-policy shortcut action handler was deleted.
+- Talent allocation is reachable only through entered-city people-tab flows.
+- City people-tab opening belongs to `CanvasCityActionHandlers` via `enterCity`, `openCityManagement`, or `switchCityManagementTab`.
+- Talent/personnel rendering belongs to `CityCanvasRenderer.renderCityPeoplePanel()`.
 
-公开 API / Public API:
+Extension Path:
 
-- `CanvasTalentPolicyActionHandlers.install(CanvasActionController)`
+- New personnel allocation UI extends `CityCanvasRenderer` city-management people-tab flows.
+- New people-tab actions extend `CanvasCityActionHandlers`; do not add shortcut compatibility handlers.
+- Do not restore standalone talent-policy panels or shortcut routes.
 
-扩展方式 / Extension Path:
+Regression:
 
-- New talent-policy apply/compatibility action first extends this module.
-- New talent allocation UI belongs in `CityCanvasRenderer` / city-management people-tab flows, not a standalone talent-policy panel.
-- Talent policy data derivation belongs in state/domain presenters or services, not in the controller facade.
-- Do not add talent-policy handlers directly to `CanvasActionController`.
-
-回归 / Regression:
-
-- `node --test frontend/js/platform/CanvasTalentPolicyActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
+- `node --test frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasShellActionHandlers.js`
@@ -4574,7 +4520,7 @@ Regression:
 
 负责 / Owns:
 
-- shell/system/account/naming/advisor/guidebook/army-formation action handlers
+- shell/system/account/naming/advisor/army-formation action handlers; guidebook actions are deleted and guarded from returning
 - tab switching, command panel, reward reveal, settings/logs/auth/reset/logout action orchestration
 - naming finalization helper behavior previously embedded in `CanvasActionController`
 - installed legacy `handle_*` method names for shell/system action domains
@@ -4585,13 +4531,70 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- 新 shell/system/account/naming/advisor/guidebook action 先扩展本模块。
-- Domain gameplay actions stay in territory/city/famous/talent-policy handlers.
+- 新 shell/system/account/naming/advisor/army-formation action 先扩展本模块；不要恢复 guidebook action。
+- Domain gameplay actions stay in territory/city/famous handlers; talent/personnel people-tab actions stay in city handlers.
 - Do not add shell/system handlers directly to `CanvasActionController`.
 
 回归 / Regression:
 
 - `node --test frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js frontend/js/platform/CanvasGameApp.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js`
+
+Status: candidate
+
+Owns:
+
+- canvas resource top-bar drawing for normal HUD and map-home HUD
+- resource/top-bar hit targets and resource detail button layout
+- active-city summary display in the top bar
+- no old home-page content, feature grid, or talent-policy shortcut rendering
+
+Public API:
+
+- `new ResourceTopBarCanvasRenderer({ host })`
+- `renderTopBar(state, options)`
+- `renderMapHomeTopBar(state, options)`
+
+Extension Path:
+
+- New resource HUD visuals extend this renderer.
+- City management/personnel content stays in `CityCanvasRenderer`.
+- Do not recreate a home/resources page renderer around this top bar.
+
+Regression:
+
+- `node --test frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/CanvasGameRendererPageFacades.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/state/presenters/CityResourcePresenter.js`
+
+Status: candidate
+
+Owns:
+
+- resource HUD view-state formatting
+- city switcher view-state formatting
+- city planning and population view-state formatting used by entered-city panels
+- no home feature-grid view state or standalone home page composition
+
+Public API:
+
+- `CityResourcePresenter.buildResourceViewState(state)`
+- `CityResourcePresenter.buildCitySwitcherViewState(state)`
+- `CityResourcePresenter.buildCityPlanningViewState(state)`
+- `CityResourcePresenter.buildPopulationViewState(state)`
+
+Extension Path:
+
+- New resource/city-planning view-state helpers extend this presenter.
+- People allocation UI stays in `CityCanvasRenderer`; actions stay in `CanvasCityActionHandlers`.
+- Do not add home feature-grid or standalone home-page presenter methods.
+
+Regression:
+
+- `node --test frontend/js/state/UIStatePresenter.test.js frontend/js/state/UIStatePresenterDelegates.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameRendererCompositionFactory.js`
@@ -4708,7 +4711,7 @@ Regression:
 负责 / Owns:
 
 - page/panel/HUD/frame compatibility method installation for `CanvasGameRenderer`
-- command, tutorial, tech, building, event, city, home, overlay, advisor, tab compatibility helpers
+- command, tutorial, tech, building, event, city, resource-top-bar, overlay, advisor, tab compatibility helpers
 - render routing pass-through methods historically exposed by `CanvasGameRenderer`
 - H5/minigame load-order contract before `CanvasGameRenderer`
 
@@ -5073,7 +5076,7 @@ Regression:
 
 - dependency resolution for the `UIStatePresenter` compatibility facade
 - direct static delegate method registration from focused presenter modules
-- custom facade delegates for guidebook, home feature, and tech fallback composition
+- presenter delegate registration and tech fallback composition; deleted guidebook/home delegates must not return
 - load-order contract before `UIStatePresenter`
 
 公开 API / Public API:
@@ -5116,8 +5119,8 @@ Regression:
 1. Keep territory/world-site/world-march handlers in `CanvasTerritoryActionHandlers`.
 2. Keep city-management/event/task-center/building/tech handlers in `CanvasCityActionHandlers`.
 3. Keep famous-person handlers in `CanvasFamousActionHandlers`.
-4. Keep talent-policy handlers in `CanvasTalentPolicyActionHandlers`.
-5. Keep shell/system/account/naming/advisor/guidebook/army-formation handlers in `CanvasShellActionHandlers`.
+4. Talent/personnel people-tab actions stay in `CanvasCityActionHandlers`; the old shortcut handler is deleted.
+5. Keep shell/system/account/naming/advisor/army-formation handlers in `CanvasShellActionHandlers`; do not restore guidebook handlers.
 6. Keep this file as the dispatch/helper facade.
 
 当前扩展方式 / Extension Path Now:
@@ -5125,13 +5128,13 @@ Regression:
 - Territory/world-site/world-march actions extend `CanvasTerritoryActionHandlers`.
 - City-management/event/task-center/building/tech actions extend `CanvasCityActionHandlers`.
 - Famous-person actions extend `CanvasFamousActionHandlers`.
-- Talent-policy actions extend `CanvasTalentPolicyActionHandlers`.
-- Shell/system/account/naming/advisor/guidebook/army-formation actions extend `CanvasShellActionHandlers`.
+- Talent/personnel city people-tab actions extend `CanvasCityActionHandlers`; do not add shortcut compatibility handlers.
+- Shell/system/account/naming/advisor/army-formation actions extend `CanvasShellActionHandlers`; guidebook actions remain deleted.
 - Avoid adding direct `handle_*` implementations here; add or extend a focused handler module instead.
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasTalentPolicyActionHandlers.test.js frontend/js/platform/CanvasShellActionHandlers.test.js`
+- `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasShellActionHandlers.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameRenderer.js` - 303 lines
@@ -5286,7 +5289,7 @@ Regression:
 - command panel cleanup and soft guide dialogue state
 - army formation editor reset helpers
 - guided capital/first-city focus helpers
-- building guide visibility, resources guide visibility, and generic building guide display
+- building guide visibility, map-home city-people guide visibility, and generic building guide display
 
 公开 API / Public API:
 
@@ -6809,7 +6812,7 @@ Recommended first split sequence:
 | 2026-06-08 | Standardized regression documentation: module entries list focused commands plus `npm run test:architecture`, and the architecture command is documented as the baseline gate covering registered candidate/stable tests, syntax checks, and `git diff --check`. |
 | 2026-06-08 | Added `CanvasTerritoryActionHandlers` candidate module for P4-001; `CanvasActionController` now delegates territory/world-site/world-march/expedition/battle-scene handlers and dropped to 1208 lines. |
 | 2026-06-08 | Added `CanvasCityActionHandlers` candidate module for P4-002; `CanvasActionController` now delegates city-management/event/task-center/city-selection/building/tech/task-reward/building-list handlers and dropped to 797 lines. |
-| 2026-06-08 | Added `CanvasFamousActionHandlers`, `CanvasTalentPolicyActionHandlers`, and `CanvasShellActionHandlers` for P4-003 through P4-005; `CanvasActionController` now delegates famous-person, talent-policy, shell/system/account/naming/advisor/guidebook/army-formation handlers and dropped to 226 lines as a candidate facade. |
+| 2026-06-08 | Added `CanvasFamousActionHandlers`, a now-deleted talent-policy shortcut split, and `CanvasShellActionHandlers` for P4-003 through P4-005; current `CanvasActionController` delegates famous-person, city people-tab, shell/system/account/naming/advisor/army-formation handlers and remains a candidate facade. Guidebook handlers are deleted and guarded from returning. |
 | 2026-06-08 | Added `CanvasGameRendererCompositionFactory`, `CanvasGameRendererCoreFacades`, and `CanvasGameRendererPageFacades` for P5-001 through P5-003; `CanvasGameRenderer` now delegates child composition and compatibility method installation, dropping to 303 lines as a candidate facade. |
 | 2026-06-08 | Added `TutorialGuideStepPolicy` candidate module for P6-001; `TutorialGuideController` now delegates step constants, tab access gates, and guide-active range predicates while remaining legacy for target resolution and phase guide branching. |
 | 2026-06-08 | Added `TutorialGuideTargetResolver` candidate module for P6-002; `TutorialGuideController` now delegates canvas target lookup, retry-after-render highlight dispatch, rect normalization, visibility checks, and open-world-site highlight dispatch while dropping to 1368 lines. |
@@ -6831,10 +6834,10 @@ Recommended first split sequence:
 | 2026-06-09 | Added `WorldMapGenerationAuthority` for P11-006 config/random hardening phase 5; world-map terrain, water, river, and scout-reveal branch materialization now consume a server-owned deterministic seeded-hash authority while `WorldMapShared.random01()` remains a compatibility wrapper. `WorldMapService` now attaches compact `generationAuthority` metadata, and `npm run test:architecture` includes `WorldMapArchitecture.test.js`. |
 | 2026-06-09 | Added `SkillGeneratorRandomAuthority` for P11-006 config/random hardening phase 6; skill ability-kit generation now consumes backend-authoritative random sources by default, exposes compact `randomAuthority` metadata, preserves deterministic injection for tests, and is included in `npm run test:architecture`. |
 | 2026-06-09 | Added registry metadata/validation for core backend config modules: `GameConfig`, `EraConfig`, `TutorialFlowConfig`, `BattleConfig`, and `TechTreeConfig`; `npm run test:architecture` now syntax-checks those config modules and `ConfigRegistryContract.test.js` verifies their registry contracts. |
-| 2026-06-09 | Removed remaining business-code `Math.random` usage by moving talent-policy custom policy ids to backend crypto entropy; `TalentPolicyService.test.js` is included in `npm run test:architecture`. |
+| 2026-06-13 | Deleted the old talent-policy service, shortcut handler, presenter, API actions, home feature page, and saved-state column; people assignment now lives only in entered-city people management. `npm run test:architecture` guards against reintroducing the removed markers. |
 | 2026-06-09 | P11-006 is now documented as complete for current config/version/random hardening. Future chance/drop/generated-result domains must add explicit authority adapters when introduced. P3 renderer split modules remain `candidate` while their completed `done` plan status reflects implementation completion, not stable promotion. |
 | 2026-06-09 | Added `docs/production_engineering_roadmap_2026-06-09.md` as the P12 production-engineering authority, registered it in the official doc set, and documented the next CI/deploy/observability/backup/performance/security/config/stable-promotion/runbook guardrails. |
-| 2026-06-09 | Deleted the standalone `TalentPolicyCanvasRenderer` panel. The legacy talent-policy shortcut now routes to city management people tab, and `CanvasTalentPolicyActionHandlers` owns only compatibility routing plus direct apply finalization. |
+| 2026-06-09 | Deleted the standalone talent-policy panel. Follow-up deletion removed the shortcut compatibility handler too; people allocation now stays inside city management people-tab flows only. |
 | 2026-06-10 | Hardened the mature engine canvas layer contract: `CanvasLayerRegistry` now owns physical stack, logical render queue, and hit priority queue; `mainHud` is locked to the primary input canvas, while `worldMap` and optional `worldFog` remain non-input secondary layers. `H5CanvasRuntime.test.js` is now part of `npm run test:architecture`. |
 | 2026-06-10 | Moved map-home march HUD ownership back to the `mainHud` pass: `WorldMapTileMapRenderer` now publishes world HUD context and keeps only map/site/actor targets, while `HudOverlayCanvasRenderer` / `CanvasFrameRenderer` invoke `renderWorldMarchHud()` and prefer same-frame HUD context over stale runtime context. |
 | 2026-06-10 | Fixed world-map input/HUD command contracts: `WorldMapRuntime.getLayerPointFromHudPoint()` converts `mainHud` taps into padded world-layer coordinates while subtracting drag-layer transform, `WorldMarchHudCanvasRenderer` shows stop only for active actors, and return-home now accepts idle parked world-march missions. |

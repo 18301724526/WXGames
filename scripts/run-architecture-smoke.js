@@ -135,8 +135,6 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/CanvasCityActionHandlers.test.js',
   'frontend/js/platform/CanvasFamousActionHandlers.js',
   'frontend/js/platform/CanvasFamousActionHandlers.test.js',
-  'frontend/js/platform/CanvasTalentPolicyActionHandlers.js',
-  'frontend/js/platform/CanvasTalentPolicyActionHandlers.test.js',
   'frontend/js/platform/CanvasShellActionHandlers.js',
   'frontend/js/platform/CanvasShellActionHandlers.test.js',
   'frontend/js/platform/CanvasGameRendererCompositionFactory.js',
@@ -145,6 +143,9 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/CanvasGameRendererCoreFacades.test.js',
   'frontend/js/platform/CanvasGameRendererPageFacades.js',
   'frontend/js/platform/CanvasGameRendererPageFacades.test.js',
+  'frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js',
+  'frontend/js/platform/renderers/CityCanvasRenderer.js',
+  'frontend/js/platform/renderers/CityCanvasRenderer.test.js',
   'frontend/js/tutorial/TutorialGuideStepPolicy.js',
   'frontend/js/tutorial/TutorialGuideStepPolicy.test.js',
   'frontend/js/tutorial/TutorialGuideTargetResolver.js',
@@ -164,6 +165,7 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/state/presenters/WorldTileMapExplorerNormalizer.js',
   'frontend/js/state/presenters/WorldTileMapExplorerNormalizer.test.js',
   'frontend/js/state/presenters/WorldTileMapPresenter.js',
+  'frontend/js/state/presenters/CityResourcePresenter.js',
   'frontend/js/state/UIStatePresenterDelegates.js',
   'frontend/js/state/UIStatePresenterDelegates.test.js',
   'frontend/js/state/UIStatePresenter.js',
@@ -228,7 +230,6 @@ const CHECK_FILES = Object.freeze([
   'backend/services/famousPerson/FamousPersonProgression.js',
   'backend/services/famousPerson/FamousPersonRandomAuthority.js',
   'backend/services/famousPerson/FamousPersonShared.js',
-  'backend/services/TalentPolicyService.js',
   'backend/services/CityService.js',
   'backend/services/TechTreeService.js',
   'backend/services/VersionService.js',
@@ -269,7 +270,6 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/WorldMapArchitecture.test.js',
   'backend/tests/SkillGeneratorArchitecture.test.js',
   'backend/tests/FamousPersonArchitecture.test.js',
-  'backend/tests/TalentPolicyService.test.js',
   'backend/tests/AdminRoutes.test.js',
   'backend/tests/VersionRoutes.test.js',
   'backend/tests/MetricsRoutes.test.js',
@@ -383,11 +383,11 @@ const TEST_FILES = Object.freeze([
   'frontend/js/platform/CanvasTerritoryActionHandlers.test.js',
   'frontend/js/platform/CanvasCityActionHandlers.test.js',
   'frontend/js/platform/CanvasFamousActionHandlers.test.js',
-  'frontend/js/platform/CanvasTalentPolicyActionHandlers.test.js',
   'frontend/js/platform/CanvasShellActionHandlers.test.js',
   'frontend/js/platform/CanvasGameRendererCompositionFactory.test.js',
   'frontend/js/platform/CanvasGameRendererCoreFacades.test.js',
   'frontend/js/platform/CanvasGameRendererPageFacades.test.js',
+  'frontend/js/platform/renderers/CityCanvasRenderer.test.js',
   'frontend/js/tutorial/TutorialGuideStepPolicy.test.js',
   'frontend/js/tutorial/TutorialGuideTargetResolver.test.js',
   'frontend/js/tutorial/TutorialGuidePhaseHighlights.test.js',
@@ -415,7 +415,6 @@ const TEST_FILES = Object.freeze([
   'backend/tests/SkillGeneratorArchitecture.test.js',
   'backend/tests/TerritoryArchitecture.test.js',
   'backend/tests/FamousPersonArchitecture.test.js',
-  'backend/tests/TalentPolicyService.test.js',
   'backend/tests/AdminRoutes.test.js',
   'backend/tests/VersionRoutes.test.js',
   'backend/tests/MetricsRoutes.test.js',
@@ -456,6 +455,52 @@ const CONTRACT_SEARCH_DIRS = Object.freeze([
   'frontend',
   'backend',
   'scripts',
+  'docs',
+]);
+
+const LEGACY_MARKER_SOURCE_EXTENSIONS = new Set([
+  '.css',
+  '.html',
+  '.js',
+  '.json',
+  '.md',
+]);
+
+const FORBIDDEN_LEGACY_MARKERS = Object.freeze([
+  ['Talent', 'Policy', 'Service'].join(''),
+  ['Talent', 'Policy', 'Presenter'].join(''),
+  ['Canvas', 'Talent', 'Policy', 'ActionHandlers'].join(''),
+  ['Home', 'Canvas', 'Renderer'].join(''),
+  ['Home', 'Presenter'].join(''),
+  ['build', 'Home', 'Feature', 'ViewState'].join(''),
+  ['render', 'Home', 'Feature', 'Grid'].join(''),
+  ['open', 'Talent', 'Policy'].join(''),
+  ['apply', 'Talent', 'Policy'].join(''),
+  ['save', 'Talent', 'Policy'].join(''),
+  ['delete', 'Talent', 'Policy'].join(''),
+  ['talent', 'Policy', 'Opened'].join(''),
+  ['talent', 'Policy', 'Applied'].join(''),
+  ['talent', 'Policies'].join(''),
+  ['show', 'Guidebook'].join(''),
+  ['active', 'Guidebook', 'Tab'].join(''),
+  ['render', 'Guidebook'].join(''),
+  ['open', 'Guidebook'].join(''),
+  ['switch', 'Guidebook', 'Tab'].join(''),
+  ['close', 'Guidebook'].join(''),
+  ['build', 'Guidebook', 'ViewState'].join(''),
+  ['get', 'Guidebook', 'Categories'].join(''),
+  ['ensure', 'Resources', 'Guide', 'Visible'].join(''),
+  ['get', 'Resources', 'Guide', 'Highlight', 'Options'].join(''),
+  ['reset', 'Local', 'View', 'To', 'Resources'].join(''),
+  'tab-resources',
+  "currentTab: 'resources'",
+  'currentTab: "resources"',
+  "requestedTab: 'resources'",
+  'requestedTab: "resources"',
+  "activeTab: 'resources'",
+  'activeTab: "resources"',
+  "renderActiveTab: 'resources'",
+  'renderActiveTab: "resources"',
 ]);
 
 function toPosixRelative(filePath, repoRoot = process.cwd()) {
@@ -494,6 +539,31 @@ function uniqueFiles(files) {
   return Array.from(new Set(files));
 }
 
+function assertNoLegacyMarkers(repoRoot = process.cwd()) {
+  const ignored = new Set([
+    'scripts/run-architecture-smoke.js',
+    'frontend/js/state/UIStatePresenter.test.js',
+    'frontend/js/state/UIStatePresenterDelegates.test.js',
+    'frontend/js/tutorial/TutorialGuideUiStateCoordinator.test.js',
+  ]);
+  const files = CONTRACT_SEARCH_DIRS
+    .flatMap((dir) => collectFiles(path.join(repoRoot, dir), []))
+    .map((filePath) => toPosixRelative(filePath, repoRoot))
+    .filter((filePath) => LEGACY_MARKER_SOURCE_EXTENSIONS.has(path.extname(filePath).toLowerCase()))
+    .filter((filePath) => !ignored.has(filePath));
+  const violations = [];
+  for (const filePath of files) {
+    const absolute = path.join(repoRoot, filePath);
+    const source = fs.readFileSync(absolute, 'utf8');
+    for (const marker of FORBIDDEN_LEGACY_MARKERS) {
+      if (source.includes(marker)) violations.push(`${filePath}: ${marker}`);
+    }
+  }
+  if (violations.length > 0) {
+    throw new Error(`Legacy home/talent-policy markers remain:\n${violations.join('\n')}`);
+  }
+}
+
 function run(label, command, args) {
   console.log(`[architecture-smoke] ${label}`);
   const result = spawnSync(command, args, {
@@ -516,6 +586,7 @@ function main() {
     ...discoverContractTests(),
   ]);
 
+  assertNoLegacyMarkers();
   run('focused node tests', process.execPath, ['--test', ...testFiles]);
   run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
@@ -543,4 +614,5 @@ module.exports = {
   discoverContractTests,
   isContractTestFile,
   uniqueFiles,
+  assertNoLegacyMarkers,
 };

@@ -41,7 +41,7 @@
             const homeView = this.resolveMapHomeViewState(this.state, {
               requestedTab: activeTab || this.getActiveTab(),
               militaryView: this.state?.militaryView || this.militaryView,
-              forceMapHome: this.mapHomeActive && (activeTab === 'resources' || activeTab === 'military'),
+              forceMapHome: this.mapHomeActive && activeTab === 'military',
             });
             const resolvedActiveTab = homeView.activeTab;
             this.mapHomeActive = homeView.isMapHome;
@@ -112,8 +112,6 @@
               activeCityManagementTab: this.activeCityManagementTab,
               showTaskCenter: this.showTaskCenter,
               activeTaskCenterTab: this.activeTaskCenterTab,
-              showGuidebook: this.showGuidebook,
-              activeGuidebookTab: this.activeGuidebookTab,
               showFamousPersons: this.showFamousPersons,
               famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
               selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
@@ -289,7 +287,7 @@
           },
 
       getActiveTab() {
-            return this.activeTab || this.state?.currentTab || 'resources';
+            return this.activeTab || this.state?.currentTab || 'military';
           },
 
       resolveMapHomeViewState(state = this.state, options = {}) {
@@ -528,7 +526,6 @@
             this.showCityManagement = false;
             this.activeEventId = null;
             this.showTaskCenter = false;
-            this.showGuidebook = false;
             this.showFamousPersons = false;
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
             this.activeCommandPanel = '';
@@ -558,8 +555,12 @@
             this.buildingTransition = null;
           },
 
-      resetLocalViewToResources(options = {}) {
-            const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
+      resetLocalViewToWorldMap(options = {}) {
+            const homeView = this.resolveMapHomeViewState(this.state, {
+              requestedTab: 'military',
+              militaryView: 'world',
+              forceMapHome: true,
+            });
             this.activeTab = homeView.activeTab;
             this.militaryView = homeView.militaryView;
             this.mapHomeActive = homeView.isMapHome;
@@ -587,7 +588,6 @@
             this.showSubcityList = false;
             this.showCityManagement = false;
             this.showTaskCenter = false;
-            this.showGuidebook = false;
             this.showFamousPersons = false;
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
             this.activeCommandPanel = '';
@@ -595,7 +595,6 @@
             this.selectedFamousPersonId = '';
             this.renderer?.clearFamousSkillTooltip?.();
             this.activeTaskCenterTab = 'main';
-            this.activeGuidebookTab = 'planning';
             this.activeGuideNavigation = null;
             this.pageTransition = null;
             this.buildingTransition = null;
@@ -628,8 +627,8 @@
                 },
               };
             }
-            if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
-              this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });
+            if (!options.skipShell && this.canvasShell?.resetLocalViewToWorldMap) {
+              this.canvasShell.resetLocalViewToWorldMap({ skipGame: true, skipRender: true });
             }
             if (!options.skipRender) this.renderCanvasSurface(homeView.activeTab);
             return true;
@@ -640,12 +639,12 @@
             const previousBuildingOffset = this.buildingOffset;
             this.resetForCanvasTabSwitch();
             const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
-            this.activeTab = navigation?.activeTab || tab || 'resources';
+            this.activeTab = navigation?.activeTab || tab || 'military';
             const preferredMilitaryView = this.getPreferredMilitaryView(tab);
             const homeView = this.resolveMapHomeViewState(this.state, {
               requestedTab: this.activeTab,
               militaryView: preferredMilitaryView || this.state?.militaryView || this.militaryView,
-              forceMapHome: tab === 'resources',
+              forceMapHome: tab === 'territory' || (this.activeTab === 'military' && preferredMilitaryView === 'world'),
             });
             this.activeTab = homeView.activeTab;
             this.mapHomeActive = homeView.isMapHome;

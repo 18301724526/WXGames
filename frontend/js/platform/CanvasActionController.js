@@ -15,10 +15,6 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasFamousActionHandlers) {
     CanvasFamousActionHandlers = require('./CanvasFamousActionHandlers');
   }
-  var CanvasTalentPolicyActionHandlers = global.CanvasTalentPolicyActionHandlers;
-  if (typeof module !== 'undefined' && module.exports && !CanvasTalentPolicyActionHandlers) {
-    CanvasTalentPolicyActionHandlers = require('./CanvasTalentPolicyActionHandlers');
-  }
   var CanvasShellActionHandlers = global.CanvasShellActionHandlers;
   if (typeof module !== 'undefined' && module.exports && !CanvasShellActionHandlers) {
     CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
@@ -33,7 +29,6 @@
     'showCityManagement',
     'showAdvisor',
     'showTaskCenter',
-    'showGuidebook',
     'showFamousPersons',
     'armyFormationEditor',
     'techDetailOpen',
@@ -247,7 +242,6 @@
   CanvasTerritoryActionHandlers?.install?.(CanvasActionController);
   CanvasCityActionHandlers?.install?.(CanvasActionController);
   CanvasFamousActionHandlers?.install?.(CanvasActionController);
-  CanvasTalentPolicyActionHandlers?.install?.(CanvasActionController);
   CanvasShellActionHandlers?.install?.(CanvasActionController);
 
   global.CanvasActionController = CanvasActionController;

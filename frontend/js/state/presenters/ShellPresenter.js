@@ -1,4 +1,12 @@
 (function (global) {
+  const PAGE_TAB_IDS = new Set(['military', 'buildings', 'tech', 'events', 'civilization']);
+
+  function normalizePageTab(tab) {
+    const rawTab = String(tab || '').trim();
+    if (rawTab === 'territory') return 'territory';
+    return PAGE_TAB_IDS.has(rawTab) ? rawTab : 'military';
+  }
+
   class ShellPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
@@ -131,10 +139,10 @@
     }
 
     static buildTabNavigationViewState(state = {}, options = {}) {
-      const requestedTab = options.requestedTab || state.currentTab || 'resources';
+      const requestedTab = normalizePageTab(options.requestedTab || state.currentTab || 'military');
       const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;
-      const tabs = ['resources', 'civilization', 'buildings', 'events', 'military'];
-      const pages = ['resources', 'civilization', 'buildings', 'events', 'military'];
+      const tabs = ['military', 'buildings', 'tech', 'events', 'civilization'];
+      const pages = ['military', 'buildings', 'tech', 'events', 'civilization'];
       return {
         activeTab,
         requestedTab,
@@ -159,18 +167,19 @@
     }
 
     static resolveMapHomeViewState(state = {}, options = {}) {
-      const requestedTab = options.requestedTab || options.activeTab || state.currentTab || 'resources';
+      const rawRequestedTab = options.requestedTab || options.activeTab || state.currentTab || 'military';
+      const requestedTab = normalizePageTab(rawRequestedTab);
+      const normalizedToHome = rawRequestedTab !== requestedTab;
       const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;
       const requestedMilitaryView = ['army', 'scout', 'world'].includes(options.militaryView)
         ? options.militaryView
-        : (['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army');
+        : (['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'world');
       const canUseMapHome = this.canUseMapHome(state);
-      const homeRequested = !requestedTab || requestedTab === 'resources' || requestedTab === 'territory';
-      const forceMapHome = Boolean(options.forceMapHome || options.isMapHome);
+      const homeRequested = !requestedTab || requestedTab === 'territory';
+      const forceMapHome = Boolean(options.forceMapHome || options.isMapHome || normalizedToHome);
       const militaryMapRequested = requestedTab === 'military'
         && (forceMapHome || requestedMilitaryView === 'world');
       const shouldUseMapHome = canUseMapHome
-        && options.allowDefaultMapHome !== false
         && (forceMapHome || homeRequested || militaryMapRequested);
       const resolvedActiveTab = shouldUseMapHome ? 'military' : activeTab;
       const resolvedMilitaryView = shouldUseMapHome ? 'world' : requestedMilitaryView;
@@ -181,6 +190,10 @@
         isMapHome: shouldUseMapHome,
         canUseMapHome,
       };
+    }
+
+    static normalizePageTab(tab) {
+      return normalizePageTab(tab);
     }
 
     static buildTabLockViewState(tabs = [], canOpenTab = () => true) {

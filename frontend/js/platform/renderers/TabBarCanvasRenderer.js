@@ -25,14 +25,14 @@
       });
     }
 
-    renderTabs(activeTab = 'resources', state = {}, options = {}) {
+    renderTabs(activeTab = 'military', state = {}, options = {}) {
       if (options.isMapHome) {
         this.renderMapCommandDock(state, options);
         return;
       }
-      const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
+      const visualActiveTab = activeTab;
       const tabs = [
-        ['resources', '主页', 'assets/art/icon-home-cutout.png'],
+        ['military', '地图', 'assets/art/icon-soldier-cutout.webp'],
         ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
         ['events', '事件', 'assets/art/icon-event-cutout.webp'],
         ['famousPersons', '名人', 'assets/art/icon-scholar-cutout.webp'],

@@ -17,7 +17,7 @@ test('UIStatePresenterDelegates installs direct presenter static delegates', () 
         return '12k';
       },
     },
-    HomePresenter: {
+    CityResourcePresenter: {
       buildResourceViewState(state) {
         calls.push(['buildResourceViewState', state.id]);
         return { id: state.id };
@@ -35,41 +35,24 @@ test('UIStatePresenterDelegates installs direct presenter static delegates', () 
   ]);
 });
 
-test('UIStatePresenterDelegates keeps custom guidebook and home facade callbacks', () => {
+test('UIStatePresenterDelegates does not install deleted guidebook facade callbacks', () => {
   class Facade {}
   UIStatePresenterDelegates.install(Facade, {
     TaskGuidePresenter: {
-      buildGuidebookViewState(state, options) {
-        return {
-          stateId: state.id,
-          planning: options.buildCityPlanningViewState({ id: 'plan-state' }),
-        };
+      buildGuidebookViewState() {
+        throw new Error('deleted guidebook callback must not be installed');
       },
     },
-    HomePresenter: {
+    CityResourcePresenter: {
       buildCityPlanningViewState(state) {
-        return { source: 'home', id: state.id };
-      },
-      buildHomeFeatureViewState(state, options) {
-        return {
-          stateId: state.id,
-          tasks: options.buildTaskCenterViewState({ id: 'task-state' }),
-        };
+        return { source: 'city-resource', id: state.id };
       },
     },
   });
 
   Facade.buildCityPlanningViewState = (state) => ({ source: 'facade', id: state.id });
-  Facade.buildTaskCenterViewState = (state) => ({ source: 'facade-task', id: state.id });
 
-  assert.deepEqual(Facade.buildGuidebookViewState({ id: 'guide' }), {
-    stateId: 'guide',
-    planning: { source: 'facade', id: 'plan-state' },
-  });
-  assert.deepEqual(Facade.buildHomeFeatureViewState({ id: 'home' }), {
-    stateId: 'home',
-    tasks: { source: 'facade-task', id: 'task-state' },
-  });
+  assert.equal('buildGuidebookViewState' in Facade, false);
 });
 
 test('UIStatePresenterDelegates preserves tech fallback contract', () => {

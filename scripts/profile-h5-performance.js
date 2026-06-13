@@ -571,8 +571,6 @@ function createGameStatePayload(options = {}) {
     },
     activeCityId: 'capital',
     isCapitalCity: true,
-    guidebook: {},
-    talentPolicies: {},
     famousPersons: {
       people: [],
       candidates: [],

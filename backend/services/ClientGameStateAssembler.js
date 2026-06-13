@@ -9,8 +9,6 @@ const {
 const TerritoryService = require('./TerritoryService');
 const WorldExplorerService = require('./WorldExplorerService');
 const CityService = require('./CityService');
-const TalentPolicyService = require('./TalentPolicyService');
-const CityPlanningService = require('./CityPlanningService');
 const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateNormalizer = require('./GameStateNormalizer');
@@ -62,9 +60,6 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
       : CityService.getClientCityState(normalized),
     activeCityId: normalized.activeCityId,
     isCapitalCity: normalized.activeCityId === CityService.CAPITAL_CITY_ID,
-    guidebook: {
-      categories: CityPlanningService.getGuidebookCategories(),
-    },
     unlockedBuildings: BuildingUnlockService.getUnlockedBuildings(normalized.currentEra, normalized),
     currentEra: normalized.currentEra,
     currentEraName: EraConfig.getEraName(normalized.currentEra),
@@ -79,9 +74,6 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
       growthIntervalSeconds: GameConfig.population.growthIntervalSeconds,
       growthMultiplier,
     },
-    talentPolicies: TalentPolicyService.getClientStateFromNormalized
-      ? TalentPolicyService.getClientStateFromNormalized(normalized)
-      : TalentPolicyService.getClientState(normalized),
     famousPersons: FamousPersonService.getClientStateFromNormalized
       ? FamousPersonService.getClientStateFromNormalized(normalized)
       : FamousPersonService.getClientState(normalized),

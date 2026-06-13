@@ -8,9 +8,8 @@ const BuildingPresenter = require('./presenters/BuildingPresenter');
 const CivilizationPresenter = require('./presenters/CivilizationPresenter');
 const EventPresenter = require('./presenters/EventPresenter');
 const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
-const HomePresenter = require('./presenters/HomePresenter');
+const CityResourcePresenter = require('./presenters/CityResourcePresenter');
 const MilitaryPresenter = require('./presenters/MilitaryPresenter');
-const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldRadarPresenter = require('./presenters/WorldRadarPresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
@@ -498,7 +497,7 @@ test('UIStatePresenter delegates event view state while preserving facade contra
   assert.deepEqual(UIStatePresenter.buildEventResourcePart('metal', 12), { type: 'resource', resource: 'iron', text: '+12' });
 });
 
-test('UIStatePresenter delegates task center and guidebook view state while preserving facade contracts', () => {
+test('UIStatePresenter delegates task center view state while preserving facade contracts', () => {
   const state = {
     guideTasks: {
       visible: true,
@@ -527,13 +526,6 @@ test('UIStatePresenter delegates task center and guidebook view state while pres
         },
       },
     },
-    guidebook: {
-      activeTab: 'policy',
-      categories: [
-        { id: 'planning', label: 'Plan', title: 'Planning', lines: ['Build around terrain.'] },
-        { id: 'policy', label: 'Policy', title: 'Talent Policy', lines: ['Assign talent deliberately.'] },
-      ],
-    },
     cityState: {
       activeCityId: 'capital',
       cities: [{
@@ -550,20 +542,12 @@ test('UIStatePresenter delegates task center and guidebook view state while pres
 
   const taskView = UIStatePresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
   const directTaskView = TaskGuidePresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
-  const guidebookView = UIStatePresenter.buildGuidebookViewState(state, { activeTab: 'planning' });
-  const directGuidebookView = TaskGuidePresenter.buildGuidebookViewState(state, {
-    activeTab: 'planning',
-    buildCityPlanningViewState: (sourceState) => HomePresenter.buildCityPlanningViewState(sourceState),
-  });
 
   assert.deepEqual(taskView, directTaskView);
-  assert.deepEqual(guidebookView, directGuidebookView);
   assert.equal(taskView.activeTab, 'daily');
   assert.equal(taskView.tabs.find((tab) => tab.id === 'main').badge, 1);
   assert.deepEqual(taskView.categories.main.tasks[0].action, { type: 'claimTaskReward', taskId: 'claimable-main', category: 'main' });
   assert.equal(taskView.categories.daily.tasks[0].action.type, 'goToGuideTaskTarget');
-  assert.equal(guidebookView.activeCategory.id, 'planning');
-  assert.equal(guidebookView.subtitle.includes('River Plain'), true);
 });
 
 test('UIStatePresenter delegates civilization view state while preserving facade contracts', () => {
@@ -608,7 +592,7 @@ test('UIStatePresenter delegates civilization view state while preserving facade
   });
 });
 
-test('UIStatePresenter delegates home resource and planning view state while preserving facade contracts', () => {
+test('UIStatePresenter delegates resource top bar and planning view state while preserving facade contracts', () => {
   const state = {
     currentEra: 2,
     gameDay: 12,
@@ -680,46 +664,16 @@ test('UIStatePresenter delegates home resource and planning view state while pre
     },
   };
 
-  assert.deepEqual(UIStatePresenter.buildResourceViewState(state), HomePresenter.buildResourceViewState(state));
-  assert.deepEqual(UIStatePresenter.buildCitySwitcherViewState(state), HomePresenter.buildCitySwitcherViewState(state));
-  assert.deepEqual(UIStatePresenter.buildPopulationViewState(state), HomePresenter.buildPopulationViewState(state));
+  assert.deepEqual(UIStatePresenter.buildResourceViewState(state), CityResourcePresenter.buildResourceViewState(state));
+  assert.deepEqual(UIStatePresenter.buildCitySwitcherViewState(state), CityResourcePresenter.buildCitySwitcherViewState(state));
+  assert.deepEqual(UIStatePresenter.buildPopulationViewState(state), CityResourcePresenter.buildPopulationViewState(state));
   assert.equal(UIStatePresenter.buildResourceViewState(state).text.populationStatus, '人口已无法增长，请推进时代');
-  assert.equal(HomePresenter.formatCompactNumber(1200), '1.2k');
-  assert.equal(HomePresenter.formatRate(0.33), '+0.33/s');
-  assert.equal(HomePresenter.formatNegativeRate(0.5), '-0.5/s');
+  assert.equal(CityResourcePresenter.formatCompactNumber(1200), '1.2k');
+  assert.equal(CityResourcePresenter.formatRate(0.33), '+0.33/s');
+  assert.equal(CityResourcePresenter.formatNegativeRate(0.5), '-0.5/s');
   assert.equal(UIStatePresenter.buildCityPlanningViewState(state).text.populationGrowthStatus, '人口成长良好');
   assert.equal(UIStatePresenter.buildPopulationViewState(state).jobs.find((job) => job.id === 'craftsman').visible, true);
-  assert.equal(UIStatePresenter.buildHomeFeatureViewState(state).entries[0].badge, 2);
   assert.equal(UIStatePresenter.calculatePopulationGrowthMultiplier(16), 1.16);
-});
-
-test('UIStatePresenter delegates talent policy view state while preserving facade contracts', () => {
-  const state = {
-    currentEra: 2,
-    population: { total: 9 },
-    talentPolicies: {
-      activePolicyId: 'balanced',
-      defaultTiers: { agriculture: 2, knowledge: 2, industry: 2 },
-      systemPolicies: [
-        { id: 'balanced', label: '均衡发展', weights: { farmer: 1, scholar: 1, craftsman: 1 }, priority: ['farmer', 'scholar', 'craftsman'] },
-        { id: 'knowledge', label: '知识优先', weights: { farmer: 1, scholar: 3, craftsman: 1 }, priority: ['scholar', 'farmer', 'craftsman'] },
-      ],
-      tendencies: [
-        { id: 'agriculture', label: '农业', role: 'farmer' },
-        { id: 'knowledge', label: '知识', role: 'scholar' },
-        { id: 'industry', label: '工业', role: 'craftsman' },
-      ],
-    },
-  };
-  const uiState = { selectedBasePolicyId: 'knowledge', tiers: { agriculture: 1, knowledge: 3, industry: 2 } };
-
-  const view = UIStatePresenter.buildTalentPolicyViewState(state, uiState);
-  const direct = TalentPolicyPresenter.buildTalentPolicyViewState(state, uiState);
-
-  assert.deepEqual(view, direct);
-  assert.equal(view.draft.displayName, '知识优先·偏知识');
-  assert.equal(view.preview.allocation.scholar > view.preview.allocation.farmer, true);
-  assert.deepEqual(UIStatePresenter.getTalentPolicyAvailableRoles(state), ['farmer', 'scholar', 'craftsman']);
 });
 
 test('UIStatePresenter delegates military and scout view state while preserving facade contracts', () => {
@@ -1068,7 +1022,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
   const html = fs.readFileSync(htmlPath, 'utf8');
   const expectedOrder = [
     'TechPresenter.js',
-    'HomePresenter.js',
+    'CityResourcePresenter.js',
     'BuildingPresenter.js',
     'EventPresenter.js',
     'TaskGuidePresenter.js',
@@ -1082,7 +1036,6 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'WorldTileMapExplorerNormalizer.js',
     'WorldTileMapPresenter.js',
     'ShellPresenter.js',
-    'TalentPolicyPresenter.js',
     'UIStatePresenterDelegates.js',
     'UIStatePresenter.js',
   ];
@@ -1096,8 +1049,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
 
 test('UIStatePresenter facade is installed by delegate registry', () => {
   assert.equal(typeof UIStatePresenter.toNumber, 'function');
-  assert.equal(typeof UIStatePresenter.buildGuidebookViewState, 'function');
-  assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'function');
+  assert.equal('buildGuidebookViewState' in UIStatePresenter, false);
   assert.equal(typeof UIStatePresenter.buildTechViewState, 'function');
   assert.equal(UIStatePresenter.POPULATION_PER_OFFICIAL, 100);
   assert.equal(UIStatePresenter.MIN_EXPEDITION_SOLDIERS, 100);

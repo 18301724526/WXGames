@@ -7,7 +7,8 @@ test('TutorialGuideUiStateCoordinator installs UI state helper methods', () => {
   class Controller {}
 
   assert.equal(TutorialGuideUiStateCoordinator.install(Controller), true);
-  assert.equal(typeof Controller.prototype.ensureResourcesGuideVisible, 'function');
+  assert.equal('ensureResourcesGuideVisible' in Controller.prototype, false);
+  assert.equal(typeof Controller.prototype.ensureCityPeopleGuideVisible, 'function');
   assert.equal(typeof Controller.prototype.showBuildingGuide, 'function');
   assert.equal(typeof Controller.prototype.showSoftGuide, 'function');
 });

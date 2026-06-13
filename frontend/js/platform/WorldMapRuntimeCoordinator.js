@@ -4,6 +4,14 @@
     WorldMapRuntimeBase = require('./WorldMapRuntime');
   }
 
+  const PAGE_TAB_IDS = new Set(['military', 'buildings', 'tech', 'events', 'civilization']);
+
+  function normalizePageTab(tab) {
+    const rawTab = String(tab || '').trim();
+    if (rawTab === 'territory') return 'territory';
+    return PAGE_TAB_IDS.has(rawTab) ? rawTab : 'military';
+  }
+
   class WorldMapRuntimeCoordinator {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -25,7 +33,7 @@
           : 84
       ));
       this.getRequestedTab = options.getRequestedTab || ((state = this.getState()) => (
-        this.host?.getActiveTab?.() || state?.currentTab || this.host?.activeTab || 'resources'
+        this.host?.getActiveTab?.() || state?.currentTab || this.host?.activeTab || 'military'
       ));
       this.getMilitaryView = options.getMilitaryView || ((state = this.getState()) => (
         state?.militaryView || this.host?.militaryView
@@ -36,16 +44,16 @@
         if (this.host?.resolveMapHomeViewState) return this.host.resolveMapHomeViewState(state || {}, viewOptions);
         const presenter = this.getPresenter();
         if (presenter?.resolveMapHomeViewState) return presenter.resolveMapHomeViewState(state || {}, viewOptions);
-        const requestedTab = viewOptions.requestedTab || viewOptions.activeTab || state?.currentTab || 'resources';
-        const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles)
-          && state.territoryState.worldMap.tiles.length > 0;
+        const rawRequestedTab = viewOptions.requestedTab || viewOptions.activeTab || state?.currentTab || 'military';
+        const requestedTab = normalizePageTab(rawRequestedTab);
+        const normalizedToHome = rawRequestedTab !== requestedTab;
         const canUseMapHome = true;
-        const requestedMilitaryView = viewOptions.militaryView || state?.militaryView || 'army';
+        const requestedMilitaryView = viewOptions.militaryView || state?.militaryView || 'world';
+        const forceMapHome = Boolean(viewOptions.forceMapHome || viewOptions.isMapHome || normalizedToHome);
         const militaryMapRequested = requestedTab === 'military'
-          && (viewOptions.forceMapHome || viewOptions.isMapHome || requestedMilitaryView === 'world');
+          && (forceMapHome || requestedMilitaryView === 'world');
         const shouldUseMapHome = canUseMapHome
-          && viewOptions.allowDefaultMapHome !== false
-          && (viewOptions.forceMapHome || requestedTab === 'resources' || requestedTab === 'territory' || militaryMapRequested);
+          && (forceMapHome || requestedTab === 'territory' || militaryMapRequested);
         return {
           activeTab: shouldUseMapHome ? 'military' : (requestedTab === 'territory' ? 'military' : requestedTab),
           requestedTab,
