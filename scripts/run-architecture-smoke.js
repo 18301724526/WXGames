@@ -322,6 +322,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/run-architecture-smoke.test.js',
   'scripts/check-repository-hygiene.js',
   'scripts/check-repository-hygiene.test.js',
+  'scripts/check-retired-legacy-code.js',
+  'scripts/check-retired-legacy-code.test.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/check-shell-scripts.js',
   'scripts/check-shell-scripts.test.js',
@@ -475,6 +477,7 @@ const TEST_FILES = Object.freeze([
   'scripts/verify-production-security-config.test.js',
   'scripts/run-architecture-smoke.test.js',
   'scripts/check-repository-hygiene.test.js',
+  'scripts/check-retired-legacy-code.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
 ]);
@@ -546,6 +549,7 @@ function main() {
   run('focused node tests', process.execPath, ['--test', ...testFiles]);
   run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
+  run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);
   run('backend security audit guard', process.execPath, ['scripts/check-backend-security-audit.js']);
   run('frontend script manifest guard', process.execPath, ['scripts/check-frontend-script-manifest.js']);
   run('shell script syntax guard', process.execPath, ['scripts/check-shell-scripts.js']);

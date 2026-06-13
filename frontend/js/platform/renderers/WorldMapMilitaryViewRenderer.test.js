@@ -35,18 +35,6 @@ function createHost(overrides = {}) {
       buildTerritorySummaryViewState() {
         return { text: { polityName: 'Tribe', territoryCount: '1/3' } };
       },
-      buildWorldRadarViewState(territories, pan) {
-        return {
-          pan,
-          sites: territories.map((site, index) => ({
-            id: site.id,
-            name: site.name,
-            art: site.art,
-            owner: site.owner,
-            position: { left: 30 + index * 20, top: 40 },
-          })),
-        };
-      },
     },
     addHitTarget(rect, action) {
       hitTargets.push({ rect, action });
@@ -131,7 +119,7 @@ test('WorldMapMilitaryViewRenderer renders tile-map branch and reset target', ()
   assert.equal(host.hitTargets.some((target) => target.action.type === 'resetWorldPan'), true);
 });
 
-test('WorldMapMilitaryViewRenderer renders legacy radar fallback and site targets', () => {
+test('WorldMapMilitaryViewRenderer shows empty world copy when tile map is unavailable', () => {
   const host = createHost();
   const renderer = new WorldMapMilitaryViewRenderer({ host });
 
@@ -146,10 +134,8 @@ test('WorldMapMilitaryViewRenderer renders legacy radar fallback and site target
     territoryUiState: { selectedSiteId: 'capital', worldPanX: 4, worldPanY: -2 },
   });
 
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'worldRadarDrag'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawLine'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawTextLines'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite'), false);
 });
 
 test('WorldMapMilitaryViewRenderer shows empty exploration copy without site targets', () => {

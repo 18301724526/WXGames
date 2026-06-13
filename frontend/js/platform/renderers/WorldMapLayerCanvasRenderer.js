@@ -157,13 +157,6 @@
         worldExplorerState: state.worldExplorerState || {},
       });
       if (!tileMapView?.tiles?.length) {
-        if (Array.isArray(territoryState.territories) && territoryState.territories.length > 0) {
-          this.renderMilitaryWorldView(state, layout.map.x, layout.map.y, layout.map.width, layout.map.height, {
-            ...options,
-            isMapHome: true,
-          });
-          return true;
-        }
         this.renderMapHomeEmptyWorld(layout, topBarBottom, options);
         return true;
       }

@@ -196,7 +196,7 @@ test('WorldMapLayerCanvasRenderer falls back when military navigation presenter 
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileMap'), true);
 });
 
-test('WorldMapLayerCanvasRenderer preserves empty and legacy world fallbacks', () => {
+test('WorldMapLayerCanvasRenderer does not fall back to retired radar when tile map is missing', () => {
   const emptyHost = createHost();
   const emptyRenderer = new WorldMapLayerCanvasRenderer({ host: emptyHost });
 
@@ -204,13 +204,13 @@ test('WorldMapLayerCanvasRenderer preserves empty and legacy world fallbacks', (
   assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
   assert.equal(emptyHost.calls.some((call) => call[0] === 'drawText' && call[1] === 'loading map'), true);
 
-  const legacyHost = createHost();
-  const legacyRenderer = new WorldMapLayerCanvasRenderer({ host: legacyHost });
-  assert.equal(legacyRenderer.renderMapHomeWorldView({
+  const missingTileMapHost = createHost();
+  const missingTileMapRenderer = new WorldMapLayerCanvasRenderer({ host: missingTileMapHost });
+  assert.equal(missingTileMapRenderer.renderMapHomeWorldView({
     territoryState: { territories: [{ id: 'old' }] },
-  }, 96, {}), true);
-  assert.equal(legacyHost.calls.some((call) => call[0] === 'renderMilitaryWorldView'), true);
-  assert.equal(legacyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
+  }, 96, { loading: { message: 'loading map' } }), true);
+  assert.equal(missingTileMapHost.calls.some((call) => call[0] === 'renderMilitaryWorldView'), false);
+  assert.equal(missingTileMapHost.calls.some((call) => call[0] === 'drawText' && call[1] === 'loading map'), true);
 });
 
 test('WorldMapLayerCanvasRenderer computes explorer countdown from next step time', () => {

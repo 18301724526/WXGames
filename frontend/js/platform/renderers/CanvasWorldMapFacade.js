@@ -88,7 +88,6 @@
     ['renderWorldSiteAction', false],
     ['renderWorldExpeditionConfig', false],
     ['renderWorldSiteModal', false],
-    ['renderWorldCityCommandLegacyOverlay', false],
     ['getWorldCityCommandAnchor', null],
     ['getWorldSiteCanvasAnchor', null],
     ['getWorldCityCommandButtonAction', { type: 'territoryAction', disabled: true }],

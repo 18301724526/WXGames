@@ -361,60 +361,6 @@
       }
     }
 
-    renderWorldCityCommandLegacyOverlay(detail = {}, territories = [], state = {}, options = {}) {
-      const selectedSite = territories.find((site) => site.id === detail.id) || {};
-      const layout = this.getLayout();
-      const panelWidth = Math.min(layout.contentWidth - 18, 372);
-      const panelHeight = 232;
-      const x = Math.floor((this.width - panelWidth) / 2);
-      const dockTop = this.height - 64;
-      const y = Math.max(this.getTopBarBottom(state, { isMapHome: true }) + 12, dockTop - panelHeight - 14);
-
-      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeWorldSite', background: true });
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(41, 34, 25, 0.72)'],
-            [1, 'rgba(18, 16, 13, 0.9)'],
-          ],
-          'rgba(28, 24, 18, 0.86)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.26)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
-      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
-
-      const closeSize = 26;
-      this.drawButton(x + panelWidth - closeSize - 8, y + 8, closeSize, closeSize, 'x', { size: 13, radius: 7 });
-      this.addHitTarget({ x: x + panelWidth - closeSize - 8, y: y + 8, width: closeSize, height: closeSize }, { type: 'closeWorldSite' });
-
-      const iconSize = 46;
-      this.drawAsset(selectedSite.art || 'assets/art/world-site-city-cutout.png', x + 14, y + 16, iconSize, iconSize);
-      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
-      this.drawText(this.truncateText(title, panelWidth - 118, { size: 17, bold: true }), x + 70, y + 17, {
-        size: 17,
-        bold: true,
-        color: '#ffe6b5',
-      });
-      this.drawText(`${detail.text?.status || '已占领'} · ${detail.text?.owner || '我方'}`, x + 70, y + 42, {
-        size: 11,
-        color: '#74d3a0',
-      });
-      this.drawText(this.truncateText(detail.text?.summary || detail.text?.scale || '城市可进入管理。', panelWidth - 36, { size: 11 }), x + 14, y + 76, {
-        size: 11,
-        color: '#d8c7a2',
-      });
-      if (detail.action?.hint) {
-        this.drawText(this.truncateText(detail.action.hint, panelWidth - 36, { size: 10 }), x + 14, y + 96, {
-          size: 10,
-          color: 'rgba(234, 234, 234, 0.58)',
-        });
-      }
-      this.renderWorldSiteAction(detail.action, x + 12, y + 118, panelWidth - 24);
-    }
-
     getWorldCityCommandAnchor(detail = {}, territories = [], state = {}, options = {}) {
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};

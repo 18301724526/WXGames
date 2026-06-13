@@ -588,26 +588,6 @@
       return this.worldMapScoutRenderer.renderWorldScoutRoutes(tileMapView, viewport);
     }
 
-    getWorldScoutUnitRoutePoints(mission = {}, viewport = {}, geometry = {}) {
-      if (!this.worldMapScoutRenderer?.getWorldScoutUnitRoutePoints) return [];
-      return this.worldMapScoutRenderer.getWorldScoutUnitRoutePoints(mission, viewport, geometry);
-    }
-
-    getWorldScoutUnitProgress(mission = {}) {
-      if (!this.worldMapScoutRenderer?.getWorldScoutUnitProgress) return null;
-      return this.worldMapScoutRenderer.getWorldScoutUnitProgress(mission);
-    }
-
-    getWorldScoutUnitPoint(mission = {}, viewport = {}, geometry = {}) {
-      if (!this.worldMapScoutRenderer?.getWorldScoutUnitPoint) return null;
-      return this.worldMapScoutRenderer.getWorldScoutUnitPoint(mission, viewport, geometry);
-    }
-
-    getWorldScoutUnitFramePath(mission = {}) {
-      if (!this.worldMapScoutRenderer?.getWorldScoutUnitFramePath) return '';
-      return this.worldMapScoutRenderer.getWorldScoutUnitFramePath(mission);
-    }
-
     renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
       if (!this.worldMapActorHudRenderer?.renderWorldScoutUnits) return false;
       return this.worldMapActorHudRenderer.renderWorldScoutUnits(tileMapView, viewport);
@@ -665,11 +645,6 @@
       return this.worldMapHitTargetFacade.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
     }
 
-    renderWorldScoutUnitsLegacy(tileMapView = {}, viewport = {}) {
-      if (!this.worldMapScoutRenderer?.renderWorldScoutUnitsLegacy) return false;
-      return this.worldMapScoutRenderer.renderWorldScoutUnitsLegacy(tileMapView, viewport);
-    }
-
     renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}, options = {}) {
       if (!this.worldMapTileMapRenderer?.renderWorldTileMap) return false;
       return this.worldMapTileMapRenderer.renderWorldTileMap(tileMapView, x, y, width, height, uiState, options);
@@ -693,11 +668,6 @@
     renderWorldSiteModal(state = {}, options = {}) {
       if (!this.worldMapSiteOverlayRenderer?.renderWorldSiteModal) return false;
       return this.worldMapSiteOverlayRenderer.renderWorldSiteModal(state, options);
-    }
-
-    renderWorldCityCommandLegacyOverlay(detail = {}, territories = [], state = {}, options = {}) {
-      if (!this.worldMapSiteOverlayRenderer?.renderWorldCityCommandLegacyOverlay) return false;
-      return this.worldMapSiteOverlayRenderer.renderWorldCityCommandLegacyOverlay(detail, territories, state, options);
     }
 
     getWorldCityCommandAnchor(detail = {}, territories = [], state = {}, options = {}) {

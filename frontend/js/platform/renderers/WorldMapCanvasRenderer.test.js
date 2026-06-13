@@ -544,50 +544,17 @@ test('WorldMapCanvasRenderer delegates scout route helpers to split renderer', (
         calls.push(['scout-routes', ...args]);
         return 'routes-ok';
       },
-      getWorldScoutUnitRoutePoints(...args) {
-        calls.push(['scout-route-points', ...args]);
-        return [{ x: 1, y: 2 }];
-      },
-      getWorldScoutUnitProgress(...args) {
-        calls.push(['scout-progress', ...args]);
-        return 0.5;
-      },
-      getWorldScoutUnitPoint(...args) {
-        calls.push(['scout-point', ...args]);
-        return { x: 3, y: 4, progress: 0.5 };
-      },
-      getWorldScoutUnitFramePath(...args) {
-        calls.push(['scout-frame', ...args]);
-        return 'frame.png';
-      },
-      renderWorldScoutUnitsLegacy(...args) {
-        calls.push(['scout-units-legacy', ...args]);
-        return 'legacy-ok';
-      },
     },
   });
 
   const tileMapView = createTileMapView();
   const viewport = { scale: 1 };
-  const geometry = tileMapView.geometry;
-  const mission = { id: 'scout-1', route: [{ q: 1, r: 0 }] };
 
   assert.equal(renderer.renderWorldScoutRoutes(tileMapView, viewport), 'routes-ok');
-  assert.deepEqual(renderer.getWorldScoutUnitRoutePoints(mission, viewport, geometry), [{ x: 1, y: 2 }]);
-  assert.equal(renderer.getWorldScoutUnitProgress(mission), 0.5);
-  assert.deepEqual(renderer.getWorldScoutUnitPoint(mission, viewport, geometry), { x: 3, y: 4, progress: 0.5 });
-  assert.equal(renderer.getWorldScoutUnitFramePath(mission), 'frame.png');
-  assert.equal(renderer.renderWorldScoutUnitsLegacy(tileMapView, viewport), 'legacy-ok');
   assert.deepEqual(calls.map((call) => call[0]), [
     'scout-routes',
-    'scout-route-points',
-    'scout-progress',
-    'scout-point',
-    'scout-frame',
-    'scout-units-legacy',
   ]);
   assert.equal(calls[0][1], tileMapView);
-  assert.equal(calls[1][1], mission);
 });
 
 test('WorldMapCanvasRenderer delegates world site overlay helpers to split renderer', () => {
@@ -618,10 +585,6 @@ test('WorldMapCanvasRenderer delegates world site overlay helpers to split rende
       renderWorldSiteModal(...args) {
         calls.push(['site-modal', ...args]);
         return 'modal-ok';
-      },
-      renderWorldCityCommandLegacyOverlay(...args) {
-        calls.push(['city-legacy', ...args]);
-        return 'legacy-ok';
       },
       getWorldCityCommandAnchor(...args) {
         calls.push(['city-anchor', ...args]);
@@ -664,7 +627,6 @@ test('WorldMapCanvasRenderer delegates world site overlay helpers to split rende
   assert.equal(renderer.renderWorldSiteAction({ buttons: [] }, 1, 2, 3), 99);
   assert.equal(renderer.renderWorldExpeditionConfig({}, 1, 2, 3), 123);
   assert.equal(renderer.renderWorldSiteModal(state, options), 'modal-ok');
-  assert.equal(renderer.renderWorldCityCommandLegacyOverlay(detail, territories, state, options), 'legacy-ok');
   assert.deepEqual(renderer.getWorldCityCommandAnchor(detail, territories, state, options), { anchorX: 1, anchorY: 2 });
   assert.deepEqual(renderer.getWorldSiteCanvasAnchor('capital', state, options), { center: { x: 1, y: 2 } });
   assert.deepEqual(renderer.getWorldCityCommandButtonAction(button), { type: 'enterCity' });
@@ -678,7 +640,6 @@ test('WorldMapCanvasRenderer delegates world site overlay helpers to split rende
     'site-action',
     'site-expedition',
     'site-modal',
-    'city-legacy',
     'city-anchor',
     'site-anchor',
     'city-action',

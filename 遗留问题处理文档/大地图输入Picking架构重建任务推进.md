@@ -82,6 +82,12 @@
 - `PerformanceCapacityBudget.checkCommandEvidence()` 将服务端 `clientInput` 限制在 2KB、`CommandReplayCorrelation` summary 限制在 4KB，并递归拒绝 timeline/AOI/response/gameState/worldMap/route/tiles 等重权威或运行时 payload 进入诊断证据。
 - `WorldMapInputIntent.test` 与 `CommandReplayCorrelation.test` 已接入预算检查，预算不是孤立工具，而是 input -> API -> server authority -> replay 链路门禁的一部分。
 
+### 第八阶段：旧世界地图入口退役门禁
+
+- 删除活动源码中的旧 `renderWorldScoutUnitsLegacy()`、旧 scout unit route/progress/frame helper、旧 `renderWorldCityCommandLegacyOverlay()`。当前 scout 路线由 `WorldMapScoutRenderer.renderWorldScoutRoutes()` 承担，单位/actor 由 `WorldMapActorHudRenderer` / `WorldActorCanvasRenderer` 承担，城市命令 HUD 只走当前 `renderWorldCityCommandOverlay()`。
+- 删除旧雷达 fallback 链路：`WorldRadarPresenter` 文件、UIStatePresenter delegate、`worldRadarDrag` 输入动作、map-home 缺 tileMap 时回退 `renderMilitaryWorldView()` 的分支。缺 tileMap 只渲染空/加载态，不再复活第二套世界 UI。
+- 新增 `scripts/check-retired-legacy-code.js`，并接入 `scripts/run-architecture-smoke.js`。它只扫描活动生产源码，拦截 `HomeCanvasRenderer`、`openTalentPolicy`、退役 scout-report action、旧 world-map renderer API、`WorldRadarPresenter` 和 `worldRadarDrag`；测试与文档中的退役说明不作为运行入口。
+
 ### 第八阶段：门禁
 
 必须通过：

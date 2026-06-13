@@ -26,18 +26,6 @@
       });
     }
 
-    getWorldTime() {
-      return this.host?.constructor?.getWorldTime?.() || null;
-    }
-
-    getUnitSpriteManifest() {
-      return this.host?.constructor?.getUnitSpriteManifest?.() || null;
-    }
-
-    getTutorialIntroUnitRenderer() {
-      return this.host?.constructor?.getTutorialIntroUnitRenderer?.() || null;
-    }
-
     renderWorldScoutRoutes(tileMapView = {}, viewport = {}) {
       const geometry = tileMapView.geometry || {};
       (tileMapView.activeScouts || []).forEach((mission) => {
@@ -60,70 +48,6 @@
       });
     }
 
-    getWorldScoutUnitRoutePoints(mission = {}, viewport = {}, geometry = {}) {
-      const route = Array.isArray(mission.route) ? mission.route : [];
-      const origin = mission.origin && typeof mission.origin === 'object' ? mission.origin : null;
-      const path = origin ? [origin, ...route] : route;
-      return path.map((step) => this.getWorldTileScreenCenter(step, viewport, geometry));
-    }
-
-    getWorldScoutUnitProgress(mission = {}) {
-      if (!mission || mission.status !== 'active') return null;
-      const route = Array.isArray(mission.route) ? mission.route : [];
-      if (!route.length) return null;
-      const worldTime = this.getWorldTime();
-      const startedAtMs = worldTime?.toEpochMs?.(mission.startedAt, Number.NaN) ?? new Date(mission.startedAt).getTime();
-      if (!Number.isFinite(startedAtMs)) return null;
-      const nowMs = this.getEpochNowMs();
-      const stepDurationMs = Math.max(1000, Number(mission.stepDurationSeconds) * 1000 || 10000);
-      const totalDurationMs = Math.max(stepDurationMs, stepDurationMs * route.length);
-      const elapsed = Math.max(0, Number(nowMs) - startedAtMs);
-      return Math.max(0, Math.min(1, elapsed / totalDurationMs));
-    }
-
-    getWorldScoutUnitPoint(mission = {}, viewport = {}, geometry = {}) {
-      const progress = this.getWorldScoutUnitProgress(mission);
-      if (progress === null) return null;
-      const points = this.getWorldScoutUnitRoutePoints(mission, viewport, geometry);
-      if (points.length < 2) return null;
-      const scaled = progress * (points.length - 1);
-      const index = Math.min(points.length - 2, Math.floor(scaled));
-      const localT = Math.max(0, Math.min(1, scaled - index));
-      const from = points[index];
-      const to = points[index + 1];
-      return {
-        x: from.x + (to.x - from.x) * localT,
-        y: from.y + (to.y - from.y) * localT,
-        progress,
-      };
-    }
-
-    getWorldScoutUnitFramePath(mission = {}) {
-      const manifest = this.getUnitSpriteManifest();
-      if (!manifest?.getFramePaths) return '';
-      const frames = manifest.getFramePaths('spearman', 'move');
-      if (!frames.length) return '';
-      const frameMs = manifest.getFrameDurationMs?.('spearman', 'move') || 80;
-      const nowMs = this.getNow?.() || Date.now();
-      return frames[Math.floor(Number(nowMs) / Math.max(1, frameMs)) % frames.length] || frames[0];
-    }
-
-    renderWorldScoutUnitsLegacy(tileMapView = {}, viewport = {}) {
-      const unitRenderer = this.getTutorialIntroUnitRenderer();
-      if (!unitRenderer?.renderUnit) return false;
-      const geometry = tileMapView.geometry || {};
-      let rendered = false;
-      (tileMapView.activeScouts || []).forEach((mission) => {
-        if (mission.kind !== 'worldExplore' || mission.status !== 'active') return;
-        const point = this.getWorldScoutUnitPoint(mission, viewport, geometry);
-        if (!point) return;
-        const scale = Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
-        const framePath = this.getWorldScoutUnitFramePath(mission);
-        unitRenderer.renderUnit(this.host || this, point.x, point.y + 6 * scale, scale, framePath);
-        rendered = true;
-      });
-      return rendered;
-    }
   }
 
   global.WorldMapScoutRenderer = WorldMapScoutRenderer;

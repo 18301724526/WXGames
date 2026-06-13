@@ -1770,7 +1770,7 @@ P0 新增公开 API / Public API Added During P0:
 - Tile/site layout, alpha metrics, assets, text, and hit-target writes are injected through host APIs.
 - Terrain feature randomness is deterministic through host `random01()`.
 - Static layer and static chunk cache renderers reuse this module through the same compatibility method.
-- No cache ownership, no gameplay mutation, no visibility decision, no asset discovery.
+- No cache ownership, no gameplay mutation, no unit-frame ownership, no visibility decision, no asset discovery.
 
 扩展方式 / Extension Path:
 
@@ -1866,7 +1866,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - Linear loop over provided render entries.
 - Water pixel/texture drawing remains in `WorldTileWaterCanvasRenderer`.
-- No cache ownership, no gameplay mutation, no visibility decision, no asset discovery.
+- No cache ownership, no gameplay mutation, no unit-frame ownership, no visibility decision, no asset discovery.
 
 扩展方式 / Extension Path:
 
@@ -2017,33 +2017,22 @@ P0 新增公开 API / Public API Added During P0:
 
 - 世界地图 scout route drawing
 - scout route polyline and route-point marker drawing
-- legacy scout unit route point projection
-- legacy scout progress interpolation from epoch time
-- legacy scout unit frame path selection from `UnitSpriteManifest`
-- legacy unit renderer handoff through `TutorialIntroUnitRenderer`
-- 作为 `WorldMapCanvasRenderer.renderWorldScoutRoutes()` 与 legacy scout helper methods 的拆分实现
+- Split implementation for current `WorldMapCanvasRenderer.renderWorldScoutRoutes()` only; legacy scout helper methods are retired.
 
 公开 API / Public API:
 
 - `new WorldMapScoutRenderer({ host })`
 - `renderWorldScoutRoutes(tileMapView, viewport)`
-- `getWorldScoutUnitRoutePoints(mission, viewport, geometry)`
-- `getWorldScoutUnitProgress(mission)`
-- `getWorldScoutUnitPoint(mission, viewport, geometry)`
-- `getWorldScoutUnitFramePath(mission)`
-- `renderWorldScoutUnitsLegacy(tileMapView, viewport)`
 
 性能约束 / Performance Constraints:
 
 - Route drawing is linear over mission route points.
-- Progress interpolation uses epoch time and does not read frame time.
-- `WorldTime`, `UnitSpriteManifest`, and `TutorialIntroUnitRenderer` are injected through host/static APIs.
-- No cache ownership, no gameplay mutation, no visibility decision, no asset discovery.
+- No cache ownership, no gameplay mutation, no unit-frame ownership, no visibility decision, no asset discovery.
 
 扩展方式 / Extension Path:
 
 - 新 scout route visual rule 先扩展本文件。
-- 新 active scout actor rendering 仍走 `WorldActorCanvasRenderer`/`WorldMarchSystem`，不要塞回这里。
+- New active scout actor rendering still goes through `WorldMapActorHudRenderer` / `WorldActorCanvasRenderer` / `WorldMarchSystem`; do not add it back here.
 - 新 route/input hit target 仍扩展 `WorldMapHitTargetModel` 或 `WorldMapInputActionMap`。
 - 新 unit frame manifest 仍扩展 `UnitSpriteManifest` 或 asset registry。
 
@@ -2062,7 +2051,7 @@ P0 新增公开 API / Public API Added During P0:
 - world-site dialog presenter fallback view-state creation
 - site action button layout and hit-target registration
 - expedition config controls for leader/soldier/launch interactions
-- occupied-city command overlay, legacy overlay fallback, title badge, rename button, primary/side command buttons
+- occupied-city command overlay, title badge, rename button, primary/side command buttons
 - selected site/city canvas anchor lookup through injected world-tile layout helpers
 - city-command button action mapping for `enterCity`, `renameCity`, `territoryAction`, and `people` tab routing
 - 作为 `WorldMapCanvasRenderer.renderWorldSiteModal()` and related site overlay helper methods 的拆分实现
@@ -2076,7 +2065,6 @@ P0 新增公开 API / Public API Added During P0:
 - `renderWorldSiteAction(actionView, x, y, width)`
 - `renderWorldExpeditionConfig(config, x, y, width)`
 - `renderWorldSiteModal(state, options)`
-- `renderWorldCityCommandLegacyOverlay(detail, territories, state, options)`
 - `getWorldCityCommandAnchor(detail, territories, state, options)`
 - `getWorldSiteCanvasAnchor(siteId, state, options)`
 - `getWorldCityCommandButtonAction(button)`
@@ -2114,8 +2102,6 @@ P0 新增公开 API / Public API Added During P0:
 - territory summary header drawing for the world view
 - tile-map render branch and reset control overlay
 - empty exploration fallback copy
-- legacy radar fallback drawing for non-tile world-map state
-- legacy radar drag, reset, and world-site hit-target registration
 - 作为 `WorldMapCanvasRenderer.renderMilitaryWorldView()` 的拆分实现
 
 公开 API / Public API:
@@ -2125,10 +2111,9 @@ P0 新增公开 API / Public API Added During P0:
 
 性能约束 / Performance Constraints:
 
-- Rendering is a bounded branch over tile-map view, empty state, or legacy radar fallback.
+- Rendering is a bounded branch over tile-map view or empty world copy.
 - Tile-map drawing delegates to `renderWorldTileMap()` instead of owning tile rendering.
-- Radar fallback is linear over presenter-provided sites.
-- Hit-target registration is bounded to visible fallback controls/sites.
+- Hit-target registration is bounded to current tile-map reset controls.
 - No cache lifecycle, no gameplay simulation, no asset discovery, no visibility decision.
 
 扩展方式 / Extension Path:
@@ -2136,7 +2121,7 @@ P0 新增公开 API / Public API Added During P0:
 - 新 military world-view panel composition 先扩展本文件。
 - 新 tile-map rendering details 仍扩展 world-map split renderers, not this module.
 - 新 world-site modal/action overlay 仍扩展 `WorldMapSiteOverlayRenderer`。
-- 新 presenter data rules 仍扩展 `WorldRadarPresenter`, `WorldSitePresenter`, or related presenter modules.
+- New presenter data rules still extend `WorldSitePresenter` or related current presenter modules; `WorldRadarPresenter` is retired.
 
 回归 / Regression:
 
@@ -5635,7 +5620,7 @@ Regression:
 - compatibility facade for water entry drawing delegated to `WorldMapWaterEntryRenderer`
 - compatibility facade for snapshot-only cache redraw delegated to `WorldMapSnapshotCacheRenderer`
 - compatibility facade for fast-drag composite cache orchestration delegated to `WorldMapFastDragCompositeRenderer`
-- compatibility facade for scout route/legacy scout unit drawing delegated to `WorldMapScoutRenderer`
+- compatibility facade for scout route drawing delegated to `WorldMapScoutRenderer`; legacy scout-unit helpers are retired
 - compatibility facade for world-site modal/action overlay drawing delegated to `WorldMapSiteOverlayRenderer`
 - compatibility facade for military world-view composition delegated to `WorldMapMilitaryViewRenderer`
 - compatibility facade for fog mask context capture delegated to `WorldMapFogMaskContextRenderer`
@@ -5676,8 +5661,8 @@ Regression:
 - delegated water entry helpers: `renderWorldTileWaterEntries()`
 - delegated snapshot cache helpers: `renderWorldTileSnapshotChunkCacheMap()`, `getWorldTileSnapshotDrawLayout()`, `renderWorldTileSnapshotLayerCache()`, `renderWorldTileSnapshotCache()`
 - delegated fast-drag composite helpers: `getWorldTileFastDragCompositeSignature()`, `renderWorldTileFastDragComposite()`, `updateWorldTileFastDragComposite()`
-- delegated scout helpers: `renderWorldScoutRoutes()`, `getWorldScoutUnitRoutePoints()`, `getWorldScoutUnitProgress()`, `getWorldScoutUnitPoint()`, `getWorldScoutUnitFramePath()`, `renderWorldScoutUnitsLegacy()`
-- delegated site overlay helpers: `getWorldSiteDialogPresenter()`, `buildWorldSiteDialogViewState()`, `buildFallbackWorldSiteDialogViewState()`, `renderWorldSiteAction()`, `renderWorldExpeditionConfig()`, `renderWorldSiteModal()`, `renderWorldCityCommandLegacyOverlay()`, `getWorldCityCommandAnchor()`, `getWorldSiteCanvasAnchor()`, `getWorldCityCommandButtonAction()`, `drawWorldCityCommandPrimaryButton()`, `drawWorldCityCommandSideButton()`, `renderWorldCityCommandOverlay()`
+- delegated scout helpers: `renderWorldScoutRoutes()`
+- delegated site overlay helpers: `getWorldSiteDialogPresenter()`, `buildWorldSiteDialogViewState()`, `buildFallbackWorldSiteDialogViewState()`, `renderWorldSiteAction()`, `renderWorldExpeditionConfig()`, `renderWorldSiteModal()`, `getWorldCityCommandAnchor()`, `getWorldSiteCanvasAnchor()`, `getWorldCityCommandButtonAction()`, `drawWorldCityCommandPrimaryButton()`, `drawWorldCityCommandSideButton()`, `renderWorldCityCommandOverlay()`
 - delegated military world-view helper: `renderMilitaryWorldView()`
 - delegated fog mask context helpers: `getWorldTileKey()`, `getWorldTileFogRevealEntries()`, `renderWorldTileFogMask()`
 - delegated tile-map orchestration helper: `renderWorldTileMap()`
@@ -5705,13 +5690,13 @@ Regression:
 - P3-008 后，新 snapshot-only cache redraw 先扩展 `WorldMapSnapshotCacheRenderer`。
 - P3-009 后，新 fast-drag composite cache orchestration 先扩展 `WorldMapFastDragCompositeRenderer`。
 - P3-010 后，新 static tile entry、terrain feature、tile feature、site visual drawing 先扩展 `WorldMapStaticEntryRenderer`。
-- P3-011 后，新 scout route visual 和 legacy scout unit fallback 先扩展 `WorldMapScoutRenderer`。
+- After P3-011, new scout route visuals extend `WorldMapScoutRenderer`; legacy scout unit fallback is retired and must not return to active source.
 - P3-012 后，新 water entry filtering/draw handoff 先扩展 `WorldMapWaterEntryRenderer`；water pixel/texture drawing 仍扩展 `WorldTileWaterCanvasRenderer`。
 - Do not add gameplay or visibility rules here.
 
 - P3-013 后，新 world-site modal/action overlay、occupied-city command overlay、expedition config controls 先扩展 `WorldMapSiteOverlayRenderer`；presenter view-state rules 仍扩展 presenter。
 
-- P3-014 后，新 military world-view panel composition、tile-map branch handoff、legacy radar fallback 先扩展 `WorldMapMilitaryViewRenderer`。
+- After P3-014, new military world-view panel composition and tile-map branch handoff extend `WorldMapMilitaryViewRenderer`; legacy radar fallback, `WorldRadarPresenter`, and `worldRadarDrag` are retired and must not return to active source.
 - P3-015 后，新 fog mask context capture/handoff 先扩展 `WorldMapFogMaskContextRenderer`；新 fog visual rules 仍扩展 `WorldFogVisualSnapshot` / `WorldMapVisualPluginRegistry`。
 - P3-016 后，新 world tile-map frame sequencing 先扩展 `WorldMapTileMapRenderer`；具体 layer/cache/actor/HUD/fog visual 细节仍扩展各自模块。
 - P3-017 后，新 actor/HUD runtime handoff 先扩展 `WorldMapActorHudRenderer`；actor drawing 仍扩展 `WorldActorCanvasRenderer`，march HUD visual 仍扩展 `WorldMarchHudCanvasRenderer`。
@@ -6792,10 +6777,10 @@ Recommended first split sequence:
 | 2026-06-08 | Added `WorldMapSnapshotCacheRenderer` candidate module for P3-008; `WorldMapCanvasRenderer` now delegates snapshot-only layer/chunk cache redraw orchestration. |
 | 2026-06-08 | Added `WorldMapFastDragCompositeRenderer` candidate module for P3-009; `WorldMapCanvasRenderer` now delegates fast-drag composite cache signature/rebuild/blit orchestration. |
 | 2026-06-08 | Added `WorldMapStaticEntryRenderer` candidate module for P3-010; `WorldMapCanvasRenderer` now delegates static entry terrain/feature/site drawing orchestration. |
-| 2026-06-08 | Added `WorldMapScoutRenderer` candidate module for P3-011; `WorldMapCanvasRenderer` now delegates scout route drawing and legacy scout unit helpers. |
+| 2026-06-08 | Added `WorldMapScoutRenderer` candidate module for P3-011; `WorldMapCanvasRenderer` delegates scout route drawing. Legacy scout unit helpers were retired on 2026-06-14. |
 | 2026-06-08 | Added `WorldMapWaterEntryRenderer` candidate module for P3-012; `WorldMapCanvasRenderer` now delegates water entry filtering and draw handoff. |
 | 2026-06-08 | Added `WorldMapSiteOverlayRenderer` candidate module for P3-013; `WorldMapCanvasRenderer` now delegates world-site modal/action overlays and occupied-city command overlay helpers. |
-| 2026-06-08 | Added `WorldMapMilitaryViewRenderer` candidate module for P3-014; `WorldMapCanvasRenderer` now delegates military world-view panel composition and legacy radar fallback rendering. |
+| 2026-06-08 | Added `WorldMapMilitaryViewRenderer` candidate module for P3-014; `WorldMapCanvasRenderer` delegates military world-view panel composition. Legacy radar fallback was retired on 2026-06-14. |
 | 2026-06-08 | Added `WorldMapFogMaskContextRenderer` candidate module for P3-015; `WorldMapCanvasRenderer` now delegates fog mask context capture and reveal-entry filtering while fog visuals remain default-off. |
 | 2026-06-08 | Added `WorldMapTileMapRenderer` candidate module for P3-016; `WorldMapCanvasRenderer` now delegates one-frame tile-map orchestration and dropped to 1648 lines. |
 | 2026-06-08 | Added `WorldMapActorHudRenderer` candidate module for P3-017; `WorldMapCanvasRenderer` now delegates actor/HUD runtime handoff and dropped to 1640 lines. |

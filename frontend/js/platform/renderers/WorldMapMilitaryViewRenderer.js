@@ -68,89 +68,11 @@
         return;
       }
 
-      const territories = territoryState.territories || [];
-      if (!territories.length) {
-        this.drawTextLines(this.wrapTextLimit('Send scouts to reveal the outer world here.', width - 40, 3, { size: 13 }), x + 20, y + 70, {
-          size: 13,
-          color: '#cbbd96',
-          lineHeight: 18,
-        });
-        return;
-      }
-
-      const radarView = this.presenter.buildWorldRadarViewState(territories, {
-        panX: uiState.worldPanX || 0,
-        panY: uiState.worldPanY || 0,
+      this.drawTextLines(this.wrapTextLimit('Send scouts to reveal the outer world here.', width - 40, 3, { size: 13 }), x + 20, y + 70, {
+        size: 13,
+        color: '#cbbd96',
+        lineHeight: 18,
       });
-      const radarSize = Math.min(width - 24, Math.max(260, Math.min(height - 68, 520)));
-      const radarX = x + (width - radarSize) / 2;
-      const radarY = y + 46;
-      this.drawPanel(radarX, radarY, radarSize, radarSize, {
-        fill: this.createGradient(
-          radarX, radarY, radarX + radarSize, radarY + radarSize,
-          [
-            [0, 'rgba(39, 56, 42, 0.78)'],
-            [1, 'rgba(18, 16, 13, 0.9)'],
-          ],
-          'rgba(24, 30, 24, 0.86)',
-        ),
-        stroke: 'rgba(240, 180, 91, 0.22)',
-        radius: radarSize / 2,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
-      this.addHitTarget({ x: radarX, y: radarY, width: radarSize, height: radarSize }, { type: 'worldRadarDrag', background: true });
-      this.drawLine(radarX + radarSize / 2, radarY + 12, radarX + radarSize / 2, radarY + radarSize - 12, {
-        color: 'rgba(240, 180, 91, 0.16)',
-      });
-      this.drawLine(radarX + 12, radarY + radarSize / 2, radarX + radarSize - 12, radarY + radarSize / 2, {
-        color: 'rgba(240, 180, 91, 0.16)',
-      });
-      this.drawText('N', radarX + radarSize / 2, radarY + 12, { size: 10, color: '#d6b16e', align: 'center' });
-      this.drawText('S', radarX + radarSize / 2, radarY + radarSize - 22, { size: 10, color: '#d6b16e', align: 'center' });
-      this.drawText('W', radarX + 12, radarY + radarSize / 2 - 5, { size: 10, color: '#d6b16e' });
-      this.drawText('E', radarX + radarSize - 18, radarY + radarSize / 2 - 5, { size: 10, color: '#d6b16e' });
-
-      const panX = radarView.pan?.x || 0;
-      const panY = radarView.pan?.y || 0;
-
-      this.ctx.save();
-      this.ctx.beginPath();
-      this.ctx.arc(radarX + radarSize / 2, radarY + radarSize / 2, radarSize / 2 - 2, 0, Math.PI * 2);
-      this.ctx.clip();
-
-      radarView.sites.forEach((site) => {
-        const left = Math.max(8, Math.min(92, Number(site.position?.left) || 50));
-        const top = Math.max(8, Math.min(92, Number(site.position?.top) || 50));
-        const siteX = radarX + radarSize * left / 100 - 18 + panX;
-        const siteY = radarY + radarSize * top / 100 - 18 + panY;
-        const isSelected = uiState.selectedSiteId === site.id;
-        this.drawPanel(siteX, siteY, 36, 36, {
-          fill: isSelected ? 'rgba(116, 211, 160, 0.3)' : 'rgba(42, 35, 24, 0.86)',
-          stroke: isSelected ? 'rgba(116, 211, 160, 0.76)' : 'rgba(240, 180, 91, 0.3)',
-          radius: 18,
-          inset: 'rgba(255, 231, 184, 0.08)',
-        });
-        if (!this.drawAsset(site.art, siteX + 5, siteY + 5, 26, 26)) {
-          this.drawText('Site', siteX + 18, siteY + 18, {
-            size: 14,
-            color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
-            baseline: 'middle',
-            align: 'center',
-          });
-        }
-        this.drawText(this.truncateText(site.name || site.title || 'Site', 64, { size: 9 }), siteX + 18, siteY + 39, {
-          size: 9,
-          color: '#eaeaea',
-          align: 'center',
-        });
-        this.addHitTarget({ x: siteX - 6, y: siteY - 6, width: 48, height: 54 }, { type: 'openWorldSite', siteId: site.id });
-      });
-
-      this.ctx.restore();
-
-      const resetW = 76;
-      this.drawButton(radarX + radarSize - resetW - 8, radarY + 8, resetW, 28, 'Home', { size: 11, radius: 14 });
-      this.addHitTarget({ x: radarX + radarSize - resetW - 8, y: radarY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
     }
   }
 

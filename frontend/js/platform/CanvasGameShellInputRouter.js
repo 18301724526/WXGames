@@ -50,7 +50,6 @@ isWorldMapHudAction(action = {}) {
       const type = action?.type || '';
       return Boolean(type
         && type !== 'worldMapDrag'
-        && type !== 'worldRadarDrag'
         && type !== 'openWorldSite'
         && type !== 'resetWorldPan'
         && type !== 'closeWorldSite'
@@ -177,7 +176,6 @@ isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight
       const type = targetAction?.type || '';
       return Boolean(type
         && type !== 'worldMapDrag'
-        && type !== 'worldRadarDrag'
         && type !== 'techTreeDrag');
     },
 
@@ -248,8 +246,7 @@ shouldBlockTutorialInput(point = {}) {
           if (typeof this.renderer.getHitTarget !== 'function') return false;
           const action = this.renderer.getHitTarget(point);
           if (
-          action?.type !== 'worldRadarDrag'
-          && action?.type !== 'worldMapDrag'
+          action?.type !== 'worldMapDrag'
           && action?.type !== 'openWorldSite'
           && action?.type !== 'techTreeDrag'
           && action?.dragType !== 'techTreeDrag'
@@ -260,7 +257,7 @@ shouldBlockTutorialInput(point = {}) {
       if (!this.dragAction) return false;
       const dragType = this.dragAction.type === 'techTreeDrag'
         ? 'techTreeDrag'
-        : (this.dragAction.type === 'worldMapDrag' ? 'worldMapDrag' : 'worldRadarDrag');
+        : 'worldMapDrag';
       if (dragType === 'worldMapDrag' && phase === 'start') {
         this.closeWorldSiteHud({ direct: true });
         this.startWorldMapSnapshotDrag();
@@ -425,14 +422,6 @@ handleTap(point, event) {
         return false;
       }
       if (action.background && action.type !== 'closeWorldSite') {
-        const closed = this.closeWorldSiteHud({ direct: true });
-        if (closed) {
-          if (event?.preventDefault) event.preventDefault();
-          if (event?.stopPropagation) event.stopPropagation();
-          return true;
-        }
-      }
-      if (action.type === 'worldRadarDrag') {
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
           if (event?.preventDefault) event.preventDefault();

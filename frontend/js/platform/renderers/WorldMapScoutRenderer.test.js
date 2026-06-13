@@ -92,34 +92,6 @@ test('WorldMapScoutRenderer renders scout route lines and route markers', () => 
   assert.equal(host.calls.filter((call) => call[0] === 'drawPanel').length, 2);
 });
 
-test('WorldMapScoutRenderer computes legacy scout progress and interpolated point', () => {
-  const host = createHost();
-  const renderer = new WorldMapScoutRenderer({ host });
-  const mission = createMission();
-  const viewport = { originX: 100, originY: 80, scale: 0.5 };
-  const geometry = { stepX: 96, stepY: 48 };
-
-  assert.equal(renderer.getWorldScoutUnitProgress(mission), 0.75);
-  const point = renderer.getWorldScoutUnitPoint(mission, viewport, geometry);
-  assert.equal(point.progress, 0.75);
-  assert.equal(point.x, 172);
-  assert.equal(point.y, 80);
-});
-
-test('WorldMapScoutRenderer renders legacy scout units with manifest frame paths', () => {
-  const host = createHost();
-  const renderer = new WorldMapScoutRenderer({ host });
-  const tileMapView = {
-    geometry: { stepX: 96, stepY: 48 },
-    activeScouts: [createMission()],
-  };
-
-  assert.equal(renderer.renderWorldScoutUnitsLegacy(tileMapView, { originX: 100, originY: 80, scale: 0.5 }), true);
-  const renderCall = host.calls.find((call) => call[0] === 'renderUnit');
-  assert.equal(Boolean(renderCall), true);
-  assert.equal(renderCall.some((value) => String(value).includes('assets/art/units/spearman/move/')), true);
-});
-
 test('WorldMapScoutRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

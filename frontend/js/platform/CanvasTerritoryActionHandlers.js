@@ -393,12 +393,6 @@
         return this.afterHandled(action);
       },
 
-      handle_worldRadarDrag(action) {
-        const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
-        return this.handle_worldMapDrag({ ...action, type: 'worldMapDrag' });
-      },
-
       handle_worldMapDrag(action) {
         const forwarded = this.forward(action);
         if (forwarded !== undefined) return forwarded !== false;
