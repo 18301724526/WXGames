@@ -116,6 +116,60 @@ test('LogService stores compact client input evidence in server operation metada
   assert.equal(text.includes('must-not-log'), false);
 });
 
+test('LogService stores compact authority replay metadata in server operation metadata', () => {
+  const { calls, db } = createDbHarness();
+  const service = new LogService(db);
+
+  service.logApi(
+    'player-1',
+    'device-1',
+    'POST',
+    '/api/game/action',
+    {
+      action: 'startWorldMarch',
+      clientRequestId: 'api-9',
+      targetQ: 2,
+      targetR: -1,
+      clientInputIntent: {
+        schema: 'world-map-input-intent-v1',
+        target: { kind: 'tile', tileId: 'tile_2_-1', targetQ: 2, targetR: -1 },
+        picking: { inputEpoch: 8, signature: 'sig-8' },
+      },
+    },
+    200,
+    {
+      success: true,
+      authority: {
+        schema: 'command-authority-contract-v1',
+        status: 'accepted',
+        commandId: 'cmd_123',
+        command: {
+          type: 'startWorldMarch',
+          actorId: 'explore-1',
+          playerId: 'player-1',
+          clientInput: {
+            schema: 'world-map-input-intent-v1',
+            target: { kind: 'tile', tileId: 'tile_2_-1', targetQ: 2, targetR: -1 },
+            picking: { inputEpoch: 8, signature: 'sig-8' },
+          },
+        },
+        timeline: { route: Array.from({ length: 40 }, (_, index) => ({ index })) },
+      },
+    },
+    42,
+  );
+
+  const runCall = calls.find((call) => call[0] === 'run');
+  const body = JSON.parse(runCall[1][4]);
+  const text = JSON.stringify(body.operationLog.authority);
+
+  assert.equal(body.operationLog.authority.commandId, 'cmd_123');
+  assert.equal(body.operationLog.authority.status, 'accepted');
+  assert.equal(body.operationLog.authority.command.type, 'startWorldMarch');
+  assert.equal(body.operationLog.authority.command.actorId, 'explore-1');
+  assert.equal(text.includes('timeline'), false);
+});
+
 test('LogService stores and queries explicit client operation log snapshots', () => {
   const { db } = createDbHarness();
   const service = new LogService(db);

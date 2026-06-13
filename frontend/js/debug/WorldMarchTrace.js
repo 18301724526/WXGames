@@ -179,6 +179,21 @@
     };
   }
 
+  function summarizeAuthority(authority = null) {
+    if (!authority || typeof authority !== 'object') return null;
+    return {
+      schema: authority.schema || '',
+      status: authority.status || '',
+      commandId: authority.commandId || '',
+      serverTime: authority.serverTime || '',
+      command: authority.command ? {
+        type: authority.command.type || '',
+        actorId: authority.command.actorId || '',
+        playerId: authority.command.playerId || '',
+      } : null,
+    };
+  }
+
   function summarizeApiPayload(payload = null) {
     const data = payload && typeof payload === 'object' ? payload : {};
     return {
@@ -187,6 +202,7 @@
       message: data.message || '',
       mission: summarizeMission(data.mission),
       gameState: summarizeGameState(data.gameState),
+      authority: summarizeAuthority(data.authority),
       tutorialStep: Number(data.tutorial?.currentStep || data.gameState?.tutorial?.currentStep || 0),
       syncTime: data.syncTime || '',
     };
@@ -276,6 +292,7 @@
     error,
     summarizeActionBody,
     summarizeApiPayload,
+    summarizeAuthority,
     summarizeCoord,
     summarizeMission,
     summarizeWorldExplorerState,

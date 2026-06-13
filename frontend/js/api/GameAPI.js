@@ -104,6 +104,30 @@
     };
   }
 
+  function summarizeAuthority(authority = null) {
+    if (!authority || typeof authority !== 'object') return null;
+    const command = authority.command && typeof authority.command === 'object' ? authority.command : {};
+    const rejection = authority.rejection && typeof authority.rejection === 'object' ? authority.rejection : null;
+    const summary = {
+      schema: String(authority.schema || '').slice(0, 80),
+      status: String(authority.status || '').slice(0, 32),
+      commandId: String(authority.commandId || '').slice(0, 120),
+      serverTime: String(authority.serverTime || '').slice(0, 80),
+      command: {
+        type: String(command.type || '').slice(0, 80),
+        actorId: String(command.actorId || '').slice(0, 120),
+        playerId: String(command.playerId || '').slice(0, 120),
+        clientSequence: command.clientSequence ?? undefined,
+        clientInput: summarizeClientInputIntent(command.clientInput || command.clientInputIntent || null),
+      },
+      rejection: rejection ? {
+        error: String(rejection.error || '').slice(0, 120),
+        message: String(rejection.message || '').slice(0, 240),
+      } : null,
+    };
+    return JSON.parse(JSON.stringify(summary));
+  }
+
   function isAbortError(error) {
     return error?.name === 'AbortError' || error?.code === 'ABORT_ERR';
   }
@@ -172,6 +196,7 @@
         method,
         path,
         action: actionBody.action || '',
+        clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
         body: global.WorldMarchTrace?.summarizeActionBody?.(actionBody) || {
           action: actionBody.action || '',
         },
@@ -340,6 +365,7 @@
         payload: global.WorldMarchTrace?.summarizeApiPayload?.(data) || {
           success: data?.success,
           error: data?.error || '',
+          authority: summarizeAuthority(data?.authority),
         },
       }, { flush: true });
       return data;
@@ -589,5 +615,6 @@
 
   global.GameAPI = GameAPI;
   GameAPI.summarizeClientInputIntent = summarizeClientInputIntent;
+  GameAPI.summarizeAuthority = summarizeAuthority;
   if (typeof module !== 'undefined' && module.exports) module.exports = GameAPI;
 })(typeof window !== 'undefined' ? window : globalThis);

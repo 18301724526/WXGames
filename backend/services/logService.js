@@ -1,6 +1,7 @@
 let CommandAuthorityContract = null;
+let CommandReplayCorrelation = null;
 try {
-  ({ CommandAuthorityContract } = require('./realtime'));
+  ({ CommandAuthorityContract, CommandReplayCorrelation } = require('./realtime'));
 } catch (_) {}
 
 class LogService {
@@ -92,6 +93,7 @@ class LogService {
       targetR: payload.targetR ?? payload.r ?? payload.y ?? null,
       formationSlot: payload.formationSlot ?? payload.slot ?? null,
       clientInput: CommandAuthorityContract?.summarizeClientInput?.(payload.clientInputIntent) || null,
+      authority: CommandReplayCorrelation?.summarizeAuthority?.(result.authority) || null,
       success: result.success,
       error: result.error || '',
     };

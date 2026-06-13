@@ -69,13 +69,20 @@
 - `WorldExplorerService` 仍只用服务器 gameState、mission、targetQ/targetR、missionId 计算路线、停止点、timeline 和 AOI；`clientInputIntent` 不能覆盖坐标、路线、任务状态或多人同步权威。
 - `LogService` 的 `operationLog.clientInput` 记录同一份 compact evidence，便于与本地导出的 `ClientOperationLog` 和 `/api/game/action` request id 对账。
 
-### 第六阶段：门禁
+### 第六阶段：可回放诊断对账
+
+- 新增 `CommandReplayCorrelation`，产出 `command-replay-correlation-v1`，只负责把前端导出的 `ClientOperationLog`、后端 `api_logs.operationLog`、`X-Client-Request-ID` 与 `CommandAuthorityContract` 的 `commandId/status` 串成可对账摘要。
+- `GameAPI` 的本地 `api:request` 记录 compact `clientInput`，`api:response` 记录 compact authority command metadata；这不增加自动上传，也不改变业务请求权威。
+- `LogService` 的 `operationLog.authority` 只保存 compact commandId/status/command/clientInput/rejection，不保存 timeline/AOI/完整 response，避免日志膨胀和泄露 renderer payload。
+- 该阶段用于复盘一次 world-map tap -> action -> API request -> server authority result 的证据链；服务端路线、停止点、timeline、AOI 和接受/拒绝仍只由服务器当前状态计算。
+
+### 第七阶段：门禁
 
 必须通过：
 
 - `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
 - `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js`
-- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/GameActionRegistry.test.js backend/tests/WorldExplorerService.test.js backend/tests/LogService.test.js`
+- `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/GameActionRegistry.test.js backend/tests/WorldExplorerService.test.js backend/tests/LogService.test.js backend/tests/CommandReplayCorrelation.test.js`
 - `node scripts/check-frontend-script-manifest.js`
 - `node scripts/run-architecture-smoke.js`
 - `git diff --check`

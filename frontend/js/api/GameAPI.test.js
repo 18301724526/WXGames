@@ -159,6 +159,58 @@ test('GameAPI sends compact client input intent evidence for world march command
   assert.equal(calls[1].clientInputIntent.target.tileId, 'tile_3_-2');
 });
 
+test('GameAPI records replay correlation evidence in local operation logs', async () => {
+  const operationEvents = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request() {
+        return createResponse(200, {
+          success: true,
+          authority: {
+            schema: 'command-authority-contract-v1',
+            status: 'accepted',
+            commandId: 'cmd_abc123',
+            command: {
+              type: 'startWorldMarch',
+              actorId: 'explore-1',
+              playerId: 'player-1',
+            },
+          },
+        });
+      },
+    },
+  });
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
+    picking: { inputEpoch: 9, signature: 'sig-9' },
+    rendererCache: { targets: Array.from({ length: 100 }, (_, index) => ({ index })) },
+  };
+  const logger = {
+    record(type, detail) {
+      operationEvents.push([type, detail]);
+    },
+  };
+
+  await withOperationLog(logger, () => api.startWorldMarch({
+    targetQ: 3,
+    targetR: -2,
+    formationSlot: 1,
+    clientInputIntent: inputIntent,
+  }));
+
+  const requestEvent = operationEvents.find((event) => event[0] === 'api:request')?.[1];
+  const responseEvent = operationEvents.find((event) => event[0] === 'api:response')?.[1];
+
+  assert.equal(requestEvent.requestId, 'api-1');
+  assert.equal(requestEvent.clientInput.schema, 'world-map-input-intent-v1');
+  assert.equal(requestEvent.clientInput.target.tileId, 'tile_3_-2');
+  assert.equal(JSON.stringify(requestEvent.clientInput).includes('rendererCache'), false);
+  assert.equal(responseEvent.payload.authority.commandId, 'cmd_abc123');
+  assert.equal(responseEvent.payload.authority.status, 'accepted');
+});
+
 test('GameAPI reports H5 load trace failures for 504 version checks', async () => {
   const calls = [];
   const api = new GameAPI('/api', null, {
