@@ -81,6 +81,45 @@ test('WorldMapInputActionMap accepts stable x/y tile mapper output for input act
   assert.equal(action.targetR, -1);
 });
 
+test('WorldMapInputActionMap matches known background tiles by coordinates over colliding raw ids', () => {
+  const context = {
+    ...createContext(),
+    tileMapView: {
+      ...createContext().tileMapView,
+      tiles: [
+        {
+          id: 'tile_2_0',
+          q: 1,
+          r: 0,
+          terrain: 'mountain',
+          terrainLabel: 'mountain',
+          visibility: 'scouted',
+        },
+        {
+          id: 'legacy-visible-id',
+          q: 2,
+          r: 0,
+          terrain: 'forest',
+          terrainLabel: 'forest',
+          visibility: 'scouted',
+        },
+      ],
+    },
+  };
+  const action = WorldMapInputActionMap.getBackgroundMarchTargetAction({ x: 1, y: 1 }, context, {
+    screenPointToAxialTile() {
+      return { q: 2, r: 0 };
+    },
+  });
+
+  assert.equal(action.type, 'selectWorldMarchTarget');
+  assert.equal(action.tileId, 'tile_2_0');
+  assert.equal(action.targetQ, 2);
+  assert.equal(action.targetR, 0);
+  assert.equal(action.terrain, 'forest');
+  assert.equal(action.terrainLabel, 'forest');
+});
+
 test('WorldMapInputActionMap resolves background tiles from context without renderer background targets', () => {
   const action = WorldMapInputActionMap.resolveTapAction({ x: 148, y: 124 }, {
     hitTargets: [],

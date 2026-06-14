@@ -2585,6 +2585,7 @@ P0 新增公开 API / Public API Added During P0:
 - 过滤 world-map runtime 允许处理的 action types
 - single authority for H5 Shell and minigame/compat App world-map tap routing; Shell/App routers must not duplicate these routing rules
 - `TileCoord`-normalized background input coordinates: stable `x/y` and legacy `q/r` mapper output both produce deterministic compact action payloads
+- coordinate-authoritative known-tile lookup for background inference: `findKnownTile()` matches current `tileMapView.tiles` by normalized coordinates and `buildSelectWorldMarchTargetAction()` emits canonical `tileId`, so stale or colliding raw tile ids cannot redirect target coordinates
 - 将地图背景点击通过 `screenPointToAxialTile` 推断为 `selectWorldMarchTarget`
 - 生成稳定 action payload，不直接修改游戏状态、不调 renderer、不调 backend
 
@@ -7372,6 +7373,7 @@ Recommended first split sequence:
 | 2026-06-14 | Tightened `CommandReplayCorrelation` request-id matching: when an API request id exists, local client operation-log entries must match that exact id and may not fall back to the latest input entry, preventing high-frequency or multiplayer replay audits from guessing by time. |
 | 2026-06-14 | Hardened `WorldMapInputIntent.toSerializable()` as a whitelist boundary: externally supplied intent-like objects are re-summarized before export so renderer, native event, tileMapView, and thenable payloads cannot enter input evidence. |
 | 2026-06-14 | Hardened `WorldMapInputIntent` tile evidence: action and target summaries now consume `TileCoord` when target coordinates are present, so stale caller-supplied `tileId` cannot pollute local replay or backend command evidence. |
+| 2026-06-14 | Hardened `WorldMapInputActionMap` background known-tile lookup: inferred background tiles now match current `tileMapView.tiles` by normalized coordinates and emit canonical `tileId`, so colliding raw tile ids cannot redirect march target coordinates or terrain evidence. |
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
 | 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
 | 2026-06-14 | Hardened march actor identity: `WorldMarchProgressSnapshot`, `WorldActorProjection`, and `WorldMapRenderSnapshot.normalizeMarchTarget()` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in mission rows, returned-home actor projection, or march target UI state. |

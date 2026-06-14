@@ -178,8 +178,7 @@
     const coord = normalizeCoord(inferred);
     if (!Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
     return (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find((tile) => (
-      (tile.id && tile.id === coord.tileId)
-      || normalizeCoord(tile).tileId === coord.tileId
+      normalizeCoord(tile).tileId === coord.tileId
     )) || null;
   }
 
@@ -203,7 +202,7 @@
     return {
       q: displayCoord.q,
       r: displayCoord.r,
-      tileId: knownTile?.id || displayCoord.tileId,
+      tileId: displayCoord.tileId,
       known,
       terrain: known ? (knownTile.terrain || '') : '',
       terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : '未知',
@@ -216,7 +215,7 @@
     if (!tile || !Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
     return {
       type: 'selectWorldMarchTarget',
-      tileId: tile.tileId || coord.tileId,
+      tileId: coord.tileId,
       targetQ: coord.q,
       targetR: coord.r,
       known: Boolean(tile.known),
