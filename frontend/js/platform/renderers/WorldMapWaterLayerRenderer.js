@@ -34,6 +34,22 @@
       return (Array.isArray(entries) ? entries : []).filter(({ tile }) => tile?.water?.kind && tile?.water?.asset);
     }
 
+    normalizeTileCoord(tile = {}) {
+      const toInteger = (value, fallback = 0) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.floor(number) : fallback;
+      };
+      const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+      const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+      return {
+        x: q,
+        y: r,
+        q,
+        r,
+        tileId: `tile_${q}_${r}`,
+      };
+    }
+
     getWorldTileWaterChunkCacheKey(tileMapView = {}, viewport = {}, layout = {}, waterEntries = [], options = {}) {
       const cachePolicy = this.getWorldMapCachePolicy();
       if (cachePolicy?.getWorldTileWaterChunkCacheKey) {
@@ -177,16 +193,19 @@
       }
       const scale = Number(viewport.scale) || 1;
       const entrySignature = this.getWaterEntries(entries)
-        .map(({ tile, center, drawRect }) => [
-          tile.id,
-          tile.water?.kind || '',
-          tile.water?.asset || '',
-          (tile.templateAssets || []).map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
-          Math.round(center.x * 10) / 10,
-          Math.round(center.y * 10) / 10,
-          Math.round(drawRect.x * 10) / 10,
-          Math.round(drawRect.y * 10) / 10,
-        ].join('|'))
+        .map(({ tile, center, drawRect }) => {
+          const coord = this.normalizeTileCoord(tile);
+          return [
+            coord.tileId,
+            tile.water?.kind || '',
+            tile.water?.asset || '',
+            (tile.templateAssets || []).map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
+            Math.round(center.x * 10) / 10,
+            Math.round(center.y * 10) / 10,
+            Math.round(drawRect.x * 10) / 10,
+            Math.round(drawRect.y * 10) / 10,
+          ].join('|');
+        })
         .join(';');
       return [
         options.kind || 'world',

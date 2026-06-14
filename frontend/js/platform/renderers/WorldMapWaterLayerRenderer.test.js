@@ -175,6 +175,65 @@ test('WorldMapWaterLayerRenderer delegates cache identity to WorldMapCachePolicy
   assert.equal(renderer.getWorldTileWaterChunkFrameCacheId({ chunkX: 2, chunkY: 3 }, 4), 'policy:2:3:4');
 });
 
+test('WorldMapWaterLayerRenderer fallback cache key uses stable coordinates instead of legacy tile id', () => {
+  const host = createHost();
+  const renderer = new WorldMapWaterLayerRenderer({ host });
+  const tileMapView = { signature: 'world-v1', version: 7, seed: 'seed' };
+  const viewport = { scale: 1.25 };
+  const frame = { x: 0, y: 0, width: 320, height: 240 };
+  const options = { frameIndex: 0, cacheScale: 2 };
+  const baseEntry = {
+    center: { x: 40, y: 24 },
+    drawRect: { x: 12, y: 18, width: 30, height: 40 },
+  };
+  const water = { kind: 'river', asset: 'water-river.png' };
+  const templateAssets = [{ key: 'river', asset: 'river-template.png', waterKind: 'river' }];
+  const fromXY = {
+    ...baseEntry,
+    tile: {
+      id: 'legacy-water-a',
+      tileId: 'legacy-tile-a',
+      x: 4,
+      y: -2,
+      q: 99,
+      r: 99,
+      water,
+      templateAssets,
+    },
+  };
+  const fromQR = {
+    ...baseEntry,
+    tile: {
+      id: 'legacy-water-b',
+      tileId: 'legacy-tile-b',
+      q: 4,
+      r: -2,
+      water,
+      templateAssets,
+    },
+  };
+  const moved = {
+    ...baseEntry,
+    tile: {
+      id: 'legacy-water-a',
+      tileId: 'legacy-tile-a',
+      x: 5,
+      y: -2,
+      q: 99,
+      r: 99,
+      water,
+      templateAssets,
+    },
+  };
+
+  const xyKey = renderer.getWorldTileWaterLayerCacheKey(tileMapView, viewport, frame, [fromXY], options);
+  const qrKey = renderer.getWorldTileWaterLayerCacheKey(tileMapView, viewport, frame, [fromQR], options);
+  const movedKey = renderer.getWorldTileWaterLayerCacheKey(tileMapView, viewport, frame, [moved], options);
+
+  assert.equal(qrKey, xyKey);
+  assert.notEqual(movedKey, xyKey);
+});
+
 test('WorldMapWaterLayerRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

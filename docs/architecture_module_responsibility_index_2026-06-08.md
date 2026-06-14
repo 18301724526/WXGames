@@ -1861,6 +1861,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - `new WorldMapWaterLayerRenderer({ host })`
 - `getWaterEntries(entries)`
+- `normalizeTileCoord(tile)`
 - `getWorldTileWaterChunkCacheKey(tileMapView, viewport, layout, waterEntries, options)`
 - `pruneWorldTileWaterChunkCaches(activeKeys)`
 - `getWorldTileWaterChunkFrameCacheId(layout, frameIndex)`
@@ -1889,6 +1890,7 @@ P0 新增公开 API / Public API Added During P0:
 - Fast-drag path reuses existing frame cache and skips repaint.
 - Chunk water caches store per-frame works and prune stale entries by active cache IDs.
 - Cache key/policy decisions delegate to `WorldMapCachePolicy` when available.
+- Fallback water cache identity uses stable `x/y` semantics, accepting legacy `q/r` while never using raw `tile.id` / `tileId` as cache authority.
 - Actual water pixel/texture drawing remains in `WorldTileWaterCanvasRenderer`; this module only calls `renderWorldTileWaterEntries()`.
 - No gameplay mutation, no asset discovery, no hit-target registration.
 
