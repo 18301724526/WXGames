@@ -115,6 +115,60 @@ test('CanvasActionController delegates tech tree drag and zoom to interaction mo
   ]);
 });
 
+test('CanvasActionController records input intent on action errors', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    inputId: 'wmi-error-21',
+    clientSequence: 21,
+  };
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type } : null;
+    },
+    summarizeInputIntent(intent) {
+      return intent ? { inputId: intent.inputId, clientSequence: intent.clientSequence } : null;
+    },
+    summarizeUiState() {
+      return {};
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+
+  try {
+    const syncController = new CanvasActionController({
+      host: {
+        forwardCanvasAction() {
+          throw new Error('sync boom');
+        },
+      },
+    });
+    assert.throws(
+      () => syncController.handle({ type: 'unknownSync' }, { inputIntent }),
+      /sync boom/,
+    );
+
+    const asyncController = new CanvasActionController({ host: {} });
+    asyncController.handle_asyncBoom = () => Promise.reject(new Error('async boom'));
+    await assert.rejects(
+      () => asyncController.handle({ type: 'asyncBoom' }, { inputIntent }),
+      /async boom/,
+    );
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const errorEvents = events.filter((event) => event[0] === 'action:error').map((event) => event[1]);
+  assert.equal(errorEvents.length, 2);
+  assert.deepEqual(errorEvents.map((event) => event.inputIntent), [
+    { inputId: 'wmi-error-21', clientSequence: 21 },
+    { inputId: 'wmi-error-21', clientSequence: 21 },
+  ]);
+});
+
 test('CanvasActionController defers tutorial enter-city action until the intro transition completes', () => {
   const calls = [];
   const game = {

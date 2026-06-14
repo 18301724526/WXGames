@@ -5108,7 +5108,7 @@ Regression:
 - `node --test frontend/js/state/UIStatePresenterDelegates.test.js frontend/js/state/UIStatePresenter.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/platform/CanvasActionController.js` - 226 lines
+### `frontend/js/platform/CanvasActionController.js` - 305 lines
 
 状态 / Status: candidate facade
 
@@ -5117,6 +5117,7 @@ Regression:
 - compatibility dispatch facade for historical `handle_*` action methods
 - shared host/state/controller lookup helpers used by installed action modules
 - shared panel closing, render routing, async finalization, action forwarding, and world-map refresh helpers
+- action begin/end/error operation-log evidence, including compact `WorldMapInputIntent` metadata when supplied
 - tech-tree drag/zoom delegation to `TechTreeInteractionModel`
 
 重要公开模式 / Important Public Pattern:
@@ -5145,7 +5146,7 @@ Regression:
 
 回归 / Regression:
 
-- `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/platform/renderers/CityPeopleCanvasRenderer.test.js`
+- `node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/CanvasFamousActionHandlers.test.js frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/platform/renderers/CityPeopleCanvasRenderer.test.js frontend/js/platform/interactions/TechTreeInteractionModel.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/CanvasGameRenderer.js` - 303 lines
@@ -5794,6 +5795,7 @@ Regression:
 - client request id, timeout, GET retry policy, and structured API errors
 - H5 load trace API spans
 - compact world-map `clientInputIntent` evidence forwarding for world-march commands, preserving `inputId` and `clientSequence`
+- compact `clientInput` evidence on local `api:request`, `api:response`, and `api:error` operation-log entries
 - best-effort frontend client event reporting to `/client-events`
 
 公开 API / Public API:
@@ -5812,7 +5814,7 @@ Regression:
 - `/version` requests must reuse server `ETag` with `If-None-Match` and handle 304 by returning the cached version snapshot.
 - Only safe methods such as GET/HEAD may auto-retry transient failures. POST action helpers must not auto-retry without an idempotency contract.
 - New request metadata must remain structured on thrown errors and H5 load trace spans.
-- World-map command evidence must pass through the compact allowlist summary before leaving the client.
+- World-map command evidence must pass through the compact allowlist summary before leaving the client or entering local request/error logs.
 - Client event reporting is best-effort telemetry. It may include auth headers when available, but it must swallow transport failures and return a failure object instead of blocking boot.
 
 回归 / Regression:

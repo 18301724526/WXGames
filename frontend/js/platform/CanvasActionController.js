@@ -244,6 +244,7 @@
           }).catch((error) => {
             global.ClientOperationLog?.record?.('action:error', {
               action: global.ClientOperationLog?.summarizeAction?.(action),
+              inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),
               message: error?.message || String(error || ''),
             }, { flush: true });
           });
@@ -260,6 +261,7 @@
       } catch (error) {
         global.ClientOperationLog?.record?.('action:error', {
           action: global.ClientOperationLog?.summarizeAction?.(action),
+          inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),
           message: error?.message || String(error || ''),
         }, { flush: true });
         throw error;

@@ -348,6 +348,79 @@ test('GameAPI aborts timed out requests with structured request metadata', async
   ]);
 });
 
+test('GameAPI records compact client input on request failures', async () => {
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    inputId: 'wmi-error-api-5',
+    clientSequence: 5,
+    target: { kind: 'tile', tileId: 'tile_4_-1', targetQ: 4, targetR: -1 },
+    rendererPayload: 'x'.repeat(2000),
+  };
+  const transportEvents = [];
+  const httpEvents = [];
+
+  const transportApi = new GameAPI('/api', null, {
+    timeoutMs: 0,
+    maxRetries: 0,
+    transport: {
+      async request() {
+        throw new Error('network down');
+      },
+    },
+  });
+
+  await assert.rejects(
+    withOperationLog({
+      record(type, detail) {
+        transportEvents.push([type, detail]);
+      },
+    }, () => transportApi.startWorldMarch({
+      targetQ: 4,
+      targetR: -1,
+      formationSlot: 1,
+      clientInputIntent: inputIntent,
+    })),
+    /network down/,
+  );
+
+  const httpApi = new GameAPI('/api', null, {
+    timeoutMs: 0,
+    maxRetries: 0,
+    transport: {
+      async request() {
+        return createResponse(409, { error: 'blocked', message: 'not allowed' });
+      },
+    },
+  });
+
+  await assert.rejects(
+    withOperationLog({
+      record(type, detail) {
+        httpEvents.push([type, detail]);
+      },
+    }, () => httpApi.startWorldMarch({
+      targetQ: 4,
+      targetR: -1,
+      formationSlot: 1,
+      clientInputIntent: inputIntent,
+    })),
+    /not allowed/,
+  );
+
+  const transportError = transportEvents.find((event) => event[0] === 'api:error')?.[1];
+  const httpError = httpEvents.find((event) => event[0] === 'api:error')?.[1];
+
+  assert.equal(transportError.clientInput.inputId, 'wmi-error-api-5');
+  assert.equal(transportError.clientInput.clientSequence, 5);
+  assert.equal(transportError.clientInput.target.tileId, 'tile_4_-1');
+  assert.equal(JSON.stringify(transportError.clientInput).includes('rendererPayload'), false);
+
+  assert.equal(httpError.clientInput.inputId, 'wmi-error-api-5');
+  assert.equal(httpError.clientInput.clientSequence, 5);
+  assert.equal(httpError.clientInput.target.tileId, 'tile_4_-1');
+  assert.equal(JSON.stringify(httpError.clientInput).includes('rendererPayload'), false);
+});
+
 test('GameAPI retries transient GET failures without retrying unsafe methods', async () => {
   const calls = [];
   const api = new GameAPI('/api', null, {
