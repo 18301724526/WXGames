@@ -143,6 +143,34 @@ test('WorldMapStaticEntryRenderer draws base, selection, feature, and site entri
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget'), true);
 });
 
+test('WorldMapStaticEntryRenderer derives site hit-target identity from stable coordinates', () => {
+  const host = createHost();
+  const renderer = new WorldMapStaticEntryRenderer({ host });
+  const entry = createEntry({
+    tile: {
+      id: 'legacy-site-id',
+      tileId: 'legacy-site-tile-id',
+      x: 5,
+      y: -2,
+      q: 99,
+      r: 99,
+      site: {
+        id: 'site_5_-2',
+        name: 'Stable Site',
+        art: 'site.png',
+        owner: 'neutral',
+      },
+    },
+  });
+
+  assert.equal(renderer.drawWorldTileSite(entry.tile, { scale: 1 }, {}, 192, 96, {}, { center: entry.center }), true);
+
+  const addHitTarget = host.calls.find((call) => call[0] === 'addHitTarget');
+  assert.equal(addHitTarget[2].type, 'openWorldSite');
+  assert.equal(addHitTarget[2].siteId, 'site_5_-2');
+  assert.equal(addHitTarget[2].tileId, 'tile_5_-2');
+});
+
 test('WorldMapStaticEntryRenderer uses dry template for water tiles and can suppress site hit targets', () => {
   const host = createHost();
   const renderer = new WorldMapStaticEntryRenderer({ host });

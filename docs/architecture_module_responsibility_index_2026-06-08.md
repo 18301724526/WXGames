@@ -1819,6 +1819,8 @@ P0 新增公开 API / Public API Added During P0:
 公开 API / Public API:
 
 - `new WorldMapStaticEntryRenderer({ host })`
+- `getTileMapGeometry()`
+- `normalizeTileCoord(tile)`
 - `getWorldTileImageAspect(assetPath)`
 - `drawWorldOverlayShadow(baseX, baseY, drawW, drawH, profile)`
 - `drawWorldOverlayAsset(assetPath, metrics, x, y, width, height, alpha)`
@@ -1833,6 +1835,7 @@ P0 新增公开 API / Public API Added During P0:
 - Tile/site layout, alpha metrics, assets, text, and hit-target writes are injected through host APIs.
 - Terrain feature randomness is deterministic through host `random01()`.
 - Static layer and static chunk cache renderers reuse this module through the same compatibility method.
+- Optional direct site hit-target registration uses stable `x/y` semantics, accepting legacy `q/r` while never using raw renderer `tile.id` / `tileId` as action authority.
 - No cache ownership, no gameplay mutation, no unit-frame ownership, no visibility decision, no asset discovery.
 
 扩展方式 / Extension Path:

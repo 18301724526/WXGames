@@ -30,6 +30,28 @@
       return this.host?.constructor?.getTileMapAssetManifest?.() || {};
     }
 
+    getTileMapGeometry() {
+      return this.host?.constructor?.getTileMapGeometry?.() || null;
+    }
+
+    normalizeTileCoord(tile = {}) {
+      const helper = this.getTileMapGeometry();
+      if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
+      const toInteger = (value, fallback = 0) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.floor(number) : fallback;
+      };
+      const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+      const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+      return {
+        x: q,
+        y: r,
+        q,
+        r,
+        tileId: `tile_${q}_${r}`,
+      };
+    }
+
     getWorldTileImageAspect(assetPath = '') {
       const metrics = this.analyzeAssetAlphaBounds(assetPath);
       return (metrics?.height || 1) / Math.max(1, metrics?.width || 1);
@@ -230,10 +252,11 @@
         align: 'center',
       });
       if (options.addHitTarget !== false) {
+        const coord = this.normalizeTileCoord(tile);
         this.addHitTarget(layout.hitRect, {
           type: 'openWorldSite',
           siteId: site.id,
-          tileId: tile.id,
+          tileId: coord.tileId,
           inputSurface: 'worldMap',
         });
       }
