@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
+const GameAPI = require('../../api/GameAPI');
 
 function createHost() {
   const calls = [];
@@ -167,6 +168,84 @@ test('CanvasActionController records input intent on action errors', async () =>
     { inputId: 'wmi-error-21', clientSequence: 21 },
     { inputId: 'wmi-error-21', clientSequence: 21 },
   ]);
+});
+
+test('CanvasActionController and GameAPI keep the same input id on failed world march', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    inputId: 'wmi-e2e-error-31',
+    clientSequence: 31,
+    target: { kind: 'tile', tileId: 'tile_5_-3', targetQ: 5, targetR: -3 },
+    picking: { inputEpoch: 31, signature: 'pick-31' },
+    rendererPayload: 'x'.repeat(2000),
+  };
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, targetQ: action.targetQ, targetR: action.targetR } : null;
+    },
+    summarizeInputIntent(intent) {
+      return intent ? { inputId: intent.inputId, clientSequence: intent.clientSequence } : null;
+    },
+    summarizeUiState() {
+      return {};
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+
+  const shell = {
+    territoryUiState: {},
+    api: new GameAPI('/api', 'token-a', {
+      timeoutMs: 0,
+      maxRetries: 0,
+      transport: {
+        async request() {
+          return {
+            ok: false,
+            status: 409,
+            headers: { get() { return ''; } },
+            async json() {
+              return { error: 'blocked', message: 'not allowed' };
+            },
+          };
+        },
+      },
+    }),
+    state: { activeCityId: 'capital' },
+    getCanvasGameHost() {
+      return { state: this.state, territoryUiState: this.territoryUiState };
+    },
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  };
+  const controller = new CanvasActionController({ host: shell, awaitAsync: true });
+
+  try {
+    await assert.rejects(
+      () => controller.handle({
+        type: 'startWorldMarch',
+        targetQ: 5,
+        targetR: -3,
+        formationSlot: 1,
+      }, { inputIntent }),
+      /not allowed/,
+    );
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const actionError = events.find((event) => event[0] === 'action:error')?.[1];
+  const apiError = events.find((event) => event[0] === 'api:error')?.[1];
+
+  assert.equal(actionError.inputIntent.inputId, 'wmi-e2e-error-31');
+  assert.equal(actionError.inputIntent.clientSequence, 31);
+  assert.equal(apiError.clientInput.inputId, 'wmi-e2e-error-31');
+  assert.equal(apiError.clientInput.clientSequence, 31);
+  assert.equal(apiError.clientInput.target.tileId, 'tile_5_-3');
+  assert.equal(JSON.stringify(apiError.clientInput).includes('rendererPayload'), false);
 });
 
 test('CanvasActionController defers tutorial enter-city action until the intro transition completes', () => {

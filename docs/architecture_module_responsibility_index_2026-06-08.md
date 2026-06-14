@@ -5118,6 +5118,7 @@ Regression:
 - shared host/state/controller lookup helpers used by installed action modules
 - shared panel closing, render routing, async finalization, action forwarding, and world-map refresh helpers
 - action begin/end/error operation-log evidence, including compact `WorldMapInputIntent` metadata when supplied
+- failed world-march action evidence continuity from action error logs to `GameAPI` error logs, keyed by the same `inputId` / `clientSequence`
 - tech-tree drag/zoom delegation to `TechTreeInteractionModel`
 
 重要公开模式 / Important Public Pattern:
