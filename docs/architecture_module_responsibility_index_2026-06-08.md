@@ -7306,6 +7306,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - compatibility delegation for `normalizeWorldTile()`
 - compatibility delegation for world-explorer mission/planned tile/planned site helpers
 - `TileCoord`-backed map merge keys and cache signatures for raw world tiles, planned tiles, territory sites, legacy scout routes/reveal areas, and scout-area coords
+- site view-state identity from normalized draw tiles: `view.sites[].tileId` must not reuse raw world tile `id` or territory `tileId` when stable `x/y` or legacy `q/r` exists
 
 重要公开方法 / Important Public Methods:
 

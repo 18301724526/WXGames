@@ -366,6 +366,42 @@ test('UIStatePresenter canonicalizes stable x/y world tile ids before map view m
   assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_3_-1');
 });
 
+test('UIStatePresenter derives world-site view tile ids from normalized tile coordinates', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'site-coordinate-seed',
+      tiles: [{
+        id: 'legacy-site-tile-id',
+        x: 5,
+        y: -2,
+        q: 77,
+        r: 77,
+        terrain: 'plains',
+        visibility: 'scouted',
+        siteId: 'site_5_-2',
+      }],
+    },
+    territories: [{
+      id: 'site_5_-2',
+      x: 5,
+      y: -2,
+      tileId: 'legacy-site-id',
+      type: 'town',
+      owner: 'neutral',
+      status: 'discovered',
+      naturalName: 'Coordinate Gate',
+    }],
+  };
+
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState);
+
+  assert.equal(view.tiles.some((tile) => tile.id === 'legacy-site-tile-id'), false);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_5_-2' && tile.siteId === 'site_5_-2'), true);
+  assert.equal(view.sites.some((site) => site.id === 'site_5_-2' && site.tileId === 'tile_5_-2'), true);
+  assert.equal(view.sites.some((site) => site.tileId === 'legacy-site-tile-id' || site.tileId === 'legacy-site-id'), false);
+});
+
 test('UIStatePresenter canonicalizes world tile-map signatures for stable x/y and legacy q/r shapes', () => {
   const stableShape = {
     worldMap: {
