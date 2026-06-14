@@ -49,6 +49,36 @@ test('WorldExplorerDtoMapper maps a mission into the public API shape', () => {
   assert.equal(dto.plannedSites[0].site.id, 'site_2_0');
 });
 
+test('WorldExplorerDtoMapper derives public tile identity from coordinates', () => {
+  const dto = DtoMapper.getMissionDto(createMission({
+    origin: { q: 0, r: 0, tileId: 'stale-origin-tile', cityId: 'capital' },
+    homeOrigin: { q: 0, r: 0, tileId: 'stale-home-tile', cityId: 'capital' },
+    target: { q: 2, r: -1, tileId: 'stale-target-tile' },
+    position: { q: 1, r: -1, tileId: 'stale-position-tile' },
+    route: [
+      { q: 1, r: -1, tileId: 'stale-route-tile', step: 1, revealed: true },
+      { q: 2, r: -1, tileId: 'stale-route-target', step: 2, revealed: false },
+    ],
+    plannedTiles: [{ id: 'stale-planned-tile', q: 2, r: -1, terrain: 'forest' }],
+    plannedSites: [{
+      tileId: 'stale-planned-site-tile',
+      q: 2,
+      r: -1,
+      siteId: 'site_2_-1',
+      materialized: false,
+      site: { id: 'site_2_-1', x: 2, y: -1, owner: 'neutral' },
+    }],
+  }), new Date('2026-06-06T00:00:12.000Z'));
+
+  assert.equal(dto.origin.tileId, 'tile_0_0');
+  assert.equal(dto.homeOrigin.tileId, 'tile_0_0');
+  assert.equal(dto.target.tileId, 'tile_2_-1');
+  assert.equal(dto.position.tileId, 'tile_1_-1');
+  assert.deepEqual(dto.route.map((step) => step.tileId), ['tile_1_-1', 'tile_2_-1']);
+  assert.deepEqual(dto.plannedTiles.map((tile) => tile.id), ['tile_2_-1']);
+  assert.deepEqual(dto.plannedSites.map((site) => site.tileId), ['tile_2_-1']);
+});
+
 test('WorldExplorerDtoMapper groups active and idle DTOs without retired ready reports', () => {
   const state = DtoMapper.getClientStateDto([
     createMission({ id: 'active-1', status: 'active' }),

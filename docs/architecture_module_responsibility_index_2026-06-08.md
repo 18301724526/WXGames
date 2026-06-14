@@ -4384,6 +4384,7 @@ Regression:
 
 - 后端 world explorer API DTO 输出形状 / API response DTO shape
 - 将 normalized mission 转成 public mission DTO
+- canonical public tile identity for coordinate-bearing DTO fields: origin, home origin, target, position, route steps, planned tiles, and planned sites derive ids from `q/r` or `x/y`; stale mission `tileId` / `id` cannot leak back to clients
 - Groups mission DTOs as `activeMission`, `idleMissions`, and `busyFormations`; the old ready-report bucket is not emitted.
 - Keeps current world-march client fields: `maxActiveMissions`, `maxManualRouteLength`, and `stepDurationSeconds`; retired random-route fields are not emitted.
 - 不推进任务、不写存档、不依赖 routes
@@ -4392,6 +4393,7 @@ Regression:
 
 - `WorldExplorerDtoMapper.getClientStateDto(missions, options)`
 - `WorldExplorerDtoMapper.getMissionDto(mission, now)`
+- `WorldExplorerDtoMapper.getCoordDto(source, fallback)`
 - `WorldExplorerDtoMapper.getBusyFormationDto(mission)`
 - `WorldExplorerDtoMapper.getRouteDto(route)`
 - `WorldExplorerDtoMapper.getPlannedTileDto(tile)`
@@ -4410,12 +4412,13 @@ Regression:
 扩展方式 / Extension Path:
 
 - 新 API 字段先加到 mapper，并同步 mapper tests、client state tests、本索引。
+- Coordinate-bearing public fields must pass through `getCoordDto()` / `normalizeCoord()` instead of cloning raw mission objects.
 - 新服务流程仍由 `WorldExplorerClientState` 或 service/action modules 调用；mapper 只做 shape。
 - 不要在 route 里手写 world explorer response shape。
 
 回归 / Regression:
 
-- `node --test backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js`
+- `node --test backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/worldExplorer/WorldExplorerClientState.js`

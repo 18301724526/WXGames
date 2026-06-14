@@ -11,10 +11,30 @@ const {
 function normalizeCoord(source = {}, fallback = {}) {
   const q = toInteger(source?.q ?? source?.x, fallback.q ?? 0);
   const r = toInteger(source?.r ?? source?.y, fallback.r ?? 0);
+  const hasCoordinate = source?.q !== undefined
+    || source?.x !== undefined
+    || source?.r !== undefined
+    || source?.y !== undefined
+    || fallback.q !== undefined
+    || fallback.x !== undefined
+    || fallback.r !== undefined
+    || fallback.y !== undefined;
   return {
     q,
     r,
-    tileId: source?.tileId || WorldMapService.getTileId(q, r),
+    tileId: hasCoordinate
+      ? WorldMapService.getTileId(q, r)
+      : (source?.tileId || WorldMapService.getTileId(q, r)),
+  };
+}
+
+function getCoordDto(source = {}, fallback = {}) {
+  const coord = normalizeCoord(source, fallback);
+  return {
+    ...(clone(source || {}) || {}),
+    q: coord.q,
+    r: coord.r,
+    tileId: coord.tileId,
   };
 }
 
@@ -33,14 +53,23 @@ function getRouteDto(route = []) {
 }
 
 function getPlannedTileDto(tile = {}) {
-  return clone(tile || {});
+  const coord = normalizeCoord(tile);
+  const dto = {
+    ...(clone(tile || {}) || {}),
+    id: coord.tileId,
+    q: coord.q,
+    r: coord.r,
+  };
+  if (Object.prototype.hasOwnProperty.call(dto, 'tileId')) dto.tileId = coord.tileId;
+  return dto;
 }
 
 function getPlannedSiteDto(site = {}) {
+  const coord = normalizeCoord(site);
   return {
-    tileId: site.tileId,
-    q: toInteger(site.q, 0),
-    r: toInteger(site.r, 0),
+    tileId: coord.tileId,
+    q: coord.q,
+    r: coord.r,
     siteId: site.siteId,
     materialized: Boolean(site.materialized),
     revealedAt: site.revealedAt || null,
@@ -70,9 +99,9 @@ function getMissionDto(mission = {}, now = new Date()) {
     kind: mission.kind || 'worldExplore',
     mode: mission.mode,
     status: mission.status,
-    origin: clone(mission.origin || {}),
-    homeOrigin: clone(mission.homeOrigin || mission.origin || {}),
-    target: clone(mission.target || {}),
+    origin: getCoordDto(mission.origin || {}),
+    homeOrigin: getCoordDto(mission.homeOrigin || mission.origin || {}, mission.origin || {}),
+    target: getCoordDto(mission.target || {}, position),
     route,
     plannedTiles: (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).map(getPlannedTileDto),
     plannedSites: (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).map(getPlannedSiteDto),
@@ -119,6 +148,7 @@ function getClientStateDto(missions = [], options = {}) {
 module.exports = {
   getBusyFormationDto,
   getClientStateDto,
+  getCoordDto,
   getMissionDto,
   getPlannedSiteDto,
   getPlannedTileDto,
