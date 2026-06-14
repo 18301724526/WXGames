@@ -722,6 +722,7 @@ test('territory scout results module owns scout outcomes reports and generated s
       ensureWorldMap: () => ({
         seed: 'seed',
         tiles: [
+          { id: 'tile_2_0', q: 99, r: 99, terrain: 'mountain' },
           { id: 'tile_2_0', q: 2, r: 0, terrain: 'plains' },
           { id: 'tile_3_0', q: 3, r: 0, terrain: 'forest' },
         ],
@@ -803,6 +804,7 @@ test('territory scout results module owns scout outcomes reports and generated s
   const emptyReport = Results.createEmptyScoutReport(gameState, mission, now);
   assert.equal(emptyReport.normalized, true);
   assert.equal(emptyReport.tileId, 'tile_2_0');
+  assert.equal(emptyReport.mapTerrain, 'plains');
   assert.equal(emptyReport.revealArea.length, 2);
   assert.equal(emptyReport.revealArea[0].tileId, 'tile_2_0');
   assert.deepEqual(emptyReport.revealArea.map((coord) => coord.tileId), ['tile_2_0', 'tile_3_0']);

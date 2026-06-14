@@ -55,7 +55,7 @@ function createTerritoryScoutResults(dependencies = {}) {
     const y = toInteger(options.y, resolved.y);
     const worldMap = WorldMapService.ensureWorldMap(gameState, now);
     const tileId = WorldMapService.getTileId(x, y);
-    const tile = (worldMap.tiles || []).find((item) => item.id === tileId || (item.q === x && item.r === y)) || null;
+    const tile = (worldMap.tiles || []).find((item) => item.q === x && item.r === y) || null;
     const mapTerrain = normalizeMapTerrainId(options.mapTerrain)
       || normalizeMapTerrainId(tile?.terrain)
       || WorldMapService.chooseTerrain(worldMap.seed, x, y);

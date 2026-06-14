@@ -3381,6 +3381,7 @@ Regression:
 - generated site template selection and report text
 - first consumer of `ServerRandomAuthorityContract` for backend-authoritative scout outcome/template rolls
 - coordinate-authoritative report generation: generated scout report reveal-area snapshots derive `tileId` from `q/r`; stale mission reveal-area `tileId` cannot leave this module as report facts
+- coordinate-authoritative report tile snapshot terrain lookup: generated scout report map terrain reads world-map tiles by `q/r`, not by stale or colliding tile `id`
 
 公开 API / Public API:
 
