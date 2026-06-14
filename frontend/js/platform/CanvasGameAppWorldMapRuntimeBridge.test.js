@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const CanvasGameAppWorldMapRuntimeBridge = require('./CanvasGameAppWorldMapRuntimeBridge');
+const CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
 const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
 
 test('CanvasGameAppWorldMapRuntimeBridge installs world map methods on app prototype', () => {
@@ -192,4 +193,43 @@ test('CanvasGameAppWorldMapRuntimeBridge keeps actor anchor on the dragged map s
       WorldMarchGeometry.getTileScreenCenter({ q: 0, r: 0 }, snapshotContext.viewport, snapshotContext.geometry),
     ],
   ]);
+});
+
+test('CanvasGameAppWorldMapRuntimeBridge observes async action failures without changing the rejection', async () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppInputRouter.install(App);
+
+  const errors = [];
+  const app = new App();
+  app.useWorldMapRuntime = true;
+  app.state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0 }] } },
+  };
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.renderer = {
+    renderWorldMapLayer() {},
+  };
+  app.presenter = {};
+  app.actionController = {
+    handle() {
+      return Promise.reject(new Error('bridge action failed'));
+    },
+  };
+  app.advanceTutorialIntro = () => {};
+  app.log = (error) => errors.push(error?.message || String(error || ''));
+  app.now = () => 1;
+
+  const coordinator = app.ensureWorldMapRuntimeCoordinator();
+  const handled = coordinator.onAction({ type: 'selectWorldMarchTarget' }, null, {});
+
+  await assert.rejects(
+    () => handled,
+    /bridge action failed/,
+  );
+  assert.deepEqual(errors, ['bridge action failed']);
 });

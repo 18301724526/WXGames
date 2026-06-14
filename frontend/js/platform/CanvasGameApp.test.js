@@ -357,3 +357,44 @@ test('CanvasGameApp does not dispatch renderer background world-map taps when ru
     ['runtimeTap', 195, 498.58],
   ]);
 });
+
+test('CanvasGameApp observes async world-map runtime tap failures for diagnostics', async () => {
+  const errors = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+    log(error) {
+      errors.push(error?.message || String(error || ''));
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'worldMapDrag', background: true };
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return Promise.reject(new Error('app runtime tap failed'));
+    },
+    getMapRuntime() {
+      return null;
+    },
+  });
+
+  const handled = app.handleTap({ x: 200, y: 360 });
+  await assert.rejects(
+    () => handled,
+    /app runtime tap failed/,
+  );
+
+  assert.deepEqual(errors, ['app runtime tap failed']);
+});

@@ -103,6 +103,13 @@
             return true;
           },
 
+      observeAsyncActionResult(result) {
+            if (result && typeof result.then === 'function') {
+              result.catch((error) => this.log?.(error));
+            }
+            return result;
+          },
+
       async handleTap(point) {
             const action = this.renderer.getHitTarget(point);
             if (action?.type === 'blockCanvasModal') {
@@ -111,6 +118,7 @@
             if (action?.disabled) return true;
             if (shouldRouteTapThroughWorldMapRuntime(action)) {
               const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
+              this.observeAsyncActionResult(handled);
               this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
               if (handled) return handled;
               return handled;
@@ -140,7 +148,7 @@
             if (handled && typeof handled.then === 'function') {
               handled.then((value) => {
                 if (value !== false) this.advanceTutorialIntro(action);
-              });
+              }).catch((error) => this.log?.(error));
               return true;
             }
             return handled ? this.advanceTutorialIntro(action) : false;
