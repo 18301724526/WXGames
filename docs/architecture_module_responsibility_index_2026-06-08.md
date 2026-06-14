@@ -275,6 +275,34 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasLayerRegistry.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/platform/CanvasGameShellCommands.js` - 433 lines
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- shell command helpers installed onto `CanvasGameShell`
+- local shell state transitions for city, tech, famous, resource, and map-home commands
+- `forwardCanvasAction(action, meta)` external action forwarding
+- forwarded action local selection sync through `syncForwardedLocalAction()`
+- causality metadata preservation when forwarding action meta, including `WorldMapInputIntent.inputId` and `clientSequence`
+
+公开 API / Public API:
+
+- `CanvasGameShellCommands.install(CanvasGameShell)`
+- installed shell methods including `getCanvasGameHost()`, `getCanvasActionState()`, `runAction()`, `openCityManagement()`, `openArmyFormation()`, `resetLocalViewToResources()`, `forwardCanvasAction()`, `syncForwardedLocalAction()`, and `closeWorldSiteHud()`
+
+扩展方式 / Extension Path:
+
+- New shell-local command state transitions extend this module with focused tests.
+- Action dispatch policy and handler-specific gameplay commands stay in `CanvasActionController` and focused action handler modules.
+- Forwarded action metadata must keep the original `meta` object through the external `onAction(action, event, meta)` boundary; do not drop diagnostic input evidence at the shell edge.
+
+回归 / Regression:
+
+- `node --test frontend/js/platform/CanvasGameShell.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/platform/H5CanvasRuntime.js`
 
 状态 / Status: candidate

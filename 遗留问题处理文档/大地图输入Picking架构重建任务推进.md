@@ -56,7 +56,7 @@
 - 新增纯 domain 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
 - 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录稳定 `inputId`、单调 `clientSequence`、HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
 - input intent 只允许保存可序列化小对象；不得包含 renderer/context 原对象、浏览器 event、完整 tiles、完整 targets 或大 payload。
-- `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`。
+- `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`；H5 shell 的 `CanvasGameShellCommands.forwardCanvasAction()` 继续把同一份 `meta` 传给外部 `onAction`，不能在转发边界吞掉 `inputIntent`。
 - `ClientOperationLog` 在 `worldMap:tapHit`、`worldMap:backgroundTarget`、`action:begin`、`action:end` 记录 input intent 摘要，用于本地导出日志与后端请求日志对账。
 - 当前阶段仍不把 input intent 直接发给服务器；它是后续多人同步、服务端权威校验、回放诊断和反作弊审计的输入事实边界。
 

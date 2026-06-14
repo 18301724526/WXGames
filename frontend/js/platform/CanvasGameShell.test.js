@@ -1498,6 +1498,41 @@ test('CanvasGameShell keeps local world site selection after forwarded open acti
   ]);
 });
 
+test('CanvasGameShell preserves action meta when forwarding canvas actions', () => {
+  const calls = [];
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    inputId: 'wmi-forward-17',
+    clientSequence: 17,
+  };
+  const event = { type: 'tap' };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    onAction(action, forwardedEvent, meta) {
+      calls.push({
+        actionType: action.type,
+        eventType: forwardedEvent?.type || '',
+        inputId: meta?.inputIntent?.inputId || '',
+        clientSequence: meta?.inputIntent?.clientSequence || 0,
+      });
+      return true;
+    },
+  });
+
+  assert.equal(shell.forwardCanvasAction(
+    { type: 'selectWorldMarchTarget', targetQ: 1, targetR: -1 },
+    { event, inputIntent },
+  ), true);
+
+  assert.deepEqual(calls, [{
+    actionType: 'selectWorldMarchTarget',
+    eventType: 'tap',
+    inputId: 'wmi-forward-17',
+    clientSequence: 17,
+  }]);
+});
+
 test('CanvasGameShell syncs local world site selection after handled open action', () => {
   const calls = [];
   const shell = new CanvasGameShell({
