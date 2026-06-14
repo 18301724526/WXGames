@@ -506,6 +506,103 @@ test('CanvasGameApp records compat async runtime routing as compact promise stat
   assert.equal(runtimeEvent.runtimeHandled, 'promise');
 });
 
+test('CanvasGameApp records compat tap misses into local operation log', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget() {
+      return null;
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return false;
+    },
+    getMapRuntime() {
+      return null;
+    },
+  });
+
+  try {
+    assert.equal(await app.handleTap({ x: 80, y: 90 }), false);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  assert.equal(events.some((event) => event[0] === 'input:tapHit'), true);
+  const missEvent = events.find((event) => event[0] === 'input:tapMiss')?.[1];
+  assert.equal(missEvent.runtimeHandled, false);
+});
+
+test('CanvasGameApp records compat disabled taps into local operation log', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, disabled: Boolean(action.disabled) } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'openWorldSite', siteId: 'capital', disabled: true };
+    },
+  };
+
+  try {
+    assert.equal(await app.handleTap({ x: 80, y: 90 }), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  assert.equal(events.some((event) => event[0] === 'input:tapHit'), true);
+  const disabledEvent = events.find((event) => event[0] === 'input:tapDisabled')?.[1];
+  assert.equal(disabledEvent.action.type, 'openWorldSite');
+  assert.equal(disabledEvent.action.disabled, true);
+});
+
 test('CanvasGameApp records compat non-runtime tap actions into local operation log', async () => {
   const previous = global.ClientOperationLog;
   const events = [];
