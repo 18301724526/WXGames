@@ -69,6 +69,10 @@
       schema: String(intent.schema || '').slice(0, 80),
       kind: String(intent.kind || '').slice(0, 32),
       source: String(intent.source || '').slice(0, 80),
+      inputId: String(intent.inputId || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 64) || undefined,
+      clientSequence: intent.clientSequence === undefined
+        ? undefined
+        : Math.max(0, Math.floor(toNumber(intent.clientSequence, 0))),
       points: {
         physical: summarizePoint(points.physical),
         layer: summarizePoint(points.layer),

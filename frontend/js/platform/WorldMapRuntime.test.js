@@ -281,6 +281,8 @@ test('WorldMapRuntime emits a serializable input intent for routed taps', () => 
     assert.equal(calls[0].action.type, 'openWorldSite');
     assert.equal(intent.schema, 'world-map-input-intent-v1');
     assert.equal(intent.kind, 'tap');
+    assert.equal(intent.clientSequence, 1);
+    assert.match(intent.inputId, /^wmi_1_[a-z0-9]+$/);
     assert.deepEqual(intent.points.physical, { x: 170, y: 160 });
     assert.deepEqual(intent.points.layer, { x: 180, y: 180 });
     assert.equal(intent.action.type, 'openWorldSite');
@@ -296,6 +298,41 @@ test('WorldMapRuntime emits a serializable input intent for routed taps', () => 
   } finally {
     global.ClientOperationLog = previousLog;
   }
+});
+
+test('WorldMapRuntime assigns monotonic input ids across routed taps', () => {
+  const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const context = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: { originX: 180, originY: 220, panX: 0, panY: 0, scale: 1 },
+    tileMapView: {
+      version: 1,
+      seed: 'seed',
+      geometry,
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
+      ],
+    },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: { renderWorldMapLayer() {}, lastWorldTileMapContext: context },
+    presenter: {},
+    onAction(action, event, meta) {
+      calls.push(meta.inputIntent);
+      return true;
+    },
+  });
+  runtime.lastTileMapContext = context;
+
+  assert.equal(runtime.handleTap({ x: 180, y: 220 }), true);
+  assert.equal(runtime.handleTap({ x: 276, y: 268 }), true);
+
+  assert.equal(calls[0].clientSequence, 1);
+  assert.equal(calls[1].clientSequence, 2);
+  assert.notEqual(calls[0].inputId, calls[1].inputId);
 });
 
 test('WorldMapRuntime advances input epoch only when picking context changes', () => {

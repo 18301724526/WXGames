@@ -77,6 +77,10 @@ function summarizeClientInput(input = null) {
     schema: String(input.schema || '').slice(0, 80),
     kind: String(input.kind || '').slice(0, 32),
     source: String(input.source || '').slice(0, 80),
+    inputId: String(input.inputId || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 64) || undefined,
+    clientSequence: input.clientSequence === undefined
+      ? undefined
+      : Math.max(0, Math.floor(toNumber(input.clientSequence, 0))),
     points: {
       physical: summarizePoint(points.physical),
       layer: summarizePoint(points.layer),

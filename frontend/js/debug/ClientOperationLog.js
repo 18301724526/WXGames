@@ -196,6 +196,8 @@
       schema: intent.schema || '',
       kind: intent.kind || '',
       source: intent.source || '',
+      inputId: intent.inputId || '',
+      clientSequence: intent.clientSequence,
       points: intent.points || {},
       action: summarizeAction(intent.action),
       target: intent.target || {},

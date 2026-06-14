@@ -4289,6 +4289,7 @@ Regression:
 - backend-authoritative command envelope for accepted and rejected player intent
 - stable command metadata shape: `schema`, `status`, `commandId`, `serverTime`, `command`, `authority`, `timeline`, `aoi`, `rejection`
 - explicit frontend role declaration: frontend sends intent only; server owns validation, timeline, final coordinates, combat/occupation result, and AOI sync
+- compact `command.clientInput` evidence preservation, including `WorldMapInputIntent.inputId` and `clientSequence` for replay correlation
 - attaching the authority envelope to legacy action results without changing legacy `success`, `message`, `mission`, or `tutorial` fields
 
 公开 API / Public API:
@@ -4309,6 +4310,7 @@ Regression:
 
 - New command classes extend the envelope through `command` metadata or optional sibling payloads, not by changing legacy action result fields.
 - New rejection reasons stay structured under `rejection`.
+- New client-input evidence fields must remain compact diagnostics under `command.clientInput`; they must not become gameplay authority.
 - Do not add gameplay simulation, transport delivery, or frontend interpolation logic here.
 
 回归 / Regression:
@@ -5763,6 +5765,7 @@ Regression:
 - auth header and trace headers
 - client request id, timeout, GET retry policy, and structured API errors
 - H5 load trace API spans
+- compact world-map `clientInputIntent` evidence forwarding for world-march commands, preserving `inputId` and `clientSequence`
 - best-effort frontend client event reporting to `/client-events`
 
 公开 API / Public API:
@@ -5781,6 +5784,7 @@ Regression:
 - `/version` requests must reuse server `ETag` with `If-None-Match` and handle 304 by returning the cached version snapshot.
 - Only safe methods such as GET/HEAD may auto-retry transient failures. POST action helpers must not auto-retry without an idempotency contract.
 - New request metadata must remain structured on thrown errors and H5 load trace spans.
+- World-map command evidence must pass through the compact allowlist summary before leaving the client.
 - Client event reporting is best-effort telemetry. It may include auth headers when available, but it must swallow transport failures and return a failure object instead of blocking boot.
 
 回归 / Regression:
@@ -6637,7 +6641,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Register compatibility static delegates in `UIStatePresenterDelegates`.
 - Do not add method bodies back into this facade.
 
-### `frontend/js/platform/WorldMapRuntime.js` - 423 lines
+### `frontend/js/platform/WorldMapRuntime.js` - 557 lines
 
 状态 / Status: candidate facade
 
@@ -6649,6 +6653,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - hit target sync
 - render requests
 - world-map input action map integration
+- monotonic world-map input sequence assignment before delegating compact intent creation to `WorldMapInputIntent`
 - HUD-to-world-layer point conversion for background/fog march target inference; this adds physical layer padding and removes temporary drag-layer transform before calling `WorldMapInputActionMap`
 - bake policy delegation through `WorldMapRuntimeBakePolicy`
 - camera policy delegation through `WorldMapRuntimeCameraPolicy`
@@ -6685,11 +6690,12 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Add pure camera/drag calculations through `WorldMapRuntimeCameraPolicy`.
 - Add render-flow side effects through `WorldMapRuntimeRenderPipeline`.
 - Add new world-map input mapping through `WorldMapInputActionMap`.
+- Add compact input evidence shape and id derivation through `WorldMapInputIntent`; runtime should only hold the per-runtime monotonic input sequence.
 - Add pure world-map input geometry through `WorldMapRuntimeInputPolicy`.
 - Add pure hit-target collection and snapshot replacement rules through `WorldMapRuntimeHitTargetPolicy`.
 - Add map-bake signature or dirty-check changes through `WorldMapRuntimeBakePolicy`.
 - Add pure render context, throttle, renderer option, and trace payload changes through `WorldMapRuntimeRenderPolicy`.
-- Do not add gameplay simulation or rendering details.
+- Do not add gameplay simulation, rendering details, or new diagnostic payload schemas.
 
 ### `frontend/js/state/presenters/WorldTileMapPresenter.js` - 319 lines
 
@@ -6851,3 +6857,4 @@ Recommended first split sequence:
 | 2026-06-12 | Added P12-006 production security evidence and guarded rotation mechanisms: `scripts/verify-production-security-config.js`, `npm run security:production`, `scripts/rotate-production-secrets.sh`, and focused tests now validate redacted secret strength evidence, independent ops JWT, `OPS_SESSION_VERSION` rotation, explicit admin/CORS/config gate posture, server/deploy credential ownership, Git remote password hygiene, and repository blocking for local secret text files. |
 | 2026-06-12 | Added P12-009 minimum external ops-agent: `backend/ops-agent/*`, `scripts/install-ops-agent-pm2.sh`, deploy auto-restart for an existing `wxgame-ops-agent`, and `/tools/ops-console.html` Agent panel provide a localhost-bound, ops-authenticated, fixed-PM2-app hard stop/start/restart control plane with audit records. |
 | 2026-06-12 | Split multiplayer runtime sync into gateway plus local soft services: `server.js` no longer owns active-player world ticks, `backend/world-worker.js` runs `WorldWorkerService` as PM2 app `wxgame-world-worker`, `PresenceService` absorbs heartbeat-scale online state with persistence throttling, `AuthService` caches player-existence checks for heartbeat bursts, and `scripts/loadtest-bot-heartbeat.js` provides controlled BOT login/heartbeat load-test evidence with an 80% utilization target. |
+| 2026-06-14 | Added stable world-map input correlation identity: `WorldMapInputIntent` now preserves or derives compact `inputId`, `WorldMapRuntime` assigns monotonic `clientSequence`, `GameAPI` and `CommandAuthorityContract` keep those fields in compact evidence, and `CommandReplayCorrelation` matches request id, input id, compact client input, and authority command id. |

@@ -135,6 +135,7 @@
       this.lastMapDataSignature = '';
       this.lastTileMapContext = null;
       this.inputEpoch = 0;
+      this.inputSequence = 0;
       this.lastPickingSignature = '';
       this.pickingSnapshot = null;
       this.lastInputIntent = null;
@@ -476,8 +477,10 @@
 
     createTapIntent(point = {}, action = null, options = {}) {
       if (!WorldMapInputIntent?.createTapIntent) return null;
+      this.inputSequence += 1;
       return WorldMapInputIntent.createTapIntent({
         source: 'worldMapRuntime',
+        clientSequence: this.inputSequence,
         physicalPoint: point,
         layerPoint: options.layerPoint || this.getLayerPointFromHudPoint(point),
         action,

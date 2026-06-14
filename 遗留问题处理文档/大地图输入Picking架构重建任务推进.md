@@ -54,7 +54,7 @@
 ### 第四阶段：输入意图契约
 
 - 新增纯 domain 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
-- 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录 HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
+- 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录稳定 `inputId`、单调 `clientSequence`、HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
 - input intent 只允许保存可序列化小对象；不得包含 renderer/context 原对象、浏览器 event、完整 tiles、完整 targets 或大 payload。
 - `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`。
 - `ClientOperationLog` 在 `worldMap:tapHit`、`worldMap:backgroundTarget`、`action:begin`、`action:end` 记录 input intent 摘要，用于本地导出日志与后端请求日志对账。
@@ -72,6 +72,7 @@
 ### 第六阶段：可回放诊断对账
 
 - 新增 `CommandReplayCorrelation`，产出 `command-replay-correlation-v1`，只负责把前端导出的 `ClientOperationLog`、后端 `api_logs.operationLog`、`X-Client-Request-ID` 与 `CommandAuthorityContract` 的 `commandId/status` 串成可对账摘要。
+- 回放对账必须同时匹配 `requestId`、`WorldMapInputIntent.inputId`、compact `clientInput` 与 `authority.commandId`；不能在高频点击或多人同步排查里退化为按时间猜测。
 - `GameAPI` 的本地 `api:request` 记录 compact `clientInput`，`api:response` 记录 compact authority command metadata；这不增加自动上传，也不改变业务请求权威。
 - `LogService` 的 `operationLog.authority` 只保存 compact commandId/status/command/clientInput/rejection，不保存 timeline/AOI/完整 response，避免日志膨胀和泄露 renderer payload。
 - 该阶段用于复盘一次 world-map tap -> action -> API request -> server authority result 的证据链；服务端路线、停止点、timeline、AOI 和接受/拒绝仍只由服务器当前状态计算。

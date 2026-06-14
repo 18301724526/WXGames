@@ -30,6 +30,46 @@
     return String(value).slice(0, maxLength);
   }
 
+  function sanitizeInputId(value) {
+    const text = copyString(value, 80);
+    if (!text) return '';
+    return text.replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 64);
+  }
+
+  function stableHash(value = '') {
+    const text = String(value || '');
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function normalizeClientSequence(value, fallback = 0) {
+    const sequence = toInteger(value, fallback);
+    return Number.isFinite(sequence) && sequence > 0 ? sequence : undefined;
+  }
+
+  function createInputId(options = {}) {
+    const explicit = sanitizeInputId(options.inputId);
+    if (explicit) return explicit;
+    const sequence = normalizeClientSequence(options.clientSequence, 0) || 0;
+    const action = summarizeAction(options.action || null);
+    const picking = summarizePicking(options.pickingSnapshot || null);
+    const physical = summarizePoint(options.physicalPoint || options.point || {});
+    const layer = summarizePoint(options.layerPoint || options.physicalPoint || options.point || {});
+    const hash = stableHash(JSON.stringify({
+      source: options.source || 'worldMapRuntime',
+      sequence,
+      action,
+      picking,
+      physical,
+      layer,
+    }));
+    return `wmi_${sequence || 'na'}_${hash}`.slice(0, 64);
+  }
+
   function summarizeAction(action = null) {
     if (!action || typeof action !== 'object' || !action.type) return null;
     const summary = { type: String(action.type).slice(0, 80) };
@@ -160,10 +200,16 @@
   function createTapIntent(options = {}) {
     const action = summarizeAction(options.action || null);
     const context = options.context || {};
+    const clientSequence = normalizeClientSequence(options.clientSequence, 0);
     const intent = {
       schema: SCHEMA,
       kind: 'tap',
       source: copyString(options.source, 80) || 'worldMapRuntime',
+      inputId: createInputId({
+        ...options,
+        action,
+      }),
+      clientSequence,
       points: {
         physical: summarizePoint(options.physicalPoint || options.point || {}),
         layer: summarizePoint(options.layerPoint || options.physicalPoint || options.point || {}),
@@ -202,6 +248,8 @@
       schema: intent.schema || SCHEMA,
       kind: intent.kind || 'tap',
       source: copyString(intent.source, 80) || 'worldMapRuntime',
+      inputId: sanitizeInputId(intent.inputId),
+      clientSequence: normalizeClientSequence(intent.clientSequence, 0),
       points: intent.points || {},
       action: intent.action || null,
       target: intent.target || { kind: 'none' },

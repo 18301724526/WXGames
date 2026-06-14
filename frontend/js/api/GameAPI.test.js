@@ -133,6 +133,8 @@ test('GameAPI sends compact client input intent evidence for world march command
   const inputIntent = {
     schema: 'world-map-input-intent-v1',
     kind: 'tap',
+    inputId: 'wmi-run-a-9',
+    clientSequence: 9,
     points: { physical: { x: 1, y: 2 }, layer: { x: 101, y: 202 } },
     action: { type: 'startWorldMarch', targetQ: 3, targetR: -2, rendererPayload: 'x'.repeat(2000) },
     target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
@@ -151,6 +153,8 @@ test('GameAPI sends compact client input intent evidence for world march command
 
   assert.equal(calls[0].action, 'startWorldMarch');
   assert.equal(calls[0].clientInputIntent.schema, 'world-map-input-intent-v1');
+  assert.equal(calls[0].clientInputIntent.inputId, 'wmi-run-a-9');
+  assert.equal(calls[0].clientInputIntent.clientSequence, 9);
   assert.equal(calls[0].clientInputIntent.target.tileId, 'tile_3_-2');
   assert.equal(calls[0].clientInputIntent.picking.inputEpoch, 9);
   assert.equal(JSON.stringify(calls[0].clientInputIntent).includes('tileMapView'), false);
@@ -183,6 +187,8 @@ test('GameAPI records replay correlation evidence in local operation logs', asyn
   const inputIntent = {
     schema: 'world-map-input-intent-v1',
     kind: 'tap',
+    inputId: 'wmi-run-a-9',
+    clientSequence: 9,
     target: { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 },
     picking: { inputEpoch: 9, signature: 'sig-9' },
     rendererCache: { targets: Array.from({ length: 100 }, (_, index) => ({ index })) },
@@ -205,6 +211,8 @@ test('GameAPI records replay correlation evidence in local operation logs', asyn
 
   assert.equal(requestEvent.requestId, 'api-1');
   assert.equal(requestEvent.clientInput.schema, 'world-map-input-intent-v1');
+  assert.equal(requestEvent.clientInput.inputId, 'wmi-run-a-9');
+  assert.equal(requestEvent.clientInput.clientSequence, 9);
   assert.equal(requestEvent.clientInput.target.tileId, 'tile_3_-2');
   assert.equal(JSON.stringify(requestEvent.clientInput).includes('rendererCache'), false);
   assert.equal(responseEvent.payload.authority.commandId, 'cmd_abc123');

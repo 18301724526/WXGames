@@ -10,6 +10,8 @@ function createClientInputIntent() {
     schema: 'world-map-input-intent-v1',
     kind: 'tap',
     source: 'worldMapRuntime',
+    inputId: 'wmi-run-a-11',
+    clientSequence: 11,
     points: {
       physical: { x: 120, y: 240 },
       layer: { x: 320, y: 440 },
@@ -106,9 +108,12 @@ test('CommandReplayCorrelation reconstructs a world-map command evidence chain',
   assert.equal(summary.authority.commandId, authority.commandId);
   assert.equal(summary.authority.status, 'accepted');
   assert.equal(summary.clientInput.picking.signature, 'pick-sig-11');
+  assert.equal(summary.clientInput.inputId, 'wmi-run-a-11');
+  assert.equal(summary.clientInput.clientSequence, 11);
   assert.equal(summary.clientInput.target.tileId, 'tile_3_-2');
   assert.equal(summary.matches.requestId, true);
   assert.equal(summary.matches.clientInput, true);
+  assert.equal(summary.matches.inputId, true);
   assert.equal(summary.matches.authorityCommand, true);
   assert.equal(JSON.stringify(summary).includes('rendererCache'), false);
   assert.ok(JSON.stringify(summary).length < 4000);

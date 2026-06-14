@@ -148,6 +148,8 @@ test('CommandAuthorityContract preserves only compact client input evidence', ()
     clientInputIntent: {
       schema: 'world-map-input-intent-v1',
       kind: 'tap',
+      inputId: 'wmi-run-a-7',
+      clientSequence: 7,
       points: {
         physical: { x: 12, y: 34 },
         layer: { x: 112, y: 234 },
@@ -168,6 +170,8 @@ test('CommandAuthorityContract preserves only compact client input evidence', ()
   const evidenceText = JSON.stringify(accepted.command.clientInput);
 
   assert.equal(accepted.command.clientInput.schema, 'world-map-input-intent-v1');
+  assert.equal(accepted.command.clientInput.inputId, 'wmi-run-a-7');
+  assert.equal(accepted.command.clientInput.clientSequence, 7);
   assert.equal(accepted.command.clientInput.target.tileId, 'tile_4_-2');
   assert.equal(accepted.command.clientInput.picking.inputEpoch, 7);
   assert.equal(evidenceText.includes('tileMapView'), false);

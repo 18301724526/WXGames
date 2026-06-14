@@ -107,6 +107,11 @@ function clientInputMatches(primary, ...others) {
     .some((candidate) => stableJson(summarizeClientInput(candidate) || candidate) === reference);
 }
 
+function getClientInputId(input = null) {
+  if (!input || typeof input !== 'object') return '';
+  return cleanText(input.inputId, 64);
+}
+
 function getBodyRequestId(body = {}) {
   return cleanText(
     body.operationLog?.requestId
@@ -161,6 +166,13 @@ function createSummary(input = {}) {
         && cleanText(requestDetail.requestId, 120) === requestId
         && (!responseDetail.requestId || cleanText(responseDetail.requestId, 120) === requestId)),
       clientInput: clientInputMatches(clientInput, clientEntryInput, apiClientInput, requestDetail.clientInput),
+      inputId: Boolean(getClientInputId(clientInput)
+        && [
+          clientEntryInput,
+          apiClientInput,
+          requestDetail.clientInput,
+          authority?.command?.clientInput,
+        ].some((candidate) => getClientInputId(summarizeClientInput(candidate) || candidate) === getClientInputId(clientInput))),
       authorityCommand: Boolean(authority?.commandId
         && responseAuthority?.commandId
         && authority.commandId === responseAuthority.commandId),
