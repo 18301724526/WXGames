@@ -4918,6 +4918,7 @@ Regression:
 - terrain asset, feature, template, water, and site overlay normalization
 - tile visibility/intel field normalization
 - mountain neighbor count derivation from injected tile terrain index
+- `TileCoord`-backed stable coordinate normalization: stable `x/y` wins over legacy `q/r`, and canonical `tileId` wins over renderer/raw ids for presenter view-state identity
 
 公开 API / Public API:
 
@@ -4925,6 +4926,7 @@ Regression:
 - `WorldTileMapTileNormalizer.toInteger(value, fallback)`
 - `WorldTileMapTileNormalizer.getTileMapManifest(options)`
 - `WorldTileMapTileNormalizer.getWorldTileId(q, r)`
+- `WorldTileMapTileNormalizer.normalizeCoord(coord, fallback)`
 - `WorldTileMapTileNormalizer.getMountainNeighborCount(tile, siteById)`
 - `WorldTileMapTileNormalizer.normalizeIntel(intel)`
 - `WorldTileMapTileNormalizer.normalizeTemplateAssets(templateAssets)`
@@ -4936,6 +4938,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - 新单 tile render/view-state 字段先扩展本模块，并同步 focused tests。
+- 新坐标语义先扩展 `TileCoord`，本模块只消费 stable coordinate contract，不再手写第二套 tile identity 规则。
 - Multi-tile map composition stays in `WorldTileMapPresenter`.
 - Gameplay visibility or exploration rules stay in domain/systems, not this normalizer.
 
@@ -4955,6 +4958,7 @@ Regression:
 - epoch-time based mission derivation through injected `WorldMarchSystem` / `WorldTime`
 - planned tile and planned site reveal filtering for presenter view-state composition
 - coordinate and world tile id normalization shared by explorer presenter helpers
+- `TileCoord`-backed route/planned tile/planned site identity: stable `x/y` wins over legacy `q/r`, and canonical `tileId` wins over raw/planned legacy ids
 
 公开 API / Public API:
 
@@ -4962,7 +4966,9 @@ Regression:
 - `WorldTileMapExplorerNormalizer.toInteger(value, fallback)`
 - `WorldTileMapExplorerNormalizer.getWorldTileId(q, r)`
 - `WorldTileMapExplorerNormalizer.getEpochNowMs(options)`
-- `WorldTileMapExplorerNormalizer.normalizeCoord(coord)`
+- `WorldTileMapExplorerNormalizer.normalizeCoord(coord, fallback)`
+- `WorldTileMapExplorerNormalizer.isCanonicalWorldTileId(id)`
+- `WorldTileMapExplorerNormalizer.normalizeRevealedTileIds(revealedTileIds, route)`
 - `WorldTileMapExplorerNormalizer.normalizeWorldExplorerMission(mission)`
 - `WorldTileMapExplorerNormalizer.mergeWorldExplorerMissions(worldExplorerState)`
 - `WorldTileMapExplorerNormalizer.getWorldExplorerMissions(worldExplorerState, options)`
@@ -4972,6 +4978,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - 新 world-explorer presenter-only mission/planned-tile/planned-site normalization 先扩展本模块，并同步 focused tests。
+- 新坐标语义先扩展 `TileCoord`，本模块只消费 stable coordinate contract，不再手写第二套 tile identity 规则。
 - Map-level composition stays in `WorldTileMapPresenter`.
 - Gameplay progression, march timing rules, or persistence DTO mapping stay in domain/client-state modules, not this normalizer.
 
@@ -6796,7 +6803,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Add pure render context, throttle, renderer option, and trace payload changes through `WorldMapRuntimeRenderPolicy`.
 - Do not add gameplay simulation, rendering details, or new diagnostic payload schemas.
 
-### `frontend/js/state/presenters/WorldTileMapPresenter.js` - 319 lines
+### `frontend/js/state/presenters/WorldTileMapPresenter.js` - 408 lines
 
 状态 / Status: candidate facade
 
@@ -6806,6 +6813,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - world tile-map signature composition across territory/world-explorer state
 - compatibility delegation for `normalizeWorldTile()`
 - compatibility delegation for world-explorer mission/planned tile/planned site helpers
+- `TileCoord`-backed map merge keys and cache signatures for raw world tiles, planned tiles, territory sites, legacy scout routes/reveal areas, and scout-area coords
 
 重要公开方法 / Important Public Methods:
 
@@ -6815,6 +6823,11 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - `getWorldExplorerMissions(worldExplorerState, options)`
 - `getWorldExplorerPlannedTiles(worldExplorerState, options)`
 - `getWorldExplorerPlannedSites(worldExplorerState, options)`
+- `normalizeCoord(coord, fallback)`
+- `summarizeTileForSignature(tile)`
+- `summarizeSiteForSignature(site)`
+- `summarizeScoutMissionForSignature(mission)`
+- `summarizeExplorerMissionForSignature(mission)`
 - `buildWorldTileMapViewState(territoryState, options)`
 
 目标拆分 / Target Split:
@@ -6827,6 +6840,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 
 - Single-tile normalization extends `WorldTileMapTileNormalizer`.
 - World-explorer mission/planned tile/planned site normalization extends `WorldTileMapExplorerNormalizer`.
+- Map-level merge identity and map-bake signatures must consume the normalizers' `TileCoord` contract; do not restore raw `tile.id || tile_${q}_${r}` merge keys or raw-shape signature payloads here.
 - Add pure presenter helpers here only if they compose map-level render/view state.
 - Do not add renderer behavior.
 
@@ -6959,3 +6973,4 @@ Recommended first split sequence:
 | 2026-06-14 | Added stable world-map input correlation identity: `WorldMapInputIntent` now preserves or derives compact `inputId`, `WorldMapRuntime` assigns monotonic `clientSequence`, `GameAPI` and `CommandAuthorityContract` keep those fields in compact evidence, and `CommandReplayCorrelation` matches request id, input id, compact client input, and authority command id. |
 | 2026-06-14 | Tightened `CommandReplayCorrelation` request-id matching: when an API request id exists, local client operation-log entries must match that exact id and may not fall back to the latest input entry, preventing high-frequency or multiplayer replay audits from guessing by time. |
 | 2026-06-14 | Hardened `WorldMapInputIntent.toSerializable()` as a whitelist boundary: externally supplied intent-like objects are re-summarized before export so renderer, native event, tileMapView, and thenable payloads cannot enter input evidence. |
+| 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |

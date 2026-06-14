@@ -74,85 +74,10 @@
       return JSON.stringify({
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
-        tiles: tiles.map((tile) => ({
-          id: tile.id,
-          q: tile.q,
-          r: tile.r,
-          terrain: tile.terrain,
-          discovered: tile.discovered !== false,
-          visible: tile.visible !== false,
-          visibility: tile.visibility || '',
-          discoveredAt: tile.discoveredAt || '',
-          lastScoutedAt: tile.lastScoutedAt || '',
-          intel: tile.intel && typeof tile.intel === 'object' ? {
-            level: this.toInteger(tile.intel.level, 0),
-            knownTerrain: Boolean(tile.intel.knownTerrain),
-            knownSite: Boolean(tile.intel.knownSite),
-            knownOwner: Boolean(tile.intel.knownOwner),
-            knownGarrison: Boolean(tile.intel.knownGarrison),
-            knownLeader: Boolean(tile.intel.knownLeader),
-            knownSkill: Boolean(tile.intel.knownSkill),
-          } : null,
-          siteId: tile.siteId || null,
-          riverPorts: tile.riverPorts || [],
-          oceanTemplates: tile.oceanTemplates || [],
-          transitionKey: tile.transitionKey || '',
-        })),
-        sites: sites.map((site) => ({
-          id: site.id,
-          x: site.x,
-          y: site.y,
-          status: site.status,
-          owner: site.owner,
-          type: site.type,
-          art: site.art,
-          name: site.cityName || site.naturalName,
-        })),
-        missions: missions.map((mission) => ({
-          id: mission.id,
-          status: mission.status,
-          position: mission.position || null,
-          route: mission.route || [],
-          revealArea: mission.revealArea || [],
-          revealedTileIds: mission.revealedTileIds || [],
-          actionPointsRemaining: mission.actionPointsRemaining,
-        })),
-        explorerMissions: explorerMissions.map((mission) => ({
-          id: mission.id,
-          status: mission.status,
-          position: mission.position || null,
-          route: mission.route || [],
-          plannedTiles: (mission.plannedTiles || []).map((tile) => ({
-            id: tile.id,
-            q: tile.q,
-            r: tile.r,
-            terrain: tile.terrain,
-            siteId: tile.siteId || null,
-            visibility: tile.visibility || '',
-            riverPorts: tile.riverPorts || [],
-            oceanTemplates: tile.oceanTemplates || [],
-            transitionKey: tile.transitionKey || '',
-          })),
-          plannedSites: (mission.plannedSites || []).map((site) => ({
-            tileId: site.tileId || '',
-            q: site.q,
-            r: site.r,
-            siteId: site.siteId || site.site?.id || null,
-            materialized: Boolean(site.materialized),
-            revealedAt: site.revealedAt || '',
-            site: site.site ? {
-              id: site.site.id,
-              x: site.site.x,
-              y: site.site.y,
-              status: site.site.status,
-              owner: site.site.owner,
-              type: site.site.type,
-              art: site.site.art,
-              name: site.site.cityName || site.site.naturalName,
-            } : null,
-          })),
-          revealedTileIds: mission.revealedTileIds || [],
-        })),
+        tiles: tiles.map((tile) => this.summarizeTileForSignature(tile)),
+        sites: sites.map((site) => this.summarizeSiteForSignature(site)),
+        missions: missions.map((mission) => this.summarizeScoutMissionForSignature(mission)),
+        explorerMissions: explorerMissions.map((mission) => this.summarizeExplorerMissionForSignature(mission)),
       });
     }
 
@@ -182,29 +107,165 @@
       return sharedExplorerNormalizer.getWorldTileId(q, r);
     }
 
+    static normalizeCoord(coord = {}, fallback = {}) {
+      return sharedExplorerNormalizer.normalizeCoord(coord, fallback);
+    }
+
+    static summarizeCoordForSignature(coord = {}, fallback = {}) {
+      const normalized = this.normalizeCoord(coord, fallback);
+      return {
+        q: normalized.q,
+        r: normalized.r,
+        tileId: normalized.tileId,
+      };
+    }
+
+    static summarizeRouteCoordForSignature(coord = {}) {
+      const normalized = this.summarizeCoordForSignature(coord);
+      return {
+        q: normalized.q,
+        r: normalized.r,
+        step: this.toInteger(coord.step),
+        tileId: normalized.tileId,
+        kind: coord.kind === 'branch' ? 'branch' : (coord.kind || ''),
+        revealed: Boolean(coord.revealed),
+      };
+    }
+
+    static summarizeTileForSignature(tile = {}) {
+      const coord = this.summarizeCoordForSignature(tile);
+      return {
+        id: coord.tileId,
+        q: coord.q,
+        r: coord.r,
+        terrain: tile.terrain,
+        discovered: tile.discovered !== false,
+        visible: tile.visible !== false,
+        visibility: tile.visibility || '',
+        discoveredAt: tile.discoveredAt || '',
+        lastScoutedAt: tile.lastScoutedAt || '',
+        intel: tile.intel && typeof tile.intel === 'object' ? {
+          level: this.toInteger(tile.intel.level, 0),
+          knownTerrain: Boolean(tile.intel.knownTerrain),
+          knownSite: Boolean(tile.intel.knownSite),
+          knownOwner: Boolean(tile.intel.knownOwner),
+          knownGarrison: Boolean(tile.intel.knownGarrison),
+          knownLeader: Boolean(tile.intel.knownLeader),
+          knownSkill: Boolean(tile.intel.knownSkill),
+        } : null,
+        siteId: tile.siteId || null,
+        riverPorts: tile.riverPorts || [],
+        oceanTemplates: tile.oceanTemplates || [],
+        transitionKey: tile.transitionKey || '',
+      };
+    }
+
+    static summarizeSiteForSignature(site = {}) {
+      const coord = this.summarizeCoordForSignature(site);
+      return {
+        id: site.id,
+        q: coord.q,
+        r: coord.r,
+        tileId: coord.tileId,
+        status: site.status,
+        owner: site.owner,
+        type: site.type,
+        art: site.art,
+        name: site.cityName || site.naturalName,
+      };
+    }
+
+    static summarizeScoutMissionForSignature(mission = {}) {
+      return {
+        id: mission.id,
+        status: mission.status,
+        position: mission.position ? this.summarizeCoordForSignature(mission.position) : null,
+        route: (mission.route || []).map((step) => this.summarizeRouteCoordForSignature(step)),
+        revealArea: (mission.revealArea || []).map((coord) => this.summarizeRouteCoordForSignature(coord)),
+        revealedTileIds: mission.revealedTileIds || [],
+        actionPointsRemaining: mission.actionPointsRemaining,
+      };
+    }
+
+    static summarizePlannedSiteForSignature(plannedSite = {}) {
+      const rawSite = plannedSite.site && typeof plannedSite.site === 'object' ? plannedSite.site : null;
+      const coord = this.summarizeCoordForSignature(plannedSite, rawSite || {});
+      const siteCoord = rawSite ? this.summarizeCoordForSignature(rawSite) : null;
+      return {
+        tileId: coord.tileId,
+        q: coord.q,
+        r: coord.r,
+        siteId: plannedSite.siteId || rawSite?.id || null,
+        materialized: Boolean(plannedSite.materialized),
+        revealedAt: plannedSite.revealedAt || '',
+        site: rawSite ? {
+          id: rawSite.id,
+          q: siteCoord.q,
+          r: siteCoord.r,
+          tileId: siteCoord.tileId,
+          status: rawSite.status,
+          owner: rawSite.owner,
+          type: rawSite.type,
+          art: rawSite.art,
+          name: rawSite.cityName || rawSite.naturalName,
+        } : null,
+      };
+    }
+
+    static summarizeExplorerMissionForSignature(mission = {}) {
+      return {
+        id: mission.id,
+        status: mission.status,
+        position: mission.position ? this.summarizeCoordForSignature(mission.position) : null,
+        route: (mission.route || []).map((step) => this.summarizeRouteCoordForSignature(step)),
+        plannedTiles: (mission.plannedTiles || []).map((tile) => this.summarizeTileForSignature(tile)),
+        plannedSites: (mission.plannedSites || []).map((site) => this.summarizePlannedSiteForSignature(site)),
+        revealedTileIds: sharedExplorerNormalizer.normalizeRevealedTileIds
+          ? sharedExplorerNormalizer.normalizeRevealedTileIds(mission.revealedTileIds, mission.route)
+          : (mission.revealedTileIds || []),
+      };
+    }
+
     static buildWorldTileMapViewState(territoryState = {}, options = {}) {
       const worldMap = territoryState.worldMap || {};
       const rawTiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
       const worldExplorerState = options.worldExplorerState || {};
       const plannedTiles = this.getWorldExplorerPlannedTiles(worldExplorerState, options);
-      const rawTileById = new Map(rawTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile]));
+      const rawTileById = new Map();
+      rawTiles.forEach((tile) => {
+        const coord = this.normalizeCoord(tile);
+        rawTileById.set(coord.tileId, {
+          ...tile,
+          id: coord.tileId,
+          q: coord.q,
+          r: coord.r,
+        });
+      });
       plannedTiles.forEach((tile) => {
-        const existing = rawTileById.get(tile.id);
-        rawTileById.set(tile.id, existing ? { ...existing, ...tile } : tile);
+        const coord = this.normalizeCoord(tile);
+        const existing = rawTileById.get(coord.tileId);
+        rawTileById.set(coord.tileId, {
+          ...(existing || {}),
+          ...tile,
+          id: coord.tileId,
+          q: coord.q,
+          r: coord.r,
+        });
       });
       const territories = Array.isArray(territoryState.territories) ? territoryState.territories : [];
       const territoryById = new Map(territories.map((site) => [site.id, site]));
       territories.forEach((site) => {
         if (!site?.id) return;
-        const q = this.toInteger(site.x ?? site.q);
-        const r = this.toInteger(site.y ?? site.r);
-        const tileId = this.getWorldTileId(q, r);
+        const coord = this.normalizeCoord(site);
+        const q = coord.q;
+        const r = coord.r;
+        const tileId = coord.tileId;
         const existing = rawTileById.get(tileId);
         rawTileById.set(tileId, {
           ...(existing || { id: tileId, q, r, terrain: site.mapTerrain || site.terrain || 'plains' }),
           id: tileId,
-          q: this.toInteger(existing?.q ?? q),
-          r: this.toInteger(existing?.r ?? r),
+          q,
+          r,
           terrain: existing?.terrain || site.mapTerrain || site.terrain || 'plains',
           visibility: existing?.visibility || (site.owner === 'player' ? 'controlled' : 'scouted'),
           discovered: existing?.discovered !== false,
@@ -215,13 +276,14 @@
       const plannedSites = this.getWorldExplorerPlannedSites(worldExplorerState, options)
         .filter((site) => !territoryById.has(site.id));
       plannedSites.forEach((site) => {
-        const tileId = this.getWorldTileId(site.x, site.y);
+        const coord = this.normalizeCoord(site);
+        const tileId = coord.tileId;
         const existing = rawTileById.get(tileId);
         rawTileById.set(tileId, {
-          ...(existing || { id: tileId, q: site.x, r: site.y, terrain: site.mapTerrain || 'plains' }),
+          ...(existing || { id: tileId, q: coord.q, r: coord.r, terrain: site.mapTerrain || 'plains' }),
           id: tileId,
-          q: this.toInteger(existing?.q ?? site.x),
-          r: this.toInteger(existing?.r ?? site.y),
+          q: coord.q,
+          r: coord.r,
           terrain: existing?.terrain || site.mapTerrain || 'plains',
           visibility: existing?.visibility || 'scouted',
           discovered: existing?.discovered !== false,
@@ -231,7 +293,7 @@
       });
       const mergedTiles = [...rawTileById.values()];
       const siteById = new Map([...territories, ...plannedSites].map((site) => [site.id, site]));
-      siteById.__tileTerrainById = new Map(mergedTiles.map((tile) => [tile.id || `tile_${this.toInteger(tile.q)}_${this.toInteger(tile.r)}`, tile.terrain || 'plains']));
+      siteById.__tileTerrainById = new Map(mergedTiles.map((tile) => [this.normalizeCoord(tile).tileId, tile.terrain || 'plains']));
       const geometry = this.getTileMapGeometry();
       const normalizedTiles = mergedTiles.map((tile) => this.normalizeWorldTile(tile, siteById));
       const sortedTiles = geometry?.sortTilesForIsoDraw
@@ -251,21 +313,27 @@
           status: mission.status || '',
           actionPoints: this.toInteger(mission.actionPoints),
           actionPointsRemaining: this.toInteger(mission.actionPointsRemaining),
-          route: (Array.isArray(mission.route) ? mission.route : []).map((step) => ({
-            q: this.toInteger(step.q),
-            r: this.toInteger(step.r),
-            step: this.toInteger(step.step),
-            tileId: step.tileId || `tile_${this.toInteger(step.q)}_${this.toInteger(step.r)}`,
-            revealed: Boolean(step.revealed),
-          })),
-          revealArea: (Array.isArray(mission.revealArea) ? mission.revealArea : []).map((coord) => ({
-            q: this.toInteger(coord.q),
-            r: this.toInteger(coord.r),
-            step: this.toInteger(coord.step),
-            kind: coord.kind === 'branch' ? 'branch' : 'main',
-            tileId: coord.tileId || `tile_${this.toInteger(coord.q)}_${this.toInteger(coord.r)}`,
-            revealed: Boolean(coord.revealed),
-          })),
+          route: (Array.isArray(mission.route) ? mission.route : []).map((step) => {
+            const coord = this.normalizeCoord(step);
+            return {
+              q: coord.q,
+              r: coord.r,
+              step: this.toInteger(step.step),
+              tileId: coord.tileId,
+              revealed: Boolean(step.revealed),
+            };
+          }),
+          revealArea: (Array.isArray(mission.revealArea) ? mission.revealArea : []).map((areaCoord) => {
+            const coord = this.normalizeCoord(areaCoord);
+            return {
+              q: coord.q,
+              r: coord.r,
+              step: this.toInteger(areaCoord.step),
+              kind: areaCoord.kind === 'branch' ? 'branch' : 'main',
+              tileId: coord.tileId,
+              revealed: Boolean(areaCoord.revealed),
+            };
+          }),
           revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
         }));
       const explorerScouts = this.getWorldExplorerMissions(worldExplorerState, options)
@@ -282,11 +350,14 @@
           targetX: this.toInteger(area.targetX),
           targetY: this.toInteger(area.targetY),
           tileIds: Array.isArray(area.tileIds) ? area.tileIds.map(String) : [],
-          coords: (Array.isArray(area.coords) ? area.coords : []).map((coord) => ({
-            q: this.toInteger(coord.q),
-            r: this.toInteger(coord.r),
-            tileId: coord.tileId || `tile_${this.toInteger(coord.q)}_${this.toInteger(coord.r)}`,
-          })),
+          coords: (Array.isArray(area.coords) ? area.coords : []).map((areaCoord) => {
+            const coord = this.normalizeCoord(areaCoord);
+            return {
+              q: coord.q,
+              r: coord.r,
+              tileId: coord.tileId,
+            };
+          }),
           scoutedAt: area.scoutedAt || '',
         }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };

@@ -23,6 +23,18 @@
     return null;
   })();
 
+  const sharedTileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -33,6 +45,7 @@
   }
 
   function getWorldTileId(q, r) {
+    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(q, r);
     return `tile_${toInteger(q)}_${toInteger(r)}`;
   }
 
@@ -41,23 +54,58 @@
     return worldTime?.getEpochNowMs?.(options, Date.now()) ?? Date.now();
   }
 
-  function normalizeCoord(coord = {}) {
+  function normalizeCoord(coord = {}, fallback = {}) {
+    const normalized = sharedTileCoord?.normalizeCoord
+      ? sharedTileCoord.normalizeCoord(coord, fallback)
+      : null;
+    if (normalized) {
+      return {
+        q: normalized.q,
+        r: normalized.r,
+        tileId: normalized.tileId,
+      };
+    }
+    const q = toInteger(coord.x !== undefined ? coord.x : coord.q, toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0));
+    const r = toInteger(coord.y !== undefined ? coord.y : coord.r, toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0));
     return {
-      q: toInteger(coord.q),
-      r: toInteger(coord.r),
-      tileId: coord.tileId || getWorldTileId(coord.q, coord.r),
+      q,
+      r,
+      tileId: getWorldTileId(q, r),
     };
+  }
+
+  function normalizeRouteStep(step = {}, index = 0) {
+    const coord = normalizeCoord(step);
+    return {
+      q: coord.q,
+      r: coord.r,
+      step: toInteger(step.step, index + 1),
+      tileId: coord.tileId,
+      revealed: Boolean(step.revealed),
+    };
+  }
+
+  function isCanonicalWorldTileId(id) {
+    return /^tile_-?\d+_-?\d+$/.test(String(id || ''));
+  }
+
+  function normalizeRevealedTileIds(revealedTileIds = [], route = []) {
+    const ids = new Set();
+    (Array.isArray(revealedTileIds) ? revealedTileIds : [])
+      .map(String)
+      .filter(isCanonicalWorldTileId)
+      .forEach((id) => ids.add(id));
+    (Array.isArray(route) ? route : [])
+      .filter((step) => step?.revealed)
+      .map((step) => normalizeCoord(step).tileId)
+      .filter(isCanonicalWorldTileId)
+      .forEach((id) => ids.add(id));
+    return [...ids].sort();
   }
 
   function normalizeWorldExplorerMission(mission = {}) {
     if (!mission || typeof mission !== 'object') return null;
-    const route = (Array.isArray(mission.route) ? mission.route : []).map((step, index) => ({
-      q: toInteger(step.q),
-      r: toInteger(step.r),
-      step: toInteger(step.step, index + 1),
-      tileId: step.tileId || getWorldTileId(step.q, step.r),
-      revealed: Boolean(step.revealed),
-    }));
+    const route = (Array.isArray(mission.route) ? mission.route : []).map(normalizeRouteStep);
     if (!route.length) return null;
     return {
       id: mission.id || '',
@@ -77,7 +125,7 @@
       actionPointsRemaining: route.filter((step) => !step.revealed).length,
       route,
       revealArea: route,
-      revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
+      revealedTileIds: normalizeRevealedTileIds(mission.revealedTileIds, route),
       stepDurationMs: Math.max(1000, toInteger(
         mission.stepDurationMs,
         Math.max(1, toNumber(mission.stepDurationSeconds, 0)) * 1000,
@@ -148,12 +196,13 @@
       const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
       const revealedRouteTileIds = new Set((Array.isArray(mission.route) ? mission.route : [])
         .filter((step) => step?.revealed)
-        .map((step) => step.tileId || getWorldTileId(step.q, step.r)));
+        .map((step) => normalizeCoord(step).tileId));
       (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => {
         if (!tile || typeof tile !== 'object') return;
-        const q = toInteger(tile.q);
-        const r = toInteger(tile.r);
-        const id = tile.id || getWorldTileId(q, r);
+        const coord = normalizeCoord(tile);
+        const q = coord.q;
+        const r = coord.r;
+        const id = coord.tileId;
         if (!revealedTileIds.has(id) && !revealedRouteTileIds.has(id)) return;
         byId.set(id, {
           ...tile,
@@ -169,7 +218,7 @@
     const plannedTiles = [...byId.values()];
     global.WorldMarchTrace?.logDedup?.(
       'presenter:plannedTiles',
-      plannedTiles.map((tile) => tile.id || getWorldTileId(tile.q, tile.r)).join(',') || 'none',
+      plannedTiles.map((tile) => tile.id || normalizeCoord(tile).tileId).join(',') || 'none',
       {
         plannedTiles: global.WorldMarchTrace?.summarizePlannedTiles?.(plannedTiles),
         source: global.WorldMarchTrace?.summarizeWorldExplorerState?.(worldExplorerState),
@@ -184,15 +233,16 @@
     mergeWorldExplorerMissions(worldExplorerState).forEach((mission) => {
       const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
       const routeByTileId = new Map((Array.isArray(mission.route) ? mission.route : []).map((step) => [
-        step.tileId || getWorldTileId(step.q, step.r),
+        normalizeCoord(step).tileId,
         step,
       ]));
       (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).forEach((plannedSite) => {
         if (!plannedSite || typeof plannedSite !== 'object') return;
         const rawSite = plannedSite.site && typeof plannedSite.site === 'object' ? plannedSite.site : null;
-        const q = toInteger(plannedSite.q ?? rawSite?.x);
-        const r = toInteger(plannedSite.r ?? rawSite?.y);
-        const tileId = plannedSite.tileId || getWorldTileId(q, r);
+        const coord = normalizeCoord(plannedSite, rawSite || {});
+        const q = coord.q;
+        const r = coord.r;
+        const tileId = coord.tileId;
         const routeStep = routeByTileId.get(tileId);
         if (!plannedSite.materialized && !plannedSite.revealedAt && !revealedTileIds.has(tileId) && !routeStep?.revealed) return;
         const id = plannedSite.siteId || rawSite?.id || `site_${q}_${r}`;
@@ -231,6 +281,8 @@
     getWorldTileId,
     getEpochNowMs,
     normalizeCoord,
+    isCanonicalWorldTileId,
+    normalizeRevealedTileIds,
     normalizeWorldExplorerMission,
     mergeWorldExplorerMissions,
     getWorldExplorerMissions,

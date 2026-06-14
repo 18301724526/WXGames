@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const sharedTileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -25,14 +37,31 @@
   }
 
   function getWorldTileId(q, r) {
+    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(q, r);
     return `tile_${toInteger(q)}_${toInteger(r)}`;
+  }
+
+  function normalizeCoord(coord = {}, fallback = {}) {
+    if (sharedTileCoord?.normalizeCoord) return sharedTileCoord.normalizeCoord(coord, fallback);
+    const fallbackX = toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0);
+    const fallbackY = toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0);
+    const x = toInteger(coord.x !== undefined ? coord.x : coord.q, fallbackX);
+    const y = toInteger(coord.y !== undefined ? coord.y : coord.r, fallbackY);
+    return Object.freeze({
+      x,
+      y,
+      q: x,
+      r: y,
+      tileId: getWorldTileId(x, y),
+    });
   }
 
   function getMountainNeighborCount(tile = {}, siteById = new Map()) {
     if ((tile.terrain || 'plains') !== 'mountain') return 0;
+    const coord = normalizeCoord(tile);
     return [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]
       .filter(([dq, dr]) => {
-        const id = getWorldTileId(toInteger(tile.q) + dq, toInteger(tile.r) + dr);
+        const id = getWorldTileId(coord.x + dq, coord.y + dr);
         return siteById.__tileTerrainById?.get(id) === 'mountain';
       }).length;
   }
@@ -104,6 +133,7 @@
 
   function normalizeWorldTile(tile = {}, siteById = new Map(), options = {}) {
     const manifest = getTileMapManifest(options);
+    const coord = normalizeCoord(tile);
     const terrain = tile.terrain || 'plains';
     const terrainAsset = manifest.getTerrainAsset?.(terrain)
       || manifest.terrain?.[terrain]
@@ -112,9 +142,9 @@
     const templateAssets = manifest.getTileTemplateAssets?.(tile) || [];
     const site = tile.siteId ? siteById.get(tile.siteId) : null;
     return {
-      id: tile.id || getWorldTileId(tile.q, tile.r),
-      q: toInteger(tile.q),
-      r: toInteger(tile.r),
+      id: coord.tileId,
+      q: coord.q,
+      r: coord.r,
       terrain,
       terrainLabel: terrainAsset.label || terrain,
       terrainAsset: terrainAsset.path || '',
@@ -142,6 +172,7 @@
     toInteger,
     getTileMapManifest,
     getWorldTileId,
+    normalizeCoord,
     getMountainNeighborCount,
     normalizeIntel,
     normalizeTemplateAssets,

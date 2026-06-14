@@ -321,6 +321,130 @@ test('UIStatePresenter binds discovered territory sites back onto world tiles', 
   assert.equal(view.sites.some((site) => site.id === 'site_2_2' && site.tileId === 'tile_2_2'), true);
 });
 
+test('UIStatePresenter canonicalizes stable x/y world tile ids before map view merge', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'stable-coordinate-seed',
+      tiles: [
+        { id: 'legacy-renderer-id', x: 2, y: -1, q: 99, r: 99, terrain: 'mountain', visibility: 'scouted' },
+        { x: 3, y: -1, terrain: 'mountain', visibility: 'scouted' },
+      ],
+    },
+    territories: [{
+      id: 'site_2_-1',
+      x: 2,
+      y: -1,
+      type: 'town',
+      owner: 'neutral',
+      status: 'discovered',
+      naturalName: 'Stable Ford',
+    }],
+    scoutMissions: [{
+      id: 'legacy-scout-stable',
+      kind: 'scout',
+      status: 'active',
+      route: [{ x: 2, y: -1, step: 1, tileId: 'legacy-route-id', revealed: true }],
+      revealArea: [{ x: 3, y: -1, step: 2, revealed: false }],
+    }],
+    scoutAreas: [{
+      id: 'area-stable',
+      coords: [{ x: 3, y: -1, tileId: 'legacy-area-id' }],
+    }],
+  };
+
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState);
+  const tile = view.tiles.find((item) => item.id === 'tile_2_-1');
+
+  assert.equal(tile?.q, 2);
+  assert.equal(tile?.r, -1);
+  assert.equal(tile?.siteId, 'site_2_-1');
+  assert.equal(view.sites.some((site) => site.id === 'site_2_-1' && site.tileId === 'tile_2_-1'), true);
+  assert.equal(view.tiles.some((item) => item.id === 'legacy-renderer-id'), false);
+  assert.equal(view.activeScouts[0].route[0].tileId, 'tile_2_-1');
+  assert.equal(view.activeScouts[0].revealArea[0].tileId, 'tile_3_-1');
+  assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_3_-1');
+});
+
+test('UIStatePresenter canonicalizes world tile-map signatures for stable x/y and legacy q/r shapes', () => {
+  const stableShape = {
+    worldMap: {
+      version: 1,
+      seed: 'signature-stable-seed',
+      tiles: [
+        { id: 'legacy-renderer-id', x: 2, y: -1, q: 99, r: 99, terrain: 'forest', siteId: 'site_2_-1' },
+      ],
+    },
+    territories: [
+      { id: 'site_2_-1', x: 2, y: -1, type: 'town', owner: 'neutral', status: 'discovered', cityName: 'Stable City' },
+    ],
+    scoutMissions: [{
+      id: 'legacy-scout-stable',
+      status: 'active',
+      position: { x: 2, y: -1, tileId: 'legacy-position' },
+      route: [{ x: 2, y: -1, step: 1, tileId: 'legacy-route', revealed: true }],
+      revealArea: [{ x: 3, y: -1, step: 2, tileId: 'legacy-reveal', revealed: false }],
+      revealedTileIds: ['tile_2_-1'],
+      actionPointsRemaining: 1,
+    }],
+  };
+  const legacyShape = {
+    worldMap: {
+      version: 1,
+      seed: 'signature-stable-seed',
+      tiles: [
+        { q: 2, r: -1, terrain: 'forest', siteId: 'site_2_-1' },
+      ],
+    },
+    territories: [
+      { id: 'site_2_-1', q: 2, r: -1, type: 'town', owner: 'neutral', status: 'discovered', cityName: 'Stable City' },
+    ],
+    scoutMissions: [{
+      id: 'legacy-scout-stable',
+      status: 'active',
+      position: { q: 2, r: -1 },
+      route: [{ q: 2, r: -1, step: 1, revealed: true }],
+      revealArea: [{ q: 3, r: -1, step: 2, revealed: false }],
+      revealedTileIds: ['tile_2_-1'],
+      actionPointsRemaining: 1,
+    }],
+  };
+  const stableExplorer = {
+    activeMission: {
+      id: 'manual-signature',
+      status: 'active',
+      route: [{ x: 4, y: -2, step: 1, tileId: 'legacy-route', revealed: true }],
+      plannedTiles: [{ id: 'legacy-planned-id', x: 4, y: -2, terrain: 'hills' }],
+      plannedSites: [{
+        tileId: 'legacy-planned-site',
+        siteId: 'site_4_-2',
+        materialized: true,
+        site: { id: 'site_4_-2', x: 4, y: -2, type: 'town', owner: 'neutral', status: 'discovered' },
+      }],
+      revealedTileIds: ['tile_4_-2'],
+    },
+  };
+  const legacyExplorer = {
+    activeMission: {
+      id: 'manual-signature',
+      status: 'active',
+      route: [{ q: 4, r: -2, step: 1, revealed: true }],
+      plannedTiles: [{ q: 4, r: -2, terrain: 'hills' }],
+      plannedSites: [{
+        siteId: 'site_4_-2',
+        materialized: true,
+        site: { id: 'site_4_-2', q: 4, r: -2, type: 'town', owner: 'neutral', status: 'discovered' },
+      }],
+      revealedTileIds: ['tile_4_-2'],
+    },
+  };
+
+  assert.equal(
+    UIStatePresenter.getWorldTileMapSignature(stableShape, stableExplorer),
+    UIStatePresenter.getWorldTileMapSignature(legacyShape, legacyExplorer),
+  );
+});
+
 test('UIStatePresenter delegates famous person view state while preserving facade contracts', () => {
   const state = {
     famousPersons: {

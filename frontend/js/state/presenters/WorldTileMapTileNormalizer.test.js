@@ -83,6 +83,31 @@ test('WorldTileMapTileNormalizer normalizes terrain, water, feature, templates, 
   });
 });
 
+test('WorldTileMapTileNormalizer normalizes stable x/y tile coordinates through canonical tile identity', () => {
+  const siteById = new Map();
+  siteById.__tileTerrainById = new Map([
+    ['tile_3_-3', 'mountain'],
+    ['tile_3_-4', 'mountain'],
+    ['tile_2_-3', 'plains'],
+  ]);
+
+  const normalized = WorldTileMapTileNormalizer.normalizeWorldTile({
+    x: '2.9',
+    y: '-2.1',
+    q: 99,
+    r: 99,
+    id: 'legacy-renderer-id',
+    terrain: 'mountain',
+  }, siteById, {
+    manifest: createManifest(),
+  });
+
+  assert.equal(normalized.id, 'tile_2_-3');
+  assert.equal(normalized.q, 2);
+  assert.equal(normalized.r, -3);
+  assert.equal(normalized.mountainNeighbors, 2);
+});
+
 test('WorldTileMapTileNormalizer normalizes site overlays and mountain neighbors', () => {
   const siteById = new Map([[
     'site-1',

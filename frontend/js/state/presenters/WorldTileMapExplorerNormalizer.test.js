@@ -34,6 +34,26 @@ test('WorldTileMapExplorerNormalizer normalizes explorer missions for map displa
   assert.equal(normalized.stepDurationSeconds, 10);
 });
 
+test('WorldTileMapExplorerNormalizer normalizes stable x/y mission coordinates through canonical tile identity', () => {
+  const normalized = WorldTileMapExplorerNormalizer.normalizeWorldExplorerMission({
+    id: 'explore-stable-coord',
+    mode: 'manual',
+    status: 'active',
+    origin: { x: '1', y: '0', q: 99, r: 99, tileId: 'legacy-origin' },
+    target: { x: '3', y: '-1', q: 88, r: 88 },
+    position: { x: '2', y: '-1' },
+    route: [
+      { x: '2', y: '-1', q: 77, r: 77, step: '1', tileId: 'legacy-route', revealed: true },
+      { x: '3', y: '-1', step: '2' },
+    ],
+  });
+
+  assert.deepEqual(normalized.origin, { q: 1, r: 0, tileId: 'tile_1_0' });
+  assert.deepEqual(normalized.target, { q: 3, r: -1, tileId: 'tile_3_-1' });
+  assert.deepEqual(normalized.position, { q: 2, r: -1, tileId: 'tile_2_-1' });
+  assert.deepEqual(normalized.route.map((step) => step.tileId), ['tile_2_-1', 'tile_3_-1']);
+});
+
 test('WorldTileMapExplorerNormalizer merges mission slots while keeping richer arrays', () => {
   const missions = WorldTileMapExplorerNormalizer.mergeWorldExplorerMissions({
     missions: [{
@@ -59,6 +79,66 @@ test('WorldTileMapExplorerNormalizer merges mission slots while keeping richer a
   assert.deepEqual(missions[0].plannedTiles.map((tile) => tile.id), ['tile_1_0']);
   assert.deepEqual(missions[0].plannedSites.map((site) => site.siteId), ['site_1_0']);
   assert.deepEqual(missions[0].revealedTileIds, ['tile_1_0']);
+});
+
+test('WorldTileMapExplorerNormalizer reveals x/y planned tiles and sites using canonical route identity', () => {
+  const worldExplorerState = {
+    activeMission: {
+      id: 'manual-stable',
+      status: 'active',
+      route: [
+        { x: 3, y: -1, step: 1, revealed: true },
+      ],
+      plannedTiles: [
+        { x: 3, y: -1, q: 99, r: 99, id: 'legacy-planned-id', terrain: 'forest' },
+      ],
+      plannedSites: [{
+        x: 3,
+        y: -1,
+        tileId: 'legacy-site-tile',
+        siteId: 'site_3_-1',
+        materialized: true,
+        site: { id: 'site_3_-1', x: 3, y: -1, type: 'town', owner: 'neutral', status: 'discovered' },
+      }],
+      revealedTileIds: [],
+    },
+  };
+
+  assert.deepEqual(WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(
+    worldExplorerState,
+  ).map((tile) => ({ id: tile.id, q: tile.q, r: tile.r })), [
+    { id: 'tile_3_-1', q: 3, r: -1 },
+  ]);
+  assert.deepEqual(WorldTileMapExplorerNormalizer.getWorldExplorerPlannedSites(
+    worldExplorerState,
+  ).map((site) => ({ id: site.id, x: site.x, y: site.y })), [
+    { id: 'site_3_-1', x: 3, y: -1 },
+  ]);
+});
+
+test('WorldTileMapExplorerNormalizer derives planned site tile identity from raw site coordinates', () => {
+  const worldExplorerState = {
+    activeMission: {
+      id: 'manual-site-fallback',
+      status: 'active',
+      route: [
+        { x: 4, y: -2, step: 1, revealed: true },
+      ],
+      plannedSites: [{
+        siteId: 'site_4_-2',
+        materialized: true,
+        tileId: 'legacy-site-tile',
+        site: { id: 'site_4_-2', x: 4, y: -2, type: 'town', owner: 'neutral', status: 'discovered' },
+      }],
+      revealedTileIds: [],
+    },
+  };
+
+  assert.deepEqual(WorldTileMapExplorerNormalizer.getWorldExplorerPlannedSites(
+    worldExplorerState,
+  ).map((site) => ({ id: site.id, x: site.x, y: site.y })), [
+    { id: 'site_4_-2', x: 4, y: -2 },
+  ]);
 });
 
 test('WorldTileMapExplorerNormalizer reveals planned tiles and sites by server-confirmed mission state', () => {
