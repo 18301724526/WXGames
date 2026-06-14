@@ -188,6 +188,25 @@ test('WorldExplorerService facade exposes only the actor march API', () => {
   assert.equal(typeof Actions.startWorldMarch, 'function');
 });
 
+test('WorldExplorerActions keeps route rebasing and trace summaries coordinate-authoritative', () => {
+  const actionsSource = fs.readFileSync(path.join(explorerRoot, 'WorldExplorerActions.js'), 'utf8');
+  const staleIdentityFallbacks = [
+    'coord.tileId || WorldMapService.getTileId',
+    'step.tileId || WorldMapService.getTileId',
+    'tile.id || WorldMapService.getTileId',
+    'options.origin.tileId || WorldMapService.getTileId',
+    'mission.origin?.tileId || WorldMapService.getTileId',
+  ];
+
+  for (const fallback of staleIdentityFallbacks) {
+    assert.equal(
+      actionsSource.includes(fallback),
+      false,
+      `WorldExplorerActions must not let stale caller/persisted tile identity override coordinates: ${fallback}`,
+    );
+  }
+});
+
 test('WorldExplorerShared normalizes epoch-second mission timestamps', () => {
   const epochMs = new Date('2026-06-06T00:00:10.000Z').getTime();
 

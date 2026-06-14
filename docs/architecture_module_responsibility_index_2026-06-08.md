@@ -4372,6 +4372,36 @@ Regression:
 - `node --test backend/tests/VersionRoutes.test.js`
 - `npm run test:architecture`
 
+### `backend/services/worldExplorer/WorldExplorerActions.js`
+
+Status: candidate
+
+Owns:
+
+- world explorer command orchestration for accepted manual world-march actions
+- formation validation, active/idle mission selection, start/return/stop result assembly, and authority envelope attachment
+- route rebasing for existing idle missions after return/stop/start commands
+- coordinate-authoritative trace summaries and mission rebasing: any coordinate-bearing origin, route step, planned tile, target, or position derives tile identity from `q/r`; stale caller/persisted `tileId` / `id` cannot override command logs or mission writes
+
+Public API:
+
+- `countActiveMissions(gameState)`
+- `startWorldMarch(gameState, options, now)`
+- `returnWorldMarch(gameState, missionId, options, now)`
+- `stopWorldMarch(gameState, missionId, options, now)`
+
+Extension Path:
+
+- Keep route generation and tutorial planned-site selection in `WorldExplorerRoutePlanner`.
+- Keep persisted mission-row normalization in `WorldExplorerMissionNormalizer`.
+- Keep runtime reveal/materialization side effects in `WorldExplorerProgression`.
+- New action flows must add command-boundary tests before changing mission rebasing, authority envelopes, or trace summaries.
+
+Regression:
+
+- `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/worldExplorer/WorldExplorerRoutePlanner.js`
 
 Status: candidate

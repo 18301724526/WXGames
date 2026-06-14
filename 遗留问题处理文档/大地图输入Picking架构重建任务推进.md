@@ -67,6 +67,7 @@
 
 - `CanvasTerritoryActionHandlers` 将 `meta.inputIntent` 作为 `clientInputIntent` 传入 `startWorldMarch` / `returnWorldMarch` / `stopWorldMarch`。
 - `CanvasTerritoryActionHandlers` 的行军目标 HUD 状态必须通过 `TileCoord` 从 `targetQ/targetR` 生成 canonical `tileId`；旧 renderer/caller `action.tileId` 不能覆盖坐标事实，`startWorldMarch` 顶层 payload 也不新增 `tileId` 权威字段。
+- `WorldExplorerActions` 是服务端世界行军命令编排边界；start/return/stop 的 trace summary、idle mission rebase、target/position 写回都必须由 `q/r` 生成 tile identity，旧 caller/persisted `tileId` / `id` 不能覆盖命令诊断或 mission 事实。
 - `WorldExplorerRoutePlanner` 是服务端路线规划边界；route / planned tile / tutorial planned site 只要带 `q/r`，planned tile lookup、terrain 判定和 planned site `tileId` 都必须由坐标生成，旧 route `tileId` 或 planned tile `id` 不能改变首个空城规划结果。
 - `GameAPI` 只发送 `clientInputIntent` 的白名单摘要，不发送 renderer/context 原对象、完整 tiles、完整 targets 或大 payload。
 - `GameActionRegistry` 保留 `clientInputIntent` 到 world-march payload；`TerritoryAction` 将 return/stop/start 的 payload 交给 `WorldExplorerService`。
@@ -108,6 +109,7 @@
 - 2026-06-14：`WorldMarchProgressSnapshot`、`WorldActorProjection`、`WorldMapRenderSnapshot.normalizeMarchTarget()` 的行军 actor / 目标格身份也改为消费 `TileCoord`。mission `origin/homeOrigin/target/position/route`、returned-home 判断、worldMarchTarget signature 均由 stable `x/y` 或 legacy `q/r` 生成 canonical `tileId`，caller-supplied `id/tileId` 不再能把回城 idle mission 伪装成停在外部地图的 actor。
 - 2026-06-14：`WorldMapVisibilityModel`、`WorldMapEntitySnapshot`、`WorldFogVisualSnapshot` 的 visibility/entity/fog 身份也改为消费 `TileCoord`。visibility arrays、entity indexes、fog visual signature 均由 canonical tile identity 合并与索引，caller-supplied `id/tileId` 不再能覆盖 stable `x/y`。
 - 2026-06-14：`CanvasTerritoryActionHandlers` 的 `selectWorldMarchTarget` / `openWorldMarchFormationPicker` / `startWorldMarch` 统一消费 `TileCoord` 行军目标规范化；HUD 目标 tile identity 从坐标生成，旧 `action.tileId` 不能污染 UI 状态或 API 顶层 payload。
+- 2026-06-14：`WorldExplorerActions` 的 trace summary 与 `rebaseMissionRoute()` 删除旧 `tileId || getTileId()` / `id || getTileId()` 写法，并新增架构测试锁死；命令层不再给旧身份字段留下再次抢权的入口。
 - 2026-06-14：`WorldExplorerRoutePlanner.createTutorialPlannedSites()` 的首个空城规划改为按 route 坐标查 planned tile、按坐标判定 terrain、按坐标写 planned site `tileId`；旧 route `tileId` 或 planned tile `id` 即使是脏值，也不能把教程空城规划导向错误地块。
 - 2026-06-14：`WorldExplorerMissionNormalizer` 的服务端 mission row 也完成坐标身份收口；route/origin/homeOrigin/target/position/planned tile/planned site 中的旧 `tileId` / `id` 不能覆盖 `q/r` 坐标，后续 progression、timeline、AOI 都只消费归一化后的 canonical mission facts。
 - 2026-06-14：`WorldExplorerProgression` 的运行时副作用也完成坐标身份收口；planned site materialization、planned tile lookup、trace step summary、mission position 写回不再信旧 `step.tileId` / planned tile `id`，即使脏 mission 绕过上游也不能改变 materialize 或 position 事实。

@@ -70,7 +70,7 @@ function summarizeCoord(coord = {}) {
   return {
     q,
     r,
-    tileId: coord.tileId || WorldMapService.getTileId(q, r),
+    tileId: WorldMapService.getTileId(q, r),
   };
 }
 
@@ -88,9 +88,9 @@ function summarizeMission(mission = null) {
     target: summarizeCoord(mission.target),
     position: summarizeCoord(mission.position),
     routeCount: route.length,
-    routeIds: route.slice(0, 8).map((step) => step.tileId || WorldMapService.getTileId(step.q, step.r)),
+    routeIds: route.slice(0, 8).map((step) => WorldMapService.getTileId(step.q, step.r)),
     plannedTileCount: plannedTiles.length,
-    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => tile.id || WorldMapService.getTileId(tile.q, tile.r)),
+    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => WorldMapService.getTileId(tile.q, tile.r)),
     plannedSiteCount: plannedSites.length,
     plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
     revealedTileCount: revealedTileIds.length,
@@ -177,7 +177,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     success: routeResult.success,
     error: routeResult.error || '',
     routeCount: Array.isArray(routeResult.route) ? routeResult.route.length : 0,
-    routeIds: (routeResult.route || []).slice(0, 8).map((step) => step.tileId || WorldMapService.getTileId(step.q, step.r)),
+    routeIds: (routeResult.route || []).slice(0, 8).map((step) => WorldMapService.getTileId(step.q, step.r)),
   });
   if (!routeResult.success) return routeResult;
   const route = routeResult.route || [];
@@ -196,8 +196,8 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   const plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now);
   traceWorldMarch('actions:startWorldMarch:planned', options, {
     plannedTileCount: plannedTiles.length,
-    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => tile.id || WorldMapService.getTileId(tile.q, tile.r)),
-    plannedTerrain: plannedTiles.slice(0, 8).map((tile) => `${tile.id || WorldMapService.getTileId(tile.q, tile.r)}:${tile.terrain}`),
+    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => WorldMapService.getTileId(tile.q, tile.r)),
+    plannedTerrain: plannedTiles.slice(0, 8).map((tile) => `${WorldMapService.getTileId(tile.q, tile.r)}:${tile.terrain}`),
     plannedSiteCount: plannedSites.length,
     plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
     idleMission: summarizeMission(idleMission),
@@ -275,14 +275,14 @@ function rebaseMissionRoute(mission, route, now = new Date(), options = {}) {
       ...options.origin,
       q: options.origin.q,
       r: options.origin.r,
-      tileId: options.origin.tileId || WorldMapService.getTileId(options.origin.q, options.origin.r),
+      tileId: WorldMapService.getTileId(options.origin.q, options.origin.r),
     };
   }
   const normalizedRoute = route.map((step, index) => ({
     q: step.q,
     r: step.r,
     step: index + 1,
-    tileId: step.tileId || WorldMapService.getTileId(step.q, step.r),
+    tileId: WorldMapService.getTileId(step.q, step.r),
     revealed: false,
     revealedAt: null,
   }));
@@ -291,7 +291,7 @@ function rebaseMissionRoute(mission, route, now = new Date(), options = {}) {
     ? { q: normalizedRoute.at(-1).q, r: normalizedRoute.at(-1).r, tileId: normalizedRoute.at(-1).tileId }
     : { q: mission.origin?.q || 0, r: mission.origin?.r || 0, tileId: WorldMapService.getTileId(mission.origin?.q || 0, mission.origin?.r || 0) };
   mission.position = normalizedRoute.length
-    ? { ...(mission.origin || {}), tileId: mission.origin?.tileId || WorldMapService.getTileId(mission.origin?.q || 0, mission.origin?.r || 0) }
+    ? { ...(mission.origin || {}), tileId: WorldMapService.getTileId(mission.origin?.q || 0, mission.origin?.r || 0) }
     : { q: mission.target.q, r: mission.target.r, tileId: WorldMapService.getTileId(mission.target.q, mission.target.r) };
   mission.status = normalizedRoute.length ? 'active' : 'idle';
   mission.plannedTiles = Array.isArray(options.plannedTiles) ? options.plannedTiles : [];
