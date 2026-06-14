@@ -3340,6 +3340,35 @@ Regression:
 - `node --test backend/tests/TerritoryArchitecture.test.js`
 - `npm run test:architecture`
 
+### `backend/services/territory/TerritoryScoutPlanner.js`
+
+Status: candidate
+
+Owns:
+
+- controlled scout origin discovery from occupied territories and controlled world tiles
+- scout frontier target scoring and route/reveal-area candidate evaluation
+- coordinate-authoritative controlled tile fallback identity: when no territory/site id exists, fallback `cityId`/`territoryId` derives from `q/r`; stale world-map `tile.id` cannot become scout origin identity
+
+Public API:
+
+- `createTerritoryScoutPlanner(dependencies)`
+- `getControlledScoutOrigins(gameState, fallbackOrigin)`
+- `findNextCoordinate(gameState, direction, origin)`
+- `findNextCoordinateFromOrigin(gameState, direction, origin, occupied, scouted, discovered, scoutedAreaTileIds)`
+- `scoreScoutCandidateArea(gameState, direction, origin, distance, knownTileIds)`
+
+Extension Path:
+
+- New scout origin or frontier scoring rules add focused `TerritoryArchitecture` tests first.
+- Mission creation stays in `TerritoryService.startScout`; route reveal math stays in `WorldMapService`.
+- Preserve explicit territory/site ownership ids, but do not let raw world-map tile ids become fallback origin identity.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js --test-name-pattern "territory scout planner module"`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryScoutResults.js`
 
 状态 / Status: candidate

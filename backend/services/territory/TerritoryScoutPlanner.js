@@ -59,7 +59,7 @@ function createTerritoryScoutPlanner(dependencies = {}) {
       const x = toInteger(tile.q, 0);
       const y = toInteger(tile.r, 0);
       const territory = territoryByCoord.get(getCoordinateKey(x, y));
-      const tileId = tile.id || WorldMapService.getTileId(x, y);
+      const tileId = WorldMapService.getTileId(x, y);
       addOrigin({
         cityId: territory?.cityId || territory?.id || tile.siteId || tileId,
         territoryId: territory?.id || tile.siteId || tileId,

@@ -648,6 +648,7 @@ test('territory scout planner module owns scout origins and frontier target scor
         tiles: [
           { id: 'tile_0_0', q: 0, r: 0, visibility: 'controlled' },
           { id: 'tile_2_0', q: 2, r: 0, visibility: 'controlled', siteId: 'frontier-site' },
+          { id: 'stale-controlled-origin', q: -1, r: 0, visibility: 'controlled' },
           { id: 'tile_1_0', q: 1, r: 0, discovered: true },
         ],
       }),
@@ -689,7 +690,7 @@ test('territory scout planner module owns scout origins and frontier target scor
     },
   };
 
-  assert.deepEqual(Planner.getKnownWorldCoordinateKeys(gameState), new Set(['0,0', '2,0', '1,0']));
+  assert.deepEqual(Planner.getKnownWorldCoordinateKeys(gameState), new Set(['0,0', '2,0', '-1,0', '1,0']));
   assert.deepEqual(Planner.getScoutedAreaTileIdSet(gameState), new Set(['tile_4_0', 'tile_4_1']));
   assert.deepEqual(Planner.getControlledScoutOrigins(gameState).map((origin) => ({
     cityId: origin.cityId,
@@ -699,6 +700,7 @@ test('territory scout planner module owns scout origins and frontier target scor
   })), [
     { cityId: 'capital', territoryId: 'capital', x: 0, y: 0 },
     { cityId: 'frontier', territoryId: 'frontier', x: 2, y: 0 },
+    { cityId: 'tile_-1_0', territoryId: 'tile_-1_0', x: -1, y: 0 },
   ]);
 
   const target = Planner.findNextCoordinate(gameState, 'e');
