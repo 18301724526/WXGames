@@ -718,6 +718,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - diamond isometric square-tile projection helpers
 - stable `x/y` coordinate normalization while preserving `q/r` aliases
+- coordinate-authoritative fallback tile identity when `TileCoord` is unavailable; raw `tileId` / `id` values are not preserved as geometry identity when coordinates exist
 - screen center, draw rect, bounds, draw-order, and screen-point-to-coordinate conversion
 - legacy geometry facade for existing renderer/HUD callers
 
@@ -7376,6 +7377,7 @@ Recommended first split sequence:
 | 2026-06-14 | Hardened `WorldMapInputIntent` tile evidence: action and target summaries now consume `TileCoord` when target coordinates are present, so stale caller-supplied `tileId` cannot pollute local replay or backend command evidence. |
 | 2026-06-14 | Hardened `WorldMapInputActionMap` background known-tile lookup: inferred background tiles now match current `tileMapView.tiles` by normalized coordinates and emit canonical `tileId`, so colliding raw tile ids cannot redirect march target coordinates or terrain evidence. |
 | 2026-06-14 | Hardened `WorldRevealStore` fallback coordinate identity: revealed records now derive fallback tile ids from `x/y` or `q/r` even when `TileCoord` is unavailable, so stale persisted `tileId` / `id` values cannot become store index keys. |
+| 2026-06-14 | Hardened `TileMapGeometry` fallback coordinate identity: geometry fallback normalization now derives tile ids from `x/y` or `q/r`, so renderer geometry paths cannot preserve stale raw `tileId` / `id` values when `TileCoord` is unavailable. |
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
 | 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
 | 2026-06-14 | Hardened march actor identity: `WorldMarchProgressSnapshot`, `WorldActorProjection`, and `WorldMapRenderSnapshot.normalizeMarchTarget()` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in mission rows, returned-home actor projection, or march target UI state. |
