@@ -29,7 +29,6 @@ function mergeTiles(existing, tile, seed = DEFAULT_WORLD_SEED, now = new Date())
   return normalizeTile({
     ...existing,
     ...tile,
-    id: preferIncomingDisplay ? tile.id || existing.id : existing.id || tile.id,
     q: preferIncomingDisplay ? toInteger(tile.q, existing.q) : toInteger(existing.q, tile.q),
     r: preferIncomingDisplay ? toInteger(tile.r, existing.r) : toInteger(existing.r, tile.r),
     x: preferIncomingDisplay ? toInteger(tile.x ?? tile.q, existing.q) : toInteger(existing.x ?? existing.q, tile.q),

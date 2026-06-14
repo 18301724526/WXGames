@@ -10,6 +10,7 @@ const GenerationAuthority = require('../services/worldMap/WorldMapGenerationAuth
 const Topology = require('../services/worldMap/WorldMapTopology');
 const Water = require('../services/worldMap/WorldMapWater');
 const Tiles = require('../services/worldMap/WorldMapTiles');
+const Batch = require('../services/worldMap/WorldMapBatch');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const worldMapRoot = path.join(serviceRoot, 'worldMap');
@@ -131,6 +132,41 @@ test('world map tile normalization preserves server-materialized terrain authori
 
   assert.equal(materialized.terrain, 'forest');
   assert.equal(normalized.terrain, 'forest');
+});
+
+test('world map tile authority derives tile identity from coordinates at write boundaries', () => {
+  const now = new Date('2026-06-14T00:00:00.000Z');
+  const created = Tiles.createTile('architecture-id-seed', 4, -2, now, {
+    id: 'stale-created-id',
+    terrain: 'forest',
+    visibility: 'scouted',
+  });
+  const normalized = Tiles.normalizeTile({
+    id: 'stale-normalized-id',
+    q: 5,
+    r: -3,
+    terrain: 'hills',
+    visibility: 'scouted',
+  }, 'architecture-id-seed', now);
+  const merged = Batch.mergeTiles({
+    id: 'stale-existing-id',
+    q: 6,
+    r: -4,
+    terrain: 'plains',
+    visibility: 'hidden',
+    visible: false,
+  }, {
+    id: 'stale-incoming-id',
+    q: 6,
+    r: -4,
+    terrain: 'forest',
+    visibility: 'scouted',
+    visible: true,
+  }, 'architecture-id-seed', now);
+
+  assert.equal(created.id, 'tile_4_-2');
+  assert.equal(normalized.id, 'tile_5_-3');
+  assert.equal(merged.id, 'tile_6_-4');
 });
 
 test('world map terrain materialization can depend on first-explorer context', () => {

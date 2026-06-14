@@ -190,7 +190,7 @@ function createTile(seed, q, r, now = new Date(), overrides = {}) {
   const discoveredAt = overrides.discoveredAt || overrides.generatedAt || (discovered ? isoNow : null);
   const lastScoutedAt = overrides.lastScoutedAt || (visibility !== 'unknown' ? isoNow : null);
   return decorateTile({
-    id: overrides.id || getTileId(q, r),
+    id: getTileId(q, r),
     q,
     r,
     x: q,
@@ -222,7 +222,6 @@ function normalizeTile(rawTile, seed, now = new Date()) {
   const r = toInteger(rawTile.r, 0);
   const topology = WorldMapTopology.normalizeCoord({ q, r });
   return createTile(seed, q, r, now, {
-    id: rawTile.id || getTileId(q, r),
     canonicalId: rawTile.canonicalId || topology.canonicalId,
     worldQ: rawTile.worldQ ?? topology.worldQ,
     worldR: rawTile.worldR ?? topology.worldR,

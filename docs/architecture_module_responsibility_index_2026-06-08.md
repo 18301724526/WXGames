@@ -3019,6 +3019,7 @@ Owns:
 - delegation to focused world-map modules for terrain, water, tile normalization, IDs, and deterministic generation authority
 - scout reveal area branch materialization through `WorldMapGenerationAuthority.roll01()`
 - context-aware first materialization through `WorldMapTiles.chooseMaterializedTerrain(seed, q, r, generationContext)`; persisted global terrain authority is owned by `WorldMapAuthorityRepository`, not by this facade
+- server-side tile write-boundary identity: `WorldMapTiles.createTile()` / `normalizeTile()` and `WorldMapBatch.mergeTiles()` derive public tile `id` from display `q/r`; caller-supplied `id`, stale persisted `id`, or merge-time `id` values cannot override coordinate identity
 
 Public API:
 
@@ -3050,6 +3051,7 @@ Extension Path:
 
 - New deterministic world-generation behavior first extends `WorldMapGenerationAuthority`.
 - New terrain/tile fields first extend `WorldMapTiles`; new ocean/river behavior first extends `WorldMapWater`.
+- New world-map tile write paths must preserve coordinate-derived public tile ids and canonical-id merge keys; add focused `WorldMapArchitecture.test.js` coverage before accepting any new persisted tile identity field.
 - New global persistence/visibility behavior extends `WorldMapAuthorityRepository`; do not reintroduce full world bodies into player saves.
 - Do not put renderer visuals, frontend hit targets, or territory battle/conquest rules into this facade.
 
@@ -7378,6 +7380,7 @@ Recommended first split sequence:
 | 2026-06-14 | Hardened `WorldMapInputActionMap` background known-tile lookup: inferred background tiles now match current `tileMapView.tiles` by normalized coordinates and emit canonical `tileId`, so colliding raw tile ids cannot redirect march target coordinates or terrain evidence. |
 | 2026-06-14 | Hardened `WorldRevealStore` fallback coordinate identity: revealed records now derive fallback tile ids from `x/y` or `q/r` even when `TileCoord` is unavailable, so stale persisted `tileId` / `id` values cannot become store index keys. |
 | 2026-06-14 | Hardened `TileMapGeometry` fallback coordinate identity: geometry fallback normalization now derives tile ids from `x/y` or `q/r`, so renderer geometry paths cannot preserve stale raw `tileId` / `id` values when `TileCoord` is unavailable. |
+| 2026-06-14 | Hardened backend world-map tile write-boundary identity: `WorldMapTiles.createTile()` / `normalizeTile()` and `WorldMapBatch.mergeTiles()` now derive public tile ids from display coordinates, so stale caller, persisted, or merge-time `id` values cannot become authoritative world-map tile identity. |
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
 | 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
 | 2026-06-14 | Hardened march actor identity: `WorldMarchProgressSnapshot`, `WorldActorProjection`, and `WorldMapRenderSnapshot.normalizeMarchTarget()` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in mission rows, returned-home actor projection, or march target UI state. |
