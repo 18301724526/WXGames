@@ -2478,6 +2478,44 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/domain/WorldMapPickingModel.js`
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- 世界地图实体 picking snapshot / world-map entity picking snapshot
+- 从当前 `lastWorldTileMapContext` 的 frame、viewport、geometry、tile sites、actors 生成可缓存的 `world-map-picking-snapshot-v1`
+- 通过 `TileCoord` 归一化 site/tile identity 和 picking signature；stable `x/y` 与 legacy `q/r` 不能生成不同实体身份
+- 保持 renderer hitTargets 只是输入证据，世界城池/部队目标身份由当前 picking snapshot 或 context 重算
+
+公开 API / Public API:
+
+- `WorldMapPickingModel.createSnapshot(context, options)`
+- `WorldMapPickingModel.resolveAction(point, snapshot)`
+- `WorldMapPickingModel.buildSignature(context)`
+- `WorldMapPickingModel.createSiteTargets(context)`
+- `WorldMapPickingModel.createActorTargets(context)`
+- `WorldMapPickingModel.containsPoint(target, point)`
+- `WorldMapPickingModel.targetSignature(target)`
+
+性能约束 / Performance Constraints:
+
+- Snapshot 只保存 compact target rect/action，不复制完整 tileMapView。
+- Signature 只哈希 view/entity identity 与必要绘制参数，避免把 renderer/native event/runtime 对象带入输入证据。
+- Tile identity normalization 必须复用 `TileCoord`，不要在 picking 模型里手写第二套 tile id 规则。
+
+扩展方式 / Extension Path:
+
+- 新世界实体命中类型先在 picking snapshot 增加 target builder 和测试，再由 action map/runtime 消费。
+- Renderer 可以提供 surface evidence，但不能把 renderer hitTarget 重新升级为世界实体权威。
+- 坐标字段迁移先扩展 `TileCoord`/`WorldTopology`，再让 picking/runtime/presenter 消费。
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/domain/WorldMapInputActionMap.js`
 
 状态 / Status: candidate

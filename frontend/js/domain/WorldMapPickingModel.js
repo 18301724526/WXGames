@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -18,6 +29,23 @@
 
   function toInteger(value, fallback = 0) {
     return Math.floor(toNumber(value, fallback));
+  }
+
+  function normalizeCoord(source = {}, fallback = {}) {
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
+    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
+    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? 0);
+    return {
+      x,
+      y,
+      q: x,
+      r: y,
+      tileId: `tile_${x}_${y}`,
+    };
+  }
+
+  function readStableAxis(source = {}, primaryKey = 'x', aliasKey = 'q', fallback = '') {
+    return source?.[primaryKey] !== undefined ? source[primaryKey] : (source?.[aliasKey] ?? fallback);
   }
 
   function hashStep(hash, value) {
@@ -91,6 +119,7 @@
   function createSiteTarget(tile = {}, site = null, context = {}) {
     const viewport = getViewport(context);
     const geometry = getGeometry(context);
+    const coord = normalizeCoord(tile);
     const center = getTileScreenCenter(tile, viewport, geometry);
     const scale = Math.max(0.05, toNumber(viewport.scale, 1));
     const tileWidth = Math.max(1, toNumber(geometry.tileWidth, 192) * scale);
@@ -113,7 +142,7 @@
       action: {
         type: 'openWorldSite',
         siteId,
-        tileId: tile.id || `tile_${toInteger(tile.q)}_${toInteger(tile.r)}`,
+        tileId: coord.tileId,
       },
     };
   }
@@ -204,10 +233,11 @@
       hash = hashStep(hash, part);
     });
     tiles.forEach((tile) => {
+      const coord = normalizeCoord(tile);
       [
-        tile?.id || '',
-        tile?.q ?? '',
-        tile?.r ?? '',
+        coord.tileId || '',
+        coord.x,
+        coord.y,
         tile?.siteId || '',
         tile?.site?.id || '',
         tile?.site?.type || '',
@@ -221,14 +251,15 @@
     });
     actors.forEach((actor) => {
       const current = actor?.current || actor?.position || actor?.origin || {};
+      const coord = normalizeCoord(current);
       [
         actor?.id || '',
         actor?.actorId || '',
         actor?.missionId || '',
         actor?.status || '',
-        current.q ?? current.x ?? '',
-        current.r ?? current.y ?? '',
-        current.tileId || '',
+        readStableAxis(current, 'x', 'q'),
+        readStableAxis(current, 'y', 'r'),
+        coord.tileId || '',
       ].forEach((part) => {
         hash = hashStep(hash, part);
       });
