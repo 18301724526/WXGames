@@ -45,7 +45,7 @@
       y,
       q: x,
       r: y,
-      tileId: source.tileId || source.id || `tile_${x}_${y}`,
+      tileId: `tile_${x}_${y}`,
     });
   }
 

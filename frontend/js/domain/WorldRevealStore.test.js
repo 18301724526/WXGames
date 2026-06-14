@@ -45,6 +45,41 @@ test('WorldRevealStore merges duplicate revealed records without downgrading int
   assert.equal(tile.siteId, 'capital');
 });
 
+test('WorldRevealStore fallback coordinate normalization does not preserve stale tile ids', () => {
+  const originalTileCoord = globalThis.TileCoord;
+  const tileCoordPath = require.resolve('./TileCoord');
+  const modulePath = require.resolve('./WorldRevealStore');
+  const originalTileCoordModule = require.cache[tileCoordPath];
+  delete globalThis.TileCoord;
+  require.cache[tileCoordPath] = {
+    id: tileCoordPath,
+    filename: tileCoordPath,
+    loaded: true,
+    exports: null,
+  };
+  delete require.cache[modulePath];
+  const FallbackWorldRevealStore = require('./WorldRevealStore');
+
+  try {
+    const store = FallbackWorldRevealStore.createStore({
+      tiles: [
+        { x: 4, y: -2, tileId: 'legacy-away', id: 'legacy-id', terrain: 'forest' },
+      ],
+    }, topology);
+
+    assert.equal(FallbackWorldRevealStore.getTile(store, { x: 4, y: -2 }).tileId, 'tile_4_-2');
+    assert.equal(FallbackWorldRevealStore.getTile(store, 'legacy-away'), null);
+    assert.deepEqual(store.tiles.map((tile) => tile.tileId), ['tile_4_-2']);
+  } finally {
+    if (originalTileCoord) globalThis.TileCoord = originalTileCoord;
+    else delete globalThis.TileCoord;
+    if (originalTileCoordModule) require.cache[tileCoordPath] = originalTileCoordModule;
+    else delete require.cache[tileCoordPath];
+    delete require.cache[modulePath];
+    require('./WorldRevealStore');
+  }
+});
+
 test('WorldRevealStore returns only revealed records for a streaming window', () => {
   const window = globalThis.WorldInterestWindow.createWindow({ x: 4, y: 3 }, {
     ...topology,
