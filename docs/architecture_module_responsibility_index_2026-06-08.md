@@ -947,11 +947,13 @@ P0 新增公开 API / Public API Added During P0:
 - Signature uses incremental hashing over compact identity/status fields.
 - Large map tests cover 4000 tiles without nested `entitiesById` maps.
 - Entity ids and indexes use canonical tile identity; stale raw tile/site/actor `id/tileId` values are not accepted as authority.
+- World march actor entity identity uses `missionId` as the snapshot/index key; raw renderer `actor.id` is a compatibility input and must not override the mission-owned actor key.
 
 扩展方式 / Extension Path:
 
 - 新 world map entity type 先在这里定义 normalized shape，再由 renderer/action/debug 消费。
 - 不要让 renderer 从 raw API state 自己推导 entity/component。
+- World actor selection/index changes must preserve mission-id authority and add focused `WorldMapEntitySnapshot.test.js` coverage before renderer or HUD changes.
 - 新增字段必须同步测试和本文件公开 API/职责说明。
 
 回归 / Regression:

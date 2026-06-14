@@ -152,9 +152,10 @@
 
   function normalizeActor(actor = {}) {
     const current = normalizeCoord(actor.current || actor.position || {});
+    const missionId = actor.missionId || actor.id || '';
     return {
-      id: actor.id || actor.missionId || `actor_${current.tileId}`,
-      missionId: actor.missionId || actor.id || '',
+      id: missionId || `actor_${current.tileId}`,
+      missionId,
       type: actor.type || 'scout',
       status: actor.status || '',
       tileId: current.tileId,

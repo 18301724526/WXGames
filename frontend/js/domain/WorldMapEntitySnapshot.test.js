@@ -101,6 +101,23 @@ test('WorldMapEntitySnapshot canonicalizes tile, site, mission, and actor identi
   assert.equal(Object.prototype.hasOwnProperty.call(snapshot.indexById.tiles, 'legacy-tile'), false);
 });
 
+test('WorldMapEntitySnapshot uses mission id as world actor entity identity', () => {
+  const snapshot = WorldMapEntitySnapshot.createSnapshot(createInput(), {
+    actors: [{
+      id: 'stale-render-actor',
+      missionId: 'mission-2',
+      status: 'idle',
+      current: { x: 2, y: -1, q: 99, r: 99, tileId: 'legacy-actor-tile' },
+    }],
+  });
+
+  assert.equal(snapshot.actors[0].id, 'mission-2');
+  assert.equal(snapshot.actors[0].missionId, 'mission-2');
+  assert.equal(snapshot.actors[0].tileId, 'tile_2_-1');
+  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'mission-2').tileId, 'tile_2_-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.indexById.actors, 'stale-render-actor'), false);
+});
+
 test('WorldMapEntitySnapshot handles large tile sets without nested entity maps', () => {
   const tiles = [];
   for (let i = 0; i < 4000; i += 1) {

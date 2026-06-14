@@ -132,6 +132,7 @@
 - 2026-06-14：`TerritoryCombatTargets.normalizeBattleTarget()` 的 battle target tile identity 完成坐标身份收口；新增红测证明脏 `raw.tile.id` / `raw.tileId` 不会进入战斗目标事实。
 - 2026-06-14：`WorldMapTiles.createTile()` / `normalizeTile()` 与 `WorldMapBatch.mergeTiles()` 的服务端世界地图写入边界完成坐标身份收口；tile `id` 必须由 display `q/r` 生成，`canonicalId` 继续作为环绕世界合并键，调用方传入的旧 `overrides.id`、持久化脏 `id` 或合并时旧 `id` 不能成为权威世界格身份。
 - 2026-06-14：`WorldTileMapExplorerNormalizer` 的 `presenter:plannedTiles` trace summary 删除 `tile.id || normalizeCoord(tile).tileId` 旧 fallback 写法；诊断日志也必须从 `normalizeCoord()` 输出生成 tile identity，避免旧 payload `id` 在 trace 层再次伪装成可用事实。
+- 2026-06-14：`WorldMapEntitySnapshot.normalizeActor()` 的 world actor entity identity 改为以 `missionId` 作为 snapshot/index 主键；renderer 传入的旧 `actor.id` 只能在没有 mission id 时作为兼容输入，不能把同一个行军任务拆成另一个 actor 选择/HUD/picking 身份。
 - 2026-06-14：`TerritoryScoutPlanner.getControlledScoutOrigins()` 的 controlled tile fallback origin identity 完成坐标身份收口；新增红测证明脏 world-map `tile.id` 不会进入 scout origin `cityId` / `territoryId`。
 - 2026-06-14：`TerritoryScoutResults.getScoutReportTileSnapshot()` 的报告 tile snapshot terrain lookup 完成坐标身份收口；新增红测证明撞名 world-map tile `id` 不会污染生成报告 mapTerrain。
 - 2026-06-14：`TerritoryService.getTerritoryBattleTileSnapshot()` 的征服/战斗 tile snapshot terrain lookup 完成坐标身份收口；新增红测证明撞名 world-map tile `id` 不会污染 `lastBattle.mapTerrain` 和 nested battle tile。
